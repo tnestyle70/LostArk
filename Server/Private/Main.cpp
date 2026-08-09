@@ -23,7 +23,7 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
 	std::uint32_t automaticShutdownMilliseconds = 0;
-	std::string bindAddress = "127.0.0.1";
+	std::string bindAddress = "0.0.0.0";
 	bool hasSmokeTimeout = false;
 	bool hasBindAddress = false;
 	for (int index = 1; index < argumentCount; ++index)

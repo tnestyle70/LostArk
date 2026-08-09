@@ -5,6 +5,7 @@
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cmath>
 #include <cstring>
@@ -43,8 +44,7 @@ namespace
 		uint32_t iSampleCount = 0u;
 	};
 
-	std::unordered_map<std::string, std::shared_ptr<const SOURCE_VECTOR_FIELD>>
-		g_VectorFields;
+	std::atomic_uint64_t g_iVectorFieldDiskLoadCount{ 0u };
 
 	uint32_t Hash_StableId(const std::string& Value)
 	{
@@ -376,7 +376,7 @@ namespace
 		return Result;
 	}
 
-	std::shared_ptr<const SOURCE_VECTOR_FIELD> Load_VectorField(
+	std::shared_ptr<const SOURCE_VECTOR_FIELD> Load_VectorFieldFromDisk(
 		const std::string_view AssetId)
 	{
 		if (AssetId.empty() || !AssetId.starts_with("Effect/") ||
@@ -386,11 +386,9 @@ namespace
 			return nullptr;
 		}
 		const std::string Key(AssetId);
-		const auto Cached = g_VectorFields.find(Key);
-		if (Cached != g_VectorFields.end())
-			return Cached->second;
 		const std::filesystem::path Path =
 			Client::CRuntimeAssetRoot::Resolve(std::filesystem::path(Key));
+		g_iVectorFieldDiskLoadCount.fetch_add(1u, std::memory_order_relaxed);
 		std::ifstream Input(Path, std::ios::binary | std::ios::ate);
 		if (!Input)
 			return nullptr;
@@ -428,7 +426,6 @@ namespace
 				return nullptr;
 			}
 		}
-		g_VectorFields.emplace(Key, Field);
 		return Field;
 	}
 
@@ -483,13 +480,94 @@ namespace
 	}
 }
 
+struct Client::CEffectPlayback::PREPARED_RESOURCES final
+{
+	std::unordered_map<std::string, std::shared_ptr<const SOURCE_VECTOR_FIELD>>
+		VectorFields;
+};
+
+uint64_t Client::CEffectPlayback::Get_VectorFieldDiskLoadCount()
+{
+	return g_iVectorFieldDiskLoadCount.load(std::memory_order_relaxed);
+}
+
 bool_t Client::CEffectPlayback::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
 {
 	if (!CEffectDocumentCodec::Validate(Document, strOutError))
 		return false;
+	std::shared_ptr<const PREPARED_RESOURCES> Prepared;
+	if (!Prepare_DocumentResources(Document, Prepared, strOutError))
+		return false;
+	return Stage_PrevalidatedDocument(
+		Document, std::move(Prepared), strOutError);
+}
 
+bool_t Client::CEffectPlayback::Prepare_DocumentResources(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
+	std::string& strOutError)
+{
+	auto Staged = std::make_shared<PREPARED_RESOURCES>();
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (!SourceClass_Matches(Module, "particlemodulelocalvectorfield"))
+				continue;
+			const std::string_view AssetId =
+				SourceString(Module, "vectorfield.assetid");
+			if (AssetId.empty() ||
+				Staged->VectorFields.contains(std::string(AssetId)))
+			{
+				continue;
+			}
+			const std::shared_ptr<const SOURCE_VECTOR_FIELD> Field =
+				Load_VectorFieldFromDisk(AssetId);
+			if (nullptr == Field)
+			{
+				strOutError = "Source vector field asset is missing or invalid: " +
+					std::string(AssetId);
+				return false;
+			}
+			Staged->VectorFields.emplace(std::string(AssetId), Field);
+		}
+	}
+	OutPrepared = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+	std::string& strOutError)
+{
+	if (nullptr == pPreparedResources)
+	{
+		strOutError = "Prepared Effect playback resources are missing.";
+		return false;
+	}
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (!SourceClass_Matches(Module, "particlemodulelocalvectorfield"))
+				continue;
+			const std::string_view AssetId =
+				SourceString(Module, "vectorfield.assetid");
+			if (!AssetId.empty() &&
+				!pPreparedResources->VectorFields.contains(std::string(AssetId)))
+			{
+				strOutError = "Prepared source vector field is missing: " +
+					std::string(AssetId);
+				return false;
+			}
+		}
+	}
 	EFFECT_DOCUMENT_DESC StagedDocument = Document;
 	std::unordered_map<std::string, ELEMENT_STATE> StagedStates;
 	f32_t fStagedDuration = 0.f;
@@ -501,20 +579,6 @@ bool_t Client::CEffectPlayback::Stage_Document(
 		if (0u == State.iRandomState)
 			State.iRandomState = 1u;
 		Initialize_ModuleRandomStates(Element, State);
-		for (const EFFECT_SOURCE_MODULE_DESC& Module :
-			Element.SourceRecipe.Modules)
-		{
-			if (!SourceClass_Matches(Module, "particlemodulelocalvectorfield"))
-				continue;
-			const std::string_view AssetId =
-				SourceString(Module, "vectorfield.assetid");
-			if (!AssetId.empty() && nullptr == Load_VectorField(AssetId))
-			{
-				strOutError = "Source vector field asset is missing or invalid: " +
-					std::string(AssetId);
-				return false;
-			}
-		}
 		StagedStates.emplace(Element.strElementId, std::move(State));
 		if (!Element.bVisible)
 			continue;
@@ -552,6 +616,7 @@ bool_t Client::CEffectPlayback::Stage_Document(
 	}
 
 	m_Document = std::move(StagedDocument);
+	m_pPreparedResources = std::move(pPreparedResources);
 	m_States = std::move(StagedStates);
 	m_fDurationSeconds = fStagedDuration;
 	Reset();
@@ -655,6 +720,21 @@ void Client::CEffectPlayback::Seek(
 		0.f,
 		m_fDurationSeconds);
 	Reset();
+	/* A zero-time product cue still needs to freeze snapshot attachments at the
+	post-Character root supplied by the presentation service. Product staging
+	does not call Seek, so this is the first snapshot capture for that instance. */
+	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	{
+		if (!Element.bVisible || !Element.ActionCueAttachment.bEnabled ||
+			Element.ActionCueAttachment.bFollow ||
+			Element.Detail.Timing.fStartDelaySeconds > fTarget)
+		{
+			continue;
+		}
+		ELEMENT_STATE& State = m_States[Element.strElementId];
+		State.ActionRootWorld = RootWorld;
+		State.bActionRootCaptured = true;
+	}
 	const uint64_t iTargetSteps = static_cast<uint64_t>(std::floor(
 		static_cast<f64_t>(fTarget) / FIXED_STEP_SECONDS_EXACT +
 		FIXED_STEP_EPSILON));
@@ -1689,8 +1769,16 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocalvectorfield"))
 		{
-			const std::shared_ptr<const SOURCE_VECTOR_FIELD> Field =
-				Load_VectorField(SourceString(Module, "vectorfield.assetid"));
+			const std::string_view AssetId =
+				SourceString(Module, "vectorfield.assetid");
+			std::shared_ptr<const SOURCE_VECTOR_FIELD> Field;
+			if (nullptr != m_pPreparedResources)
+			{
+				const auto PreparedField = m_pPreparedResources->VectorFields.find(
+					std::string(AssetId));
+				if (PreparedField != m_pPreparedResources->VectorFields.end())
+					Field = PreparedField->second;
+			}
 			if (nullptr == Field)
 				continue;
 			float3_t Rotation(
@@ -2450,7 +2538,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			}
 			Evaluated.vDynamicParameter = Particle.vDynamicParameter;
 			Evaluated.fSpriteRotationDegrees =
-				Particle.vRotationDegrees.z;
+				Particle.vRotationDegrees.z +
+				Element.Detail.Sprite.fBillboardRollDegrees;
 			Evaluated.fCameraOffset = Particle.fCameraOffset;
 			Resolve_SourceSpritePresentation(Element,
 				Evaluated.eSpriteAlignment, Evaluated.vSpritePivot);

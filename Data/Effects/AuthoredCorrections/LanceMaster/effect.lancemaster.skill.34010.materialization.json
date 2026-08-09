@@ -1,0 +1,221 @@
+{
+  "schema": "lostark.effect-authored-materialization",
+  "version": 1,
+  "materializationId": "lancemaster.skill.34010",
+  "characterClass": "LANCE_MASTER",
+  "skillId": 34010,
+  "inputSlot": "LMB",
+  "status": "blocked",
+  "spriteBillboardRollDegrees": -90.0,
+  "source": {
+    "effectAssetId": "effect.lancemaster.skill.34010",
+    "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.effect.json",
+    "expectedState": "missing"
+  },
+  "diagnosticSource": {
+    "effectAssetId": "effect.lancemaster.skill.34010.imported",
+    "authoringPath": "Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+    "sha256": "1759765544d2b7e8fb316a3abf81a8c72588db56beaccc0212e556c6673a5dd2"
+  },
+  "blockers": [
+    {
+      "code": "canonical-source-effect-missing",
+      "message": "No canonical effect.lancemaster.skill.34010 authoring document exists, so no source Element can be admitted into an Authored BA stage."
+    },
+    {
+      "code": "diagnostic-import-not-product",
+      "message": "A zero-unresolved closure and Imported diagnostic document now exist, but they remain read-only diagnostics and are not a canonical Authored product document."
+    },
+    {
+      "code": "source-material-profile-partially-admitted",
+      "message": "All 21 Particle occurrences now carry enabled normalized-graph material profiles, but 4 of 10 material identities (10 occurrences) remain fallback-blocked, so product material admission is incomplete."
+    },
+    {
+      "code": "authored-target-anchor-policy-missing",
+      "message": "No reviewed Authored occurrence yet supplies the required AUTHORED_ROOT_SNAPSHOT for standalone targets."
+    },
+    {
+      "code": "sprite-particle-source-anchor-unresolved",
+      "message": "The diagnostic source attachments remain unresolved for preserved Sprite Particle targets. This does not erase standalone conversion eligibility."
+    },
+    {
+      "code": "authored-layer-selection-missing",
+      "message": "No reviewed per-stage correction selects the stage-owned standalone Mesh target, standalone Sprite target, or preserved Sprite Particle carriers for BA1 through BA4. Layer roles and counts cannot be inferred from another class."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "Effects/Imported/LanceMaster/skill.34010.source-receipt.json",
+      "sha256": "ba0af561ba5f222a4a669b4718f58bf3277732e1c21e062612d37e20ed21e949",
+      "assertions": [
+        {
+          "pointer": "/conversionState/normalizedSourceGraph",
+          "equals": "EXTRACTED"
+        },
+        {
+          "pointer": "/conversionState/materialInstanceParameterBindings",
+          "equals": "PARTIAL"
+        },
+        {
+          "pointer": "/conversionState/runtimeElementMapping",
+          "equals": "PENDING"
+        },
+        {
+          "pointer": "/conversionState/importedEffectDocument",
+          "equals": "PENDING"
+        },
+        {
+          "pointer": "/summary/uniqueMaterialBindingCount",
+          "equals": 11
+        },
+        {
+          "pointer": "/summary/resolvedMaterialBindingCount",
+          "equals": 7
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Drafts/skill.34010.imported-effect-draft.json",
+      "sha256": "6121b5de8ca72368bb129e36806813cbface17c2e583d3c74219799fab57ab29",
+      "assertions": [
+        {
+          "pointer": "/runtimeDocumentStatus",
+          "equals": "NOT_PUBLISHABLE_SOURCE_CONVERSION_DRAFT"
+        },
+        {
+          "pointer": "/summary/candidateElementPartitionCount",
+          "equals": 7
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Modules/skill.34010.external-module-closure.json",
+      "sha256": "a2f9ec0fd669ed5b7f6297c0c4269e8f207c68edd73d9fcce72331d345828549",
+      "assertions": [
+        {
+          "pointer": "/summary/requestCount",
+          "equals": 77
+        },
+        {
+          "pointer": "/summary/resolvedRequestCount",
+          "equals": 77
+        },
+        {
+          "pointer": "/summary/unresolvedRequestCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/propertyErrorCount",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+      "sha256": "1759765544d2b7e8fb316a3abf81a8c72588db56beaccc0212e556c6673a5dd2",
+      "assertions": [
+        {
+          "pointer": "/effectAssetId",
+          "equals": "effect.lancemaster.skill.34010.imported"
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Converted/skill.34010.source-material-contract.json",
+      "sha256": "b3f5fffeb0988b38ee2596bb806b938abc4638aad2aa4195ac9613314b354606",
+      "assertions": [
+        {
+          "pointer": "/summary/materialIdentityCount",
+          "equals": 10
+        },
+        {
+          "pointer": "/summary/fallbackBlockedMaterialIdentityCount",
+          "equals": 4
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Converted/skill.34010.source-material-contract.receipt.json",
+      "sha256": "b282a800554ca6dcf63686bb895591533826358fb629f9a59c6bd05d9db6b807",
+      "assertions": [
+        {
+          "pointer": "/summary/failureCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/productMaterialAdmissionComplete",
+          "equals": false
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/LanceMaster/Converted/skill.34010.element-conversion-receipt.json",
+      "sha256": "9dd7cc67227fe93fb4608b7431d2e032eba09637c5ba41b1040cecf6645bc4e0",
+      "assertions": [
+        {
+          "pointer": "/summary/convertedEmitterCount",
+          "equals": 13
+        },
+        {
+          "pointer": "/summary/sourceMaterialPendingEmitterCount",
+          "equals": 3
+        },
+        {
+          "pointer": "/summary/presentationSourceExactEmitterCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/presentationReconstructedEmitterCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/externalUnresolvedRequestCount",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "path": "Animation/Authored/LanceMaster/LanceMaster.skillbindings.json",
+      "sha256": "25aa79f27c5d840e3b5e40a7c2d418f1f206d25cb2a1c0615a2e993b0413fd22",
+      "assertions": []
+    }
+  ],
+  "stages": [
+    {
+      "stageIndex": 0,
+      "clip": "flm_att_identity1_1_01",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 0.0,
+      "targetEffectAssetId": "effect.lancemaster.skill.34010.ba1",
+      "targetAuthoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba1.effect.json",
+      "occurrences": []
+    },
+    {
+      "stageIndex": 1,
+      "clip": "flm_att_identity1_1_02",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 1.6333,
+      "targetEffectAssetId": "effect.lancemaster.skill.34010.ba2",
+      "targetAuthoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba2.effect.json",
+      "occurrences": []
+    },
+    {
+      "stageIndex": 2,
+      "clip": "flm_att_identity1_1_03",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 3.0,
+      "targetEffectAssetId": "effect.lancemaster.skill.34010.ba3",
+      "targetAuthoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba3.effect.json",
+      "occurrences": []
+    },
+    {
+      "stageIndex": 3,
+      "clip": "flm_att_identity1_1_04",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 4.5333,
+      "targetEffectAssetId": "effect.lancemaster.skill.34010.ba4",
+      "targetAuthoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json",
+      "occurrences": []
+    }
+  ]
+}

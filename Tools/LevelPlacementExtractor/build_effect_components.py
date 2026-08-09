@@ -9,16 +9,375 @@ import hashlib
 import json
 import math
 import re
+import shlex
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from build_dimensionmaster_base_effects import dimensionmaster_admitted_skills
+from build_dimensionmaster_base_effects import presentation_slot
 from build_imported_effect_documents import read_json, write_json_atomic
 
 
 STABLE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
 MAX_SOURCE_ACTION_CUE_SECONDS = 60.0
+MAX_RUNTIME_DISPLAY_NAME_BYTES = 64
+PRODUCT_CLASS_CONTRACTS = {
+    "DimensionMaster": "DIMENSIONMASTER",
+    "LanceMaster": "LANCE_MASTER",
+    "Artist": "ARTIST",
+    "Warlord": "WARLORD",
+}
+COMBAT_INPUT_SLOTS = {
+    "DimensionMaster": frozenset({
+        "LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V",
+        "ALT_V",
+    }),
+    "LanceMaster": frozenset({
+        "LMB", "Q", "W", "E", "R", "A", "S", "T", "V", "ALT_V",
+    }),
+    "Artist": frozenset({
+        "LMB", "Q", "W", "E", "R", "A", "S", "V", "ALT_V",
+    }),
+    "Warlord": frozenset({
+        "LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "X",
+        "V", "ALT_V",
+    }),
+}
+
+
+def bounded_runtime_display_name(value: str) -> str:
+    """Return a deterministic, nonblank UTF-8 name accepted by the runtime codec."""
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("runtime display name must not be blank")
+    encoded = normalized.encode("utf-8")
+    if len(encoded) <= MAX_RUNTIME_DISPLAY_NAME_BYTES:
+        return normalized
+
+    suffix = "~" + hashlib.sha256(encoded).hexdigest()[:10]
+    head_budget = MAX_RUNTIME_DISPLAY_NAME_BYTES - len(suffix.encode("ascii"))
+    head = normalized.encode("utf-8")[:head_budget]
+    while head:
+        try:
+            truncated = head.decode("utf-8")
+            break
+        except UnicodeDecodeError:
+            head = head[:-1]
+    else:
+        raise ValueError("runtime display name cannot be bounded")
+    return truncated + suffix
+
+
+def _append_binding_clips(value: Any, skill_id: int, clips: list[str]) -> None:
+    if isinstance(value, str):
+        clip = value
+    elif isinstance(value, dict):
+        clip = str(value.get("clip") or "")
+    elif isinstance(value, list):
+        if not value:
+            raise ValueError(f"invalid animation binding clip: {skill_id}")
+        for nested in value:
+            _append_binding_clips(nested, skill_id, clips)
+        return
+    else:
+        clip = ""
+    if not clip:
+        raise ValueError(f"invalid animation binding clip: {skill_id}")
+    clips.append(clip)
+
+
+def read_product_effect_cues(
+    animevents_path: Path,
+    animation_asset_id: str,
+    available_clips: set[str],
+    catalog_effect_ids: set[str],
+) -> list[tuple[str, str]]:
+    """Read only typed product Effect references from an animevent document."""
+    try:
+        lines = animevents_path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise ValueError(
+            f"animation Effect cue document could not be read: {error}"
+        ) from error
+    if not lines:
+        raise ValueError("animation Effect cue document is empty")
+    try:
+        header = shlex.split(lines[0], posix=True)
+    except ValueError as error:
+        raise ValueError("animation Effect cue header is invalid") from error
+    if (
+        len(header) != 4
+        or header[0] != "LOSTARK_ANIM_EVENTS"
+        or header[2] != animation_asset_id
+    ):
+        raise ValueError(
+            f"animation Effect cue identity mismatch: {animation_asset_id}"
+        )
+    event_lines = [line for line in lines[1:] if line.strip()]
+    try:
+        version = int(header[1])
+        declared_count = int(header[3])
+    except ValueError as error:
+        raise ValueError("animation Effect cue version/count is invalid") from error
+    if version < 3 or version > 5:
+        raise ValueError("animation Effect cue version must be in [3, 5]")
+    if declared_count != len(event_lines):
+        raise ValueError(
+            "animation Effect cue row count mismatch: "
+            f"{declared_count} != {len(event_lines)}"
+        )
+
+    def parse_uint32(value: str, label: str, line_number: int) -> int:
+        if not value.isdecimal():
+            raise ValueError(f"{label} is invalid at line {line_number}")
+        parsed = int(value)
+        if parsed > 0xFFFFFFFF:
+            raise ValueError(f"{label} is invalid at line {line_number}")
+        return parsed
+
+    def parse_float(value: str, label: str, line_number: int) -> float:
+        try:
+            parsed = float(value)
+        except ValueError as error:
+            raise ValueError(f"{label} is invalid at line {line_number}") from error
+        if not math.isfinite(parsed):
+            raise ValueError(f"{label} is invalid at line {line_number}")
+        return parsed
+
+    result: list[tuple[str, str]] = []
+    admitted_keys: set[tuple[str, int, str, str]] = set()
+    for line_number, line in enumerate(event_lines, start=2):
+        try:
+            tokens = shlex.split(line, posix=True)
+        except ValueError as error:
+            raise ValueError(
+                f"animation Effect cue syntax is invalid at line {line_number}"
+            ) from error
+        if len(tokens) < 3:
+            raise ValueError(
+                f"animation Effect cue row is incomplete at line {line_number}"
+            )
+        if tokens[1] != "EFFECT":
+            continue
+        attributes: dict[str, str] = {}
+        for token in tokens[2:]:
+            if "=" not in token or token.startswith("="):
+                raise ValueError(
+                    "animation Effect cue has an invalid field at line "
+                    f"{line_number}: {token}"
+                )
+            key, value = token.split("=", 1)
+            if key in attributes:
+                raise ValueError(
+                    "animation Effect cue has duplicate attribute at line "
+                    f"{line_number}: {key}"
+                )
+            attributes[key] = value
+        if attributes.get("effectref") != "asset":
+            continue
+        effect_id = str(attributes.get("payload") or "")
+        if not STABLE_ID.fullmatch(effect_id):
+            raise ValueError(
+                f"animation Product Effect ID is invalid at line {line_number}"
+            )
+        start_ms = parse_uint32(
+            str(attributes.get("startms") or ""), "startms", line_number
+        )
+        end_ms = start_ms
+        if "endms" in attributes:
+            end_ms = parse_uint32(attributes["endms"], "endms", line_number)
+        if end_ms < start_ms:
+            raise ValueError(f"endms precedes startms at line {line_number}")
+        anchor = attributes.get("anchor", "root")
+        if not anchor:
+            raise ValueError(f"anchor is empty at line {line_number}")
+        follow = attributes.get("follow", "follow")
+        if follow not in {"follow", "snapshot"}:
+            raise ValueError(f"follow policy is invalid at line {line_number}")
+        stop = attributes.get("stop", "natural")
+        if stop not in {"natural", "cue_end"}:
+            raise ValueError(f"stop policy is invalid at line {line_number}")
+        if stop == "cue_end" and end_ms <= start_ms:
+            raise ValueError(
+                f"cue_end requires endms greater than startms at line {line_number}"
+            )
+        for field, default in (
+            ("px", 0.0), ("py", 0.0), ("pz", 0.0),
+            ("rx", 0.0), ("ry", 0.0), ("rz", 0.0),
+            ("sx", 1.0), ("sy", 1.0), ("sz", 1.0),
+        ):
+            parsed = parse_float(
+                attributes.get(field, str(default)), field, line_number
+            )
+            if field.startswith("s") and parsed <= 0.0:
+                raise ValueError(f"{field} must be positive at line {line_number}")
+        if tokens[0] not in available_clips:
+            raise ValueError(
+                "animation Product cue is not owned by a bound skill clip: "
+                f"{tokens[0]}"
+            )
+        if effect_id not in catalog_effect_ids:
+            raise ValueError(
+                f"animation Product cue is missing from Effect catalog: {effect_id}"
+            )
+        key = (tokens[0], start_ms, effect_id, anchor)
+        if key in admitted_keys:
+            raise ValueError("duplicate admitted animation Product Effect cue")
+        admitted_keys.add(key)
+        result.append((tokens[0], effect_id))
+    return result
+
+
+def admitted_skills_for_class(
+    player_skills_path: Path,
+    skill_bindings_path: Path,
+    animevents_path: Path,
+    animation_asset_id: str,
+    catalog_effect_ids: set[str],
+) -> list[dict[str, Any]]:
+    """Admit catalog-backed skills through gameplay and animation truth.
+
+    DimensionMaster historically requires PlayerSkills.effectId for every
+    canonical Effect.  The other rollout classes did not have product Effect
+    IDs before Authored restoration, so their actual product identity is the
+    catalog entry plus animation asset cue.  An existing non-empty gameplay
+    effectId must still match the canonical stable ID exactly.
+    """
+    stable_class = PRODUCT_CLASS_CONTRACTS.get(animation_asset_id)
+    if stable_class is None:
+        raise ValueError(
+            f"unsupported product Effect class: {animation_asset_id}"
+        )
+    bindings_root = read_json(skill_bindings_path)
+    if str(bindings_root.get("animationAssetId") or "") != animation_asset_id:
+        raise ValueError(
+            f"animation asset binding mismatch: {animation_asset_id}"
+        )
+    if str(bindings_root.get("characterClass") or "") != stable_class:
+        raise ValueError(
+            f"animation class binding mismatch: {animation_asset_id}"
+        )
+
+    clips_by_skill: dict[int, tuple[list[str], list[Any]]] = {}
+    skill_by_clip: dict[str, int] = {}
+    for row in bindings_root.get("bindings", []):
+        skill_id = int(row["skillId"])
+        if skill_id in clips_by_skill:
+            raise ValueError(f"duplicate skillbinding: {skill_id}")
+        raw_clips = row.get("clips", [])
+        if not isinstance(raw_clips, list):
+            raise ValueError(f"invalid skillbinding: {skill_id}")
+        clips: list[str] = []
+        for value in raw_clips:
+            _append_binding_clips(value, skill_id, clips)
+        if clips:
+            clips_by_skill[skill_id] = (clips, copy.deepcopy(raw_clips))
+
+        for clip in clips:
+            previous_owner = skill_by_clip.setdefault(clip, skill_id)
+            if previous_owner != skill_id:
+                raise ValueError(
+                    f"animation clip has multiple skill owners: {clip}"
+                )
+
+    prefix = f"effect.{animation_asset_id.casefold()}.skill."
+    admitted_base_ids = {
+        admitted_effect_variant(effect_id)[0]
+        for effect_id in catalog_effect_ids
+        if effect_id.startswith(prefix)
+    }
+    product_effects_by_skill: dict[int, set[str]] = {}
+    for clip, effect_id in read_product_effect_cues(
+        animevents_path,
+        animation_asset_id,
+        set(skill_by_clip),
+        catalog_effect_ids,
+    ):
+        owner_skill_id = skill_by_clip.get(clip)
+        assert owner_skill_id is not None
+        base_id, _variant = admitted_effect_variant(effect_id)
+        try:
+            effect_skill_id = int(base_id.rsplit(".", 1)[1])
+        except (IndexError, ValueError) as error:
+            raise ValueError(
+                f"animation Product cue has invalid skill identity: {effect_id}"
+            ) from error
+        if effect_skill_id != owner_skill_id:
+            raise ValueError(
+                "animation Product cue is owned by the wrong skill clip: "
+                f"{effect_id} -> {clip}"
+            )
+        product_effects_by_skill.setdefault(owner_skill_id, set()).add(effect_id)
+
+    product_effect_ids = {
+        effect_id
+        for effect_ids in product_effects_by_skill.values()
+        for effect_id in effect_ids
+    }
+    if animation_asset_id != "DimensionMaster":
+        catalog_only = sorted(catalog_effect_ids - product_effect_ids)
+        if catalog_only:
+            raise ValueError(
+                "non-DimensionMaster Effect catalog entries require an exact "
+                f"animation Product cue: {catalog_only}"
+            )
+    result: list[dict[str, Any]] = []
+    admitted_skills: set[int] = set()
+    for row in read_json(player_skills_path).get("skills", []):
+        if str(row.get("characterClass") or "") != stable_class:
+            continue
+        if (
+            str(row.get("inputSlot") or "") not in COMBAT_INPUT_SLOTS[
+                animation_asset_id
+            ]
+            or str(row.get("setsStance") or "NONE") != "NONE"
+        ):
+            continue
+        skill_id = int(row["skillId"])
+        effect_id = f"{prefix}{skill_id}"
+        if effect_id not in admitted_base_ids:
+            continue
+        gameplay_effect_id = str(row.get("effectId") or "")
+        if gameplay_effect_id and gameplay_effect_id != effect_id:
+            raise ValueError(
+                f"canonical Effect identity mismatch: "
+                f"{gameplay_effect_id} != {effect_id}"
+            )
+        if animation_asset_id == "DimensionMaster" and not gameplay_effect_id:
+            raise ValueError(
+                f"DimensionMaster canonical Effect is missing: {effect_id}"
+            )
+        binding_clips = clips_by_skill.get(skill_id)
+        if not binding_clips:
+            raise ValueError(
+                f"catalog Effect has no skillbinding: {effect_id}"
+            )
+        if skill_id in admitted_skills:
+            raise ValueError(f"duplicate catalog-backed skill: {skill_id}")
+        clips, raw_clips = binding_clips
+        result.append({
+            "skillId": skill_id,
+            "effectAssetId": effect_id,
+            "inputSlot": presentation_slot(row.get("inputSlot")),
+            "displayName": str(row.get("displayName") or effect_id),
+            "skillKind": str(row.get("skillKind") or ""),
+            "comboStages": copy.deepcopy(row.get("comboStages", [])),
+            "clips": clips,
+            "clipBindings": raw_clips,
+            "productEffectIds": sorted(
+                product_effects_by_skill.get(skill_id, set())
+            ),
+        })
+        admitted_skills.add(skill_id)
+    missing = sorted(
+        effect_id for effect_id in admitted_base_ids
+        if int(effect_id.rsplit(".", 1)[1]) not in admitted_skills
+    )
+    if missing:
+        raise ValueError(
+            f"catalog Effects have no gameplay skill contract: {missing}"
+        )
+    return result
 
 
 def canonical_json(value: Any) -> str:
@@ -88,6 +447,43 @@ def component_directory(effect_id: str, character_class: str) -> str:
     return effect_identity(effect_id, character_class)
 
 
+def admitted_effect_variant(effect_id: str) -> tuple[str, str | None]:
+    baseline_match = re.fullmatch(
+        r"(.+)\.authored-baseline(?:\.clip([1-9][0-9]*))?", effect_id
+    )
+    if baseline_match is not None:
+        base_id = baseline_match.group(1)
+        if not base_id:
+            raise ValueError(f"invalid Authored Baseline Effect identity: {effect_id}")
+        clip_number = baseline_match.group(2)
+        variant = "authored-baseline"
+        if clip_number is not None:
+            variant += f".clip{clip_number}"
+        return base_id, variant
+    if ".authored-baseline" in effect_id:
+        raise ValueError(f"invalid Authored Baseline Effect identity: {effect_id}")
+    ba_clip_match = re.fullmatch(
+        r"(.+)\.ba([1-9][0-9]*)\.clip([1-9][0-9]*)", effect_id
+    )
+    if ba_clip_match is not None:
+        return (
+            ba_clip_match.group(1),
+            f"ba{ba_clip_match.group(2)}.clip{ba_clip_match.group(3)}",
+        )
+    return effect_id.split(".ba", 1)[0], None
+
+
+def validate_ba_stage_contract(
+    skill: dict[str, Any], effect_id: str, stage_number: int
+) -> None:
+    """Validate a Battle Action stage for COMBO/HOLD/COUNTER presentations."""
+    stages = skill.get("comboStages", [])
+    if not isinstance(stages, list) or not stages:
+        raise ValueError(f"Effect has BA stage without action-stage contract: {effect_id}")
+    if stage_number < 1 or stage_number > len(stages):
+        raise ValueError(f"action stage is outside gameplay contract: {effect_id}")
+
+
 def split_document(
     document: dict[str, Any],
     character_class: str,
@@ -151,6 +547,9 @@ def split_document(
             f"{character_class}_{file_identity}_{index:02d}."
             f"{kind.casefold()}.wfx.json"
         )
+        component_display_name = bounded_runtime_display_name(
+            file_name.removesuffix(".wfx.json")
+        )
         source_metadata = {
             "effectAssetId": effect_id,
             "groupId": group_id,
@@ -165,7 +564,7 @@ def split_document(
             "schema": "lostark.effect-component",
             "version": 1,
             "componentAssetId": component_id,
-            "displayName": file_name.removesuffix(".json"),
+            "displayName": component_display_name,
             "componentType": kind,
             "source": source_metadata,
             "emitters": emitters,
@@ -173,7 +572,7 @@ def split_document(
                 "schema": "lostark.effect-authoring",
                 "version": int(document.get("version", 0)),
                 "effectAssetId": component_id,
-                "displayName": file_name.removesuffix(".json"),
+                "displayName": component_display_name,
                 "particleSystem": {
                     "uniformScaleMultiplier": 1.0,
                     "yawOffsetDegrees": 0.0,
@@ -402,9 +801,12 @@ def remove_unadmitted_generated_artifacts(
     component_root: Path,
     assembly_root: Path,
     expected_effect_ids: set[str],
+    character_class: str = "DimensionMaster",
 ) -> tuple[list[str], list[str]]:
-    """Remove only generated DimensionMaster artifacts absent from the catalog."""
-    prefix = "effect.dimensionmaster.skill."
+    """Remove only generated class-owned artifacts absent from the catalog."""
+    if character_class not in PRODUCT_CLASS_CONTRACTS:
+        raise ValueError(f"unsupported product Effect class: {character_class}")
+    prefix = f"effect.{character_class.casefold()}.skill."
     removed_components = []
     if component_root.exists():
         for path in component_root.rglob("*.wfx.json"):
@@ -449,15 +851,35 @@ def build_all(
     component_root: Path,
     assembly_root: Path,
     skill_bindings_path: Path | None = None,
+    character_class: str = "DimensionMaster",
+    animevents_path: Path | None = None,
 ) -> dict[str, Any]:
     catalog = read_json(catalog_path)
+    stable_class = PRODUCT_CLASS_CONTRACTS.get(character_class)
+    if stable_class is None:
+        raise ValueError(f"unsupported product Effect class: {character_class}")
     if skill_bindings_path is None:
         skill_bindings_path = (
-            data_root / "Animation" / "Authored" / "DimensionMaster" /
-            "DimensionMaster.skillbindings.json"
+            data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.skillbindings.json"
         )
-    admitted_skills = dimensionmaster_admitted_skills(
-        data_root / "Balance" / "PlayerSkills.json", skill_bindings_path
+    if animevents_path is None:
+        animevents_path = (
+            data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.animevents"
+        )
+    class_prefix = f"effect.{character_class.casefold()}.skill."
+    class_effect_ids = {
+        str(entry["effectAssetId"])
+        for entry in catalog.get("effects", [])
+        if str(entry.get("effectAssetId") or "").startswith(class_prefix)
+    }
+    admitted_skills = admitted_skills_for_class(
+        data_root / "Balance" / "PlayerSkills.json",
+        skill_bindings_path,
+        animevents_path,
+        character_class,
+        class_effect_ids,
     )
     skill_by_effect = {
         str(row["effectAssetId"]): row for row in admitted_skills
@@ -465,19 +887,13 @@ def build_all(
     receipts = []
     stale_component_files: list[str] = []
     ignored_candidate_effects: list[str] = []
-    action_recipe_by_skill: dict[int, dict[str, Any]] = {}
-    expected_effect_ids = {
-        str(entry["effectAssetId"])
-        for entry in catalog.get("effects", [])
-        if str(entry.get("effectAssetId") or "").startswith(
-            "effect.dimensionmaster.skill."
-        )
-    }
+    action_recipe_by_skill: dict[int, dict[str, Any] | None] = {}
+    expected_effect_ids = class_effect_ids
     for entry in catalog.get("effects", []):
         effect_id = str(entry["effectAssetId"])
-        if not effect_id.startswith("effect.dimensionmaster.skill."):
+        if not effect_id.startswith(class_prefix):
             continue
-        base_id = effect_id.split(".ba", 1)[0]
+        base_id, authored_variant = admitted_effect_variant(effect_id)
         skill = skill_by_effect.get(base_id)
         if skill is None:
             ignored_candidate_effects.append(effect_id)
@@ -485,33 +901,35 @@ def build_all(
         slot = str(skill.get("inputSlot") or "") or None
         combo_stage = None
         if effect_id != base_id:
-            match = re.fullmatch(
-                re.escape(base_id) + r"\.ba([1-9][0-9]*)", effect_id
+            ba_match = re.fullmatch(
+                re.escape(base_id)
+                + r"\.ba([1-9][0-9]*)(?:\.clip([1-9][0-9]*))?",
+                effect_id,
             )
-            if match is None:
+            if ba_match is not None:
+                combo_stage = int(ba_match.group(1))
+                validate_ba_stage_contract(skill, effect_id, combo_stage)
+            elif authored_variant is None:
                 raise ValueError(f"invalid combo stage Effect identity: {effect_id}")
-            combo_stage = int(match.group(1))
-            if str(skill.get("skillKind") or "").upper() != "COMBO":
-                raise ValueError(f"non-combo Effect has BA stage: {effect_id}")
-            if combo_stage > len(skill.get("comboStages", [])):
-                raise ValueError(f"combo stage is outside gameplay contract: {effect_id}")
         authoring_path = data_root / str(entry["authoringPath"])
         document = read_json(authoring_path)
         assembly, component_files = split_document(
-            document, "DimensionMaster", slot
+            document, character_class, slot
         )
         assembly["sourceDocumentFileSha256"] = sha256_file(authoring_path)
         skill_id = int(skill["skillId"])
         if skill_id not in action_recipe_by_skill:
             action_path = (
-                data_root / "Effects" / "Imported" / "DimensionMaster" /
+                data_root / "Effects" / "Imported" / character_class /
                 "Converted" / f"skill.{skill_id}.action-cue-recipe.json"
             )
             action_recipe_by_skill[skill_id] = (
-                read_json(action_path) if action_path.is_file() else {"cues": []}
+                read_json(action_path) if action_path.is_file() else None
             )
-        source_action_cues = action_cues_for_effect(
-            action_recipe_by_skill[skill_id], effect_id
+        action_recipe = action_recipe_by_skill[skill_id]
+        source_action_cues = (
+            [] if authored_variant is not None or action_recipe is None
+            else action_cues_for_effect(action_recipe, effect_id)
         )
         assembly["sourceActionCues"] = source_action_cues
         assembly["sourceActionCueSummary"] = {
@@ -526,7 +944,7 @@ def build_all(
                 for row in source_action_cues
             ),
         }
-        directory = component_directory(effect_id, "DimensionMaster")
+        directory = component_directory(effect_id, character_class)
         target_components = component_root / directory
         components_by_id = {}
         for file_name, component in component_files:
@@ -570,13 +988,15 @@ def build_all(
         receipts.append(receipt_row)
     removed_unadmitted_components, removed_unadmitted_assemblies = (
         remove_unadmitted_generated_artifacts(
-            component_root, assembly_root, expected_effect_ids
+            component_root, assembly_root, expected_effect_ids,
+            character_class,
         )
     )
     return {
         "schema": "lostark.effect-component-build-receipt",
         "version": 1,
-        "characterClass": "DIMENSIONMASTER",
+        "characterClass": stable_class,
+        "animationAssetId": character_class,
         "effectCount": len(receipts),
         "componentCount": sum(row["componentCount"] for row in receipts),
         "emitterCount": sum(row["emitterCount"] for row in receipts),
@@ -606,14 +1026,108 @@ def verify_existing(
     component_root: Path,
     assembly_root: Path,
     receipt_path: Path,
+    character_class: str = "DimensionMaster",
+    skill_bindings_path: Path | None = None,
+    animevents_path: Path | None = None,
 ) -> dict[str, Any]:
+    if character_class not in PRODUCT_CLASS_CONTRACTS:
+        raise ValueError(f"unsupported product Effect class: {character_class}")
+    catalog = read_json(catalog_path)
+    if skill_bindings_path is None:
+        skill_bindings_path = (
+            data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.skillbindings.json"
+        )
+    if animevents_path is None:
+        animevents_path = (
+            data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.animevents"
+        )
+    class_prefix = f"effect.{character_class.casefold()}.skill."
+    class_effect_ids = {
+        str(entry.get("effectAssetId") or "")
+        for entry in catalog.get("effects", [])
+        if str(entry.get("effectAssetId") or "").startswith(class_prefix)
+    }
+    admitted_skills_for_class(
+        data_root / "Balance" / "PlayerSkills.json",
+        skill_bindings_path,
+        animevents_path,
+        character_class,
+        class_effect_ids,
+    )
+    if not class_effect_ids:
+        unexpected_artifacts = []
+        if component_root.exists():
+            for path in component_root.rglob("*.wfx.json"):
+                component = read_json(path)
+                source_effect_id = str(
+                    component.get("source", {}).get("effectAssetId") or ""
+                )
+                if source_effect_id.startswith(class_prefix):
+                    unexpected_artifacts.append(str(path))
+        if assembly_root.exists():
+            for path in assembly_root.glob("*.assembly.json"):
+                assembly = read_json(path)
+                effect_id = str(assembly.get("effectAssetId") or "")
+                if effect_id.startswith(class_prefix):
+                    unexpected_artifacts.append(str(path))
+        if unexpected_artifacts:
+            raise ValueError(
+                "unadmitted generated Effect artifacts exist: "
+                f"{sorted(unexpected_artifacts)}"
+            )
+
+        if receipt_path.is_file():
+            receipt = read_json(receipt_path)
+            if (
+                receipt.get("schema") != "lostark.effect-component-build-receipt"
+                or receipt.get("version") != 1
+                or receipt.get("animationAssetId") != character_class
+                or receipt.get("characterClass")
+                != PRODUCT_CLASS_CONTRACTS[character_class]
+                or receipt.get("effects") != []
+                or any(
+                    int(receipt.get(name, -1)) != 0
+                    for name in (
+                        "effectCount", "componentCount", "emitterCount",
+                        "sourceActionCueCount",
+                    )
+                )
+                or receipt.get("compileIdentityComplete") is not True
+            ):
+                raise ValueError(
+                    "zero-product Effect component receipt mismatch: "
+                    f"{character_class}"
+                )
+        return {
+            "effectCount": 0,
+            "componentCount": 0,
+            "emitterCount": 0,
+            "sourceActionCueCount": 0,
+            "compileIdentityComplete": True,
+        }
+
     receipt = read_json(receipt_path)
     if (
         receipt.get("schema") != "lostark.effect-component-build-receipt"
         or receipt.get("version") != 1
     ):
         raise ValueError("unsupported Effect component build receipt")
-    catalog = read_json(catalog_path)
+    receipt_effect_ids = [
+        str(row.get("effectAssetId") or "")
+        for row in receipt.get("effects", [])
+        if isinstance(row, dict)
+    ]
+    if (
+        len(receipt_effect_ids) != len(set(receipt_effect_ids))
+        or set(receipt_effect_ids) != class_effect_ids
+    ):
+        raise ValueError(
+            "Effect component receipt catalog coverage mismatch: "
+            f"missing={sorted(class_effect_ids - set(receipt_effect_ids))}, "
+            f"extra={sorted(set(receipt_effect_ids) - class_effect_ids)}"
+        )
     authored_by_id = {
         str(row["effectAssetId"]): data_root / str(row["authoringPath"])
         for row in catalog.get("effects", [])
@@ -630,7 +1144,7 @@ def verify_existing(
         directory = str(
             row.get("componentDirectory")
             or row.get("inputSlot")
-            or component_directory(effect_id, "DimensionMaster")
+            or component_directory(effect_id, character_class)
         )
         slot_root = component_root / directory
         components: dict[str, dict[str, Any]] = {}
@@ -705,47 +1219,130 @@ def main() -> int:
     )
     parser.add_argument("--data-root", type=Path, default=Path("Data"))
     parser.add_argument(
+        "--character-class",
+        choices=tuple(PRODUCT_CLASS_CONTRACTS),
+        default="DimensionMaster",
+        help="Animation asset/class owner to compile.",
+    )
+    parser.add_argument(
+        "--all-product-classes", action="store_true",
+        help="Compile or verify every supported product Effect class.",
+    )
+    parser.add_argument(
         "--skill-bindings", type=Path,
-        default=Path(
-            "Data/Animation/Authored/DimensionMaster/"
-            "DimensionMaster.skillbindings.json"
-        )
+        default=None,
+    )
+    parser.add_argument(
+        "--animevents", type=Path,
+        default=None,
     )
     parser.add_argument(
         "--component-root", type=Path,
-        default=Path("Data/Effects/Components/DimensionMaster")
+        default=None,
     )
     parser.add_argument(
         "--assembly-root", type=Path,
-        default=Path("Data/Effects/Assemblies/DimensionMaster")
+        default=None,
     )
     parser.add_argument(
         "--receipt", type=Path,
-        default=Path("Data/Effects/Imported/DimensionMaster/DimensionMaster.component-build.receipt.json")
+        default=None,
+    )
+    parser.add_argument(
+        "--receipt-root", type=Path,
+        default=None,
+        help=(
+            "Receipt directory for --all-product-classes.  This keeps "
+            "generated product receipts outside read-only Imported evidence."
+        ),
     )
     parser.add_argument(
         "--verify-existing", action="store_true",
         help="Validate existing assemblies/components without writing files."
     )
     args = parser.parse_args()
-    if args.verify_existing:
-        result = verify_existing(
-            args.catalog, args.data_root, args.component_root,
-            args.assembly_root, args.receipt
-        )
-        print(json.dumps(result, sort_keys=True))
-        return 0
-    receipt = build_all(
-        args.catalog, args.data_root, args.component_root,
-        args.assembly_root, args.skill_bindings
+    custom_paths = (
+        args.skill_bindings,
+        args.animevents,
+        args.component_root,
+        args.assembly_root,
+        args.receipt,
     )
-    write_json_atomic(args.receipt, receipt)
-    print(json.dumps({
-        key: receipt[key] for key in (
-            "effectCount", "componentCount", "emitterCount",
-            "compileIdentityComplete"
+    if args.all_product_classes and any(path is not None for path in custom_paths):
+        parser.error(
+            "--all-product-classes does not accept class-specific paths"
         )
-    }, sort_keys=True))
+    if args.receipt_root is not None and not args.all_product_classes:
+        parser.error("--receipt-root requires --all-product-classes")
+
+    classes = (
+        tuple(PRODUCT_CLASS_CONTRACTS)
+        if args.all_product_classes
+        else (args.character_class,)
+    )
+    results: dict[str, dict[str, Any]] = {}
+    for character_class in classes:
+        skill_bindings = args.skill_bindings or (
+            args.data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.skillbindings.json"
+        )
+        animevents = args.animevents or (
+            args.data_root / "Animation" / "Authored" / character_class /
+            f"{character_class}.animevents"
+        )
+        component_root = args.component_root or (
+            args.data_root / "Effects" / "Components" / character_class
+        )
+        assembly_root = args.assembly_root or (
+            args.data_root / "Effects" / "Assemblies" / character_class
+        )
+        receipt_path = args.receipt or (
+            args.receipt_root / f"{character_class}.component-build.receipt.json"
+            if args.receipt_root is not None
+            else args.data_root / "Effects" / "Imported" / character_class /
+            f"{character_class}.component-build.receipt.json"
+        )
+        if args.verify_existing:
+            result = verify_existing(
+                args.catalog, args.data_root, component_root,
+                assembly_root, receipt_path, character_class,
+                skill_bindings, animevents,
+            )
+        else:
+            receipt = build_all(
+                args.catalog, args.data_root, component_root,
+                assembly_root, skill_bindings, character_class,
+                animevents,
+            )
+            write_json_atomic(receipt_path, receipt)
+            result = {
+                key: receipt[key] for key in (
+                    "effectCount", "componentCount", "emitterCount",
+                    "sourceActionCueCount", "compileIdentityComplete",
+                )
+            }
+        results[character_class] = result
+    if len(results) == 1:
+        print(json.dumps(next(iter(results.values())), sort_keys=True))
+    else:
+        print(json.dumps({
+            "classes": results,
+            "effectCount": sum(
+                row["effectCount"] for row in results.values()
+            ),
+            "componentCount": sum(
+                row["componentCount"] for row in results.values()
+            ),
+            "emitterCount": sum(
+                row["emitterCount"] for row in results.values()
+            ),
+            "sourceActionCueCount": sum(
+                row["sourceActionCueCount"] for row in results.values()
+            ),
+            "compileIdentityComplete": all(
+                row["compileIdentityComplete"] for row in results.values()
+            ),
+        }, sort_keys=True))
     return 0
 
 

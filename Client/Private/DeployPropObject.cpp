@@ -126,6 +126,12 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 }
 
 HRESULT CDeployPropObject::Render()
@@ -139,20 +145,52 @@ HRESULT CDeployPropObject::Render()
 			return E_FAIL;
 		if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
 		{
-			if (FAILED(Render_Animated()))
+			if (FAILED(Render_Animated(0u)))
 				return E_FAIL;
 		}
 		else if (FAILED(Render_Static(
 			m_State == DEPLOY_PROP_STATE::FRACTURED ?
 			m_pFracturedModelCom : m_pIntactModelCom,
-			m_pShaderCom)))
+			m_pShaderCom, 0u)))
 		{
 			return E_FAIL;
 		}
 	}
 
 	return Has_VisibleDebrisPreviewInstance() ?
-		Render_DebrisPreview() : S_OK;
+		Render_DebrisPreview(false) : S_OK;
+}
+
+HRESULT CDeployPropObject::Render_Shadow()
+{
+	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
+	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
+	const bool_t sourceVisible =
+		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+	if (sourceVisible)
+	{
+		if (FAILED(Bind_ShadowShaderResources(
+			m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr())))
+		{
+			return E_FAIL;
+		}
+		if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
+		{
+			if (FAILED(Render_Animated(ANIMATED_SHADOW_PASS)))
+				return E_FAIL;
+		}
+		else if (FAILED(Render_Static(
+			m_State == DEPLOY_PROP_STATE::FRACTURED ?
+			m_pFracturedModelCom : m_pIntactModelCom,
+			m_pShaderCom, STATIC_SHADOW_PASS)))
+		{
+			return E_FAIL;
+		}
+	}
+
+	return Has_VisibleDebrisPreviewInstance() ?
+		Render_DebrisPreview(true) : S_OK;
 }
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
@@ -661,9 +699,26 @@ HRESULT CDeployPropObject::Bind_DebrisShaderResources(
 	return S_OK;
 }
 
+HRESULT CDeployPropObject::Bind_ShadowShaderResources(
+	const shared_ptr<CShader>& shader,
+	const float4x4_t& worldMatrix)
+{
+	if (nullptr == shader ||
+		FAILED(shader->Bind_Matrix("g_WorldMatrix", &worldMatrix)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			shader, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			shader, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
 HRESULT CDeployPropObject::Render_Static(
 	const shared_ptr<CModel>& model,
-	const shared_ptr<CShader>& shader)
+	const shared_ptr<CShader>& shader,
+	const uint32_t passIndex)
 {
 	if (nullptr == model || nullptr == shader)
 		return E_FAIL;
@@ -702,13 +757,13 @@ HRESULT CDeployPropObject::Render_Static(
 			(0 != hasSpecular && FAILED(model->Bind_Material(
 				shader, "g_SpecularTexture", index, aiTextureType_SPECULAR))) ||
 			FAILED(shader->Bind_RawValue("g_HasOpacityTexture", &hasOpacity, sizeof(hasOpacity))) ||
-			FAILED(shader->Begin(0)) || FAILED(model->Render(index)))
+			FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index)))
 			return E_FAIL;
 	}
 	return S_OK;
 }
 
-HRESULT CDeployPropObject::Render_Animated()
+HRESULT CDeployPropObject::Render_Animated(const uint32_t passIndex)
 {
 	for (uint32_t index = 0; index < m_pIntactModelCom->Get_NumMeshes(); ++index)
 	{
@@ -716,15 +771,16 @@ HRESULT CDeployPropObject::Render_Animated()
 				*m_pIntactModelCom, m_pShaderCom, index)) ||
 			FAILED(m_pIntactModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", index)) ||
-			FAILED(m_pShaderCom->Begin(0)) ||
+			FAILED(m_pShaderCom->Begin(passIndex)) ||
 			FAILED(m_pIntactModelCom->Render(index)))
 			return E_FAIL;
 	}
 	return S_OK;
 }
 
-HRESULT CDeployPropObject::Render_DebrisPreview()
+HRESULT CDeployPropObject::Render_DebrisPreview(const bool_t shadowPass)
 {
+	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	if (!m_bDebrisPreviewActive || nullptr == m_pDebrisShaderCom)
 		return E_FAIL;
 
@@ -752,8 +808,13 @@ HRESULT CDeployPropObject::Render_DebrisPreview()
 				instance.position.z);
 		float4x4_t storedWorld{};
 		XMStoreFloat4x4(&storedWorld, world);
-		if (FAILED(Bind_DebrisShaderResources(storedWorld)) ||
-			FAILED(Render_Static(model, m_pDebrisShaderCom)))
+		const HRESULT bindResult = shadowPass ?
+			Bind_ShadowShaderResources(m_pDebrisShaderCom, storedWorld) :
+			Bind_DebrisShaderResources(storedWorld);
+		if (FAILED(bindResult) ||
+			FAILED(Render_Static(
+				model, m_pDebrisShaderCom,
+				shadowPass ? STATIC_SHADOW_PASS : 0u)))
 		{
 			return E_FAIL;
 		}

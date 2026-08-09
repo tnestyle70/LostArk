@@ -15,7 +15,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from build_skill_effect_source_receipt import build_timeline, parse_animnotify
+from build_skill_effect_source_receipt import (
+    build_timeline,
+    flatten_bound_clips,
+    parse_animnotify,
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -58,11 +62,7 @@ def build_inventory(bindings_path: Path, animnotify_path: Path) -> dict[str, Any
         if skill_id < 0 or skill_id in seen_skills:
             raise ValueError(f"invalid or duplicate skillId: {skill_id}")
         seen_skills.add(skill_id)
-        clip_names = binding.get("clips")
-        if not isinstance(clip_names, list) or not clip_names or not all(
-            isinstance(item, str) and item for item in clip_names
-        ):
-            raise ValueError(f"skill {skill_id} has an invalid clips array")
+        clip_names = flatten_bound_clips(binding.get("clips"), skill_id)
 
         clips, source_events, duration = build_timeline(
             clip_names, clip_catalog, skill_id

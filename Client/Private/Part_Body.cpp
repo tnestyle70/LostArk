@@ -25,6 +25,7 @@ HRESULT CPart_Body::Initialize(void* pArg)
 
 	const auto pDesc = static_cast<PART_BODY_DESC*>(pArg);
 	m_iHiddenMeshMask = pDesc->iHiddenMeshMask;
+	m_pEmissiveOverride = pDesc->pEmissiveOverride;
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
@@ -64,6 +65,12 @@ void CPart_Body::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 }
 
 HRESULT CPart_Body::Render()
@@ -77,13 +84,39 @@ HRESULT CPart_Body::Render()
 			continue;
 
 		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i)) ||
+				*m_pModelCom, m_pShaderCom, i, {},
+				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
+	return S_OK;
+}
+
+HRESULT CPart_Body::Render_Shadow()
+{
+	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
+	if (FAILED(Bind_ShadowShaderResources()))
+		return E_FAIL;
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		if (0 != (m_iHiddenMeshMask & (1u << i)))
+			continue;
+
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i)) ||
+			FAILED(m_pModelCom->Bind_BoneMatrices(
+				m_pShaderCom, "g_BoneMatrices", i)) ||
+			FAILED(m_pShaderCom->Begin(ANIMATED_SHADOW_PASS)) ||
+			FAILED(m_pModelCom->Render(i)))
+		{
+			return E_FAIL;
+		}
+	}
+
 	return S_OK;
 }
 
@@ -114,6 +147,20 @@ HRESULT CPart_Body::Bind_ShaderResources()
 		FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
+	return S_OK;
+}
+
+HRESULT CPart_Body::Bind_ShadowShaderResources()
+{
+	if (FAILED(__super::Bind_WorldMatrix(
+		m_pShaderCom, "g_WorldMatrix")) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

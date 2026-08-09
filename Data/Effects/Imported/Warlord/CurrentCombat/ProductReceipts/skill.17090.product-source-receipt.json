@@ -1,0 +1,137 @@
+{
+  "schema": "lostark.combat-effect-product-source-receipt",
+  "version": 1,
+  "animationAssetId": "Warlord",
+  "characterClass": "WARLORD",
+  "productSkillId": 17090,
+  "sourceSkillIds": [
+    17090
+  ],
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "wgl_sk_hookchain",
+        "stageIndex": 0,
+        "stageClipIndex": 0,
+        "sequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "sourceLine": 895
+      }
+    ]
+  },
+  "generatedSourceReceipt": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/skill.17090.source-receipt.json",
+    "sha256": "595374434e693c40b73590cb5c01dc818951179ee9b50ee84ca2c149c318b38e"
+  },
+  "normalizedGraph": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/Graphs/skill.17090.normalized-effect-graph.json",
+    "sha256": "31315876545efa17f3cc4adf4df5483efbcaf41baa878f96dbb5a862e0408bac"
+  },
+  "timeline": {
+    "durationSeconds": 1.6667,
+    "bindingClips": [
+      "wgl_sk_hookchain"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "wgl_sk_hookchain",
+        "sourceSkillId": 17090,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.6667,
+        "sourceLine": 895
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "wgl_sk_hookchain",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "localTimeSeconds": 0.3668,
+        "globalTimeSeconds": 0.3668,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_pc_wgl_00.Par_D_Chain_Attraction_01",
+        "sourceLine": 901,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_00.par_d_chain_attraction_01"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "wgl_sk_hookchain",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "localTimeSeconds": 0.3668,
+        "globalTimeSeconds": 0.3668,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_pc_wgl_00.Par_D_Chain_Attraction_31",
+        "sourceLine": 902,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_00.par_d_chain_attraction_31"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "wgl_sk_hookchain",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "localTimeSeconds": 0.3668,
+        "globalTimeSeconds": 0.3668,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_cm_03.Spark.Par_D_Spark_03",
+        "sourceLine": 903,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_03.spark.par_d_spark_03"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "wgl_sk_hookchain",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "localTimeSeconds": 0.42,
+        "globalTimeSeconds": 0.42,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 905,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "wgl_sk_hookchain",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17090,
+        "localTimeSeconds": 0.85,
+        "globalTimeSeconds": 0.85,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 907,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      }
+    ]
+  },
+  "summary": {
+    "sourceSystemCount": 3,
+    "effectEventCount": 5,
+    "resolvedParticleEventCount": 3,
+    "unsupportedNotifyCount": 0,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 0,
+    "unsupportedUnresolvedUniqueCount": 17,
+    "uniqueMaterialBindingCount": 4,
+    "resolvedMaterialBindingCount": 4,
+    "runtimeResourceBindingCount": 8,
+    "resolvedRuntimeResourceBindingCount": 8,
+    "missingParticleGraphPackageCount": 0
+  }
+}

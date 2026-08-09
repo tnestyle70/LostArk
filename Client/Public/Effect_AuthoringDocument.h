@@ -199,6 +199,7 @@ struct EFFECT_MESH_DETAIL_DESC final
 struct EFFECT_SPRITE_DETAIL_DESC final
 {
 	bool_t bBillboard = true;
+	f32_t fBillboardRollDegrees = 0.f;
 };
 
 struct EFFECT_DECAL_DETAIL_DESC final

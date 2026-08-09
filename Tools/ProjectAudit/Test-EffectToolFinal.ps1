@@ -212,7 +212,7 @@ if ($effectToolSource -match 'ImVec2\(0\.f, 112\.f\)' -or
 }
 if ($effectToolSource -match '"CreateEffect"' -or
     $effectToolSource -notmatch 'Load Document' -or
-    $effectToolSource -notmatch 'Load / Play Complete Skill' -or
+    $effectToolSource -notmatch 'Product Play' -or
     $effectToolSource -notmatch 'InputText\("Effect Name"' -or
     $effectToolSource -notmatch 'Start_WorldPreviewFromBeginning\(\)' -or
     $effectToolSource -notmatch 'Try_SetPreviewFilter\(EFFECT_PREVIEW_FILTER::COMPLETE\)[\s\S]{0,220}?Start_WorldPreviewFromBeginning\(\);') {
@@ -223,11 +223,47 @@ if ($mainAppSource -notmatch 'FPS: %\.1f\s+\|\s+Frame: %\.2f ms' -or
     $mainAppSource -notmatch 'io\.DeltaTime \* 1000\.f') {
     throw 'F1 Developer Tools must always show smoothed FPS and latest frame time without enabling the profiler.'
 }
-if ($effectToolHeader -notmatch 'Try_SelectSkill' -or
+$productRefreshMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Refresh_AllEffects\([^)]*\)[\s\S]*?bool_t Client::CEffect_Tool::Refresh_DataFiles')
+$productSelectMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Try_SelectProductCue\([^)]*\)[\s\S]*?bool_t Client::CEffect_Tool::Try_SelectParticleSystem')
+$productRootMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Resolve_PreviewRoot\([^)]*\)[\s\S]*?void Client::CEffect_Tool::Clear_ProductCuePreview')
+$startPreviewMatch = [regex]::Match(
+    $effectToolSource,
+    'void Client::CEffect_Tool::Start_WorldPreviewFromBeginning\(\)[\s\S]*?void Client::CEffect_Tool::Synchronize_LoadedSkillPreview')
+if ($effectToolHeader -notmatch 'struct PRODUCT_CUE' -or
+    $effectToolHeader -notmatch 'EFFECT_PRODUCT_PREVIEW' -or
+    $effectToolHeader -notmatch 'Try_SelectProductCue' -or
+    -not $productRefreshMatch.Success -or
+    -not $productSelectMatch.Success -or
+    -not $productRootMatch.Success -or
+    -not $startPreviewMatch.Success -or
     $effectToolSource -notmatch 'ImGuiTreeNodeFlags_Selected' -or
-    $effectToolSource -notmatch 'Try_SelectSkill\(Entry\.Skill\.strEffectId\)' -or
-    $effectToolSource -notmatch 'CEffect_Tool::Try_SelectSkill[\s\S]{0,1200}?EFFECT_PREVIEW_FILTER::COMPLETE[\s\S]{0,1200}?Start_WorldPreviewFromBeginning\(\)') {
-    throw 'All Effects skill rows must visibly select and load or restart the complete authored Effect.'
+    $effectToolSource -notmatch 'Active Product Cue missing' -or
+    $effectToolSource -notmatch 'Source / Imported Diagnostics' -or
+    $effectToolSource -notmatch 'BeginDisabled\(Entry\.ProductCues\.empty\(\)\)' -or
+    $effectToolSource -notmatch 'Try_SelectProductCue\(Entry, iProductCueIndex\)' -or
+    $productRefreshMatch.Value -notmatch 'CAnimationSkillBindingDocument::Validate' -or
+    $productRefreshMatch.Value -notmatch 'CAnimationEffectCueDocument::Load' -or
+    $productRefreshMatch.Value -notmatch 'ProductCues\.push_back' -or
+    $productRefreshMatch.Value -match 'Skill\.strEffectId' -or
+    $productSelectMatch.Value -notmatch 'CEffectCatalog::Contains\(ProductCue\.Cue\.strEffectAssetId\)' -or
+    $productSelectMatch.Value -notmatch 'Try_LoadDocument\(ProductCue\.Cue\.strEffectAssetId\)' -or
+    $productSelectMatch.Value -notmatch 'Start_WorldPreviewFromBeginning\(\)' -or
+    $productRootMatch.Value -notmatch 'Compose_EffectLocal' -or
+    $productRootMatch.Value -notmatch 'strCueAnchor' -or
+    $productRootMatch.Value -notmatch 'Resolve_RootTransform' -or
+    $productRootMatch.Value -notmatch 'Resolve_AnchorTransform' -or
+    $productRootMatch.Value -notmatch 'eFollowPolicy' -or
+    $productRootMatch.Value -notmatch 'iStartMs' -or
+    $productRootMatch.Value -notmatch 'eStopPolicy' -or
+    $productRootMatch.Value -notmatch 'iEndMs' -or
+    $startPreviewMatch.Value -match 'm_ePreviewPivotKind\s*=') {
+    throw 'All Effects Product Play must use only admitted asset cues with cue timing/anchor/follow placement, while missing Product cues fail closed and Source/Imported rows remain diagnostics.'
 }
 if ($effectToolHeader -notmatch 'Stage_DetailDraftPreview' -or
     $effectToolSource -notmatch 'Drag numeric values for live world preview' -or
@@ -346,7 +382,7 @@ if ($effectToolSource -notmatch 'Restoration Session' -or
     $effectToolSource -notmatch 'Try_ApplyDraftAndSave' -or
     $effectToolSource -notmatch 'Assembly/WFX/Runtime Catalog publish pending' -or
     $effectToolSource -notmatch 'Published Runtime Hierarchy \(diagnostic\)' -or
-    $effectToolSource -notmatch 'bHasPublishedAssembly && !bActiveSkill') {
+    $effectToolSource -notmatch 'bHasPublishedAssembly && !bActiveProductDocument') {
     throw 'Effect restoration authoring must expose one Apply/Save loop, explicit publish state, and the current Authored tree before stale runtime hierarchy.'
 }
 if ($effectToolSource -notmatch 'Loaded editable draft; preview is hidden' -or
@@ -415,6 +451,24 @@ if ($effectToolSource -notmatch 'm_bActiveDocumentMatchesRuntime' -or
     $effectToolSource -notmatch 'CEffectDocumentCodec::Serialize\(\*pRuntimeDocument\)' -or
     $effectToolSource -notmatch '!Has_UnsavedWork\(\)') {
     throw 'Animation cue transfer must use the cached equivalence of the exact clean document admitted in the runtime Effect catalog.'
+}
+$productReloadMatch = [regex]::Match(
+    $effectToolSource,
+    'CEffect_Tool::Try_PublishActiveProductAndReloadRuntime\(\)[\s\S]*?#endif\s*\n\}')
+if (-not $productReloadMatch.Success -or
+    $effectToolHeader -notmatch 'Try_PublishActiveProductAndReloadRuntime' -or
+    $effectToolSource -notmatch 'Publish \+ Reload Product Test' -or
+    $effectToolSource -match 'DIMENSIONMASTER_A_TRACK_B_EFFECT_ID' -or
+    $productReloadMatch.Value -notmatch
+        'm_ProductPreview->ProductCue\.Cue\.strEffectAssetId' -or
+    $productReloadMatch.Value -notmatch
+        'Animation_AssetName\(m_ProductPreview->eCharacterClass\)' -or
+    $productReloadMatch.Value -notmatch '--character-class' -or
+    $productReloadMatch.Value -notmatch 'Has_UnsavedWork\(\)' -or
+    $productReloadMatch.Value -notmatch 'build_effect_components\.py' -or
+    $productReloadMatch.Value -notmatch 'Publish-Effects\.ps1' -or
+    $productReloadMatch.Value -notmatch 'CEffectCatalog::Load\(CatalogStatus\)') {
+    throw 'Debug Product test must cross the exact Product cue Authored -> class builder -> publisher -> transactional Runtime Catalog boundary.'
 }
 $thumbnailSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_ThumbnailCache.cpp') -Raw -Encoding UTF8
@@ -543,7 +597,8 @@ if ($effectToolHeader -notmatch 'PENDING_DOCUMENT_LOAD' -or
     $effectToolSource -notmatch 'Selected->Detail\.Timing\.fStartDelaySeconds' -or
     $effectToolSource -notmatch 'Applied to active Document memory; Save required to persist\.' -or
     $effectToolSource -notmatch 'Cascade System \| Source Systems ' -or
-    $effectToolSource -notmatch 'Mesh %zu \| Sprite %zu \| Unresolved %zu' -or
+    $effectToolSource -notmatch 'Standalone Mesh %zu \| Mesh Particle %zu' -or
+    $effectToolSource -notmatch 'Standalone Sprite %zu \| Sprite Particle %zu' -or
     $effectToolSource -notmatch 'iParticleBudget') {
     throw 'Effect document switching, animation sequence, Element audition, Apply feedback, and Particle layer summary must remain explicit.'
 }
@@ -558,7 +613,7 @@ if (-not $loadDocumentMatch.Success -or
     $effectToolSource -notmatch 'Load = inspect saved data without autoplay' -or
 	$effectToolSource -notmatch 'GPU resources are deferred until an explicit preview scope is played' -or
 	$effectToolSource -notmatch 'bLivePreview = bDrawable &&\s*m_bPreviewVisibleRequested' -or
-    $effectToolSource -notmatch 'pObject->Set_Visible\(true\)') {
+    $startPreviewMatch.Value -notmatch 'pObject->Set_Visible\(\s*bRootResolved && Is_ProductCueVisible\(m_fPreviewTimeSeconds\)\)') {
     throw 'Loading an Effect must not stage GPU resources; only explicit Complete, Group, or Solo play may create the character-pivot preview.'
 }
 $sessionBarMatch = [regex]::Match(
@@ -575,7 +630,7 @@ $allEffectsRefreshMatch = [regex]::Match(
     'bool_t Client::CEffect_Tool::Refresh_AllEffects\([^)]*\)[\s\S]*?bool_t Client::CEffect_Tool::Refresh_DataFiles')
 $dataFilesRefreshMatch = [regex]::Match(
     $effectToolSource,
-    'bool_t Client::CEffect_Tool::Refresh_DataFiles\(\)[\s\S]*?bool_t Client::CEffect_Tool::Try_SelectSkill')
+    'bool_t Client::CEffect_Tool::Refresh_DataFiles\(\)[\s\S]*?bool_t Client::CEffect_Tool::Try_SelectProductCue')
 if (-not $allEffectsRefreshMatch.Success -or
     -not $dataFilesRefreshMatch.Success -or
     $allEffectsRefreshMatch.Value -match 'CEffectDocumentCodec::Load' -or
@@ -626,13 +681,18 @@ if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 12u' -or
 }
 if ($effectToolHeader -notmatch 'EFFECT_DETAIL_SELECTION' -or
     $effectToolHeader -notmatch 'SOLO_PARTICLE_SYSTEM' -or
+	$effectToolHeader -notmatch 'SOLO_STANDALONE_MESHES' -or
 	$effectToolHeader -notmatch 'SOLO_MESH_EMITTERS' -or
+	$effectToolHeader -notmatch 'SOLO_STANDALONE_SPRITES' -or
 	$effectToolHeader -notmatch 'SOLO_SPRITE_EMITTERS' -or
     $effectToolSource -notmatch 'Try_SelectParticleSystem' -or
     $effectToolSource -notmatch 'Apply Particle System' -or
     $effectToolSource -notmatch 'Audition Particle System' -or
-	$effectToolSource -notmatch 'Play Mesh Emitters' -or
-	$effectToolSource -notmatch 'Mesh-backed Cascade emitter preview committed' -or
+	$effectToolSource -notmatch 'Play Mesh Particles' -or
+	$effectToolSource -notmatch 'Mesh Particle-only preview committed' -or
+	$effectToolSource -notmatch 'Standalone Mesh-only preview committed' -or
+	$effectToolSource -notmatch 'Standalone Sprite-only preview committed' -or
+	$effectToolSource -notmatch 'Sprite Particle-only preview committed' -or
 	$effectToolSource -notmatch 'm_bPreviewVisibleRequested && bRootResolved' -or
     $effectToolSource -notmatch 'Source Systems %zu \| Emitters %zu \| Layers %zu' -or
     $playbackSource -notmatch 'fUniformScaleMultiplier' -or
@@ -742,7 +802,26 @@ foreach ($skill in $boundSkillRows) {
     }
 }
 $expectedEffectIds = @($expectedEffectIds)
-$expectedEffectCount = $expectedEffectIds.Count
+$productRollout = Read-JsonFile `
+    'Data\Effects\AuthoredCorrections\Generated\FourClassCombat.authored-product-rollout.json'
+if ([string]$productRollout.schema -cne
+        'lostark.four-class-authored-product-rollout' -or
+    [int]$productRollout.version -ne 2 -or
+    [int]$productRollout.summary.visualClipOccurrenceCount -ne 102 -or
+    [int]$productRollout.summary.silentClipOccurrenceCount -ne 11 -or
+    [int]$productRollout.summary.derivedClipTargetCount -ne 48 -or
+    [int]$productRollout.summary.retainedStageTargetCount -ne 53 -or
+    [int]$productRollout.summary.productTargetCount -ne 101 -or
+    [int]$productRollout.summary.productCueCount -ne 101) {
+    throw 'Four-class Authored Product rollout receipt header/counts are invalid.'
+}
+$expectedCatalogIds = @($productRollout.productTargets | ForEach-Object {
+    [string]$_.effectAssetId
+} | Sort-Object -Unique)
+$expectedEffectCount = $expectedCatalogIds.Count
+if ($expectedEffectCount -ne 101) {
+    throw "Four-class Authored Product rollout target set is invalid: expected=101 actual=$expectedEffectCount"
+}
 $canonicalR = @($boundSkillRows | Where-Object {
     [string]$_.inputSlot -ceq 'R'
 })
@@ -763,16 +842,149 @@ if ($canonicalR.Count -ne 1 -or [int64]$canonicalR[0].skillId -ne 2050180 -or
 $catalog = Read-JsonFile 'Data\Effects\EffectCatalog.json'
 if ($catalog.formatVersion -ne 1 -or
     $catalog.effects.Count -ne $expectedEffectCount) {
-    throw "EffectCatalog.json must contain exactly the current DimensionMaster roster and its combo stages: expected=$expectedEffectCount actual=$($catalog.effects.Count)"
+    throw "EffectCatalog.json must contain exactly the admitted four-class Authored Product target set: expected=$expectedEffectCount actual=$($catalog.effects.Count)"
 }
 $catalogIds = @($catalog.effects | ForEach-Object { [string]$_.effectAssetId })
 if (@($catalogIds | Sort-Object -Unique).Count -ne $expectedEffectCount) {
     throw 'EffectCatalog.json contains a duplicate EffectAssetId.'
 }
-foreach ($effectId in $expectedEffectIds) {
+foreach ($effectId in $expectedCatalogIds) {
     if ($catalogIds -cnotcontains $effectId) {
         throw "EffectCatalog.json is missing $effectId"
     }
+}
+
+$authoredBaselineCorrectionPath =
+    'Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json'
+$authoredBaselineCorrection = Read-JsonFile $authoredBaselineCorrectionPath
+$canonicalAEffectPath =
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json'
+$canonicalAEffectSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (
+    Require-File $canonicalAEffectPath)).Hash.ToLowerInvariant()
+if ($authoredBaselineCorrection.schema -cne 'lostark.effect-authored-correction' -or
+    [int]$authoredBaselineCorrection.version -ne 2 -or
+    [string]$authoredBaselineCorrection.correctionId -cne
+        'dimensionmaster.skill.2050210.authored-baseline' -or
+    [string]$authoredBaselineCorrection.sourceEffectAssetId -cne
+        'effect.dimensionmaster.skill.2050210' -or
+    [string]$authoredBaselineCorrection.sourceEffectSha256 -cne
+        $canonicalAEffectSha256 -or
+    [string]$authoredBaselineCorrection.targetEffectAssetId -cne
+        'effect.dimensionmaster.skill.2050210.authored-baseline' -or
+    [double]$authoredBaselineCorrection.authoredSpriteBillboardRollDegrees -ne -90.0 -or
+    [string]$authoredBaselineCorrection.playerCue.anchorSlotId -cne 'root' -or
+    [string]$authoredBaselineCorrection.playerCue.outerFollowPolicy -cne 'follow' -or
+    [string]$authoredBaselineCorrection.playerCue.elementFollowPolicy -cne 'snapshot' -or
+    @($authoredBaselineCorrection.hitSnapshots).Count -ne 4 -or
+    @($authoredBaselineCorrection.layers).Count -ne 6) {
+    throw 'DimensionMaster A Authored Baseline correction contract is invalid.'
+}
+$expectedAuthoredHitIds = @('hit01', 'hit02', 'hit03', 'hit04')
+$expectedAuthoredHitSuffixes = @(
+    '',
+    '.event_source-event-030',
+    '.event_source-event-045',
+    '.event_source-event-060'
+)
+$expectedAuthoredHitTimes = @(0.25, 0.60, 0.90, 1.30)
+$expectedAuthoredLayerRoles = @(
+    'white-echo', 'flow', 'body', 'afterimage', 'rim', 'sprite'
+)
+for ($index = 0; $index -lt $expectedAuthoredHitIds.Count; ++$index) {
+    $hit = $authoredBaselineCorrection.hitSnapshots[$index]
+    if ([string]$hit.id -cne $expectedAuthoredHitIds[$index] -or
+        [string]$hit.sourceEventSuffix -cne $expectedAuthoredHitSuffixes[$index] -or
+        [double]$hit.sourceTimeSeconds -ne $expectedAuthoredHitTimes[$index] -or
+        [double]$hit.transform.position[0] -ge 0.0 -or
+        [double]$hit.transform.position[2] -le 0.0) {
+        throw "DimensionMaster A Authored Baseline hit snapshot is invalid at index $index."
+    }
+}
+if ((@($authoredBaselineCorrection.layers | ForEach-Object {
+    [string]$_.role
+}) -join ',') -cne ($expectedAuthoredLayerRoles -join ',') -or
+    @($authoredBaselineCorrection.layers | Where-Object {
+        [string]$_.sourceElementBaseId -notmatch
+            '^fx_pc_swp_00\.par_j_swp_willowrend_swinghit_00_1\.particlespriteemitter_(2|14|15|20|3|9)$' -or
+        [string]$_.emissiveFromSlot -notin @('base', 'mask')
+    }).Count -ne 0) {
+    throw 'DimensionMaster A Authored Baseline layer order or source material seed is invalid.'
+}
+
+$authoredBaselineEntry = @($catalog.effects | Where-Object {
+    [string]$_.effectAssetId -ceq
+        'effect.dimensionmaster.skill.2050210.authored-baseline'
+})
+if ($authoredBaselineEntry.Count -ne 1 -or
+    [string]$authoredBaselineEntry[0].authoringPath -cne
+        'Effects/Authored/effect.dimensionmaster.skill.2050210.authored-baseline.effect.json') {
+    throw 'DimensionMaster A Authored Baseline catalog routing is invalid.'
+}
+$authoredBaselineDocument = Read-JsonFile `
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050210.authored-baseline.effect.json'
+$authoredBaselineElements = @($authoredBaselineDocument.elements)
+$authoredBaselineKinds = @($authoredBaselineElements | ForEach-Object {
+    [string]$_.kind
+})
+if ($authoredBaselineDocument.schema -cne 'lostark.effect-authoring' -or
+    [int]$authoredBaselineDocument.version -ne 12 -or
+    $authoredBaselineDocument.effectAssetId -cne
+        'effect.dimensionmaster.skill.2050210.authored-baseline' -or
+    $authoredBaselineElements.Count -ne 24 -or
+    @($authoredBaselineKinds | Where-Object { $_ -ceq 'mesh' }).Count -ne 20 -or
+    @($authoredBaselineKinds | Where-Object { $_ -ceq 'sprite' }).Count -ne 4 -or
+    @($authoredBaselineKinds | Where-Object { $_ -ceq 'particle' }).Count -ne 0 -or
+    @($authoredBaselineElements | Where-Object {
+        [bool]$_.sourceRecipe.enabled -or
+        [bool]$_.sourcePresentation.enabled -or
+        -not [bool]$_.actionCueAttachment.enabled -or
+        [bool]$_.actionCueAttachment.follow -or
+        [string]$_.actionCueAttachment.sourceAnchorSlotId -cne 'root' -or
+        [string]$_.actionCueAttachment.runtimeAnchorSlotId -cne 'root' -or
+        -not [bool]$_.material.sourceProfile.enabled -or
+        [string]::IsNullOrWhiteSpace([string]$_.material.sourceMaterialPath) -or
+        @($_.resources | Where-Object { [string]$_.slotId -ceq 'emissive' }).Count -ne 1
+    }).Count -ne 0 -or
+    [double]$authoredBaselineDocument.particleSystem.yawOffsetDegrees -ne 0.0) {
+    throw 'DimensionMaster A Authored Baseline must be twenty Meshes and four Sprites with preserved material profiles on root snapshots.'
+}
+$expectedAuthoredGroups = [ordered]@{
+    'authored.baseline.a.hit01' = 0.25
+    'authored.baseline.a.hit02' = 0.60
+    'authored.baseline.a.hit03' = 0.90
+    'authored.baseline.a.hit04' = 1.30
+}
+foreach ($groupId in $expectedAuthoredGroups.Keys) {
+    $groupElements = @($authoredBaselineElements | Where-Object {
+        [string]$_.groupId -ceq $groupId
+    })
+    if ($groupElements.Count -ne 6 -or
+        (@($groupElements | ForEach-Object { [string]$_.id }) -join ',') -cne
+            (@($expectedAuthoredLayerRoles | ForEach-Object {
+                "$groupId.$_"
+            }) -join ',') -or
+        (@($groupElements | ForEach-Object { [string]$_.kind }) -join ',') -cne
+            'mesh,mesh,mesh,mesh,mesh,sprite' -or
+        @($groupElements | Where-Object {
+            [double]$_.detail.timing.startDelaySeconds -ne
+                [double]$expectedAuthoredGroups[$groupId]
+        }).Count -ne 0) {
+        throw "DimensionMaster A Authored Baseline group contract is invalid: $groupId"
+    }
+    $sprite = @($groupElements | Where-Object { [string]$_.kind -ceq 'sprite' })
+    if ($sprite.Count -ne 1 -or
+        -not [bool]$sprite[0].detail.sprite.billboard -or
+        [double]$sprite[0].detail.sprite.billboardRollDegrees -ne -90.0) {
+        throw "DimensionMaster A Authored Baseline Sprite roll is invalid: $groupId"
+    }
+}
+
+$dimensionMasterEvents = Get-Content -LiteralPath (
+    Require-File 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'
+) -Raw -Encoding UTF8
+if ($dimensionMasterEvents -notmatch
+    '"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=0 payload="effect\.dimensionmaster\.skill\.2050210\.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural') {
+    throw 'DimensionMaster A Authored Baseline cue must feed live root to per-occurrence snapshots.'
 }
 
 $documentResourceIds = [Collections.Generic.HashSet[string]]::new(
@@ -943,7 +1155,7 @@ foreach ($binding in @($skillBindings.bindings)) {
 }
 foreach ($row in $admittedRows) {
     $cueMatch = [regex]::Match($row,
-        '^"(?<Clip>[^"]+)" EFFECT .* payload="(?<Effect>effect\.dimensionmaster\.skill\.(?<Skill>[0-9]+)(?:\.ba(?<Stage>[0-9]+))?)" effectref=asset ')
+        '^"(?<Clip>[^"]+)" EFFECT .* payload="(?<Effect>effect\.dimensionmaster\.skill\.(?<Skill>[0-9]+)(?:(?:\.ba(?<Stage>[0-9]+))|(?:\.authored-baseline))?(?:\.clip(?<ClipStage>[0-9]+))?)" effectref=asset ')
     if (-not $cueMatch.Success) {
         throw "Malformed admitted DimensionMaster Effect cue: $row"
     }
@@ -958,18 +1170,19 @@ foreach ($row in $admittedRows) {
 }
 $tCue = @($admittedRows | Where-Object {
     $_ -match '^"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 ' -and
-    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050500" '
+    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050500\.authored-baseline" ' -and
+    $_ -match ' anchor="root" follow=follow stop=natural '
 })
 if ($tCue.Count -ne 1) {
-    throw 'DimensionMaster T 2050500 must start its Summon Effect once with dimensionprison.'
+    throw 'DimensionMaster T 2050500 must start its Authored Product once with dimensionprison at the Player root.'
 }
 $dCue = @($admittedRows | Where-Object {
     $_ -match '^"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=0 ' -and
-    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050240" ' -and
-    $_ -match ' anchor="b_wp_swm_m_2" follow=follow '
+    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050240\.authored-baseline\.clip1" ' -and
+    $_ -match ' anchor="root" follow=follow stop=natural '
 })
 if ($dCue.Count -ne 1) {
-    throw 'DimensionMaster D 2050240 complete Effect must preserve the authored weapon anchor.'
+    throw 'DimensionMaster D 2050240 must start its Authored Product once at the Player root.'
 }
 $comboSkill = @($boundSkillRows | Where-Object skillKind -eq 'COMBO')
 if ($comboSkill.Count -ne 1) {

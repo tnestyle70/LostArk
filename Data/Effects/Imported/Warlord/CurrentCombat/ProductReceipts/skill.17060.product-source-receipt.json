@@ -1,0 +1,167 @@
+{
+  "schema": "lostark.combat-effect-product-source-receipt",
+  "version": 1,
+  "animationAssetId": "Warlord",
+  "characterClass": "WARLORD",
+  "productSkillId": 17060,
+  "sourceSkillIds": [
+    17060
+  ],
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "wgl_sk_firebullet",
+        "stageIndex": 0,
+        "stageClipIndex": 0,
+        "sequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "sourceLine": 779
+      }
+    ]
+  },
+  "generatedSourceReceipt": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/skill.17060.source-receipt.json",
+    "sha256": "fb57f026185cf7568d9191a6de33cbe69d02a22b241cbc8b9514ff7bc050213b"
+  },
+  "normalizedGraph": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/Graphs/skill.17060.normalized-effect-graph.json",
+    "sha256": "6d5079be00d8f03525ac7e663b26d95440e6e53d1b351775aa2ff354e36a3965"
+  },
+  "timeline": {
+    "durationSeconds": 1.3667,
+    "bindingClips": [
+      "wgl_sk_firebullet"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "wgl_sk_firebullet",
+        "sourceSkillId": 17060,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.3667,
+        "sourceLine": 779
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3246,
+        "globalTimeSeconds": 0.3246,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_ZoomBlur_01",
+        "sourceLine": 784,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_01"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3246,
+        "globalTimeSeconds": 0.3246,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_03_01",
+        "sourceLine": 785,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_03_01"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3246,
+        "globalTimeSeconds": 0.3246,
+        "durationSeconds": 0.3949,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 786,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3284,
+        "globalTimeSeconds": 0.3284,
+        "durationSeconds": 0.3515,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 787,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3284,
+        "globalTimeSeconds": 0.3284,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01",
+        "sourceLine": 788,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_firebullet_01_01"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.33,
+        "globalTimeSeconds": 0.33,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 789,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "wgl_sk_firebullet",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17060,
+        "localTimeSeconds": 0.3957,
+        "globalTimeSeconds": 0.3957,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_01.Par_E_Reload_01",
+        "sourceLine": 791,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_01.par_e_reload_01"
+      }
+    ]
+  },
+  "summary": {
+    "sourceSystemCount": 5,
+    "effectEventCount": 6,
+    "resolvedParticleEventCount": 5,
+    "unsupportedNotifyCount": 0,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 1,
+    "unsupportedUnresolvedUniqueCount": 158,
+    "uniqueMaterialBindingCount": 16,
+    "resolvedMaterialBindingCount": 15,
+    "runtimeResourceBindingCount": 19,
+    "resolvedRuntimeResourceBindingCount": 19,
+    "missingParticleGraphPackageCount": 0
+  }
+}

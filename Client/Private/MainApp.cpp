@@ -39,58 +39,6 @@
 
 namespace
 {
-	const char_t* SceneRenderingProfileId(const LEVEL eLevel)
-	{
-		switch (eLevel)
-		{
-		case LEVEL::CHARACTER_SELECT: return "scene.character-select.warm-high-key.v1";
-		case LEVEL::VALTAN_ARENA: return "scene.valtan.cool-low-key.v1";
-		case LEVEL::BERN: return "scene.bern.neutral-day.v1";
-		case LEVEL::DEVELOPMENT: return "scene.development.neutral.v1";
-		case LEVEL::LOADING: return "scene.loading.neutral.v1";
-		case LEVEL::LOBBY: return "scene.lobby.neutral.v1";
-		default: return "scene.unknown";
-		}
-	}
-
-	LIGHT_DESC BuildSceneLight(const LEVEL eLevel)
-	{
-		LIGHT_DESC Light{};
-		Light.eType = LIGHT::DIRECTIONAL;
-		Light.vDirection = float4_t(0.5f, -1.f, 0.5f, 0.f);
-		Light.fRange = 1.f;
-		if (LEVEL::CHARACTER_SELECT == eLevel)
-		{
-			Light.vDiffuse = float4_t(0.85f, 0.80f, 0.72f, 1.f);
-			Light.vAmbient = float4_t(0.28f, 0.27f, 0.26f, 1.f);
-			Light.vSpecular = float4_t(0.55f, 0.52f, 0.50f, 1.f);
-		}
-		else if (LEVEL::VALTAN_ARENA == eLevel)
-		{
-			Light.vDiffuse = float4_t(0.48f, 0.54f, 0.58f, 1.f);
-			Light.vAmbient = float4_t(0.12f, 0.15f, 0.17f, 1.f);
-			Light.vSpecular = float4_t(0.35f, 0.45f, 0.50f, 1.f);
-		}
-		else if (LEVEL::LOADING == eLevel || LEVEL::LOBBY == eLevel)
-		{
-			Light.vDiffuse = float4_t{};
-			Light.vAmbient = float4_t{};
-			Light.vSpecular = float4_t{};
-		}
-		else
-		{
-			Light.vDiffuse = float4_t(0.8f, 0.8f, 0.8f, 1.f);
-			Light.vAmbient = float4_t(0.25f, 0.25f, 0.25f, 1.f);
-			Light.vSpecular = float4_t(0.5f, 0.5f, 0.5f, 1.f);
-		}
-		return Light;
-	}
-
-	HRESULT ApplySceneRenderingProfile(const LEVEL eLevel)
-	{
-		return CGameInstance::Get().Add_Light(BuildSceneLight(eLevel));
-	}
-
 	wstring Utf8ToWide(const string& value)
 	{
 		if (value.empty())
@@ -203,6 +151,18 @@ HRESULT CMainApp::Initialize()
 	{
 		return E_FAIL;
 	}
+	string renderingProfileStatus;
+	if (!m_RenderingProfiles.Load_Runtime(renderingProfileStatus))
+	{
+		OutputDebugStringA((
+			"[MainApp] Rendering profile initialization failed: " +
+			renderingProfileStatus + "\n").c_str());
+#ifdef _DEBUG
+		MessageBoxA(g_hWnd, renderingProfileStatus.c_str(),
+			"Rendering Profile Load Failed", MB_OK | MB_ICONERROR);
+#endif
+		return E_FAIL;
+	}
 
 	if (!CNetworkManager::Get().Initialize())
 		return E_FAIL;
@@ -294,9 +254,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		worldLeftMouseConsumed);
 
 	CNetworkManager::Get().Update();
-	CEffectPresentationService::Update(fTimeDelta);
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	CEffectPresentationService::Synchronize_FollowAnchors();
+	CEffectPresentationService::Update(fTimeDelta);
 
 #ifdef _DEBUG
 	if (nullptr != m_pMapTool)
@@ -649,8 +609,15 @@ HRESULT CMainApp::Start_Level(
 	const LEVEL eTargetLevel,
 	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
-	if (nullptr == CLevelRegistry::Find(eTargetLevel))
+	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
+		CLevelRegistry::Find(eTargetLevel);
+	if (nullptr == pTarget || nullptr == pTarget->pRenderingProfileId ||
+		!m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId) ||
+		!m_RenderingProfiles.Has_Profile(
+			CRenderingProfileService::LOADING_PROFILE_ID))
+	{
 		return E_INVALIDARG;
+	}
 
 	unique_ptr<CLevel_Loading> loading =
 		CLevel_Loading::Create(
@@ -661,12 +628,33 @@ HRESULT CMainApp::Start_Level(
 	if (nullptr == loading)
 		return E_FAIL;
 
+	const string previousProfileId =
+		m_RenderingProfiles.Get_ActiveProfileId();
+	string status;
+	if (!m_RenderingProfiles.Activate_Profile(
+		CRenderingProfileService::LOADING_PROFILE_ID, status))
+	{
+		return E_FAIL;
+	}
 	const HRESULT hChange = CGameInstance::Get().Change_Level(
 		ETOUI(LEVEL::LOADING),
 		move(loading));
 	if (FAILED(hChange))
+	{
+		if (!previousProfileId.empty())
+		{
+			string rollbackStatus;
+			if (!m_RenderingProfiles.Activate_Profile(
+				previousProfileId, rollbackStatus))
+			{
+				OutputDebugStringA((
+					"[MainApp] Loading profile rollback failed: " +
+					rollbackStatus + "\n").c_str());
+			}
+		}
 		return hChange;
-	return ApplySceneRenderingProfile(LEVEL::LOADING);
+	}
+	return S_OK;
 }
 
 void CMainApp::Apply_LevelRequest()
@@ -699,21 +687,44 @@ void CMainApp::Apply_LevelRequest()
 		return;
 	}
 
-	unique_ptr<CLevel> nextLevel = CLevelRegistry::Create_Level(
-		request.eTargetLevel,
-		m_pDevice,
-		m_pContext);
-	if (nullptr != nextLevel && SUCCEEDED(CGameInstance::Get().Change_Level(
-		ETOUI(request.eTargetLevel),
-		move(nextLevel))))
+	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
+		CLevelRegistry::Find(request.eTargetLevel);
+	const bool_t hasTargetProfile = nullptr != pTarget &&
+		nullptr != pTarget->pRenderingProfileId &&
+		m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId);
+	unique_ptr<CLevel> nextLevel = hasTargetProfile ?
+		CLevelRegistry::Create_Level(
+			request.eTargetLevel,
+			m_pDevice,
+			m_pContext) : nullptr;
+	const string previousProfileId =
+		m_RenderingProfiles.Get_ActiveProfileId();
+	string profileStatus;
+	const bool_t profileActivated = nullptr != nextLevel &&
+		m_RenderingProfiles.Activate_Profile(
+			pTarget->pRenderingProfileId, profileStatus);
+	if (nullptr != nextLevel && !profileActivated)
 	{
-		if (FAILED(ApplySceneRenderingProfile(request.eTargetLevel)))
-		{
-			OutputDebugStringA(
-				"[MainApp] Scene rendering profile apply failed; previous light preserved.\n");
-		}
+		OutputDebugStringA((
+			"[MainApp] Target rendering profile activation failed: " +
+			profileStatus + "\n").c_str());
+	}
+	if (profileActivated && SUCCEEDED(CGameInstance::Get().Change_Level(
+		ETOUI(request.eTargetLevel), move(nextLevel))))
+	{
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
 		return;
+	}
+	if (profileActivated && !previousProfileId.empty())
+	{
+		string rollbackStatus;
+		if (!m_RenderingProfiles.Activate_Profile(
+			previousProfileId, rollbackStatus))
+		{
+			OutputDebugStringA((
+				"[MainApp] Rendering profile rollback failed after level activation failure: " +
+				rollbackStatus + "\n").c_str());
+		}
 	}
 
 	if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
@@ -798,8 +809,13 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	case DEBUG_TOOL::RENDERING:
 		if (!m_bRenderQualityDraftInitialized)
 		{
-			m_RenderQualityDraft =
-				CGameInstance::Get().Get_RenderQualitySettings();
+			const SCENE_RENDERING_PROFILE* pProfile =
+				m_RenderingProfiles.Get_ActiveProfile();
+			if (nullptr == pProfile)
+				return E_FAIL;
+			m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+			m_SceneRenderingDraft = *pProfile;
+			m_strRenderingDraftProfileId = pProfile->strProfileId;
 			m_bRenderQualityDraftInitialized = true;
 		}
 		break;
@@ -898,10 +914,16 @@ void CMainApp::RenderDeveloperTools()
 
 void CMainApp::RenderRenderingWorkbench()
 {
-	if (!m_bRenderQualityDraftInitialized)
+	const SCENE_RENDERING_PROFILE* pActiveProfile =
+		m_RenderingProfiles.Get_ActiveProfile();
+	if (nullptr == pActiveProfile)
+		return;
+	if (!m_bRenderQualityDraftInitialized ||
+		m_strRenderingDraftProfileId != pActiveProfile->strProfileId)
 	{
-		m_RenderQualityDraft =
-			CGameInstance::Get().Get_RenderQualitySettings();
+		m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+		m_SceneRenderingDraft = *pActiveProfile;
+		m_strRenderingDraftProfileId = pActiveProfile->strProfileId;
 		m_bRenderQualityDraftInitialized = true;
 	}
 
@@ -915,16 +937,13 @@ void CMainApp::RenderRenderingWorkbench()
 	}
 
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
-	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
-	const LEVEL eLevel = iLevel < ETOUI(LEVEL::END) ?
-		static_cast<LEVEL>(iLevel) : LEVEL::END;
 	ImGui::Text("Pipeline: legacy_deferred_v1");
-	ImGui::Text("Scene profile: %s", SceneRenderingProfileId(eLevel));
+	ImGui::Text("Scene profile: %s", m_strRenderingDraftProfileId.c_str());
 	ImGui::Text("Viewport: %.0f x %.0f", viewportSize.x, viewportSize.y);
 	ImGui::TextDisabled(
 		"FP16 Light -> SceneHDR -> Screen Post -> half-res Bloom -> Hable/FXAA -> UI");
 	ImGui::TextDisabled(
-		"Quality controls are global; persistent scene light profiles are level-specific.");
+		"Global technical settings and scene artistic multipliers are stored separately.");
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	ImGui::SeparatorText("Effect Presentation");
@@ -941,82 +960,183 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextDisabled(
 		"Effect Base/Mask/Dissolve/Distortion/Emissive enter SceneHDR before these posts and Bloom.");
 
-	const auto applyLive = [this]()
+	const auto applyGlobal = [this]()
 	{
-		if (SUCCEEDED(CGameInstance::Get().Apply_RenderQualitySettings(
-			m_RenderQualityDraft)))
+		m_RenderingProfiles.Apply_GlobalQuality(
+			m_RenderQualityDraft, m_strRenderingStatus);
+		m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+	};
+	const auto applyScene = [this]()
+	{
+		m_RenderingProfiles.Apply_ActiveProfile(
+			m_SceneRenderingDraft, m_strRenderingStatus);
+		if (const SCENE_RENDERING_PROFILE* pProfile =
+			m_RenderingProfiles.Get_ActiveProfile())
 		{
-			m_RenderQualityDraft =
-				CGameInstance::Get().Get_RenderQualitySettings();
-			m_strRenderingStatus =
-				"Applied. The world uses these values from the next frame.";
-		}
-		else
-		{
-			m_strRenderingStatus =
-				"Rejected invalid/non-finite settings; active rendering was preserved.";
+			m_SceneRenderingDraft = *pProfile;
 		}
 	};
 
-	bool_t changed = false;
-	ImGui::SeparatorText("Bloom");
-	changed |= ImGui::Checkbox(
+	bool_t globalChanged = false;
+	ImGui::SeparatorText("Global Technical Quality");
+	globalChanged |= ImGui::Checkbox(
+		"Enabled##SSAO", &m_RenderQualityDraft.bSSAOEnabled);
+	ImGui::BeginDisabled(!m_RenderQualityDraft.bSSAOEnabled);
+	globalChanged |= ImGui::DragFloat(
+		"SSAO Radius", &m_RenderQualityDraft.fSSAORadius,
+		0.01f, 0.01f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	globalChanged |= ImGui::DragFloat(
+		"SSAO Bias", &m_RenderQualityDraft.fSSAOBias,
+		0.001f, 0.f, 1.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	globalChanged |= ImGui::DragFloat(
+		"SSAO Intensity", &m_RenderQualityDraft.fSSAOIntensity,
+		0.01f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	globalChanged |= ImGui::DragFloat(
+		"SSAO Power", &m_RenderQualityDraft.fSSAOPower,
+		0.01f, 0.1f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	globalChanged |= ImGui::DragFloat(
+		"SSAO Distance Fade", &m_RenderQualityDraft.fSSAODistanceFade,
+		0.25f, 1.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"SSAO darkens ambient lighting only; direct light, emissive, and Bloom remain independent.");
+
+	ImGui::SeparatorText("Bloom / Tone / Anti-Aliasing");
+	globalChanged |= ImGui::Checkbox(
 		"Enabled##Bloom", &m_RenderQualityDraft.bBloomEnabled);
 	ImGui::BeginDisabled(!m_RenderQualityDraft.bBloomEnabled);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"Threshold", &m_RenderQualityDraft.fBloomThreshold,
 		0.01f, 0.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"Soft Knee", &m_RenderQualityDraft.fBloomSoftKnee,
 		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
-		"Intensity", &m_RenderQualityDraft.fBloomIntensity,
+	globalChanged |= ImGui::DragFloat(
+		"Base Bloom Intensity", &m_RenderQualityDraft.fBloomIntensity,
 		0.01f, 0.f, 16.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"Scatter", &m_RenderQualityDraft.fBloomScatter,
 		0.01f, 0.25f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
 		"Bloom spreads pixels already above Threshold; it does not replace lighting or GI.");
 
-	ImGui::SeparatorText("Tone Mapping");
-	changed |= ImGui::DragFloat(
-		"Exposure", &m_RenderQualityDraft.fExposure,
+	globalChanged |= ImGui::DragFloat(
+		"Base Exposure", &m_RenderQualityDraft.fExposure,
 		0.01f, 0.01f, 32.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"Hable White Point", &m_RenderQualityDraft.fWhitePoint,
 		0.05f, 1.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"Display Gamma", &m_RenderQualityDraft.fGamma,
 		0.005f, 1.f, 3.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
-	ImGui::SeparatorText("Anti-Aliasing");
-	changed |= ImGui::Checkbox(
+	globalChanged |= ImGui::Checkbox(
 		"FXAA Enabled", &m_RenderQualityDraft.bFXAAEnabled);
 	ImGui::BeginDisabled(!m_RenderQualityDraft.bFXAAEnabled);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"FXAA Blend", &m_RenderQualityDraft.fFXAASubpixel,
 		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"FXAA Edge Threshold", &m_RenderQualityDraft.fFXAAEdgeThreshold,
 		0.001f, 0.0312f, 0.333f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-	changed |= ImGui::DragFloat(
+	globalChanged |= ImGui::DragFloat(
 		"FXAA Edge Threshold Min", &m_RenderQualityDraft.fFXAAEdgeThresholdMin,
 		0.001f, 0.0156f, 0.0833f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::EndDisabled();
 	ImGui::TextDisabled("FXAA is evaluated before display-space UI, so HUD text stays sharp.");
 
-	if (changed)
-		applyLive();
+	if (globalChanged)
+	{
+		m_RenderQualityDraft.fSSAOBias = (std::min)(
+			m_RenderQualityDraft.fSSAOBias,
+			(std::max)(0.f, m_RenderQualityDraft.fSSAORadius - 0.0001f));
+		m_RenderQualityDraft.fSSAODistanceFade = (std::max)(
+			m_RenderQualityDraft.fSSAODistanceFade,
+			m_RenderQualityDraft.fSSAORadius);
+		applyGlobal();
+	}
 
-	ImGui::SeparatorText("A/B Actions");
-	if (ImGui::Button("Reset Legacy Defaults"))
+	bool_t sceneChanged = false;
+	ImGui::SeparatorText("Active Scene Artistic Profile");
+	sceneChanged |= ImGui::DragFloat3(
+		"Light Direction", &m_SceneRenderingDraft.Light.vDirection.x,
+		0.01f, -8.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat3(
+		"Diffuse RGB", &m_SceneRenderingDraft.Light.vDiffuse.x,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat3(
+		"Ambient RGB", &m_SceneRenderingDraft.Light.vAmbient.x,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat3(
+		"Specular RGB", &m_SceneRenderingDraft.Light.vSpecular.x,
+		0.005f, 0.f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Exposure Multiplier", &m_SceneRenderingDraft.fExposureMultiplier,
+		0.005f, 0.1f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Bloom Intensity Multiplier",
+		&m_SceneRenderingDraft.fBloomIntensityMultiplier,
+		0.005f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::Checkbox(
+		"Directional Shadow Enabled",
+		&m_SceneRenderingDraft.ShadowSettings.bEnabled);
+	ImGui::BeginDisabled(!m_SceneRenderingDraft.ShadowSettings.bEnabled);
+	sceneChanged |= ImGui::DragFloat3(
+		"Shadow Focus", &m_SceneRenderingDraft.vShadowFocus.x,
+		0.1f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Light Distance", &m_SceneRenderingDraft.fShadowDistance,
+		0.1f, 0.1f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Coverage Width",
+		&m_SceneRenderingDraft.ShadowSettings.fOrthographicWidth,
+		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Coverage Height",
+		&m_SceneRenderingDraft.ShadowSettings.fOrthographicHeight,
+		0.1f, 0.1f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Near", &m_SceneRenderingDraft.ShadowSettings.fNear,
+		0.01f, 0.0001f, 100000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Far", &m_SceneRenderingDraft.ShadowSettings.fFar,
+		0.1f, 0.0001f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Depth Bias", &m_SceneRenderingDraft.ShadowSettings.fDepthBias,
+		0.00005f, 0.f, 0.05f, "%.6f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Normal Bias", &m_SceneRenderingDraft.ShadowSettings.fNormalBias,
+		0.001f, 0.f, 10.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	sceneChanged |= ImGui::DragFloat(
+		"Shadow Strength", &m_SceneRenderingDraft.ShadowSettings.fStrength,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Shadow uses a fixed 2048 depth map with 3x3 PCF; light eye is derived from focus and scene direction.");
+	if (sceneChanged)
+	{
+		m_SceneRenderingDraft.Light.vDirection.w = 0.f;
+		m_SceneRenderingDraft.Light.vDiffuse.w = 1.f;
+		m_SceneRenderingDraft.Light.vAmbient.w = 1.f;
+		m_SceneRenderingDraft.Light.vSpecular.w = 1.f;
+		m_SceneRenderingDraft.ShadowSettings.fFar = (std::max)(
+			m_SceneRenderingDraft.ShadowSettings.fFar,
+			m_SceneRenderingDraft.ShadowSettings.fNear + 0.0001f);
+		applyScene();
+	}
+	ImGui::TextDisabled(
+		"Effective Exposure/Bloom = global base x active scene multiplier (never cumulative).");
+
+	ImGui::SeparatorText("Global A/B Actions");
+	if (ImGui::Button("Reset Global Legacy Defaults"))
 	{
 		m_RenderQualityDraft = {};
-		applyLive();
+		m_RenderQualityDraft.bSSAOEnabled = false;
+		applyGlobal();
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Reference A/B Start"))
+	if (ImGui::Button("Global Reference A/B Start"))
 	{
 		m_RenderQualityDraft = {};
 		m_RenderQualityDraft.fBloomThreshold = 1.4f;
@@ -1025,19 +1145,44 @@ void CMainApp::RenderRenderingWorkbench()
 		m_RenderQualityDraft.fBloomScatter = 1.f;
 		m_RenderQualityDraft.fExposure = 1.2f;
 		m_RenderQualityDraft.bFXAAEnabled = true;
-		applyLive();
+		applyGlobal();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reload Active"))
 	{
-		m_RenderQualityDraft =
-			CGameInstance::Get().Get_RenderQualitySettings();
-		m_strRenderingStatus = "Draft reloaded from the active renderer.";
+		m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+		if (const SCENE_RENDERING_PROFILE* pProfile =
+			m_RenderingProfiles.Get_ActiveProfile())
+		{
+			m_SceneRenderingDraft = *pProfile;
+			m_strRenderingDraftProfileId = pProfile->strProfileId;
+		}
+		m_strRenderingStatus = "Drafts reloaded from the active profile service.";
 	}
 
+	ImGui::SeparatorText("Authoring Pipeline");
+	if (ImGui::Button("Save Authored"))
+		m_RenderingProfiles.Save_Authored(m_strRenderingStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Publish Runtime"))
+		m_RenderingProfiles.Publish_Runtime(m_strRenderingStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Runtime"))
+	{
+		if (m_RenderingProfiles.Reload_Runtime(m_strRenderingStatus))
+		{
+			m_RenderQualityDraft = m_RenderingProfiles.Get_GlobalQuality();
+			if (const SCENE_RENDERING_PROFILE* pProfile =
+				m_RenderingProfiles.Get_ActiveProfile())
+			{
+				m_SceneRenderingDraft = *pProfile;
+				m_strRenderingDraftProfileId = pProfile->strProfileId;
+			}
+		}
+	}
 	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
 	ImGui::TextDisabled(
-		"Session-only in this slice. No authored/runtime JSON is changed automatically.");
+		"Save changes Authored only; Publish validates/promotes Runtime; Reload commits atomically.");
 	ImGui::End();
 }
 
@@ -1149,7 +1294,7 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
-	CEffectPresentationService::Clear_All();
+	CEffectPresentationService::Release_PreparedResources();
 	CEffectCatalog::Clear();
 	CNetworkManager::Get().Shutdown();
 	CGameInstance::Get().SetInputBlocked(false, false);

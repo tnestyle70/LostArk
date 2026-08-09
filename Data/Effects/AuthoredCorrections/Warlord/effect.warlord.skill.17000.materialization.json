@@ -1,0 +1,213 @@
+{
+  "schema": "lostark.effect-authored-materialization",
+  "version": 1,
+  "materializationId": "warlord.skill.17000",
+  "characterClass": "WARLORD",
+  "skillId": 17000,
+  "inputSlot": "LMB",
+  "status": "blocked",
+  "spriteBillboardRollDegrees": -90.0,
+  "source": {
+    "effectAssetId": "effect.warlord.skill.17000",
+    "authoringPath": "Effects/Authored/effect.warlord.skill.17000.effect.json",
+    "expectedState": "missing"
+  },
+  "diagnosticSource": {
+    "effectAssetId": "effect.warlord.skill.17000.imported",
+    "authoringPath": "Effects/Imported/Warlord/Converted/effect.warlord.skill.17000.imported.effect.json",
+    "sha256": "1c6b51b13266e36146a79f1e95cde96ab4399daec2d6dbe6f23b694a83b74a35"
+  },
+  "blockers": [
+    {
+      "code": "canonical-source-effect-missing",
+      "message": "No canonical effect.warlord.skill.17000 authoring document exists, so no source Element can be admitted into an Authored BA stage."
+    },
+    {
+      "code": "diagnostic-import-not-product",
+      "message": "The exact 17000 action/clip binding now produces a zero-unresolved closure and Imported diagnostic document, but it remains read-only diagnostic evidence."
+    },
+    {
+      "code": "source-material-profile-unresolved",
+      "message": "The one Cascade Mesh Particle source currently CERTIFIED by singleton/cardinality/motion analysis has exact runtime Mesh/Texture bindings, but material.sourceProfile remains disabled, so it is not product-admitted."
+    },
+    {
+      "code": "authored-target-anchor-policy-missing",
+      "message": "No reviewed Authored occurrence yet supplies the required AUTHORED_ROOT_SNAPSHOT for standalone targets."
+    },
+    {
+      "code": "sprite-particle-source-anchor-unresolved",
+      "message": "Any preserved Sprite Particle target must retain an executable source attachment; the current diagnostic source attachments are unresolved. This does not erase standalone conversion eligibility."
+    },
+    {
+      "code": "mesh-conversion-eligibility-unresolved",
+      "message": "The topology candidates remain BA1=2, BA2=2, BA3=3. One source now passes singleton/cardinality/motion eligibility but still lacks an admitted material and reviewed per-module removal dispositions; the other six retain particle-dependent semantics. No standalone target can be fabricated from topology alone."
+    },
+    {
+      "code": "authored-layer-selection-missing",
+      "message": "No reviewed per-stage correction selects the stage-owned standalone Mesh target, standalone Sprite target, or preserved Sprite Particle carriers for BA1 through BA3. Layer roles and counts cannot be inferred from another class."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "Effects/Imported/Warlord/skill.17000.source-receipt.json",
+      "sha256": "78d90b289743f8d6b99e7c93e69d51c693b975d6614d4ca023b39a06b9fe9507",
+      "assertions": [
+        {
+          "pointer": "/summary/sourceSystemCount",
+          "equals": 3
+        },
+        {
+          "pointer": "/summary/resolvedParticleEventCount",
+          "equals": 6
+        },
+        {
+          "pointer": "/summary/unresolvedSourceSystemCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/runtimeResourceBindingCount",
+          "equals": 17
+        },
+        {
+          "pointer": "/summary/resolvedRuntimeResourceBindingCount",
+          "equals": 17
+        },
+        {
+          "pointer": "/summary/uniqueMaterialBindingCount",
+          "equals": 9
+        },
+        {
+          "pointer": "/summary/resolvedMaterialBindingCount",
+          "equals": 8
+        },
+        {
+          "pointer": "/materialBindingCatalogEvidence/catalogSha256",
+          "equals": "2c732db655e008ff3bffe25bb30738bd54d69e93c04abf16d257f764caa74487"
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/Warlord/Modules/skill.17000.normalized-effect-graph.json",
+      "sha256": "af2d001f89e3dc0e55f4c23e6187d0b8ff7084d2c06ee130c7b8c3ebf0c8e565",
+      "assertions": [
+        {
+          "pointer": "/summary/sourceSystemCount",
+          "equals": 3
+        },
+        {
+          "pointer": "/summary/uniqueNodeCount",
+          "equals": 113
+        },
+        {
+          "pointer": "/summary/resolvedRuntimeResourceBindingCount",
+          "equals": 17
+        },
+        {
+          "pointer": "/summary/resolvedMaterialBindingCount",
+          "equals": 8
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/Warlord/Modules/skill.17000.external-module-closure.json",
+      "sha256": "6134bcecb8cbfe81022fde34c177a4cedf599bc0a6545e7786632ff96a0baaec",
+      "assertions": [
+        {
+          "pointer": "/summary/requestCount",
+          "equals": 157
+        },
+        {
+          "pointer": "/summary/resolvedRequestCount",
+          "equals": 157
+        },
+        {
+          "pointer": "/summary/unresolvedRequestCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/propertyErrorCount",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/Warlord/Converted/effect.warlord.skill.17000.imported.effect.json",
+      "sha256": "1c6b51b13266e36146a79f1e95cde96ab4399daec2d6dbe6f23b694a83b74a35",
+      "assertions": [
+        {
+          "pointer": "/effectAssetId",
+          "equals": "effect.warlord.skill.17000.imported"
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/Warlord/Converted/skill.17000.element-conversion-receipt.json",
+      "sha256": "b5315acecad209f4651b17ab8f678e1d93ffcff52dc837acbd9e5ade88c844a9",
+      "assertions": [
+        {
+          "pointer": "/summary/convertedEmitterCount",
+          "equals": 21
+        },
+        {
+          "pointer": "/summary/missingResourceEmitterCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/sourceMaterialPendingEmitterCount",
+          "equals": 4
+        },
+        {
+          "pointer": "/summary/presentationSourceExactEmitterCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/presentationReconstructedEmitterCount",
+          "equals": 0
+        },
+        {
+          "pointer": "/summary/externalUnresolvedRequestCount",
+          "equals": 0
+        }
+      ]
+    },
+    {
+      "path": "Effects/Imported/Warlord/Warlord.action-particle-resource-catalog.json",
+      "sha256": "2c732db655e008ff3bffe25bb30738bd54d69e93c04abf16d257f764caa74487",
+      "assertions": []
+    },
+    {
+      "path": "Animation/Authored/Warlord/Warlord.skillbindings.json",
+      "sha256": "e5ce55c82fe9e7123120c9dd4f492c7b0e0d718ce85a8749b0747ec928ca85ff",
+      "assertions": []
+    }
+  ],
+  "stages": [
+    {
+      "stageIndex": 0,
+      "clip": "wgl_att_battle_1_01",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 0.0,
+      "targetEffectAssetId": "effect.warlord.skill.17000.ba1",
+      "targetAuthoringPath": "Effects/Authored/effect.warlord.skill.17000.ba1.effect.json",
+      "occurrences": []
+    },
+    {
+      "stageIndex": 1,
+      "clip": "wgl_att_battle_1_02",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 1.0,
+      "targetEffectAssetId": "effect.warlord.skill.17000.ba2",
+      "targetAuthoringPath": "Effects/Authored/effect.warlord.skill.17000.ba2.effect.json",
+      "occurrences": []
+    },
+    {
+      "stageIndex": 2,
+      "clip": "wgl_att_battle_1_03",
+      "status": "blocked",
+      "sourceTimelineOffsetSeconds": 1.9333,
+      "targetEffectAssetId": "effect.warlord.skill.17000.ba3",
+      "targetAuthoringPath": "Effects/Authored/effect.warlord.skill.17000.ba3.effect.json",
+      "occurrences": []
+    }
+  ]
+}

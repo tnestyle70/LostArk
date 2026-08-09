@@ -52,6 +52,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
@@ -137,11 +138,15 @@ private:
 	HRESULT Ready_Components(const DEPLOY_PROP_DESC& desc);
 	HRESULT Bind_CommonShaderResources();
 	HRESULT Bind_DebrisShaderResources(const float4x4_t& worldMatrix);
+	HRESULT Bind_ShadowShaderResources(
+		const shared_ptr<CShader>& shader,
+		const float4x4_t& worldMatrix);
 	HRESULT Render_Static(
 		const shared_ptr<CModel>& model,
-		const shared_ptr<CShader>& shader);
-	HRESULT Render_Animated();
-	HRESULT Render_DebrisPreview();
+		const shared_ptr<CShader>& shader,
+		uint32_t passIndex);
+	HRESULT Render_Animated(uint32_t passIndex);
+	HRESULT Render_DebrisPreview(bool_t shadowPass);
 	bool_t Has_VisibleDebrisPreviewInstance() const;
 	void Apply_Transform();
 

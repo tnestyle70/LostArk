@@ -189,6 +189,17 @@ namespace
 		return std::isfinite(OutValue);
 	}
 
+	bool_t Read_OptionalFloat(
+		const Client::DATA_JSON_VALUE& Object,
+		const char_t* pName,
+		f32_t& OutValue,
+		std::string& strOutError)
+	{
+		if (nullptr == Object.Find(pName))
+			return true;
+		return Read_Float(Object, pName, OutValue, strOutError);
+	}
+
 	bool_t Read_Int(
 		const Client::DATA_JSON_VALUE& Object,
 		const char_t* pName,
@@ -1377,6 +1388,8 @@ namespace
 			Read_Float(*pTiming, "dissolveStartNormalized", Out.Timing.fDissolveStartNormalized, strOutError) &&
 			Read_Bool(*pMesh, "useModelMaterial", Out.Mesh.bUseModelMaterial, strOutError) &&
 			Read_Bool(*pSprite, "billboard", Out.Sprite.bBillboard, strOutError) &&
+			Read_OptionalFloat(*pSprite, "billboardRollDegrees",
+				Out.Sprite.fBillboardRollDegrees, strOutError) &&
 			Read_Array(*pDecal, "size", &Out.Decal.vSize.x, 2u, strOutError) &&
 			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError);
 	}
@@ -1488,6 +1501,7 @@ namespace
 			<< ", \"dissolveStartNormalized\": " << Detail.Timing.fDissolveStartNormalized
 			<< " },\n        \"mesh\": { \"useModelMaterial\": " << (Detail.Mesh.bUseModelMaterial ? "true" : "false")
 			<< " },\n        \"sprite\": { \"billboard\": " << (Detail.Sprite.bBillboard ? "true" : "false")
+			<< ", \"billboardRollDegrees\": " << Detail.Sprite.fBillboardRollDegrees
 			<< " },\n        \"decal\": { \"size\": ";
 		Write_Float2(Output, Detail.Decal.vSize);
 		Output << ", \"depth\": " << Detail.Decal.fDepth << " },\n"
@@ -2082,6 +2096,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			std::isfinite(D.Timing.fAfterImageSeconds) && D.Timing.fAfterImageSeconds >= 0.f &&
 			std::isfinite(D.Timing.fDissolveStartNormalized) &&
 			D.Timing.fDissolveStartNormalized >= 0.f && D.Timing.fDissolveStartNormalized <= 1.f &&
+			std::isfinite(D.Sprite.fBillboardRollDegrees) &&
+			std::abs(D.Sprite.fBillboardRollDegrees) <= 3600.f &&
 			Is_Finite(D.Decal.vSize) && D.Decal.vSize.x > 0.f && D.Decal.vSize.y > 0.f &&
 			std::isfinite(D.Decal.fDepth) && D.Decal.fDepth > 0.f;
 		const bool_t bLerpValid =

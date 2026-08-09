@@ -6,6 +6,7 @@
 
 #include <string>
 #include <string_view>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -136,6 +137,9 @@ struct EFFECT_PARTICLE_RUNTIME_PROBE final
 
 class CEffectPlayback final
 {
+public:
+	struct PREPARED_RESOURCES;
+
 private:
 	struct PARTICLE_STATE final
 	{
@@ -208,8 +212,16 @@ private:
 	};
 
 public:
+	static bool_t Prepare_DocumentResources(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
+		std::string& strOutError);
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
+	bool_t Stage_PrevalidatedDocument(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
 		std::string& strOutError);
 	void Reset();
 	void Update(f32_t fTimeDelta, const float4x4_t& RootWorld);
@@ -230,6 +242,7 @@ public:
 		bool_t bSquareFlip,
 		f32_t fDistributionRandom,
 		bool_t bLinearBlend);
+	static uint64_t Get_VectorFieldDiskLoadCount();
 
 private:
 	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
@@ -326,6 +339,7 @@ private:
 
 private:
 	EFFECT_DOCUMENT_DESC m_Document;
+	std::shared_ptr<const PREPARED_RESOURCES> m_pPreparedResources;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
 	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;

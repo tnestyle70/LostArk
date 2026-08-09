@@ -99,7 +99,9 @@ public: /* For.PipeLine */
 public: /* For.Light */
 	
 	HRESULT Add_Light(const LIGHT_DESC& LightDesc);
-	HRESULT Render_Lights(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer);
+	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
+		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+		bool_t bEnableSceneDirectionalShadow);
 
 
 public: /* For.Font_Manager */
@@ -111,6 +113,8 @@ public: /* For.Target_Manager */
 	HRESULT Add_MRT(const wstring_t& strMRTTag, const wstring_t& strTargetTag);
 	HRESULT Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV = nullptr);
 	HRESULT End_MRT();
+	HRESULT Begin_DepthOnly(ComPtr<ID3D11DepthStencilView> pDSV);
+	HRESULT End_DepthOnly();
 	HRESULT Bind_RT_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName);
 	HRESULT Copy_RT_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D);
 
@@ -126,8 +130,12 @@ public: /* For.Picking */
 	bool_t Picking(float4_t& vOut);
 
 public: /* For.Shadow */
+	HRESULT Apply_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc);
 	HRESULT Add_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc);
+	bool_t Is_ShadowLightEnabled() const;
+	const SHADOW_LIGHT_DESC& Get_ShadowLightDesc() const;
 	HRESULT Bind_ShadowLight_ShaderResource(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
+	HRESULT Bind_ShadowLight_LightingResources(shared_ptr<class CShader> pShader);
 
 public: /* For.Frustum */	
 	void Update_Frustum_InLocalSpace(fmatrix_t WorldMatrix);

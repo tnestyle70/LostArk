@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "LobbyCommandService.h"
+#include "RenderingProfileService.h"
 
 NS_BEGIN(Engine)
 class CImGuiLayer;
@@ -73,6 +74,7 @@ private:
 private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
+	CRenderingProfileService m_RenderingProfiles;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
@@ -96,10 +98,12 @@ private:
 	bool_t m_bRenderQualityDraftInitialized = false;
 	DEBUG_TOOL m_eActiveDebugTool = DEBUG_TOOL::NONE;
 	RENDER_QUALITY_SETTINGS m_RenderQualityDraft = {};
+	SCENE_RENDERING_PROFILE m_SceneRenderingDraft = {};
+	string m_strRenderingDraftProfileId;
 	string m_strToolStatus =
 		"Select a tool. Map authoring targets the current level Area.";
 	string m_strRenderingStatus =
-		"Live values are session-only and apply on the next frame.";
+		"Rendering profiles are loaded from the published runtime catalog.";
 	string m_strProfilerCaptureStatus;
 #endif
 

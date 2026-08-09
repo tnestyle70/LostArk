@@ -20,6 +20,15 @@ struct DEFERRED_MATERIAL_PROFILE
 	f32_t fSpecularPower = 50.f;
 };
 
+/* Transient presentation energy layered over an authored character material.
+The diffuse texture remains the detail mask; no shared CMaterial is mutated. */
+struct DEFERRED_EMISSIVE_OVERRIDE
+{
+	bool_t isEnabled = false;
+	float4_t vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	f32_t fIntensity = 0.f;
+};
+
 DEFERRED_MATERIAL_PROFILE Resolve_DeferredMaterialProfile(
 	std::string_view strProfileId,
 	std::string_view strMaterialName);
@@ -28,6 +37,7 @@ HRESULT Bind_DeferredMaterialInputs(
 	Engine::CModel& Model,
 	const shared_ptr<Engine::CShader>& pShader,
 	uint32_t iMeshIndex,
-	const DEFERRED_MATERIAL_PROFILE& Profile = {});
+	const DEFERRED_MATERIAL_PROFILE& Profile = {},
+	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = nullptr);
 
 NS_END

@@ -1,0 +1,301 @@
+{
+  "schema": "lostark.combat-effect-product-source-receipt",
+  "version": 1,
+  "animationAssetId": "Warlord",
+  "characterClass": "WARLORD",
+  "productSkillId": 17030,
+  "sourceSkillIds": [
+    17030
+  ],
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "wgl_sk_pierceingspear",
+        "stageIndex": 0,
+        "stageClipIndex": 0,
+        "sequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "sourceLine": 1199
+      }
+    ]
+  },
+  "generatedSourceReceipt": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/skill.17030.source-receipt.json",
+    "sha256": "1635ba55193ed3483e005c91d93fa68969832cb977e0649ce17f485aae534ffc"
+  },
+  "normalizedGraph": {
+    "path": "Data/Effects/Imported/Warlord/CurrentCombat/Graphs/skill.17030.normalized-effect-graph.json",
+    "sha256": "3aa40a92f323daaa8aa0142c89355a88b1f52953040f7e780da1109f08c3113c"
+  },
+  "timeline": {
+    "durationSeconds": 1.8333,
+    "bindingClips": [
+      "wgl_sk_pierceingspear"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "wgl_sk_pierceingspear",
+        "sourceSkillId": 17030,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.8333,
+        "sourceLine": 1199
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 0.12,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_pc_wgl_02.Par_N_WGL_Light_03_01_LOC_INT",
+        "sourceLine": 1203,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_02.par_n_wgl_light_03_01_loc_int"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 0.12,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_pc_wgl_02.Par_N_WGL_Light_03_02_LOC_INT",
+        "sourceLine": 1204,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_02.par_n_wgl_light_03_02_loc_int"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 0.12,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_pc_wgl_02.Par_N_WGL_Light_03_01_LOC_INT",
+        "sourceLine": 1205,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_02.par_n_wgl_light_03_01_loc_int"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.6,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "sourceLine": 1207,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_filmnoise_01"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.54,
+        "globalTimeSeconds": 0.54,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1211,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.54,
+        "globalTimeSeconds": 0.54,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1212,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.5486,
+        "globalTimeSeconds": 0.5486,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 1213,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.5486,
+        "globalTimeSeconds": 0.5486,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 1214,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.5486,
+        "globalTimeSeconds": 0.5486,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 1215,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.55,
+        "globalTimeSeconds": 0.55,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_01_LOC_INT",
+        "sourceLine": 1216,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_01_01_loc_int"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.55,
+        "globalTimeSeconds": 0.55,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_02_LOC_INT",
+        "sourceLine": 1217,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_01_02_loc_int"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.55,
+        "globalTimeSeconds": 0.55,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_04_LOC_INT",
+        "sourceLine": 1218,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_01_04_loc_int"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.5584,
+        "globalTimeSeconds": 0.5584,
+        "durationSeconds": 0.3956,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 1219,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.6,
+        "globalTimeSeconds": 0.6,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_01",
+        "sourceLine": 1220,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_dust_01"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.6,
+        "globalTimeSeconds": 0.6,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_02",
+        "sourceLine": 1221,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_dust_02"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "wgl_sk_pierceingspear",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17030,
+        "localTimeSeconds": 0.6,
+        "globalTimeSeconds": 0.6,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_02",
+        "sourceLine": 1222,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_piercingspear_dust_02"
+      }
+    ]
+  },
+  "summary": {
+    "sourceSystemCount": 9,
+    "effectEventCount": 15,
+    "resolvedParticleEventCount": 13,
+    "unsupportedNotifyCount": 0,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 1,
+    "unsupportedUnresolvedUniqueCount": 117,
+    "uniqueMaterialBindingCount": 14,
+    "resolvedMaterialBindingCount": 13,
+    "runtimeResourceBindingCount": 20,
+    "resolvedRuntimeResourceBindingCount": 20,
+    "missingParticleGraphPackageCount": 0
+  }
+}

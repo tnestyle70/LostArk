@@ -396,6 +396,27 @@ def material_candidates(
     return matches
 
 
+def normalized_graph_material_candidates(
+    source_graph: dict[str, Any], source_path: str
+) -> list[dict[str, Any]]:
+    """Return exact normalized-graph rows without suffix/name guessing.
+
+    A skill source receipt already preserves the fully qualified material
+    object path used by each emitter.  That row is sufficient fallback
+    evidence when a separately exported parent-props map is unavailable, but
+    only when the exact path occurs once.  Duplicate or missing rows must stay
+    visible to the caller so product materialization can fail closed.
+    """
+    key = folded(source_path)
+    if not key:
+        return []
+    return [
+        row
+        for row in source_graph.get("materialParameterBindings", [])
+        if folded(row.get("sourceMaterialPath")) == key
+    ]
+
+
 def source_asset_packages(manifest: dict[str, Any]) -> dict[str, str]:
     packages: dict[str, str] = {}
     for row in manifest.get("assets", []):
@@ -1084,6 +1105,15 @@ def upgrade_effect_document(
             "runtimeShaderProfileId": identity["runtimeShaderProfileId"],
             "parentMaterialPath": identity["parentMaterialPath"],
             "semanticStatus": "reconstructed_profile",
+            "materialEvidenceSource": identity.get(
+                "materialEvidenceSource", "MATERIAL_MAP_EXACT"
+            ),
+            "productAdmissionStatus": identity.get(
+                "productAdmissionStatus", "BLOCKED_SOURCE_EVIDENCE"
+            ),
+            "sourceResourceBindings": copy.deepcopy(
+                identity.get("currentResourceBindings") or []
+            ),
             "textures": [
                 normalize_texture_parameter(row)
                 for row in parameters.get("textures") or []
@@ -1184,7 +1214,7 @@ def build_contract(
     source_graph: dict[str, Any],
     conversion_receipt: dict[str, Any],
     resource_manifest: dict[str, Any],
-    material_map: dict[str, Any],
+    material_map: dict[str, Any] | None = None,
     runtime_resource_root: Path | None = None,
     material_graph_evidence: dict[str, Any] | None = None,
     texture_sampling_evidence: dict[str, Any] | None = None,
@@ -1213,17 +1243,22 @@ def build_contract(
         template_counts_by_material[key][
             str(material.get("templateId") or "")
         ] += 1
+        # Hydration removes unsafe bindings from the live runtime resource
+        # list. Preserve the source-side list in sourceProfile so rerunning
+        # the diagnostic builder does not forget what it previously blocked.
+        source_profile = material.get("sourceProfile") or {}
+        for binding in source_profile.get("sourceResourceBindings", []) or []:
+            slot = str(binding.get("slotId") or "")
+            asset = str(binding.get("assetId") or "")
+            if slot and asset:
+                resources_by_material[key].setdefault(slot, asset)
         for binding in element.get("resources", []):
             slot = str(binding.get("slotId") or "")
             asset = str(binding.get("assetId") or "")
             if slot and asset:
                 resources_by_material[key].setdefault(slot, asset)
 
-    graph_rows_by_path = {
-        folded(row.get("sourceMaterialPath")): row
-        for row in source_graph.get("materialParameterBindings", [])
-        if row.get("sourceMaterialPath")
-    }
+    material_map = material_map or {"materials": {}}
     manifest_packages = source_asset_packages(resource_manifest)
     sampling_by_path = {
         folded(row.get("sourceObjectPath")): row
@@ -1241,7 +1276,10 @@ def build_contract(
     failures: list[dict[str, Any]] = []
     for key in sorted(occurrence_ids_by_material):
         source_path = source_path_spelling[key]
-        graph_row = graph_rows_by_path.get(key, {})
+        graph_candidates = normalized_graph_material_candidates(
+            source_graph, source_path
+        )
+        graph_row = graph_candidates[0] if len(graph_candidates) == 1 else {}
         candidates = material_candidates(material_map, source_path)
         expected_package = folded(graph_row.get("sourcePhysicalPackage"))
         exact_package_candidates = [
@@ -1251,14 +1289,32 @@ def build_contract(
         ]
         if len(candidates) == 1:
             selected = candidates[0]
+            material_evidence_source = "MATERIAL_MAP_EXACT"
         elif len(exact_package_candidates) == 1:
             # Material object paths are not globally unique across cooked UE3
             # packages.  The source receipt already records the package that
             # owned this occurrence, so use that evidence to disambiguate the
             # material map instead of selecting by path order.
             selected = exact_package_candidates[0]
-        else:
+            material_evidence_source = "MATERIAL_MAP_EXACT_SOURCE_PACKAGE"
+        elif not candidates and len(graph_candidates) == 1:
             selected = graph_row
+            material_evidence_source = "NORMALIZED_GRAPH_EXACT"
+        else:
+            selected = {}
+            material_evidence_source = "UNRESOLVED"
+        identity_failure_start = len(failures)
+        if not candidates and len(graph_candidates) == 0:
+            failures.append({
+                "sourceMaterialPath": source_path,
+                "status": "MISSING_NORMALIZED_GRAPH_MATERIAL_BINDING",
+            })
+        elif not candidates and len(graph_candidates) > 1:
+            failures.append({
+                "sourceMaterialPath": source_path,
+                "status": "AMBIGUOUS_NORMALIZED_GRAPH_MATERIAL_BINDING",
+                "candidateCount": len(graph_candidates),
+            })
         evidence_ref = str(selected.get("materialEvidenceRef") or "")
         if evidence_ref:
             parent_evidence = (
@@ -1394,6 +1450,13 @@ def build_contract(
                 "LOCAL_CRACK_NAMED_TEXTURE_OR_SAMPLING_CONTRACT_INCOMPLETE"
             )
         profile_members[profile_id].append(source_path)
+        source_evidence_resolved = len(failures) == identity_failure_start
+        if not source_evidence_resolved:
+            product_admission_status = "BLOCKED_SOURCE_EVIDENCE"
+        elif shader_profile_id == "effect.ue3.fallback-blocked.v1":
+            product_admission_status = "BLOCKED_FALLBACK_PROFILE"
+        else:
+            product_admission_status = "ADMITTED_RECONSTRUCTED_PROFILE"
         identities.append({
             "sourceMaterialPath": source_path,
             "sourcePhysicalPackage": source_package or None,
@@ -1402,6 +1465,9 @@ def build_contract(
             "profileId": profile_id,
             "runtimeShaderProfileId": shader_profile_id,
             "fallbackBlockedReason": fallback_blocked_reason or None,
+            "materialEvidenceSource": material_evidence_source,
+            "sourceEvidenceResolved": source_evidence_resolved,
+            "productAdmissionStatus": product_admission_status,
             "requiredRuntimeBindings": required_runtime_bindings(shader_profile_id),
             "roleResolvedRuntimeBindings": role_bindings,
             "sourceTextureRoleDiagnostics": role_diagnostics,
@@ -1490,6 +1556,21 @@ def build_contract(
         "blockedNormalBumpRuntimeBindingCount": sum(
             len(row["blockedRuntimeBindings"]) for row in identities
         ),
+        "fallbackBlockedMaterialIdentityCount": sum(
+            row["runtimeShaderProfileId"]
+            == "effect.ue3.fallback-blocked.v1"
+            for row in identities
+        ),
+        "productAdmissibleMaterialIdentityCount": sum(
+            row["productAdmissionStatus"]
+            == "ADMITTED_RECONSTRUCTED_PROFILE"
+            for row in identities
+        ),
+        "productMaterialAdmissionComplete": bool(identities) and all(
+            row["productAdmissionStatus"]
+            == "ADMITTED_RECONSTRUCTED_PROFILE"
+            for row in identities
+        ) and not failures,
     }
     contract = {
         "schema": "lostark.effect-source-material-contract",
@@ -1516,7 +1597,15 @@ def main() -> int:
     parser.add_argument("--source-graph", required=True, type=Path)
     parser.add_argument("--conversion-receipt", required=True, type=Path)
     parser.add_argument("--resource-manifest", required=True, type=Path)
-    parser.add_argument("--material-map", required=True, type=Path)
+    parser.add_argument(
+        "--material-map",
+        type=Path,
+        help=(
+            "Optional exported parent-props map. When omitted, an exact "
+            "unique materialParameterBindings row from the normalized source "
+            "graph is used; missing or duplicate rows fail closed."
+        ),
+    )
     parser.add_argument("--material-graph-evidence", type=Path)
     parser.add_argument("--texture-sampling-evidence", type=Path)
     parser.add_argument("--output", required=True, type=Path)
@@ -1529,7 +1618,7 @@ def main() -> int:
         load_json(args.source_graph),
         load_json(args.conversion_receipt),
         load_json(args.resource_manifest),
-        load_json(args.material_map),
+        load_json(args.material_map) if args.material_map is not None else {},
         material_graph_evidence=(
             load_json(args.material_graph_evidence)
             if args.material_graph_evidence is not None else None
@@ -1539,14 +1628,18 @@ def main() -> int:
             if args.texture_sampling_evidence is not None else None
         ),
     )
+    required_sources = [
+        args.effect_document,
+        args.source_graph,
+        args.conversion_receipt,
+        args.resource_manifest,
+    ]
+    if args.material_map is not None:
+        required_sources.append(args.material_map)
     receipt["sources"] = [
         {"path": path.as_posix(), "sha256": sha256_file(path)}
         for path in (
-            args.effect_document,
-            args.source_graph,
-            args.conversion_receipt,
-            args.resource_manifest,
-            args.material_map,
+            *required_sources,
             *(
                 (args.material_graph_evidence,)
                 if args.material_graph_evidence is not None else ()

@@ -39,7 +39,9 @@ enum class EFFECT_PREVIEW_FILTER : uint8_t
 {
     COMPLETE,
     SOLO_PARTICLE_SYSTEM,
+	SOLO_STANDALONE_MESHES,
 	SOLO_MESH_EMITTERS,
+	SOLO_STANDALONE_SPRITES,
 	SOLO_SPRITE_EMITTERS,
     SOLO_SELECTED,
     MUTE_SELECTED,
@@ -94,8 +96,26 @@ private:
 
     struct EFFECT_SKILL_TREE_ENTRY final
     {
+        struct PRODUCT_CUE final
+        {
+            ANIMATION_EFFECT_CUE Cue;
+            size_t iBoundClipOrdinal = 0u;
+        };
+
         PLAYER_SKILL_DEFINITION Skill;
-        shared_ptr<const EFFECT_DOCUMENT_DESC> pRuntimeDocument;
+        std::vector<PRODUCT_CUE> ProductCues;
+        size_t iSourceReferenceCount = 0u;
+        size_t iImportedReferenceCount = 0u;
+        size_t iEmptySourceReferenceCount = 0u;
+    };
+
+    struct EFFECT_PRODUCT_PREVIEW final
+    {
+        LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+            LostArk::Shared::CHARACTER_CLASS_ID::END;
+        LostArk::Shared::SKILL_ID iSkillId =
+            LostArk::Shared::INVALID_SKILL_ID;
+        EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
     };
 
     struct EFFECT_DATA_FILE_ENTRY final
@@ -190,6 +210,7 @@ private:
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
+    bool_t Try_PublishActiveProductAndReloadRuntime();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
     bool_t Try_ReloadActiveDocument();
@@ -219,7 +240,9 @@ private:
     bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
         const EFFECT_DOCUMENT_DESC& Document) const;
-    bool_t Try_SelectSkill(const std::string& strEffectAssetId);
+    bool_t Try_SelectProductCue(
+        const EFFECT_SKILL_TREE_ENTRY& Entry,
+        size_t iCueIndex);
     bool_t Try_SelectParticleSystem(const std::string& strEffectAssetId);
     bool_t Try_SelectElement(
         const std::string& strEffectAssetId,
@@ -246,6 +269,10 @@ private:
     bool_t Apply_ParticleSystemDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Apply_DetailDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Resolve_PreviewRoot(float4x4_t& OutRoot);
+    f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
+    bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
+    void Clear_ProductCuePreview();
+    void Reset_ProductCueSnapshot();
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
     void Restart_SynchronizedAnimationSequence();
@@ -282,6 +309,7 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+    optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
     EFFECT_ELEMENT_DESC m_MeshAuthoringDraft;
     optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
     optional<EFFECT_ELEMENT_DESC> m_DetailDraft;
@@ -333,6 +361,7 @@ private:
     array<char_t, 129> m_PreviewAnchorBuffer{};
 
     float4x4_t m_PreviewWorldRoot{};
+    float4x4_t m_ProductCueSnapshotRoot{};
     EFFECT_TRANSFORM_DESC m_CueTransferLocalTransform{};
     EFFECT_FOLLOW_POLICY m_eCueTransferFollowPolicy =
         EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -359,6 +388,7 @@ private:
     bool_t m_bDiscardConfirmationRequested = false;
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
+    bool_t m_bProductCueSnapshotCaptured = false;
     uint64_t m_iFrameNumber = 0u;
     uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
     uint64_t m_iAnimationClipLabelTargetGeneration = 0u;

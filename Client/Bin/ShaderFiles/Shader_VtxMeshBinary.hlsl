@@ -12,6 +12,9 @@ uint g_HasSpecularTexture = 0;
 uint g_HasOpacityTexture = 0;
 float g_EmissiveIntensity = 1.f;
 float4 g_EmissiveColor = 1.f;
+uint g_HasFullSurfaceEmissiveOverride = 0;
+float4 g_FullSurfaceEmissiveColor = 1.f;
+float g_FullSurfaceEmissiveIntensity = 0.f;
 float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
 float2 g_UVScale = float2(1.f, 1.f);
@@ -133,6 +136,14 @@ PS_OUT PS_MAIN(VS_OUT input)
         output.vEmissive = float4(
             emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
     }
+    if (0 != g_HasFullSurfaceEmissiveOverride)
+    {
+        const float textureDetail = saturate(
+            0.35f + dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
+        output.vEmissive.rgb +=
+            g_FullSurfaceEmissiveColor.rgb *
+            g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+    }
     return output;
 }
 
@@ -169,6 +180,15 @@ PS_OUT_FORWARD PS_MAIN_SKY(VS_OUT input)
     float4 color = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
     output.vColor = float4(color.rgb * g_ColorTint.rgb, 1.f);
     return output;
+}
+
+void PS_MAIN_SHADOW(VS_OUT input)
+{
+    float4 diffuse =
+        g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord) *
+        g_ColorTint;
+    if (diffuse.a < 0.3f)
+        discard;
 }
 
 technique11 DefaultTechnique
@@ -280,5 +300,32 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+    }
+    pass ShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+    pass ShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+    pass ShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
     }
 }

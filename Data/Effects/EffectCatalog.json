@@ -2,8 +2,60 @@
   "formatVersion": 1,
   "effects": [
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.effect.json"
+      "effectAssetId": "effect.artist.skill.31000.ba1",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba2",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba3",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba4",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31200.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31200.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31210.ba1",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31210.ba4",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31420.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31420.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31430.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31430.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31460.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31460.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31480.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31480.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31910.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31910.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31930.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31930.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31930.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31930.authored-baseline.clip2.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
@@ -22,48 +74,336 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba4.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050100",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050100.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.authored-baseline.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050120",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.authored-baseline.clip2.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050160",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.authored-baseline.clip3.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050180",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.authored-baseline.clip2.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050210",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.authored-baseline.clip3.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050220",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.authored-baseline.clip4",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.authored-baseline.clip4.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050230",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050180.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.authored-baseline.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050240",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.authored-baseline.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050500",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050220.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.authored-baseline.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050520",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.authored-baseline.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050540",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050240.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050520.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba4",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34040.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34040.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34090.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34090.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34100.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34100.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34100.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba2.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34160.ba1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34160.ba2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34540.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34540.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34550.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34550.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34560.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34560.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34570.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34570.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34580.ba1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34580.ba2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.authored-baseline.clip4",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.authored-baseline.clip4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34650.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34650.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17000.ba1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17000.ba2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17000.ba3",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17030.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17030.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17040.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17040.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17060.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17060.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17080.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17080.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17090.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17090.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17100.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17100.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17110.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17110.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17140.authored-baseline",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17140.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17240.ba1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17240.ba2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17240.ba3",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17250.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17250.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip1",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip2",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip3",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip4",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip5",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip5.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip8",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip8.effect.json"
     }
   ]
 }

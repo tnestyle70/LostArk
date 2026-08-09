@@ -1,0 +1,321 @@
+{
+  "schema": "lostark.combat-effect-product-source-receipt",
+  "version": 1,
+  "animationAssetId": "DimensionMaster",
+  "characterClass": "DIMENSIONMASTER",
+  "productSkillId": 2050100,
+  "sourceSkillIds": [
+    2050100
+  ],
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "stageIndex": 0,
+        "stageClipIndex": 0,
+        "sequenceIndex": 0,
+        "sourceSkillId": 2050100,
+        "sourceLine": 981
+      }
+    ]
+  },
+  "generatedSourceReceipt": {
+    "path": "Data/Effects/Imported/DimensionMaster/skill.2050100.source-receipt.json",
+    "sha256": "d29132531438245d3c806ee1ecd4c84e40a02e7cd6cfc2e735912a7959848ead"
+  },
+  "normalizedGraph": {
+    "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050100/skill.2050100.normalized-effect-graph.json",
+    "sha256": "fe853dfbae7bd04f3e449688421f56f5d660d81617f4d85454ecce362730ca08"
+  },
+  "timeline": {
+    "durationSeconds": 1.4,
+    "bindingClips": [
+      "pc_sp_m_00_sk_sk_nailstrike_01"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.4,
+        "sourceLine": 981
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1",
+        "sourceLine": 986,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "sourceLine": 987,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1",
+        "sourceLine": 988,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "sourceLine": 989,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1",
+        "sourceLine": 990,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "sourceLine": 991,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1",
+        "sourceLine": 992,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_06_1"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1",
+        "sourceLine": 993,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "sourceLine": 994,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1",
+        "sourceLine": 995,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_06_1"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1",
+        "sourceLine": 996,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "sourceLine": 997,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 998,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 999,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1000,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1001,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-017",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1002,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-018",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1003,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-019",
+        "clip": "pc_sp_m_00_sk_sk_nailstrike_01",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.28,
+        "globalTimeSeconds": 0.28,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 1004,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      }
+    ]
+  },
+  "summary": {
+    "sourceSystemCount": 3,
+    "effectEventCount": 19,
+    "resolvedParticleEventCount": 12,
+    "unsupportedNotifyCount": 0,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 0,
+    "unsupportedUnresolvedUniqueCount": 79,
+    "uniqueMaterialBindingCount": 16,
+    "resolvedMaterialBindingCount": 16,
+    "runtimeResourceBindingCount": 26,
+    "resolvedRuntimeResourceBindingCount": 26
+  }
+}

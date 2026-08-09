@@ -1,0 +1,4304 @@
+{
+  "schema": "lostark.effect-source-receipt",
+  "schemaVersion": 2,
+  "characterClass": "WARLORD",
+  "inputSlot": "E",
+  "skillId": 17080,
+  "productSkillId": 17080,
+  "sourceSkillIds": [
+    17080
+  ],
+  "animationAssetId": "Warlord",
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "wgl_sk_dashupperfire_01",
+        "sequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "sourceLine": 372
+      },
+      {
+        "clip": "wgl_sk_dashupperfire_02",
+        "sequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "sourceLine": 398
+      }
+    ]
+  },
+  "animationVisualContract": {
+    "combinedMeshAnimationStatus": "ORIGINAL_MATCH_CONFIRMED",
+    "combinedMeshAnimationOwner": "Animation/CModel",
+    "reconstructCombinedMeshAsEffectElement": false,
+    "effectExtractionScope": [
+      "particle",
+      "texture_or_sprite",
+      "trail",
+      "distortion",
+      "post_effect",
+      "particle_owned_mesh_emitter"
+    ]
+  },
+  "timeline": {
+    "durationSeconds": 3.5,
+    "bindingClips": [
+      "wgl_sk_dashupperfire_01",
+      "wgl_sk_dashupperfire_02"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "wgl_sk_dashupperfire_01",
+        "sourceSkillId": 17080,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.8,
+        "sourceLine": 372
+      },
+      {
+        "sequenceIndex": 1,
+        "clip": "wgl_sk_dashupperfire_02",
+        "sourceSkillId": 17080,
+        "offsetSeconds": 1.8,
+        "lengthSeconds": 1.7,
+        "sourceLine": 398
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1,
+        "globalTimeSeconds": 0.1,
+        "durationSeconds": 0.3,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "sourceLine": 376,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_02_01"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1,
+        "globalTimeSeconds": 0.1,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "TrailGhostEffect",
+        "sourceAsset": "",
+        "sourceLine": 377,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1,
+        "globalTimeSeconds": 0.1,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "TrailGhostEffect",
+        "sourceAsset": "",
+        "sourceLine": 378,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1,
+        "globalTimeSeconds": 0.1,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "TrailGhostEffect",
+        "sourceAsset": "",
+        "sourceLine": 379,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.3,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "sourceLine": 383,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_filmnoise_01"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.3,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 384,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.3,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 385,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.3,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 386,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.2,
+        "globalTimeSeconds": 0.2,
+        "durationSeconds": 0.3,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 387,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.27,
+        "globalTimeSeconds": 0.27,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 389,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.29,
+        "globalTimeSeconds": 0.29,
+        "durationSeconds": 0.17,
+        "kind": "EFFECT",
+        "sourceType": "Trails",
+        "sourceAsset": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+        "sourceLine": 390,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.29,
+        "globalTimeSeconds": 0.29,
+        "durationSeconds": 0.17,
+        "kind": "EFFECT",
+        "sourceType": "Trails",
+        "sourceAsset": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+        "sourceLine": 391,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "wgl_sk_dashupperfire_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.29,
+        "globalTimeSeconds": 0.29,
+        "durationSeconds": 0.17,
+        "kind": "EFFECT",
+        "sourceType": "Trails",
+        "sourceAsset": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+        "sourceLine": 392,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "sourceLine": 404,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_01"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.35,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 405,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "sourceLine": 406,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_01"
+      },
+      {
+        "eventId": "source-event-017",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.35,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 407,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-018",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "sourceLine": 408,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_01"
+      },
+      {
+        "eventId": "source-event-019",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.35,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+        "sourceLine": 409,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_07"
+      },
+      {
+        "eventId": "source-event-020",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "sourceLine": 410,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_02"
+      },
+      {
+        "eventId": "source-event-021",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.12,
+        "globalTimeSeconds": 1.92,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "sourceLine": 411,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_02"
+      },
+      {
+        "eventId": "source-event-022",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1263,
+        "globalTimeSeconds": 1.9263,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_ZoomBlur_01",
+        "sourceLine": 412,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_01"
+      },
+      {
+        "eventId": "source-event-023",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.1372,
+        "globalTimeSeconds": 1.9372,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_03_01",
+        "sourceLine": 413,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_03_01"
+      },
+      {
+        "eventId": "source-event-024",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.14,
+        "globalTimeSeconds": 1.94,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 414,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-025",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.14,
+        "globalTimeSeconds": 1.94,
+        "durationSeconds": 0.3941,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 415,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-026",
+        "clip": "wgl_sk_dashupperfire_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 17080,
+        "localTimeSeconds": 0.293,
+        "globalTimeSeconds": 2.093,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_WGL_01.Par_E_Reload_01",
+        "sourceLine": 417,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_wgl_01.par_e_reload_01"
+      }
+    ]
+  },
+  "sourcePackages": [
+    {
+      "logicalPackage": "FX_CM_02",
+      "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
+      "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
+      "graphSummary": {
+        "graphObjectCount": 7014,
+        "particleSystemCount": 194,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 636,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 6908,
+        "decodedInterpCurveCount": 47,
+        "decodedInterpCurvePointCount": 151,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 255488,
+      "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
+    },
+    {
+      "logicalPackage": "FX_PC_WGL_01",
+      "physicalPackage": "YGI3SWD3S9543D18G9KMHS0TM.upk",
+      "graphSha256": "d8e88c9a7487033574e1dab7b8508af6e487292162834e620926679b23b8b55b",
+      "graphSummary": {
+        "graphObjectCount": 13121,
+        "particleSystemCount": 171,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1336,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 12788,
+        "decodedInterpCurveCount": 14,
+        "decodedInterpCurvePointCount": 42,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 465876,
+      "sourcePackageSha256": "6f5baf0e60ee879b6b1aa6e0342f65c528c64f08917c697b0627f3c6222ec2f3"
+    },
+    {
+      "logicalPackage": "FX_PC_WGL_06",
+      "physicalPackage": "YGI3SWD3S9543D17G9KMHS0TM.upk",
+      "graphSha256": "2c51da088a13c6e556941621f849db6c9d157346709943fab24ce4bb28f93a15",
+      "graphSummary": {
+        "graphObjectCount": 9637,
+        "particleSystemCount": 112,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1344,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 7910,
+        "decodedInterpCurveCount": 2,
+        "decodedInterpCurvePointCount": 6,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 288534,
+      "sourcePackageSha256": "a32502c309581a27d409ce07832401feb2baf446c3c11287d337b2ab07af3862"
+    },
+    {
+      "logicalPackage": "FX_POST",
+      "physicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "graphSha256": "7b0572546d3aab789d288c10e42c1854c0dd8701ba133869013d359cd171caa3",
+      "graphSummary": {
+        "graphObjectCount": 659,
+        "particleSystemCount": 61,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 78,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 503,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 3,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 91566,
+      "sourcePackageSha256": "cd538c071af21b171aabeb7cb3ac95e789a50b6fa6cc1f811b5c35e172df3c99"
+    }
+  ],
+  "sourceSystems": [
+    {
+      "sourceSystemId": "fx_cm_02.light.par_mp_light_07",
+      "sourceAsset": "FX_CM_02.Light.Par_MP_Light_07",
+      "logicalPackage": "FX_CM_02",
+      "objectName": "par_mp_light_07",
+      "objectPath": "light.par_mp_light_07",
+      "rootNodeId": "FX_CM_02:export:7022",
+      "summary": {
+        "nodeCount": 14,
+        "edgeCount": 19,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 6,
+        "distributionCount": 4,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 5,
+        "featureClasses": [
+          "efparticlemoduletypedatalight"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_CM_02:export:4136",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -78,
+          "objectPath": "enginematerials.defaultparticle",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_wgl_01.par_e_reload_01",
+      "sourceAsset": "FX_PC_WGL_01.Par_E_Reload_01",
+      "logicalPackage": "FX_PC_WGL_01",
+      "objectName": "par_e_reload_01",
+      "objectPath": "par_e_reload_01",
+      "rootNodeId": "FX_PC_WGL_01:export:12997",
+      "summary": {
+        "nodeCount": 12,
+        "edgeCount": 16,
+        "emitterCount": 3,
+        "lodLevelCount": 4,
+        "moduleCount": 5,
+        "distributionCount": 0,
+        "resourceBindingCount": 2,
+        "unresolvedExternalReferenceCount": 42,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_WGL_01:export:6953",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -195,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_pa_bull_01_02_ma",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_01:export:6954",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -126,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_smokeseq_01_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_01",
+      "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+      "logicalPackage": "FX_PC_WGL_06",
+      "objectName": "par_o_wgl_duf_01_01",
+      "objectPath": "par_o_wgl_duf_01_01",
+      "rootNodeId": "FX_PC_WGL_06:export:9611",
+      "summary": {
+        "nodeCount": 98,
+        "edgeCount": 134,
+        "emitterCount": 22,
+        "lodLevelCount": 44,
+        "moduleCount": 31,
+        "distributionCount": 0,
+        "resourceBindingCount": 23,
+        "unresolvedExternalReferenceCount": 424,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5697",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -159,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_3_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5680",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -106,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5681",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -160,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_skull_02_23_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5682",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -105,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_shine_01_11_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5679",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -127,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_pa_fire_18_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5696",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -167,
+          "objectPath": "fx_m_mi_05.fx_mi.fx_e_pa_cd_17_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5698",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -106,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5688",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -97,
+          "objectPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5689",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -97,
+          "objectPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5684",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5683",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5685",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -88,
+          "objectPath": "fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5686",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -154,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_h_pa_ap_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5687",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -154,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_h_pa_ap_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5699",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -128,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_pa_fire_18_03_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5690",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -128,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_pa_fire_18_03_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5691",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -136,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5692",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -136,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5693",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -102,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5694",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5695",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5700",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -96,
+          "objectPath": "fx_m_mi_05.fx_m.fx_a_me_panning_02_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:7791",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1784,
+          "objectPath": "fx_sm_00.fm_a_hemisphere_012",
+          "role": "mesh"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_01_02",
+      "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+      "logicalPackage": "FX_PC_WGL_06",
+      "objectName": "par_o_wgl_duf_01_02",
+      "objectPath": "par_o_wgl_duf_01_02",
+      "rootNodeId": "FX_PC_WGL_06:export:9612",
+      "summary": {
+        "nodeCount": 48,
+        "edgeCount": 61,
+        "emitterCount": 11,
+        "lodLevelCount": 22,
+        "moduleCount": 14,
+        "distributionCount": 0,
+        "resourceBindingCount": 11,
+        "unresolvedExternalReferenceCount": 234,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5710",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -159,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_3_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5701",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -106,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5702",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -105,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_shine_01_11_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5709",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -167,
+          "objectPath": "fx_m_mi_05.fx_mi.fx_e_pa_cd_17_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5711",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -106,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5705",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -97,
+          "objectPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5706",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -97,
+          "objectPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5703",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5704",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -154,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_h_pa_ap_01_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5707",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5708",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_02_01",
+      "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+      "logicalPackage": "FX_PC_WGL_06",
+      "objectName": "par_o_wgl_duf_02_01",
+      "objectPath": "par_o_wgl_duf_02_01",
+      "rootNodeId": "FX_PC_WGL_06:export:9613",
+      "summary": {
+        "nodeCount": 11,
+        "edgeCount": 14,
+        "emitterCount": 2,
+        "lodLevelCount": 4,
+        "moduleCount": 4,
+        "distributionCount": 0,
+        "resourceBindingCount": 2,
+        "unresolvedExternalReferenceCount": 52,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5712",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -98,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5713",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -135,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_04_2_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_wgl_06.par_o_wgl_duf_03_01",
+      "sourceAsset": "FX_PC_WGL_06.Par_O_WGL_DUF_03_01",
+      "logicalPackage": "FX_PC_WGL_06",
+      "objectName": "par_o_wgl_duf_03_01",
+      "objectPath": "par_o_wgl_duf_03_01",
+      "rootNodeId": "FX_PC_WGL_06:export:9614",
+      "summary": {
+        "nodeCount": 5,
+        "edgeCount": 5,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 1,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 24,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_WGL_06:export:5714",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -98,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_post.fx_par.par_c_filmnoise_01",
+      "sourceAsset": "FX_Post.FX_Par.Par_C_FilmNoise_01",
+      "logicalPackage": "FX_POST",
+      "objectName": "par_c_filmnoise_01",
+      "objectPath": "fx_par.par_c_filmnoise_01",
+      "rootNodeId": "FX_POST:export:1542",
+      "summary": {
+        "nodeCount": 4,
+        "edgeCount": 3,
+        "emitterCount": 1,
+        "lodLevelCount": 1,
+        "moduleCount": 1,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 8,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_POST:export:1299",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": 883,
+          "objectPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_01",
+      "sourceAsset": "FX_Post.FX_Par.Par_C_ZoomBlur_01",
+      "logicalPackage": "FX_POST",
+      "objectName": "par_c_zoomblur_01",
+      "objectPath": "fx_par.par_c_zoomblur_01",
+      "rootNodeId": "FX_POST:export:1556",
+      "summary": {
+        "nodeCount": 5,
+        "edgeCount": 5,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 1,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 16,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_POST:export:1313",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": 893,
+          "objectPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+          "role": "material"
+        }
+      ]
+    }
+  ],
+  "materialParameterBindings": [
+    {
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
+      "sourceLogicalPackage": "bfx_m_mi_00",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "bfx_mi.bfx_d_pa_circ_01_02_ad",
+      "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "materialPath": "bfx_mi.bfx_d_pa_circ_01_02_ad",
+      "objectName": "bfx_d_pa_circ_01_02_ad",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m.bfx_d_pa_circ_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "02.hardness",
+          "value": 0.0
+        },
+        {
+          "name": "03.spherepower",
+          "value": 3.0
+        },
+        {
+          "name": "04.sphere_str",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_shine_01_11_ad",
+      "sourceLogicalPackage": "bfx_m_mi_00",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "bfx_mi.bfx_d_pa_shine_01_11_ad",
+      "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "materialPath": "bfx_mi.bfx_d_pa_shine_01_11_ad",
+      "objectName": "bfx_d_pa_shine_01_11_ad",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m.bfx_d_pa_shine_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "00.noisepower",
+          "value": 1.0
+        },
+        {
+          "name": "00.noisestr",
+          "value": 20.0
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 0.8500000238418579
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 1.3300000429153442
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 1.7000000476837158
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": 0.9750000238418579
+        },
+        {
+          "name": "power",
+          "value": 4.0
+        },
+        {
+          "name": "str",
+          "value": 1.3300000429153442
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+      "sourceLogicalPackage": "bfx_m_mi_00",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+      "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "materialPath": "bfx_mi.bfx_d_pa_smoke_ulit_01_05_tr",
+      "objectName": "bfx_d_pa_smoke_ulit_01_05_tr",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m.bfx_d_pa_smokethin_unlit_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "map_a",
+          "texture": "fx_tex_02.fx_d_cloud_033"
+        },
+        {
+          "name": "map_b",
+          "texture": "fx_tex_02.fx_d_noise_031"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "map_str",
+          "value": 3.0
+        },
+        {
+          "name": "map_a_uvscale",
+          "value": 1.0
+        },
+        {
+          "name": "map_b_uvscale",
+          "value": 2.0999999046325684
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "sourceLogicalPackage": "enginematerials",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+      "candidateCount": 0,
+      "candidates": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_a_pa_firework_01_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_m.fx_a_pa_firework_01_ad",
+      "objectName": "fx_a_pa_firework_01_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_01_1_ad",
+      "objectName": "fx_a_pa_db_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_007"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_bull_01_02_ma",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_bull_01_02_ma",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_pa_bull_01_02_ma",
+      "objectName": "fx_d_pa_bull_01_02_ma",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ma",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_02.fx_d_environ_010"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "dynamic_parameter_explanation",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_desaturation",
+          "value": 0.5
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_fire_18_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_fire_18_01_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_pa_fire_18_01_tr",
+      "objectName": "fx_d_pa_fire_18_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_fire_18_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "map_a",
+          "texture": "fx_tex_high_03.fx_d_fire_018"
+        },
+        {
+          "name": "map_b",
+          "texture": "fx_tex_high_03.fx_d_fire_018_1"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.bump",
+          "value": 1.5
+        }
+      ],
+      "vectors": [
+        {
+          "name": "01.firecolor",
+          "value": {
+            "r": 9.0,
+            "g": 2.66,
+            "b": 1.0,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "02.illuminationcolor",
+          "value": {
+            "r": 3.0,
+            "g": 0.95,
+            "b": 0.5,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "03.smokecolor",
+          "value": {
+            "r": 0.4,
+            "g": 0.4,
+            "b": 0.4,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "04.optioncolor",
+          "value": {
+            "r": 3.0,
+            "g": 1.0,
+            "b": 0.5,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_fire_18_03_dt_tr",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_fire_18_03_dt_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_pa_fire_18_03_dt_tr",
+      "objectName": "fx_d_pa_fire_18_03_dt_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_fire_18_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "map_a",
+          "texture": "fx_tex_high_03.fx_d_fire_019"
+        },
+        {
+          "name": "map_b",
+          "texture": "fx_tex_high_03.fx_d_fire_019_1"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.bias_alpha",
+          "value": 100.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "01.firecolor",
+          "value": {
+            "r": 12.0,
+            "g": 3.5,
+            "b": 1.0,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "02.illuminationcolor",
+          "value": {
+            "r": 4.0,
+            "g": 1.0,
+            "b": 0.4,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "03.smokecolor",
+          "value": {
+            "r": 0.1,
+            "g": 0.1,
+            "b": 0.1,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "04.optioncolor",
+          "value": {
+            "r": 4.0,
+            "g": 0.75,
+            "b": 0.2,
+            "a": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_04_2_tr",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_e_pa_fd_04_2_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_e_pa_fd_04_2_tr",
+      "objectName": "fx_e_pa_fd_04_2_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_noise_tex",
+          "texture": "fx_tex_03.fx_e_fluid_007"
+        },
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_03.fx_e_fluid_007"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "depth_alpha_bias",
+          "value": -10.0
+        },
+        {
+          "name": "dissolve_noise_intensity",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_noise_power",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_power",
+          "value": 50.0
+        },
+        {
+          "name": "edge_intensity",
+          "value": 1.0
+        },
+        {
+          "name": "edge_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_desaturation",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        },
+        {
+          "name": "uv_scale",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "dissolve_color&intensity",
+          "value": {
+            "r": 0.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_e_pa_fd_07_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_e_pa_fd_07_1_ad",
+      "objectName": "fx_e_pa_fd_07_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_e_pa_twinkle_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "add_emissive_tex",
+          "texture": null
+        },
+        {
+          "name": "mask_tex",
+          "texture": "fx_tex_03.fx_e_fluid_006"
+        },
+        {
+          "name": "twinkle_tex",
+          "texture": "fx_tex_02.fx_d_noise_003"
+        },
+        {
+          "name": "twinkle_tex_01",
+          "texture": "fx_tex_02.fx_d_noise_003"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "add_emissive_intensity",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "emissive_paning",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tiling",
+          "value": 1.0
+        },
+        {
+          "name": "twinkle_intensity",
+          "value": 30.0
+        },
+        {
+          "name": "twinkle_paning",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "twinkle_tiling",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_h_pa_ap_01_1_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_h_pa_ap_01_1_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_h_pa_ap_01_1_tr",
+      "objectName": "fx_h_pa_ap_01_1_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_noise_tex",
+          "texture": "fx_tex_03.fx_e_fluid_026"
+        },
+        {
+          "name": "alpha_tex",
+          "texture": "fx_tex_04.fx_h_hit_01"
+        },
+        {
+          "name": "emissive_tex",
+          "texture": "fx_h_w_01.fx_tex.fx_h_wave_04"
+        },
+        {
+          "name": "uv_noise_01_tex",
+          "texture": "fx_tex_01.fx_c_noise_005"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "dissolve_noise_intensity",
+          "value": 2.0
+        },
+        {
+          "name": "dissolve_noise_power",
+          "value": 1.5
+        },
+        {
+          "name": "dissolve_power",
+          "value": 100.0
+        },
+        {
+          "name": "edge_intensity",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "edge_power",
+          "value": 5.0
+        },
+        {
+          "name": "dynamic_parameter_explanation",
+          "value": 2.0
+        },
+        {
+          "name": "emissive_desaturation",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_01_intensity",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_01_panning_x",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "uv_noise_01_panning_y",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_01_tiling_x",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_01_tiling_y",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "dissolve_color&intensity",
+          "value": {
+            "r": 0.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_1_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_pa_missiletrail_01_1_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_m_pa_missiletrail_01_1_tr",
+      "objectName": "fx_m_pa_missiletrail_01_1_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_m_pa_missiletrail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "alpha_tex",
+          "texture": "fx_tex_05.fx_m_atypical_001_cl"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_021"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_disslove_tex_coord_g",
+          "value": 5.0
+        },
+        {
+          "name": "alpha_disslove_tex_coord_r",
+          "value": 4.0
+        },
+        {
+          "name": "dissolve_hardness",
+          "value": 1.5
+        },
+        {
+          "name": "dissolve_r",
+          "value": 0.5
+        },
+        {
+          "name": "alpha_tex_g_texcoord",
+          "value": 1.0
+        },
+        {
+          "name": "alpha_tex_positon_r",
+          "value": -0.4000000059604645
+        },
+        {
+          "name": "alpha_tex_r_texcoord",
+          "value": 1.2999999523162842
+        },
+        {
+          "name": "alpha_tex_rotator",
+          "value": 6.28000020980835
+        },
+        {
+          "name": "emissive_tex_core_positon_r",
+          "value": -0.800000011920929
+        },
+        {
+          "name": "emissive_tex_core_r",
+          "value": 2.0
+        },
+        {
+          "name": "uv_noise_head_velue",
+          "value": 3.0
+        },
+        {
+          "name": "uvnoise_tex_01_g_texcoord",
+          "value": 1.2999999523162842
+        },
+        {
+          "name": "uvnoise_tex_01_r_texcoord",
+          "value": 0.5
+        },
+        {
+          "name": "uvnoise_tex_02_g_texcoord",
+          "value": 0.5
+        },
+        {
+          "name": "uvnoise_tex_02_r_texcoord",
+          "value": 0.5
+        },
+        {
+          "name": "emissive_tex_power",
+          "value": 2.0
+        },
+        {
+          "name": "emissive_tex_strength",
+          "value": 10.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_3_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_pa_missiletrail_01_3_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_m_pa_missiletrail_01_3_tr",
+      "objectName": "fx_m_pa_missiletrail_01_3_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_m_pa_missiletrail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "alpha_tex",
+          "texture": "fx_tex_04.fx_i_fragment_02_cl"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_021"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_disslove_tex_coord_g",
+          "value": 5.0
+        },
+        {
+          "name": "alpha_disslove_tex_coord_r",
+          "value": 2.0
+        },
+        {
+          "name": "dissolve_hardness",
+          "value": 1.5
+        },
+        {
+          "name": "dissolve_r",
+          "value": 0.5
+        },
+        {
+          "name": "alpha_out_falloff",
+          "value": 5.0
+        },
+        {
+          "name": "alpha_tex_g_texcoord",
+          "value": 1.0
+        },
+        {
+          "name": "alpha_tex_positon_g",
+          "value": -0.30000001192092896
+        },
+        {
+          "name": "alpha_tex_positon_r",
+          "value": 0.0
+        },
+        {
+          "name": "alpha_tex_r_texcoord",
+          "value": 1.0
+        },
+        {
+          "name": "alpha_tex_rotator",
+          "value": 0.0
+        },
+        {
+          "name": "alpha_tex_strength",
+          "value": 20.0
+        },
+        {
+          "name": "emissive_tex_backvelue",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "emissive_tex_core_g",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_core_g_02",
+          "value": 4.0
+        },
+        {
+          "name": "emissive_tex_core_positon_g",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_core_positon_r",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_core_r",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_head_velue",
+          "value": 3.0
+        },
+        {
+          "name": "uvnoise_tex_01_g_texcoord",
+          "value": 4.0
+        },
+        {
+          "name": "uvnoise_tex_01_r_texcoord",
+          "value": 1.0
+        },
+        {
+          "name": "uvnoise_tex_02_g_texcoord",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoise_tex_02_r_texcoord",
+          "value": 2.0
+        },
+        {
+          "name": "emissive_tex_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_strength",
+          "value": 55.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_skull_02_23_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 2,
+      "catalogKey": "fx_mi.fx_m_pa_skull_02_23_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_m_pa_skull_02_23_tr",
+      "objectName": "fx_m_pa_skull_02_23_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_m_pa_skull_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_tex",
+          "texture": "fx_tex_05.fx_m_noise_001"
+        },
+        {
+          "name": "uv_noise_tex_01",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        },
+        {
+          "name": "mainalpha_tex",
+          "texture": "fx_tex_03.fx_e_ring_001_cl"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_background_velue",
+          "value": 50.0
+        },
+        {
+          "name": "alpha_hardness",
+          "value": 1.0
+        },
+        {
+          "name": "alpha_position_x",
+          "value": 0.0
+        },
+        {
+          "name": "alpha_position_y",
+          "value": 0.05000000074505806
+        },
+        {
+          "name": "alpha_radius",
+          "value": 0.25
+        },
+        {
+          "name": "alpha_strength",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_hardness",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_pan_y",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "dissolve_texcoord_x",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "dissolve_texcoord_y",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "dissolve_velue",
+          "value": -1.0
+        },
+        {
+          "name": "emissive_background_velue",
+          "value": 5.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "emissive_strength",
+          "value": 1.0
+        },
+        {
+          "name": "maintax_move_x",
+          "value": -0.15000000596046448
+        },
+        {
+          "name": "maintax_move_y",
+          "value": -0.15000000596046448
+        },
+        {
+          "name": "maintax_texcoord_x",
+          "value": 1.2999999523162842
+        },
+        {
+          "name": "maintax_texcoord_y",
+          "value": 1.2999999523162842
+        },
+        {
+          "name": "noise_pan_speed",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_velue_01",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_velue_02",
+          "value": 4.0
+        },
+        {
+          "name": "uv_noise_velue_all",
+          "value": 4.0
+        },
+        {
+          "name": "uvnoise_texcoord_02_x",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoise_texcoord_02_y",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoise_texcoord_x",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoise_texcoord_y",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoisetex_move_x",
+          "value": -0.5
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_a_me_panning_02_ad",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_a_me_panning_02_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_a_me_panning_02_ad",
+      "objectName": "fx_a_me_panning_02_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_b_pa_cd_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_b_pa_cd_02_tr",
+      "objectName": "fx_b_pa_cd_02_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_c_pa_aura_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_c_pa_aura_02_tr",
+      "objectName": "fx_c_pa_aura_02_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_smokeseq_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_c_pa_smokeseq_01_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_c_pa_smokeseq_01_tr",
+      "objectName": "fx_c_pa_smokeseq_01_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_mi.fx_e_pa_cd_17_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_e_pa_cd_17_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_mi.fx_e_pa_cd_17_tr",
+      "objectName": "fx_e_pa_cd_17_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_e_pa_auradissolve_01",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_tex",
+          "texture": "fx_tex_03.fx_e_cloud_004_cl"
+        },
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_01.fx_c_cloud_012"
+        },
+        {
+          "name": "noise_tex",
+          "texture": "fx_tex_03.fx_e_noise_003"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "22",
+          "value": 0.07500000298023224
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "sourceLogicalPackage": "fx_mi",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "sourcePhysicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "materialPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "objectName": "fx_c_pa_filmnoise_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_po_filmnoise_01",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "channel spread range",
+          "value": 1.0
+        },
+        {
+          "name": "desaturation value",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "circle radius",
+          "value": 20.0
+        },
+        {
+          "name": "circleedge hardness",
+          "value": 1.5
+        },
+        {
+          "name": "b channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "b noise strength",
+          "value": 0.003000000026077032
+        },
+        {
+          "name": "g channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "g noise strength",
+          "value": 0.004999999888241291
+        },
+        {
+          "name": "r channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "r noise strength",
+          "value": 0.004999999888241291
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "sourceLogicalPackage": "fx_mi",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "sourcePhysicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "materialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "objectName": "fx_c_pa_zoomblur_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_po_zoomblur_01",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "circle radius",
+          "value": 15.0
+        },
+        {
+          "name": "circleedge hardness",
+          "value": 5.0
+        }
+      ],
+      "vectors": []
+    }
+  ],
+  "runtimeResourceBindings": [
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_a_hemisphere_012",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Meshes/FX_SM_00/fm_a_hemisphere_012.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_h_w_01.fx_tex.fx_h_wave_04",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_H_W_01/fx_h_wave_04.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_00/fx_a_fragment_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_01.fx_c_cloud_012",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_01/fx_c_cloud_012.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_01.fx_c_noise_005",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_01/fx_c_noise_005.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_cloud_033",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_cloud_033.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_environ_010",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_environ_010.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_003.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_021",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_021.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_030",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_030.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_031",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_031.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_cloud_004_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_cloud_004_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_fluid_006",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_fluid_006.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_fluid_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_fluid_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_fluid_026",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_fluid_026.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_noise_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_noise_003.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_ring_001_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_h_hit_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_04/fx_h_hit_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_fragment_02_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_04/fx_i_fragment_02_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_atypical_001_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_05/fx_m_atypical_001_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_05/fx_m_noise_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_d_fire_018",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_HIGH_03/fx_d_fire_018.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_d_fire_018_1",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_HIGH_03/fx_d_fire_018_1.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_d_fire_019",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_HIGH_03/fx_d_fire_019.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_d_fire_019_1",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Warlord/Textures/FX_TEX_HIGH_03/fx_d_fire_019_1.dds",
+      "candidateCount": 1
+    }
+  ],
+  "unsupportedUnresolved": [
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 32,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 45,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesubuv_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulerotation_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulecolor_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulesubuv_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_h_cuttree_02.particlemodulespawn_23",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_l_dustbust_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_13.light.par_d_unseallight_start_01.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_g_itr_pot01.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishhook_02.particlemodulespawn_4",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_stone_001.particlemodulelifetime_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulespawn_4",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_hit_rifle_02.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulecolorscaleoverlife_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemoduleparameterdynamic_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitblack_03.particlemodulespawn_4",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitfirebottle_01.particlemodulesize_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitfirecri_01.particlemodulesubuv_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitice_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_h_rhaw_hit_01_1.particlemodulesizemultiplylife_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_swp_defaultbackcri_01.particlemodulesize_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulesizemultiplylife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulesize_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolor_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_mbd_convictionhit_04_01.particlemodulelifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_wdr_hit_backcri_01.particlemodulelifetime_23",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_01.particlemodulelifetime_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulelocation_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulelocation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulesizemultiplylife_46",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_o_hit_shotguncri_close_01.particlemodulecolorscaleoverlife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_u_kzcg_skhit_nightlea_fluid_01.particlemoduleparameterdynamic_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_u_kzcg_skhit_nightlea_fluid_01.particlemodulesizemultiplylife_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_v_cnsa_hit_01.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_v_rlct_skhit_exp_01.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_v_rlct_skhit_exp_01.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_x_lpda_hit_01.particlemodulesizemultiplylife_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceEventId": "source-event-011",
+      "sourceObjectPath": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-012",
+      "sourceObjectPath": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-013",
+      "sourceObjectPath": "FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01",
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_07"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_39",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_item_return_01.particlemodulesize_22",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_carve_01.particlemodulespawn_47",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_firework_anniversary_02_1.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_03.mark.par_d_ocnpicking_01.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_03.mark.par_g_qst_daily_03.particlemodulesubuv_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_c_revival_01.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_madness_03.particlemodulevelocity_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_h_colosseum_powerup_01_1_loc_int.particlemodulecolor_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemodulecoloroverlife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 3,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemoduleparameterdynamic_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_k_lifelevelup_01.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_fishing_powder_01.particlemoduleorbit_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_itemflag_start_001.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_s_paradise_suffocate_01.particlemodulesizemultiplylife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_45",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_treekick_cast_02.particlemodulesizemultiplylife_39",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_x_dh_arkpassive_wp_flare_01.particlemodulemeshrotation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.par_y_kazemood_prj_02.particlemodulesizemultiplylife_64",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_d_cannon_prj01.particlemodulesizemultiplylife_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_d_cannon_prj01.particlemodulespawnperunit_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bigdynamite_01.particlemodulespawn_1",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bomb_bottle_prj_01.particlemodulecoloroverlife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bomb_bottle_prj_01.particlemodulesizemultiplylife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bomb_bottle_prj_01.particlemodulespawnperunit_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bomb_sleep_prj_01.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_stonetrap_exp_01.particlemodulecolor_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_chasebomb_prj_001.particlemodulevelocity_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_sworda_prj_01.particlemodulesizemultiplylife_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_throwstone_exp_01.particlemoduleacceleration_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_throwstone_exp_01.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_throwstone_exp_01.particlemodulesizemultiplylife_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_m_cnpt_battleitem_prj_center_01.particlemodulesize_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_rocket_mk-9_01.particlemodulevelocity_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_02_step_02.efparticlemodulevelocityoverlifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_02_step_02.particlemodulecolor_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_04_explo_01.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_04_explo_01.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_57_wind_01.particlemodulesizemultiplylife_24",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_u_trinity_prj_exp_01.efparticlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_u_trinity_prj_exp_01.particlemoduleparameterdynamic_76",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_knockdownuw_sand_01.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_07"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemodulelocation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_dreamlantern_sk_03.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_holystaff_sk_02.particlemodulecolorscaleoverlife_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_wand_att_04.particlemodulevelocity_20",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_g_double_jump_01.particlemodulesubuv_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_m_quest_gloomy_01.particlemodulesizemultiplylife_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_s_resurrection_loop.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_v_quest_visualbuff_ground_01.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 3,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_10.hit.par_o_hit_fire_01.particlemoduleorbit_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_04.sys.par_k_flm_cancel_01.particlemodulecolor_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_05.par_t_floodingflux_exp_01.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_fs_av_13.par_w_halloween_footmove_01.particlemodulerotation_53",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02244.par_l_02244_sk_02_1.particlemodulecoloroverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02244.par_l_02244_sk_02_1.particlemoduleparameterdynamic_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02244.par_l_02244_sk_02_1.particlemodulesizemultiplylife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02244.par_l_02244_sk_02_1.particlemodulesizemultiplylife_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02734.par_g_magic_mirror_start.particlemodulesize_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_blta_00.par_y_blta_sk02_prj01_2.particlemodulesizemultiplylife_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_born_00.par_v_born_shot_core_set_02.particlemodulevelocity_28",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_00_s.par_s_cdkcn_00_sk_07_3.particlemodulecolorscaleoverlife_45",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_sword_pjt_01.particlemodulelocation_38",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_p.par_p_cnbg_atk02_ground01.particlemodulesize_90",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_y.par_y_cnbg_buff_04_3.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnby_00_x.par_x_cnby_prj_expl_03_02.particlemodulevelocity_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbz_00_x.par_x_cnbz_prj_telekinesis_cast_27_01.particlemodulelifetime_44",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_isdk_00.par_o_isdk_atk_07_03.particlemodulelocationprimitivesphere_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kzay_00_v.par_v_kzay_line_ak_01.particlemodulevelocity_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_mvsf_00.par_h_mvsf_02_2.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rebr_01.par_s_rebr_elec_atk_01_1.particlemodulelocationprimitivesphere_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rebr_01.par_s_rebr_elec_atk_01_1.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_ele_03.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_02_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_04.particlemodulecolorscaleoverlife_39",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_04.particlemodulevelocity_26",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_03.par_s_ddk_wildupper_00_01.particlemodulesizemultiplylife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_deadlockpierce_charge_hit_01.particlemodulecoloroverlife_25",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_dragonroar_cam_01.particlemodulecolorscaleoverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_dragonroar_cam_01.particlemodulecolorscaleoverlife_31",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_dragonroar_cam_01.particlemodulesize_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_dragonroar_cam_01.particlemodulesizemultiplylife_38",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_00.par_o_ddm_genocide_03_02_loc_int.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_01.par_o_drp_quickblow_05_03_loc_int.particlemodulecameraoffset_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_01.par_o_drp_quickblow_05_03_loc_int.particlemodulecolorscaleoverlife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_02.par_s_drp_shadow_atk_01_2.particlemodulevelocity_61",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dse_02.par_n_dse_guillotineswing_prj_01.efparticlemodulevelocityoverlifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dse_02.par_n_dse_guillotineswing_prj_01.particlemodulesize_43",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_00.par_h_groundtackle_03_1.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_02.par_d_fbm_phonix_02.particlemodulelocationprimitivesphere_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_06.par_r_fbm_blasting_26_01_02.particlemodulecolorscaleoverlife_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_00.par_o_fbmm_thunderstroke_02_01.particlemodulecolor_65",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_05.par_k_fbmm_hypertiger_head_02.particlemodulevelocity_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_03.par_t_fif_filmnoise_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_03.par_t_fif_filmnoise_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_flm_01.par_m_flm_ribbon_02.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemoduleacceleration_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecollision_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecollision_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulecolorscaleoverlife_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulerotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulerotationrate_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulerotationratemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_00.par_d_gbs_bullet_01.particlemodulesizemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_airstrike_shot_01_01.particlemodulecoloroverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_airstrike_shot_01_01.particlemoduleparameterdynamic_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_bbc_exp_01_01.particlemoduleparameterdynamic_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_bbc_exp_01_01.particlemodulesizemultiplylife_49",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_bbc_exp_03_02.efparticlemodulelocationcirclesurface_40",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_multiplerocket_shot_02_01.particlemodulecolor_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_jumpcannon_exp_01_02.particlemodulesizemultiplylife_55",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_mexp_02.particlemodulecolor_41",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.efparticlemodulevelocityoverlifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemodulecoloroverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemodulelocationprimitivesphere_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemoduleparameterdynamic_23",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemodulesize_43",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemodulesizemultiplylife_52",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_03.par_s_gbs_guidedmissile_shot_01.particlemodulevelocity_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01",
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gdh_00.par_d_gdh_plasma_071.particlemodulesizemultiplylife_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_01.Par_E_Reload_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gdh_00.par_h_judgement_exp_01_11.particlemodulesizemultiplylife_29",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gdh_01.par_o_gdh_tripleshot_dust_01_01.efparticlemodulelocationcirclesurface_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_03_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ghe_03.par_o_ghe_hawkshot_04_02.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ghe_03.par_o_ghe_mine_01_01.particlemodulecolor_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ghe_03.par_o_ghe_mine_01_01.particlemodulesize_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_wgl_03.par_y_wgl_spearshot_01_1.particlemodulecolorscaleoverlife_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_wgl_03.par_y_wgl_spearshot_01_1.particlemoduleparameterdynamic_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_WGL_06.Par_O_WGL_DUF_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "light.par_mp_light_07.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+      "property": "pointlightcomponent",
+      "reason": "local_reference_is_not_a_decoded_particle_graph_node",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_07"
+      ]
+    },
+    {
+      "sourceEventId": "source-event-002",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-003",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-004",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    }
+  ],
+  "conversionState": {
+    "normalizedSourceGraph": "EXTRACTED",
+    "materialInstanceParameterBindings": "PARTIAL",
+    "runtimeElementMapping": "PENDING",
+    "importedEffectDocument": "PENDING"
+  },
+  "summary": {
+    "sourceSystemCount": 8,
+    "effectEventCount": 24,
+    "resolvedParticleEventCount": 16,
+    "unsupportedNotifyCount": 6,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 2,
+    "unsupportedUnresolvedUniqueCount": 203,
+    "uniqueMaterialBindingCount": 22,
+    "resolvedMaterialBindingCount": 21,
+    "runtimeResourceBindingCount": 25,
+    "resolvedRuntimeResourceBindingCount": 25,
+    "missingParticleGraphPackageCount": 0
+  },
+  "materialBindingCatalogEvidence": {
+    "schema": "lostark.unbound-class-particle-resource-catalog",
+    "formatVersion": 1,
+    "characterClass": "WARLORD",
+    "bindingStatus": "ACTION_NOTIFY_BOUND",
+    "productSkillId": 17080,
+    "selectionPolicy": "EXACT_ACTION_AND_SOURCE_SYSTEM_OWNERSHIP",
+    "resolutionStatusesPreserved": true,
+    "statusCounts": {
+      "RESOLVED_EXACT_SOURCE_PACKAGE": 19,
+      "RESOLVED_UNIQUE_PATH": 2,
+      "UNRESOLVED_MATERIAL_PATH": 1
+    }
+  }
+}

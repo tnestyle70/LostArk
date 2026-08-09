@@ -6,10 +6,22 @@
 
 namespace
 {
-	constexpr uint32_t DEFERRED_PASS_SCENE_RESOLVE = 8u;
-	constexpr uint32_t DEFERRED_PASS_RGB_NOISE = 9u;
-	constexpr uint32_t DEFERRED_PASS_ZOOM_BLUR = 10u;
-	constexpr uint32_t DEFERRED_PASS_FILM_NOISE = 11u;
+	constexpr uint32_t DEFERRED_PASS_SCENE_RESOLVE =
+		ETOUI(DEFERRED::SCENE_RESOLVE);
+	constexpr uint32_t DEFERRED_PASS_RGB_NOISE =
+		ETOUI(DEFERRED::PRESENTATION_RGB_NOISE);
+	constexpr uint32_t DEFERRED_PASS_ZOOM_BLUR =
+		ETOUI(DEFERRED::PRESENTATION_ZOOM_BLUR);
+	constexpr uint32_t DEFERRED_PASS_FILM_NOISE =
+		ETOUI(DEFERRED::PRESENTATION_FILM_NOISE);
+
+	static_assert(8u == DEFERRED_PASS_SCENE_RESOLVE);
+	static_assert(9u == DEFERRED_PASS_RGB_NOISE);
+	static_assert(10u == DEFERRED_PASS_ZOOM_BLUR);
+	static_assert(11u == DEFERRED_PASS_FILM_NOISE);
+	static_assert(12u == ETOUI(DEFERRED::SSAO_RAW));
+	static_assert(13u == ETOUI(DEFERRED::SSAO_BLUR));
+	static_assert(14u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -22,6 +34,13 @@ namespace
 		const RENDER_QUALITY_SETTINGS& Settings)
 	{
 		return
+			IsFiniteInRange(Settings.fSSAORadius, 0.01f, 8.f) &&
+			IsFiniteInRange(Settings.fSSAOBias, 0.f, 1.f) &&
+			IsFiniteInRange(Settings.fSSAOIntensity, 0.f, 4.f) &&
+			IsFiniteInRange(Settings.fSSAOPower, 0.1f, 8.f) &&
+			IsFiniteInRange(Settings.fSSAODistanceFade, 1.f, 1000.f) &&
+			Settings.fSSAOBias < Settings.fSSAORadius &&
+			Settings.fSSAODistanceFade >= Settings.fSSAORadius &&
 			IsFiniteInRange(Settings.fBloomThreshold, 0.f, 64.f) &&
 			IsFiniteInRange(Settings.fBloomSoftKnee, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.fBloomIntensity, 0.f, 16.f) &&
@@ -49,11 +68,19 @@ CRenderer::~CRenderer()
 HRESULT CRenderer::Initialize()
 {
 	float2_t		vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	m_vShadowTexelSize = float2_t(
+		1.f / static_cast<f32_t>(m_iShadowMapSize),
+		1.f / static_cast<f32_t>(m_iShadowMapSize));
 	m_iBloomWidth = max(1u, static_cast<uint32_t>(vViewportSize.x) / 2u);
 	m_iBloomHeight = max(1u, static_cast<uint32_t>(vViewportSize.y) / 2u);
 	m_vBloomTexelSize = float2_t(
 		1.f / static_cast<f32_t>(m_iBloomWidth),
 		1.f / static_cast<f32_t>(m_iBloomHeight));
+	m_iSSAOWidth = max(1u, static_cast<uint32_t>(vViewportSize.x) / 2u);
+	m_iSSAOHeight = max(1u, static_cast<uint32_t>(vViewportSize.y) / 2u);
+	m_vSSAOTexelSize = float2_t(
+		1.f / static_cast<f32_t>(m_iSSAOWidth),
+		1.f / static_cast<f32_t>(m_iSSAOHeight));
 
 	/* For.Target_Diffuse */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Diffuse"), vViewportSize.x, vViewportSize.y,
@@ -90,11 +117,6 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	/* For.Target_LightDepth */
-	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_LightDepth"), g_iMaxWidth, g_iMaxHeight,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(1.f, 1.f, 1.f, 1.f))))
-		return E_FAIL;
-
 	/* For.Target_SceneHDR */
 	/* Scene colour before tone mapping. FP16 so values above 1 survive. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SceneHDR"), vViewportSize.x, vViewportSize.y,
@@ -104,6 +126,14 @@ HRESULT CRenderer::Initialize()
 	/* Signed RG offsets written by distortion-capable effect shaders. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Distortion"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	/* Half-resolution ambient occlusion: raw estimate plus bilateral resolve. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SSAORaw"), m_iSSAOWidth, m_iSSAOHeight,
+		DXGI_FORMAT_R16_FLOAT, float4_t(1.f, 1.f, 1.f, 1.f))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SSAOBlur"), m_iSSAOWidth, m_iSSAOHeight,
+		DXGI_FORMAT_R16_FLOAT, float4_t(1.f, 1.f, 1.f, 1.f))))
 		return E_FAIL;
 
 	/* Half-resolution bloom chain. R11G11B10 preserves positive HDR energy. */
@@ -117,9 +147,11 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R11G11B10_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	if (FAILED(Ready_Shadow_DSV()))
+	if (FAILED(Ready_Shadow_Resources()))
 		return E_FAIL;
 	if (FAILED(Ready_Bloom_DSV()))
+		return E_FAIL;
+	if (FAILED(Ready_SSAO_DSV()))
 		return E_FAIL;
 	if (FAILED(Ready_ScenePostTargets(
 		static_cast<uint32_t>(vViewportSize.x),
@@ -162,10 +194,11 @@ HRESULT CRenderer::Initialize()
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_BloomResult"), TEXT("Target_BloomResult"))))
 		return E_FAIL;
 
-	/* MRT_ShadowObject */
-	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_ShadowObject"), TEXT("Target_LightDepth"))))
+	/* Half-resolution SSAO raw and bilateral targets. */
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SSAORaw"), TEXT("Target_SSAORaw"))))
 		return E_FAIL;
-
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SSAOBlur"), TEXT("Target_SSAOBlur"))))
+		return E_FAIL;
 
 	m_pVIBuffer = CVIBuffer_Rect::Create(m_pDevice, m_pContext);
 	if (nullptr == m_pVIBuffer)
@@ -181,8 +214,6 @@ HRESULT CRenderer::Initialize()
 		XMMatrixOrthographicLH(vViewportSize.x, vViewportSize.y, 0.f, 1.f));
 
 #ifdef _DEBUG
-	if (FAILED(CGameInstance::Get().Ready_RT_DebugDesc(TEXT("Target_LightDepth"), 150.f, 150.f, 300.f, 300.f)))
-		return E_FAIL;
 	//if (FAILED(CGameInstance::Get().Ready_RT_DebugDesc(TEXT("Target_Diffuse"), 150.f, 150.f, 300.f, 300.f)))
 	//	return E_FAIL;
 	//if (FAILED(CGameInstance::Get().Ready_RT_DebugDesc(TEXT("Target_Normal"), 150.f, 450.f, 300.f, 300.f)))
@@ -238,6 +269,8 @@ HRESULT CRenderer::Draw()
 	if (FAILED(Render_Shadow()))
 		return FailFrame();
 	if (FAILED(Render_NonBlend()))
+		return FailFrame();
+	if (m_RenderQualitySettings.bSSAOEnabled && FAILED(Render_SSAO()))
 		return FailFrame();
 	if (FAILED(Render_Lights()))
 		return FailFrame();
@@ -309,25 +342,50 @@ HRESULT CRenderer::Render_Priority()
 
 HRESULT CRenderer::Render_Shadow()
 {
-	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_ShadowObject"), m_pShadowDSV)))
-		return E_FAIL;
-
-	SetUp_ViewportDesc(g_iMaxWidth, g_iMaxHeight);
-
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::SHADOW)])
+	auto& ShadowObjects =
+		m_RenderObjects[ETOUI(RENDERGROUP::SHADOW)];
+	if (nullptr == m_pShadowDSV || nullptr == m_pShadowSRV ||
+		0u == m_iShadowMapSize)
 	{
-		if (nullptr != pRenderObject)
-			pRenderObject->Render_Shadow();
+		ShadowObjects.clear();
+		return E_FAIL;
 	}
 
-	m_RenderObjects[ETOUI(RENDERGROUP::SHADOW)].clear();
+	D3D11_VIEWPORT OriginalViewports[
+		D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+	UINT iViewportCount = _countof(OriginalViewports);
+	m_pContext->RSGetViewports(&iViewportCount, OriginalViewports);
 
-	if (FAILED(CGameInstance::Get().End_MRT()))
+	if (FAILED(CGameInstance::Get().Begin_DepthOnly(m_pShadowDSV)))
+	{
+		ShadowObjects.clear();
 		return E_FAIL;
+	}
 
-	SetUp_ViewportDesc(CGameInstance::Get().Get_ViewportSize().x, CGameInstance::Get().Get_ViewportSize().y);
+	HRESULT hRenderResult = S_OK;
+	if (CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		SetUp_ViewportDesc(m_iShadowMapSize, m_iShadowMapSize);
+		for (auto& pRenderObject : ShadowObjects)
+		{
+			if (nullptr != pRenderObject &&
+				FAILED(pRenderObject->Render_Shadow()))
+			{
+				hRenderResult = E_FAIL;
+				break;
+			}
+		}
+	}
+	ShadowObjects.clear();
 
-	return S_OK;
+	const HRESULT hEndResult =
+		CGameInstance::Get().End_DepthOnly();
+	if (0u < iViewportCount)
+		m_pContext->RSSetViewports(iViewportCount, OriginalViewports);
+	else
+		m_pContext->RSSetViewports(0u, nullptr);
+
+	return FAILED(hRenderResult) || FAILED(hEndResult) ? E_FAIL : S_OK;
 }
 
 HRESULT CRenderer::Render_NonBlend()
@@ -350,6 +408,98 @@ HRESULT CRenderer::Render_NonBlend()
 	return S_OK;
 }
 
+HRESULT CRenderer::Render_SSAO()
+{
+	if (nullptr == m_pSSAODSV || 0u == m_iSSAOWidth || 0u == m_iSSAOHeight)
+		return E_FAIL;
+
+	D3D11_VIEWPORT OriginalViewports[
+		D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+	UINT iViewportCount = _countof(OriginalViewports);
+	m_pContext->RSGetViewports(&iViewportCount, OriginalViewports);
+	SetUp_ViewportDesc(m_iSSAOWidth, m_iSSAOHeight);
+
+	HRESULT hResult = Render_SSAOPass(
+		TEXT("MRT_SSAORaw"), DEFERRED::SSAO_RAW);
+	if (SUCCEEDED(hResult))
+	{
+		hResult = Render_SSAOPass(
+			TEXT("MRT_SSAOBlur"), DEFERRED::SSAO_BLUR);
+	}
+
+	if (0u < iViewportCount)
+		m_pContext->RSSetViewports(iViewportCount, OriginalViewports);
+	else
+		m_pContext->RSSetViewports(0u, nullptr);
+
+	return hResult;
+}
+
+HRESULT CRenderer::Render_SSAOPass(
+	const wstring_t& strMRTTag, const DEFERRED ePass)
+{
+	if (DEFERRED::SSAO_RAW != ePass && DEFERRED::SSAO_BLUR != ePass)
+		return E_INVALIDARG;
+	if (FAILED(CGameInstance::Get().Begin_MRT(strMRTTag, m_pSSAODSV)))
+		return E_FAIL;
+
+	HRESULT hResult = S_OK;
+	HRESULT hBindAO = S_OK;
+	if (DEFERRED::SSAO_BLUR == ePass)
+	{
+		hBindAO = CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_SSAORaw"), m_pShader, "g_SSAOTexture");
+	}
+
+	if (FAILED(hBindAO) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vSSAOTexelSize", &m_vSSAOTexelSize,
+			sizeof(m_vSSAOTexelSize))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSSAORadius", &m_RenderQualitySettings.fSSAORadius,
+			sizeof(m_RenderQualitySettings.fSSAORadius))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSSAOBias", &m_RenderQualitySettings.fSSAOBias,
+			sizeof(m_RenderQualitySettings.fSSAOBias))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSSAOIntensity", &m_RenderQualitySettings.fSSAOIntensity,
+			sizeof(m_RenderQualitySettings.fSSAOIntensity))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSSAOPower", &m_RenderQualitySettings.fSSAOPower,
+			sizeof(m_RenderQualitySettings.fSSAOPower))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fSSAODistanceFade", &m_RenderQualitySettings.fSSAODistanceFade,
+			sizeof(m_RenderQualitySettings.fSSAODistanceFade))) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_CameraViewMatrix",
+			CGameInstance::Get().Get_Transform(D3DTS::VIEW))) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_CameraProjMatrix",
+			CGameInstance::Get().Get_Transform(D3DTS::PROJ))) ||
+		FAILED(m_pShader->Bind_Matrix(
+			"g_ProjMatrixInverse",
+			CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))) ||
+		FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)) ||
+		FAILED(m_pShader->Begin(ETOUI(ePass))) ||
+		FAILED(m_pVIBuffer->Bind_Resources()) ||
+		FAILED(m_pVIBuffer->Render()))
+	{
+		hResult = E_FAIL;
+	}
+
+	/* Balance Begin_MRT even when a shader bind or draw fails. */
+	if (FAILED(CGameInstance::Get().End_MRT()))
+		hResult = E_FAIL;
+
+	return hResult;
+}
+
 HRESULT CRenderer::Render_Lights()
 {
 	/* Shade */
@@ -357,7 +507,27 @@ HRESULT CRenderer::Render_Lights()
 		return E_FAIL;
 
 	HRESULT hResult = S_OK;
-	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+	const bool_t bShadowEnabled =
+		CGameInstance::Get().Is_ShadowLightEnabled();
+	const uint32_t iSSAOEnabled =
+		m_RenderQualitySettings.bSSAOEnabled ? 1u : 0u;
+	HRESULT hBindAO = S_OK;
+	if (0u != iSSAOEnabled)
+	{
+		hBindAO = CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_SSAOBlur"), m_pShader, "g_SSAOTexture");
+	}
+	if (FAILED(hBindAO) ||
+		FAILED(m_pShader->Bind_Texture(
+			"g_LightDepthTexture", m_pShadowSRV)) ||
+		FAILED(CGameInstance::Get().
+			Bind_ShadowLight_LightingResources(m_pShader)) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vShadowTexelSize", &m_vShadowTexelSize,
+			sizeof(m_vShadowTexelSize))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_iSSAOEnabled", &iSSAOEnabled, sizeof(iSSAOEnabled))) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
 		FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
@@ -366,7 +536,8 @@ HRESULT CRenderer::Render_Lights()
 		FAILED(m_pShader->Bind_Matrix("g_ProjMatrixInverse", CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))) ||
 		FAILED(m_pShader->Bind_RawValue("g_vCamPosition", CGameInstance::Get().Get_CamPosition(), sizeof(float4_t))) ||
 		FAILED(m_pVIBuffer->Bind_Resources()) ||
-		FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer)))
+		FAILED(CGameInstance::Get().Render_Lights(
+			m_pShader, m_pVIBuffer, bShadowEnabled)))
 	{
 		hResult = E_FAIL;
 	}
@@ -388,21 +559,12 @@ HRESULT CRenderer::Render_Combined()
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Emissive"), m_pShader, "g_EmissiveTexture")))
 		return E_FAIL;
-	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_LightDepth"), m_pShader, "g_LightDepthTexture")))
-		return E_FAIL;
-
 	if (FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)))
 		return E_FAIL;
 	if (FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)))
 		return E_FAIL;
 	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
 		return E_FAIL;
-	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pShader, "g_LightViewMatrix", D3DTS::VIEW)))
-		return E_FAIL;
-	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pShader, "g_LightProjMatrix", D3DTS::PROJ)))
-		return E_FAIL;
-
-
 	if (FAILED(m_pShader->Begin(ETOUI(DEFERRED::COMBINED))))
 		return E_FAIL;
 
@@ -754,39 +916,48 @@ HRESULT CRenderer::Render_UI()
 	return S_OK;
 }
 
-HRESULT CRenderer::Ready_Shadow_DSV()
+HRESULT CRenderer::Ready_Shadow_Resources()
 {
-	ComPtr<ID3D11Texture2D> pDepthStencilTexture = { nullptr };
-
-	D3D11_TEXTURE2D_DESC	TextureDesc{};
-
-	/* 깊이 버퍼의 픽셀은 백버퍼의 픽셀과 갯수가 동일해야만 깊이 테스트가 가능해진다. */
-	/* 픽셀의 수가 다르면 아에 렌더링을 못함. */
-	TextureDesc.Width = g_iMaxWidth;
-	TextureDesc.Height = g_iMaxHeight;
+	D3D11_TEXTURE2D_DESC TextureDesc{};
+	TextureDesc.Width = m_iShadowMapSize;
+	TextureDesc.Height = m_iShadowMapSize;
 	TextureDesc.MipLevels = 1;
 	TextureDesc.ArraySize = 1;
-	TextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-	TextureDesc.SampleDesc.Quality = 0;
+	TextureDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 	TextureDesc.SampleDesc.Count = 1;
+	TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	TextureDesc.BindFlags =
+		D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 
-	/* 동적? 정적?  */
-	TextureDesc.Usage = D3D11_USAGE_DEFAULT /* 정적 */;
-	/* 추후에 어떤 용도로 바인딩 될 수 있는 View타입의 텍스쳐를 만들기위한 Texture2D입니까? */
-	TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL
-		/*| D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE*/;
-	TextureDesc.CPUAccessFlags = 0;
-	TextureDesc.MiscFlags = 0;
-
-	if (FAILED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr, pDepthStencilTexture.GetAddressOf())))
+	ComPtr<ID3D11Texture2D> pStagedTexture;
+	if (FAILED(m_pDevice->CreateTexture2D(
+		&TextureDesc, nullptr, pStagedTexture.GetAddressOf())))
 		return E_FAIL;
 
-
-	if (FAILED(m_pDevice->CreateDepthStencilView(pDepthStencilTexture.Get(), nullptr, m_pShadowDSV.GetAddressOf())))
+	D3D11_DEPTH_STENCIL_VIEW_DESC DSVDesc{};
+	DSVDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	DSVDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	DSVDesc.Texture2D.MipSlice = 0;
+	ComPtr<ID3D11DepthStencilView> pStagedDSV;
+	if (FAILED(m_pDevice->CreateDepthStencilView(
+		pStagedTexture.Get(), &DSVDesc, pStagedDSV.GetAddressOf())))
 		return E_FAIL;
 
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
+	SRVDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	SRVDesc.Texture2D.MostDetailedMip = 0;
+	SRVDesc.Texture2D.MipLevels = 1;
+	ComPtr<ID3D11ShaderResourceView> pStagedSRV;
+	if (FAILED(m_pDevice->CreateShaderResourceView(
+		pStagedTexture.Get(), &SRVDesc, pStagedSRV.GetAddressOf())))
+	{
+		return E_FAIL;
+	}
 
+	m_pShadowDepthTexture = std::move(pStagedTexture);
+	m_pShadowDSV = std::move(pStagedDSV);
+	m_pShadowSRV = std::move(pStagedSRV);
 	return S_OK;
 }
 
@@ -812,6 +983,35 @@ HRESULT CRenderer::Ready_Bloom_DSV()
 
 	if (FAILED(m_pDevice->CreateDepthStencilView(
 		pDepthStencilTexture.Get(), nullptr, m_pBloomDSV.GetAddressOf())))
+	{
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+HRESULT CRenderer::Ready_SSAO_DSV()
+{
+	ComPtr<ID3D11Texture2D> pDepthStencilTexture = { nullptr };
+
+	D3D11_TEXTURE2D_DESC TextureDesc{};
+	TextureDesc.Width = m_iSSAOWidth;
+	TextureDesc.Height = m_iSSAOHeight;
+	TextureDesc.MipLevels = 1;
+	TextureDesc.ArraySize = 1;
+	TextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	TextureDesc.SampleDesc.Count = 1;
+	TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+	if (FAILED(m_pDevice->CreateTexture2D(
+		&TextureDesc, nullptr, pDepthStencilTexture.GetAddressOf())))
+	{
+		return E_FAIL;
+	}
+
+	if (FAILED(m_pDevice->CreateDepthStencilView(
+		pDepthStencilTexture.Get(), nullptr, m_pSSAODSV.GetAddressOf())))
 	{
 		return E_FAIL;
 	}
@@ -921,9 +1121,6 @@ HRESULT CRenderer::Render_Debug()
 	//if (FAILED(CGameInstance::Get().Render_MRT(TEXT("MRT_LightAcc"), m_pShader, m_pVIBuffer)))
 	//	return E_FAIL;
 
-	if (FAILED(CGameInstance::Get().Render_MRT(TEXT("MRT_ShadowObject"), m_pShader, m_pVIBuffer)))
-		return E_FAIL;
-
 	return S_OK;
 }
 
@@ -941,4 +1138,3 @@ unique_ptr<CRenderer> CRenderer::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3
 
 	return pInstance;
 }
-

@@ -17,7 +17,8 @@ public:
 	static HRESULT Render_Desc(
 		const LIGHT_DESC& LightDesc,
 		shared_ptr<class CShader> pShader,
-		shared_ptr<class CVIBuffer_Rect> pVIBuffer);
+		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+		bool_t bApplyDirectionalShadow = false);
 
 private:
 	LIGHT_DESC				m_LightDesc;

@@ -16,8 +16,12 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <map>
+#include <mutex>
 #include <span>
+#include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace
 {
@@ -537,7 +541,9 @@ namespace
 		return Color;
 	}
 
-	float4x4_t Make_BillboardWorld(const float4x4_t& Source)
+	float4x4_t Make_BillboardWorld(
+		const float4x4_t& Source,
+		const f32_t fRollDegrees)
 	{
 		vector_t Scale;
 		vector_t Rotation;
@@ -552,7 +558,8 @@ namespace
 		CameraWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 		float4x4_t Result{};
 		XMStoreFloat4x4(&Result,
-			XMMatrixScalingFromVector(Scale) * CameraWorld *
+			XMMatrixScalingFromVector(Scale) *
+			XMMatrixRotationZ(XMConvertToRadians(fRollDegrees)) * CameraWorld *
 			XMMatrixTranslationFromVector(Translation));
 		return Result;
 	}
@@ -835,6 +842,179 @@ namespace
 	}
 }
 
+struct Client::CEffectDocumentRenderer::PREWARM_ASSET_CACHE final
+{
+	std::unordered_map<std::string, std::shared_ptr<Engine::CModel>>
+		NonAnimatedModels;
+	std::unordered_map<std::string, std::shared_ptr<Engine::CModel>>
+		AnimatedModelPrototypes;
+	std::unordered_map<std::string, ComPtr<ID3D11ShaderResourceView>> Textures;
+};
+
+struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
+{
+	uint64_t iCatalogRevision = 0u;
+	uint64_t iResourceSignature = 0u;
+	std::string strEffectAssetId;
+	const EFFECT_DOCUMENT_DESC* pCatalogDocumentIdentity = nullptr;
+	EFFECT_DOCUMENT_DESC ResourceDocument;
+	std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+		pPlaybackResources;
+	std::unordered_map<std::string, ELEMENT_RESOURCE> ElementResources;
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE>
+		ModelCuePrototypes;
+};
+
+namespace
+{
+	struct EFFECT_RENDERER_CORE final
+	{
+		shared_ptr<Engine::CShader> pMeshShader;
+		shared_ptr<Engine::CShader> pAnimatedModelShader;
+		shared_ptr<Engine::CShader> pRectShader;
+		shared_ptr<Engine::CShader> pParticleShader;
+		shared_ptr<Engine::CShader> pTrailShader;
+		shared_ptr<Engine::CShader> pDecalShader;
+		shared_ptr<Engine::CVIBuffer_Rect> pRect;
+		ComPtr<ID3D11ShaderResourceView> pWhiteTexture;
+		ComPtr<ID3D11ShaderResourceView> pBlackTexture;
+	};
+
+	struct PREPARED_KEY final
+	{
+		uint64_t iCatalogRevision = 0u;
+		std::string strEffectAssetId;
+		uint64_t iResourceSignature = 0u;
+
+		bool operator<(const PREPARED_KEY& Right) const
+		{
+			return std::tie(iCatalogRevision, strEffectAssetId,
+				iResourceSignature) <
+				std::tie(Right.iCatalogRevision, Right.strEffectAssetId,
+					Right.iResourceSignature);
+		}
+	};
+
+	std::mutex g_EffectRenderCacheMutex;
+	std::unordered_map<ID3D11Device*, std::shared_ptr<EFFECT_RENDERER_CORE>>
+		g_EffectRendererCores;
+	std::map<PREPARED_KEY,
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>>
+		g_PreparedEffectDocuments;
+	ID3D11Device* g_pPreparedDevice = nullptr;
+	uint64_t g_iPreparedCatalogRevision = 0u;
+	Client::EFFECT_RENDER_PREWARM_PROBE g_EffectRenderPrewarmProbe;
+
+	uint64_t Build_ResourceSignature(
+		const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		const std::string Canonical =
+			Client::CEffectDocumentCodec::Serialize(Document);
+		uint64_t Hash = 1469598103934665603ull;
+		for (const unsigned char Byte : Canonical)
+		{
+			Hash ^= static_cast<uint64_t>(Byte);
+			Hash *= 1099511628211ull;
+		}
+		return Hash;
+	}
+
+	HRESULT Create_SolidTexture(
+		ID3D11Device* pDevice,
+		const uint32_t iRGBA,
+		ComPtr<ID3D11ShaderResourceView>& OutSRV)
+	{
+		if (nullptr == pDevice)
+			return E_INVALIDARG;
+		D3D11_TEXTURE2D_DESC Desc{};
+		Desc.Width = 1u;
+		Desc.Height = 1u;
+		Desc.MipLevels = 1u;
+		Desc.ArraySize = 1u;
+		Desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		Desc.SampleDesc.Count = 1u;
+		Desc.Usage = D3D11_USAGE_IMMUTABLE;
+		Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		D3D11_SUBRESOURCE_DATA Data{};
+		Data.pSysMem = &iRGBA;
+		Data.SysMemPitch = sizeof(iRGBA);
+		ComPtr<ID3D11Texture2D> Texture;
+		if (FAILED(pDevice->CreateTexture2D(&Desc, &Data, &Texture)))
+			return E_FAIL;
+		return pDevice->CreateShaderResourceView(
+			Texture.Get(), nullptr, &OutSRV);
+	}
+
+	std::shared_ptr<EFFECT_RENDERER_CORE> Build_RendererCore(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext)
+	{
+		if (nullptr == pDevice || nullptr == pContext)
+			return nullptr;
+		auto Core = std::make_shared<EFFECT_RENDERER_CORE>();
+		Core->pMeshShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl"),
+			VTXMESH::Elements, VTXMESH::iNumElements);
+		Core->pAnimatedModelShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+			VTXANIMMESH::Elements, VTXANIMMESH::iNumElements);
+		Core->pRectShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectRectPreview.hlsl"),
+			VTXTEX::Elements, VTXTEX::iNumElements);
+		Core->pParticleShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectParticle.hlsl"),
+			Engine::VTXEFFECT_PARTICLE::Elements,
+			Engine::VTXEFFECT_PARTICLE::iNumElements);
+		Core->pTrailShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectTrail.hlsl"),
+			Engine::VTXEFFECT_TRAIL::Elements,
+			Engine::VTXEFFECT_TRAIL::iNumElements);
+		Core->pDecalShader = Engine::CShader::Create(
+			pDevice, pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEffectDecal.hlsl"),
+			VTXTEX::Elements, VTXTEX::iNumElements);
+		Core->pRect = Engine::CVIBuffer_Rect::Create(pDevice, pContext);
+		if (nullptr == Core->pMeshShader ||
+			nullptr == Core->pAnimatedModelShader ||
+			nullptr == Core->pRectShader ||
+			nullptr == Core->pParticleShader ||
+			nullptr == Core->pTrailShader ||
+			nullptr == Core->pDecalShader || nullptr == Core->pRect ||
+			FAILED(Create_SolidTexture(
+				pDevice.Get(), 0xffffffffu, Core->pWhiteTexture)) ||
+			FAILED(Create_SolidTexture(
+				pDevice.Get(), 0xff000000u, Core->pBlackTexture)))
+		{
+			return nullptr;
+		}
+		return Core;
+	}
+
+	std::shared_ptr<EFFECT_RENDERER_CORE> Acquire_RendererCore(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext)
+	{
+		if (nullptr == pDevice || nullptr == pContext)
+			return nullptr;
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		const auto Existing = g_EffectRendererCores.find(pDevice.Get());
+		if (Existing != g_EffectRendererCores.end())
+			return Existing->second;
+		std::shared_ptr<EFFECT_RENDERER_CORE> Staged =
+			Build_RendererCore(pDevice, pContext);
+		if (nullptr == Staged)
+			return nullptr;
+		g_EffectRendererCores.emplace(pDevice.Get(), Staged);
+		++g_EffectRenderPrewarmProbe.iCoreBuildCount;
+		return Staged;
+	}
+}
+
 Client::CEffectDocumentRenderer::CEffectDocumentRenderer(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -850,106 +1030,78 @@ HRESULT Client::CEffectDocumentRenderer::Initialize()
 	if (nullptr == m_pDevice || nullptr == m_pContext)
 		return E_INVALIDARG;
 
-	unique_ptr<Engine::CShader> MeshShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl"),
-		VTXMESH::Elements, VTXMESH::iNumElements);
-	unique_ptr<Engine::CShader> AnimatedModelShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
-		VTXANIMMESH::Elements, VTXANIMMESH::iNumElements);
-	unique_ptr<Engine::CShader> RectShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectRectPreview.hlsl"),
-		VTXTEX::Elements, VTXTEX::iNumElements);
-	unique_ptr<Engine::CShader> ParticleShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectParticle.hlsl"),
-		Engine::VTXEFFECT_PARTICLE::Elements,
-		Engine::VTXEFFECT_PARTICLE::iNumElements);
-	unique_ptr<Engine::CShader> TrailShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectTrail.hlsl"),
-		Engine::VTXEFFECT_TRAIL::Elements,
-		Engine::VTXEFFECT_TRAIL::iNumElements);
-	unique_ptr<Engine::CShader> DecalShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectDecal.hlsl"),
-		VTXTEX::Elements, VTXTEX::iNumElements);
-	unique_ptr<Engine::CVIBuffer_Rect> Rect =
-		Engine::CVIBuffer_Rect::Create(m_pDevice, m_pContext);
-	unique_ptr<Engine::CVIBuffer_ParticleRect> ParticleBuffer =
-		Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, 2048u);
-	unique_ptr<Engine::CVIBuffer_DynamicTrail> TrailBuffer =
-		Engine::CVIBuffer_DynamicTrail::Create(m_pDevice, m_pContext, 256u);
-	if (nullptr == MeshShader || nullptr == AnimatedModelShader ||
-		nullptr == RectShader ||
-		nullptr == ParticleShader || nullptr == TrailShader ||
-		nullptr == DecalShader || nullptr == Rect ||
-		nullptr == ParticleBuffer || nullptr == TrailBuffer ||
-		FAILED(Create_FallbackTextures()))
+	const std::shared_ptr<EFFECT_RENDERER_CORE> Core =
+		Acquire_RendererCore(m_pDevice, m_pContext);
+	if (nullptr == Core)
 	{
 		m_strStatus = "Effect renderer core resource creation failed.";
 		return E_FAIL;
 	}
 
-	m_pMeshShader = std::move(MeshShader);
-	m_pAnimatedModelShader = std::move(AnimatedModelShader);
-	m_pRectShader = std::move(RectShader);
-	m_pParticleShader = std::move(ParticleShader);
-	m_pTrailShader = std::move(TrailShader);
-	m_pDecalShader = std::move(DecalShader);
-	m_pRect = std::move(Rect);
-	m_pParticleBuffer = std::move(ParticleBuffer);
-	m_pTrailBuffer = std::move(TrailBuffer);
+	m_pMeshShader = Core->pMeshShader;
+	m_pAnimatedModelShader = Core->pAnimatedModelShader;
+	m_pRectShader = Core->pRectShader;
+	m_pParticleShader = Core->pParticleShader;
+	m_pTrailShader = Core->pTrailShader;
+	m_pDecalShader = Core->pDecalShader;
+	m_pRect = Core->pRect;
+	m_pWhiteTexture = Core->pWhiteTexture;
+	m_pBlackTexture = Core->pBlackTexture;
 	m_strStatus = "Effect renderer ready.";
 	return S_OK;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Create_FallbackTextures()
-{
-	const auto CreateSolid = [this](
-		const uint32_t iRGBA,
-		ComPtr<ID3D11ShaderResourceView>& OutSRV) -> HRESULT
-	{
-		D3D11_TEXTURE2D_DESC Desc{};
-		Desc.Width = 1u;
-		Desc.Height = 1u;
-		Desc.MipLevels = 1u;
-		Desc.ArraySize = 1u;
-		Desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		Desc.SampleDesc.Count = 1u;
-		Desc.Usage = D3D11_USAGE_IMMUTABLE;
-		Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		D3D11_SUBRESOURCE_DATA Data{};
-		Data.pSysMem = &iRGBA;
-		Data.SysMemPitch = sizeof(iRGBA);
-		ComPtr<ID3D11Texture2D> Texture;
-		if (FAILED(m_pDevice->CreateTexture2D(&Desc, &Data, &Texture)))
-			return E_FAIL;
-		return m_pDevice->CreateShaderResourceView(
-			Texture.Get(), nullptr, &OutSRV);
-	};
-	return FAILED(CreateSolid(0xffffffffu, m_pWhiteTexture)) ||
-		FAILED(CreateSolid(0xff000000u, m_pBlackTexture)) ? E_FAIL : S_OK;
-}
-
 HRESULT Client::CEffectDocumentRenderer::Load_Texture(
 	const std::string& strAssetId,
-	ComPtr<ID3D11ShaderResourceView>& OutSRV) const
+	ComPtr<ID3D11ShaderResourceView>& OutSRV,
+	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
+	const std::string CacheKey = "default\n" + strAssetId;
+	if (nullptr != pSharedAssets)
+	{
+		const auto Cached = pSharedAssets->Textures.find(CacheKey);
+		if (Cached != pSharedAssets->Textures.end())
+		{
+			OutSRV = Cached->second;
+			return S_OK;
+		}
+	}
 	const std::filesystem::path Path =
 		CRuntimeAssetRoot::Resolve(std::filesystem::path(strAssetId));
 	if (Path.empty() || !std::filesystem::is_regular_file(Path))
 		return E_FAIL;
-	return DirectX::CreateDDSTextureFromFile(
-		m_pDevice.Get(), Path.c_str(), nullptr, &OutSRV);
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		++g_EffectRenderPrewarmProbe.iTextureDiskLoadCount;
+	}
+	ComPtr<ID3D11ShaderResourceView> Staged;
+	const HRESULT Result = DirectX::CreateDDSTextureFromFile(
+		m_pDevice.Get(), Path.c_str(), nullptr, &Staged);
+	if (FAILED(Result))
+		return Result;
+	if (nullptr != pSharedAssets)
+		pSharedAssets->Textures.emplace(CacheKey, Staged);
+	OutSRV = std::move(Staged);
+	return S_OK;
 }
 
 HRESULT Client::CEffectDocumentRenderer::Load_SourceTexture(
 	const EFFECT_NAMED_TEXTURE_DESC& Texture,
-	ComPtr<ID3D11ShaderResourceView>& OutSRV) const
+	ComPtr<ID3D11ShaderResourceView>& OutSRV,
+	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
+	const std::string CacheKey =
+		(EFFECT_TEXTURE_COLOR_SPACE::SRGB == Texture.eColorSpace ?
+			"source-srgb\n" : "source-linear\n") + Texture.strAssetId;
+	if (nullptr != pSharedAssets)
+	{
+		const auto Cached = pSharedAssets->Textures.find(CacheKey);
+		if (Cached != pSharedAssets->Textures.end())
+		{
+			OutSRV = Cached->second;
+			return S_OK;
+		}
+	}
 	const std::filesystem::path Path =
 		CRuntimeAssetRoot::Resolve(std::filesystem::path(Texture.strAssetId));
 	if (Path.empty() || !std::filesystem::is_regular_file(Path))
@@ -957,15 +1109,27 @@ HRESULT Client::CEffectDocumentRenderer::Load_SourceTexture(
 	const DirectX::DDS_LOADER_FLAGS Flags =
 		EFFECT_TEXTURE_COLOR_SPACE::SRGB == Texture.eColorSpace ?
 			DirectX::DDS_LOADER_FORCE_SRGB : DirectX::DDS_LOADER_IGNORE_SRGB;
-	return DirectX::CreateDDSTextureFromFileEx(
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		++g_EffectRenderPrewarmProbe.iTextureDiskLoadCount;
+	}
+	ComPtr<ID3D11ShaderResourceView> Staged;
+	const HRESULT Result = DirectX::CreateDDSTextureFromFileEx(
 		m_pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
-		D3D11_BIND_SHADER_RESOURCE, 0u, 0u, Flags, nullptr, &OutSRV);
+		D3D11_BIND_SHADER_RESOURCE, 0u, 0u, Flags, nullptr, &Staged);
+	if (FAILED(Result))
+		return Result;
+	if (nullptr != pSharedAssets)
+		pSharedAssets->Textures.emplace(CacheKey, Staged);
+	OutSRV = std::move(Staged);
+	return S_OK;
 }
 
 HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_RESOURCE& OutResource,
-	std::string& strOutError) const
+	std::string& strOutError,
+	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	ELEMENT_RESOURCE Staged;
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
@@ -1049,17 +1213,35 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL);
 	if (nullptr != pModelBinding)
 	{
-		const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(
-			std::filesystem::path(pModelBinding->strAssetId));
-		unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
-			m_pDevice, m_pContext, MODEL::NONANIM,
-			ModelPath.string().c_str(), XMMatrixIdentity());
-		if (nullptr == Model)
+		if (nullptr != pSharedAssets)
 		{
-			strOutError = "CModel load failed: " + pModelBinding->strAssetId;
-			return E_FAIL;
+			const auto Cached = pSharedAssets->NonAnimatedModels.find(
+				pModelBinding->strAssetId);
+			if (Cached != pSharedAssets->NonAnimatedModels.end())
+				Staged.pModel = Cached->second;
 		}
-		Staged.pModel = std::move(Model);
+		if (nullptr == Staged.pModel)
+		{
+			const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(
+				std::filesystem::path(pModelBinding->strAssetId));
+			{
+				const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+				++g_EffectRenderPrewarmProbe.iModelDiskLoadCount;
+			}
+			unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
+				m_pDevice, m_pContext, MODEL::NONANIM,
+				ModelPath.string().c_str(), XMMatrixIdentity());
+			if (nullptr == Model)
+			{
+				strOutError = "CModel load failed: " +
+					pModelBinding->strAssetId;
+				return E_FAIL;
+			}
+			Staged.pModel = std::move(Model);
+			if (nullptr != pSharedAssets)
+				pSharedAssets->NonAnimatedModels.emplace(
+					pModelBinding->strAssetId, Staged.pModel);
+		}
 	}
 
 	for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)
@@ -1076,7 +1258,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			return E_FAIL;
 		}
 		ComPtr<ID3D11ShaderResourceView> Texture;
-		if (FAILED(Load_Texture(Binding.strAssetId, Texture)))
+		if (FAILED(Load_Texture(
+			Binding.strAssetId, Texture, pSharedAssets)))
 		{
 			strOutError = "DDS load failed: " + Binding.strAssetId;
 			return E_FAIL;
@@ -1097,7 +1280,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			if (iIndex < 0 || TextureDesc.strAssetId.empty())
 				continue;
 			ComPtr<ID3D11ShaderResourceView> Texture;
-			if (FAILED(Load_SourceTexture(TextureDesc, Texture)))
+			if (FAILED(Load_SourceTexture(
+				TextureDesc, Texture, pSharedAssets)))
 				continue;
 			Staged.SourceTextures[static_cast<size_t>(iIndex)] =
 				std::move(Texture);
@@ -1148,10 +1332,9 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	const EFFECT_MODEL_CUE_DESC& Cue,
 	MODEL_CUE_RESOURCE& OutResource,
-	std::string& strOutError) const
+	std::string& strOutError,
+	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
-	const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(
-		std::filesystem::path(Cue.strModelAssetId));
 	const matrix_t PreTransform =
 		XMMatrixScaling(Cue.vAssetPreScale.x, Cue.vAssetPreScale.y,
 			Cue.vAssetPreScale.z) *
@@ -1159,10 +1342,37 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.x),
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.y),
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.z));
-	unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
-		m_pDevice, m_pContext, MODEL::ANIM,
-		ModelPath.string().c_str(), PreTransform);
-	if (nullptr == Model || !Model->Set_Animation(Cue.strClipName.c_str(), false))
+	const std::string CacheKey = Cue.strModelAssetId + "\n" +
+		Cue.strClipName + "\n" + std::to_string(Cue.vAssetPreScale.x) +
+		"\n" + std::to_string(Cue.vAssetPreScale.y) + "\n" +
+		std::to_string(Cue.vAssetPreScale.z) + "\n" +
+		std::to_string(Cue.vAssetPreRotationDegrees.x) + "\n" +
+		std::to_string(Cue.vAssetPreRotationDegrees.y) + "\n" +
+		std::to_string(Cue.vAssetPreRotationDegrees.z);
+	shared_ptr<Engine::CModel> Model;
+	if (nullptr != pSharedAssets)
+	{
+		const auto Cached =
+			pSharedAssets->AnimatedModelPrototypes.find(CacheKey);
+		if (Cached != pSharedAssets->AnimatedModelPrototypes.end())
+			Model = Cached->second;
+	}
+	if (nullptr == Model)
+	{
+		const std::filesystem::path ModelPath = CRuntimeAssetRoot::Resolve(
+			std::filesystem::path(Cue.strModelAssetId));
+		{
+			const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+			++g_EffectRenderPrewarmProbe.iModelDiskLoadCount;
+		}
+		unique_ptr<Engine::CModel> Loaded = Engine::CModel::Create(
+			m_pDevice, m_pContext, MODEL::ANIM,
+			ModelPath.string().c_str(), PreTransform);
+		if (nullptr != Loaded)
+			Model = std::move(Loaded);
+	}
+	if (nullptr == Model ||
+		!Model->Set_Animation(Cue.strClipName.c_str(), false))
 	{
 		strOutError = "Animated CModel or clip load failed: " +
 			Cue.strModelAssetId + " / " + Cue.strClipName;
@@ -1185,55 +1395,362 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	}
 	Model->Set_AnimTrackPosition(iAnimation, 0.f);
 	Model->Play_Animation(0.f);
+	if (nullptr != pSharedAssets)
+		pSharedAssets->AnimatedModelPrototypes.emplace(CacheKey, Model);
 	OutResource.pModel = std::move(Model);
 	OutResource.iAnimationIndex = iAnimation;
 	OutResource.fTicksPerSecond = fTicksPerSecond;
 	return S_OK;
 }
 
+bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
+	const uint64_t iCatalogRevision,
+	const std::string& strEffectAssetId,
+	const EFFECT_DOCUMENT_DESC& Document,
+	PREWARM_ASSET_CACHE* pSharedAssets,
+	std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
+	std::string& strOutError) const
+{
+	if (strEffectAssetId.empty() ||
+		strEffectAssetId != Document.strEffectAssetId ||
+		!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
+	{
+		if (strOutError.empty())
+			strOutError = "Prepared Effect identity is invalid.";
+		return false;
+	}
+	auto Staged = std::make_shared<PREPARED_DOCUMENT>();
+	Staged->iCatalogRevision = iCatalogRevision;
+	Staged->iResourceSignature = Build_ResourceSignature(Document);
+	Staged->strEffectAssetId = strEffectAssetId;
+	Staged->pCatalogDocumentIdentity =
+		0u == iCatalogRevision ? nullptr : &Document;
+	Staged->ResourceDocument = Document;
+	if (!CEffectPlayback::Prepare_DocumentResources(
+		Document, Staged->pPlaybackResources, strOutError))
+	{
+		return false;
+	}
+	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+	{
+		MODEL_CUE_RESOURCE Resource;
+		if (FAILED(Stage_ModelCueResource(
+			Cue, Resource, strOutError, pSharedAssets)) ||
+			!Staged->ModelCuePrototypes.emplace(
+				Cue.strCueId, std::move(Resource)).second)
+		{
+			if (strOutError.empty())
+				strOutError = "Prepared Effect has a duplicate Model Cue.";
+			return false;
+		}
+	}
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		ELEMENT_RESOURCE Resource;
+		if (FAILED(Stage_ElementResource(
+			Element, Resource, strOutError, pSharedAssets)) ||
+			!Staged->ElementResources.emplace(
+				Element.strElementId, std::move(Resource)).second)
+		{
+			if (strOutError.empty())
+				strOutError = "Prepared Effect has a duplicate Element.";
+			return false;
+		}
+	}
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		++g_EffectRenderPrewarmProbe.iPreparedDocumentBuildCount;
+	}
+	OutPrepared = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Clone_ModelCueResources(
+	const PREPARED_DOCUMENT& Prepared,
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE>& OutResources,
+	std::string& strOutError) const
+{
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE> Staged;
+	for (const auto& [CueId, Prototype] : Prepared.ModelCuePrototypes)
+	{
+		if (nullptr == Prototype.pModel)
+		{
+			strOutError = "Prepared animated Model Cue prototype is missing: " +
+				CueId;
+			return false;
+		}
+		const std::shared_ptr<CPrototype> CloneBase =
+			Prototype.pModel->Clone(nullptr);
+		const std::shared_ptr<Engine::CModel> Model =
+			std::dynamic_pointer_cast<Engine::CModel>(CloneBase);
+		if (nullptr == Model)
+		{
+			strOutError = "Prepared animated Model Cue clone failed: " + CueId;
+			return false;
+		}
+		Model->Set_Animation(Prototype.iAnimationIndex, false);
+		if (!Model->Set_AnimTrackPosition(
+			Prototype.iAnimationIndex, 0.f) || !Model->Play_Animation(0.f))
+		{
+			strOutError = "Prepared animated Model Cue reset failed: " + CueId;
+			return false;
+		}
+		MODEL_CUE_RESOURCE Resource;
+		Resource.pModel = Model;
+		Resource.iAnimationIndex = Prototype.iAnimationIndex;
+		Resource.fTicksPerSecond = Prototype.fTicksPerSecond;
+		Staged.emplace(CueId, std::move(Resource));
+	}
+	OutResources = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Ensure_MutableInstanceBuffers(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::string& strOutError)
+{
+	const bool_t bNeedsParticleBuffer = std::any_of(
+		Document.Elements.begin(), Document.Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind;
+		});
+	const bool_t bNeedsTrailBuffer = std::any_of(
+		Document.Elements.begin(), Document.Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return EFFECT_ELEMENT_KIND::TRAIL == Element.eKind;
+		});
+	unique_ptr<Engine::CVIBuffer_ParticleRect> ParticleBuffer;
+	unique_ptr<Engine::CVIBuffer_DynamicTrail> TrailBuffer;
+	if (bNeedsParticleBuffer && nullptr == m_pParticleBuffer)
+	{
+		ParticleBuffer = Engine::CVIBuffer_ParticleRect::Create(
+			m_pDevice, m_pContext, 2048u);
+		if (nullptr == ParticleBuffer)
+		{
+			strOutError = "Per-instance Effect particle buffer creation failed.";
+			return false;
+		}
+	}
+	if (bNeedsTrailBuffer && nullptr == m_pTrailBuffer)
+	{
+		TrailBuffer = Engine::CVIBuffer_DynamicTrail::Create(
+			m_pDevice, m_pContext, 256u);
+		if (nullptr == TrailBuffer)
+		{
+			strOutError = "Per-instance Effect trail buffer creation failed.";
+			return false;
+		}
+	}
+	if (nullptr != ParticleBuffer)
+		m_pParticleBuffer = std::move(ParticleBuffer);
+	if (nullptr != TrailBuffer)
+		m_pTrailBuffer = std::move(TrailBuffer);
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Prepare_Catalog(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint64_t iCatalogRevision,
+	const std::vector<std::pair<std::string,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>>>& Documents,
+	std::string& strOutError)
+{
+	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
+		Documents.empty() ||
+		nullptr == Acquire_RendererCore(pDevice, pContext))
+	{
+		strOutError = "Effect product prewarm arguments or renderer core are invalid.";
+		return false;
+	}
+
+	std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>> Existing;
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		if (g_pPreparedDevice == pDevice.Get() &&
+			g_iPreparedCatalogRevision == iCatalogRevision)
+		{
+			Existing = g_PreparedEffectDocuments;
+		}
+	}
+	std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>> Staged;
+	PREWARM_ASSET_CACHE SharedAssets;
+	std::unordered_set<std::string> EffectIds;
+	CEffectDocumentRenderer Loader(pDevice, pContext);
+	for (const auto& [EffectId, Document] : Documents)
+	{
+		if (EffectId.empty() || nullptr == Document ||
+			EffectId != Document->strEffectAssetId ||
+			!EffectIds.insert(EffectId).second)
+		{
+			strOutError = "Effect product prewarm contains an invalid or duplicate target.";
+			return false;
+		}
+		const PREPARED_KEY Key{
+			iCatalogRevision, EffectId, Build_ResourceSignature(*Document) };
+		const auto Reusable = Existing.find(Key);
+		if (Reusable != Existing.end() && nullptr != Reusable->second &&
+			Resource_SignatureMatches(
+				Reusable->second->ResourceDocument, *Document))
+		{
+			Staged.emplace(Key, Reusable->second);
+			continue;
+		}
+		std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
+		if (!Loader.Build_PreparedDocument(
+			iCatalogRevision, EffectId, *Document, &SharedAssets,
+			Prepared, strOutError))
+		{
+			return false;
+		}
+		Staged.emplace(Key, std::move(Prepared));
+	}
+
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		g_PreparedEffectDocuments = std::move(Staged);
+		g_pPreparedDevice = pDevice.Get();
+		g_iPreparedCatalogRevision = iCatalogRevision;
+		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
+		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
+			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+	}
+	strOutError = "Prepared " + std::to_string(Documents.size()) +
+		" admitted animation Effect targets for catalog revision " +
+		std::to_string(iCatalogRevision) + ".";
+	return true;
+}
+
+std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+Client::CEffectDocumentRenderer::Find_Prepared(
+	const uint64_t iCatalogRevision,
+	const std::string& strEffectAssetId,
+	const EFFECT_DOCUMENT_DESC& Document)
+{
+	const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+	const PREPARED_KEY LowerBound{
+		iCatalogRevision, strEffectAssetId, 0u };
+	const auto Iterator = g_PreparedEffectDocuments.lower_bound(LowerBound);
+	if (g_iPreparedCatalogRevision != iCatalogRevision ||
+		Iterator == g_PreparedEffectDocuments.end() ||
+		Iterator->first.iCatalogRevision != iCatalogRevision ||
+		Iterator->first.strEffectAssetId != strEffectAssetId ||
+		nullptr == Iterator->second ||
+		Iterator->second->pCatalogDocumentIdentity != &Document)
+	{
+		++g_EffectRenderPrewarmProbe.iPreparedLookupMissCount;
+		return nullptr;
+	}
+	return Iterator->second;
+}
+
+std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+Client::CEffectDocumentRenderer::Get_PlaybackResources(
+	const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared)
+{
+	return nullptr == pPrepared ? nullptr : pPrepared->pPlaybackResources;
+}
+
+Client::EFFECT_RENDER_PREWARM_PROBE
+Client::CEffectDocumentRenderer::Get_PrewarmProbe()
+{
+	const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+	EFFECT_RENDER_PREWARM_PROBE Probe = g_EffectRenderPrewarmProbe;
+	Probe.iVectorFieldDiskLoadCount =
+		CEffectPlayback::Get_VectorFieldDiskLoadCount();
+	return Probe;
+}
+
+void Client::CEffectDocumentRenderer::Clear_Prepared_Catalog()
+{
+	const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+	g_PreparedEffectDocuments.clear();
+	g_EffectRendererCores.clear();
+	g_pPreparedDevice = nullptr;
+	g_iPreparedCatalogRevision = 0u;
+	g_EffectRenderPrewarmProbe.iCatalogRevision = 0u;
+	g_EffectRenderPrewarmProbe.iPreparedDocumentCount = 0u;
+}
+
+bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
+	std::string& strOutError)
+{
+	const bool_t bCatalogPrepared = nullptr != pPrepared &&
+		0u != pPrepared->iCatalogRevision;
+	const bool_t bIdentityMatches = bCatalogPrepared ?
+		pPrepared->pCatalogDocumentIdentity == &Document :
+		(nullptr != pPrepared &&
+			pPrepared->iResourceSignature == Build_ResourceSignature(Document) &&
+			Resource_SignatureMatches(
+				pPrepared->ResourceDocument, Document));
+	if (nullptr == pPrepared || !bIdentityMatches ||
+		pPrepared->strEffectAssetId != Document.strEffectAssetId ||
+		(!bCatalogPrepared &&
+			!CEffectDocumentCodec::Validate_Drawable(Document, strOutError)))
+	{
+		if (strOutError.empty())
+			strOutError = "Prepared Effect resources do not match the Document.";
+		return false;
+	}
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE>
+		StagedModelCueResources;
+	if (!Ensure_MutableInstanceBuffers(Document, strOutError))
+		return false;
+	if (!Clone_ModelCueResources(
+		*pPrepared, StagedModelCueResources, strOutError))
+	{
+		return false;
+	}
+	m_Document = Document;
+	m_pPreparedDocument = std::move(pPrepared);
+	m_ModelCueResources = std::move(StagedModelCueResources);
+	m_strStatus = "Prepared Effect Document resources attached.";
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		++g_EffectRenderPrewarmProbe.iPreparedAttachCount;
+	}
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectDocumentRenderer::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
 {
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		++g_EffectRenderPrewarmProbe.iSynchronousDocumentStageCount;
+	}
 	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
 		return false;
-	if (Resource_SignatureMatches(m_Document, Document))
+	if (nullptr != m_pPreparedDocument &&
+		Resource_SignatureMatches(m_Document, Document))
 	{
 		m_Document = Document;
 		m_strStatus = "Effect Document values committed; GPU resources reused.";
 		strOutError.clear();
 		return true;
 	}
-
-	std::unordered_map<std::string, ELEMENT_RESOURCE> StagedResources;
-	std::unordered_map<std::string, MODEL_CUE_RESOURCE>
-		StagedModelCueResources;
-	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+	PREWARM_ASSET_CACHE SharedAssets;
+	std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
+	if (!Build_PreparedDocument(0u, Document.strEffectAssetId, Document,
+		&SharedAssets, Prepared, strOutError))
 	{
-		MODEL_CUE_RESOURCE Resource;
-		if (FAILED(Stage_ModelCueResource(Cue, Resource, strOutError)))
-			return false;
-		StagedModelCueResources.emplace(Cue.strCueId, std::move(Resource));
+		return false;
 	}
-	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
-	{
-		ELEMENT_RESOURCE Resource;
-		if (FAILED(Stage_ElementResource(Element, Resource, strOutError)))
-			return false;
-		StagedResources.emplace(Element.strElementId, std::move(Resource));
-	}
-	m_Document = Document;
-	m_Resources = std::move(StagedResources);
-	m_ModelCueResources = std::move(StagedModelCueResources);
-	m_strStatus = "Effect Document resources committed.";
-	strOutError.clear();
-	return true;
+	return Stage_Prepared(Document, std::move(Prepared), strOutError);
 }
 
 void Client::CEffectDocumentRenderer::Clear()
 {
 	m_Document = {};
-	m_Resources.clear();
+	m_pPreparedDocument.reset();
 	m_ModelCueResources.clear();
 	m_strStatus = "No Effect Document staged.";
 }
@@ -1242,8 +1759,12 @@ const Client::CEffectDocumentRenderer::ELEMENT_RESOURCE*
 Client::CEffectDocumentRenderer::Find_Resource(
 	const std::string& strElementId) const
 {
-	const auto Iterator = m_Resources.find(strElementId);
-	return Iterator == m_Resources.end() ? nullptr : &Iterator->second;
+	if (nullptr == m_pPreparedDocument)
+		return nullptr;
+	const auto Iterator =
+		m_pPreparedDocument->ElementResources.find(strElementId);
+	return Iterator == m_pPreparedDocument->ElementResources.end() ?
+		nullptr : &Iterator->second;
 }
 
 uint32_t Client::CEffectDocumentRenderer::Select_Pass(
@@ -1543,7 +2064,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Rect(
 	float4x4_t World = nullptr != pWorldOverride ?
 		*pWorldOverride : Element.World;
 	if (Element.pElement->Detail.Sprite.bBillboard)
-		World = Make_BillboardWorld(World);
+		World = Make_BillboardWorld(World,
+			Element.pElement->Detail.Sprite.fBillboardRollDegrees);
 	return UINT32_MAX == iPass ||
 		FAILED(m_pRectShader->Bind_Matrix("g_WorldMatrix", &World)) ||
 		FAILED(Bind_Common(m_pRectShader, Element, Resource, fAlphaScale)) ||

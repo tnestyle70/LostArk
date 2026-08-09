@@ -80,6 +80,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"front.lobby",
 			nullptr,
+			"scene.lobby.neutral.v1",
 			{},
 			CreateLobby,
 			&CLoader::Ready_For_Lobby
@@ -89,6 +90,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"front.character-select",
 			"LV_LOBBY_CLASSSELECT_SL00",
+			"scene.character-select.warm-high-key.v1",
 			{ true, true, -792.f, 158.f, -750.f, 218.f },
 			CreateCharacterSelect,
 			&CLoader::Ready_For_CharacterSelect
@@ -98,6 +100,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.bern",
 			"LV_BER_BERNCASTLE",
+			"scene.bern.neutral-day.v1",
 			MakeFullMapScope("landscape"),
 			CreateBern,
 			&CLoader::Ready_For_Bern
@@ -107,6 +110,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"raid.valtan.arena",
 			"LV_LUT_HEARTRB_ED",
+			"scene.valtan.cool-low-key.v1",
 			MakeFullMapScope(),
 			CreateValtanArena,
 			&CLoader::Ready_For_ValtanArena
@@ -116,6 +120,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::DEVELOPMENT,
 			"dev.training.ground",
 			"LV_DEV_TRAINING_GROUND",
+			"scene.development.neutral.v1",
 			{ true, false, -20.f, -20.f, 20.f, 20.f },
 			CreateDevelopment,
 			&CLoader::Ready_For_Development

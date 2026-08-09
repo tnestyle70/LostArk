@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ActionPresentationTimeline.h"
 #include "AnimationEffectCueDocument.h"
 #include "ContainerObject.h"
 #include "CharacterSpec.h"
+#include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 
@@ -99,6 +101,7 @@ public:
 	bool_t Apply_NetworkAction(
 		LostArk::Shared::PLAYER_ACTION_STATE action,
 		LostArk::Shared::SKILL_ID skillId,
+		std::uint32_t serverTick,
 		std::uint32_t actionStartTick,
 		std::uint8_t comboStage = 0);
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
@@ -176,12 +179,13 @@ private:
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
+	f32_t m_fActionPresentationSeconds = 0.f;
 	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
-	std::string m_strEffectCueClip;
-	std::uint32_t m_iPreviousEffectCueTimeMs = UINT32_MAX;
+	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;
 	std::uint32_t m_iEffectActionStartTick = 0u;
 	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
+	DEFERRED_EMISSIVE_OVERRIDE m_ActionEmissiveOverride;
 	//next goal pos that server notice
 	float3_t m_vNetworkTargetPosition = {};
 	f32_t m_fNetworkTargetYawDegrees = { 0.f };
@@ -196,6 +200,16 @@ private:
 	index, so a clip that already ran would resume at its end -- which chains
 	that repeat a clip do hit. */
 	bool_t Start_Clip(const CLIP_STEP& Step);
+	/* Resolves the authoritative stage age onto its authored sequential clip
+	chain. The input is wall time; playRate converts it to source clip time. */
+	bool_t Seek_ActiveStageForward(f32_t fActionAgeSeconds);
+	bool_t Resolve_ClipTiming(
+		const CLIP_STEP& Step,
+		std::uint32_t& iOutAnimation,
+		f32_t& fOutSourceDurationSeconds) const;
+	bool_t Build_ActiveStageTimeline(
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
+		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
 	/* Jumps the running chain to the server's stage. Fails when no chain runs or
 	the stage is past its end, so the caller keeps the pose it had. */
@@ -212,6 +226,9 @@ private:
 	void Update_EffectCues();
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;
+	void Update_ActionEmissiveOverride(
+		LostArk::Shared::PLAYER_ACTION_STATE action,
+		LostArk::Shared::SKILL_ID skillId);
 
 public:
 	static unique_ptr<CCharacter> Create(ComPtr<ID3D11Device> pDevice,

@@ -1048,3 +1048,361 @@ Element와 SourceRecipe는 존재하지만 runtime profile이 `fallback-blocked`
 `contact glint`, `long afterimage` 여덟 서명을 각각 Solo로 식별한 뒤 authored order의 첫 타격
 합성과 네 occurrence 누적을 별도로 통과하는 것이다. cooked graph의 소실 edge가 남아 있으므로
 시각 A/B 합격 후에도 각 finite profile은 `RECONSTRUCTED_PROFILE`, `RUNTIME_EXACT=0`을 유지한다.
+
+---
+
+## 17. 2026-08-09 최종 투 트랙과 Track B Authored Baseline 계약
+
+### 17.1 Renderer 분류와 소유 경계
+
+사용자가 문제로 지목한 보라색·하얀색 레이어는 UE3 Cascade의 Mesh Renderer particle이다.
+48개 Mesh Particle의 원본 Material, Size, Rotation, Transform과 emitter 의미는 Track A가 범용
+복구한다. Track B는 이 Cascade Mesh Particle만 제외하고, 첫 검격을 이루는 Sprite와 큰·작은
+검격 Mesh를 손으로 닫는 저점이자 시각 고점 기준선을 만든다.
+
+Track B의 Sprite는 standalone `sprite`, 검격은 standalone `mesh`로 저장한다. 원본 Element는
+리소스와 초기 수치의 근거로만 읽고 출력의 `sourceRecipe`와 `sourcePresentation`은 비활성화한다.
+따라서 Imported와 canonical SourceRecipe를 손보정하지 않으며 Track A 재생성에도 수동 결과가
+덮이지 않는다.
+
+| 트랙 | 소유 파일·계약 | 금지 경계 |
+|---|---|---|
+| A | Source extraction/recipe 해석, 48 Cascade Mesh Particle, 범용 renderer/material/shader | Track B correction, authored-baseline, A cue routing 수정 금지 |
+| B | Authored Baseline seed, standalone Sprite/Mesh, Effect Tool 저장, A cue routing | Imported/SourceRecipe 수정, Cascade Mesh Particle 포함, 전역 Sprite 회전 금지 |
+
+두 트랙 모두 `CEffectCatalog -> CEffectPresentationService -> CEffectObject -> CEffectPlayback`과
+`CModel -> CMaterial` 한 런타임 경로만 사용한다. 두 번째 Effect GameObject나 별도 renderer를
+만들지 않는다.
+
+### 17.2 한 번만 생성하고 Effect Tool이 소유하는 저장 계약
+
+초기 seed와 실제 손저작 문서는 다음처럼 분리한다.
+
+```text
+Data/Effects/AuthoredCorrections/DimensionMaster/
+  effect.dimensionmaster.skill.2050210.authored-baseline.correction.json
+
+Data/Effects/Authored/
+  effect.dimensionmaster.skill.2050210.authored-baseline.effect.json
+```
+
+seed는 source Effect SHA-256, stable Effect/Element/Group ID, 리소스, 초기 Transform/UV/Timing,
+Player-root snapshot 정책과 Sprite `-90°`를 검증한다. materializer는 출력이 없을 때만 문서를
+원자적으로 생성하며 기존 출력이 있으면 실패한다. 생성 뒤에는 Authored v12 문서가 수동 정본이고,
+Effect Tool의 Load → 수정 → Save가 같은 파일을 직접 갱신한다. seed 재실행으로 수동 저장값을
+덮어쓰지 않는다.
+
+첫 검격은 다음 고정 draw order를 사용한다.
+
+```text
+authored.baseline.a.hit01.mesh-large
+authored.baseline.a.hit01.mesh-small
+authored.baseline.a.hit01.sprite
+```
+
+세 Element는 같은 `groupId=authored.baseline.a.hit01`과 같은 `startDelaySeconds=0.25`를 가져야
+한다. 역할 중복, 순서 변경, 같은 타격 안의 snapshot 시점 분리는 materializer가 거부한다.
+
+### 17.3 첫 검격의 세 수동 carrier
+
+| 역할 | Kind | 시작 수치 | 목적 |
+|---|---|---|---|
+| 큰 검격 | `mesh` | `fm_h_swing_02`, scale `0.0341` | 중심 보라·백색 body |
+| 작은 검격 | `mesh` | `fm_h_swing_02`, scale `0.03135` | 안쪽 선·rim·highlight |
+| Sprite | `sprite` | `fx_a_trail_007`, scale `4.4`, billboard roll `-90°` | 방향성과 검격 카드 보강 |
+
+공통 초기 위치는 Player root 기준 `(0.5, 0.15, -0.9)`이고 두 Mesh의 초기 회전은
+`(-18, 0, 0)`이다. 이 숫자는 시각 정답이 아니라 손보정을 시작할 seed다. 첫 시각 gate에서는
+Bloom, Emissive, Distortion과 회전 속도를 0으로 두고 Position → Rotation → Scale → UV →
+Lifetime 순으로 형상만 맞춘다.
+
+Sprite `-90°`는 `particleSystem.yawOffsetDegrees`나 공통 Transform에 넣지 않는다. v12 Sprite의
+`detail.sprite.billboardRollDegrees=-90`으로 저장하고 Effect Tool에서 같은 필드를 조절한다.
+기존 문서는 필드가 없으면 0°로 읽으므로 레거시와 다른 직업 Sprite는 회전하지 않는다. billboard
+행렬 뒤 screen-space roll로 적용되므로 카메라를 향하는 성질도 유지한다.
+
+첫 문서의 자동 계약은 `Mesh 2, Sprite 1, Particle 0`과 모든 Element의
+`sourceRecipe.enabled=false`다. 이 단계에 Cascade Mesh Particle을 섞지 않는다.
+
+### 17.4 실제 Player-root occurrence snapshot
+
+A animation cue의 바깥 정책은 `anchor="root" follow=follow`로 현재 Player root를 EffectObject에
+계속 공급한다. 세 Element는 모두 다음 attachment를 사용한다.
+
+```text
+enabled=true
+follow=false
+sourceAnchorSlotId="root"
+runtimeAnchorSlotId="root"
+runtimeBoneName=""
+```
+
+세 Element가 모두 0.25초에 시작하므로 동일한 0.25초 Player root를 캡처하고, 생성 뒤에는
+플레이어를 따라가지 않는다. 첫 검격 합격 뒤 2·3·4타도 각각 하나의 공통 snapshot 시점을 갖는다.
+시점은 `0.60 / 0.90 / 1.30초`이고 각 타격의 Position, Rotation, Scale, UV, Lifetime은 독립
+저장한다. 첫 검격 값을 무조건 복사해 정답으로 취급하지 않는다.
+
+### 17.5 실행 순서와 완료 조건
+
+1. authored-baseline seed/parser, source SHA, role·draw order, 공통 snapshot, overwrite 거부를
+   자동 검증한다.
+2. Catalog와 A animevent를 authored-baseline에 연결하고 publisher/codec/harness를 통과시킨다.
+3. main worktree에서 빌드한 Client를 `Client/Default` working directory로 실행한다. 과거 physics
+   worktree EXE를 합격 증거로 사용하지 않는다.
+4. Effect Tool에서 Sprite Solo, 큰 Mesh Solo, 작은 Mesh Solo, 세 레이어 합성을 차례로 확인하고
+   Load → 수정 → Save → Reload 결과가 같은지 확인한다.
+5. 실제 A 입력에서 세 레이어가 0.25초 Player root에 함께 생성되고 이후 Player 이동에 끌려가지
+   않는지 확인한다. 이 GPU 화면 합격 전에는 2·3·4타를 만들지 않는다.
+6. 형상 합격 뒤 Material → Emissive → Bloom 순으로 한 변수군씩 올린다. 카드 외곽, cull 반전,
+   z-fighting, 과노출이 생기면 바로 이전 단계로 돌아간다.
+7. 첫 검격 합격 뒤 4타를 닫고, A 전체 합격 뒤 Q/W/E/R, S/D/F, T/V/ALT_V, BA1~BA4 순서로
+   같은 Authored Baseline 절차를 확장한다.
+
+자동 검증 통과는 시각 합격이 아니다. Track A에서 원작 수준으로 검증된 레이어만 Track B의 근사를
+순차 교체하며, Track A 병합 뒤에도 standalone Sprite/Mesh 회귀와 실제 A키 재생을 다시 확인한다.
+
+---
+
+## 18. 2026-08-09 실제 게임 A 검증까지 닫는 최종 실행 계약
+
+이 절은 17장의 3레이어 hit01 seed 단계를 대체하는 최종 구현 기준이다. Imported와 SourceRecipe를
+수정하지 않는 경계는 그대로 유지하되, 이번 검증 단위에서 4타 전체를 수동 Track B로 구성하고
+실제 Server Arena의 A 입력까지 연결한다.
+
+### 18.1 A를 누르는 정확한 장소와 기존 이동 권위
+
+최초 `Character Select`는 소켓이 없는 Preview이므로 gameplay A 입력을 처리하지 않는다. 실제 검증은
+다음 한 경로만 사용한다.
+
+```text
+Lobby
+  -> Character Select
+  -> DimensionMaster 선택
+  -> Server Play (Lobby-approved)
+  -> Server 승인 후 같은 visual map의 Server Arena 진입
+  -> F6 follow camera 유지
+  -> A
+```
+
+F6 free camera에서는 gameplay command가 차단되고 A가 카메라 좌이동으로 소비되므로 검증할 수 없다.
+A는 코드에 2050210을 직접 매핑하지 않고 기존 `A input slot -> PlayerSkills catalog -> 2050210 ->
+Server approval -> snapshot` 경로를 사용한다.
+
+2050210의 전진은 이미 Server bootstrap에 게시된 84-sample root-motion이며 최종 전진량은 약 2.3053m다.
+Server가 aim/facing 방향으로 적용하고 Client 캐릭터 루트 모션은 Server 권위를 위해 억제한다. 따라서
+Client dash나 `movementDistance`를 새로 만들지 않는다. 새 이동 코드는 동일 이동을 두 번 적용하는
+회귀다. 화면에서 움직이지 않으면 먼저 Preview 진입, F6 free camera, Server 미실행, stale EXE를
+검사한다.
+
+Server Arena 카메라는 동일한 `CCamera_Free` follow 경로를 유지하고, 검격 원호와 전진을 함께 볼 수
+있도록 높이 7.5m, 뒤 거리 4.5m의 높은 대각 탑뷰로 조정한다. 별도 Camera나 새 Level을 만들지 않는다.
+
+### 18.2 Player anchor와 수동 좌표의 의미
+
+바깥 animevent는 `anchor=root, follow=follow`로 현재 owner `CTransform` world를 계속 공급한다. 각
+Element는 다음 계약으로 자기 시작 시점의 Player root와 yaw를 한 번만 캡처한다.
+
+```text
+actionCueAttachment.enabled=true
+actionCueAttachment.follow=false
+sourceAnchorSlotId=root
+runtimeAnchorSlotId=root
+runtimeBoneName=""
+```
+
+Player를 바라보는 카메라가 앵커가 아니며, 월드 원점도 앵커가 아니다. 기준은 Server snapshot으로
+이동한 실제 Player root와 Player의 바라보는 방향이다. 로컬 좌표는 `X 음수 = Player 왼쪽`,
+`Z 양수 = Player 앞`이다. 따라서 원호가 왼쪽에서 시작해 앞으로 뻗는 형상은 각 hit의 authored
+local X/Z와 rotation으로 맞춘다. Server root-motion 누적 이동량은 local position에 다시 bake하지
+않는다.
+
+각 타격의 여섯 레이어는 반드시 같은 delay를 사용해 같은 occurrence anchor를 공유한다.
+
+| 타격 | 공통 delay | 원본 enabled FX-00 occurrence |
+|---|---:|---|
+| hit01 | 0.25s | base group / notify-018 |
+| hit02 | 0.60s | `.event_source-event-030` / notify-044 |
+| hit03 | 0.90s | `.event_source-event-045` / notify-062 |
+| hit04 | 1.30s | `.event_source-event-060` / notify-083 |
+
+같은 시점의 disabled FX-08 clone은 Track B에 복제하지 않는다. 각 hit의 position, rotation, scale,
+UV tiling, lifetime은 독립 저장값이며 hit01 값을 복사한 뒤 반드시 개별 손보정한다.
+
+### 18.3 Track B의 24개 authored Element
+
+Track B 문서 하나는 다음 원본 상대 draw order를 보존한 여섯 레이어를 hit마다 가진다.
+
+| 순서 | 역할 | 원본 emitter | Kind |
+|---:|---|---|---|
+| 1 | 짧은 외측 백색 echo arc | `swinghit_00_1/_2` | Mesh |
+| 2 | 보라 flow highlight | `swinghit_00_1/_14` | Mesh |
+| 3 | 중심 보라 body | `swinghit_00_1/_15` | Mesh |
+| 4 | 긴 보라 afterimage | `swinghit_00_1/_20` | Mesh |
+| 5 | 짙은 외곽 rim | `swinghit_00_1/_3` | Mesh |
+| 6 | 얇은 trail card | `swinghit_00_1/_9` | Sprite |
+
+즉 `Mesh 5 + Sprite 1`을 4타에 배치해 총 24 Element다. 모든 Element는
+`sourceRecipe.enabled=false`, `sourcePresentation.enabled=false`인 standalone authored carrier다.
+그러나 원본 PNG와 MI 의미를 잃지 않도록 materializer는 선택한 원본 Element의 resource slots,
+`sourceMaterialPath`, `sourceProfile`을 seed에 보존하고, 필요한 source texture를 명시적 emissive
+slot으로 복제할 수 있게 한다. 단순 generic material로 전부 초기화하지 않는다.
+
+Sprite `-90°`는 전역 하드코딩이나 Particle 공통 yaw가 아니다. 이 Track B의 네 Sprite에만
+`detail.sprite.billboardRollDegrees=-90`으로 저장한다. 기존 Sprite 문서와 다른 직업은 기본 0°를
+유지하며, Cascade Mesh Particle 회전과도 섞지 않는다.
+
+정본 경계는 다음과 같다.
+
+```text
+Imported / SourceRecipe                        read-only, Track A 소유
+AuthoredCorrections/...2050210...correction    일회성 Track B seed 계약
+Authored/...2050210...authored-baseline.effect 수동 저장 정본
+Assemblies / Components / runtime catalog       기존 builder/publisher 생성물
+```
+
+materializer는 기존 Authored 출력이 있으면 덮어쓰지 않는다. 생성 뒤에는 Effect Tool이 Authored
+문서를 직접 Load/Edit/Save하고, Imported나 correction seed를 다시 저장 대상으로 삼지 않는다.
+
+### 18.4 캐릭터 백색 발광과 검격 material의 분리
+
+A 액션 중 캐릭터 몸·장비·네 무기를 하얗게 보이게 하는 기능은 Effect Element가 아니라 class
+presentation이다. 기존 shader는 emissive texture가 있는 표면만 발광하므로 intensity만 올려서는
+몸 전체가 하얗게 되지 않는다.
+
+`CharacterSpec`에 optional skill surface-emissive 표를 두고 DimensionMaster에만
+`2050210 -> white, finite intensity` 한 행을 둔다. `CCharacter`는 Server snapshot의 action/skill
+edge에서 generic하게 transient override를 선택하며 `NONE`, `DEAD`, 다른 action/skill에서 즉시
+초기화한다. Body, skinned equipment, socket weapon은 shared material을 바꾸지 않고 같은 override
+포인터를 렌더 binder에 전달한다. animated/static model shader는 기존 emissive-map 출력을 보존한
+채 diffuse detail과 alpha를 마스크로 full-surface HDR emissive를 더하고, 기존 Scene HDR/Bloom
+경로를 그대로 사용한다.
+
+캐릭터 발광 수치는 이번 수직 슬라이스에서 `CharacterSpec` 소유다. 검격 Mesh/Sprite의 Transform,
+UV, lifetime, tint, emissive, material은 계속 Effect Tool 소유이며 두 계약을 한 Element에 섞지 않는다.
+
+### 18.5 Save 후 같은 Client에서 A를 다시 누르는 루프
+
+`Save Authored`만으로는 제품 A 재생이 갱신되지 않는다. 제품 재생은 시작 때 로드한 Runtime Catalog를
+사용하기 때문이다. Debug Effect Tool에 정확한 Track B 문서가 clean/drawable일 때만 활성화되는
+`Publish + Reload A Test` 동작을 둔다.
+
+```text
+Effect Tool에서 수정
+  -> Save Authored
+  -> Publish + Reload A Test
+     -> 기존 build_effect_components.py
+     -> 기존 Publish-Effects.ps1 -Mode Publish
+     -> CEffectCatalog::Load의 parse/validate/stage/commit
+  -> F1 닫기
+  -> F6 follow 유지
+  -> A
+```
+
+Authored 문서를 EffectObject에 직접 주입하는 두 번째 런타임 경로는 만들지 않는다. builder 또는
+publisher 또는 catalog reload가 실패하면 이미 로드된 Runtime Catalog를 유지한다. 기존 EffectObject는
+문서 사본을 보유하므로 다음 A spawn부터 새 revision을 사용한다. 이미 연결된 baseline 내용 편집에는
+재진입이 필요 없지만 animevent의 effect ID/timing/anchor를 바꾼 경우에는 Character를 다시 생성하거나
+Server Arena에 재진입해야 한다.
+
+정식 2050210 cooldown은 55초이고 resource cost는 839이므로 제품 규칙 그대로면 반복 손튜닝이
+막힌다. Debug `CHARACTER_SELECT_ARENA`만 Server-authoritative audition 공간으로 취급해
+`C2S_USE_SKILL`을 처리하기 직전에 요청한 skill의 cooldown entry와 resource를 Server에서
+초기화한다. 이 처리는 `_DEBUG`와 정확한 world ID로 이중 격리하며 Release, 다른 world, authored
+balance 값은 바꾸지 않는다. action-running, sequence, class, aim, root-motion, snapshot 승인은 계속
+기존 `CPlayerSkillSystem::Try_Start`가 담당하므로 Client local 재생 우회가 아니다.
+
+### 18.6 이번 검증 단위의 완료 조건
+
+1. correction/materializer 단위 테스트가 source SHA, 4 hit, hit당 6 role/draw order, 공통 delay,
+   root snapshot, Sprite -90°, overwrite 거부, 보존 material profile을 검사한다.
+2. 생성된 Authored 문서는 정확히 Mesh 20, Sprite 4, Particle 0이며 24 Element 모두 finite하고
+   SourceRecipe와 SourcePresentation이 비활성이다.
+3. builder와 publisher 검증 뒤 Runtime Catalog가 같은 effect ID와 내용으로 게시된다.
+4. Render-quality audit와 Client x64 Debug build가 full-surface emissive와 Effect Tool reload 경로를
+   포함해 통과한다.
+5. 실제 Server+Client에서 DimensionMaster Server Arena, F6 follow, A로 전진·4타 occurrence·백색
+   캐릭터 발광·액션 종료 원복을 확인한다.
+6. Effect Tool에서 한 레이어의 위치 또는 tiling을 수정해 Save → Publish + Reload A Test → A로
+   재실행했을 때 다음 spawn에 반영되는지 확인한다.
+7. 자동 검증과 빌드는 구현 완료 증거로 기록하고, 원작 PNG와의 최종 GPU 시각 합격은 별도 수동
+   결과로 명시한다. 시각 합격 전에는 원작 퀄리티 완료라고 보고하지 않는다.
+
+---
+
+## 19. 2026-08-09 원작 비교 기반 Effect·Rendering 통합 복원 순서
+
+### 19.1 한 타의 최종 시각 구성
+
+현재 Track B의 한 hit는 이미 다음 저점 골격과 정확히 대응한다.
+
+```text
+보라 핵심 Mesh 4
+  flow / body / afterimage / rim
+백색 보조 Mesh 1
+  white-echo
+Sprite 1
+  trail card, billboard roll -90°
+```
+
+이 여섯 carrier의 texture, material source profile, resource slot은 원본 Cascade emitter에서 파싱한
+값을 seed로 보존한다. 다만 standalone carrier이므로 아직 원본 Cascade의 spawn 분포, lifetime
+variation, velocity, orbit, SubUV 같은 Particle 동작 전체를 대신하지는 않는다.
+
+최종 한 hit는 위 수동 골격에 Track A에서 검증된 다음 accent를 같은 Effect 안에 추가한다.
+
+```text
+Track B manual core
+  + Cascade Mesh Renderer particle accent
+  + Cascade Sprite particle accent
+  + 필요한 dust / glint / fragment / contact layer
+```
+
+Particle을 별도 Effect나 별도 renderer 제품 경로로 떼지 않는다. Track A가 복원한 Element를 기존
+`CEffectCatalog -> CEffectPresentationService -> CEffectObject -> CEffectPlayback` 문서에 admit해
+같은 root occurrence, draw order, sample time, HDR/Bloom을 공유한다. 검증되지 않은 48개 Mesh Particle을
+한 번에 모두 켜지 않고 원작 PNG에서 역할이 확인된 layer만 Solo 합격 뒤 순차 추가한다.
+
+### 19.2 기존 모작에서 Particle이 빠진 이유에 대한 작업 가설
+
+현재 코드와 데이터로 볼 때 Particle이 불필요해서 제거된 것이 아니라, 다음 복원 비용이 Mesh 단일
+carrier보다 훨씬 컸기 때문에 저점 구현에서 생략됐을 가능성이 높다.
+
+- Cascade emitter 단위 spawn/lifetime/burst/loop 해석
+- Mesh Renderer의 Size·Rotation·local/world axis 차이
+- Material Instance parent graph와 dynamic parameter 의미
+- SubUV, orbit, velocity, color/alpha over life
+- translucent draw order, depth read/write, cull, additive blend
+- 원본 action occurrence와 Player root/facing 동기화
+
+따라서 “툴에 Particle 버튼만 추가”하는 것으로 원작 품질이 나오지는 않는다. 툴은 source provenance와
+module 값을 보이게 하고 수동 correction을 저장하는 창구이며, 실제 복원은 같은 runtime evaluator와
+shader/material profile이 그 값을 정확히 소비할 때 완료된다.
+
+### 19.3 F1 Effect Tool과 Rendering Tool의 역할 분리
+
+두 도구는 한 화면 결과를 다루지만 저장 책임은 분리한다.
+
+| 도구 | 조절 대상 |
+|---|---|
+| Effect Tool | layer 선택/Solo, Transform, UV tiling/pan, lifetime, alpha/tint, layer emissive, material/profile, particle module |
+| Rendering Tool | Scene HDR, bloom threshold/intensity, exposure/tone mapping, FXAA와 전역 렌더 품질 |
+
+Rendering Tool 수치로 잘못된 Mesh 방향이나 alpha mask를 가리지 않는다. 반대로 Effect material마다
+전역 노출을 흉내 내는 과도한 emissive를 중복 bake하지 않는다. 최종 제품에서는 Effect가 emissive
+energy를 제출하고 기존 Scene HDR/Bloom이 이를 한 번만 합성한다.
+
+### 19.4 원작/모작 눈 비교 반복 순서
+
+1. 같은 camera/FOV, 같은 Player facing, 같은 sample time의 원작 PNG와 현재 화면을 나란히 둔다.
+2. Screen Post OFF에서 hit별 원호 silhouette, 시작점, 전진 방향, 크기, 회전을 맞춘다.
+3. 네 보라 Mesh와 백색 Mesh를 한 개씩 Solo해 겹침 순서와 alpha mask를 맞춘다.
+4. Sprite를 Solo해 -90° 방향, 카드 외곽, soft edge를 맞춘다.
+5. 검증된 Particle Mesh/Sprite를 한 layer씩 추가하고 spawn 위치·수명·속도를 맞춘다.
+6. Material tint/flow/dissolve를 맞춘 뒤 Effect emissive를 올린다.
+7. 마지막에만 Rendering Tool에서 Bloom/Exposure를 맞추고 Complete Effect를 본다.
+8. hit01만 보지 않고 같은 수치로 hit02/03/04의 occurrence 누적과 긴 afterimage를 확인한다.
+9. Save Authored → Publish + Reload A Test → 실제 A로 다음 revision을 검증한다.
+
+이 순서는 현재 A를 먼저 닫는 기준이며, 합격한 6-layer core + 검증된 particle accent 조합을 다른
+DimensionMaster 스킬의 Authored Baseline 시작점으로 재사용한다. Transform과 timing은 스킬별로 다시
+저작하며 A의 수치를 전역 하드코딩하지 않는다.

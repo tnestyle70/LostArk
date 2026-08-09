@@ -23,14 +23,33 @@ namespace Engine
 		XMFLOAT4	vDiffuse, vAmbient, vSpecular;
 	}LIGHT_DESC;
 
+	typedef struct tagShadowSettings
+	{
+		bool_t	bEnabled = false;
+		f32_t	fOrthographicWidth = 40.f;
+		f32_t	fOrthographicHeight = 40.f;
+		f32_t	fNear = 0.1f;
+		f32_t	fFar = 150.f;
+		f32_t	fDepthBias = 0.0015f;
+		f32_t	fNormalBias = 0.02f;
+		f32_t	fStrength = 0.7f;
+	}SHADOW_SETTINGS;
+
 	typedef struct tagShadowLightDesc
 	{
-		float4_t			vEye, vAt;
-		f32_t				fFovy, fNear, fFar;
+		float4_t			vEye = float4_t(0.f, 20.f, -20.f, 1.f);
+		float4_t			vAt = float4_t(0.f, 0.f, 0.f, 1.f);
+		SHADOW_SETTINGS		Settings = {};
 	}SHADOW_LIGHT_DESC;
 
 	typedef struct tagRenderQualitySettings
 	{
+		bool_t	bSSAOEnabled = true;
+		f32_t	fSSAORadius = 0.75f;
+		f32_t	fSSAOBias = 0.025f;
+		f32_t	fSSAOIntensity = 1.f;
+		f32_t	fSSAOPower = 1.25f;
+		f32_t	fSSAODistanceFade = 60.f;
 		bool_t	bBloomEnabled = true;
 		f32_t	fBloomThreshold = 1.f;
 		f32_t	fBloomSoftKnee = 0.5f;

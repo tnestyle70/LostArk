@@ -21,7 +21,7 @@ Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss
 
 Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 최초 Character Select는 socket 없는 3D Preview Level이다. Character Select 창의 `Server Play`는 선택 class와 tokenized TEST만 Lobby에 제출하고, Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 Server gameplay로 다시 연다. Server Arena의 `Preview`는 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 Lobby에 제출하여 socket 없는 Preview로 재진입한다. 재진입 Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 `IWorldEntityCommandSink`를 통해 stable placement ID만 제출하고 Server가 world template/navigation/profile을 검증한 결과를 broadcast한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
-같은 PC 테스트는 `Framework.slnLaunch`의 `Server + Client` profile과 기본 `127.0.0.1:7777` 계약을 사용한다. LAN에서는 Server를 `--bind-address 0.0.0.0`으로 실행하고 각 Client process에 `LOSTARK_SERVER_HOST=<Server에 도달 가능한 IPv4>`를 준다. 개인 IP는 Git에 저장하지 않으며 endpoint 입력 UI와 자동 서버 탐색은 현재 Lobby 범위가 아니다.
+2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 `Ctrl+F5`로 시작한다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
 
@@ -29,8 +29,8 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 같은 PC | `127.0.0.1` | `127.0.0.1` |
-| 같은 공유기/LAN | `0.0.0.0` | Server PC의 현재 LAN IPv4 |
+| 현재 팀 LAN 검증 | `0.0.0.0` | `192.168.200.103` |
+| 같은 PC 격리 검증 | `127.0.0.1` 명시 | `127.0.0.1` 명시 |
 | 서로 다른 장소/네트워크 | `0.0.0.0` | Server PC의 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint |
 
 `192.168.x.x`, `10.x.x.x`, `172.16.x.x`~`172.31.x.x`는 사설 주소다. 서로 다른 장소의 Client는 Server PC의 Wi-Fi 사설 주소로 직접 접속할 수 없다. 팀 테스트는 두 PC를 같은 사설망처럼 연결하는 VPN 주소를 우선 사용한다. 공인 인터넷에 직접 노출해야 한다면 Server PC로 TCP `7777`을 포트포워딩하고 Windows Firewall의 인바운드 범위를 승인된 원격 주소로 제한한다.
@@ -41,15 +41,28 @@ Server PC의 Git 제외 로컬 파일 `Server/Default/Server.vcxproj.user`에는
 <LocalDebuggerCommandArguments>--bind-address 0.0.0.0</LocalDebuggerCommandArguments>
 ```
 
-각 Client PC의 Git 제외 로컬 파일 `Client/Default/Client.vcxproj.user`에는 그 Client에서 실제로 도달 가능한 Server 주소를 지정한다.
+각 PC의 에이전트는 세션 시작 시 아래 명령으로 Server/Client의 Git 제외 로컬 설정을 정본과 동기화한다. Server가 아직 꺼져 있으면 `Endpoint status now: not-listening`이 나올 수 있지만 설정 실패는 아니다.
 
-```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=&lt;SERVER_REACHABLE_IPV4&gt;</LocalDebuggerEnvironment>
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. Server PC에서 같이 실행하는 Client는 `127.0.0.1`, 같은 LAN의 다른 Client는 Server PC의 LAN IPv4, 다른 장소의 Client는 Server PC의 VPN IPv4 또는 공인 endpoint를 사용한다. 개인 LAN·VPN·공인 주소는 이 문서나 공유 project 파일에 기록하지 않고 각자의 `.vcxproj.user`에만 둔다.
+스크립트는 현재 endpoint IPv4를 실제로 가진 PC를 `server-host`, 나머지를 `client`로 자동 판정한다.
+`server-host`는 Server+Client profile을 시작하고, `client`는 불필요한 로컬 Server를 띄우지 않고
+Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑터 상태와 endpoint 정본을 먼저
+교정하며 `-Role Server`로 주소 소유 검사를 우회할 수 없다.
 
-현재 Server PC 주소는 실행할 때마다 다음 명령으로 확인한다.
+현재 공유 기본값과 다른 endpoint를 검증할 때만 `TeamLanEndpoint.json`, Server/Client 기본값,
+공유 debugger 설정, 문서와 audit를 같은 변경 단위로 교체한다. 한 PC의 `.vcxproj.user`만 바꿔
+팀 계약을 갈라놓지 않는다.
+
+```xml
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.103</LocalDebuggerEnvironment>
+```
+
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 같은 LAN의 모든 Client와 Server PC의 Client는 `192.168.200.103`을 사용한다. 주소를 바꾸면 Server/Client 코드 기본값, 공유 debugger 설정, 이 사용서와 ProjectAudit을 같은 변경 단위에서 갱신한다.
+
+현재 Server PC 주소가 실제 어댑터에 있는지는 다음 명령으로 확인한다.
 
 ```powershell
 Get-NetIPAddress -AddressFamily IPv4 |
@@ -58,6 +71,9 @@ Get-NetIPAddress -AddressFamily IPv4 |
 ```
 
 설정 후 Visual Studio는 `.vcxproj.user`를 메모리에 캐시할 수 있으므로 Server와 Client project를 Reload하거나 Visual Studio를 재시작한다. 그다음 Server PC와 Client PC에서 각각 확인한다.
+
+`Sync-TeamLanEndpoint.ps1`은 `2026-08-20 23:59 KST`가 지나면 실패한다. 2026-08-21 이후 첫
+세션은 `-AllowExpired`로 계속 쓰지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 정한다.
 
 ```powershell
 # Server PC
@@ -416,9 +432,17 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 새 스킬을 추가할 때는 다음을 함께 변경한다.
 
-1. `PlayerSkills.json`과 참조 `DamageProfiles.json`. `effectId`는 Client 연출 참조이며
-   stable ID여야 하고 Server bootstrap에는 싣지 않는다. 빈 문자열은 저작된 이펙트가
-   아직 없다는 뜻이다.
+1. `PlayerSkills.json`과 참조 `DamageProfiles.json`. 비어 있지 않은 `effectId`는 Client의
+   canonical source/진단 참조이므로 stable ID여야 하고 Server bootstrap에는 싣지 않는다.
+   실제 clip별 Product Effect는 `skillbindings`가 소유한 clip의 `effectref=asset` animevent가
+   가리키는 Authored Effect다. `effectId`가 비어 있다는 이유만으로 실제 Product cue를 추측하거나
+   반대로 source/imported 문서를 제품 재생 대상으로 승격하지 않는다.
+   다중 clip stage도 첫 clip의 재생률로 하나의 Effect 문서를 진행하지 않는다. 시각 요소가 있는
+   각 clip이 clip-local Product cue를 소유하고 기존 Character의 `playMs`, `playRate`, loop와
+   authoritative late-catch-up을 소비한다. Character gameplay 준비는 이 검증된 cue target 집합을
+   catalog revision 단위로 transactional prewarm하며, 전투 Update의 Product Spawn은 prepared
+   bundle만 붙인다. prepared miss에서 shader/model/DDS/vector-field load 또는 synchronous document
+   stage를 수행하지 않는다.
 2. Character presentation의 stable action/skill mapping
 3. 필요한 Shared message/snapshot 확장
 4. Server validation/action/damage 처리
@@ -467,7 +491,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 완료:
 
 - 서버 권위 우클릭 이동과 Navigation path
-- 다섯 class 전체 quick slot과 LMB COMBO의 command, server approval, action/damage/cooldown/resource
+- 여섯 class 전체 quick slot과 LMB COMBO의 command, server approval, action/damage/cooldown/resource
 - snapshot 기반 Character skill/locomotion 표현
 - Animation Tool의 data-driven key/skill → ordered clip/BA stage authoring, atomic Save, safe action-boundary reload
 - HUD용 player/boss runtime ViewModel
@@ -475,7 +499,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - world gameplay와 navigation 배치 정합성 검사
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
 
 별도 수직 슬라이스:
 

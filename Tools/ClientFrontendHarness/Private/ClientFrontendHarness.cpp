@@ -1,4 +1,5 @@
 #include "Client_Defines.h"
+#include "ActionPresentationTimeline.h"
 #include "LobbyCommandService.h"
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
@@ -133,18 +134,18 @@ namespace
 		return true;
 	}
 
-	struct DIMENSIONMASTER_EFFECT_BUILD_ROW final
+	struct EFFECT_BUILD_ROW final
 	{
 		std::size_t iComponentCount = 0u;
 		std::size_t iEmitterCount = 0u;
 	};
 
-	struct DIMENSIONMASTER_EFFECT_BUILD_CONTRACT final
+	struct EFFECT_BUILD_CONTRACT final
 	{
 		std::size_t iEffectCount = 0u;
 		std::size_t iComponentCount = 0u;
 		std::size_t iEmitterCount = 0u;
-		std::map<std::string, DIMENSIONMASTER_EFFECT_BUILD_ROW, std::less<>> Effects;
+		std::map<std::string, EFFECT_BUILD_ROW, std::less<>> Effects;
 	};
 
 	bool_t Read_ContractSize(
@@ -166,19 +167,20 @@ namespace
 		return true;
 	}
 
-	bool_t Load_DimensionMasterEffectBuildContract(
-		DIMENSIONMASTER_EFFECT_BUILD_CONTRACT& outContract,
+	bool_t Load_EffectBuildReceipt(
+		const wchar_t* pRelativePath,
+		const char_t* pExpectedCharacterClass,
+		EFFECT_BUILD_CONTRACT& outContract,
 		std::string& outStatus)
 	{
 		using namespace Client;
 		outContract = {};
-		const std::filesystem::path path = CProjectDataRoot::Resolve(
-			L"Effects/Imported/DimensionMaster/"
-			L"DimensionMaster.component-build.receipt.json");
+		const std::filesystem::path path = CProjectDataRoot::Resolve(pRelativePath);
 		std::ifstream input(path, std::ios::binary);
 		if (path.empty() || !input)
 		{
-			outStatus = "DimensionMaster component build receipt is missing.";
+			outStatus = std::string(pExpectedCharacterClass) +
+				" component build receipt is missing.";
 			return false;
 		}
 		std::string text{
@@ -200,7 +202,7 @@ namespace
 			nullptr == version || !version->Is_Number() ||
 			version->Get_Number() != 1.0 ||
 			nullptr == characterClass || !characterClass->Is_String() ||
-			characterClass->Get_String() != "DIMENSIONMASTER" ||
+			characterClass->Get_String() != pExpectedCharacterClass ||
 			nullptr == compileIdentity || !compileIdentity->Is_Boolean() ||
 			!compileIdentity->Get_Boolean() ||
 			nullptr == effects || !effects->Is_Array() ||
@@ -208,7 +210,8 @@ namespace
 			!Read_ContractSize(root, "componentCount", outContract.iComponentCount) ||
 			!Read_ContractSize(root, "emitterCount", outContract.iEmitterCount))
 		{
-			outStatus = "DimensionMaster component build receipt contract is invalid.";
+			outStatus = std::string(pExpectedCharacterClass) +
+				" component build receipt contract is invalid.";
 			return false;
 		}
 
@@ -220,7 +223,7 @@ namespace
 			const DATA_JSON_VALUE* effectIdentity = effect.Find("compileIdentity");
 			const DATA_JSON_VALUE* sourceSha = effect.Find("sourceDocumentSha256");
 			const DATA_JSON_VALUE* compiledSha = effect.Find("compiledDocumentSha256");
-			DIMENSIONMASTER_EFFECT_BUILD_ROW row;
+			EFFECT_BUILD_ROW row;
 			if (!effect.Is_Object() || nullptr == effectAssetId ||
 				!effectAssetId->Is_String() || effectAssetId->Get_String().empty() ||
 				nullptr == effectIdentity || !effectIdentity->Is_Boolean() ||
@@ -234,7 +237,8 @@ namespace
 				!outContract.Effects.emplace(
 					effectAssetId->Get_String(), row).second)
 			{
-				outStatus = "DimensionMaster component build receipt effect row is invalid.";
+				outStatus = std::string(pExpectedCharacterClass) +
+					" component build receipt effect row is invalid.";
 				return false;
 			}
 			componentTotal += row.iComponentCount;
@@ -245,7 +249,65 @@ namespace
 			componentTotal != outContract.iComponentCount ||
 			emitterTotal != outContract.iEmitterCount)
 		{
-			outStatus = "DimensionMaster component build receipt totals disagree with its rows.";
+			outStatus = std::string(pExpectedCharacterClass) +
+				" component build receipt totals disagree with its rows.";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Load_FourClassEffectBuildContract(
+		EFFECT_BUILD_CONTRACT& outContract,
+		std::string& outStatus)
+	{
+		struct RECEIPT_SOURCE final
+		{
+			const wchar_t* pRelativePath = nullptr;
+			const char_t* pCharacterClass = nullptr;
+		};
+		const RECEIPT_SOURCE Sources[] =
+		{
+			{ L"Effects/AuthoredCorrections/Generated/ComponentBuild/"
+				L"Artist.component-build.receipt.json", "ARTIST" },
+			{ L"Effects/AuthoredCorrections/Generated/ComponentBuild/"
+				L"DimensionMaster.component-build.receipt.json", "DIMENSIONMASTER" },
+			{ L"Effects/AuthoredCorrections/Generated/ComponentBuild/"
+				L"LanceMaster.component-build.receipt.json", "LANCE_MASTER" },
+			{ L"Effects/AuthoredCorrections/Generated/ComponentBuild/"
+				L"Warlord.component-build.receipt.json", "WARLORD" }
+		};
+
+		outContract = {};
+		for (const RECEIPT_SOURCE& source : Sources)
+		{
+			EFFECT_BUILD_CONTRACT receipt;
+			if (!Load_EffectBuildReceipt(source.pRelativePath,
+				source.pCharacterClass, receipt, outStatus))
+			{
+				outContract = {};
+				return false;
+			}
+			outContract.iEffectCount += receipt.iEffectCount;
+			outContract.iComponentCount += receipt.iComponentCount;
+			outContract.iEmitterCount += receipt.iEmitterCount;
+			for (const auto& entry : receipt.Effects)
+			{
+				if (!outContract.Effects.emplace(entry).second)
+				{
+					outStatus = "Four-class component build receipts contain a duplicate Effect ID.";
+					outContract = {};
+					return false;
+				}
+			}
+		}
+
+		if (101u != outContract.iEffectCount ||
+			555u != outContract.iComponentCount ||
+			2160u != outContract.iEmitterCount ||
+			outContract.Effects.size() != outContract.iEffectCount)
+		{
+			outStatus = "Four-class component build receipt totals must be exactly 101/555/2160.";
+			outContract = {};
 			return false;
 		}
 		return true;
@@ -609,6 +671,122 @@ namespace
 			2u == preserved.Bindings.size() &&
 			"Active_A" == preserved.Bindings[0].Stages[0].Clips[0].strClipName,
 			"Skill Binding Failed Staged Load Preserves Prior Output");
+	}
+
+	void Test_ActionPresentationTimeline(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING> clips =
+		{
+			{ 2.f, 500u, 0.5f, false },
+			{ 1.f, 0u, 2.f, false }
+		};
+		f32_t sourceDuration = 0.f;
+		f32_t wallDuration = 0.f;
+		runner.Require(
+			CActionPresentationTimeline::Resolve_ClipDuration(
+				clips[0], sourceDuration, wallDuration) &&
+			std::abs(sourceDuration - 0.5f) < 0.000001f &&
+			std::abs(wallDuration - 1.f) < 0.000001f,
+			"Action Timeline Applies PlayMs Before PlayRate");
+
+		ACTION_PRESENTATION_SAMPLE sample;
+		runner.Require(
+			CActionPresentationTimeline::Resolve_Sample(clips, 1.f, sample) &&
+			1u == sample.iClipIndex &&
+			std::abs(sample.fClipSourceTimeSeconds) < 0.000001f,
+			"Action Timeline Exact Boundary Selects Next Sequential Clip");
+		runner.Require(
+			CActionPresentationTimeline::Resolve_Sample(clips, 1.125f, sample) &&
+			1u == sample.iClipIndex &&
+			std::abs(sample.fClipSourceTimeSeconds - 0.25f) < 0.000001f,
+			"Action Timeline Converts Wall Overshoot By Current Clip Rate");
+
+		const std::vector<ACTION_PRESENTATION_CLIP_TIMING> hold =
+			{ { 1.f, 400u, 2.f, true } };
+		runner.Require(
+			CActionPresentationTimeline::Resolve_Sample(hold, 0.65f, sample) &&
+			0u == sample.iClipIndex && 3u == sample.iLoopEpoch &&
+			std::abs(sample.fClipSourceTimeSeconds - 0.1f) < 0.00001f,
+			"Action Timeline HOLD Resolves Loop Epoch And Source Phase");
+		f32_t cueWallOffset = 0.f;
+		runner.Require(
+			CActionPresentationTimeline::Resolve_CueWallOffset(
+				hold, 0u, 0.1f, 2u, cueWallOffset) &&
+			std::abs(cueWallOffset - 0.45f) < 0.00001f,
+			"Action Timeline Cue Identity Includes HOLD Loop Epoch");
+
+		f32_t actionAge = 0.f;
+		runner.Require(
+			CActionPresentationTimeline::Is_ForwardTick(1u, UINT32_MAX) &&
+			!CActionPresentationTimeline::Is_ForwardTick(UINT32_MAX, 1u) &&
+			!CActionPresentationTimeline::Is_ForwardTick(1u, 1u) &&
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				1u, UINT32_MAX, 30.f, actionAge) &&
+			std::abs(actionAge - 1.f / 30.f) < 0.000001f,
+			"Action Timeline Skips Reserved Zero Tick Across Wrap");
+		runner.Require(
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				1u, UINT32_MAX - 1u, 30.f, actionAge) &&
+			std::abs(actionAge - 2.f / 30.f) < 0.000001f,
+			"Action Timeline Counts Two Forward Ticks Across Reserved Zero");
+
+		ANIMATION_SKILL_BINDING_DOCUMENT dimensionMaster;
+		std::string status;
+		const std::filesystem::path bindingPath =
+			CAnimationSkillBindingDocument::Resolve_Path("DimensionMaster");
+		const bool_t bindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(bindingPath), dimensionMaster, status);
+		const auto binding = std::find_if(
+			dimensionMaster.Bindings.begin(), dimensionMaster.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& candidate)
+			{
+				return 2050240u == candidate.iSkillId;
+			});
+		const std::filesystem::path cuePath = CProjectDataRoot::Resolve(
+			"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string cueText = Read_Text(cuePath);
+		const bool_t exactPriorClipProductCue = std::string::npos != cueText.find(
+			"\"pc_sp_m_00_sk_sk_telekinesisthrust_01\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050240.authored-baseline.clip1\" "
+			"effectref=asset");
+		bool_t exactBinding = bindingParsed &&
+			binding != dimensionMaster.Bindings.end() &&
+			1u == binding->Stages.size() &&
+			2u == binding->Stages[0].Clips.size();
+		if (exactBinding)
+		{
+			exactBinding =
+				binding->Stages[0].Clips[0].strClipName ==
+					"pc_sp_m_00_sk_sk_telekinesisthrust_01" &&
+				binding->Stages[0].Clips[1].strClipName ==
+					"pc_sp_m_00_sk_sk_telekinesisthrust_04";
+		}
+		const std::vector<ACTION_PRESENTATION_CLIP_TIMING> dm2050240 =
+		{
+			{ 0.25f, exactBinding ?
+				binding->Stages[0].Clips[0].iPlayMs : 0u,
+				exactBinding ? binding->Stages[0].Clips[0].fPlayRate : 1.f,
+				false },
+			{ 1.f, exactBinding ?
+				binding->Stages[0].Clips[1].iPlayMs : 0u,
+				exactBinding ? binding->Stages[0].Clips[1].fPlayRate : 1.f,
+				false }
+		};
+		f32_t dmCueWallOffset = -1.f;
+		const bool_t delayedPriorClipCue =
+			CActionPresentationTimeline::Resolve_Sample(
+				dm2050240, 0.5f, sample) &&
+			1u == sample.iClipIndex &&
+			CActionPresentationTimeline::Resolve_CueWallOffset(
+				dm2050240, 0u, 0.f, 0u, dmCueWallOffset) &&
+			std::abs(dmCueWallOffset) < 0.000001f &&
+			std::abs((0.5f - dmCueWallOffset) *
+				dm2050240[0].fPlayRate - 0.5f) < 0.000001f;
+		runner.Require(exactBinding && exactPriorClipProductCue &&
+			delayedPriorClipCue,
+			"DimensionMaster 2050240 Delayed First Snapshot Retains Prior Clip Product Cue");
 	}
 
 	void Test_RealSkillBindingDocuments(TEST_RUNNER& runner)
@@ -2065,18 +2243,22 @@ namespace
 			"Effect" / "Harness" / "constant.wvectorfield";
 		std::error_code vectorError;
 		std::filesystem::create_directories(vectorPath.parent_path(), vectorError);
+		const auto WriteConstantVectorField =
+			[&vectorPath](const float3_t& sample)
 		{
 			std::ofstream output(vectorPath, std::ios::binary | std::ios::trunc);
 			const char magic[4] = { 'W', 'V', 'F', '1' };
 			const uint32_t header[5] = { 1u, 2u, 2u, 2u, 8u };
-			const float3_t sample = { 100.f, 0.f, 0.f };
 			output.write(magic, sizeof(magic));
 			output.write(reinterpret_cast<const char*>(header), sizeof(header));
 			for (uint32_t index = 0u; index < 8u; ++index)
 			{
 				output.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
 			}
-		}
+			return output.good();
+		};
+		const bool_t vectorWritten = WriteConstantVectorField(
+			{ 100.f, 0.f, 0.f });
 		resourceRootEnvironment.Set(vectorRoot.c_str());
 		EFFECT_DOCUMENT_DESC vectorDocument;
 		vectorDocument.strEffectAssetId = "effect.vector.exact.harness";
@@ -2100,7 +2282,7 @@ namespace
 		vectorElement.SourceRecipe.Modules.push_back(vectorModule);
 		vectorDocument.Elements.push_back(vectorElement);
 		CEffectPlayback vectorPlayback;
-		const bool_t vectorStaged = !vectorError &&
+		const bool_t vectorStaged = vectorWritten && !vectorError &&
 			vectorPlayback.Stage_Document(vectorDocument, status);
 		if (vectorStaged)
 			vectorPlayback.Seek(1.f / 60.f, identity);
@@ -2111,6 +2293,50 @@ namespace
 		runner.Require(vectorExecuted,
 			"Effect Local Vector Field Loads Volume And Applies Trilinear Force");
 
+		const uint64_t vectorLoadsBeforeRevisionBundles =
+			CEffectPlayback::Get_VectorFieldDiskLoadCount();
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			revisionOneBundle;
+		CEffectPlayback revisionOnePlayback;
+		const bool_t revisionOnePrepared =
+			CEffectPlayback::Prepare_DocumentResources(
+				vectorDocument, revisionOneBundle, status) &&
+			revisionOnePlayback.Stage_PrevalidatedDocument(
+				vectorDocument, revisionOneBundle, status);
+		if (revisionOnePrepared)
+			revisionOnePlayback.Seek(1.f / 60.f, identity);
+		const f32_t revisionOneX = revisionOnePrepared &&
+			!revisionOnePlayback.Get_Frame().Particles.empty() ?
+			revisionOnePlayback.Get_Frame().Particles.front().World._41 : 0.f;
+
+		const bool_t revisionTwoWritten = WriteConstantVectorField(
+			{ -100.f, 0.f, 0.f });
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			revisionTwoBundle;
+		CEffectPlayback revisionTwoPlayback;
+		const bool_t revisionTwoPrepared = revisionTwoWritten &&
+			CEffectPlayback::Prepare_DocumentResources(
+				vectorDocument, revisionTwoBundle, status) &&
+			revisionTwoPlayback.Stage_PrevalidatedDocument(
+				vectorDocument, revisionTwoBundle, status);
+		if (revisionTwoPrepared)
+			revisionTwoPlayback.Seek(1.f / 60.f, identity);
+		const f32_t revisionTwoX = revisionTwoPrepared &&
+			!revisionTwoPlayback.Get_Frame().Particles.empty() ?
+			revisionTwoPlayback.Get_Frame().Particles.front().World._41 : 0.f;
+		revisionOnePlayback.Seek(1.f / 60.f, identity);
+		const f32_t retainedRevisionOneX = revisionOnePrepared &&
+			!revisionOnePlayback.Get_Frame().Particles.empty() ?
+			revisionOnePlayback.Get_Frame().Particles.front().World._41 : 0.f;
+		runner.Require(
+			revisionOnePrepared && revisionTwoPrepared &&
+			revisionOneBundle != revisionTwoBundle &&
+			CEffectPlayback::Get_VectorFieldDiskLoadCount() ==
+				vectorLoadsBeforeRevisionBundles + 2u &&
+			std::abs(revisionOneX - retainedRevisionOneX) < 0.000001f &&
+			revisionTwoX < revisionOneX - 0.01f,
+			"Effect Vector Field Same Asset Id Rebuilds Per Revision And Active Bundle Retains Old Samples");
+
 		EFFECT_DOCUMENT_DESC missingVector = vectorDocument;
 		missingVector.strEffectAssetId = "effect.vector.missing.harness";
 		for (EFFECT_SOURCE_LITERAL_DESC& literal :
@@ -2119,12 +2345,28 @@ namespace
 			if (literal.strPropertyPath == "vectorfield.assetid")
 				literal.strString = "Effect/Harness/missing.wvectorfield";
 		}
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			preservedBundle = revisionOneBundle;
+		const bool_t failedPreparationPreserved =
+			!CEffectPlayback::Prepare_DocumentResources(
+				missingVector, preservedBundle, status) &&
+			preservedBundle == revisionOneBundle;
+		CEffectPlayback afterFailedPreparation;
+		const bool_t oldBundleStillStages = failedPreparationPreserved &&
+			afterFailedPreparation.Stage_PrevalidatedDocument(
+				vectorDocument, preservedBundle, status);
+		if (oldBundleStillStages)
+			afterFailedPreparation.Seek(1.f / 60.f, identity);
 		runner.Require(
 			!vectorPlayback.Stage_Document(missingVector, status) &&
 			vectorPlayback.Get_Frame().Particles.size() == 1u &&
 			std::abs(vectorPlayback.Get_Frame().Particles.front().World._41 -
-				(61.f / 3600.f)) < 0.00001f,
-			"Effect Invalid Vector Field Fails Staging And Preserves Commit");
+				(61.f / 3600.f)) < 0.00001f &&
+			oldBundleStillStages &&
+			afterFailedPreparation.Get_Frame().Particles.size() == 1u &&
+			std::abs(afterFailedPreparation.Get_Frame().Particles.front().World._41 -
+				revisionOneX) < 0.000001f,
+			"Effect Failed Vector Field Prewarm Leaves No Residue And Preserves Old Bundle");
 		resourceRootEnvironment.Restore();
 		std::filesystem::remove(vectorPath, vectorError);
 		std::filesystem::remove(vectorPath.parent_path(), vectorError);
@@ -2703,9 +2945,25 @@ namespace
 		sprite.strSourceNode = "Harness/Node/0";
 		sprite.bVisible = false;
 		sprite.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		sprite.Detail.Sprite.bBillboard = true;
+		sprite.Detail.Sprite.fBillboardRollDegrees = -90.f;
 		document.Elements.push_back(sprite);
 
 		std::string status;
+		EFFECT_DOCUMENT_DESC spriteRoundTrip;
+		runner.Require(
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(document),
+				spriteRoundTrip, status) &&
+			spriteRoundTrip.Elements.front().Detail.Sprite.
+				fBillboardRollDegrees == -90.f,
+			"Effect Authored Sprite Billboard Roll Round Trips Without Global Yaw");
+		EFFECT_DOCUMENT_DESC invalidSpriteRoll = document;
+		invalidSpriteRoll.Elements.front().Detail.Sprite.
+			fBillboardRollDegrees = 3601.f;
+		runner.Require(
+			!CEffectDocumentCodec::Validate(invalidSpriteRoll, status),
+			"Effect Authored Sprite Billboard Roll Rejects Invalid Range");
 		runner.Require(
 			CEffectDocumentCodec::Validate(document, status) &&
 			!CEffectDocumentCodec::Validate_Drawable(document, status),
@@ -3218,30 +3476,23 @@ namespace
 
 		CEffectCatalog::Clear();
 		std::string status;
-		DIMENSIONMASTER_EFFECT_BUILD_CONTRACT buildContract;
+		EFFECT_BUILD_CONTRACT buildContract;
 		std::string buildContractStatus;
 		const bool_t buildContractLoaded =
-			Load_DimensionMasterEffectBuildContract(
+			Load_FourClassEffectBuildContract(
 				buildContract, buildContractStatus);
-		std::vector<uint32_t> currentSkillIds;
-		std::vector<std::string> expectedEffectIds;
-		const bool_t rosterLoaded = Collect_DimensionMasterEffectRoster(
-			currentSkillIds, expectedEffectIds, status);
 		const bool_t loaded = !error && CEffectCatalog::Load(status);
 		if (!loaded)
 			std::cout << "[DETAIL] Effect runtime catalog: " << status << '\n';
 		const std::vector<std::string> effectIds =
 			CEffectCatalog::Get_EffectAssetIds();
-		const std::set<std::string> expectedEffectIdSet(
-			expectedEffectIds.begin(), expectedEffectIds.end());
 		const std::set<std::string> actualEffectIdSet(
 			effectIds.begin(), effectIds.end());
 		std::set<std::string> contractEffectIds;
 		for (const auto& entry : buildContract.Effects)
 			contractEffectIds.insert(entry.first);
-		bool_t hierarchyComplete = rosterLoaded && !currentSkillIds.empty() && loaded &&
-			buildContractLoaded && expectedEffectIdSet == actualEffectIdSet &&
-			expectedEffectIdSet == contractEffectIds &&
+		bool_t hierarchyComplete = loaded && buildContractLoaded &&
+			actualEffectIdSet == contractEffectIds &&
 			effectIds.size() == buildContract.iEffectCount;
 		bool_t playbackStageComplete = loaded;
 		size_t stagedEffectCount = 0u;
@@ -3299,15 +3550,6 @@ namespace
 			CEffectCatalog::Get_ComponentAssetIds();
 		const std::set<std::string> catalogComponentIdSet(
 			catalogComponentIds.begin(), catalogComponentIds.end());
-		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> tDocument =
-			CEffectCatalog::Find("effect.dimensionmaster.skill.2050500");
-		const bool_t canonicalTModelCue = nullptr != tDocument &&
-			std::any_of(tDocument->ModelCues.begin(), tDocument->ModelCues.end(),
-				[](const EFFECT_MODEL_CUE_DESC& cue)
-				{
-					return cue.strClipName ==
-						"sk_swp_dms_00_sk_sk_dimensionprison";
-				});
 		if (!buildContractLoaded ||
 			effectIds.size() != buildContract.iEffectCount ||
 			catalogComponentIds.size() != buildContract.iComponentCount ||
@@ -3323,11 +3565,11 @@ namespace
 		runner.Require(
 			hierarchyComplete && componentIds == catalogComponentIdSet &&
 			catalogComponentIds.size() == buildContract.iComponentCount &&
-			assemblyEmitterCount == buildContract.iEmitterCount && canonicalTModelCue,
-			"Effect Runtime Matches Generated Assembly Component Emitter Contract And Canonical T Cue");
+			assemblyEmitterCount == buildContract.iEmitterCount,
+			"Four-Class Effect Runtime Matches Generated Assembly Component Emitter Contract");
 		runner.Require(playbackStageComplete &&
-			stagedEffectCount == expectedEffectIds.size(),
-			"Effect Runtime Stages Every Current Compiled DimensionMaster Document");
+			stagedEffectCount == buildContract.iEffectCount,
+			"Effect Runtime Stages Every Four-Class Product Document");
 		bool_t componentStageComplete = true;
 		size_t stagedComponentCount = 0u;
 		for (const std::string& componentId : catalogComponentIds)
@@ -3395,12 +3637,14 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--skill-binding-fast")
 	{
+		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
 	if (Mode == "--effect-executor-fast")
 	{
+		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		Test_EffectPlaybackDeterminism(runner);
 		Test_EffectTypedPresentation(runner);
@@ -3412,6 +3656,7 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--effect-runtime-fast")
 	{
+		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
@@ -3439,6 +3684,7 @@ int main(const int argc, char* argv[])
 	Test_StaleTokenCannotCancelNewCommand(runner);
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
+	Test_ActionPresentationTimeline(runner);
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
 	Test_EffectPlaybackDeterminism(runner);

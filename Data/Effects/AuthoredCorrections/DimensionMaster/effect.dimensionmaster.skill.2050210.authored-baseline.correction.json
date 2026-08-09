@@ -1,0 +1,208 @@
+{
+  "schema": "lostark.effect-authored-correction",
+  "version": 2,
+  "correctionId": "dimensionmaster.skill.2050210.authored-baseline",
+  "sourceEffectAssetId": "effect.dimensionmaster.skill.2050210",
+  "sourceEffectSha256": "35371322b17dee5bc90783ecb1da03822c0023f4a6a9b1c4187dae428f36822b",
+  "targetEffectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
+  "authoredSpriteBillboardRollDegrees": -90.0,
+  "playerCue": {
+    "anchorSlotId": "root",
+    "outerFollowPolicy": "follow",
+    "elementFollowPolicy": "snapshot"
+  },
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "hitSnapshots": [
+    {
+      "id": "hit01",
+      "sourceEventSuffix": "",
+      "sourceTimeSeconds": 0.25,
+      "transform": {
+        "position": [-0.55, 0.15, 0.95],
+        "rotationDegrees": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    },
+    {
+      "id": "hit02",
+      "sourceEventSuffix": ".event_source-event-030",
+      "sourceTimeSeconds": 0.60,
+      "transform": {
+        "position": [-0.60, 0.15, 1.05],
+        "rotationDegrees": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    },
+    {
+      "id": "hit03",
+      "sourceEventSuffix": ".event_source-event-045",
+      "sourceTimeSeconds": 0.90,
+      "transform": {
+        "position": [-0.65, 0.20, 1.15],
+        "rotationDegrees": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    },
+    {
+      "id": "hit04",
+      "sourceEventSuffix": ".event_source-event-060",
+      "sourceTimeSeconds": 1.30,
+      "transform": {
+        "position": [-0.70, 0.25, 1.25],
+        "rotationDegrees": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    }
+  ],
+  "layers": [
+    {
+      "role": "white-echo",
+      "carrierKind": "standaloneMesh",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_2",
+      "emissiveFromSlot": "base",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [0.0, 198.0, 0.0],
+        "scale": [0.0253, 0.0253, 0.0253],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 0.35,
+        "dissolveStartNormalized": 0.82
+      },
+      "color": {
+        "multiply": [1.0, 1.0, 1.0, 0.72],
+        "emissiveIntensity": 1.4,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [0.0, 0.0]
+      }
+    },
+    {
+      "role": "flow",
+      "carrierKind": "standaloneMesh",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_14",
+      "emissiveFromSlot": "base",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [0.0, 288.0, 0.0],
+        "scale": [0.055, 0.055, 0.055],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 0.30,
+        "dissolveStartNormalized": 0.80
+      },
+      "color": {
+        "multiply": [1.0, 0.88, 1.0, 0.70],
+        "emissiveIntensity": 1.15,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [0.0, 0.10]
+      }
+    },
+    {
+      "role": "body",
+      "carrierKind": "standaloneMesh",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_15",
+      "emissiveFromSlot": "base",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [-18.0, 0.0, 0.0],
+        "scale": [0.0341, 0.0341, 0.0341],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 0.50,
+        "dissolveStartNormalized": 0.78
+      },
+      "color": {
+        "multiply": [0.95, 0.72, 1.0, 0.85],
+        "emissiveIntensity": 1.35,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [0.0, 0.0]
+      }
+    },
+    {
+      "role": "afterimage",
+      "carrierKind": "standaloneMesh",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_20",
+      "emissiveFromSlot": "base",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [0.0, 180.0, 180.0],
+        "scale": [0.0715, 0.0715, 0.0715],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 1.70,
+        "dissolveStartNormalized": 0.72
+      },
+      "color": {
+        "multiply": [0.72, 0.42, 1.0, 0.30],
+        "emissiveIntensity": 0.65,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [0.0, 0.50]
+      }
+    },
+    {
+      "role": "rim",
+      "carrierKind": "standaloneMesh",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_3",
+      "emissiveFromSlot": "base",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [-108.0, 180.0, 180.0],
+        "scale": [0.03135, 0.03135, 0.03135],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 0.30,
+        "dissolveStartNormalized": 0.78
+      },
+      "color": {
+        "multiply": [0.38, 0.18, 0.75, 0.55],
+        "emissiveIntensity": 0.55,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [-0.10, 0.10]
+      }
+    },
+    {
+      "role": "sprite",
+      "carrierKind": "standaloneSprite",
+      "sourceElementBaseId": "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_9",
+      "emissiveFromSlot": "mask",
+      "transform": {
+        "positionOffset": [0.0, 0.0, 0.0],
+        "rotationDegrees": [0.0, 0.0, 0.0],
+        "scale": [4.4, 4.4, 1.0],
+        "revolutionDegreesPerSecond": [0.0, 0.0, 0.0]
+      },
+      "timing": {
+        "lifeTimeSeconds": 0.30,
+        "dissolveStartNormalized": 1.0
+      },
+      "color": {
+        "multiply": [1.0, 0.92, 1.0, 0.52],
+        "emissiveIntensity": 1.0,
+        "distortionIntensity": 0.0
+      },
+      "uv": {
+        "speed": [0.0, 0.0]
+      }
+    }
+  ]
+}

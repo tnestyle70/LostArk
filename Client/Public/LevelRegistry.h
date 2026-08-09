@@ -31,6 +31,7 @@ struct CLIENT_LEVEL_DESCRIPTOR final
 	CLIENT_LEVEL_KIND eKind = CLIENT_LEVEL_KIND::PRODUCT;
 	const char_t* pStableId = nullptr;
 	const char_t* pMapAreaId = nullptr;
+	const char_t* pRenderingProfileId = nullptr;
 	MAP_LOAD_SCOPE MapLoadScope{};
 	CREATE_FUNCTION pCreate = nullptr;
 	LOAD_FUNCTION pLoad = nullptr;

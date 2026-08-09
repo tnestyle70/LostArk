@@ -2,7 +2,7 @@
   "schema": "lostark.effect-assembly",
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
-  "displayName": "기본 공격 BA3",
+  "displayName": "effect.dimensionmaster.skill.2050010.ba3",
   "sourceAuthoringVersion": 12,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
@@ -35,35 +35,11 @@
           1.0
         ]
       }
-    },
-    {
-      "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba3.01",
-      "startDelaySeconds": 0.04999999999999982,
-      "visible": true,
-      "anchor": "root",
-      "localTransform": {
-        "position": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "rotationDegrees": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
     }
   ],
-  "sourceDocumentSha256": "6356751dad33f0b002622f9e0e8388b49dcc110ecd572823956bd0fbf2199b5a",
+  "sourceDocumentSha256": "42e75b9ed2268a0fd50e4891592dad25217e0226994934bf376f602d194e41ff",
   "inputSlot": "BA",
-  "sourceDocumentFileSha256": "b528f2fc003f543d749f68fea22c690f8d9f1d5cd16072eb0b1d283f086d4dd7",
+  "sourceDocumentFileSha256": "e3987224f468d59a0489aa857eeb90646b5e36ef1d186d2485af4a6937b56cb1",
   "sourceActionCues": [
     {
       "cueId": "skill-2050010/clip-002/notify-003",

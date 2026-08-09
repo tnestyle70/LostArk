@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_DocumentRenderer.h"
 #include "Effect_Playback.h"
 #include "GameObject.h"
 #include "PresentationProvider.h"
@@ -12,16 +13,17 @@
 
 NS_BEGIN(Client)
 
-class CEffectDocumentRenderer;
-
 class CEffectObject final : public CGameObject, public IPresentationProvider
 {
 public:
 	struct EFFECT_OBJECT_DESC : public CGameObject::GAMEOBJECT_DESC
 	{
 		const EFFECT_DOCUMENT_DESC* pDocument = nullptr;
+		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPreparedResources;
 		float4x4_t RootWorld{};
 		bool_t bAutoPlay = true;
+		bool_t bRequirePreparedResources = false;
 		f32_t fPlaybackRate = 1.f;
 	};
 
@@ -43,6 +45,11 @@ public:
 
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
+	bool_t Stage_PreparedDocument(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPreparedResources,
 		std::string& strOutError);
 	void Set_RootWorld(const float4x4_t& RootWorld);
 	void Set_SourceAnchorWorlds(

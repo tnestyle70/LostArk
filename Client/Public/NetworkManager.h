@@ -44,7 +44,7 @@ public:
 		std::uint16_t port);
 	bool Connect_To_Server(std::uint16_t port)
 	{
-		return Connect_To_Server("127.0.0.1", port);
+		return Connect_To_Server("192.168.200.103", port);
 	}
 
 	bool Send_EnterWorld(

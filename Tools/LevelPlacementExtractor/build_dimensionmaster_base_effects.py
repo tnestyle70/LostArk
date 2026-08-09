@@ -150,16 +150,30 @@ def dimensionmaster_admitted_skills(
         if not isinstance(raw_clips, list):
             raise ValueError(f"invalid DimensionMaster skillbinding: {skill_id}")
         clips = []
-        for value in raw_clips:
+
+        def append_clips(value: Any) -> None:
             if isinstance(value, str):
                 clip = value
             elif isinstance(value, dict):
                 clip = str(value.get("clip") or "")
+            elif isinstance(value, list):
+                if not value:
+                    raise ValueError(
+                        f"invalid DimensionMaster binding clip: {skill_id}"
+                    )
+                for nested in value:
+                    append_clips(nested)
+                return
             else:
                 clip = ""
             if not clip:
-                raise ValueError(f"invalid DimensionMaster binding clip: {skill_id}")
+                raise ValueError(
+                    f"invalid DimensionMaster binding clip: {skill_id}"
+                )
             clips.append(clip)
+
+        for value in raw_clips:
+            append_clips(value)
         if clips:
             clips_by_skill[skill_id] = (clips, copy.deepcopy(raw_clips))
 

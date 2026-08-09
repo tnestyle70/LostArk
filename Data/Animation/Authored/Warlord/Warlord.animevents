@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "Warlord" 1696
+LOSTARK_ANIM_EVENTS 3 "Warlord" 1723
 "wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
 "wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
@@ -1695,3 +1695,30 @@ LOSTARK_ANIM_EVENTS 3 "Warlord" 1696
 "wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="입력캔슬" src=orig
 "wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="이동캔슬" src=orig
 "wgl_sk_warspear" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_1_01" EFFECT startms=0 payload="effect.warlord.skill.17000.ba1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_att_battle_1_02" EFFECT startms=0 payload="effect.warlord.skill.17000.ba2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_att_battle_1_03" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_bash" EFFECT startms=0 payload="effect.warlord.skill.17040.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_dashupperfire_01" EFFECT startms=0 payload="effect.warlord.skill.17080.authored-baseline.clip1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_dashupperfire_02" EFFECT startms=0 payload="effect.warlord.skill.17080.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="effect.warlord.skill.17240.ba1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="effect.warlord.skill.17240.ba2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_eternalcyclone_07" EFFECT startms=0 payload="effect.warlord.skill.17240.ba3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_firebullet" EFFECT startms=0 payload="effect.warlord.skill.17060.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_guardianofprotection_attack" EFFECT startms=0 payload="effect.warlord.skill.17170.authored-baseline.clip3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="effect.warlord.skill.17170.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_guardianofprotection_start" EFFECT startms=0 payload="effect.warlord.skill.17170.authored-baseline.clip1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_hookchain" EFFECT startms=0 payload="effect.warlord.skill.17090.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="effect.warlord.skill.17110.authored-baseline.clip3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_leap_jump" EFFECT startms=0 payload="effect.warlord.skill.17110.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_pierceingspear" EFFECT startms=0 payload="effect.warlord.skill.17030.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_03" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip5" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip8" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="effect.warlord.skill.17820.authored-baseline.clip4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_shieldstamp" EFFECT startms=0 payload="effect.warlord.skill.17100.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=0 payload="effect.warlord.skill.17250.authored-baseline.clip1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=0 payload="effect.warlord.skill.17250.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_thunderbolt" EFFECT startms=0 payload="effect.warlord.skill.17140.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

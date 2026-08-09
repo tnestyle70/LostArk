@@ -11,6 +11,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Object.h"
+#include "Effect_PresentationService.h"
 #include "Effect_ThumbnailCache.h"
 #include "GameInstance.h"
 #include "Logic_Artist.h"
@@ -29,6 +30,7 @@
 #include <cmath>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <initializer_list>
 #include <limits>
 #include <map>
@@ -36,19 +38,69 @@
 #include <set>
 #include <string_view>
 #include <system_error>
+#include <tuple>
 #include <utility>
 
 namespace
 {
     constexpr const wchar_t* PREVIEW_LAYER = L"Layer_EffectPreview";
 
+    bool Run_OwnedToolProcess(
+        std::wstring Command,
+        const std::filesystem::path& WorkingDirectory,
+        const DWORD iTimeoutMilliseconds,
+        const std::string_view strLabel,
+        std::string& strOutStatus)
+    {
+        if (Command.empty() || WorkingDirectory.empty())
+        {
+            strOutStatus = std::string(strLabel) + " command is invalid.";
+            return false;
+        }
+        std::vector<wchar_t> MutableCommand(Command.begin(), Command.end());
+        MutableCommand.push_back(L'\0');
+        STARTUPINFOW Startup{};
+        Startup.cb = sizeof(Startup);
+        PROCESS_INFORMATION Process{};
+        if (!CreateProcessW(
+            nullptr, MutableCommand.data(), nullptr, nullptr, FALSE,
+            CREATE_NO_WINDOW, nullptr, WorkingDirectory.c_str(),
+            &Startup, &Process))
+        {
+            strOutStatus = "Could not start " + std::string(strLabel) + ".";
+            return false;
+        }
+        CloseHandle(Process.hThread);
+        const DWORD iWait = WaitForSingleObject(
+            Process.hProcess, iTimeoutMilliseconds);
+        if (WAIT_TIMEOUT == iWait)
+        {
+            TerminateProcess(Process.hProcess, 124u);
+            WaitForSingleObject(Process.hProcess, 5000u);
+            CloseHandle(Process.hProcess);
+            strOutStatus = std::string(strLabel) +
+                " timed out; its owned process was terminated.";
+            return false;
+        }
+        DWORD iExitCode = 1u;
+        const bool bSucceeded = WAIT_OBJECT_0 == iWait &&
+            GetExitCodeProcess(Process.hProcess, &iExitCode) &&
+            0u == iExitCode;
+        CloseHandle(Process.hProcess);
+        strOutStatus = bSucceeded ?
+            std::string(strLabel) + " succeeded." :
+            std::string(strLabel) + " failed with exit code " +
+                std::to_string(iExitCode) + ".";
+        return bSucceeded;
+    }
+
     const char* Kind_Label(const Client::EFFECT_ELEMENT_KIND eKind)
     {
         switch (eKind)
         {
-        case Client::EFFECT_ELEMENT_KIND::MESH: return "Mesh";
-        case Client::EFFECT_ELEMENT_KIND::SPRITE: return "Texture";
-        case Client::EFFECT_ELEMENT_KIND::PARTICLE: return "Cascade Emitter";
+        case Client::EFFECT_ELEMENT_KIND::MESH: return "Standalone Mesh";
+        case Client::EFFECT_ELEMENT_KIND::SPRITE: return "Standalone Sprite";
+        case Client::EFFECT_ELEMENT_KIND::PARTICLE: return "Cascade Particle";
         case Client::EFFECT_ELEMENT_KIND::DECAL: return "Decal";
         case Client::EFFECT_ELEMENT_KIND::TRAIL: return "Trail";
         case Client::EFFECT_ELEMENT_KIND::LIGHT: return "Light";
@@ -233,6 +285,92 @@ namespace
                 Clips.emplace_back(pName);
         }
         return Clips;
+    }
+
+    bool Read_TextFile(
+        const std::filesystem::path& Path,
+        std::string& OutText,
+        std::string& OutStatus)
+    {
+        OutText.clear();
+        std::ifstream Input(Path, std::ios::binary);
+        if (Path.empty() || !Input)
+        {
+            OutStatus = "Could not open presentation document: " +
+                Path.string();
+            return false;
+        }
+        std::ostringstream Buffer;
+        Buffer << Input.rdbuf();
+        if (!Input.good() && !Input.eof())
+        {
+            OutStatus = "Could not read presentation document: " +
+                Path.string();
+            return false;
+        }
+        OutText = Buffer.str();
+        return true;
+    }
+
+    std::vector<Client::ANIMATION_SKILL_CLIP> Flatten_BindingClips(
+        const Client::ANIMATION_SKILL_BINDING& Binding)
+    {
+        std::vector<Client::ANIMATION_SKILL_CLIP> Clips;
+        for (const Client::ANIMATION_SKILL_STAGE& Stage : Binding.Stages)
+        {
+            Clips.insert(Clips.end(), Stage.Clips.begin(), Stage.Clips.end());
+        }
+        return Clips;
+    }
+
+    bool Try_ParseEffectDiagnosticRow(
+        const std::string_view Line,
+        std::string& OutClip,
+        bool_t& OutImported,
+        bool_t& OutEmptyPayload)
+    {
+        OutClip.clear();
+        OutImported = false;
+        OutEmptyPayload = false;
+        if (Line.empty() || Line.front() != '"')
+            return false;
+        const size_t iClipEnd = Line.find('"', 1u);
+        if (std::string_view::npos == iClipEnd ||
+            std::string_view::npos == Line.find(" EFFECT ", iClipEnd) ||
+            std::string_view::npos != Line.find(" effectref=asset "))
+        {
+            return false;
+        }
+        const size_t iPayload = Line.find(" payload=\"", iClipEnd);
+        if (std::string_view::npos == iPayload)
+            return false;
+        const size_t iValueBegin = iPayload + 10u;
+        const size_t iValueEnd = Line.find('"', iValueBegin);
+        if (std::string_view::npos == iValueEnd)
+            return false;
+        OutClip.assign(Line.substr(1u, iClipEnd - 1u));
+        OutImported = std::string_view::npos != Line.find(" src=orig");
+        OutEmptyPayload = iValueBegin == iValueEnd;
+        return true;
+    }
+
+    float4x4_t Compose_EffectLocal(
+        const Client::EFFECT_TRANSFORM_DESC& Local,
+        const float4x4_t& Anchor)
+    {
+        float4x4_t Result{};
+        XMStoreFloat4x4(&Result,
+            XMMatrixScaling(Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+            XMMatrixRotationRollPitchYaw(
+                XMConvertToRadians(Local.vRotationDegrees.x),
+                XMConvertToRadians(Local.vRotationDegrees.y),
+                XMConvertToRadians(Local.vRotationDegrees.z)) *
+            XMMatrixTranslation(
+                Local.vPosition.x,
+                Local.vPosition.y,
+                Local.vPosition.z) *
+            XMLoadFloat4x4(&Anchor));
+        return Result;
     }
 
     const char* Source_Label(const Client::EFFECT_DOCUMENT_SOURCE eSource)
@@ -684,6 +822,8 @@ namespace
 
     struct PARTICLE_LAYER_SUMMARY final
     {
+        size_t iStandaloneMeshCount = 0u;
+        size_t iStandaloneSpriteCount = 0u;
         size_t iSourceSystemCount = 0u;
         size_t iSourceEmitterCount = 0u;
         size_t iLayerCount = 0u;
@@ -706,6 +846,16 @@ namespace
         std::set<std::string> SourceSystems;
         for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
         {
+            if (Client::EFFECT_ELEMENT_KIND::MESH == Element.eKind)
+            {
+                ++Summary.iStandaloneMeshCount;
+                continue;
+            }
+            if (Client::EFFECT_ELEMENT_KIND::SPRITE == Element.eKind)
+            {
+                ++Summary.iStandaloneSpriteCount;
+                continue;
+            }
             if (Client::EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind)
                 continue;
             ++Summary.iLayerCount;
@@ -978,6 +1128,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
     if (m_bPreviewPlaying)
     {
         const f32_t fPreviousTime = m_fPreviewTimeSeconds;
+        const f32_t fPreviousEffectTime =
+            Resolve_EffectSampleTime(fPreviousTime);
         f32_t fSynchronizedAnimationTime = 0.f;
         const bool_t bAnimationOwnsTime =
             Try_ResolveSynchronizedAnimationTime(fSynchronizedAnimationTime);
@@ -1009,25 +1161,50 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         }
         if (!bSeekAfterLoop)
             fSequentialAdvance = (std::max)(
-                0.f, m_fPreviewTimeSeconds - fPreviousTime);
+                0.f, Resolve_EffectSampleTime(m_fPreviewTimeSeconds) -
+                    fPreviousEffectTime);
     }
     const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
     if (nullptr == pObject)
         return;
+    if (bSeekAfterLoop)
+    {
+        Reset_ProductCueSnapshot();
+        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+    }
     float4x4_t Root{};
     const bool_t bRootResolved = Resolve_PreviewRoot(Root);
-    pObject->Set_Visible(m_bPreviewVisibleRequested && bRootResolved);
-    if (m_bPreviewVisibleRequested && bRootResolved)
+    const bool_t bCueVisible =
+        Is_ProductCueVisible(m_fPreviewTimeSeconds);
+    pObject->Set_Visible(
+        m_bPreviewVisibleRequested && bRootResolved && bCueVisible);
+    if (m_bPreviewVisibleRequested && bRootResolved && bCueVisible)
     {
         if (0u == m_strPreviewStatus.find("World preview hidden:"))
             m_strPreviewStatus = "World preview anchor resolved.";
     }
+    else if (m_bPreviewVisibleRequested && bRootResolved &&
+        !bCueVisible && m_ProductPreview.has_value())
+    {
+        m_strPreviewStatus = "Product cue is outside its admitted start/end window.";
+    }
     else if (m_bPreviewVisibleRequested)
     {
-        m_strPreviewStatus = "World preview hidden: current target cannot resolve " +
-            (EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind ?
-                std::string("its root pivot.") :
-                std::string("anchor '") + m_strPreviewAnchorSlotId + "'.");
+        if (m_ProductPreview.has_value())
+        {
+            const std::string& strCueAnchor =
+                m_ProductPreview->ProductCue.Cue.strAnchorSlotId;
+            m_strPreviewStatus = "World preview hidden: Product cue cannot resolve " +
+                ("root" == strCueAnchor ? std::string("its root anchor.") :
+                    std::string("anchor '") + strCueAnchor + "'.");
+        }
+        else
+        {
+            m_strPreviewStatus = "World preview hidden: current target cannot resolve " +
+                (EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind ?
+                    std::string("its root pivot.") :
+                    std::string("anchor '") + m_strPreviewAnchorSlotId + "'.");
+        }
     }
     if (!m_bPreviewVisibleRequested)
 		return;
@@ -1035,8 +1212,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
     {
 		if (bRootResolved)
 			pObject->Set_RootWorld(Root);
-        pObject->Set_SampleTime(m_fPreviewTimeSeconds);
-        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+        pObject->Set_SampleTime(
+            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
     }
 
 	else if (bRootResolved && fSequentialAdvance > 0.f)
@@ -1298,7 +1475,7 @@ void Client::CEffect_Tool::Render_ResourceSlots(
 			const PARTICLE_LAYER_SUMMARY Summary =
 				Summarize_ParticleLayers(*m_ActiveDocument);
 			ImGui::TextDisabled(
-				"Cascade System selected | Emitters %zu | Mesh %zu | Sprite %zu | Unresolved %zu",
+				"Cascade System selected | Emitters %zu | Mesh Particles %zu | Sprite Particles %zu | Unresolved %zu",
 				Summary.iSourceEmitterCount, Summary.iMeshRendererCount,
 				Summary.iSpriteRendererCount, Summary.iUnresolvedRendererCount);
 			ImGui::TextWrapped(
@@ -1814,6 +1991,20 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     Render_AnimationControls(pModel);
 
     ImGui::SeparatorText("Effect Pivot");
+    if (m_ProductPreview.has_value())
+    {
+        const ANIMATION_EFFECT_CUE& Cue =
+            m_ProductPreview->ProductCue.Cue;
+        ImGui::TextWrapped(
+            "Product cue placement: %s | %s | %u ms",
+            Cue.strAnchorSlotId.c_str(),
+            EFFECT_FOLLOW_POLICY::FOLLOW == Cue.eFollowPolicy ?
+                "follow" : "snapshot",
+            Cue.iStartMs);
+        ImGui::TextDisabled(
+            "Product Play locks pivot and local transform to the admitted animation cue.");
+    }
+    ImGui::BeginDisabled(m_ProductPreview.has_value());
     if (const CHARACTER_SPEC* pSpec = Resolve_CurrentTargetSpec())
     {
         if (nullptr != pSpec && nullptr != pSpec->pWeapons)
@@ -1884,6 +2075,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         m_strPreviewStatus =
             "Click empty space in Model View to pick the world surface.";
     }
+    ImGui::EndDisabled();
 
     ImGui::SeparatorText("Animation Cue Transfer");
     InputFloat3("Cue Local Position", m_CueTransferLocalTransform.vPosition);
@@ -1912,6 +2104,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         m_CueTransferLocalTransform.vScale.y > 0.f &&
         m_CueTransferLocalTransform.vScale.z > 0.f;
     const bool_t bCanTransfer = m_ActiveDocument.has_value() &&
+        !m_ProductPreview.has_value() &&
         !Has_UnsavedWork() &&
         m_bActiveDocumentMatchesRuntime &&
         EFFECT_PREVIEW_PIVOT_KIND::WORLD != m_ePreviewPivotKind &&
@@ -1969,8 +2162,10 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     ImGui::EndDisabled();
     if (!bCanTransfer)
     {
-        ImGui::TextDisabled(
-            "Save the exact runtime-admitted Effect, then choose Player/Weapon/Bone pivot.");
+        ImGui::TextDisabled("%s",
+            m_ProductPreview.has_value() ?
+                "Product Play consumes the existing admitted cue; use manual Document preview to author a new transfer." :
+                "Save the exact runtime-admitted Effect, then choose Player/Weapon/Bone pivot.");
     }
 
     ImGui::SeparatorText("Effect Preview");
@@ -1984,13 +2179,19 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     SelectPreviewFilter("Complete Effect", EFFECT_PREVIEW_FILTER::COMPLETE);
     ImGui::SameLine();
     SelectPreviewFilter(
-        "Particles Only", EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM);
+        "All Particles", EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM);
     ImGui::SameLine();
 	SelectPreviewFilter(
-		"Mesh Emitters", EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS);
+		"Standalone Mesh", EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES);
 	ImGui::SameLine();
 	SelectPreviewFilter(
-		"Sprite Emitters", EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS);
+		"Mesh Particles", EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS);
+	ImGui::SameLine();
+	SelectPreviewFilter(
+		"Standalone Sprite", EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_SPRITES);
+	ImGui::SameLine();
+	SelectPreviewFilter(
+		"Sprite Particles", EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS);
 	ImGui::SameLine();
     SelectPreviewFilter("Solo Element", EFFECT_PREVIEW_FILTER::SOLO_SELECTED);
     ImGui::SameLine();
@@ -2073,10 +2274,21 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     {
         m_bPreviewPlaying = false;
 		m_bPreviewVisibleRequested = true;
+        Reset_ProductCueSnapshot();
+        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
         if (const shared_ptr<CEffectObject> pObject =
             m_pWorldPreviewObject.lock())
-            pObject->Set_SampleTime(m_fPreviewTimeSeconds);
-        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+        {
+            float4x4_t Root{};
+            const bool_t bRootResolved = Resolve_PreviewRoot(Root);
+            if (bRootResolved)
+                pObject->Set_RootWorld(Root);
+            pObject->Set_SampleTime(
+                Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+            pObject->Set_Visible(
+                bRootResolved &&
+                Is_ProductCueVisible(m_fPreviewTimeSeconds));
+        }
         Set_SynchronizedAnimationPaused(true);
     }
 	if (m_ActiveDocument.has_value())
@@ -2533,6 +2745,17 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	ImGui::SameLine();
 	if (ImGui::Button("Restart Preview"))
 		Start_WorldPreviewFromBeginning();
+#ifdef _DEBUG
+	const bool_t bProductPublishReady = bEditableSource && bDrawable &&
+		!Has_UnsavedWork() && m_ProductPreview.has_value() &&
+		m_ProductPreview->ProductCue.Cue.strEffectAssetId ==
+			m_ActiveDocument->strEffectAssetId;
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!bProductPublishReady);
+	if (ImGui::Button("Publish + Reload Product Test"))
+		Try_PublishActiveProductAndReloadRuntime();
+	ImGui::EndDisabled();
+#endif
 	if (!bEditableSource)
 	{
 		ImGui::TextDisabled(
@@ -2702,7 +2925,7 @@ void Client::CEffect_Tool::Render_ParticleSystemDetail()
         Summary.iSourceEmitterCount,
         Summary.iLayerCount);
     ImGui::TextDisabled(
-        "Mesh Renderers %zu | Sprite Renderers %zu | Unresolved %zu | Budget %llu",
+        "Mesh Particles %zu | Sprite Particles %zu | Unresolved %zu | Budget %llu",
         Summary.iMeshRendererCount, Summary.iSpriteRendererCount,
         Summary.iUnresolvedRendererCount,
         static_cast<unsigned long long>(Summary.iParticleBudget));
@@ -2775,7 +2998,7 @@ void Client::CEffect_Tool::Render_ParticleSystemDetail()
     if (ImGui::Button("Audition Particle System"))
         Try_AuditionParticleSystem();
 	ImGui::SameLine();
-	if (ImGui::Button("Play Mesh Emitters") &&
+	if (ImGui::Button("Play Mesh Particles") &&
 		Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS))
 	{
 		Start_WorldPreviewFromBeginning();
@@ -3331,7 +3554,8 @@ void Client::CEffect_Tool::Render_UVKeyframes(
                 m_fPreviewTimeSeconds = 0.f;
                 if (const shared_ptr<CEffectObject> pObject =
                     m_pWorldPreviewObject.lock())
-                    pObject->Set_SampleTime(0.f);
+                    pObject->Set_SampleTime(
+                        Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
             }
             else
                 bChanged = true;
@@ -3378,6 +3602,9 @@ void Client::CEffect_Tool::Render_KindDetail(
     case EFFECT_ELEMENT_KIND::SPRITE:
         bChanged |= ImGui::Checkbox("Billboard",
             &Detail.Sprite.bBillboard);
+		bChanged |= ImGui::DragFloat("Billboard Roll Degrees",
+			&Detail.Sprite.fBillboardRollDegrees, 1.f, -3600.f, 3600.f,
+			"%.1f", ImGuiSliderFlags_AlwaysClamp);
         break;
     case EFFECT_ELEMENT_KIND::DECAL:
         bChanged |= DragFloat2(
@@ -3824,8 +4051,10 @@ void Client::CEffect_Tool::Render_AssemblyHierarchy(
 		m_ActiveDocument->strEffectAssetId == strEffectAssetId &&
 		EFFECT_DETAIL_SELECTION::PARTICLE_SYSTEM == m_eDetailSelection;
 	const std::string ParticleSystemLabel = "Cascade System | Emitters " +
-		std::to_string(ParticleSummary.iSourceEmitterCount) + " | Mesh " +
-		std::to_string(ParticleSummary.iMeshRendererCount) + " | Sprite " +
+		std::to_string(ParticleSummary.iSourceEmitterCount) +
+		" | Mesh Particles " +
+		std::to_string(ParticleSummary.iMeshRendererCount) +
+		" | Sprite Particles " +
 		std::to_string(ParticleSummary.iSpriteRendererCount) + " | Unresolved " +
 		std::to_string(ParticleSummary.iUnresolvedRendererCount);
 	const bool_t bParticleSystemOpen = ImGui::TreeNodeEx(
@@ -4115,15 +4344,15 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
     ImGui::InputText("Search", m_AllEffectsSearch.data(),
         m_AllEffectsSearch.size());
     ImGui::TextDisabled(
-        "Authored Mesh layers are the primary outliner; imported Cascade remains diagnostic.");
+        "Product = admitted effectref=asset cue. Source/Imported EFFECT rows remain diagnostic only.");
     ImGui::BeginDisabled(!m_ActiveDocument.has_value());
-    if (ImGui::Button("Play Complete Effect") &&
+    if (ImGui::Button("Play Active Document") &&
         Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
     {
         Start_WorldPreviewFromBeginning();
     }
     ImGui::SameLine();
-	if (ImGui::Button("Play Mesh Emitters") &&
+	if (ImGui::Button("Play Mesh Particles") &&
 		Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS))
 	{
 		Start_WorldPreviewFromBeginning();
@@ -4171,58 +4400,133 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
     bool_t bActiveAppearsInTree = false;
     for (const EFFECT_SKILL_TREE_ENTRY& Entry : m_AllEffects)
     {
-        const EFFECT_DOCUMENT_DESC* pIndexedDocument =
-            nullptr != Entry.pRuntimeDocument ?
-                Entry.pRuntimeDocument.get() : nullptr;
+        const bool_t bProductMatchesSearch = std::any_of(
+            Entry.ProductCues.begin(), Entry.ProductCues.end(),
+            [&Search](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue)
+            {
+                return Contains_NoCase(
+                    ProductCue.Cue.strEffectAssetId, Search) ||
+                    Contains_NoCase(ProductCue.Cue.strClipName, Search) ||
+                    Contains_NoCase(ProductCue.Cue.strAnchorSlotId, Search);
+            });
         if (Entry.Skill.eCharacterClass != m_eAllEffectsClass ||
             (!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
              !Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
              !Contains_NoCase(Entry.Skill.strEffectId, Search) &&
-             (nullptr == pIndexedDocument || !Contains_NoCase(
-                 pIndexedDocument->strDisplayName, Search))))
+             !bProductMatchesSearch))
             continue;
-        if (m_ActiveDocument.has_value() &&
-            m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId)
+
+        const bool_t bSelectedProductSkill = m_ProductPreview.has_value() &&
+            m_ProductPreview->eCharacterClass ==
+                Entry.Skill.eCharacterClass &&
+            m_ProductPreview->iSkillId == Entry.Skill.iSkillId;
+        size_t iProductCueIndex = 0u;
+        if (bSelectedProductSkill)
+        {
+            const auto SelectedCue = std::find_if(
+                Entry.ProductCues.begin(), Entry.ProductCues.end(),
+                [this](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Candidate)
+                {
+                    const ANIMATION_EFFECT_CUE& Left = Candidate.Cue;
+                    const ANIMATION_EFFECT_CUE& Right =
+                        m_ProductPreview->ProductCue.Cue;
+                    return Left.strEffectAssetId == Right.strEffectAssetId &&
+                        Left.strClipName == Right.strClipName &&
+                        Left.iStartMs == Right.iStartMs &&
+                        Left.strAnchorSlotId == Right.strAnchorSlotId;
+                });
+            if (SelectedCue != Entry.ProductCues.end())
+            {
+                iProductCueIndex = static_cast<size_t>(
+                    std::distance(Entry.ProductCues.begin(), SelectedCue));
+            }
+        }
+        const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE* pProductCue =
+            Entry.ProductCues.empty() ? nullptr :
+                &Entry.ProductCues[iProductCueIndex];
+        const std::string strProductEffectAssetId =
+            nullptr == pProductCue ? std::string{} :
+                pProductCue->Cue.strEffectAssetId;
+        const shared_ptr<const EFFECT_DOCUMENT_DESC> pIndexedRuntime =
+            strProductEffectAssetId.empty() ? nullptr :
+                CEffectCatalog::Find(strProductEffectAssetId);
+        const bool_t bActiveProductDocument =
+            bSelectedProductSkill && m_ActiveDocument.has_value() &&
+            m_ActiveDocument->strEffectAssetId == strProductEffectAssetId;
+        if (m_ActiveDocument.has_value() && std::any_of(
+            Entry.ProductCues.begin(), Entry.ProductCues.end(),
+            [this](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue)
+            {
+                return ProductCue.Cue.strEffectAssetId ==
+                    m_ActiveDocument->strEffectAssetId;
+            }))
+        {
             bActiveAppearsInTree = true;
+        }
         const EFFECT_DOCUMENT_DESC* pTreeDocument =
-            m_ActiveDocument.has_value() &&
-                m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId ?
-            &*m_ActiveDocument : pIndexedDocument;
+            bActiveProductDocument ? &*m_ActiveDocument :
+                pIndexedRuntime.get();
+        const std::string strTreeEffectAssetId =
+            nullptr == pTreeDocument ? strProductEffectAssetId :
+                pTreeDocument->strEffectAssetId;
         const PARTICLE_LAYER_SUMMARY ParticleSummary =
             nullptr == pTreeDocument ? PARTICLE_LAYER_SUMMARY{} :
                 Summarize_ParticleLayers(*pTreeDocument);
         ImGui::PushID(static_cast<int32_t>(Entry.Skill.iSkillId));
-        const bool_t bActiveSkill = m_ActiveDocument.has_value() &&
-            m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId;
-		const bool_t bSkillSelected = bActiveSkill &&
+		const bool_t bSkillSelected = bActiveProductDocument &&
 			EFFECT_DETAIL_SELECTION::SKILL == m_eDetailSelection;
         const std::string SkillLabel = "Skill | " + Entry.Skill.strInputSlot +
-			" | " + Entry.Skill.strDisplayName + " (" +
-			Entry.Skill.strEffectId + ")" +
-			(bActiveSkill ? " [loaded]" : "");
+			" | " + Entry.Skill.strDisplayName +
+            (Entry.ProductCues.empty() ?
+                " | [Active Product Cue missing]" :
+                (Entry.ProductCues.size() == 1u ?
+                    " | Product: " + strProductEffectAssetId :
+                    " | Product Cues: " +
+                        std::to_string(Entry.ProductCues.size()))) +
+			(bActiveProductDocument ? " [loaded]" : "");
         const ImGuiTreeNodeFlags SkillFlags =
             ImGuiTreeNodeFlags_OpenOnArrow |
-			(bActiveSkill ? ImGuiTreeNodeFlags_DefaultOpen : 0) |
+			(bSelectedProductSkill ? ImGuiTreeNodeFlags_DefaultOpen : 0) |
 			(bSkillSelected ? ImGuiTreeNodeFlags_Selected : 0);
         const bool_t bSkillOpen = ImGui::TreeNodeEx(
             SkillLabel.c_str(), SkillFlags);
         if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
-            Try_SelectSkill(Entry.Skill.strEffectId);
+        {
+            if (Entry.ProductCues.empty())
+            {
+                m_strElementStatus =
+                    "Active Product Cue missing; Source/Imported rows are diagnostic only.";
+            }
+            else
+                Try_SelectProductCue(Entry, iProductCueIndex);
+        }
         if (ImGui::IsItemHovered())
         {
             if (nullptr != pTreeDocument)
             {
                 ImGui::SetTooltip(
-                    "%zu Elements in the indexed Effect Document.\n"
+                    "Product cue target: %s\n"
+                    "Clip %s @ %u ms | Anchor %s | %s\n"
+                    "%zu Elements in the indexed Authored Product.\n"
+                    "Standalone Mesh %zu | Mesh Particle %zu\n"
+                    "Standalone Sprite %zu | Sprite Particle %zu\n"
                     "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu\n"
-                    "Mesh %zu | Sprite %zu | Unresolved %zu | Budget %llu\n"
-                    "Click the skill label to load the Authored document.",
+                    "Unresolved Particle %zu | Budget %llu\n"
+                    "Click the skill label to Product Play the admitted cue.",
+                    strProductEffectAssetId.c_str(),
+                    pProductCue->Cue.strClipName.c_str(),
+                    pProductCue->Cue.iStartMs,
+                    pProductCue->Cue.strAnchorSlotId.c_str(),
+                    EFFECT_FOLLOW_POLICY::FOLLOW ==
+                        pProductCue->Cue.eFollowPolicy ? "follow" : "snapshot",
                     pTreeDocument->Elements.size(),
+                    ParticleSummary.iStandaloneMeshCount,
+                    ParticleSummary.iMeshRendererCount,
+                    ParticleSummary.iStandaloneSpriteCount,
+                    ParticleSummary.iSpriteRendererCount,
                     ParticleSummary.iSourceSystemCount,
                     ParticleSummary.iSourceEmitterCount,
                     ParticleSummary.iLayerCount,
-                    ParticleSummary.iMeshRendererCount,
-                    ParticleSummary.iSpriteRendererCount,
                     ParticleSummary.iUnresolvedRendererCount,
                     static_cast<unsigned long long>(
                         ParticleSummary.iParticleBudget));
@@ -4230,40 +4534,82 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             else
             {
                 ImGui::SetTooltip(
-                    "Authored data is indexed but has no published Runtime snapshot.\n"
-                    "Load it to validate and inspect its Elements.");
+                    Entry.ProductCues.empty() ?
+                    "Active Product Cue missing. Source/Imported EFFECT rows are reference-only." :
+                    "The admitted Product cue target has no loaded Runtime snapshot or Authored document.");
             }
         }
         if (bSkillOpen)
         {
-			if (ImGui::Button(bActiveSkill ?
-				"Play Loaded Complete Skill" : "Load / Play Complete Skill"))
-			{
-				if (Try_SelectSkill(Entry.Skill.strEffectId) &&
-					Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
-				{
-					Start_WorldPreviewFromBeginning();
-				}
-			}
+			ImGui::BeginDisabled(Entry.ProductCues.empty());
+			if (ImGui::Button(bActiveProductDocument ?
+				"Replay Active Product Cue" : "Product Play"))
+				Try_SelectProductCue(Entry, iProductCueIndex);
+			ImGui::EndDisabled();
+            if (Entry.ProductCues.empty())
+                ImGui::TextDisabled("Active Product Cue missing (fail-closed).");
+
+            if (!Entry.ProductCues.empty() && ImGui::TreeNode((
+                "Product Cues (" +
+                std::to_string(Entry.ProductCues.size()) + ")").c_str()))
+            {
+                for (size_t iCue = 0u; iCue < Entry.ProductCues.size(); ++iCue)
+                {
+                    const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+                        Entry.ProductCues[iCue];
+                    const bool_t bCueSelected = bSelectedProductSkill &&
+                        iCue == iProductCueIndex;
+                    const std::string CueLabel =
+                        ProductCue.Cue.strClipName + " @ " +
+                        std::to_string(ProductCue.Cue.iStartMs) + " ms | " +
+                        ProductCue.Cue.strEffectAssetId + "##product-cue-" +
+                        std::to_string(iCue);
+                    if (ImGui::Selectable(CueLabel.c_str(), bCueSelected))
+                        Try_SelectProductCue(Entry, iCue);
+                    ImGui::TextDisabled(
+                        "Anchor %s | %s | %s",
+                        ProductCue.Cue.strAnchorSlotId.c_str(),
+                        EFFECT_FOLLOW_POLICY::FOLLOW ==
+                            ProductCue.Cue.eFollowPolicy ? "follow" : "snapshot",
+                        EFFECT_STOP_POLICY::NATURAL ==
+                            ProductCue.Cue.eStopPolicy ? "natural" : "cue_end");
+                }
+                ImGui::TreePop();
+            }
+            if (0u != Entry.iSourceReferenceCount && ImGui::TreeNode((
+                "Source / Imported Diagnostics (" +
+                std::to_string(Entry.iSourceReferenceCount) + ")").c_str()))
+            {
+                ImGui::TextDisabled(
+                    "Reference-only: %zu imported rows | %zu empty payloads.",
+                    Entry.iImportedReferenceCount,
+                    Entry.iEmptySourceReferenceCount);
+                ImGui::TextWrapped(
+                    "These source package references never feed Product Play; promote an exact Authored product and save an effectref=asset cue first.");
+                ImGui::TreePop();
+            }
+
 			const bool_t bHasPublishedAssembly = nullptr !=
-				CEffectCatalog::Find_Assembly(Entry.Skill.strEffectId);
-			if (bHasPublishedAssembly && !bActiveSkill)
+				CEffectCatalog::Find_Assembly(strProductEffectAssetId);
+			if (bHasPublishedAssembly && !bActiveProductDocument)
 			{
-				Render_AssemblyHierarchy(Entry.Skill.strEffectId);
+				Render_AssemblyHierarchy(strProductEffectAssetId);
 				ImGui::TreePop();
 				ImGui::PopID();
 				continue;
 			}
-			if (bHasPublishedAssembly && bActiveSkill && ImGui::TreeNode(
+			if (bHasPublishedAssembly && bActiveProductDocument && ImGui::TreeNode(
 				"Published Runtime Hierarchy (diagnostic)"))
 			{
-				Render_AssemblyHierarchy(Entry.Skill.strEffectId);
+				Render_AssemblyHierarchy(strProductEffectAssetId);
 				ImGui::TreePop();
 			}
             if (nullptr == pTreeDocument)
             {
                 ImGui::TextDisabled(
-                    "Load the Authored document to inspect unpublished layers.");
+                    Entry.ProductCues.empty() ?
+                    "No Product layers: an admitted asset cue is required." :
+                    "The Product target cannot be inspected until its Authored document is admitted.");
                 ImGui::TreePop();
                 ImGui::PopID();
                 continue;
@@ -4284,7 +4630,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                 ImGui::TreePop();
             }
             Render_ManualElementGroups(
-                TreeDocument, Entry.Skill.strEffectId, bActiveSkill);
+                TreeDocument, strTreeEffectAssetId,
+                bActiveProductDocument);
             for (int32_t iKind = 0;
                 iKind < static_cast<int32_t>(EFFECT_ELEMENT_KIND::END);
                 ++iKind)
@@ -4304,9 +4651,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                         std::to_string(ParticleSummary.iSourceSystemCount) +
                         " | Emitters " +
                         std::to_string(ParticleSummary.iSourceEmitterCount) +
-                        " | Mesh " +
+                        " | Mesh Particles " +
                         std::to_string(ParticleSummary.iMeshRendererCount) +
-                        " | Sprite " +
+                        " | Sprite Particles " +
                         std::to_string(ParticleSummary.iSpriteRendererCount) +
                         " | Unresolved " +
                         std::to_string(ParticleSummary.iUnresolvedRendererCount) +
@@ -4319,7 +4666,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                 bool_t bKindOpen = false;
                 if (EFFECT_ELEMENT_KIND::PARTICLE == eKind)
                 {
-                    const bool_t bSystemSelected = bActiveSkill &&
+                    const bool_t bSystemSelected = bActiveProductDocument &&
                         EFFECT_DETAIL_SELECTION::PARTICLE_SYSTEM ==
                             m_eDetailSelection;
                     bKindOpen = ImGui::TreeNodeEx(
@@ -4327,7 +4674,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                         ImGuiTreeNodeFlags_OpenOnArrow |
                         (bSystemSelected ? ImGuiTreeNodeFlags_Selected : 0));
                     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
-                        Try_SelectParticleSystem(Entry.Skill.strEffectId);
+                        Try_SelectParticleSystem(strTreeEffectAssetId);
                     if (ImGui::IsItemHovered())
                     {
                         ImGui::SetTooltip(
@@ -4340,7 +4687,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                 if (!bKindOpen)
                     continue;
                 const auto RenderElementRows = [this, &TreeDocument,
-                    &Entry, eKind](const CASCADE_RENDERER_KIND* pRendererKind)
+                    &strTreeEffectAssetId, eKind](
+                        const CASCADE_RENDERER_KIND* pRendererKind)
                 {
                     for (const EFFECT_ELEMENT_DESC& Element :
                         TreeDocument.Elements)
@@ -4355,7 +4703,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                         }
                         const bool_t bSelected = m_ActiveDocument.has_value() &&
                             m_ActiveDocument->strEffectAssetId ==
-                                Entry.Skill.strEffectId &&
+                                strTreeEffectAssetId &&
                             EFFECT_DETAIL_SELECTION::ELEMENT ==
                                 m_eDetailSelection &&
                             Element.strElementId == m_strSelectedElementId;
@@ -4364,7 +4712,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                         if (!Element.strGroupId.empty())
                             Label = "[" + Element.strGroupId + "] " + Label;
                         if (ImGui::Selectable(Label.c_str(), bSelected))
-                            Try_SelectElement(Entry.Skill.strEffectId,
+                            Try_SelectElement(strTreeEffectAssetId,
                                 Element.strElementId);
                     }
                 };
@@ -4385,8 +4733,12 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                                 ParticleSummary.iUnresolvedRendererCount;
                         if (0u == iRendererCount)
                             continue;
-                        const std::string RendererLabel = std::string(
-                            CascadeRenderer_Label(eRendererKind)) + "s (" +
+                        const std::string RendererLabel =
+                            (CASCADE_RENDERER_KIND::MESH == eRendererKind ?
+                                std::string("Mesh Particles (") :
+                            CASCADE_RENDERER_KIND::SPRITE == eRendererKind ?
+                                std::string("Sprite Particles (") :
+                                std::string("Unresolved Particles (")) +
                             std::to_string(iRendererCount) + ")";
                         if (ImGui::TreeNode(RendererLabel.c_str()))
                         {
@@ -4432,9 +4784,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     std::to_string(ParticleSummary.iSourceSystemCount) +
                     " | Emitters " +
                     std::to_string(ParticleSummary.iSourceEmitterCount) +
-                    " | Mesh " +
+                    " | Mesh Particles " +
                     std::to_string(ParticleSummary.iMeshRendererCount) +
-                    " | Sprite " +
+                    " | Sprite Particles " +
                     std::to_string(ParticleSummary.iSpriteRendererCount) +
                     " | Unresolved " +
                     std::to_string(ParticleSummary.iUnresolvedRendererCount) +
@@ -4740,12 +5092,16 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
             m_ActiveDocument->ModelCues.size(),
             Has_UnsavedWork() ? " | DIRTY" : "");
         ImGui::TextDisabled(
-            "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu | Mesh %zu | Sprite %zu | Unresolved %zu | Budget %llu",
+            "Subtypes: Standalone Mesh %zu | Mesh Particle %zu | Standalone Sprite %zu | Sprite Particle %zu",
+            ParticleSummary.iStandaloneMeshCount,
+            ParticleSummary.iMeshRendererCount,
+            ParticleSummary.iStandaloneSpriteCount,
+            ParticleSummary.iSpriteRendererCount);
+        ImGui::TextDisabled(
+            "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu | Unresolved %zu | Budget %llu",
             ParticleSummary.iSourceSystemCount,
             ParticleSummary.iSourceEmitterCount,
             ParticleSummary.iLayerCount,
-            ParticleSummary.iMeshRendererCount,
-            ParticleSummary.iSpriteRendererCount,
             ParticleSummary.iUnresolvedRendererCount,
             static_cast<unsigned long long>(
                 ParticleSummary.iParticleBudget));
@@ -4872,6 +5228,7 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
             "New refuses an existing Effect ID; load that file or choose another ID.";
         return false;
     }
+    Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Document);
     Set_ActiveDocumentDrawableStatus(bDrawable, std::move(DrawableError));
     m_ActiveDocumentPath.clear();
@@ -5109,6 +5466,8 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect()
         return false;
     }
 
+    if (!bUsesActiveDocument)
+        Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Staged);
     Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
@@ -5475,6 +5834,109 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_PublishActiveProductAndReloadRuntime()
+{
+#ifndef _DEBUG
+	m_strDocumentStatus =
+		"Product runtime reload is available only in a Debug Client.";
+	return false;
+#else
+	if (!m_ActiveDocument.has_value() ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
+		!m_ProductPreview.has_value() ||
+		m_ActiveDocument->strEffectAssetId !=
+			m_ProductPreview->ProductCue.Cue.strEffectAssetId ||
+		Has_UnsavedWork() || !m_bActiveDocumentDrawable)
+	{
+		m_strDocumentStatus =
+			"Select an admitted Product cue and save its drawable Authored document before publishing the test.";
+		return false;
+	}
+	const char* pAnimationAsset =
+		Animation_AssetName(m_ProductPreview->eCharacterClass);
+	if (nullptr == pAnimationAsset)
+	{
+		m_strDocumentStatus =
+			"The selected Product cue has no supported animation/class owner.";
+		return false;
+	}
+
+	const std::filesystem::path ProjectRoot =
+		CProjectDataRoot::Get().parent_path();
+	const std::filesystem::path Builder = ProjectRoot / L"Tools" /
+		L"LevelPlacementExtractor" / L"build_effect_components.py";
+	const std::filesystem::path Publisher = ProjectRoot / L"Tools" /
+		L"EffectPipeline" / L"Publish-Effects.ps1";
+	if (!std::filesystem::is_regular_file(Builder) ||
+		!std::filesystem::is_regular_file(Publisher))
+	{
+		m_strDocumentStatus =
+			"Product Effect build/publish tools are missing from the project root.";
+		return false;
+	}
+
+	std::string ProcessStatus;
+	if (!Run_OwnedToolProcess(
+		L"python.exe \"" + Builder.wstring() +
+			L"\" --character-class \"" +
+			std::filesystem::path(pAnimationAsset).wstring() + L"\"",
+		ProjectRoot, 180000u, "Effect Component build", ProcessStatus))
+	{
+		m_strDocumentStatus = ProcessStatus +
+			" Loaded Runtime Catalog was preserved.";
+		return false;
+	}
+	if (!Run_OwnedToolProcess(
+		L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" +
+			Publisher.wstring() + L"\" -Mode Publish",
+		ProjectRoot, 180000u, "Effect publish", ProcessStatus))
+	{
+		m_strDocumentStatus = ProcessStatus +
+			" Loaded Runtime Catalog was preserved.";
+		return false;
+	}
+
+	const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT>
+		PreviousCatalog = CEffectCatalog::Capture_Runtime();
+	std::string CatalogStatus;
+	if (!CEffectCatalog::Load(CatalogStatus))
+	{
+		m_strDocumentStatus =
+			"Effect files published, but transactional Runtime Catalog reload rejected them: " +
+			CatalogStatus;
+		return false;
+	}
+	std::string PrewarmStatus;
+	if (!CEffectPresentationService::Reprepare_ProductTargets(
+		m_pDevice, m_pContext,
+		{ m_ProductPreview->ProductCue.Cue.strEffectAssetId },
+		PrewarmStatus))
+	{
+		std::string RollbackStatus;
+		const bool_t bRestored = CEffectCatalog::Restore_Runtime(
+			PreviousCatalog, RollbackStatus);
+		m_strDocumentStatus =
+			"Effect files published, but Product resource prewarm failed: " +
+			PrewarmStatus + (bRestored ?
+				" Previous Runtime Catalog and prepared cache were preserved." :
+				" Runtime Catalog rollback also failed: " + RollbackStatus);
+		return false;
+	}
+	Refresh_AllEffects();
+	Refresh_DataFiles();
+	Refresh_RuntimeEquivalence();
+	if (!m_bActiveDocumentMatchesRuntime)
+	{
+		m_strDocumentStatus =
+			"Runtime Catalog reloaded, but the active Product differs from the clean Authored document.";
+		return false;
+	}
+	m_strDocumentStatus =
+		"Active Product built, published, and reloaded transactionally. Close F1, keep F6 follow, then use its bound combat input; the next spawn uses this revision.";
+	return true;
+#endif
+}
+
 bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     const std::string& strAssetId)
 {
@@ -5520,6 +5982,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     }
     const bool_t bWasDrawable = m_bActiveDocumentDrawable;
     std::string PreviousDrawableError = m_strActiveDocumentDrawableError;
+    Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Staged);
     Set_ActiveDocumentDrawableStatus(
         bWasDrawable, std::move(PreviousDrawableError));
@@ -5630,6 +6093,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
             "Promotion failed; existing Authored file restored: " + Error;
         return false;
     }
+    Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Staged);
     Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
@@ -5780,13 +6244,14 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
     }
     Release_WorldPreview(true);
     std::string CanonicalBaseline;
-    if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
+	if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
     {
         Engine::CProfilerScope CanonicalProfile(
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.DocumentLoad.CanonicalBaseline");
         CanonicalBaseline = CEffectDocumentCodec::Serialize(Staged);
     }
+	Clear_ProductCuePreview();
 	m_ActiveDocument = std::move(Staged);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
     m_ActiveDocumentPath = Path;
@@ -5900,23 +6365,203 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
         return false;
     }
 
+    const vector<PLAYER_SKILL_DEFINITION>& Skills =
+        CPlayerSkillCatalog::Get_Skills();
     vector<EFFECT_SKILL_TREE_ENTRY> Staged;
-    size_t iMissingAuthored = 0u;
-    for (const PLAYER_SKILL_DEFINITION& Skill :
-        CPlayerSkillCatalog::Get_Skills())
+    Staged.reserve(Skills.size());
+    std::map<LostArk::Shared::SKILL_ID, size_t> EntryIndices;
+    for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
     {
-        if (Skill.strEffectId.empty())
-            continue;
-        const std::filesystem::path Path = CProjectDataRoot::Resolve(
-            std::filesystem::path(L"Effects") / L"Authored" /
-            (std::filesystem::path(Skill.strEffectId).wstring() +
-                L".effect.json"));
-        if (Path.empty() || !std::filesystem::is_regular_file(Path))
+        EntryIndices.emplace(Skill.iSkillId, Staged.size());
+        EFFECT_SKILL_TREE_ENTRY Entry;
+        Entry.Skill = Skill;
+        Staged.push_back(std::move(Entry));
+    }
+
+    const auto FailRefresh = [this](const std::string& strReason)
+    {
+        m_strElementStatus =
+            "All Effects refresh preserved the previous tree: " + strReason;
+        return false;
+    };
+    constexpr LostArk::Shared::CHARACTER_CLASS_ID Classes[] = {
+        LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+        LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
+        LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
+        LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+        LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+        LostArk::Shared::CHARACTER_CLASS_ID::WARLORD };
+    size_t iProductCueCount = 0u;
+    size_t iProductSkillCount = 0u;
+    size_t iSourceReferenceCount = 0u;
+    std::set<std::string> MissingAuthoredTargets;
+    for (const LostArk::Shared::CHARACTER_CLASS_ID eClass : Classes)
+    {
+        const char* pAnimationAsset = Animation_AssetName(eClass);
+        if (nullptr == pAnimationAsset)
+            return FailRefresh("a playable class has no animation asset ID.");
+
+        std::string BindingText;
+        std::string PresentationStatus;
+        const std::filesystem::path BindingPath =
+            CAnimationSkillBindingDocument::Resolve_Path(pAnimationAsset);
+        if (!Read_TextFile(BindingPath, BindingText, PresentationStatus))
+            return FailRefresh(PresentationStatus);
+
+        ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+        if (!CAnimationSkillBindingDocument::Parse_Text(
+            BindingText, Bindings, PresentationStatus))
         {
-            ++iMissingAuthored;
-            continue;
+            return FailRefresh(PresentationStatus);
         }
-        Staged.push_back({ Skill, CEffectCatalog::Find(Skill.strEffectId) });
+        vector<string> BoundClipNames;
+        std::map<string,
+            std::pair<LostArk::Shared::SKILL_ID, size_t>> ClipOwners;
+        for (const ANIMATION_SKILL_BINDING& Binding : Bindings.Bindings)
+        {
+            const auto EntryIndex = EntryIndices.find(Binding.iSkillId);
+            if (EntryIndex == EntryIndices.end() ||
+                Staged[EntryIndex->second].Skill.eCharacterClass != eClass)
+            {
+                return FailRefresh(
+                    "a skill binding is not owned by its PlayerSkills class.");
+            }
+            const vector<ANIMATION_SKILL_CLIP> BindingClips =
+                Flatten_BindingClips(Binding);
+            if (BindingClips.empty())
+                return FailRefresh("a skill binding has no animation clips.");
+            for (size_t iClip = 0u; iClip < BindingClips.size(); ++iClip)
+            {
+                const string& strClipName = BindingClips[iClip].strClipName;
+                BoundClipNames.push_back(strClipName);
+                const auto [Owner, bInserted] = ClipOwners.emplace(
+                    strClipName,
+                    std::make_pair(Binding.iSkillId, iClip));
+                if (!bInserted && Owner->second.first != Binding.iSkillId)
+                {
+                    return FailRefresh(
+                        "one animation clip is claimed by multiple skills: " +
+                        strClipName);
+                }
+            }
+        }
+        std::sort(BoundClipNames.begin(), BoundClipNames.end());
+        BoundClipNames.erase(std::unique(
+            BoundClipNames.begin(), BoundClipNames.end()),
+            BoundClipNames.end());
+        if (!CAnimationSkillBindingDocument::Validate(
+            Bindings, pAnimationAsset, eClass, Skills,
+            BoundClipNames, PresentationStatus))
+        {
+            return FailRefresh(PresentationStatus);
+        }
+
+        ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+        if (!CAnimationEffectCueDocument::Load(
+            pAnimationAsset, BoundClipNames, CueDocument,
+            PresentationStatus))
+        {
+            return FailRefresh(PresentationStatus);
+        }
+        for (const ANIMATION_EFFECT_CUE& Cue : CueDocument.Cues)
+        {
+            const auto Owner = ClipOwners.find(Cue.strClipName);
+            if (Owner == ClipOwners.end())
+                return FailRefresh(
+                    "an admitted Effect cue is not owned by a skill clip: " +
+                    Cue.strClipName);
+            const auto EntryIndex = EntryIndices.find(Owner->second.first);
+            if (EntryIndex == EntryIndices.end())
+                return FailRefresh("an admitted Effect cue has no skill row.");
+            EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
+            ProductCue.Cue = Cue;
+            ProductCue.iBoundClipOrdinal = Owner->second.second;
+            Staged[EntryIndex->second].ProductCues.push_back(
+                std::move(ProductCue));
+        }
+
+        for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
+        {
+            if (Skill.eCharacterClass != eClass)
+                continue;
+            const auto EntryIndex = EntryIndices.find(Skill.iSkillId);
+            if (EntryIndex == EntryIndices.end())
+            {
+                return FailRefresh(
+                    "a PlayerSkills row has no complete animation binding.");
+            }
+            EFFECT_SKILL_TREE_ENTRY& Entry = Staged[EntryIndex->second];
+            std::sort(Entry.ProductCues.begin(), Entry.ProductCues.end(),
+                [](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Left,
+                    const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Right)
+                {
+                    return std::tie(
+                        Left.iBoundClipOrdinal,
+                        Left.Cue.iStartMs,
+                        Left.Cue.strEffectAssetId,
+                        Left.Cue.strAnchorSlotId) <
+                        std::tie(
+                            Right.iBoundClipOrdinal,
+                            Right.Cue.iStartMs,
+                            Right.Cue.strEffectAssetId,
+                            Right.Cue.strAnchorSlotId);
+                });
+            if (!Entry.ProductCues.empty())
+                ++iProductSkillCount;
+            iProductCueCount += Entry.ProductCues.size();
+            for (const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue :
+                Entry.ProductCues)
+            {
+                const std::filesystem::path AuthoredPath =
+                    CProjectDataRoot::Resolve(
+                        std::filesystem::path(L"Effects") / L"Authored" /
+                        (std::filesystem::path(
+                            ProductCue.Cue.strEffectAssetId).wstring() +
+                            L".effect.json"));
+                if (AuthoredPath.empty() ||
+                    !std::filesystem::is_regular_file(AuthoredPath))
+                {
+                    MissingAuthoredTargets.insert(
+                        ProductCue.Cue.strEffectAssetId);
+                }
+            }
+        }
+
+        const std::filesystem::path EventPath = CProjectDataRoot::Resolve(
+            std::filesystem::path(L"Animation") / L"Authored" /
+            std::filesystem::path(pAnimationAsset) /
+            (std::filesystem::path(pAnimationAsset).wstring() +
+                L".animevents"));
+        std::string EventText;
+        if (!Read_TextFile(EventPath, EventText, PresentationStatus))
+            return FailRefresh(PresentationStatus);
+        std::istringstream EventRows(EventText);
+        std::string EventLine;
+        std::getline(EventRows, EventLine);
+        while (std::getline(EventRows, EventLine))
+        {
+            std::string strClipName;
+            bool_t bImported = false;
+            bool_t bEmptyPayload = false;
+            if (!Try_ParseEffectDiagnosticRow(
+                EventLine, strClipName, bImported, bEmptyPayload))
+            {
+                continue;
+            }
+            const auto Owner = ClipOwners.find(strClipName);
+            if (Owner == ClipOwners.end())
+                continue;
+            const auto EntryIndex = EntryIndices.find(Owner->second.first);
+            if (EntryIndex == EntryIndices.end())
+                continue;
+            EFFECT_SKILL_TREE_ENTRY& Entry = Staged[EntryIndex->second];
+            ++Entry.iSourceReferenceCount;
+            ++iSourceReferenceCount;
+            if (bImported)
+                ++Entry.iImportedReferenceCount;
+            if (bEmptyPayload)
+                ++Entry.iEmptySourceReferenceCount;
+        }
     }
     std::sort(Staged.begin(), Staged.end(),
         [](const EFFECT_SKILL_TREE_ENTRY& Left,
@@ -5929,11 +6574,18 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             return Left.Skill.iSkillId < Right.Skill.iSkillId;
         });
     m_AllEffects = std::move(Staged);
-    m_strElementStatus = "All Effects indexed from PlayerSkills + Authored: " +
-        std::to_string(m_AllEffects.size()) + " complete skills";
-    if (0u != iMissingAuthored)
-        m_strElementStatus += ", " + std::to_string(iMissingAuthored) +
-            " mappings have no Authored document";
+    m_strElementStatus =
+        "All Effects indexed Product presentation from PlayerSkills + "
+        "skillbindings + animevents: " +
+        std::to_string(m_AllEffects.size()) + " skills, " +
+        std::to_string(iProductSkillCount) + " Product skills, " +
+        std::to_string(iProductCueCount) + " executable cues, " +
+        std::to_string(iSourceReferenceCount) +
+        " Source/Imported diagnostic rows";
+    if (!MissingAuthoredTargets.empty())
+        m_strElementStatus += ", " +
+            std::to_string(MissingAuthoredTargets.size()) +
+            " Product targets have no Authored document";
     m_strElementStatus += ".";
     return true;
 }
@@ -6169,48 +6821,95 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
     return true;
 }
 
-bool_t Client::CEffect_Tool::Try_SelectSkill(
-    const std::string& strEffectAssetId)
+bool_t Client::CEffect_Tool::Try_SelectProductCue(
+    const EFFECT_SKILL_TREE_ENTRY& Entry,
+    const size_t iCueIndex)
 {
-	if (m_ActiveDocument.has_value() &&
-		m_ActiveDocument->strEffectAssetId == strEffectAssetId &&
-		EFFECT_DETAIL_SELECTION::SKILL != m_eDetailSelection &&
-		Has_UnappliedDetailDraft())
-	{
-		m_strElementStatus =
-			"Apply or Revert the open Detail draft before selecting the Skill.";
-		return false;
-	}
-    if (!m_ActiveDocument.has_value() ||
-        m_ActiveDocument->strEffectAssetId != strEffectAssetId)
+    if (iCueIndex >= Entry.ProductCues.size())
     {
-		if (!Try_LoadDocument(strEffectAssetId))
-			return false;
+        m_strElementStatus =
+            "Active Product Cue missing; Source/Imported rows are diagnostic only.";
+        return false;
+    }
+    const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+        Entry.ProductCues[iCueIndex];
+    if (ProductCue.Cue.strEffectAssetId.empty() ||
+        !CEffectCatalog::Contains(ProductCue.Cue.strEffectAssetId))
+    {
+        m_strElementStatus =
+            "Product Play rejected an Effect cue target that is no longer admitted.";
+        return false;
+    }
+    const bool_t bChangesProduct = !m_ProductPreview.has_value() ||
+        m_ProductPreview->eCharacterClass != Entry.Skill.eCharacterClass ||
+        m_ProductPreview->iSkillId != Entry.Skill.iSkillId ||
+        m_ProductPreview->ProductCue.Cue.strEffectAssetId !=
+            ProductCue.Cue.strEffectAssetId ||
+        m_ProductPreview->ProductCue.Cue.strClipName !=
+            ProductCue.Cue.strClipName ||
+        m_ProductPreview->ProductCue.Cue.iStartMs !=
+            ProductCue.Cue.iStartMs ||
+        m_ProductPreview->ProductCue.Cue.strAnchorSlotId !=
+            ProductCue.Cue.strAnchorSlotId;
+    if (bChangesProduct && Has_UnappliedDetailDraft())
+    {
+        m_strElementStatus =
+            "Apply or Revert the open Detail draft before selecting another Product cue.";
+        return false;
+    }
+    if (!m_ActiveDocument.has_value() ||
+        m_ActiveDocument->strEffectAssetId !=
+            ProductCue.Cue.strEffectAssetId)
+    {
+        if (!Try_LoadDocument(ProductCue.Cue.strEffectAssetId))
+            return false;
+    }
+    if (!m_ActiveDocument.has_value() ||
+        m_ActiveDocument->strEffectAssetId !=
+            ProductCue.Cue.strEffectAssetId)
+    {
+        m_strElementStatus =
+            "Product Play failed to stage the exact Authored cue target.";
+        return false;
     }
 
-	Reset_ParticleSystemDraft();
-	Reset_DetailDraft();
-	m_eDetailSelection = EFFECT_DETAIL_SELECTION::SKILL;
-	m_strSelectedElementId.clear();
-	m_strSelectedElementGroupId.clear();
-	m_strSelectedComponentId.clear();
-	m_strSelectedEmitterId.clear();
-	m_strSelectedSourceModuleId.clear();
-	m_strSelectedResourceAssetId.clear();
+    EFFECT_PRODUCT_PREVIEW Preview;
+    Preview.eCharacterClass = Entry.Skill.eCharacterClass;
+    Preview.iSkillId = Entry.Skill.iSkillId;
+    Preview.ProductCue = ProductCue;
+    m_ProductPreview = std::move(Preview);
+    Reset_ProductCueSnapshot();
+    m_eAllEffectsClass = Entry.Skill.eCharacterClass;
+    Select_AuthoringDomainForClass(Entry.Skill.eCharacterClass);
+    Reset_ParticleSystemDraft();
+    Reset_DetailDraft();
+    m_eDetailSelection = EFFECT_DETAIL_SELECTION::SKILL;
+    m_strSelectedElementId.clear();
+    m_strSelectedElementGroupId.clear();
+    m_strSelectedComponentId.clear();
+    m_strSelectedEmitterId.clear();
+    m_strSelectedSourceModuleId.clear();
+    m_strSelectedResourceAssetId.clear();
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+    m_fPreviewTimeSeconds = 0.f;
     Recalculate_PreviewDuration();
     Synchronize_LoadedSkillPreview();
     if (!Stage_WorldPreview())
     {
         m_strElementStatus =
-            "Complete Effect preview could not be restarted: " +
+            "Product Play could not stage the admitted cue target: " +
             m_strPreviewStatus;
+        Clear_ProductCuePreview();
         return false;
     }
     Start_WorldPreviewFromBeginning();
-	m_strElementStatus =
-		"Selected the complete Skill Effect; choose Particle System, Component, "
-		"Emitter, or Module for narrower controls.";
+    m_strElementStatus = "Product Play | " +
+        ProductCue.Cue.strEffectAssetId + " | " +
+        ProductCue.Cue.strClipName + " @ " +
+        std::to_string(ProductCue.Cue.iStartMs) + " ms | anchor=" +
+        ProductCue.Cue.strAnchorSlotId + " | " +
+        (EFFECT_FOLLOW_POLICY::FOLLOW == ProductCue.Cue.eFollowPolicy ?
+            "follow" : "snapshot");
     return true;
 }
 
@@ -6313,7 +7012,9 @@ bool_t Client::CEffect_Tool::Try_SelectElement(
         *Iterator, m_strSelectedResourceSlotId);
     m_strSelectedResourceAssetId.clear();
     if (EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES == m_ePreviewFilter ||
 		EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_SPRITES == m_ePreviewFilter ||
 		EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS == m_ePreviewFilter)
         m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     if (EFFECT_PREVIEW_FILTER::COMPLETE != m_ePreviewFilter)
@@ -6516,8 +7217,10 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
     if (const shared_ptr<CEffectObject> pObject =
         m_pWorldPreviewObject.lock())
     {
+        Reset_ProductCueSnapshot();
         pObject->Reset();
-        pObject->Set_SampleTime(0.f);
+        pObject->Set_SampleTime(
+            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
 		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
@@ -6565,7 +7268,10 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
     const f32_t fPreviousDuration = m_fPreviewDurationSeconds;
     const bool_t bPreviousPlaying = m_bPreviewPlaying;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::SOLO_SELECTED;
-    m_fPreviewTimeSeconds =
+    const f32_t fProductCueStartSeconds = m_ProductPreview.has_value() ?
+        static_cast<f32_t>(m_ProductPreview->ProductCue.Cue.iStartMs) *
+            0.001f : 0.f;
+    m_fPreviewTimeSeconds = fProductCueStartSeconds +
         Selected->Detail.Timing.fStartDelaySeconds;
     Recalculate_PreviewDuration(Build_PreviewDocument(Staged));
     if (!Stage_WorldPreview(Staged))
@@ -6580,8 +7286,18 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
     if (const shared_ptr<CEffectObject> pObject =
         m_pWorldPreviewObject.lock())
     {
+        Reset_ProductCueSnapshot();
+        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+        float4x4_t Root{};
+        const bool_t bRootResolved = Resolve_PreviewRoot(Root);
+        if (bRootResolved)
+            pObject->Set_RootWorld(Root);
         pObject->Reset();
-        pObject->Set_SampleTime(m_fPreviewTimeSeconds);
+        pObject->Set_SampleTime(
+            Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+		pObject->Set_Visible(
+			bRootResolved &&
+			Is_ProductCueVisible(m_fPreviewTimeSeconds));
 		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
@@ -7008,7 +7724,8 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         return false;
     }
     pObject->Set_Playing(false);
-    pObject->Set_SampleTime(m_fPreviewTimeSeconds);
+    pObject->Set_SampleTime(
+        Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
     switch (m_ePreviewFilter)
     {
     case EFFECT_PREVIEW_FILTER::COMPLETE:
@@ -7017,15 +7734,23 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         break;
     case EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM:
         m_strPreviewStatus =
-            "Particle System-only preview committed.";
+            "All Particle subtypes preview committed.";
         break;
+	case EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES:
+		m_strPreviewStatus =
+			"Standalone Mesh-only preview committed.";
+		break;
 	case EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS:
 		m_strPreviewStatus =
-			"Mesh-backed Cascade emitter preview committed.";
+			"Mesh Particle-only preview committed.";
+		break;
+	case EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_SPRITES:
+		m_strPreviewStatus =
+			"Standalone Sprite-only preview committed.";
 		break;
 	case EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS:
 		m_strPreviewStatus =
-			"Sprite Cascade emitter preview committed.";
+			"Sprite Particle-only preview committed.";
 		break;
     case EFFECT_PREVIEW_FILTER::SOLO_SELECTED:
         m_strPreviewStatus = "Selected Element Solo preview committed.";
@@ -7070,6 +7795,20 @@ Client::CEffect_Tool::Build_PreviewDocument(
         Preview.ModelCues.clear();
         return Preview;
     }
+	if (EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_SPRITES == m_ePreviewFilter)
+	{
+		const EFFECT_ELEMENT_KIND eRequired =
+			EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES == m_ePreviewFilter ?
+				EFFECT_ELEMENT_KIND::MESH : EFFECT_ELEMENT_KIND::SPRITE;
+		std::erase_if(Preview.Elements,
+			[eRequired](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.eKind != eRequired;
+			});
+		Preview.ModelCues.clear();
+		return Preview;
+	}
 	if (EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
 		EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS == m_ePreviewFilter)
 	{
@@ -7217,26 +7956,109 @@ bool_t Client::CEffect_Tool::Apply_DetailDraft(
 
 bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 {
-    switch (m_ePreviewPivotKind)
+    if (m_ProductPreview.has_value() &&
+        EFFECT_FOLLOW_POLICY::SNAPSHOT ==
+            m_ProductPreview->ProductCue.Cue.eFollowPolicy &&
+        m_bProductCueSnapshotCaptured)
     {
-    case EFFECT_PREVIEW_PIVOT_KIND::WORLD:
-        OutRoot = m_PreviewWorldRoot;
+        OutRoot = m_ProductCueSnapshotRoot;
         return true;
-    case EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT:
-        return CAnimationTargetService::Resolve_RootTransform(&OutRoot);
-    case EFFECT_PREVIEW_PIVOT_KIND::WEAPON_SOCKET:
-    case EFFECT_PREVIEW_PIVOT_KIND::MODEL_BONE:
-        return CAnimationTargetService::Resolve_AnchorTransform(
-            m_strPreviewAnchorSlotId.c_str(), &OutRoot);
-    case EFFECT_PREVIEW_PIVOT_KIND::END:
-    default:
-        return false;
     }
+
+    float4x4_t Anchor{};
+    bool_t bResolved = false;
+    if (m_ProductPreview.has_value())
+    {
+        const std::string& strCueAnchor =
+            m_ProductPreview->ProductCue.Cue.strAnchorSlotId;
+        bResolved = "root" == strCueAnchor ?
+            CAnimationTargetService::Resolve_RootTransform(&Anchor) :
+            CAnimationTargetService::Resolve_AnchorTransform(
+                strCueAnchor.c_str(), &Anchor);
+    }
+    else
+    {
+        switch (m_ePreviewPivotKind)
+        {
+        case EFFECT_PREVIEW_PIVOT_KIND::WORLD:
+            Anchor = m_PreviewWorldRoot;
+            bResolved = true;
+            break;
+        case EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT:
+            bResolved = CAnimationTargetService::Resolve_RootTransform(&Anchor);
+            break;
+        case EFFECT_PREVIEW_PIVOT_KIND::WEAPON_SOCKET:
+        case EFFECT_PREVIEW_PIVOT_KIND::MODEL_BONE:
+            bResolved = CAnimationTargetService::Resolve_AnchorTransform(
+                m_strPreviewAnchorSlotId.c_str(), &Anchor);
+            break;
+        case EFFECT_PREVIEW_PIVOT_KIND::END:
+        default:
+            return false;
+        }
+    }
+    if (!bResolved)
+        return false;
+    if (!m_ProductPreview.has_value())
+    {
+        OutRoot = Anchor;
+        return true;
+    }
+
+    OutRoot = Compose_EffectLocal(
+        m_ProductPreview->ProductCue.Cue.LocalTransform, Anchor);
+    if (EFFECT_FOLLOW_POLICY::SNAPSHOT ==
+            m_ProductPreview->ProductCue.Cue.eFollowPolicy &&
+        m_fPreviewTimeSeconds * 1000.f + 0.5f >=
+            static_cast<f32_t>(
+                m_ProductPreview->ProductCue.Cue.iStartMs))
+    {
+        m_ProductCueSnapshotRoot = OutRoot;
+        m_bProductCueSnapshotCaptured = true;
+    }
+    return true;
+}
+
+f32_t Client::CEffect_Tool::Resolve_EffectSampleTime(
+    const f32_t fTimelineSeconds) const
+{
+    if (!m_ProductPreview.has_value())
+        return (std::max)(0.f, fTimelineSeconds);
+    const f32_t fCueStartSeconds = static_cast<f32_t>(
+        m_ProductPreview->ProductCue.Cue.iStartMs) * 0.001f;
+    return (std::max)(0.f, fTimelineSeconds - fCueStartSeconds);
+}
+
+bool_t Client::CEffect_Tool::Is_ProductCueVisible(
+    const f32_t fTimelineSeconds) const
+{
+    if (!m_ProductPreview.has_value())
+        return true;
+    const ANIMATION_EFFECT_CUE& Cue =
+        m_ProductPreview->ProductCue.Cue;
+    const f32_t fTimelineMs = fTimelineSeconds * 1000.f;
+    if (fTimelineMs + 0.5f < static_cast<f32_t>(Cue.iStartMs))
+        return false;
+    return EFFECT_STOP_POLICY::CUE_END != Cue.eStopPolicy ||
+        fTimelineMs < static_cast<f32_t>(Cue.iEndMs);
+}
+
+void Client::CEffect_Tool::Clear_ProductCuePreview()
+{
+    m_ProductPreview.reset();
+    Reset_ProductCueSnapshot();
+}
+
+void Client::CEffect_Tool::Reset_ProductCueSnapshot()
+{
+    m_ProductCueSnapshotRoot = Identity_Matrix();
+    m_bProductCueSnapshotCaptured = false;
 }
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 {
     m_fPreviewTimeSeconds = 0.f;
+    Reset_ProductCueSnapshot();
     Restart_SynchronizedAnimationSequence();
     shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
     if (nullptr == pObject && m_ActiveDocument.has_value() &&
@@ -7250,14 +8072,14 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
         return;
     }
     float4x4_t TargetRoot{};
-    if (CAnimationTargetService::Resolve_RootTransform(&TargetRoot))
-    {
-        m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
+    const bool_t bRootResolved = Resolve_PreviewRoot(TargetRoot);
+    if (bRootResolved)
         pObject->Set_RootWorld(TargetRoot);
-    }
-    pObject->Set_Visible(true);
+    pObject->Set_Visible(
+        bRootResolved && Is_ProductCueVisible(m_fPreviewTimeSeconds));
     pObject->Reset();
-    pObject->Set_SampleTime(0.f);
+    pObject->Set_SampleTime(
+        Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
 	m_bPreviewVisibleRequested = true;
     m_bPreviewPlaying = true;
 }
@@ -7274,14 +8096,23 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
         Ensure_PlayerSkillCatalog(CatalogStatus);
     const vector<PLAYER_SKILL_DEFINITION>& Skills =
         CPlayerSkillCatalog::Get_Skills();
-    auto Skill = std::find_if(
-        Skills.begin(), Skills.end(),
-        [this](const PLAYER_SKILL_DEFINITION& Candidate)
-        {
-            return Candidate.strEffectId ==
-                m_ActiveDocument->strEffectAssetId;
-        });
-    if (Skill == Skills.end() &&
+    auto Skill = m_ProductPreview.has_value() ?
+        std::find_if(
+            Skills.begin(), Skills.end(),
+            [this](const PLAYER_SKILL_DEFINITION& Candidate)
+            {
+                return Candidate.eCharacterClass ==
+                        m_ProductPreview->eCharacterClass &&
+                    Candidate.iSkillId == m_ProductPreview->iSkillId;
+            }) :
+        std::find_if(
+            Skills.begin(), Skills.end(),
+            [this](const PLAYER_SKILL_DEFINITION& Candidate)
+            {
+                return Candidate.strEffectId ==
+                    m_ActiveDocument->strEffectAssetId;
+            });
+    if (!m_ProductPreview.has_value() && Skill == Skills.end() &&
         std::string::npos != m_ActiveDocument->strEffectAssetId.find(
             "restoration-candidate"))
     {
@@ -7300,6 +8131,14 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             "No PlayerSkills row owns this Effect; animation was left unchanged." :
             "PlayerSkills refresh failed; animation was left unchanged: " +
                 CatalogStatus;
+        return;
+    }
+    if (m_ProductPreview.has_value() &&
+        m_ActiveDocument->strEffectAssetId !=
+            m_ProductPreview->ProductCue.Cue.strEffectAssetId)
+    {
+        m_strPreviewAnimationStatus =
+            "Product animation sync rejected a stale cue/document pairing.";
         return;
     }
 
@@ -7361,14 +8200,36 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             "Effect is playing; its first bound animation clip is unavailable.";
         return;
     }
-    /* The preview plays the authored clips end to end: it is showing the effect,
-    not waiting on the Server stage the combo would need. */
     m_SynchronizedAnimationClips.clear();
-    for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
+    if (m_ProductPreview.has_value())
     {
-        m_SynchronizedAnimationClips.insert(
-            m_SynchronizedAnimationClips.end(),
-            Stage.Clips.begin(), Stage.Clips.end());
+        const std::string& strCueClip =
+            m_ProductPreview->ProductCue.Cue.strClipName;
+        for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
+        {
+            const auto Clip = std::find_if(
+                Stage.Clips.begin(), Stage.Clips.end(),
+                [&strCueClip](const ANIMATION_SKILL_CLIP& Candidate)
+                {
+                    return Candidate.strClipName == strCueClip;
+                });
+            if (Clip != Stage.Clips.end())
+            {
+                m_SynchronizedAnimationClips.push_back(*Clip);
+                break;
+            }
+        }
+    }
+    else
+    {
+        /* Generic Data File preview retains the full authored chain. Product
+        Play above intentionally owns only the exact clip named by its cue. */
+        for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
+        {
+            m_SynchronizedAnimationClips.insert(
+                m_SynchronizedAnimationClips.end(),
+                Stage.Clips.begin(), Stage.Clips.end());
+        }
     }
     if (m_SynchronizedAnimationClips.empty())
     {
@@ -7392,9 +8253,17 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
     }
     pModel->Set_AnimationSpeed(FirstClip.fPlayRate);
     pModel->Set_AnimPaused(false);
-    m_strPreviewAnimationStatus = "Skill animation synced: " +
+    m_strPreviewAnimationStatus = m_ProductPreview.has_value() ?
+        "Product cue animation synced: " : "Skill animation synced: ";
+    m_strPreviewAnimationStatus +=
         Skill->strInputSlot + " | " + Skill->strDisplayName + " -> " +
         FirstClip.strClipName;
+    if (m_ProductPreview.has_value())
+    {
+        m_strPreviewAnimationStatus += " @ " + std::to_string(
+            m_ProductPreview->ProductCue.Cue.iStartMs) + " ms | anchor=" +
+            m_ProductPreview->ProductCue.Cue.strAnchorSlotId;
+    }
     if (!bSingleClip)
     {
         m_strPreviewAnimationStatus += " (sequence 1/" +
@@ -7708,6 +8577,7 @@ void Client::CEffect_Tool::Release_WorldPreview(
 
 void Client::CEffect_Tool::Discard_ActiveDocument()
 {
+    Clear_ProductCuePreview();
     m_ActiveDocument.reset();
     Clear_ActiveDocumentDrawableStatus();
     m_ActiveDocumentPath.clear();
@@ -7785,7 +8655,7 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration()
 void Client::CEffect_Tool::Recalculate_PreviewDuration(
     const EFFECT_DOCUMENT_DESC& Document)
 {
-    m_fPreviewDurationSeconds = 1.f;
+    f32_t fEffectDurationSeconds = 1.f;
     for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
     {
         if (!Element.bVisible)
@@ -7796,7 +8666,7 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
             fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y;
         else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
             fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
-        m_fPreviewDurationSeconds = (std::max)(m_fPreviewDurationSeconds,
+        fEffectDurationSeconds = (std::max)(fEffectDurationSeconds,
             Timing.fStartDelaySeconds + Timing.fLifeTimeSeconds +
             Timing.fAfterImageSeconds + fElementTail);
     }
@@ -7804,9 +8674,25 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
     {
         if (Cue.bVisible)
         {
+            fEffectDurationSeconds = (std::max)(
+                fEffectDurationSeconds,
+                Cue.fStartDelaySeconds + Cue.fDurationSeconds);
+        }
+    }
+    m_fPreviewDurationSeconds = fEffectDurationSeconds;
+    if (m_ProductPreview.has_value())
+    {
+        const ANIMATION_EFFECT_CUE& Cue =
+            m_ProductPreview->ProductCue.Cue;
+        const f32_t fCueStartSeconds =
+            static_cast<f32_t>(Cue.iStartMs) * 0.001f;
+        m_fPreviewDurationSeconds = fCueStartSeconds +
+            fEffectDurationSeconds;
+        if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy)
+        {
             m_fPreviewDurationSeconds = (std::max)(
                 m_fPreviewDurationSeconds,
-                Cue.fStartDelaySeconds + Cue.fDurationSeconds);
+                static_cast<f32_t>(Cue.iEndMs) * 0.001f);
         }
     }
     m_fPreviewTimeSeconds = std::clamp(

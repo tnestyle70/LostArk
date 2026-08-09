@@ -198,6 +198,29 @@ try {
     if ($LASTEXITCODE) { throw 'Baseline publish failed.' }
     $baseline = [IO.File]::ReadAllBytes($output)
 
+    $componentPath = Join-Path $components 'Fixture_00.particlesystem.wfx.json'
+    $assemblyPath = Join-Path $assemblies "$effectId.assembly.json"
+    $invalidComponent = Get-Content -LiteralPath $componentPath -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    $invalidComponent.displayName = 'x' * 65
+    Write-Utf8 $componentPath (($invalidComponent | ConvertTo-Json -Depth 40) + "`n")
+    Assert-ValidateRejected 'Overlong Effect Component displayName' $baseline
+
+    Write-Fixture $document $catalog
+    $invalidComponent = Get-Content -LiteralPath $componentPath -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    $invalidComponent.document.displayName = 'x' * 65
+    Write-Utf8 $componentPath (($invalidComponent | ConvertTo-Json -Depth 40) + "`n")
+    Assert-ValidateRejected 'Overlong Effect Component Document displayName' $baseline
+
+    Write-Fixture $document $catalog
+    $invalidAssembly = Get-Content -LiteralPath $assemblyPath -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    $invalidAssembly.displayName = 'x' * 65
+    Write-Utf8 $assemblyPath (($invalidAssembly | ConvertTo-Json -Depth 40) + "`n")
+    Assert-ValidateRejected 'Overlong Effect Assembly displayName' $baseline
+    Write-Fixture $document $catalog
+
     $document.version = 7
     $document['modelCues'] = @([ordered]@{
         cueId = 'fixture_model'

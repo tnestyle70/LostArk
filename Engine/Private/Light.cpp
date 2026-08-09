@@ -19,26 +19,39 @@ HRESULT CLight::Initialize(const LIGHT_DESC& LightDesc)
 
 HRESULT CLight::Render(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer)
 {
-	return Render_Desc(m_LightDesc, std::move(pShader), std::move(pVIBuffer));
+	return Render_Desc(
+		m_LightDesc, std::move(pShader), std::move(pVIBuffer), false);
 }
 
 HRESULT CLight::Render_Desc(
 	const LIGHT_DESC& LightDesc,
 	shared_ptr<class CShader> pShader,
-	shared_ptr<class CVIBuffer_Rect> pVIBuffer)
+	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+	bool_t bApplyDirectionalShadow)
 {
     uint32_t            iPassIndex = {};
 
     if (LIGHT::DIRECTIONAL == LightDesc.eType)
     {
+		const uint32_t iApplyDirectionalShadow =
+			bApplyDirectionalShadow ? 1u : 0u;
         if (FAILED(pShader->Bind_RawValue("g_vLightDir", &LightDesc.vDirection, sizeof LightDesc.vDirection)))
             return E_FAIL;
+		if (FAILED(pShader->Bind_RawValue(
+			"g_iApplyDirectionalShadow", &iApplyDirectionalShadow,
+			sizeof(iApplyDirectionalShadow))))
+			return E_FAIL;
 
         iPassIndex = ETOUI(DEFERRED::DIRECTIONAL);
     }
 
     else if (LIGHT::POINT == LightDesc.eType)
     {
+		const uint32_t iApplyDirectionalShadow = 0u;
+		if (FAILED(pShader->Bind_RawValue(
+			"g_iApplyDirectionalShadow", &iApplyDirectionalShadow,
+			sizeof(iApplyDirectionalShadow))))
+			return E_FAIL;
         if (FAILED(pShader->Bind_RawValue("g_vLightPos", &LightDesc.vPosition, sizeof LightDesc.vPosition)))
             return E_FAIL;
         if (FAILED(pShader->Bind_RawValue("g_fLightRange", &LightDesc.fRange, sizeof LightDesc.fRange)))
