@@ -813,7 +813,11 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 		FAILED(CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_Component_Collider_Player"),
-		CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))))
+		CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Collider_WorldEntity"),
+		CCollider::Create(m_pDevice, m_pContext, COLLIDER::SPHERE))))
 	{
 		return E_FAIL;
 	}

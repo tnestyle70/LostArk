@@ -128,6 +128,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
+		bool Reset_CharacterSelectArenaWhenEmpty();
 		bool Activate_Encounter(const std::string& placementId);
 		bool Spawn_Monster(
 			const std::string& spawnGroupId,

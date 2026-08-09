@@ -1,5 +1,7 @@
 #include "ValtanBrain.h"
 
+#include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
 
 #include <algorithm>
@@ -282,54 +284,58 @@ namespace
 		const SERVER_WORLD_ENTITY& boss,
 		const SERVER_PLAYER& player)
 	{
-		const float deltaX = player.fPositionX - boss.fPositionX;
-		const float deltaZ = player.fPositionZ - boss.fPositionZ;
-		const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-		switch (boss.ePatternHitShape)
-		{
-		case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
-			return distanceSquared <=
-				boss.fPatternHitOuterRadius * boss.fPatternHitOuterRadius;
-		case BOSS_PATTERN_HIT_SHAPE::RING:
-			return distanceSquared >=
-				boss.fPatternHitInnerRadius * boss.fPatternHitInnerRadius &&
-				distanceSquared <=
-				boss.fPatternHitOuterRadius * boss.fPatternHitOuterRadius;
-		default:
-			break;
-		}
-
+		const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ playerBody{
+			player.fPositionX,
+			player.fPositionZ,
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X
+		};
 		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
 		const float forwardX = std::sin(yawRadians);
 		const float forwardZ = std::cos(yawRadians);
-		const float rightX = std::cos(yawRadians);
-		const float rightZ = -std::sin(yawRadians);
-		const float localForward = deltaX * forwardX + deltaZ * forwardZ;
-		const float localRight = deltaX * rightX + deltaZ * rightZ;
 		switch (boss.ePatternHitShape)
 		{
+		case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
+			return LostArk::Shared::CombatCollision::Circles_Overlap(
+				LostArk::Shared::CombatCollision::CIRCLE_XZ{
+					boss.fPositionX,
+					boss.fPositionZ,
+					boss.fPatternHitOuterRadius
+				},
+				playerBody);
+		case BOSS_PATTERN_HIT_SHAPE::RING:
+			return LostArk::Shared::CombatCollision::Circle_IntersectsRing(
+				playerBody,
+				boss.fPositionX,
+				boss.fPositionZ,
+				boss.fPatternHitInnerRadius,
+				boss.fPatternHitOuterRadius);
 		case BOSS_PATTERN_HIT_SHAPE::CONE:
-		{
-			if (localForward < 0.f ||
-				distanceSquared > boss.fPatternHitLength * boss.fPatternHitLength)
-			{
-				return false;
-			}
-			if (distanceSquared <= 0.0001f)
-				return true;
-			const float cosine = localForward / std::sqrt(distanceSquared);
-			return cosine >= std::cos(
-				boss.fPatternHitAngleDegrees * 0.5f * DEGREES_TO_RADIANS);
-		}
+			return LostArk::Shared::CombatCollision::Circle_IntersectsCone(
+				playerBody,
+				boss.fPositionX,
+				boss.fPositionZ,
+				forwardX,
+				forwardZ,
+				boss.fPatternHitLength,
+				boss.fPatternHitAngleDegrees);
 		case BOSS_PATTERN_HIT_SHAPE::BOX:
-			return localForward >= 0.f &&
-				localForward <= boss.fPatternHitLength &&
-				std::abs(localRight) <= boss.fPatternHitHalfWidth;
+			return LostArk::Shared::CombatCollision::Circle_IntersectsForwardBox(
+				playerBody,
+				boss.fPositionX,
+				boss.fPositionZ,
+				forwardX,
+				forwardZ,
+				boss.fPatternHitLength,
+				boss.fPatternHitHalfWidth);
 		case BOSS_PATTERN_HIT_SHAPE::CROSS:
-			return (std::abs(localForward) <= boss.fPatternHitLength &&
-					std::abs(localRight) <= boss.fPatternHitHalfWidth) ||
-				(std::abs(localRight) <= boss.fPatternHitLength &&
-					std::abs(localForward) <= boss.fPatternHitHalfWidth);
+			return LostArk::Shared::CombatCollision::Circle_IntersectsCross(
+				playerBody,
+				boss.fPositionX,
+				boss.fPositionZ,
+				forwardX,
+				forwardZ,
+				boss.fPatternHitLength,
+				boss.fPatternHitHalfWidth);
 		default:
 			return false;
 		}

@@ -2,7 +2,7 @@
 
 ## 1. 결론
 
-Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 현재 일반 몬스터, wave/증분 spawn, trigger runtime, Area별 balance override, NPC client presentation은 제품 계약이 없다.
+Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 일반 몬스터와 wave spawn은 Valtan Arena와 Character Select Arena의 명시된 SpawnGroups만 제품 계약이 있고, Area별 balance override는 아직 없다.
 
 편집·추출 정본은 전부 repository root의 `Data` 아래에 둔다. `Data/Maps/Imported`는
 재추출한 catalog와 shard 기준, `Data/Maps/Authoring`은 현재 visual placement,
@@ -26,7 +26,7 @@ LevelCatalog scenario
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,115 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
-| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay |
+| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
 
 수련장은 Lobby의 `Enter Training`에서 Server 승인을 받은 뒤 `LEVEL::DEVELOPMENT`로 진입한다. Debug/Release network smoke는 map load, player spawn, Q command, Server action 승인, cooldown HUD 반영까지 검사한다.
@@ -98,7 +98,7 @@ Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이
 Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
 경로로 표현한다. 다른 NPC model은 catalog row와 검증을 추가하기 전까지 fail-closed다.
 
-Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. `triggerBox`는
+Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. Character Select의 즉시 audition은 `Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/SpawnGroups.world.json`에 일반 몬스터와 `MINIBOSS_LUGARU`를 각각 zero-delay 단일 wave로 저장한다. Character Select Debug ImGui는 이 stable group ID 또는 disabled Valtan placement ID만 Server에 제출하며 transform/archetype을 보내거나 Client object를 직접 만들지 않는다. `triggerBox`는
 world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
 편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
 제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는

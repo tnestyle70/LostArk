@@ -1,5 +1,7 @@
 #include "MonsterBrain.h"
 
+#include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
 
 #include <algorithm>
@@ -52,7 +54,8 @@ void LostArk::Server::CMonsterBrain::Update(
 	for (auto& [playerId, player] : players)
 	{
 		(void)playerId;
-		if (0u == player.iCurrentHp)
+		if (0u == player.iCurrentHp || !player.isCombatReady ||
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
 			continue;
 		const float deltaX = player.fPositionX - monster.fPositionX;
 		const float deltaZ = player.fPositionZ - monster.fPositionZ;
@@ -74,11 +77,21 @@ void LostArk::Server::CMonsterBrain::Update(
 		return;
 	}
 	monster.iTargetEntityId = target->iNetEntityId;
-	const float distance = std::sqrt(targetDistanceSquared);
+	const LostArk::Shared::CombatCollision::CIRCLE_XZ attackCircle{
+		monster.fPositionX,
+		monster.fPositionZ,
+		monster.fAttackRange + monster.fCollisionRadius
+	};
+	const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ targetBody{
+		target->fPositionX,
+		target->fPositionZ,
+		LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X
+	};
 	if (SERVER_ENTITY_ACTION::IDLE == monster.eAction ||
 		SERVER_ENTITY_ACTION::CHASE == monster.eAction)
 	{
-		if (distance <= monster.fAttackRange + monster.fCollisionRadius)
+		if (LostArk::Shared::CombatCollision::Circles_Overlap(
+			attackCircle, targetBody))
 		{
 			monster.MovePath.clear();
 			Transition(monster, SERVER_ENTITY_ACTION::PATTERN_WINDUP, serverTick);
@@ -133,10 +146,8 @@ void LostArk::Server::CMonsterBrain::Update(
 	{
 		if (!monster.hasAppliedPatternDamage)
 		{
-			const float deltaX = target->fPositionX - monster.fPositionX;
-			const float deltaZ = target->fPositionZ - monster.fPositionZ;
-			const float hitRange = monster.fAttackRange + monster.fCollisionRadius;
-			if (deltaX * deltaX + deltaZ * deltaZ <= hitRange * hitRange &&
+			if (LostArk::Shared::CombatCollision::Circles_Overlap(
+				attackCircle, targetBody) &&
 				!CPlayerSkillSystem::Try_Counter(*target, catalog, serverTick))
 			{
 				const PLAYER_RUNTIME_PROFILE* playerProfile =

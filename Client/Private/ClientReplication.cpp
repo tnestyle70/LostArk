@@ -203,6 +203,28 @@ std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() con
 	return m_Registry.Resolve(m_LocalCharacterHandle);
 }
 
+#ifdef _DEBUG
+void Client::CClientReplication::Set_CombatColliderDebugVisible(
+	const bool_t isVisible)
+{
+	m_isCombatColliderDebugVisible = isVisible;
+	for (const std::shared_ptr<CCharacter>& character :
+		m_Registry.Get_LiveObjects())
+	{
+		if (nullptr != character)
+			character->Set_CombatColliderDebugVisible(isVisible);
+	}
+	for (auto& [netEntityId, presentation] : m_WorldEntities)
+	{
+		(void)netEntityId;
+		if (std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+			npc->Set_CombatColliderDebugVisible(isVisible);
+		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
+			valtan->Set_CombatColliderDebugVisible(isVisible);
+	}
+}
+#endif
+
 bool Client::CClientReplication::Create_Character(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const std::string_view nickName,
@@ -260,6 +282,10 @@ bool Client::CClientReplication::Create_Character(
 	}
 
 	character->Get_Transform()->Rotation(0.f, yawDegrees, 0.f);
+#ifdef _DEBUG
+	character->Set_CombatColliderDebugVisible(
+		m_isCombatColliderDebugVisible);
+#endif
 	outCharacter = character;
 	return true;
 }
@@ -376,7 +402,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		return hasLivePresentation &&
 			existing->second.eKind == spawned.eKind &&
 			existing->second.strArchetypeId == spawned.strArchetypeId &&
-			existing->second.strEncounterId == spawned.strEncounterId;
+			existing->second.strEncounterId == spawned.strEncounterId &&
+			existing->second.fCollisionRadius == spawned.fCollisionRadius;
 	}
 
 	if (WORLD_ENTITY_KIND::NPC == spawned.eKind)
@@ -405,6 +432,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.fPositionY,
 			spawned.fPositionZ);
 		desc.fYawDegree = spawned.fYawDegrees;
+		desc.fCollisionRadius = spawned.fCollisionRadius;
 
 		std::shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -433,7 +461,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.eKind = spawned.eKind;
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
+		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.pNpc = npc;
+#ifdef _DEBUG
+		npc->Set_CombatColliderDebugVisible(
+			m_isCombatColliderDebugVisible);
+#endif
 		const auto [iter, inserted] = m_WorldEntities.emplace(
 			spawned.iNetEntityId, std::move(presentation));
 		(void)iter;
@@ -475,6 +508,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.fPositionY,
 			spawned.fPositionZ);
 		desc.fYawDegree = spawned.fYawDegrees;
+		desc.fCollisionRadius = spawned.fCollisionRadius;
 
 		std::shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -504,7 +538,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.strArchetypeId = spawned.strArchetypeId;
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = actor->presentationClips.idle;
+		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.pNpc = monster;
+#ifdef _DEBUG
+		monster->Set_CombatColliderDebugVisible(
+			m_isCombatColliderDebugVisible);
+#endif
 		const auto [iter, inserted] = m_WorldEntities.emplace(
 			spawned.iNetEntityId, std::move(presentation));
 		(void)iter;
@@ -541,6 +580,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		spawned.fPositionY,
 		spawned.fPositionZ);
 	desc.isServerAuthoritative = true;
+	desc.fCollisionRadius = spawned.fCollisionRadius;
 	std::shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
 		m_Desc.iPrototypeLevelIndex,
@@ -571,7 +611,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	presentation.eKind = spawned.eKind;
 	presentation.strArchetypeId = spawned.strArchetypeId;
 	presentation.strEncounterId = spawned.strEncounterId;
+	presentation.fCollisionRadius = spawned.fCollisionRadius;
 	presentation.pValtan = valtan;
+#ifdef _DEBUG
+	valtan->Set_CombatColliderDebugVisible(
+		m_isCombatColliderDebugVisible);
+#endif
 	const auto [iter, inserted] = m_WorldEntities.emplace(
 		spawned.iNetEntityId,
 		std::move(presentation));

@@ -1,5 +1,7 @@
 #include "PlayerSkillSystem.h"
 
+#include "Gameplay/CombatCollisionContract.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -318,6 +320,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
 		float closestDistanceSquared = 0.f;
+		const LostArk::Shared::CombatCollision::CIRCLE_XZ skillCircle{
+			player.fPositionX,
+			player.fPositionZ,
+			skill->fMaximumRange
+		};
 		for (SERVER_WORLD_ENTITY& entity : worldEntities)
 		{
 			if ((WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind &&
@@ -329,16 +336,19 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			const float deltaX = entity.fPositionX - player.fPositionX;
 			const float deltaZ = entity.fPositionZ - player.fPositionZ;
 			const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-			/* Official ranges are measured to the target's surface while this test
-			is centre to centre, so the boss's collision radius extends the reach.
-			Without it every official melee range would whiff on its own boss. */
 			const BOSS_RUNTIME_PROFILE* bossProfile =
 				catalog.Find_Boss(entity.strArchetypeId);
-			const float reach = skill->fMaximumRange +
+			const float targetRadius =
 				(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
 					entity.fCollisionRadius :
 					(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
-			if (distanceSquared <= reach * reach &&
+			const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ targetBody{
+				entity.fPositionX,
+				entity.fPositionZ,
+				targetRadius
+			};
+			if (LostArk::Shared::CombatCollision::Circles_Overlap(
+				skillCircle, targetBody) &&
 				(nullptr == closestBoss || distanceSquared < closestDistanceSquared))
 			{
 				closestDistanceSquared = distanceSquared;

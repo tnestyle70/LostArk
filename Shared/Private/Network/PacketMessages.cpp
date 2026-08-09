@@ -457,7 +457,12 @@ bool LostArk::Shared::Write_Message(
 		!std::isfinite(spawned.fPositionX) ||
 		!std::isfinite(spawned.fPositionY) ||
 		!std::isfinite(spawned.fPositionZ) ||
-		!std::isfinite(spawned.fYawDegrees))
+		!std::isfinite(spawned.fYawDegrees) ||
+		!std::isfinite(spawned.fCollisionRadius) ||
+		(WORLD_ENTITY_KIND::NPC == spawned.eKind &&
+			0.f != spawned.fCollisionRadius) ||
+		(WORLD_ENTITY_KIND::NPC != spawned.eKind &&
+			spawned.fCollisionRadius <= 0.f))
 	{
 		return false;
 	}
@@ -474,6 +479,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(spawned.fPositionY);
 	writer.Write_F32(spawned.fPositionZ);
 	writer.Write_F32(spawned.fYawDegrees);
+	writer.Write_F32(spawned.fCollisionRadius);
 	return true;
 }
 
@@ -492,7 +498,8 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_F32(decoded.fPositionX) ||
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
-		!reader.Read_F32(decoded.fYawDegrees))
+		!reader.Read_F32(decoded.fYawDegrees) ||
+		!reader.Read_F32(decoded.fCollisionRadius))
 	{
 		return false;
 	}
@@ -504,7 +511,12 @@ bool LostArk::Shared::Read_Message(
 		!std::isfinite(decoded.fPositionX) ||
 		!std::isfinite(decoded.fPositionY) ||
 		!std::isfinite(decoded.fPositionZ) ||
-		!std::isfinite(decoded.fYawDegrees))
+		!std::isfinite(decoded.fYawDegrees) ||
+		!std::isfinite(decoded.fCollisionRadius) ||
+		(WORLD_ENTITY_KIND::NPC == decoded.eKind &&
+			0.f != decoded.fCollisionRadius) ||
+		(WORLD_ENTITY_KIND::NPC != decoded.eKind &&
+			decoded.fCollisionRadius <= 0.f))
 	{
 		return false;
 	}

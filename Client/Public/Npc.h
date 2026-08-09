@@ -6,6 +6,7 @@
 NS_BEGIN(Engine)
 class CShader;
 class CModel;
+class CCollider;
 NS_END
 
 NS_BEGIN(Client)
@@ -38,6 +39,8 @@ public:
 		float3_t vPosition = {};
 		/* Degrees about Y. Town NPCs face doors and counters, not always north. */
 		f32_t fYawDegree = {};
+		/* Zero for non-combat NPCs; Server-replicated radius for monsters. */
+		f32_t fCollisionRadius = {};
 	} NPC_DESC;
 
 private:
@@ -53,6 +56,11 @@ public:
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees);
+#ifdef _DEBUG
+	void Set_CombatColliderDebugVisible(bool_t isVisible) {
+		m_isCombatColliderDebugVisible = isVisible;
+	}
+#endif
 
 public:
 	virtual HRESULT Initialize_Prototype() override;
@@ -65,6 +73,10 @@ public:
 private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
+#ifdef _DEBUG
+	bool_t m_isCombatColliderDebugVisible = { false };
+#endif
 
 private:
 	HRESULT Ready_Components(const NPC_DESC* pDesc);

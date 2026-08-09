@@ -19,9 +19,13 @@ namespace LostArk::Server
 
 		bool Initialize(const CSpawnGroupBootstrap& bootstrap, std::string& outStatus);
 		bool Activate(const std::string& spawnGroupId);
+		bool Activate_Immediate(const std::string& spawnGroupId,
+			const CSpawnGroupBootstrap& bootstrap,
+			const SPAWN_CALLBACK& spawn);
 		void Update(float fixedDeltaSeconds, const CSpawnGroupBootstrap& bootstrap,
 			const ACTIVE_COUNT_QUERY& activeCount, const SPAWN_CALLBACK& spawn);
 		bool Is_Completed(const std::string& spawnGroupId) const;
+		bool Is_ActiveOrCompleted(const std::string& spawnGroupId) const;
 
 	private:
 		enum class GROUP_STATE { DORMANT, RUNNING, COMPLETED };

@@ -97,6 +97,7 @@ namespace LostArk::Shared
 	{
 		SPAWNED,
 		ALREADY_EXISTS,
+		ACTIVATED,
 		REJECTED,
 		END
 	};
@@ -145,6 +146,9 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
+		// Server-authoritative XZ combat body radius. NPC presentations have no
+		// combat body and therefore publish zero.
+		float fCollisionRadius = 0.f;
 	};
 
 	bool Write_Message(

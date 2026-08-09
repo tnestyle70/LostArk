@@ -553,6 +553,7 @@ namespace
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
 		source.fYawDegrees = 225.f;
+		source.fCollisionRadius = 3.f;
 
 		std::vector<std::uint8_t> payload;
 		testRunner.Require(
@@ -569,7 +570,8 @@ namespace
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
 			decoded.fPositionX == source.fPositionX &&
-			decoded.fYawDegrees == source.fYawDegrees,
+			decoded.fYawDegrees == source.fYawDegrees &&
+			decoded.fCollisionRadius == source.fCollisionRadius,
 			"World Entity Spawned Round Trip");
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -581,6 +583,27 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Unstable World Archetype ID");
+		invalid = source;
+		invalid.fCollisionRadius = 0.f;
+		CPacketWriter zeroRadiusWriter;
+		testRunner.Require(
+			!Write_Message(zeroRadiusWriter, invalid),
+			"Reject Combat Entity Without Collision Radius");
+		invalid = source;
+		invalid.eKind = WORLD_ENTITY_KIND::NPC;
+		CPacketWriter npcRadiusWriter;
+		testRunner.Require(
+			!Write_Message(npcRadiusWriter, invalid),
+			"Reject NPC With Combat Collision Radius");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		S2C_WORLD_ENTITY_SPAWNED unchanged{};
+		unchanged.iNetEntityId = 77u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			unchanged.iNetEntityId == 77u,
+			"Reject Truncated World Entity Collision Radius Without Mutation");
 	}
 
 	void Test_WorldEntityDespawnedRoundTrip(TEST_RUNNER& testRunner)
@@ -1536,6 +1559,20 @@ namespace
 		testRunner.Require(
 			Write_Message(rejectionWriter, result),
 			"Accept Explicit World Entity Spawn Rejection");
+
+		result.eResult = WORLD_ENTITY_SPAWN_RESULT::ACTIVATED;
+		CPacketWriter activationWriter;
+		testRunner.Require(
+			Write_Message(activationWriter, result),
+			"Accept Spawn Group Activation Without Entity ID");
+		CPacketReader activationReader{ activationWriter.Get_Buffer() };
+		S2C_WORLD_ENTITY_SPAWN_RESULT activated{};
+		testRunner.Require(
+			Read_Message(activationReader, activated) &&
+			activated.eResult == WORLD_ENTITY_SPAWN_RESULT::ACTIVATED &&
+			activated.iNetEntityId == INVALID_NET_ENTITY_ID &&
+			0u == activationReader.Get_RemainingSize(),
+			"Spawn Group Activation Result Round Trip");
 	}
 }
 

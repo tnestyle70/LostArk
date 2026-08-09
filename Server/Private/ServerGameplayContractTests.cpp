@@ -1,5 +1,6 @@
 #include "ServerGameplayContractTests.h"
 
+#include "Gameplay/CombatCollisionContract.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
@@ -237,6 +238,88 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	{
+		using namespace LostArk::Shared::CombatCollision;
+
+		const CIRCLE_XZ circle{ 0.f, 0.f, 2.f };
+		const BODY_CIRCLE_XZ tangentCircle{ 3.f, 0.f, 1.f };
+		const BODY_CIRCLE_XZ missedCircle{ 3.001f, 0.f, 1.f };
+		tests.Require(
+			Circles_Overlap(circle, tangentCircle) &&
+			!Circles_Overlap(circle, missedCircle),
+			"Treat circle tangency as contact and reject a separated circle");
+
+		const BODY_CIRCLE_XZ innerRingTangent{ 2.f, 0.f, 1.f };
+		const BODY_CIRCLE_XZ insideRingHole{ 1.9f, 0.f, 1.f };
+		const BODY_CIRCLE_XZ outerRingTangent{ 6.f, 0.f, 1.f };
+		const BODY_CIRCLE_XZ outsideRing{ 6.001f, 0.f, 1.f };
+		tests.Require(
+			Circle_IntersectsRing(innerRingTangent, 0.f, 0.f, 3.f, 5.f) &&
+			!Circle_IntersectsRing(insideRingHole, 0.f, 0.f, 3.f, 5.f) &&
+			Circle_IntersectsRing(outerRingTangent, 0.f, 0.f, 3.f, 5.f) &&
+			!Circle_IntersectsRing(outsideRing, 0.f, 0.f, 3.f, 5.f),
+			"Respect both inclusive ring boundaries and reject both misses");
+
+		const BODY_CIRCLE_XZ rotatedShapeHit{ 2.f, 2.f, 0.25f };
+		const BODY_CIRCLE_XZ rotatedShapeMiss{ 0.f, 2.5f, 0.25f };
+		tests.Require(
+			Circle_IntersectsForwardBox(
+				rotatedShapeHit, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f) &&
+			!Circle_IntersectsForwardBox(
+				rotatedShapeMiss, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f),
+			"Evaluate a forward box in its rotated basis");
+		tests.Require(
+			Circle_IntersectsCone(
+				rotatedShapeHit, 0.f, 0.f, 1.f, 1.f, 5.f, 60.f) &&
+			!Circle_IntersectsCone(
+				rotatedShapeMiss, 0.f, 0.f, 1.f, 1.f, 5.f, 60.f),
+			"Evaluate a cone in its rotated basis");
+		tests.Require(
+			Circle_IntersectsCross(
+				rotatedShapeHit, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f) &&
+			!Circle_IntersectsCross(
+				rotatedShapeMiss, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f),
+			"Evaluate a cross in its rotated basis");
+	}
+	{
+		CServerNavigation navigation;
+		const bool navigationLoaded =
+			navigation.Load("LV_LOBBY_CLASSSELECT_SL00");
+		SERVER_WORLD_ENTITY monster{};
+		monster.iNetEntityId = 700u;
+		monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		monster.iCurrentHp = 100u;
+		monster.iMaximumHp = 100u;
+		monster.fCollisionRadius = 0.6f;
+		monster.fAttackRange = 1.f;
+		monster.fEngageDistance = 8.f;
+		monster.fMoveSpeed = 2.f;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER protectedPlayer{};
+		protectedPlayer.iPlayerId = 701u;
+		protectedPlayer.iNetEntityId = 702u;
+		protectedPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		protectedPlayer.iCurrentHp = 100u;
+		protectedPlayer.iMaximumHp = 100u;
+		protectedPlayer.fPositionX = 1.f;
+		protectedPlayer.isCombatReady = false;
+		players.emplace(protectedPlayer.iPlayerId, protectedPlayer);
+		std::vector<DAMAGE_EVENT> damageEvents;
+		CMonsterBrain monsterBrain;
+		monsterBrain.Update(
+			monster, players, catalog, navigation, 1.f / 30.f, 1u, damageEvents);
+		const bool ignoredProtectedPlayer =
+			INVALID_NET_ENTITY_ID == monster.iTargetEntityId &&
+			SERVER_ENTITY_ACTION::IDLE == monster.eAction;
+		players.begin()->second.isCombatReady = true;
+		monsterBrain.Update(
+			monster, players, catalog, navigation, 1.f / 30.f, 2u, damageEvents);
+		tests.Require(
+			navigationLoaded && ignoredProtectedPlayer &&
+			SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction &&
+			players.begin()->second.iNetEntityId == monster.iTargetEntityId,
+			"Ignore protected players and acquire the same player after combat admission");
+	}
 	{
 		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
 		tests.Require(room.Is_Ready(),
@@ -758,13 +841,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	player.fPositionY = 22.97f;
 	player.fPositionZ = -129.f;
 	SERVER_WORLD_ENTITY boss{};
+	boss.iNetEntityId = 900u;
 	boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 	boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+	boss.strArchetypeId = "BOSS_VALTAN";
 	boss.iCurrentHp = 10000;
 	boss.iMaximumHp = 10000;
 	boss.fPositionX = 151.f;
 	boss.fPositionY = 22.97f;
 	boss.fPositionZ = -122.f;
+	boss.fCollisionRadius = 3.f;
 	std::vector<SERVER_WORLD_ENTITY> entities{ boss };
 	C2S_USE_SKILL useSkill{};
 	useSkill.iClientSequence = 1;
@@ -1550,6 +1636,214 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		shortSkillNow.iClientSequence = 4;
 		tests.Require(stanceSkills.Try_Start(stancePlayer, shortSkillNow, catalog, 40),
 			"Approve a short spear skill after switching to the short spear stance");
+	}
+
+	{
+		CSpawnGroupBootstrap spawnBootstrap;
+		const bool loaded =
+			spawnBootstrap.Load(WORLD_ID::CHARACTER_SELECT_ARENA);
+		const auto& groups = spawnBootstrap.Get_Groups();
+		const auto monsterGroup = std::find_if(
+			groups.begin(), groups.end(),
+			[](const SPAWN_GROUP_DEFINITION& group)
+			{
+				return group.strSpawnGroupId ==
+					"spawn.character-select.monster";
+			});
+		const auto minibossGroup = std::find_if(
+			groups.begin(), groups.end(),
+			[](const SPAWN_GROUP_DEFINITION& group)
+			{
+				return group.strSpawnGroupId ==
+					"spawn.character-select.miniboss";
+			});
+		const SPAWN_GROUP_ANCHOR* monsterAnchor = spawnBootstrap.Find_Anchor(
+			"anchor.character-select.monster");
+		const SPAWN_GROUP_ANCHOR* minibossAnchor = spawnBootstrap.Find_Anchor(
+			"anchor.character-select.miniboss");
+		const MONSTER_RUNTIME_PROFILE* monsterProfile =
+			spawnBootstrap.Find_Profile("MONSTER_VALTAN_PADD_01");
+		const MONSTER_RUNTIME_PROFILE* minibossProfile =
+			spawnBootstrap.Find_Profile("MINIBOSS_LUGARU");
+		tests.Require(
+			loaded && 1u == spawnBootstrap.Get_Revision() && 2u == groups.size() &&
+			groups.end() != monsterGroup && groups.end() != minibossGroup &&
+			nullptr != monsterAnchor && nullptr != minibossAnchor &&
+			nullptr != monsterProfile && nullptr != minibossProfile,
+			"Load two Character Select spawn groups, anchors, and profiles");
+
+		const auto hasImmediateEntry = [](
+			const SPAWN_GROUP_DEFINITION& group,
+			const char* archetypeId,
+			const char* anchorId)
+		{
+			return group.strRequiredCompletedGroupId.empty() &&
+				1u == group.iMaxAlive && 1u == group.Waves.size() &&
+				0u == group.Waves[0].iStartDelayMs &&
+				1u == group.Waves[0].Entries.size() &&
+				group.Waves[0].Entries[0].strArchetypeId == archetypeId &&
+				1u == group.Waves[0].Entries[0].iCount &&
+				group.Waves[0].Entries[0].strAnchorId == anchorId &&
+				0u == group.Waves[0].Entries[0].iInitialDelayMs &&
+				0u == group.Waves[0].Entries[0].iSpawnIntervalMs;
+		};
+		tests.Require(
+			groups.end() != monsterGroup && groups.end() != minibossGroup &&
+			hasImmediateEntry(
+				*monsterGroup,
+				"MONSTER_VALTAN_PADD_01",
+				"anchor.character-select.monster") &&
+			hasImmediateEntry(
+				*minibossGroup,
+				"MINIBOSS_LUGARU",
+				"anchor.character-select.miniboss"),
+			"Keep Character Select audition groups single-wave and zero-delay");
+
+		CSpawnGroupRuntime immediateRuntime;
+		std::string immediateStatus;
+		std::uint32_t immediateSpawnCount = 0u;
+		const bool immediateInitialized =
+			immediateRuntime.Initialize(spawnBootstrap, immediateStatus);
+		const bool failedImmediatePreservedDormant = immediateInitialized &&
+			!immediateRuntime.Activate_Immediate(
+				"spawn.character-select.monster",
+				spawnBootstrap,
+				[](const std::string&, const SPAWN_GROUP_ENTRY&,
+					const SPAWN_GROUP_ANCHOR&,
+					const MONSTER_RUNTIME_PROFILE&, std::uint32_t)
+				{
+					return false;
+				}) &&
+			!immediateRuntime.Is_ActiveOrCompleted(
+				"spawn.character-select.monster");
+		const auto countImmediateSpawn = [&immediateSpawnCount](
+			const std::string&, const SPAWN_GROUP_ENTRY&,
+			const SPAWN_GROUP_ANCHOR&, const MONSTER_RUNTIME_PROFILE&,
+			std::uint32_t)
+			{
+				++immediateSpawnCount;
+				return true;
+			};
+		tests.Require(
+			failedImmediatePreservedDormant &&
+			immediateRuntime.Activate_Immediate(
+				"spawn.character-select.monster",
+				spawnBootstrap,
+				countImmediateSpawn) &&
+			immediateRuntime.Activate_Immediate(
+				"spawn.character-select.miniboss",
+				spawnBootstrap,
+				countImmediateSpawn) &&
+			2u == immediateSpawnCount &&
+			immediateRuntime.Is_ActiveOrCompleted(
+				"spawn.character-select.monster") &&
+			!immediateRuntime.Activate_Immediate(
+				"spawn.character-select.monster",
+				spawnBootstrap,
+				countImmediateSpawn),
+			"Commit immediate audition activation only after its spawn callback succeeds");
+
+		CSpawnGroupRuntime spawnRuntime;
+		std::string spawnStatus;
+		const bool initialized =
+			spawnRuntime.Initialize(spawnBootstrap, spawnStatus);
+		tests.Require(
+			initialized &&
+			spawnRuntime.Activate("spawn.character-select.monster") &&
+			spawnRuntime.Activate("spawn.character-select.miniboss") &&
+			spawnRuntime.Is_ActiveOrCompleted(
+				"spawn.character-select.monster") &&
+			!spawnRuntime.Activate("spawn.character-select.monster"),
+			"Activate both Character Select audition groups");
+		std::array<std::uint32_t, 2> scheduledByGroup{};
+		bool callbackContractValid = true;
+		spawnRuntime.Update(
+			1.f / 30.f,
+			spawnBootstrap,
+			[](const std::string&) { return 0u; },
+			[&scheduledByGroup, &callbackContractValid](
+				const std::string& spawnGroupId,
+				const SPAWN_GROUP_ENTRY& entry,
+				const SPAWN_GROUP_ANCHOR& anchor,
+				const MONSTER_RUNTIME_PROFILE& profile,
+				const std::uint32_t ordinal)
+			{
+				if (spawnGroupId == "spawn.character-select.monster")
+				{
+					++scheduledByGroup[0];
+					callbackContractValid = callbackContractValid &&
+						entry.strArchetypeId == "MONSTER_VALTAN_PADD_01" &&
+						anchor.strAnchorId == "anchor.character-select.monster" &&
+						profile.strArchetypeId == entry.strArchetypeId &&
+						0u == ordinal;
+				}
+				else if (spawnGroupId == "spawn.character-select.miniboss")
+				{
+					++scheduledByGroup[1];
+					callbackContractValid = callbackContractValid &&
+						entry.strArchetypeId == "MINIBOSS_LUGARU" &&
+						anchor.strAnchorId == "anchor.character-select.miniboss" &&
+						profile.strArchetypeId == entry.strArchetypeId &&
+						0u == ordinal;
+				}
+				else
+				{
+					callbackContractValid = false;
+				}
+				return true;
+			});
+		tests.Require(
+			callbackContractValid && 1u == scheduledByGroup[0] &&
+			1u == scheduledByGroup[1] &&
+			2u == scheduledByGroup[0] + scheduledByGroup[1],
+			"Schedule exactly two Character Select callbacks in the first update");
+
+		CGameRoom resetRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		SERVER_PLAYER resetPlayer{};
+		resetPlayer.iSessionId = 501u;
+		resetPlayer.iPlayerId = 502u;
+		resetPlayer.iNetEntityId = 503u;
+		resetPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		resetPlayer.strNickName = "ResetFixture";
+		resetPlayer.iCurrentHp = 100u;
+		resetPlayer.iMaximumHp = 100u;
+		resetPlayer.isCombatReady = true;
+		resetRoom.m_Players.emplace(resetPlayer.iPlayerId, resetPlayer);
+		resetRoom.m_PlayerIdBySessionId.emplace(
+			resetPlayer.iSessionId, resetPlayer.iPlayerId);
+		resetRoom.m_PlayerIdByEntityId.emplace(
+			resetPlayer.iNetEntityId, resetPlayer.iPlayerId);
+		const bool resetGroupActivated =
+			resetRoom.m_SpawnGroupRuntime.Activate_Immediate(
+				"spawn.character-select.monster",
+				resetRoom.m_SpawnGroupBootstrap,
+				[&resetRoom](const std::string& spawnGroupId,
+					const SPAWN_GROUP_ENTRY& entry,
+					const SPAWN_GROUP_ANCHOR& anchor,
+					const MONSTER_RUNTIME_PROFILE& profile,
+					const std::uint32_t ordinal)
+				{
+					return resetRoom.Spawn_Monster(
+						spawnGroupId, entry, anchor, profile, ordinal);
+				});
+		const bool spawnedBeforeLeave = std::any_of(
+			resetRoom.m_WorldEntities.begin(),
+			resetRoom.m_WorldEntities.end(),
+			[](const SERVER_WORLD_ENTITY& entity)
+			{
+				return entity.strSpawnGroupId ==
+					"spawn.character-select.monster";
+			});
+		resetRoom.Leave(
+			resetPlayer.iSessionId,
+			PLAYER_DESPAWN_REASON::DISCONNECTED);
+		tests.Require(
+			resetGroupActivated && spawnedBeforeLeave &&
+			resetRoom.m_Players.empty() &&
+			resetRoom.m_WorldEntities.empty() &&
+			resetRoom.m_SpawnGroupRuntime.Activate(
+				"spawn.character-select.monster"),
+			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
 	}
 
 	{

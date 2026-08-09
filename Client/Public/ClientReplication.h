@@ -42,6 +42,9 @@ namespace Client
 		void Reset();
 		bool Has_WorldEntity(std::string_view archetypeId) const;
 		bool Try_Consume_PresentationFailure(std::string& outStatus);
+#ifdef _DEBUG
+		void Set_CombatColliderDebugVisible(bool_t isVisible);
+#endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
 
@@ -89,6 +92,9 @@ namespace Client
 		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
 		std::string m_strPendingPresentationFailure;
+#ifdef _DEBUG
+		bool_t m_isCombatColliderDebugVisible = false;
+#endif
 
 		struct WORLD_ENTITY_PRESENTATION
 		{
@@ -97,6 +103,7 @@ namespace Client
 			std::string strArchetypeId;
 			std::string strEncounterId;
 			std::string strCurrentClip;
+			f32_t fCollisionRadius = 0.f;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};

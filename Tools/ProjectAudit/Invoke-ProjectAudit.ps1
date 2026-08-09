@@ -1025,7 +1025,12 @@ try {
 		$characterSelectSource -match 'Try_Consume_CharacterClassChangeResult' -and
 		$characterSelectSource -match 'm_iPendingClassChangeSequence' -and
 		$characterSelectSource -notmatch 'ImGui::BeginDisabled\(true\)' -and
-		$characterSelectSource -match 'ImGui::Button\("Summon Valtan \(Lazy\)"\)' -and
+		$characterSelectSource -match 'ARENA_SPAWN_OPTIONS' -and
+		$characterSelectSource -match 'spawn\.character-select\.monster' -and
+		$characterSelectSource -match 'spawn\.character-select\.miniboss' -and
+		$characterSelectSource -match 'boss\.valtan\.character-select\.lazy' -and
+		$characterSelectSource -match 'ImGui::Button\("Spawn Selected"\)' -and
+		$characterSelectSource -match 'Show Combat Colliders' -and
 		$characterSelectSource -notmatch 'ImGui::Button\("Enter Test"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Bern"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Valtan Map"\)' -and
@@ -1048,7 +1053,7 @@ try {
 		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
 		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
-		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 13' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 14' -and
 		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
 		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
 		$gameRoomSource -match 'Apply_CharacterClassChange' -and
@@ -1060,7 +1065,7 @@ try {
         $lobbySource -match '"Test"' -and
 		$lobbySource -match '"Character Select"' -and
 		$lobbySource -match '"Valtan"' -and
-		$lobbySource -match '"Bern"') 'Character Select requires Lobby Server approval, changes class through a typed Server command, and transactionally replaces replicated presentation'
+		$lobbySource -match '"Bern"') 'Character Select requires Lobby Server approval, changes class through a typed Server command, provides Server-only monster/miniboss/Valtan spawn controls, and transactionally replaces replicated presentation'
 	Add-Check 'levels.character-select-camera-framing' (
 		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_SIDE = 0\.4f' -and
 		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_HEIGHT = 7\.5f' -and
@@ -1781,6 +1786,9 @@ try {
         'Data\Actors\MonsterCatalog.json',
         'Data\Balance\MonsterProfiles.json',
         'Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json',
+		'Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\SpawnGroups.world.json',
+		'Shared\Public\Gameplay\CombatCollisionContract.h',
+		'Shared\Private\Gameplay\CombatCollisionContract.cpp',
         'Server\Public\SpawnGroupRuntime.h',
         'Server\Private\SpawnGroupRuntime.cpp',
         'Server\Public\MonsterBrain.h',
@@ -1796,13 +1804,18 @@ try {
             'Client\Private\MonsterPresentationAssetService.cpp') `
             -Pattern '#include\s+"Monster\.h"|CMonster::Create|Logic_Monster')
     $spawnGroupPublisherSource = Get-Content -LiteralPath 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
+	$spawnGroupRuntimeSource = Get-Content -LiteralPath 'Server\Private\SpawnGroupRuntime.cpp' -Raw
     $staleWorldPublishFiles = @(Get-ChildItem -LiteralPath 'Server\Bin\DataFiles\World' -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match '\.(tmp|rollback)\.' })
     Add-Check 'world.monster-spawn-group-contract' (
         $missingMonsterContractFiles.Count -eq 0 -and
         $legacyMonsterRuntimeHits.Count -eq 0 -and
         $spawnGroupPublisherSource -match 'SpawnGroups\.world\.json' -and
-        $spawnGroupPublisherSource -match 'spawngroupsbootstrap') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
+		$spawnGroupPublisherSource -match 'spawngroupsbootstrap' -and
+		$gameRoomSource -match 'WORLD_ENTITY_SPAWN_RESULT::ACTIVATED' -and
+		$gameRoomSource -match 'Reset_CharacterSelectArenaWhenEmpty' -and
+		$spawnGroupRuntimeSource -match 'Activate_Immediate' -and
+		$replicationSource -match 'Set_CombatColliderDebugVisible') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
     Add-Check 'world.publish-cleanup' ($staleWorldPublishFiles.Count -eq 0) "stale=$($staleWorldPublishFiles.Name -join ',')"
 
     $serverRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw

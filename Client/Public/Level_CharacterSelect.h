@@ -57,7 +57,7 @@ private:
 	void Update_Connecting();
 	void Update_ServerArena();
 	bool_t Commit_ServerArena();
-	bool_t Request_ValtanSpawn();
+	bool_t Request_SelectedArenaSpawn();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
 	void Render_ClassList();
@@ -91,8 +91,13 @@ private:
 	CPlayerController m_PlayerController;
 	std::chrono::steady_clock::time_point m_ConnectionDeadline{};
 	std::chrono::steady_clock::time_point m_ClassChangeDeadline{};
-	std::chrono::steady_clock::time_point m_ValtanRequestDeadline{};
-	bool_t m_isValtanSpawnRequested = false;
+	std::chrono::steady_clock::time_point m_ArenaSpawnRequestDeadline{};
+	size_t m_iSelectedArenaSpawnIndex = 0;
+	std::optional<size_t> m_iPendingArenaSpawnIndex;
+	std::array<bool_t, 3> m_ArenaSpawnAccepted{};
+#ifdef _DEBUG
+	bool_t m_isCombatColliderDebugVisible = false;
+#endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";
 

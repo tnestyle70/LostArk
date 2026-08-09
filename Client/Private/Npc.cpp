@@ -1,5 +1,6 @@
 #include "Npc.h"
 
+#include "Collider.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -28,6 +29,11 @@ HRESULT CNpc::Initialize(void* pArg)
 		return E_FAIL;
 
 	const NPC_DESC* pDesc = static_cast<const NPC_DESC*>(pArg);
+	if (!std::isfinite(pDesc->fCollisionRadius) ||
+		pDesc->fCollisionRadius < 0.f)
+	{
+		return E_INVALIDARG;
+	}
 
 	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
@@ -39,6 +45,11 @@ HRESULT CNpc::Initialize(void* pArg)
 		XMVectorSet(pDesc->vPosition.x, pDesc->vPosition.y, pDesc->vPosition.z, 1.f));
 	if (0.f != pDesc->fYawDegree)
 		m_pTransformCom->Rotation(0.f, pDesc->fYawDegree, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
 
 	/* With no animation set the bone palette is never filled, so every vertex
 	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
@@ -78,6 +89,11 @@ bool_t CNpc::Apply_NetworkState(
 		STATE::POSITION,
 		XMVectorSet(position.x, position.y, position.z, 1.f));
 	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
 	return true;
 }
 
@@ -95,6 +111,10 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+#ifdef _DEBUG
+	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
+		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+#endif
 }
 
 HRESULT CNpc::Render()
@@ -131,6 +151,23 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 		TEXT("Com_Model"),
 		m_pModelCom)))
 		return E_FAIL;
+
+	if (pDesc->fCollisionRadius > 0.f)
+	{
+		Engine::CBounding_Sphere::BOUNDING_SPHERE_DESC colliderDesc{};
+		colliderDesc.vCenter = float3_t(
+			0.f, pDesc->fCollisionRadius, 0.f);
+		colliderDesc.fRadius = pDesc->fCollisionRadius;
+		if (FAILED(__super::Add_Component(
+			pDesc->iPrototypeLevelIndex,
+			TEXT("Prototype_Component_Collider_WorldEntity"),
+			TEXT("Com_CombatCollider"),
+			m_pColliderCom,
+			&colliderDesc)))
+		{
+			return E_FAIL;
+		}
+	}
 
 	return S_OK;
 }

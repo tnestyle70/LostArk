@@ -35,10 +35,29 @@ namespace
 	constexpr f32_t CHARACTER_SELECT_CAMERA_FOV_Y = 45.f;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
-	constexpr std::chrono::seconds VALTAN_REQUEST_TIMEOUT{ 5 };
+	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
 	constexpr char_t PLAYER_NICKNAME[] = "Player";
-	constexpr char_t VALTAN_PLACEMENT_ID[] =
-		"boss.valtan.character-select.lazy";
+
+	struct ARENA_SPAWN_OPTION final
+	{
+		const char_t* pLabel = nullptr;
+		const char_t* pStableId = nullptr;
+		const char_t* pArchetypeId = nullptr;
+		bool_t requiresValtanPrewarm = false;
+	};
+
+	constexpr std::array<ARENA_SPAWN_OPTION, 3> ARENA_SPAWN_OPTIONS =
+	{
+		ARENA_SPAWN_OPTION{
+			"Monster", "spawn.character-select.monster",
+			"MONSTER_VALTAN_PADD_01", false },
+		ARENA_SPAWN_OPTION{
+			"Mid Boss (Lugaru)", "spawn.character-select.miniboss",
+			"MINIBOSS_LUGARU", false },
+		ARENA_SPAWN_OPTION{
+			"Valtan", "boss.valtan.character-select.lazy",
+			"BOSS_VALTAN", true }
+	};
 
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -157,7 +176,8 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
 	m_eMode = MODE::CONNECTING;
-	m_isValtanSpawnRequested = false;
+	m_iPendingArenaSpawnIndex.reset();
+	m_ArenaSpawnAccepted.fill(false);
 	m_ConnectionDeadline =
 		std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
 	m_strStatus =
@@ -467,19 +487,32 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(
 		spawnResult))
 	{
-		if (spawnResult.strPlacementId != VALTAN_PLACEMENT_ID)
+		const auto option = std::find_if(
+			ARENA_SPAWN_OPTIONS.begin(),
+			ARENA_SPAWN_OPTIONS.end(),
+			[&spawnResult](const ARENA_SPAWN_OPTION& candidate)
+			{
+				return spawnResult.strPlacementId == candidate.pStableId;
+			});
+		if (ARENA_SPAWN_OPTIONS.end() == option)
 			continue;
+		const size_t optionIndex = static_cast<size_t>(
+			std::distance(ARENA_SPAWN_OPTIONS.begin(), option));
 		if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED ==
 			spawnResult.eResult)
 		{
-			m_isValtanSpawnRequested = false;
-			m_strStatus = "Server rejected the Valtan spawn request.";
+			m_ArenaSpawnAccepted[optionIndex] = false;
+			m_strStatus = std::string{ "Server rejected " } +
+				option->pLabel + " spawn.";
 		}
 		else
 		{
-			m_strStatus =
-				"Server accepted the Valtan placement; awaiting presentation.";
+			m_ArenaSpawnAccepted[optionIndex] = true;
+			m_strStatus = std::string{ "Server accepted " } +
+				option->pLabel + " spawn.";
 		}
+		if (m_iPendingArenaSpawnIndex == optionIndex)
+			m_iPendingArenaSpawnIndex.reset();
 	}
 	if (!m_Replication.Update())
 	{
@@ -511,17 +544,22 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		m_strStatus =
 			"Class change was not observed within 5 seconds; the active presentation was kept.";
 	}
-	if (m_Replication.Has_WorldEntity("BOSS_VALTAN"))
+	for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
 	{
-		if (m_isValtanSpawnRequested)
-			m_strStatus = "Valtan spawned from the Server world template.";
-		m_isValtanSpawnRequested = false;
+		if (m_Replication.Has_WorldEntity(
+			ARENA_SPAWN_OPTIONS[index].pArchetypeId))
+		{
+			m_ArenaSpawnAccepted[index] = true;
+			if (m_iPendingArenaSpawnIndex == index)
+				m_iPendingArenaSpawnIndex.reset();
+		}
 	}
-	else if (m_isValtanSpawnRequested &&
-		std::chrono::steady_clock::now() >= m_ValtanRequestDeadline)
+	if (m_iPendingArenaSpawnIndex.has_value() &&
+		std::chrono::steady_clock::now() >= m_ArenaSpawnRequestDeadline)
 	{
-		m_isValtanSpawnRequested = false;
-		m_strStatus = "Valtan spawn was not observed; retry is available.";
+		m_iPendingArenaSpawnIndex.reset();
+		m_strStatus =
+			"Arena spawn response timed out; retry is available.";
 	}
 }
 
@@ -533,7 +571,7 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	m_Replication.Reset();
 	m_PlayerController.Set_LocalCharacter(nullptr);
 	m_eMode = MODE::RETURNING_TO_LOBBY;
-	m_isValtanSpawnRequested = false;
+	m_iPendingArenaSpawnIndex.reset();
 	m_iPendingClassIndex.reset();
 	m_iPendingClassChangeSequence = 0u;
 	m_strStatus = reason + " Returning to Lobby; local gameplay fallback is disabled.";
@@ -545,34 +583,43 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	}
 }
 
-bool_t CLevel_CharacterSelect::Request_ValtanSpawn()
+bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 {
-	if (MODE::SERVER_ARENA != m_eMode || m_isValtanSpawnRequested ||
-		m_Replication.Has_WorldEntity("BOSS_VALTAN"))
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
+		m_iPendingArenaSpawnIndex.has_value() ||
+		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
 	{
 		return false;
 	}
-	m_strStatus = "Preparing Valtan presentation assets...";
-	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::CHARACTER_SELECT))))
+	const ARENA_SPAWN_OPTION& option =
+		ARENA_SPAWN_OPTIONS[m_iSelectedArenaSpawnIndex];
+	if (option.requiresValtanPrewarm)
 	{
-		m_strStatus =
-			"Valtan assets failed to prepare; no Server spawn was requested.";
-		return false;
+		m_strStatus = "Preparing Valtan presentation assets...";
+		if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::CHARACTER_SELECT))))
+		{
+			m_strStatus =
+				"Valtan assets failed to prepare; no Server spawn was requested.";
+			return false;
+		}
 	}
 	if (nullptr == m_pWorldEntityCommandSink ||
 		!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(
-			VALTAN_PLACEMENT_ID))
+			option.pStableId))
 	{
-		m_strStatus = "Valtan spawn request could not be sent.";
+		m_strStatus = std::string{ option.pLabel } +
+			" spawn request could not be sent.";
 		return false;
 	}
-	m_isValtanSpawnRequested = true;
-	m_ValtanRequestDeadline =
-		std::chrono::steady_clock::now() + VALTAN_REQUEST_TIMEOUT;
-	m_strStatus = "Valtan spawn requested from Server.";
+	m_iPendingArenaSpawnIndex = m_iSelectedArenaSpawnIndex;
+	m_ArenaSpawnRequestDeadline =
+		std::chrono::steady_clock::now() + ARENA_SPAWN_REQUEST_TIMEOUT;
+	m_strStatus = std::string{ option.pLabel } +
+		" spawn requested from Server.";
 	return true;
 }
 
@@ -668,17 +715,37 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	if (isServerArena)
 	{
 		ImGui::Separator();
-		const bool_t valtanSpawned =
-			m_Replication.Has_WorldEntity("BOSS_VALTAN");
+		ImGui::TextUnformatted("Server arena spawn");
+		for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
+		{
+			if (ImGui::RadioButton(
+				ARENA_SPAWN_OPTIONS[index].pLabel,
+				m_iSelectedArenaSpawnIndex == index))
+			{
+				m_iSelectedArenaSpawnIndex = index;
+			}
+			if (index + 1u < ARENA_SPAWN_OPTIONS.size())
+				ImGui::SameLine();
+		}
 		ImGui::BeginDisabled(
-			m_isValtanSpawnRequested || valtanSpawned);
-		if (ImGui::Button("Summon Valtan (Lazy)"))
-			Request_ValtanSpawn();
+			m_iPendingArenaSpawnIndex.has_value() ||
+			m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex]);
+		if (ImGui::Button("Spawn Selected"))
+			Request_SelectedArenaSpawn();
 		ImGui::EndDisabled();
-		if (valtanSpawned)
+		if (m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
 			ImGui::SameLine(), ImGui::TextDisabled("Spawned");
-		else if (m_isValtanSpawnRequested)
+		else if (m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex)
 			ImGui::SameLine(), ImGui::TextDisabled("Requested");
+#ifdef _DEBUG
+		if (ImGui::Checkbox(
+			"Show Combat Colliders",
+			&m_isCombatColliderDebugVisible))
+		{
+			m_Replication.Set_CombatColliderDebugVisible(
+				m_isCombatColliderDebugVisible);
+		}
+#endif
 	}
 
 	ImGui::Separator();
@@ -792,6 +859,10 @@ namespace
 	constexpr f32_t THUMB_H = 78.f;
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
 	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
+	constexpr f32_t CONFIRM_W = 349.f;
+	constexpr f32_t CONFIRM_H = 52.f;
+	constexpr f32_t CONFIRM_X = (REF_WIDTH - CONFIRM_W) * 0.5f;
+	constexpr f32_t CONFIRM_Y = 668.f;
 
 	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
 	{
