@@ -17,6 +17,7 @@
 #include <iterator>
 #include <sstream>
 #include <system_error>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -1304,6 +1305,16 @@ namespace
 				&Out.SocketLocalTransform.vScale.x, 3u, strOutError);
 	}
 
+	bool_t Read_TransformInheritance(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_TRANSFORM_INHERITANCE_DESC& Out,
+		std::string& strOutError)
+	{
+		return Read_Bool(Value, "enabled", Out.bEnabled, strOutError) &&
+			Read_String(Value, "masterElementId",
+				Out.strMasterElementId, strOutError);
+	}
+
 	bool_t Is_SafeModelCueAssetIdInternal(const std::string& strAssetId)
 	{
 		if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
@@ -1730,6 +1741,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	}
 
 	std::unordered_set<std::string> ElementIds;
+	std::unordered_map<std::string, const EFFECT_ELEMENT_DESC*> ElementsById;
 	uint64_t iTotalParticles = 0u;
 	uint64_t iTotalTrailPoints = 0u;
 	uint64_t iTotalAfterImages = 0u;
@@ -1747,6 +1759,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Element metadata, kind, profile, or duplicate is invalid.";
 			return false;
 		}
+		ElementsById.emplace(Element.strElementId, &Element);
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 			Element.ActionCueAttachment;
 		const bool_t bAttachmentTransformValid =
@@ -2184,6 +2197,140 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		strOutError = "Effect Document exceeds the particle, trail, or after-image budget.";
 		return false;
 	}
+
+	const auto SameFloat3 = [](const float3_t& Left, const float3_t& Right)
+	{
+		return Left.x == Right.x && Left.y == Right.y && Left.z == Right.z;
+	};
+	const auto SameTransform = [&SameFloat3](
+		const EFFECT_TRANSFORM_DESC& Left,
+		const EFFECT_TRANSFORM_DESC& Right)
+	{
+		return SameFloat3(Left.vPosition, Right.vPosition) &&
+			SameFloat3(Left.vRotationDegrees, Right.vRotationDegrees) &&
+			SameFloat3(Left.vRevolutionDegreesPerSecond,
+				Right.vRevolutionDegreesPerSecond) &&
+			SameFloat3(Left.vScale, Right.vScale) &&
+			SameFloat3(Left.vVelocityPerSecond, Right.vVelocityPerSecond);
+	};
+	const auto SameAttachment = [&SameTransform](
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Left,
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Right)
+	{
+		return Left.bEnabled == Right.bEnabled &&
+			Left.bFollow == Right.bFollow &&
+			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
+			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
+			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			SameTransform(Left.SocketLocalTransform,
+				Right.SocketLocalTransform);
+	};
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		const EFFECT_TRANSFORM_INHERITANCE_DESC& Inheritance =
+			Element.TransformInheritance;
+		if (!Inheritance.bEnabled)
+		{
+			if (!Inheritance.strMasterElementId.empty())
+			{
+				strOutError =
+					"Disabled Effect transform inheritance must not name a master Element.";
+				return false;
+			}
+			continue;
+		}
+		if (!Is_StableId(Inheritance.strMasterElementId) ||
+			Inheritance.strMasterElementId == Element.strElementId)
+		{
+			strOutError =
+				"Effect transform inheritance master identity is invalid or self-referential.";
+			return false;
+		}
+		const auto MasterIterator = ElementsById.find(
+			Inheritance.strMasterElementId);
+		if (MasterIterator == ElementsById.end())
+		{
+			strOutError = "Effect transform inheritance master Element is missing.";
+			return false;
+		}
+		const EFFECT_ELEMENT_DESC& Master = *MasterIterator->second;
+		if (Element.strGroupId.empty() ||
+			Element.strGroupId != Master.strGroupId)
+		{
+			strOutError =
+				"Effect transform inheritance must remain inside one Component group.";
+			return false;
+		}
+		if (!Master.bVisible ||
+			EFFECT_ELEMENT_KIND::SCREEN_POST == Master.eKind ||
+			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			strOutError =
+				"Effect transform inheritance requires a visible world-space master and companion.";
+			return false;
+		}
+		if (Element.Detail.Timing.fStartDelaySeconds !=
+				Master.Detail.Timing.fStartDelaySeconds ||
+			Element.SourceRecipe.fEmitterDelaySeconds !=
+				Master.SourceRecipe.fEmitterDelaySeconds)
+		{
+			strOutError =
+				"Effect transform inheritance master and companion start times must match.";
+			return false;
+		}
+		if (!SameAttachment(Element.ActionCueAttachment,
+			Master.ActionCueAttachment))
+		{
+			strOutError =
+				"Effect transform inheritance master and companion attachment spaces must match.";
+			return false;
+		}
+	}
+
+	std::unordered_map<std::string, uint8_t> VisitStates;
+	const auto VisitInheritance = [&](const auto& Self,
+		const EFFECT_ELEMENT_DESC& Element) -> bool_t
+	{
+		uint8_t& State = VisitStates[Element.strElementId];
+		if (1u == State)
+		{
+			strOutError = "Effect transform inheritance cycle is not allowed.";
+			return false;
+		}
+		if (2u == State)
+			return true;
+		State = 1u;
+		if (Element.TransformInheritance.bEnabled)
+		{
+			const auto MasterIterator = ElementsById.find(
+				Element.TransformInheritance.strMasterElementId);
+			if (MasterIterator == ElementsById.end() ||
+				!Self(Self, *MasterIterator->second))
+			{
+				return false;
+			}
+		}
+		State = 2u;
+		return true;
+	};
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (!VisitInheritance(VisitInheritance, Element))
+			return false;
+	}
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (!Element.TransformInheritance.bEnabled)
+			continue;
+		const EFFECT_ELEMENT_DESC& Master = *ElementsById.at(
+			Element.TransformInheritance.strMasterElementId);
+		if (Master.TransformInheritance.bEnabled)
+		{
+			strOutError =
+				"Effect transform inheritance companions must reference one terminal master directly.";
+			return false;
+		}
+	}
 	strOutError.clear();
 	return true;
 }
@@ -2508,6 +2655,18 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				return false;
 			}
 		}
+		const DATA_JSON_VALUE* pTransformInheritance =
+			ElementValue.Find("transformInheritance");
+		if ((iSourceVersion >= 13u && nullptr == pTransformInheritance) ||
+			(nullptr != pTransformInheritance &&
+				(!pTransformInheritance->Is_Object() ||
+					!Read_TransformInheritance(*pTransformInheritance,
+						Element.TransformInheritance, strOutError))))
+		{
+			if (strOutError.empty())
+				strOutError = "Effect transform inheritance is invalid.";
+			return false;
+		}
 		for (const DATA_JSON_VALUE& ResourceValue : pResources->Get_Array())
 		{
 			if (!ResourceValue.Is_Object())
@@ -2736,6 +2895,12 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		Write_Float3(Output,
 			Element.ActionCueAttachment.SocketLocalTransform.vScale);
 		Output << " } },\n";
+		Output << "      \"transformInheritance\": { \"enabled\": "
+			<< (Element.TransformInheritance.bEnabled ? "true" : "false")
+			<< ", \"masterElementId\": \""
+			<< CDataJson::Escape(
+				Element.TransformInheritance.strMasterElementId)
+			<< "\" },\n";
 		Write_Detail(Output, Element.Detail);
 		Output << ",\n";
 		Write_SourceRecipe(Output, Element.SourceRecipe);

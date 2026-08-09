@@ -570,9 +570,37 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	}
 	EFFECT_DOCUMENT_DESC StagedDocument = Document;
 	std::unordered_map<std::string, ELEMENT_STATE> StagedStates;
+	std::unordered_map<std::string, size_t> StagedTransformMasterIndices;
+	std::unordered_map<std::string, size_t> ElementIndices;
+	for (size_t iElement = 0u; iElement < StagedDocument.Elements.size();
+		++iElement)
+	{
+		ElementIndices.emplace(
+			StagedDocument.Elements[iElement].strElementId, iElement);
+	}
 	f32_t fStagedDuration = 0.f;
 	for (const EFFECT_ELEMENT_DESC& Element : StagedDocument.Elements)
 	{
+		if (Element.TransformInheritance.bEnabled)
+		{
+			const auto MasterIterator = ElementIndices.find(
+				Element.TransformInheritance.strMasterElementId);
+			if (MasterIterator == ElementIndices.end())
+			{
+				strOutError =
+					"Prepared Effect transform inheritance master is missing.";
+				return false;
+			}
+			if (StagedDocument.Elements[MasterIterator->second]
+				.TransformInheritance.bEnabled)
+			{
+				strOutError =
+					"Prepared Effect companions must reference one terminal transform master.";
+				return false;
+			}
+			StagedTransformMasterIndices.emplace(
+				Element.strElementId, MasterIterator->second);
+		}
 		ELEMENT_STATE State;
 		State.iRandomState = Hash_StableId(Element.strElementId) ^
 			Element.Detail.Particle.iRandomSeed;
@@ -618,6 +646,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	m_Document = std::move(StagedDocument);
 	m_pPreparedResources = std::move(pPreparedResources);
 	m_States = std::move(StagedStates);
+	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
 	Reset();
 	strOutError.clear();
@@ -2139,6 +2168,15 @@ void Client::CEffectPlayback::Sample_AfterImages(
 bool_t Client::CEffectPlayback::Can_EvaluateElementWorld(
 	const EFFECT_ELEMENT_DESC& Element) const
 {
+	const auto MasterIndex = m_TransformMasterIndices.find(
+		Element.strElementId);
+	if (MasterIndex != m_TransformMasterIndices.end())
+	{
+		if (MasterIndex->second >= m_Document.Elements.size())
+			return false;
+		return Can_EvaluateElementWorld(
+			m_Document.Elements[MasterIndex->second]);
+	}
 	const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 		Element.ActionCueAttachment;
 	if (!Attachment.bEnabled)
@@ -2158,6 +2196,15 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const f32_t fSampleTimeSeconds,
 	const float4x4_t& RootWorld) const
 {
+	const auto MasterIndex = m_TransformMasterIndices.find(
+		Element.strElementId);
+	if (MasterIndex != m_TransformMasterIndices.end() &&
+		MasterIndex->second < m_Document.Elements.size())
+	{
+		return Evaluate_ElementWorld(
+			m_Document.Elements[MasterIndex->second],
+			fSampleTimeSeconds, RootWorld);
+	}
 	const EFFECT_DETAIL_DESC& Detail = Element.Detail;
 	const f32_t fLocalTime = (std::max)(0.f,
 		fSampleTimeSeconds - Detail.Timing.fStartDelaySeconds);

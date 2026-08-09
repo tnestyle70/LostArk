@@ -1215,6 +1215,12 @@
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster">
       <UniqueIdentifier>{e77ed5c4-d9dc-5814-8f72-54d2208a63ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB">
+      <UniqueIdentifier>{cc1a9767-7084-5b88-ab8a-f3ab5c339fee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates">
+      <UniqueIdentifier>{2568a942-1cc9-5bf7-a2d5-4a4571eeb287}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord">
       <UniqueIdentifier>{e75b6012-8d66-55e4-9d50-c3a9e55d38cd}</UniqueIdentifier>
     </Filter>
@@ -2163,13 +2169,25 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.restoration-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.authored-baseline.clip1.effect.json">
@@ -2232,10 +2250,19 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.restoration-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34540.authored-baseline.effect.json">
@@ -2600,6 +2627,30 @@
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba1.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba2.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba3.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba4.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34510.ba1.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34510.ba2.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34510.ba3.candidate-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\lancemaster-artist.decal-inventory.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17000.ba1.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
