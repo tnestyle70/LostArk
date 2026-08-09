@@ -48,7 +48,7 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  31,
-                     "fieldEntryCount":  2429
+                     "fieldEntryCount":  2425
                  },
     "entries":  [
                     {
@@ -11838,9 +11838,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1333,
+                        "sourceValue":  920,
                         "transform":  "identity",
-                        "resultValue":  1333
+                        "resultValue":  920
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11851,9 +11851,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1150,
+                        "sourceValue":  100,
                         "transform":  "identity",
-                        "resultValue":  1150
+                        "resultValue":  100
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12105,9 +12105,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  3000,
+                        "sourceValue":  1500,
                         "transform":  "identity",
-                        "resultValue":  3000
+                        "resultValue":  1500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12924,9 +12924,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1077,
+                        "sourceValue":  625,
                         "transform":  "identity",
-                        "resultValue":  1077
+                        "resultValue":  625
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13069,9 +13069,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1867,
+                        "sourceValue":  2934,
                         "transform":  "identity",
-                        "resultValue":  1867
+                        "resultValue":  2934
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13108,14 +13108,66 @@
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-count-v1"
                                    },
-                        "sourceValue":  4,
+                        "sourceValue":  3,
                         "transform":  "identity",
-                        "resultValue":  4
+                        "resultValue":  3
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
                         "targetField":  "comboStages[0].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "animation-reference-timing-v1"
+                                   },
+                        "sourceValue":  2934,
+                        "transform":  "identity",
+                        "resultValue":  2934
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31210",
+                        "targetField":  "comboStages[0].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "animation-reference-timing-v1"
+                                   },
+                        "sourceValue":  600,
+                        "transform":  "identity",
+                        "resultValue":  600
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31210",
+                        "targetField":  "comboStages[0].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "animation-reference-timing-v1"
+                                   },
+                        "sourceValue":  2934,
+                        "transform":  "identity",
+                        "resultValue":  2934
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31210",
+                        "targetField":  "comboStages[0].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "animation-reference-timing-v1"
+                                   },
+                        "sourceValue":  300,
+                        "transform":  "identity",
+                        "resultValue":  300
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31210",
+                        "targetField":  "comboStages[1].actionDurationMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -13128,67 +13180,15 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
-                        "targetField":  "comboStages[0].hitTimeMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  1445,
-                        "transform":  "identity",
-                        "resultValue":  1445
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[0].inputCloseMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  647,
-                        "transform":  "identity",
-                        "resultValue":  647
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[0].inputOpenMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  309,
-                        "transform":  "identity",
-                        "resultValue":  309
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[1].actionDurationMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  1067,
-                        "transform":  "identity",
-                        "resultValue":  1067
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
                         "targetField":  "comboStages[1].hitTimeMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  900,
+                        "sourceValue":  600,
                         "transform":  "identity",
-                        "resultValue":  900
+                        "resultValue":  600
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13199,9 +13199,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  700,
+                        "sourceValue":  1867,
                         "transform":  "identity",
-                        "resultValue":  700
+                        "resultValue":  1867
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13225,53 +13225,14 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1867,
+                        "sourceValue":  533,
                         "transform":  "identity",
-                        "resultValue":  1867
+                        "resultValue":  533
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
                         "targetField":  "comboStages[2].hitTimeMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  1445,
-                        "transform":  "identity",
-                        "resultValue":  1445
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[2].inputCloseMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  647,
-                        "transform":  "identity",
-                        "resultValue":  647
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[2].inputOpenMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  309,
-                        "transform":  "identity",
-                        "resultValue":  309
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[3].actionDurationMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -13284,20 +13245,7 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
-                        "targetField":  "comboStages[3].hitTimeMs",
-                        "basis":  "PROJECT_TUNED",
-                        "source":  {
-                                       "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
-                                   },
-                        "sourceValue":  400,
-                        "transform":  "identity",
-                        "resultValue":  400
-                    },
-                    {
-                        "targetDocument":  "Data/Balance/PlayerSkills.json",
-                        "targetId":  "skill:31210",
-                        "targetField":  "comboStages[3].inputCloseMs",
+                        "targetField":  "comboStages[2].inputCloseMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -13310,7 +13258,7 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
-                        "targetField":  "comboStages[3].inputOpenMs",
+                        "targetField":  "comboStages[2].inputOpenMs",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -13373,9 +13321,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1445,
+                        "sourceValue":  600,
                         "transform":  "identity",
-                        "resultValue":  1445
+                        "resultValue":  600
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13614,9 +13562,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1275,
+                        "sourceValue":  432,
                         "transform":  "identity",
-                        "resultValue":  1275
+                        "resultValue":  432
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13855,9 +13803,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1190,
+                        "sourceValue":  562,
                         "transform":  "identity",
-                        "resultValue":  1190
+                        "resultValue":  562
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14096,9 +14044,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1700,
+                        "sourceValue":  540,
                         "transform":  "identity",
-                        "resultValue":  1700
+                        "resultValue":  540
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14337,9 +14285,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1657,
+                        "sourceValue":  1451,
                         "transform":  "identity",
-                        "resultValue":  1657
+                        "resultValue":  1451
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14578,9 +14526,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1502,
+                        "sourceValue":  997,
                         "transform":  "identity",
-                        "resultValue":  1502
+                        "resultValue":  997
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14819,9 +14767,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1654,
+                        "sourceValue":  1000,
                         "transform":  "identity",
-                        "resultValue":  1654
+                        "resultValue":  1000
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -15060,9 +15008,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  5213,
+                        "sourceValue":  3000,
                         "transform":  "identity",
-                        "resultValue":  5213
+                        "resultValue":  3000
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

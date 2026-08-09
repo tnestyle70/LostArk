@@ -1397,8 +1397,8 @@
         {
           "actionDurationMs": 1333,
           "hitTimeMs": 494,
-          "inputOpenMs": 1150,
-          "inputCloseMs": 1333
+          "inputOpenMs": 100,
+          "inputCloseMs": 920
         },
         {
           "actionDurationMs": 1267,
@@ -1419,7 +1419,7 @@
       "setsStance": "NONE",
       "cooldownMs": 8000,
       "actionDurationMs": 1267,
-      "hitTimeMs": 1077,
+      "hitTimeMs": 625,
       "resourceCost": 277,
       "movementDistance": 0.0,
       "maximumRange": 5.0,
@@ -1438,7 +1438,7 @@
       "setsStance": "NONE",
       "cooldownMs": 14000,
       "actionDurationMs": 1400,
-      "hitTimeMs": 1190,
+      "hitTimeMs": 562,
       "resourceCost": 382,
       "movementDistance": 0.0,
       "maximumRange": 8.0,
@@ -1457,7 +1457,7 @@
       "setsStance": "NONE",
       "cooldownMs": 24000,
       "actionDurationMs": 1767,
-      "hitTimeMs": 1502,
+      "hitTimeMs": 997,
       "resourceCost": 521,
       "movementDistance": 0.0,
       "maximumRange": 12.0,
@@ -1475,8 +1475,8 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 16000,
-      "actionDurationMs": 1867,
-      "hitTimeMs": 1445,
+      "actionDurationMs": 2934,
+      "hitTimeMs": 600,
       "resourceCost": 412,
       "movementDistance": 0.0,
       "maximumRange": 3.5,
@@ -1484,26 +1484,20 @@
       "effectId": "",
       "comboStages": [
         {
-          "actionDurationMs": 1867,
-          "hitTimeMs": 1445,
-          "inputOpenMs": 309,
-          "inputCloseMs": 647
-        },
-        {
-          "actionDurationMs": 1067,
-          "hitTimeMs": 900,
+          "actionDurationMs": 2934,
+          "hitTimeMs": 600,
           "inputOpenMs": 300,
-          "inputCloseMs": 700
+          "inputCloseMs": 2934
         },
         {
           "actionDurationMs": 1867,
-          "hitTimeMs": 1445,
-          "inputOpenMs": 309,
-          "inputCloseMs": 647
+          "hitTimeMs": 600,
+          "inputOpenMs": 300,
+          "inputCloseMs": 1867
         },
         {
           "actionDurationMs": 533,
-          "hitTimeMs": 400,
+          "hitTimeMs": 533,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1520,7 +1514,7 @@
       "setsStance": "NONE",
       "cooldownMs": 16000,
       "actionDurationMs": 2000,
-      "hitTimeMs": 1700,
+      "hitTimeMs": 540,
       "resourceCost": 412,
       "movementDistance": 0.0,
       "maximumRange": 6.0,
@@ -1539,7 +1533,7 @@
       "setsStance": "NONE",
       "cooldownMs": 24000,
       "actionDurationMs": 1500,
-      "hitTimeMs": 1275,
+      "hitTimeMs": 432,
       "resourceCost": 521,
       "movementDistance": 0.0,
       "maximumRange": 6.0,
@@ -1558,7 +1552,7 @@
       "setsStance": "NONE",
       "cooldownMs": 30000,
       "actionDurationMs": 1967,
-      "hitTimeMs": 1654,
+      "hitTimeMs": 1000,
       "resourceCost": 592,
       "movementDistance": 0.0,
       "maximumRange": 12.0,
@@ -1577,7 +1571,7 @@
       "setsStance": "NONE",
       "cooldownMs": 25000,
       "actionDurationMs": 2833,
-      "hitTimeMs": 1657,
+      "hitTimeMs": 1451,
       "resourceCost": 533,
       "movementDistance": 0.0,
       "maximumRange": 19.8,
@@ -1615,7 +1609,7 @@
       "setsStance": "NONE",
       "cooldownMs": 300000,
       "actionDurationMs": 6133,
-      "hitTimeMs": 5213,
+      "hitTimeMs": 3000,
       "resourceCost": 0,
       "movementDistance": 0.0,
       "maximumRange": 13.2,
@@ -1690,7 +1684,7 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 7000,
-      "actionDurationMs": 3000,
+      "actionDurationMs": 1500,
       "hitTimeMs": 0,
       "resourceCost": 0,
       "movementDistance": 0.0,
