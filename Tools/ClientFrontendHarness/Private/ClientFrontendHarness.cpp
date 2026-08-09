@@ -3594,6 +3594,11 @@ namespace
 		if (bCheckFailedReloadRollback)
 		{
 			const uint64_t revision = CEffectCatalog::Get_RuntimeRevision();
+			/* Which effect survives does not matter; that the committed set
+			survives does. Naming one here ties the rollback check to whatever
+			the authored rollout happens to call that skill. */
+			const std::string committedId = effectIds.empty() ?
+				std::string{} : effectIds.front();
 			std::ifstream input(stagedCatalog, std::ios::binary);
 			std::string invalid{
 				std::istreambuf_iterator<char>(input),
@@ -3610,7 +3615,7 @@ namespace
 			runner.Require(
 				std::string::npos != markerIndex && rejected &&
 				revision == CEffectCatalog::Get_RuntimeRevision() &&
-				CEffectCatalog::Contains("effect.dimensionmaster.skill.2050500"),
+				!committedId.empty() && CEffectCatalog::Contains(committedId),
 				"Effect Runtime Invalid Catalog Preserves Committed Assembly State");
 		}
 
