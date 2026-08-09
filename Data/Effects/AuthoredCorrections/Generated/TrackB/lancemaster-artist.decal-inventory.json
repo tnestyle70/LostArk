@@ -5,32 +5,14 @@
     "LANCE_MASTER",
     "ARTIST"
   ],
-  "manualRestorationWorklist": {
-    "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
-    "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9",
-    "schema": "lostark.effect-manual-restoration-worklist",
-    "formatVersion": 1,
-    "globalSummary": {
-      "targetCount": 101,
-      "groupCount": 590,
-      "elementCount": 2168,
-      "kindCounts": {
-        "decal": 46,
-        "mesh": 888,
-        "sprite": 1234
-      },
-      "statusCounts": {
-        "CARRIER_INVENTORY_VISUAL_UNVERIFIED": 95,
-        "MANUAL_MASTER_CARRIER_VISUAL_PENDING": 5,
-        "MANUAL_VISUAL_APPROVED": 1
-      },
-      "riskGroupCounts": {
-        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY": 5,
-        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED": 11,
-        "SOURCE_WHITE_CARRIER_REQUIRES_VISUAL_APPROVAL": 14
-      }
-    },
-    "productCompletionRule": "Inventory evidence is not visual approval; use the worklist master-first manual gate."
+  "manualRestorationPolicy": {
+    "source": "TRACK_B_MASTER_FIRST_CONTRACT",
+    "masterFirst": true,
+    "sourceProvenRelativeTransformOnly": true,
+    "whiteOrBlackFallbackForbidden": true,
+    "manualVisualApprovalRequired": true,
+    "globalWorklistRequiredForGeneration": false,
+    "productCompletionRule": "Inventory evidence is not visual approval; use the master-first manual gate."
   },
   "classification": {
     "sourceTypeDataEvidence": "EFParticleModuleTypeDataDecal",

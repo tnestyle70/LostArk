@@ -11,7 +11,7 @@
 | 시각 승인 | `NOT_VISUAL_APPROVED` | 7 |
 | Product 게시 | 미게시 | 7 |
 
-후보 문서와 현재 worktree codec/playback 코어는 모두 v13 `transformInheritance` 계약이다. 현재 하네스에 Desktop 정본 Resource root를 명시하면 후보 7개가 Debug/Release에서 7/7 통과하고, 최신 self-root 하네스에서는 무환경 7/7을 통과한다. 기존 Product 101개도 Debug/Release에서 Load/Validate/Validate_Drawable 101/101을 통과했다. 다만 이 worktree 자체에는 `Client/Bin/Resources`가 없어 무환경 실행은 불가능하고 화면 승인도 별도이므로 상태는 `SOURCE_EXTRACTED / MANUAL_VISUAL_PENDING`으로 고정했다.
+후보 문서와 현재 worktree codec/playback 코어는 모두 v13 `transformInheritance` 계약이다. 현재 하네스에 Desktop 정본 Resource root를 명시하면 후보 7개가 Debug/Release에서 7/7 통과하고, 최신 self-root 하네스에서는 무환경 7/7을 통과한다. 기존 Product 101개도 Debug/Release에서 Load/Validate/Validate_Drawable 101/101을 통과했다. 다만 이 worktree 자체에는 `Client/Bin/Resources`가 없어 무환경 실행은 불가능하고 화면 승인도 별도이므로 상태는 `SOURCE_EXTRACTED / MANUAL_VISUAL_PENDING`으로 고정했다. 최신 main 통합본에서는 다른 세션의 전역 worklist 없이도 7개 Product 문서를 직접 SHA 고정해 생성기와 단위 테스트가 독립 실행된다.
 
 Product, Assembly, Component, skill binding, runtime catalog는 후보를 소비하지 않는다. runtime catalog의 `.restoration-candidate` ID는 0개다.
 
@@ -105,6 +105,7 @@ Scale, 음수/비균일 Scale, pivot, rotation-rate, motion/orbit, multiplicity,
 - `Data/Effects/Authored/effect.lancemaster.skill.34510.ba1~3.restoration-candidate.effect.json`
 - `Data/Effects/AuthoredCorrections/Generated/TrackB/LanceMasterLmbCandidates/*.candidate-receipt.json`
 - `Data/Effects/AuthoredCorrections/Generated/TrackB/lancemaster-artist.decal-inventory.json`
+- `Client/Default/Client.vcxproj`, `Client/Default/Client.vcxproj.filters`의 `96.DataFiles` 등록
 
 생성기는 기존 후보 7개의 raw SHA를 전부 먼저 확인한다. 하나라도 사용자 저장 또는 포맷 변경이 있으면 후보와 metadata 전체 갱신을 거부한다. visible 요소는 WModel/Base를 검사하고, hidden no-Base 요소는 fallback-blocked profile만 허용한다.
 
@@ -115,6 +116,8 @@ Scale, 음수/비균일 Scale, pivot, rotation-rate, motion/orbit, multiplicity,
 | Python compile | PASS |
 | Candidate generator unit test | PASS, 11 tests |
 | Generator `--check` | PASS, 15 outputs |
+| clean `origin/main` 기준 독립 생성/검사 | PASS, 전역 worklist 없이 15 outputs 및 11 tests |
+| Client project/filter XML parse | PASS |
 | v12→v13 / Ribbon migration overwrite guard | PASS |
 | visible WModel/Base 및 hidden fallback-blocked 정책 | PASS |
 | Product runtime catalog candidate ID | PASS, 0 |
@@ -131,7 +134,7 @@ Scale, 음수/비균일 Scale, pivot, rotation-rate, motion/orbit, multiplicity,
 
 최신 Desktop/source 정본의 전역 ProjectAudit은 89 checks PASS로 닫혔다. 다만 이 격리 worktree에서 재실행한 결과는 FAIL(10)이다. 주요 원인은 `Client/Bin/Resources` 부재로 인한 map/actor/Decal asset 검사 실패, source 세션 소유 `DimensionMaster.ba-r-master-carrier.materialization.json` 부재, 아직 재베이스하지 않은 G09 workbench/cross-document 경계, 그에 따른 FourClass publisher 테스트 오류다. Track B 후보 단위 검증과는 분리된 미재베이스 실패이며 해당 전역 파일을 임의로 보충하지 않았다.
 
-또한 로컬 worklist는 아직 이전 상태 집계 `95/5/1`을 담고 있고 최신 Desktop 정본은 `95/6/0`이므로, receipt의 `globalSummary`는 로컬 snapshot provenance일 뿐 Track B 승인 수치가 아니다. 이 전역 worklist 파일은 source 세션 소유라 본 작업에서 덮어쓰지 않았다.
+최신 main 통합 과정에서 전역 worklist가 아직 main에 없다는 의존성도 확인했다. 다른 세션 소유 파일을 함께 올리지 않도록 생성기는 7개 현재 Product 문서의 ID/SHA/group/element 순서를 직접 검증해 `productCarrierInventory` receipt를 만들도록 교정했다. stale 전역 `globalSummary`는 Track B receipt에서 제거했고 전역 rollout/worklist/A 파일은 수정하지 않았다.
 
 ## 8. 수동 검증과 다음 단계
 
@@ -139,8 +142,7 @@ Scale, 음수/비균일 Scale, pivot, rotation-rate, motion/orbit, multiplicity,
 
 다음 단계는 다음과 같다.
 
-1. Track B 후보/receipt 15산출물을 Resources와 최신 workbench가 있는 Desktop 정본에 수술식으로 통합한다. 전역 rollout/worklist/A 파일은 source 정본을 유지한다.
-2. 사용자가 Solo Element -> Solo Group/Trail -> Character Select 순서로 위치, 회전, 크기, 겹침을 조정한다.
-3. 저장된 후보를 다시 Load/Validate한 뒤 수동 조립 상태를 기록한다.
-4. Ribbon physical package/DDS/shader와 실제 AnimTrail/Ribbon endpoint runtime을 닫는다.
-5. 사용자 승인 뒤에만 `VISUAL_APPROVED`와 Product 게시를 수행한다.
+1. 사용자가 Solo Element -> Solo Group/Trail -> Character Select 순서로 위치, 회전, 크기, 겹침을 조정한다.
+2. 저장된 후보를 다시 Load/Validate한 뒤 수동 조립 상태를 기록한다.
+3. Ribbon physical package/DDS/shader와 실제 AnimTrail/Ribbon endpoint runtime을 닫는다.
+4. 사용자 승인 뒤에만 `VISUAL_APPROVED`와 Product 게시를 수행한다.

@@ -33,11 +33,6 @@ DECAL_INVENTORY_PATH = (
     / "Effects/AuthoredCorrections/Generated/TrackB/"
     "lancemaster-artist.decal-inventory.json"
 )
-MANUAL_WORKLIST_PATH = (
-    DATA_ROOT
-    / "Effects/AuthoredCorrections/Generated/"
-    "FourClassCombat.manual-restoration-worklist.json"
-)
 LONG_IMPORTED_PATH = (
     DATA_ROOT
     / "Effects/Imported/LanceMaster/Converted/"
@@ -65,6 +60,27 @@ PINNED_TRACKED_INPUTS = {
     ANIMNOTIFY_PATH: (
         "733ebeabf5d4f388b43152b8cf6e4d78fabd1af349e85228c2a3555971f70155"
     ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34010.ba1.effect.json": (
+        "e3605d1efe8d187f7d1d2fa3787aa3d659311f4776e3322c9a68cbbb4dae8f1f"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34010.ba2.effect.json": (
+        "2ac28bf821030ab21f3a3cd63a1a39d3f8eab1f9733b974df3a015d5d314dcd1"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34010.ba3.effect.json": (
+        "f5b88b109c16c6a86f04f5cb749f3a5fdad748e9d57178a6008a6bc733dd23dd"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34010.ba4.effect.json": (
+        "2c11f8d05562c16c98546bd1184ef98c80bc849a07d66d0e22533c371597fd90"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34510.ba1.effect.json": (
+        "3a52eba5e23fb0a20873d2042d9305080fe9b8af2689b495c0be954d4563601d"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34510.ba2.effect.json": (
+        "ec288e2c2d0015281d0296dfffc3f790e223f1704a48355d63bf2b629e14b5cc"
+    ),
+    AUTHORED_ROOT / "effect.lancemaster.skill.34510.ba3.effect.json": (
+        "e6b6e422be0c70a040ab09f56e6372db80ee243bffeca4455354554bb9c55fa5"
+    ),
 }
 
 # Git/worktree checkout policy changes this authored text between CRLF and LF.
@@ -76,21 +92,13 @@ PINNED_LF_TEXT_INPUTS = {
     ),
 }
 
-EXPECTED_WORKLIST_SUMMARY = {
-    "targetCount": 101,
-    "groupCount": 590,
-    "elementCount": 2168,
-    "kindCounts": {"decal": 46, "mesh": 888, "sprite": 1234},
-    "statusCounts": {
-        "CARRIER_INVENTORY_VISUAL_UNVERIFIED": 95,
-        "MANUAL_MASTER_CARRIER_VISUAL_PENDING": 5,
-        "MANUAL_VISUAL_APPROVED": 1,
-    },
-    "riskGroupCounts": {
-        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY": 5,
-        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED": 11,
-        "SOURCE_WHITE_CARRIER_REQUIRES_VISUAL_APPROVAL": 14,
-    },
+PRODUCT_VISUAL_STATUS = "CARRIER_INVENTORY_VISUAL_UNVERIFIED"
+PRODUCT_GROUP_RISKS_BY_SKILL = {
+    34010: [
+        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY",
+        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED",
+    ],
+    34510: [],
 }
 
 EXTERNAL_MATERIAL_EVIDENCE = (
@@ -506,82 +514,50 @@ def validate_pinned_inputs() -> None:
             raise ValueError(f"External material evidence drifted: {path}")
 
 
-def validated_manual_worklist() -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    worklist = read_json(MANUAL_WORKLIST_PATH)
-    if worklist.get("schema") != "lostark.effect-manual-restoration-worklist":
-        raise ValueError("Manual restoration worklist schema is invalid")
-    if worklist.get("formatVersion") != 1:
-        raise ValueError("Manual restoration worklist version is invalid")
-    policy = worklist.get("policy", {})
-    required_policy = {
-        "masterFirst": True,
-        "sourceProvenRelativeTransformOnly": True,
-        "whiteOrBlackFallbackForbidden": True,
-        "manualVisualApprovalRequired": True,
-    }
-    for name, expected in required_policy.items():
-        if policy.get(name) is not expected:
-            raise ValueError(f"Manual restoration worklist policy drifted: {name}")
-    if policy.get("rendererAxes") != [
-        "mesh",
-        "meshParticleOriginProxy",
-        "sprite",
-        "trail",
-        "decal",
-    ]:
-        raise ValueError("Manual restoration worklist renderer axes drifted")
-    summary = worklist.get("summary", {})
-    for name, expected in EXPECTED_WORKLIST_SUMMARY.items():
-        if summary.get(name) != expected:
-            raise ValueError(f"Manual restoration worklist summary drifted: {name}")
+def validated_product_target(stage: dict[str, Any], *, skill_id: int) -> dict[str, Any]:
+    expected_target = f"effect.lancemaster.skill.{skill_id}.ba{stage['ba']}"
+    if stage["target"] != expected_target:
+        raise ValueError(f"Product target does not match stage: {stage['target']}")
 
-    targets: dict[str, dict[str, Any]] = {}
-    for row in worklist.get("targets", []):
-        if not isinstance(row, dict):
-            raise ValueError("Manual restoration worklist target is invalid")
-        effect_id = str(row.get("effectAssetId") or "")
-        if not effect_id or effect_id in targets:
-            raise ValueError(f"Manual restoration worklist target ID is invalid: {effect_id}")
-        targets[effect_id] = row
-    if len(targets) != EXPECTED_WORKLIST_SUMMARY["targetCount"]:
-        raise ValueError("Manual restoration worklist target rows drifted")
-    return worklist, targets
-
-
-def manual_worklist_target(
-    stage: dict[str, Any], *, skill_id: int
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    worklist, targets = validated_manual_worklist()
-    row = targets.get(stage["target"])
-    if not isinstance(row, dict):
-        raise ValueError(f"Product target is missing from manual worklist: {stage['target']}")
-    expected_fields = {
-        "characterClass": "LANCE_MASTER",
-        "productSkillId": skill_id,
-        "stageIndex": stage["ba"] - 1,
-        "clip": stage["clip"],
-        "visualStatus": "CARRIER_INVENTORY_VISUAL_UNVERIFIED",
-    }
-    for name, expected in expected_fields.items():
-        if row.get(name) != expected:
-            raise ValueError(
-                f"Manual worklist target drifted: {stage['target']} field {name}"
-            )
-    expected_document_path = (
-        f"Data/Effects/Authored/{stage['target']}.effect.json"
-    )
-    if row.get("documentPath") != expected_document_path:
-        raise ValueError(f"Manual worklist Product path drifted: {stage['target']}")
-    product_path = REPOSITORY_ROOT / str(row.get("documentPath") or "")
-    if not product_path.is_file():
-        raise ValueError(f"Manual worklist Product is missing: {product_path}")
+    product_path = AUTHORED_ROOT / f"{stage['target']}.effect.json"
+    expected_sha = PINNED_TRACKED_INPUTS.get(product_path)
     actual_sha = file_sha256(product_path)
-    if actual_sha != row.get("documentSha256"):
-        raise ValueError(f"Manual worklist Product SHA drifted: {stage['target']}")
+    if expected_sha is None or actual_sha != expected_sha:
+        raise ValueError(f"Pinned Product drifted: {stage['target']} ({actual_sha})")
+
     product_document = read_json(product_path)
     if product_document.get("effectAssetId") != stage["target"]:
-        raise ValueError(f"Manual worklist Product ID drifted: {stage['target']}")
-    return worklist, row
+        raise ValueError(f"Product ID drifted: {stage['target']}")
+
+    grouped_elements: dict[str, list[str]] = {}
+    for element in product_document.get("elements", []):
+        if not isinstance(element, dict):
+            raise ValueError(f"Product element is invalid: {stage['target']}")
+        group_id = str(element.get("groupId") or "")
+        element_id = str(element.get("id") or "")
+        if not group_id or not element_id:
+            raise ValueError(f"Product carrier ID is missing: {stage['target']}")
+        grouped_elements.setdefault(group_id, []).append(element_id)
+    if not grouped_elements:
+        raise ValueError(f"Product has no carrier groups: {stage['target']}")
+
+    risks = PRODUCT_GROUP_RISKS_BY_SKILL[skill_id]
+    groups = [
+        {
+            "groupId": group_id,
+            "masterElementId": element_ids[0],
+            "masterSelectionBasis": "PROVISIONAL_FIRST_CARRIER",
+            "manualAuditionOrder": element_ids,
+            "risks": copy.deepcopy(risks),
+        }
+        for group_id, element_ids in grouped_elements.items()
+    ]
+    return {
+        "documentPath": product_path.relative_to(REPOSITORY_ROOT).as_posix(),
+        "documentSha256": actual_sha,
+        "visualStatus": PRODUCT_VISUAL_STATUS,
+        "groups": groups,
+    }
 
 
 def disabled_source_recipe() -> dict[str, Any]:
@@ -1429,7 +1405,7 @@ def build_short_candidate(
 def base_receipt(
     stage: dict[str, Any], document: dict[str, Any], *, skill_id: int
 ) -> dict[str, Any]:
-    worklist, product_target = manual_worklist_target(stage, skill_id=skill_id)
+    product_target = validated_product_target(stage, skill_id=skill_id)
     product_groups = product_target.get("groups", [])
     product_risks = sorted(
         {
@@ -1473,12 +1449,10 @@ def base_receipt(
         "sourceExactClaimed": False,
         "runtimeParticleOutputAllowed": False,
         "candidateDocumentSha256": sha256_bytes(canonical_bytes(document)),
-        "manualRestorationWorklist": {
-            "path": MANUAL_WORKLIST_PATH.relative_to(REPOSITORY_ROOT).as_posix(),
-            "sha256": file_sha256(MANUAL_WORKLIST_PATH),
-            "schema": worklist["schema"],
-            "formatVersion": worklist["formatVersion"],
-            "globalSummary": copy.deepcopy(EXPECTED_WORKLIST_SUMMARY),
+        "productCarrierInventory": {
+            "schema": "lostark.trackb-product-carrier-inventory-evidence",
+            "version": 1,
+            "source": "PINNED_PRODUCT_DOCUMENT",
             "productDocumentPath": product_target["documentPath"],
             "productDocumentSha256": product_target["documentSha256"],
             "productVisualStatus": product_target["visualStatus"],
@@ -1518,14 +1492,6 @@ def base_receipt(
             }
             for path, expected in PINNED_LF_TEXT_INPUTS.items()
         ]
-        + [
-            {
-                "path": MANUAL_WORKLIST_PATH.relative_to(
-                    REPOSITORY_ROOT
-                ).as_posix(),
-                "sha256": file_sha256(MANUAL_WORKLIST_PATH),
-            }
-        ]
         + copy.deepcopy(list(EXTERNAL_MATERIAL_EVIDENCE)),
         "manualApproval": {
             "soloElement": "PENDING_MANUAL",
@@ -1553,7 +1519,6 @@ def parse_skill_id(path: Path) -> int:
 
 
 def build_decal_inventory() -> dict[str, Any]:
-    worklist, _ = validated_manual_worklist()
     rows: dict[tuple[str, int], dict[str, Any]] = {}
     for class_name, directory_name in (
         ("LANCE_MASTER", "LanceMaster"),
@@ -1639,15 +1604,16 @@ def build_decal_inventory() -> dict[str, Any]:
         "schema": "lostark.effect-decal-heavy-inventory",
         "version": 1,
         "scope": ["LANCE_MASTER", "ARTIST"],
-        "manualRestorationWorklist": {
-            "path": MANUAL_WORKLIST_PATH.relative_to(REPOSITORY_ROOT).as_posix(),
-            "sha256": file_sha256(MANUAL_WORKLIST_PATH),
-            "schema": worklist["schema"],
-            "formatVersion": worklist["formatVersion"],
-            "globalSummary": copy.deepcopy(EXPECTED_WORKLIST_SUMMARY),
+        "manualRestorationPolicy": {
+            "source": "TRACK_B_MASTER_FIRST_CONTRACT",
+            "masterFirst": True,
+            "sourceProvenRelativeTransformOnly": True,
+            "whiteOrBlackFallbackForbidden": True,
+            "manualVisualApprovalRequired": True,
+            "globalWorklistRequiredForGeneration": False,
             "productCompletionRule": (
-                "Inventory evidence is not visual approval; use the worklist "
-                "master-first manual gate."
+                "Inventory evidence is not visual approval; use the master-first "
+                "manual gate."
             ),
         },
         "classification": {

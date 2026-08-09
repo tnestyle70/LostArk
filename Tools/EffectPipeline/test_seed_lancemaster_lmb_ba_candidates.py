@@ -156,15 +156,15 @@ class LanceMasterLmbCandidateTests(unittest.TestCase):
             )
             self.assertEqual(
                 "SOURCE_EXTRACTED_V13_CANDIDATE_MANUAL_VISUAL_PENDING",
-                receipt["manualRestorationWorklist"]["candidateStatus"],
+                receipt["productCarrierInventory"]["candidateStatus"],
             )
             self.assertEqual(
                 "CARRIER_INVENTORY_VISUAL_UNVERIFIED",
-                receipt["manualRestorationWorklist"]["productVisualStatus"],
+                receipt["productCarrierInventory"]["productVisualStatus"],
             )
             self.assertEqual(
-                seed.EXPECTED_WORKLIST_SUMMARY,
-                receipt["manualRestorationWorklist"]["globalSummary"],
+                "PINNED_PRODUCT_DOCUMENT",
+                receipt["productCarrierInventory"]["source"],
             )
         for stage in seed.SHORT_STAGES:
             document, receipt = seed.build_short_candidate(self.short_source, stage)
@@ -284,10 +284,10 @@ class LanceMasterLmbCandidateTests(unittest.TestCase):
     def test_decal_inventory_separates_source_and_converted_evidence(self) -> None:
         inventory = seed.build_decal_inventory()
         self.assertEqual("lostark.effect-decal-heavy-inventory", inventory["schema"])
-        self.assertEqual(
-            seed.EXPECTED_WORKLIST_SUMMARY,
-            inventory["manualRestorationWorklist"]["globalSummary"],
-        )
+        policy = inventory["manualRestorationPolicy"]
+        self.assertTrue(policy["masterFirst"])
+        self.assertTrue(policy["whiteOrBlackFallbackForbidden"])
+        self.assertFalse(policy["globalWorklistRequiredForGeneration"])
         by_key = {
             (row["characterClass"], row["skillId"]): row
             for row in inventory["skills"]

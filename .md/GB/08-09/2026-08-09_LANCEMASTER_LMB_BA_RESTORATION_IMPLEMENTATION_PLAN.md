@@ -64,6 +64,7 @@ Ring과 weapon Trail은 attachment와 시작 시간이 다르므로 v13 transfor
 5. 기존 후보의 raw SHA가 모두 알려진 seed와 일치할 때만 v12→v13 또는 Ribbon placeholder migration을 허용한다.
 6. LanceMaster/Artist Decal source/Converted inventory를 분리해 기록한다.
 7. Product, Assembly, Component, runtime catalog는 수정하지 않는다.
+8. 다른 세션 소유 전역 worklist에 생성 의존성을 두지 않고, 현재 main의 7개 Product 문서를 SHA로 고정해 carrier inventory 근거를 만든다.
 
 ## 6. 검증 순서
 

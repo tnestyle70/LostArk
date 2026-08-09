@@ -30,33 +30,12 @@
   "sourceExactClaimed": false,
   "runtimeParticleOutputAllowed": false,
   "candidateDocumentSha256": "51af506c6b7c94601ccdff134505534fb25e823107f6621f80cfe46ceea69850",
-  "manualRestorationWorklist": {
-    "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
-    "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9",
-    "schema": "lostark.effect-manual-restoration-worklist",
-    "formatVersion": 1,
-    "globalSummary": {
-      "targetCount": 101,
-      "groupCount": 590,
-      "elementCount": 2168,
-      "kindCounts": {
-        "decal": 46,
-        "mesh": 888,
-        "sprite": 1234
-      },
-      "statusCounts": {
-        "CARRIER_INVENTORY_VISUAL_UNVERIFIED": 95,
-        "MANUAL_MASTER_CARRIER_VISUAL_PENDING": 5,
-        "MANUAL_VISUAL_APPROVED": 1
-      },
-      "riskGroupCounts": {
-        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY": 5,
-        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED": 11,
-        "SOURCE_WHITE_CARRIER_REQUIRES_VISUAL_APPROVAL": 14
-      }
-    },
+  "productCarrierInventory": {
+    "schema": "lostark.trackb-product-carrier-inventory-evidence",
+    "version": 1,
+    "source": "PINNED_PRODUCT_DOCUMENT",
     "productDocumentPath": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.effect.json",
-    "productDocumentSha256": "deaa6c01e612398c02235aff668fb04e2c85205f0b570fcffa93775488813a8b",
+    "productDocumentSha256": "2ac28bf821030ab21f3a3cd63a1a39d3f8eab1f9733b974df3a015d5d314dcd1",
     "productVisualStatus": "CARRIER_INVENTORY_VISUAL_UNVERIFIED",
     "productGroupCount": 1,
     "productMasterElementIds": [
@@ -96,13 +75,37 @@
       "sha256": "733ebeabf5d4f388b43152b8cf6e4d78fabd1af349e85228c2a3555971f70155"
     },
     {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba1.effect.json",
+      "sha256": "e3605d1efe8d187f7d1d2fa3787aa3d659311f4776e3322c9a68cbbb4dae8f1f"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.effect.json",
+      "sha256": "2ac28bf821030ab21f3a3cd63a1a39d3f8eab1f9733b974df3a015d5d314dcd1"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba3.effect.json",
+      "sha256": "f5b88b109c16c6a86f04f5cb749f3a5fdad748e9d57178a6008a6bc733dd23dd"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json",
+      "sha256": "2c11f8d05562c16c98546bd1184ef98c80bc849a07d66d0e22533c371597fd90"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34510.ba1.effect.json",
+      "sha256": "3a52eba5e23fb0a20873d2042d9305080fe9b8af2689b495c0be954d4563601d"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34510.ba2.effect.json",
+      "sha256": "ec288e2c2d0015281d0296dfffc3f790e223f1704a48355d63bf2b629e14b5cc"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.lancemaster.skill.34510.ba3.effect.json",
+      "sha256": "e6b6e422be0c70a040ab09f56e6372db80ee243bffeca4455354554bb9c55fa5"
+    },
+    {
       "path": "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
       "sha256": "ad2e04d04b7008bb52f1ce63570d5784dfc06ef12ec2a6c3ae4f170917d8ca74",
       "hashNormalization": "UTF8_LF"
-    },
-    {
-      "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
-      "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9"
     },
     {
       "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/zhj4tc4pck4pc4j22hixeyuxeu.materials.json",
