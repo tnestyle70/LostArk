@@ -53,6 +53,61 @@ namespace
 		  "wgl_sk_defence_loop", "wgl_run_defence_1" },
 	};
 
+	/* The source rig keys only the first bone of each chain and leaves _02
+	through _05 in bind pose, because the original solves them at runtime. These
+	are those chains: the animation still swings the panel from the hip, and the
+	links below it trail.
+
+	Both pieces read as armour rather than fabric, so the motion is a hint of
+	weight rather than a swing.
+
+	Stiffness is what sets the amplitude, not the limit. Walking moves the root
+	about 0.047m per step, and a link settles roughly that far divided by the
+	stiffness behind the animated pose; at a soft pull it parks against the limit
+	for the whole walk cycle, which is the flapping. Pulling hard keeps the lag
+	near a centimetre and the limit goes back to being what it was for -- a stop
+	against a teleport, not something the walk leans on.
+
+	Damping is how much velocity a link keeps, and keeping most of it is what
+	made armour sway back and forth after it should have stopped. Plate settles
+	in one move; the cape is allowed one soft follow-through and no more. */
+	constexpr f32_t PLATE_STIFFNESS = 0.45f;
+	constexpr f32_t PLATE_DAMPING = 0.40f;
+	constexpr f32_t PLATE_GRAVITY = 1.5f;
+	constexpr f32_t PLATE_MAX_DISPLACEMENT = 0.012f;
+
+	constexpr f32_t CAPE_STIFFNESS = 0.38f;
+	constexpr f32_t CAPE_DAMPING = 0.50f;
+	constexpr f32_t CAPE_GRAVITY = 2.f;
+	constexpr f32_t CAPE_MAX_DISPLACEMENT = 0.018f;
+
+	constexpr BONE_CHAIN_SPEC BoneChains[] =
+	{
+		{ "b_skirt_f_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_fl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_fr_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_l_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_r_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_b_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_bl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		{ "b_skirt_br_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+
+		{ "b_capatcloth_l_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+		{ "b_capatcloth_b_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+		{ "b_capatcloth_r_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+	};
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Warlord>();
@@ -105,6 +160,9 @@ const CHARACTER_SPEC Spec_Warlord =
 
 	StanceLocomotion,
 	static_cast<uint32_t>(size(StanceLocomotion)),
+
+	BoneChains,
+	static_cast<uint32_t>(size(BoneChains)),
 };
 
 NS_END

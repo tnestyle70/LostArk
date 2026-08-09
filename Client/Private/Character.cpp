@@ -21,6 +21,11 @@ namespace
 	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
 	quarter second, slow enough to swallow the per-cell steps of a grid path. */
 	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	/* Off until the spawn-frame crash the chains introduced is understood. The
+	solver, the Engine bone seam and the Warlord chain tuning all stay in place;
+	this is the switch that turns them back on. See
+	.md/JS/08-10/2026-08-10_LOSTARK_WARLORD_BONE_CHAIN_RESULT.md. */
+	constexpr bool_t BONE_CHAINS_ENABLED = false;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
@@ -95,6 +100,10 @@ HRESULT CCharacter::Initialize(void* pArg)
 	unavailable. */
 	Load_ClipChains();
 	Load_EffectCues();
+	/* Secondary motion is optional per class: a spec with no chains simply never
+	activates the solver. */
+	m_BoneChains.Initialize(
+		m_pBodyModel, m_pSpec->pBoneChains, m_pSpec->iNumBoneChains);
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -745,6 +754,8 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 	so it takes the yaw outright; spawning would otherwise spin into place. */
 	if (!m_hasNetworkState)
 		m_fPresentationYawDegrees = yawDegrees;
+	if (!m_hasNetworkState)
+		m_BoneChains.Reset();
 	m_hasNetworkState = true;
 	m_vNetworkTargetPosition = position;
 	m_fNetworkTargetYawDegrees = yawDegrees;
@@ -1048,6 +1059,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
+	/* The parts have just advanced their animation, so the chains solve on this
+	frame's pose and finish before anything binds bone matrices. */
+	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
+		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
+	{
+		m_BoneChains.Update(m_pBodyModel, fTimeDelta);
+	}
 	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
 		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{

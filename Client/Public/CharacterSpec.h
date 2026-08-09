@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "BoneChainSimulation.h"
 #include "Network/PacketMessages.h"
 
 NS_BEGIN(Client)
@@ -107,6 +108,11 @@ struct CHARACTER_SPEC
 
 	const STANCE_LOCOMOTION_SPEC* pStanceLocomotion = nullptr;
 	uint32_t iNumStanceLocomotion = 0u;
+
+	/* Hair and cloth chains this class solves after the animation. Empty leaves
+	every bone exactly where the clip put it. */
+	const BONE_CHAIN_SPEC* pBoneChains = nullptr;
+	uint32_t iNumBoneChains = 0u;
 };
 
 NS_END

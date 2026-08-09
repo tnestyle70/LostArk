@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -23,6 +23,7 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+    <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
@@ -131,6 +132,7 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />

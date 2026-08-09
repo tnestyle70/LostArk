@@ -52,6 +52,18 @@ public:
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
+
+	/* Secondary-motion seam. A caller that drives bones itself resolves indices
+	once, reads what the animation produced this frame, writes its own local
+	matrices back, and refreshes the combined matrices before skinning reads
+	them. Indices are stable for the model's lifetime and every bone's parent
+	comes before it, so one forward pass rebuilds the whole hierarchy. */
+	int32_t Find_BoneIndex(const char_t* pBoneName) const;
+	int32_t Get_BoneParentIndex(uint32_t iBoneIndex) const;
+	bool_t Get_BoneLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	bool_t Get_BoneCombinedMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
+	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
