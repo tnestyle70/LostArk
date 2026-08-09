@@ -48,6 +48,7 @@ namespace LostArk::Server
 
 		std::uint32_t iLastMoveSequence = 0;
 		std::uint32_t iLastReviveSequence = 0;
+		std::uint32_t iLastClassChangeSequence = 0;
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
 		float fMoveSpeed = 6.f;

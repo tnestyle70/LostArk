@@ -33,6 +33,9 @@
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Filter>Client</Filter>
     </ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\NetObjectRegistry.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>

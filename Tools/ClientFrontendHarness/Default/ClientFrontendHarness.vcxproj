@@ -109,9 +109,12 @@
 	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
 	  <Link>Client\DataJson.cpp</Link>
 	</ClCompile>
-    <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
-      <Link>Client\LobbyCommandService.cpp</Link>
-    </ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
+	  <Link>Client\LobbyCommandService.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\NetObjectRegistry.cpp">
+	  <Link>Client\NetObjectRegistry.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
 	  <Link>Client\PlayerSkillCatalog.cpp</Link>
 	</ClCompile>

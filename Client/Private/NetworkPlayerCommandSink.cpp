@@ -57,3 +57,11 @@ bool Client::CNetworkPlayerCommandSink::Request_RevivePlayer(
 {
 	return CNetworkManager::Get().Send_RevivePlayer(clientSequence);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_ChangeCharacterClass(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	return CNetworkManager::Get().Send_ChangeCharacterClass(
+		clientSequence, characterClass);
+}

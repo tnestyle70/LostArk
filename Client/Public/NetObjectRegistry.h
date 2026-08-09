@@ -75,6 +75,15 @@ namespace Client
 			const std::shared_ptr<CCharacter>& character,
 			OBJECT_HANDLE& outHandle);
 
+		// Replaces only the presentation bound to an existing stable entity.
+		// Validation is completed before the occupied slot is committed, so a
+		// rejected replacement preserves the old record, object, and handle.
+		bool Replace(
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			const NET_PLAYER_RECORD& record,
+			const std::shared_ptr<CCharacter>& character,
+			OBJECT_HANDLE& outHandle);
+
 		//server entity ID를 이용해 현재 Handle을 찾는다.
 		bool Find_Handle(
 			LostArk::Shared::NET_ENTITY_ID netEntityId,

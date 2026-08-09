@@ -1,6 +1,7 @@
 #include "Client_Defines.h"
 #include "ActionPresentationTimeline.h"
 #include "LobbyCommandService.h"
+#include "NetObjectRegistry.h"
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
 #include "DataJson.h"
@@ -16,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -465,42 +467,25 @@ namespace
 			"Invalid Cancellation Preserves Pending Command");
 	}
 
-	void Test_CharacterSelectServerHandoff(TEST_RUNNER& runner)
+	void Test_CharacterSelectAuthorizedSelection(TEST_RUNNER& runner)
 	{
 		using namespace Client;
 		using namespace LostArk::Shared;
-		CCharacterSelectionState::Clear_TestEntryMode();
-		runner.Require(!CCharacterSelectionState::Stage_TestEntryMode(
-			CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY),
-			"Server Gameplay Handoff Requires Selected Class");
 		runner.Require(CCharacterSelectionState::Select(
-			CHARACTER_CLASS_ID::DIMENSIONMASTER) &&
-			CCharacterSelectionState::Stage_TestEntryMode(
-				CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY),
-			"Lobby Stages Approved Character Select Server Handoff");
-		CHARACTER_TEST_ENTRY_MODE consumed = CHARACTER_TEST_ENTRY_MODE::NONE;
-		runner.Require(CCharacterSelectionState::Try_Consume_TestEntryMode(consumed) &&
-			CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY == consumed,
-			"Character Select Consumes Approved Server Handoff Once");
-		runner.Require(!CCharacterSelectionState::Try_Consume_TestEntryMode(consumed),
-			"Consumed Server Handoff Cannot Be Replayed");
-		runner.Require(CCharacterSelectionState::Stage_TestEntryMode(
-			CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY) &&
-			CCharacterSelectionState::Select(CHARACTER_CLASS_ID::ARTIST) &&
-			!CCharacterSelectionState::Try_Consume_TestEntryMode(consumed),
-			"Changing Class Clears Stale Server Handoff");
-	}
+			CHARACTER_CLASS_ID::DIMENSIONMASTER),
+			"Commit Server-approved Character Select class");
+		CHARACTER_CLASS_ID selected = CHARACTER_CLASS_ID::END;
+		runner.Require(CCharacterSelectionState::Try_Get_SelectedClass(selected) &&
+			CHARACTER_CLASS_ID::DIMENSIONMASTER == selected,
+			"Persist Server-approved Character Select class");
 
-	void Test_CharacterSelectPreviewReturnCommand(TEST_RUNNER& runner)
-	{
-		using namespace Client;
 		LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
 		runner.Require(
 			CLobbyCommandService::Request(
 				LOBBY_STAGE::CHARACTER_SELECT,
 				token) &&
 			INVALID_LOBBY_COMMAND_TOKEN != token,
-			"Server Arena Preview Selection Stages Tokenized Return");
+			"Character Select stages tokenized Server entry");
 
 		LOBBY_COMMAND command{};
 		runner.Require(
@@ -508,10 +493,55 @@ namespace
 			LOBBY_STAGE::CHARACTER_SELECT == command.eStage &&
 			LOBBY_COMMAND_PURPOSE::GAMEPLAY == command.ePurpose &&
 			token == command.iToken,
-			"Lobby Consumes Exact Character Select Preview Return");
+			"Lobby consumes exact Character Select Server entry");
 		Require_NoPendingCommand(
 			runner,
-			"Preview Return Leaves No Stale Lobby Command");
+			"Character Select entry leaves no stale Lobby command");
+	}
+
+	void Test_NetObjectRegistryClassReplacement(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		const auto noDelete = [](CCharacter*) {};
+		const std::shared_ptr<CCharacter> first{
+			reinterpret_cast<CCharacter*>(static_cast<std::uintptr_t>(1u)), noDelete };
+		const std::shared_ptr<CCharacter> second{
+			reinterpret_cast<CCharacter*>(static_cast<std::uintptr_t>(2u)), noDelete };
+
+		CNetObjectRegistry registry;
+		NET_PLAYER_RECORD record{};
+		record.iPlayerId = 7u;
+		record.iNetEntityId = 107u;
+		record.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		record.strNickName = "RegistryClassSwitch";
+		OBJECT_HANDLE originalHandle{};
+		runner.Require(registry.Register(record, first, originalHandle),
+			"Registry stages original Character Select entity");
+
+		NET_PLAYER_RECORD replacement = record;
+		replacement.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		OBJECT_HANDLE replacementHandle{};
+		runner.Require(
+			registry.Replace(
+				record.iNetEntityId, replacement, second, replacementHandle) &&
+			originalHandle.iSlotIndex == replacementHandle.iSlotIndex &&
+			originalHandle.iGeneration == replacementHandle.iGeneration &&
+			registry.Resolve(replacementHandle) == second &&
+			nullptr != registry.Find_Record(record.iNetEntityId) &&
+			CHARACTER_CLASS_ID::ARTIST ==
+				registry.Find_Record(record.iNetEntityId)->eCharacterClass,
+			"Registry atomically replaces same-entity class presentation");
+
+		NET_PLAYER_RECORD invalid = replacement;
+		invalid.eCharacterClass = CHARACTER_CLASS_ID::END;
+		OBJECT_HANDLE ignored{};
+		runner.Require(
+			!registry.Replace(record.iNetEntityId, invalid, first, ignored) &&
+			registry.Resolve(replacementHandle) == second &&
+			CHARACTER_CLASS_ID::ARTIST ==
+				registry.Find_Record(record.iNetEntityId)->eCharacterClass,
+			"Rejected registry replacement preserves committed presentation");
 	}
 
 	std::string Read_Text(const std::filesystem::path& path)
@@ -3677,8 +3707,8 @@ int main(const int argc, char* argv[])
 	}
 
 	Test_NormalHandoff(runner);
-	Test_CharacterSelectServerHandoff(runner);
-	Test_CharacterSelectPreviewReturnCommand(runner);
+	Test_CharacterSelectAuthorizedSelection(runner);
+	Test_NetObjectRegistryClassReplacement(runner);
 	Test_EntryPurpose(runner);
 	Test_ExactCancellation(runner);
 	Test_StaleTokenCannotCancelNewCommand(runner);

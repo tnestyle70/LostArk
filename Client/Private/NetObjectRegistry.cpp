@@ -94,6 +94,36 @@ bool Client::CNetObjectRegistry::Find_Handle(
 	return true;
 }
 
+bool Client::CNetObjectRegistry::Replace(
+	const LostArk::Shared::NET_ENTITY_ID netEntityId,
+	const NET_PLAYER_RECORD& record,
+	const std::shared_ptr<CCharacter>& character,
+	OBJECT_HANDLE& outHandle)
+{
+	using namespace LostArk::Shared;
+	OBJECT_HANDLE handle{};
+	if (INVALID_NET_ENTITY_ID == netEntityId ||
+		record.iNetEntityId != netEntityId ||
+		INVALID_PLAYER_ID == record.iPlayerId ||
+		!Is_Supported_Playable_Character_Class(record.eCharacterClass) ||
+		record.strNickName.empty() || nullptr == character ||
+		!Find_Handle(netEntityId, handle) ||
+		handle.iSlotIndex >= m_Slots.size())
+	{
+		return false;
+	}
+	SLOT& slot = m_Slots[handle.iSlotIndex];
+	if (!slot.isOccupied || slot.iGeneration != handle.iGeneration ||
+		slot.pCharacter.expired())
+	{
+		return false;
+	}
+	slot.record = record;
+	slot.pCharacter = character;
+	outHandle = handle;
+	return true;
+}
+
 const NET_PLAYER_RECORD* Client::CNetObjectRegistry::Find_Record(
 	LostArk::Shared::NET_ENTITY_ID netEntityId) const
 {

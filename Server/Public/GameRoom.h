@@ -29,6 +29,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
+		friend int Run_ServerGameplayContractTests();
 	public:
 		explicit CGameRoom(LostArk::Shared::WORLD_ID worldId);
 
@@ -68,6 +69,12 @@ namespace LostArk::Server
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
+		void Handle_ChangeCharacterClass(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);
+		LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT Apply_CharacterClassChange(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);
 		void Handle_SpawnWorldEntity(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request);
@@ -89,6 +96,11 @@ namespace LostArk::Server
 			const std::string& placementId,
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT result,
 			LostArk::Shared::NET_ENTITY_ID netEntityId);
+		bool Send_CharacterClassChangeResult(
+			const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
+			LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT result,
+			LostArk::Shared::CHARACTER_CLASS_ID activeClass);
 		bool Send_Despawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,

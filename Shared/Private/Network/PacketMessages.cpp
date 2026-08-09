@@ -62,6 +62,8 @@ namespace
     {
         return
             snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			LostArk::Shared::Is_Supported_Playable_Character_Class(
+				snapshot.eCharacterClass) &&
             std::isfinite(snapshot.fPositionX) &&
             std::isfinite(snapshot.fPositionY) &&
             std::isfinite(snapshot.fPositionZ) &&
@@ -813,6 +815,95 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_CHANGE_CHARACTER_CLASS& message)
+{
+	if (0u == message.iClientSequence ||
+		!Is_Known_Character_Class(message.eCharacterClass))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eCharacterClass));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_CHANGE_CHARACTER_CLASS& message)
+{
+	C2S_CHANGE_CHARACTER_CLASS decoded{};
+	std::uint8_t rawClass = 0;
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U8(rawClass))
+	{
+		return false;
+	}
+	decoded.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawClass);
+	if (0u == decoded.iClientSequence ||
+		!Is_Known_Character_Class(decoded.eCharacterClass))
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_CHARACTER_CLASS_CHANGE_RESULT& message)
+{
+	if (0u == message.iClientSequence ||
+		static_cast<std::uint8_t>(message.eResult) >=
+			static_cast<std::uint8_t>(CHARACTER_CLASS_CHANGE_RESULT::END) ||
+		!Is_Known_Character_Class(message.eRequestedClass) ||
+		!Is_Supported_Playable_Character_Class(message.eActiveClass) ||
+		((CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == message.eResult ||
+			CHARACTER_CLASS_CHANGE_RESULT::REJECTED_SAME_CLASS == message.eResult) &&
+			message.eRequestedClass != message.eActiveClass))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eRequestedClass));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eActiveClass));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_CHARACTER_CLASS_CHANGE_RESULT& message)
+{
+	S2C_CHARACTER_CLASS_CHANGE_RESULT decoded{};
+	std::uint8_t rawResult = 0;
+	std::uint8_t rawRequested = 0;
+	std::uint8_t rawActive = 0;
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U8(rawResult) ||
+		!reader.Read_U8(rawRequested) ||
+		!reader.Read_U8(rawActive))
+	{
+		return false;
+	}
+	decoded.eResult = static_cast<CHARACTER_CLASS_CHANGE_RESULT>(rawResult);
+	decoded.eRequestedClass = static_cast<CHARACTER_CLASS_ID>(rawRequested);
+	decoded.eActiveClass = static_cast<CHARACTER_CLASS_ID>(rawActive);
+	if (0u == decoded.iClientSequence ||
+		rawResult >= static_cast<std::uint8_t>(CHARACTER_CLASS_CHANGE_RESULT::END) ||
+		!Is_Known_Character_Class(decoded.eRequestedClass) ||
+		!Is_Supported_Playable_Character_Class(decoded.eActiveClass) ||
+		((CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == decoded.eResult ||
+			CHARACTER_CLASS_CHANGE_RESULT::REJECTED_SAME_CLASS == decoded.eResult) &&
+			decoded.eRequestedClass != decoded.eActiveClass))
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPSHOT& message)
 {
     //world의 snapshot write, servertick과 player 정보
@@ -858,6 +949,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
     for (const PLAYER_SNAPSHOT& player : message.Players)
     {
         writer.Write_U32(player.iNetEntityId);
+		writer.Write_U8(static_cast<std::uint8_t>(player.eCharacterClass));
         writer.Write_F32(player.fPositionX);
         writer.Write_F32(player.fPositionY);
         writer.Write_F32(player.fPositionZ);
@@ -957,6 +1049,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
     for (std::uint16_t i = 0; i < playerCount; ++i)
     {
         PLAYER_SNAPSHOT player{};
+		std::uint8_t rawCharacterClass = 0;
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
 		std::uint8_t rawStance = 0;
@@ -964,6 +1057,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
+			!reader.Read_U8(rawCharacterClass) ||
             !reader.Read_F32(player.fPositionX) ||
             !reader.Read_F32(player.fPositionY) ||
             !reader.Read_F32(player.fPositionZ) ||
@@ -990,6 +1084,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         player.eLocomotionState =
             static_cast<PLAYER_LOCOMOTION_STATE>(
                 rawLocomotion);
+		player.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
 		player.isCombatReady = 0u != rawCombatReady;

@@ -236,7 +236,7 @@ foreach ($profileId in @(
 if (($camera.Split('CharacterSelectCameraPositionOffset()').Count - 1) -lt 4 -or
     -not $camera.Contains('CHARACTER_SELECT_CAMERA_FOV_Y = 45.f') -or
     -not $camera.Contains('desc.vLookOffset = lookOffset')) {
-    throw 'Character Select Preview and Server Arena do not share one fixed camera preset.'
+    throw 'Character Select Server Arena does not use one fixed initial/rebind camera preset.'
 }
 if ($mainApp -notmatch
         'Activate_Profile\([\s\S]{0,180}LOADING_PROFILE_ID[\s\S]{0,500}Change_Level\(' -or
@@ -253,5 +253,5 @@ Write-Host '  failure cases: version, duplicate, non-finite, invalid, unsupporte
 Write-Host '  strict types/casing: numeric strings and case-mismatched fields rejected'
 Write-Host '  publish rollback: rejected source preserves the existing runtime document'
 Write-Host '  runtime: full global snapshot plus non-cumulative scene multipliers'
-Write-Host '  camera: shared Character Select Preview/Server Arena preset'
+Write-Host '  camera: Character Select Server Arena initial/rebind preset'
 Write-Host '  level transition: profile-first commit with failure rollback'

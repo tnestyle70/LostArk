@@ -41,6 +41,7 @@ namespace Client
 		void Acknowledge_ConnectionLoss();
 		void Reset();
 		bool Has_WorldEntity(std::string_view archetypeId) const;
+		bool Try_Consume_PresentationFailure(std::string& outStatus);
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
 
@@ -64,6 +65,14 @@ namespace Client
 		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔
 		bool Apply_WorldSnapshot(
 			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
+		enum class CHARACTER_REPLACE_RESULT
+		{
+			REPLACED,
+			RECOVERED_FAILURE,
+			FATAL_FAILURE
+		};
+		CHARACTER_REPLACE_RESULT Replace_CharacterClass(
+			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
 
 		void Reset_World();
 
@@ -79,6 +88,7 @@ namespace Client
 		bool m_hasPendingConnectionLoss = false;
 		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
+		std::string m_strPendingPresentationFailure;
 
 		struct WORLD_ENTITY_PRESENTATION
 		{
