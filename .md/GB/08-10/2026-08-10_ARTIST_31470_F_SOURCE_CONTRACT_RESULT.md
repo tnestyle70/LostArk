@@ -218,10 +218,21 @@ Gate 1 checked output regeneration은 아직 완료가 아니다.
 
 ## 자동 검증
 
+후속 frozen audit에서 Python 기본 JSON parser가 duplicate key의 마지막 값을 채택하는
+반례가 발견됐다. production source closure, independent verifier, source-contract builder는
+이제 `effect_source_contract_io.load_strict_json_object` 하나를 사용해 모든 nesting의 duplicate
+key와 UTF-8 BOM을 canonical hash 계산 전에 거부한다.
+
+- frozen input 5종 각각 top-level duplicate mutation: 세 CLI 모두 reject
+- frozen input 5종 각각 nested duplicate mutation: 세 CLI 모두 reject
+- semantic closure/source-contract unit: 56 tests PASS
+- focused Source ProjectAudit: 91 tests PASS
+- LF/CRLF tracked-text equivalence 계약은 유지
+
 - code-only semantic closure temp write / deterministic `--check` / independent oracle:
   `399 / 1,434 / 1,572 / 629`, Product `0/35`, PASS
-- focused semantic closure mutation suite: 38/38 PASS
-- `Test-Artist31470SourceContract.ps1` shallow Source slice: 90/90 PASS
+- focused semantic closure mutation suite: 39/39 PASS
+- `Test-Artist31470SourceContract.ps1` shallow Source slice: 91/91 PASS
 - `Tools/LevelPlacementExtractor` 전체 discovery: 304개 중 Source 포함 303 PASS,
   소유 범위 밖 Material render-state receipt mismatch 1 ERROR
 - 전체 `Invoke-ProjectAudit.ps1`: `effect.artist-31470-source-contract` PASS. 전체 audit은

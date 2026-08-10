@@ -16,6 +16,7 @@ from typing import Any
 from build_imported_effect_documents import build_document
 from effect_source_contract_io import (
     generated_text_matches,
+    load_strict_json_object,
     tracked_text_sha256,
 )
 from verify_artist_31470_source_semantic_closure import (
@@ -50,11 +51,7 @@ COVERAGE_SEVERITY = {
 
 
 def load_json(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as stream:
-        value = json.load(stream)
-    if not isinstance(value, dict):
-        raise ValueError(f"JSON root must be an object: {path}")
-    return value
+    return load_strict_json_object(path)
 
 
 def json_bytes(value: Any) -> bytes:
