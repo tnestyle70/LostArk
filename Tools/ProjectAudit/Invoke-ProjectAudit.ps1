@@ -790,6 +790,22 @@ try {
 	Add-Check 'effect.artist-31470-wmodel-geometry-contract' `
 		$artistGeometryContractPassed `
 		$artistGeometryContractDetail
+	$artistGeometryBindingPassed = $false
+	$artistGeometryBindingDetail = ''
+	try {
+		$artistGeometryBindingDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470GeometryResourceBinding.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistGeometryBindingPassed =
+			$artistGeometryBindingDetail -match
+			'PASS: Artist F 31470 GeometryBinding mode=shallow carriers=7'
+	}
+	catch {
+		$artistGeometryBindingDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-geometry-resource-binding' `
+		$artistGeometryBindingPassed `
+		$artistGeometryBindingDetail
 	$effectCascadeCompilerPassed = $false
 	$effectCascadeCompilerDetail = ''
 	try {
