@@ -234,16 +234,16 @@
     },
     "wmodelGeometryParity": {
       "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json",
-      "fileSha256": "a200f9b3bb368b0d512eff0beb0e03a94427a12f6f083ca0faa2ae6ba3e134cb",
-      "selfSha256": "9e2ef99fb3ed340396b668eb9c8a188ff6801615286fedcb05ffcd8c5230227e"
+      "fileSha256": "56abc24f1792161206ab5023940beb5af46c36802527b80b9141b215e4b2f8c7",
+      "selfSha256": "cda3d2e3c3e6a896c20849066d9ab3490229b5ccacd5b47066de603d3c760c10"
     }
   },
   "candidate": {
     "artifactName": "effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json",
-    "sha256": "b88a37f569c8bbbbab323e1c4257b26b11a95ff0e02456b77d54f1147fda3914",
+    "sha256": "8dbcd0c871d0a9f1698e65093b90462bb4d0f95b246c3c8db629d7d24d89f599",
     "registryArtifactName": "ue3-cascade-source-v1.registry.json",
-    "registrySha256": "bb59cbb547e6b6916c4a86f146a708e11e97cc3238d04126b8c4c15204d28014",
-    "contractSha256": "88d801cdb94064b981d6fd629406e4d999521be0356777f136e99171ef922b1d"
+    "registrySha256": "599e9fa3940d2af9be0f61b1cf4b04ad2ed37e733e4cf289286c8599f66c9a44",
+    "contractSha256": "698583c9d234f31b588c6a0d468106391d7affbd964e92d98ae5e7fc45041969"
   },
   "elements": [
     {

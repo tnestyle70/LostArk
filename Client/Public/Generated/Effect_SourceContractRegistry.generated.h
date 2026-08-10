@@ -7,5 +7,5 @@ namespace Client
 inline constexpr std::string_view EFFECT_SOURCE_CONTRACT_PROFILE_ID =
 	"ue3CascadeSourceContractV1";
 inline constexpr std::string_view EFFECT_SOURCE_CONTRACT_SHA256 =
-	"88d801cdb94064b981d6fd629406e4d999521be0356777f136e99171ef922b1d";
+	"698583c9d234f31b588c6a0d468106391d7affbd964e92d98ae5e7fc45041969";
 }

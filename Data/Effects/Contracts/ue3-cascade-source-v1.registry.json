@@ -136,8 +136,8 @@
     },
     "wmodelGeometryParity": {
       "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json",
-      "fileSha256": "a200f9b3bb368b0d512eff0beb0e03a94427a12f6f083ca0faa2ae6ba3e134cb",
-      "selfSha256": "9e2ef99fb3ed340396b668eb9c8a188ff6801615286fedcb05ffcd8c5230227e"
+      "fileSha256": "56abc24f1792161206ab5023940beb5af46c36802527b80b9141b215e4b2f8c7",
+      "selfSha256": "cda3d2e3c3e6a896c20849066d9ab3490229b5ccacd5b47066de603d3c760c10"
     }
   },
   "coverageSeed": {
@@ -6170,5 +6170,5 @@
       "runtimeImplemented": false
     }
   ],
-  "contractSha256": "88d801cdb94064b981d6fd629406e4d999521be0356777f136e99171ef922b1d"
+  "contractSha256": "698583c9d234f31b588c6a0d468106391d7affbd964e92d98ae5e7fc45041969"
 }
