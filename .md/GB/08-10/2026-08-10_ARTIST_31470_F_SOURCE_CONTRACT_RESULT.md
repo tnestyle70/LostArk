@@ -374,7 +374,13 @@ receipt LF/raw SHA-256은
 `de15843dfa2f151371c1e26c472f2d42a0bfd7c7f8c8a41a3cdd2da08eaccb9a`, self SHA-256은
 `7e1113dd05bcc9b51056cacc27da1805f7a6d26f65dda5b72c99d26c3141a71c`다.
 
-## G05-S2 exact seeded handler와 blocker owner closure 결과
+## G05-S2 exact seeded handler와 blocker owner closure 결과 — 독립 감사 BLOCK
+
+아래 내용은 commit `9b046d6171b5dcd73cec969f5ac3e346762db0d8`이 당시 생성한 결과다.
+후속 독립 감사에서 current wrapper/script evidence에 source-era identity가 없고 fixed input digest
+parity가 actual particle output oracle이 아니라는 문제가 확인됐다. 따라서 아래 `11 resolved`,
+`381 READY / 18 BLOCKED`, capability grant 7 결론은 현재 실행 admission으로 무효이며, 감사 이력으로만
+보존한다. 현재 정본은 뒤의 v2 corrective 결과다.
 
 `skill.31470.custom-handler-oracle.receipt.json`을 추가했다. 이 receipt는 기존 G05-S의 29 blocked
 module을 source ID 그대로 join하고, 근거가 생긴 표준 seeded 11건만 exact handler capability로
@@ -438,3 +444,73 @@ join을 소비해야 하며 raw class 이름을 다시 normalize해서는 안 �
 custom handler oracle LF-canonical text SHA-256은
 `157e396df78270fe2aa00839f204b2a290841cc770c60b17eefc3ee4fc68eb67`, self SHA-256은
 `f69e53b54c779d8faeaaef1d832ec75c0462281edcfa0f522dc2e074c17c3111`다.
+
+## G05-S2 v2 actual-output feasibility corrective 결과
+
+`skill.31470.custom-handler-oracle.receipt.json`을 format version 2로 다시 생성했다. 이 corrective는
+source evidence integrity 후보를 만들었을 뿐 execution-readiness를 승인하지 않는다.
+
+### current evidence 재도출
+
+- current `Engine.u`의 standard seeded 7 class는 대응 base class, exact
+  `RandomSeedInfo` struct-property direct child 1개, UFunction child 0개를 raw export child chain에서
+  다시 계산했다.
+- hash-pinned current `EFEngine.dll`의 7 wrapper는 random-stream owner call 반환 `RAX`가
+  `[rsp+0x20]`에 저장되고 그 5-byte store 바로 다음 instruction이 exact base `SpawnEx` direct/vtable
+  dispatch임을 actual wrapper bytes로 검증했다.
+- 이 근거의 판정은 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`다. source-era handler binary
+  identity 또는 actual mutated particle output 동등성을 주장하지 않는다.
+- fixed seed/time/draw 결과는 `diagnosticFixedSeedInputs`로 이름을 바꿨다. input SHA parity는 output
+  oracle로 인정하지 않고 `capabilityGrants`는 0이다.
+
+### 29행 feasibility matrix
+
+- standard seeded handler: 7 family / 11 occurrence `BLOCKED`
+- EF custom handler: 6 family / 15 occurrence `BLOCKED`
+- custom distribution owner module: 2 family / 3 occurrence `BLOCKED`
+- module matrix: 29/29 stable occurrence row, ownerless 0
+- custom distribution matrix: 3/3 stable distribution row
+- actual native particle output oracle: 0
+- actual native distribution output oracle: 0
+- pilot fixture/provider/tolerance가 확보된 행: 0
+- execution-readiness: `BLOCKED`, unresolved execution row 29
+
+각 module row는 required runtime output, source/current/native identity, numeric input domain, expected
+mutated output, independent oracle/provider, pilot fixture/output, tolerance, fidelity/execution decision,
+final capability owner와 remaining blocker를 공개한다. provider, expected numeric value, pilot 또는
+tolerance가 없는 행은 `null`/empty와 `BLOCKED`로 남겼으며 값을 추측하지 않았다.
+
+### 현재 수치와 경계
+
+- module decision: `370 READY_FOR_HANDLER / 29 BLOCKED`
+- distribution decision: `626 READY_FOR_HANDLER / 3 BLOCKED`
+- resolved Source blocker: 0/29
+- capability grant: 0
+- ownerless blocker: 0
+- silent fallback: 0
+- Product admission: false
+
+따라서 이 commit은 Source evidence frozen review 후보일 수 있지만 Source actual-output execution
+readiness PASS가 아니다. 29개 행의 provider/pilot/expected output/tolerance가 actual oracle로 닫히기
+전에는 final materializer, Playback 또는 renderer 구현으로 진입할 수 없다.
+
+### 자동 검증
+
+- focused unit/coordinated-reseal mutation: 29/29 PASS
+- builder deterministic deep `--check`: PASS
+- independent shallow/deep oracle: module 370/29, distribution 626/3, ownerless 0 PASS
+- current Engine/EFGame script package, EFEngine/LOSTARK binary identity, 14 script class serial,
+  7 wrapper의 RAX→fifth argument→SpawnEx dataflow PASS
+- focused shallow/deep ProjectAudit: PASS
+- 전체 `Invoke-ProjectAudit.ps1`: 실행했으며 이 lane의
+  `effect.artist-31470-custom-handler-oracle`은 PASS했다. 전체 audit은 source-contract의 기존
+  publisher v14 expectation, geometry harness binary 부재, map/resource, G09, four-class rollout 등
+  소유 범위 밖 14개 통합 항목으로 exit 1
+- current-only fidelity의 `SOURCE_EXACT` 승격, fabricated provider/pilot/output/tolerance,
+  final owner 제거, wrapper dataflow/RandomSeedInfo child 변경, blocker/Product 제거 coordinated reseal:
+  모두 reject
+- 이미지, 스크린샷, GPU 화면, 육안 판정: 실행하지 않음
+
+v2 receipt LF-canonical text SHA-256은
+`c436e69e40e7ad13079940e9ed88d1522942c10a135e19c1d19b020e86b797ac`, self SHA-256은
+`0da627b3ed5b100014f2a2ac1fa3591d861c6a241befee65ca856b406dedaadc`다.

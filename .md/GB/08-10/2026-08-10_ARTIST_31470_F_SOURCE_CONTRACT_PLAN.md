@@ -206,10 +206,16 @@ evidence와 runtime compiler 사이에 pure typed adapter receipt를 하나 둔�
 결합하고 custom handler/evaluator oracle을 제공하기 전에는 35/35 실행 또는 Product 복원 완료를
 주장하지 않는다.
 
-## 2026-08-10 G05-S2 exact seeded handler와 blocker owner closure
+## 2026-08-10 G05-S2 exact seeded handler와 blocker owner closure — 독립 감사 BLOCK
 
 G05-S receipt의 29 blocked module을 이름 정규화로 줄이지 않고, 현재 설치 script/native binary와
 source payload를 결합한 별도 oracle receipt로 판정한다.
+
+아래 1차 계획은 commit `9b046d6171b5dcd73cec969f5ac3e346762db0d8`에서 실행됐지만,
+독립 감사에서 source-era handler identity가 없는 current wrapper 근거와 typed input digest parity를
+actual particle output oracle로 사용한 문제가 확인됐다. 따라서 아래 `381 READY / 18 BLOCKED` 승격은
+실행 합격이 아니며 후속 v2 corrective가 대체한다. 당시 조사 절차와 잘못된 가정은 감사 이력으로
+보존한다.
 
 1. 표준 Engine seeded class 7 family/11 occurrence는 `Engine.u`의 exact class→base superclass와
    `RandomSeedInfo` 구조, `EFEngine.dll`의 exact seeded `Spawn` wrapper→base `SpawnEx(...,
@@ -236,5 +242,29 @@ source payload를 결합한 별도 oracle receipt로 판정한다.
 7. shallow/deep focused audit와 deterministic `--check`를 통과한 뒤 한 commit으로 push한다. runtime,
    material, geometry 파일은 수정하지 않으며 이미지·스크린샷·육안 판정은 수행하지 않는다.
 
-이 단계의 합격 결과는 source-side handler capability `381 READY / 18 BLOCKED`다. EF native/evaluator
-oracle이 생기기 전까지 remaining 18과 custom distribution 3은 실행/Product blocker로 남는다.
+이 단계가 당시 산출한 projection은 source-side handler capability `381 READY / 18 BLOCKED`였지만,
+독립 감사 결과 실행-readiness는 BLOCK이며 아래 corrective 수치가 현재 정본이다.
+
+## 2026-08-10 G05-S2 v2 actual-output feasibility corrective
+
+1. standard seeded 7 family/11 occurrence의 `Engine.u` exact class child chain과 current
+   `EFEngine.dll` wrapper bytes를 다시 읽는다. `RandomSeedInfo` direct child 1개,
+   UFunction child 0개와 `RAX -> [rsp+0x20] -> SpawnEx` fifth-argument 인접 dispatch를 증명하되,
+   판정은 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`로 제한한다.
+2. fixed seed/time/draw 계산은 `diagnosticFixedSeedInputs`다. input SHA가 같다는 사실은 native
+   particle/component output oracle이 아니며 capability grant를 만들지 않는다.
+3. Source blocked module 29개를 family aggregate가 아닌 29개 독립 matrix row로 기록한다. 각 행은
+   exact occurrence/class/family, required runtime output, source/current/native identity, numeric input
+   domain, expected mutated output, independent oracle/provider, pilot fixture/output, tolerance,
+   fidelity/execution decision, final capability owner와 remaining blocker를 가진다.
+4. 실제 source-era handler/evaluator identity, provider, pilot, expected numeric output 또는 tolerance가
+   없는 행은 빈 값을 숨기지 않고 `BLOCKED`로 기록한다. standard seeded 11, EF custom handler 15,
+   custom distribution owner module 3 모두 execution-readiness를 얻지 않는다.
+5. custom distribution 3행도 source-era evaluator identity와 native GetValue output oracle가 없으므로
+   별도 distribution matrix에서 `BLOCKED`를 유지한다.
+6. 결과 수치는 module `370 READY_FOR_HANDLER / 29 BLOCKED`, distribution
+   `626 READY_FOR_HANDLER / 3 BLOCKED`, capability grant 0, actual-output oracle 0,
+   Product admission false다.
+7. evidence integrity는 frozen reviewer가 별도로 판정한다. 현재 receipt의
+   `executionReadinessDecision=BLOCKED`는 Source 29/29 actual-output pilot이 생기기 전까지 유지하며,
+   final materializer/Playback/Renderer 진입 근거로 사용하지 않는다.

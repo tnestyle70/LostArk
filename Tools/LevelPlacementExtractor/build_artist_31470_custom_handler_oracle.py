@@ -47,12 +47,20 @@ from extract_ue3_placements import (
 
 
 SCHEMA = "lostark.effect-custom-handler-oracle"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 SOURCE_EXECUTION_RECEIPT_SHA256 = (
     "7e1113dd05bcc9b51056cacc27da1805f7a6d26f65dda5b72c99d26c3141a71c"
 )
 CUSTOM_HANDLER_BLOCKER = "EXACT_SOURCE_CLASS_HANDLER_NUMERIC_ORACLE_REQUIRED"
 CUSTOM_DISTRIBUTION_BLOCKER = "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN"
+SOURCE_ERA_HANDLER_BLOCKER = "SOURCE_ERA_NATIVE_HANDLER_IDENTITY_UNPINNED"
+ACTUAL_OUTPUT_BLOCKER = "EXACT_NATIVE_PARTICLE_OUTPUT_ORACLE_REQUIRED"
+SOURCE_ERA_EVALUATOR_BLOCKER = (
+    "SOURCE_ERA_DISTRIBUTION_EVALUATOR_IDENTITY_UNPINNED"
+)
+ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER = (
+    "EXACT_NATIVE_DISTRIBUTION_OUTPUT_ORACLE_REQUIRED"
+)
 PRODUCT_BLOCKER = "FINAL_INTEGRATION_PRODUCT_ADMISSION_REQUIRED"
 
 EXPECTED_NATIVE = {
@@ -180,6 +188,70 @@ CUSTOM_MODULES = (
         "children": ("absolute", "veloverlife"),
         "occurrences": 4,
     },
+)
+
+REQUIRED_ACTUAL_OUTPUT_BY_CLASS = {
+    "particlemodulecolor_seeded": "PARTICLE_COLOR_AND_BASE_COLOR_AFTER_NATIVE_SPAWN",
+    "particlemodulelifetime_seeded": (
+        "PARTICLE_LIFETIME_ONE_OVER_MAX_LIFETIME_AND_RELATIVE_TIME_AFTER_NATIVE_SPAWN"
+    ),
+    "particlemodulelocation_seeded": "PARTICLE_LOCATION_AND_BASE_LOCATION_AFTER_NATIVE_SPAWN",
+    "particlemodulelocationprimitivecylinder_seeded": (
+        "PARTICLE_LOCATION_BASE_LOCATION_AND_VELOCITY_AFTER_NATIVE_SPAWN"
+    ),
+    "particlemodulemeshrotation_seeded": (
+        "PARTICLE_MESH_ROTATION_AND_BASE_ROTATION_RATE_AFTER_NATIVE_SPAWN"
+    ),
+    "particlemodulesize_seeded": "PARTICLE_SIZE_AND_BASE_SIZE_AFTER_NATIVE_SPAWN",
+    "particlemodulevelocity_seeded": (
+        "PARTICLE_VELOCITY_AND_BASE_VELOCITY_AFTER_NATIVE_SPAWN"
+    ),
+    "efparticlemodulelocationonground": (
+        "PARTICLE_GROUND_QUERY_SKIP_ADJUST_AND_FINAL_LOCATION_AT_FIXED_SCENE"
+    ),
+    "efparticlemodulelocationprimitivecylinderspin": (
+        "PARTICLE_CYLINDER_SPIN_LOCATION_VELOCITY_AND_ROTATION_AFTER_NATIVE_SPAWN"
+    ),
+    "efparticlemodulelocationprimitivecylinderspin_seeded": (
+        "PARTICLE_CYLINDER_SPIN_LOCATION_VELOCITY_ROTATION_AND_SEED_STREAM_AFTER_NATIVE_SPAWN"
+    ),
+    "efparticlemoduletypedatadecal": (
+        "DECAL_PROJECTION_ROTATION_SIZE_BLEND_AND_UPDATE_STATE_AT_FIXED_TIME"
+    ),
+    "efparticlemoduletypedatalight": (
+        "POINT_LIGHT_BRIGHTNESS_RADIUS_COLOR_FALLOFF_AND_LIFETIME_AT_FIXED_TIME"
+    ),
+    "efparticlemodulevelocityoverlifetime": (
+        "PARTICLE_LOCAL_WORLD_VELOCITY_AT_FIXED_NORMALIZED_LIFETIME"
+    ),
+    "particlemodulecolorscaleoverlife": (
+        "CUSTOM_MULTIPLY_DISTRIBUTION_VECTOR_OUTPUT_WITH_PARAMETER_PRESENT_AND_ABSENT"
+    ),
+    "particlemodulemeshrotation": (
+        "CUSTOM_MULTIPLY_DISTRIBUTION_ROTATION_OUTPUT_WITH_PARAMETER_PRESENT_AND_ABSENT"
+    ),
+}
+
+FEASIBILITY_MODULE_ROW_FIELDS = (
+    "moduleOccurrenceId",
+    "exactSourceClass",
+    "family",
+    "requiredRuntimeOutputs",
+    "sourceEraPackageOrBinaryIdentity",
+    "currentRevisionEvidenceIdentity",
+    "nativeEntryOrDispatchIdentity",
+    "numericOracleInputDomain",
+    "numericOracleExpectedOutput",
+    "independentOracleImplementation",
+    "oracleProvider",
+    "pilotFixtureIds",
+    "pilotExpectedMutatedOutputs",
+    "numericTolerance",
+    "pilotDecision",
+    "fidelityDecision",
+    "executionDecision",
+    "owner",
+    "remainingBlockers",
 )
 
 SAMPLE_TIMES = (0.0, 0.25, 1.0)
@@ -364,6 +436,48 @@ def get_proc_address(module: Any, name: str) -> int:
     return int(address)
 
 
+def derive_random_stream_fifth_argument_dataflow(
+    wrapper: bytes, spawn_dispatch_offset: int
+) -> dict[str, Any]:
+    """Prove the current wrapper's RAX return reaches SpawnEx stack arg five.
+
+    This is deliberately a byte-level proof for the hash-pinned current
+    EFEngine.dll.  It is not a source-era implementation identity and it does
+    not prove particle output equivalence.
+    """
+
+    stream_call = b"\xff\x90\xa0\x00\x00\x00"
+    store_rax_arg5 = b"\x48\x89\x44\x24\x20"
+    require(wrapper.count(stream_call) == 1, "random stream owner call changed")
+    require(wrapper.count(store_rax_arg5) == 1, "RAX fifth-argument store changed")
+    call_offset = wrapper.index(stream_call)
+    store_offset = wrapper.index(store_rax_arg5)
+    require(call_offset + len(stream_call) < store_offset,
+            "RAX store no longer follows random stream return")
+    between = wrapper[call_offset + len(stream_call):store_offset]
+    allowed_between = {
+        bytes.fromhex("44 8b c3 0f 28 de 48 8b d7 48 8b ce"),
+        bytes.fromhex("4c 8b 0e 0f 28 de 44 8b c3 48 8b d7 48 8b ce"),
+    }
+    require(between in allowed_between,
+            "instruction dataflow between RAX return and fifth argument changed")
+    require(store_offset + len(store_rax_arg5) == spawn_dispatch_offset,
+            "fifth-argument store no longer immediately precedes SpawnEx dispatch")
+    return {
+        "decision": "CURRENT_NATIVE_RAX_TO_FIFTH_ARGUMENT_DATAFLOW_VERIFIED",
+        "streamOwnerCallOffset": call_offset,
+        "streamOwnerVirtualSlotBytes": 0xA0,
+        "streamReturnRegister": "RAX",
+        "instructionsBeforeStoreHex": between.hex(),
+        "fifthArgumentStoreOffset": store_offset,
+        "fifthArgumentStoreInstructionHex": store_rax_arg5.hex(),
+        "windowsX64FifthArgumentStackOffsetBytes": 0x20,
+        "spawnExDispatchOffset": spawn_dispatch_offset,
+        "storeImmediatelyPrecedesSpawnExDispatch": True,
+        "proofRole": "CURRENT_REVISION_DATAFLOW_NOT_SOURCE_ERA_OR_OUTPUT_EQUIVALENCE",
+    }
+
+
 def native_dispatch_evidence(
     row: dict[str, Any], module: Any, exports: dict[str, int]
 ) -> dict[str, Any]:
@@ -373,11 +487,6 @@ def native_dispatch_evidence(
     spawn = get_proc_address(module, symbols["spawn"])
     spawn_ex = get_proc_address(module, symbols["spawnEx"])
     wrapper = ctypes.string_at(spawn, 96)
-    require(b"\xff\x90\xa0\x00\x00\x00" in wrapper,
-            f"seed stream owner dispatch changed: {row['exact']}")
-    store_pattern = b"\x48\x89\x44\x24\x20"
-    store_offset = wrapper.find(store_pattern)
-    require(store_offset >= 0, f"FRandomStream fifth argument store changed: {row['exact']}")
 
     if row["exact"] == "particlemodulelocation_seeded":
         pattern = b"\x41\xff\x91"
@@ -402,10 +511,11 @@ def native_dispatch_evidence(
         dispatch_offset = direct_targets[0]
         dispatch_kind = "DIRECT_REL32_TO_EXACT_BASE_SPAWN_EX"
         dispatch_detail = {}
+    dataflow = derive_random_stream_fifth_argument_dataflow(wrapper, dispatch_offset)
 
     base_address = int(module._handle)
     return {
-        "decision": "NATIVE_EXACT_ALIAS_VERIFIED",
+        "decision": "CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE",
         "spawnExport": symbols["spawn"],
         "spawnRva": spawn - base_address,
         "baseSpawnExExport": symbols["spawnEx"],
@@ -417,8 +527,7 @@ def native_dispatch_evidence(
                 "prepPerInstanceBlock", "requiredBytesPerInstance",
             )
         ],
-        "randomStreamReturnStoredAsFifthArgument": True,
-        "randomStreamStoreOffset": store_offset,
+        "randomStreamFifthArgumentDataflow": dataflow,
         "dispatchKind": dispatch_kind,
         "dispatchOffset": dispatch_offset,
         "wrapperFirst96BytesSha256": hashlib.sha256(wrapper).hexdigest(),
@@ -430,7 +539,7 @@ def module_rows(source: dict[str, Any]) -> list[dict[str, Any]]:
     return [module for occurrence in source["occurrences"] for module in occurrence["modules"]]
 
 
-def numeric_samples(module: dict[str, Any]) -> list[dict[str, Any]]:
+def diagnostic_fixed_seed_inputs(module: dict[str, Any]) -> list[dict[str, Any]]:
     seed_values = module["seed"]["randomSeeds"]
     if seed_values:
         initial_seed = seed_values[0]
@@ -467,14 +576,12 @@ def numeric_samples(module: dict[str, Any]) -> list[dict[str, Any]]:
             "randomUnits": list(random_units),
             "evaluatedDistributions": values,
         }
-        digest = canonical_sha256(handler_input)
         samples.append({
             "sampleId": f"{module['moduleOccurrenceId']}::sample:{sample_index:03d}",
             **handler_input,
-            "baseHandlerInputSha256": digest,
-            "exactSeededHandlerInputSha256": digest,
-            "numericInputParity": True,
-            "randomStreamContract": "FIXED_SEED_STREAM_NATIVE_WRAPPER_OWNS_FRANDOMSTREAM",
+            "typedInputSha256": canonical_sha256(handler_input),
+            "role": "DIAGNOSTIC_TYPED_INPUT_NOT_NATIVE_PARTICLE_OUTPUT_ORACLE",
+            "randomStreamContract": "CURRENT_WRAPPER_FIXED_SEED_INPUT_DIAGNOSTIC_ONLY",
         })
     return samples
 
@@ -482,6 +589,11 @@ def numeric_samples(module: dict[str, Any]) -> list[dict[str, Any]]:
 def exact_handler_capability(exact_class: str) -> str:
     component = exact_class.replace("_", ".")
     return "source.module.exact." + component + ".v1"
+
+
+def current_alias_evidence_id(exact_class: str) -> str:
+    component = exact_class.replace("_", ".")
+    return "source.module.current-alias-evidence." + component + ".v1"
 
 
 def build_blocker_ownership(
@@ -504,16 +616,24 @@ def build_blocker_ownership(
         exact_class = module["exactSourceClass"]
         if exact_class in standard_by_class:
             handler = standard_by_class[exact_class]
-            owner_kind = "RESOLVED_EXACT_HANDLER_CAPABILITY"
-            owner_ids = [handler["handlerCapabilityId"]]
-            post_join_decision = "READY_FOR_HANDLER"
-            remaining_blockers: list[str] = []
+            owner_kind = "BLOCKED_CURRENT_REVISION_ALIAS_EVIDENCE_ONLY"
+            owner_ids = [handler["handlerEvidenceId"]]
+            post_join_decision = "BLOCKED"
+            remaining_blockers = [
+                CUSTOM_HANDLER_BLOCKER,
+                ACTUAL_OUTPUT_BLOCKER,
+                SOURCE_ERA_HANDLER_BLOCKER,
+            ]
         elif exact_class in custom_by_class:
             handler = custom_by_class[exact_class]
             owner_kind = "BLOCKED_CUSTOM_MODULE_HANDLER"
             owner_ids = [handler["handlerCapabilityId"]]
             post_join_decision = "BLOCKED"
-            remaining_blockers = [CUSTOM_HANDLER_BLOCKER]
+            remaining_blockers = [
+                CUSTOM_HANDLER_BLOCKER,
+                ACTUAL_OUTPUT_BLOCKER,
+                SOURCE_ERA_HANDLER_BLOCKER,
+            ]
         else:
             blocked_distributions = [
                 row for row in module["distributionAdapters"]
@@ -528,7 +648,11 @@ def build_blocker_ownership(
             owner_kind = "BLOCKED_CUSTOM_DISTRIBUTION_EVALUATOR"
             owner_ids = [row["distributionId"] for row in blocked_distributions]
             post_join_decision = "BLOCKED"
-            remaining_blockers = [CUSTOM_DISTRIBUTION_BLOCKER]
+            remaining_blockers = [
+                CUSTOM_DISTRIBUTION_BLOCKER,
+                ACTUAL_OUTPUT_BLOCKER,
+                SOURCE_ERA_EVALUATOR_BLOCKER,
+            ]
         module_ownership.append({
             "moduleOccurrenceId": module["moduleOccurrenceId"],
             "exactSourceClass": exact_class,
@@ -555,11 +679,264 @@ def build_blocker_ownership(
                 "postJoinDecision": "BLOCKED",
                 "ownerKind": "BLOCKED_CUSTOM_DISTRIBUTION_EVALUATOR",
                 "ownerId": custom_distribution["evaluatorCapabilityId"],
-                "remainingBlockers": [CUSTOM_DISTRIBUTION_BLOCKER],
+                "remainingBlockers": [
+                    CUSTOM_DISTRIBUTION_BLOCKER,
+                    ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+                    SOURCE_ERA_EVALUATOR_BLOCKER,
+                ],
             })
     require(len(module_ownership) == 29, "blocked module owner denominator changed")
     require(len(distribution_ownership) == 3, "blocked distribution owner denominator changed")
     return module_ownership, distribution_ownership
+
+
+def build_feasibility_matrix(
+    source: dict[str, Any],
+    standard_rows: list[dict[str, Any]],
+    custom_rows: list[dict[str, Any]],
+    custom_distribution: dict[str, Any],
+    module_ownership: list[dict[str, Any]],
+    distribution_ownership: list[dict[str, Any]],
+) -> dict[str, Any]:
+    standard_by_class = {row["exactSourceClass"]: row for row in standard_rows}
+    custom_by_class = {row["exactSourceClass"]: row for row in custom_rows}
+    owner_by_module = {row["moduleOccurrenceId"]: row for row in module_ownership}
+    blocked_modules = [row for row in module_rows(source) if row["decision"] == "BLOCKED"]
+    standard_occurrence_by_id = {
+        row["moduleOccurrenceId"]: row
+        for handler in standard_rows for row in handler["occurrences"]
+    }
+
+    module_matrix_rows: list[dict[str, Any]] = []
+    for module in blocked_modules:
+        exact_class = module["exactSourceClass"]
+        owner = owner_by_module[module["moduleOccurrenceId"]]
+        blocked_distribution_ids = [
+            row["distributionId"] for row in module["distributionAdapters"]
+            if row["decision"] == "BLOCKED"
+        ]
+        if exact_class in standard_by_class:
+            evidence = standard_by_class[exact_class]
+            family = "STANDARD_SEEDED_HANDLER"
+            fidelity_decision = "CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE"
+            current_identity = {
+                "evidenceId": evidence["handlerEvidenceId"],
+                "scriptClassObjectPath": evidence["currentScriptClassEvidence"]["objectPath"],
+                "scriptClassSerialSha256": evidence["currentScriptClassEvidence"]["serialSha256"],
+                "nativeWrapperSha256": evidence["currentNativeDispatchEvidence"]
+                ["wrapperFirst96BytesSha256"],
+                "decision": fidelity_decision,
+            }
+            native_identity = copy.deepcopy(evidence["currentNativeDispatchEvidence"])
+            provider_requirement = (
+                "CONTROLLED_NATIVE_PARTICLE_EMITTER_FIXTURE_COMPARE_EXACT_SEEDED_SPAWN_"
+                "WITH_BASE_SPAWN_EX_FULL_PARTICLE_STATE"
+            )
+            diagnostic_input_ids = [
+                row["sampleId"]
+                for row in standard_occurrence_by_id[module["moduleOccurrenceId"]]
+                ["diagnosticFixedSeedInputs"]
+            ]
+            final_capability_id = evidence["candidateHandlerCapabilityId"]
+            owner_responsibility = (
+                "SOURCE_ERA_HANDLER_IDENTITY_AND_NATIVE_PARTICLE_OUTPUT_ORACLE"
+            )
+        elif exact_class in custom_by_class:
+            evidence = custom_by_class[exact_class]
+            family = "EF_CUSTOM_HANDLER"
+            fidelity_decision = "CURRENT_SCRIPT_CLASS_METADATA_ONLY"
+            current_identity = {
+                "evidenceId": evidence["handlerCapabilityId"],
+                "scriptClassObjectPath": evidence["currentScriptClassEvidence"]["objectPath"],
+                "scriptClassSerialSha256": evidence["currentScriptClassEvidence"]["serialSha256"],
+                "installedNativeExportMatches": copy.deepcopy(
+                    evidence["installedNativeExportMatches"]
+                ),
+                "decision": fidelity_decision,
+            }
+            native_identity = {
+                "decision": "NO_INSPECTABLE_EXACT_NATIVE_DISPATCH",
+                "installedNativeExportMatches": copy.deepcopy(
+                    evidence["installedNativeExportMatches"]
+                ),
+            }
+            provider_requirement = (
+                "CONTROLLED_NATIVE_CLASS_INSTANCE_AND_PARTICLE_FIXTURE_OR_GAME_TRACE_"
+                "WITH_FIXED_WORLD_QUERY_AND_FULL_STATE_SNAPSHOT"
+            )
+            diagnostic_input_ids = []
+            final_capability_id = evidence["handlerCapabilityId"]
+            owner_responsibility = (
+                "SOURCE_ERA_HANDLER_IDENTITY_AND_NATIVE_PARTICLE_OUTPUT_ORACLE"
+            )
+        else:
+            family = "EF_CUSTOM_DISTRIBUTION_OWNER_MODULE"
+            fidelity_decision = (
+                "CURRENT_CUSTOM_DISTRIBUTION_METADATA_ONLY_SOURCE_EVALUATOR_UNPINNED"
+            )
+            current_identity = {
+                "evidenceId": custom_distribution["evaluatorCapabilityId"],
+                "scriptClassObjectPath": custom_distribution["currentScriptClassEvidence"]
+                ["objectPath"],
+                "scriptClassSerialSha256": custom_distribution[
+                    "currentScriptClassEvidence"
+                ]["serialSha256"],
+                "installedNativeExportMatches": copy.deepcopy(
+                    custom_distribution["installedNativeExportMatches"]
+                ),
+                "decision": fidelity_decision,
+            }
+            native_identity = {
+                "decision": "NO_INSPECTABLE_EXACT_NATIVE_GET_VALUE",
+                "installedNativeExportMatches": copy.deepcopy(
+                    custom_distribution["installedNativeExportMatches"]
+                ),
+            }
+            provider_requirement = (
+                "CONTROLLED_NATIVE_CUSTOM_DISTRIBUTION_GET_VALUE_WITH_PARAMETER_PRESENT_"
+                "ABSENT_AND_FIXED_CONTEXT_THEN_OWNER_MODULE_STATE_SNAPSHOT"
+            )
+            diagnostic_input_ids = []
+            final_capability_id = custom_distribution["evaluatorCapabilityId"]
+            owner_responsibility = (
+                "SOURCE_ERA_DISTRIBUTION_EVALUATOR_IDENTITY_AND_NATIVE_OUTPUT_ORACLE"
+            )
+
+        required_outputs = REQUIRED_ACTUAL_OUTPUT_BY_CLASS[exact_class]
+        row = {
+            "moduleOccurrenceId": module["moduleOccurrenceId"],
+            "exactSourceClass": exact_class,
+            "family": family,
+            "requiredRuntimeOutputs": required_outputs,
+            "sourceEraPackageOrBinaryIdentity": {
+                "moduleSourceObjectId": module["sourceObjectId"],
+                "moduleSourceRecordSha256": module["sourceRecordSha256"],
+                "handlerOrEvaluatorBinaryIdentity": None,
+                "decision": "MODULE_RECORD_PINNED_IMPLEMENTATION_IDENTITY_UNPINNED",
+            },
+            "currentRevisionEvidenceIdentity": current_identity,
+            "nativeEntryOrDispatchIdentity": native_identity,
+            "numericOracleInputDomain": {
+                "decision": "DIAGNOSTIC_INPUT_ONLY_NATIVE_FIXTURE_UNAVAILABLE",
+                "sourceRecordSha256": module["sourceRecordSha256"],
+                "typedPayloadSha256": module["typedPayload"]["payloadSha256"],
+                "diagnosticFixedSeedInputIds": diagnostic_input_ids,
+                "blockedDistributionIds": blocked_distribution_ids,
+                "requiredFixtureDomain": provider_requirement,
+            },
+            "numericOracleExpectedOutput": {
+                "decision": "NOT_OBSERVED",
+                "requiredRuntimeOutputs": required_outputs,
+                "numericValues": [],
+            },
+            "independentOracleImplementation": {
+                "implementationId": None,
+                "decision": "NOT_IMPLEMENTED",
+            },
+            "oracleProvider": {
+                "providerId": None,
+                "requiredProvider": provider_requirement,
+                "decision": "UNAVAILABLE",
+            },
+            "pilotFixtureIds": [],
+            "pilotExpectedMutatedOutputs": {
+                "decision": "NOT_CAPTURED",
+                "requiredRuntimeOutputs": required_outputs,
+                "numericValues": [],
+            },
+            "numericTolerance": {
+                "absolute": None,
+                "relative": None,
+                "decision": "UNDEFINED_WITHOUT_INDEPENDENT_EXPECTED_OUTPUT",
+            },
+            "pilotDecision": "BLOCKED",
+            "fidelityDecision": fidelity_decision,
+            "executionDecision": "BLOCKED",
+            "owner": {
+                "role": "SOURCE_SPECIALIST",
+                "finalCapabilityId": final_capability_id,
+                "responsibility": owner_responsibility,
+            },
+            "remainingBlockers": copy.deepcopy(owner["remainingBlockers"]),
+        }
+        require(tuple(row) == FEASIBILITY_MODULE_ROW_FIELDS,
+                "source feasibility row field order changed")
+        module_matrix_rows.append(row)
+
+    grouped_rows: dict[str, list[dict[str, Any]]] = {}
+    for row in module_matrix_rows:
+        grouped_rows.setdefault(row["exactSourceClass"], []).append(row)
+    family_rows = []
+    for exact_class, rows in grouped_rows.items():
+        family_rows.append({
+            "familyId": "source.feasibility.module." + exact_class.replace("_", ".") + ".v1",
+            "exactSourceClass": exact_class,
+            "family": rows[0]["family"],
+            "occurrenceCount": len(rows),
+            "moduleOccurrenceIds": [row["moduleOccurrenceId"] for row in rows],
+            "requiredRuntimeOutputs": rows[0]["requiredRuntimeOutputs"],
+            "pilotFixtureIds": [],
+            "pilotDecision": "BLOCKED",
+        })
+
+    distribution_rows = []
+    for owner in distribution_ownership:
+        distribution_rows.append({
+            "distributionId": owner["distributionId"],
+            "moduleOccurrenceId": owner["moduleOccurrenceId"],
+            "exactSourceClass": owner["exactSourceClass"],
+            "requiredRuntimeOutputs": (
+                "VECTOR_GET_VALUE_FOR_PARAMETER_PRESENT_ABSENT_AND_CONSTANT_FALLBACK_"
+                "WITH_EXACT_MULTIPLY_SEMANTICS"
+            ),
+            "sourceEraEvaluatorIdentity": None,
+            "currentRevisionEvidenceIdentity": {
+                "evaluatorCapabilityId": custom_distribution["evaluatorCapabilityId"],
+                "scriptClassSerialSha256": custom_distribution[
+                    "currentScriptClassEvidence"
+                ]["serialSha256"],
+                "decision": "CURRENT_CUSTOM_DISTRIBUTION_CLASS_METADATA_ONLY",
+            },
+            "oracleProvider": None,
+            "pilotFixtureIds": [],
+            "numericTolerance": None,
+            "executionDecision": "BLOCKED",
+            "owner": {
+                "role": "SOURCE_SPECIALIST",
+                "finalCapabilityId": custom_distribution["evaluatorCapabilityId"],
+                "responsibility": (
+                    "SOURCE_ERA_DISTRIBUTION_EVALUATOR_IDENTITY_AND_NATIVE_OUTPUT_ORACLE"
+                ),
+            },
+            "remainingBlockers": copy.deepcopy(owner["remainingBlockers"]),
+        })
+
+    require(len(module_matrix_rows) == 29, "source feasibility row denominator changed")
+    require(len({row["moduleOccurrenceId"] for row in module_matrix_rows}) == 29,
+            "source feasibility row identity duplicated")
+    require(len(family_rows) == 15, "blocked module family denominator changed")
+    return {
+        "moduleRows": module_matrix_rows,
+        "moduleFamilies": family_rows,
+        "distributionRows": distribution_rows,
+        "summary": {
+            "moduleFamilyCount": len(family_rows),
+            "moduleMatrixRowCount": len(module_matrix_rows),
+            "requiredFieldCompleteRowCount": len(module_matrix_rows),
+            "distributionMatrixRowCount": len(distribution_rows),
+            "actualNativeParticleOutputOracleCount": 0,
+            "actualNativeDistributionOutputOracleCount": 0,
+            "pilotFixtureCount": 0,
+            "feasibleModuleRowCount": 0,
+            "verifiedIrrelevantModuleRowCount": 0,
+            "blockedModuleRowCount": len(module_matrix_rows),
+            "ownerlessBlockerCount": 0,
+            "inputDigestParityAcceptedAsOutputOracleCount": 0,
+            "unresolvedExecutionRowCount": len(module_matrix_rows),
+            "evidenceIntegrityDecision": "FROZEN_REVIEW_REQUIRED",
+            "executionReadinessDecision": "BLOCKED",
+        },
+    }
 
 
 def build_receipt(
@@ -638,18 +1015,19 @@ def build_receipt(
                 "sourceRecordSha256": module["sourceRecordSha256"],
                 "payloadSha256": module["typedPayload"]["payloadSha256"],
                 "seedEvidence": copy.deepcopy(module["seed"]),
-                "numericOracleSamples": numeric_samples(module),
+                "diagnosticFixedSeedInputs": diagnostic_fixed_seed_inputs(module),
             })
         capability = exact_handler_capability(exact)
         base_capability = exact_handler_capability(definition["base"])
         standard_rows.append({
             "exactSourceClass": exact,
             "baseSourceClass": definition["base"],
-            "handlerCapabilityId": capability,
+            "handlerEvidenceId": current_alias_evidence_id(exact),
+            "candidateHandlerCapabilityId": capability,
             "baseHandlerCapabilityId": base_capability,
-            "decision": "READY_FOR_EXACT_NATIVE_ALIAS",
+            "decision": "BLOCKED_CURRENT_REVISION_ALIAS_EVIDENCE_ONLY",
             "normalizedStringAliasAllowed": False,
-            "aliasMechanism": "NATIVE_SEEDED_SPAWN_TO_EXACT_BASE_SPAWN_EX",
+            "aliasMechanismObserved": "CURRENT_NATIVE_SEEDED_SPAWN_TO_EXACT_BASE_SPAWN_EX",
             "officialCascadeDocumentation": {
                 "url": definition["documentation"],
                 "claim": "SEEDED_MODULE_IS_BASE_MODULE_WITH_RANDOM_SEED_INFORMATION",
@@ -657,15 +1035,18 @@ def build_receipt(
             },
             "currentScriptClassEvidence": evidence,
             "currentNativeDispatchEvidence": dispatch,
+            "actualNativeParticleOutputOracle": {
+                "decision": "UNAVAILABLE",
+                "sampleCount": 0,
+                "requiredOutput": REQUIRED_ACTUAL_OUTPUT_BY_CLASS[exact],
+                "inputDigestParityAccepted": False,
+            },
             "occurrences": occurrence_rows,
-            "blockers": [],
-        })
-        grants.append({
-            "handlerCapabilityId": capability,
-            "exactSourceClass": exact,
-            "baseHandlerCapabilityId": base_capability,
-            "grant": "EXACT_CLASS_HANDLER_ALIAS",
-            "requiredEvidenceDecision": "NATIVE_EXACT_ALIAS_VERIFIED",
+            "blockers": [
+                CUSTOM_HANDLER_BLOCKER,
+                ACTUAL_OUTPUT_BLOCKER,
+                SOURCE_ERA_HANDLER_BLOCKER,
+            ],
         })
 
     custom_rows = []
@@ -737,11 +1118,13 @@ def build_receipt(
     module_ownership, distribution_ownership = build_blocker_ownership(
         source, standard_rows, custom_rows, custom_distribution
     )
+    feasibility_matrix = build_feasibility_matrix(
+        source, standard_rows, custom_rows, custom_distribution,
+        module_ownership, distribution_ownership,
+    )
 
     generator_path = Path(__file__).resolve()
-    projected_ready = source["summary"]["moduleDecisionCounts"]["READY_FOR_HANDLER"] + sum(
-        len(row["occurrences"]) for row in standard_rows
-    )
+    projected_ready = source["summary"]["moduleDecisionCounts"]["READY_FOR_HANDLER"]
     projected_blocked = source["summary"]["denominators"]["moduleCount"] - projected_ready
     result = {
         "schema": SCHEMA,
@@ -749,7 +1132,7 @@ def build_receipt(
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
-        "scope": "EXACT_SEEDED_HANDLER_ALIAS_AND_CUSTOM_BLOCKER_ORACLE",
+        "scope": "CURRENT_REVISION_HANDLER_FEASIBILITY_AND_BLOCKER_OWNER_ORACLE",
         "sourceExecutionReceipt": {
             "path": (
                 "Data/Effects/Imported/Artist/Candidates/"
@@ -769,14 +1152,18 @@ def build_receipt(
         "blockedCustomDistributionEvaluator": custom_distribution,
         "moduleBlockerOwnership": module_ownership,
         "distributionBlockerOwnership": distribution_ownership,
+        "feasibilityMatrix": feasibility_matrix,
         "summary": {
             "sourceBlockedModuleCount": len(module_ownership),
             "standardSeededFamilyCount": len(standard_rows),
             "standardSeededOccurrenceCount": sum(len(row["occurrences"]) for row in standard_rows),
-            "nativeExactAliasCount": sum(
-                row["currentNativeDispatchEvidence"]["decision"] == "NATIVE_EXACT_ALIAS_VERIFIED"
+            "currentCrossRevisionAliasEvidenceCount": sum(
+                row["currentNativeDispatchEvidence"]["decision"]
+                == "CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE"
                 for row in standard_rows
             ),
+            "actualNativeParticleOutputOracleCount": 0,
+            "nativeExactAliasAdmissionCount": 0,
             "capabilityGrantCount": len(grants),
             "blockedCustomModuleFamilyCount": len(custom_rows),
             "blockedCustomModuleOccurrenceCount": sum(len(row["occurrenceIds"]) for row in custom_rows),
@@ -797,19 +1184,32 @@ def build_receipt(
                 "READY_FOR_HANDLER": projected_ready,
                 "BLOCKED": projected_blocked,
             },
+            "projectedDistributionDecisionCountsAfterJoin": {
+                "READY_FOR_HANDLER": source["summary"]["distributionDecisionCounts"]
+                ["READY_FOR_HANDLER"],
+                "BLOCKED": source["summary"]["distributionDecisionCounts"]["BLOCKED"],
+            },
             "productAdmissionCount": 0,
             "silentFallbackCount": 0,
         },
         "blockerUnion": [
+            ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+            ACTUAL_OUTPUT_BLOCKER,
             CUSTOM_DISTRIBUTION_BLOCKER,
             CUSTOM_HANDLER_BLOCKER,
+            SOURCE_ERA_EVALUATOR_BLOCKER,
+            SOURCE_ERA_HANDLER_BLOCKER,
             PRODUCT_BLOCKER,
         ],
         "productAdmission": {
             "allowed": False,
             "blockers": [
+                ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+                ACTUAL_OUTPUT_BLOCKER,
                 CUSTOM_DISTRIBUTION_BLOCKER,
                 CUSTOM_HANDLER_BLOCKER,
+                SOURCE_ERA_EVALUATOR_BLOCKER,
+                SOURCE_ERA_HANDLER_BLOCKER,
                 PRODUCT_BLOCKER,
             ],
         },
@@ -821,7 +1221,7 @@ def build_receipt(
 
 def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = None) -> None:
     require(receipt.get("schema") == SCHEMA, "custom handler oracle schema changed")
-    require(type(receipt.get("formatVersion")) is int and receipt["formatVersion"] == 1,
+    require(type(receipt.get("formatVersion")) is int and receipt["formatVersion"] == 2,
             "custom handler oracle version changed")
     unsigned = copy.deepcopy(receipt)
     expected_hash = str(unsigned.pop("receiptSha256", ""))
@@ -841,26 +1241,32 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
         "sourceBlockedModuleCount": 29,
         "standardSeededFamilyCount": 7,
         "standardSeededOccurrenceCount": 11,
-        "nativeExactAliasCount": 7,
-        "capabilityGrantCount": 7,
+        "currentCrossRevisionAliasEvidenceCount": 7,
+        "actualNativeParticleOutputOracleCount": 0,
+        "nativeExactAliasAdmissionCount": 0,
+        "capabilityGrantCount": 0,
         "blockedCustomModuleFamilyCount": 6,
         "blockedCustomModuleOccurrenceCount": 15,
         "blockedCustomDistributionFamilyCount": 1,
         "blockedCustomDistributionOccurrenceCount": 3,
         "moduleBlockerOwnerCount": 29,
-        "resolvedModuleBlockerCount": 11,
-        "remainingBlockedModuleCount": 18,
+        "resolvedModuleBlockerCount": 0,
+        "remainingBlockedModuleCount": 29,
         "distributionBlockerOwnerCount": 3,
         "ownerlessBlockerCount": 0,
         "projectedModuleDecisionCountsAfterJoin": {
-            "READY_FOR_HANDLER": 381,
-            "BLOCKED": 18,
+            "READY_FOR_HANDLER": 370,
+            "BLOCKED": 29,
+        },
+        "projectedDistributionDecisionCountsAfterJoin": {
+            "READY_FOR_HANDLER": 626,
+            "BLOCKED": 3,
         },
         "productAdmissionCount": 0,
         "silentFallbackCount": 0,
     }, "custom handler oracle summary changed")
     standard = receipt.get("standardSeededHandlers") or []
-    require(len(standard) == 7 and len(receipt.get("capabilityGrants") or []) == 7,
+    require(len(standard) == 7 and receipt.get("capabilityGrants") == [],
             "custom handler oracle grant denominator changed")
     require(
         [row.get("exactSourceClass") for row in standard]
@@ -870,40 +1276,63 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
     all_standard_occurrences: list[str] = []
     for definition, row in zip(STANDARD_SEEDED, standard):
         exact = definition["exact"]
-        require(row.get("decision") == "READY_FOR_EXACT_NATIVE_ALIAS"
+        require(row.get("decision") == "BLOCKED_CURRENT_REVISION_ALIAS_EVIDENCE_ONLY"
                 and row.get("normalizedStringAliasAllowed") is False
-                and row.get("aliasMechanism") == "NATIVE_SEEDED_SPAWN_TO_EXACT_BASE_SPAWN_EX"
+                and row.get("aliasMechanismObserved")
+                == "CURRENT_NATIVE_SEEDED_SPAWN_TO_EXACT_BASE_SPAWN_EX"
                 and row.get("baseSourceClass") == definition["base"]
-                and row.get("handlerCapabilityId") == exact_handler_capability(exact)
+                and row.get("handlerEvidenceId") == current_alias_evidence_id(exact)
+                and row.get("candidateHandlerCapabilityId") == exact_handler_capability(exact)
                 and row.get("baseHandlerCapabilityId")
                 == exact_handler_capability(definition["base"])
-                and not row.get("blockers"),
-                "stock seeded handler is not exact-alias ready")
+                and row.get("blockers") == [
+                    CUSTOM_HANDLER_BLOCKER,
+                    ACTUAL_OUTPUT_BLOCKER,
+                    SOURCE_ERA_HANDLER_BLOCKER,
+                ],
+                "stock seeded handler was incorrectly admitted")
         require(row.get("currentNativeDispatchEvidence", {}).get("decision")
-                == "NATIVE_EXACT_ALIAS_VERIFIED"
-                and row["currentNativeDispatchEvidence"].get(
-                    "randomStreamReturnStoredAsFifthArgument"
-                ) is True
+                == "CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE"
                 and row["currentNativeDispatchEvidence"].get("dispatchKind") in {
                     "DIRECT_REL32_TO_EXACT_BASE_SPAWN_EX",
                     "SEEDED_VTABLE_SLOT_TO_EXACT_BASE_SPAWN_EX",
-                },
+                }
+                and row["currentNativeDispatchEvidence"].get(
+                    "randomStreamFifthArgumentDataflow", {}
+                ).get("decision")
+                == "CURRENT_NATIVE_RAX_TO_FIFTH_ARGUMENT_DATAFLOW_VERIFIED"
+                and row["currentNativeDispatchEvidence"][
+                    "randomStreamFifthArgumentDataflow"
+                ].get("storeImmediatelyPrecedesSpawnExDispatch") is True
+                and row["currentNativeDispatchEvidence"][
+                    "randomStreamFifthArgumentDataflow"
+                ].get("spawnExDispatchOffset")
+                == row["currentNativeDispatchEvidence"].get("dispatchOffset"),
                 "stock seeded native dispatch proof changed")
         class_evidence_row = row.get("currentScriptClassEvidence") or {}
         require(
             class_evidence_row.get("className") == exact
             and class_evidence_row.get("superClass") == definition["base"]
             and class_evidence_row.get("uFunctionChildCount") == 0
+            and len(class_evidence_row.get("directChildren") or []) == 1
+            and class_evidence_row["directChildren"][0].get("name") == "randomseedinfo"
+            and class_evidence_row["directChildren"][0].get("className") == "structproperty"
             and class_evidence_row.get("sourceEraIdentityPinned") is False,
             "stock seeded current script evidence changed",
         )
         require(len(row.get("occurrences") or []) == definition["occurrences"],
                 "stock seeded occurrence count changed")
+        require(row.get("actualNativeParticleOutputOracle") == {
+            "decision": "UNAVAILABLE",
+            "sampleCount": 0,
+            "requiredOutput": REQUIRED_ACTUAL_OUTPUT_BY_CLASS[exact],
+            "inputDigestParityAccepted": False,
+        }, "stock seeded output oracle boundary changed")
         for occurrence in row.get("occurrences") or []:
             all_standard_occurrences.append(occurrence.get("moduleOccurrenceId", ""))
-            require(len(occurrence.get("numericOracleSamples") or []) == 3,
-                    "stock seeded numeric sample denominator changed")
-            for sample_index, sample in enumerate(occurrence["numericOracleSamples"]):
+            require(len(occurrence.get("diagnosticFixedSeedInputs") or []) == 3,
+                    "stock seeded diagnostic input denominator changed")
+            for sample_index, sample in enumerate(occurrence["diagnosticFixedSeedInputs"]):
                 handler_input = {
                     name: copy.deepcopy(sample[name])
                     for name in (
@@ -914,27 +1343,20 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
                     )
                 }
                 digest = canonical_sha256(handler_input)
-                require(sample.get("numericInputParity") is True
+                require(sample.get("role")
+                        == "DIAGNOSTIC_TYPED_INPUT_NOT_NATIVE_PARTICLE_OUTPUT_ORACLE"
                         and sample.get("randomStreamAlgorithm") == FRANDOM_STREAM_ALGORITHM
                         and sample.get("emitterTime") == SAMPLE_TIMES[sample_index]
                         and sample.get("randomStreamDrawOffset") == sample_index * 4
                         and sample.get("randomUnits") == list(random_stream_units(
                             sample["fixedSeed"], sample_index * 4, 4
                         ))
-                        and sample.get("baseHandlerInputSha256") == digest
-                        and sample.get("exactSeededHandlerInputSha256") == digest,
-                        "stock seeded numeric input parity changed")
+                        and sample.get("typedInputSha256") == digest,
+                        "stock seeded diagnostic input changed")
     require(len(all_standard_occurrences) == len(set(all_standard_occurrences)) == 11,
             "stock seeded occurrence identity changed")
-    expected_grants = [{
-        "handlerCapabilityId": exact_handler_capability(row["exact"]),
-        "exactSourceClass": row["exact"],
-        "baseHandlerCapabilityId": exact_handler_capability(row["base"]),
-        "grant": "EXACT_CLASS_HANDLER_ALIAS",
-        "requiredEvidenceDecision": "NATIVE_EXACT_ALIAS_VERIFIED",
-    } for row in STANDARD_SEEDED]
-    require(receipt.get("capabilityGrants") == expected_grants,
-            "stock seeded capability grant join changed")
+    require(receipt.get("capabilityGrants") == [],
+            "current-revision evidence created a capability grant")
     custom = receipt.get("blockedCustomModuleHandlers") or []
     require(
         [row.get("exactSourceClass") for row in custom]
@@ -979,33 +1401,107 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
     require(len(distribution_owners) == 3
             and len({row.get("distributionId") for row in distribution_owners}) == 3,
             "distribution blocker ownership coverage changed")
-    grant_ids = {row["handlerCapabilityId"] for row in expected_grants}
+    current_evidence_ids = {row["handlerEvidenceId"] for row in standard}
     custom_ids = {row["handlerCapabilityId"] for row in custom}
     distribution_id = distribution["evaluatorCapabilityId"]
     for row in module_owners:
         require(row.get("ownerIds"), "module blocker owner is empty")
-        if row.get("postJoinDecision") == "READY_FOR_HANDLER":
-            require(row.get("ownerKind") == "RESOLVED_EXACT_HANDLER_CAPABILITY"
-                    and set(row["ownerIds"]).issubset(grant_ids)
-                    and row.get("remainingBlockers") == [],
-                    "resolved module blocker ownership changed")
-        else:
+        if row.get("ownerKind") == "BLOCKED_CURRENT_REVISION_ALIAS_EVIDENCE_ONLY":
             require(row.get("postJoinDecision") == "BLOCKED"
-                    and row.get("remainingBlockers") in (
-                        [CUSTOM_HANDLER_BLOCKER], [CUSTOM_DISTRIBUTION_BLOCKER]
-                    ), "remaining module blocker ownership changed")
+                    and set(row["ownerIds"]).issubset(current_evidence_ids)
+                    and row.get("remainingBlockers") == [
+                        CUSTOM_HANDLER_BLOCKER,
+                        ACTUAL_OUTPUT_BLOCKER,
+                        SOURCE_ERA_HANDLER_BLOCKER,
+                    ], "current alias evidence incorrectly resolved a module")
+        else:
+            require(row.get("postJoinDecision") == "BLOCKED",
+                    "remaining module blocker ownership changed")
             if row.get("ownerKind") == "BLOCKED_CUSTOM_MODULE_HANDLER":
-                require(set(row["ownerIds"]).issubset(custom_ids),
+                require(set(row["ownerIds"]).issubset(custom_ids)
+                        and row.get("remainingBlockers") == [
+                            CUSTOM_HANDLER_BLOCKER,
+                            ACTUAL_OUTPUT_BLOCKER,
+                            SOURCE_ERA_HANDLER_BLOCKER,
+                        ],
                         "custom handler owner ID changed")
             else:
-                require(row.get("ownerKind") == "BLOCKED_CUSTOM_DISTRIBUTION_EVALUATOR",
+                require(row.get("ownerKind") == "BLOCKED_CUSTOM_DISTRIBUTION_EVALUATOR"
+                        and row.get("remainingBlockers") == [
+                            CUSTOM_DISTRIBUTION_BLOCKER,
+                            ACTUAL_OUTPUT_BLOCKER,
+                            SOURCE_ERA_EVALUATOR_BLOCKER,
+                        ],
                         "custom distribution module owner kind changed")
     for row in distribution_owners:
         require(row.get("postJoinDecision") == "BLOCKED"
                 and row.get("ownerKind") == "BLOCKED_CUSTOM_DISTRIBUTION_EVALUATOR"
                 and row.get("ownerId") == distribution_id
-                and row.get("remainingBlockers") == [CUSTOM_DISTRIBUTION_BLOCKER],
+                and row.get("remainingBlockers") == [
+                    CUSTOM_DISTRIBUTION_BLOCKER,
+                    ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+                    SOURCE_ERA_EVALUATOR_BLOCKER,
+                ],
                 "distribution blocker owner changed")
+    matrix = receipt.get("feasibilityMatrix") or {}
+    matrix_rows = matrix.get("moduleRows") or []
+    matrix_distribution_rows = matrix.get("distributionRows") or []
+    require(len(matrix_rows) == 29
+            and len({row.get("moduleOccurrenceId") for row in matrix_rows}) == 29
+            and all(tuple(row) == FEASIBILITY_MODULE_ROW_FIELDS for row in matrix_rows),
+            "handler feasibility matrix row contract changed")
+    require(len(matrix.get("moduleFamilies") or []) == 15
+            and len(matrix_distribution_rows) == 3,
+            "handler feasibility matrix denominator changed")
+    require(matrix.get("summary") == {
+        "moduleFamilyCount": 15,
+        "moduleMatrixRowCount": 29,
+        "requiredFieldCompleteRowCount": 29,
+        "distributionMatrixRowCount": 3,
+        "actualNativeParticleOutputOracleCount": 0,
+        "actualNativeDistributionOutputOracleCount": 0,
+        "pilotFixtureCount": 0,
+        "feasibleModuleRowCount": 0,
+        "verifiedIrrelevantModuleRowCount": 0,
+        "blockedModuleRowCount": 29,
+        "ownerlessBlockerCount": 0,
+        "inputDigestParityAcceptedAsOutputOracleCount": 0,
+        "unresolvedExecutionRowCount": 29,
+        "evidenceIntegrityDecision": "FROZEN_REVIEW_REQUIRED",
+        "executionReadinessDecision": "BLOCKED",
+    }, "handler feasibility matrix summary changed")
+    require(all(
+        row.get("pilotDecision") == "BLOCKED"
+        and row.get("executionDecision") == "BLOCKED"
+        and row.get("pilotFixtureIds") == []
+        and row.get("oracleProvider", {}).get("providerId") is None
+        and row.get("oracleProvider", {}).get("decision") == "UNAVAILABLE"
+        and row.get("independentOracleImplementation", {}).get("implementationId") is None
+        and row.get("numericOracleExpectedOutput", {}).get("numericValues") == []
+        and row.get("pilotExpectedMutatedOutputs", {}).get("numericValues") == []
+        and row.get("numericTolerance", {}).get("absolute") is None
+        and row.get("numericTolerance", {}).get("relative") is None
+        and row.get("sourceEraPackageOrBinaryIdentity", {}).get(
+            "handlerOrEvaluatorBinaryIdentity"
+        ) is None
+        and row.get("owner", {}).get("role") == "SOURCE_SPECIALIST"
+        and bool(row.get("owner", {}).get("finalCapabilityId"))
+        and bool(row.get("remainingBlockers"))
+        for row in matrix_rows
+    ), "handler feasibility matrix admitted an unavailable output oracle")
+    require(sum(
+        row.get("fidelityDecision")
+        == "CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE"
+        for row in matrix_rows
+    ) == 11, "current seeded feasibility fidelity denominator changed")
+    require(all(
+        row.get("executionDecision") == "BLOCKED"
+        and row.get("oracleProvider") is None
+        and row.get("pilotFixtureIds") == []
+        and row.get("numericTolerance") is None
+        and bool(row.get("owner", {}).get("finalCapabilityId"))
+        for row in matrix_distribution_rows
+    ), "distribution feasibility matrix admitted an unavailable output oracle")
     if source is not None:
         validate_source_execution_receipt(source)
         require(source.get("receiptSha256") == SOURCE_EXECUTION_RECEIPT_SHA256
@@ -1028,7 +1524,7 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
                     "sourceRecordSha256": module["sourceRecordSha256"],
                     "payloadSha256": module["typedPayload"]["payloadSha256"],
                     "seedEvidence": copy.deepcopy(module["seed"]),
-                    "numericOracleSamples": numeric_samples(module),
+                    "diagnosticFixedSeedInputs": diagnostic_fixed_seed_inputs(module),
                 })
             require(row["occurrences"] == expected_occurrences,
                     "stock seeded source occurrence join changed")
@@ -1046,11 +1542,33 @@ def validate_receipt(receipt: dict[str, Any], source: dict[str, Any] | None = No
                 "module blocker ownership source join changed")
         require(distribution_owners == expected_distribution_owners,
                 "distribution blocker ownership source join changed")
+        expected_feasibility = build_feasibility_matrix(
+            source, standard, custom, distribution,
+            module_owners, distribution_owners,
+        )
+        require(receipt.get("feasibilityMatrix") == expected_feasibility,
+                "handler feasibility matrix source join changed")
     require(receipt.get("blockerUnion") == [
-        CUSTOM_DISTRIBUTION_BLOCKER, CUSTOM_HANDLER_BLOCKER, PRODUCT_BLOCKER,
+        ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+        ACTUAL_OUTPUT_BLOCKER,
+        CUSTOM_DISTRIBUTION_BLOCKER,
+        CUSTOM_HANDLER_BLOCKER,
+        SOURCE_ERA_EVALUATOR_BLOCKER,
+        SOURCE_ERA_HANDLER_BLOCKER,
+        PRODUCT_BLOCKER,
     ], "custom handler blocker union changed")
-    require(receipt.get("productAdmission", {}).get("allowed") is False,
-            "custom handler oracle granted Product admission")
+    require(receipt.get("productAdmission") == {
+        "allowed": False,
+        "blockers": [
+            ACTUAL_DISTRIBUTION_OUTPUT_BLOCKER,
+            ACTUAL_OUTPUT_BLOCKER,
+            CUSTOM_DISTRIBUTION_BLOCKER,
+            CUSTOM_HANDLER_BLOCKER,
+            SOURCE_ERA_EVALUATOR_BLOCKER,
+            SOURCE_ERA_HANDLER_BLOCKER,
+            PRODUCT_BLOCKER,
+        ],
+    }, "custom handler oracle granted Product admission")
 
 
 def main() -> int:
@@ -1090,8 +1608,11 @@ def main() -> int:
     print(
         "Artist F custom handler oracle: "
         f"seeded={result['summary']['standardSeededOccurrenceCount']} "
-        f"nativeAliases={result['summary']['nativeExactAliasCount']} "
+        f"currentAliasEvidence={result['summary']['currentCrossRevisionAliasEvidenceCount']} "
+        f"actualOutputOracles={result['summary']['actualNativeParticleOutputOracleCount']} "
         f"customBlocked={result['summary']['blockedCustomModuleOccurrenceCount']} "
+        "distributionReady="
+        f"{result['summary']['projectedDistributionDecisionCountsAfterJoin']['READY_FOR_HANDLER']} "
         f"distributionBlocked={result['summary']['blockedCustomDistributionOccurrenceCount']} "
         "product=false"
     )
