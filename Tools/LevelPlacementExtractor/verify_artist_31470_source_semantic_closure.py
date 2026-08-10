@@ -12,6 +12,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from effect_source_contract_io import load_strict_json_object
+
 
 EXECUTION_CONSUMED = "EXECUTION_CONSUMED"
 VERIFIED_IRRELEVANT = "VERIFIED_IRRELEVANT"
@@ -79,9 +81,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def load_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    require(isinstance(value, dict), f"JSON root must be an object: {path}")
-    return value
+    return load_strict_json_object(path)
 
 
 def canonical_sha256(value: Any) -> str:

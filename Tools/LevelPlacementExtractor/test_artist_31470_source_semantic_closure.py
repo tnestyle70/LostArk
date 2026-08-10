@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from collections import Counter
@@ -48,6 +50,22 @@ GEOMETRY_PARITY = ROOT / (
     "Data/Effects/Imported/Artist/Geometry/"
     "skill.31470.wmodel-geometry-parity.receipt.json"
 )
+
+FROZEN_INPUTS = {
+    "activeInventory": ACTIVE_INVENTORY,
+    "normalizedGraph": NORMALIZED_GRAPH,
+    "externalModuleClosure": EXTERNAL_MODULE_CLOSURE,
+    "sourceEvidence": SOURCE_EVIDENCE,
+    "localReferenceClosure": LOCAL_REFERENCE_CLOSURE,
+}
+
+NESTED_DUPLICATE_KEYS = {
+    "activeInventory": "activeCuePredicate",
+    "normalizedGraph": "sourceNodeId",
+    "externalModuleClosure": "logicalPackage",
+    "sourceEvidence": "path",
+    "localReferenceClosure": "sourceReceiptSha256",
+}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -150,6 +168,154 @@ class Artist31470SourceSemanticClosureTests(unittest.TestCase):
                 self.source_evidence,
                 self.local_reference_closure,
             )
+
+    @staticmethod
+    def duplicate_top_level_schema(path: Path) -> bytes:
+        payload = path.read_bytes()
+        opening = payload.find(b"{")
+        if opening < 0:
+            raise AssertionError(f"JSON object opening is missing: {path}")
+        return (
+            payload[: opening + 1]
+            + b'\n  "schema": "FORGED_DUPLICATE_IGNORED",'
+            + payload[opening + 1 :]
+        )
+
+    @staticmethod
+    def duplicate_nested_key(path: Path, key: str) -> bytes:
+        payload = path.read_text(encoding="utf-8")
+        marker = f'"{key}":'
+        marker_index = payload.find(marker)
+        if marker_index < 0:
+            raise AssertionError(f"nested duplicate marker is missing: {path}: {key}")
+        line_start = payload.rfind("\n", 0, marker_index) + 1
+        indentation = payload[line_start:marker_index]
+        duplicate = f'{indentation}"{key}": null,\n'
+        return (payload[:line_start] + duplicate + payload[line_start:]).encode(
+            "utf-8"
+        )
+
+    def assert_duplicate_input_rejected_by_all_clis(
+        self,
+        mutated_name: str,
+        mutated_path: Path,
+        semantic_closure_path: Path,
+        output_root: Path,
+    ) -> None:
+        inputs = dict(FROZEN_INPUTS)
+        inputs[mutated_name] = mutated_path
+        common_inputs = [
+            "--active-inventory",
+            str(inputs["activeInventory"]),
+            "--normalized-graph",
+            str(inputs["normalizedGraph"]),
+            "--external-module-closure",
+            str(inputs["externalModuleClosure"]),
+            "--source-evidence",
+            str(inputs["sourceEvidence"]),
+            "--local-reference-closure",
+            str(inputs["localReferenceClosure"]),
+        ]
+        commands = [
+            [
+                sys.executable,
+                str(Path(semantic_closure.__file__).resolve()),
+                *common_inputs,
+                "--output",
+                str(output_root / "generated-semantic-closure.json"),
+            ],
+            [
+                sys.executable,
+                str(Path(semantic_oracle.__file__).resolve()),
+                "--semantic-closure",
+                str(semantic_closure_path),
+                *common_inputs,
+            ],
+            [
+                sys.executable,
+                str(Path(source_contract.__file__).resolve()),
+                "--source-receipt",
+                str(SOURCE_RECEIPT),
+                "--action-cue-recipe",
+                str(ACTION_CUE_RECIPE),
+                "--active-inventory",
+                str(inputs["activeInventory"]),
+                "--normalized-graph",
+                str(inputs["normalizedGraph"]),
+                "--module-closure",
+                str(inputs["externalModuleClosure"]),
+                "--material-closure",
+                str(MATERIAL_CLOSURE),
+                "--source-evidence",
+                str(inputs["sourceEvidence"]),
+                "--local-reference-closure",
+                str(inputs["localReferenceClosure"]),
+                "--geometry-parity",
+                str(GEOMETRY_PARITY),
+                "--source-semantic-closure",
+                str(semantic_closure_path),
+                "--output-candidate",
+                str(output_root / "candidate.json"),
+                "--output-receipt",
+                str(output_root / "receipt.json"),
+                "--output-registry",
+                str(output_root / "registry.json"),
+                "--output-header",
+                str(output_root / "registry.h"),
+            ],
+        ]
+        for command in commands:
+            completed = subprocess.run(
+                command,
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(
+                completed.returncode,
+                1,
+                msg=(
+                    f"duplicate-key CLI attack unexpectedly passed for "
+                    f"{mutated_name}: {' '.join(command)}\n"
+                    f"stdout={completed.stdout}\nstderr={completed.stderr}"
+                ),
+            )
+            self.assertIn(
+                "duplicate JSON key",
+                completed.stderr,
+                msg=f"duplicate-key failure reason was lost for {mutated_name}",
+            )
+
+    def test_all_frozen_inputs_reject_top_level_and_nested_duplicate_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp_root = Path(directory)
+            semantic_closure_path = temp_root / "semantic-closure.json"
+            semantic_closure_path.write_text(
+                json.dumps(self.closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            for input_name, input_path in FROZEN_INPUTS.items():
+                for mutation_name, payload in (
+                    ("top", self.duplicate_top_level_schema(input_path)),
+                    (
+                        "nested",
+                        self.duplicate_nested_key(
+                            input_path,
+                            NESTED_DUPLICATE_KEYS[input_name],
+                        ),
+                    ),
+                ):
+                    mutated_path = temp_root / f"{input_name}-{mutation_name}.json"
+                    mutated_path.write_bytes(payload)
+                    output_root = temp_root / f"outputs-{input_name}-{mutation_name}"
+                    output_root.mkdir()
+                    self.assert_duplicate_input_rejected_by_all_clis(
+                        input_name,
+                        mutated_path,
+                        semantic_closure_path,
+                        output_root,
+                    )
 
     def test_baseline_denominators_lod_and_product_are_exact(self) -> None:
         denominators = self.closure["summary"]["denominators"]
