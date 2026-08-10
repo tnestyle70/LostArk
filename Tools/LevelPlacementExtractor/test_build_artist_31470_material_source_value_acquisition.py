@@ -7,6 +7,7 @@ import copy
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -160,8 +161,142 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
                     )
                 )
                 self.reseal(mutated)
-                with self.assertRaisesRegex(ValueError, "stale or laundered"):
+                with self.assertRaisesRegex(
+                    ValueError, "static approved semantic projection changed"
+                ):
                     self.validate(mutated)
+
+    def test_pure_static_semantics_rederive_decoded_raw_values(self) -> None:
+        for mutation_kind in (
+            "entry-value",
+            "entry-override",
+            "entry-guid",
+            "parent-default",
+            "parent-guid",
+        ):
+            with self.subTest(mutation_kind=mutation_kind):
+                mutated = copy.deepcopy(self.committed)
+                row = next(
+                    row
+                    for row in mutated["matrices"]["staticPermutationRows"]
+                    if row["matrixRowId"]
+                    == "material-feasibility-static-104ba0eb7fef8369"
+                )
+                entry = row["micNativeSelection"]["entry"]
+                if mutation_kind == "entry-value":
+                    entry["value"] = False
+                    expected_error = "MIC value decoded/raw semantics"
+                elif mutation_kind == "entry-override":
+                    entry["bOverride"] = False
+                    expected_error = "MIC bOverride decoded/raw semantics"
+                elif mutation_kind == "entry-guid":
+                    entry["expressionGuidHex"] = "00" * 16
+                    expected_error = "MIC ExpressionGUID decoded/raw semantics"
+                elif mutation_kind == "parent-default":
+                    row["parentExpression"]["defaultValueProperty"][
+                        "value"
+                    ] = False
+                    expected_error = "parent default decoded/raw semantics"
+                else:
+                    row["parentExpression"]["expressionGuidHex"] = "00" * 16
+                    expected_error = "parent ExpressionGUID decoded/raw semantics"
+                mutated_static_sha = acquisition.canonical_sha256(
+                    mutated["matrices"]["staticPermutationRows"]
+                )
+                mutated["summary"]["staticRowSetSha256"] = mutated_static_sha
+                self.reseal(mutated)
+                with mock.patch.object(
+                    acquisition,
+                    "APPROVED_STATIC_ROW_SET_SHA256",
+                    mutated_static_sha,
+                ):
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        acquisition.validate_receipt_semantics(
+                            mutated, self.contract
+                        )
+
+    def test_pure_static_semantics_cover_all_three_outcome_families(self) -> None:
+        cases = (
+            (
+                "override-value",
+                "material-feasibility-static-104ba0eb7fef8369",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    value=False
+                ),
+                "MIC value decoded/raw semantics",
+            ),
+            (
+                "nonoverride-value",
+                "material-feasibility-static-25e206c498b44f77",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    value=False
+                ),
+                "MIC value decoded/raw semantics",
+            ),
+            (
+                "nonoverride-override",
+                "material-feasibility-static-25e206c498b44f77",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    bOverride=True
+                ),
+                "MIC bOverride decoded/raw semantics",
+            ),
+            (
+                "nonoverride-guid",
+                "material-feasibility-static-25e206c498b44f77",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    expressionGuidHex="00" * 16
+                ),
+                "MIC ExpressionGUID decoded/raw semantics",
+            ),
+            (
+                "unmatched-parent-default",
+                "material-feasibility-static-1b69b57952caaa03",
+                lambda row: row["parentExpression"][
+                    "defaultValueProperty"
+                ].update(value=False),
+                "parent default decoded/raw semantics",
+            ),
+            (
+                "unmatched-parent-guid",
+                "material-feasibility-static-1b69b57952caaa03",
+                lambda row: row["parentExpression"].update(
+                    expressionGuidHex="00" * 16
+                ),
+                "parent ExpressionGUID decoded/raw semantics",
+            ),
+            (
+                "unmatched-forged-exact-count",
+                "material-feasibility-static-1b69b57952caaa03",
+                lambda row: row["micNativeSelection"].update(
+                    exactNameAndGuidMatchCount=1
+                ),
+                "MIC entry owner/offset",
+            ),
+        )
+        for label, row_id, mutate, expected_error in cases:
+            with self.subTest(label=label):
+                mutated = copy.deepcopy(self.committed)
+                row = next(
+                    row
+                    for row in mutated["matrices"]["staticPermutationRows"]
+                    if row["matrixRowId"] == row_id
+                )
+                mutate(row)
+                mutated_static_sha = acquisition.canonical_sha256(
+                    mutated["matrices"]["staticPermutationRows"]
+                )
+                mutated["summary"]["staticRowSetSha256"] = mutated_static_sha
+                self.reseal(mutated)
+                with mock.patch.object(
+                    acquisition,
+                    "APPROVED_STATIC_ROW_SET_SHA256",
+                    mutated_static_sha,
+                ):
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        acquisition.validate_receipt_semantics(
+                            mutated, self.contract
+                        )
 
     def test_previous_exact_four_are_blocked_and_denominator_is_72(self) -> None:
         rows = self.committed["matrices"]["strictSamplerRows"]
@@ -208,8 +343,85 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
             mutated["matrices"]["strictSamplerRows"]
         )
         self.reseal(mutated)
-        with self.assertRaisesRegex(ValueError, "stale or laundered"):
+        with self.assertRaisesRegex(
+            ValueError, "strict sampler approved semantic projection changed"
+        ):
             self.validate(mutated)
+
+    def test_semantic_validator_rejects_coordinated_sampler_promotion(self) -> None:
+        mutated = copy.deepcopy(self.committed)
+        row = next(
+            row
+            for row in mutated["matrices"]["strictSamplerRows"]
+            if row["matrixRowId"]
+            == "material-feasibility-sampler-316a56b9a4bd256c"
+        )
+        row["fullDescriptorSourceExact"] = True
+        row["sourceValueAcquired"] = True
+        row["sourceValueDecision"] = "SOURCE_EXACT_FULL_DESCRIPTOR"
+        row["strictReauditDecision"] = "PASS"
+        row["executionReady"] = True
+        mutated["summary"]["strictSamplerSourceValueAcquiredCount"] = 1
+        mutated["summary"]["strictExecutionReadyCount"] = 1
+        mutated_row_sha = acquisition.canonical_sha256(
+            mutated["matrices"]["strictSamplerRows"]
+        )
+        mutated["summary"]["strictSamplerRowSetSha256"] = mutated_row_sha
+        self.reseal(mutated)
+        with mock.patch.object(
+            acquisition,
+            "APPROVED_STRICT_SAMPLER_ROW_SET_SHA256",
+            mutated_row_sha,
+        ):
+            with self.assertRaisesRegex(ValueError, "sampler admission changed"):
+                acquisition.validate_receipt_semantics(mutated, self.contract)
+
+    def test_legacy_exact_sampler_decoded_fields_are_raw_contract_bound(self) -> None:
+        for mutation_kind in ("decoded-value", "property-type"):
+            with self.subTest(mutation_kind=mutation_kind):
+                mutated = copy.deepcopy(self.committed)
+                row = next(
+                    row
+                    for row in mutated["matrices"]["strictSamplerRows"]
+                    if row["baselineKind"]
+                    == "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
+                    and any(
+                        field.get("status") == "SERIALIZED_EXPLICIT"
+                        and field_name != "srgb"
+                        for field_name, field in row["textureExportEvidence"][
+                            "fields"
+                        ].items()
+                    )
+                )
+                field_name, field = next(
+                    (field_name, field)
+                    for field_name, field in row["textureExportEvidence"][
+                        "fields"
+                    ].items()
+                    if field.get("status") == "SERIALIZED_EXPLICIT"
+                    and field_name != "srgb"
+                )
+                prop = field["property"]
+                if mutation_kind == "decoded-value":
+                    prop["value"] = "FORGED_DECODED_VALUE"
+                    expected_error = "decoded/raw projection changed"
+                else:
+                    prop["propertyType"] = "boolproperty"
+                    expected_error = "byte-property decoded/raw semantics changed"
+                mutated_row_sha = acquisition.canonical_sha256(
+                    mutated["matrices"]["strictSamplerRows"]
+                )
+                mutated["summary"]["strictSamplerRowSetSha256"] = mutated_row_sha
+                self.reseal(mutated)
+                with mock.patch.object(
+                    acquisition,
+                    "APPROVED_STRICT_SAMPLER_ROW_SET_SHA256",
+                    mutated_row_sha,
+                ):
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        acquisition.validate_receipt_semantics(
+                            mutated, self.contract
+                        )
 
     def test_execution_and_product_remain_closed(self) -> None:
         admission = self.committed["admission"]

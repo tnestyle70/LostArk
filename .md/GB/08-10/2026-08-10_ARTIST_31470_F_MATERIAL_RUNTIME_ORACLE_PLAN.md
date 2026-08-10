@@ -83,6 +83,19 @@ mutation은 occurrence cross-recipe binding/evaluator, raw expression feature ma
 bit와 execution-readiness 세탁을 각각 공격한다. render root identity 또는 ShaderCache denominator를 바꾸고
 상·하위 receipt hash를 함께 reseal하는 공격도 shared shallow 인증 경로에서 거부한다.
 
+후속 독립 감사에서 확인된 coordinated reseal 경계도 같은 validator 단위로 닫는다.
+
+- evaluator contract는 reconstructed/sourceExact false, 고정 10-op order, 네 input sample과 `2e-5`
+  tolerance를 import-free approval identity와 대조한다.
+- HLSL은 compiler/source/DXBC/input/output identity, 200 sample, finite max error와 evaluator/recipe replay
+  binding을 고정한다. 빈 op order, `SOURCE_EXACT`, bool/NaN tolerance, zero sample/hash를 거부한다.
+- CPU family/recipe sample의 모든 lane은 bool을 제외한 finite float32 numeric이어야 한다.
+- source-value acquisition의 pure semantic validator를 runtime build, source binding, tracked-source 경계에서
+  모두 호출하고 static 94의 MIC value/bOverride/GUID 및 parent raw projection, legacy exact 4와 strict
+  sampler 72의 raw field 의미 및 BLOCKED admission을 재검증한다.
+- WARP state pilot은 exact schema, type-exact `0.0`, expected/actual equality와 고정 projection을 검사한다.
+- controlled capture는 unavailable/uncontrolled false, Product/runtime consumption summary는 0으로 고정한다.
+
 ## 종료 조건
 
 ### Evidence-integrity PASS
@@ -95,6 +108,7 @@ bit와 execution-readiness 세탁을 각각 공격한다. render root identity �
 - ownerless 0, unknown decision 0
 - WARP numeric sample 200 및 state-object pilot 4 actual 실행
 - non-finite output와 coordinated reseal mutation 전부 거부
+- evaluator/HLSL/acquisition/WARP/controlled-capture/Product coordinated reseal 전부 거부
 - source archive 1,813/624와 tracked canonical hash 재현
 - Product false, runtime handler/renderer consumption false
 

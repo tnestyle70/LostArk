@@ -29,13 +29,19 @@
       "role": "SOURCE_VALUE_ACQUISITION_GENERATOR",
       "path": "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
       "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
-      "canonicalTextSha256": "486aa72635ae97c074eb37df36f66213166945febc14a38aeff584e885747fa9"
+      "canonicalTextSha256": "d00054ee10518a549493ccc16f09d55849ef18aaff99e41ca669874879964a09"
+    },
+    {
+      "role": "INDEPENDENT_MATERIAL_EVIDENCE_APPROVAL",
+      "path": "Tools/LevelPlacementExtractor/artist_31470_material_evidence_approval.py",
+      "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+      "canonicalTextSha256": "a5ec9b7a8a498c03f9caeff4ecef573dcb0aa4a30a8735d40f993420d90bb6c6"
     },
     {
       "role": "MATERIAL_FEASIBILITY_MATRIX_BUILDER",
       "path": "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
       "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
-      "canonicalTextSha256": "99e635458342c4283439c345d18db1642ca0601cca102c7accd7a6efd3738702"
+      "canonicalTextSha256": "972b395f018aabd824501610f79f4e75c1a1fc5bef97cca36711b6f3497a7f1b"
     },
     {
       "role": "UE3_TAGGED_PROPERTY_PARSER",
@@ -29051,5 +29057,5 @@
       "FINAL_RUNTIME_CONSUMERS_NOT_IMPLEMENTED"
     ]
   },
-  "receiptSha256": "69f65afa7f8e952eba68343bf5d7b49185db9163469b2147e4df7da184974562"
+  "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282"
 }

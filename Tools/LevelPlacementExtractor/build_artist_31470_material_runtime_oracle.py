@@ -19,6 +19,19 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+from artist_31470_material_evidence_approval import (
+    APPROVED_CONTROLLED_CAPTURE_ASSESSMENT_SHA256,
+    APPROVED_EVALUATOR_CONTRACT_SHA256,
+    APPROVED_HLSL_REPLAY_BINDING_SHA256,
+    APPROVED_WARP_STATE_PILOT_PROJECTION_SHA256,
+    PINNED_COMPILED_DXBC_SHA256,
+    PINNED_D3DCOMPILER_BYTE_SIZE,
+    PINNED_D3DCOMPILER_SHA256,
+    PINNED_HLSL_INPUT_BYTES_SHA256,
+    PINNED_HLSL_MAX_ABSOLUTE_ERROR,
+    PINNED_HLSL_OUTPUT_BYTES_SHA256,
+    PINNED_HLSL_TRACKED_TEXT_SHA256,
+)
 from build_artist_31470_material_evidence_contract import validate_contract
 from extract_artist_31470_shader_cache_oracle import validate_receipt as validate_shader_receipt
 from extract_ue3_placements import (
@@ -33,6 +46,7 @@ from extract_ue3_placements import (
 SCHEMA = "lostark.artist-31470-material-runtime-oracle-receipt"
 FORMAT_VERSION = 3
 EVALUATOR_VERSION = 1
+NUMERIC_TOLERANCE = 2.0e-5
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GENERATOR_PATH = Path(__file__).resolve()
 MATERIAL_CONTRACT_BUILDER_PATH = Path(
@@ -49,6 +63,9 @@ HLSL_VERIFIER_PATH = Path(
 ).resolve().with_name("verify_artist_31470_material_runtime_oracle_hlsl.py")
 SOURCE_VALUE_ACQUISITION_GENERATOR_PATH = Path(__file__).resolve().with_name(
     "build_artist_31470_material_source_value_acquisition.py"
+)
+MATERIAL_EVIDENCE_APPROVAL_PATH = Path(__file__).resolve().with_name(
+    "artist_31470_material_evidence_approval.py"
 )
 DEFAULT_MATERIAL_CONTRACT = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
@@ -114,6 +131,19 @@ FEATURES = (
     ("FRESNEL", FEATURE_FRESNEL),
     ("DISTORTION", FEATURE_DISTORTION),
     ("ALPHA", FEATURE_ALPHA),
+)
+
+EVALUATOR_OPERATION_ORDER = (
+    "SECOND_TEXTURE_MULTIPLY",
+    "UV_TRANSFORM_PHASE",
+    "PANNER_PHASE",
+    "COLOR_MULTIPLY",
+    "DESATURATION",
+    "SIGNED_POWER",
+    "FRESNEL_GAIN",
+    "DISTORTION_OFFSET",
+    "DISSOLVE_ALPHA",
+    "ALPHA_MULTIPLY",
 )
 
 FEATURE_TOKENS = {
@@ -248,6 +278,66 @@ def tracked_text_sha256(path: Path) -> str:
 def seal_receipt(receipt: dict[str, Any]) -> None:
     receipt.pop("receiptSha256", None)
     receipt["receiptSha256"] = canonical_sha256(receipt)
+
+
+def expected_evaluator_contract() -> dict[str, Any]:
+    return {
+        "version": EVALUATOR_VERSION,
+        "operationOrder": list(EVALUATOR_OPERATION_ORDER),
+        "inputSampleCountPerFamily": len(ORACLE_INPUTS),
+        "inputSamples": copy.deepcopy(list(ORACLE_INPUTS)),
+        "numericTolerance": NUMERIC_TOLERANCE,
+        "fidelity": "RECONSTRUCTED_NUMERICALLY_VERIFIED",
+        "sourceExact": False,
+    }
+
+
+def validate_source_value_acquisition_semantics(
+    source_value_acquisition: dict[str, Any],
+    material_contract: dict[str, Any],
+) -> None:
+    """Validate the raw/source-value meaning, not only the receipt self hash.
+
+    The import stays local because the acquisition generator reuses this module's
+    matrix builder while constructing its own receipt.  Runtime entry points call
+    this only after both modules have finished loading.
+    """
+
+    from build_artist_31470_material_source_value_acquisition import (
+        validate_receipt_semantics,
+    )
+
+    validate_receipt_semantics(source_value_acquisition, material_contract)
+
+
+def hlsl_replay_binding_sha256(
+    receipt: dict[str, Any], verification_without_binding: dict[str, Any]
+) -> str:
+    projection = {
+        "evaluatorContractSha256": canonical_sha256(
+            receipt.get("evaluatorContract")
+        ),
+        "familyEvaluatorProjection": [
+            {
+                "familyId": row.get("familyId"),
+                "featureMask": row.get("featureMask"),
+                "sampleRowsSha256": canonical_sha256(row.get("sampleRows")),
+            }
+            for row in receipt.get("familyEvaluators") or []
+        ],
+        "recipeBindingProjection": [
+            {
+                "recipeId": row.get("recipeId"),
+                "bindingSha256": row.get("bindingSha256"),
+                "numericBindingSamplesSha256": canonical_sha256(
+                    row.get("numericBindingSamples")
+                ),
+            }
+            for row in receipt.get("materialRecipeBindings") or []
+        ],
+        "verification": copy.deepcopy(verification_without_binding),
+    }
+    return canonical_sha256(projection)
 
 
 def feature_names(mask: int) -> list[str]:
@@ -555,8 +645,68 @@ def build_recipe_numeric_samples(
     return rows
 
 
+def require_finite_number(value: Any, label: str) -> float:
+    require(
+        type(value) in {int, float} and not isinstance(value, bool),
+        f"{label} is not an exact JSON number",
+    )
+    numeric = float(value)
+    require(math.isfinite(numeric), f"{label} is non-finite")
+    return numeric
+
+
 def f32(value: float) -> float:
-    return struct.unpack("<f", struct.pack("<f", float(value)))[0]
+    numeric = require_finite_number(value, "float32 input")
+    try:
+        converted = struct.unpack("<f", struct.pack("<f", numeric))[0]
+    except (OverflowError, struct.error) as error:
+        raise ValueError("float32 input is out of range") from error
+    require(math.isfinite(converted), "float32 conversion produced a non-finite value")
+    return converted
+
+
+def require_exact_f32_number(value: Any, label: str) -> float:
+    numeric = require_finite_number(value, label)
+    require(f32(numeric) == numeric, f"{label} is not an exact float32 value")
+    return numeric
+
+
+def validate_cpu_input_sample(sample: dict[str, Any]) -> None:
+    expected_keys = {
+        "sampleId",
+        "time",
+        "uvScale",
+        "panRotationAux",
+        "texture0",
+        "texture1",
+        "color",
+        "params0",
+        "params1",
+    }
+    require(isinstance(sample, dict) and set(sample) == expected_keys, "CPU sample schema changed")
+    require(isinstance(sample.get("sampleId"), str) and sample["sampleId"], "CPU sample ID changed")
+    f32(require_finite_number(sample["time"], "CPU sample time"))
+    for field_name, width in (
+        ("uvScale", 2),
+        ("panRotationAux", 4),
+        ("texture0", 4),
+        ("texture1", 4),
+        ("color", 4),
+        ("params0", 4),
+        ("params1", 4),
+    ):
+        lanes = sample.get(field_name)
+        require(isinstance(lanes, list) and len(lanes) == width, f"CPU sample {field_name} width changed")
+        for lane_index, lane in enumerate(lanes):
+            f32(require_finite_number(lane, f"CPU sample {field_name}[{lane_index}]"))
+
+
+def validate_cpu_float4(values: Any, label: str) -> list[float]:
+    require(isinstance(values, list) and len(values) == 4, f"{label} width changed")
+    return [
+        require_exact_f32_number(value, f"{label}[{lane_index}]")
+        for lane_index, value in enumerate(values)
+    ]
 
 
 def saturate(value: float) -> float:
@@ -564,6 +714,7 @@ def saturate(value: float) -> float:
 
 
 def evaluate_cpu(feature_mask: int, sample: dict[str, Any]) -> list[float]:
+    validate_cpu_input_sample(sample)
     time = f32(sample["time"])
     uv_scale = [f32(value) for value in sample["uvScale"]]
     pan = [f32(value) for value in sample["panRotationAux"]]
@@ -1195,6 +1346,10 @@ def build_material_feasibility_matrices(
             )
 
     if source_value_acquisition is not None:
+        validate_source_value_acquisition_semantics(
+            source_value_acquisition,
+            material_contract,
+        )
         require(
             source_value_acquisition.get("schema")
             == "lostark.artist-31470-material-source-value-acquisition-receipt"
@@ -1248,8 +1403,15 @@ def build_material_feasibility_matrices(
                     in {"SERIALIZED_EXPLICIT", "OMITTED_FROM_EXPORT"}
                     for name in raw_fields
                 )
+                and acquisition_row.get("fullDescriptorSourceExact") is False
                 and acquisition_row.get("sourceValueAcquired") is False
-                and acquisition_row.get("executionReady") is False,
+                and acquisition_row.get("executionReady") is False
+                and acquisition_row.get("strictReauditDecision") == "BLOCKED"
+                and acquisition_row.get("sourceValueDecision")
+                in {
+                    "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+                    "BLOCKED_SOURCE_TEXTURE_PACKAGE_NOT_IN_ARCHIVE",
+                },
                 f"Material source-value sampler provenance changed: {row['matrixRowId']}",
             )
             row["sourceTextureEvidence"] = copy.deepcopy(texture_evidence)
@@ -1426,6 +1588,8 @@ def build_receipt(
     source_archive: dict[str, Any],
     hlsl_verification: dict[str, Any] | None = None,
     warp_state_verification: dict[str, Any] | None = None,
+    *,
+    provisional_for_warp_replay: bool = False,
 ) -> dict[str, Any]:
     validate_upstream_material_receipts(
         material_contract,
@@ -1433,6 +1597,10 @@ def build_receipt(
         shader_receipt,
         material_contract_path,
         render_receipt_path,
+    )
+    validate_source_value_acquisition_semantics(
+        source_value_acquisition,
+        material_contract,
     )
     require(
         source_archive == PINNED_SOURCE_ARCHIVE_PROJECTION,
@@ -1723,6 +1891,9 @@ def build_receipt(
             "sourceValueAcquisitionGeneratorTrackedTextSha256": tracked_text_sha256(
                 SOURCE_VALUE_ACQUISITION_GENERATOR_PATH
             ),
+            "materialEvidenceApprovalTrackedTextSha256": tracked_text_sha256(
+                MATERIAL_EVIDENCE_APPROVAL_PATH
+            ),
         },
         "sourceRevisionShaderCacheAcquisition": source_archive,
         "controlledCaptureAssessment": {
@@ -1731,26 +1902,7 @@ def build_receipt(
             "uncontrolledInstalledGameProcessUsed": False,
             "decision": "USE_EXPLICIT_RECONSTRUCTED_NUMERIC_ORACLE_WITH_SOURCE_EXACT_FALSE",
         },
-        "evaluatorContract": {
-            "version": EVALUATOR_VERSION,
-            "operationOrder": [
-                "SECOND_TEXTURE_MULTIPLY",
-                "UV_TRANSFORM_PHASE",
-                "PANNER_PHASE",
-                "COLOR_MULTIPLY",
-                "DESATURATION",
-                "SIGNED_POWER",
-                "FRESNEL_GAIN",
-                "DISTORTION_OFFSET",
-                "DISSOLVE_ALPHA",
-                "ALPHA_MULTIPLY",
-            ],
-            "inputSampleCountPerFamily": len(ORACLE_INPUTS),
-            "inputSamples": list(ORACLE_INPUTS),
-            "numericTolerance": 2.0e-5,
-            "fidelity": "RECONSTRUCTED_NUMERICALLY_VERIFIED",
-            "sourceExact": False,
-        },
+        "evaluatorContract": expected_evaluator_contract(),
         "familyEvaluators": evaluators,
         "materialRecipeBindings": recipe_bindings,
         "occurrenceBindings": occurrence_bindings,
@@ -1820,17 +1972,358 @@ def build_receipt(
         },
     }
     seal_receipt(receipt)
-    validate_runtime_receipt(receipt)
-    validate_runtime_receipt_source_bindings(
-        receipt,
-        material_contract,
-        render_receipt,
-        shader_receipt,
-        source_value_acquisition,
-        material_contract_path=material_contract_path,
-        render_receipt_path=render_receipt_path,
-    )
+    if not provisional_for_warp_replay:
+        validate_runtime_receipt(receipt)
+        validate_runtime_receipt_source_bindings(
+            receipt,
+            material_contract,
+            render_receipt,
+            shader_receipt,
+            source_value_acquisition,
+            material_contract_path=material_contract_path,
+            render_receipt_path=render_receipt_path,
+        )
     return receipt
+
+
+def require_sha256_identity(
+    value: Any, label: str, expected: str | None = None
+) -> str:
+    require(
+        isinstance(value, str)
+        and len(value) == 64
+        and value == value.lower()
+        and value != "0" * 64
+        and all(character in "0123456789abcdef" for character in value),
+        f"{label} SHA-256 identity is invalid",
+    )
+    if expected is not None:
+        require(value == expected, f"{label} SHA-256 identity changed")
+    return value
+
+
+def validate_evaluator_contract(receipt: dict[str, Any]) -> None:
+    contract = receipt.get("evaluatorContract")
+    require(isinstance(contract, dict), "Material evaluator contract is missing")
+    require(
+        canonical_sha256(contract) == APPROVED_EVALUATOR_CONTRACT_SHA256
+        and canonical_sha256(contract)
+        == canonical_sha256(expected_evaluator_contract()),
+        "Material evaluator contract projection changed",
+    )
+    require(
+        type(contract.get("version")) is int
+        and contract["version"] == EVALUATOR_VERSION
+        and contract.get("operationOrder") == list(EVALUATOR_OPERATION_ORDER)
+        and contract.get("fidelity") == "RECONSTRUCTED_NUMERICALLY_VERIFIED"
+        and contract.get("sourceExact") is False,
+        "Material evaluator reconstruction classification changed",
+    )
+    tolerance = require_finite_number(
+        contract.get("numericTolerance"), "Material evaluator numeric tolerance"
+    )
+    f32(tolerance)
+    require(tolerance == NUMERIC_TOLERANCE, "Material evaluator numeric tolerance changed")
+    samples = contract.get("inputSamples")
+    require(
+        type(contract.get("inputSampleCountPerFamily")) is int
+        and contract["inputSampleCountPerFamily"] == len(ORACLE_INPUTS)
+        and isinstance(samples, list)
+        and len(samples) == len(ORACLE_INPUTS),
+        "Material evaluator input denominator changed",
+    )
+    for sample, expected in zip(samples, ORACLE_INPUTS, strict=True):
+        validate_cpu_input_sample(sample)
+        require(
+            canonical_sha256(sample) == canonical_sha256(expected),
+            "Material evaluator input sample changed",
+        )
+
+
+def validate_hlsl_verification(receipt: dict[str, Any]) -> None:
+    verification = receipt.get("hlslVerification")
+    require(isinstance(verification, dict), "Material HLSL verification is missing")
+    expected_keys = {
+        "verified",
+        "backend",
+        "entryPoint",
+        "targetProfile",
+        "compiler",
+        "hlslTrackedTextSha256",
+        "compiledDxbcSha256",
+        "sampleCount",
+        "inputBytesSha256",
+        "outputFloat32BytesSha256",
+        "numericTolerance",
+        "maxAbsoluteError",
+        "replayBindingSha256",
+    }
+    require(set(verification) == expected_keys, "Material HLSL verification schema changed")
+    require(
+        verification.get("verified") is True
+        and verification.get("backend") == "D3D11_WARP_COMPUTE"
+        and verification.get("entryPoint") == "main"
+        and verification.get("targetProfile") == "cs_5_0",
+        "Material HLSL execution identity changed",
+    )
+    compiler = verification.get("compiler")
+    require(
+        isinstance(compiler, dict)
+        and set(compiler) == {"fileName", "byteSize", "rawSha256", "hashRole"}
+        and compiler.get("fileName") == "d3dcompiler_47.dll"
+        and type(compiler.get("byteSize")) is int
+        and compiler["byteSize"] == PINNED_D3DCOMPILER_BYTE_SIZE
+        and compiler.get("hashRole") == "EXTERNAL_RAW_BYTES",
+        "Material HLSL compiler identity changed",
+    )
+    require_sha256_identity(
+        compiler.get("rawSha256"),
+        "Material HLSL compiler",
+        PINNED_D3DCOMPILER_SHA256,
+    )
+    source = receipt.get("sourceEvidence") or {}
+    require(
+        source.get("hlslTrackedTextSha256")
+        == PINNED_HLSL_TRACKED_TEXT_SHA256,
+        "Material HLSL approved source identity changed",
+    )
+    require_sha256_identity(
+        verification.get("hlslTrackedTextSha256"),
+        "Material HLSL source",
+        PINNED_HLSL_TRACKED_TEXT_SHA256,
+    )
+    require_sha256_identity(
+        verification.get("compiledDxbcSha256"),
+        "Material HLSL DXBC",
+        PINNED_COMPILED_DXBC_SHA256,
+    )
+    require_sha256_identity(
+        verification.get("inputBytesSha256"),
+        "Material HLSL input bytes",
+        PINNED_HLSL_INPUT_BYTES_SHA256,
+    )
+    require_sha256_identity(
+        verification.get("outputFloat32BytesSha256"),
+        "Material HLSL output bytes",
+        PINNED_HLSL_OUTPUT_BYTES_SHA256,
+    )
+    require(
+        type(verification.get("sampleCount")) is int
+        and verification["sampleCount"] == 200,
+        "Material HLSL sample denominator changed",
+    )
+    tolerance = require_finite_number(
+        verification.get("numericTolerance"), "Material HLSL numeric tolerance"
+    )
+    f32(tolerance)
+    require(
+        tolerance == NUMERIC_TOLERANCE
+        and tolerance
+        == require_finite_number(
+            (receipt.get("evaluatorContract") or {}).get("numericTolerance"),
+            "Material evaluator numeric tolerance",
+        ),
+        "Material HLSL tolerance binding changed",
+    )
+    max_error = require_finite_number(
+        verification.get("maxAbsoluteError"), "Material HLSL maximum error"
+    )
+    f32(max_error)
+    require(
+        0.0 <= max_error <= tolerance
+        and max_error == PINNED_HLSL_MAX_ABSOLUTE_ERROR,
+        "Material HLSL maximum error changed",
+    )
+    replay = copy.deepcopy(verification)
+    claimed_replay = replay.pop("replayBindingSha256", None)
+    require_sha256_identity(
+        claimed_replay,
+        "Material HLSL replay binding",
+        APPROVED_HLSL_REPLAY_BINDING_SHA256,
+    )
+    require(
+        claimed_replay == hlsl_replay_binding_sha256(receipt, replay),
+        "Material HLSL replay binding projection changed",
+    )
+
+
+def validate_controlled_capture_assessment(receipt: dict[str, Any]) -> None:
+    expected = {
+        "available": False,
+        "reason": (
+            "NO_SOURCE_REVISION_UE3_RUNTIME_INSTRUMENTATION_OR_"
+            "SHADERCACHE_PACKAGE"
+        ),
+        "uncontrolledInstalledGameProcessUsed": False,
+        "decision": (
+            "USE_EXPLICIT_RECONSTRUCTED_NUMERIC_ORACLE_WITH_SOURCE_EXACT_FALSE"
+        ),
+    }
+    assessment = receipt.get("controlledCaptureAssessment")
+    require(
+        isinstance(assessment, dict)
+        and set(assessment) == set(expected)
+        and canonical_sha256(assessment)
+        == APPROVED_CONTROLLED_CAPTURE_ASSESSMENT_SHA256
+        and canonical_sha256(assessment) == canonical_sha256(expected),
+        "Material controlled-capture assessment changed",
+    )
+    require(
+        assessment.get("available") is False
+        and assessment.get("uncontrolledInstalledGameProcessUsed") is False,
+        "Material uncontrolled or source-exact capture was laundered",
+    )
+
+
+def validate_warp_state_provider_verification(receipt: dict[str, Any]) -> None:
+    verification = receipt.get("warpStateProviderVerification")
+    require(
+        isinstance(verification, dict)
+        and set(verification)
+        == {
+            "verified",
+            "backend",
+            "featureLevel",
+            "pilotCount",
+            "pilots",
+            "pilotProjectionSha256",
+        }
+        and verification.get("verified") is True
+        and verification.get("backend") == "D3D11_WARP_STATE_OBJECTS"
+        and type(verification.get("featureLevel")) is int
+        and verification["featureLevel"] == 0xB000
+        and type(verification.get("pilotCount")) is int
+        and verification["pilotCount"] == 4,
+        "Material WARP state provider identity changed",
+    )
+    pilot_layouts = {
+        "warp-blend-mode-toggle": {
+            "inputDomain": ["OPAQUE", "TRANSLUCENT"],
+            "mutatedOutputFields": ["BlendEnable", "SrcBlend", "DestBlend"],
+            "boolFields": {"BlendEnable"},
+            "intFields": {
+                "SrcBlend",
+                "DestBlend",
+                "BlendOp",
+                "SrcBlendAlpha",
+                "DestBlendAlpha",
+                "BlendOpAlpha",
+                "RenderTargetWriteMask",
+            },
+            "floatFields": set(),
+        },
+        "warp-depth-disable-toggle": {
+            "inputDomain": [False, True],
+            "mutatedOutputFields": ["DepthEnable"],
+            "boolFields": {"DepthEnable", "StencilEnable"},
+            "intFields": {"DepthWriteMask", "DepthFunc"},
+            "floatFields": set(),
+        },
+        "warp-rasterizer-two-sided-toggle": {
+            "inputDomain": [False, True],
+            "mutatedOutputFields": ["CullMode"],
+            "boolFields": {"FrontCounterClockwise", "DepthClipEnable"},
+            "intFields": {"FillMode", "CullMode"},
+            "floatFields": set(),
+        },
+        "warp-sampler-address-toggle": {
+            "inputDomain": ["WRAP", "CLAMP"],
+            "mutatedOutputFields": ["AddressU", "AddressV", "AddressW"],
+            "boolFields": set(),
+            "intFields": {
+                "Filter",
+                "AddressU",
+                "AddressV",
+                "AddressW",
+                "MaxAnisotropy",
+                "ComparisonFunc",
+            },
+            "floatFields": {"MipLODBias", "MinLOD", "MaxLOD"},
+        },
+    }
+    pilots = verification.get("pilots")
+    require(
+        isinstance(pilots, list)
+        and [pilot.get("pilotId") for pilot in pilots]
+        == list(pilot_layouts),
+        "Material WARP state pilot order changed",
+    )
+    for pilot in pilots:
+        require(
+            isinstance(pilot, dict)
+            and set(pilot)
+            == {
+                "pilotId",
+                "inputDomain",
+                "expectedStateOutputs",
+                "actualStateOutputs",
+                "mutatedOutputFields",
+                "numericTolerance",
+                "decision",
+            },
+            "Material WARP state pilot schema changed",
+        )
+        layout = pilot_layouts[pilot["pilotId"]]
+        require(
+            canonical_sha256(pilot.get("inputDomain"))
+            == canonical_sha256(layout["inputDomain"])
+            and pilot.get("mutatedOutputFields")
+            == layout["mutatedOutputFields"]
+            and type(pilot.get("numericTolerance")) is float
+            and pilot["numericTolerance"] == 0.0
+            and pilot.get("decision") == "PASS",
+            f"Material WARP state pilot metadata changed: {pilot['pilotId']}",
+        )
+        expected_outputs = pilot.get("expectedStateOutputs")
+        actual_outputs = pilot.get("actualStateOutputs")
+        require(
+            isinstance(expected_outputs, list)
+            and isinstance(actual_outputs, list)
+            and len(expected_outputs) == len(layout["inputDomain"])
+            and len(actual_outputs) == len(layout["inputDomain"]),
+            f"Material WARP state output denominator changed: {pilot['pilotId']}",
+        )
+        output_keys = (
+            layout["boolFields"] | layout["intFields"] | layout["floatFields"]
+        )
+        for lane_name, outputs in (
+            ("expected", expected_outputs),
+            ("actual", actual_outputs),
+        ):
+            for output in outputs:
+                require(
+                    isinstance(output, dict) and set(output) == output_keys,
+                    f"Material WARP {lane_name} state schema changed: "
+                    f"{pilot['pilotId']}",
+                )
+                require(
+                    all(type(output[name]) is bool for name in layout["boolFields"])
+                    and all(
+                        type(output[name]) is int for name in layout["intFields"]
+                    ),
+                    f"Material WARP {lane_name} state scalar type changed: "
+                    f"{pilot['pilotId']}",
+                )
+                for name in layout["floatFields"]:
+                    require(
+                        type(output[name]) is float,
+                        f"Material WARP {lane_name} state float type changed: "
+                        f"{pilot['pilotId']}:{name}",
+                    )
+                    require_exact_f32_number(
+                        output[name],
+                        f"Material WARP {lane_name} state float",
+                    )
+        require(
+            canonical_sha256(actual_outputs) == canonical_sha256(expected_outputs),
+            f"Material WARP state output replay changed: {pilot['pilotId']}",
+        )
+    require(
+        verification.get("pilotProjectionSha256")
+        == canonical_sha256(pilots)
+        == APPROVED_WARP_STATE_PILOT_PROJECTION_SHA256,
+        "Material WARP state pilot projection changed",
+    )
 
 
 def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
@@ -1857,6 +2350,7 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         "ue3PackageParserTrackedTextSha256",
         "hlslVerifierTrackedTextSha256",
         "sourceValueAcquisitionGeneratorTrackedTextSha256",
+        "materialEvidenceApprovalTrackedTextSha256",
     ):
         require(isinstance(source.get(key), str) and len(source[key]) == 64, f"source evidence SHA is invalid: {key}")
     acquisition = receipt.get("sourceRevisionShaderCacheAcquisition") or {}
@@ -1864,6 +2358,9 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         acquisition == PINNED_SOURCE_ARCHIVE_PROJECTION,
         "source archive deep projection changed",
     )
+    validate_evaluator_contract(receipt)
+    validate_controlled_capture_assessment(receipt)
+    validate_warp_state_provider_verification(receipt)
     families = receipt.get("familyEvaluators") or []
     recipes = receipt.get("materialRecipeBindings") or []
     occurrences = receipt.get("occurrenceBindings") or []
@@ -1886,11 +2383,13 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         for sample, source_sample in zip(family["sampleRows"], ORACLE_INPUTS, strict=True):
             require(sample["sampleId"] == source_sample["sampleId"] and sample["inputSha256"] == canonical_sha256(source_sample), "family input sample identity changed")
             expected = evaluate_cpu(family["featureMask"], source_sample)
-            require(
-                all(math.isfinite(float(value)) for value in sample["expectedFloat4"]),
-                "family CPU numeric output is non-finite",
+            actual = validate_cpu_float4(
+                sample.get("expectedFloat4"), "family CPU numeric output"
             )
-            require(all(abs(float(a) - float(b)) <= 1.0e-7 for a, b in zip(sample["expectedFloat4"], expected, strict=True)), "family CPU numeric output changed")
+            require(
+                canonical_sha256(actual) == canonical_sha256(expected),
+                "family CPU numeric output changed",
+            )
     recipe_ids: set[str] = set()
     recipe_binding_by_id: dict[str, dict[str, Any]] = {}
     field_ids: set[str] = set()
@@ -1950,15 +2449,23 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         expected_operands = build_recipe_operands(fields, recipe_feature_mask)
         require(recipe.get("runtimeOperandBindings") == expected_operands, "Material recipe runtime operands changed")
         expected_samples = build_recipe_numeric_samples(recipe_feature_mask, expected_operands)
-        require(recipe.get("numericBindingSamples") == expected_samples, "Material recipe numeric binding oracle changed")
+        actual_samples = recipe.get("numericBindingSamples") or []
         require(
-            all(
-                math.isfinite(float(value))
-                for sample in recipe.get("numericBindingSamples") or []
-                for value in sample.get("expectedFloat4") or []
-            ),
-            "Material recipe numeric binding output is non-finite",
+            len(actual_samples) == len(expected_samples),
+            "Material recipe numeric binding denominator changed",
         )
+        for sample, expected_sample in zip(
+            actual_samples, expected_samples, strict=True
+        ):
+            validate_cpu_input_sample(sample.get("input"))
+            validate_cpu_float4(
+                sample.get("expectedFloat4"),
+                "Material recipe CPU numeric output",
+            )
+            require(
+                canonical_sha256(sample) == canonical_sha256(expected_sample),
+                "Material recipe numeric binding oracle changed",
+            )
         render_state = recipe.get("renderStateBindings") or []
         require(len(render_state) == len(RENDER_STATE_FIELDS) and len(render_state) == recipe.get("renderStateBindingCount"), "Material render-state denominator changed")
         require([field.get("fieldName") for field in render_state] == list(RENDER_STATE_FIELDS), "Material render-state order changed")
@@ -1989,7 +2496,32 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
             "Material occurrence exact recipe binding changed",
         )
         require(occurrence.get("runtimeHandlerConsumptionAdmission") is False and occurrence.get("productAdmission") is False, "Material occurrence admission changed")
+    validate_hlsl_verification(receipt)
     summary = receipt.get("summary") or {}
+    runtime_recipe_count = sum(
+        row.get("runtimeHandlerConsumptionAdmission") is True for row in recipes
+    )
+    runtime_occurrence_count = sum(
+        row.get("runtimeHandlerConsumptionAdmission") is True
+        for row in occurrences
+    )
+    product_recipe_count = sum(row.get("productAdmission") is True for row in recipes)
+    product_occurrence_count = sum(
+        row.get("productAdmission") is True for row in occurrences
+    )
+    require(
+        summary.get("runtimeHandlerConsumedRecipeCount")
+        == runtime_recipe_count
+        == 0
+        and summary.get("runtimeHandlerConsumedOccurrenceCount")
+        == runtime_occurrence_count
+        == 0
+        and summary.get("productRecipeCount") == product_recipe_count == 0
+        and summary.get("productOccurrenceCount")
+        == product_occurrence_count
+        == 0,
+        "Material runtime/Product consumption summary changed",
+    )
     require(summary.get("materialFamilyCount") == 23 and summary.get("implementedEvaluatorCount") == 23 and summary.get("cpuVerifiedEvaluatorCount") == 23, "Material evaluator summary changed")
     hlsl = receipt.get("hlslVerification") or {}
     expected_hlsl_count = 23 if hlsl.get("verified") else 0
@@ -2137,23 +2669,7 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         and matrix_summary.get("executionReadiness") is False,
         "Material feasibility summary changed",
     )
-    state_verification = receipt.get("warpStateProviderVerification") or {}
-    require(
-        state_verification.get("verified") in {True, False},
-        "Material WARP state provider verification changed",
-    )
-    if state_verification.get("verified"):
-        require(
-            state_verification.get("backend") == "D3D11_WARP_STATE_OBJECTS"
-            and state_verification.get("pilotCount") == 4
-            and len(state_verification.get("pilots") or []) == 4
-            and all(
-                pilot.get("decision") == "PASS"
-                and pilot.get("numericTolerance") == 0.0
-                for pilot in state_verification["pilots"]
-            ),
-            "Material WARP state provider pilot changed",
-        )
+    validate_warp_state_provider_verification(receipt)
     require(
         summary.get("materialFeasibilityRowCount") == 255
         and summary.get("materialFeasibilityReadyCount") == 0
@@ -2193,6 +2709,10 @@ def validate_runtime_receipt_source_bindings(
         shader_receipt,
         material_contract_path,
         render_receipt_path,
+    )
+    validate_source_value_acquisition_semantics(
+        source_value_acquisition,
+        material_contract,
     )
     expressions_by_base: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for expression in render_receipt.get("graphExpressions") or []:
@@ -2351,6 +2871,10 @@ def validate_runtime_receipt_tracked_sources(
     render_receipt = read_json(render_receipt_path)
     shader_receipt = read_json(shader_receipt_path)
     source_value_acquisition = read_json(source_value_acquisition_path)
+    validate_source_value_acquisition_semantics(
+        source_value_acquisition,
+        material_contract,
+    )
     require(
         source.get("materialContractSha256")
         == material_contract.get("contractSha256")
@@ -2376,6 +2900,9 @@ def validate_runtime_receipt_tracked_sources(
         "sourceValueAcquisitionGeneratorTrackedTextSha256": (
             SOURCE_VALUE_ACQUISITION_GENERATOR_PATH
         ),
+        "materialEvidenceApprovalTrackedTextSha256": (
+            MATERIAL_EVIDENCE_APPROVAL_PATH
+        ),
     }
     for key, path in tracked_sources.items():
         require(
@@ -2400,6 +2927,10 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
     render_receipt = read_json(args.render_receipt)
     shader_receipt = read_json(args.shader_receipt)
     source_value_acquisition = read_json(args.source_value_acquisition_receipt)
+    validate_source_value_acquisition_semantics(
+        source_value_acquisition,
+        material_contract,
+    )
     source_archive = scan_source_archive(args.source_archive_root)
     initial = build_receipt(
         material_contract,
@@ -2412,6 +2943,7 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
         args.source_value_acquisition_receipt,
         args.hlsl,
         source_archive,
+        provisional_for_warp_replay=True,
     )
     if args.run_hlsl:
         from verify_artist_31470_material_runtime_oracle_hlsl import (

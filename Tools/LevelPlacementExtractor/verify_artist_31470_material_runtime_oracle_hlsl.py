@@ -829,7 +829,7 @@ def run_hlsl_oracle(
             )
             max_error = max(max_error, error)
     require(max_error <= tolerance, f"Material HLSL numeric oracle mismatch: {max_error} > {tolerance}")
-    return {
+    result = {
         "verified": True,
         "backend": "D3D11_WARP_COMPUTE",
         "entryPoint": "main",
@@ -843,6 +843,14 @@ def run_hlsl_oracle(
         "numericTolerance": tolerance,
         "maxAbsoluteError": max_error,
     }
+    from build_artist_31470_material_runtime_oracle import (
+        hlsl_replay_binding_sha256,
+    )
+
+    result["replayBindingSha256"] = hlsl_replay_binding_sha256(
+        receipt, result
+    )
+    return result
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
