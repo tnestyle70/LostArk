@@ -162,3 +162,46 @@ Client 실행은 하지 않는다.
 399/1,434/1,572/629 실행 consumption과 G05-S numeric reconstruction 완료는 주장하지 않는다.
 Geometry/Material Gate dependency를 결합하고 class-lineage Codec conflict를 해결한 뒤 Source owner가
 최종 네 output을 한 번만 재생성한다.
+
+## 2026-08-10 G05-S source execution semantics adapter
+
+기존 semantic closure의 `UNRESOLVED` 행을 곧바로 runtime admission으로 바꾸지 않고, source
+evidence와 runtime compiler 사이에 pure typed adapter receipt를 하나 둔다.
+
+1. 입력은 checked-in semantic closure, v14 candidate/receipt, local-reference closure,
+   external-module closure, ActionCue recipe 여섯 개다. JSON 의미 hash와 generator/tool의
+   LF-canonical text hash를 receipt에 기록한다.
+2. 35 occurrence의 399 module, 1,434 top-level property, 1,572 primitive leaf, 629 distribution을
+   candidate typed literal/distribution payload와 stable ID로 1:1 결합한다. payload 이후 raw
+   source 문자열을 다시 검색하지 않도록 module/property/leaf별 handler capability ID를 낸다.
+3. selected LOD의 Level/Enabled 70 field는 `FIRST_LOD_ONLY` source identity가 adapter build에서
+   이미 선택되므로 `VERIFIED_IRRELEVANT`로 닫는다. `lodvalidity`와 editor-only
+   `b3ddrawmode`도 별도 irrelevance oracle을 사용한다.
+4. 612 inline distribution은 source tagged field와 reconstruction field를 분리하고, current UE3
+   raw-distribution default와 cooked lookup shape로 operation/chunk/count를 재계산한다. fixed
+   time/random vector 세 세트의 independent numeric oracle을 저장하되 reconstructed field를
+   `SOURCE_EXACT`로 승격하지 않는다.
+5. local distribution 17 occurrence는 instance -> archetype -> CDO -> evaluator default 순서를
+   보존한다. standard parameter/curve 14 occurrence는 ActionCue type/name을 결합해 direct,
+   normal, constant fallback 또는 curve 값을 계산한다. custom EF multiply 3 occurrence는 current
+   payload를 진단용으로 보존하되 exact evaluator oracle이 없어 계속 `BLOCKED`다.
+6. external module 248 occurrence는 installed current package의 178 unique export를 다시 decode해
+   `serialSize == propertyStreamEnd`를 검사한다. 결과는 native tail의 current-revision
+   irrelevance 증거이며 historical `SOURCE_EXACT` 증거가 아니다.
+7. seed 14 occurrence는 source array 또는 32-byte struct body에서 int32 seed를 보존한다. Engine/
+   EFGame current seeded CDO 8종을 직접 decode해 공통 seed selection policy를 검증한다. source-era
+   script identity는 pin되지 않았으므로 current reconstruction으로만 기록한다.
+8. Required local-space 8, Decal 3, Ribbon 1, Light 1은 current CDO/default chain을 typed value로
+   물질화한다. ScreenPost 1은 implicit source field가 없는 renderer projection이므로
+   `VERIFIED_IRRELEVANT`다. PointLight exact child와 current default field는 분리하며 GUID 두 개는
+   runtime irrelevance oracle로 닫는다.
+9. `efparticlemodule*` 및 `_seeded` exact class 26 occurrence/13 class family는 alias하지 않는다.
+   exact handler numeric oracle이 없으면 module blocker를 유지한다. custom distribution을 소유한
+   standard module 3개도 함께 차단한다.
+10. 생성기 `--check`, builder를 import하지 않는 독립 verifier, self-reseal mutation suite,
+    shallow/deep ProjectAudit를 통과해야 한다. Product admission은 항상 false이며 이미지,
+    스크린샷, 육안 판정을 완료 조건으로 사용하지 않는다.
+
+이 adapter의 합격 범위는 source-side typed input과 evaluator receipt다. runtime compiler가 capability를
+결합하고 custom handler/evaluator oracle을 제공하기 전에는 35/35 실행 또는 Product 복원 완료를
+주장하지 않는다.
