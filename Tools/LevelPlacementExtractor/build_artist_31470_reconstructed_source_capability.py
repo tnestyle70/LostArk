@@ -113,6 +113,21 @@ EXPECTED_FAMILY_COUNTS = {
     "source.reconstructed.ef-vector-multiply.v1": 3,
 }
 
+IMPLEMENTATION_VERSIONS = {
+    family_id: 2 if family_id == "source.reconstructed.decal.v1" else 1
+    for family_id in EXPECTED_FAMILY_COUNTS
+}
+
+DECAL_SOURCE_CLASS = "efparticlemoduletypedatadecal"
+EXPECTED_DECAL_NEAR_PLANE = -300.0
+EXPECTED_DECAL_CDO_VALUES = {
+    "defaultsize": {"x": 50.0, "y": 50.0},
+    "farplane": 300.0,
+    "blendrange": {"x": 100.0, "y": 100.0},
+    "bonlycalcrotationyaw": True,
+    "bsupported3ddrawmode": True,
+}
+
 CLASS_CONTRACTS: dict[str, dict[str, Any]] = {
     "particlemodulecolor_seeded": {
         "family": "source.reconstructed.seeded.v1",
@@ -263,7 +278,119 @@ def _default_row(field_path: str, value: Any) -> dict[str, Any]:
     }
 
 
-def _variant_default_rows(variant: str) -> list[dict[str, Any]]:
+def _decal_policy_defaults(
+    source: dict[str, Any], modules: list[dict[str, Any]]
+) -> dict[str, Any]:
+    current_defaults = source.get("currentRevisionDefaultEvidence") or {}
+    require(
+        current_defaults.get("status") == "CURRENT_REVISION_DEFAULTS_NOT_SOURCE_EXACT",
+        "Decal current-revision default evidence status changed",
+    )
+    decal_evidence = current_defaults.get("decal") or {}
+    require(
+        decal_evidence.get("provenance") == "CURRENT_EFGAME_CDO"
+        and json_bytes(decal_evidence.get("values"))
+        == json_bytes(EXPECTED_DECAL_CDO_VALUES),
+        "Decal current EFGAME CDO values changed",
+    )
+
+    cdo = (current_defaults.get("classDefaultObjects") or {}).get(
+        "efParticleModuleTypeDataDecal"
+    ) or {}
+    expected_properties = {
+        "defaultsize": {
+            "type": "structproperty",
+            "structtype": "vector2d",
+            "value": EXPECTED_DECAL_CDO_VALUES["defaultsize"],
+        },
+        "farplane": {
+            "type": "floatproperty",
+            "structtype": None,
+            "value": EXPECTED_DECAL_CDO_VALUES["farplane"],
+        },
+        "blendrange": {
+            "type": "structproperty",
+            "structtype": "vector2d",
+            "value": EXPECTED_DECAL_CDO_VALUES["blendrange"],
+        },
+        "bonlycalcrotationyaw": {
+            "type": "boolproperty",
+            "structtype": None,
+            "value": EXPECTED_DECAL_CDO_VALUES["bonlycalcrotationyaw"],
+        },
+        "bsupported3ddrawmode": {
+            "type": "boolproperty",
+            "structtype": None,
+            "value": EXPECTED_DECAL_CDO_VALUES["bsupported3ddrawmode"],
+        },
+    }
+    record_sha = cdo.get("recordSha256")
+    require(
+        cdo.get("objectPath") == "Default__EFParticleModuleTypeDataDecal"
+        and cdo.get("className") == DECAL_SOURCE_CLASS
+        and type(cdo.get("exportIndex")) is int
+        and cdo["exportIndex"] > 0
+        and type(record_sha) is str
+        and len(record_sha) == 64
+        and all(character in "0123456789abcdef" for character in record_sha)
+        and json_bytes(cdo.get("properties")) == json_bytes(expected_properties),
+        "Decal current EFGAME CDO record changed",
+    )
+
+    require(len(modules) == EXPECTED_FAMILY_COUNTS["source.reconstructed.decal.v1"],
+            "Decal occurrence denominator changed")
+    implicit_default_ids = set()
+    for module in modules:
+        literal_rows = [
+            row for row in module["typedPayload"]["literals"]
+            if row["propertyPath"] == "nearplane"
+        ]
+        require(
+            len(literal_rows) == 1
+            and literal_rows[0]["kind"] == "number"
+            and type(literal_rows[0]["value"]) is float
+            and literal_rows[0]["value"] == EXPECTED_DECAL_NEAR_PLANE,
+            f"Decal nearPlane literal changed: {module['moduleOccurrenceId']}",
+        )
+        default_rows = module.get("implicitDefaults") or []
+        require(
+            len(default_rows) == 1,
+            f"Decal implicit default set is not unique: {module['moduleOccurrenceId']}",
+        )
+        default_row = default_rows[0]
+        default_id = default_row.get("defaultId")
+        require(
+            type(default_id) is str
+            and default_id.startswith(module["moduleOccurrenceId"] + "::default:")
+            and default_id not in implicit_default_ids
+            and default_row.get("family") == "Decal"
+            and default_row.get("fieldPath") == "typedata.decal.class-default-set"
+            and default_row.get("decision") == "READY_FOR_HANDLER"
+            and default_row.get("provenance") == "CURRENT_EFGAME_CDO"
+            and json_bytes(default_row.get("values"))
+            == json_bytes(EXPECTED_DECAL_CDO_VALUES),
+            f"Decal implicit default set changed: {module['moduleOccurrenceId']}",
+        )
+        implicit_default_ids.add(default_id)
+
+    return {
+        "farPlane": EXPECTED_DECAL_CDO_VALUES["farplane"],
+        "defaultSize": [
+            EXPECTED_DECAL_CDO_VALUES["defaultsize"]["x"],
+            EXPECTED_DECAL_CDO_VALUES["defaultsize"]["y"],
+        ],
+        "blendRange": [
+            EXPECTED_DECAL_CDO_VALUES["blendrange"]["x"],
+            EXPECTED_DECAL_CDO_VALUES["blendrange"]["y"],
+        ],
+        "yawOnly": EXPECTED_DECAL_CDO_VALUES["bonlycalcrotationyaw"],
+        "supports3dDrawMode": EXPECTED_DECAL_CDO_VALUES["bsupported3ddrawmode"],
+    }
+
+
+def _variant_default_rows(
+    variant: str, decal_defaults: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     values: dict[str, Any] = {
         "fixedContext.inputPosition": FIXED_CONTEXT["inputPosition"],
         "fixedContext.inputVelocity": FIXED_CONTEXT["inputVelocity"],
@@ -300,11 +427,13 @@ def _variant_default_rows(variant: str) -> list[dict[str, Any]]:
     if variant == "EF_GROUND_PLANE_QUERY":
         values["ground.skipThreshold"] = 0.5
     if variant == "EF_DECAL_DESCRIPTOR":
+        require(decal_defaults is not None, "Decal CDO defaults are missing")
         values.update({
-            "decal.farPlane": 300.0,
-            "decal.defaultSize": [50.0, 50.0],
-            "decal.blendRange": [100.0, 100.0],
-            "decal.yawOnly": False,
+            "decal.farPlane": copy.deepcopy(decal_defaults["farPlane"]),
+            "decal.defaultSize": copy.deepcopy(decal_defaults["defaultSize"]),
+            "decal.blendRange": copy.deepcopy(decal_defaults["blendRange"]),
+            "decal.yawOnly": decal_defaults["yawOnly"],
+            "decal.supports3dDrawMode": decal_defaults["supports3dDrawMode"],
         })
     return [_default_row(path, value) for path, value in sorted(values.items())]
 
@@ -342,7 +471,11 @@ def _output_schema(variant: str, contract: dict[str, Any]) -> dict[str, Any]:
     elif variant == "EF_GROUND_PLANE_QUERY":
         fields.update({"position": _schema_vector(3), "queryApplied": {"type": "BOOLEAN"}, "skipLocation": {"type": "FLOAT64"}})
     elif variant == "EF_DECAL_DESCRIPTOR":
-        fields.update({"frustum": _schema_vector(6), "yawOnly": {"type": "BOOLEAN"}})
+        fields.update({
+            "frustum": _schema_vector(6),
+            "yawOnly": {"type": "BOOLEAN"},
+            "supports3dDrawMode": {"type": "BOOLEAN"},
+        })
     elif variant == "EF_POINT_LIGHT_DESCRIPTOR":
         fields.update({
             "brightness": {"type": "FLOAT64"},
@@ -371,6 +504,7 @@ def _extra_input_schema(variant: str) -> dict[str, Any]:
             "nearPlane": {"type": "FLOAT64"}, "farPlane": {"type": "FLOAT64"},
             "defaultSize": _schema_vector(2), "blendRange": _schema_vector(2),
             "yawOnly": {"type": "BOOLEAN"},
+            "supports3dDrawMode": {"type": "BOOLEAN"},
         }
     if variant == "EF_POINT_LIGHT_DESCRIPTOR":
         return {"pointLightFields": _schema_object({
@@ -407,6 +541,10 @@ def _variant_binding(source: dict[str, Any], source_class: str) -> dict[str, Any
     contract = CLASS_CONTRACTS[source_class]
     modules = _blocked_modules_by_class(source, source_class)
     require(modules, f"variant source class has no occurrence: {source_class}")
+    decal_defaults = (
+        _decal_policy_defaults(source, modules)
+        if source_class == DECAL_SOURCE_CLASS else None
+    )
     literal_fields: dict[str, Any] = {}
     for property_path in contract["literals"]:
         kinds = {
@@ -449,7 +587,9 @@ def _variant_binding(source: dict[str, Any], source_class: str) -> dict[str, Any
         "expectedOccurrenceCount": len(modules),
         "inputSchema": _schema_object(input_fields),
         "outputSchema": _output_schema(contract["variant"], contract),
-        "explicitDefaults": _variant_default_rows(contract["variant"]),
+        "explicitDefaults": _variant_default_rows(
+            contract["variant"], decal_defaults
+        ),
         "allowedLiteralPaths": list(contract["literals"]),
         "distributionPropertyPaths": list(contract["distributions"]),
     }
@@ -460,7 +600,7 @@ def build_family_policies(root: Path, source: dict[str, Any]) -> list[dict[str, 
         "source.reconstructed.seeded.v1": "UE3_LCG_FIXED_STREAM_THEN_EXACT_CLASS_VARIANT_DISTRIBUTION_PROJECTION",
         "source.reconstructed.cylinder-spin.v1": "EVALUATE_SIX_DISTRIBUTIONS_THEN_AXIS_PLANE_POLAR_POSITION_AND_TANGENT_VELOCITY",
         "source.reconstructed.ground.v1": "FIXED_GROUND_PLANE_QUERY_WITH_EXPLICIT_SKIP_PARAMETER_FALLBACK",
-        "source.reconstructed.decal.v1": "EXPLICIT_DECAL_FRUSTUM_DESCRIPTOR_FROM_NEAR_PLANE_AND_POLICY_DEFAULTS",
+        "source.reconstructed.decal.v1": "EXPLICIT_DECAL_FRUSTUM_DESCRIPTOR_FROM_SOURCE_NEAR_PLANE_AND_CURRENT_EFGAME_CDO_DEFAULTS",
         "source.reconstructed.light.v1": "POINT_LIGHT_DESCRIPTOR_FROM_EXPLICIT_INSTANCE_AND_CURRENT_ARCHETYPE_CDO_FIELDS",
         "source.reconstructed.velocity.v1": "COMPONENTWISE_VELOCITY_MULTIPLY_OVER_LIFETIME",
         "source.reconstructed.ef-vector-multiply.v1": "DPM_COMPONENT_MAP_THEN_COMPONENTWISE_BASE_VECTOR_MULTIPLY",
@@ -490,7 +630,7 @@ def build_family_policies(root: Path, source: dict[str, Any]) -> list[dict[str, 
         semantic_sha = canonical_sha256(semantic_contract)
         implementation = {
             "implementationId": family_id + ".implementation",
-            "implementationVersion": 1,
+            "implementationVersion": IMPLEMENTATION_VERSIONS[family_id],
             "familySemanticImplementationSha256": semantic_sha,
             "semanticContract": semantic_contract,
         }
@@ -847,22 +987,31 @@ def evaluate_policy_sample(
         typed_inputs.update({"inputPosition": _vector(defaults["fixedContext.inputPosition"], 3), "groundPlaneZ": ground_plane_z})
         output = {"variant": variant, "position": position, "queryApplied": query_applied, "skipLocation": skip}
     elif contract["family"] == "source.reconstructed.decal.v1":
-        near_plane = float(_resolved_literal(literals, "nearplane", defaults))
+        near_plane_value = _resolved_literal(literals, "nearplane", defaults)
+        require(
+            type(near_plane_value) is float
+            and near_plane_value == EXPECTED_DECAL_NEAR_PLANE,
+            f"Decal nearPlane literal changed: {module['moduleOccurrenceId']}",
+        )
+        near_plane = near_plane_value
         far_plane = float(defaults["decal.farPlane"])
         default_size = _vector(defaults["decal.defaultSize"], 2)
         blend_range = _vector(defaults["decal.blendRange"], 2)
         yaw_only = bool(defaults["decal.yawOnly"])
+        supports_3d_draw_mode = bool(defaults["decal.supports3dDrawMode"])
         typed_inputs.update({
             "nearPlane": near_plane,
             "farPlane": far_plane,
             "defaultSize": default_size,
             "blendRange": blend_range,
             "yawOnly": yaw_only,
+            "supports3dDrawMode": supports_3d_draw_mode,
         })
         output = {
             "variant": variant,
             "frustum": [near_plane, far_plane, default_size[0], default_size[1], blend_range[0], blend_range[1]],
             "yawOnly": yaw_only,
+            "supports3dDrawMode": supports_3d_draw_mode,
         }
     elif contract["family"] == "source.reconstructed.light.v1":
         fields = {row["fieldPath"]: copy.deepcopy(row["value"]) for row in point_light["fields"]}

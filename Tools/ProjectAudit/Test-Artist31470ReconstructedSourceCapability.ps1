@@ -73,13 +73,74 @@ try {
     $samples = @($receipt.occurrences.numericSamples)
     $badPolicies = @($receipt.familyPolicies | Where-Object {
         [string]::IsNullOrWhiteSpace($_.implementationId) -or
-        [int]$_.implementationVersion -ne 1 -or
+        ($_.policyFamilyId -ceq 'source.reconstructed.decal.v1' -and
+            [int]$_.implementationVersion -ne 2) -or
+        ($_.policyFamilyId -cne 'source.reconstructed.decal.v1' -and
+            [int]$_.implementationVersion -ne 1) -or
         $_.implementationSha256 -notmatch '^[0-9a-f]{64}$' -or
         $_.familySemanticImplementationSha256 -notmatch '^[0-9a-f]{64}$' -or
         [bool]$_.semanticContract.genericFallbackAllowed -or
         [bool]$_.sourceExact -or
         [bool]$_.runtimeExecutionAdmission -or
-        [bool]$_.productAdmission
+            [bool]$_.productAdmission
+    })
+
+    $decalPolicies = @($receipt.familyPolicies | Where-Object {
+        $_.policyFamilyId -ceq 'source.reconstructed.decal.v1'
+    })
+    $decalBindings = @($decalPolicies.semanticContract.variantBindings | Where-Object {
+        $_.exactSourceClass -ceq 'efparticlemoduletypedatadecal' -and
+        $_.variant -ceq 'EF_DECAL_DESCRIPTOR'
+    })
+    $decalRows = @($receipt.occurrences | Where-Object {
+        $_.exactSourceClass -ceq 'efparticlemoduletypedatadecal'
+    })
+    $decalSamples = @($decalRows | ForEach-Object { @($_.numericSamples) })
+    $decalDefaults = if ($decalBindings.Count -eq 1) {
+        @($decalBindings[0].explicitDefaults | Where-Object {
+            $_.fieldPath -like 'decal.*'
+        })
+    }
+    else {
+        @()
+    }
+    $expectedDecalDefaults = [ordered]@{
+        'decal.blendRange' = '[100.0,100.0]'
+        'decal.defaultSize' = '[50.0,50.0]'
+        'decal.farPlane' = '300.0'
+        'decal.supports3dDrawMode' = 'true'
+        'decal.yawOnly' = 'true'
+    }
+    $actualDecalDefaults = [ordered]@{}
+    foreach ($row in $decalDefaults) {
+        $actualDecalDefaults[$row.fieldPath] = (
+            $row.value | ConvertTo-Json -Compress -Depth 4
+        )
+    }
+    $badDecalDefaults = @($expectedDecalDefaults.GetEnumerator() | Where-Object {
+        -not $actualDecalDefaults.Contains($_.Key) -or
+        $actualDecalDefaults[$_.Key] -cne $_.Value
+    })
+    $badDecalSamples = @($decalSamples | Where-Object {
+        [double]$_.typedInputs.nearPlane -ne -300.0 -or
+        [double]$_.typedInputs.farPlane -ne 300.0 -or
+        @($_.typedInputs.defaultSize).Count -ne 2 -or
+        [double]$_.typedInputs.defaultSize[0] -ne 50.0 -or
+        [double]$_.typedInputs.defaultSize[1] -ne 50.0 -or
+        @($_.typedInputs.blendRange).Count -ne 2 -or
+        [double]$_.typedInputs.blendRange[0] -ne 100.0 -or
+        [double]$_.typedInputs.blendRange[1] -ne 100.0 -or
+        -not [bool]$_.typedInputs.yawOnly -or
+        -not [bool]$_.typedInputs.supports3dDrawMode -or
+        @($_.output.frustum).Count -ne 6 -or
+        [double]$_.output.frustum[0] -ne -300.0 -or
+        [double]$_.output.frustum[1] -ne 300.0 -or
+        [double]$_.output.frustum[2] -ne 50.0 -or
+        [double]$_.output.frustum[3] -ne 50.0 -or
+        [double]$_.output.frustum[4] -ne 100.0 -or
+        [double]$_.output.frustum[5] -ne 100.0 -or
+        -not [bool]$_.output.yawOnly -or
+        -not [bool]$_.output.supports3dDrawMode
     })
     $badRows = @($receipt.occurrences | Where-Object {
         $_.capabilityDecision -cne 'READY_FOR_RECONSTRUCTED_REVIEW' -or
@@ -126,6 +187,13 @@ try {
         $samples.Count -ne 87 -or
         $badPolicies.Count -ne 0 -or
         $badRows.Count -ne 0 -or
+        $decalPolicies.Count -ne 1 -or
+        $decalBindings.Count -ne 1 -or
+        $decalRows.Count -ne 3 -or
+        $decalSamples.Count -ne 9 -or
+        $decalDefaults.Count -ne 5 -or
+        $badDecalDefaults.Count -ne 0 -or
+        $badDecalSamples.Count -ne 0 -or
         [bool]$receipt.runtimeExecutionAdmission.allowed -or
         [bool]$receipt.productAdmission.allowed) {
         throw 'Artist F reconstructed Source capability summary or fail-closed contract changed.'

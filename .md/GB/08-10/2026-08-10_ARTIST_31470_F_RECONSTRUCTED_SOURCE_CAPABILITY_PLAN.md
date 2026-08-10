@@ -86,3 +86,26 @@ Source execution receipt가 차단한 29개 module occurrence를 원본과 동�
 
 각 파일의 전체 코드와 데이터는 위 경로가 정본이며, RESULT에는 실행한 검증과 아직 열리지 않은
 Runtime/Product gate를 분리 기록한다.
+
+## 2026-08-11 corrective: Decal current-CDO default join
+
+기존 `EF_DECAL_DESCRIPTOR` policy는 Source execution semantics의 current EFGAME CDO와 세 모듈의
+implicit default가 `bonlycalcrotationyaw=true`라고 기록했는데도 `decal.yawOnly=false`를 별도 policy
+default로 생성했다. 이 값은 typed input과 output에 함께 봉인되어 기존 25개 검증을 통과했다.
+
+Corrective는 다음 계약을 같은 생성 단위에서 강제한다.
+
+1. 세 Decal occurrence의 exact `nearplane` literal은 JSON float `-300.0`이어야 한다.
+2. `currentRevisionDefaultEvidence.decal`, `Default__EFParticleModuleTypeDataDecal` CDO property record,
+   세 occurrence의 `typedata.decal.class-default-set`은 동일한 current-revision value set이어야 한다.
+3. value set은 `farPlane=300`, `defaultSize=50x50`, `blendRange=100x100`, `yawOnly=true`,
+   `supports3dDrawMode=true`를 정확히 포함한다.
+4. Decal typed input/output closed schema와 9개 sample 모두 위 값을 보존한다.
+5. Decal family implementation version은 2이며 다른 여섯 family는 version 1을 유지한다.
+6. current-revision 근거는 계속 cross-revision evidence이고 `sourceExact`, runtime admission,
+   Product admission은 false이며 기존 blocker를 제거하지 않는다.
+
+Mutation gate는 root current-default, CDO property, occurrence implicit-default, provenance, near/far 값과
+policy/default/sample을 함께 재봉인하는 yaw 공격을 모두 거부한다. 일곱 family의 explicit default와
+Source semantics `implicitDefaults` overlap도 전수 조사해 Decal 외에는 Light 한 행만 존재하며, Light는
+explicit `light.*` policy default를 만들지 않고 기존 typed `pointLightAdapter` field를 직접 소비함을 확인한다.
