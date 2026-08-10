@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import math
+import os
 import subprocess
 import struct
 import sys
@@ -541,6 +542,86 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
             mutated_paths[dependency_id] = mutated
             with self.assertRaises(ValueError):
                 validate_direct_import_closure(evidence, mutated_paths)
+
+    def test_actual_cli_rejects_shadow_loaded_strict_helper(self) -> None:
+        tools_path = ROOT / "Tools/LevelPlacementExtractor"
+        with tempfile.TemporaryDirectory() as temporary:
+            shadow_root = Path(temporary)
+            (shadow_root / "effect_source_contract_io.py").write_text(
+                'print("MUTATED_DEPENDENCY_LOADED")\n',
+                encoding="utf-8",
+                newline="\n",
+            )
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.pathsep.join((str(shadow_root), str(tools_path)))
+            for deep in (False, True):
+                arguments = ["--output", str(DEFAULT_OUTPUT)]
+                arguments.extend(["--run-hlsl", "--check"] if deep else ["--shallow-check"])
+                command = [
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    (
+                        "import build_artist_31470_material_reconstructed_policy as builder; "
+                        f"raise SystemExit(builder.main({arguments!r}))"
+                    ),
+                ]
+                result = subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    timeout=90,
+                    check=False,
+                )
+                with self.subTest(deep=deep):
+                    output = result.stdout + result.stderr
+                    self.assertNotEqual(result.returncode, 0, output)
+                    self.assertIn("MUTATED_DEPENDENCY_LOADED", output)
+                    self.assertIn("loaded module path mismatch: STRICT_JSON_OBJECT_LOADER", output)
+
+    def test_actual_cli_rejects_shadow_loaded_runtime_warp_support(self) -> None:
+        tools_path = ROOT / "Tools/LevelPlacementExtractor"
+        module_name = "verify_artist_31470_material_runtime_oracle_hlsl"
+        canonical_source = (tools_path / f"{module_name}.py").read_text(encoding="utf-8")
+        shadow_source = canonical_source.replace(
+            "from __future__ import annotations\n",
+            'from __future__ import annotations\nprint("MUTATED_DEPENDENCY_LOADED")\n',
+            1,
+        )
+        self.assertNotEqual(shadow_source, canonical_source)
+        with tempfile.TemporaryDirectory() as temporary:
+            shadow_root = Path(temporary)
+            (shadow_root / f"{module_name}.py").write_text(
+                shadow_source,
+                encoding="utf-8",
+                newline="\n",
+            )
+            environment = dict(os.environ)
+            environment["PYTHONPATH"] = os.pathsep.join((str(shadow_root), str(tools_path)))
+            command = [
+                sys.executable,
+                "-B",
+                "-c",
+                (
+                    "import build_artist_31470_material_reconstructed_policy as builder; "
+                    f"raise SystemExit(builder.main({['--output', str(DEFAULT_OUTPUT), '--shallow-check']!r}))"
+                ),
+            ]
+            result = subprocess.run(
+                command,
+                cwd=ROOT,
+                env=environment,
+                text=True,
+                capture_output=True,
+                timeout=90,
+                check=False,
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("MUTATED_DEPENDENCY_LOADED", output)
+            self.assertIn("loaded module path mismatch: RUNTIME_WARP_SUPPORT", output)
 
 
 if __name__ == "__main__":

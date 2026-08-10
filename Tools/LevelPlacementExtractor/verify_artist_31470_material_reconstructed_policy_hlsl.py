@@ -13,7 +13,8 @@ import struct
 from pathlib import Path
 from typing import Any, Iterable
 
-from effect_source_contract_io import load_strict_json_object
+import effect_source_contract_io as effect_source_contract_io_module
+import verify_artist_31470_material_runtime_oracle_hlsl as runtime_warp_support_module
 
 from verify_artist_31470_material_runtime_oracle_hlsl import (
     D3D11_COMPARISON_LESS,
@@ -37,7 +38,19 @@ from verify_artist_31470_material_runtime_oracle_hlsl import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def discover_repository_root() -> Path:
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if (
+            (candidate / ".git").exists()
+            and (candidate / "Tools/LevelPlacementExtractor").is_dir()
+            and (candidate / "Data/Effects/Imported/Artist/Materials").is_dir()
+        ):
+            return candidate
+    raise RuntimeError("cannot locate canonical LostArk repository root from current working directory")
+
+
+ROOT = discover_repository_root()
 DEFAULT_RECEIPT = ROOT / "Data/Effects/Imported/Artist/Materials/skill.31470.material-reconstructed-approved-v1.receipt.json"
 DEFAULT_HLSL = ROOT / "Tools/MaterialEvaluatorHarness/Shader_Artist31470MaterialReconstructedPolicy.hlsl"
 DEFAULT_D3DCOMPILER = Path(r"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\d3dcompiler_47.dll")
@@ -85,8 +98,34 @@ def require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def validate_loaded_module_identities() -> None:
+    identities = (
+        (
+            "RECONSTRUCTED_POLICY_WARP_VERIFIER",
+            Path(__file__).resolve(),
+            (ROOT / "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py").resolve(),
+        ),
+        (
+            "STRICT_JSON_OBJECT_LOADER",
+            Path(effect_source_contract_io_module.__file__).resolve(),
+            (ROOT / "Tools/LevelPlacementExtractor/effect_source_contract_io.py").resolve(),
+        ),
+        (
+            "RUNTIME_WARP_SUPPORT",
+            Path(runtime_warp_support_module.__file__).resolve(),
+            (ROOT / "Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py").resolve(),
+        ),
+    )
+    for dependency_id, actual, expected in identities:
+        require(
+            actual == expected,
+            f"loaded module path mismatch: {dependency_id} expected={expected} actual={actual}",
+        )
+
+
 def read_json(path: Path) -> dict[str, Any]:
-    return load_strict_json_object(path)
+    validate_loaded_module_identities()
+    return effect_source_contract_io_module.load_strict_json_object(path)
 
 
 def policy_rows(receipt: dict[str, Any]) -> list[dict[str, Any]]:
@@ -157,6 +196,7 @@ def oracle_input_bytes(receipt: dict[str, Any]) -> tuple[bytes, list[list[float]
 
 
 def run_hlsl_oracle(receipt: dict[str, Any], hlsl_path: Path, compiler_path: Path) -> dict[str, Any]:
+    validate_loaded_module_identities()
     bytecode, compiler_identity = compile_hlsl(hlsl_path, compiler_path)
     input_bytes, expected, row_ids = oracle_input_bytes(receipt)
     raw_output = execute_compute(bytecode, input_bytes, len(expected))
@@ -271,6 +311,7 @@ def sampler_descriptor_projection(value: SamplerDesc) -> dict[str, Any]:
 
 
 def run_warp_descriptor_oracle(receipt: dict[str, Any]) -> dict[str, Any]:
+    validate_loaded_module_identities()
     device, context, feature_level = create_warp_device()
     texture = ctypes.c_void_p()
     try:
@@ -440,23 +481,27 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: Iterable[str] | None = None) -> int:
+    validate_loaded_module_identities()
     args = parse_args(argv)
     receipt = read_json(args.receipt)
-    from build_artist_31470_material_reconstructed_policy import (
-        DEFAULT_ACQUISITION_RECEIPT,
-        DEFAULT_MATERIAL_CONTRACT,
-        DEFAULT_RUNTIME_RECEIPT,
-        DEFAULT_VERIFIER,
-        validate_policy_receipt,
+    import build_artist_31470_material_reconstructed_policy as policy_builder
+
+    expected_builder = (
+        ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_reconstructed_policy.py"
+    ).resolve()
+    actual_builder = Path(policy_builder.__file__).resolve()
+    require(
+        actual_builder == expected_builder,
+        f"loaded module path mismatch: RECONSTRUCTED_POLICY_BUILDER expected={expected_builder} actual={actual_builder}",
     )
 
-    validate_policy_receipt(
+    policy_builder.validate_policy_receipt(
         receipt,
-        read_json(DEFAULT_RUNTIME_RECEIPT),
-        read_json(DEFAULT_ACQUISITION_RECEIPT),
-        read_json(DEFAULT_MATERIAL_CONTRACT),
+        read_json(policy_builder.DEFAULT_RUNTIME_RECEIPT),
+        read_json(policy_builder.DEFAULT_ACQUISITION_RECEIPT),
+        read_json(policy_builder.DEFAULT_MATERIAL_CONTRACT),
         hlsl_path=args.hlsl,
-        verifier_path=DEFAULT_VERIFIER,
+        verifier_path=policy_builder.DEFAULT_VERIFIER,
     )
     expected_hlsl = run_hlsl_oracle(receipt, args.hlsl, args.d3dcompiler)
     expected_warp = run_warp_descriptor_oracle(receipt)
