@@ -5,43 +5,87 @@
   "skillId": 31470,
   "scope": "G05-G_GEOMETRY_CANDIDATE_AND_EXPECTED_TUPLE",
   "inputs": {
-    "g02Commit": "2b3d7a6c410f963b2e47aa7999504c422fff7c32",
+    "g02Approval": {
+      "relationship": "APPROVED_COMMIT_TREE_PIN_AND_REQUIRED_BLOB_EQUIVALENCE_NOT_GRAPH_ANCESTRY",
+      "approvedCommit": "2b3d7a6c410f963b2e47aa7999504c422fff7c32",
+      "approvedTreeSha": "1b217af4a159e69c95daa4b71f4de86b2b8ded18",
+      "treeEquivalentBaseCommit": "513a2dde5ae317cab8fee18777397d887075e5c5",
+      "treeEquivalentBaseTreeSha": "1b217af4a159e69c95daa4b71f4de86b2b8ded18",
+      "graphAncestryClaimed": false,
+      "requiredBlobCount": 4,
+      "requiredBlobs": [
+        {
+          "assetId": "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json",
+          "canonicalLfSha256": "de1d40457da5df088839aff577d1e6d838cfabae40851a346f6870ac70d8bc34",
+          "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
+        },
+        {
+          "assetId": "Tools/ModelAssetConverter/cook_wmodel_geometry_contract.py",
+          "canonicalLfSha256": "43dfbb33684bdea85eb5ae5025912615bb28847a762baeb7c2f0cd0d5f8b5007",
+          "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
+        },
+        {
+          "assetId": "Tools/ModelAssetConverter/verify_artist_31470_wmodel_geometry_contract.py",
+          "canonicalLfSha256": "500525f7219a54fef7564dc87f036652dc62bb725c6faa7e82792f53c694d725",
+          "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
+        },
+        {
+          "assetId": "Tools/WModelGeometryContractHarness/Fixtures/artist_31470_v11_expected.json",
+          "canonicalLfSha256": "6947b62d1ddac34fd2f35fc00a341f375d29baaf2a30304e1e1d9cce439e7eba",
+          "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
+        }
+      ]
+    },
     "sourceManifest": {
       "assetId": "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json",
       "hashRole": "TRACKED_CANONICAL_LF",
-      "sha256": "de1d40457da5df088839aff577d1e6d838cfabae40851a346f6870ac70d8bc34"
+      "canonicalLfSha256": "de1d40457da5df088839aff577d1e6d838cfabae40851a346f6870ac70d8bc34",
+      "legacyReceiptCorrelation": "CANONICAL_CRLF_VARIANT",
+      "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
     },
     "expectedSemantics": {
       "assetId": "Tools/WModelGeometryContractHarness/Fixtures/artist_31470_v11_expected.json",
       "hashRole": "TRACKED_CANONICAL_LF",
-      "sha256": "6947b62d1ddac34fd2f35fc00a341f375d29baaf2a30304e1e1d9cce439e7eba"
+      "canonicalLfSha256": "6947b62d1ddac34fd2f35fc00a341f375d29baaf2a30304e1e1d9cce439e7eba",
+      "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
     },
     "sourceExportReceipt": {
       "hashRole": "EXTERNAL_RAW_BYTES",
       "byteSize": 159864,
-      "sha256": "9fe4ea42e7e3f60bdf8c1697211131331d8b270cddb974e11fa35d30d4279204"
+      "sha256": "9fe4ea42e7e3f60bdf8c1697211131331d8b270cddb974e11fa35d30d4279204",
+      "fidelity": "OBSERVED_UNVERIFIED"
     },
     "legacyCookReceipt": {
       "hashRole": "EXTERNAL_RAW_BYTES",
       "byteSize": 138276,
-      "sha256": "2e3e5db345e3e845298c6e4dd3c65d931df86d2cde10f72be4ab236265b7e04e"
+      "sha256": "2e3e5db345e3e845298c6e4dd3c65d931df86d2cde10f72be4ab236265b7e04e",
+      "fidelity": "OBSERVED_UNVERIFIED"
+    },
+    "legacyConverter": {
+      "hashRole": "EXTERNAL_RAW_BYTES",
+      "byteSize": 169984,
+      "sha256": "0aa6b7e659f0c10d72574aa2e5c9f1cf1c47a5753a81d9d0e1e4d700e3b07a63",
+      "fidelity": "OBSERVED_UNVERIFIED"
     },
     "builder": {
       "assetId": "Tools/ModelAssetConverter/build_artist_31470_geometry_resource_binding.py",
       "hashRole": "TRACKED_CANONICAL_LF",
-      "sha256": "00c1ee7474651a59b52b9a6e1ae79af015925642c2c8f0347cfdc1c2480e2b1c"
+      "canonicalLfSha256": "49c235a50cbd3cf79f4fab3b8873250c175a566c72f4122a5b6f86fa51cb17c2",
+      "fidelity": "SELF_RECORDED_NOT_EXTERNAL_AUTHORITY"
     },
     "geometryCooker": {
       "assetId": "Tools/ModelAssetConverter/cook_wmodel_geometry_contract.py",
-      "hashRole": "TRACKED_RAW_LF_BYTES",
-      "byteSize": 74029,
-      "sha256": "43dfbb33684bdea85eb5ae5025912615bb28847a762baeb7c2f0cd0d5f8b5007"
+      "hashRole": "TRACKED_CANONICAL_LF",
+      "canonicalLfSha256": "43dfbb33684bdea85eb5ae5025912615bb28847a762baeb7c2f0cd0d5f8b5007",
+      "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
     },
     "geometryVerifier": {
       "assetId": "Tools/ModelAssetConverter/verify_artist_31470_wmodel_geometry_contract.py",
       "hashRole": "TRACKED_CANONICAL_LF",
-      "sha256": "500525f7219a54fef7564dc87f036652dc62bb725c6faa7e82792f53c694d725"
-    }
+      "canonicalLfSha256": "500525f7219a54fef7564dc87f036652dc62bb725c6faa7e82792f53c694d725",
+      "fidelity": "APPROVED_COMMIT_TREE_BLOB_EQUIVALENT"
+    },
+    "unverifiedExternalAuthorityCount": 10
   },
   "resourcePolicy": {
     "assetIdPrefix": "Effect/Artist/Meshes/",
@@ -52,8 +96,8 @@
   "typedBinding": {
     "assetId": "Data/Effects/Imported/Artist/Geometry/skill.31470.geometry-binding.json",
     "hashRole": "TRACKED_CANONICAL_JSON",
-    "sha256": "b2990fe12cc9f20604898d3f04bda37376c633194ef2c283f4ab0042077b860e",
-    "bindingSha256": "fdb52a200e8e5ee810195b98113d5d44eea866756b45a41cb2bc4743163b3daf"
+    "sha256": "2d3c6eb3d1520247f845c402cc4199587e873c0eac52d8b6bdcb67c8604604cf",
+    "bindingSha256": "1dff0059706bdff9ed1433654035220da8cc8916fe94c0d4bc24b5330f57a004"
   },
   "assets": [
     {
@@ -62,11 +106,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.gltf",
         "byteSize": 2444,
-        "sha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4"
+        "sha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 596124,
-        "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764"
+        "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 642904,
@@ -120,6 +166,107 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_v_wp_wsdm_base_01",
+            "logicalPackage": "fx_sm_01",
+            "physicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_04",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_07",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_47"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "16beae129202cd249098830b892822ab1cc6573a216c283f993117fd52b4f2af"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_v_wp_wsdm_base_01",
+            "objectName": "fm_v_wp_wsdm_base_01",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "logicalPackage": "fx_sm_01",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.bin",
+                "byteSize": 636760,
+                "sha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+              },
+              {
+                "relativePath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.gltf",
+                "byteSize": 2444,
+                "sha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "78c0c2eb294aab0062e962ce0d99909909c259c554265db25004dc9386551ee4"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.gltf",
+            "byteSize": 2444,
+            "sha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4"
+          },
+          "rowSha256": "a24515456b3a3ca84782aaa4ae0eb997db92f8a5a1fb74baa8eff7fc2f1c858b",
+          "rawBytes": {
+            "byteSize": 2444,
+            "sha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.bin",
+              "byteSize": 636760,
+              "sha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            },
+            "rowSha256": "b5c2d5c815012134bdeb032e901fa64a3d8846edf280a01cbc2a603a2680e878",
+            "rawBytes": {
+              "byteSize": 636760,
+              "sha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_v_wp_wsdm_base_01",
+            "role": "mesh",
+            "sourceFile": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_v_wp_wsdm_base_01.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+            "byteSize": 596124,
+            "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764"
+          },
+          "rowSha256": "a4890a57c8114b4d27aa4366726a22945caa62709c1e291530fd256a25849bef"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 596124,
+          "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+          "byteSize": 29005789,
+          "sha256": "9f75c660d45c1c70dd2c368a138be960634be209bf470f9f1ad29c4035c349f1",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -131,11 +278,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_01/StaticMesh3/fm_m_trail_002.gltf",
         "byteSize": 2123,
-        "sha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be"
+        "sha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 13356,
-        "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863"
+        "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 13704,
@@ -189,6 +338,107 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_m_trail_002",
+            "logicalPackage": "fx_sm_01",
+            "physicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_04",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_47"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "b77d9d6be0cb73701738bb4746bdf333b439afcffd68fa6fde8f61a3647e00c2"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_m_trail_002",
+            "objectName": "fm_m_trail_002",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "logicalPackage": "fx_sm_01",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_01/StaticMesh3/fm_m_trail_002.bin",
+                "byteSize": 3504,
+                "sha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+              },
+              {
+                "relativePath": "FX_SM_01/StaticMesh3/fm_m_trail_002.gltf",
+                "byteSize": 2123,
+                "sha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "0b923b37f960833aa12d5ccdd3c4c1f32a9bc3ec128f51ba43319027ca7e81e9"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_01/StaticMesh3/fm_m_trail_002.gltf",
+            "byteSize": 2123,
+            "sha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be"
+          },
+          "rowSha256": "452e0f798dabd6604e93a1e059e599cb87a56a54e8cf267530d5fec6b5e18a9a",
+          "rawBytes": {
+            "byteSize": 2123,
+            "sha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_01/StaticMesh3/fm_m_trail_002.bin",
+              "byteSize": 3504,
+              "sha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            },
+            "rowSha256": "9d1b2140b6c34af8cf30e4fd32324cb97bbd10caff943b4c975dd45fb6683a1e",
+            "rawBytes": {
+              "byteSize": 3504,
+              "sha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_01.fm_m_trail_002",
+            "role": "mesh",
+            "sourceFile": "FX_SM_01/StaticMesh3/fm_m_trail_002.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_m_trail_002.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+            "byteSize": 13356,
+            "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863"
+          },
+          "rowSha256": "4c8ffacae9701207905281a80d5574bd8a9b4f4c4388a50a2a681b743fa680ee"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 13356,
+          "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+          "byteSize": 29005789,
+          "sha256": "9f75c660d45c1c70dd2c368a138be960634be209bf470f9f1ad29c4035c349f1",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -200,11 +450,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_03.gltf",
         "byteSize": 2373,
-        "sha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7"
+        "sha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 31440,
-        "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046"
+        "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 33300,
@@ -258,6 +510,112 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_03",
+            "logicalPackage": "fx_sm_00",
+            "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31510
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_01",
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_01",
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_04",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_47"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "588b6a28bfd7667062706c9b60974d4a2aba7fa0d3f4050ec1096173e86847d5"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_03",
+            "objectName": "fm_h_swing_03",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31510
+            ],
+            "logicalPackage": "fx_sm_00",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_03.bin",
+                "byteSize": 23100,
+                "sha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+              },
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_03.gltf",
+                "byteSize": 2373,
+                "sha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "67a4ef8b44c32521d10e0744b5db7b7456052398074195d1dd7284ca24530e4f"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_03.gltf",
+            "byteSize": 2373,
+            "sha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7"
+          },
+          "rowSha256": "c64bff1a953debbc1f9f7e01a118cdf9390774b57d514c1064c5b12c4603bfc5",
+          "rawBytes": {
+            "byteSize": 2373,
+            "sha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_03.bin",
+              "byteSize": 23100,
+              "sha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            },
+            "rowSha256": "6a03668fa7c74ab49eebbdb9e888025cc51071f545ecd711de4d5be3da01687f",
+            "rawBytes": {
+              "byteSize": 23100,
+              "sha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_03",
+            "role": "mesh",
+            "sourceFile": "FX_SM_00/StaticMesh3/fm_h_swing_03.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_h_swing_03.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+            "byteSize": 31440,
+            "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046"
+          },
+          "rowSha256": "5be2730c6559228149c7502f539654b628fe6a44272b69c27694d571996c9549"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 31440,
+          "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R00F04YE900X0SMQ.upk",
+          "byteSize": 16907779,
+          "sha256": "e1ab058502700251bcd923f163150ce1a1e0c8e9cdac0a0756261ea6c27e08a9",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -269,11 +627,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_05.gltf",
         "byteSize": 2121,
-        "sha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb"
+        "sha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 26916,
-        "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8"
+        "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 27264,
@@ -327,6 +687,112 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_05",
+            "logicalPackage": "fx_sm_00",
+            "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31490
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_04",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_47",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_01_2",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_05_2",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_06_2"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "47ff2d9f2b0e5bd53866b60cb25924430f2c6dbbd6cffa0e87fa2e8be60e9d93"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_05",
+            "objectName": "fm_h_swing_05",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31490
+            ],
+            "logicalPackage": "fx_sm_00",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_05.bin",
+                "byteSize": 17064,
+                "sha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+              },
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_05.gltf",
+                "byteSize": 2121,
+                "sha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "f1587495f0d25157e518c5ab593f65396c4c8f401583df75d6a1e384506e1a49"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_05.gltf",
+            "byteSize": 2121,
+            "sha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb"
+          },
+          "rowSha256": "6735a507ec01185313c5546838c0c080d337750f3a876f705e47fb5c4a11dc81",
+          "rawBytes": {
+            "byteSize": 2121,
+            "sha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_05.bin",
+              "byteSize": 17064,
+              "sha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            },
+            "rowSha256": "79f1b91cda9624c2a1f056467bf36eb771455b668730c8e107f562dca414a0e3",
+            "rawBytes": {
+              "byteSize": 17064,
+              "sha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_05",
+            "role": "mesh",
+            "sourceFile": "FX_SM_00/StaticMesh3/fm_h_swing_05.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_h_swing_05.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+            "byteSize": 26916,
+            "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8"
+          },
+          "rowSha256": "ec4a3d0aca7aee9e0588aa0cc8c2d11e0427454d2eec6d973f695785d2368728"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 26916,
+          "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R00F04YE900X0SMQ.upk",
+          "byteSize": 16907779,
+          "sha256": "e1ab058502700251bcd923f163150ce1a1e0c8e9cdac0a0756261ea6c27e08a9",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -338,11 +804,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_01.gltf",
         "byteSize": 2111,
-        "sha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90"
+        "sha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 18312,
-        "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22"
+        "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 18660,
@@ -396,6 +864,109 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_01",
+            "logicalPackage": "fx_sm_00",
+            "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31490
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_01_2",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_05_2",
+              "FX_PC_SDM_08.Par_L_SDM_Sk_06_2"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "99e405b3310807b26d1b20a69c67a5f7074452571ea1908848ca3eff7d554153"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_01",
+            "objectName": "fm_h_swing_01",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31490
+            ],
+            "logicalPackage": "fx_sm_00",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_01.bin",
+                "byteSize": 8460,
+                "sha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+              },
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_01.gltf",
+                "byteSize": 2111,
+                "sha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "6d3c547e7e3b9d770eef457b7195509ce10ae713b6294c825d7005a59e37592e"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_01.gltf",
+            "byteSize": 2111,
+            "sha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90"
+          },
+          "rowSha256": "4f0209e0a360a5c02cca6d571bd7f88a6840f08c078dbdf29f4c61ef2f2f2cc9",
+          "rawBytes": {
+            "byteSize": 2111,
+            "sha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_00/StaticMesh3/fm_h_swing_01.bin",
+              "byteSize": 8460,
+              "sha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            },
+            "rowSha256": "f31e51cc038818649cdc05e168c380958838f8e6fb11ff3456390c123ee7b0e1",
+            "rawBytes": {
+              "byteSize": 8460,
+              "sha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_h_swing_01",
+            "role": "mesh",
+            "sourceFile": "FX_SM_00/StaticMesh3/fm_h_swing_01.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_h_swing_01.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+            "byteSize": 18312,
+            "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22"
+          },
+          "rowSha256": "c404b5af9120644060d39b0325de57a56505216506773fdbe74300b4f844c272"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 18312,
+          "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R00F04YE900X0SMQ.upk",
+          "byteSize": 16907779,
+          "sha256": "e1ab058502700251bcd923f163150ce1a1e0c8e9cdac0a0756261ea6c27e08a9",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -407,11 +978,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_00/StaticMesh3/fm_o_swing_02.gltf",
         "byteSize": 2126,
-        "sha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2"
+        "sha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 18156,
-        "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126"
+        "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 18504,
@@ -465,6 +1038,112 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_o_swing_02",
+            "logicalPackage": "fx_sm_00",
+            "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31510
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_01",
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_01",
+              "FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_04",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07",
+              "FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_47"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "0025dc2e944afefc819bdeb59c40a75f7208e32de18002e46f35b5310cc6e382"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_o_swing_02",
+            "objectName": "fm_o_swing_02",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470,
+              31510
+            ],
+            "logicalPackage": "fx_sm_00",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_o_swing_02.bin",
+                "byteSize": 8304,
+                "sha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+              },
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_o_swing_02.gltf",
+                "byteSize": 2126,
+                "sha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "b65e1ebb1bf3d108039f73d31522a60162d582f64e05588e70234f995e352983"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_00/StaticMesh3/fm_o_swing_02.gltf",
+            "byteSize": 2126,
+            "sha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2"
+          },
+          "rowSha256": "064a51ea1884d48249245cce8374e0c294fafcff4f4704e7a0eb07d965717e3e",
+          "rawBytes": {
+            "byteSize": 2126,
+            "sha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_00/StaticMesh3/fm_o_swing_02.bin",
+              "byteSize": 8304,
+              "sha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            },
+            "rowSha256": "5629bef4b06ecd87f8a12b469c5c54c8822b07d897c50508d092a9b9391d734c",
+            "rawBytes": {
+              "byteSize": 8304,
+              "sha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_o_swing_02",
+            "role": "mesh",
+            "sourceFile": "FX_SM_00/StaticMesh3/fm_o_swing_02.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_o_swing_02.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+            "byteSize": 18156,
+            "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126"
+          },
+          "rowSha256": "0737cc02db81342d4ee133acfb0a3e2006984e42244638a9f405aba5942d04f0"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 18156,
+          "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R00F04YE900X0SMQ.upk",
+          "byteSize": 16907779,
+          "sha256": "e1ab058502700251bcd923f163150ce1a1e0c8e9cdac0a0756261ea6c27e08a9",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -476,11 +1155,13 @@
       "sourceGltf": {
         "logicalPath": "FX_SM_00/StaticMesh3/fm_a_stone_001.gltf",
         "byteSize": 2123,
-        "sha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b"
+        "sha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "legacyResource": {
         "byteSize": 11460,
-        "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882"
+        "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882",
+        "fidelity": "APPROVED_G02_SEMANTIC_GOLDEN_PINNED_BYTES"
       },
       "candidateResource": {
         "byteSize": 11808,
@@ -534,6 +1215,107 @@
           }
         ]
       },
+      "sourceEvidenceJoin": {
+        "manifestRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_a_stone_001",
+            "logicalPackage": "fx_sm_00",
+            "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "sourceSystems": [
+              "FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_01",
+              "FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_04",
+              "FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_07",
+              "FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_47"
+            ],
+            "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+          },
+          "rowSha256": "2966b303f35fdcb552087c579b148f1149c2073cc4c4c2e1c18b94216279ca0e"
+        },
+        "sourceExportRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_a_stone_001",
+            "objectName": "fm_a_stone_001",
+            "roles": [
+              "mesh"
+            ],
+            "skillIds": [
+              31470
+            ],
+            "logicalPackage": "fx_sm_00",
+            "outputs": [
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_a_stone_001.bin",
+                "byteSize": 1608,
+                "sha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+              },
+              {
+                "relativePath": "FX_SM_00/StaticMesh3/fm_a_stone_001.gltf",
+                "byteSize": 2123,
+                "sha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b"
+              }
+            ],
+            "resolutionStatus": "EXPORTED"
+          },
+          "rowSha256": "22f57cad79816302a4c2278356a2d025449856af6b0f465b910bdde535ce6ec8"
+        },
+        "sourceGltfOutputRow": {
+          "row": {
+            "relativePath": "FX_SM_00/StaticMesh3/fm_a_stone_001.gltf",
+            "byteSize": 2123,
+            "sha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b"
+          },
+          "rowSha256": "8b9acd00aef5ba4431ea4e185006dd92644e508c7633ccba87b93d8a4aadec84",
+          "rawBytes": {
+            "byteSize": 2123,
+            "sha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b"
+          }
+        },
+        "sourceBufferOutputRows": [
+          {
+            "row": {
+              "relativePath": "FX_SM_00/StaticMesh3/fm_a_stone_001.bin",
+              "byteSize": 1608,
+              "sha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            },
+            "rowSha256": "083c7b9ea88056ef39cf7cfd7efaa9ad531abea469908463f9e69154d418bddf",
+            "rawBytes": {
+              "byteSize": 1608,
+              "sha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          }
+        ],
+        "legacyCookRow": {
+          "row": {
+            "sourceAssetPath": "fx_sm_00.fm_a_stone_001",
+            "role": "mesh",
+            "sourceFile": "FX_SM_00/StaticMesh3/fm_a_stone_001.gltf",
+            "runtimeAssetId": "Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+            "converterExitCode": 0,
+            "logFile": "runtime-cook-receipt-logs/mesh.fm_a_stone_001.log",
+            "status": "COOKED",
+            "runtimeFile": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+            "byteSize": 11460,
+            "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882"
+          },
+          "rowSha256": "29ff7a3513428635b56856ca6f12677a10600239ca302cdd6f171e323c83565f"
+        },
+        "legacyResourceRawBytes": {
+          "byteSize": 11460,
+          "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882"
+        },
+        "sourcePackageObserved": {
+          "basename": "XFH2RGA2R00F04YE900X0SMQ.upk",
+          "byteSize": 16907779,
+          "sha256": "e1ab058502700251bcd923f163150ce1a1e0c8e9cdac0a0756261ea6c27e08a9",
+          "fidelity": "OBSERVED_UNVERIFIED"
+        }
+      },
       "artifactBindingIntegrity": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES",
       "trackedRuntimeDeploymentAssertion": false,
       "runtimeGeometryPreScaleConsumed": false,
@@ -549,12 +1331,13 @@
     "stagedExpectedTupleMatchCount": 7,
     "trackedRuntimeDeploymentAssertionCount": 0,
     "runtimeGeometryPreScaleConsumedCount": 0,
-    "productAdmissionCount": 0
+    "productAdmissionCount": 0,
+    "unverifiedExternalAuthorityCount": 10
   },
   "productAdmission": false,
   "productBlockers": [
     "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
     "PRODUCT_ADMISSION_NOT_OPEN"
   ],
-  "receiptSha256": "01f537423a98838cc4adbe6e804394bf7494ec849cd2222a6e75fa3a264f0329"
+  "receiptSha256": "5b4331c33dd2ead13f69c9e3c58a392665c5ce71ce96835ac568d841a09e9156"
 }

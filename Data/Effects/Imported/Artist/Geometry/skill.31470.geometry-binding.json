@@ -5,6 +5,11 @@
   "characterClass": "Artist",
   "skillId": 31470,
   "resourceRootRole": "CLIENT_RESOURCES_RELATIVE",
+  "numericTypePolicy": {
+    "geometryPreScale": "JSON_FLOAT_ONLY",
+    "channelMask": "JSON_INTEGER_ONLY",
+    "evidenceFlags": "JSON_INTEGER_ONLY"
+  },
   "bindings": [
     {
       "bindingId": "artist.31470:Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
@@ -417,5 +422,5 @@
     "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
     "PRODUCT_ADMISSION_NOT_OPEN"
   ],
-  "bindingSha256": "fdb52a200e8e5ee810195b98113d5d44eea866756b45a41cb2bc4743163b3daf"
+  "bindingSha256": "1dff0059706bdff9ed1433654035220da8cc8916fe94c0d4bc24b5330f57a004"
 }
