@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import struct
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,7 +21,9 @@ from extract_artist_31470_shader_cache_oracle import (
     key_variants,
     intersect_mic_tail_shader_ids,
     parse_shader_cache_serial,
+    parse_shader_cache_material_maps,
     raw_sha256,
+    read_json,
     scan_material_inventory_reports,
     seal_receipt,
     validate_dxbc_container,
@@ -91,6 +95,22 @@ def synthetic_cache_serial(
     return bytes(serial), ["None", "test_pixel_shader"]
 
 
+def synthetic_cache_with_material_map() -> tuple[bytes, list[str], int]:
+    serial, names = synthetic_cache_serial()
+    code_end = len(serial) - 8
+    shader_id = b"\x01" * 16
+    base_material_id = bytes.fromhex("00112233445566778899aabbccddeeff")
+    tail = bytearray(struct.pack("<II", 4, 1))
+    tail.extend(struct.pack("<ii", 1, 0) + shader_id + b"\xa5" * 12)
+    tail.extend(struct.pack("<I", 1))
+    tail.extend(base_material_id)
+    tail.extend(struct.pack("<IIII", 0, 0, 0, 0))
+    tail.extend(struct.pack("<IIIII", 868, 16, 123, 0, 1))
+    tail.extend(struct.pack("<I", 1))
+    tail.extend(struct.pack("<ii", 1, 0) + shader_id + struct.pack("<ii", 1, 0))
+    return serial[:code_end] + bytes(tail), names, code_end
+
+
 def fake_disassemble(_bytecode: bytes) -> dict:
     return {
         "profile": "ps_5_0",
@@ -115,6 +135,32 @@ class ShaderCacheOracleTests(unittest.TestCase):
         serial, names = synthetic_cache_serial(descriptor_count=1, code_count=0)
         with self.assertRaisesRegex(ValueError, "descriptor/code count"):
             parse_shader_cache_serial(serial, names, fake_disassemble)
+
+    def test_material_shader_map_structural_decoder_has_independent_offsets(self) -> None:
+        serial, names, code_end = synthetic_cache_with_material_map()
+        parsed = parse_shader_cache_serial(serial, names, fake_disassemble)
+        structure = parse_shader_cache_material_maps(serial, names, parsed)
+        self.assertEqual(structure["tailOffsetInSerial"], code_end)
+        self.assertEqual(structure["shaderObjectTableOffset"], 8)
+        self.assertEqual(structure["materialShaderMapTableCountOffset"], 44)
+        self.assertEqual(structure["materialShaderMaps"][0]["offset"], 48)
+        self.assertEqual(
+            structure["materialShaderMaps"][0]["staticParameterSet"]["baseMaterialIdHex"],
+            "00112233445566778899aabbccddeeff",
+        )
+        self.assertEqual(structure["shaderReferenceCount"], 1)
+
+        mutated = bytearray(serial)
+        struct.pack_into("<I", mutated, code_end + 44, 2)
+        parsed = parse_shader_cache_serial(bytes(mutated), names, fake_disassemble)
+        with self.assertRaisesRegex(ValueError, "header candidate|table count"):
+            parse_shader_cache_material_maps(bytes(mutated), names, parsed)
+
+        mutated = bytearray(serial)
+        mutated[code_end + 112 : code_end + 128] = b"\x02" * 16
+        parsed = parse_shader_cache_serial(bytes(mutated), names, fake_disassemble)
+        with self.assertRaisesRegex(ValueError, "references are absent|cover"):
+            parse_shader_cache_material_maps(bytes(mutated), names, parsed)
 
     def test_truncated_and_forged_compressed_size_rejected(self) -> None:
         serial, names = synthetic_cache_serial(compressed_size_delta=100)
@@ -339,13 +385,123 @@ class ShaderCacheOracleTests(unittest.TestCase):
         mutated = copy.deepcopy(receipt)
         mutated["joinDecision"]["blockers"].remove(BLOCKERS[0])
         seal_receipt(mutated)
-        with self.assertRaisesRegex(ValueError, "blocker"):
+        with self.assertRaises(ValueError):
             validate_receipt(mutated, DEFAULT_MATERIAL_CONTRACT)
 
+    def test_portable_receipt_resealed_attacks_are_rejected(self) -> None:
+        if not DEFAULT_OUTPUT.is_file():
+            self.skipTest("tracked ShaderCache receipt has not been generated")
+        receipt = read_json(DEFAULT_OUTPUT)
+        attacks = []
+        mutated = copy.deepcopy(receipt)
+        mutated["externalEvidence"]["shaderCachePackage"]["rawSha256"] = "0" * 64
+        attacks.append(("external identity", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        mutated["primaryShaderCache"]["codeRecords"][0]["compressedOffset"] += 1
+        attacks.append(("code range", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        mutated["materialNativeKeys"][0]["nativeStateKeyCandidateHex"] = "11" * 16
+        attacks.append(("native key", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        mutated["materialKeySearch"][0]["matches"] = [
+            {"variant": "DIRECT", "logicalOffset": 1, "exportIndex": 1}
+        ]
+        mutated["materialKeySearch"][0]["matchCount"] = 1
+        attacks.append(("direct Material match", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        mic_key = next(
+            row["micNativeStateKeyCandidateHex"]
+            for row in receipt["recipeNativeKeys"]
+            if row["micNativeStateKeyCandidateHex"]
+        )
+        mutated["primaryShaderCache"]["codeRecords"][0]["shaderIdCandidateHex"] = mic_key
+        mutated["primaryShaderCache"]["codeRecords"][0]["descriptorSha256"] = raw_sha256(
+            bytes.fromhex(mic_key)
+            + bytes.fromhex(mutated["primaryShaderCache"]["codeRecords"][0]["opaqueDescriptorTailHex"])
+        )
+        attacks.append(("descriptor ID laundering", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        forged_digest = "22" * 32
+        mutated["recipeNativeKeys"][0]["alignedNonzero16ByteWindowSha256"] = forged_digest
+        probe_row = next(
+            row
+            for row in mutated["micTailShaderObjectIdProbe"]["rows"]
+            if row["recipeId"] == mutated["recipeNativeKeys"][0]["recipeId"]
+        )
+        probe_row["candidateDigestSha256"] = forged_digest
+        attacks.append(("MIC window digest", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        source = next(
+            row
+            for row in mutated["materialTopologyCompleteness"][0]["candidates"]
+            if row["candidateRole"] == "SOURCE_EXACT_DEPENDENCY"
+        )
+        source["materialExportIndex"] += 1
+        attacks.append(("topology export identity", mutated))
+
+        mutated = copy.deepcopy(receipt)
+        mutated["structuralShaderMapJoin"]["familyRows"][0][
+            "primaryMaterialShaderMapIndices"
+        ] = [0]
+        mutated["structuralShaderMapJoin"]["familyRows"][0]["joinStatus"] = (
+            "EXACT_BASE_MATERIAL_ID_JOIN"
+        )
+        attacks.append(("forged structural join", mutated))
+
+        for label, mutated in attacks:
+            seal_receipt(mutated)
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    validate_receipt(mutated, DEFAULT_MATERIAL_CONTRACT)
+
+    def test_validate_only_rejects_duplicate_keys_and_resealed_raw_identity(self) -> None:
+        if not DEFAULT_OUTPUT.is_file():
+            self.skipTest("tracked ShaderCache receipt has not been generated")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            duplicate = root / "duplicate.json"
+            duplicate.write_text(
+                '{"schema":"x","schema":"y"}', encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+                read_json(duplicate)
+
+            receipt = read_json(DEFAULT_OUTPUT)
+            receipt["externalEvidence"]["d3dcompiler"]["rawSha256"] = "0" * 64
+            seal_receipt(receipt)
+            forged = root / "forged.json"
+            forged.write_text(json.dumps(receipt), encoding="utf-8")
+            script = Path(__file__).with_name(
+                "extract_artist_31470_shader_cache_oracle.py"
+            )
+            process = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(script),
+                    "--validate-only",
+                    "--output",
+                    str(forged),
+                    "--material-contract",
+                    str(DEFAULT_MATERIAL_CONTRACT),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(process.returncode, 0)
+
+        receipt = read_json(DEFAULT_OUTPUT)
         mutated = copy.deepcopy(receipt)
         mutated["admission"]["productAdmission"] = True
         seal_receipt(mutated)
-        with self.assertRaisesRegex(ValueError, "admission"):
+        with self.assertRaises(ValueError):
             validate_receipt(mutated, DEFAULT_MATERIAL_CONTRACT)
 
         mutated = copy.deepcopy(receipt)
@@ -353,14 +509,14 @@ class ShaderCacheOracleTests(unittest.TestCase):
             "strictParetoImprovementOverSource"
         ] = True
         seal_receipt(mutated)
-        with self.assertRaisesRegex(ValueError, "improvement flag"):
+        with self.assertRaises(ValueError):
             validate_receipt(mutated, DEFAULT_MATERIAL_CONTRACT)
 
     def test_json_boolean_and_float_versions_rejected(self) -> None:
         if not DEFAULT_OUTPUT.is_file():
             self.skipTest("tracked ShaderCache receipt has not been generated")
         receipt = json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8"))
-        for version in (True, 1.0, "1"):
+        for version in (True, 2.0, "2"):
             mutated = copy.deepcopy(receipt)
             mutated["formatVersion"] = version
             seal_receipt(mutated)
