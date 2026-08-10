@@ -47,7 +47,8 @@ receipt에 기록한다. 925개 non-null graph expression의 export/path/propert
 exact DDS 4건의 raw Texture2D class/export/reference/serial/sampler property도 같은 receipt에 기록한다.
 canonical `sourceMaterialPath`는 raw Material object path/package SHA/export index에, MIC `Parent` reference는
 선택된 parent graph의 exact package/export/object에 각각 결합한다. Explicit tagged value는 encoded bytes도
-함께 기록한다.
+함께 기록한다. Tagged-property stream 뒤의 native tail도 `propertyStreamEnd`, byte count, raw SHA로
+분리해 opaque evidence로만 보존하며 graph 의미로 승격하지 않는다.
 출력 self digest는 자기 필드를 제외한 canonical JSON SHA다.
 
 ### `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
@@ -95,6 +96,28 @@ builder는 다음을 수행한다.
 27 recipe와 34 occurrence, 필드별 provenance/fidelity, sampler origin 분모, static/render/graph/evaluator
 blocker, aggregate admission을 가진 generated contract다.
 
+### `Tools/LevelPlacementExtractor/build_artist_31470_material_oracle_acquisition.py`
+
+23 family의 surviving node type, resolved/unresolved edge, serialized default와 exact raw identity를 다시
+계산한다. 설치본 `DKV6KRSCXY3T6D9CJIK3G.upk`의 23/23 base Material leaf를 class-inclusive path suffix로
+유일하게 선택하고 export/serial/property end/native tail/state key를 raw bytes에서 pin한다. 설치본
+`9XUFAXIP8BXBAP1NIEG66EF.upk`의 `shadercache` export 1,596개와 class-select/customizing/effect-lobby 후보
+11개를 pin한다. DKV state key 23개를 1,596개 ShaderCache serial 전체에서 exact 16-byte subsequence로
+검색하되 0/23 결과를 direct binding 부재로 기록한다. Cache 존재는 graph 또는 numeric oracle 확보가
+아니므로 family 상태는 `SHADERCACHE_PRESENT_DECODER_PENDING`, blocker는
+`MATERIAL_SHADER_MAP_KEY_UNRESOLVED`, evaluator/Product는 false로 유지한다.
+
+### `Data/Effects/Imported/Artist/Materials/skill.31470.material-oracle-acquisition.receipt.json`
+
+현재 revision 설치 package와 UModel v7/parser identity, 23 family acquisition matrix, ShaderCache 후보 11개,
+최소 독립 numeric oracle 요건을 보존하는 generated receipt다. Source-era equivalence를 주장하지 않으며
+후속 decoder/material-membership/numeric-oracle 소유자는 G05-M이다.
+
+### `Tools/LevelPlacementExtractor/test_build_artist_31470_material_oracle_acquisition.py`
+
+package/export/serial/native-tail/state-key, family/node/edge 분모, cache 후보와 0/23 direct-key join,
+oracle/evaluator/Product 승격을 재봉인한 mutation이 validator를 통과하지 못하게 검증한다.
+
 ### `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
 
 실제 문서 baseline과 pure in-memory mutation을 함께 검증한다. missing/corrupt path/hash, duplicate/blank
@@ -121,6 +144,7 @@ focused audit를 호출해 `effect.artist-31470-material-evidence-contract` 결�
 - active material closure의 기존 근거를 값 수정으로 보정
 - 이미지 캡처·육안 승인·visual approval 상태 변경
 - reconstructed evaluator 또는 cooked partial graph의 Source exact 승격
+- 설치 ShaderCache 존재만으로 material membership, evaluator correctness, numeric oracle을 주장
 
 ## 완료 조건
 
@@ -130,5 +154,7 @@ focused audit를 호출해 `effect.artist-31470-material-evidence-contract` 결�
 - scalar/vector/direct texture override가 정확히 342/19/71이고 blank/duplicate가 0이다.
 - exact sampler는 전체 4, 그중 instance 3/parent default 1이며 direct unproven은 68이다.
 - static permutation, full render state, cooked arithmetic evaluator blocker가 유지되어 Product admission은 0이다.
+- 23/23 installed Material leaf와 1,596 ShaderCache export/선택 후보 11개가 raw identity로 재현되며,
+  direct native-state-key join은 0/23이고 decoder/evaluator/Product는 열리지 않는다.
 - focused unit tests, ProjectAudit entry, JSON parse, `git diff --check`가 통과한다.
 - 구현·검증·RESULT를 하나의 독립 커밋으로 만든다.

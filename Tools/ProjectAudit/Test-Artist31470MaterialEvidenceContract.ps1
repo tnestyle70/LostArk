@@ -4,7 +4,9 @@ param(
     [switch]$DeepMaterialAudit,
     [string]$SourcePackageRoot = '',
     [string]$ExactDdsRoot = '',
-    [string]$SourcePackManifest = ''
+    [string]$SourcePackManifest = '',
+    [string]$InstalledReleaseRoot = 'C:\ProgramData\Smilegate\Games\LOSTARK',
+    [string]$UModelExe = 'C:\Users\user\Desktop\Resource_LostArk\06_Tools\UEViewerLostArk_runtime\umodel_lostark_v7.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +23,7 @@ $materialClosure = "$materialRoot/skill.31470.active-material-closure.json"
 $ddsReceipt = "$materialRoot/skill.31470.exact-dds-recovery.receipt.json"
 $renderReceipt = "$materialRoot/skill.31470.material-render-state-evidence.receipt.json"
 $contractPath = "$materialRoot/skill.31470.typed-material-evidence-contract.json"
+$oracleReceipt = "$materialRoot/skill.31470.material-oracle-acquisition.receipt.json"
 
 Push-Location $RepositoryRoot
 try {
@@ -35,6 +38,7 @@ try {
             '--material-closure' $materialClosure `
             '--exact-dds-receipt' $ddsReceipt `
             '--source-package-root' $SourcePackageRoot `
+            '--source-pack-manifest' $SourcePackManifest `
             '--output' $renderReceipt `
             '--check'
         if ($LASTEXITCODE -ne 0) {
@@ -63,6 +67,31 @@ try {
         throw "Artist F typed Material evidence check failed: $LASTEXITCODE"
     }
 
+    $oracleArguments = @(
+        'Tools/LevelPlacementExtractor/build_artist_31470_material_oracle_acquisition.py',
+        '--typed-contract', $contractPath,
+        '--raw-render-receipt', $renderReceipt,
+        '--material-closure', $materialClosure,
+        '--output', $oracleReceipt,
+        '--check'
+    )
+    if ($DeepMaterialAudit) {
+        if ([string]::IsNullOrWhiteSpace($InstalledReleaseRoot) -or
+            -not (Test-Path -LiteralPath $InstalledReleaseRoot -PathType Container) -or
+            [string]::IsNullOrWhiteSpace($UModelExe) -or
+            -not (Test-Path -LiteralPath $UModelExe -PathType Leaf)) {
+            throw 'Deep Artist F Material audit requires the installed LOSTARK release root and UModel v7.'
+        }
+        $oracleArguments += @(
+            '--installed-release-root', $InstalledReleaseRoot,
+            '--umodel-exe', $UModelExe
+        )
+    }
+    & python @oracleArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Artist F Material oracle acquisition check failed: $LASTEXITCODE"
+    }
+
     Push-Location 'Tools/LevelPlacementExtractor'
     try {
         $savedSourcePackageRoot = $env:ARTIST_F_MATERIAL_SOURCE_PACKAGE_ROOT
@@ -78,6 +107,7 @@ try {
             $ErrorActionPreference = 'Continue'
             $unitTestOutput = (& python -m unittest -q `
                 'test_build_artist_31470_material_evidence_contract' `
+                'test_build_artist_31470_material_oracle_acquisition' `
                 2>&1 | Out-String).Trim()
             $unitTestExitCode = $LASTEXITCODE
         }
@@ -99,6 +129,8 @@ try {
         ConvertFrom-Json
     $rawReceipt = Get-Content -LiteralPath $renderReceipt -Raw -Encoding UTF8 |
         ConvertFrom-Json
+    $oracle = Get-Content -LiteralPath $oracleReceipt -Raw -Encoding UTF8 |
+        ConvertFrom-Json
     if ($rawReceipt.schema -cne 'lostark.artist-31470-material-render-state-evidence-receipt' -or
         [int]$rawReceipt.formatVersion -ne 3 -or
         @($rawReceipt.graphExpressions).Count -ne 925 -or
@@ -110,7 +142,7 @@ try {
     $summary = $contract.summary
     $admission = $contract.admission
     if ($contract.schema -cne 'lostark.artist-31470-typed-material-evidence-contract' -or
-        [int]$contract.formatVersion -ne 2 -or
+        [int]$contract.formatVersion -ne 3 -or
         @($contract.materialRecipes).Count -ne 27 -or
         @($contract.occurrences).Count -ne 34 -or
         @($contract.graphFamilies).Count -ne 23 -or
@@ -125,10 +157,12 @@ try {
         [int]$summary.unusedMaterialRecipeCount -ne 0 -or
         [int]$summary.unexpectedOccurrenceMaterialCount -ne 0 -or
         [string]$summary.occurrenceMaterialJoinSha256 -cne '1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296' -or
-        [string]$summary.occurrenceIdentitySha256 -cne '1fbc48456793a8fafbe5202b1f35c92c8747e3115d8dc27d6e8338863a330406' -or
-        [string]$summary.recipeIdentitySha256 -cne '01b37c5ad762e3fa0faa587533145dc910b289379011b36edaccffe040764e0f' -or
+        [string]$summary.occurrenceIdentitySha256 -cne 'faf2027f930a7905e87e867cb3a89b9ca75e2647b57872045dd2369dff5e6317' -or
+        [string]$summary.recipeIdentitySha256 -cne 'f4cb7f8d5fae3699d55eb56a1a0442c6d55a0e5f062766a23fb654d665d24e22' -or
         [string]$summary.recipeFamilyJoinSha256 -cne '9877829577c550acb7452e8ff279c7819f17151513cee53994bee116620838f2' -or
         [string]$summary.renderFieldEvidenceSha256 -cne '6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9' -or
+        [string]$summary.exactInputLineageSha256 -cne '891e93591f63b03466408829b8eb961f8a363889862db1132184285f6bd420e3' -or
+        [string]$summary.recipeCompositionSha256 -cne '0214ba2113f429ee5d7a31d1ca4c560780ad65b1e741e22e85e3dfc3f914bf3c' -or
         [int]$summary.cookedStrippedNullExpressionCount -ne 1803 -or
         [int]$summary.unresolvedGraphEdgeCount -ne 502 -or
         [int]$summary.sourceExactGraphFamilyCount -ne 0 -or
@@ -162,6 +196,35 @@ try {
             throw "Artist F graph fidelity laundering detected: $($family.familyId)"
         }
     }
+    if ($oracle.schema -cne 'lostark.artist-31470-material-oracle-acquisition-receipt' -or
+        [int]$oracle.formatVersion -ne 1 -or
+        @($oracle.families).Count -ne 23 -or
+        [int]$oracle.summary.materialRecipeCount -ne 27 -or
+        [int]$oracle.summary.survivingExpressionCount -ne 925 -or
+        [int]$oracle.summary.cookedNullExpressionCount -ne 1803 -or
+        [int]$oracle.summary.resolvedInputEdgeCount -ne 125 -or
+        [int]$oracle.summary.unresolvedInputEdgeCount -ne 502 -or
+        [int]$oracle.summary.oracleAvailableFamilyCount -ne 0 -or
+        [int]$oracle.summary.implementedEvaluatorCount -ne 0 -or
+        [int]$oracle.summary.productFamilyCount -ne 0 -or
+        [int]$oracle.summary.installedMaterialLeafFamilyCount -ne 23 -or
+        [int]$oracle.summary.shaderCacheExportCount -ne 1596 -or
+        [int]$oracle.summary.selectedShaderCacheCandidateCount -ne 11 -or
+        [bool]$oracle.admission.executionReady -or
+        [bool]$oracle.admission.product) {
+        throw 'Artist F Material oracle acquisition boundary changed.'
+    }
+    foreach ($family in @($oracle.families)) {
+        if ([string]$family.oracleStatus -cne 'SHADERCACHE_PRESENT_DECODER_PENDING' -or
+            [string]$family.graphProvenance -cne 'RECONSTRUCTED_GRAPH' -or
+            [bool]$family.sourceExactGraph -or
+            [bool]$family.evaluatorImplemented -or
+            [bool]$family.executable -or
+            [bool]$family.product -or
+            [bool]$family.minimumIndependentNumericOracle.imageValidationAllowed) {
+            throw "Artist F Material oracle laundering detected: $($family.familyId)"
+        }
+    }
     foreach ($recipe in @($contract.materialRecipes)) {
         if ([bool]$recipe.staticPermutation.sourceExact -or
             @($recipe.staticPermutation.selectedParameters).Count -ne 0 -or
@@ -174,7 +237,7 @@ try {
     }
 
     $mode = if ($DeepMaterialAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material evidence mode=$mode recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 runtime=false product=false"
+    Write-Output "PASS: Artist F 31470 Material evidence mode=$mode recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false"
 }
 finally {
     Pop-Location

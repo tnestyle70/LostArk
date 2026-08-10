@@ -41,16 +41,16 @@ EXPECTED_GRAPH_FAMILY_RAW_EVIDENCE_SHA256 = (
     "4783f79575c32d58499c40b7395d97fd62615c55033e97cd08db59d39f9727d7"
 )
 EXPECTED_RAW_MATERIAL_BINDING_SHA256 = (
-    "c05bcd6be7de45c5c2da8467950de9afa1029a51286dc706211f3ebd665fa254"
+    "b4074b05ffd517520df7ade9f3e5bf643af0553e15db0cd18d9275d1b78b4138"
 )
 EXPECTED_RAW_RENDER_FIELD_EVIDENCE_SHA256 = (
-    "54f5867357ce5e45b8426973c651b9e1ffed3d20a114fba2d2bcecb7dc0f9b1f"
+    "33706c4a19abf5ebb1bbf7647d1fca6f6eff4bbac3357d494e1eb06425cdaeff"
 )
 EXPECTED_OCCURRENCE_IDENTITY_SHA256 = (
-    "1fbc48456793a8fafbe5202b1f35c92c8747e3115d8dc27d6e8338863a330406"
+    "faf2027f930a7905e87e867cb3a89b9ca75e2647b57872045dd2369dff5e6317"
 )
 EXPECTED_RECIPE_IDENTITY_SHA256 = (
-    "01b37c5ad762e3fa0faa587533145dc910b289379011b36edaccffe040764e0f"
+    "f4cb7f8d5fae3699d55eb56a1a0442c6d55a0e5f062766a23fb654d665d24e22"
 )
 EXPECTED_RECIPE_FAMILY_JOIN_SHA256 = (
     "9877829577c550acb7452e8ff279c7819f17151513cee53994bee116620838f2"
@@ -58,10 +58,18 @@ EXPECTED_RECIPE_FAMILY_JOIN_SHA256 = (
 EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256 = (
     "6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9"
 )
-EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256 = ""
-EXPECTED_CONTRACT_EXACT_INPUT_LINEAGE_SHA256 = ""
-EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256 = ""
-EXPECTED_RECIPE_COMPOSITION_SHA256 = ""
+EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256 = (
+    "c51178bebaf92f2583cef2f7e0b80750c643e9c09c7eb4bbd1e29ddf5708e8f2"
+)
+EXPECTED_CONTRACT_EXACT_INPUT_LINEAGE_SHA256 = (
+    "891e93591f63b03466408829b8eb961f8a363889862db1132184285f6bd420e3"
+)
+EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256 = (
+    "f1e5ac9e39cd6dceda1c7353b4032b9359f59f4993f0a50f7ea8e09bf94b0d69"
+)
+EXPECTED_RECIPE_COMPOSITION_SHA256 = (
+    "0214ba2113f429ee5d7a31d1ca4c560780ad65b1e741e22e85e3dfc3f914bf3c"
+)
 
 BLEND_MODE_DOMAIN = (
     "blend_opaque",
@@ -339,7 +347,12 @@ def validate_self_digest(document: dict[str, Any], field: str, label: str) -> No
 def closure_rows(closure: dict[str, Any]) -> list[dict[str, Any]]:
     require(
         closure.get("schema") == "lostark.ue3-effect-material-closure"
-        and closure.get("formatVersion") == 1,
+        and type(closure.get("formatVersion")) is int
+        and closure.get("formatVersion") == 1
+        and closure.get("characterClass") == "ARTIST"
+        and type(closure.get("skillId")) is int
+        and closure.get("skillId") == 31470
+        and closure.get("inputSlot") == "F",
         "unsupported active material closure",
     )
     rows = require_list(closure.get("materials"), "material closure rows")
@@ -532,6 +545,9 @@ def immutable_export_identity(export: dict[str, Any]) -> dict[str, Any]:
             "serialOffset",
             "serialSize",
             "serialSha256",
+            "propertyStreamEnd",
+            "trailingByteCount",
+            "trailingBytesSha256",
         )
     }
 
@@ -692,8 +708,16 @@ def validate_render_receipt(
             and type(export.get("serialOffset")) is int
             and type(export.get("serialSize")) is int
             and export.get("serialOffset") >= 0
-            and export.get("serialSize") > 0,
+            and export.get("serialSize") > 0
+            and type(export.get("propertyStreamEnd")) is int
+            and type(export.get("trailingByteCount")) is int
+            and 0 <= export.get("propertyStreamEnd") <= export.get("serialSize")
+            and export.get("trailingByteCount")
+            == export.get("serialSize") - export.get("propertyStreamEnd"),
             f"render export immutable identity is invalid: {evidence_id}",
+        )
+        require_sha256(
+            export.get("trailingBytesSha256"), f"{evidence_id}.trailingBytes"
         )
         fields = export.get("fields")
         require(isinstance(fields, dict), f"render-state fields missing: {evidence_id}")
@@ -839,6 +863,9 @@ def validate_render_receipt(
             "exportIndex": source_export["exportIndex"],
             "objectPath": source_export["objectPath"],
             "rawExportEvidenceId": source_export["evidenceId"],
+            "propertyStreamEnd": source_export["propertyStreamEnd"],
+            "trailingByteCount": source_export["trailingByteCount"],
+            "trailingBytesSha256": source_export["trailingBytesSha256"],
         }
         require(
             binding.get("sourceMaterialIdentity") == expected_source_identity,
@@ -934,6 +961,9 @@ def validate_render_receipt(
             "objectPath": base_export["objectPath"],
             "rawExportEvidenceId": base_export["evidenceId"],
             "rawParentReferencePath": raw_parent_reference,
+            "propertyStreamEnd": base_export["propertyStreamEnd"],
+            "trailingByteCount": base_export["trailingByteCount"],
+            "trailingBytesSha256": base_export["trailingBytesSha256"],
         }
         require(
             binding.get("selectedGraphIdentity") == expected_graph_identity,
@@ -1231,6 +1261,16 @@ def immutable_property_lineage(
     encoded_sha256 = require_sha256(
         field.get("encodedValueSha256"), f"{label}.encodedValue"
     )
+    encoded_hex = str(field.get("encodedValueHex") or "")
+    try:
+        encoded_bytes = bytes.fromhex(encoded_hex)
+    except ValueError as error:
+        raise ValueError(f"exact property bytes are invalid: {label}") from error
+    require(
+        bool(encoded_bytes)
+        and hashlib.sha256(encoded_bytes).hexdigest() == encoded_sha256,
+        f"exact property bytes changed: {label}",
+    )
     record_sha256 = require_sha256(field.get("recordSha256"), f"{label}.record")
     return {
         "export": immutable_export_identity(export),
@@ -1251,9 +1291,54 @@ def immutable_property_lineage(
                 "absoluteLogicalRecordEndOffset",
             )
         },
+        "encodedValueHex": encoded_hex,
         "encodedValueSha256": encoded_sha256,
         "recordSha256": record_sha256,
     }
+
+
+def validate_property_lineage(lineage: Any, label: str) -> None:
+    require(isinstance(lineage, dict), f"property lineage is missing: {label}")
+    export = lineage.get("export")
+    property_identity = lineage.get("property")
+    require(
+        isinstance(export, dict)
+        and isinstance(property_identity, dict)
+        and bool(export.get("evidenceId"))
+        and type(export.get("exportIndex")) is int
+        and type(export.get("packageReference")) is int
+        and export.get("packageReference") == export.get("exportIndex") + 1,
+        f"property lineage owner is invalid: {label}",
+    )
+    require_sha256(export.get("physicalPackageSha256"), f"{label}.package")
+    require_sha256(export.get("serialSha256"), f"{label}.serial")
+    encoded_sha256 = require_sha256(
+        lineage.get("encodedValueSha256"), f"{label}.encodedValue"
+    )
+    encoded_hex = str(lineage.get("encodedValueHex") or "")
+    try:
+        encoded_bytes = bytes.fromhex(encoded_hex)
+    except ValueError as error:
+        raise ValueError(f"property lineage bytes are invalid: {label}") from error
+    require(
+        bool(encoded_bytes)
+        and hashlib.sha256(encoded_bytes).hexdigest() == encoded_sha256,
+        f"property lineage bytes changed: {label}",
+    )
+    require_sha256(lineage.get("recordSha256"), f"{label}.record")
+    require(
+        type(property_identity.get("arrayIndex")) is int
+        and type(property_identity.get("declaredDataSize")) is int
+        and type(property_identity.get("serializedPayloadSize")) is int
+        and type(property_identity.get("tagOffset")) is int
+        and type(property_identity.get("valueOffset")) is int
+        and type(property_identity.get("recordEndOffset")) is int
+        and 0 <= property_identity["tagOffset"]
+        <= property_identity["valueOffset"]
+        <= property_identity["recordEndOffset"]
+        <= export["serialSize"],
+        f"property lineage offsets are invalid: {label}",
+    )
 
 
 def raw_instance_parameter_projection(
@@ -1363,7 +1448,7 @@ def parameter_rows(
     if not values:
         require(
             require_list(
-                source_export.get("instanceParameters", {}).get(kind),
+                source_export.get("instanceParameters", {}).get(kind, []),
                 f"{material_path}.{array_name}.rawProjection",
             )
             == [],
@@ -1505,13 +1590,13 @@ def parent_default_rows(
     holder_name, holder = graph_holder(row)
     graph = holder["graph"]
     base_export = exports[str(binding["renderStateExportEvidenceId"])]
+    source_export = exports[str(binding["sourceExportEvidenceId"])]
     binding_origin = (
         "PARENT_DEFAULT"
         if material_class == "materialinstanceconstant"
         else "SELF_DEFAULT"
     )
     if binding_origin == "PARENT_DEFAULT":
-        source_export = exports[str(binding["sourceExportEvidenceId"])]
         parent_field = source_export["fields"]["parent"]
         require(
             parent_field.get("status") == "SERIALIZED_EXPLICIT"
@@ -1585,15 +1670,56 @@ def parent_default_rows(
             if exact_value_proven
             else "UNRESOLVED_PARENT_DEFAULT_EVIDENCE"
         )
+        property_lineage = (
+            immutable_property_lineage(
+                raw_expression,
+                raw_default_field,
+                f"{material_path}.{name}.parentDefault",
+            )
+            if exact_value_proven
+            else None
+        )
+        decoded_canonical_value: dict[str, Any] = {
+            "parameterName": name,
+            "normalizedParameterName": normalized_name,
+            "value": copy.deepcopy(value),
+        }
+        if kind == "texture" and exact_value_proven:
+            decoded_canonical_value["packageIndex"] = int(
+                raw_default_field["value"]
+            )
+        lineage = {
+            "owner": {
+                "recipeId": stable_id("material-recipe", material_path),
+                "canonicalSourceMaterialPath": material_path,
+                "rawMaterialExport": immutable_export_identity(source_export),
+            },
+            "fieldKind": kind,
+            "bindingOrigin": binding_origin,
+            "expressionSourceOrder": source_order,
+            "expressionExportIndex": expression_export,
+            "parameterName": name,
+            "normalizedParameterName": normalized_name,
+            "rawBaseMaterialExport": immutable_export_identity(base_export),
+            "rawExpressionExport": immutable_export_identity(raw_expression),
+            "decodedCanonicalValue": decoded_canonical_value,
+            "propertyLineage": property_lineage,
+            "inheritanceEdgeEvidenceId": (
+                binding["sourceExportEvidenceId"]
+                if binding_origin == "PARENT_DEFAULT"
+                else None
+            ),
+        }
+        lineage_sha256 = canonical_sha256(lineage)
         evidence = {
             "fieldId": stable_id(
-                "material-default",
+                "material-input",
                 material_path,
                 kind,
                 source_order,
-                expression_export,
                 name,
                 binding_origin,
+                lineage_sha256,
             ),
             "fieldKind": kind,
             "parameterName": name,
@@ -1624,6 +1750,8 @@ def parent_default_rows(
                     if binding_origin == "PARENT_DEFAULT"
                     else None
                 ),
+                "lineage": lineage,
+                "lineageSha256": lineage_sha256,
             },
         }
         if not exact_value_proven:
@@ -1862,8 +1990,25 @@ def validate_dds_receipt(
     require(
         dds_receipt.get("schema")
         == "lostark.artist-effect-exact-dds-recovery-receipt"
-        and dds_receipt.get("formatVersion") == 1,
+        and type(dds_receipt.get("formatVersion")) is int
+        and dds_receipt.get("formatVersion") == 1
+        and dds_receipt.get("characterClass") == "ARTIST"
+        and type(dds_receipt.get("skillId")) is int
+        and dds_receipt.get("skillId") == 31470
+        and dds_receipt.get("inputSlot") == "F",
         "unsupported exact DDS receipt",
+    )
+    manifest = dds_receipt.get("sourceEvidence", {}).get(
+        "sourcePackManifest"
+    )
+    require(
+        isinstance(manifest, dict)
+        and type(manifest.get("byteCount")) is int
+        and manifest.get("byteCount")
+        == EXPECTED_SOURCE_PACK_MANIFEST_BYTE_COUNT
+        and manifest.get("sha256")
+        == EXPECTED_SOURCE_PACK_MANIFEST_SHA256,
+        "exact DDS receipt source-pack manifest is not authenticated",
     )
     assets = require_list(dds_receipt.get("assets"), "exact DDS assets")
     require(len(assets) == 4, f"exact DDS denominator changed: {len(assets)}")
@@ -2085,6 +2230,9 @@ def occurrence_identity_payload(
         "sourceEmitter": str(source_emitter or ""),
         "sourceMaterialPath": str(source_material_path or ""),
         "materialRecipeId": str(recipe.get("recipeId") or ""),
+        "recipeCompositionSha256": str(
+            recipe.get("compositionSha256") or ""
+        ),
         "rawMaterialEvidence": {
             "rawExportEvidenceId": recipe_identity.get("rawExportEvidenceId"),
             "physicalPackageSha256": recipe_identity.get(
@@ -2103,13 +2251,63 @@ def occurrence_identity_payload(
     }
 
 
+def recipe_composition_payload(recipe: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "recipeId": recipe.get("recipeId"),
+        "sourceMaterialPath": recipe.get("sourceMaterialPath"),
+        "rendererShapes": copy.deepcopy(recipe.get("rendererShapes")),
+        "identity": copy.deepcopy(recipe.get("identity")),
+        "inputs": copy.deepcopy(recipe.get("inputs")),
+        "staticPermutation": copy.deepcopy(recipe.get("staticPermutation")),
+        "renderState": copy.deepcopy(recipe.get("renderState")),
+        "arithmeticFamilyId": recipe.get("arithmeticFamilyId"),
+        "arithmeticFamilyEvidence": copy.deepcopy(
+            recipe.get("arithmeticFamilyEvidence")
+        ),
+        "blockers": copy.deepcopy(recipe.get("blockers")),
+        "blockerCount": recipe.get("blockerCount"),
+        "admission": copy.deepcopy(recipe.get("admission")),
+    }
+
+
+def contract_exact_input_lineage_fixture_payload(
+    recipes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for recipe in sorted(recipes, key=lambda row: row["recipeId"]):
+        for collection_name, fields in (
+            ("scalarOverrides", recipe["inputs"]["scalarOverrides"]),
+            ("vectorOverrides", recipe["inputs"]["vectorOverrides"]),
+            ("textureOverrides", recipe["inputs"]["textureOverrides"]),
+            ("parentDefaults", recipe["inputs"]["parentDefaults"]),
+            (
+                "staticParentDefaults",
+                recipe["staticPermutation"]["parentDefaults"],
+            ),
+        ):
+            for field in fields:
+                result.append(
+                    {
+                        "recipeId": recipe["recipeId"],
+                        "collection": collection_name,
+                        "field": copy.deepcopy(field),
+                    }
+                )
+    return result
+
+
 def build_occurrence_rows(
     active_inventory: dict[str, Any], recipe_by_path: dict[str, dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], str, str, set[str]]:
     require(
         active_inventory.get("schema")
         == "lostark.source-active-effect-inventory-receipt"
-        and active_inventory.get("formatVersion") == 1,
+        and type(active_inventory.get("formatVersion")) is int
+        and active_inventory.get("formatVersion") == 1
+        and active_inventory.get("characterClass") == "ARTIST"
+        and type(active_inventory.get("skillId")) is int
+        and active_inventory.get("skillId") == 31470
+        and active_inventory.get("inputSlot") == "F",
         "unsupported active inventory",
     )
     elements = require_list(active_inventory.get("activeElements"), "active elements")
@@ -2254,6 +2452,157 @@ def contract_render_field_fixture_payload(
     return result
 
 
+def validate_emitted_input_field(
+    recipe: dict[str, Any], collection_name: str, field: dict[str, Any]
+) -> None:
+    recipe_id = str(recipe.get("recipeId") or "")
+    material_path = str(recipe.get("sourceMaterialPath") or "")
+    identity = recipe.get("identity")
+    require(isinstance(identity, dict), f"recipe identity missing: {recipe_id}")
+    provenance = field.get("provenance")
+    lineage = provenance.get("lineage") if isinstance(provenance, dict) else None
+    require(
+        isinstance(lineage, dict)
+        and provenance.get("lineageSha256") == canonical_sha256(lineage),
+        f"input lineage digest changed: {recipe_id}.{collection_name}",
+    )
+    owner = lineage.get("owner")
+    require(
+        isinstance(owner, dict)
+        and owner.get("recipeId") == recipe_id
+        and owner.get("canonicalSourceMaterialPath") == material_path
+        and owner.get("rawMaterialExport") == identity.get("rawMaterialExport")
+        and lineage.get("fieldKind") == field.get("fieldKind")
+        and lineage.get("bindingOrigin") == field.get("bindingOrigin")
+        and lineage.get("parameterName") in {None, field.get("parameterName")}
+        and lineage.get("normalizedParameterName")
+        in {None, field.get("normalizedParameterName")},
+        f"input lineage owner changed: {recipe_id}.{collection_name}",
+    )
+    decoded = lineage.get("decodedCanonicalValue")
+    require(
+        isinstance(decoded, dict)
+        and decoded.get("parameterName") == field.get("parameterName")
+        and decoded.get("normalizedParameterName")
+        == field.get("normalizedParameterName")
+        and decoded.get("value") == field.get("value"),
+        f"input decoded lineage changed: {recipe_id}.{collection_name}",
+    )
+    binding_origin = str(field.get("bindingOrigin") or "")
+    lineage_sha256 = str(provenance["lineageSha256"])
+    if binding_origin == "INSTANCE_OVERRIDE":
+        index = field.get("serializedArrayIndex")
+        require(
+            type(index) is int
+            and lineage.get("serializedArrayIndex") == index
+            and collection_name
+            in {"scalarOverrides", "vectorOverrides", "textureOverrides"},
+            f"instance input order changed: {recipe_id}.{collection_name}",
+        )
+        property_lineage = lineage.get("propertyLineage")
+        validate_property_lineage(
+            property_lineage,
+            f"{recipe_id}.{collection_name}[{index}]",
+        )
+        require(
+            property_lineage.get("export") == identity.get("rawMaterialExport"),
+            f"instance input raw owner changed: {recipe_id}.{collection_name}",
+        )
+        expected_id = stable_id(
+            "material-input",
+            material_path,
+            field.get("fieldKind"),
+            index,
+            field.get("parameterName"),
+            binding_origin,
+            lineage_sha256,
+        )
+        if field.get("fieldKind") == "texture":
+            require(
+                type(field.get("packageIndex")) is int
+                and decoded.get("packageIndex") == field.get("packageIndex"),
+                f"texture input package reference changed: {recipe_id}.{collection_name}",
+            )
+    else:
+        require(
+            binding_origin in {"PARENT_DEFAULT", "SELF_DEFAULT"}
+            and collection_name in {"parentDefaults", "staticParentDefaults"},
+            f"default input origin changed: {recipe_id}.{collection_name}",
+        )
+        source_order = field.get("expressionSourceOrder")
+        require(
+            type(source_order) is int
+            and lineage.get("expressionSourceOrder") == source_order
+            and lineage.get("expressionExportIndex")
+            == field.get("expressionExportIndex")
+            and lineage.get("parameterName") == field.get("parameterName")
+            and lineage.get("normalizedParameterName")
+            == field.get("normalizedParameterName"),
+            f"default input expression identity changed: {recipe_id}.{collection_name}",
+        )
+        raw_base = lineage.get("rawBaseMaterialExport")
+        raw_expression = lineage.get("rawExpressionExport")
+        selected_graph = identity.get("selectedGraphIdentity")
+        require(
+            isinstance(raw_base, dict)
+            and isinstance(raw_expression, dict)
+            and isinstance(selected_graph, dict)
+            and raw_base.get("evidenceId")
+            == selected_graph.get("rawExportEvidenceId")
+            and raw_expression.get("evidenceId")
+            == field.get("provenance", {}).get(
+                "graphExpressionEvidenceId"
+            ),
+            f"default input raw expression owner changed: {recipe_id}.{collection_name}",
+        )
+        property_lineage = lineage.get("propertyLineage")
+        if field.get("fidelity") == "SOURCE_EXACT_INPUT":
+            validate_property_lineage(
+                property_lineage,
+                f"{recipe_id}.{collection_name}[{source_order}]",
+            )
+            require(
+                property_lineage.get("export") == raw_expression,
+                f"default input raw property owner changed: {recipe_id}.{collection_name}",
+            )
+        else:
+            require(
+                property_lineage is None,
+                f"unresolved default gained property lineage: {recipe_id}.{collection_name}",
+            )
+        if binding_origin == "PARENT_DEFAULT":
+            require(
+                lineage.get("inheritanceEdgeEvidenceId")
+                == identity.get("rawExportEvidenceId"),
+                f"parent default inheritance edge changed: {recipe_id}.{collection_name}",
+            )
+        else:
+            require(
+                lineage.get("inheritanceEdgeEvidenceId") is None,
+                f"self default gained inheritance edge: {recipe_id}.{collection_name}",
+            )
+        expected_id = stable_id(
+            "material-input",
+            material_path,
+            field.get("fieldKind"),
+            source_order,
+            field.get("parameterName"),
+            binding_origin,
+            lineage_sha256,
+        )
+        if field.get("fieldKind") == "texture" and field.get("fidelity") == "SOURCE_EXACT_INPUT":
+            require(
+                type(field.get("texturePackageIndex")) is int
+                and decoded.get("packageIndex")
+                == field.get("texturePackageIndex"),
+                f"default texture package reference changed: {recipe_id}.{collection_name}",
+            )
+    require(
+        field.get("fieldId") == expected_id,
+        f"input field ID is not lineage-derived: {recipe_id}.{collection_name}",
+    )
+
+
 def build_contract(
     active_inventory: dict[str, Any],
     material_closure: dict[str, Any],
@@ -2344,6 +2693,7 @@ def build_contract(
             "identity": {
                 "fidelity": "SOURCE_EXACT_INPUT",
                 "canonicalSourceMaterialPath": material_path,
+                "logicalPackage": source_export["logicalPackage"],
                 "physicalPackage": row["sourcePhysicalPackage"],
                 "physicalPackageSha256": require_sha256(
                     row.get("sourcePhysicalPackageSha256"),
@@ -2352,7 +2702,16 @@ def build_contract(
                 "materialObjectPath": material["objectPath"],
                 "materialClass": material["className"],
                 "materialExportIndex": source_export["exportIndex"],
+                "materialPackageReference": source_export[
+                    "packageReference"
+                ],
+                "materialSerialOffset": source_export["serialOffset"],
+                "materialSerialSize": source_export["serialSize"],
+                "materialSerialSha256": source_export["serialSha256"],
                 "rawExportEvidenceId": source_export["evidenceId"],
+                "rawMaterialExport": immutable_export_identity(
+                    source_export
+                ),
                 "selectedGraphIdentity": copy.deepcopy(
                     binding["selectedGraphIdentity"]
                 ),
@@ -2424,6 +2783,11 @@ def build_contract(
                 "product": recipe["blockerCount"] == 0,
             }
 
+    for recipe in recipes:
+        recipe["compositionSha256"] = canonical_sha256(
+            recipe_composition_payload(recipe)
+        )
+
     recipe_by_path = {folded(row["sourceMaterialPath"]): row for row in recipes}
     (
         occurrences,
@@ -2485,10 +2849,22 @@ def build_contract(
     render_field_evidence_sha256 = canonical_sha256(
         contract_render_field_fixture_payload(recipes)
     )
+    exact_input_lineage_sha256 = canonical_sha256(
+        contract_exact_input_lineage_fixture_payload(recipes)
+    )
+    recipe_composition_sha256 = canonical_sha256(
+        [
+            {
+                "recipeId": recipe["recipeId"],
+                "compositionSha256": recipe["compositionSha256"],
+            }
+            for recipe in recipes
+        ]
+    )
 
     contract: dict[str, Any] = {
         "schema": "lostark.artist-31470-typed-material-evidence-contract",
-        "formatVersion": 2,
+        "formatVersion": 3,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
@@ -2533,6 +2909,8 @@ def build_contract(
             "recipeIdentitySha256": recipe_identity_sha256,
             "recipeFamilyJoinSha256": recipe_family_join_sha256,
             "renderFieldEvidenceSha256": render_field_evidence_sha256,
+            "exactInputLineageSha256": exact_input_lineage_sha256,
+            "recipeCompositionSha256": recipe_composition_sha256,
             "scalarOverrideCount": scalar_count,
             "vectorOverrideCount": vector_count,
             "directTextureOverrideCount": texture_count,
@@ -2571,7 +2949,12 @@ def validate_contract(
     require(
         contract.get("schema")
         == "lostark.artist-31470-typed-material-evidence-contract"
-        and contract.get("formatVersion") == 2,
+        and type(contract.get("formatVersion")) is int
+        and contract.get("formatVersion") == 3
+        and contract.get("characterClass") == "ARTIST"
+        and type(contract.get("skillId")) is int
+        and contract.get("skillId") == 31470
+        and contract.get("inputSlot") == "F",
         "unsupported typed Material contract",
     )
     if verify_digest:
@@ -2591,6 +2974,7 @@ def validate_contract(
     require(len(samplers) == 4, "contract exact sampler denominator changed")
     recipe_by_id: dict[str, dict[str, Any]] = {}
     all_input_fields: dict[str, dict[str, Any]] = {}
+    input_field_owners: dict[str, str] = {}
     exact_sampler_field_ids: set[str] = set()
     family_ids = {str(row.get("familyId") or "") for row in families}
     require(len(family_ids) == len(families) and "" not in family_ids, "duplicate graph family ID")
@@ -2729,6 +3113,36 @@ def validate_contract(
             and int(identity.get("materialExportIndex", -1)) >= 0,
             f"recipe ID is not raw Material identity-derived: {recipe_id}",
         )
+        raw_material_export = identity.get("rawMaterialExport")
+        require(
+            isinstance(raw_material_export, dict)
+            and raw_material_export.get("evidenceId")
+            == identity.get("rawExportEvidenceId")
+            and raw_material_export.get("logicalPackage")
+            == identity.get("logicalPackage")
+            and raw_material_export.get("physicalPackage")
+            == identity.get("physicalPackage")
+            and raw_material_export.get("physicalPackageSha256")
+            == identity.get("physicalPackageSha256")
+            and raw_material_export.get("exportIndex")
+            == identity.get("materialExportIndex")
+            and raw_material_export.get("packageReference")
+            == identity.get("materialPackageReference")
+            and raw_material_export.get("objectPath")
+            == identity.get("materialObjectPath")
+            and raw_material_export.get("className")
+            == identity.get("materialClass")
+            and raw_material_export.get("serialOffset")
+            == identity.get("materialSerialOffset")
+            and raw_material_export.get("serialSize")
+            == identity.get("materialSerialSize")
+            and raw_material_export.get("serialSha256")
+            == identity.get("materialSerialSha256")
+            and type(identity.get("materialPackageReference")) is int
+            and identity.get("materialPackageReference")
+            == identity.get("materialExportIndex") + 1,
+            f"recipe raw Material export identity changed: {recipe_id}",
+        )
         require_sha256(
             identity.get("physicalPackageSha256"),
             f"{recipe_id}.physicalPackage",
@@ -2804,6 +3218,9 @@ def validate_contract(
             static.get("parentDefaults"), f"{recipe_id}.staticParentDefaults"
         ):
             require(isinstance(field, dict), f"invalid static parent default: {recipe_id}")
+            validate_emitted_input_field(
+                recipe, "staticParentDefaults", field
+            )
             provenance = field.get("provenance")
             require(
                 isinstance(provenance, dict)
@@ -2918,6 +3335,7 @@ def validate_contract(
         ):
             for field in require_list(inputs.get(collection_name), f"{recipe_id}.{collection_name}"):
                 require(isinstance(field, dict), f"invalid input field: {recipe_id}")
+                validate_emitted_input_field(recipe, collection_name, field)
                 field_id = str(field.get("fieldId") or "")
                 require(bool(field_id) and field_id not in field_ids, f"duplicate input field ID: {recipe_id}")
                 field_ids.add(field_id)
@@ -2926,6 +3344,7 @@ def validate_contract(
                     f"duplicate global input field ID: {field_id}",
                 )
                 all_input_fields[field_id] = field
+                input_field_owners[field_id] = recipe_id
                 if collection_name == "parentDefaults":
                     provenance = field.get("provenance")
                     require(
@@ -3018,6 +3437,11 @@ def validate_contract(
             ("SAMPLER_BINDINGS_INCOMPLETE" in blockers) == unresolved_sampler,
             f"sampler blocker is not field-derived: {recipe_id}",
         )
+        require(
+            recipe.get("compositionSha256")
+            == canonical_sha256(recipe_composition_payload(recipe)),
+            f"recipe composition digest changed: {recipe_id}",
+        )
 
     sampler_field_ids: set[str] = set()
     for sampler in samplers:
@@ -3025,6 +3449,8 @@ def validate_contract(
         require(
             field_id in all_input_fields
             and field_id not in sampler_field_ids
+            and sampler.get("materialRecipeId")
+            == input_field_owners[field_id]
             and sampler.get("fidelity") == "SOURCE_EXACT_SAMPLER"
             and sampler.get("bindingOrigin")
             == all_input_fields[field_id].get("bindingOrigin")
@@ -3096,6 +3522,18 @@ def validate_contract(
     render_field_evidence_sha256 = canonical_sha256(
         contract_render_field_fixture_payload(recipes)
     )
+    exact_input_lineage_sha256 = canonical_sha256(
+        contract_exact_input_lineage_fixture_payload(recipes)
+    )
+    recipe_composition_sha256 = canonical_sha256(
+        [
+            {
+                "recipeId": recipe["recipeId"],
+                "compositionSha256": recipe["compositionSha256"],
+            }
+            for recipe in recipes
+        ]
+    )
     require(
         summary.get("occurrenceIdentitySha256") == occurrence_identity_sha256
         == EXPECTED_OCCURRENCE_IDENTITY_SHA256
@@ -3105,7 +3543,13 @@ def validate_contract(
         == EXPECTED_RECIPE_FAMILY_JOIN_SHA256
         and summary.get("renderFieldEvidenceSha256")
         == render_field_evidence_sha256
-        == EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256,
+        == EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256
+        and summary.get("exactInputLineageSha256")
+        == exact_input_lineage_sha256
+        == EXPECTED_CONTRACT_EXACT_INPUT_LINEAGE_SHA256
+        and summary.get("recipeCompositionSha256")
+        == recipe_composition_sha256
+        == EXPECTED_RECIPE_COMPOSITION_SHA256,
         "contract identity summary is not emitted-field-derived",
     )
     expected_summary = {
