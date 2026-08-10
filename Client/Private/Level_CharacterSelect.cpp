@@ -859,10 +859,6 @@ namespace
 	constexpr f32_t THUMB_H = 78.f;
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
 	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
-	constexpr f32_t CONFIRM_W = 349.f;
-	constexpr f32_t CONFIRM_H = 52.f;
-	constexpr f32_t CONFIRM_X = (REF_WIDTH - CONFIRM_W) * 0.5f;
-	constexpr f32_t CONFIRM_Y = 668.f;
 
 	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
 	{
@@ -1077,25 +1073,6 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
-	}
-
-	{
-		const ImVec2 vConfirmTopLeft = Fn_ToScreen(CONFIRM_X, CONFIRM_Y);
-		const ImVec2 vConfirmBotRight = Fn_ToScreen(CONFIRM_X + CONFIRM_W, CONFIRM_Y + CONFIRM_H);
-
-		if (ID3D11ShaderResourceView* pEdgeSRV =
-			m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/ConfirmEdge.png"))
-		{
-			pDrawList->AddImage(pEdgeSRV, vConfirmTopLeft, vConfirmBotRight);
-		}
-
-		const char* pConfirmLabel = "\xec\x84\xa0\xed\x83\x9d \xec\xa6\x89\xec\x8b\x9c \xeb\xb3\x80\xea\xb2\xbd";
-		const ImVec2 vLabelSize = ImGui::CalcTextSize(pConfirmLabel);
-		pDrawList->AddText(
-			ImVec2(
-				(vConfirmTopLeft.x + vConfirmBotRight.x) * 0.5f - vLabelSize.x * 0.5f,
-				(vConfirmTopLeft.y + vConfirmBotRight.y) * 0.5f - vLabelSize.y * 0.5f),
-			IM_COL32(255, 255, 255, 255), pConfirmLabel);
 	}
 }
 
