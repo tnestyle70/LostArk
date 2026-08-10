@@ -2,14 +2,47 @@
 
 기준일: 2026-08-10
 
-기준 commit: `068fcc2eb2c1008505564a2e97aa9e0abaac70c3`
+재개 기준 commit: `4ffe1102ed9cf3e21f669da292fac1f143e18d8f`
 
-통합 branch: `codex/artist-f-restoration-integration-v2`
+계획 갱신 branch: `codex/artist-f-restoration-final-plan`
+
+최종 통합 branch: 아래 Gate R1의 frozen review가 끝난 뒤 재개 기준 commit에서 별도로 만든다.
 
 문서 역할: 이 파일은 전체 범위와 G 순서, worktree 소유권, admission predicate를 소유하는 최종
 구현 계획서다. 각 mutation lane은 기존 Source/Geometry/Material/Compiler PLAN을 갱신하거나 해당 G의
 전용 구현 PLAN을 먼저 만들고, public H/CPP의 세부 선언·전체 코드는 그 lane 문서에서만 소유한다.
 같은 코드를 이 master 문서에 복제하지 않는다.
+
+## 이번 재개판의 핵심 판단
+
+고정된 세 개의 구현 세션을 계속 동시에 돌리는 방식은 채택하지 않는다. 이 작업은 Source evidence,
+Material evidence, Geometry resource처럼 파일과 판정 근거가 분리되는 구간에서는 병렬화 효과가 크지만,
+Playback, Renderer, Catalog, Presentation, Effect Tool처럼 같은 immutable identity와 같은 C++ 파일을
+연속으로 연결하는 구간에서는 병렬 구현이 merge와 재검증 비용을 더 크게 만든다.
+
+따라서 사용자에게 보이는 작업은 최대 세 세션으로 유지하되, dependency wave마다 실제 활성 세션 수와
+역할을 바꾼다.
+
+| 세션 | 기본 역할 | mutation 경계 |
+|---|---|---|
+| 세션 1 | Source/evidence 또는 interface 동결 뒤 분리 가능한 family/corpus lane | 한 wave에서 배정받은 evidence/data/family 파일만 수정 |
+| 세션 2 | Pipeline Implementation/Integration | Material corrective, typed runtime, shared C++ foundation, 결합과 전체 build 소유 |
+| 세션 3 | Independent Review | frozen commit/tree read-only 재현, PASS/BLOCK만 판정, 파일 수정 금지 |
+
+운영 원칙은 다음과 같다.
+
+1. evidence처럼 독립된 입력은 세션 1과 2가 병렬로 닫는다.
+2. 같은 Runtime Authority, Playback, Renderer, Catalog 파일을 잇는 구간은 세션 2 한 명만 쓴다.
+3. 세션 3은 live dirty diff를 따라가지 않고 frozen SHA가 생길 때만 활성화한다.
+4. 공통 renderer interface가 frozen된 뒤에만 세션 1과 2가 서로 다른 family 파일을 병렬 구현한다.
+5. Artist F 35/35 뒤에는 세션 1이 4-class corpus, 세션 2가 Valtan corpus를 병렬 적용하고,
+   공통 compiler/renderer 변경이 필요해지면 확장을 멈추고 통합 gate로 되돌아온다.
+
+즉 단일 세션만으로도 구현은 가능하지만 이 프로젝트에서는 권장하지 않는다. 실제로 자체 test가 PASS한
+Source `9b046d6`과 Material `e54a5a2`에서 independent review가 source-era 승격, coordinated reseal,
+operand ownership과 NaN oracle 문제를 재현했다. 반대로 세 세션을 항상 동시에 구현에 투입하면 공유
+C++ ownership과 hash regeneration이 병목이 된다. 최적 구조는 **한 명의 shared-runtime writer,
+독립 가능한 한 명의 specialist, frozen checkpoint reviewer 한 명**을 wave별로 켜고 끄는 방식이다.
 
 ## 목표와 종료 증거
 
@@ -42,53 +75,49 @@ numeric/structural oracle와 컴파일·링크·실행 오류 검증만 사용�
 
 ## 현재 실제 기준점
 
-`068fcc2`는 네 WIP checkpoint가 main에 병합된 clean tree이지만 green base가 아니다.
-기존 checkpoint SHA는 history 추적용이며 새 lane에 cherry-pick하지 않는다.
+현재는 evidence 수집 단계가 끝나고 typed program materialization까지 왔지만, 실제 Playback과 여섯
+renderer가 그 program을 실행하는 단계는 아직 열리지 않았다. Product admission은 `0/35`다.
 
-| 영역 | main에 포함된 checkpoint | 실제 상태 |
+| 영역 | frozen checkpoint | 독립 판정과 현재 사용 정책 |
 |---|---|---|
-| Source | `cdb052f` 계열과 후속 재생성 | shallow 52 tests PASS, 15/17 중 semantic ready 9 / blocked 8 occurrence, compiled 0/17, Product false |
-| Geometry | `dd0d548` 계열 후속 WIP | self-consistency 7/7, external authentication 0/7, preScale consumer 0/7, 최종 독립 PASS 미완료 |
-| Material | `b9212dda` 계열 후속 WIP | checked contract는 27/34 Product0, 현재 generator와 receipt hash 불일치 |
-| Compiler | `d93bbd9` | non-executable inspection IR, static audit PASS, Product 0/35, actual current Source adapter 미연결 |
+| Geometry evidence/resource | `0aca792819fdda3f541bb7cec7451c5ed93c6467` | PASS. 7 WModel v1.1 physical deploy와 7/7 decode를 재사용하되 runtime preScale consumer는 아직 0/7 |
+| Material evidence | `c1c0df3cb509b6b423218fc2eaf6f99131ad1200` | evidence-contract 범위 PASS. 27 recipe/34 occurrence와 342/19/71 denominator 고정 |
+| Material runtime oracle | `e54a5a2a3f0a1795142c6375f8e4063484d8d177` | BLOCK. recipe-binding, feature/operand ownership, NaN/Inf, shallow provenance 네 경계를 교정해야 함 |
+| Generic compiler | `c4b00f14b32d27604ac677e9a9ea81b01ecaa551` | non-executable inspection core 범위 PASS, Product false |
+| Runtime Authority foundation | `38ebe7cf7dceb5054bde93812907173cc0f98c67` | PASS. immutable authority foundation만 승인, typed executor는 미연결 |
+| Source execution base | `ae425aafb2b11840882d595ed891b7c544535aa9` | 현재 typed materializer가 소비하는 보수적 기준: module 370 ready/29 blocked, distribution 626 ready/3 blocked |
+| Source seeded follow-up | `9b046d6171b5dcd73cec969f5ac3e346762db0d8` | BLOCK. current native/script evidence를 source-era exact alias로 승격한 문제와 두 compositional verifier 누락 때문에 통합 금지 |
+| Source runtime materializer | `4ffe1102ed9cf3e21f669da292fac1f143e18d8f` | BLOCK. deterministic Productfalse projection scaffold만 인정. typed evaluator/PointLight/seed/default 손실, evidence registry 미결합, C++ generic bag 수용과 EOL/order 문제 교정 필요 |
 
-기준 tree에서 재현한 시작 결과는 다음과 같다.
+현재 자동 검증의 사실은 다음과 같다.
 
 ```text
-Test-Artist31470SourceContract.ps1
-  PASS: 7 cue / 35 element / 399 module order / Product false
-
-Test-Artist31470MaterialEvidenceContract.ps1
-  FAIL: render-state receipt generator hash mismatch
-
-Test-EffectCascadeCompiler.ps1
-  PASS: non-executable static inspection boundary
-
-ClientFrontendHarness actual Source candidate execution
-  clean worktree에 EngineSDK와 새 binary가 없으므로 G04 build lease 뒤 재검증
-  직전 merge audit의 known blocker는 provenance/path/reference identity rejection
+Source Runtime Program Python mutation     9/9 PASS
+Source Runtime Program C++ Debug/Release   7/7 PASS
+program denominator                        35 / 399 / 629
+program ready / blocked                    370 / 29
+Geometry physical resource                 7/7 deployed and decoded
+Material checked denominator               27 recipe / 34 occurrence
+Runtime execution admission                false
+Product admission                          0/35
 ```
 
-canonical physical Resources root를 지정한 G00 full ProjectAudit는 93 check 중 9개가 실패했다.
+`4ffe1102`의 full ProjectAudit에서 신규 `effect.artist-31470-source-runtime-program` check는 PASS했다.
+전체 audit은 이 G 밖의 기존 map/data visibility, G09, Source wrapper, missing WModel harness,
+WFX/rollout/actor resource gate 12건으로 exit 1이다. 이 결과를 전체 green으로 기록하지 않는다.
 
-| check | G11 판정 |
-|---|---|
-| `projects.data-source-visibility` | 이번 변경의 새 Data/소스 등록을 포함해 expected/project/filter를 일치시킴 |
-| `effect.g09-authoring-world-runtime-boundary` | Runtime Authority/Renderer/Tool에서 닫음 |
-| `effect.g09-cross-document-contract` | v13 derived Product와 compiled revision 계약으로 닫음 |
-| `effect.artist-31470-source-contract` | standalone PASS와 full-audit stderr 판정 불일치를 Source audit wrapper에서 닫음 |
-| `effect.artist-31470-material-evidence-contract` | G03에서 hash mismatch를 닫음 |
-| `effect.artist-31470-wmodel-geometry-contract` | G02 build lease에서 harness를 만들고 닫음 |
-| `effect.wfx-component-assembly` | F compiled Product 변경으로 새 회귀가 없음을 비교하고 F 범위 failure이면 닫음 |
-| `effect.representative-authored-readiness` | 기존 4-class rollout 범위는 baseline으로 분리하고 F 영향이 있으면 닫음 |
-| `effect.four-class-authored-clip-product-exact101` | Artist/31210 기존 stage mismatch는 F 완료 뒤 확장 범위로 보존하되 신규 failure/detail 변화 0 |
+진척은 한 숫자로 과장하지 않고 다음처럼 나눈다.
 
-앞의 여섯 check와 이번 변경으로 detail이 바뀌는 Effect check는 Product publish 전에 PASS여야 한다.
-후속 4-class 확장 check는 정확한 baseline ID/detail을 유지하고 F 변경으로 악화되지 않아야 한다.
+```text
+원본 evidence와 denominator closure     약 70%
+actual runtime execution/renderer path   약 25~30%
+Artist F 전체 35/35                      약 40~45%
+4-class + Valtan 전체 목표               약 15~20%
+```
 
-현재 `C:/Users/user/Desktop/LostArk`는 다른 기능의 대규모 dirty worktree다. 이 작업은 그 tree를
-stage, stash, reset, clean하거나 파일 전체 ours/theirs로 해결하지 않는다. 모든 mutation lane은
-통합 branch의 exact Gate commit에서 새 worktree를 만든다.
+현재 병목은 renderer 코드 양이 아니라 Source와 Material blocker를 손실 없이 typed schema에 전달하는
+evidence closure다. 이 blocker를 runtime fallback으로 덮고 Playback부터 진행하면 이후 전부 다시
+재생성해야 하므로 금지한다.
 
 ## 고정 fidelity와 admission 계약
 
@@ -138,26 +167,32 @@ G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다�
 
 ## 세션과 worktree 구조
 
-사용자에게 보이는 역할은 세 개만 유지한다.
+세 세션은 동시에 계속 일하는 고정 worker가 아니라 dependency wave별 역할이다.
 
-| 세션 | 역할 | mutation 권한 |
-|---|---|---|
-| Source Closure | source evidence, resolver, generated Source output 단일 소유 | Source lane만 |
-| Pipeline Implementation / Integration | Geometry, Material, Compiler, Executor, Renderer, Tool 내부 lane 조정과 통합 | 각 내부 worktree와 integration conflict commit |
-| Independent Review | frozen commit/tree의 재현과 PASS/BLOCK | read-only |
+| wave | 세션 1 | 세션 2 | 세션 3 | 실제 병렬도 |
+|---|---|---|---|---:|
+| R1 evidence corrective | Source `9b046d6` corrective | Material `e54a5a2` corrective와 `4ffe1102` 유지 | frozen SHA가 생길 때만 review | 구현 2 + review 순차 |
+| R2 integration/schema freeze | Source final hash와 최소 adapter 지원 | PASS checkpoint 결합, compiler/program schema freeze | combined tree review | shared writer 1 |
+| R3 runtime consumer | custom/source oracle 조사 또는 idle | Playback -> Geometry -> Material shared runtime를 직렬 구현 | 각 frozen checkpoint review | 구현 1 + review |
+| R4 renderer family | core 변경 없이 분리 가능한 family lane | renderer foundation과 다른 family lane, 최종 결합 | family frozen review | interface freeze 뒤 구현 2 |
+| R5 Tool/Product | regression/fixture 지원 | Catalog -> Presentation -> Effect Tool transaction과 35/35 | final tree review | shared writer 1 |
+| R6 corpus expansion | 4-class corpus 적용 | Valtan corpus 적용과 integration | partition/final review | 구현 2 + review 순차 |
 
-계획의 G 번호는 새 사용자 채팅 이름이 아니라 위 세션 안에서 실행하는 bounded job이다. 전역 active
-worker 예산은 최대 4다. mutation worker 4개가 동작할 때 Integration과 Review는 checkpoint 처리만
-하고, 감사가 시작되면 해당 mutation worker를 멈춘다.
+한 wave 안에서는 파일 소유권을 바꾸지 않는다. 세션 1이 Source corrective를 끝낸 직후 같은 dirty
+worktree에서 renderer를 시작하지 않고, PASS commit을 종료한 뒤 새 exact integration parent에서 새
+worktree를 만든다. 세션 3은 구현 코드를 쓰지 않고 frozen tree만 읽는다.
 
-통신은 다음 네 종류만 허용한다.
+세션 간 통신은 다음만 허용한다.
 
-1. 최소 public schema/typed field 요청
-2. frozen commit SHA와 실제 실행한 검증
-3. 재현 가능한 PASS/BLOCK의 명령, 기대, 실제
-4. 실제 integration conflict 또는 full-build lease 요청
+1. 최소 public schema/typed field와 stable ID 요청
+2. frozen commit SHA, parent SHA, owned file, 실제 검증과 remaining blocker
+3. 재현 가능한 PASS/BLOCK의 입력 mutation, 기대, 실제
+4. 실제 integration conflict 또는 전역 build lease 요청
 
-진행 중 추측, live dirty diff 중계, 다른 lane 내부 구현 로그는 보내지 않는다.
+진행률 메시지, live dirty diff 중계, 다른 lane 내부 구현 설명은 보내지 않는다. 이 규칙이 지켜지면
+독립 session은 병목이 아니라 잘못된 fidelity 승격과 coordinated reseal을 merge 전에 차단하는 gate다.
+반대로 reviewer가 live patch를 계속 따라가거나 두 mutation session이 같은 shared C++를 수정하면
+review와 merge가 병목이 되므로 해당 wave를 즉시 직렬화한다.
 
 Checkpoint 보고는 다음 필드를 모두 가진다.
 
@@ -203,7 +238,109 @@ Source candidate는 실제로 직접 pin하는 Source/geometry/active-material-c
 Geometry, Material contract hash와 compiler revision을 함께 결합해 불필요한 hash regeneration cycle을
 막는다.
 
-## G00. Known-red base와 public handshake 동결
+## 현재부터 완성까지의 실행 순서
+
+아래 순서는 기존 G 전체를 다시 시작하는 계획이 아니라 `4ffe1102` 이후 남은 critical path다.
+
+### R1. Frozen checkpoint 세 건 닫기
+
+1. 세션 1은 `9b046d6`을 corrective한다.
+   - source-era identity가 없으면 seeded 11건을 READY로 승격하지 않는다.
+   - current wrapper evidence는 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`로 유지한다.
+   - wrapper bytes에서 RAX -> `[rsp+0x20]` -> base SpawnEx fifth argument dataflow를 재도출한다.
+   - raw script export child chain에서 exact RandomSeedInfo 1개와 UFunction 0을 재도출한다.
+2. 세션 2는 `e54a5a2`를 corrective한다.
+   - occurrence binding SHA와 recipe/evaluator owner를 다시 결합한다.
+   - family feature mask와 ordered input/static operand를 raw Material evidence에서 재도출한다.
+   - CPU/HLSL/WARP expected, actual, error lane 전부 finite를 강제하고 NaN/Inf를 거부한다.
+   - tracked Material/render/shader canonical hash와 archive projection의 deep-only 경계를 고정한다.
+3. 세션 2는 Material corrective frozen 뒤 `4ffe1102` materializer를 corrective한다.
+   - 17 ParticleParameter occurrence의 name/mode/min·max input/output/fallback/oracle/provenance를 typed payload로 보존한다.
+   - PointLight Brightness/Radius/Falloff/LightColor와 component handler receipt를 typed field로 보존한다.
+   - seed 14건과 implicit default 14건을 canonical JSON string이 아닌 closed typed variant로 바꾼다.
+   - READY distribution 629건을 exact evaluator opcode/version/implementation/oracle/provenance registry에 join한다.
+   - source record/value coordinated reseal, unknown evaluator ID, class/opcode/handler/property mismatch를 거부한다.
+   - lookup-table shape, handler SHA, opcode별 allowed/required field를 C++ Debug/Release에서 재검증한다.
+   - tracked Source identity는 canonical LF/no-BOM domain을 사용하고 emitter/opcode exact order와 nested key를 강제한다.
+
+R1 종료 조건은 Geometry PASS, Source PASS, Material PASS, typed materializer PASS다. 하나라도 BLOCK이면
+통합하지 않는다.
+
+### R2. 승인 checkpoint 통합과 final typed schema 동결
+
+1. clean final-integration worktree를 `4ffe1102`의 reviewed parent에서 만든다.
+2. Geometry `0aca7928`, Source corrective, Material corrective, Compiler `c4b00f14`, Runtime foundation
+   `38ebe7cf`의 patch identity와 dependency를 확인해 `cherry-pick -x`한다.
+3. Source 35/399/629, Geometry 7, Material 27/34를 결합한 six-hash compiler input을 한 번 생성한다.
+4. exact class, opcode, distribution evaluator, renderer, GeometryBinding, MaterialBinding capability ID와
+   version을 동결한다.
+5. blocked payload는 읽기 전에 거부하고 runtime fallback은 0으로 유지한다.
+
+R2 종료 조건은 field loss 0, stale output 0, unknown capability 0, ownerless blocker 0이며 Product false다.
+
+### R3. Actual typed executor와 resource consumer
+
+이 구간은 shared C++ dependency가 촘촘하므로 세션 2 한 명이 다음 순서로 직렬 구현한다.
+
+1. Playback이 immutable compiled program pointer만 소비하게 하고 raw SourceRecipe/module 문자열 scan을 0으로 만든다.
+2. standard distribution, fixed seed/time, ActionCue, spawn/lifetime/location/velocity/size/color/SubUV와
+   TypeData handler consumption receipt를 연결한다.
+3. GeometryBinding expected tuple을 `CModel -> CMesh -> CMaterial`에 연결한다.
+   `geometryPreScale=0.01`은 vertex와 bounds에 정확히 한 번 적용하고 Mesh StartSize hidden `x0.01`을 제거한다.
+4. MaterialBinding 27 recipe/34 occurrence를 typed evaluator와 HLSL에 연결하고 explicit render state만 소비한다.
+5. post-compile raw semantic I/O와 재compile은 0이며 실패 시 이전 prepared pointer/cache를 보존한다.
+
+R3 종료 조건은 399 opcode/629 distribution consumption, Geometry 7/7, Material 34/34, deterministic
+fixed seed/time, fallback 0, Debug/Release PASS다. Product는 아직 false다.
+
+### R4. 여섯 renderer family
+
+공통 render packet, vertex layout, MaterialBinding slot, family dispatch interface를 세션 2가 먼저 동결한다.
+그 뒤에만 서로 다른 파일을 소유하는 두 family lane을 병렬화한다.
+
+1. Mesh + Sprite: 13 + 16
+2. Decal + Ribbon: 3 + 1
+3. Light + ScreenPost: 1 + 1
+
+각 family는 같은 compiled IR pointer를 소비하고 size/rotation/local-space/timing/material/render-state
+numeric packet을 검증한다. raw `eKind`, raw SourceRecipe, legacy heuristic dispatch는 Product path에서 0이다.
+
+### R5. Effect Tool, Catalog와 Artist F 35/35
+
+1. v14 Source Contract는 Effect Tool에서 read-only inspection만 제공한다.
+2. Product Play는 Authored disk reload가 아니라 exact catalog prepared revision을 attach한다.
+3. publish -> catalog load -> prewarm -> equivalence -> target commit을 하나의 transaction으로 묶는다.
+4. 35 occurrence 각각에 source/compiled identity, opcode, distribution, geometry, material, renderer,
+   fixed sample expected/actual/tolerance를 기록한다.
+5. `35/35`, Geometry `7/7`, Material `34/34`, fallback/blocker `0`일 때만 cue 전체 Product를 atomic publish한다.
+
+### R6. Runtime 실행과 눈으로 확인
+
+자동 admission이 끝난 뒤 Client를 `Client/Default` working directory에서 Debug와 Release로 실행한다.
+도화가 F를 exact published revision으로 재생하고 complete/family/occurrence filter가 같은 IR pointer를
+사용하는지, 이펙트가 실제 world/camera에서 누락·폭주·잘못된 scale 없이 재생되는지 수동 smoke한다.
+
+이 단계는 numeric/structural admission을 대체하지 않는다. 스크린샷 캡처와 이미지 기반 자동 비교는
+하지 않는다. 수동 관찰에서 이상이 보이면 해당 occurrence ID와 compiled revision을 기록하고 R3~R5의
+numeric oracle에 재현을 추가한 뒤 다시 admission한다.
+
+### R7. 4-class와 Valtan 확장
+
+Artist F runtime/compiler/renderer를 동결한 뒤 세션 1은 4-class corpus, 세션 2는 Valtan
+Particle/Decal/Trail/Material/Camera corpus를 병렬 적용한다. production code에 class/count switch를
+추가하지 않고 fixture denominator만 확장한다. 공통 handler가 부족하면 corpus 값을 근사하지 않고
+확장을 멈춘 뒤 shared pipeline gate로 되돌아간다.
+
+현재부터 Artist F manual runtime smoke까지 남은 critical gate는 R1~R6 여섯 개다. 실제 구현량은
+Source/Material corrective보다 R3 typed consumer와 R4 renderer가 크며, 이 두 구간을 통과하기 전에는
+화면에 보이는 legacy effect를 복원 완료로 판정하지 않는다.
+
+## 기존 G 상세 계약
+
+아래 G00~G11은 원래 계획의 상세 acceptance contract다. 현재 실행 순서는 앞의 R1~R7을 정본으로
+사용하며, 이미 PASS한 G를 재구현하지 않는다.
+
+## G00. Known-red base와 public handshake 동결 (historical)
 
 Integration Captain이 `068fcc2` 위에 이 계획과 최소 public handshake를 고정한다.
 
@@ -265,7 +402,7 @@ candidate/header를 최종 재생성하지 않는다.
 - checked-in `--check`, deep audit, Codec round-trip은 Gate 1 regeneration commit에서 실행
 - Product false
 
-### G02. Geometry Evidence Final
+### G02. Geometry Evidence Final — PASS `0aca7928`
 
 Geometry lane은 WModel evidence와 Engine decode contract만 닫는다. `Effect_Playback`과
 `Effect_DocumentRenderer`는 수정하지 않는다.
@@ -289,7 +426,7 @@ Geometry lane은 WModel evidence와 Engine decode contract만 닫는다. `Effect
 - Resources와 Effect runtime diff 0
 - Product false
 
-### G03. Material Evidence Final
+### G03. Material Evidence Final — evidence PASS, runtime corrective는 R1
 
 Material lane은 raw evidence와 typed recipe만 닫고 HLSL/runtime을 수정하지 않는다.
 
@@ -319,7 +456,7 @@ Material lane은 raw evidence와 typed recipe만 닫고 HLSL/runtime을 수정�
 - evidence commit에서는 evaluator implemented 0과 Product false를 정직하게 유지하되,
   Gate 1 실행-readiness matrix에서 owner 없는 material blocker 0
 
-### G04. Generic Compiler Core
+### G04. Generic Compiler Core — non-executable checkpoint PASS `c4b00f14`
 
 Compiler lane은 Source 재생성 전 generic typed core만 구현한다.
 
@@ -370,7 +507,7 @@ Gate 1 종료 조건:
 
 Renderer나 runtime authority를 수정하기 전에 네 병렬 closure job으로 실제 실행 입력을 준비한다.
 
-### G05-S. Source Semantic Reconstruction Readiness
+### G05-S. Source Semantic Reconstruction Readiness — `9b046d6` BLOCK, R1 corrective
 
 G01에서 남은 standard/native/default/seed/custom evaluator 행을 actual regenerated candidate 기준으로
 다시 계산한다. 각 399 module과 1,434 top-level property는 실행 handler가 소비하거나 독립적으로
@@ -378,7 +515,7 @@ G01에서 남은 standard/native/default/seed/custom evaluator 행을 actual reg
 Decal/Ribbon/Post/Light default에 evaluator ID와 numeric oracle을 부여한다. current-only evidence는
 source exact로 승격하지 않는다.
 
-### G05-G. Geometry Candidate Cook and Resource Provisioning
+### G05-G. Geometry Candidate Cook and Resource Provisioning — PASS `0aca7928`
 
 G02의 7개 WModel 1.1 candidate를 deterministic cook하고 expected tuple을 생성한다. candidate는 먼저
 임시 staging directory에서 검증한 뒤 팀장 관리 물리 root인
@@ -386,7 +523,7 @@ G02의 7개 WModel 1.1 candidate를 deterministic cook하고 expected tuple을 �
 backup -> atomic replace한다. 실패하면 기존 7개를 복원한다. Git worktree의 Resources 유무를 제품
 payload 존재 증거로 사용하지 않고 test process의 `LOSTARK_RESOURCE_ROOT`를 위 물리 root로 고정한다.
 
-### G05-M. Material Reconstruction Oracle and Texture Provisioning
+### G05-M. Material Reconstruction Oracle and Texture Provisioning — `e54a5a2` BLOCK, R1 corrective
 
 G03에서 획득한 current Engine/EFGame CDO, static parameter, sampler, shader cache, raw expression evidence로
 27 recipe의 static/render/cull/default/sampler와 23 arithmetic family expected numeric sample을 닫는다.
@@ -427,7 +564,7 @@ Gate 1B 종료 조건:
 - actual Artist v13/compiled artifact는 아직 생성하지 않고 Product bit/publish는 false
 - Source exact가 아닌 reconstruction 행의 evidence blocker는 보존
 
-## G06. Runtime Authority Foundation
+## G06. Runtime Authority Foundation — PASS `38ebe7cf`
 
 G05-S/G/M/P1 frozen PASS 뒤 단일 owner가 중앙 runtime authority와 extension point를 먼저 고정한다.
 이 G 뒤에는 family/geometry/material lane이 중앙 파일을 다시 수정하지 않는다.
@@ -477,9 +614,27 @@ SHA/worktree에서 `Engine -> UpdateLib -> Client` Debug/Release build lease를 
 - 중앙 public API와 common shader 동결
 - Product false
 
+## G06B. Source Runtime Program Materializer — `4ffe1102` BLOCK, R1 corrective
+
+Source execution receipt의 35 emitter/399 module/629 distribution을 immutable program으로 옮긴다.
+`4ffe1102`의 denominator와 fail-closed Productfalse projection은 재사용하지만 generic JSON bag은
+runtime authority로 승격하지 않는다.
+
+추가 합격 조건:
+
+- ParticleParameter 17 occurrence의 name/mode/four-range/fallback/oracle/provenance typed coverage 100%
+- PointLight typed component field와 handler receipt coverage 100%
+- seed/default closed typed variant coverage 14/14
+- READY distribution 629/629 closed evaluator registry join
+- exact class -> opcode -> handler -> allowed/required property schema와 consumption receipt
+- source record/value, handler SHA, lookup shape, emitter/opcode order, nested key mutation transactional reject
+- tracked LF/CRLF에서 동일 canonical program SHA
+- Debug/Release actual candidate mutation harness
+- runtime execution admission false, Product false
+
 ## Wave 2A. Typed executor, Geometry와 Material consumer 병렬
 
-### G07. Typed Cascade Executor
+### G07. Typed Cascade Executor — remaining
 
 G06이 최종 compile한 immutable execution IR을 strict consumer로 받아 `CEffectPlayback`의 v14
 production simulation이 typed opcode만 소비하도록 바꾼다. G07은 `Effect_CascadeCompiler`를 수정하거나
@@ -509,7 +664,7 @@ consumption receipt만 등록한다.
 - Debug/Release actual candidate harness
 - Product false
 
-### G08. GeometryBinding Runtime Consumer
+### G08. GeometryBinding Runtime Consumer — remaining
 
 G02/G05-G 결과를 기존 `CModel -> CMesh -> CMaterial` 경로와 G06 extension point에 연결한다.
 
@@ -532,7 +687,7 @@ G02/G05-G 결과를 기존 `CModel -> CMesh -> CMaterial` 경로와 G06 extensio
 - source fidelity와 external authentication 상태 보존
 - Product false
 
-### G09. Material Recipe Compiler and Evaluator
+### G09. Material Recipe Compiler and Evaluator — remaining
 
 G03/G05-M의 27 recipe를 G06 extension point가 소비할 immutable MaterialBinding으로 compile한다.
 
@@ -554,7 +709,7 @@ G03/G05-M의 27 recipe를 G06 extension point가 소비할 immutable MaterialBin
 - reconstructed graph를 `SOURCE_EXACT`로 승격한 행 0
 - Product false
 
-## G10. Renderer family와 Effect Tool 병렬
+## G10. Renderer family와 Effect Tool 병렬 — remaining
 
 G07-G09 통합·독립 감사 뒤 G06의 중앙 Runtime Authority/Foundation API를 다시 동결하고 family lane을
 생성한다.
@@ -624,7 +779,7 @@ Gate 10B 종료 조건:
 - raw v13 runtime semantic consumer 0
 - Product false, 기존 published catalog/cache/targets 미변경
 
-## G11. Artist F Admission Oracle와 Product publish
+## G11. Artist F Admission Oracle와 Product publish — remaining
 
 Integration이 새로운 feature를 만들지 않고 전체 oracle만 실행한다. expected 값은 compiler/renderer가
 자기 출력으로 다시 만든 값이 아니라 raw evidence, 독립 decoder, hand-authored immutable golden 또는
