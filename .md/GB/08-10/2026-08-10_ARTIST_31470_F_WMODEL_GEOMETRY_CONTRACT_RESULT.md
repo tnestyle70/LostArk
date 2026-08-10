@@ -81,15 +81,18 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 
 ## 자동 검증
 
-- geometry cooker/provenance/corrupt/frozen-golden Python tests: 5/5 PASS
+- geometry cooker/provenance/corrupt/frozen-golden Python tests: 6/6 PASS
 - parity EOL/raw role tests: 3/3 PASS
 - WModelGeometryContractHarness Debug/Release: PASS
   - writer-independent frozen WModel v1.1 golden 850 bytes와 canonical manifest
   - golden byte mutation과 semantic manifest mutation 거부
   - valid v1.1 COLOR/no-COLOR sidecar
   - legacy v1.0 static multi-submesh+hasBounds, skinned+WSKL+WANM
-  - corrupt WModel 27종 거부
-  - corrupt WMAT/WSKL/WANM에서 transactional empty output
+  - exact name/size/SHA의 corrupt WModel 29종 + WSKL 1종 + WANM 1종 거부
+  - 각 corrupt fixture의 valid baseline delta와 의도된 error category 일치
+  - WModel/WSKL/WANM 실패에서 transactional empty output
+  - missing/renamed/empty required fixture는 각각 exact exit 1
+  - manifest whole-file hash mutation과 semantic field mutation을 별도 거부
 - 7-carrier deep audit Debug/Release: PASS
   - carrier 7, COLOR 2, negative-W carrier 4
   - actual C++ WModelDecoder의 channel/index/submesh bounds/payload identity oracle 7/7
@@ -102,6 +105,9 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 - Engine + WModelGeometryContractHarness x64 Debug/Release: build PASS
 - UpdateLib Debug/Release: PASS
 - Client x64 Debug/Release: compile/link PASS
+  - corrective follow-up은 harness/test/docs만 바꾸므로 frozen `228429b`의 full
+    Engine/UpdateLib/Client 증거를 계승했다. WModel harness와 focused audit만 Debug/Release로
+    재실행했으며 독립 reviewer가 요구하면 integration에서 full build를 반복한다.
 - full `Invoke-ProjectAudit.ps1`: exit 1, 8 unrelated/pre-existing checks FAIL
   - geometry focused check는 PASS였고 failure 목록에서 제외됨
   - project data visibility, G09 2개, Artist source/material, WFX assembly,
@@ -127,7 +133,8 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 
 ## G02 evidence final 판정
 
-이 변경 단위에서 외부 검토의 geometry evidence P2 세 항목을 자동 계약으로 닫았다.
+이 변경 단위에서 초기 geometry evidence P2 세 항목과 후속 corrupt-fixture 증명 경계를
+자동 계약으로 닫았다.
 
 - provenance JSON `formatVersion`은 exact JSON integer만 허용하며 bool, float, string을 거부한다.
 - Python cooker/parser와 C++ decoder는 tangent-W에 동일한 `1e-6` absolute contract를 쓴다.
@@ -137,6 +144,8 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 - 실제 Resources legacy v1.0 2,586개는 Debug/Release C++ corpus sweep을 통과했다.
 - 모든 decoder section은 local staged asset에만 기록되고 전체 성공 뒤 public output에 commit된다.
 - payload/metadata 내부 self-consistency와 외부 expected tuple authentication은 별도 상태다.
+- corrupt 증거는 exact 31-file manifest, valid baseline delta, decoder error category,
+  transactional rollback을 각각 독립 bit로 요구하며 missing-file 실패를 corruption PASS로 세지 않는다.
 
 이 판정은 WModel evidence/format/decoder/cooker gate 완료를 뜻한다. source fidelity, runtime
 `geometryPreScale` 소비, GeometryBinding 외부 authentication, Resources 배포 또는 Product 승인으로
