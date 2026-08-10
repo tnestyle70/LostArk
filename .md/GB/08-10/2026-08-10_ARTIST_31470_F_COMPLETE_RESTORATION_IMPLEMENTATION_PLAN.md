@@ -261,6 +261,11 @@ nativeEntryOrDispatchIdentity
 numericOracleInputDomain
 numericOracleExpectedOutput
 independentOracleImplementation
+oracleProvider
+pilotFixtureIds
+pilotExpectedMutatedOutputs
+numericTolerance
+pilotDecision
 fidelityDecision
 executionDecision
 owner
@@ -270,7 +275,9 @@ remainingBlockers
 Source safe denominator는 29 blocked module이다. standard seeded 11, EF custom 15, EF multiply
 distribution owner 3을 임의로 합치거나 denominator에서 제거하지 않는다. input digest parity는 output
 oracle가 아니다. source-era identity 또는 실제 native particle output 비교가 없으면 READY로 승격하지
-않고 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`와 blocker를 유지한다.
+않고 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`와 blocker를 유지한다. 각 family는 최소 하나의
+실제 pilot fixture로 particle/component output 변화와 tolerance를 증명해야 하며 `FEASIBLE`,
+`VERIFIED_IRRELEVANT`, `BLOCKED` 중 하나로 판정한다.
 
 Material feasibility matrix의 각 행은 다음을 가진다.
 
@@ -285,8 +292,12 @@ parentOrCdoIdentity
 staticOrShaderMapIdentity
 rendererConsumption
 acquisitionPath
+oracleProvider
+pilotFixtureIds
 numericOracleInputDomain
 numericOracleExpectedOutput
+numericTolerance
+pilotDecision
 fidelityDecision
 executionDecision
 owner
@@ -294,16 +305,20 @@ remainingBlockers
 ```
 
 Material safe denominator는 27 recipe/34 occurrence, 162 render-state field 중 explicit 73/unresolved 89,
-static input 94, direct texture 71과 exact sampler 3 instance+1 parent다. unresolved 89를 validator correction과
-혼동하지 않는다. omitted field는 instance -> Parent Material -> nested default -> class CDO 순서로만
-해석하고, source-revision ShaderCache 또는 controlled runtime capture가 필요한 행은 그 acquisition이
-실제로 가능하기 전까지 BLOCK으로 유지한다.
+static input 94, direct texture 71과 exact sampler 3 instance+1 parent, direct-unproven sampler 68이다.
+render-state 89, static 94, sampler 68을 별도 matrix로 유지하며 validator correction과 혼동하지 않는다.
+omitted field는 instance -> Parent Material -> nested default -> class CDO 순서로만 해석한다. D3D
+blend/depth/cull state, static permutation, sampler address/filter/sRGB를 offscreen WARP 또는 독립 state
+oracle의 작은 pilot로 실제 관측하지 못한 행은 BLOCK으로 유지한다. source-revision ShaderCache 또는
+controlled runtime capture가 필요한 행은 acquisition provider가 실제로 동작하기 전까지 FEASIBLE로도
+승격하지 않는다.
 
 R0 합격 조건:
 
-- Source blocked 29/29와 Material unresolved 89/89가 matrix에 존재한다.
+- Source blocked 29/29, Material render-state 89/89, static 94/94, sampler 68/68이 matrix에 존재한다.
 - owner 없는 행 0, silent fallback 0, denominator shrink 0이다.
-- 각 READY 후보는 source-era evidence 또는 독립 actual-output numeric oracle을 가진다.
+- 각 READY 후보는 source-era evidence 또는 독립 actual-output/state oracle pilot을 가진다.
+- Source/Material 각 family의 pilot은 실제 expected mutated output과 tolerance를 고정한다.
 - current-only/cross-revision 행을 `SOURCE_EXACT`로 승격한 행 0이다.
 - acquisition이 불가능한 행은 즉시 명시되어 Artist F 35/35의 hard blocker로 보고된다.
 - R0 matrix와 resolver/validator mutation test가 frozen review PASS하기 전 R2 이후 shared runtime 구현을 시작하지 않는다.
@@ -320,7 +335,10 @@ R0 합격 조건:
    - family feature mask와 ordered input/static operand를 raw Material evidence에서 재도출한다.
    - CPU/HLSL/WARP expected, actual, error lane 전부 finite를 강제하고 NaN/Inf를 거부한다.
    - tracked Material/render/shader canonical hash와 archive projection의 deep-only 경계를 고정한다.
-3. 세션 2는 Material corrective frozen 뒤 `4ffe1102` materializer를 corrective한다.
+3. 세션 2는 Material corrective와 병렬로 `4ffe1102` materializer의 code-only scaffold를 준비할 수 있다.
+   다만 Source corrective가 frozen PASS하고 adapter schema가 동결되기 전에는 actual candidate를 생성하거나
+   materializer checkpoint SHA를 freeze하지 않는다. 최종 materializer 입력·재생성·검증은 exact Source frozen
+   receipt와 Material frozen receipt를 함께 받은 뒤 한 번만 수행한다.
    - 17 ParticleParameter occurrence의 name/mode/min·max input/output/fallback/oracle/provenance를 typed payload로 보존한다.
    - PointLight Brightness/Radius/Falloff/LightColor와 component handler receipt를 typed field로 보존한다.
    - seed 14건과 implicit default 14건을 canonical JSON string이 아닌 closed typed variant로 바꾼다.
@@ -329,8 +347,22 @@ R0 합격 조건:
    - lookup-table shape, handler SHA, opcode별 allowed/required field를 C++ Debug/Release에서 재검증한다.
    - tracked Source identity는 canonical LF/no-BOM domain을 사용하고 emitter/opcode exact order와 nested key를 강제한다.
 
-R1 종료 조건은 Geometry PASS, Source PASS, Material PASS, typed materializer PASS다. 하나라도 BLOCK이면
-통합하지 않는다.
+R1은 evidence-integrity와 execution-readiness를 별도로 판정한다.
+
+```text
+Source evidence integrity PASS
+Source actual-output execution readiness 29/29
+Material evidence integrity PASS
+Material render-state readiness 89/89
+Material static readiness 94/94
+Material sampler readiness 68/68
+ownerless/unknown/unresolved execution row 0
+typed materializer PASS
+```
+
+정직하게 blocker를 보존한 evidence commit은 evidence PASS일 수 있지만 execution-readiness PASS가 아니다.
+위 execution predicate가 모두 true가 되기 전에는 R2 final schema/candidate 통합, R3 Playback, R4 renderer에
+진입하지 않는다.
 
 ### R2. 승인 checkpoint 통합과 final typed schema 동결
 
