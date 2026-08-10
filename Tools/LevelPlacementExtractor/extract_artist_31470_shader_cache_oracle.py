@@ -38,7 +38,7 @@ from extract_ue3_placements import (
 
 
 SCHEMA = "lostark.artist-31470-shader-cache-oracle-receipt"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MATERIAL_CONTRACT = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
@@ -140,17 +140,33 @@ PRIMARY_EXPECTED = {
 }
 MATERIAL_RECIPE_PROJECTION_SHA256 = "43db9f75e2f93906ac9a53ac21f46efbb8a2a3878066b7d33415c76213590ee8"
 
+# These independent section identities are populated from the externally pinned
+# package replay.  They prevent a caller from re-sealing a coordinated mutation
+# into an otherwise internally consistent portable receipt.
+EXPECTED_PORTABLE_SECTION_SHA256 = {
+    "recipePackages": "862469ebda1ea91c35cf74c19705b71ae31982903cf64c43b6a0df604ecd9ecb",
+    "materialNativeKeys": "189675f541656d80d37dbb647ab99d0671fc7b3103719cda733c94d6144a82e7",
+    "recipeNativeKeys": "794d31067301dac1f8e9242512ad4ffeba55b16085e5dd4b1ef9233745e13d25",
+    "materialTopologyCompleteness": "a65468f3bef5f0052a4c942828bffaa7fca9e94b7859251a9fa73367d03c9709",
+    "shaderCacheCandidates": "ce69319c943c17bccf2a94e972b3dade6e1cf04d0244966b430e3b31f0bb7b7b",
+    "primaryGroups": "cac198a34a5ba3da80aab59360356041970e389a88f8bd59ea7bfed17e57aa48",
+    "primaryCodeRecords": "3955060528edb54fbe5c95e9856777e1426c08716bfe3d75076fc9b167a16fb5",
+    "primaryDecodedNativeStructure": "65d5ef0dd9525f2a311006e744982e93dc227641d879f6dae8f923672f8e67d5",
+    "materialKeySearch": "22006e30d11003a7fb3c667e76308cd37898f40ff737bcd4e0714290f4138374",
+    "micKeySearch": "e08b2e35ac9c59146fceb6583c604eecdc73f0291bfbbf13b46e64551e733664",
+    "micTailShaderObjectIdProbe": "a3b1b511b9eaf2914c7f9b0cc61d2c7964191b1d05e6012c13eade77c926f1fd",
+}
+
 BLOCKERS = (
     "ARITHMETIC_GRAPH_TO_SHADER_INVERSION_UNPROVEN",
     "DETERMINISTIC_NUMERIC_SAMPLE_ORACLE_UNAVAILABLE",
     "DUPLICATE_MATERIAL_INVENTORY_NOT_INSTALLATION_EXHAUSTIVE",
     "DXBC_REGISTER_BINDINGS_NOT_MATERIAL_PARAMETER_NAMES",
-    "MATERIAL_NATIVE_KEY_SEMANTICS_UNPROVEN",
-    "MIC_STATIC_PARAMETER_SET_NATIVE_TAIL_UNPARSED",
-    "MATERIAL_SHADER_MAP_KEY_UNRESOLVED",
-    "MATERIAL_SHADER_PERMUTATION_JOIN_UNPROVEN",
-    "MIC_TAIL_TO_SHADER_OBJECT_IDENTITY_UNRESOLVED",
-    "SHADER_OBJECT_AND_MATERIAL_MAP_NATIVE_TAIL_UNPARSED",
+    "INSTALLED_SHADER_CACHE_BASE_MATERIAL_ID_JOIN_0_OF_23",
+    "INSTALLED_SHADER_CACHE_STATIC_PARAMETER_SET_JOIN_0_OF_24",
+    "PERMUTATION_CONSTANT_TEXTURE_SAMPLER_SEMANTICS_UNAVAILABLE_FOR_ARTIST",
+    "RECONSTRUCTED_NUMERICALLY_VERIFIED_FAMILY_COUNT_0_OF_23",
+    "SOURCE_REVISION_SHADER_CACHE_PACKAGE_NOT_ACQUIRED",
 )
 
 
@@ -184,8 +200,19 @@ def canonical_json_sha256(value: Any) -> str:
     )
 
 
+def reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        require(key not in result, f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def read_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8-sig"))
+    value = json.loads(
+        path.read_text(encoding="utf-8-sig"),
+        object_pairs_hook=reject_duplicate_json_keys,
+    )
     require(isinstance(value, dict), f"expected JSON object: {path}")
     return value
 
@@ -461,6 +488,354 @@ def parse_shader_cache_serial(
         },
         "unparsedNativeTailByteCount": len(tail),
         "unparsedNativeTailSha256": raw_sha256(tail),
+    }
+
+
+STATIC_PARAMETER_ARRAY_LAYOUTS = (
+    ("staticSwitchParameters", 32),
+    ("staticComponentMaskParameters", 44),
+    ("normalParameters", 32),
+    ("terrainLayerWeightParameters", 32),
+)
+
+
+def _u32(data: bytes, offset: int, label: str) -> int:
+    require(offset + 4 <= len(data), f"{label} is truncated")
+    return struct.unpack_from("<I", data, offset)[0]
+
+
+def parse_static_parameter_set(
+    data: bytes, offset: int, names: list[str]
+) -> dict[str, Any]:
+    """Decode the UE868 FStaticParameterSet shape without assigning evaluator meaning."""
+
+    require(0 <= offset <= len(data) - 32, "FStaticParameterSet offset is invalid")
+    start = offset
+    base_material_id = data[offset : offset + 16]
+    require(base_material_id != b"\x00" * 16, "FStaticParameterSet BaseMaterialId is zero")
+    offset += 16
+    arrays: dict[str, list[dict[str, Any]]] = {}
+    for array_name, entry_size in STATIC_PARAMETER_ARRAY_LAYOUTS:
+        count = _u32(data, offset, f"{array_name} count")
+        offset += 4
+        require(count <= 4096, f"{array_name} count is invalid")
+        require(
+            offset + count * entry_size <= len(data),
+            f"{array_name} entries are truncated",
+        )
+        rows: list[dict[str, Any]] = []
+        for index in range(count):
+            entry_offset = offset + index * entry_size
+            parameter_name, parameter_number, _ = read_fname(
+                data, entry_offset, names
+            )
+            require(parameter_number == 0, f"{array_name} numbered FName is unsupported")
+            expression_guid_offset: int
+            row: dict[str, Any] = {
+                "parameterName": parameter_name,
+                "entryOffset": entry_offset,
+            }
+            if array_name == "staticSwitchParameters":
+                value, overridden = struct.unpack_from("<II", data, entry_offset + 8)
+                require(value in (0, 1) and overridden in (0, 1), "static switch boolean is invalid")
+                row.update({"value": bool(value), "bOverride": bool(overridden)})
+                expression_guid_offset = entry_offset + 16
+            elif array_name == "staticComponentMaskParameters":
+                values = struct.unpack_from("<IIIII", data, entry_offset + 8)
+                require(all(value in (0, 1) for value in values), "component-mask boolean is invalid")
+                row.update(
+                    {
+                        "r": bool(values[0]),
+                        "g": bool(values[1]),
+                        "b": bool(values[2]),
+                        "a": bool(values[3]),
+                        "bOverride": bool(values[4]),
+                    }
+                )
+                expression_guid_offset = entry_offset + 28
+            else:
+                value, overridden = struct.unpack_from("<II", data, entry_offset + 8)
+                row.update(
+                    {
+                        "valueOrdinalCandidate": value,
+                        "overrideOrdinalCandidate": overridden,
+                    }
+                )
+                expression_guid_offset = entry_offset + 16
+            expression_guid = data[
+                expression_guid_offset : expression_guid_offset + 16
+            ]
+            require(len(expression_guid) == 16, f"{array_name} expression GUID is truncated")
+            require(
+                expression_guid != b"\x00" * 16
+                or array_name == "terrainLayerWeightParameters",
+                f"{array_name} expression GUID is invalid",
+            )
+            row["expressionGuidHex"] = expression_guid.hex()
+            rows.append(row)
+        arrays[array_name] = rows
+        offset += count * entry_size
+    semantic = {
+        "baseMaterialIdHex": base_material_id.hex(),
+        **arrays,
+    }
+    return {
+        **semantic,
+        "offset": start,
+        "byteSize": offset - start,
+        "rawSha256": raw_sha256(data[start:offset]),
+        "semanticSha256": canonical_json_sha256(semantic),
+        "endOffset": offset,
+    }
+
+
+def _valid_shader_reference_at(
+    data: bytes,
+    offset: int,
+    names: list[str],
+    descriptor_by_id: dict[bytes, dict[str, Any]],
+) -> dict[str, Any] | None:
+    if offset < 0 or offset + 32 > len(data):
+        return None
+    shader_id = data[offset + 8 : offset + 24]
+    descriptor = descriptor_by_id.get(shader_id)
+    if descriptor is None:
+        return None
+    try:
+        first_name, first_number, _ = read_fname(data, offset, names)
+        second_name, second_number, _ = read_fname(data, offset + 24, names)
+    except ValueError:
+        return None
+    if (
+        first_number != 0
+        or second_number != 0
+        or first_name != descriptor["shaderType"]
+        or second_name != descriptor["shaderType"]
+    ):
+        return None
+    return {
+        "offset": offset,
+        "shaderType": first_name,
+        "shaderIdHex": shader_id.hex(),
+        "dxbcSha256": descriptor["dxbcSha256"],
+        "descriptorSha256": descriptor["descriptorSha256"],
+    }
+
+
+def parse_shader_cache_material_maps(
+    serial: bytes,
+    names: list[str],
+    parsed_cache: dict[str, Any],
+) -> dict[str, Any]:
+    """Bound the shader-object and FMaterialShaderMap tables by exact identities.
+
+    This decoder intentionally leaves the bytes after the shader-reference maps
+    opaque.  It proves the serialized FStaticParameterSet and shader-object joins,
+    which is the only structure needed to decide whether an Artist family exists.
+    """
+
+    tail_start = parsed_cache["shaderCodeSectionEnd"]
+    tail = serial[tail_start:]
+    header = parsed_cache["shaderObjectTableHeader"]
+    record_rows = parsed_cache["codeRecords"]
+    require(len(tail) >= 12, "ShaderCache structural tail is truncated")
+    require(_u32(tail, 0, "tail platform") == header["shaderPlatformOrdinal"], "tail platform changed")
+    require(_u32(tail, 4, "shader-object count") == len(record_rows), "shader-object count changed")
+
+    descriptor_by_id: dict[bytes, dict[str, Any]] = {}
+    for row in record_rows:
+        shader_id = bytes.fromhex(row["shaderIdCandidateHex"])
+        require(shader_id not in descriptor_by_id, "descriptor shader IDs are not unique")
+        descriptor_by_id[shader_id] = row
+
+    occurrences: list[dict[str, Any]] = []
+    for shader_id, descriptor in descriptor_by_id.items():
+        search_offset = 0
+        while True:
+            id_offset = tail.find(shader_id, search_offset)
+            if id_offset < 0:
+                break
+            object_offset = id_offset - 8
+            if object_offset >= 8:
+                try:
+                    name, number, _ = read_fname(tail, object_offset, names)
+                except ValueError:
+                    name, number = "", -1
+                if number == 0 and name == descriptor["shaderType"]:
+                    occurrences.append(
+                        {
+                            "offset": object_offset,
+                            "idOffset": id_offset,
+                            "shaderType": name,
+                            "shaderIdHex": shader_id.hex(),
+                        }
+                    )
+            search_offset = id_offset + 1
+    occurrences.sort(key=lambda row: row["offset"])
+
+    first_by_id: dict[str, dict[str, Any]] = {}
+    for row in occurrences:
+        first_by_id.setdefault(row["shaderIdHex"], row)
+    require(len(first_by_id) == len(record_rows), "shader-object table does not cover every descriptor ID")
+    shader_object_starts = sorted(first_by_id.values(), key=lambda row: row["offset"])
+    require(shader_object_starts[0]["offset"] == 8, "shader-object table start changed")
+    require(
+        {row["shaderIdHex"] for row in shader_object_starts}
+        == {row["shaderIdCandidateHex"] for row in record_rows},
+        "shader-object IDs differ from descriptor IDs",
+    )
+    first_offsets = {row["offset"] for row in shader_object_starts}
+    duplicate_occurrences = [row for row in occurrences if row["offset"] not in first_offsets]
+    require(duplicate_occurrences, "material shader-map shader references are absent")
+
+    clusters: list[list[dict[str, Any]]] = []
+    for occurrence in duplicate_occurrences:
+        if not clusters or occurrence["offset"] - clusters[-1][-1]["offset"] != 32:
+            clusters.append([occurrence])
+        else:
+            clusters[-1].append(occurrence)
+    for cluster in clusters:
+        count_offset = cluster[0]["offset"] - 4
+        require(_u32(tail, count_offset, "shader reference count") == len(cluster), "shader reference count mismatch")
+        for occurrence in cluster:
+            require(
+                _valid_shader_reference_at(tail, occurrence["offset"], names, descriptor_by_id)
+                is not None,
+                "shader reference row identity mismatch",
+            )
+
+    cluster_groups: list[list[list[dict[str, Any]]]] = []
+    for cluster in clusters:
+        if cluster_groups:
+            previous = cluster_groups[-1][-1]
+            previous_end = previous[-1]["offset"] + 32
+            if cluster[0]["offset"] - previous_end == 12:
+                bridge_name, bridge_number, _ = read_fname(tail, previous_end, names)
+                require(bridge_number == 0 and bridge_name.casefold() != "none", "shader-map bridge FName is invalid")
+                cluster_groups[-1].append(cluster)
+                continue
+        cluster_groups.append([cluster])
+
+    map_starts: list[tuple[int, dict[str, Any], bytes]] = []
+    search_floor = shader_object_starts[-1]["offset"] + 24
+    for map_index, group in enumerate(cluster_groups):
+        first_count_offset = group[0][0]["offset"] - 4
+        candidates: list[tuple[int, dict[str, Any], bytes]] = []
+        for candidate_offset in range(search_floor, first_count_offset):
+            try:
+                static_set = parse_static_parameter_set(tail, candidate_offset, names)
+            except (ValueError, struct.error):
+                continue
+            suffix_offset = static_set["endOffset"]
+            if suffix_offset + 20 != first_count_offset:
+                continue
+            suffix = tail[suffix_offset : suffix_offset + 20]
+            if len(suffix) != 20:
+                continue
+            version, licensee, _map_serial, reserved, quality = struct.unpack("<IIIII", suffix)
+            if version != 868 or licensee != 16 or reserved != 0 or quality not in (1, 2):
+                continue
+            if map_index == 0:
+                if candidate_offset < 4 or _u32(tail, candidate_offset - 4, "material shader-map count") != len(cluster_groups):
+                    continue
+            elif static_set["baseMaterialIdHex"] != map_starts[0][1]["baseMaterialIdHex"]:
+                continue
+            candidates.append((candidate_offset, static_set, suffix))
+        require(
+            len(candidates) == 1,
+            f"material shader-map {map_index} header candidate count is {len(candidates)}",
+        )
+        map_starts.append(candidates[0])
+        last_cluster = group[-1]
+        search_floor = last_cluster[-1]["offset"] + 32
+
+    table_count_offset = map_starts[0][0] - 4
+    require(_u32(tail, table_count_offset, "material shader-map count") == len(map_starts), "material shader-map table count mismatch")
+    require(table_count_offset > shader_object_starts[-1]["offset"], "shader-object table overlaps material maps")
+
+    shader_objects: list[dict[str, Any]] = []
+    for index, start_row in enumerate(shader_object_starts):
+        end = (
+            shader_object_starts[index + 1]["offset"]
+            if index + 1 < len(shader_object_starts)
+            else table_count_offset
+        )
+        require(end > start_row["offset"] + 24, "shader-object serial range is invalid")
+        shader_objects.append(
+            {
+                **start_row,
+                "byteSize": end - start_row["offset"],
+                "serialSha256": raw_sha256(tail[start_row["offset"] : end]),
+            }
+        )
+
+    material_maps: list[dict[str, Any]] = []
+    referenced_shader_ids: list[str] = []
+    for map_index, ((start, static_set, suffix), group) in enumerate(zip(map_starts, cluster_groups)):
+        end = map_starts[map_index + 1][0] if map_index + 1 < len(map_starts) else len(tail)
+        suffix_values = struct.unpack("<IIIII", suffix)
+        reference_groups: list[dict[str, Any]] = []
+        for cluster in group:
+            rows = []
+            for occurrence in cluster:
+                reference = _valid_shader_reference_at(
+                    tail, occurrence["offset"], names, descriptor_by_id
+                )
+                require(reference is not None, "shader reference disappeared")
+                rows.append(reference)
+                referenced_shader_ids.append(reference["shaderIdHex"])
+            reference_groups.append(
+                {
+                    "countOffset": cluster[0]["offset"] - 4,
+                    "referenceCount": len(rows),
+                    "rows": rows,
+                }
+            )
+        public_static_set = dict(static_set)
+        public_static_set.pop("endOffset")
+        material_maps.append(
+            {
+                "materialShaderMapIndex": map_index,
+                "offset": start,
+                "byteSize": end - start,
+                "serialSha256": raw_sha256(tail[start:end]),
+                "staticParameterSet": public_static_set,
+                "opaqueMapSuffix": {
+                    "offset": static_set["endOffset"],
+                    "sha256": raw_sha256(suffix),
+                    "packageVersion": suffix_values[0],
+                    "licenseeVersion": suffix_values[1],
+                    "mapSerialCandidate": suffix_values[2],
+                    "reserved": suffix_values[3],
+                    "qualityOrdinalCandidate": suffix_values[4],
+                },
+                "shaderReferenceGroups": reference_groups,
+                "referencedDxbcSha256": sorted(
+                    {
+                        row["dxbcSha256"]
+                        for reference_group in reference_groups
+                        for row in reference_group["rows"]
+                    }
+                ),
+            }
+        )
+
+    return {
+        "tailOffsetInSerial": tail_start,
+        "tailByteCount": len(tail),
+        "tailSha256": raw_sha256(tail),
+        "shaderObjectCount": len(shader_objects),
+        "shaderObjectTableOffset": 8,
+        "shaderObjectTableEnd": table_count_offset,
+        "shaderObjects": shader_objects,
+        "shaderObjectProjectionSha256": canonical_json_sha256(shader_objects),
+        "materialShaderMapTableCountOffset": table_count_offset,
+        "materialShaderMapCount": len(material_maps),
+        "materialShaderMaps": material_maps,
+        "materialShaderMapProjectionSha256": canonical_json_sha256(material_maps),
+        "shaderReferenceCount": len(referenced_shader_ids),
+        "uniqueReferencedShaderIdCount": len(set(referenced_shader_ids)),
+        "structureStatus": "UE868_SHADER_OBJECT_AND_FMATERIALSHADERMAP_BOUNDED",
     }
 
 
@@ -743,6 +1118,24 @@ def extract_recipe_native_keys(
                 "family Material exact export identity mismatch",
             )
             exact_topology = extract_material_topology(package, exact_entry)
+            exact_serial = package.logical[
+                exact_entry.serial_offset : exact_entry.serial_offset + exact_entry.serial_size
+            ]
+            _exact_properties, exact_property_end = parse_tagged_properties(
+                exact_serial, package.names, package.summary.version
+            )
+            exact_tail = exact_serial[exact_property_end:]
+            require(
+                len(exact_tail) >= 32
+                and exact_tail[:4] == b"\x01\x00\x00\x00"
+                and exact_tail[4:12] == b"\x00" * 8,
+                "source Material native tail shape changed",
+            )
+            exact_base_material_id = exact_tail[16:32]
+            require(
+                exact_base_material_id == base_keys[family["familyId"]],
+                "source/current base Material native state ID differs",
+            )
             for field, expected in family["sourceTopology"].items():
                 require(
                     exact_topology[field] == expected,
@@ -757,6 +1150,13 @@ def extract_recipe_native_keys(
                     "materialObjectPath": exact_path,
                     "materialClass": exact_class,
                     "materialExportIndex": exact_entry.index,
+                    "materialSerialOffset": exact_entry.serial_offset,
+                    "materialSerialSize": exact_entry.serial_size,
+                    "materialSerialSha256": raw_sha256(exact_serial),
+                    "materialPropertyStreamEnd": exact_property_end,
+                    "materialNativeTailByteCount": len(exact_tail),
+                    "materialNativeTailSha256": raw_sha256(exact_tail),
+                    "baseMaterialIdHex": exact_base_material_id.hex(),
                     "topology": exact_topology,
                     "fidelity": "SOURCE_EXACT_COOKED_PARTIAL_GRAPH_SHAPE",
                 }
@@ -805,6 +1205,7 @@ def extract_recipe_native_keys(
             )
             mic_key = b""
             base_key_offset: int | None = None
+            static_parameter_set: dict[str, Any] | None = None
             if is_mic and tail:
                 require(len(tail) >= 32 and len(tail) % 4 == 0, "MIC native tail shape is invalid")
                 require(tail[:4] == b"\x03\x00\x00\x00", "MIC native tail prefix mismatch")
@@ -813,6 +1214,19 @@ def extract_recipe_native_keys(
                 base_key = base_keys[recipe["arithmeticFamilyId"]]
                 base_key_offset = tail.find(base_key)
                 require(base_key_offset >= 0, "MIC tail does not retain its base Material native key")
+                require(
+                    tail.find(base_key, base_key_offset + 1) < 0,
+                    "MIC tail contains an ambiguous base Material native key",
+                )
+                decoded_static_set = parse_static_parameter_set(
+                    tail, base_key_offset, package.names
+                )
+                require(
+                    decoded_static_set["baseMaterialIdHex"] == base_key.hex(),
+                    "MIC FStaticParameterSet base Material ID changed",
+                )
+                static_parameter_set = dict(decoded_static_set)
+                static_parameter_set.pop("endOffset")
                 require(static_permutation, "MIC native tail exists without static permutation resource")
             if is_mic and not tail:
                 require(not static_permutation, "static permutation MIC has no native tail")
@@ -841,6 +1255,7 @@ def extract_recipe_native_keys(
                     "hasStaticPermutationResource": static_permutation,
                     "micNativeStateKeyCandidateHex": mic_key.hex() if mic_key else None,
                     "baseMaterialNativeKeyOffsetInTail": base_key_offset,
+                    "staticParameterSet": static_parameter_set,
                     "alignedNonzero16ByteWindowCount": len(aligned_nonzero_windows),
                     "alignedNonzero16ByteWindowSha256": canonical_json_sha256(
                         [
@@ -862,6 +1277,7 @@ def extract_recipe_native_keys(
     require(len(result) == 27, "recipe native-tail denominator changed")
     require(sum(row["className"] == "materialinstanceconstant" for row in result) == 25, "MIC denominator changed")
     require(sum(bool(row["micNativeStateKeyCandidateHex"]) for row in result) == 24, "MIC native key denominator changed")
+    require(sum(bool(row["staticParameterSet"]) for row in result) == 24, "MIC FStaticParameterSet denominator changed")
     require(
         sum(row["candidateRole"] == "SOURCE_EXACT_DEPENDENCY" for row in topology_candidates) == 23,
         "source Material topology denominator changed",
@@ -1427,6 +1843,24 @@ def build_receipt(
     require(primary_parsed is not None and primary_serial is not None, "primary ShaderCache was not parsed")
     primary_records = primary_parsed["codeRecords"]
     require(all(row.get("disassembly") for row in primary_records), "primary DXBC disassembly is incomplete")
+    primary_structure = parse_shader_cache_material_maps(
+        primary_serial, shader_package.names, primary_parsed
+    )
+    primary_record_by_id = {
+        row["shaderIdCandidateHex"]: row for row in primary_records
+    }
+    for material_map in primary_structure["materialShaderMaps"]:
+        referenced_ids = {
+            row["shaderIdHex"]
+            for group in material_map["shaderReferenceGroups"]
+            for row in group["rows"]
+        }
+        material_map["referencedBindingSummary"] = aggregate_primary_records(
+            [primary_record_by_id[shader_id] for shader_id in sorted(referenced_ids)]
+        )
+    primary_structure["materialShaderMapProjectionSha256"] = canonical_json_sha256(
+        primary_structure["materialShaderMaps"]
+    )
     first_record = primary_records[0]
     compressed = primary_serial[
         first_record["compressedOffset"] :
@@ -1467,6 +1901,93 @@ def build_receipt(
         mic_tail_shader_id_probe["directShaderIdMatchCount"] == 0,
         "MIC tail contains an unreviewed direct ShaderCache descriptor ID candidate",
     )
+    cache_static_sets = [
+        row["staticParameterSet"]
+        for row in primary_structure["materialShaderMaps"]
+    ]
+    cache_base_material_ids = {
+        row["baseMaterialIdHex"] for row in cache_static_sets
+    }
+    exact_source_material_rows = {
+        row["familyId"]: row
+        for row in source_topology_candidates
+        if row["candidateRole"] == "SOURCE_EXACT_DEPENDENCY"
+    }
+    family_shader_map_rows = []
+    for family in projection:
+        source_row = exact_source_material_rows[family["familyId"]]
+        base_id = source_row["baseMaterialIdHex"]
+        map_indices = [
+            row["materialShaderMapIndex"]
+            for row in primary_structure["materialShaderMaps"]
+            if row["staticParameterSet"]["baseMaterialIdHex"] == base_id
+        ]
+        family_shader_map_rows.append(
+            {
+                "familyId": family["familyId"],
+                "sourceBaseMaterialIdHex": base_id,
+                "primaryMaterialShaderMapIndices": map_indices,
+                "wholeInstalledShaderCacheDirectKeyMatchCount": next(
+                    row["matchCount"]
+                    for row in key_scan
+                    if row["familyId"] == family["familyId"]
+                ),
+                "joinStatus": (
+                    "EXACT_BASE_MATERIAL_ID_JOIN"
+                    if map_indices
+                    else "INSTALLED_SHADER_CACHE_CONTAINS_NO_EXACT_BASE_MATERIAL_ID"
+                ),
+            }
+        )
+    require(
+        not any(row["primaryMaterialShaderMapIndices"] for row in family_shader_map_rows)
+        and all(row["wholeInstalledShaderCacheDirectKeyMatchCount"] == 0 for row in family_shader_map_rows),
+        "an Artist base Material ID unexpectedly joined the installed ShaderCache",
+    )
+    cache_static_set_semantics = {
+        row["semanticSha256"] for row in cache_static_sets
+    }
+    mic_static_parameter_rows = []
+    for recipe in recipe_native_rows:
+        static_set = recipe.get("staticParameterSet")
+        if static_set is None:
+            continue
+        semantic_sha = static_set["semanticSha256"]
+        mic_static_parameter_rows.append(
+            {
+                "recipeId": recipe["recipeId"],
+                "familyId": recipe["arithmeticFamilyId"],
+                "baseMaterialIdHex": static_set["baseMaterialIdHex"],
+                "staticParameterSetSemanticSha256": semantic_sha,
+                "primaryExactStaticParameterSetMatchCount": sum(
+                    candidate == semantic_sha for candidate in cache_static_set_semantics
+                ),
+                "joinStatus": (
+                    "EXACT_STATIC_PARAMETER_SET_JOIN"
+                    if semantic_sha in cache_static_set_semantics
+                    else "INSTALLED_SHADER_CACHE_CONTAINS_NO_EXACT_STATIC_PARAMETER_SET"
+                ),
+            }
+        )
+    require(
+        len(mic_static_parameter_rows) == 24
+        and not any(row["primaryExactStaticParameterSetMatchCount"] for row in mic_static_parameter_rows),
+        "an Artist MIC FStaticParameterSet unexpectedly joined the installed ShaderCache",
+    )
+    evaluator_rows = [
+        {
+            "familyId": family["familyId"],
+            "shaderMapJoinCount": 0,
+            "numericSampleVectorCount": 0,
+            "evaluatorFidelity": "UNAVAILABLE_NO_SOURCE_REVISION_SHADER_MAP",
+            "nextAcquisitionSource": (
+                "SOURCE_REVISION_SHADERCACHE_EXPORT_WITH_RAW_PACKAGE_SHA_AND_"
+                "FMATERIALSHADERMAP_BASE_ID_MATCH_OR_CONTROLLED_RUNTIME_CAPTURE_"
+                "OF_FMATERIALSHADERMAP_ID_AND_DXBC_WHILE_LOADING_THE_PINNED_SOURCE_UPK"
+            ),
+        }
+        for family in projection
+    ]
 
     dependencies = []
     for relative in (
@@ -1527,6 +2048,7 @@ def build_receipt(
             "shaderObjectTableHeader": primary_parsed["shaderObjectTableHeader"],
             "unparsedNativeTailByteCount": primary_parsed["unparsedNativeTailByteCount"],
             "unparsedNativeTailSha256": primary_parsed["unparsedNativeTailSha256"],
+            "decodedNativeStructure": primary_structure,
             "bindingSummary": aggregate_primary_records(primary_records),
             "rawCompressedMarkerProbe": {
                 "recordIndex": 0,
@@ -1538,6 +2060,17 @@ def build_receipt(
         "materialKeySearch": key_scan,
         "micKeySearch": mic_key_scan,
         "micTailShaderObjectIdProbe": mic_tail_shader_id_probe,
+        "structuralShaderMapJoin": {
+            "cacheBaseMaterialIds": sorted(cache_base_material_ids),
+            "familyRows": family_shader_map_rows,
+            "micRows": mic_static_parameter_rows,
+            "familyProjectionSha256": canonical_json_sha256(family_shader_map_rows),
+            "micProjectionSha256": canonical_json_sha256(mic_static_parameter_rows),
+            "baseMaterialIdJoinCount": 0,
+            "staticParameterSetJoinCount": 0,
+            "status": "INSTALLED_SHADER_CACHE_EXACT_STRUCTURAL_JOIN_0_OF_23_AND_0_OF_24",
+        },
+        "familyEvaluatorOracles": evaluator_rows,
         "joinDecision": {
             "materialFamilyCount": 23,
             "directNativeKeyMatchCount": direct_matches,
@@ -1552,13 +2085,15 @@ def build_receipt(
             "strictCrossRevisionTopologyImprovementCandidateCount": strict_topology_improvement_count,
             "exactMaterialShaderMapJoinCount": 0,
             "exactMaterialShaderMapJoinRequired": 23,
+            "exactMicStaticParameterSetJoinCount": 0,
+            "exactMicStaticParameterSetJoinRequired": 24,
+            "reconstructedNumericallyVerifiedFamilyCount": 0,
             "fidelity": "UNRESOLVED",
             "blockers": list(BLOCKERS),
             "minimumRequiredEvidence": [
-                "UE868_LICENSEE16_SHADER_OBJECT_TABLE_DECODER",
-                "UE868_LICENSEE16_MATERIAL_SHADER_MAP_AND_STATIC_PARAMETER_SET_DECODER",
-                "SOURCE_REVISION_BASE_MATERIAL_STATE_TO_SHADER_MAP_KEY_DERIVATION",
-                "23_OF_23_MATERIAL_TO_SHADER_PERMUTATION_IDENTITY_JOIN",
+                "SOURCE_REVISION_SHADERCACHE_EXPORT_RAW_PACKAGE_IDENTITY",
+                "23_OF_23_SOURCE_BASE_MATERIAL_ID_TO_FMATERIALSHADERMAP_JOIN",
+                "24_OF_24_MIC_FSTATICPARAMETERSET_TO_FMATERIALSHADERMAP_JOIN",
                 "PERMUTATION_CONSTANT_TEXTURE_SAMPLER_SEMANTIC_LAYOUT",
                 "FIXED_INPUT_AND_OUTPUT_NUMERIC_SAMPLE_ORACLE",
                 "FULL_INSTALLED_PACKAGE_EXPORT_NAME_INVENTORY_WITH_RAW_PACKAGE_IDENTITIES",
@@ -1589,7 +2124,13 @@ def build_receipt(
             "primaryDxbcTotalSizeValidatedCount": len(primary_records),
             "primaryD3dDisassemblyValidatedCount": len(primary_records),
             "primaryUniqueDxbcCount": len({row["dxbcSha256"] for row in primary_records}),
+            "primaryDecodedShaderObjectCount": primary_structure["shaderObjectCount"],
+            "primaryDecodedMaterialShaderMapCount": primary_structure["materialShaderMapCount"],
+            "primaryDecodedShaderReferenceCount": primary_structure["shaderReferenceCount"],
+            "sourceBaseMaterialIdJoinCount": 0,
+            "sourceMicStaticParameterSetJoinCount": 0,
             "exactMaterialShaderMapJoinCount": 0,
+            "reconstructedNumericallyVerifiedFamilyCount": 0,
             "arithmeticEvaluatorImplementedCount": 0,
         },
     }
@@ -1601,24 +2142,488 @@ def validate_receipt(
     receipt: dict[str, Any], material_contract_path: Path | None = None
 ) -> None:
     require(receipt.get("schema") == SCHEMA, "ShaderCache receipt schema mismatch")
-    require(type(receipt.get("formatVersion")) is int and receipt["formatVersion"] == FORMAT_VERSION, "ShaderCache receipt version mismatch")
-    require(receipt.get("characterClass") == "ARTIST", "ShaderCache receipt class mismatch")
-    require(receipt.get("skillId") == 31470 and receipt.get("inputSlot") == "F", "ShaderCache receipt skill identity mismatch")
+    require(
+        type(receipt.get("formatVersion")) is int
+        and receipt["formatVersion"] == FORMAT_VERSION,
+        "ShaderCache receipt version mismatch",
+    )
+    require(
+        receipt.get("characterClass") == "ARTIST"
+        and receipt.get("skillId") == 31470
+        and receipt.get("inputSlot") == "F",
+        "ShaderCache receipt root identity mismatch",
+    )
     sealed = dict(receipt)
     claimed = sealed.pop("receiptSha256", None)
     require(claimed == canonical_json_sha256(sealed), "ShaderCache receipt digest mismatch")
-    if material_contract_path is not None:
-        material_contract = read_json(material_contract_path)
-        projection = material_family_projection(material_contract)
-        require(receipt["sourceFamilyProjection"]["projectionSha256"] == canonical_json_sha256(projection), "Material family projection digest mismatch")
-        recipes = material_recipe_projection(material_contract)
-        require(receipt["sourceRecipeProjection"]["projectionSha256"] == canonical_json_sha256(recipes), "Material recipe projection digest mismatch")
-    for dependency in receipt.get("toolDependencies", []):
-        require(dependency.get("hashRole") == "TRACKED_SOURCE_EOL_CANONICAL_TEXT", "tool dependency hash role mismatch")
-        path = REPO_ROOT / str(dependency.get("path") or "")
-        require(path.is_file(), "tool dependency is missing")
-        require(dependency.get("sha256") == canonical_text_sha256(path), "tool dependency hash mismatch")
-    summary = receipt.get("summary") or {}
+
+    require(material_contract_path is not None, "Material contract is required for validation")
+    material_contract = read_json(material_contract_path)
+    families = material_family_projection(material_contract)
+    recipes = material_recipe_projection(material_contract)
+    family_section = receipt.get("sourceFamilyProjection") or {}
+    recipe_section = receipt.get("sourceRecipeProjection") or {}
+    require(
+        family_section == {
+            "familyCount": 23,
+            "projectionSha256": canonical_json_sha256(families),
+            "rows": families,
+        },
+        "Material family projection changed",
+    )
+    require(
+        recipe_section == {
+            "recipeCount": 27,
+            "projectionSha256": canonical_json_sha256(recipes),
+            "rows": recipes,
+        }
+        and recipe_section["projectionSha256"] == MATERIAL_RECIPE_PROJECTION_SHA256,
+        "Material recipe projection changed",
+    )
+    family_by_id = {row["familyId"]: row for row in families}
+    recipe_by_id = {row["recipeId"]: row for row in recipes}
+
+    external = receipt.get("externalEvidence") or {}
+    for label in ("globalMaterialPackage", "shaderCachePackage"):
+        actual = external.get(label) or {}
+        expected = EXPECTED_EXTERNAL_IDENTITIES[label]
+        require(
+            actual.get("fileName") == expected["fileName"]
+            and actual.get("physicalByteSize") == expected["byteSize"]
+            and actual.get("rawSha256") == expected["sha256"]
+            and actual.get("packageVersion") == expected["packageVersion"]
+            and actual.get("licenseeVersion") == 16
+            and actual.get("logicalByteSize") == expected["logicalByteSize"]
+            and actual.get("exportCount") == expected["exportCount"]
+            and actual.get("hashRole") == "EXTERNAL_RAW_BYTES",
+            f"{label} external identity changed",
+        )
+    compiler = external.get("d3dcompiler") or {}
+    compiler_expected = EXPECTED_EXTERNAL_IDENTITIES["d3dcompiler"]
+    require(
+        compiler == {
+            "fileName": compiler_expected["fileName"],
+            "byteSize": compiler_expected["byteSize"],
+            "rawSha256": compiler_expected["sha256"],
+            "fileVersion": compiler_expected["fileVersion"],
+            "hashRole": "EXTERNAL_RAW_BYTES",
+        },
+        "D3D compiler external identity changed",
+    )
+    recipe_packages = external.get("recipePackages") or []
+    require(
+        len(recipe_packages) == len({row["physicalPackage"] for row in recipes})
+        and len({row.get("fileName") for row in recipe_packages}) == len(recipe_packages),
+        "recipe package identity denominator changed",
+    )
+    package_by_name = {row["fileName"]: row for row in recipe_packages}
+    for recipe in recipes:
+        package = package_by_name.get(recipe["physicalPackage"]) or {}
+        require(
+            package.get("rawSha256") == recipe["physicalPackageSha256"]
+            and package.get("packageVersion") == 868
+            and package.get("licenseeVersion") == 16
+            and package.get("hashRole") == "EXTERNAL_RAW_BYTES",
+            "recipe external package identity changed",
+        )
+    inventory = external.get("boundedMaterialInventory") or {}
+    require(
+        inventory.get("scope") == "30_RECONSTRUCTED_DIMENSIONMASTER_MATERIAL_REPORTS_NOT_FULL_INSTALLATION"
+        and inventory.get("reportCount") == len(inventory.get("reportIdentities", [])) == 30
+        and inventory.get("targetFamilyCoverageCount") == 21
+        and inventory.get("targetMaterialRowCount") == 22
+        and inventory.get("alternateObjectCandidateCount") == 1
+        and inventory.get("unexpectedPhysicalPackageCandidateCount") == 0,
+        "bounded Material inventory evidence changed",
+    )
+
+    dependencies = receipt.get("toolDependencies") or []
+    expected_dependency_paths = {
+        "Tools/LevelPlacementExtractor/extract_artist_31470_shader_cache_oracle.py",
+        "Tools/LevelPlacementExtractor/extract_ue3_placements.py",
+        "Tools/LevelPlacementExtractor/extract_ue3_effect_material_closure.py",
+        "Tools/LevelPlacementExtractor/extract_ue3_material_graph.py",
+    }
+    require(
+        len(dependencies) == len(expected_dependency_paths)
+        and {row.get("path") for row in dependencies} == expected_dependency_paths,
+        "tool dependency set changed",
+    )
+    for dependency in dependencies:
+        path = REPO_ROOT / dependency["path"]
+        require(
+            dependency.get("hashRole") == "TRACKED_SOURCE_EOL_CANONICAL_TEXT"
+            and path.is_file()
+            and dependency.get("sha256") == canonical_text_sha256(path),
+            "tool dependency identity changed",
+        )
+
+    material_rows = receipt.get("materialNativeKeys") or []
+    require(
+        len(material_rows) == 23
+        and len({row.get("familyId") for row in material_rows}) == 23,
+        "Material native key denominator changed",
+    )
+    material_by_family = {row["familyId"]: row for row in material_rows}
+    target_by_family = {row[0]: row for row in MATERIAL_TARGETS}
+    for family_id, family in family_by_id.items():
+        row = material_by_family.get(family_id) or {}
+        target = target_by_family[family_id]
+        require(
+            row.get("sourceMaterialObjectPath") == target[1]
+            and row.get("globalMaterialObjectPath") == target[2]
+            and row.get("className") == target[3]
+            and len(bytes.fromhex(row.get("nativeStateKeyCandidateHex", ""))) == 16,
+            "Material native key identity changed",
+        )
+
+    native_recipe_rows = receipt.get("recipeNativeKeys") or []
+    require(
+        len(native_recipe_rows) == 27
+        and len({row.get("recipeId") for row in native_recipe_rows}) == 27,
+        "recipe native key denominator changed",
+    )
+    native_recipe_by_id = {row["recipeId"]: row for row in native_recipe_rows}
+    static_set_count = 0
+    for recipe_id, projection in recipe_by_id.items():
+        row = native_recipe_by_id.get(recipe_id) or {}
+        require(
+            row.get("arithmeticFamilyId") == projection["arithmeticFamilyId"]
+            and row.get("sourceMaterialPath") == projection["sourceMaterialPath"]
+            and row.get("physicalPackage") == projection["physicalPackage"]
+            and row.get("physicalPackageSha256") == projection["physicalPackageSha256"]
+            and row.get("materialObjectPath") == projection["materialObjectPath"]
+            and row.get("className") == projection["materialClass"],
+            "recipe native identity changed",
+        )
+        static_set = row.get("staticParameterSet")
+        if static_set is not None:
+            static_set_count += 1
+            semantic = {
+                "baseMaterialIdHex": static_set.get("baseMaterialIdHex"),
+                **{
+                    name: static_set.get(name)
+                    for name, _entry_size in STATIC_PARAMETER_ARRAY_LAYOUTS
+                },
+            }
+            expected_size = 16 + 4 * len(STATIC_PARAMETER_ARRAY_LAYOUTS) + sum(
+                len(semantic[name]) * entry_size
+                for name, entry_size in STATIC_PARAMETER_ARRAY_LAYOUTS
+            )
+            require(
+                static_set.get("offset") == row.get("baseMaterialNativeKeyOffsetInTail")
+                and static_set.get("byteSize") == expected_size
+                and static_set.get("semanticSha256") == canonical_json_sha256(semantic)
+                and static_set.get("baseMaterialIdHex")
+                == material_by_family[row["arithmeticFamilyId"]]["nativeStateKeyCandidateHex"],
+                "MIC FStaticParameterSet changed",
+            )
+    require(static_set_count == 24, "MIC FStaticParameterSet denominator changed")
+
+    matrices = receipt.get("materialTopologyCompleteness") or []
+    require(len(matrices) == 23, "Material topology matrix denominator changed")
+    source_base_ids: dict[str, str] = {}
+    alternate_count = 0
+    improvement_count = 0
+    for matrix in matrices:
+        family_id = matrix.get("familyId")
+        require(family_id in family_by_id, "Material topology family is unknown")
+        candidates = matrix.get("candidates") or []
+        source_rows = [row for row in candidates if row.get("candidateRole") == "SOURCE_EXACT_DEPENDENCY"]
+        global_rows = [row for row in candidates if row.get("candidateRole") == "CURRENT_GLOBAL_PACKAGE_CROSS_REVISION"]
+        require(len(source_rows) == 1 and len(global_rows) == 1, "Material topology pairing changed")
+        source = source_rows[0]
+        require(
+            source.get("physicalPackage") == family_by_id[family_id]["physicalPackage"]
+            and source.get("physicalPackageSha256") == family_by_id[family_id]["physicalPackageSha256"]
+            and source.get("materialObjectPath") == family_by_id[family_id]["materialObjectPath"]
+            and source.get("materialExportIndex") == family_by_id[family_id]["materialExportIndex"]
+            and source.get("baseMaterialIdHex") == material_by_family[family_id]["nativeStateKeyCandidateHex"],
+            "source Material topology/raw identity changed",
+        )
+        source_base_ids[family_id] = source["baseMaterialIdHex"]
+        source_topology = source["topology"]
+        improving = []
+        for candidate in candidates:
+            topology = candidate.get("topology") or {}
+            require(topology.get("topologyStatus") == "COOKED_PARTIAL", "Material topology fidelity changed")
+            same = topology.get("expressionEntryCount") == source_topology.get("expressionEntryCount")
+            better = (
+                candidate.get("candidateRole") != "SOURCE_EXACT_DEPENDENCY"
+                and same
+                and topology.get("nullExpressionCount") <= source_topology.get("nullExpressionCount")
+                and topology.get("unresolvedInputEdgeCount") <= source_topology.get("unresolvedInputEdgeCount")
+                and (
+                    topology.get("nullExpressionCount") < source_topology.get("nullExpressionCount")
+                    or topology.get("unresolvedInputEdgeCount") < source_topology.get("unresolvedInputEdgeCount")
+                )
+            )
+            require(candidate.get("sameExpressionEntryDenominatorAsSource") == same, "topology denominator flag changed")
+            require(candidate.get("strictParetoImprovementOverSource") == better, "topology improvement flag changed")
+            if better:
+                improving.append(candidate)
+            alternate_count += candidate.get("candidateRole") == "SAME_PACKAGE_SAME_LEAF_ALTERNATE_OBJECT"
+        require(
+            matrix.get("minimumObservedNullExpressionCount") == min(row["topology"]["nullExpressionCount"] for row in candidates)
+            and matrix.get("minimumObservedUnresolvedInputEdgeCount") == min(row["topology"]["unresolvedInputEdgeCount"] for row in candidates)
+            and matrix.get("strictParetoImprovementCandidateCount") == len(improving),
+            "Material topology summary changed",
+        )
+        improvement_count += len(improving)
+    require(alternate_count == 1 and improvement_count == 0, "Material topology candidate totals changed")
+
+    candidates = receipt.get("shaderCacheCandidates") or []
+    require(
+        len(candidates) == len(CACHE_CANDIDATES)
+        and {row.get("objectPath") for row in candidates} == set(CACHE_CANDIDATES),
+        "ShaderCache candidate denominator changed",
+    )
+    primary_candidate = next(row for row in candidates if row["objectPath"] == PRIMARY_CACHE)
+    for key, expected in PRIMARY_EXPECTED.items():
+        require(primary_candidate.get(key) == expected, f"primary ShaderCache {key} changed")
+    primary = receipt.get("primaryShaderCache") or {}
+    require(
+        primary.get("objectPath") == PRIMARY_CACHE
+        and primary.get("shaderTypeGroupCount") == 32
+        and primary.get("shaderCodeSectionEnd") == primary_candidate["shaderCodeSectionEnd"]
+        and primary.get("unparsedNativeTailByteCount") == primary_candidate["unparsedNativeTailByteCount"]
+        and primary.get("unparsedNativeTailSha256") == primary_candidate["unparsedNativeTailSha256"],
+        "primary ShaderCache identity changed",
+    )
+    groups = primary.get("groups") or []
+    records = primary.get("codeRecords") or []
+    require(len(groups) == 32 and len(records) == 271, "primary ShaderCache row denominator changed")
+    record_cursor = 0
+    previous_end = None
+    for group_index, group in enumerate(groups):
+        require(group.get("groupIndex") == group_index, "shader group order changed")
+        count = group.get("descriptorCount")
+        require(type(count) is int and count == group.get("codeRecordCount") and count > 0, "shader group count changed")
+        rows = records[record_cursor : record_cursor + count]
+        require(len(rows) == count, "shader group code coverage is truncated")
+        require(
+            all(row.get("groupIndex") == group_index and row.get("shaderType") == group.get("shaderType") for row in rows),
+            "shader group/code identity changed",
+        )
+        expected_header = group["serialOffset"] + 16 + count * 24
+        for code_index, row in enumerate(rows):
+            descriptor = bytes.fromhex(row.get("shaderIdCandidateHex", "")) + bytes.fromhex(row.get("opaqueDescriptorTailHex", ""))
+            require(
+                len(descriptor) == 24
+                and row.get("codeIndex") == code_index
+                and row.get("descriptorOffset") == group["serialOffset"] + 12 + code_index * 24
+                and row.get("descriptorSha256") == raw_sha256(descriptor)
+                and row.get("codeHeaderOffset") == expected_header
+                and row.get("compressedOffset") == expected_header + 8
+                and type(row.get("compressedByteSize")) is int
+                and row["compressedByteSize"] > 0,
+                "shader code range/descriptor identity changed",
+            )
+            disassembly = row.get("disassembly") or {}
+            declarations = sorted(
+                disassembly.get("constantBufferDeclarations", [])
+                + disassembly.get("samplerDeclarations", [])
+                + disassembly.get("resourceDeclarations", [])
+                + disassembly.get("uavDeclarations", [])
+            )
+            require(
+                PROFILE_PATTERN.fullmatch(str(disassembly.get("profile"))) is not None
+                and disassembly.get("declarationSha256") == canonical_json_sha256(declarations),
+                "DXBC disassembly signature changed",
+            )
+            expected_header = row["compressedOffset"] + row["compressedByteSize"]
+        next_offset = groups[group_index + 1]["serialOffset"] if group_index + 1 < len(groups) else primary["shaderCodeSectionEnd"]
+        require(expected_header == next_offset, "shader group code ranges do not cover the section exactly")
+        require(group.get("codeRowsSha256") == canonical_json_sha256(rows), "shader group code digest changed")
+        require(previous_end is None or group["serialOffset"] == previous_end, "shader groups are not contiguous")
+        previous_end = expected_header
+        record_cursor += count
+    require(record_cursor == 271, "shader group coverage changed")
+    require(primary.get("bindingSummary") == aggregate_primary_records(records), "primary binding summary changed")
+
+    structure = primary.get("decodedNativeStructure") or {}
+    objects = structure.get("shaderObjects") or []
+    maps = structure.get("materialShaderMaps") or []
+    require(
+        structure.get("tailOffsetInSerial") == primary["shaderCodeSectionEnd"]
+        and structure.get("tailByteCount") == primary["unparsedNativeTailByteCount"]
+        and structure.get("tailSha256") == primary["unparsedNativeTailSha256"]
+        and structure.get("shaderObjectCount") == len(objects) == 271
+        and structure.get("materialShaderMapCount") == len(maps) == 25
+        and structure.get("shaderReferenceCount") == 534
+        and structure.get("uniqueReferencedShaderIdCount") == 271
+        and structure.get("structureStatus") == "UE868_SHADER_OBJECT_AND_FMATERIALSHADERMAP_BOUNDED",
+        "decoded native ShaderCache structure changed",
+    )
+    require(structure.get("shaderObjectProjectionSha256") == canonical_json_sha256(objects), "shader-object projection digest changed")
+    require(structure.get("materialShaderMapProjectionSha256") == canonical_json_sha256(maps), "material shader-map projection digest changed")
+    record_by_id = {row["shaderIdCandidateHex"]: row for row in records}
+    require(
+        {row.get("shaderIdHex") for row in objects} == set(record_by_id)
+        and objects[0].get("offset") == 8,
+        "shader-object identity coverage changed",
+    )
+    for index, row in enumerate(objects):
+        end = row["offset"] + row["byteSize"]
+        expected_end = objects[index + 1]["offset"] if index + 1 < len(objects) else structure["materialShaderMapTableCountOffset"]
+        require(end == expected_end, "shader-object ranges changed")
+    require(
+        len({row["staticParameterSet"]["baseMaterialIdHex"] for row in maps}) == 1
+        and structure["materialShaderMapTableCountOffset"] == objects[-1]["offset"] + objects[-1]["byteSize"],
+        "material shader-map table boundary changed",
+    )
+    reference_count = 0
+    for map_index, material_map in enumerate(maps):
+        require(material_map.get("materialShaderMapIndex") == map_index, "material shader-map order changed")
+        map_end = material_map["offset"] + material_map["byteSize"]
+        expected_end = maps[map_index + 1]["offset"] if map_index + 1 < len(maps) else structure["tailByteCount"]
+        require(map_end == expected_end, "material shader-map ranges changed")
+        referenced_records = {}
+        for reference_group in material_map.get("shaderReferenceGroups", []):
+            rows = reference_group.get("rows") or []
+            require(reference_group.get("referenceCount") == len(rows), "shader reference group count changed")
+            reference_count += len(rows)
+            for row in rows:
+                record = record_by_id.get(row.get("shaderIdHex")) or {}
+                require(
+                    row.get("shaderType") == record.get("shaderType")
+                    and row.get("dxbcSha256") == record.get("dxbcSha256")
+                    and row.get("descriptorSha256") == record.get("descriptorSha256"),
+                    "shader-map reference identity changed",
+                )
+                referenced_records[row["shaderIdHex"]] = record
+        require(
+            material_map.get("referencedBindingSummary")
+            == aggregate_primary_records([referenced_records[key] for key in sorted(referenced_records)]),
+            "material shader-map binding signature changed",
+        )
+    require(reference_count == 534, "material shader-map reference denominator changed")
+
+    material_key_scan = receipt.get("materialKeySearch") or []
+    require(len(material_key_scan) == 23, "Material key search denominator changed")
+    for row in material_key_scan:
+        material = material_by_family.get(row.get("familyId")) or {}
+        require(
+            row.get("nativeStateKeyCandidateHex") == material.get("nativeStateKeyCandidateHex")
+            and row.get("variantCount") == len(key_variants(bytes.fromhex(row["nativeStateKeyCandidateHex"])))
+            and row.get("matchCount") == 0
+            and row.get("matches") == [],
+            "Material key search result changed",
+        )
+    mic_key_scan = receipt.get("micKeySearch") or []
+    require(len(mic_key_scan) == 27, "MIC key search denominator changed")
+    for row in mic_key_scan:
+        recipe = native_recipe_by_id.get(row.get("recipeId")) or {}
+        key = recipe.get("micNativeStateKeyCandidateHex")
+        require(
+            row.get("micNativeStateKeyCandidateHex") == key
+            and row.get("variantCount") == (len(mic_key_variants(bytes.fromhex(key))) if key else 0)
+            and row.get("matchCount") == 0
+            and row.get("matches") == [],
+            "MIC key search result changed",
+        )
+    probe = receipt.get("micTailShaderObjectIdProbe") or {}
+    require(
+        probe.get("recipeCount") == 27
+        and probe.get("staticPermutationMicCount") == 24
+        and probe.get("descriptorShaderIdCandidateCount") == 271
+        and probe.get("uniqueDescriptorShaderIdCandidateCount") == 271
+        and probe.get("alignedNonzero16ByteWindowCount") == 4_816
+        and probe.get("directShaderIdMatchCount") == 0
+        and probe.get("matches") == []
+        and probe.get("status") == "MIC_TAIL_CONTAINS_NO_DIRECT_SHADER_OBJECT_ID"
+        and len(probe.get("rows", [])) == 27,
+        "MIC tail shader-object probe changed",
+    )
+    for row in probe["rows"]:
+        recipe = native_recipe_by_id.get(row.get("recipeId")) or {}
+        require(
+            row.get("nativeTailByteCount") == recipe.get("nativeTailByteCount")
+            and row.get("alignedNonzero16ByteWindowCount") == recipe.get("alignedNonzero16ByteWindowCount")
+            and row.get("candidateDigestSha256") == recipe.get("alignedNonzero16ByteWindowSha256")
+            and row.get("directShaderIdMatchCount") == 0
+            and row.get("matches") == [],
+            "MIC tail probe row changed",
+        )
+
+    structural_join = receipt.get("structuralShaderMapJoin") or {}
+    cache_base_ids = sorted({row["staticParameterSet"]["baseMaterialIdHex"] for row in maps})
+    expected_family_rows = []
+    for family in families:
+        base_id = source_base_ids[family["familyId"]]
+        indices = [row["materialShaderMapIndex"] for row in maps if row["staticParameterSet"]["baseMaterialIdHex"] == base_id]
+        search = next(row for row in material_key_scan if row["familyId"] == family["familyId"])
+        expected_family_rows.append(
+            {
+                "familyId": family["familyId"],
+                "sourceBaseMaterialIdHex": base_id,
+                "primaryMaterialShaderMapIndices": indices,
+                "wholeInstalledShaderCacheDirectKeyMatchCount": search["matchCount"],
+                "joinStatus": "EXACT_BASE_MATERIAL_ID_JOIN" if indices else "INSTALLED_SHADER_CACHE_CONTAINS_NO_EXACT_BASE_MATERIAL_ID",
+            }
+        )
+    map_static_semantics = {row["staticParameterSet"]["semanticSha256"] for row in maps}
+    expected_mic_rows = []
+    for recipe in native_recipe_rows:
+        static_set = recipe.get("staticParameterSet")
+        if static_set is None:
+            continue
+        match_count = int(static_set["semanticSha256"] in map_static_semantics)
+        expected_mic_rows.append(
+            {
+                "recipeId": recipe["recipeId"],
+                "familyId": recipe["arithmeticFamilyId"],
+                "baseMaterialIdHex": static_set["baseMaterialIdHex"],
+                "staticParameterSetSemanticSha256": static_set["semanticSha256"],
+                "primaryExactStaticParameterSetMatchCount": match_count,
+                "joinStatus": "EXACT_STATIC_PARAMETER_SET_JOIN" if match_count else "INSTALLED_SHADER_CACHE_CONTAINS_NO_EXACT_STATIC_PARAMETER_SET",
+            }
+        )
+    require(
+        structural_join.get("cacheBaseMaterialIds") == cache_base_ids
+        and structural_join.get("familyRows") == expected_family_rows
+        and structural_join.get("micRows") == expected_mic_rows
+        and structural_join.get("familyProjectionSha256") == canonical_json_sha256(expected_family_rows)
+        and structural_join.get("micProjectionSha256") == canonical_json_sha256(expected_mic_rows)
+        and structural_join.get("baseMaterialIdJoinCount") == 0
+        and structural_join.get("staticParameterSetJoinCount") == 0
+        and structural_join.get("status") == "INSTALLED_SHADER_CACHE_EXACT_STRUCTURAL_JOIN_0_OF_23_AND_0_OF_24",
+        "structural Material shader-map join changed",
+    )
+
+    evaluators = receipt.get("familyEvaluatorOracles") or []
+    require(
+        len(evaluators) == 23
+        and {row.get("familyId") for row in evaluators} == set(family_by_id)
+        and all(
+            row.get("shaderMapJoinCount") == 0
+            and row.get("numericSampleVectorCount") == 0
+            and row.get("evaluatorFidelity") == "UNAVAILABLE_NO_SOURCE_REVISION_SHADER_MAP"
+            and row.get("nextAcquisitionSource")
+            for row in evaluators
+        ),
+        "family evaluator availability changed",
+    )
+
+    expected_sections = {
+        "recipePackages": recipe_packages,
+        "materialNativeKeys": material_rows,
+        "recipeNativeKeys": native_recipe_rows,
+        "materialTopologyCompleteness": matrices,
+        "shaderCacheCandidates": candidates,
+        "primaryGroups": groups,
+        "primaryCodeRecords": records,
+        "primaryDecodedNativeStructure": structure,
+        "materialKeySearch": material_key_scan,
+        "micKeySearch": mic_key_scan,
+        "micTailShaderObjectIdProbe": probe,
+    }
+    for section_name, section in expected_sections.items():
+        require(
+            canonical_json_sha256(section) == EXPECTED_PORTABLE_SECTION_SHA256[section_name],
+            f"portable {section_name} identity changed",
+        )
+
     expected_summary = {
         "installedShaderCacheExportCount": 1_596,
         "candidateShaderCacheCount": 11,
@@ -1639,121 +2644,47 @@ def validate_receipt(
         "primaryDxbcTotalSizeValidatedCount": 271,
         "primaryD3dDisassemblyValidatedCount": 271,
         "primaryUniqueDxbcCount": 240,
+        "primaryDecodedShaderObjectCount": 271,
+        "primaryDecodedMaterialShaderMapCount": 25,
+        "primaryDecodedShaderReferenceCount": 534,
+        "sourceBaseMaterialIdJoinCount": 0,
+        "sourceMicStaticParameterSetJoinCount": 0,
         "exactMaterialShaderMapJoinCount": 0,
+        "reconstructedNumericallyVerifiedFamilyCount": 0,
         "arithmeticEvaluatorImplementedCount": 0,
     }
-    require(summary == expected_summary, "ShaderCache receipt denominator changed")
-    require(len(receipt.get("materialNativeKeys", [])) == 23, "Material native key denominator changed")
-    require(len(receipt.get("recipeNativeKeys", [])) == 27, "recipe native key denominator changed")
-    mic_tail_probe = receipt.get("micTailShaderObjectIdProbe") or {}
-    require(
-        mic_tail_probe.get("recipeCount") == 27
-        and mic_tail_probe.get("staticPermutationMicCount") == 24
-        and mic_tail_probe.get("descriptorShaderIdCandidateCount") == 271
-        and mic_tail_probe.get("uniqueDescriptorShaderIdCandidateCount") == 271
-        and mic_tail_probe.get("alignedNonzero16ByteWindowCount") == 4_816
-        and mic_tail_probe.get("directShaderIdMatchCount") == 0
-        and mic_tail_probe.get("status") == "MIC_TAIL_CONTAINS_NO_DIRECT_SHADER_OBJECT_ID"
-        and len(mic_tail_probe.get("rows", [])) == 27
-        and not mic_tail_probe.get("matches"),
-        "MIC tail/direct shader-object ID probe changed",
-    )
-    recipe_by_id = {
-        row["recipeId"]: row for row in receipt.get("recipeNativeKeys", [])
-    }
-    for row in mic_tail_probe["rows"]:
-        recipe = recipe_by_id.get(row.get("recipeId")) or {}
-        require(
-            row.get("alignedNonzero16ByteWindowCount")
-            == recipe.get("alignedNonzero16ByteWindowCount")
-            and row.get("candidateDigestSha256")
-            == recipe.get("alignedNonzero16ByteWindowSha256")
-            and row.get("directShaderIdMatchCount") == 0
-            and not row.get("matches"),
-            "MIC tail shader-object probe row changed",
-        )
-    inventory = (receipt.get("externalEvidence") or {}).get("boundedMaterialInventory") or {}
-    require(
-        inventory.get("scope") == "30_RECONSTRUCTED_DIMENSIONMASTER_MATERIAL_REPORTS_NOT_FULL_INSTALLATION"
-        and inventory.get("reportCount") == 30
-        and len(inventory.get("reportIdentities", [])) == 30
-        and inventory.get("targetFamilyCoverageCount") == 21
-        and inventory.get("targetMaterialRowCount") == 22
-        and inventory.get("alternateObjectCandidateCount") == 1
-        and inventory.get("unexpectedPhysicalPackageCandidateCount") == 0,
-        "bounded Material inventory evidence changed",
-    )
-    matrices = receipt.get("materialTopologyCompleteness", [])
-    require(len(matrices) == 23, "Material topology matrix denominator changed")
-    alternate_count = 0
-    improvement_count = 0
-    for matrix in matrices:
-        candidates = matrix.get("candidates") or []
-        source_rows = [row for row in candidates if row.get("candidateRole") == "SOURCE_EXACT_DEPENDENCY"]
-        global_rows = [row for row in candidates if row.get("candidateRole") == "CURRENT_GLOBAL_PACKAGE_CROSS_REVISION"]
-        require(len(source_rows) == 1 and len(global_rows) == 1, "Material topology source/current pairing changed")
-        source_topology = source_rows[0].get("topology") or {}
-        recomputed_improving = []
-        for candidate in candidates:
-            topology = candidate.get("topology") or {}
-            require(topology.get("topologyStatus") == "COOKED_PARTIAL", "Material topology fidelity changed")
-            same_denominator = topology.get("expressionEntryCount") == source_topology.get("expressionEntryCount")
-            improves = (
-                candidate.get("candidateRole") != "SOURCE_EXACT_DEPENDENCY"
-                and same_denominator
-                and topology.get("nullExpressionCount") <= source_topology.get("nullExpressionCount")
-                and topology.get("unresolvedInputEdgeCount") <= source_topology.get("unresolvedInputEdgeCount")
-                and (
-                    topology.get("nullExpressionCount") < source_topology.get("nullExpressionCount")
-                    or topology.get("unresolvedInputEdgeCount") < source_topology.get("unresolvedInputEdgeCount")
-                )
-            )
-            require(candidate.get("sameExpressionEntryDenominatorAsSource") == same_denominator, "Material topology denominator flag changed")
-            require(candidate.get("strictParetoImprovementOverSource") == improves, "Material topology improvement flag changed")
-            if improves:
-                recomputed_improving.append(candidate)
-            if candidate.get("candidateRole") == "SAME_PACKAGE_SAME_LEAF_ALTERNATE_OBJECT":
-                alternate_count += 1
-        require(
-            matrix.get("minimumObservedNullExpressionCount")
-            == min(row["topology"]["nullExpressionCount"] for row in candidates)
-            and matrix.get("minimumObservedUnresolvedInputEdgeCount")
-            == min(row["topology"]["unresolvedInputEdgeCount"] for row in candidates)
-            and matrix.get("strictParetoImprovementCandidateCount") == len(recomputed_improving),
-            "Material topology completeness summary changed",
-        )
-        require(
-            (matrix.get("reconstructedEvaluatorOracleCandidate") is not None)
-            == (len(recomputed_improving) == 1),
-            "Material topology evaluator candidate changed",
-        )
-        improvement_count += len(recomputed_improving)
-    require(alternate_count == 1, "Material alternate topology candidate denominator changed")
-    require(improvement_count == summary["strictCrossRevisionTopologyImprovementCandidateCount"], "Material topology improvement total changed")
-    require(len(receipt.get("shaderCacheCandidates", [])) == 11, "ShaderCache candidate denominator changed")
-    primary = receipt.get("primaryShaderCache") or {}
-    require(len(primary.get("codeRecords", [])) == 271, "primary ShaderCache code rows changed")
-    require(len(primary.get("groups", [])) == 32, "primary ShaderCache group rows changed")
+    require(receipt.get("summary") == expected_summary, "ShaderCache receipt denominator changed")
     decision = receipt.get("joinDecision") or {}
-    require(decision.get("directNativeKeyMatchCount") == 0, "direct Material key match changed")
-    require(decision.get("commonEndianOrOrderMatchCount") == 0, "transformed Material key match changed")
-    require(decision.get("micDirectEndianOrHashMatchCount") == 0, "MIC key/hash match changed")
     require(
-        decision.get("micTailAlignedNonzeroWindowCount") == 4_816
+        decision.get("materialFamilyCount") == 23
+        and decision.get("directNativeKeyMatchCount") == 0
+        and decision.get("commonEndianOrOrderMatchCount") == 0
+        and decision.get("micRecipeCount") == 25
+        and decision.get("staticPermutationMicCount") == 24
+        and decision.get("micNativeKeyCandidateCount") == 24
+        and decision.get("micDirectEndianOrHashMatchCount") == 0
+        and decision.get("micTailAlignedNonzeroWindowCount") == 4_816
         and decision.get("micTailDirectShaderObjectIdMatchCount") == 0
-        and decision.get("micTailDirectShaderObjectIdStatus")
-        == "MIC_TAIL_CONTAINS_NO_DIRECT_SHADER_OBJECT_ID",
-        "MIC tail direct shader-object join decision changed",
+        and decision.get("micTailDirectShaderObjectIdStatus") == "MIC_TAIL_CONTAINS_NO_DIRECT_SHADER_OBJECT_ID"
+        and decision.get("strictCrossRevisionTopologyImprovementCandidateCount") == 0
+        and decision.get("exactMaterialShaderMapJoinCount") == 0
+        and decision.get("exactMaterialShaderMapJoinRequired") == 23
+        and decision.get("exactMicStaticParameterSetJoinCount") == 0
+        and decision.get("exactMicStaticParameterSetJoinRequired") == 24
+        and decision.get("reconstructedNumericallyVerifiedFamilyCount") == 0
+        and decision.get("fidelity") == "UNRESOLVED"
+        and tuple(decision.get("blockers", [])) == BLOCKERS,
+        "ShaderCache join decision changed",
     )
     require(
-        decision.get("strictCrossRevisionTopologyImprovementCandidateCount")
-        == improvement_count,
-        "Material topology join decision changed",
+        receipt.get("admission")
+        == {
+            "arithmeticEvaluatorImplementedCount": 0,
+            "executionAdmission": False,
+            "productAdmission": False,
+        },
+        "ShaderCache admission opened",
     )
-    require(decision.get("exactMaterialShaderMapJoinCount") == 0, "unproven Material shader-map join opened")
-    require(tuple(decision.get("blockers", [])) == BLOCKERS, "ShaderCache blocker set changed")
-    admission = receipt.get("admission") or {}
-    require(admission == {"arithmeticEvaluatorImplementedCount": 0, "executionAdmission": False, "productAdmission": False}, "ShaderCache admission opened")
 
 
 def check_or_write(path: Path, receipt: dict[str, Any], check: bool) -> None:
