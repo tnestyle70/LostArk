@@ -835,6 +835,22 @@ try {
 	Add-Check 'effect.artist-31470-material-texture-runtime-binding' `
 		$artistMaterialTextureBindingPassed `
 		$artistMaterialTextureBindingDetail
+	$artistExactDdsDeploymentPassed = $false
+	$artistExactDdsDeploymentDetail = ''
+	try {
+		$artistExactDdsDeploymentDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ExactDdsRuntimeDeployment.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistExactDdsDeploymentPassed =
+			$artistExactDdsDeploymentDetail -match
+			'PASS: Artist F 31470 exact DDS runtime deployment mode=shallow assets=4/4 sourceExactMaterial=false r4=false product=false'
+	}
+	catch {
+		$artistExactDdsDeploymentDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-exact-dds-runtime-deployment' `
+		$artistExactDdsDeploymentPassed `
+		$artistExactDdsDeploymentDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
