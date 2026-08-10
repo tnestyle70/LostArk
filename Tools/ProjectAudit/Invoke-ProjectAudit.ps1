@@ -992,7 +992,7 @@ try {
 			2>&1 | Out-String).Trim()
 		$effectDerivedPublisherPassed =
 			$effectDerivedPublisherDetail -match
-			'PASS: derived Effect artifact publisher schema tests=14 authenticated-blocker-union=true rollback=true product=false'
+			'PASS: derived Effect artifact publisher schema tests=24 reserved-reconstructed-id=true current-tools=true duplicate-json-keys=true duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true authenticated-blocker-union=true reconstructed-product=false rollback=true'
 	}
 	catch {
 		$effectDerivedPublisherDetail = $_.Exception.Message

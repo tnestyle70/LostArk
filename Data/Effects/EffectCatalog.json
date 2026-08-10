@@ -42,6 +42,11 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31460.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31470",
+      "payloadKind": "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM",
+      "reconstructedRuntimeProgramPath": "Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31480.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31480.authored-baseline.effect.json"
     },
