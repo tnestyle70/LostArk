@@ -35,6 +35,16 @@
 #include <vector>
 #include <Windows.h>
 
+#if defined(LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS)
+namespace Client
+{
+	bool_t Validate_ReconstructedRuntimeProgramForHarness(
+		std::string_view Utf8Json,
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& ExpectedIdentity,
+		std::string& strOutError);
+}
+#endif
+
 namespace
 {
 	class SCOPED_ENVIRONMENT_VARIABLE final
@@ -3955,6 +3965,1026 @@ namespace
 		}
 	}
 
+	bool_t Replace_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view Field,
+		Client::DATA_JSON_VALUE Replacement,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || !Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		Object[std::string(Field)] = std::move(Replacement);
+		OutValue = DATA_JSON_VALUE::Object(
+			std::move(Object), Source.Get_ObjectInsertionOrder());
+		return true;
+	}
+
+	bool_t Remove_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view Field,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || !Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		Object.erase(std::string(Field));
+		std::vector<std::string> Order;
+		Order.reserve(Source.Get_ObjectInsertionOrder().size() - 1u);
+		for (const std::string& Key : Source.Get_ObjectInsertionOrder())
+		{
+			if (Key != Field)
+				Order.push_back(Key);
+		}
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Append_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		std::string Field,
+		Client::DATA_JSON_VALUE Added,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		if (!Object.emplace(Field, std::move(Added)).second)
+			return false;
+		std::vector<std::string> Order = Source.Get_ObjectInsertionOrder();
+		Order.push_back(std::move(Field));
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Replace_JsonArrayElement(
+		const Client::DATA_JSON_VALUE& Source,
+		const size_t Index,
+		Client::DATA_JSON_VALUE Replacement,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Array() || Index >= Source.Get_Array().size())
+			return false;
+		DATA_JSON_VALUE::ARRAY Array = Source.Get_Array();
+		Array[Index] = std::move(Replacement);
+		OutValue = DATA_JSON_VALUE::Array(std::move(Array));
+		return true;
+	}
+
+	bool_t Build_JsonObjectProjection(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::initializer_list<std::string_view> Fields,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object())
+			return false;
+		DATA_JSON_VALUE::OBJECT Object;
+		std::vector<std::string> Order;
+		Order.reserve(Fields.size());
+		for (const std::string_view Field : Fields)
+		{
+			const DATA_JSON_VALUE* Value = Source.Find(Field);
+			if (nullptr == Value ||
+				!Object.emplace(std::string(Field), *Value).second)
+			{
+				return false;
+			}
+			Order.emplace_back(Field);
+		}
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Seal_JsonObject(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view HashField,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE Unsigned;
+		if (!Remove_JsonObjectField(Source, HashField, Unsigned))
+			return false;
+		const std::string Hash = CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Unsigned));
+		return !Hash.empty() && Replace_JsonObjectField(
+			Source, HashField, DATA_JSON_VALUE::String(Hash), OutValue);
+	}
+
+	bool_t Build_ResealedRootFixture(
+		const Client::DATA_JSON_VALUE& MutatedRoot,
+		const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Frozen,
+		std::string& OutText,
+		Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& OutIdentity)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE SealedRoot;
+		if (!Seal_JsonObject(MutatedRoot, "programSha256", SealedRoot))
+			return false;
+		const DATA_JSON_VALUE* ProgramSha = SealedRoot.Find("programSha256");
+		if (nullptr == ProgramSha || !ProgramSha->Is_String())
+			return false;
+		// Production parsing also enforces the builder's insertion order. The
+		// fixture hashes remain canonical, but its transport text must preserve
+		// that order so a negative reaches the intended semantic stage.
+		OutText = CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(SealedRoot);
+		OutIdentity = Frozen;
+		OutIdentity.strProgramSha256 = ProgramSha->Get_String();
+		OutIdentity.strCandidateRawSha256 =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(OutText);
+		return !OutIdentity.strCandidateRawSha256.empty();
+	}
+
+	bool_t Build_ResealedSectionFixture(
+		const Client::DATA_JSON_VALUE& Root,
+		const std::string_view SectionName,
+		const size_t RowIndex,
+		const Client::DATA_JSON_VALUE& MutatedRow,
+		const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Frozen,
+		std::string& OutText,
+		Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& OutIdentity)
+	{
+		using namespace Client;
+		const DATA_JSON_VALUE* Section = Root.Find(SectionName);
+		const DATA_JSON_VALUE* Digests = Root.Find("sectionDigests");
+		if (nullptr == Section || !Section->Is_Array() ||
+			RowIndex >= Section->Get_Array().size() || nullptr == Digests ||
+			!Digests->Is_Array())
+		{
+			return false;
+		}
+		DATA_JSON_VALUE SealedRow;
+		DATA_JSON_VALUE MutatedSection;
+		if (!Seal_JsonObject(MutatedRow, "rowSha256", SealedRow) ||
+			!Replace_JsonArrayElement(
+				*Section, RowIndex, std::move(SealedRow), MutatedSection))
+		{
+			return false;
+		}
+
+		DATA_JSON_VALUE::ARRAY RowHashes;
+		RowHashes.reserve(MutatedSection.Get_Array().size());
+		for (const DATA_JSON_VALUE& Row : MutatedSection.Get_Array())
+		{
+			const DATA_JSON_VALUE* Hash = Row.Find("rowSha256");
+			if (nullptr == Hash || !Hash->Is_String())
+				return false;
+			RowHashes.push_back(DATA_JSON_VALUE::String(Hash->Get_String()));
+		}
+		const std::string OrderedSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+					DATA_JSON_VALUE::Array(std::move(RowHashes))));
+		if (OrderedSha.empty())
+			return false;
+
+		DATA_JSON_VALUE MutatedDigests = *Digests;
+		bool_t FoundDigest = false;
+		for (size_t Index = 0u; Index < Digests->Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Digest = Digests->Get_Array()[Index];
+			const DATA_JSON_VALUE* Name = Digest.Find("sectionName");
+			if (nullptr == Name || !Name->Is_String() ||
+				Name->Get_String() != SectionName)
+			{
+				continue;
+			}
+			DATA_JSON_VALUE MutatedDigest;
+			if (!Replace_JsonObjectField(Digest, "orderedSha256",
+					DATA_JSON_VALUE::String(OrderedSha), MutatedDigest) ||
+				!Replace_JsonArrayElement(
+					MutatedDigests, Index, std::move(MutatedDigest), MutatedDigests))
+			{
+				return false;
+			}
+			FoundDigest = true;
+			break;
+		}
+		if (!FoundDigest)
+			return false;
+
+		DATA_JSON_VALUE WithSection;
+		DATA_JSON_VALUE WithDigests;
+		if (!Replace_JsonObjectField(
+				Root, SectionName, std::move(MutatedSection), WithSection) ||
+			!Replace_JsonObjectField(WithSection, "sectionDigests",
+				std::move(MutatedDigests), WithDigests))
+		{
+			return false;
+		}
+		return Build_ResealedRootFixture(
+			WithDigests, Frozen, OutText, OutIdentity);
+	}
+
+	void Test_Artist31470ReconstructedRuntimeProgram(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& path)
+	{
+		using namespace Client;
+		std::ifstream Input(path, std::ios::binary);
+		const std::string Text{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Frozen =
+			CEffectRuntimeAuthorityCodec::Get_FrozenArtist31470FProgramIdentity();
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Parsed;
+		std::string Status;
+		const bool_t Loaded = Input.good() || Input.eof();
+		const bool_t Baseline = Loaded &&
+			CEffectRuntimeAuthorityCodec::Parse_ReconstructedRuntimeProgram(
+				Text, Frozen, Parsed, Status);
+		DATA_JSON_VALUE Root;
+		DATA_JSON_PARSE_LIMITS ProgramLimits;
+		ProgramLimits.iMaximumBytes = 20u * 1024u * 1024u;
+		ProgramLimits.iMaximumDepth = 64u;
+		ProgramLimits.iMaximumValues = 1'000'000u;
+		std::string RootStatus;
+		const bool_t RootParsed = CDataJson::Parse(
+			Text, Root, RootStatus, ProgramLimits) && Root.Is_Object();
+		if (!Baseline)
+			std::cerr << "Reconstructed program baseline parse: " << Status << '\n';
+		const size_t ResolvedTextureCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.eResolutionStatus ==
+						EFFECT_RUNTIME_TEXTURE_RESOLUTION_STATUS::
+							RESOLVED_EXACT_RUNTIME_ASSET;
+				}));
+		const size_t RuntimeCookReceiptCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.strSourceReceiptStatus ==
+						"RESOLVED_EXACT_RUNTIME_COOK_RECEIPT";
+				}));
+		const size_t ReconstructedDeploymentReceiptCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.strSourceReceiptStatus ==
+						"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT";
+				}));
+		runner.Require(Baseline && nullptr != Parsed &&
+			Parsed->Identity.strProgramSha256 == Frozen.strProgramSha256 &&
+			Parsed->InputArtifacts.size() == 13u &&
+			Parsed->Handlers.size() == 385u && Parsed->Emitters.size() == 35u &&
+			Parsed->ActionSchedules.size() == 7u && Parsed->Modules.size() == 399u &&
+			Parsed->Properties.size() == 1434u &&
+			Parsed->PrimitiveLeaves.size() == 1572u &&
+			Parsed->Literals.size() == 1590u &&
+			Parsed->Distributions.size() == 629u &&
+			Parsed->SeedPolicies.size() == 14u &&
+			Parsed->ImplicitDefaults.size() == 14u &&
+			Parsed->PointLightFields.size() == 8u &&
+			Parsed->MaterialFamilies.size() == 23u &&
+			Parsed->MaterialRecipes.size() == 27u &&
+			Parsed->MaterialInputs.size() == 729u &&
+			Parsed->MaterialStaticBindings.size() == 94u &&
+			Parsed->MaterialRenderBindings.size() == 162u &&
+			Parsed->MaterialOccurrences.size() == 34u &&
+			Parsed->MaterialPolicies.size() == 255u &&
+			Parsed->MaterialTextureBindings.size() == 72u &&
+			ResolvedTextureCount == 72u && RuntimeCookReceiptCount == 68u &&
+			ReconstructedDeploymentReceiptCount == 4u &&
+			Parsed->RendererTextureResources.size() == 57u &&
+			Parsed->GeometryCarriers.size() == 7u &&
+			Parsed->GeometryUses.size() == 13u &&
+			!Parsed->Admission.bSourceExact &&
+			!Parsed->Admission.bRuntimeExecution && !Parsed->Admission.bProduct,
+			"Artist 31470 Reconstructed Runtime Program Parses To Immutable Typed Rows");
+
+		const auto RejectsTransactionally = [&Parsed, &Frozen](
+			const std::string& Candidate,
+			const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Identity)
+		{
+			const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Before =
+				Parsed;
+			const std::string BeforeHash = nullptr == Before ? std::string{} :
+				Before->Identity.strProgramSha256;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Preserved = Before;
+			std::string Error;
+			return !CEffectRuntimeAuthorityCodec::Parse_ReconstructedRuntimeProgram(
+					Candidate, Identity, Preserved, Error) &&
+				Preserved == Before && nullptr != Preserved &&
+				Preserved->Identity.strProgramSha256 == BeforeHash && !Error.empty();
+		};
+		const auto RejectsResealedSemanticTransactionally = [&Parsed](
+			const std::string& Candidate,
+			const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Identity,
+			const std::string_view ExpectedError)
+		{
+			const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Before =
+				Parsed;
+			const std::string BeforeHash = nullptr == Before ? std::string{} :
+				Before->Identity.strProgramSha256;
+			std::string Error;
+			const bool_t Rejected = !Validate_ReconstructedRuntimeProgramForHarness(
+				Candidate, Identity, Error) && Parsed == Before && nullptr != Parsed &&
+				Parsed->Identity.strProgramSha256 == BeforeHash &&
+				!ExpectedError.empty() && Error.find(ExpectedError) != std::string::npos;
+			if (!Rejected)
+			{
+				std::cerr << "Expected semantic rejection stage '" << ExpectedError
+					<< "', actual error: " << Error << '\n';
+			}
+			return Rejected;
+		};
+		const auto FlipAfter = [](std::string Value, const std::string_view Marker)
+		{
+			const size_t Offset = Value.find(Marker);
+			if (Offset != std::string::npos)
+			{
+				const size_t Character = Offset + Marker.size();
+				if (Character < Value.size())
+					Value[Character] = Value[Character] == '0' ? '1' : '0';
+			}
+			return Value;
+		};
+		const auto ReplaceOnce = [](std::string Value,
+			const std::string_view From, const std::string_view To)
+		{
+			const size_t Offset = Value.find(From);
+			if (Offset != std::string::npos)
+				Value.replace(Offset, From.size(), To);
+			return Value;
+		};
+
+		std::vector<std::pair<std::string, std::string>> Attacks;
+		Attacks.emplace_back("malformed", Text.substr(0u, Text.size() / 2u));
+		Attacks.emplace_back("utf8-bom", std::string("\xEF\xBB\xBF") + Text);
+		Attacks.emplace_back("duplicate-key",
+			ReplaceOnce(Text, "{\n", "{\n  \"schema\": \"forged\",\n"));
+		Attacks.emplace_back("unknown-root-key",
+			ReplaceOnce(Text, "{\n", "{\n  \"unknown\": 0,\n"));
+		Attacks.emplace_back("reordered-root",
+			ReplaceOnce(Text,
+				"  \"schema\": \"lostark.artist-31470-reconstructed-runtime-program\",\n"
+				"  \"formatVersion\": 1,\n",
+				"  \"formatVersion\": 1,\n"
+				"  \"schema\": \"lostark.artist-31470-reconstructed-runtime-program\",\n"));
+		Attacks.emplace_back("bool-as-int",
+			ReplaceOnce(Text, "\"sourceExact\": false", "\"sourceExact\": 0    "));
+		Attacks.emplace_back("nonfinite",
+			ReplaceOnce(Text, "\"geometryPreScale\": 0.01",
+				"\"geometryPreScale\": 1e999"));
+		Attacks.emplace_back("runtime-path",
+			ReplaceOnce(Text, "Effect/Artist/Textures/", "../Artist/Textures/"));
+		Attacks.emplace_back("row-sha",
+			FlipAfter(Text, "\"rowSha256\": \""));
+		Attacks.emplace_back("section-sha",
+			FlipAfter(Text, "\"orderedSha256\": \""));
+		Attacks.emplace_back("blocker-owner",
+			FlipAfter(Text, "\"preservedBlockers\": [\n        \""));
+		Attacks.emplace_back("blocker-ownership-projection",
+			FlipAfter(Text, "\"projectionSha256\": \""));
+		Attacks.emplace_back("texture-a-b-identity",
+			FlipAfter(Text, "\"sourceBindingRowSha256\": \""));
+		Attacks.emplace_back("texture-runtime-asset",
+			FlipAfter(Text, "\"runtimeAssetId\": \"Effect/"));
+		Attacks.emplace_back("program-sha",
+			FlipAfter(Text, "\"programSha256\": \""));
+
+		bool_t AllRejected = Baseline;
+		for (const auto& [Name, Attack] : Attacks)
+		{
+			const bool_t Rejected = Attack != Text &&
+				RejectsTransactionally(Attack, Frozen);
+			if (!Rejected)
+				std::cerr << "Reconstructed program attack accepted: " << Name << '\n';
+			AllRejected = AllRejected && Rejected;
+		}
+		runner.Require(AllRejected,
+			"Artist 31470 Reconstructed Program Rejects Malformed And Raw Identity Attacks Transactionally");
+
+		bool_t SemanticAllRejected = Baseline && RootParsed;
+		const auto RunResealedSectionAttack =
+			[&Root, &Frozen, &RejectsResealedSemanticTransactionally,
+				&SemanticAllRejected](const std::string_view Name,
+				const std::string_view Section, const size_t RowIndex,
+				const DATA_JSON_VALUE& MutatedRow,
+				const std::string_view ExpectedError)
+		{
+			if (!SemanticAllRejected)
+				return;
+			std::string Candidate;
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Identity;
+			const bool_t Built = Build_ResealedSectionFixture(
+				Root, Section, RowIndex, MutatedRow, Frozen, Candidate, Identity);
+			const bool_t Rejected = Built &&
+				RejectsResealedSemanticTransactionally(
+					Candidate, Identity, ExpectedError);
+			if (!Rejected)
+				std::cerr << "Resealed semantic attack accepted: " << Name << '\n';
+			SemanticAllRejected = SemanticAllRejected && Rejected;
+		};
+		const auto RunResealedRootAttack =
+			[&Frozen, &RejectsResealedSemanticTransactionally,
+				&SemanticAllRejected](const std::string_view Name,
+				const DATA_JSON_VALUE& MutatedRoot,
+				const std::string_view ExpectedError)
+		{
+			if (!SemanticAllRejected)
+				return;
+			std::string Candidate;
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Identity;
+			const bool_t Built = Build_ResealedRootFixture(
+				MutatedRoot, Frozen, Candidate, Identity);
+			const bool_t Rejected = Built &&
+				RejectsResealedSemanticTransactionally(
+					Candidate, Identity, ExpectedError);
+			if (!Rejected)
+				std::cerr << "Resealed semantic root attack accepted: " << Name << '\n';
+			SemanticAllRejected = SemanticAllRejected && Rejected;
+		};
+
+		if (RootParsed)
+		{
+			const DATA_JSON_VALUE* Emitters = Root.Find("emitters");
+			const DATA_JSON_VALUE* Schedules = Root.Find("actionSchedules");
+			const DATA_JSON_VALUE* GeometryCarriers = Root.Find("geometryCarriers");
+			const DATA_JSON_VALUE* Distributions = Root.Find("distributions");
+			const DATA_JSON_VALUE* Policies = Root.Find("materialPolicyRows");
+			const DATA_JSON_VALUE* Modules = Root.Find("modules");
+			const DATA_JSON_VALUE* GeometryUses = Root.Find("geometryUses");
+			const DATA_JSON_VALUE* Textures = Root.Find("materialTextureBindings");
+			const DATA_JSON_VALUE* Artifacts = Root.Find("inputArtifacts");
+			if (nullptr == Emitters || !Emitters->Is_Array() ||
+				Emitters->Get_Array().empty() || nullptr == GeometryCarriers ||
+				nullptr == Schedules || !Schedules->Is_Array() ||
+				Schedules->Get_Array().size() < 2u ||
+				!GeometryCarriers->Is_Array() || GeometryCarriers->Get_Array().empty() ||
+				nullptr == Distributions || !Distributions->Is_Array() ||
+				Distributions->Get_Array().empty() || nullptr == Policies ||
+				!Policies->Is_Array() || Policies->Get_Array().empty() ||
+				nullptr == Modules || !Modules->Is_Array() ||
+				Modules->Get_Array().size() < 2u || nullptr == GeometryUses ||
+				!GeometryUses->Is_Array() || GeometryUses->Get_Array().size() < 2u ||
+				nullptr == Textures || !Textures->Is_Array() ||
+				Textures->Get_Array().empty() || nullptr == Artifacts ||
+				!Artifacts->Is_Array() || Artifacts->Get_Array().empty())
+			{
+				SemanticAllRejected = false;
+			}
+			else
+			{
+				{
+					const DATA_JSON_VALUE& Row = Schedules->Get_Array()[0];
+					const DATA_JSON_VALUE& Foreign = Schedules->Get_Array()[1];
+					const DATA_JSON_VALUE* ForeignCue = Foreign.Find("sourceCueId");
+					const DATA_JSON_VALUE* ForeignOccurrence =
+						Foreign.Find("sourceOccurrenceId");
+					const DATA_JSON_VALUE* ForeignSystem = Foreign.Find("sourceSystemId");
+					const DATA_JSON_VALUE* EventIndex =
+						Row.Find("sourceReceiptEventIndex");
+					const DATA_JSON_VALUE* GlobalTime = Row.Find("globalTimeSeconds");
+					const auto RunScheduleFieldAttack =
+						[&Row, &RunResealedSectionAttack, &SemanticAllRejected](
+							const std::string_view Name, const std::string_view Field,
+							DATA_JSON_VALUE Replacement,
+							const std::string_view ExpectedError)
+					{
+						DATA_JSON_VALUE MutatedRow;
+						if (Replace_JsonObjectField(
+								Row, Field, std::move(Replacement), MutatedRow))
+						{
+							RunResealedSectionAttack(Name, "actionSchedules", 0u,
+								MutatedRow, ExpectedError);
+						}
+						else
+						{
+							SemanticAllRejected = false;
+						}
+					};
+					if (nullptr != ForeignCue && ForeignCue->Is_String() &&
+						nullptr != ForeignOccurrence && ForeignOccurrence->Is_String() &&
+						nullptr != ForeignSystem && ForeignSystem->Is_String() &&
+						nullptr != EventIndex && EventIndex->Is_Number() &&
+						nullptr != GlobalTime && GlobalTime->Is_Number())
+					{
+						RunScheduleFieldAttack("schedule-id", "scheduleId",
+							DATA_JSON_VALUE::String(
+								"action-schedule-ffffffffffffffffffffffff"),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-order", "order",
+							DATA_JSON_VALUE::Number(99.0, false),
+							"core row parse failed");
+						RunScheduleFieldAttack("schedule-source-cue", "sourceCueId",
+							DATA_JSON_VALUE::String(ForeignCue->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack(
+							"schedule-source-occurrence", "sourceOccurrenceId",
+							DATA_JSON_VALUE::String(ForeignOccurrence->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-source-system", "sourceSystemId",
+							DATA_JSON_VALUE::String(ForeignSystem->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack(
+							"schedule-source-event-index", "sourceReceiptEventIndex",
+							DATA_JSON_VALUE::Number(EventIndex->Get_Number() + 1.0, false),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-global-time", "globalTimeSeconds",
+							DATA_JSON_VALUE::Number(0.125, true),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-duration", "durationSeconds",
+							DATA_JSON_VALUE::Number(1.625, true),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-source-cue-row-sha",
+							"sourceCueRowSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-event-index-float-token",
+							"sourceReceiptEventIndex",
+							DATA_JSON_VALUE::Number(EventIndex->Get_Number(), true),
+							"core row parse failed");
+						RunScheduleFieldAttack("schedule-global-time-int-token",
+							"globalTimeSeconds",
+							DATA_JSON_VALUE::Number(GlobalTime->Get_Number(), false),
+							"core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Config = Row.Find("rendererRuntimeConfig");
+					DATA_JSON_VALUE MutatedConfig;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Config && Append_JsonObjectField(*Config,
+							"unknownNestedField", DATA_JSON_VALUE::Number(1.0, false),
+							MutatedConfig) &&
+						Replace_JsonObjectField(Row, "rendererRuntimeConfig",
+							std::move(MutatedConfig), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"nested-extra-key", "emitters", 0u, MutatedRow,
+							"core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = GeometryCarriers->Get_Array().front();
+					const DATA_JSON_VALUE* Submeshes = Row.Find("submeshes");
+					DATA_JSON_VALUE MissingBounds;
+					DATA_JSON_VALUE MutatedSubmeshes;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Submeshes && Submeshes->Is_Array() &&
+						!Submeshes->Get_Array().empty() &&
+						Remove_JsonObjectField(Submeshes->Get_Array().front(),
+							"boundsF32Hex", MissingBounds) &&
+						Replace_JsonArrayElement(*Submeshes, 0u,
+							std::move(MissingBounds), MutatedSubmeshes) &&
+						Replace_JsonObjectField(Row, "submeshes",
+							std::move(MutatedSubmeshes), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"nested-missing-key", "geometryCarriers", 0u, MutatedRow,
+							"Geometry row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = GeometryCarriers->Get_Array().front();
+					const DATA_JSON_VALUE* ByteSize =
+						Row.Find("candidateResourceByteSize");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ByteSize && ByteSize->Is_Number() &&
+						Replace_JsonObjectField(Row, "candidateResourceByteSize",
+							DATA_JSON_VALUE::Number(
+								ByteSize->Get_Number() + 1.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"geometry-carrier-byte-size", "geometryCarriers", 0u,
+							MutatedRow, "ownership graph mismatch: frozen-subprojections");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Distributions->Get_Array().front(),
+							"variant", DATA_JSON_VALUE::String("FORGED_VARIANT"),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"unsupported-enum", "distributions", 0u, MutatedRow,
+							"value row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t DescriptorPolicyIndex = Policies->Get_Array().size();
+					for (size_t Index = 0u; Index < Policies->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Oracle =
+							Policies->Get_Array()[Index].Find("d3dDescriptorOracle");
+						const DATA_JSON_VALUE* Kind = nullptr == Oracle ? nullptr :
+							Oracle->Find("descriptorKind");
+						if (nullptr != Oracle && Oracle->Is_Object() && nullptr != Kind &&
+							Kind->Is_String() && Kind->Get_String() ==
+								"D3D11_DEPTH_STENCIL_DESC")
+						{
+							DescriptorPolicyIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedActual;
+					DATA_JSON_VALUE MutatedOracle;
+					DATA_JSON_VALUE MutatedRow;
+					const DATA_JSON_VALUE* Oracle =
+						DescriptorPolicyIndex < Policies->Get_Array().size() ?
+						Policies->Get_Array()[DescriptorPolicyIndex].Find(
+							"d3dDescriptorOracle") : nullptr;
+					const DATA_JSON_VALUE* Actual = nullptr == Oracle ? nullptr :
+						Oracle->Find("actualDescriptor");
+					const DATA_JSON_VALUE* DepthEnable = nullptr == Actual ? nullptr :
+						Actual->Find("DepthEnable");
+					if (nullptr != Oracle && nullptr != Actual && nullptr != DepthEnable &&
+						DepthEnable->Is_Boolean() &&
+						Replace_JsonObjectField(*Actual, "DepthEnable",
+							DATA_JSON_VALUE::Boolean(!DepthEnable->Get_Boolean()),
+							MutatedActual) &&
+						Replace_JsonObjectField(*Oracle, "actualDescriptor",
+							std::move(MutatedActual), MutatedOracle) &&
+						Replace_JsonObjectField(Policies->Get_Array()[DescriptorPolicyIndex],
+							"d3dDescriptorOracle", std::move(MutatedOracle), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"material-d3d-descriptor", "materialPolicyRows",
+							DescriptorPolicyIndex, MutatedRow,
+							"Material policy parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t BooleanPolicyIndex = Policies->Get_Array().size();
+					for (size_t Index = 0u; Index < Policies->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Value =
+							Policies->Get_Array()[Index].Find("boolValue");
+						if (nullptr != Value && Value->Is_Boolean())
+						{
+							BooleanPolicyIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedRow;
+					if (BooleanPolicyIndex < Policies->Get_Array().size() &&
+						Replace_JsonObjectField(
+							Policies->Get_Array()[BooleanPolicyIndex], "boolValue",
+							DATA_JSON_VALUE::Number(1.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack("bool-as-int", "materialPolicyRows",
+							BooleanPolicyIndex, MutatedRow, "Material policy parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* ForeignHandler =
+						Modules->Get_Array()[1].Find("handlerRegistryId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ForeignHandler && ForeignHandler->Is_String() &&
+						Replace_JsonObjectField(Modules->Get_Array()[0],
+							"handlerRegistryId",
+							DATA_JSON_VALUE::String(ForeignHandler->Get_String()), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"handler-reassignment", "modules", 0u, MutatedRow,
+							"ownership graph mismatch: module-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(GeometryUses->Get_Array()[1], "order",
+							DATA_JSON_VALUE::Number(0.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"duplicate-owner-order", "geometryUses", 1u, MutatedRow,
+							"Geometry row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* FirstId =
+						GeometryUses->Get_Array()[0].Find("geometryUseId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != FirstId && FirstId->Is_String() &&
+						Replace_JsonObjectField(GeometryUses->Get_Array()[1],
+							"geometryUseId", DATA_JSON_VALUE::String(
+								FirstId->Get_String()), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"duplicate-global-id", "geometryUses", 1u, MutatedRow,
+							"ownership graph mismatch: global-ids");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* ForeignEmitter =
+						GeometryUses->Get_Array()[1].Find("emitterId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ForeignEmitter && ForeignEmitter->Is_String() &&
+						Replace_JsonObjectField(GeometryUses->Get_Array()[0], "emitterId",
+							DATA_JSON_VALUE::String(ForeignEmitter->Get_String()),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"geometry-owner", "geometryUses", 0u, MutatedRow,
+							"ownership graph mismatch: renderer-texture-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Timing = Row.Find("timing");
+					DATA_JSON_VALUE MutatedLoop;
+					DATA_JSON_VALUE TimingCore;
+					DATA_JSON_VALUE WithProjection;
+					DATA_JSON_VALUE SealedTiming;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Timing &&
+						Replace_JsonObjectField(*Timing, "emitterLoopCount",
+							DATA_JSON_VALUE::Number(99.0, false), MutatedLoop) &&
+						Build_JsonObjectProjection(MutatedLoop, {
+								"requiredModuleId", "spawnModuleId", "lifetimeModuleId",
+								"emitterDelaySeconds", "emitterDelayPolicy",
+								"emitterDurationSeconds", "emitterDurationPolicy",
+								"emitterLoopCount", "bursts" }, TimingCore) &&
+						Replace_JsonObjectField(MutatedLoop, "sourceProjectionSha256",
+							DATA_JSON_VALUE::String(
+								CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+									CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+										TimingCore))), WithProjection) &&
+						Seal_JsonObject(WithProjection, "timingSha256", SealedTiming) &&
+						Replace_JsonObjectField(Row, "timing", std::move(SealedTiming),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"timing-literal-reverse", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: emitter-timing-renderer-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Random = Row.Find("random");
+					const DATA_JSON_VALUE* Seed = nullptr == Random ? nullptr :
+						Random->Find("emitterRandomSeed");
+					DATA_JSON_VALUE MutatedRandom;
+					DATA_JSON_VALUE SealedRandom;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Random && nullptr != Seed && Seed->Is_Number() &&
+						Replace_JsonObjectField(*Random, "emitterRandomSeed",
+							DATA_JSON_VALUE::Number(Seed->Get_Number() + 1.0, false),
+							MutatedRandom) &&
+						Seal_JsonObject(MutatedRandom, "policySha256", SealedRandom) &&
+						Replace_JsonObjectField(Row, "random", std::move(SealedRandom),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"random-seed-authority", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: emitter-timing-renderer-reverse:"
+							"emitter:0:authority-digest");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Config = Row.Find("rendererRuntimeConfig");
+					const DATA_JSON_VALUE* Color = nullptr == Config ? nullptr :
+						Config->Find("color");
+					const DATA_JSON_VALUE* Clip = nullptr == Color ? nullptr :
+						Color->Find("clip");
+					const DATA_JSON_VALUE* SourceNode = Row.Find("sourceNode");
+					const DATA_JSON_VALUE* RendererType = Row.Find("rendererType");
+					DATA_JSON_VALUE MutatedColor;
+					DATA_JSON_VALUE ConfigWithColor;
+					DATA_JSON_VALUE RendererNested;
+					DATA_JSON_VALUE WithSourceNode;
+					DATA_JSON_VALUE RendererProjection;
+					DATA_JSON_VALUE MutatedConfig;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Config && nullptr != Color && nullptr != Clip &&
+						Clip->Is_Number() && nullptr != SourceNode &&
+						nullptr != RendererType &&
+						Replace_JsonObjectField(*Color, "clip",
+							DATA_JSON_VALUE::Number(Clip->Get_Number() + 0.25, true),
+							MutatedColor) &&
+						Replace_JsonObjectField(*Config, "color", std::move(MutatedColor),
+							ConfigWithColor) &&
+						Build_JsonObjectProjection(ConfigWithColor, {
+								"color", "uv", "linearLerp", "mesh", "sprite", "decal",
+								"trail", "afterImage", "screenPost" }, RendererNested) &&
+						Append_JsonObjectField(RendererNested, "sourceNode", *SourceNode,
+							WithSourceNode) &&
+						Append_JsonObjectField(WithSourceNode, "rendererType", *RendererType,
+							RendererProjection) &&
+						Replace_JsonObjectField(ConfigWithColor, "sourceProjectionSha256",
+							DATA_JSON_VALUE::String(
+								CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+									CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+										RendererProjection))), MutatedConfig) &&
+						Replace_JsonObjectField(Row, "rendererRuntimeConfig",
+							std::move(MutatedConfig), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"renderer-config-color", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: "
+							"emitter-timing-renderer-reverse:aggregate");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Distributions->Get_Array().front();
+					const DATA_JSON_VALUE* Samples = Row.Find("samples");
+					DATA_JSON_VALUE MutatedSample;
+					DATA_JSON_VALUE MutatedSamples;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Samples && Samples->Is_Array() &&
+						!Samples->Get_Array().empty() &&
+						Replace_JsonObjectField(Samples->Get_Array().front(), "inputSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')), MutatedSample) &&
+						Replace_JsonArrayElement(*Samples, 0u, std::move(MutatedSample),
+							MutatedSamples) &&
+						Replace_JsonObjectField(Row, "samples", std::move(MutatedSamples),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"distribution-sample-input-digest", "distributions", 0u,
+							MutatedRow, "ownership graph mismatch: frozen-subprojections");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Textures->Get_Array().front(),
+							"sourceBindingRowSha256", DATA_JSON_VALUE::String(
+								std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"texture-a-b-source-identity", "materialTextureBindings",
+							0u, MutatedRow, "texture row parse failed: profile-count");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t DeploymentIndex = Textures->Get_Array().size();
+					for (size_t Index = 0u; Index < Textures->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Status =
+							Textures->Get_Array()[Index].Find("sourceReceiptStatus");
+						if (nullptr != Status && Status->Is_String() &&
+							Status->Get_String() ==
+								"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT")
+						{
+							DeploymentIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedRow;
+					if (DeploymentIndex < Textures->Get_Array().size() &&
+						Replace_JsonObjectField(Textures->Get_Array()[DeploymentIndex],
+							"sourceDeploymentRowSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"texture-deployment-source-identity", "materialTextureBindings",
+							DeploymentIndex, MutatedRow,
+							"texture row parse failed: profile-count");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Artifacts->Get_Array().front(),
+							"canonicalJsonSha256", DATA_JSON_VALUE::String(
+								std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"external-artifact-identity", "inputArtifacts", 0u,
+							MutatedRow, "core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Blockers =
+						Row.Find("operationalCapBlockers");
+					DATA_JSON_VALUE MutatedBlockers;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Blockers && Blockers->Is_Array() &&
+						!Blockers->Get_Array().empty())
+					{
+						DATA_JSON_VALUE::ARRAY Reduced = Blockers->Get_Array();
+						Reduced.erase(Reduced.begin());
+						MutatedBlockers = DATA_JSON_VALUE::Array(std::move(Reduced));
+						if (Replace_JsonObjectField(Row, "operationalCapBlockers",
+								std::move(MutatedBlockers), MutatedRow))
+						{
+							RunResealedSectionAttack(
+								"owned-blocker-removal", "emitters", 0u, MutatedRow,
+								"root/row/section seal mismatch");
+						}
+						else
+						{
+							SemanticAllRejected = false;
+						}
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* Admission = Root.Find("admission");
+					DATA_JSON_VALUE MutatedAdmission;
+					DATA_JSON_VALUE MutatedRoot;
+					if (nullptr != Admission &&
+						Replace_JsonObjectField(*Admission, "runtimeExecution",
+							DATA_JSON_VALUE::Boolean(true), MutatedAdmission) &&
+						Replace_JsonObjectField(Root, "admission",
+							std::move(MutatedAdmission), MutatedRoot))
+					{
+						RunResealedRootAttack("admission-promotion", MutatedRoot,
+							"root/row/section seal mismatch");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+			}
+		}
+		runner.Require(SemanticAllRejected,
+			"Artist 31470 Reconstructed Program Reaches Semantic Validation And Rejects Canonically Resealed Nested Ownership Identity And Admission Attacks Transactionally");
+
+		EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY ForgedIdentity = Frozen;
+		ForgedIdentity.strBuilderAuthorityCommitId[0] =
+			ForgedIdentity.strBuilderAuthorityCommitId[0] == '0' ? '1' : '0';
+		runner.Require(Baseline && RejectsTransactionally(Text, ForgedIdentity),
+			"Artist 31470 Reconstructed Program Rejects A-B Builder Identity Swap Transactionally");
+	}
+
 	void Test_Artist31470SourceContractRoundTrip(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& path)
@@ -5770,6 +6800,14 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-runtime-authority")
 	{
 		Test_EffectRuntimeAuthorityCatalog(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-runtime-program" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470ReconstructedRuntimeProgram(
+			runner, std::filesystem::path(argv[2]));
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
