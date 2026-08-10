@@ -371,6 +371,101 @@ namespace
 			});
 	}
 
+	bool_t Is_CanonicalClassKey(const std::string_view Value)
+	{
+		return !Value.empty() && Value.size() <= 128u && std::all_of(
+			Value.begin(), Value.end(), [](const unsigned char Character)
+			{
+				return std::islower(Character) || std::isdigit(Character) ||
+					Character == '_';
+			});
+	}
+
+	bool_t Is_CanonicalAliasId(const std::string_view Value)
+	{
+		return !Value.empty() && Value.size() <= 192u && std::all_of(
+			Value.begin(), Value.end(), [](const unsigned char Character)
+			{
+				return std::islower(Character) || std::isdigit(Character) ||
+					Character == '_' || Character == '.' || Character == '-';
+			});
+	}
+
+	bool_t Is_CanonicalBlockerSet(
+		const std::vector<std::string>& Blockers,
+		const bool_t bRequired)
+	{
+		if (bRequired && Blockers.empty())
+			return false;
+		std::unordered_set<std::string> Unique;
+		return std::all_of(Blockers.begin(), Blockers.end(),
+			[&Unique](const std::string& Blocker)
+			{
+				return !Blocker.empty() && Blocker.size() <= 128u &&
+					std::all_of(Blocker.begin(), Blocker.end(),
+						[](const unsigned char Character)
+						{
+							return std::isupper(Character) ||
+								std::isdigit(Character) || Character == '_';
+						}) &&
+					Unique.insert(Blocker).second;
+			});
+	}
+
+	bool_t Validate_ClassLineage(
+		const EFFECT_SOURCE_MODULE_COVERAGE_DESC& Coverage,
+		const CLASS_SCHEMA& Schema,
+		EFFECT_CASCADE_HANDLER_RECEIPT& Out)
+	{
+		Out.strReceiptNormalizedClass = Coverage.strNormalizedClass;
+		Out.strExactSourceClass = Coverage.strExactSourceClass;
+		Out.strAliasId = Coverage.strAliasId;
+		if (!Is_CanonicalClassKey(Out.strReceiptNormalizedClass) ||
+			Out.strReceiptNormalizedClass != Schema.strReceiptClassKey)
+		{
+			return false;
+		}
+		if (Out.strExactSourceClass.empty() && Out.strAliasId.empty())
+		{
+			Out.eClassLineageStatus =
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::RECEIPT_NORMALIZED_ONLY;
+			Out.bExactClassLineagePreserved = false;
+			return true;
+		}
+		if (Out.strExactSourceClass.empty() ||
+			!Is_CanonicalClassKey(Out.strExactSourceClass))
+		{
+			return false;
+		}
+		Out.bExactClassLineagePreserved = true;
+		if (Out.strExactSourceClass == Out.strReceiptNormalizedClass)
+		{
+			if (!Out.strAliasId.empty())
+				return false;
+			Out.eClassLineageStatus =
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS;
+			return true;
+		}
+		if (Out.strAliasId.empty())
+		{
+			Out.eClassLineageStatus =
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					ALIAS_REQUIRED_EXECUTION_UNAPPROVED;
+			return true;
+		}
+		if (!Is_CanonicalAliasId(Out.strAliasId))
+			return false;
+
+		/* Alias execution is intentionally closed until a reviewed, explicit
+		 * exact-class -> schema alias registry is added by the execution
+		 * compiler owner. A well-shaped free-form alias is preserved as
+		 * evidence, but never becomes an executable alias in G04. */
+		Out.eClassLineageStatus =
+			EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+				EXPLICIT_ALIAS_EXECUTION_UNAPPROVED;
+		return true;
+	}
+
 	bool_t Is_SourceObjectId(const std::string_view Value)
 	{
 		const size_t Marker = Value.rfind(":export:");
@@ -392,11 +487,21 @@ namespace
 		if (!SelectedPath.starts_with(Prefix))
 			return false;
 		const std::string_view Suffix = SelectedPath.substr(Prefix.size());
-		return !Suffix.empty() && std::all_of(
+		if (Suffix.empty() || !std::all_of(
 			Suffix.begin(), Suffix.end(), [](const unsigned char Character)
 			{
 				return std::isdigit(Character);
-			});
+			}))
+		{
+			return false;
+		}
+		if (Suffix.size() > 1u && Suffix.front() == '0')
+			return false;
+		uint32_t ParsedObjectSuffix = 0u;
+		const auto Parsed = std::from_chars(
+			Suffix.data(), Suffix.data() + Suffix.size(), ParsedObjectSuffix);
+		return Parsed.ec == std::errc{} &&
+			Parsed.ptr == Suffix.data() + Suffix.size();
 	}
 
 	std::string Lower_Ascii(const std::string_view Value)
@@ -435,6 +540,7 @@ namespace
 		const std::string LowerEmitterPath = Lower_Ascii(EmitterPath);
 		return SystemPackage == EmitterPackage &&
 			SystemPackage == LodPackage &&
+			EmitterNodeId != LodNodeId &&
 			LowerEmitterPath.starts_with(LowerSystem + ".particlespriteemitter_");
 	}
 
@@ -521,6 +627,14 @@ namespace
 			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::OBJECT_REFERENCE_TARGET_OR_CLASS_DEFAULT_UNRESOLVED;
 		else if (Provenance == "SEED_ARRAY_SOURCE_DECODED_CONSUMPTION_UNRESOLVED")
 			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::SEED_ARRAY_SOURCE_DECODED_CONSUMPTION_UNRESOLVED;
+		else if (Provenance == "MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED")
+			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED;
+		else if (Provenance == "PINNED_SOURCE_RECORD_PHYSICAL_ABSENT")
+			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::PINNED_SOURCE_RECORD_PHYSICAL_ABSENT;
+		else if (Provenance == "RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED")
+			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED;
+		else if (Provenance == "SOURCE_EXACT_PHYSICAL_PACKAGE")
+			Out = EFFECT_CASCADE_PROPERTY_PROVENANCE::SOURCE_EXACT_PHYSICAL_PACKAGE;
 		else
 			return false;
 		return true;
@@ -554,18 +668,39 @@ namespace
 		}
 		if (Storage == EFFECT_CASCADE_PROPERTY_STORAGE::DISTRIBUTION &&
 			Status == EFFECT_SOURCE_COVERAGE_STATUS::DETERMINISTIC_CONVERSION &&
-			Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
-				RAW_DISTRIBUTION_TO_TYPED_SOURCE_RECIPE)
+			(Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				RAW_DISTRIBUTION_TO_TYPED_SOURCE_RECIPE ||
+			 Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				PINNED_SOURCE_RECORD_PHYSICAL_ABSENT ||
+			 Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED ||
+			 Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				SOURCE_EXACT_PHYSICAL_PACKAGE))
 		{
+			OutBlockerRequirement =
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::PROPERTY_BLOCKERS_REQUIRED;
 			return true;
 		}
 		if (Storage == EFFECT_CASCADE_PROPERTY_STORAGE::DISTRIBUTION &&
 			Status == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED &&
-			Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
-				OBJECT_REFERENCE_TARGET_OR_CLASS_DEFAULT_UNRESOLVED)
+			(Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				OBJECT_REFERENCE_TARGET_OR_CLASS_DEFAULT_UNRESOLVED ||
+			 Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED))
 		{
 			OutBlockerRequirement =
-				EFFECT_CASCADE_BLOCKER_REQUIREMENT::MODULE_BLOCKERS_REQUIRED;
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::PROPERTY_BLOCKERS_REQUIRED;
+			return true;
+		}
+		if (Storage == EFFECT_CASCADE_PROPERTY_STORAGE::LITERAL &&
+			Status == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED &&
+			(Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED ||
+			 Provenance == EFFECT_CASCADE_PROPERTY_PROVENANCE::
+				SOURCE_EXACT_PHYSICAL_PACKAGE))
+		{
+			OutBlockerRequirement =
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::PROPERTY_BLOCKERS_REQUIRED;
 			return true;
 		}
 		return false;
@@ -605,21 +740,32 @@ namespace
 		{
 			OutBlockerRequirement =
 				EFFECT_CASCADE_BLOCKER_REQUIREMENT::MODULE_BLOCKERS_REQUIRED;
-			return !Coverage.Blockers.empty();
+			return HasUnresolved && Is_CanonicalBlockerSet(
+				Coverage.Blockers, true);
 		}
-		OutBlockerRequirement =
-			EFFECT_CASCADE_BLOCKER_REQUIREMENT::BLOCKERS_PROHIBITED;
-		if (!Coverage.Blockers.empty() || HasUnresolved)
+		if (HasUnresolved)
 			return false;
 		if (Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::METADATA_ONLY)
-			return HasMetadata;
+		{
+			OutBlockerRequirement =
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::MODULE_BLOCKERS_REQUIRED;
+			return HasMetadata && Is_CanonicalBlockerSet(
+				Coverage.Blockers, true);
+		}
 		if (Coverage.eStatus ==
 			EFFECT_SOURCE_COVERAGE_STATUS::DETERMINISTIC_CONVERSION)
 		{
-			return !HasMetadata && HasConversion;
+			OutBlockerRequirement =
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::MODULE_BLOCKERS_REQUIRED;
+			return !HasMetadata && HasConversion && Is_CanonicalBlockerSet(
+				Coverage.Blockers, true);
 		}
 		if (Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::SOURCE_DECODED)
-			return !HasMetadata && !HasConversion;
+		{
+			OutBlockerRequirement =
+				EFFECT_CASCADE_BLOCKER_REQUIREMENT::BLOCKERS_PROHIBITED;
+			return !HasMetadata && !HasConversion && Coverage.Blockers.empty();
+		}
 		return false;
 	}
 
@@ -641,6 +787,36 @@ namespace
 		return Role == EFFECT_CASCADE_MODULE_ROLE::MODULE &&
 			Opcode != EFFECT_CASCADE_OPCODE::REQUIRED &&
 			Opcode != EFFECT_CASCADE_OPCODE::SPAWN && !bTypeData;
+	}
+
+	bool_t Is_SourceRendererIdentity(
+		const EFFECT_ELEMENT_KIND ElementKind,
+		const EFFECT_CASCADE_RENDERER_EVIDENCE& Renderer)
+	{
+		if (ElementKind == EFFECT_ELEMENT_KIND::PARTICLE)
+		{
+			return (Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE ||
+				Renderer.eType == EFFECT_RENDERER_TYPE::SPRITE_PARTICLE) &&
+				Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		}
+		if (ElementKind == EFFECT_ELEMENT_KIND::DECAL)
+		{
+			return Renderer.eType == EFFECT_RENDERER_TYPE::DECAL_PARTICLE &&
+				Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		}
+		if (ElementKind == EFFECT_ELEMENT_KIND::TRAIL)
+		{
+			return Renderer.eType == EFFECT_RENDERER_TYPE::CASCADE_RIBBON &&
+				Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		}
+		if (ElementKind == EFFECT_ELEMENT_KIND::LIGHT)
+		{
+			return Renderer.eType == EFFECT_RENDERER_TYPE::LIGHT_PARTICLE &&
+				Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		}
+		return ElementKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+			Renderer.eType == EFFECT_RENDERER_TYPE::SCREEN_POST &&
+			Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::SCREEN_SPACE_V1;
 	}
 
 	bool_t Build_EmitterIdentity(
@@ -739,6 +915,7 @@ namespace
 		const EFFECT_CASCADE_INSPECTION_IR& Inspection,
 		STABLE_HASH& Hash)
 	{
+		Hash.Add_String("lostark.effect.cascade-inspection-ir.v2");
 		const auto AddStrings = [&Hash](const std::vector<std::string>& Values)
 		{
 			Hash.Add_U64(static_cast<uint64_t>(Values.size()));
@@ -776,6 +953,8 @@ namespace
 				Hash.Add_String(Emitter.SelectedLOD.strEmitterNodeId);
 				Hash.Add_String(Emitter.SelectedLOD.strSelectedLodPath);
 				Hash.Add_String(Emitter.SelectedLOD.strSelectedLodNodeId);
+				Hash.Add_String(Emitter.SelectedLOD.strCanonicalLineageId);
+				Hash.Add_U64(Emitter.SelectedLOD.iStableReference);
 				Hash.Add_U32(static_cast<uint32_t>(
 					Emitter.SelectedLOD.eLevelProvenance));
 				Hash.Add_U32(static_cast<uint32_t>(
@@ -810,6 +989,7 @@ namespace
 						Hash.Add_U32(static_cast<uint32_t>(
 							Property.eBlockerRequirement));
 						Hash.Add_String(Property.strReceiptProvenanceToken);
+						AddStrings(Property.Blockers);
 					}
 					Hash.Add_U64(static_cast<uint64_t>(
 						Opcode.DistributionEvidenceIndices.size()));
@@ -824,9 +1004,23 @@ namespace
 					Hash.Add_String(Opcode.HandlerReceipt.strReceiptNormalizedClass);
 					Hash.Add_String(Opcode.HandlerReceipt.strExactSourceClass);
 					Hash.Add_String(Opcode.HandlerReceipt.strAliasId);
+					Hash.Add_U32(static_cast<uint32_t>(
+						Opcode.HandlerReceipt.eClassLineageStatus));
 					Hash.Add_String(Opcode.HandlerReceipt.strOpcodeSchemaId);
 					Hash.Add_Bool(
 						Opcode.HandlerReceipt.bExactClassLineagePreserved);
+					Hash.Add_Bool(Opcode.HandlerReceipt.bPayloadAccessAllowed);
+					Hash.Add_U64(static_cast<uint64_t>(
+						Opcode.HandlerReceipt.PropertyConsumption.size()));
+					for (const EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT& Receipt :
+						Opcode.HandlerReceipt.PropertyConsumption)
+					{
+						AddPropertyKey(Receipt.Property);
+						Hash.Add_U32(static_cast<uint32_t>(Receipt.eStorage));
+						Hash.Add_U32(static_cast<uint32_t>(Receipt.eResult));
+						Hash.Add_String(Receipt.strHandlerFieldId);
+						Hash.Add_Bool(Receipt.bRequired);
+					}
 					AddStrings(Opcode.HandlerReceipt.RequiredPropertyReferenceIds);
 					AddStrings(Opcode.HandlerReceipt.ConsumedPropertyReferenceIds);
 					AddStrings(Opcode.HandlerReceipt.Blockers);
@@ -869,6 +1063,9 @@ namespace
 		Hash.Add_U32(Inspection.Consumption.iConsumedPropertyCount);
 		Hash.Add_U32(Inspection.Consumption.iUnknownClassCount);
 		Hash.Add_U32(Inspection.Consumption.iUnconsumedRequiredPropertyCount);
+		Hash.Add_U32(Inspection.Consumption.iHandlerPropertyReceiptCount);
+		Hash.Add_U32(Inspection.Consumption.iRawPayloadReadCount);
+		Hash.Add_U32(Inspection.Consumption.iExecutableOpcodeCount);
 		Hash.Add_U32(Inspection.Consumption.iBlockerCount);
 		for (const uint32_t Count : Inspection.Consumption.RendererCounts)
 			Hash.Add_U32(Count);
@@ -876,12 +1073,373 @@ namespace
 		Hash.Add_Bool(Inspection.bExecutable);
 		Hash.Add_Bool(Inspection.bProductAdmission);
 	}
+
+	bool_t Same_PropertyKey(
+		const EFFECT_CASCADE_PROPERTY_KEY& Left,
+		const EFFECT_CASCADE_PROPERTY_KEY& Right)
+	{
+		return Left.strCanonicalPath == Right.strCanonicalPath &&
+			Left.strCanonicalReferenceId == Right.strCanonicalReferenceId &&
+			Left.iStableSemantic == Right.iStableSemantic &&
+			Left.iStableReference == Right.iStableReference;
+	}
+
+	bool_t Validate_InspectionStructure(
+		const EFFECT_CASCADE_INSPECTION_IR& Inspection)
+	{
+		if (Inspection.strEffectAssetId.empty() ||
+			!Is_InputIdentity(Inspection.strCanonicalDocumentIdentity) ||
+			Inspection.bExecutable || Inspection.bProductAdmission ||
+			!Is_CanonicalBlockerSet(Inspection.Blockers, true))
+		{
+			return false;
+		}
+		std::unordered_set<std::string> SystemIds;
+		std::unordered_set<std::string> EmitterIds;
+		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& System : Inspection.Systems)
+		{
+			STABLE_HASH SystemHash;
+			SystemHash.Add_String(System.strSourceSystemId);
+			if (System.strSourceSystemId.empty() ||
+				System.iStableSemantic != SystemHash.Value() ||
+				!SystemIds.insert(System.strSourceSystemId).second ||
+				System.Emitters.empty())
+			{
+				return false;
+			}
+			for (const EFFECT_CASCADE_INSPECTION_EMITTER& Emitter : System.Emitters)
+			{
+				const std::string ExpectedEmitterId =
+					Emitter.Identity.strSourceSystemId + "|" +
+					Emitter.Identity.strSourceOccurrenceId + "|" +
+					Emitter.Identity.strElementId;
+				STABLE_HASH EmitterHash;
+				EmitterHash.Add_String(ExpectedEmitterId);
+				if (Emitter.Identity.strSourceSystemId != System.strSourceSystemId ||
+					Emitter.Identity.strSourceOccurrenceId.empty() ||
+					Emitter.Identity.strElementId.empty() ||
+					Emitter.Identity.strCanonicalId != ExpectedEmitterId ||
+					Emitter.Identity.iStableReference != EmitterHash.Value() ||
+					!EmitterIds.insert(ExpectedEmitterId).second ||
+					!Is_SourceRendererIdentity(
+						Emitter.eElementKind, Emitter.Renderer) ||
+					Emitter.bSourceExecutionAdmission ||
+					!Is_CanonicalBlockerSet(Emitter.Blockers, true) ||
+					Emitter.OrderedOpcodes.empty())
+				{
+					return false;
+				}
+
+				const std::string ExpectedLodLineage =
+					Emitter.Identity.strSourceSystemId + "|" +
+					Emitter.SelectedLOD.strEmitterPath + "|" +
+					Emitter.SelectedLOD.strEmitterNodeId + "|" +
+					Emitter.SelectedLOD.strSelectedLodPath + "|" +
+					Emitter.SelectedLOD.strSelectedLodNodeId + "|" +
+					std::to_string(Emitter.SelectedLOD.iArrayIndex);
+				STABLE_HASH LodHash;
+				LodHash.Add_String(ExpectedLodLineage);
+				if (Emitter.SelectedLOD.ePolicy !=
+						EFFECT_CASCADE_LOD_SELECTION_POLICY::FIRST_LOD_ONLY ||
+					Emitter.SelectedLOD.eLevelProvenance !=
+						EFFECT_CASCADE_LOD_FIELD_PROVENANCE::
+							UNRESOLVED_CLASS_DEFAULT ||
+					Emitter.SelectedLOD.eEnabledProvenance !=
+						EFFECT_CASCADE_LOD_FIELD_PROVENANCE::
+							UNRESOLVED_CLASS_DEFAULT ||
+					!Is_SelectedLodPath(Emitter.SelectedLOD.strEmitterPath,
+						Emitter.SelectedLOD.strSelectedLodPath) ||
+					!Is_EmitterNodeLodLineage(System.strSourceSystemId,
+						Emitter.SelectedLOD.strEmitterPath,
+						Emitter.SelectedLOD.strEmitterNodeId,
+						Emitter.SelectedLOD.strSelectedLodNodeId) ||
+					Emitter.SelectedLOD.strCanonicalLineageId !=
+						ExpectedLodLineage ||
+					Emitter.SelectedLOD.iStableReference != LodHash.Value() ||
+					!Emitter.SelectedLOD.bIdentityPreserved ||
+					Emitter.SelectedLOD.bExecutionFidelityProven ||
+					!Is_CanonicalBlockerSet(
+						Emitter.SelectedLOD.Blockers, true))
+				{
+					return false;
+				}
+
+				if (Emitter.Geometry.has_value())
+				{
+					const EFFECT_CASCADE_GEOMETRY_EVIDENCE& Geometry =
+						*Emitter.Geometry;
+					const std::vector<std::string> ExpectedFlags = {
+						"SOURCE_STATUS:" + Geometry.strSourceStatus };
+					if (Emitter.Renderer.eType !=
+							EFFECT_RENDERER_TYPE::MESH_PARTICLE ||
+						!Is_SafeGeometryAssetId(Geometry.strAssetId) ||
+						!Is_Sha256(Geometry.strReceiptFileSha256) ||
+						!Is_Sha256(Geometry.strReceiptSelfSha256) ||
+						!std::isfinite(Geometry.fGeometryPreScale) ||
+						Geometry.fGeometryPreScale <= 0.f ||
+						Geometry.strScaleSemantics.empty() ||
+						Geometry.strSourceStatus.empty() ||
+						Geometry.EvidenceFlags != ExpectedFlags ||
+						Geometry.bPayloadIntegrityValid ||
+						Geometry.bRuntimeConsumerReady ||
+						!Is_CanonicalBlockerSet(
+							Geometry.ChannelConsumptionBlockers, true))
+					{
+						return false;
+					}
+				}
+				else if (Emitter.Renderer.eType ==
+					EFFECT_RENDERER_TYPE::MESH_PARTICLE)
+				{
+					return false;
+				}
+
+				std::unordered_set<uint32_t> Orders;
+				std::unordered_set<uint32_t> SourceReferenceIndices;
+				std::unordered_set<uint32_t> DistributionIndices;
+				for (size_t iOpcode = 0u;
+					iOpcode < Emitter.OrderedOpcodes.size(); ++iOpcode)
+				{
+					const EFFECT_CASCADE_INSPECTION_OPCODE& Opcode =
+						Emitter.OrderedOpcodes[iOpcode];
+					const CLASS_SCHEMA* pSchema = Find_ClassSchema(
+						Opcode.HandlerReceipt.strReceiptNormalizedClass);
+					EFFECT_CASCADE_MODULE_ROLE ParsedRole =
+						EFFECT_CASCADE_MODULE_ROLE::END;
+					if (nullptr == pSchema || pSchema->eOpcode != Opcode.eOpcode ||
+						pSchema->strOpcodeSchemaId !=
+							Opcode.HandlerReceipt.strOpcodeSchemaId ||
+						!Role_MatchesOpcode(Opcode.Reference.eRole, Opcode.eOpcode) ||
+						!Parse_ModuleRole(Opcode.Reference.strReceiptRole, ParsedRole) ||
+						ParsedRole != Opcode.Reference.eRole ||
+						!Is_SourceObjectId(Opcode.Reference.strSourceObjectId) ||
+						!Is_Sha256(Opcode.Reference.strSourceRecordSha256) ||
+						Opcode.Reference.iOrder != iOpcode ||
+						Opcode.Reference.iSourceReferenceIndex != iOpcode ||
+						!Orders.insert(Opcode.Reference.iOrder).second ||
+						!SourceReferenceIndices.insert(
+							Opcode.Reference.iSourceReferenceIndex).second ||
+						Opcode.HandlerReceipt.eResult !=
+							EFFECT_CASCADE_HANDLER_RESULT::
+								STRUCTURE_CONSUMED_EXECUTION_BLOCKED ||
+						Opcode.HandlerReceipt.bPayloadAccessAllowed ||
+						!Is_CanonicalBlockerSet(
+							Opcode.HandlerReceipt.Blockers, true))
+					{
+						return false;
+					}
+
+					const std::string ExpectedModuleId =
+						Emitter.Identity.strCanonicalId + "|" +
+						std::to_string(Opcode.Reference.iOrder) + "|" +
+						std::to_string(Opcode.Reference.iSourceReferenceIndex) + "|" +
+						std::to_string(static_cast<uint32_t>(Opcode.Reference.eRole)) +
+						"|" + Opcode.Reference.strReceiptRole + "|" +
+						Opcode.Reference.strSourceObjectId + "|" +
+						Opcode.Reference.strSourceRecordSha256;
+					STABLE_HASH ModuleHash;
+					ModuleHash.Add_String(ExpectedModuleId);
+					if (Opcode.Reference.strCanonicalId != ExpectedModuleId ||
+						Opcode.Reference.iStableReference != ModuleHash.Value() ||
+						Opcode.Reference.strModuleStableId !=
+							Opcode.Reference.strSourceObjectId + "@ref:" +
+							std::to_string(Opcode.Reference.iSourceReferenceIndex))
+					{
+						return false;
+					}
+
+					const bool_t bPendingClass =
+						Opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+								RECEIPT_NORMALIZED_ONLY &&
+						Opcode.HandlerReceipt.strExactSourceClass.empty() &&
+						Opcode.HandlerReceipt.strAliasId.empty() &&
+						!Opcode.HandlerReceipt.bExactClassLineagePreserved;
+					const bool_t bExactClass =
+						Opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS &&
+						Is_CanonicalClassKey(
+							Opcode.HandlerReceipt.strExactSourceClass) &&
+						Opcode.HandlerReceipt.strExactSourceClass ==
+							Opcode.HandlerReceipt.strReceiptNormalizedClass &&
+						Opcode.HandlerReceipt.strAliasId.empty() &&
+						Opcode.HandlerReceipt.bExactClassLineagePreserved;
+					const bool_t bAliasRequired =
+						Opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+								ALIAS_REQUIRED_EXECUTION_UNAPPROVED &&
+						Is_CanonicalClassKey(
+							Opcode.HandlerReceipt.strExactSourceClass) &&
+						Opcode.HandlerReceipt.strExactSourceClass !=
+							Opcode.HandlerReceipt.strReceiptNormalizedClass &&
+						Opcode.HandlerReceipt.strAliasId.empty() &&
+						Opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						std::find(Opcode.HandlerReceipt.Blockers.begin(),
+							Opcode.HandlerReceipt.Blockers.end(),
+							"SOURCE_CLASS_ALIAS_REQUIRED") !=
+								Opcode.HandlerReceipt.Blockers.end();
+					const bool_t bExplicitAliasUnapproved =
+						Opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+								EXPLICIT_ALIAS_EXECUTION_UNAPPROVED &&
+						Is_CanonicalClassKey(
+							Opcode.HandlerReceipt.strExactSourceClass) &&
+						Opcode.HandlerReceipt.strExactSourceClass !=
+							Opcode.HandlerReceipt.strReceiptNormalizedClass &&
+						Is_CanonicalAliasId(Opcode.HandlerReceipt.strAliasId) &&
+						Opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						std::find(Opcode.HandlerReceipt.Blockers.begin(),
+							Opcode.HandlerReceipt.Blockers.end(),
+							"SOURCE_CLASS_ALIAS_UNAPPROVED") !=
+								Opcode.HandlerReceipt.Blockers.end();
+					if (!bPendingClass && !bExactClass && !bAliasRequired &&
+						!bExplicitAliasUnapproved)
+						return false;
+
+					if (Opcode.Properties.size() !=
+							Opcode.HandlerReceipt.PropertyConsumption.size() ||
+						Opcode.Properties.size() !=
+							Opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size())
+					{
+						return false;
+					}
+					std::vector<std::string> ExpectedRequired;
+					std::unordered_set<std::string> PropertyPaths;
+					std::unordered_map<std::string, std::string> ReferenceByPath;
+					std::unordered_map<std::string,
+						const EFFECT_CASCADE_PROPERTY_EVIDENCE*>
+						DistributionPropertyByReference;
+					for (size_t iProperty = 0u;
+						iProperty < Opcode.Properties.size(); ++iProperty)
+					{
+						const EFFECT_CASCADE_PROPERTY_EVIDENCE& Property =
+							Opcode.Properties[iProperty];
+						const PROPERTY_RULE* pRule = Find_PropertyRule(
+							*pSchema, Property.Property.strCanonicalPath);
+						EFFECT_CASCADE_PROPERTY_KEY ExpectedKey;
+						EFFECT_CASCADE_BLOCKER_REQUIREMENT ExpectedRequirement =
+							EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
+						EFFECT_CASCADE_PROPERTY_PROVENANCE ParsedProvenance =
+							EFFECT_CASCADE_PROPERTY_PROVENANCE::END;
+						if (nullptr == pRule || pRule->eStorage != Property.eStorage ||
+							!PropertyPaths.insert(
+								Property.Property.strCanonicalPath).second ||
+							!Validate_PropertyEvidenceMatrix(Property.eStorage,
+								Property.eCoverageStatus, Property.eProvenance,
+								ExpectedRequirement) ||
+							!Parse_Provenance(Property.strReceiptProvenanceToken,
+								ParsedProvenance) ||
+							ParsedProvenance != Property.eProvenance ||
+							ExpectedRequirement != Property.eBlockerRequirement ||
+							!Is_CanonicalBlockerSet(Property.Blockers,
+								ExpectedRequirement ==
+									EFFECT_CASCADE_BLOCKER_REQUIREMENT::
+										PROPERTY_BLOCKERS_REQUIRED) ||
+							(ExpectedRequirement ==
+								EFFECT_CASCADE_BLOCKER_REQUIREMENT::
+									BLOCKERS_PROHIBITED &&
+							 !Property.Blockers.empty()) ||
+							!Build_PropertyKey(Emitter.Identity, Opcode.Reference,
+								Property.eStorage,
+								Property.Property.strCanonicalPath, ExpectedKey) ||
+							!Same_PropertyKey(Property.Property, ExpectedKey))
+						{
+							return false;
+						}
+						const EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT& Receipt =
+							Opcode.HandlerReceipt.PropertyConsumption[iProperty];
+						const std::string ExpectedFieldId =
+							std::string(pSchema->strOpcodeSchemaId) + ":" +
+							std::string(pRule->strCanonicalPath);
+						if (!Same_PropertyKey(Receipt.Property, ExpectedKey) ||
+							Receipt.eStorage != Property.eStorage ||
+							Receipt.eResult != EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+								SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED ||
+							Receipt.strHandlerFieldId != ExpectedFieldId ||
+							Receipt.bRequired != pRule->bRequired ||
+							Opcode.HandlerReceipt.ConsumedPropertyReferenceIds[iProperty] !=
+								ExpectedKey.strCanonicalReferenceId)
+						{
+							return false;
+						}
+						ReferenceByPath.emplace(
+							ExpectedKey.strCanonicalPath,
+							ExpectedKey.strCanonicalReferenceId);
+						if (Property.eStorage ==
+							EFFECT_CASCADE_PROPERTY_STORAGE::DISTRIBUTION)
+						{
+							DistributionPropertyByReference.emplace(
+								ExpectedKey.strCanonicalReferenceId, &Property);
+						}
+					}
+					for (const PROPERTY_RULE& Rule : pSchema->Rules)
+					{
+						if (!Rule.bRequired)
+							continue;
+						const auto Required = ReferenceByPath.find(
+							std::string(Rule.strCanonicalPath));
+						if (Required == ReferenceByPath.end())
+							return false;
+						ExpectedRequired.push_back(Required->second);
+					}
+					if (ExpectedRequired !=
+						Opcode.HandlerReceipt.RequiredPropertyReferenceIds)
+					{
+						return false;
+					}
+					if (Opcode.DistributionEvidenceIndices.size() !=
+						DistributionPropertyByReference.size())
+					{
+						return false;
+					}
+					for (const uint32_t DistributionIndex :
+						Opcode.DistributionEvidenceIndices)
+					{
+						if (DistributionIndex >= Emitter.Distributions.size() ||
+							!DistributionIndices.insert(DistributionIndex).second)
+						{
+							return false;
+						}
+						const EFFECT_CASCADE_DISTRIBUTION_EVIDENCE& Distribution =
+							Emitter.Distributions[DistributionIndex];
+						const auto Property = DistributionPropertyByReference.find(
+							Distribution.Property.strCanonicalReferenceId);
+						std::vector<std::string> ExpectedBlockers;
+						if (Property != DistributionPropertyByReference.end())
+						{
+							ExpectedBlockers = Property->second->Blockers;
+							Append_Blocker(ExpectedBlockers,
+								"SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING");
+						}
+						if (Distribution.bRawPayloadRead ||
+							Distribution.bExecutionAllowed ||
+							Distribution.Blockers != ExpectedBlockers ||
+							!Is_CanonicalBlockerSet(Distribution.Blockers, true) ||
+							Property == DistributionPropertyByReference.end() ||
+							!Same_PropertyKey(Distribution.Property,
+								Property->second->Property) ||
+							Distribution.eCoverageStatus !=
+								Property->second->eCoverageStatus ||
+							Distribution.eProvenance !=
+								Property->second->eProvenance)
+						{
+							return false;
+						}
+					}
+				}
+				if (DistributionIndices.size() != Emitter.Distributions.size())
+					return false;
+			}
+		}
+		return true;
+	}
 }
 
 std::string Client::CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(
 	const EFFECT_DOCUMENT_DESC& Document)
 {
 	STABLE_HASH Hash;
+	Hash.Add_String("lostark.effect.source-contract.canonical-document.v1");
 	Hash.Add_String(CEffectDocumentCodec::Serialize(Document));
 	return Hash.Finish();
 }
@@ -918,7 +1476,6 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 	Append_Blocker(Staged->Blockers, "PRODUCT_ADMISSION_DISABLED");
 	Append_Blocker(Staged->Blockers, "RAW_OPCODE_EXECUTOR_UNCHANGED");
 	Append_Blocker(Staged->Blockers, "SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING");
-	Append_Blocker(Staged->Blockers, "SOURCE_EXACT_CLASS_LINEAGE_ADAPTER_PENDING");
 	Append_Blocker(Staged->Blockers, "SIX_RENDERER_CONSUMERS_PENDING");
 	Append_Blocker(Staged->Blockers, "GEOMETRY_SCALE_CONSUMER_PENDING");
 	Append_Blocker(Staged->Blockers, "EFFECT_TOOL_PREPARED_REVISION_PENDING");
@@ -961,9 +1518,8 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 		Emitter.eElementKind = Element.eKind;
 		Emitter.Renderer.eType = Element.Renderer.eType;
 		Emitter.Renderer.eSourceSpace = Element.Renderer.eSourceSpace;
-		if (Emitter.eElementKind >= EFFECT_ELEMENT_KIND::END ||
-			Emitter.Renderer.eType >= EFFECT_RENDERER_TYPE::END ||
-			Emitter.Renderer.eSourceSpace >= EFFECT_SOURCE_SPACE::END)
+		if (!Is_SourceRendererIdentity(
+			Emitter.eElementKind, Emitter.Renderer))
 		{
 			return Fail("Cascade inspection rejected an invalid typed renderer identity.");
 		}
@@ -1006,6 +1562,18 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			EFFECT_CASCADE_LOD_FIELD_PROVENANCE::UNRESOLVED_CLASS_DEFAULT;
 		Emitter.SelectedLOD.eEnabledProvenance =
 			EFFECT_CASCADE_LOD_FIELD_PROVENANCE::UNRESOLVED_CLASS_DEFAULT;
+		Emitter.SelectedLOD.strCanonicalLineageId =
+			Emitter.Identity.strSourceSystemId + "|" +
+			Emitter.SelectedLOD.strEmitterPath + "|" +
+			Emitter.SelectedLOD.strEmitterNodeId + "|" +
+			Emitter.SelectedLOD.strSelectedLodPath + "|" +
+			Emitter.SelectedLOD.strSelectedLodNodeId + "|" +
+			std::to_string(Emitter.SelectedLOD.iArrayIndex);
+		STABLE_HASH LodLineageHash;
+		LodLineageHash.Add_String(Emitter.SelectedLOD.strCanonicalLineageId);
+		Emitter.SelectedLOD.iStableReference = LodLineageHash.Value();
+		if (0u == Emitter.SelectedLOD.iStableReference)
+			return Fail("Cascade inspection rejected an invalid selected-LOD lineage identity.");
 		Emitter.SelectedLOD.bIdentityPreserved = true;
 		Emitter.SelectedLOD.bExecutionFidelityProven = false;
 		Append_Blocker(Emitter.SelectedLOD.Blockers,
@@ -1013,10 +1581,10 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 
 		Emitter.bSourceExecutionAdmission =
 			Recipe.CompiledExecutionAdmission.bAllowed;
-		if (!Emitter.bSourceExecutionAdmission &&
+		if (Emitter.bSourceExecutionAdmission ||
 			Recipe.CompiledExecutionAdmission.Blockers.empty())
 		{
-			return Fail("Cascade inspection rejected source execution-admission blocker loss.");
+			return Fail("Cascade inspection rejected execution admission before typed class, payload, and handler closure.");
 		}
 		for (const std::string& Blocker :
 			Recipe.CompiledExecutionAdmission.Blockers)
@@ -1024,6 +1592,8 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			Append_Blocker(Emitter.Blockers, Blocker);
 		}
 		Append_Blocker(Emitter.Blockers, "COMPILER_INSPECTION_ONLY");
+		Append_Blocker(Emitter.Blockers,
+			"SOURCE_EXECUTION_ADMISSION_REJECTED_BEFORE_PAYLOAD");
 
 		if (Recipe.GeometryBinding.bEnabled)
 		{
@@ -1134,8 +1704,11 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			{
 				return Fail("Cascade inspection rejected a stable module reference collision.");
 			}
-			Opcode.HandlerReceipt.strReceiptNormalizedClass =
-				Coverage.strNormalizedClass;
+			if (!Validate_ClassLineage(
+				Coverage, *pSchema, Opcode.HandlerReceipt))
+			{
+				return Fail("Cascade inspection rejected an unbound exact-class or alias lineage.");
+			}
 			Opcode.HandlerReceipt.eModuleCoverageStatus = Coverage.eStatus;
 			Opcode.HandlerReceipt.eAggregateBlockerRequirement =
 				AggregateBlockerRequirement;
@@ -1143,6 +1716,7 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 				pSchema->strOpcodeSchemaId;
 			Opcode.HandlerReceipt.eResult =
 				EFFECT_CASCADE_HANDLER_RESULT::STRUCTURE_CONSUMED_EXECUTION_BLOCKED;
+			Opcode.HandlerReceipt.bPayloadAccessAllowed = false;
 			for (const std::string& Blocker : Coverage.Blockers)
 				Append_Blocker(Opcode.HandlerReceipt.Blockers, Blocker);
 			if (Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED)
@@ -1156,8 +1730,26 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			}
 			Append_Blocker(Opcode.HandlerReceipt.Blockers,
 				"SOURCE_VALUE_PAYLOAD_NOT_MATERIALIZED");
-			Append_Blocker(Opcode.HandlerReceipt.Blockers,
-				"SOURCE_EXACT_CLASS_LINEAGE_ADAPTER_PENDING");
+			if (Opcode.HandlerReceipt.eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::RECEIPT_NORMALIZED_ONLY)
+			{
+				Append_Blocker(Opcode.HandlerReceipt.Blockers,
+					"SOURCE_EXACT_CLASS_LINEAGE_ADAPTER_PENDING");
+			}
+			else if (Opcode.HandlerReceipt.eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					ALIAS_REQUIRED_EXECUTION_UNAPPROVED)
+			{
+				Append_Blocker(Opcode.HandlerReceipt.Blockers,
+					"SOURCE_CLASS_ALIAS_REQUIRED");
+			}
+			else if (Opcode.HandlerReceipt.eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					EXPLICIT_ALIAS_EXECUTION_UNAPPROVED)
+			{
+				Append_Blocker(Opcode.HandlerReceipt.Blockers,
+					"SOURCE_CLASS_ALIAS_UNAPPROVED");
+			}
 
 			std::unordered_set<std::string> PropertyPaths;
 			std::unordered_set<std::string> PropertyReferenceIds;
@@ -1190,13 +1782,24 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 					!Validate_PropertyEvidenceMatrix(Storage,
 						Property.eCoverageStatus, Property.eProvenance,
 						Property.eBlockerRequirement) ||
+					!Is_CanonicalBlockerSet(SourceProperty.Blockers,
+						Property.eBlockerRequirement ==
+							EFFECT_CASCADE_BLOCKER_REQUIREMENT::
+								PROPERTY_BLOCKERS_REQUIRED) ||
+					(Property.eBlockerRequirement ==
+						EFFECT_CASCADE_BLOCKER_REQUIREMENT::BLOCKERS_PROHIBITED &&
+					 !SourceProperty.Blockers.empty()) ||
 					!Build_PropertyKey(Emitter.Identity, Opcode.Reference, Storage,
 						SourceProperty.strPropertyPath, Property.Property) ||
 					!PropertyReferenceIds.insert(
 						Property.Property.strCanonicalReferenceId).second)
 				{
-					return Fail("Cascade inspection rejected property provenance, path, or reference identity.");
+					return Fail("Cascade inspection rejected property provenance, path, or reference identity: " +
+						SourceProperty.strPropertyPath + " [" +
+						SourceProperty.strStorage + ", " +
+						SourceProperty.strProvenance + "].");
 				}
+				Property.Blockers = SourceProperty.Blockers;
 				const auto [PropertyHash, bNewPropertyHash] =
 					StableReferences.emplace(Property.Property.iStableReference,
 						Property.Property.strCanonicalReferenceId);
@@ -1211,12 +1814,25 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 					Property.Property.strCanonicalReferenceId);
 				Opcode.HandlerReceipt.ConsumedPropertyReferenceIds.push_back(
 					Property.Property.strCanonicalReferenceId);
+				EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT Consumption;
+				Consumption.Property = Property.Property;
+				Consumption.eStorage = Property.eStorage;
+				Consumption.eResult =
+					EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+						SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED;
+				Consumption.strHandlerFieldId =
+					std::string(pSchema->strOpcodeSchemaId) + ":" +
+					std::string(pRule->strCanonicalPath);
+				Consumption.bRequired = pRule->bRequired;
+				Opcode.HandlerReceipt.PropertyConsumption.push_back(
+					std::move(Consumption));
 				if (Storage == EFFECT_CASCADE_PROPERTY_STORAGE::DISTRIBUTION)
 				{
 					EFFECT_CASCADE_DISTRIBUTION_EVIDENCE Distribution;
 					Distribution.Property = Property.Property;
 					Distribution.eCoverageStatus = Property.eCoverageStatus;
 					Distribution.eProvenance = Property.eProvenance;
+					Distribution.Blockers = Property.Blockers;
 					Append_Blocker(Distribution.Blockers,
 						"SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING");
 					Opcode.DistributionEvidenceIndices.push_back(
@@ -1247,6 +1863,9 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			Staged->Consumption.iConsumedPropertyCount +=
 				static_cast<uint32_t>(
 					Opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size());
+			Staged->Consumption.iHandlerPropertyReceiptCount +=
+				static_cast<uint32_t>(
+					Opcode.HandlerReceipt.PropertyConsumption.size());
 			for (const std::string& Blocker : Opcode.HandlerReceipt.Blockers)
 				Append_Blocker(Emitter.Blockers, Blocker);
 			Emitter.OrderedOpcodes.push_back(std::move(Opcode));
@@ -1277,12 +1896,18 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 		Staged->Consumption.iUnknownClassCount != 0u ||
 		Staged->Consumption.iUnconsumedRequiredPropertyCount != 0u ||
 		Staged->Consumption.iConsumedPropertyCount <
-			Staged->Consumption.iRequiredPropertyCount)
+			Staged->Consumption.iRequiredPropertyCount ||
+		Staged->Consumption.iHandlerPropertyReceiptCount !=
+			Staged->Consumption.iConsumedPropertyCount ||
+		Staged->Consumption.iRawPayloadReadCount != 0u ||
+		Staged->Consumption.iExecutableOpcodeCount != 0u)
 	{
 		return Fail("Cascade inspection receipt is structurally incomplete.");
 	}
 	Staged->Consumption.iBlockerCount =
 		static_cast<uint32_t>(Staged->Blockers.size());
+	if (!Validate_InspectionStructure(*Staged))
+		return Fail("Cascade inspection internal typed receipt validation failed.");
 	STABLE_HASH InspectionHash;
 	Hash_Inspection(*Staged, InspectionHash);
 	Staged->strInspectionHash = InspectionHash.Finish();
@@ -1304,8 +1929,9 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 			EFFECT_CASCADE_INSPECTION_COMPILER_REVISION ||
 		Inspection.strCanonicalDocumentIdentity !=
 			ExpectedCanonicalDocumentIdentity ||
-		Inspection.Systems.empty() || Inspection.bExecutable ||
-		Inspection.bProductAdmission)
+		Inspection.Systems.empty() || Inspection.Blockers.empty() ||
+		Inspection.bExecutable || Inspection.bProductAdmission ||
+		!Validate_InspectionStructure(Inspection))
 	{
 		return false;
 	}
@@ -1331,6 +1957,25 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 					Opcode.HandlerReceipt.RequiredPropertyReferenceIds.size());
 				Recounted.iConsumedPropertyCount += static_cast<uint32_t>(
 					Opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size());
+				Recounted.iHandlerPropertyReceiptCount +=
+					static_cast<uint32_t>(
+						Opcode.HandlerReceipt.PropertyConsumption.size());
+				if (Opcode.HandlerReceipt.bPayloadAccessAllowed)
+					++Recounted.iRawPayloadReadCount;
+				if (Opcode.HandlerReceipt.eResult !=
+					EFFECT_CASCADE_HANDLER_RESULT::
+						STRUCTURE_CONSUMED_EXECUTION_BLOCKED)
+				{
+					++Recounted.iExecutableOpcodeCount;
+				}
+			}
+			for (const EFFECT_CASCADE_DISTRIBUTION_EVIDENCE& Distribution :
+				Emitter.Distributions)
+			{
+				if (Distribution.bRawPayloadRead)
+					++Recounted.iRawPayloadReadCount;
+				if (Distribution.bExecutionAllowed)
+					++Recounted.iExecutableOpcodeCount;
 			}
 		}
 	}
@@ -1346,10 +1991,18 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 			Inspection.Consumption.iRequiredPropertyCount ||
 		Recounted.iConsumedPropertyCount !=
 			Inspection.Consumption.iConsumedPropertyCount ||
+		Recounted.iHandlerPropertyReceiptCount !=
+			Inspection.Consumption.iHandlerPropertyReceiptCount ||
+		Recounted.iRawPayloadReadCount !=
+			Inspection.Consumption.iRawPayloadReadCount ||
+		Recounted.iExecutableOpcodeCount !=
+			Inspection.Consumption.iExecutableOpcodeCount ||
 		Recounted.iBlockerCount != Inspection.Consumption.iBlockerCount ||
 		Recounted.RendererCounts != Inspection.Consumption.RendererCounts ||
 		Inspection.Consumption.iUnknownClassCount != 0u ||
-		Inspection.Consumption.iUnconsumedRequiredPropertyCount != 0u)
+		Inspection.Consumption.iUnconsumedRequiredPropertyCount != 0u ||
+		Inspection.Consumption.iRawPayloadReadCount != 0u ||
+		Inspection.Consumption.iExecutableOpcodeCount != 0u)
 	{
 		return false;
 	}
@@ -1376,8 +2029,8 @@ Client::CEffectCascadeCompiler::Classify_ReceiptClass(
 		"particlemodulecollision",
 		"particlemodulesizemultiplyvelocity",
 		"particlemodulesubuvmovie",
-		"particlemodulesoundparameter",
-		"particlemodulevectorconstant"
+		"distributionfloatsoundparameter",
+		"distributionvectorconstant"
 	};
 	if (std::find(KnownLegacyGaps.begin(), KnownLegacyGaps.end(),
 		ReceiptClassKey) != KnownLegacyGaps.end())
