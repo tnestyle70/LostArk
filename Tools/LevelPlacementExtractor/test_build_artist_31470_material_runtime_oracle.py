@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from build_artist_31470_material_runtime_oracle import (
     DEFAULT_HLSL,
@@ -15,11 +16,13 @@ from build_artist_31470_material_runtime_oracle import (
     DEFAULT_RENDER_RECEIPT,
     DEFAULT_SHADER_RECEIPT,
     DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
+    ORACLE_INPUTS,
     build_material_feasibility_matrices,
     build_receipt,
     build_recipe_numeric_samples,
     build_recipe_operands,
     canonical_sha256,
+    evaluate_cpu,
     feature_names,
     read_json,
     seal_receipt,
@@ -28,6 +31,7 @@ from build_artist_31470_material_runtime_oracle import (
     validate_runtime_receipt_source_bindings,
     validate_runtime_receipt_tracked_sources,
 )
+import build_artist_31470_material_source_value_acquisition as acquisition
 from verify_artist_31470_material_runtime_oracle_hlsl import (
     DEFAULT_D3DCOMPILER,
     run_hlsl_oracle,
@@ -262,7 +266,8 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
             occurrence.pop("bindingSha256")
             occurrence["bindingSha256"] = canonical_sha256(occurrence)
         seal_receipt(mutated)
-        validate_runtime_receipt(mutated)
+        with self.assertRaisesRegex(ValueError, "HLSL replay binding"):
+            validate_runtime_receipt(mutated)
         with self.assertRaisesRegex(ValueError, "typed input is not source-bound"):
             validate_runtime_receipt_source_bindings(
                 mutated,
@@ -421,6 +426,341 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                     run_hlsl_oracle(
                         self.receipt, mutated_hlsl, DEFAULT_D3DCOMPILER
                     )
+
+    def test_evaluator_and_hlsl_coordinated_reseals_are_rejected(self) -> None:
+        evaluator_mutations = {
+            "source-exact": lambda contract: contract.update(
+                sourceExact=True, fidelity="SOURCE_EXACT"
+            ),
+            "empty-operation-order": lambda contract: contract.update(
+                operationOrder=[]
+            ),
+            "reversed-operation-order": lambda contract: contract.update(
+                operationOrder=list(reversed(contract["operationOrder"]))
+            ),
+            "bool-tolerance": lambda contract: contract.update(
+                numericTolerance=True
+            ),
+            "string-nan-tolerance": lambda contract: contract.update(
+                numericTolerance="NaN"
+            ),
+            "bool-input": lambda contract: contract["inputSamples"][0].update(
+                time=True
+            ),
+        }
+        for label, mutate in evaluator_mutations.items():
+            with self.subTest(evaluator=label):
+                mutated = copy.deepcopy(self.receipt)
+                mutate(mutated["evaluatorContract"])
+                seal_receipt(mutated)
+                with self.assertRaisesRegex(ValueError, "evaluator contract"):
+                    validate_runtime_receipt(mutated)
+
+        hlsl_mutations = {
+            "zero-samples": lambda hlsl: hlsl.update(sampleCount=0),
+            "oversized-error": lambda hlsl: hlsl.update(maxAbsoluteError=999.0),
+            "zero-compiler": lambda hlsl: hlsl["compiler"].update(
+                rawSha256="0" * 64
+            ),
+            "zero-dxbc": lambda hlsl: hlsl.update(compiledDxbcSha256="0" * 64),
+            "zero-input": lambda hlsl: hlsl.update(inputBytesSha256="0" * 64),
+            "zero-output": lambda hlsl: hlsl.update(
+                outputFloat32BytesSha256="0" * 64
+            ),
+            "zero-hlsl-source": lambda hlsl: hlsl.update(
+                hlslTrackedTextSha256="0" * 64
+            ),
+            "zero-replay": lambda hlsl: hlsl.update(
+                replayBindingSha256="0" * 64
+            ),
+        }
+        for label, mutate in hlsl_mutations.items():
+            with self.subTest(hlsl=label):
+                mutated = copy.deepcopy(self.receipt)
+                mutate(mutated["hlslVerification"])
+                seal_receipt(mutated)
+                with self.assertRaisesRegex(ValueError, "Material HLSL"):
+                    validate_runtime_receipt(mutated)
+
+    def test_cpu_numeric_lanes_reject_bool_nonfinite_and_f32_overflow(self) -> None:
+        direct_mutations = {
+            "bool-time": lambda sample: sample.update(time=True),
+            "positive-infinity": lambda sample: sample["texture0"].__setitem__(
+                0, float("inf")
+            ),
+            "float32-overflow": lambda sample: sample["texture0"].__setitem__(
+                0, 3.5e38
+            ),
+        }
+        for label, mutate in direct_mutations.items():
+            with self.subTest(direct=label):
+                sample = copy.deepcopy(ORACLE_INPUTS[0])
+                mutate(sample)
+                with self.assertRaises(ValueError):
+                    evaluate_cpu(1, sample)
+
+        family_mutated = copy.deepcopy(self.receipt)
+        family = family_mutated["familyEvaluators"][0]
+        family["sampleRows"][2]["expectedFloat4"][3] = False
+        family.pop("evaluatorSha256")
+        family["evaluatorSha256"] = canonical_sha256(family)
+        seal_receipt(family_mutated)
+        with self.assertRaisesRegex(ValueError, "exact JSON number"):
+            validate_runtime_receipt(family_mutated)
+
+        recipe_mutated = copy.deepcopy(self.receipt)
+        recipe = recipe_mutated["materialRecipeBindings"][0]
+        recipe["numericBindingSamples"][0]["expectedFloat4"][3] = False
+        recipe.pop("bindingSha256")
+        recipe["bindingSha256"] = canonical_sha256(recipe)
+        seal_receipt(recipe_mutated)
+        with self.assertRaisesRegex(ValueError, "exact JSON number"):
+            validate_runtime_receipt(recipe_mutated)
+
+    def test_acquisition_promotion_reseal_is_rejected_at_every_runtime_boundary(
+        self,
+    ) -> None:
+        mutated_acquisition = copy.deepcopy(self.source_value_acquisition)
+        row = next(
+            row
+            for row in mutated_acquisition["matrices"]["strictSamplerRows"]
+            if row["matrixRowId"]
+            == "material-feasibility-sampler-316a56b9a4bd256c"
+        )
+        row["fullDescriptorSourceExact"] = True
+        row["sourceValueAcquired"] = True
+        row["sourceValueDecision"] = "SOURCE_EXACT_FULL_DESCRIPTOR"
+        row["strictReauditDecision"] = "PASS"
+        row["executionReady"] = True
+        mutated_acquisition["summary"]["strictSamplerSourceValueAcquiredCount"] = 1
+        mutated_acquisition["summary"]["strictExecutionReadyCount"] = 1
+        mutated_acquisition["summary"]["strictSamplerRowSetSha256"] = (
+            acquisition.canonical_sha256(
+                mutated_acquisition["matrices"]["strictSamplerRows"]
+            )
+        )
+        mutated_acquisition.pop("receiptSha256")
+        mutated_acquisition["receiptSha256"] = acquisition.canonical_sha256(
+            mutated_acquisition
+        )
+
+        with self.assertRaisesRegex(ValueError, "sampler approved semantic"):
+            validate_runtime_receipt_source_bindings(
+                self.receipt,
+                self.material,
+                self.render,
+                self.shader,
+                mutated_acquisition,
+            )
+
+        with tempfile.TemporaryDirectory() as root:
+            acquisition_path = Path(root) / "promoted-acquisition.json"
+            acquisition_path.write_text(
+                json.dumps(
+                    mutated_acquisition,
+                    ensure_ascii=False,
+                    indent=2,
+                    allow_nan=False,
+                )
+                + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            downstream = copy.deepcopy(self.receipt)
+            downstream["sourceEvidence"][
+                "sourceValueAcquisitionReceiptSha256"
+            ] = mutated_acquisition["receiptSha256"]
+            downstream["sourceEvidence"][
+                "sourceValueAcquisitionTrackedTextSha256"
+            ] = tracked_text_sha256(acquisition_path)
+            seal_receipt(downstream)
+            with self.assertRaisesRegex(ValueError, "sampler approved semantic"):
+                validate_runtime_receipt_tracked_sources(
+                    downstream,
+                    DEFAULT_MATERIAL_CONTRACT,
+                    DEFAULT_RENDER_RECEIPT,
+                    DEFAULT_SHADER_RECEIPT,
+                    acquisition_path,
+                    DEFAULT_HLSL,
+                )
+
+    def test_static_semantic_forges_are_rejected_at_runtime_boundaries(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "override23-value",
+                "material-feasibility-static-104ba0eb7fef8369",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    value=False
+                ),
+                "MIC value decoded/raw semantics",
+            ),
+            (
+                "nonoverride43-override",
+                "material-feasibility-static-25e206c498b44f77",
+                lambda row: row["micNativeSelection"]["entry"].update(
+                    bOverride=True
+                ),
+                "MIC bOverride decoded/raw semantics",
+            ),
+            (
+                "unmatched28-parent-default",
+                "material-feasibility-static-1b69b57952caaa03",
+                lambda row: row["parentExpression"][
+                    "defaultValueProperty"
+                ].update(value=False),
+                "parent default decoded/raw semantics",
+            ),
+            (
+                "unmatched28-forged-exact-count",
+                "material-feasibility-static-1b69b57952caaa03",
+                lambda row: row["micNativeSelection"].update(
+                    exactNameAndGuidMatchCount=1
+                ),
+                "MIC entry owner/offset",
+            ),
+        )
+        for label, row_id, mutate, expected_error in cases:
+            with self.subTest(label=label):
+                mutated_acquisition = copy.deepcopy(
+                    self.source_value_acquisition
+                )
+                row = next(
+                    row
+                    for row in mutated_acquisition["matrices"][
+                        "staticPermutationRows"
+                    ]
+                    if row["matrixRowId"] == row_id
+                )
+                mutate(row)
+                mutated_static_sha = acquisition.canonical_sha256(
+                    mutated_acquisition["matrices"]["staticPermutationRows"]
+                )
+                mutated_acquisition["summary"]["staticRowSetSha256"] = (
+                    mutated_static_sha
+                )
+                mutated_acquisition.pop("receiptSha256")
+                mutated_acquisition["receiptSha256"] = (
+                    acquisition.canonical_sha256(mutated_acquisition)
+                )
+                with mock.patch.object(
+                    acquisition,
+                    "APPROVED_STATIC_ROW_SET_SHA256",
+                    mutated_static_sha,
+                ):
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        build_receipt(
+                            copy.deepcopy(self.material),
+                            copy.deepcopy(self.render),
+                            copy.deepcopy(self.shader),
+                            copy.deepcopy(mutated_acquisition),
+                            DEFAULT_MATERIAL_CONTRACT,
+                            DEFAULT_RENDER_RECEIPT,
+                            DEFAULT_SHADER_RECEIPT,
+                            DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
+                            DEFAULT_HLSL,
+                            copy.deepcopy(
+                                self.receipt[
+                                    "sourceRevisionShaderCacheAcquisition"
+                                ]
+                            ),
+                            copy.deepcopy(self.receipt["hlslVerification"]),
+                            copy.deepcopy(
+                                self.receipt["warpStateProviderVerification"]
+                            ),
+                        )
+                    with self.assertRaisesRegex(ValueError, expected_error):
+                        validate_runtime_receipt_source_bindings(
+                            self.receipt,
+                            self.material,
+                            self.render,
+                            self.shader,
+                            mutated_acquisition,
+                        )
+
+                    with tempfile.TemporaryDirectory() as root:
+                        acquisition_path = (
+                            Path(root) / f"forged-static-{label}.json"
+                        )
+                        acquisition_path.write_text(
+                            json.dumps(
+                                mutated_acquisition,
+                                ensure_ascii=False,
+                                indent=2,
+                                allow_nan=False,
+                            )
+                            + "\n",
+                            encoding="utf-8",
+                            newline="\n",
+                        )
+                        downstream = copy.deepcopy(self.receipt)
+                        downstream["sourceEvidence"][
+                            "sourceValueAcquisitionReceiptSha256"
+                        ] = mutated_acquisition["receiptSha256"]
+                        downstream["sourceEvidence"][
+                            "sourceValueAcquisitionTrackedTextSha256"
+                        ] = tracked_text_sha256(acquisition_path)
+                        seal_receipt(downstream)
+                        with self.assertRaisesRegex(
+                            ValueError, expected_error
+                        ):
+                            validate_runtime_receipt_tracked_sources(
+                                downstream,
+                                DEFAULT_MATERIAL_CONTRACT,
+                                DEFAULT_RENDER_RECEIPT,
+                                DEFAULT_SHADER_RECEIPT,
+                                acquisition_path,
+                                DEFAULT_HLSL,
+                            )
+
+    def test_warp_capture_and_product_summary_reseals_are_rejected(self) -> None:
+        state_value = copy.deepcopy(self.receipt)
+        state_value["warpStateProviderVerification"]["pilots"][0][
+            "actualStateOutputs"
+        ][0]["SrcBlend"] = 999
+        state_value["warpStateProviderVerification"][
+            "pilotProjectionSha256"
+        ] = canonical_sha256(
+            state_value["warpStateProviderVerification"]["pilots"]
+        )
+        seal_receipt(state_value)
+        with self.assertRaisesRegex(ValueError, "WARP state output replay"):
+            validate_runtime_receipt(state_value)
+
+        state_tolerance = copy.deepcopy(self.receipt)
+        state_tolerance["warpStateProviderVerification"]["pilots"][0][
+            "numericTolerance"
+        ] = False
+        state_tolerance["warpStateProviderVerification"][
+            "pilotProjectionSha256"
+        ] = canonical_sha256(
+            state_tolerance["warpStateProviderVerification"]["pilots"]
+        )
+        seal_receipt(state_tolerance)
+        with self.assertRaisesRegex(ValueError, "WARP state pilot metadata"):
+            validate_runtime_receipt(state_tolerance)
+
+        capture = copy.deepcopy(self.receipt)
+        capture["controlledCaptureAssessment"].update(
+            available=True,
+            uncontrolledInstalledGameProcessUsed=True,
+            decision="SOURCE_EXACT_CAPTURE_AVAILABLE",
+        )
+        seal_receipt(capture)
+        with self.assertRaisesRegex(ValueError, "controlled-capture"):
+            validate_runtime_receipt(capture)
+
+        summary_mutated = copy.deepcopy(self.receipt)
+        summary_mutated["summary"].update(
+            runtimeHandlerConsumedRecipeCount=27,
+            runtimeHandlerConsumedOccurrenceCount=34,
+            productRecipeCount=27,
+            productOccurrenceCount=34,
+        )
+        seal_receipt(summary_mutated)
+        with self.assertRaisesRegex(ValueError, "consumption summary"):
+            validate_runtime_receipt(summary_mutated)
 
     def test_product_and_runtime_handler_admission_cannot_be_opened(self) -> None:
         for path in (

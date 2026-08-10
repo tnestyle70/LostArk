@@ -138,7 +138,7 @@ receipt의 row-set digest는 다음과 같다.
 python -m unittest Tools.LevelPlacementExtractor.test_build_artist_31470_material_source_value_acquisition -v
 ```
 
-결과: 7 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
+결과: 11 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
 default의 SOURCE_EXACT 승격, exact-4/72 denominator, external snapshot/VSS qualification,
 Product/R2 closure를 검사했다.
 
@@ -152,3 +152,22 @@ source-value PASS로 기록하지도, 이번 범위에서 무관한 baseline을 
 Unit B는 이 receipt를 입력으로 exact 4, static 94 reason, sampler/total denominator, dependent hash와
 테스트를 coordinated corrective했다. 이 복구는 evidence-integrity만 다시 열었으며 0/255 execution
 readiness, Product false, R2 NO-GO는 그대로다.
+
+## 후속 semantic admission 강화
+
+후속 독립 감사의 coordinated acquisition promotion을 재현한 뒤 receipt self hash만 보던 경계를
+pure `validate_receipt_semantics`로 교체했다. 이 함수는 raw rebuild와 별도로 다음을 검사한다.
+
+- contract에서 strict sampler membership `71 instance + 1 parent`를 다시 유도하고 고정 72-row
+  semantic projection과 대조한다.
+- static 94는 parent default/GUID encoded bytes와 MIC `rawValueUint32Hex`, `rawOverrideUint32Hex`,
+  `rawExpressionGuidHex`에서 decoded value/bOverride/GUID를 다시 유도하고 23/43/28 outcome을 검사한다.
+- legacy exact 4 membership과 AddressX/Y, sRGB, Filter, LODGroup의 explicit/omitted status,
+  property type, decoded value, encoded value/hash 및 contract raw projection을 대조한다.
+- 72/72의 `fullDescriptorSourceExact`, `sourceValueAcquired`, `executionReady`가 false이고
+  `strictReauditDecision=BLOCKED`인지 검사한다.
+- approval module을 tracked source로 포함하고 runtime build/source-binding/tracked-source가 이 semantic
+  validator를 우회하지 못하게 한다.
+
+coordinated SOURCE_EXACT promotion과 decoded value/property type forgery mutation이 모두 거부됐고,
+raw `--check`는 render `0/89`, static `23/94`, sampler `0/72`, execution `0/255`, Product false로 PASS했다.

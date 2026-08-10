@@ -20,6 +20,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from artist_31470_material_evidence_approval import (
+    APPROVED_STATIC_ROW_SET_SHA256,
+    APPROVED_STRICT_SAMPLER_ROW_SET_SHA256,
+)
 import build_artist_31470_material_evidence_contract as material_contract
 import build_artist_31470_material_runtime_oracle as material_runtime_oracle
 import extract_artist_31470_shader_cache_oracle as shader_oracle
@@ -34,6 +38,9 @@ from extract_ue3_placements import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = Path(__file__).resolve()
+APPROVAL_PATH = SCRIPT_PATH.with_name(
+    "artist_31470_material_evidence_approval.py"
+)
 CONTRACT_ROOT = "ARTIST/31470/F"
 
 EXPECTED_SOURCE_MANIFEST_BYTES = 270014
@@ -1278,6 +1285,11 @@ def build_receipt(
             source_evidence(shader_receipt_path, "SHADER_CACHE_NATIVE_TAIL_RECEIPT"),
             source_evidence(SCRIPT_PATH, "SOURCE_VALUE_ACQUISITION_GENERATOR", json_input=False),
             source_evidence(
+                APPROVAL_PATH,
+                "INDEPENDENT_MATERIAL_EVIDENCE_APPROVAL",
+                json_input=False,
+            ),
+            source_evidence(
                 SCRIPT_PATH.with_name(
                     "build_artist_31470_material_runtime_oracle.py"
                 ),
@@ -1381,6 +1393,627 @@ def build_receipt(
     return receipt
 
 
+def _require_sha256(value: Any, label: str) -> str:
+    require(
+        isinstance(value, str)
+        and len(value) == 64
+        and value == value.lower()
+        and value != "0" * 64
+        and all(character in "0123456789abcdef" for character in value),
+        f"{label} SHA-256 identity is invalid",
+    )
+    return value
+
+
+def _strict_sampler_membership_from_contract(
+    contract: dict[str, Any],
+) -> list[dict[str, Any]]:
+    membership: list[dict[str, Any]] = []
+    for recipe in contract.get("materialRecipes") or []:
+        recipe_id = recipe["recipeId"]
+        inputs = recipe.get("inputs") or {}
+        for source_section in ("textureOverrides", "parentDefaults"):
+            for field in inputs.get(source_section) or []:
+                if field.get("fieldKind") != "texture":
+                    continue
+                sampler = field.get("sampler") or {}
+                if sampler.get("fidelity") not in {
+                    "UNRESOLVED",
+                    "UNRESOLVED_SAMPLER_PROVENANCE",
+                }:
+                    continue
+                if (
+                    source_section == "parentDefaults"
+                    and sampler.get("fidelity")
+                    != "UNRESOLVED_SAMPLER_PROVENANCE"
+                ):
+                    continue
+                membership.append(
+                    {
+                        "materialRecipeId": recipe_id,
+                        "fieldId": field["fieldId"],
+                        "logicalTexturePath": field["value"],
+                        "bindingOrigin": field["bindingOrigin"],
+                        "sourceSection": source_section,
+                    }
+                )
+    return sorted(membership, key=lambda row: row["fieldId"])
+
+
+def _validate_explicit_sampler_property(
+    field_name: str, field: dict[str, Any]
+) -> None:
+    require(
+        set(field) == {"status", "property"}
+        and field.get("status") == "SERIALIZED_EXPLICIT",
+        f"strict sampler explicit field schema changed: {field_name}",
+    )
+    prop = field.get("property")
+    expected_property_keys = {
+        "propertyName",
+        "arrayIndex",
+        "propertyType",
+        "structType",
+        "declaredDataSize",
+        "serializedPayloadSize",
+        "tagOffset",
+        "valueOffset",
+        "recordEndOffset",
+        "value",
+        "encodedValueHex",
+        "encodedValueSha256",
+        "recordSha256",
+    }
+    require(
+        isinstance(prop, dict)
+        and set(prop) == expected_property_keys
+        and prop.get("propertyName") == field_name
+        and type(prop.get("arrayIndex")) is int
+        and prop["arrayIndex"] == 0
+        and prop.get("structType") is None
+        and all(
+            type(prop.get(name)) is int and prop[name] >= 0
+            for name in (
+                "declaredDataSize",
+                "serializedPayloadSize",
+                "tagOffset",
+                "valueOffset",
+                "recordEndOffset",
+            )
+        )
+        and prop["tagOffset"] < prop["valueOffset"] < prop["recordEndOffset"],
+        f"strict sampler raw property layout changed: {field_name}",
+    )
+    encoded_hex = prop.get("encodedValueHex")
+    require(
+        isinstance(encoded_hex, str) and len(encoded_hex) % 2 == 0,
+        f"strict sampler encoded value changed: {field_name}",
+    )
+    try:
+        encoded = bytes.fromhex(encoded_hex)
+    except ValueError as error:
+        raise ValueError(
+            f"strict sampler encoded value is invalid: {field_name}"
+        ) from error
+    require(
+        hashlib.sha256(encoded).hexdigest() == prop.get("encodedValueSha256"),
+        f"strict sampler encoded value digest changed: {field_name}",
+    )
+    _require_sha256(prop.get("recordSha256"), f"strict sampler {field_name} record")
+    if field_name == "srgb":
+        require(
+            prop.get("propertyType") == "boolproperty"
+            and prop.get("declaredDataSize") == 0
+            and prop.get("serializedPayloadSize") == 0
+            and encoded in {b"\x00", b"\x01"}
+            and type(prop.get("value")) is bool
+            and prop["value"] is bool(encoded[0]),
+            "strict sampler sRGB decoded/raw semantics changed",
+        )
+    else:
+        require(
+            prop.get("propertyType") == "byteproperty"
+            and prop.get("declaredDataSize") == 8
+            and prop.get("serializedPayloadSize") == 8
+            and len(encoded) == 8
+            and isinstance(prop.get("value"), str)
+            and prop["value"],
+            f"strict sampler byte-property decoded/raw semantics changed: {field_name}",
+        )
+
+
+def _decode_hex(value: Any, byte_count: int, label: str) -> bytes:
+    require(
+        isinstance(value, str) and len(value) == byte_count * 2,
+        f"{label} encoded bytes changed",
+    )
+    try:
+        decoded = bytes.fromhex(value)
+    except ValueError as error:
+        raise ValueError(f"{label} encoded bytes are invalid") from error
+    require(len(decoded) == byte_count, f"{label} byte count changed")
+    return decoded
+
+
+def _validate_parent_static_expression(row: dict[str, Any]) -> None:
+    parent = row.get("parentExpression")
+    require(isinstance(parent, dict), "static parent expression is missing")
+    parameter_prop = parent.get("parameterNameProperty")
+    default_prop = parent.get("defaultValueProperty")
+    guid_prop = parent.get("expressionGuidProperty")
+    require(
+        isinstance(parameter_prop, dict)
+        and parameter_prop.get("propertyName") == "parametername"
+        and parameter_prop.get("propertyType") == "nameproperty"
+        and parameter_prop.get("structType") is None
+        and type(parameter_prop.get("arrayIndex")) is int
+        and parameter_prop["arrayIndex"] == 0
+        and parameter_prop.get("declaredDataSize") == 8
+        and parameter_prop.get("serializedPayloadSize") == 8
+        and isinstance(parameter_prop.get("value"), str)
+        and parameter_prop["value"]
+        and parent.get("parameterName") == parameter_prop["value"]
+        and row.get("parameterName") == parent["parameterName"],
+        "static parent parameter-name projection changed",
+    )
+    parameter_bytes = _decode_hex(
+        parameter_prop.get("encodedValueHex"),
+        8,
+        "static parent parameter name",
+    )
+    require(
+        hashlib.sha256(parameter_bytes).hexdigest()
+        == parameter_prop.get("encodedValueSha256"),
+        "static parent parameter-name digest changed",
+    )
+    _require_sha256(
+        parameter_prop.get("recordSha256"),
+        "static parent parameter-name record",
+    )
+
+    require(
+        isinstance(default_prop, dict)
+        and default_prop.get("propertyName") == "defaultvalue"
+        and default_prop.get("propertyType") == "boolproperty"
+        and default_prop.get("structType") is None
+        and type(default_prop.get("arrayIndex")) is int
+        and default_prop["arrayIndex"] == 0
+        and default_prop.get("declaredDataSize") == 0
+        and default_prop.get("serializedPayloadSize") == 0,
+        "static parent default property schema changed",
+    )
+    default_bytes = _decode_hex(
+        default_prop.get("encodedValueHex"),
+        1,
+        "static parent default",
+    )
+    require(
+        default_bytes in {b"\x00", b"\x01"}
+        and type(default_prop.get("value")) is bool
+        and default_prop["value"] is bool(default_bytes[0])
+        and parent.get("parentDefaultValue") is default_prop["value"]
+        and hashlib.sha256(default_bytes).hexdigest()
+        == default_prop.get("encodedValueSha256"),
+        "static parent default decoded/raw semantics changed",
+    )
+    _require_sha256(
+        default_prop.get("recordSha256"),
+        "static parent default record",
+    )
+
+    require(
+        isinstance(guid_prop, dict)
+        and guid_prop.get("propertyName") == "expressionguid"
+        and guid_prop.get("propertyType") == "structproperty"
+        and guid_prop.get("structType") == "guid"
+        and type(guid_prop.get("arrayIndex")) is int
+        and guid_prop["arrayIndex"] == 0
+        and guid_prop.get("declaredDataSize") == 16
+        and guid_prop.get("serializedPayloadSize") == 16,
+        "static parent ExpressionGUID property schema changed",
+    )
+    guid_bytes = _decode_hex(
+        guid_prop.get("encodedValueHex"),
+        16,
+        "static parent ExpressionGUID",
+    )
+    guid_value = guid_prop.get("value")
+    require(
+        isinstance(guid_value, dict)
+        and set(guid_value) == {"size", "hex"}
+        and guid_value.get("size") == 16
+        and guid_value.get("hex") == guid_bytes.hex()
+        and parent.get("expressionGuidHex") == guid_bytes.hex()
+        and hashlib.sha256(guid_bytes).hexdigest()
+        == guid_prop.get("encodedValueSha256"),
+        "static parent ExpressionGUID decoded/raw semantics changed",
+    )
+    _require_sha256(
+        guid_prop.get("recordSha256"),
+        "static parent ExpressionGUID record",
+    )
+
+
+def _validate_static_selection_row(row: dict[str, Any]) -> None:
+    _validate_parent_static_expression(row)
+    selection = row.get("micNativeSelection")
+    require(
+        isinstance(selection, dict)
+        and type(selection.get("nameMatchCount")) is int
+        and selection["nameMatchCount"] >= 0
+        and type(selection.get("exactNameAndGuidMatchCount")) is int
+        and selection["exactNameAndGuidMatchCount"] in {0, 1}
+        and type(selection.get("staticParameterSetPresent")) is bool,
+        "static MIC selection denominator changed",
+    )
+    parent = row["parentExpression"]
+    exact_count = selection["exactNameAndGuidMatchCount"]
+    require(
+        row.get("executionReady") is False
+        and (row.get("consumerPilot") or {}).get(
+            "sourceSpecificActualOutputVerified"
+        )
+        is False,
+        "static execution admission changed",
+    )
+    if exact_count == 0:
+        require(
+            "entry" not in selection
+            and "nativeTail" not in selection
+            and selection.get("decision") == "NO_EXACT_GUID_NATIVE_ENTRY"
+            and row.get("sourceValueAcquired") is False
+            and row.get("sourceValueDecision")
+            == "SOURCE_EXACT_PARENT_DEFAULT_ONLY_NATIVE_ENTRY_ABSENT"
+            and "STATIC_SELECTION_SOURCE_VALUE_NOT_ACQUIRED"
+            in (row.get("remainingBlockers") or []),
+            "static unmatched selection admission changed",
+        )
+        return
+
+    entry = selection.get("entry")
+    native_tail = selection.get("nativeTail")
+    require(
+        isinstance(entry, dict)
+        and isinstance(native_tail, dict)
+        and isinstance(entry.get("parameterName"), str)
+        and entry["parameterName"].casefold()
+        == str(parent.get("parameterName") or "").casefold()
+        and type(entry.get("entryOffset")) is int
+        and type(entry.get("serialRelativeEntryOffset")) is int,
+        "static MIC entry owner/offset changed",
+    )
+    _decode_hex(entry.get("rawNameFNameHex"), 8, "static MIC FName")
+    raw_value = int.from_bytes(
+        _decode_hex(entry.get("rawValueUint32Hex"), 4, "static MIC value"),
+        "little",
+    )
+    raw_override = int.from_bytes(
+        _decode_hex(
+            entry.get("rawOverrideUint32Hex"),
+            4,
+            "static MIC override",
+        ),
+        "little",
+    )
+    raw_guid = _decode_hex(
+        entry.get("rawExpressionGuidHex"),
+        16,
+        "static MIC ExpressionGUID",
+    ).hex()
+    require(
+        raw_value in {0, 1}
+        and type(entry.get("value")) is bool
+        and entry["value"] is bool(raw_value),
+        "static MIC value decoded/raw semantics changed",
+    )
+    require(
+        raw_override in {0, 1}
+        and type(entry.get("bOverride")) is bool
+        and entry["bOverride"] is bool(raw_override),
+        "static MIC bOverride decoded/raw semantics changed",
+    )
+    require(
+        entry.get("expressionGuidHex") == raw_guid
+        and parent.get("expressionGuidHex") == raw_guid,
+        "static MIC ExpressionGUID decoded/raw semantics changed",
+    )
+    for key in (
+        "physicalPackageSha256",
+        "serialSha256",
+        "nativeTailSha256",
+        "staticParameterSetRawSha256",
+        "staticParameterSetSemanticSha256",
+    ):
+        _require_sha256(native_tail.get(key), f"static MIC native tail {key}")
+
+    if entry["bOverride"]:
+        require(
+            selection.get("decision") == "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY"
+            and row.get("sourceValueAcquired") is True
+            and row.get("sourceValueDecision")
+            == "SOURCE_EXACT_INSTANCE_OVERRIDE_VALUE_ACQUIRED"
+            and "STATIC_SELECTION_SOURCE_VALUE_NOT_ACQUIRED"
+            not in (row.get("remainingBlockers") or []),
+            "static override selection admission changed",
+        )
+    else:
+        require(
+            entry["value"] is parent.get("parentDefaultValue")
+            and selection.get("decision") == "EXACT_GUID_NONOVERRIDE_ENTRY"
+            and row.get("sourceValueAcquired") is False
+            and row.get("sourceValueDecision")
+            == (
+                "SOURCE_EXACT_NONOVERRIDE_ENTRY_OBSERVED_"
+                "INHERITANCE_SEMANTICS_UNVERIFIED"
+            )
+            and "STATIC_SELECTION_SOURCE_VALUE_NOT_ACQUIRED"
+            in (row.get("remainingBlockers") or []),
+            "static nonoverride selection admission changed",
+        )
+
+
+def validate_receipt_semantics(
+    receipt: dict[str, Any], contract: dict[str, Any]
+) -> None:
+    require(
+        receipt.get("schema")
+        == "lostark.artist-31470-material-source-value-acquisition-receipt"
+        and type(receipt.get("formatVersion")) is int
+        and receipt["formatVersion"] == 2
+        and receipt.get("root") == CONTRACT_ROOT
+        and receipt.get("characterClass") == "ARTIST"
+        and type(receipt.get("skillId")) is int
+        and receipt["skillId"] == 31470
+        and receipt.get("inputSlot") == "F"
+        and receipt.get("scope") == "SOURCE_VALUE_ACQUISITION_ONLY",
+        "unsupported source-value acquisition receipt",
+    )
+    digest = _require_sha256(receipt.get("receiptSha256"), "acquisition receipt")
+    payload = copy.deepcopy(receipt)
+    payload.pop("receiptSha256", None)
+    require(canonical_sha256(payload) == digest, "receipt digest mismatch")
+
+    source_roles = {
+        row.get("role"): row for row in receipt.get("source") or []
+    }
+    require(
+        len(source_roles) == 8
+        and "INDEPENDENT_MATERIAL_EVIDENCE_APPROVAL" in source_roles
+        and all(
+            isinstance(row.get("path"), str)
+            and row["path"]
+            and row.get("hashDomain")
+            in {
+                "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
+                "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+            }
+            and _require_sha256(
+                row.get("canonicalTextSha256"),
+                f"acquisition source {role}",
+            )
+            for role, row in source_roles.items()
+        ),
+        "acquisition source identity set changed",
+    )
+
+    matrices = receipt.get("matrices") or {}
+    render_rows = matrices.get("renderStateRows") or []
+    static_rows = matrices.get("staticPermutationRows") or []
+    sampler_rows = matrices.get("strictSamplerRows") or []
+    require(
+        len(render_rows) == 89
+        and len(static_rows) == 94
+        and len(sampler_rows) == 72,
+        "source-value acquisition matrix denominator changed",
+    )
+    require(
+        len(
+            {
+                row.get("matrixRowId")
+                for row in render_rows + static_rows + sampler_rows
+            }
+        )
+        == 255,
+        "source-value acquisition matrix identity changed",
+    )
+    require(
+        canonical_sha256(static_rows) == APPROVED_STATIC_ROW_SET_SHA256,
+        "static approved semantic projection changed",
+    )
+    require(
+        all(
+            row.get("sourceValueAcquired") is False
+            and row.get("executionReady") is False
+            for row in render_rows
+        )
+        and all(row.get("executionReady") is False for row in static_rows),
+        "source-value render/static execution admission changed",
+    )
+    for row in static_rows:
+        _validate_static_selection_row(row)
+    static_decisions = Counter(
+        (row.get("micNativeSelection") or {}).get("decision")
+        for row in static_rows
+    )
+    require(
+        static_decisions
+        == Counter(
+            {
+                "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY": 23,
+                "EXACT_GUID_NONOVERRIDE_ENTRY": 43,
+                "NO_EXACT_GUID_NATIVE_ENTRY": 28,
+            }
+        )
+        and sum(row.get("sourceValueAcquired") is True for row in static_rows)
+        == 23,
+        "static semantic outcome denominator changed",
+    )
+
+    expected_membership = _strict_sampler_membership_from_contract(contract)
+    actual_membership = sorted(
+        [
+            {
+                "materialRecipeId": row.get("materialRecipeId"),
+                "fieldId": row.get("fieldId"),
+                "logicalTexturePath": row.get("logicalTexturePath"),
+                "bindingOrigin": (
+                    row.get("bindingOriginAndOwner") or {}
+                ).get("bindingOrigin"),
+                "sourceSection": (
+                    row.get("bindingOriginAndOwner") or {}
+                ).get("sourceSection"),
+            }
+            for row in sampler_rows
+        ],
+        key=lambda row: row["fieldId"],
+    )
+    require(
+        canonical_sha256(actual_membership)
+        == canonical_sha256(expected_membership),
+        "strict sampler contract membership changed",
+    )
+    require(
+        canonical_sha256(sampler_rows)
+        == APPROVED_STRICT_SAMPLER_ROW_SET_SHA256,
+        "strict sampler approved semantic projection changed",
+    )
+
+    expected_exact4 = {
+        row["inputFieldId"]: row
+        for row in contract.get("rejectedSamplerBindings") or []
+    }
+    actual_exact4 = {
+        row["fieldId"]: row
+        for row in sampler_rows
+        if row.get("baselineKind") == "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
+    }
+    require(
+        len(expected_exact4) == 4
+        and set(actual_exact4) == set(expected_exact4),
+        "legacy exact sampler membership changed",
+    )
+    compact_property_keys = {
+        "propertyName",
+        "arrayIndex",
+        "propertyType",
+        "structType",
+        "declaredDataSize",
+        "serializedPayloadSize",
+        "tagOffset",
+        "valueOffset",
+        "recordEndOffset",
+        "value",
+        "encodedValueHex",
+        "encodedValueSha256",
+        "recordSha256",
+    }
+    for row in sampler_rows:
+        require(
+            row.get("fullDescriptorSourceExact") is False
+            and row.get("sourceValueAcquired") is False
+            and row.get("executionReady") is False
+            and row.get("strictReauditDecision") == "BLOCKED"
+            and isinstance(row.get("sourceValueDecision"), str)
+            and row["sourceValueDecision"].startswith("BLOCKED_")
+            and (
+                row.get("consumerPilot") or {}
+            ).get("sourceSpecificFullDescriptorVerified")
+            is False,
+            f"strict sampler admission changed: {row.get('matrixRowId')}",
+        )
+        fields = (row.get("textureExportEvidence") or {}).get("fields")
+        require(
+            isinstance(fields, dict)
+            and set(fields) == set(TARGET_TEXTURE_FIELDS),
+            f"strict sampler field denominator changed: {row.get('matrixRowId')}",
+        )
+        for field_name, field in fields.items():
+            if field.get("status") == "SERIALIZED_EXPLICIT":
+                _validate_explicit_sampler_property(field_name, field)
+            else:
+                require(
+                    field
+                    == {
+                        "status": "OMITTED_FROM_EXPORT",
+                        "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE",
+                    },
+                    f"strict sampler omitted field changed: {field_name}",
+                )
+        expected_legacy = expected_exact4.get(row["fieldId"])
+        if expected_legacy is None:
+            require(
+                row.get("baselineKind") == "PREVIOUSLY_BLOCKED_68"
+                and row.get("previousAdmission") == "BLOCKED",
+                "strict sampler nonlegacy classification changed",
+            )
+            continue
+        require(
+            row.get("previousAdmission") == "SOURCE_EXACT_SAMPLER"
+            and row.get("materialRecipeId")
+            == expected_legacy["materialRecipeId"]
+            and row.get("logicalTexturePath")
+            == expected_legacy["logicalTexturePath"]
+            and (row.get("bindingOriginAndOwner") or {}).get("bindingOrigin")
+            == expected_legacy["bindingOrigin"],
+            "legacy exact sampler owner identity changed",
+        )
+        expected_fields = expected_legacy["sourceTextureEvidence"][
+            "rawSamplerFields"
+        ]
+        for field_name in TARGET_TEXTURE_FIELDS:
+            actual_field = fields[field_name]
+            expected_field = expected_fields[field_name]
+            require(
+                actual_field["status"] == expected_field["status"],
+                "legacy exact sampler field status changed",
+            )
+            if actual_field["status"] == "SERIALIZED_EXPLICIT":
+                require(
+                    canonical_sha256(actual_field["property"])
+                    == canonical_sha256(
+                        {
+                            key: expected_field[key]
+                            for key in compact_property_keys
+                        }
+                    ),
+                    "legacy exact sampler decoded/raw projection changed",
+                )
+
+    summary = receipt.get("summary") or {}
+    require(
+        summary.get("renderStateRowCount") == 89
+        and summary.get("staticPermutationRowCount") == 94
+        and summary.get("staticExactGuidJoinCount") == 66
+        and summary.get("staticOverrideTrueSourceValueAcquiredCount") == 23
+        and summary.get("staticNonoverrideSemanticsUnverifiedCount") == 43
+        and summary.get("staticNoExactGuidEntryCount") == 28
+        and summary.get("previouslyAdmittedExactSamplerReauditCount") == 4
+        and summary.get("previouslyAdmittedExactSamplerBlockedCount") == 4
+        and summary.get("strictSamplerRowCount") == 72
+        and summary.get("strictSamplerSourceValueAcquiredCount") == 0
+        and summary.get("strictExecutionRowCount") == 255
+        and summary.get("strictExecutionReadyCount") == 0
+        and summary.get("productCount") == 0
+        and summary.get("renderRowSetSha256") == canonical_sha256(render_rows)
+        and summary.get("staticRowSetSha256")
+        == canonical_sha256(static_rows)
+        == APPROVED_STATIC_ROW_SET_SHA256
+        and summary.get("strictSamplerRowSetSha256")
+        == APPROVED_STRICT_SAMPLER_ROW_SET_SHA256,
+        "source-value acquisition summary changed",
+    )
+    admission = receipt.get("admission") or {}
+    require(
+        admission.get("acquisitionReceiptEvidenceIntegrity") is True
+        and admission.get("upstreamMaterialEvidenceIntegrity") is True
+        and admission.get("executionReady") is False
+        and admission.get("product") is False
+        and admission.get("r2Entry") is False
+        and admission.get("decision") == "R0_BLOCK_R2_NO_GO",
+        "source-value acquisition admission changed",
+    )
+
+
 def validate_receipt(
     receipt: dict[str, Any],
     contract: dict[str, Any],
@@ -1393,18 +2026,7 @@ def validate_receipt(
     source_pack_root: Path,
     current_install_root: Path,
 ) -> None:
-    require(
-        receipt.get("schema")
-        == "lostark.artist-31470-material-source-value-acquisition-receipt"
-        and receipt.get("formatVersion") == 2
-        and receipt.get("scope") == "SOURCE_VALUE_ACQUISITION_ONLY",
-        "unsupported source-value acquisition receipt",
-    )
-    digest = receipt.get("receiptSha256")
-    require(isinstance(digest, str) and len(digest) == 64, "receipt digest missing")
-    payload = copy.deepcopy(receipt)
-    payload.pop("receiptSha256", None)
-    require(canonical_sha256(payload) == digest, "receipt digest mismatch")
+    validate_receipt_semantics(receipt, contract)
     expected = build_receipt(
         contract,
         render_receipt,

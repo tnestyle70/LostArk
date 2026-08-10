@@ -90,9 +90,9 @@ state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 des
 ## 검증
 
 - `python -B Tools/LevelPlacementExtractor/test_build_artist_31470_material_runtime_oracle.py`
-  - 16/16 PASS
+  - 21/21 PASS
 - `python -B -m unittest test_build_artist_31470_material_source_value_acquisition`
-  - raw source rebuild 및 mutation 7/7 PASS
+  - raw source rebuild 및 mutation 11/11 PASS
 - shallow receipt check
   - family 23, recipe 27, occurrence 34, feasibility `0/255`, Product false PASS
 - independent WARP verifier
@@ -123,6 +123,28 @@ state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 des
 
 이 외부 실패를 Material corrective의 PASS로 세탁하지 않았고, Material 전용 shallow/deep audit은 별도로
 PASS했다. 이미지 캡처, 육안 비교와 이미지 기반 자동 검증은 수행하지 않았다.
+
+## ab76 후속 독립 감사 corrective
+
+`ab76b7ec3d46b94eea16f401a755e7ad197b04f8`의 receipt는 self/dependency hash를 다시 봉인하면
+evaluator/HLSL 분류와 일부 numeric lane, acquisition admission, WARP pilot payload를 바꿀 수 있었다.
+후속 corrective는 다음을 실제 validator와 mutation test로 닫았다.
+
+- import-free `artist_31470_material_evidence_approval.py`가 evaluator contract, strict sampler 72,
+  compiler/HLSL/DXBC/input/output/replay, WARP pilot과 controlled-capture projection identity를 소유한다.
+- evaluator는 sourceExact false/reconstructed, 10-op order, four canonical inputs와 finite non-bool
+  `2e-5` tolerance를 요구한다. HLSL은 200 samples와 고정 replay binding을 요구한다.
+- CPU input/output은 bool, NaN, Inf와 float32 overflow를 fail-closed `ValueError`로 거부한다.
+- acquisition pure semantic validator가 raw field type/value와 legacy exact 4 membership, strict 72 전 행의
+  fullDescriptor/sourceValue/execution false 및 BLOCKED 결정을 검사한다. runtime의 build, matrix,
+  source-binding, tracked-source 진입점이 모두 이 validator를 호출한다.
+- static 94는 parent default/GUID encoded bytes와 MIC native `value`, `bOverride`, ExpressionGUID raw bytes를
+  다시 decode하고 override 23/nonoverride 43/unmatched 28 outcome을 row decision과 대조한다.
+- WARP 4 pilot은 exact expected/actual typed projection과 tolerance `0.0`을 비교한다. controlled capture는
+  unavailable, uncontrolled process false이며 runtime/Product summary 네 count는 row-derived 0이다.
+
+이 강화는 evidence-integrity validator만 수정했다. readiness는 계속 `0/255`, Product는 false,
+R2는 `NO-GO`이며 Materializer/Playback/Renderer나 shared C++는 변경하지 않았다.
 
 ## 다음 경계
 

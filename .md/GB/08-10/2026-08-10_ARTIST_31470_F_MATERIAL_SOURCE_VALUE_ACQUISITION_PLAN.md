@@ -70,6 +70,12 @@ generator는 다음을 raw artifact에서 다시 계산한다.
   - committed receipt를 raw source에서 완전히 재생성한다.
   - GUID, `bOverride`, native value, exact-4 decision, 72 denominator, Product/execution-ready bit의
     coordinated reseal mutation을 거부한다.
+  - pure semantic validator가 contract-derived 72 membership, legacy exact 4의 raw decoded/encoded
+    property projection과 72/72 BLOCKED admission을 검사한다.
+  - static 94의 parent bool/GUID raw property와 MIC value/bOverride/GUID raw bytes를 다시 decode하고
+    override 23/nonoverride 43/unmatched 28 decision 분모를 유도한다.
+  - runtime build, matrix, source-binding과 tracked-source 경계가 semantic validator를 직접 호출하며
+    coordinated acquisition promotion reseal을 거부한다.
 
 ## 종료 조건
 
