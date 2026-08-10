@@ -306,6 +306,8 @@ struct EFFECT_SOURCE_PROPERTY_COVERAGE_DESC final
 struct EFFECT_SOURCE_MODULE_COVERAGE_DESC final
 {
 	std::string strModuleStableId;
+	std::string strExactSourceClass;
+	std::string strAliasId;
 	std::string strNormalizedClass;
 	EFFECT_SOURCE_COVERAGE_STATUS eStatus =
 		EFFECT_SOURCE_COVERAGE_STATUS::END;
