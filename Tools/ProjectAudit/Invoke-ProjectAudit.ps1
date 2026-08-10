@@ -1016,6 +1016,22 @@ try {
 	Add-Check 'effect.artist-31470-reconstructed-approval-policy' `
 		$artistReconstructedPolicyPassed `
 		$artistReconstructedPolicyDetail
+	$artistReconstructedRuntimeProgramPassed = $false
+	$artistReconstructedRuntimeProgramDetail = ''
+	try {
+		$artistReconstructedRuntimeProgramDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedRuntimeProgram.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedRuntimeProgramPassed =
+			$artistReconstructedRuntimeProgramDetail -match
+			'PASS: Artist F 31470 reconstructed runtime program tests=12 emitters=35 schedules=7 modules=399 properties=1434 leaves=1572 distributions=629 material=23/27/34/255 textures=68/72\+57 geometry=7/13 sourceExact=0 runtime=false product=false'
+	}
+	catch {
+		$artistReconstructedRuntimeProgramDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-runtime-program' `
+		$artistReconstructedRuntimeProgramPassed `
+		$artistReconstructedRuntimeProgramDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
