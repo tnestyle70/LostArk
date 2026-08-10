@@ -9,6 +9,7 @@
 #include <charconv>
 #include <cmath>
 #include <cctype>
+#include <limits>
 #include <map>
 #include <set>
 #include <span>
@@ -23,6 +24,8 @@ namespace
 	std::atomic_uint64_t g_iCompileAttemptCount = 0u;
 	std::atomic_uint64_t g_iCompileSuccessCount = 0u;
 	std::atomic_uint64_t g_iCompileFailureCount = 0u;
+	constexpr std::string_view UNKNOWN_EXACT_CLASS_SCHEMA_ID =
+		"ue3.cascade.quarantine.exact-class.v1";
 
 	class STABLE_HASH final
 	{
@@ -391,6 +394,22 @@ namespace
 			});
 	}
 
+	bool_t Is_ExpectedExternalIdentityToken(const std::string_view Value)
+	{
+		return Value.starts_with("sha256:") && Value.size() == 71u &&
+			Is_LowerHex(Value.substr(7u));
+	}
+
+	bool_t Is_ExpectedSourceIdentity(
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& Identity)
+	{
+		return Identity.eKind <
+				EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END &&
+			Is_InputIdentity(Identity.strExpectedCanonicalDocumentIdentity) &&
+			Is_ExpectedExternalIdentityToken(
+				Identity.strExpectedExternalIdentityToken);
+	}
+
 	bool_t Is_CanonicalBlockerSet(
 		const std::vector<std::string>& Blockers,
 		const bool_t bRequired)
@@ -414,16 +433,30 @@ namespace
 
 	bool_t Validate_ClassLineage(
 		const EFFECT_SOURCE_MODULE_COVERAGE_DESC& Coverage,
-		const CLASS_SCHEMA& Schema,
+		const CLASS_SCHEMA* pSchema,
 		EFFECT_CASCADE_HANDLER_RECEIPT& Out)
 	{
 		Out.strReceiptNormalizedClass = Coverage.strNormalizedClass;
 		Out.strExactSourceClass = Coverage.strExactSourceClass;
 		Out.strAliasId = Coverage.strAliasId;
 		if (!Is_CanonicalClassKey(Out.strReceiptNormalizedClass) ||
-			Out.strReceiptNormalizedClass != Schema.strReceiptClassKey)
+			(nullptr != pSchema &&
+			 Out.strReceiptNormalizedClass != pSchema->strReceiptClassKey))
 		{
 			return false;
+		}
+		if (nullptr == pSchema)
+		{
+			if (!Is_CanonicalClassKey(Out.strExactSourceClass) ||
+				!Out.strAliasId.empty())
+			{
+				return false;
+			}
+			Out.eClassLineageStatus =
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					EXACT_CLASS_HANDLER_QUARANTINED;
+			Out.bExactClassLineagePreserved = true;
+			return true;
 		}
 		if (Out.strExactSourceClass.empty() && Out.strAliasId.empty())
 		{
@@ -450,7 +483,7 @@ namespace
 		{
 			Out.eClassLineageStatus =
 				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
-					ALIAS_REQUIRED_EXECUTION_UNAPPROVED;
+					EXACT_CLASS_HANDLER_QUARANTINED;
 			return true;
 		}
 		if (!Is_CanonicalAliasId(Out.strAliasId))
@@ -773,6 +806,11 @@ namespace
 		const EFFECT_CASCADE_MODULE_ROLE Role,
 		const EFFECT_CASCADE_OPCODE Opcode)
 	{
+		if (Opcode ==
+			EFFECT_CASCADE_OPCODE::UNKNOWN_EXACT_CLASS_QUARANTINE)
+		{
+			return Role < EFFECT_CASCADE_MODULE_ROLE::END;
+		}
 		if (Role == EFFECT_CASCADE_MODULE_ROLE::REQUIRED)
 			return Opcode == EFFECT_CASCADE_OPCODE::REQUIRED;
 		if (Role == EFFECT_CASCADE_MODULE_ROLE::SPAWN)
@@ -915,7 +953,7 @@ namespace
 		const EFFECT_CASCADE_INSPECTION_IR& Inspection,
 		STABLE_HASH& Hash)
 	{
-		Hash.Add_String("lostark.effect.cascade-inspection-ir.v2");
+		Hash.Add_String("lostark.effect.cascade-inspection-ir.v3");
 		const auto AddStrings = [&Hash](const std::vector<std::string>& Values)
 		{
 			Hash.Add_U64(static_cast<uint64_t>(Values.size()));
@@ -933,6 +971,10 @@ namespace
 		Hash.Add_U32(Inspection.iCompilerRevision);
 		Hash.Add_String(Inspection.strEffectAssetId);
 		Hash.Add_String(Inspection.strCanonicalDocumentIdentity);
+		Hash.Add_U32(static_cast<uint32_t>(Inspection.eExternalIdentityKind));
+		Hash.Add_U32(static_cast<uint32_t>(Inspection.eExternalIdentityStatus));
+		Hash.Add_String(Inspection.strExpectedExternalIdentityToken);
+		Hash.Add_Bool(Inspection.bExternalIdentityAuthenticated);
 		Hash.Add_U64(static_cast<uint64_t>(Inspection.Systems.size()));
 		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& System : Inspection.Systems)
 		{
@@ -1051,17 +1093,21 @@ namespace
 					AddStrings(Emitter.Geometry->EvidenceFlags);
 					AddStrings(Emitter.Geometry->ChannelConsumptionBlockers);
 				}
+				Hash.Add_Bool(Emitter.bSourceRecipeEnabled);
 				Hash.Add_Bool(Emitter.bSourceExecutionAdmission);
 				AddStrings(Emitter.Blockers);
 			}
 		}
 		Hash.Add_U32(Inspection.Consumption.iSystemCount);
+		Hash.Add_U32(Inspection.Consumption.iDeclaredSourceElementCount);
+		Hash.Add_U32(Inspection.Consumption.iDisabledSourceRecipeCount);
 		Hash.Add_U32(Inspection.Consumption.iEmitterCount);
 		Hash.Add_U32(Inspection.Consumption.iOrderedOpcodeCount);
 		Hash.Add_U32(Inspection.Consumption.iDistributionEvidenceCount);
 		Hash.Add_U32(Inspection.Consumption.iRequiredPropertyCount);
 		Hash.Add_U32(Inspection.Consumption.iConsumedPropertyCount);
 		Hash.Add_U32(Inspection.Consumption.iUnknownClassCount);
+		Hash.Add_U32(Inspection.Consumption.iQuarantinedExactClassCount);
 		Hash.Add_U32(Inspection.Consumption.iUnconsumedRequiredPropertyCount);
 		Hash.Add_U32(Inspection.Consumption.iHandlerPropertyReceiptCount);
 		Hash.Add_U32(Inspection.Consumption.iRawPayloadReadCount);
@@ -1089,13 +1135,30 @@ namespace
 	{
 		if (Inspection.strEffectAssetId.empty() ||
 			!Is_InputIdentity(Inspection.strCanonicalDocumentIdentity) ||
+			Inspection.eExternalIdentityKind >=
+				EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END ||
+			Inspection.eExternalIdentityStatus !=
+				EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::
+					SELF_CONSISTENT_UNAUTHENTICATED ||
+			!Is_ExpectedExternalIdentityToken(
+				Inspection.strExpectedExternalIdentityToken) ||
+			Inspection.bExternalIdentityAuthenticated ||
 			Inspection.bExecutable || Inspection.bProductAdmission ||
-			!Is_CanonicalBlockerSet(Inspection.Blockers, true))
+			!Is_CanonicalBlockerSet(Inspection.Blockers, true) ||
+			std::find(Inspection.Blockers.begin(), Inspection.Blockers.end(),
+				"SELF_CONSISTENT_UNAUTHENTICATED") ==
+					Inspection.Blockers.end() ||
+			std::find(Inspection.Blockers.begin(), Inspection.Blockers.end(),
+				"SOURCE_EXTERNAL_IDENTITY_ADAPTER_PENDING") ==
+					Inspection.Blockers.end())
 		{
 			return false;
 		}
 		std::unordered_set<std::string> SystemIds;
 		std::unordered_set<std::string> EmitterIds;
+		uint32_t iRecountedDeclaredSourceElementCount = 0u;
+		uint32_t iRecountedDisabledSourceRecipeCount = 0u;
+		uint32_t iRecountedQuarantinedExactClassCount = 0u;
 		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& System : Inspection.Systems)
 		{
 			STABLE_HASH SystemHash;
@@ -1109,6 +1172,13 @@ namespace
 			}
 			for (const EFFECT_CASCADE_INSPECTION_EMITTER& Emitter : System.Emitters)
 			{
+				++iRecountedDeclaredSourceElementCount;
+				if (!Emitter.bSourceRecipeEnabled)
+					++iRecountedDisabledSourceRecipeCount;
+				const bool_t bHasDisabledRecipeBlocker =
+					std::find(Emitter.Blockers.begin(), Emitter.Blockers.end(),
+						"SOURCE_RECIPE_DISABLED_QUARANTINED") !=
+							Emitter.Blockers.end();
 				const std::string ExpectedEmitterId =
 					Emitter.Identity.strSourceSystemId + "|" +
 					Emitter.Identity.strSourceOccurrenceId + "|" +
@@ -1124,6 +1194,7 @@ namespace
 					!Is_SourceRendererIdentity(
 						Emitter.eElementKind, Emitter.Renderer) ||
 					Emitter.bSourceExecutionAdmission ||
+					Emitter.bSourceRecipeEnabled == bHasDisabledRecipeBlocker ||
 					!Is_CanonicalBlockerSet(Emitter.Blockers, true) ||
 					Emitter.OrderedOpcodes.empty())
 				{
@@ -1202,13 +1273,28 @@ namespace
 				{
 					const EFFECT_CASCADE_INSPECTION_OPCODE& Opcode =
 						Emitter.OrderedOpcodes[iOpcode];
-					const CLASS_SCHEMA* pSchema = Find_ClassSchema(
+					const CLASS_SCHEMA* pReceiptSchema = Find_ClassSchema(
 						Opcode.HandlerReceipt.strReceiptNormalizedClass);
+					const bool_t bUnknownExactClassQuarantine =
+						Opcode.eOpcode == EFFECT_CASCADE_OPCODE::
+							UNKNOWN_EXACT_CLASS_QUARANTINE &&
+						Opcode.HandlerReceipt.strOpcodeSchemaId ==
+							UNKNOWN_EXACT_CLASS_SCHEMA_ID;
+					const CLASS_SCHEMA* pSchema =
+						bUnknownExactClassQuarantine ? nullptr : pReceiptSchema;
+					const bool_t bTypedSchema = nullptr != pSchema &&
+						pSchema->eOpcode == Opcode.eOpcode &&
+						pSchema->strOpcodeSchemaId ==
+							Opcode.HandlerReceipt.strOpcodeSchemaId;
+					if (Opcode.HandlerReceipt.eClassLineageStatus ==
+						EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+							EXACT_CLASS_HANDLER_QUARANTINED)
+					{
+						++iRecountedQuarantinedExactClassCount;
+					}
 					EFFECT_CASCADE_MODULE_ROLE ParsedRole =
 						EFFECT_CASCADE_MODULE_ROLE::END;
-					if (nullptr == pSchema || pSchema->eOpcode != Opcode.eOpcode ||
-						pSchema->strOpcodeSchemaId !=
-							Opcode.HandlerReceipt.strOpcodeSchemaId ||
+					if ((!bTypedSchema && !bUnknownExactClassQuarantine) ||
 						!Role_MatchesOpcode(Opcode.Reference.eRole, Opcode.eOpcode) ||
 						!Parse_ModuleRole(Opcode.Reference.strReceiptRole, ParsedRole) ||
 						ParsedRole != Opcode.Reference.eRole ||
@@ -1256,6 +1342,7 @@ namespace
 						Opcode.HandlerReceipt.strAliasId.empty() &&
 						!Opcode.HandlerReceipt.bExactClassLineagePreserved;
 					const bool_t bExactClass =
+						!bUnknownExactClassQuarantine &&
 						Opcode.HandlerReceipt.eClassLineageStatus ==
 							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS &&
 						Is_CanonicalClassKey(
@@ -1264,19 +1351,22 @@ namespace
 							Opcode.HandlerReceipt.strReceiptNormalizedClass &&
 						Opcode.HandlerReceipt.strAliasId.empty() &&
 						Opcode.HandlerReceipt.bExactClassLineagePreserved;
-					const bool_t bAliasRequired =
+					const bool_t bExactClassQuarantined =
+						bUnknownExactClassQuarantine &&
 						Opcode.HandlerReceipt.eClassLineageStatus ==
 							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
-								ALIAS_REQUIRED_EXECUTION_UNAPPROVED &&
+								EXACT_CLASS_HANDLER_QUARANTINED &&
 						Is_CanonicalClassKey(
 							Opcode.HandlerReceipt.strExactSourceClass) &&
-						Opcode.HandlerReceipt.strExactSourceClass !=
-							Opcode.HandlerReceipt.strReceiptNormalizedClass &&
 						Opcode.HandlerReceipt.strAliasId.empty() &&
 						Opcode.HandlerReceipt.bExactClassLineagePreserved &&
 						std::find(Opcode.HandlerReceipt.Blockers.begin(),
 							Opcode.HandlerReceipt.Blockers.end(),
-							"SOURCE_CLASS_ALIAS_REQUIRED") !=
+							"EXACT_SOURCE_CLASS_HANDLER_UNAVAILABLE") !=
+								Opcode.HandlerReceipt.Blockers.end() &&
+						std::find(Opcode.HandlerReceipt.Blockers.begin(),
+							Opcode.HandlerReceipt.Blockers.end(),
+							"UNKNOWN_EXACT_CLASS_OPCODE_QUARANTINED") !=
 								Opcode.HandlerReceipt.Blockers.end();
 					const bool_t bExplicitAliasUnapproved =
 						Opcode.HandlerReceipt.eClassLineageStatus ==
@@ -1292,7 +1382,8 @@ namespace
 							Opcode.HandlerReceipt.Blockers.end(),
 							"SOURCE_CLASS_ALIAS_UNAPPROVED") !=
 								Opcode.HandlerReceipt.Blockers.end();
-					if (!bPendingClass && !bExactClass && !bAliasRequired &&
+					if (!bPendingClass && !bExactClass &&
+						!bExactClassQuarantined &&
 						!bExplicitAliasUnapproved)
 						return false;
 
@@ -1314,14 +1405,20 @@ namespace
 					{
 						const EFFECT_CASCADE_PROPERTY_EVIDENCE& Property =
 							Opcode.Properties[iProperty];
-						const PROPERTY_RULE* pRule = Find_PropertyRule(
-							*pSchema, Property.Property.strCanonicalPath);
+						const PROPERTY_RULE* pRule = nullptr == pSchema ? nullptr :
+							Find_PropertyRule(
+								*pSchema, Property.Property.strCanonicalPath);
 						EFFECT_CASCADE_PROPERTY_KEY ExpectedKey;
 						EFFECT_CASCADE_BLOCKER_REQUIREMENT ExpectedRequirement =
 							EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
 						EFFECT_CASCADE_PROPERTY_PROVENANCE ParsedProvenance =
 							EFFECT_CASCADE_PROPERTY_PROVENANCE::END;
-						if (nullptr == pRule || pRule->eStorage != Property.eStorage ||
+						if ((!bUnknownExactClassQuarantine &&
+							 (nullptr == pRule ||
+							  pRule->eStorage != Property.eStorage)) ||
+							(bUnknownExactClassQuarantine &&
+							 !Is_CanonicalPropertyPath(
+								Property.Property.strCanonicalPath)) ||
 							!PropertyPaths.insert(
 								Property.Property.strCanonicalPath).second ||
 							!Validate_PropertyEvidenceMatrix(Property.eStorage,
@@ -1349,14 +1446,20 @@ namespace
 						const EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT& Receipt =
 							Opcode.HandlerReceipt.PropertyConsumption[iProperty];
 						const std::string ExpectedFieldId =
-							std::string(pSchema->strOpcodeSchemaId) + ":" +
-							std::string(pRule->strCanonicalPath);
+							Opcode.HandlerReceipt.strOpcodeSchemaId + ":" +
+							ExpectedKey.strCanonicalPath;
+						const EFFECT_CASCADE_PROPERTY_HANDLER_RESULT
+							ExpectedPropertyResult = bUnknownExactClassQuarantine ?
+								EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED :
+								EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED;
 						if (!Same_PropertyKey(Receipt.Property, ExpectedKey) ||
 							Receipt.eStorage != Property.eStorage ||
-							Receipt.eResult != EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
-								SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED ||
+							Receipt.eResult != ExpectedPropertyResult ||
 							Receipt.strHandlerFieldId != ExpectedFieldId ||
-							Receipt.bRequired != pRule->bRequired ||
+							Receipt.bRequired !=
+								(nullptr != pRule && pRule->bRequired) ||
 							Opcode.HandlerReceipt.ConsumedPropertyReferenceIds[iProperty] !=
 								ExpectedKey.strCanonicalReferenceId)
 						{
@@ -1372,15 +1475,18 @@ namespace
 								ExpectedKey.strCanonicalReferenceId, &Property);
 						}
 					}
-					for (const PROPERTY_RULE& Rule : pSchema->Rules)
+					if (nullptr != pSchema)
 					{
-						if (!Rule.bRequired)
-							continue;
-						const auto Required = ReferenceByPath.find(
-							std::string(Rule.strCanonicalPath));
-						if (Required == ReferenceByPath.end())
-							return false;
-						ExpectedRequired.push_back(Required->second);
+						for (const PROPERTY_RULE& Rule : pSchema->Rules)
+						{
+							if (!Rule.bRequired)
+								continue;
+							const auto Required = ReferenceByPath.find(
+								std::string(Rule.strCanonicalPath));
+							if (Required == ReferenceByPath.end())
+								return false;
+							ExpectedRequired.push_back(Required->second);
+						}
 					}
 					if (ExpectedRequired !=
 						Opcode.HandlerReceipt.RequiredPropertyReferenceIds)
@@ -1431,7 +1537,14 @@ namespace
 					return false;
 			}
 		}
-		return true;
+		return iRecountedDeclaredSourceElementCount ==
+				Inspection.Consumption.iDeclaredSourceElementCount &&
+			iRecountedDeclaredSourceElementCount ==
+				Inspection.Consumption.iEmitterCount &&
+			iRecountedDisabledSourceRecipeCount ==
+				Inspection.Consumption.iDisabledSourceRecipeCount &&
+			iRecountedQuarantinedExactClassCount ==
+				Inspection.Consumption.iQuarantinedExactClassCount;
 	}
 }
 
@@ -1446,12 +1559,11 @@ std::string Client::CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(
 
 bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 	const EFFECT_DOCUMENT_DESC& Document,
-	const std::string_view ExpectedCanonicalDocumentIdentity,
+	const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity,
 	std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>& OutInspection,
 	std::string& strOutError)
 {
 	g_iCompileAttemptCount.fetch_add(1u, std::memory_order_relaxed);
-	OutInspection.reset();
 	const auto Fail = [&](const std::string& Error)
 	{
 		strOutError = Error;
@@ -1463,15 +1575,28 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 	if (!Document.bSourceContract ||
 		Document.iLoadedFormatVersion != EFFECT_SOURCE_CONTRACT_FORMAT_VERSION ||
 		Document.strEffectAssetId.empty() ||
-		!Is_InputIdentity(ExpectedCanonicalDocumentIdentity) ||
-		ExpectedCanonicalDocumentIdentity != CanonicalDocumentIdentity)
+		Document.Elements.empty() ||
+		Document.Elements.size() >
+			(static_cast<size_t>((std::numeric_limits<uint32_t>::max)())) ||
+		!Is_ExpectedSourceIdentity(ExpectedIdentity) ||
+		ExpectedIdentity.strExpectedCanonicalDocumentIdentity !=
+			CanonicalDocumentIdentity)
 	{
-		return Fail("Cascade inspection requires its compiler-computed canonical source-contract identity.");
+		return Fail("Cascade inspection requires a fixed canonical document and external source identity expectation.");
 	}
 
 	auto Staged = std::make_shared<EFFECT_CASCADE_INSPECTION_IR>();
 	Staged->strEffectAssetId = Document.strEffectAssetId;
 	Staged->strCanonicalDocumentIdentity = CanonicalDocumentIdentity;
+	Staged->eExternalIdentityKind = ExpectedIdentity.eKind;
+	Staged->eExternalIdentityStatus =
+		EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::
+			SELF_CONSISTENT_UNAUTHENTICATED;
+	Staged->strExpectedExternalIdentityToken =
+		ExpectedIdentity.strExpectedExternalIdentityToken;
+	Staged->bExternalIdentityAuthenticated = false;
+	Staged->Consumption.iDeclaredSourceElementCount =
+		static_cast<uint32_t>(Document.Elements.size());
 	Append_Blocker(Staged->Blockers, "COMPILER_INSPECTION_ONLY");
 	Append_Blocker(Staged->Blockers, "PRODUCT_ADMISSION_DISABLED");
 	Append_Blocker(Staged->Blockers, "RAW_OPCODE_EXECUTOR_UNCHANGED");
@@ -1481,18 +1606,26 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 	Append_Blocker(Staged->Blockers, "EFFECT_TOOL_PREPARED_REVISION_PENDING");
 	Append_Blocker(Staged->Blockers,
 		"CANONICAL_DOCUMENT_CHECKSUM_NOT_AUTHENTICATION");
+	Append_Blocker(Staged->Blockers, "SELF_CONSISTENT_UNAUTHENTICATED");
+	Append_Blocker(Staged->Blockers,
+		"SOURCE_EXTERNAL_IDENTITY_ADAPTER_PENDING");
 
 	std::unordered_map<std::string, size_t> SystemIndices;
 	std::unordered_set<std::string> EmitterCanonicalIds;
 	std::unordered_map<uint64_t, std::string> StableReferences;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
-		if (!Element.SourceRecipe.bEnabled)
-			continue;
 		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
 		const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& SourceEvidence =
 			Recipe.CompilerEvidence;
 		EFFECT_CASCADE_INSPECTION_EMITTER Emitter;
+		Emitter.bSourceRecipeEnabled = Recipe.bEnabled;
+		if (!Emitter.bSourceRecipeEnabled)
+		{
+			++Staged->Consumption.iDisabledSourceRecipeCount;
+			Append_Blocker(Emitter.Blockers,
+				"SOURCE_RECIPE_DISABLED_QUARANTINED");
+		}
 		if (!Build_EmitterIdentity(Element, Emitter.Identity) ||
 			!EmitterCanonicalIds.insert(Emitter.Identity.strCanonicalId).second)
 		{
@@ -1671,14 +1804,16 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			{
 				return Fail("Cascade inspection rejected duplicate or noncanonical module order/reference identity.");
 			}
-			const CLASS_SCHEMA* pSchema =
+			const CLASS_SCHEMA* pReceiptSchema =
 				Find_ClassSchema(Coverage.strNormalizedClass);
-			if (nullptr == pSchema)
-			{
-				++Staged->Consumption.iUnknownClassCount;
-				return Fail("Cascade inspection rejected an exact source class without an explicit alias/evaluator: " +
-					Coverage.strNormalizedClass);
-			}
+			const bool_t bUnaliasedExactClassDelta =
+				!Coverage.strExactSourceClass.empty() &&
+				Coverage.strExactSourceClass != Coverage.strNormalizedClass &&
+				Coverage.strAliasId.empty();
+			const bool_t bUnknownExactClassQuarantine =
+				nullptr == pReceiptSchema || bUnaliasedExactClassDelta;
+			const CLASS_SCHEMA* pSchema = bUnknownExactClassQuarantine ?
+				nullptr : pReceiptSchema;
 			EFFECT_CASCADE_BLOCKER_REQUIREMENT AggregateBlockerRequirement =
 				EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
 			if (!Validate_ModuleEvidenceAggregate(
@@ -1688,7 +1823,9 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			}
 
 			EFFECT_CASCADE_INSPECTION_OPCODE Opcode;
-			Opcode.eOpcode = pSchema->eOpcode;
+			Opcode.eOpcode = bUnknownExactClassQuarantine ?
+				EFFECT_CASCADE_OPCODE::UNKNOWN_EXACT_CLASS_QUARANTINE :
+				pSchema->eOpcode;
 			if (!Build_ModuleReference(Emitter.Identity, SourceReference,
 				Coverage, Opcode.Reference) ||
 				!Role_MatchesOpcode(Opcode.Reference.eRole, Opcode.eOpcode) ||
@@ -1705,15 +1842,25 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 				return Fail("Cascade inspection rejected a stable module reference collision.");
 			}
 			if (!Validate_ClassLineage(
-				Coverage, *pSchema, Opcode.HandlerReceipt))
+				Coverage, pSchema, Opcode.HandlerReceipt))
 			{
+				if (bUnknownExactClassQuarantine)
+					++Staged->Consumption.iUnknownClassCount;
 				return Fail("Cascade inspection rejected an unbound exact-class or alias lineage.");
+			}
+			if (Opcode.HandlerReceipt.eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					EXACT_CLASS_HANDLER_QUARANTINED)
+			{
+				++Staged->Consumption.iQuarantinedExactClassCount;
 			}
 			Opcode.HandlerReceipt.eModuleCoverageStatus = Coverage.eStatus;
 			Opcode.HandlerReceipt.eAggregateBlockerRequirement =
 				AggregateBlockerRequirement;
 			Opcode.HandlerReceipt.strOpcodeSchemaId =
-				pSchema->strOpcodeSchemaId;
+				bUnknownExactClassQuarantine ?
+					std::string(UNKNOWN_EXACT_CLASS_SCHEMA_ID) :
+					std::string(pSchema->strOpcodeSchemaId);
 			Opcode.HandlerReceipt.eResult =
 				EFFECT_CASCADE_HANDLER_RESULT::STRUCTURE_CONSUMED_EXECUTION_BLOCKED;
 			Opcode.HandlerReceipt.bPayloadAccessAllowed = false;
@@ -1738,10 +1885,15 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			}
 			else if (Opcode.HandlerReceipt.eClassLineageStatus ==
 				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
-					ALIAS_REQUIRED_EXECUTION_UNAPPROVED)
+					EXACT_CLASS_HANDLER_QUARANTINED)
 			{
 				Append_Blocker(Opcode.HandlerReceipt.Blockers,
-					"SOURCE_CLASS_ALIAS_REQUIRED");
+					"EXACT_SOURCE_CLASS_HANDLER_UNAVAILABLE");
+				if (bUnknownExactClassQuarantine)
+				{
+					Append_Blocker(Opcode.HandlerReceipt.Blockers,
+						"UNKNOWN_EXACT_CLASS_OPCODE_QUARANTINED");
+				}
 			}
 			else if (Opcode.HandlerReceipt.eClassLineageStatus ==
 				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
@@ -1764,9 +1916,12 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 				{
 					return Fail("Cascade inspection rejected unknown storage or duplicate property path.");
 				}
-				const PROPERTY_RULE* pRule = Find_PropertyRule(
-					*pSchema, SourceProperty.strPropertyPath);
-				if (nullptr == pRule || pRule->eStorage != Storage)
+				const PROPERTY_RULE* pRule = nullptr == pSchema ? nullptr :
+					Find_PropertyRule(*pSchema, SourceProperty.strPropertyPath);
+				if ((!bUnknownExactClassQuarantine &&
+					 (nullptr == pRule || pRule->eStorage != Storage)) ||
+					(bUnknownExactClassQuarantine &&
+					 !Is_CanonicalPropertyPath(SourceProperty.strPropertyPath)))
 				{
 					return Fail("Cascade inspection rejected an unconsumed or storage-mutated opcode property: " +
 						SourceProperty.strPropertyPath);
@@ -1817,13 +1972,16 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 				EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT Consumption;
 				Consumption.Property = Property.Property;
 				Consumption.eStorage = Property.eStorage;
-				Consumption.eResult =
+				Consumption.eResult = bUnknownExactClassQuarantine ?
+					EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+						QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED :
 					EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
 						SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED;
 				Consumption.strHandlerFieldId =
-					std::string(pSchema->strOpcodeSchemaId) + ":" +
-					std::string(pRule->strCanonicalPath);
-				Consumption.bRequired = pRule->bRequired;
+					Opcode.HandlerReceipt.strOpcodeSchemaId + ":" +
+					Property.Property.strCanonicalPath;
+				Consumption.bRequired =
+					nullptr != pRule && pRule->bRequired;
 				Opcode.HandlerReceipt.PropertyConsumption.push_back(
 					std::move(Consumption));
 				if (Storage == EFFECT_CASCADE_PROPERTY_STORAGE::DISTRIBUTION)
@@ -1842,20 +2000,23 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 				Opcode.Properties.push_back(std::move(Property));
 			}
 
-			for (const PROPERTY_RULE& Rule : pSchema->Rules)
+			if (nullptr != pSchema)
 			{
-				if (!Rule.bRequired)
-					continue;
-				const auto Required = ReferenceIdByPath.find(
-					std::string(Rule.strCanonicalPath));
-				if (Required == ReferenceIdByPath.end())
+				for (const PROPERTY_RULE& Rule : pSchema->Rules)
 				{
-					++Staged->Consumption.iUnconsumedRequiredPropertyCount;
-					return Fail("Cascade inspection handler did not consume a required typed property: " +
+					if (!Rule.bRequired)
+						continue;
+					const auto Required = ReferenceIdByPath.find(
 						std::string(Rule.strCanonicalPath));
+					if (Required == ReferenceIdByPath.end())
+					{
+						++Staged->Consumption.iUnconsumedRequiredPropertyCount;
+						return Fail("Cascade inspection handler did not consume a required typed property: " +
+							std::string(Rule.strCanonicalPath));
+					}
+					Opcode.HandlerReceipt.RequiredPropertyReferenceIds.push_back(
+						Required->second);
 				}
-				Opcode.HandlerReceipt.RequiredPropertyReferenceIds.push_back(
-					Required->second);
 			}
 			Staged->Consumption.iRequiredPropertyCount +=
 				static_cast<uint32_t>(
@@ -1892,6 +2053,10 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 		}
 	}
 	if (Staged->Consumption.iEmitterCount == 0u ||
+		Staged->Consumption.iDeclaredSourceElementCount !=
+			Staged->Consumption.iEmitterCount ||
+		Staged->Consumption.iDisabledSourceRecipeCount >
+			Staged->Consumption.iDeclaredSourceElementCount ||
 		Staged->Consumption.iOrderedOpcodeCount == 0u ||
 		Staged->Consumption.iUnknownClassCount != 0u ||
 		Staged->Consumption.iUnconsumedRequiredPropertyCount != 0u ||
@@ -1921,14 +2086,17 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 
 bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 	const EFFECT_CASCADE_INSPECTION_IR& Inspection,
-	const std::string_view ExpectedCanonicalDocumentIdentity)
+	const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity)
 {
-	if (!Is_InputIdentity(ExpectedCanonicalDocumentIdentity) ||
+	if (!Is_ExpectedSourceIdentity(ExpectedIdentity) ||
 		!Is_InputIdentity(Inspection.strInspectionHash) ||
 		Inspection.iCompilerRevision !=
 			EFFECT_CASCADE_INSPECTION_COMPILER_REVISION ||
 		Inspection.strCanonicalDocumentIdentity !=
-			ExpectedCanonicalDocumentIdentity ||
+			ExpectedIdentity.strExpectedCanonicalDocumentIdentity ||
+		Inspection.eExternalIdentityKind != ExpectedIdentity.eKind ||
+		Inspection.strExpectedExternalIdentityToken !=
+			ExpectedIdentity.strExpectedExternalIdentityToken ||
 		Inspection.Systems.empty() || Inspection.Blockers.empty() ||
 		Inspection.bExecutable || Inspection.bProductAdmission ||
 		!Validate_InspectionStructure(Inspection))
@@ -1942,6 +2110,9 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 		Recounted.iEmitterCount += static_cast<uint32_t>(System.Emitters.size());
 		for (const EFFECT_CASCADE_INSPECTION_EMITTER& Emitter : System.Emitters)
 		{
+			++Recounted.iDeclaredSourceElementCount;
+			if (!Emitter.bSourceRecipeEnabled)
+				++Recounted.iDisabledSourceRecipeCount;
 			if (Emitter.Renderer.eType >= EFFECT_RENDERER_TYPE::END)
 				return false;
 			++Recounted.RendererCounts[
@@ -1953,6 +2124,12 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 			for (const EFFECT_CASCADE_INSPECTION_OPCODE& Opcode :
 				Emitter.OrderedOpcodes)
 			{
+				if (Opcode.HandlerReceipt.eClassLineageStatus ==
+					EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+						EXACT_CLASS_HANDLER_QUARANTINED)
+				{
+					++Recounted.iQuarantinedExactClassCount;
+				}
 				Recounted.iRequiredPropertyCount += static_cast<uint32_t>(
 					Opcode.HandlerReceipt.RequiredPropertyReferenceIds.size());
 				Recounted.iConsumedPropertyCount += static_cast<uint32_t>(
@@ -1982,6 +2159,10 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 	Recounted.iBlockerCount =
 		static_cast<uint32_t>(Inspection.Blockers.size());
 	if (Recounted.iSystemCount != Inspection.Consumption.iSystemCount ||
+		Recounted.iDeclaredSourceElementCount !=
+			Inspection.Consumption.iDeclaredSourceElementCount ||
+		Recounted.iDisabledSourceRecipeCount !=
+			Inspection.Consumption.iDisabledSourceRecipeCount ||
 		Recounted.iEmitterCount != Inspection.Consumption.iEmitterCount ||
 		Recounted.iOrderedOpcodeCount !=
 			Inspection.Consumption.iOrderedOpcodeCount ||
@@ -1991,6 +2172,8 @@ bool_t Client::CEffectCascadeCompiler::Matches_InputIdentity(
 			Inspection.Consumption.iRequiredPropertyCount ||
 		Recounted.iConsumedPropertyCount !=
 			Inspection.Consumption.iConsumedPropertyCount ||
+		Recounted.iQuarantinedExactClassCount !=
+			Inspection.Consumption.iQuarantinedExactClassCount ||
 		Recounted.iHandlerPropertyReceiptCount !=
 			Inspection.Consumption.iHandlerPropertyReceiptCount ||
 		Recounted.iRawPayloadReadCount !=
