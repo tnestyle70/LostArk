@@ -771,6 +771,41 @@ try {
 	Add-Check 'effect.artist-31470-material-evidence-contract' `
 		$artistMaterialContractPassed `
 		$artistMaterialContractDetail
+	$artistGeometryContractPassed = $false
+	$artistGeometryContractDetail = ''
+	try {
+		& '.\Tools\ProjectAudit\Test-Artist31470WModelGeometryContract.ps1' `
+			-Configuration Debug
+		$artistGeometryContractPassed = 0 -eq $LASTEXITCODE
+		$artistGeometryContractDetail = if ($artistGeometryContractPassed) {
+			'focused Debug cooker/EOL/decoder contract PASS'
+		}
+		else {
+			"focused Debug geometry audit exit=$LASTEXITCODE"
+		}
+	}
+	catch {
+		$artistGeometryContractDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-wmodel-geometry-contract' `
+		$artistGeometryContractPassed `
+		$artistGeometryContractDetail
+	$effectCascadeCompilerPassed = $false
+	$effectCascadeCompilerDetail = ''
+	try {
+		$effectCascadeCompilerDetail = (& `
+			'.\Tools\ProjectAudit\Test-EffectCascadeCompiler.ps1' `
+			2>&1 | Out-String).Trim()
+		$effectCascadeCompilerPassed =
+			$effectCascadeCompilerDetail -match
+			'PASS: non-executable Cascade source-inspection IR'
+	}
+	catch {
+		$effectCascadeCompilerDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.typed-cascade-compiler' `
+		$effectCascadeCompilerPassed `
+		$effectCascadeCompilerDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'

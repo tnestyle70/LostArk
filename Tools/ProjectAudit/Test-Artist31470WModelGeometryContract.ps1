@@ -1,0 +1,120 @@
+[CmdletBinding()]
+param(
+    [string]$RepositoryRoot = '',
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Debug',
+    [switch]$DeepGeometryAudit,
+    [string]$SourceMeshRoot = '',
+    [string]$RuntimeMeshRoot = '',
+    [string]$SourceExportReceipt = '',
+    [string]$LegacyCookReceipt = '',
+    [string]$SourcePackageRoot = '',
+    [string]$LegacyConverter = ''
+)
+
+$ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+}
+else {
+    $RepositoryRoot = [IO.Path]::GetFullPath($RepositoryRoot)
+}
+
+Push-Location $RepositoryRoot
+try {
+    Push-Location 'Tools\ModelAssetConverter'
+    try {
+        & python -B -m unittest -q 'test_cook_wmodel_geometry_contract'
+        if ($LASTEXITCODE -ne 0) {
+            throw "WModel geometry cooker tests failed: $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Push-Location 'Tools\LevelPlacementExtractor'
+    try {
+        & python -B -m unittest -q `
+            'test_build_artist_31470_wmodel_geometry_parity'
+        if ($LASTEXITCODE -ne 0) {
+            throw "WModel geometry EOL/hash tests failed: $LASTEXITCODE"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    & 'Tools\WModelGeometryContractHarness\Run-WModelGeometryContractHarness.ps1' `
+        -Configuration $Configuration
+
+    if ($DeepGeometryAudit) {
+        $decoderHarness = Join-Path $RepositoryRoot `
+            "Tools\WModelGeometryContractHarness\Bin\$Configuration\WModelGeometryContractHarness.exe"
+        $expectedSemantics = Join-Path $RepositoryRoot `
+            'Tools\WModelGeometryContractHarness\Fixtures\artist_31470_v11_expected.json'
+        $legacyResourceRoot = [IO.Path]::GetFullPath((Join-Path $RuntimeMeshRoot '..\..\..'))
+        $required = @(
+            $SourceMeshRoot,
+            $RuntimeMeshRoot,
+            $SourceExportReceipt,
+            $LegacyCookReceipt,
+            $SourcePackageRoot,
+            $LegacyConverter,
+            $decoderHarness,
+            $expectedSemantics,
+            $legacyResourceRoot
+        )
+        if (@($required | Where-Object {
+            [string]::IsNullOrWhiteSpace($_) -or
+            -not (Test-Path -LiteralPath $_)
+        }).Count -ne 0) {
+            throw (
+                'Deep geometry audit requires six explicit existing source paths, ' +
+                'the built decoder harness, the immutable semantic golden, and the ' +
+                'derived legacy Resources root.'
+            )
+        }
+
+        $runtimeDirectories = @(
+            (Join-Path $RepositoryRoot "Engine\Bin\$Configuration"),
+            (Join-Path $RepositoryRoot 'Engine\ThirdPartyLib\FMOD\Bin'),
+            (Join-Path $RepositoryRoot "Engine\ThirdPartyLib\Assimp\Bin\$Configuration"),
+            (Join-Path $RepositoryRoot "Engine\ThirdPartyLib\PhysX\Bin\$Configuration")
+        )
+        $previousPath = $env:PATH
+        try {
+            $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
+            & $decoderHarness '--legacy-corpus' $legacyResourceRoot
+            if ($LASTEXITCODE -ne 0) {
+                throw "Legacy WModel Resources corpus sweep failed: $LASTEXITCODE"
+            }
+            & python -B `
+                'Tools\ModelAssetConverter\verify_artist_31470_wmodel_geometry_contract.py' `
+                '--source-root' $SourceMeshRoot `
+                '--runtime-mesh-root' $RuntimeMeshRoot `
+                '--source-manifest' `
+                    'Data\Effects\Imported\Artist\Artist.resource-source-manifest.json' `
+                '--source-export-receipt' $SourceExportReceipt `
+                '--legacy-cook-receipt' $LegacyCookReceipt `
+                '--source-package-root' $SourcePackageRoot `
+                '--legacy-converter' $LegacyConverter `
+                '--decoder-harness' $decoderHarness `
+                '--expected-semantics' $expectedSemantics
+            if ($LASTEXITCODE -ne 0) {
+                throw "Artist 31470 seven-carrier geometry oracle failed: $LASTEXITCODE"
+            }
+        }
+        finally {
+            $env:PATH = $previousPath
+        }
+    }
+
+    Write-Host (
+        "Artist 31470 WModel geometry contract audit PASS " +
+        "configuration=$Configuration deep=$($DeepGeometryAudit.IsPresent) " +
+        'preScaleConsumed=false product=false')
+}
+finally {
+    Pop-Location
+}
