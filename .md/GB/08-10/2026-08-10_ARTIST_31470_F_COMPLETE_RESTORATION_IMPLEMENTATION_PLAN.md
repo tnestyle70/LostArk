@@ -8,7 +8,8 @@
 
 계획 갱신 branch: `codex/artist-f-restoration-final-plan`
 
-최종 통합 branch: 아래 Gate R1의 frozen review가 끝난 뒤 재개 기준 commit에서 별도로 만든다.
+최종 통합 branch: R1 execution-readiness 재개 조건을 충족하기 전에는 만들지 않는다. 현재 R2~R8은
+`NO-GO`이며 acquisition/verdict branch만 유지한다.
 
 문서 역할: 이 파일은 전체 범위와 G 순서, worktree 소유권, admission predicate를 소유하는 최종
 구현 계획서다. 각 mutation lane은 기존 Source/Geometry/Material/Compiler PLAN을 갱신하거나 해당 G의
@@ -77,50 +78,40 @@ numeric/structural oracle와 컴파일·링크·실행 오류 검증만 사용�
 
 ## 현재 실제 기준점
 
-현재는 evidence 수집 단계가 끝나고 typed program materialization까지 왔지만, 실제 Playback과 여섯
-renderer가 그 program을 실행하는 단계는 아직 열리지 않았다. Product admission은 `0/35`다.
+R0 matrix와 접근 가능한 범위의 R1 acquisition은 끝났지만 source-era actual-output/state provider를
+확보하지 못했다. 따라서 final typed materializer, Playback, 여섯 renderer는 시작하지 않았고 Product
+admission은 `0/35`다. `4ffe1102`는 구현 출발점이 아니라 폐기한 BLOCK checkpoint다.
 
 | 영역 | frozen checkpoint | 독립 판정과 현재 사용 정책 |
 |---|---|---|
 | Geometry evidence/resource | `0aca792819fdda3f541bb7cec7451c5ed93c6467` | PASS. 7 WModel v1.1 physical deploy와 7/7 decode를 재사용하되 runtime preScale consumer는 아직 0/7 |
-| Material evidence | `c1c0df3cb509b6b423218fc2eaf6f99131ad1200` | evidence-contract 범위 PASS. 27 recipe/34 occurrence와 342/19/71 denominator 고정 |
-| Material runtime oracle | `627ddc76ef58e45f35821363c93197157da4cf89` | evidence integrity PASS, execution readiness BLOCK. render 0/89, static 0/94, sampler 0/68 |
+| Material evidence/runtime corrective | `cde8f3bddea2f9415f682b387d2705fd25794075` | `627ddc76`, `ab76b7ec`, `d39097c3`의 admission/semantic validation gap을 supersede. evidence integrity PASS, source value는 render 0/89·static 23/94·sampler 0/72, execution readiness 0/255 BLOCK. exact sampler 0, rejected legacy 4, Product false |
 | Generic compiler | `c4b00f14b32d27604ac677e9a9ea81b01ecaa551` | non-executable inspection core 범위 PASS, Product false |
 | Runtime Authority foundation | `38ebe7cf7dceb5054bde93812907173cc0f98c67` | PASS. immutable authority foundation만 승인, typed executor는 미연결 |
-| Source execution corrective | `c927e397811d4e5718efd27b187eb59775023685` | evidence integrity PASS, execution readiness BLOCK. module 370 ready/29 blocked, actual-output oracle 0/29 |
+| Source execution corrective | `c927e397811d4e5718efd27b187eb59775023685` | evidence integrity PASS, module 370 ready/29 blocked. current-only evidence를 source exact로 승격하지 않음 |
+| Source provider acquisition | `7da937aeaa34c088c694e8eb4f53ff1f7f848ef3` | accessible-scope evidence PASS, execution readiness 0/29 BLOCK. 29 occurrence→15 class→7 native family, provider/pilot 0, VSS `PERMISSION_UNCHECKED`, Product false |
 | Source runtime materializer | `4ffe1102ed9cf3e21f669da292fac1f143e18d8f` | BLOCK. deterministic Productfalse projection scaffold만 인정. typed evaluator/PointLight/seed/default 손실, evidence registry 미결합, C++ generic bag 수용과 EOL/order 문제 교정 필요 |
 
-현재 자동 검증의 사실은 다음과 같다.
+현재 frozen R1 검증의 사실은 다음과 같다.
 
 ```text
-Source Runtime Program Python mutation     9/9 PASS
-Source Runtime Program C++ Debug/Release   7/7 PASS
-program denominator                        35 / 399 / 629
-program ready / blocked                    370 / 29
-Source actual-output readiness              0 / 29
+Source acquisition mutation                21/21 PASS
+Source actual-output readiness             0/29 BLOCK
+Source ownerless row                       0
 Geometry physical resource                 7/7 deployed and decoded
-Material checked denominator               27 recipe / 34 occurrence
-Material execution readiness               render 0/89, static 0/94, sampler 0/68
+Material source-value acquisition          12/12 PASS
+Material runtime mutation                  23/23 PASS
+Material WARP oracle plumbing              numeric 200 / state pilot 4 PASS
+Material source value                      render 0/89, static 23/94, sampler 0/72
+Material execution readiness               0/255 BLOCK
 Runtime execution admission                false
 Product admission                          0/35
 ```
 
-`4ffe1102`의 full ProjectAudit에서 신규 `effect.artist-31470-source-runtime-program` check는 PASS했다.
-전체 audit은 이 G 밖의 기존 map/data visibility, G09, Source wrapper, missing WModel harness,
-WFX/rollout/actor resource gate 12건으로 exit 1이다. 이 결과를 전체 green으로 기록하지 않는다.
-
-진척은 한 숫자로 과장하지 않고 다음처럼 나눈다.
-
-```text
-원본 evidence와 denominator closure     약 70%
-actual runtime execution/renderer path   약 25~30%
-Artist F 전체 35/35                      약 40~45%
-4-class + Valtan 전체 목표               약 15~20%
-```
-
-현재 병목은 renderer 코드 양이 아니라 Source와 Material blocker를 손실 없이 typed schema에 전달하는
-evidence closure다. 이 blocker를 runtime fallback으로 덮고 Playback부터 진행하면 이후 전부 다시
-재생성해야 하므로 금지한다.
+위 WARP PASS는 evaluator/state consumer plumbing의 재현성만 증명하며 source-era 값을 제공하지 않는다.
+Source full audit의 lane 외 14건과 Material acquisition 이전 full audit의 lane 외 12건도 전체 green으로
+세탁하지 않는다. 현재 병목은 renderer 코드 양이나 typed schema 전달이 아니라 source-era actual-output/
+state provider 부재다. 이를 current default나 runtime fallback으로 덮고 Playback부터 진행하는 것을 금지한다.
 
 ## 고정 fidelity와 admission 계약
 
@@ -164,6 +155,11 @@ evaluator ID/version, oracle provenance, 입력 영역, expected sample, toleran
 모두 가진 경우에만 허용한다. `evidenceBlockers`는 이 승격 뒤에도 보존하되 독립적으로 검증된
 reconstruction은 대응 `executionBlockers`만 해소한다.
 
+현재 maximum-reconstruction admission branch는 `NOT_STARTED`이자 `UNAPPROVED`다. Material의 기존
+23 arithmetic evaluator와 WARP replay는 비제품 oracle plumbing이며 source value나 execution row를
+승격하지 않는다. 사용자의 별도 명시 승인 전에는 추가 reconstructed source-value/runtime/Product
+candidate를 생성하지 않고, current default나 추측값을 실행 또는 Product admission에 사용하지 않는다.
+
 Product predicate는 마지막에 수동으로 정하지 않는다. 네 축, 네 blocker set, 허용 fidelity matrix로
 G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다른 blocker set을 하나의 union으로
 합쳐 source exact가 아닌 행을 영구 Product false로 만드는 방식은 금지한다.
@@ -174,7 +170,7 @@ G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다�
 
 | wave | 세션 1 | 세션 2 | 세션 3 | 실제 병렬도 |
 |---|---|---|---|---:|
-| R1 evidence acquisition | Source `c927e397`의 29 actual-output provider | Material `627ddc76`의 251 state/static/sampler provider | frozen SHA가 생길 때만 review | 구현 2 + review 순차 |
+| R1 evidence acquisition | Source `7da937ae`: accessible scope PASS, readiness 0/29 BLOCK | Material `cde8f3bd`: evidence PASS, readiness 0/255 BLOCK | frozen SHA 독립 review | acquisition 종료, R2 NO-GO |
 | R2 integration/schema freeze | Source final hash와 최소 adapter 지원 | PASS checkpoint 결합, compiler/program schema freeze | combined tree review | shared writer 1 |
 | R3 runtime consumer | custom/source oracle 조사 또는 idle | Playback -> Geometry -> Material shared runtime를 직렬 구현 | 각 frozen checkpoint review | 구현 1 + review |
 | R4 renderer family | core 변경 없이 분리 가능한 family lane | renderer foundation과 다른 family lane, 최종 결합 | family frozen review | interface freeze 뒤 구현 2 |
@@ -248,11 +244,11 @@ Geometry, Material contract hash와 compiler revision을 함께 결합해 불필
 아래 순서는 기존 G 전체를 다시 시작하는 계획이 아니라 R0 evidence PASS 뒤 execution-readiness를 열어
 PASS된 Runtime foundation `38ebe7cf` 위에 최종 pipeline을 결합하는 critical path다.
 
-### R0. 35/35 feasibility와 blocker owner 동결
+### R0. 35/35 feasibility와 blocker owner 동결 — matrix PASS, execution BLOCK
 
-Playback과 renderer 구현 전에 Source 29개 blocked module과 Material 89개 unresolved render-state field가
-실제로 닫힐 수 있는지 행 단위로 증명한다. 이 gate는 문서상 owner 이름만 채우는 작업이 아니라,
-각 행에 실행 가능한 acquisition/oracle 경로와 실패 판정을 고정한다.
+Playback과 renderer 구현 전에 Source 29개 blocked module과 Material 255개 execution row를 행 단위로
+지도화했다. 이 gate는 문서상 owner 이름만 채운 것이 아니라 각 행의 acquisition/oracle 경로와 실패
+판정을 frozen receipt로 고정했다.
 
 Source feasibility matrix의 각 행은 다음을 가진다.
 
@@ -311,63 +307,97 @@ remainingBlockers
 ```
 
 Material safe denominator는 27 recipe/34 occurrence, 162 render-state field 중 explicit 73/unresolved 89,
-static input 94, direct texture 71과 exact sampler 3 instance+1 parent, direct-unproven sampler 68이다.
-render-state 89, static 94, sampler 68을 별도 matrix로 유지하며 validator correction과 혼동하지 않는다.
+static input 94, strict sampler 72다. 이전 exact sampler 3 instance+1 parent는 texture binding/DDS identity만
+exact하며 source-era Texture2D CDO와 TextureGroup filter configuration이 없는 full descriptor는 증명하지
+못하므로 strict sampler에 포함한다. render-state 89, static 94, sampler 72를 별도 matrix로 유지하며
+validator correction과 혼동하지 않는다.
 omitted field는 instance -> Parent Material -> nested default -> class CDO 순서로만 해석한다. D3D
 blend/depth/cull state, static permutation, sampler address/filter/sRGB를 offscreen WARP 또는 독립 state
 oracle의 작은 pilot로 실제 관측하지 못한 행은 BLOCK으로 유지한다. source-revision ShaderCache 또는
 controlled runtime capture가 필요한 행은 acquisition provider가 실제로 동작하기 전까지 FEASIBLE로도
 승격하지 않는다.
 
-R0 합격 조건:
+Frozen 결과는 source value와 execution readiness를 분리한다. Material static 23행은 source MIC의 exact
+`bOverride=true` 값을 확보했지만 actual state-output pilot과 final consumer가 없으므로 READY가 아니다.
+WARP 200 numeric sample과 state pilot 4건도 source 값 provenance가 아니라 oracle plumbing 검증이다.
 
-- Source blocked 29/29, Material render-state 89/89, static 94/94, sampler 68/68이 matrix에 존재한다.
+```text
+Source matrix integrity                    PASS, ownerless 0
+Source execution readiness                 0/29 BLOCK
+Material matrix integrity                  PASS, ownerless/unknown 0
+Material source value                      23/255
+Material execution readiness               0/255 BLOCK
+VSS                                        PERMISSION_UNCHECKED
+NVIDIA DXCache                             548/561 readable, 13 share-locked
+global exhaustion claim                    false
+```
+
+R0 evidence-integrity 합격 조건:
+
+- Source blocked 29/29, Material render-state 89/89, static 94/94, sampler 72/72가 matrix에 존재한다.
 - owner 없는 행 0, silent fallback 0, denominator shrink 0이다.
-- 각 READY 후보는 source-era evidence 또는 독립 actual-output/state oracle pilot을 가진다.
-- Source/Material 각 family의 pilot은 실제 expected mutated output과 tolerance를 고정한다.
+- 각 행/family는 필요한 expected output과 tolerance 계약을 기록하며 provider, pilot 또는 tolerance가
+  없으면 `BLOCKED`로 보존한다.
+- READY 후보는 source-era evidence 또는 실제 expected mutated output과 tolerance를 고정한 독립
+  actual-output/state oracle pilot을 가진 경우에만 존재할 수 있다.
 - current-only/cross-revision 행을 `SOURCE_EXACT`로 승격한 행 0이다.
 - acquisition이 불가능한 행은 즉시 명시되어 Artist F 35/35의 hard blocker로 보고된다.
 - R0 matrix와 resolver/validator mutation test가 frozen review PASS하기 전 R2 이후 shared runtime 구현을 시작하지 않는다.
 
-### R1. Frozen checkpoint 세 건 닫기
+위 evidence-integrity 조건은 `7da937ae`와 `cde8f3bd`에서 충족했다. 이는 원본 의미 복원 완료가 아니다.
+execution readiness는 Source 0/29, Material 0/255이므로 별도 BLOCK이며 R2 이후를 열지 않는다.
 
-1. 세션 1은 evidence-integrity PASS `c927e397`에서 Source 29행의 provider를 취득한다.
-   - source-era native/script identity, controlled original-runtime trace, 또는 binary semantics와 독립 evaluator 중
-     하나로 actual particle/component output을 증명한다.
-   - provider가 없는 current-only wrapper evidence는 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`와
-     execution blocker를 그대로 유지한다.
-2. 세션 2는 evidence-integrity PASS `627ddc76`에서 Material 251행의 provider를 취득한다.
-   - render-state 89, static 94, sampler 68을 source-revision CDO/ShaderMap, exact package chain, 또는
-     controlled original-runtime state capture와 결합한다.
-   - WARP evaluator/state-object 자체의 검증을 원본 source 값 provenance로 세탁하지 않는다.
-3. 세션 2는 acquisition과 병렬로 `4ffe1102` materializer의 code-only scaffold를 참고할 수 있다.
-   다만 Source corrective가 frozen PASS하고 adapter schema가 동결되기 전에는 actual candidate를 생성하거나
-   materializer checkpoint SHA를 freeze하지 않는다. 최종 materializer 입력·재생성·검증은 exact Source frozen
-   receipt와 Material frozen receipt를 함께 받은 뒤 한 번만 수행한다.
-   - 17 ParticleParameter occurrence의 name/mode/min·max input/output/fallback/oracle/provenance를 typed payload로 보존한다.
-   - PointLight Brightness/Radius/Falloff/LightColor와 component handler receipt를 typed field로 보존한다.
-   - seed 14건과 implicit default 14건을 canonical JSON string이 아닌 closed typed variant로 바꾼다.
-   - READY distribution 629건을 exact evaluator opcode/version/implementation/oracle/provenance registry에 join한다.
-   - source record/value coordinated reseal, unknown evaluator ID, class/opcode/handler/property mismatch를 거부한다.
-   - lookup-table shape, handler SHA, opcode별 allowed/required field를 C++ Debug/Release에서 재검증한다.
-   - tracked Source identity는 canonical LF/no-BOM domain을 사용하고 emitter/opcode exact order와 nested key를 강제한다.
+### R1. Source/Material provider acquisition — evidence PASS, execution BLOCK
 
-R1은 evidence-integrity와 execution-readiness를 별도로 판정한다.
+Source `7da937aeaa34c088c694e8eb4f53ff1f7f848ef3`은 접근 가능한 filesystem/backup/current install/
+Git remote·LFS·unreachable object 범위를 조사하고 29 occurrence를 15 exact class와 7 native family로
+축약했다. source-era actual-output provider와 standalone pilot은 각각 0이고 blocker delta는 `29 -> 29`다.
+current wrapper/dataflow와 fixed input digest는 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`로만 보존한다.
+
+Material `cde8f3bddea2f9415f682b387d2705fd25794075`는 `627ddc76`의 잘못 승인된 exact sampler 4건,
+`ab76b7ec`의 row/evaluator validator gap, `d39097c3`의 acquisition/runtime top-level schema gap을
+교정하고 typed contract v4와 runtime receipt v3를 재봉인했다. render-state source value는 0/89,
+static은 exact override value 23/94, sampler full descriptor는 0/72다. static nonoverride semantics 미확정
+43행과 GUID join 없음 28행을 분리하며 execution readiness는 전체 0/255다.
+
+두 lane 모두 VSS는 비관리자 권한으로 `PERMISSION_UNCHECKED`이고 Material GPU cache는 NVIDIA 561개 중
+13개가 share-locked다. 접근 가능한 범위는 소진했지만 `globalExhaustionClaim=false`다. safe source-era
+standalone runtime/UCC/commandlet/debug capture 경로가 없으며 injection/hooking/anti-cheat 우회는 시도하거나
+허용하지 않는다. current capture는 가능해져도 `CURRENT_REVISION_OBSERVED`일 뿐 source-era fidelity를 닫지 못한다.
+
+현재 판정:
 
 ```text
-Source evidence integrity PASS
-Source actual-output execution readiness 29/29
-Material evidence integrity PASS
-Material render-state readiness 89/89
-Material static readiness 94/94
-Material sampler readiness 68/68
-ownerless/unknown/unresolved execution row 0
-typed materializer PASS
+Source acquisition evidence                PASS_ACCESSIBLE_SCOPE_EXHAUSTED
+Source actual-output execution readiness   0/29 BLOCK
+Material evidence integrity                PASS
+Material source value                      23/255
+Material execution readiness               0/255 BLOCK
+ownerless/unknown row                       0
+typed materializer                         BLOCK, not started
+reconstructed branch                       NOT_STARTED / UNAPPROVED
+Product admission                          false / 0/35
+R2-R8                                      NO-GO
 ```
 
-정직하게 blocker를 보존한 evidence commit은 evidence PASS일 수 있지만 execution-readiness PASS가 아니다.
-위 execution predicate가 모두 true가 되기 전에는 R2 final schema/candidate 통합, R3 Playback, R4 renderer에
-진입하지 않는다.
+R2 진입 predicate는 Source 29/29, Material render 89/89·static 94/94·sampler 72/72, unresolved execution
+row 0이다. 그 전에는 materializer mutation/candidate 생성, R2 final schema 통합, R3 Playback, R4 renderer를
+시작하지 않는다. Corrected materializer는 이 predicate를 입력으로 R2에서 새로 작성하고 R2 종료 시
+독립 PASS해야 한다.
+
+### R1 재개 입력 계약
+
+`SOURCE_EXACT` 재개에는 같은 revision의 `EFEngine.dll`, `LOSTARK.exe`, `Engine.u`, `Core.u`, `EFGame.u`,
+target UPK, ShaderCache/material map, SystemSettings TextureGroup config와 single-revision identity manifest가
+필요하다. 대안은 동일 build identity와 fixed seed/time/world/parameter input, pre/post full numeric state,
+expected output과 tolerance를 가진 인증된 source-era capture다.
+
+최대 reconstruction 분기는 사용자 별도 승인 뒤에만 만들 수 있다. 행별 독립 same-input output oracle을
+통과한 값만 `RECONSTRUCTED_NUMERICALLY_VERIFIED`로 표시하며, evidence blocker와 Product false를 보존한다.
+추측한 current default, class 이름, 이미지 비교는 재개 입력이 아니다.
+
+이하 R2~R8은 위 execution predicate가 충족된 경우에만 사용하는 조건부 재개 계약이다. 현재는 모두
+`NO-GO`다.
 
 ### R2. 승인 checkpoint 통합과 final typed schema 동결
 
@@ -376,9 +406,12 @@ typed materializer PASS
    이어서 `git cherry-pick -x 0aca7928`을 각각 실행한다. `669acf07..0aca7928` range는 첫 commit을
    누락하므로 사용하지 않는다.
    Compiler `c4b00f14`와 Publisher `c90c462`는 patch-equivalent 조상에 이미 포함되므로 재적용하지 않는다.
-3. Source는 `ae425aaf -> 9b046d61 -> c927e397 -> <29/29 readiness>` 전체 검증 단위를,
-   Material은 `532d1f52 -> b6757a21 -> e54a5a2a -> 627ddc76 -> <251/251 readiness>` 전체 검증 단위를
-   적용한다. 잘못된 중간 READY 상태에서는 build, publish, admission을 수행하지 않는다.
+3. Source는 `ae425aaf -> 9b046d61 -> c927e397 -> 7da937ae (evidence PASS, readiness 0/29)
+   -> <future 29/29 readiness>` 전체 검증 단위를, Material은 `532d1f52 -> b6757a21 -> e54a5a2a
+   -> 627ddc76 (superseded) -> ab76b7ec (validator BLOCK) -> d39097c3 (top-level schema BLOCK)
+   -> cde8f3bd (evidence PASS, readiness 0/255)
+   -> <future 255/255 readiness>`
+   전체 검증 단위를 적용한다. 잘못된 중간 READY 상태에서는 build, publish, admission을 수행하지 않는다.
 4. BLOCK materializer `4ffe1102`는 cherry-pick하지 않는다. final Source/Material schema를 받은 combined
    head에서 corrected materializer를 새로 작성한다.
 5. Source 35/399/629, Geometry 7, Material 27/34를 결합한 six-hash compiler input을 한 번 생성한다.
@@ -391,7 +424,8 @@ R1 readiness를 반영하지 않은 stale 산출물이므로 재사용하지 않
 receipt -> Source candidate/receipt -> corrected runtime program -> six-hash compiler input -> derived
 Assembly/artifact -> Catalog/prewarm 순서로 정확히 한 번 수행한다.
 
-R2 종료 조건은 field loss 0, stale output 0, unknown capability 0, ownerless blocker 0이며 Product false다.
+R2 종료 조건은 corrected materializer independent PASS, field loss 0, stale output 0, unknown capability 0,
+ownerless blocker 0이며 Product false다.
 
 ### R3. Actual typed executor와 resource consumer
 
@@ -492,9 +526,10 @@ Valtan의 정본 분모는 action 170, stage 2,464, clip 2,378, notify 21,931이
 606, Camera 1,022다. generic `Effect` 3,787은 typed target으로 승격하지 않고 격리한다. 세 Action LOA를
 raw SHA로 pin한 뒤 Particle -> Decal -> Trail -> Material -> Camera 순으로 적용한다.
 
-현재부터 Artist F 최종 동결까지 남은 critical gate는 R1~R7 일곱 개다. 실제 구현량은
-Source/Material corrective보다 R3 typed consumer와 R4 renderer가 크며, 이 두 구간을 통과하기 전에는
-화면에 보이는 legacy effect를 복원 완료로 판정하지 않는다.
+R1 acquisition audit는 끝났지만 execution gate가 BLOCK이므로 R2~R8은 아직 개방되지 않았다. provider가
+들어와 R1 readiness를 통과한 뒤에도 R3 typed consumer와 R4 renderer가 큰 구현 구간으로 남으며, R6
+Server+Client runtime smoke와 R7 final regression 전에는 화면에 보이는 legacy effect를 복원 완료로
+판정하지 않는다.
 
 ## 기존 G 상세 계약
 
@@ -587,7 +622,7 @@ Geometry lane은 WModel evidence와 Engine decode contract만 닫는다. `Effect
 - Resources와 Effect runtime diff 0
 - Product false
 
-### G03. Material Evidence Final — evidence PASS, runtime corrective는 R1
+### G03. Material Evidence Final — `cde8f3bd` evidence PASS, execution 0/255 BLOCK
 
 Material lane은 raw evidence와 typed recipe만 닫고 HLSL/runtime을 수정하지 않는다.
 
@@ -604,13 +639,13 @@ Material lane은 raw evidence와 typed recipe만 닫고 HLSL/runtime을 수정�
 - MIC native `FStaticParameterSet`, Engine/EFGame Material CDO, Texture sampler default, installed shader cache와
   surviving expression/native material metadata를 조사해 static/full-render/full-cull/default/sampler/graph별
   reconstruction oracle receipt 생성
-- 27 static/full-render/full-cull/default blocker, 25 sampler blocker, 23 graph/502 edge를 각각
-  source-closed 또는 reconstruction-ready로 만들며 값이 없는 행을 공통 fallback으로 채우지 않음
+- render-state 89, static 94, strict sampler 72, graph 23/502 edge를 각각 행 단위로 보존하며 값이 없는
+  행을 공통 fallback으로 채우지 않음
 
 합격:
 
 - recipe row 27/27, occurrence 34/34, unused/unexpected recipe 0
-- sampler exact 3 instance + 1 parent, direct unproven 68
+- sampler exact 0, rejected legacy 3 instance + 1 parent, direct unproven 71, strict sampler 72
 - graph family 23, null 1,803, unresolved edge 502, Source-exact graph 0
 - shallow/deep generator, raw UPK/DDS/manifest audit와 mutation tests
 - 23 family의 independent expected sample 출처와 아직 구현되지 않은 evaluator를 별도 기록
@@ -639,20 +674,15 @@ G04에서는 current generated candidate의 최종 adapter PASS를 주장하지 
 - generic inspection/compiler Debug/Release harness와 static audit
 - Product false
 
-## Gate 1. Frozen audit, 통합, Source 단일 재생성
+## Gate 1. Frozen audit, 통합, Source 단일 재생성 — historical, R2가 supersede
 
 각 G01-G04 lane은 stable commit을 push하고 mutation을 멈춘다. Independent Review는 commit SHA 하나만
 검사하고 read-only PASS/BLOCK을 보낸다. 구현 helper와 같은 parser만 사용한 자기확인은 PASS가 아니다.
 
-통합 순서:
-
-1. G02 Geometry frozen PASS commit을 `cherry-pick -x`한다.
-2. G03 Material frozen PASS commit을 `cherry-pick -x`한다.
-3. G01 Source code-only frozen PASS commit을 `cherry-pick -x`한다.
-4. Source Closure가 통합 head의 직접 dependency로 candidate/receipt/registry/header를 단 한 번 재생성한다.
-5. G04 generic Compiler frozen PASS commit을 `cherry-pick -x`한다.
-6. 통합 conflict는 별도 Integration commit으로 해결하고 lane PASS SHA를 바꾸지 않는다.
-7. 새 EngineSDK와 Debug/Release harness를 이 exact integration SHA에서 만든다.
+이 절의 옛 cherry-pick 순서는 사용하지 않는다. 실제 재개 순서는 R2를 정본으로 하며 base
+`38ebe7cf`, Geometry `669acf07`과 `0aca7928`의 개별 cherry-pick, compiler/publisher 재-pick 금지,
+`4ffe1102` 폐기와 combined head 재작성을 따른다. R1 readiness가 BLOCK인 현재는 통합 branch 자체를
+만들지 않는다.
 
 Gate 1 종료 조건:
 
@@ -668,13 +698,16 @@ Gate 1 종료 조건:
 
 Renderer나 runtime authority를 수정하기 전에 네 병렬 closure job으로 실제 실행 입력을 준비한다.
 
-### G05-S. Source Semantic Reconstruction Readiness — `9b046d6` BLOCK, R1 corrective
+### G05-S. Source Semantic Reconstruction Readiness — `c927e397 -> 7da937ae`, evidence PASS/readiness 0/29 BLOCK
 
 G01에서 남은 standard/native/default/seed/custom evaluator 행을 actual regenerated candidate 기준으로
 다시 계산한다. 각 399 module과 1,434 top-level property는 실행 handler가 소비하거나 독립적으로
 실행 무관임을 증명해야 한다. target007/014 custom EF evaluator, external native-tail, seed와 local-space,
 Decal/Ribbon/Post/Light default에 evaluator ID와 numeric oracle을 부여한다. current-only evidence는
 source exact로 승격하지 않는다.
+
+접근 가능한 provider acquisition은 끝났고 source-era provider/pilot은 0이다. 아래 semantic 작업은 동일
+revision artifact 또는 승인된 authenticated capture가 들어와 R1을 다시 열 때만 재개한다.
 
 ### G05-G. Geometry Candidate Cook and Resource Provisioning — PASS `0aca7928`
 
@@ -684,10 +717,12 @@ G02의 7개 WModel 1.1 candidate를 deterministic cook하고 expected tuple을 �
 backup -> atomic replace한다. 실패하면 기존 7개를 복원한다. Git worktree의 Resources 유무를 제품
 payload 존재 증거로 사용하지 않고 test process의 `LOSTARK_RESOURCE_ROOT`를 위 물리 root로 고정한다.
 
-### G05-M. Material Reconstruction Oracle and Texture Provisioning — `e54a5a2` BLOCK, R1 corrective
+### G05-M. Material Reconstruction Oracle and Texture Provisioning — `cde8f3bd` evidence PASS/readiness 0/255 BLOCK
 
-G03에서 획득한 current Engine/EFGame CDO, static parameter, sampler, shader cache, raw expression evidence로
-27 recipe의 static/render/cull/default/sampler와 23 arithmetic family expected numeric sample을 닫는다.
+current Engine/EFGame CDO와 installed cache는 cross-revision 후보일 뿐 source value provider가 아니다.
+`cde8f3bd`는 source MIC static override value 23건만 보존했고 render/sampler 및 execution readiness는
+열지 않았다. 동일 revision provider 또는 승인된 authenticated capture가 들어올 때만 27 recipe의
+static/render/cull/default/sampler와 23 arithmetic family expected numeric sample을 닫는다.
 모든 34 occurrence가 참조하는 texture dependency를 열거하고 기존 Resources DDS 또는 새로 검증한 DDS를
 명시적인 asset ID/hash로 stage한다. white/black/legacy-default texture를 missing input 대체값으로 쓰지 않는다.
 물리 texture 교체가 필요하면 G05-G와 같은 backup -> validate -> atomic replace -> rollback을 사용한다.
@@ -775,11 +810,12 @@ SHA/worktree에서 `Engine -> UpdateLib -> Client` Debug/Release build lease를 
 - 중앙 public API와 common shader 동결
 - Product false
 
-## G06B. Source Runtime Program Materializer — `4ffe1102` BLOCK, R1 corrective
+## G06B. Source Runtime Program Materializer — `4ffe1102` 폐기, R1 readiness 뒤 R2에서 새로 작성
 
 Source execution receipt의 35 emitter/399 module/629 distribution을 immutable program으로 옮긴다.
-`4ffe1102`의 denominator와 fail-closed Productfalse projection은 재사용하지만 generic JSON bag은
-runtime authority로 승격하지 않는다.
+`4ffe1102`를 cherry-pick하거나 mutation하지 않는다. R1 readiness가 모두 PASS한 combined head에서
+denominator와 fail-closed 요구만 새 구현의 acceptance contract로 재적용하고 generic JSON bag은 runtime
+authority로 승격하지 않는다.
 
 추가 합격 조건:
 
@@ -859,7 +895,7 @@ G03/G05-M의 27 recipe를 G06 extension point가 소비할 immutable MaterialBin
 - 23 family별 stable evaluator ID/version과 implemented state
 - Add/Multiply/Panner를 포함한 실제 관측 연산을 typed evaluator/HLSL로 구현
 - static permutation, blend/depth/cull/default/sampler는 source 또는 G05-M oracle이 있는 값만 compile
-- 68 direct sampler와 omitted default를 공통 fallback으로 채우지 않음
+- strict sampler 72(instance 71 + parent 1)와 omitted default를 공통 fallback으로 채우지 않음
 
 합격:
 
