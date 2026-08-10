@@ -35,6 +35,8 @@ $localReferencePath = Join-Path $RepositoryRoot `
     'Data\Effects\Imported\Artist\Graphs\skill.31470.local-reference-closure.json'
 $geometryParityPath = Join-Path $RepositoryRoot `
     'Data\Effects\Imported\Artist\Geometry\skill.31470.wmodel-geometry-parity.receipt.json'
+$sourceSemanticClosurePath = Join-Path $RepositoryRoot `
+    'Data\Effects\Imported\Artist\Candidates\skill.31470.source-semantic-closure.json'
 
 Push-Location $RepositoryRoot
 try {
@@ -88,6 +90,29 @@ try {
         }
     }
 
+    & python 'Tools/LevelPlacementExtractor/artist_31470_source_semantic_closure.py' `
+        '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
+        '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
+        '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
+        '--source-evidence' 'Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json' `
+        '--local-reference-closure' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
+        '--output' 'Data/Effects/Imported/Artist/Candidates/skill.31470.source-semantic-closure.json' `
+        '--check'
+    if ($LASTEXITCODE -ne 0) {
+        throw "Artist F source-semantic closure check failed: $LASTEXITCODE"
+    }
+
+    & python 'Tools/LevelPlacementExtractor/verify_artist_31470_source_semantic_closure.py' `
+        '--semantic-closure' 'Data/Effects/Imported/Artist/Candidates/skill.31470.source-semantic-closure.json' `
+        '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
+        '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
+        '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
+        '--source-evidence' 'Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json' `
+        '--local-reference-closure' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json'
+    if ($LASTEXITCODE -ne 0) {
+        throw "Artist F source-semantic closure oracle failed: $LASTEXITCODE"
+    }
+
     & python 'Tools/LevelPlacementExtractor/build_artist_31470_source_contract.py' `
         '--source-receipt' 'Data/Effects/Imported/Artist/skill.31470.source-receipt.json' `
         '--action-cue-recipe' 'Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json' `
@@ -98,6 +123,7 @@ try {
         '--source-evidence' 'Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json' `
         '--local-reference-closure' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
         '--geometry-parity' 'Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json' `
+        '--source-semantic-closure' 'Data/Effects/Imported/Artist/Candidates/skill.31470.source-semantic-closure.json' `
         '--output-candidate' 'Data/Effects/Imported/Artist/Candidates/effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json' `
         '--output-receipt' 'Data/Effects/Imported/Artist/Candidates/skill.31470.native-v14.source-contract-candidate.receipt.json' `
         '--output-registry' 'Data/Effects/Contracts/ue3-cascade-source-v1.registry.json' `
@@ -149,6 +175,8 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
     $localReference = Get-Content -LiteralPath $localReferencePath -Raw -Encoding UTF8 |
         ConvertFrom-Json
     $geometryParity = Get-Content -LiteralPath $geometryParityPath -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    $sourceSemanticClosure = Get-Content -LiteralPath $sourceSemanticClosurePath -Raw -Encoding UTF8 |
         ConvertFrom-Json
 
     $rendererCounts = @{}
@@ -256,6 +284,27 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
         throw 'Artist F Source Contract boundary is invalid.'
     }
 
+    $semanticDenominators = $sourceSemanticClosure.summary.denominators
+    if ($sourceSemanticClosure.schema -cne 'lostark.effect-source-semantic-closure' -or
+        [int]$sourceSemanticClosure.formatVersion -ne 1 -or
+        [int]$semanticDenominators.activeOccurrenceCount -ne 35 -or
+        [int]$semanticDenominators.selectedLodFieldCount -ne 70 -or
+        [int]$semanticDenominators.orderedModuleReferenceCount -ne 399 -or
+        [int]$semanticDenominators.topLevelTaggedPropertyCount -ne 1434 -or
+        [int]$semanticDenominators.primitiveLeafCount -ne 1572 -or
+        [int]$semanticDenominators.distributionCount -ne 629 -or
+        [int]$semanticDenominators.unapprovedClassAliasOccurrenceCount -ne 26 -or
+        [int]$semanticDenominators.externalNativeTailCount -ne 248 -or
+        [int]$semanticDenominators.seededModuleCount -ne 14 -or
+        [int]$sourceSemanticClosure.summary.unknownDecisionCount -ne 0 -or
+        [int]$sourceSemanticClosure.summary.unconsumedRowCount -ne 0 -or
+        [int]$sourceSemanticClosure.summary.silentIgnoredRowCount -ne 0 -or
+        -not [bool]$sourceSemanticClosure.summary.allRowsClassified -or
+        [bool]$sourceSemanticClosure.summary.semanticExecutionAdmission -or
+        [bool]$sourceSemanticClosure.productAdmission.allowed) {
+        throw 'Artist F source-semantic closure boundary is invalid.'
+    }
+
     $catalogText = [IO.File]::ReadAllText(
         (Join-Path $RepositoryRoot 'Data\Effects\EffectCatalog.json'))
     if ($catalogText.Contains(
@@ -264,7 +313,7 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
     }
 
     Write-Output `
-        'PASS: Artist F 31470 Source Contract cues=7 elements=35 moduleOrder=399 renderers=13/16/3/1/1/1 evidence=partial runtime=false product=false visual=false'
+        'PASS: Artist F 31470 Source Contract cues=7 elements=35 moduleOrder=399 properties=1434/1572 distributions=629 renderers=13/16/3/1/1/1 evidence=partial runtime=false product=false visual=false'
 }
 finally {
     Pop-Location

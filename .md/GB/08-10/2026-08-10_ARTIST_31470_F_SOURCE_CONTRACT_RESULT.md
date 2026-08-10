@@ -269,3 +269,31 @@ geometry generator의 raw glTF/bin/WModel 검증은 이 source commit에서 실�
 원본 cooked package에 실제로 없는 Material arithmetic graph는 `SOURCE_EXACT`로 표기하지 않는다.
 recoverable input/static permutation은 source exact로, 빠진 연산은 별도 reconstructed family
 evaluator로 구분한다.
+
+## Gate 1 최종 checked-in 재생성
+
+G02 Geometry와 G03 Material evidence가 동결된 뒤 code-only semantic closure를 처음으로
+checked-in 입력에 포함해 candidate, receipt, registry, generated header를 한 번에 다시
+생성했다. 이 재생성은 실행 의미를 승격하지 않는다. 399 module, 1,434 top-level property,
+1,572 primitive leaf, 629 distribution은 전부 분모와 blocker를 보존하며 semantic execution과
+Product admission은 계속 `false` (`0/35`)다.
+
+- semantic closure LF-canonical SHA-256:
+  `73f2e93853c495d8489c1a234cb5dd02a1306f419614ff7fc6d4359ec1198b08`
+- semantic closure self SHA-256:
+  `75e1e584948951a6b288f9fedd1ab6abebec84ac2639b68ca7bedc1776fd256b`
+- candidate LF-canonical SHA-256:
+  `27cfb2b81ce688b9dd55cdc53afe6e5e709cefee390dab0e9f9c5d3e9e7f244e`
+- receipt LF-canonical SHA-256:
+  `989295f594ee95d207ccb75716a71c0a4daef867a335206744dea4deeb8a3d1e`
+- registry LF-canonical SHA-256:
+  `f01499af197be6d417a9efcf6a338f6819242ac58a1c4e361e3c4b0dbb7d0174`
+- registry contract SHA-256:
+  `201652eceeaa40258fec5574669b2e873b2305cbe33f859c0f17e58a15b2e553`
+- generated header LF-canonical SHA-256:
+  `ce05a0f3654122a48fc39527e4521805c114d13048f5bca59fcc34a0a2131825`
+
+`Test-Artist31470SourceContract.ps1`은 이제 semantic builder `--check`, 독립 semantic
+oracle, semantic closure를 명시 입력으로 받는 source-contract `--check`, 91개 unit/mutation
+test를 같은 실행에서 검증한다. 최종 실행은 모두 PASS했다. 이미지·스크린샷·육안 판정은
+실행하지 않았다.
