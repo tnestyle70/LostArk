@@ -30,6 +30,10 @@ $schemaRoot = [IO.File]::ReadAllText($schema, [Text.Encoding]::UTF8) |
     ConvertFrom-Json
 if ($schemaRoot.'$schema' -cne 'https://json-schema.org/draft/2020-12/schema' -or
     $null -eq $schemaRoot.'$defs'.buildRequest -or
+    $null -eq $schemaRoot.'$defs'.executionContract -or
+    $null -eq $schemaRoot.'$defs'.sourceContractInput -or
+    $null -eq $schemaRoot.'$defs'.typedUpstreamInput -or
+    $null -eq $schemaRoot.'$defs'.compilerReceiptInput -or
     $null -eq $schemaRoot.'$defs'.authoringCarrier -or
     $null -eq $schemaRoot.'$defs'.assemblyCarrier -or
     $null -eq $schemaRoot.'$defs'.compiledArtifact -or
@@ -56,4 +60,4 @@ if ($testExitCode -ne 0 -or $output -notmatch 'Ran 14 tests' -or
     throw "Derived Effect artifact publisher tests failed: $output"
 }
 
-Write-Output 'PASS: derived Effect artifact publisher schema tests=14 execution=true product=false'
+Write-Output 'PASS: derived Effect artifact publisher schema tests=14 authenticated-blocker-union=true rollback=true product=false'

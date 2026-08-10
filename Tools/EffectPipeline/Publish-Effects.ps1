@@ -3,7 +3,9 @@ param(
     [string]$Mode = 'Validate',
     [string]$DataRoot,
     [string]$ResourceRoot,
-    [string]$OutputPath
+    [string]$OutputPath,
+    [ValidateSet('None', 'AfterBackupMove', 'AfterCommitMove')]
+    [string]$TestFaultInjection = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,6 +22,21 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 $DataRoot = [IO.Path]::GetFullPath($DataRoot)
 $ResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
+if ($TestFaultInjection -cne 'None') {
+    if ($Mode -cne 'Publish') {
+        throw 'Publisher fault injection is only valid in Publish mode.'
+    }
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    foreach ($testPath in @($DataRoot, $OutputPath)) {
+        $normalizedTestPath = [IO.Path]::GetFullPath($testPath)
+        if (-not $normalizedTestPath.StartsWith(
+                $temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Publisher fault injection is restricted to temporary test paths.'
+        }
+    }
+}
 $catalogPath = Join-Path $DataRoot 'Effects\EffectCatalog.json'
 $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored'))
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
@@ -1318,20 +1335,34 @@ try {
             $roundTrip = $null
         }
         $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
-        if ($hadDestination) {
-            Move-Item -LiteralPath $OutputPath -Destination $backup
-        }
+        $destinationBackedUp = $false
+        $newDestinationCommitted = $false
         try {
+            if ($hadDestination) {
+                Move-Item -LiteralPath $OutputPath -Destination $backup
+                $destinationBackedUp = $true
+            }
+            if ($TestFaultInjection -ceq 'AfterBackupMove') {
+                throw 'Injected Effect publisher failure after backup move.'
+            }
             Move-Item -LiteralPath $temporary -Destination $OutputPath
+            $newDestinationCommitted = $true
+            if ($TestFaultInjection -ceq 'AfterCommitMove') {
+                throw 'Injected Effect publisher failure after commit move.'
+            }
+            if (Test-Path -LiteralPath $backup) {
+                Remove-Item -LiteralPath $backup -Force
+            }
         }
         catch {
-            if ($hadDestination -and (Test-Path -LiteralPath $backup)) {
+            if ($newDestinationCommitted -and
+                (Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
+                Remove-Item -LiteralPath $OutputPath -Force
+            }
+            if ($destinationBackedUp -and (Test-Path -LiteralPath $backup)) {
                 Move-Item -LiteralPath $backup -Destination $OutputPath
             }
             throw
-        }
-        if (Test-Path -LiteralPath $backup) {
-            Remove-Item -LiteralPath $backup -Force
         }
     }
     finally {
