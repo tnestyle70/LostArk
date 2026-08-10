@@ -771,6 +771,22 @@ try {
 	Add-Check 'effect.artist-31470-material-evidence-contract' `
 		$artistMaterialContractPassed `
 		$artistMaterialContractDetail
+	$artistShaderCachePassed = $false
+	$artistShaderCacheDetail = ''
+	try {
+		$artistShaderCacheDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ShaderCacheOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistShaderCachePassed =
+			$artistShaderCacheDetail -match
+			'PASS: Artist F 31470 ShaderCache mode=shallow material=23 recipe=27 mic=25/24'
+	}
+	catch {
+		$artistShaderCacheDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-shader-cache-oracle' `
+		$artistShaderCachePassed `
+		$artistShaderCacheDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
