@@ -169,7 +169,8 @@ bool_t CWMaterialReader::ReadMemory(const uint8_t* pData,
 			CBinaryReader reader(fileReader.Peek(), fileHeader.contentSize);
 			const MATERIAL_META_HEADER materialHeader = reader.Read<MATERIAL_META_HEADER>();
 			const bool_t isV2 = HasMagic(materialHeader.magic, WMAT_V2_MAGIC);
-			if ((!HasMagic(materialHeader.magic, WMAT_MAGIC) && !isV2) ||
+			const bool_t isV3 = HasMagic(materialHeader.magic, WMAT_V3_MAGIC);
+			if ((!HasMagic(materialHeader.magic, WMAT_MAGIC) && !isV2 && !isV3) ||
 				materialHeader.materialCount > MAX_MATERIALS)
 			{
 				outReport.error = "Invalid WMAT metadata.";
@@ -179,7 +180,41 @@ bool_t CWMaterialReader::ReadMemory(const uint8_t* pData,
 			outMaterials.resize((max)(outMaterials.size(), static_cast<size_t>(materialHeader.materialCount)));
 			for (uint32_t i = 0; i < materialHeader.materialCount; ++i)
 			{
-				if (isV2)
+				if (isV3)
+				{
+					const MATERIAL_ENTRY_V3 entry = reader.Read<MATERIAL_ENTRY_V3>();
+					if (entry.materialIndex >= outMaterials.size())
+					{
+						outReport.error = "WMA3 contains an out-of-range material index.";
+						return false;
+					}
+
+					MODEL_MATERIAL_DATA& material = outMaterials[entry.materialIndex];
+					material.name = ReadFixedString(entry.name);
+					material.nameHash = entry.materialHash;
+					material.diffusePath = ResolveTexturePath(desc, containerPath, entry.baseColorPath);
+					material.normalPath = ResolveTexturePath(desc, containerPath, entry.normalPath);
+					material.specularPath = ResolveTexturePath(desc, containerPath, entry.specularPath);
+					material.emissivePath = ResolveTexturePath(desc, containerPath, entry.emissivePath);
+					material.opacityPath = ResolveTexturePath(desc, containerPath, entry.opacityPath);
+					material.ormPath = ResolveTexturePath(desc, containerPath, entry.ormPath);
+					material.metallicPath = ResolveTexturePath(desc, containerPath, entry.metallicPath);
+					material.roughnessPath = ResolveTexturePath(desc, containerPath, entry.roughnessPath);
+					material.ambientOcclusionPath = ResolveTexturePath(
+						desc, containerPath, entry.ambientOcclusionPath);
+					material.colorMaskPath = ResolveTexturePath(
+						desc, containerPath, entry.colorMaskPath);
+					memcpy(&material.colorTint.vDiffuse, entry.diffuseTint,
+						sizeof(material.colorTint.vDiffuse));
+					memcpy(&material.colorTint.vRegionA, entry.regionTintA,
+						sizeof(material.colorTint.vRegionA));
+					memcpy(&material.colorTint.vRegionB, entry.regionTintB,
+						sizeof(material.colorTint.vRegionB));
+					memcpy(&material.colorTint.vRegionC, entry.regionTintC,
+						sizeof(material.colorTint.vRegionC));
+					material.colorTint.isEnabled = !material.colorMaskPath.empty();
+				}
+				else if (isV2)
 				{
 					const MATERIAL_ENTRY_V2 entry = reader.Read<MATERIAL_ENTRY_V2>();
 					if (entry.materialIndex >= outMaterials.size())

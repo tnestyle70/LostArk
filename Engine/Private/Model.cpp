@@ -460,6 +460,19 @@ bool_t CModel::Has_MaterialTexture(uint32_t iMeshIndex,
         m_Materials[materialIndex]->Has_Texture(eType, iTextureIndex);
 }
 
+const MODEL_COLOR_TINT* CModel::Get_MaterialColorTint(
+    uint32_t iMeshIndex) const
+{
+    if (iMeshIndex >= m_Meshes.size())
+        return nullptr;
+
+    const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size())
+        return nullptr;
+
+    return &m_Materials[materialIndex]->Get_ColorTint();
+}
+
 const string& CModel::Get_MaterialName(uint32_t iMeshIndex) const
 {
 	static const string Empty;

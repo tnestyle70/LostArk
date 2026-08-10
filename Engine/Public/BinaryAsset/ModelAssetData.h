@@ -7,6 +7,19 @@
 
 NS_BEGIN(Engine)
 
+/* The source game's colour-region contract (WMA3): a mask texture's channels
+select dye regions and these tints colour them. The diffuse textures of those
+assets are mostly achromatic -- the colour lives here. All-ones with isEnabled
+false is identity, and every pre-V3 material reads as that. */
+struct MODEL_COLOR_TINT
+{
+	bool_t isEnabled = { false };
+	float4_t vDiffuse = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vRegionA = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vRegionB = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vRegionC = { 1.f, 1.f, 1.f, 1.f };
+};
+
 struct MODEL_MATERIAL_DATA
 {
 	string name;
@@ -20,6 +33,8 @@ struct MODEL_MATERIAL_DATA
 	filesystem::path metallicPath;
 	filesystem::path roughnessPath;
 	filesystem::path ambientOcclusionPath;
+	filesystem::path colorMaskPath;
+	MODEL_COLOR_TINT colorTint;
 };
 
 enum class MODEL_VERTEX_KIND : uint8_t

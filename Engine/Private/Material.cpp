@@ -331,6 +331,15 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 		FAILED(AddTexture(m_pDevice, material.ambientOcclusionPath,
 			aiTextureType_AMBIENT_OCCLUSION, m_Textures)))
 		return E_FAIL;
+
+	/* The colour mask samples as data, not colour: aiTextureType_BASE_COLOR
+	is outside IsColorTextureSlot, so it loads without the sRGB flag. */
+	if (FAILED(AddTexture(m_pDevice, material.colorMaskPath,
+		aiTextureType_BASE_COLOR, m_Textures)))
+		return E_FAIL;
+	m_ColorTint = material.colorTint;
+	m_ColorTint.isEnabled = material.colorTint.isEnabled &&
+		Has_Texture(aiTextureType_BASE_COLOR);
 	return S_OK;
 }
 

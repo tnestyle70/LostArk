@@ -8,6 +8,7 @@ NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
 struct MODEL_ASSET_LOAD_DESC;
+struct MODEL_COLOR_TINT;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -134,6 +135,9 @@ public:
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
+	/* Null when the mesh or its material is out of range; identity tint (its
+	isEnabled false) when the material simply has no colour mask. */
+	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
 	const string& Get_MaterialName(uint32_t iMeshIndex) const;
 	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
 

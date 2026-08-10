@@ -1,0 +1,2606 @@
+{
+  "pc_sdm_00-1_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.372112,
+      0.735955,
+      0.730111,
+      0.449438
+    ],
+    "diffusecolor_b": [
+      1.0,
+      0.967493,
+      0.94382,
+      0.938202
+    ],
+    "diffusecolor_c": [
+      0.573034,
+      0.478408,
+      0.424946,
+      0.88764
+    ]
+  },
+  "pc_sdm_00-1_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.20594,
+      0.488764,
+      0.428181,
+      0.516854
+    ],
+    "diffusecolor_b": [
+      0.449438,
+      0.242532,
+      0.435995,
+      0.297753
+    ],
+    "diffusecolor_c": [
+      0.803371,
+      0.658701,
+      0.523545,
+      0.724719
+    ]
+  },
+  "pc_sdm_00-1_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.489201,
+      0.292955,
+      0.511236,
+      0.308989
+    ],
+    "diffusecolor_b": [
+      0.235198,
+      0.516854,
+      0.501287,
+      0.353933
+    ],
+    "diffusecolor_c": [
+      0.679775,
+      0.500623,
+      0.348097,
+      0.398876
+    ]
+  },
+  "pc_sdm_00-1_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.389724,
+      0.705154,
+      0.707865,
+      0.567416
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.842697,
+      0.631585,
+      0.492362,
+      0.629214
+    ]
+  },
+  "pc_sdm_00-1_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-1_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.205119,
+      0.364515,
+      0.376404,
+      0.52809
+    ],
+    "diffusecolor_b": [
+      0.465734,
+      0.282039,
+      0.47191,
+      0.370787
+    ],
+    "diffusecolor_c": [
+      0.488764,
+      0.384962,
+      0.348725,
+      0.769663
+    ]
+  },
+  "pc_sdm_00-2_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.293627,
+      0.180665,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.578652,
+      0.475463,
+      0.422611,
+      1.0
+    ]
+  },
+  "pc_sdm_00-2_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.691011,
+      0.362109,
+      0.23207,
+      0.359551
+    ],
+    "diffusecolor_b": [
+      0.313764,
+      0.251123,
+      0.376404,
+      0.348315
+    ],
+    "diffusecolor_c": [
+      0.825843,
+      0.612809,
+      0.488581,
+      0.724719
+    ]
+  },
+  "pc_sdm_00-2_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-2_lower_mi_usa": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-2_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.522472,
+      0.431964,
+      0.343423,
+      0.865169
+    ]
+  },
+  "pc_sdm_00-2_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-2_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.780899,
+      0.385773,
+      0.214967,
+      0.724719
+    ],
+    "diffusecolor_b": [
+      0.325071,
+      0.322308,
+      0.41573,
+      0.286517
+    ],
+    "diffusecolor_c": [
+      0.634831,
+      0.542695,
+      0.444878,
+      0.55618
+    ]
+  },
+  "pc_sdm_00-3_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.747191,
+      0.154869,
+      0.109284,
+      0.679775
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-3_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.576855,
+      0.44159,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.601124,
+      0.113967,
+      0.10469,
+      0.58427
+    ],
+    "diffusecolor_c": [
+      0.662448,
+      0.708526,
+      0.780899,
+      0.825843
+    ]
+  },
+  "pc_sdm_00-3_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.561798,
+      0.112373,
+      0.10731,
+      0.421348
+    ],
+    "diffusecolor_b": [
+      0.432584,
+      0.155165,
+      0.114222,
+      0.52809
+    ],
+    "diffusecolor_c": [
+      0.317952,
+      0.346265,
+      0.38764,
+      0.539326
+    ]
+  },
+  "pc_sdm_00-3_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.538537,
+      0.601814,
+      0.634831,
+      0.713483
+    ]
+  },
+  "pc_sdm_00-3_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      0.523198,
+      0.621651,
+      0.679775,
+      0.573034
+    ],
+    "diffusecolor_a": [
+      0.735955,
+      0.28442,
+      0.227402,
+      0.926966
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      0.198204,
+      0.279352,
+      1.0
+    ]
+  },
+  "pc_sdm_00-3_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.893258,
+      0.260259,
+      0.190696,
+      0.662921
+    ],
+    "diffusecolor_b": [
+      0.573034,
+      0.108407,
+      0.110452,
+      0.578652
+    ],
+    "diffusecolor_c": [
+      0.519032,
+      0.578174,
+      0.646067,
+      0.589888
+    ]
+  },
+  "pc_sdm_00-4_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.747191,
+      0.641078,
+      0.205687,
+      0.606742
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-4_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.7614,
+      0.882023,
+      0.176359,
+      0.769663
+    ],
+    "diffusecolor_b": [
+      0.123248,
+      0.308989,
+      0.205405,
+      0.404494
+    ],
+    "diffusecolor_c": [
+      0.764045,
+      0.562739,
+      0.476455,
+      0.668539
+    ]
+  },
+  "pc_sdm_00-4_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.138051,
+      0.303371,
+      0.209332,
+      0.269663
+    ],
+    "diffusecolor_b": [
+      0.797753,
+      0.745359,
+      0.157249,
+      0.724719
+    ],
+    "diffusecolor_c": [
+      0.119934,
+      0.533708,
+      0.339324,
+      0.213483
+    ]
+  },
+  "pc_sdm_00-4_lower_mi_usa": {
+    "colorMask": "textures/pc_sp_00_lower_cm_usa.tga",
+    "diffusecolor_a": [
+      0.138051,
+      0.303371,
+      0.209332,
+      0.269663
+    ],
+    "diffusecolor_b": [
+      0.138051,
+      0.303371,
+      0.209332,
+      0.269663
+    ]
+  },
+  "pc_sdm_00-4_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.719101,
+      0.686169,
+      0.039396,
+      0.707865
+    ],
+    "diffusecolor_b": [
+      0.52809,
+      0.347764,
+      0.284813,
+      0.578652
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-4_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      0.891104,
+      0.758435,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.816843,
+      0.831461,
+      0.172832,
+      0.41573
+    ],
+    "diffusecolor_b": [
+      0.167308,
+      0.320225,
+      0.222791,
+      0.370787
+    ],
+    "diffusecolor_c": [
+      0.348315,
+      0.241544,
+      0.162416,
+      0.511236
+    ]
+  },
+  "pc_sdm_00-4_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.739668,
+      0.747191,
+      0.121733,
+      0.651685
+    ],
+    "diffusecolor_b": [
+      0.0871102,
+      0.258427,
+      0.176971,
+      0.365169
+    ],
+    "diffusecolor_c": [
+      0.421348,
+      0.289068,
+      0.182269,
+      0.578652
+    ]
+  },
+  "pc_sdm_00-5_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.421348,
+      0.421348,
+      0.421348,
+      0.303371
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.567416,
+      0.454215,
+      0.353838,
+      0.803371
+    ]
+  },
+  "pc_sdm_00-5_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.382022,
+      0.382022,
+      0.382022,
+      0.241573
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.685393,
+      0.577298,
+      0.489017,
+      0.713483
+    ]
+  },
+  "pc_sdm_00-5_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.224719,
+      0.224719,
+      0.224719,
+      0.219101
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.617977,
+      0.538333,
+      0.465792,
+      0.870786
+    ]
+  },
+  "pc_sdm_00-5_lower_mi_usa": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.224719,
+      0.224719,
+      0.224719,
+      0.219101
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.617977,
+      0.538333,
+      0.465792,
+      0.870786
+    ]
+  },
+  "pc_sdm_00-5_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.41573,
+      0.41573,
+      0.41573,
+      0.280899
+    ],
+    "diffusecolor_b": [
+      0.792135,
+      0.651589,
+      0.582976,
+      0.617977
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-5_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.47191,
+      0.47191,
+      0.47191,
+      0.258427
+    ],
+    "diffusecolor_b": [
+      0.904494,
+      0.86647,
+      0.833354,
+      0.747191
+    ],
+    "diffusecolor_c": [
+      0.573034,
+      0.464835,
+      0.386315,
+      0.696629
+    ]
+  },
+  "pc_sdm_00-5_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.202247,
+      0.202247,
+      0.202247,
+      0.370787
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.61236,
+      0.46438,
+      0.357783,
+      0.674157
+    ]
+  },
+  "pc_sdm_00-6_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      0.803371,
+      0.777966,
+      0.762751,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.803371,
+      0.803371,
+      0.803371,
+      0.646067
+    ],
+    "diffusecolor_b": [
+      0.926966,
+      0.898728,
+      0.854059,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.601124,
+      0.530726,
+      0.469417,
+      0.657303
+    ]
+  },
+  "pc_sdm_00-6_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.968248,
+      0.926966,
+      0.837079
+    ],
+    "diffusecolor_b": [
+      0.303371,
+      0.303371,
+      0.303371,
+      0.342697
+    ],
+    "diffusecolor_c": [
+      0.634831,
+      0.526545,
+      0.456508,
+      0.803371
+    ]
+  },
+  "pc_sdm_00-6_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.432584,
+      0.432584,
+      0.432584,
+      0.207865
+    ],
+    "diffusecolor_b": [
+      0.820225,
+      0.772762,
+      0.751105,
+      0.741573
+    ],
+    "diffusecolor_c": [
+      0.780899,
+      0.780899,
+      0.780899,
+      0.595506
+    ]
+  },
+  "pc_sdm_00-6_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.910112,
+      0.888329,
+      0.853869,
+      0.955056
+    ],
+    "diffusecolor_b": [
+      0.691011,
+      0.615704,
+      0.55902,
+      0.634831
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-6_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      0.870786,
+      0.870786,
+      0.870786,
+      0.842697
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      0.831461
+    ],
+    "diffusecolor_b": [
+      0.342697,
+      0.342697,
+      0.342697,
+      0.297753
+    ],
+    "diffusecolor_c": [
+      0.477528,
+      0.368257,
+      0.292419,
+      0.544944
+    ]
+  },
+  "pc_sdm_00-6_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.963346,
+      0.938202,
+      0.853933
+    ],
+    "diffusecolor_b": [
+      0.404494,
+      0.404494,
+      0.404494,
+      0.219101
+    ],
+    "diffusecolor_c": [
+      0.573034,
+      0.462627,
+      0.383096,
+      0.730337
+    ]
+  },
+  "pc_sdm_00-7_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.949438,
+      0.531047,
+      0.608431,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.865169,
+      0.397235,
+      0.349956,
+      0.898876
+    ]
+  },
+  "pc_sdm_00-7_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.09877,
+      0.598765,
+      0.739324,
+      0.898876
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-7_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.679775,
+      0.324359,
+      0.388573,
+      0.724719
+    ],
+    "diffusecolor_b": [
+      0.837079,
+      0.470407,
+      0.606414,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-7_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.898876,
+      0.474688,
+      0.544609,
+      0.904494
+    ],
+    "diffusecolor_b": [
+      1.0,
+      0.783097,
+      0.799589,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-7_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.719101,
+      0.37571,
+      0.418719,
+      0.921348
+    ],
+    "diffusecolor_b": [
+      0.775281,
+      0.359788,
+      0.25262,
+      0.629214
+    ],
+    "diffusecolor_c": [
+      0.808989,
+      0.504482,
+      0.634591,
+      0.808989
+    ]
+  },
+  "pc_sdm_00-7_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.769663,
+      0.389584,
+      0.452235,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.719101,
+      0.257449,
+      0.166774,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-8_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.355639,
+      0.259058,
+      0.808989,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.342854,
+      0.461032,
+      0.859551,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.236334,
+      0.316887,
+      0.808989,
+      1.0
+    ]
+  },
+  "pc_sdm_00-8_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.327192,
+      0.672546,
+      0.88764,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.172705,
+      0.226555,
+      0.640449,
+      0.657303
+    ],
+    "diffusecolor_c": [
+      0.803371,
+      0.803371,
+      0.803371,
+      0.601124
+    ]
+  },
+  "pc_sdm_00-8_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.112738,
+      0.13526,
+      0.52809,
+      0.61236
+    ],
+    "diffusecolor_b": [
+      0.488424,
+      0.568091,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.385747,
+      0.414778,
+      0.544944,
+      0.724719
+    ]
+  },
+  "pc_sdm_00-8_lower_mi_usa": {
+    "colorMask": "textures/pc_sp_00_lower_cm_usa.tga",
+    "diffusecolor_a": [
+      0.112738,
+      0.13526,
+      0.52809,
+      0.61236
+    ],
+    "diffusecolor_b": [
+      0.112738,
+      0.13526,
+      0.52809,
+      0.61236
+    ]
+  },
+  "pc_sdm_00-8_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.718172,
+      0.68699,
+      0.730337,
+      0.640449
+    ]
+  },
+  "pc_sdm_00-8_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      0.741573,
+      0.741573,
+      0.741573,
+      0.685393
+    ],
+    "diffusecolor_a": [
+      0.223457,
+      0.265371,
+      0.662921,
+      0.58427
+    ],
+    "diffusecolor_b": [
+      0.276519,
+      0.473696,
+      0.707865,
+      0.741573
+    ],
+    "diffusecolor_c": [
+      0.38884,
+      0.39086,
+      0.393258,
+      0.247191
+    ]
+  },
+  "pc_sdm_00-8_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.167592,
+      0.206643,
+      0.662921,
+      0.808989
+    ],
+    "diffusecolor_b": [
+      0.308989,
+      0.477796,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.679775,
+      0.679775,
+      0.679775,
+      0.544944
+    ]
+  },
+  "pc_sdm_00-9_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.293627,
+      0.180665,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.451648,
+      0.893258,
+      0.691362,
+      0.797753
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-9_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.481481,
+      1.09877,
+      0.856031,
+      0.904494
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00-9_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.640449,
+      0.309672,
+      0.125931,
+      0.814607
+    ],
+    "diffusecolor_b": [
+      1.0,
+      0.410097,
+      0.230337,
+      0.882023
+    ],
+    "diffusecolor_c": [
+      0.634831,
+      0.288308,
+      0.149792,
+      0.617977
+    ]
+  },
+  "pc_sdm_00-9_lower_mi_usa": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.640449,
+      0.309672,
+      0.125931,
+      0.814607
+    ],
+    "diffusecolor_b": [
+      1.0,
+      0.410097,
+      0.230337,
+      0.882023
+    ],
+    "diffusecolor_c": [
+      0.634831,
+      0.288308,
+      0.149792,
+      0.617977
+    ]
+  },
+  "pc_sdm_00-9_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.467702,
+      0.445457,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.825843,
+      0.825843,
+      0.825843,
+      0.88764
+    ]
+  },
+  "pc_sdm_00-9_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.898876,
+      0.277512,
+      0.181795,
+      0.904494
+    ],
+    "diffusecolor_b": [
+      0.373084,
+      0.57885,
+      0.814607,
+      0.735955
+    ],
+    "diffusecolor_c": [
+      0.296932,
+      0.475447,
+      0.825843,
+      0.786517
+    ]
+  },
+  "pc_sdm_00-9_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.369145,
+      0.764045,
+      0.584276,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.384798,
+      0.820225,
+      0.649002,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      0.707865
+    ]
+  },
+  "pc_sdm_00_arm_mi": {
+    "colorMask": "textures/pc_sdm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.735955,
+      0.0980339,
+      0.13868,
+      0.702247
+    ],
+    "diffusecolor_b": [
+      1.0,
+      0.949438,
+      0.955196,
+      0.814607
+    ],
+    "diffusecolor_c": [
+      0.55618,
+      0.448523,
+      0.365579,
+      0.702247
+    ]
+  },
+  "pc_sdm_00_helmet_mi": {
+    "colorMask": "textures/pc_sdm_00_helmet_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.775281,
+      0.114352,
+      0.147148,
+      0.724719
+    ],
+    "diffusecolor_b": [
+      0.213483,
+      0.213483,
+      0.213483,
+      0.292135
+    ],
+    "diffusecolor_c": [
+      0.724719,
+      0.624063,
+      0.561861,
+      0.651685
+    ]
+  },
+  "pc_sdm_00_lower_mi": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.435891,
+      0.243632,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.47191,
+      0.0848378,
+      0.115244,
+      0.55618
+    ],
+    "diffusecolor_c": [
+      0.674157,
+      0.583268,
+      0.534023,
+      0.646067
+    ]
+  },
+  "pc_sdm_00_lower_mi_usa": {
+    "colorMask": "textures/pc_sdm_00_lower_cm_loc_int.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      0.435891,
+      0.243632,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.47191,
+      0.0848378,
+      0.115244,
+      0.55618
+    ],
+    "diffusecolor_c": [
+      0.674157,
+      0.583268,
+      0.534023,
+      0.646067
+    ]
+  },
+  "pc_sdm_00_shoulder_mi": {
+    "colorMask": "textures/pc_sdm_00_shoulder_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.882023,
+      0.17346,
+      0.256491,
+      0.876405
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.764045,
+      0.60983,
+      0.497917,
+      0.55618
+    ]
+  },
+  "pc_sdm_00_upper1_mi": {
+    "colorMask": "textures/pc_sdm_00_upper1_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sdm_00_upper_mi": {
+    "colorMask": "textures/pc_sdm_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.752809,
+      0.137951,
+      0.208812,
+      0.764045
+    ],
+    "diffusecolor_b": [
+      0.174157,
+      0.174157,
+      0.174157,
+      0.359551
+    ],
+    "diffusecolor_c": [
+      0.702247,
+      0.52582,
+      0.501042,
+      0.52809
+    ]
+  },
+  "pc_sp_00-1_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.88947,
+      0.544414,
+      0.344779,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.920087,
+      0.702382,
+      0.983389,
+      1.0
+    ]
+  },
+  "pc_sp_00-1_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.271577,
+      0.186989,
+      0.339223,
+      0.356863
+    ],
+    "diffusecolor_c": [
+      0.7593,
+      0.505432,
+      0.329729,
+      0.839216
+    ]
+  },
+  "pc_sp_00-1_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.271577,
+      0.186989,
+      0.339223,
+      0.356863
+    ],
+    "diffusecolor_b": [
+      0.999963,
+      0.912718,
+      0.734171,
+      0.872896
+    ],
+    "diffusecolor_c": [
+      0.762403,
+      0.510439,
+      0.33041,
+      0.839216
+    ]
+  },
+  "pc_sp_00-1_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.72373,
+      0.395915,
+      0.207138,
+      0.839748
+    ],
+    "diffusecolor_b": [
+      0.27422,
+      0.188221,
+      0.342529,
+      0.359103
+    ],
+    "diffusecolor_c": [
+      0.790026,
+      0.256582,
+      0.187875,
+      1.0
+    ]
+  },
+  "pc_sp_00-2_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.347249,
+      0.526904,
+      0.872896,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_sp_00-2_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.25084,
+      0.25084,
+      0.242796,
+      0.635294
+    ],
+    "diffusecolor_c": [
+      0.147998,
+      0.320382,
+      0.65237,
+      0.839216
+    ]
+  },
+  "pc_sp_00-2_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.147998,
+      0.320382,
+      0.65237,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      0.988914,
+      0.988914,
+      0.988914,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.48617,
+      0.48617,
+      0.47058,
+      0.718206
+    ]
+  },
+  "pc_sp_00-2_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.150799,
+      0.323861,
+      0.657434,
+      0.839748
+    ],
+    "diffusecolor_b": [
+      0.254134,
+      0.254008,
+      0.24571,
+      0.635336
+    ],
+    "diffusecolor_c": [
+      0.640633,
+      0.713902,
+      0.878421,
+      1.0
+    ]
+  },
+  "pc_sp_00-3_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.796917,
+      0.632043,
+      0.618686,
+      0.952941
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.756878,
+      0.39733,
+      0.42938,
+      0.839216
+    ]
+  },
+  "pc_sp_00-3_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.23756,
+      0.173224,
+      0.177141,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.560499,
+      0.288816,
+      0.267358,
+      0.360784
+    ],
+    "diffusecolor_c": [
+      0.796917,
+      0.632043,
+      0.618686,
+      0.952941
+    ]
+  },
+  "pc_sp_00-3_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.899384,
+      0.751895,
+      0.722672,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      0.801075,
+      0.633662,
+      0.619623,
+      0.955766
+    ],
+    "diffusecolor_c": [
+      0.563515,
+      0.290641,
+      0.267758,
+      0.364627
+    ]
+  },
+  "pc_sp_00-3_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.900519,
+      0.7588,
+      0.726957,
+      0.839748
+    ],
+    "diffusecolor_b": [
+      0.464071,
+      0.184468,
+      0.162148,
+      0.359103
+    ],
+    "diffusecolor_c": [
+      0.585614,
+      0.318957,
+      0.297671,
+      1.0
+    ]
+  },
+  "pc_sp_00-4_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.473843,
+      0.286115,
+      0.563515,
+      0.585614
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.928532,
+      1.0,
+      0.977348,
+      1.0
+    ]
+  },
+  "pc_sp_00-4_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.458547,
+      0.359086,
+      0.366649,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.199114,
+      0.120753,
+      0.23756,
+      0.563515
+    ],
+    "diffusecolor_c": [
+      0.453607,
+      0.304475,
+      0.524843,
+      0.480645
+    ]
+  },
+  "pc_sp_00-4_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.25084,
+      0.173439,
+      0.288816,
+      0.615686
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      0.922618
+    ],
+    "diffusecolor_c": [
+      1.0,
+      0.979013,
+      0.926152,
+      0.690582
+    ]
+  },
+  "pc_sp_00-4_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.254206,
+      0.174718,
+      0.292807,
+      0.618762
+    ],
+    "diffusecolor_b": [
+      0.911569,
+      0.911569,
+      0.911569,
+      0.983389
+    ],
+    "diffusecolor_c": [
+      0.790026,
+      0.307827,
+      0.606394,
+      1.0
+    ]
+  },
+  "pc_sp_00-5_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.722672,
+      0.260794,
+      0.310105,
+      0.639216
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.67496,
+      1.0,
+      0.870829,
+      1.0
+    ]
+  },
+  "pc_sp_00-5_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.607712,
+      0.557351,
+      0.56118,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.281758,
+      0.249069,
+      0.250775,
+      0.698039
+    ],
+    "diffusecolor_c": [
+      0.899384,
+      0.404541,
+      0.476177,
+      0.639216
+    ]
+  },
+  "pc_sp_00-5_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.72373,
+      0.23728,
+      0.392146,
+      0.639216
+    ],
+    "diffusecolor_b": [
+      0.843013,
+      0.867136,
+      0.773648,
+      0.94902
+    ],
+    "diffusecolor_c": [
+      0.630006,
+      0.950241,
+      0.83841,
+      0.94902
+    ]
+  },
+  "pc_sp_00-5_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.906044,
+      0.405486,
+      0.476395,
+      0.64086
+    ],
+    "diffusecolor_b": [
+      0.455701,
+      0.872896,
+      0.726291,
+      0.950241
+    ],
+    "diffusecolor_c": [
+      0.88947,
+      0.0,
+      0.0365971,
+      1.0
+    ]
+  },
+  "pc_sp_00-6_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.299791,
+      0.425399,
+      0.282998,
+      0.454902
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.965815,
+      0.904977,
+      0.570966,
+      0.992157
+    ]
+  },
+  "pc_sp_00-6_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.607712,
+      0.38465,
+      0.355907,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.114213,
+      0.149166,
+      0.108879,
+      0.454902
+    ],
+    "diffusecolor_c": [
+      0.297653,
+      0.420508,
+      0.280124,
+      0.454902
+    ]
+  },
+  "pc_sp_00-6_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.179829,
+      0.254134,
+      0.16849,
+      0.454902
+    ],
+    "diffusecolor_b": [
+      0.987005,
+      1.0,
+      0.947902,
+      0.94902
+    ],
+    "diffusecolor_c": [
+      0.966815,
+      0.894319,
+      0.486096,
+      0.992157
+    ]
+  },
+  "pc_sp_00-6_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.110343,
+      0.143641,
+      0.10555,
+      0.458547
+    ],
+    "diffusecolor_b": [
+      0.944717,
+      0.871788,
+      0.454108,
+      0.994439
+    ],
+    "diffusecolor_c": [
+      1.0,
+      0.996734,
+      0.222132,
+      1.0
+    ]
+  },
+  "pc_sp_00-7_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.88318,
+      0.47044,
+      0.835528,
+      0.454902
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.944717,
+      0.820983,
+      0.553274,
+      1.0
+    ]
+  },
+  "pc_sp_00-7_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.607712,
+      0.38465,
+      0.355907,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      0.939192
+    ],
+    "diffusecolor_c": [
+      0.645555,
+      0.275833,
+      0.598942,
+      0.454902
+    ]
+  },
+  "pc_sp_00-7_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.646385,
+      0.278566,
+      0.603919,
+      0.454902
+    ],
+    "diffusecolor_b": [
+      0.773452,
+      0.732484,
+      0.447549,
+      0.94902
+    ],
+    "diffusecolor_c": [
+      0.861847,
+      0.721738,
+      0.404751,
+      1.0
+    ]
+  },
+  "pc_sp_00-7_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.88947,
+      0.475697,
+      0.837112,
+      0.458547
+    ],
+    "diffusecolor_b": [
+      0.0786147,
+      0.323924,
+      0.56904,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.878421,
+      0.69439,
+      0.286358,
+      1.0
+    ]
+  },
+  "pc_sp_00-8_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.933667,
+      0.933667,
+      0.933667,
+      0.745829
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.143706,
+      0.143706,
+      0.149166,
+      0.27451
+    ]
+  },
+  "pc_sp_00-8_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.375677,
+      0.354442,
+      0.2396,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.180144,
+      0.180144,
+      0.186989,
+      0.27451
+    ],
+    "diffusecolor_c": [
+      0.464741,
+      0.464741,
+      0.464741,
+      0.6
+    ]
+  },
+  "pc_sp_00-8_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.469596,
+      0.469596,
+      0.469596,
+      0.602188
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      0.441973
+    ],
+    "diffusecolor_c": [
+      0.180144,
+      0.180144,
+      0.186989,
+      0.27451
+    ]
+  },
+  "pc_sp_00-8_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.745829,
+      0.745829,
+      0.745829,
+      0.696107
+    ],
+    "diffusecolor_b": [
+      0.182188,
+      0.181526,
+      0.187838,
+      0.276233
+    ],
+    "diffusecolor_c": [
+      1.0,
+      0.883382,
+      0.0,
+      1.0
+    ]
+  },
+  "pc_sp_00-9_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.563515,
+      0.563515,
+      0.563515,
+      0.341176
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.392251,
+      0.100841,
+      0.112758,
+      0.27451
+    ]
+  },
+  "pc_sp_00-9_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      0.834223,
+      0.568116,
+      0.439427,
+      0.701632
+    ],
+    "diffusecolor_b": [
+      0.288816,
+      0.0738278,
+      0.0824142,
+      0.27451
+    ],
+    "diffusecolor_c": [
+      0.358654,
+      0.358654,
+      0.358654,
+      0.341176
+    ]
+  },
+  "pc_sp_00-9_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.358654,
+      0.358654,
+      0.358654,
+      0.341176
+    ],
+    "diffusecolor_b": [
+      0.657434,
+      0.657434,
+      0.657434,
+      0.441973
+    ],
+    "diffusecolor_c": [
+      0.458547,
+      0.117215,
+      0.130847,
+      0.27451
+    ]
+  },
+  "pc_sp_00-9_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.359103,
+      0.359103,
+      0.359103,
+      0.342529
+    ],
+    "diffusecolor_b": [
+      0.292807,
+      0.0749938,
+      0.0835985,
+      0.276233
+    ],
+    "diffusecolor_c": [
+      0.288816,
+      0.0738278,
+      0.0824142,
+      0.27451
+    ]
+  },
+  "pc_sp_00_helmet_mi": {
+    "colorMask": "textures/pc_sp_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      0.505432,
+      0.0199178,
+      0.0277553,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_c": [
+      0.992676,
+      1.0,
+      0.743361,
+      1.0
+    ]
+  },
+  "pc_sp_00_lower_mi": {
+    "colorMask": "textures/pc_sp_00_lower_cm.tga",
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.14198,
+      0.14198,
+      0.14198,
+      0.356863
+    ],
+    "diffusecolor_c": [
+      0.505432,
+      0.0199178,
+      0.0277553,
+      0.839216
+    ]
+  },
+  "pc_sp_00_shouder_mi": {
+    "colorMask": "textures/pc_sp_00_shoulder_cm.tga",
+    "diffusecolor_a": [
+      0.505432,
+      0.0199178,
+      0.0277553,
+      0.839216
+    ],
+    "diffusecolor_b": [
+      0.823174,
+      0.823174,
+      0.823174,
+      0.922618
+    ],
+    "diffusecolor_c": [
+      0.917093,
+      0.917093,
+      0.917093,
+      0.668484
+    ]
+  },
+  "pc_sp_00_upper_mi": {
+    "colorMask": "textures/pc_sp_00_upper_cm.tga",
+    "diffusecolor_a": [
+      0.508269,
+      0.0205266,
+      0.0289007,
+      0.839748
+    ],
+    "diffusecolor_b": [
+      0.143641,
+      0.143641,
+      0.143641,
+      0.359103
+    ],
+    "diffusecolor_c": [
+      0.790026,
+      0.595523,
+      0.164271,
+      1.0
+    ]
+  }
+}
