@@ -55,9 +55,9 @@ $ErrorActionPreference = 'Continue'
 $output = (& python -B $tests 2>&1 | Out-String).Trim()
 $testExitCode = $LASTEXITCODE
 $ErrorActionPreference = $previousErrorActionPreference
-if ($testExitCode -ne 0 -or $output -notmatch 'Ran 14 tests' -or
+if ($testExitCode -ne 0 -or $output -notmatch 'Ran 24 tests' -or
     $output -notmatch '(?m)^OK$') {
     throw "Derived Effect artifact publisher tests failed: $output"
 }
 
-Write-Output 'PASS: derived Effect artifact publisher schema tests=14 authenticated-blocker-union=true rollback=true product=false'
+Write-Output 'PASS: derived Effect artifact publisher schema tests=24 reserved-reconstructed-id=true current-tools=true duplicate-json-keys=true duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true authenticated-blocker-union=true reconstructed-product=false rollback=true'
