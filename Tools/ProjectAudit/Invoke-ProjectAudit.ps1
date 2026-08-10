@@ -803,6 +803,22 @@ try {
 	Add-Check 'effect.artist-31470-material-runtime-oracle' `
 		$artistMaterialRuntimePassed `
 		$artistMaterialRuntimeDetail
+	$artistMaterialPolicyPassed = $false
+	$artistMaterialPolicyDetail = ''
+	try {
+		$artistMaterialPolicyDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialReconstructedPolicy.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialPolicyPassed =
+			$artistMaterialPolicyDetail -match
+			'PASS: Artist F 31470 Material reconstructed policy mode=shallow rows=89\+94\+72/255'
+	}
+	catch {
+		$artistMaterialPolicyDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-reconstructed-policy' `
+		$artistMaterialPolicyPassed `
+		$artistMaterialPolicyDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
