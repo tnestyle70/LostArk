@@ -123,15 +123,54 @@ Blender 5.0\5.0\python\bin`)을 PATH에 얹어 돌린다.
 (백그라운드 셸은 stdin EOF로 즉시 종료된다), Client는 작업 디렉터리
 `Client/Default` + `LOSTARK_SERVER_HOST=127.0.0.1`.
 
-## 5. 남은 작업
+## 5. 클래스 확장 — 워로드 헬멧, 창술사, 도화가 (같은 날 저녁)
+
+### 5.1 체인 선정의 정본은 스킨 가중치다
+
+오전 2절의 체인 표(클립 회전량 조사)는 후보 목록일 뿐이다. 실제로 시뮬해야 하는
+체인은 **출하 메시가 어느 본에 가중치를 갖는가**로 결정된다. 이 세션에서 표만 믿고
+두 번 틀렸다: 워로드 꽁지를 `b_hair01_b`(숨긴 머리카락 전용)에 붙였고, 창술사에서
+가중치 1위 천 덩어리인 `b_upper_pelat` 4갈래를 놓쳤다. 도화가의 리그 capatcloth
+3갈래는 어떤 출하 메시도 안 써서 목록에서 뺐다.
+
+wmodel 구조체 정의는 `Engine/Private/BinaryAsset/Winters/WFormatTypes.h`가 정본이다.
+WMOD 컨테이너(16B FILE_HEADER + 32B META + 64B×n SECTION_DESC) → kind 3 skeleton
+(`SKELETON_BONE_NODE` 256B: name[64], parentIndex), kind 1 mesh(`MESH_META` 36B +
+서브메시 + 정점 blob + 인덱스 + `MESH_BONE_ENTRY` 128B 팔레트). 스킨드 정점 76B의
+blend 데이터는 offset 44부터 uint32×4 인덱스 + float×3 가중치(4번째는 1-합)다.
+이번에 쓴 파서는 scratchpad `inspect_wmodel.py`(스켈레톤 체인 dump + 파츠별 가중치
+히스토그램)였고 커밋하지 않았다 — 위 좌표면 재작성은 금방이다.
+
+### 5.2 붙인 체인들
+
+**워로드**: 머리카락 파츠는 헬멧 착용 중이라 `EQUIPMENT_PART_SPEC.isHidden`(신규
+trailing 필드, 생성 후 `Set_PartVisible(false)`)으로 숨겼다 — 헬멧 관통 해결. 꽁지는
+헬멧 메시가 스키닝하는 `b_helmet_b_01`(4마디, head 아래) 체인이다:
+0.12/0.5/15/0.25/3 (강성/감쇠/중력/이탈/바람 순).
+
+**창술사** (`Logic_LanceMaster.cpp`): 앞·뒤 자락 `b_upper_cloth_f/b`(각 5마디),
+상의 요패 `b_upper_pelat_{br,bl,b}`(4마디)·`_r`(5마디), 치마 `b_upper_skirt_*`
+6갈래(각 2마디 — 스킨은 `_01`뿐이지만 `_02`를 시뮬해야 `_01`이 조준 회전을 받는다),
+헬멧 밖 앞머리 `b_hair_fr/fl`(각 2마디, 헬멧 메시가 스키닝). DRAPE(자락·요패)
+0.04/0.6/16/0.3/4.5, FLAP(치마) 0.12/0.5/10/0.15/2.5, BANGS 0.15/0.5/12/0.1/2.
+
+**도화가** (`Logic_Artist.cpp`): 코트 자락 `b_skirt_*` 8갈래(각 4마디) — "뒤에 3개
+달린 것"은 뒷자락 b/bl/br다 —, 허리 뒤 `b_add_tail_1`(3마디), 소매 날개
+`b_armwing_l/r`(각 5마디, Shoulder 파츠 가중치의 사실상 전부), 모자 술
+`b_hair_b_11`(4마디, 이름과 달리 11부터 시작하는 체인이며 인덱스는 연속).
+ROBE 0.05/0.6/16/0.3/4.5, WING 0.08/0.55/12/0.25/3, TASSEL 0.12/0.5/12/0.15/2.
+
+## 6. 남은 작업
 
 1. **충돌 캡슐.** 치마가 다리를, 망토가 등을 뚫을 수 있다. 다리·몸통 캡슐 몇 개와
    push-out이면 치마 강성을 낮출 여지도 생긴다.
-2. **나머지 세 클래스.** 본 조사는 오전 문서 2절에 있다. 솔버는 공용이므로 각
-   `Logic_*.cpp`에 `BONE_CHAIN_SPEC` 배열과 `CHARACTER_SPEC` 연결만 추가하면 된다.
-   머리카락 체인도 같은 스펙으로 붙는다(창술사 4갈래, 도화가 7, 차원술사 5).
-3. **파라미터 저작 데이터 이동.** 클래스가 늘면 `Logic_*.cpp` 상수를
-   `Data/Animation/Authored/<Asset>` 문서로 옮긴다. 형식 확정은 두 클래스째 붙일 때.
+2. **나머지 세 클래스.** 건슬링어·슬레이어·차원술사. 5.1의 파싱 절차대로 스킨
+   가중치를 먼저 뜨고 `Logic_*.cpp`에 스펙 배열 + `CHARACTER_SPEC` 꼬리 연결만
+   추가하면 된다. 슬레이어·차원술사는 머리카락을 몸체/파츠가 실제로 그리므로 머리
+   체인이 살아 있을 가능성이 높다.
+3. **파라미터 저작 데이터 이동.** 세 클래스에 상수 블록이 쌓였다. 다음 클래스를
+   붙이기 전에 `Data/Animation/Authored/<Asset>` 문서로 옮기는 게 맞다. 코스튬이
+   생기면 키는 클래스가 아니라 에셋이어야 한다.
 4. **스폰 크래시 관찰.** 오전 5절의 c0000005는 솔브가 스냅샷 재포즈와 같은 프레임
    단계에 있던 시절의 것이다. Late_Update 이동으로 얽힘 자체가 사라졌으므로 재현
    여부만 지켜본다. WER LocalDumps는 `C:\Users\95jus\CrashDumps`에 걸려 있고, 덤프가

@@ -1191,6 +1191,8 @@ HRESULT CCharacter::Ready_PartObjects()
 			m_pSpec->pEquipment[i].pPartTag,
 			&equipmentDesc)))
 			return E_FAIL;
+		if (m_pSpec->pEquipment[i].isHidden)
+			Set_PartVisible(m_pSpec->pEquipment[i].pPartTag, false);
 	}
 
 	/* The weapon is the same part class in socket mode. It gets its own class once
