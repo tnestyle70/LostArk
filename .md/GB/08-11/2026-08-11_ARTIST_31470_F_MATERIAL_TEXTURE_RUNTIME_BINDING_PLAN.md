@@ -6,6 +6,13 @@ Material reconstructed policy `97597531215fa9c9873fe1be3ba8cd23db60031d`는 samp
 72/72를 선택했지만, 각 `logicalTexturePath`를 실제 Resources asset ID에 결합하는 계약은 없다.
 이번 변경은 그 72행만 다룬다. C++, renderer, runtime program builder, Product admission은 수정하지 않는다.
 
+후속 external-identity corrective는 generator에 전달된 Python object와 receipt에 기록한 외부 파일
+identity가 서로 다른 상태로 재봉인될 수 있는 경계를 닫는다. Pure validator는 호출자가 외부 object를
+주었는지와 `require_approval` 값에 관계없이 기본 runtime-cook, resource-export, source-pack 파일의
+실제 bytes를 항상 읽는다. 각 파일은 승인된 byte count, raw SHA-256, canonical JSON SHA-256과 strict
+JSON parse를 모두 통과해야 하며, 전달 object는 이 승인 파일에서 parse한 object와 strict-equal일
+때만 허용한다.
+
 실측 denominator는 다음과 같다.
 
 - sampler policy: 72행, unique logical texture 48개
@@ -61,6 +68,11 @@ Cook `sourceFile`은 export output relative path와 같고, exported DDS와 runt
 각 logical path는 tracked Artist source resource manifest의 physical UPK row와 external source-pack
 manifest의 raw size/SHA에 결합한다. Deep mode는 실제 UPK와 runtime DDS bytes를 다시 해시한다.
 
+외부 세 receipt의 authority는 caller object가 아니라 기본 pinned 경로의 실제 파일 bytes다. Receipt의
+`sourceEvidence` 외부 행도 validator가 방금 읽어 계산한 byte count/raw SHA와 다시 결합한다. 따라서
+동일한 원본 파일 identity를 기록하면서 메모리 object만 바꾸거나, forged object와 receipt 행을 함께
+재봉인해도 승인 authority를 대체할 수 없다.
+
 unresolved 네 행은 cook/export mapping을 만들지 않는다. exact-DDS receipt row와 authenticated Texture2D
 export/DDS identity를 복사하고 `RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED` blocker를 유지한다.
 Provisioning proposal은 exact-DDS receipt의 기존 `fixtureAssetId`와 exact source DDS identity만 결합하며
@@ -75,12 +87,16 @@ Provisioning proposal은 exact-DDS receipt의 기존 `fixtureAssetId`와 exact s
 - source logical path와 runtime asset ID는 casefold collision과 many-to-one mapping을 거부한다.
 - 절대 경로, drive path, backslash, `..`, wrong prefix/suffix를 runtime asset ID로 허용하지 않는다.
 - candidate slot은 exact asset ID 관찰값일 뿐 authority/admission이 아니다.
+- 외부 object 인자는 dependency injection이 아니라 pinned 파일 parse 결과와의 동등성 assertion이다.
+- runtime-cook/export/source-pack은 실제 기본 파일의 byte count/raw SHA/canonical JSON identity를 항상
+  다시 검증하며 `require_approval=false`도 이 검사를 우회하지 않는다.
 - 네 proposal은 target file이나 transactional deployment receipt가 없으므로 resolved로 승격할 수 없다.
 - 실패하면 output 파일을 부분 교체하지 않는다. `--check`는 파일을 쓰지 않는다.
 
 ## 검증
 
-1. focused Python unit mutation suite
+1. focused Python unit mutation suite. 기본 외부 파일 bytes 변조와 consumed runtime asset/object/receipt
+   coordinated reseal을 pure validator 직접 호출로 거부한다.
 2. generator `--check` deterministic rebuild
 3. focused ProjectAudit shallow
 4. external cook/export/source-pack/UPK/Resources를 지정한 deep audit
