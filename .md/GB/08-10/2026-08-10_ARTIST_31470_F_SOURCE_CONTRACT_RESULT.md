@@ -514,3 +514,113 @@ readiness PASS가 아니다. 29개 행의 provider/pilot/expected output/toleran
 v2 receipt LF-canonical text SHA-256은
 `c436e69e40e7ad13079940e9ed88d1522942c10a135e19c1d19b020e86b797ac`, self SHA-256은
 `0da627b3ed5b100014f2a2ac1fa3591d861c6a241befee65ca856b406dedaadc`다.
+
+## 2026-08-10 R0-S3 source actual-output provider acquisition 결과
+
+최종 계획 정본 `7ffb8a3bf123703ea451cbe53a178f449f102fbe`를 기준으로 frozen Source corrective
+`c927e397811d4e5718efd27b187eb59775023685`에서 별도 acquisition worktree를 만들었다. 기능 runtime,
+Playback, renderer, shared C++는 수정하지 않았다.
+
+### blocker를 native family로 축약한 결과
+
+- Source blocker occurrence: 29/29
+- exact Source class: 15
+- native family cluster: 7
+  - UE3 standard seeded Spawn→base SpawnEx: 7 class / 11 occurrence
+  - EF LocationOnGround: 1 / 2
+  - EF CylinderSpin seeded+unseeded: 2 / 5
+  - EF Decal TypeData: 1 / 3
+  - EF PointLight TypeData: 1 / 1
+  - EF VelocityOverLifetime: 1 / 4
+  - EF custom vector-multiply particle parameter evaluator owner: 2 / 3
+- source-era actual-output provider: 0
+- standalone actual mutated-output pilot: 0
+- resolved blocker delta: `29 -> 29`, resolved 0
+- ownerless blocker: 0
+
+각 class row에는 29개 stable occurrence ID, required mutated output, final owner, provider/pilot/tolerance와
+decision을 보존했다. family grouping은 조사 단위를 7개로 줄였지만 29개 행을 READY로 합치지 않는다.
+
+### 접근 가능한 획득 경로 조사
+
+- C:가 유일한 filesystem volume이었다. `C:/Users/user`, Program Files, ProgramData와 현재 설치 외
+  exact target scan에서 source-era `EFEngine.dll`, `LOSTARK.exe`, logical `Engine.u`/`EFGame.u`를 찾지
+  못했다. 현재 설치는 `LOSTARK.ver 3.22.2.3,1546`, `EFEngine.dll 1.0.8767.0` 한 revision뿐이다.
+- Desktop backup/resource root 36 ZIP과 1,813 archived UPK, Recycle Bin, OneDrive, 접근 가능한 USN
+  journal에는 native/script provider가 없었다. FileHistory와 Windows.old는 존재하지 않았다.
+- VSS inventory는 비관리자 token에서 `vssadmin`/`Win32_ShadowCopy` 접근 권한이 없어 확인하지 못했다.
+  이를 `PERMISSION_UNCHECKED`로 기록했으며 exhausted로 계산하지 않았다. 권한 상승, snapshot mount,
+  recovery와 쓰기는 수행하지 않았다.
+- local/remote 79 heads/tags와 pre-purge bundle, GitHub Actions artifact 0/cache 0, Release 0,
+  user container package none, local LFS 1,546 object/728,803,042 bytes를 확인했다. LFS는 PE 21/UPK 0/
+  game-native 0이며 19,818,496-byte `b367…` candidate는 Assimp v6.0.4였다.
+- unreachable UE3 candidate `7d19e7036aee09d6502f6f1527425aa3d52853ff`, 5,303,178 bytes,
+  raw SHA-256 `f130d3d0b4a048832885cc0d13eb8a88b7d6eb0b1a46dba6181c4d1cd3c4239f`는
+  Ver868/16 Engine12097의 cooked Level/map이었다. ShaderCache/Material/MIC/ParticleSystem asset export가
+  0이므로 native/script output provider가 아니다. 나머지 큰 unreachable object도 gameplay SQLite,
+  mapplacement와 opaque numeric buffer였으며 provider가 없었다.
+- refs-outside blob 6,235개 중 sub-1MiB 5,980개/379,505,715 bytes도 전부 stream 분류했다.
+  LFS pointer 1,232/other 4,748이며 PE/UE3 UPK/ZIP은 0이다. pointer tree 798 entry와 local store에
+  실제 존재하는 unmapped pointer target 757개/137,947,876 bytes도 PE/UPK/ZIP 0이었다. 유일한 EXE
+  이름은 기존 project tool `ModelAssetConverter.exe`였으므로 accessible Git object gap도 닫혔다.
+
+### source package revision과 current callable 경계
+
+- `FX_CM_01`, `FX_CM_02`는 source/current package identity가 같고 source archive exact copy가 각각
+  3개다. `FX_PC_SDM_00`, `FX_PC_SDM_05`는 current와 revision이 다르지만 source exact copy가 각각
+  3개다. `FX_PC_SDM_07` source identity는 66,494 bytes / `94398893…`, current는 66,557 bytes /
+  `5a052189…`이며 source exact package copy는 0이다.
+- package input의 존재는 native `Spawn/Update/GetValue` 구현이 아니다. 특히 package mismatch가 있는
+  current runtime capture는 `SOURCE_EXACT`로 사용할 수 없다.
+- current `EFEngine.dll`에는 표준 seeded wrapper 7개가 addressable하지만 standalone 호출에 필요한
+  live object/emitter/world/distribution graph fixture가 없다. EF custom exact exported entry와 custom
+  distribution exact `GetValue` entry는 0이다. live game injection/hooking은 current-only이고 독립적이지
+  않으며 안전한 controlled source-era oracle도 아니므로 수행하지 않았다.
+
+### 외부 artifact intake와 최종 진입 판정
+
+`SOURCE_EXACT`를 다시 열 수 있는 최소 입력은 다음 둘 중 하나다.
+
+1. 동일 revision의 `EFEngine.dll`, `LOSTARK.exe`, logical `Engine.u`, logical `EFGame.u`, target UPK 전체와
+   single-revision identity manifest
+2. 위 binary/package identity를 증명하고 fixed seed/time/world/parameter input과 pre/post full numeric
+   particle/component state를 제공하는 authenticated source-era capture
+
+두 대안 모두 raw bytes/length/SHA-256/version/signature, 29 occurrence→15 exact class→7 native family
+mapping, expected mutated output과 absolute/relative tolerance가 필요하다. current-only identity, input digest,
+wrapper dataflow, class 이름/상속, 이미지·스크린샷과 출처 없는 수치는 거부한다.
+
+현재 결론은 다음과 같다.
+
+- acquisition evidence: `PASS_ACCESSIBLE_SCOPE_EXHAUSTED` (VSS 1개는 permission-unchecked)
+- Source execution readiness: `BLOCKED`
+- Source exact readiness: `0/29`
+- R2/final materializer/Playback/renderer 진입: `NO-GO`
+- reconstructed-numerically-verified 최대 복원 분기: `NOT_STARTED`, 사용자 명시 승인 필요
+- Product admission: false
+
+이는 구현 실패를 숨긴 타협 완료가 아니다. accessible provider가 없다는 사실과 외부 입력 계약을
+동결한 R0 결론이며, source exact artifact가 들어오거나 사용자가 별도 reconstructed fidelity 분기를
+승인하기 전에는 35/35 또는 runtime 복원 완료를 주장하지 않는다.
+
+### 자동 검증
+
+- acquisition unit/coordinated-reseal mutation: 21/21 PASS
+- deterministic builder `--check`: PASS
+- 기존 custom handler shallow/deep independent oracle: module 370/29, distribution 626/3,
+  actual output oracle 0, Product false PASS
+- focused acquisition shallow/deep ProjectAudit: classes 15, native families 7, blocked 29,
+  provider/pilot 0, VSS permission-unchecked, next stage NO-GO, Product false PASS
+- 전체 `Invoke-ProjectAudit.ps1`: exit 1. 신규
+  `effect.artist-31470-source-oracle-acquisition`은 실패 목록에 없고 PASS했다. 전체 audit은 map/runtime
+  resource, project data visibility, G09 codec/runtime, 기존 Source publisher expectation과 nested stderr,
+  geometry harness binary, WFX/representative/four-class rollout, Character resource 등 이 lane 밖 기존
+  통합 항목 14개가 남아 실패했다.
+- JSON strict load/self hash/input identities, class/family denominator, VSS status, current-only laundering,
+  fabricated provider/pilot, fidelity/reconstruction approval, artifact intake, next-stage/Product coordinated
+  reseal mutation: 모두 reject
+- 이미지, 스크린샷, GPU 화면, 육안 판정: 실행하지 않음
+
+acquisition receipt self SHA-256은
+`c49f4dfcabc09c765b2127c620c5dbc8676d18819de008eb813e583b3f07e98d`, raw file SHA-256은
+`05d8c90b2000fbc6aa699f63805784b2013a700aa94ee5e85c4d4a30459cafbc`다.
