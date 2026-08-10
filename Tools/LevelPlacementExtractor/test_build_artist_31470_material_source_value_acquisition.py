@@ -432,6 +432,82 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
         self.assertEqual(0, self.committed["summary"]["strictExecutionReadyCount"])
         self.assertEqual(0, self.committed["summary"]["productCount"])
 
+    def test_all_top_level_acquisition_evidence_is_independently_pinned(self) -> None:
+        cases = (
+            "global-exhaustion",
+            "vss-provider",
+            "controlled-capture",
+            "render-owner",
+            "source-path",
+            "source-extra-key",
+            "provenance-cluster",
+            "corrective-complete",
+            "missing-artifact",
+            "empty-blockers",
+            "root-extra-key",
+            "summary-product-extra",
+        )
+        for label in cases:
+            with self.subTest(label=label):
+                mutated = copy.deepcopy(self.committed)
+                if label == "global-exhaustion":
+                    mutated["externalArtifactSearch"]["scopeBoundary"][
+                        "globalExhaustionClaim"
+                    ] = True
+                elif label == "vss-provider":
+                    vss = mutated["externalArtifactSearch"]["scopeBoundary"][
+                        "volumeShadowCopy"
+                    ]
+                    vss.update(
+                        status="EXHAUSTED_NO_PROVIDER", admissionInput=True
+                    )
+                elif label == "controlled-capture":
+                    capture = mutated["externalArtifactSearch"][
+                        "controlledRuntimeCapture"
+                    ]
+                    capture.update(
+                        safeProviderAvailable=True,
+                        sourceRevisionRuntimeBundleAvailable=True,
+                        sourceRevisionDebugOrCaptureApiAvailable=True,
+                        currentInstalledProcessIsSourceRevisionAuthenticated=True,
+                        decision="SOURCE_EXACT_CAPTURE_AVAILABLE",
+                    )
+                elif label == "render-owner":
+                    mutated["matrices"]["renderStateRows"][0]["owner"] = (
+                        "FORGED_PRODUCT_OWNER"
+                    )
+                    mutated["summary"]["renderRowSetSha256"] = (
+                        acquisition.canonical_sha256(
+                            mutated["matrices"]["renderStateRows"]
+                        )
+                    )
+                elif label == "source-path":
+                    mutated["source"][0]["path"] = "forged/provider.json"
+                    mutated["source"][0]["canonicalTextSha256"] = "0" * 64
+                elif label == "source-extra-key":
+                    mutated["source"][0]["sourceExact"] = True
+                elif label == "provenance-cluster":
+                    mutated["provenanceClusters"]["staticRecipeCount"] = 0
+                elif label == "corrective-complete":
+                    mutated["coordinatedCorrectiveRequirements"][0][
+                        "decision"
+                    ] = "COMPLETE"
+                elif label == "missing-artifact":
+                    mutated["minimumMissingExternalArtifacts"]["sampler"] = (
+                        "NONE_REQUIRED"
+                    )
+                elif label == "empty-blockers":
+                    mutated["admission"]["blockers"] = []
+                elif label == "root-extra-key":
+                    mutated["forgedProductAdmission"] = True
+                else:
+                    mutated["summary"]["forgedProductAdmission"] = True
+                self.reseal(mutated)
+                with self.assertRaises(ValueError):
+                    acquisition.validate_receipt_semantics(
+                        mutated, self.contract
+                    )
+
     def test_external_search_snapshots_are_qualified_corroboration_only(self) -> None:
         search = self.committed["externalArtifactSearch"]
         boundary = search["scopeBoundary"]

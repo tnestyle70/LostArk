@@ -217,7 +217,8 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                 )
             )
             seal_receipt(downstream)
-            validate_runtime_receipt(downstream)
+            with self.assertRaisesRegex(ValueError, "approved semantic"):
+                validate_runtime_receipt(downstream)
             with self.assertRaisesRegex(ValueError, "denominator changed"):
                 validate_runtime_receipt_source_bindings(
                     downstream,
@@ -774,6 +775,145 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
             seal_receipt(mutated)
             with self.assertRaisesRegex(ValueError, "admission"):
                 validate_runtime_receipt(mutated)
+
+    def test_runtime_root_summary_family_and_occurrence_cannot_be_resealed(self) -> None:
+        cases = (
+            "root-extra",
+            "source-extra",
+            "summary-extra",
+            "admission-extra",
+            "reconstructed-count",
+            "input-kind-count",
+            "input-role-count",
+            "empty-admission-blockers",
+            "family-hlsl-false",
+            "family-arithmetic-false",
+            "family-empty-evidence-blockers",
+            "family-empty-runtime-blockers",
+            "family-extra",
+            "occurrence-extra",
+        )
+        for label in cases:
+            with self.subTest(label=label):
+                mutated = copy.deepcopy(self.receipt)
+                if label == "root-extra":
+                    mutated["forgedProductAdmission"] = True
+                elif label == "source-extra":
+                    mutated["sourceEvidence"]["forgedProductAdmission"] = True
+                elif label == "summary-extra":
+                    mutated["summary"]["forgedProductAdmission"] = True
+                elif label == "admission-extra":
+                    mutated["admission"]["forgedProductAdmission"] = True
+                elif label == "reconstructed-count":
+                    mutated["summary"][
+                        "reconstructedNumericallyVerifiedEvaluatorCount"
+                    ] = 0
+                elif label == "input-kind-count":
+                    mutated["summary"]["inputKindCounts"]["scalar"] = 0
+                elif label == "input-role-count":
+                    mutated["summary"]["inputRoleCounts"]["ALPHA_SCALAR"] = 0
+                elif label == "empty-admission-blockers":
+                    mutated["admission"]["blockers"] = []
+                elif label.startswith("family-"):
+                    family = mutated["familyEvaluators"][0]
+                    if label == "family-hlsl-false":
+                        family["hlslNumericOracleVerified"] = False
+                    elif label == "family-arithmetic-false":
+                        family["arithmeticEvaluationAdmission"] = False
+                    elif label == "family-empty-evidence-blockers":
+                        family["evidenceBlockers"] = []
+                    elif label == "family-empty-runtime-blockers":
+                        family["runtimeBlockers"] = []
+                    else:
+                        family["forgedProductAdmission"] = True
+                    family.pop("evaluatorSha256")
+                    family["evaluatorSha256"] = canonical_sha256(family)
+                else:
+                    occurrence = mutated["occurrenceBindings"][0]
+                    occurrence["forgedProductAdmission"] = True
+                    occurrence.pop("bindingSha256")
+                    occurrence["bindingSha256"] = canonical_sha256(
+                        occurrence
+                    )
+                seal_receipt(mutated)
+                with self.assertRaises(ValueError):
+                    validate_runtime_receipt(mutated)
+
+    def test_coordinated_external_capture_acquisition_reseal_is_rejected(self) -> None:
+        mutated_acquisition = copy.deepcopy(self.source_value_acquisition)
+        search = mutated_acquisition["externalArtifactSearch"]
+        search["scopeBoundary"]["globalExhaustionClaim"] = True
+        search["scopeBoundary"]["volumeShadowCopy"].update(
+            status="EXHAUSTED_NO_PROVIDER", admissionInput=True
+        )
+        search["controlledRuntimeCapture"].update(
+            safeProviderAvailable=True,
+            sourceRevisionRuntimeBundleAvailable=True,
+            sourceRevisionDebugOrCaptureApiAvailable=True,
+            currentInstalledProcessIsSourceRevisionAuthenticated=True,
+            decision="SOURCE_EXACT_CAPTURE_AVAILABLE",
+        )
+        mutated_acquisition.pop("receiptSha256")
+        mutated_acquisition["receiptSha256"] = acquisition.canonical_sha256(
+            mutated_acquisition
+        )
+
+        with self.assertRaisesRegex(ValueError, "external artifact"):
+            build_receipt(
+                copy.deepcopy(self.material),
+                copy.deepcopy(self.render),
+                copy.deepcopy(self.shader),
+                copy.deepcopy(mutated_acquisition),
+                DEFAULT_MATERIAL_CONTRACT,
+                DEFAULT_RENDER_RECEIPT,
+                DEFAULT_SHADER_RECEIPT,
+                DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
+                DEFAULT_HLSL,
+                copy.deepcopy(
+                    self.receipt["sourceRevisionShaderCacheAcquisition"]
+                ),
+                copy.deepcopy(self.receipt["hlslVerification"]),
+                copy.deepcopy(self.receipt["warpStateProviderVerification"]),
+            )
+        with self.assertRaisesRegex(ValueError, "external artifact"):
+            validate_runtime_receipt_source_bindings(
+                self.receipt,
+                self.material,
+                self.render,
+                self.shader,
+                mutated_acquisition,
+            )
+
+        with tempfile.TemporaryDirectory() as root:
+            acquisition_path = Path(root) / "forged-external-acquisition.json"
+            acquisition_path.write_text(
+                json.dumps(
+                    mutated_acquisition,
+                    ensure_ascii=False,
+                    indent=2,
+                    allow_nan=False,
+                )
+                + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            downstream = copy.deepcopy(self.receipt)
+            downstream["sourceEvidence"][
+                "sourceValueAcquisitionReceiptSha256"
+            ] = mutated_acquisition["receiptSha256"]
+            downstream["sourceEvidence"][
+                "sourceValueAcquisitionTrackedTextSha256"
+            ] = tracked_text_sha256(acquisition_path)
+            seal_receipt(downstream)
+            with self.assertRaisesRegex(ValueError, "external artifact"):
+                validate_runtime_receipt_tracked_sources(
+                    downstream,
+                    DEFAULT_MATERIAL_CONTRACT,
+                    DEFAULT_RENDER_RECEIPT,
+                    DEFAULT_SHADER_RECEIPT,
+                    acquisition_path,
+                    DEFAULT_HLSL,
+                )
 
     def test_shader_cache_candidate_cannot_be_laundered(self) -> None:
         mutated = copy.deepcopy(self.receipt)

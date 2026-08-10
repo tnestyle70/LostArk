@@ -138,7 +138,7 @@ receipt의 row-set digest는 다음과 같다.
 python -m unittest Tools.LevelPlacementExtractor.test_build_artist_31470_material_source_value_acquisition -v
 ```
 
-결과: 11 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
+결과: 12 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
 default의 SOURCE_EXACT 승격, exact-4/72 denominator, external snapshot/VSS qualification,
 Product/R2 closure를 검사했다.
 
@@ -171,3 +171,18 @@ pure `validate_receipt_semantics`로 교체했다. 이 함수는 raw rebuild와 
 
 coordinated SOURCE_EXACT promotion과 decoded value/property type forgery mutation이 모두 거부됐고,
 raw `--check`는 render `0/89`, static `23/94`, sampler `0/72`, execution `0/255`, Product false로 PASS했다.
+
+`d39097c34be763946958ee27417790d2135db209` 후속 감사에서는 external search/VSS/capture와
+source identity, render owner, provenance cluster, corrective requirement, missing-artifact 및 admission
+필드를 함께 다시 봉인하면 의미를 바꿀 수 있음을 재현했다. 현재 validator는 다음을 추가로 고정한다.
+
+- root와 source 8개의 exact key/order/path/hash-domain 및 실제 tracked text hash를 대조한다.
+- external artifact search 전체 projection과 accessible-scope-only, global claim false,
+  VSS `PERMISSION_UNCHECKED`/admission false, corroboration-only snapshot, controlled capture unavailable을
+  import-free approval module의 acyclic digest에 대조한다.
+- source/self cycle을 제외한 acquisition evidence, matrices, cluster, corrective, missing artifact,
+  summary와 admission 전체 semantic projection을 독립 digest로 인증한다.
+- owner·count·blocker·Product extra key와 coordinated capture/source-provider 승격 mutation을 거부한다.
+
+이 후속 강화 뒤에도 source value/readiness 분자는 각각 `0/89 + 23/94 + 0/72`, `0/255`이고
+Product false, R2 `NO-GO`다.
