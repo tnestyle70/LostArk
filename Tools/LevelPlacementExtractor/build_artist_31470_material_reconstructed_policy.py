@@ -18,6 +18,11 @@ import struct
 from pathlib import Path
 from typing import Any, Iterable
 
+from effect_source_contract_io import (
+    load_strict_json_object,
+    tracked_text_sha256,
+)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 MATERIAL_ROOT = ROOT / "Data/Effects/Imported/Artist/Materials"
@@ -27,6 +32,15 @@ DEFAULT_MATERIAL_CONTRACT = MATERIAL_ROOT / "skill.31470.typed-material-evidence
 DEFAULT_HLSL = ROOT / "Tools/MaterialEvaluatorHarness/Shader_Artist31470MaterialReconstructedPolicy.hlsl"
 DEFAULT_VERIFIER = ROOT / "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py"
 DEFAULT_APPROVAL = ROOT / "Tools/LevelPlacementExtractor/artist_31470_material_reconstructed_policy_approval.py"
+DIRECT_IMPORT_DEPENDENCY_PATHS = {
+    "STRICT_JSON_OBJECT_LOADER": ROOT / "Tools/LevelPlacementExtractor/effect_source_contract_io.py",
+    "MATERIAL_EVIDENCE_VALIDATOR": ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py",
+    "MATERIAL_RUNTIME_ORACLE_VALIDATOR": ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
+    "MATERIAL_SOURCE_VALUE_ACQUISITION_VALIDATOR": ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
+    "RUNTIME_WARP_SUPPORT": ROOT / "Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py",
+    "RECONSTRUCTED_POLICY_APPROVAL": DEFAULT_APPROVAL,
+    "RECONSTRUCTED_POLICY_WARP_VERIFIER": DEFAULT_VERIFIER,
+}
 DEFAULT_OUTPUT = MATERIAL_ROOT / "skill.31470.material-reconstructed-approved-v1.receipt.json"
 
 FROZEN_MATERIAL_COMMIT = "cde8f3bddea2f9415f682b387d2705fd25794075"
@@ -73,9 +87,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def read_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    require(isinstance(value, dict), f"JSON root must be an object: {path}")
-    return value
+    return load_strict_json_object(path)
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -92,15 +104,40 @@ def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
-def tracked_text_bytes(path: Path) -> bytes:
-    raw = path.read_bytes()
-    if raw.startswith(b"\xef\xbb\xbf"):
-        raw = raw[3:]
-    return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+def direct_import_closure(
+    dependency_paths: dict[str, Path] = DIRECT_IMPORT_DEPENDENCY_PATHS,
+) -> dict[str, Any]:
+    rows = []
+    for dependency_id, path in sorted(dependency_paths.items()):
+        require(path.is_file(), f"direct import dependency is missing: {dependency_id}")
+        identity_path = DIRECT_IMPORT_DEPENDENCY_PATHS.get(dependency_id, path)
+        try:
+            relative_path = identity_path.resolve().relative_to(ROOT.resolve()).as_posix()
+        except ValueError:
+            relative_path = identity_path.name
+        rows.append(
+            {
+                "dependencyId": dependency_id,
+                "relativePath": relative_path,
+                "canonicalTextSha256": tracked_text_sha256(path),
+            }
+        )
+    return {
+        "hashRole": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        "dependencyCount": len(rows),
+        "dependencies": rows,
+        "projectionSha256": canonical_sha256(rows),
+    }
 
 
-def tracked_text_sha256(path: Path) -> str:
-    return hashlib.sha256(tracked_text_bytes(path)).hexdigest()
+def validate_direct_import_closure(
+    evidence: dict[str, Any],
+    dependency_paths: dict[str, Path] = DIRECT_IMPORT_DEPENDENCY_PATHS,
+) -> None:
+    require(
+        evidence == direct_import_closure(dependency_paths),
+        "reconstructed Material direct import dependency closure changed",
+    )
 
 
 def f32(value: float) -> float:
@@ -655,6 +692,7 @@ def build_receipt(
             "hlslTrackedTextSha256": tracked_text_sha256(hlsl_path),
             "verifierTrackedTextSha256": tracked_text_sha256(verifier_path),
             "approvalTrackedTextSha256": tracked_text_sha256(DEFAULT_APPROVAL),
+            "directImportClosure": direct_import_closure(),
         },
         "renderStatePolicies": render_rows,
         "staticPermutationPolicies": static_rows,
@@ -899,6 +937,7 @@ def validate_policy_receipt(
     )
     validate_finite_tree(receipt, "receipt")
     validate_self_digest(receipt, "receiptSha256", "reconstructed Material policy")
+    validate_direct_import_closure(receipt["sourceEvidence"]["directImportClosure"])
     validate_verification(receipt)
     from artist_31470_material_reconstructed_policy_approval import require_approved_receipt
 

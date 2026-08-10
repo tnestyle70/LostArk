@@ -85,7 +85,7 @@ Sampler 72행은 typeless texture에 선택된 SRGB/LINEAR format으로 `CreateS
 
 ### Mutation suite
 
-28개 test가 다음 공격을 실제 validator/builder 경계에서 거부했다.
+31개 test가 다음 공격을 실제 validator/builder 경계에서 거부했다.
 
 - row 제거/순서/ordinal 및 recipe/field/occurrence owner swap
 - selected value, static override/parent decision, provider, implementation swap
@@ -101,6 +101,9 @@ Sampler 72행은 typeless texture에 선택된 SRGB/LINEAR format으로 `CreateS
 - current Texture CDO `TF_Linear` candidate missing/duplicate/value/record/export/admissibility 변조
 - sampler expected-vector echo 대신 primitive HLSL input ABI
 - HLSL/WARP top-level tolerance, max error, compiler identity, entry/profile, feature level, unknown key 재봉인
+- actual CLI receipt의 root/row/descriptor/oracle duplicate key와 UTF-8 BOM을 shallow/deep 모두 거부
+- LF/CRLF receipt shallow/deep 동일 결과
+- strict loader, upstream validator, reconstructed verifier, runtime WARP support를 포함한 7개 direct-import canonical hash closure 변조
 - runtime/renderer/Product admission 승격
 - upstream receipt의 coordinated reseal
 
@@ -108,7 +111,7 @@ Sampler 72행은 typeless texture에 선택된 SRGB/LINEAR format으로 `CreateS
 
 ```text
 python -B Tools/LevelPlacementExtractor/test_build_artist_31470_material_reconstructed_policy.py
-Ran 28 tests ... OK
+Ran 31 tests ... OK
 
 powershell -ExecutionPolicy Bypass -File Tools/ProjectAudit/Test-Artist31470MaterialReconstructedPolicy.ps1
 PASS: ... mode=shallow rows=89+94+72/255 staticExact=23 warp=255+107 srv=72 sourceExact=0 runtime=0 product=false
@@ -132,6 +135,8 @@ PASS: ... mode=deep rows=89+94+72/255 staticExact=23 warp=255+107 srv=72 sourceE
 
 ## 독립 판정
 
-최종 read-only 재감사는 `PASS — P1 0, P2 0`으로 종료했다. reviewer가 oracle metadata coordinated mutation 9종, unit 28/28, deep WARP 255 + descriptor 107 + SRV 72, `sourceExact=0`, runtime/renderer/Product 0/false를 독립 재현했다.
+최초 checkpoint는 oracle metadata 교정 뒤 `PASS — P1 0, P2 0`을 받았으나, exact commit `3910d402` 후속 감사에서 strict JSON parsing과 direct-import dependency pinning 두 건이 P2로 추가 확인됐다.
 
-최종 generated receipt self digest는 `c1e926e04b1e43a65050a447bf4f53812d12140ef86d36ee2c0214d6ecbb127b`다.
+이 corrective follow-up은 두 P2를 닫았다. actual CLI duplicate/BOM/LF·CRLF fixture, dependency byte mutation, unit 31/31, deep WARP 255 + descriptor 107 + SRV 72를 self-review에서 재현했다. `sourceExact=0`, runtime/renderer/Product 0/false는 변하지 않았다.
+
+strict JSON/dependency closure corrective generated receipt self digest는 `fb03b5cb2d6bf5cd17e1b5e7af3addf674c45e512c2dbd38d84a62255e6131b8`이며, direct-import closure projection SHA는 `e8e09d0cfe35b8e96014ec1de27501820a6ae5fadb9fb4f6710bfe0b2608bc32`다.
