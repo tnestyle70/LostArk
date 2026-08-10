@@ -8,8 +8,16 @@
 
 계획 갱신 branch: `codex/artist-f-restoration-final-plan`
 
-최종 통합 branch: R1 execution-readiness 재개 조건을 충족하기 전에는 만들지 않는다. 현재 R2~R8은
-`NO-GO`이며 acquisition/verdict branch만 유지한다.
+최종 통합 branch: `codex/artist-f-reconstructed-integration-v1`
+
+최종 통합 시작 commit: `38ebe7cf7dceb5054bde93812907173cc0f98c67`
+
+2026-08-10 사용자 승인: source-era 동일성을 주장하지 않는 `RECONSTRUCTED_APPROVED_V1` 실행 경로를
+진행한다. 이 승인은 Source 29행과 Material 255행의 historical evidence blocker를 삭제하거나
+`SOURCE_EXACT`로 승격하는 허가가 아니다. 각 행을 stable policy/capability ID, explicit typed value,
+fixed-input/output oracle, finite tolerance와 implementation identity에 결합한 뒤 execution blocker만
+별도로 해소하는 허가다. R2 통합과 schema/policy 구현은 `IN_PROGRESS`이며, policy receipt와 corrected
+typed materializer의 독립 PASS 전에는 R3 Playback과 Product admission을 열지 않는다.
 
 문서 역할: 이 파일은 전체 범위와 G 순서, worktree 소유권, admission predicate를 소유하는 최종
 구현 계획서다. 각 mutation lane은 기존 Source/Geometry/Material/Compiler PLAN을 갱신하거나 해당 G의
@@ -155,10 +163,12 @@ evaluator ID/version, oracle provenance, 입력 영역, expected sample, toleran
 모두 가진 경우에만 허용한다. `evidenceBlockers`는 이 승격 뒤에도 보존하되 독립적으로 검증된
 reconstruction은 대응 `executionBlockers`만 해소한다.
 
-현재 maximum-reconstruction admission branch는 `NOT_STARTED`이자 `UNAPPROVED`다. Material의 기존
-23 arithmetic evaluator와 WARP replay는 비제품 oracle plumbing이며 source value나 execution row를
-승격하지 않는다. 사용자의 별도 명시 승인 전에는 추가 reconstructed source-value/runtime/Product
-candidate를 생성하지 않고, current default나 추측값을 실행 또는 Product admission에 사용하지 않는다.
+maximum-reconstruction admission branch는 사용자의 별도 명시 승인으로
+`RECONSTRUCTED_APPROVED_V1_POLICY_CONSTRUCTION` 상태다. Material의 기존 23 arithmetic evaluator와
+WARP replay만으로 source value나 execution row를 자동 승격하지 않는다. Source 29행과 Material 255행은
+각각 explicit policy row와 실제 consumer capability가 생긴 경우에만 reconstructed execution candidate에
+포함한다. policy/capability가 없는 current default, class 이름, 암묵적 texture/state fallback은 계속
+실행 또는 Product admission에 사용할 수 없다.
 
 Product predicate는 마지막에 수동으로 정하지 않는다. 네 축, 네 blocker set, 허용 fidelity matrix로
 G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다른 blocker set을 하나의 union으로
@@ -170,8 +180,8 @@ G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다�
 
 | wave | 세션 1 | 세션 2 | 세션 3 | 실제 병렬도 |
 |---|---|---|---|---:|
-| R1 evidence acquisition | Source `7da937ae`: accessible scope PASS, readiness 0/29 BLOCK | Material `cde8f3bd`: evidence PASS, readiness 0/255 BLOCK | frozen SHA 독립 review | acquisition 종료, R2 NO-GO |
-| R2 integration/schema freeze | Source final hash와 최소 adapter 지원 | PASS checkpoint 결합, compiler/program schema freeze | combined tree review | shared writer 1 |
+| R1 evidence acquisition | Source `7da937ae`: accessible scope PASS, readiness 0/29 BLOCK | Material `cde8f3bd`: evidence PASS, readiness 0/255 BLOCK | frozen SHA 독립 review | acquisition 종료, evidence 정본 동결 |
+| R2 integration/schema freeze | Source 29-row reconstructed capability 지원 | PASS checkpoint 결합, approval/compiler/program schema freeze | combined tree review | shared writer 1, IN_PROGRESS |
 | R3 runtime consumer | custom/source oracle 조사 또는 idle | Playback -> Geometry -> Material shared runtime를 직렬 구현 | 각 frozen checkpoint review | 구현 1 + review |
 | R4 renderer family | core 변경 없이 분리 가능한 family lane | renderer foundation과 다른 family lane, 최종 결합 | family frozen review | interface freeze 뒤 구현 2 |
 | R5 Tool/Product | regression/fixture 지원 | Catalog -> Presentation -> Effect Tool transaction과 35/35 | final tree review | shared writer 1 |
@@ -375,15 +385,19 @@ Material source value                      23/255
 Material execution readiness               0/255 BLOCK
 ownerless/unknown row                       0
 typed materializer                         BLOCK, not started
-reconstructed branch                       NOT_STARTED / UNAPPROVED
+reconstructed branch                       RECONSTRUCTED_APPROVED_V1 / POLICY_CONSTRUCTION
 Product admission                          false / 0/35
-R2-R8                                      NO-GO
+R2                                          IN_PROGRESS
+R3-R8                                       GATED
 ```
 
-R2 진입 predicate는 Source 29/29, Material render 89/89·static 94/94·sampler 72/72, unresolved execution
-row 0이다. 그 전에는 materializer mutation/candidate 생성, R2 final schema 통합, R3 Playback, R4 renderer를
-시작하지 않는다. Corrected materializer는 이 predicate를 입력으로 R2에서 새로 작성하고 R2 종료 시
-독립 PASS해야 한다.
+source-era exact 경로의 R2 진입 predicate는 Source 29/29, Material render 89/89·static 94/94·sampler
+72/72, unresolved execution row 0으로 유지한다. 사용자가 승인한 reconstructed 경로의 R2 진입
+predicate는 frozen evidence-integrity PASS, `sourceExactAdmission=false`, 29+255 denominator 보존,
+explicit per-row policy/capability/oracle owner, silent fallback 0이다. Corrected materializer는 이 정책을
+입력으로 R2에서 새로 작성하고 R2 종료 시 독립 PASS해야 한다. R3 진입은 materializer의 field coverage
+100%, unknown/ownerless 0, 29+255 reconstructed capability receipt와 Debug/Release parser mutation PASS를
+추가로 요구한다.
 
 ### R1 재개 입력 계약
 
@@ -392,12 +406,14 @@ target UPK, ShaderCache/material map, SystemSettings TextureGroup config와 sing
 필요하다. 대안은 동일 build identity와 fixed seed/time/world/parameter input, pre/post full numeric state,
 expected output과 tolerance를 가진 인증된 source-era capture다.
 
-최대 reconstruction 분기는 사용자 별도 승인 뒤에만 만들 수 있다. 행별 독립 same-input output oracle을
-통과한 값만 `RECONSTRUCTED_NUMERICALLY_VERIFIED`로 표시하며, evidence blocker와 Product false를 보존한다.
-추측한 current default, class 이름, 이미지 비교는 재개 입력이 아니다.
+최대 reconstruction 분기는 사용자 승인으로 시작한다. 행별 explicit project policy와 independent
+same-input output/state oracle을 통과한 값만 versioned `RECONSTRUCTED_APPROVED_*` 또는
+`RECONSTRUCTED_NUMERICALLY_VERIFIED`로 표시하며, evidence blocker, `sourceExactAdmission=false`,
+Product false를 보존한다. 이미지 비교는 numeric admission 입력이 아니며 R6 수동 smoke에서 발견한
+차이를 occurrence별 fixture로 환류하는 용도로만 사용한다.
 
-이하 R2~R8은 위 execution predicate가 충족된 경우에만 사용하는 조건부 재개 계약이다. 현재는 모두
-`NO-GO`다.
+이하 R2~R8은 reconstructed approval receipt와 각 gate의 execution predicate를 순서대로 충족할 때만
+진행한다. 현재 R2만 열려 있고 R3~R8은 앞 단계 PASS 전까지 `GATED`다.
 
 ### R2. 승인 checkpoint 통합과 final typed schema 동결
 
@@ -681,8 +697,9 @@ G04에서는 current generated candidate의 최종 adapter PASS를 주장하지 
 
 이 절의 옛 cherry-pick 순서는 사용하지 않는다. 실제 재개 순서는 R2를 정본으로 하며 base
 `38ebe7cf`, Geometry `669acf07`과 `0aca7928`의 개별 cherry-pick, compiler/publisher 재-pick 금지,
-`4ffe1102` 폐기와 combined head 재작성을 따른다. R1 readiness가 BLOCK인 현재는 통합 branch 자체를
-만들지 않는다.
+`4ffe1102` 폐기와 combined head 재작성을 따른다. 이 historical 문구의 통합 금지는
+`RECONSTRUCTED_APPROVED_V1` 승인 전 상태를 설명한다. 승인 뒤 실제 통합은 R2 절의 exact 14-commit
+순서와 새 policy/materializer gate를 따른다.
 
 Gate 1 종료 조건:
 
