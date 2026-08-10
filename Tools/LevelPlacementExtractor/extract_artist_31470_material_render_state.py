@@ -474,6 +474,7 @@ def export_evidence(
     evidence_id = "render-export-" + hashlib.sha256(
         f"{package.sha256}::{folded(resolved_path)}::{folded(class_name)}".encode()
     ).hexdigest()[:16]
+    trailing_bytes = serial[property_end:]
     return {
         "evidenceId": evidence_id,
         "physicalPackage": package.path.name,
@@ -489,7 +490,8 @@ def export_evidence(
         "serialSha256": hashlib.sha256(serial).hexdigest(),
         "propertyStreamStart": property_start,
         "propertyStreamEnd": property_end,
-        "trailingByteCount": len(serial) - property_end,
+        "trailingByteCount": len(trailing_bytes),
+        "trailingBytesSha256": hashlib.sha256(trailing_bytes).hexdigest(),
         "fields": {
             name: field_evidence(
                 records,
@@ -760,7 +762,12 @@ def texture_sampler_evidence(
 def require_material_rows(closure: dict[str, Any]) -> list[dict[str, Any]]:
     require(
         closure.get("schema") == "lostark.ue3-effect-material-closure"
-        and closure.get("formatVersion") == 1,
+        and type(closure.get("formatVersion")) is int
+        and closure.get("formatVersion") == 1
+        and closure.get("characterClass") == "ARTIST"
+        and type(closure.get("skillId")) is int
+        and closure.get("skillId") == 31470
+        and closure.get("inputSlot") == "F",
         "unsupported active material closure",
     )
     raw_rows = closure.get("materials")
@@ -785,7 +792,12 @@ def build_receipt(
     require(
         exact_dds_receipt.get("schema")
         == "lostark.artist-effect-exact-dds-recovery-receipt"
-        and exact_dds_receipt.get("formatVersion") == 1,
+        and type(exact_dds_receipt.get("formatVersion")) is int
+        and exact_dds_receipt.get("formatVersion") == 1
+        and exact_dds_receipt.get("characterClass") == "ARTIST"
+        and type(exact_dds_receipt.get("skillId")) is int
+        and exact_dds_receipt.get("skillId") == 31470
+        and exact_dds_receipt.get("inputSlot") == "F",
         "unsupported exact DDS receipt",
     )
     rows = require_material_rows(closure)
@@ -1047,6 +1059,11 @@ def build_receipt(
                     "exportIndex": source_export["exportIndex"],
                     "objectPath": source_export["objectPath"],
                     "rawExportEvidenceId": source_evidence_id,
+                    "propertyStreamEnd": source_export["propertyStreamEnd"],
+                    "trailingByteCount": source_export["trailingByteCount"],
+                    "trailingBytesSha256": source_export[
+                        "trailingBytesSha256"
+                    ],
                 },
                 "selectedGraphIdentity": {
                     "logicalPackage": base_export["logicalPackage"],
@@ -1057,6 +1074,11 @@ def build_receipt(
                     "exportIndex": base_export["exportIndex"],
                     "objectPath": base_export["objectPath"],
                     "rawExportEvidenceId": base_evidence_id,
+                    "propertyStreamEnd": base_export["propertyStreamEnd"],
+                    "trailingByteCount": base_export["trailingByteCount"],
+                    "trailingBytesSha256": base_export[
+                        "trailingBytesSha256"
+                    ],
                     "rawParentReferencePath": (
                         source_export["fields"]["parent"].get(
                             "resolvedObjectPath"

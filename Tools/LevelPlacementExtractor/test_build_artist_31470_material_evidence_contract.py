@@ -16,12 +16,15 @@ from build_artist_31470_material_evidence_contract import (
     build_from_paths,
     canonical_sha256,
     check_or_write_tracked_json,
+    contract_exact_input_lineage_fixture_payload,
     load_json,
     normalize_tracked_text_bytes,
     occurrence_identity_payload,
     raw_file_sha256,
     recipe_family_fixture_payload,
+    recipe_composition_payload,
     recipe_identity_fixture_payload,
+    stable_id,
     contract_render_field_fixture_payload,
     validate_contract,
     verify_external_artifacts,
@@ -566,7 +569,8 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         )
         seal_contract(contract)
         with self.assertRaisesRegex(
-            ValueError, "contract identity summary|render-field"
+            ValueError,
+            "contract identity summary|render-field|recipe composition",
         ):
             validate_contract(contract)
 
@@ -708,7 +712,9 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             [row["identity"] for row in contract["occurrences"]]
         )
         seal_contract(contract)
-        with self.assertRaisesRegex(ValueError, "identity summary"):
+        with self.assertRaisesRegex(
+            ValueError, "identity summary|property lineage|input lineage"
+        ):
             validate_contract(contract)
 
     def test_tracked_json_allows_only_eol_equivalence(self) -> None:
@@ -808,6 +814,176 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             right.write_bytes(b'{"a":1}\r\n')
             self.assertNotEqual(raw_file_sha256(left), raw_file_sha256(right))
 
+    def test_root_identity_and_exact_json_integer_are_fail_closed(self) -> None:
+        for value in (True, 1.0, "1"):
+            with self.subTest(document="closure", value=value):
+                closure = copy.deepcopy(self.closure)
+                closure["formatVersion"] = value
+                with self.assertRaisesRegex(ValueError, "active material closure"):
+                    self.build(closure=closure)
+            with self.subTest(document="active", value=value):
+                active = copy.deepcopy(self.active)
+                active["formatVersion"] = value
+                with self.assertRaisesRegex(ValueError, "active inventory"):
+                    self.build(active=active)
+            with self.subTest(document="dds", value=value):
+                dds = copy.deepcopy(self.dds)
+                dds["formatVersion"] = value
+                with self.assertRaisesRegex(ValueError, "exact DDS receipt"):
+                    self.build(dds=dds)
+
+        for name, value in (
+            ("characterClass", "WARLORD"),
+            ("skillId", 999),
+            ("inputSlot", "Q"),
+        ):
+            with self.subTest(root_field=name):
+                closure = copy.deepcopy(self.closure)
+                closure[name] = value
+                with self.assertRaisesRegex(ValueError, "active material closure"):
+                    self.build(closure=closure)
+
+        contract = copy.deepcopy(self.contract)
+        contract["formatVersion"] = 3.0
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "typed Material contract"):
+            validate_contract(contract)
+
+    def test_coordinated_raw_input_reseal_and_recipe_input_swap_fail_closed(self) -> None:
+        closure = copy.deepcopy(self.closure)
+        render = copy.deepcopy(self.render)
+        row = next(
+            item
+            for item in closure["materials"]
+            if item.get("material")
+            and item["material"].get("scalarParameters")
+        )
+        row["material"]["scalarParameters"][0]["value"] = 124.0
+        binding = next(
+            item
+            for item in render["bindings"]
+            if folded_path(item.get("sourceMaterialPath"))
+            == folded_path(row["sourceMaterialPath"])
+        )
+        source_export = next(
+            item
+            for item in render["exports"]
+            if item["evidenceId"] == binding["sourceExportEvidenceId"]
+        )
+        source_export["instanceParameters"]["scalar"][0]["value"] = 124.0
+        source_export["fields"]["scalarparametervalues"]["value"][0][
+            "parametervalue"
+        ]["value"] = 124.0
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "exact-input lineage fixture"):
+            self.build(closure=closure, render=render)
+
+        contract = copy.deepcopy(self.contract)
+        candidates = [
+            recipe
+            for recipe in contract["materialRecipes"]
+            if recipe["inputs"]["scalarOverrides"]
+        ]
+        left, right = candidates[:2]
+        left["inputs"]["scalarOverrides"], right["inputs"]["scalarOverrides"] = (
+            right["inputs"]["scalarOverrides"],
+            left["inputs"]["scalarOverrides"],
+        )
+        for recipe in (left, right):
+            for field in recipe["inputs"]["scalarOverrides"]:
+                lineage = field["provenance"]["lineage"]
+                lineage["owner"] = {
+                    "recipeId": recipe["recipeId"],
+                    "canonicalSourceMaterialPath": recipe["sourceMaterialPath"],
+                    "rawMaterialExport": copy.deepcopy(
+                        recipe["identity"]["rawMaterialExport"]
+                    ),
+                }
+                lineage["propertyLineage"]["export"] = copy.deepcopy(
+                    recipe["identity"]["rawMaterialExport"]
+                )
+                lineage_sha256 = canonical_sha256(lineage)
+                field["provenance"]["lineageSha256"] = lineage_sha256
+                field["provenance"]["physicalPackage"] = recipe[
+                    "identity"
+                ]["physicalPackage"]
+                field["provenance"]["physicalPackageSha256"] = recipe[
+                    "identity"
+                ]["physicalPackageSha256"]
+                field["provenance"]["materialObjectPath"] = recipe[
+                    "identity"
+                ]["materialObjectPath"]
+                field["fieldId"] = stable_id(
+                    "material-input",
+                    recipe["sourceMaterialPath"],
+                    field["fieldKind"],
+                    field["serializedArrayIndex"],
+                    field["parameterName"],
+                    field["bindingOrigin"],
+                    lineage_sha256,
+                )
+            recipe["compositionSha256"] = canonical_sha256(
+                recipe_composition_payload(recipe)
+            )
+        recipe_by_id = {
+            recipe["recipeId"]: recipe
+            for recipe in contract["materialRecipes"]
+        }
+        for occurrence in contract["occurrences"]:
+            recipe = recipe_by_id[occurrence["materialRecipeId"]]
+            occurrence["identity"] = occurrence_identity_payload(
+                active_element_id=occurrence["occurrenceId"],
+                cue_id=occurrence["cueId"],
+                renderer_type=occurrence["rendererType"],
+                source_system_id=occurrence["sourceSystemId"],
+                source_emitter=occurrence["sourceEmitter"],
+                source_material_path=occurrence["sourceMaterialPath"],
+                recipe=recipe,
+            )
+            occurrence["identitySha256"] = canonical_sha256(
+                occurrence["identity"]
+            )
+        contract["summary"]["occurrenceIdentitySha256"] = canonical_sha256(
+            [row["identity"] for row in contract["occurrences"]]
+        )
+        contract["summary"]["exactInputLineageSha256"] = canonical_sha256(
+            contract_exact_input_lineage_fixture_payload(
+                contract["materialRecipes"]
+            )
+        )
+        contract["summary"]["recipeCompositionSha256"] = canonical_sha256(
+            [
+                {
+                    "recipeId": recipe["recipeId"],
+                    "compositionSha256": recipe["compositionSha256"],
+                }
+                for recipe in contract["materialRecipes"]
+            ]
+        )
+        seal_contract(contract)
+        with self.assertRaisesRegex(
+            ValueError, "identity summary|property lineage|input lineage"
+        ):
+            validate_contract(contract)
+
+    def test_exact_sampler_binding_cannot_claim_a_different_recipe(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        binding = contract["exactSamplerBindings"][0]
+        binding["materialRecipeId"] = next(
+            recipe["recipeId"]
+            for recipe in contract["materialRecipes"]
+            if recipe["recipeId"] != binding["materialRecipeId"]
+        )
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "exact sampler binding join"):
+            validate_contract(contract)
+
+    def test_shallow_dds_manifest_provenance_cannot_be_resealed(self) -> None:
+        dds = copy.deepcopy(self.dds)
+        dds["sourceEvidence"]["sourcePackManifest"]["sha256"] = "42" * 32
+        with self.assertRaisesRegex(ValueError, "manifest is not authenticated"):
+            self.build(dds=dds)
+
     @unittest.skipUnless(
         SOURCE_PACKAGE_ROOT.is_dir()
         and EXACT_DDS_ROOT.is_dir()
@@ -825,15 +1001,44 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                 normalize_tracked_text_bytes(MATERIAL_CLOSURE.read_bytes())
             )
             lf_receipt = build_receipt(
-                canonical_closure, DDS_RECEIPT, SOURCE_PACKAGE_ROOT
+                canonical_closure,
+                DDS_RECEIPT,
+                SOURCE_PACKAGE_ROOT,
+                SOURCE_PACK_MANIFEST,
             )
             canonical_closure.write_bytes(
                 canonical_closure.read_bytes().replace(b"\n", b"\r\n")
             )
             crlf_receipt = build_receipt(
-                canonical_closure, DDS_RECEIPT, SOURCE_PACKAGE_ROOT
+                canonical_closure,
+                DDS_RECEIPT,
+                SOURCE_PACKAGE_ROOT,
+                SOURCE_PACK_MANIFEST,
             )
             self.assertEqual(lf_receipt, crlf_receipt)
+
+            closure = copy.deepcopy(self.closure)
+            row = next(
+                item
+                for item in closure["materials"]
+                if item.get("material") is not None
+            )
+            raw_object_path = str(row["material"]["objectPath"])
+            row["sourceMaterialPath"] = f"laundered_prefix.{raw_object_path}"
+            closure_path = root / "laundered-canonical-prefix.json"
+            closure_path.write_text(
+                json.dumps(closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError, "canonical source Material path"
+            ):
+                build_receipt(
+                    closure_path,
+                    DDS_RECEIPT,
+                    SOURCE_PACKAGE_ROOT,
+                    SOURCE_PACK_MANIFEST,
+                )
 
             closure = copy.deepcopy(self.closure)
             left = next(
@@ -860,7 +1065,12 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError, "canonical source Material path"
             ):
-                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+                build_receipt(
+                    closure_path,
+                    DDS_RECEIPT,
+                    SOURCE_PACKAGE_ROOT,
+                    SOURCE_PACK_MANIFEST,
+                )
 
             closure = copy.deepcopy(self.closure)
             left = next(
@@ -885,7 +1095,12 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "raw MIC Parent"):
-                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+                build_receipt(
+                    closure_path,
+                    DDS_RECEIPT,
+                    SOURCE_PACKAGE_ROOT,
+                    SOURCE_PACK_MANIFEST,
+                )
 
             closure = copy.deepcopy(self.closure)
             row = next(
@@ -900,7 +1115,12 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "closure input disagrees with raw UPK"):
-                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+                build_receipt(
+                    closure_path,
+                    DDS_RECEIPT,
+                    SOURCE_PACKAGE_ROOT,
+                    SOURCE_PACK_MANIFEST,
+                )
 
             closure = copy.deepcopy(self.closure)
             expression = next(
@@ -921,7 +1141,12 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 ValueError, "closure expression projection disagrees with raw UPK"
             ):
-                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+                build_receipt(
+                    closure_path,
+                    DDS_RECEIPT,
+                    SOURCE_PACKAGE_ROOT,
+                    SOURCE_PACK_MANIFEST,
+                )
 
             verify_external_artifacts(
                 self.dds,
@@ -965,7 +1190,12 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                         "Texture2D|raw Texture2D|DDS receipt disagrees|"
                         "export index changed|serial SHA-256 changed|class changed",
                     ):
-                        build_receipt(MATERIAL_CLOSURE, dds_path, SOURCE_PACKAGE_ROOT)
+                        build_receipt(
+                            MATERIAL_CLOSURE,
+                            dds_path,
+                            SOURCE_PACKAGE_ROOT,
+                            SOURCE_PACK_MANIFEST,
+                        )
                     with self.assertRaisesRegex(
                         ValueError, "DDS receipt disagrees with raw Texture2D export"
                     ):
