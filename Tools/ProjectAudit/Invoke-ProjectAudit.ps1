@@ -901,6 +901,22 @@ try {
 	Add-Check 'effect.artist-31470-material-reconstructed-policy' `
 		$artistMaterialPolicyPassed `
 		$artistMaterialPolicyDetail
+	$artistMaterialTextureBindingPassed = $false
+	$artistMaterialTextureBindingDetail = ''
+	try {
+		$artistMaterialTextureBindingDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialTextureRuntimeBinding.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialTextureBindingPassed =
+			$artistMaterialTextureBindingDetail -match
+			'PASS: Artist F 31470 Material texture runtime binding mode=shallow rows=68\+4/72 unique=44\+4/48 proposals=4 product=false'
+	}
+	catch {
+		$artistMaterialTextureBindingDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-texture-runtime-binding' `
+		$artistMaterialTextureBindingPassed `
+		$artistMaterialTextureBindingDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
