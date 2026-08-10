@@ -75,6 +75,8 @@ HRESULT CPresentation_Manager::Add_TransientLight(
 		return S_FALSE;
 	if (LIGHT::POINT != LightDesc.eType ||
 		!std::isfinite(LightDesc.fRange) || LightDesc.fRange <= 0.f ||
+		!std::isfinite(LightDesc.fFalloffExponent) ||
+		LightDesc.fFalloffExponent <= 0.f ||
 		!IsFinite4(LightDesc.vPosition) ||
 		!IsFinite4(LightDesc.vDiffuse) ||
 		!IsFinite4(LightDesc.vAmbient) ||

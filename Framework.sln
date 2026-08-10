@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysicsContractHarness", "T
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WModelGeometryContractHarness", "Tools\WModelGeometryContractHarness\Default\WModelGeometryContractHarness.vcxproj", "{9B42E292-78B8-4B77-A65F-1CD55AB5D1D0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PointLightFalloffContractHarness", "Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj", "{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -85,6 +87,12 @@ Global
 		{9B42E292-78B8-4B77-A65F-1CD55AB5D1D0}.Release|x64.ActiveCfg = Release|x64
 		{9B42E292-78B8-4B77-A65F-1CD55AB5D1D0}.Release|x64.Build.0 = Release|x64
 		{9B42E292-78B8-4B77-A65F-1CD55AB5D1D0}.Release|x86.ActiveCfg = Release|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Debug|x64.ActiveCfg = Debug|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Debug|x64.Build.0 = Debug|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Debug|x86.ActiveCfg = Debug|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Release|x64.ActiveCfg = Release|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Release|x64.Build.0 = Release|x64
+		{6D0C24DF-FC4B-4BA1-9E20-F38903BA14AE}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

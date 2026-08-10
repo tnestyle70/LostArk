@@ -1433,6 +1433,23 @@ try {
 	}
 	Add-Check 'rendering.quality-workbench-contract' `
 		$renderQualityAuditPassed $renderQualityAuditDetail
+	$pointLightFalloffAuditPassed = $false
+	$pointLightFalloffAuditDetail = ''
+	try {
+		$pointLightFalloffAuditDetail = (& .\Tools\ProjectAudit\Test-PointLightFalloff.ps1 `
+			-RepoRoot (Get-Location).Path 2>&1) -join ' '
+		$pointLightFalloffAuditPassed = $true
+	}
+	catch {
+		$pointLightFalloffAuditDetail = $_.Exception.Message
+	}
+	if ([string]::IsNullOrWhiteSpace($pointLightFalloffAuditDetail)) {
+		$pointLightFalloffAuditPassed = $false
+		$pointLightFalloffAuditDetail =
+			'Focused PointLight falloff audit returned no evidence detail.'
+	}
+	Add-Check 'rendering.point-light-falloff-contract' `
+		$pointLightFalloffAuditPassed $pointLightFalloffAuditDetail
 	Add-Check 'levels.loading-progress-overlay' (
 		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
 		$loadingSource -match '"Loading progress"' -and
