@@ -253,6 +253,7 @@ def parse_property_records_at(
                 ),
                 "recordEndOffset": record_end_offset,
                 "value": value,
+                "encodedValueHex": encoded_value.hex(),
                 "encodedValueSha256": hashlib.sha256(encoded_value).hexdigest(),
                 "recordSha256": hashlib.sha256(
                     serial[tag_offset:record_end_offset]
@@ -303,6 +304,14 @@ def package_file_index(root: Path) -> dict[str, Path]:
         result[key] = path
     require(bool(result), f"source package root contains no UPKs: {root}")
     return result
+
+
+def canonical_path_targets_object(canonical_path: Any, object_path: Any) -> bool:
+    canonical = folded(canonical_path)
+    target = folded(object_path)
+    return bool(canonical and target) and (
+        canonical == target or canonical.endswith(f".{target}")
+    )
 
 
 def field_evidence(
@@ -775,6 +784,10 @@ def build_receipt(
             {material_class},
             source_fields,
         )
+        require(
+            canonical_path_targets_object(source_path, source_export["objectPath"]),
+            f"canonical source Material path does not target the raw export: {source_path}",
+        )
         if material_class == "materialinstanceconstant":
             decoded_instance = decode_material_instance(
                 package(physical_name), str(material.get("objectPath") or "")
@@ -828,6 +841,24 @@ def build_receipt(
             BASE_MATERIAL_FIELDS,
         )
         base_evidence_id = add_export(base_export)
+        if material_class == "materialinstanceconstant":
+            parent_field = source_export["fields"]["parent"]
+            require(
+                parent_field.get("status") == "SERIALIZED_EXPLICIT"
+                and canonical_path_targets_object(
+                    parent_field.get("resolvedObjectPath"),
+                    base_export["objectPath"],
+                )
+                and canonical_path_targets_object(
+                    material.get("parent"), base_export["objectPath"]
+                ),
+                f"raw MIC Parent does not select the parentGraph export: {source_path}",
+            )
+        else:
+            require(
+                source_evidence_id == base_evidence_id,
+                f"raw Material graph does not target the source export: {source_path}",
+            )
         raw_expression_field = base_export["fields"]["expressions"]
         require(
             raw_expression_field["status"] == "SERIALIZED_EXPLICIT"
@@ -910,6 +941,32 @@ def build_receipt(
                 "sourceMaterialPath": source_path,
                 "sourceExportEvidenceId": source_evidence_id,
                 "renderStateExportEvidenceId": base_evidence_id,
+                "sourceMaterialIdentity": {
+                    "canonicalSourceMaterialPath": source_path,
+                    "physicalPackage": source_export["physicalPackage"],
+                    "physicalPackageSha256": source_export[
+                        "physicalPackageSha256"
+                    ],
+                    "exportIndex": source_export["exportIndex"],
+                    "objectPath": source_export["objectPath"],
+                    "rawExportEvidenceId": source_evidence_id,
+                },
+                "selectedGraphIdentity": {
+                    "physicalPackage": base_export["physicalPackage"],
+                    "physicalPackageSha256": base_export[
+                        "physicalPackageSha256"
+                    ],
+                    "exportIndex": base_export["exportIndex"],
+                    "objectPath": base_export["objectPath"],
+                    "rawExportEvidenceId": base_evidence_id,
+                    "rawParentReferencePath": (
+                        source_export["fields"]["parent"].get(
+                            "resolvedObjectPath"
+                        )
+                        if material_class == "materialinstanceconstant"
+                        else None
+                    ),
+                },
                 "renderStateOrigin": (
                     "SELF_MATERIAL"
                     if source_evidence_id == base_evidence_id
@@ -936,7 +993,7 @@ def build_receipt(
 
     receipt: dict[str, Any] = {
         "schema": "lostark.artist-31470-material-render-state-evidence-receipt",
-        "formatVersion": 2,
+        "formatVersion": 3,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",

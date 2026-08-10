@@ -45,6 +45,9 @@ stream 범위, 각 선택 필드의 tag/value offset·type·value·raw record SH
 `OMITTED_FROM_EXPORT`로 남긴다. tracked parser와 generator의 EOL-canonical source SHA 및 placeholder 기반 재현 command를
 receipt에 기록한다. 925개 non-null graph expression의 export/path/property/default/texture/input reference와
 exact DDS 4건의 raw Texture2D class/export/reference/serial/sampler property도 같은 receipt에 기록한다.
+canonical `sourceMaterialPath`는 raw Material object path/package SHA/export index에, MIC `Parent` reference는
+선택된 parent graph의 exact package/export/object에 각각 결합한다. Explicit tagged value는 encoded bytes도
+함께 기록한다.
 출력 self digest는 자기 필드를 제외한 canonical JSON SHA다.
 
 ### `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
@@ -62,7 +65,8 @@ pure builder가 active inventory, active material closure, exact DDS receipt, re
 
 builder는 다음을 수행한다.
 
-1. 27 recipe/34 occurrence를 case-insensitive stable key로 join한다.
+1. 27 recipe/34 occurrence를 case-insensitive stable key로 join한다. occurrence identity는 active element ID,
+   cue, renderer, system, emitter, source material, recipe와 raw evidence를 모두 포함한다.
 2. package/path/hash/export, parameter blank/duplicate, parent cycle을 거부한다.
 3. scalar/vector/texture override는 raw array의 element order/name/value/package reference까지 closure와
    일치해야 `SOURCE_EXACT_INPUT`이다. Surviving parent default는 exact parent package/export,
@@ -72,9 +76,11 @@ builder는 다음을 수행한다.
    texture override에는 sampler 값을 만들지 않는다.
 5. parent static-switch default와 MIC selected permutation을 별도 배열에 둔다. 후자는 현재 비어 있고
    `bHasStaticPermutationResource`가 true여도 blocker를 유지한다.
-6. explicit render-state 필드와 omitted/default-unproven 필드를 분리한다. partial cull만 허용한다.
+6. explicit render-state 필드와 omitted/default-unproven 필드를 분리한다. Enum/bool 값은 raw encoded
+   tagged bytes/hash와 고정 evidence fixture에서 재판정하며 partial cull만 허용한다.
 7. cooked partial graph와 reconstructed evaluator ID를 분리한다. 각 family의 1,803 null slot과 502
-   unresolved edge는 raw expression reference/input에서 다시 계산한다. evaluator는 `implemented=false`다.
+   unresolved edge는 raw expression reference/input에서 다시 계산한다. `familyId`는 exact graph identity와
+   raw base evidence에서 만들고 recipe→family join을 별도 digest로 고정한다. evaluator는 `implemented=false`다.
 8. recipe blocker union을 occurrence에 그대로 상속하고, blocker count가 0일 때만 executable/Product
    admission을 열 수 있게 검증한다. 이번 slice의 admission은 0/27, 0/34다.
 9. occurrence의 `sourceMaterials`와 `materialParameterEvidence.sourceMaterialPath`를 동일한 stable join으로
@@ -95,6 +101,7 @@ blocker, aggregate admission을 가진 generated contract다.
 parameter, parent cycle, instance 값/순서 변조, parent expression 값 변조, fake static selection,
 `TwoSided`의 full-cull 세탁, Texture2D class/export/serial과 DDS/sampler hash/origin, family별 graph count
 재분배, reconstructed evaluator의 exact 승격, blocker-set loss, valid-path occurrence 재할당,
+canonical Material/parentGraph swap, sealed occurrence/family swap, enum/bool raw-hash 재사용,
 tracked LF/CRLF equivalence와 raw artifact CRLF mutation 차단을 포함한다.
 
 ### `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`

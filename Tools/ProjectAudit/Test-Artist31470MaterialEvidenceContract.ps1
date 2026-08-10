@@ -100,7 +100,7 @@ try {
     $rawReceipt = Get-Content -LiteralPath $renderReceipt -Raw -Encoding UTF8 |
         ConvertFrom-Json
     if ($rawReceipt.schema -cne 'lostark.artist-31470-material-render-state-evidence-receipt' -or
-        [int]$rawReceipt.formatVersion -ne 2 -or
+        [int]$rawReceipt.formatVersion -ne 3 -or
         @($rawReceipt.graphExpressions).Count -ne 925 -or
         @($rawReceipt.textureSamplerExports).Count -ne 4 -or
         [int]$rawReceipt.summary.rawPackageCount -ne 19 -or
@@ -110,7 +110,7 @@ try {
     $summary = $contract.summary
     $admission = $contract.admission
     if ($contract.schema -cne 'lostark.artist-31470-typed-material-evidence-contract' -or
-        [int]$contract.formatVersion -ne 1 -or
+        [int]$contract.formatVersion -ne 2 -or
         @($contract.materialRecipes).Count -ne 27 -or
         @($contract.occurrences).Count -ne 34 -or
         @($contract.graphFamilies).Count -ne 23 -or
@@ -125,6 +125,10 @@ try {
         [int]$summary.unusedMaterialRecipeCount -ne 0 -or
         [int]$summary.unexpectedOccurrenceMaterialCount -ne 0 -or
         [string]$summary.occurrenceMaterialJoinSha256 -cne '1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296' -or
+        [string]$summary.occurrenceIdentitySha256 -cne '1fbc48456793a8fafbe5202b1f35c92c8747e3115d8dc27d6e8338863a330406' -or
+        [string]$summary.recipeIdentitySha256 -cne '01b37c5ad762e3fa0faa587533145dc910b289379011b36edaccffe040764e0f' -or
+        [string]$summary.recipeFamilyJoinSha256 -cne '9877829577c550acb7452e8ff279c7819f17151513cee53994bee116620838f2' -or
+        [string]$summary.renderFieldEvidenceSha256 -cne '6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9' -or
         [int]$summary.cookedStrippedNullExpressionCount -ne 1803 -or
         [int]$summary.unresolvedGraphEdgeCount -ne 502 -or
         [int]$summary.sourceExactGraphFamilyCount -ne 0 -or

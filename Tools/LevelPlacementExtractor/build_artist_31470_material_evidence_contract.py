@@ -32,7 +32,25 @@ EXPECTED_OCCURRENCE_MATERIAL_JOIN_SHA256 = (
     "1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296"
 )
 EXPECTED_GRAPH_FAMILY_RAW_EVIDENCE_SHA256 = (
-    "d610d0b7b0b088c1cde880382c788366e2d880a239762722b5c60c88ae84e272"
+    "4783f79575c32d58499c40b7395d97fd62615c55033e97cd08db59d39f9727d7"
+)
+EXPECTED_RAW_MATERIAL_BINDING_SHA256 = (
+    "c05bcd6be7de45c5c2da8467950de9afa1029a51286dc706211f3ebd665fa254"
+)
+EXPECTED_RAW_RENDER_FIELD_EVIDENCE_SHA256 = (
+    "54f5867357ce5e45b8426973c651b9e1ffed3d20a114fba2d2bcecb7dc0f9b1f"
+)
+EXPECTED_OCCURRENCE_IDENTITY_SHA256 = (
+    "1fbc48456793a8fafbe5202b1f35c92c8747e3115d8dc27d6e8338863a330406"
+)
+EXPECTED_RECIPE_IDENTITY_SHA256 = (
+    "01b37c5ad762e3fa0faa587533145dc910b289379011b36edaccffe040764e0f"
+)
+EXPECTED_RECIPE_FAMILY_JOIN_SHA256 = (
+    "9877829577c550acb7452e8ff279c7819f17151513cee53994bee116620838f2"
+)
+EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256 = (
+    "6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9"
 )
 
 BLEND_MODE_DOMAIN = (
@@ -122,6 +140,16 @@ REQUIRED_RENDER_FIELDS = (
     "twosided",
     "bdisabledepthtest",
 )
+RAW_EXACT_RENDER_FIELDS = (
+    "blendmode",
+    "lightingmodel",
+    "twosided",
+    "bdisabledepthtest",
+    "opacitymaskclipvalue",
+    "buseonelayerdistortion",
+    "overridedtwosided",
+    "bhasstaticpermutationresource",
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -131,6 +159,14 @@ def require(condition: bool, message: str) -> None:
 
 def folded(value: Any) -> str:
     return str(value or "").casefold()
+
+
+def canonical_path_targets_object(canonical_path: Any, object_path: Any) -> bool:
+    canonical = folded(canonical_path)
+    target = folded(object_path)
+    return bool(canonical and target) and (
+        canonical == target or canonical.endswith(f".{target}")
+    )
 
 
 def require_sha256(value: Any, label: str) -> str:
@@ -455,7 +491,7 @@ def validate_render_receipt(
     require(
         receipt.get("schema")
         == "lostark.artist-31470-material-render-state-evidence-receipt"
-        and receipt.get("formatVersion") == 2,
+        and receipt.get("formatVersion") == 3,
         "unsupported render-state evidence receipt",
     )
     validate_self_digest(receipt, "receiptSha256", "render-state receipt")
@@ -479,9 +515,21 @@ def validate_render_receipt(
             )
             if status == "SERIALIZED_EXPLICIT":
                 require_sha256(field.get("recordSha256"), f"{evidence_id}.{field_name}.record")
-                require_sha256(
+                encoded_sha256 = require_sha256(
                     field.get("encodedValueSha256"),
                     f"{evidence_id}.{field_name}.value",
+                )
+                encoded_hex = str(field.get("encodedValueHex") or "")
+                try:
+                    encoded_bytes = bytes.fromhex(encoded_hex)
+                except ValueError as error:
+                    raise ValueError(
+                        f"invalid encoded tagged-property bytes: {evidence_id}.{field_name}"
+                    ) from error
+                require(
+                    bool(encoded_bytes)
+                    and hashlib.sha256(encoded_bytes).hexdigest() == encoded_sha256,
+                    f"encoded tagged-property hash changed: {evidence_id}.{field_name}",
                 )
                 offsets = [
                     int(field.get(name, -1))
@@ -516,6 +564,12 @@ def validate_render_receipt(
                     require(
                         isinstance(value, bool),
                         f"render boolean field is invalid: {evidence_id}.{field_name}",
+                    )
+                    require(
+                        len(encoded_bytes) == 1
+                        and encoded_bytes[0] in {0, 1}
+                        and value is bool(encoded_bytes[0]),
+                        f"render boolean disagrees with raw tagged bytes: {evidence_id}.{field_name}",
                     )
                 elif normalized_field == "opacitymaskclipvalue":
                     finite_number(value, f"{evidence_id}.{field_name}")
@@ -578,6 +632,22 @@ def validate_render_receipt(
             == folded(material.get("className")),
             f"raw source export identity disagrees with closure: {path}",
         )
+        require(
+            canonical_path_targets_object(path, source_export.get("objectPath")),
+            f"canonical source Material path does not target raw export: {path}",
+        )
+        expected_source_identity = {
+            "canonicalSourceMaterialPath": path,
+            "physicalPackage": source_export["physicalPackage"],
+            "physicalPackageSha256": source_export["physicalPackageSha256"],
+            "exportIndex": source_export["exportIndex"],
+            "objectPath": source_export["objectPath"],
+            "rawExportEvidenceId": source_export["evidenceId"],
+        }
+        require(
+            binding.get("sourceMaterialIdentity") == expected_source_identity,
+            f"canonical source Material identity binding changed: {path}",
+        )
         if folded(material.get("className")) == "materialinstanceconstant":
             parent_field = source_export["fields"].get("parent")
             require(
@@ -636,6 +706,37 @@ def validate_render_receipt(
             and int(base_export.get("exportIndex", -1))
             == int(graph.get("materialExportIndex", -2)),
             f"raw base Material identity disagrees with {holder_name}: {path}",
+        )
+        raw_parent_reference = None
+        if folded(material.get("className")) == "materialinstanceconstant":
+            raw_parent_reference = source_export["fields"]["parent"].get(
+                "resolvedObjectPath"
+            )
+            require(
+                canonical_path_targets_object(
+                    raw_parent_reference, base_export.get("objectPath")
+                )
+                and canonical_path_targets_object(
+                    material.get("parent"), base_export.get("objectPath")
+                ),
+                f"raw MIC Parent does not select parentGraph export: {path}",
+            )
+        else:
+            require(
+                source_export["evidenceId"] == base_export["evidenceId"],
+                f"raw Material graph does not target source export: {path}",
+            )
+        expected_graph_identity = {
+            "physicalPackage": base_export["physicalPackage"],
+            "physicalPackageSha256": base_export["physicalPackageSha256"],
+            "exportIndex": base_export["exportIndex"],
+            "objectPath": base_export["objectPath"],
+            "rawExportEvidenceId": base_export["evidenceId"],
+            "rawParentReferencePath": raw_parent_reference,
+        }
+        require(
+            binding.get("selectedGraphIdentity") == expected_graph_identity,
+            f"selected parentGraph identity binding changed: {path}",
         )
 
     graph_expressions: dict[tuple[str, int], dict[str, Any]] = {}
@@ -799,6 +900,41 @@ def validate_render_receipt(
     require(
         set(texture_exports) == set(EXPECTED_DDS_BINDINGS),
         "raw Texture2D evidence coverage changed",
+    )
+
+    raw_binding_fixture = sorted(
+        [
+            {
+                "sourceMaterialPath": binding["sourceMaterialPath"],
+                "sourceMaterialIdentity": binding["sourceMaterialIdentity"],
+                "selectedGraphIdentity": binding["selectedGraphIdentity"],
+            }
+            for binding in bindings.values()
+        ],
+        key=lambda row: folded(row["sourceMaterialPath"]),
+    )
+    require(
+        canonical_sha256(raw_binding_fixture)
+        == EXPECTED_RAW_MATERIAL_BINDING_SHA256,
+        "raw Material/parentGraph binding fixture changed",
+    )
+    raw_render_fixture: list[dict[str, Any]] = []
+    for export in sorted(exports.values(), key=lambda row: row["evidenceId"]):
+        for field_name in sorted(RAW_EXACT_RENDER_FIELDS):
+            field = export["fields"].get(field_name)
+            if not isinstance(field, dict) or field.get("status") != "SERIALIZED_EXPLICIT":
+                continue
+            raw_render_fixture.append(
+                {
+                    "exportEvidenceId": export["evidenceId"],
+                    "fieldName": field_name,
+                    "field": field,
+                }
+            )
+    require(
+        canonical_sha256(raw_render_fixture)
+        == EXPECTED_RAW_RENDER_FIELD_EVIDENCE_SHA256,
+        "raw exact render-field evidence fixture changed",
     )
 
     summary = receipt.get("summary")
@@ -1082,7 +1218,6 @@ def build_graph_families(
         graph_path = str(graph.get("materialPath") or "")
         require(bool(graph_path), f"graph Material path is blank: {row['sourceMaterialPath']}")
         key = f"{package_sha}::{graph_path.casefold()}"
-        family_id = stable_id("material-family", package_sha, graph_path)
         summary = graph["summary"]
         binding = bindings[folded(row["sourceMaterialPath"])]
         base_id = str(binding["renderStateExportEvidenceId"])
@@ -1129,28 +1264,35 @@ def build_graph_families(
                 for expression in raw_expression_rows
             ]
         )
+        exact_identity = {
+            "physicalPackage": holder["physicalPackage"],
+            "physicalPackageSha256": package_sha,
+            "materialObjectPath": graph_path,
+            "materialExportIndex": int(graph.get("materialExportIndex", -1)),
+        }
+        raw_evidence = {
+            **raw_counts,
+            "baseMaterialEvidenceId": base_id,
+            "expressionsRecordSha256": exports[base_id]["fields"][
+                "expressions"
+            ]["recordSha256"],
+            "expressionEvidenceSha256": expression_evidence_digest,
+        }
+        family_id = stable_id(
+            "material-family",
+            canonical_sha256(exact_identity),
+            canonical_sha256(raw_evidence),
+        )
         family = {
             "familyId": family_id,
             "graphProvenance": "RECONSTRUCTED_GRAPH",
             "sourceExactGraph": False,
-            "exactIdentity": {
-                "physicalPackage": holder["physicalPackage"],
-                "physicalPackageSha256": package_sha,
-                "materialObjectPath": graph_path,
-                "materialExportIndex": int(graph.get("materialExportIndex", -1)),
-            },
+            "exactIdentity": exact_identity,
             "cookedEvidence": {
                 "topologyStatus": summary["topologyStatus"],
                 **raw_counts,
             },
-            "rawEvidence": {
-                **raw_counts,
-                "baseMaterialEvidenceId": base_id,
-                "expressionsRecordSha256": exports[base_id]["fields"][
-                    "expressions"
-                ]["recordSha256"],
-                "expressionEvidenceSha256": expression_evidence_digest,
-            },
+            "rawEvidence": raw_evidence,
             "evaluator": {
                 "evaluatorId": stable_id(
                     "reconstructed-evaluator", package_sha, graph_path
@@ -1164,6 +1306,12 @@ def build_graph_families(
                 "RECONSTRUCTED_ARITHMETIC_EVALUATOR_UNIMPLEMENTED",
             ],
         }
+        family["identitySha256"] = canonical_sha256(
+            {
+                "exactIdentity": family["exactIdentity"],
+                "rawEvidence": family["rawEvidence"],
+            }
+        )
         previous = families.get(key)
         require(previous is None or previous == family, f"graph family drift: {key}")
         families[key] = family
@@ -1214,6 +1362,12 @@ def build_render_state(
                     else "SOURCE_EXACT_RENDER_STATE"
                 ),
                 "recordSha256": raw["recordSha256"],
+                "encodedValueHex": raw["encodedValueHex"],
+                "encodedValueSha256": raw["encodedValueSha256"],
+                "propertyType": raw["propertyType"],
+                "tagOffset": raw["tagOffset"],
+                "valueOffset": raw["valueOffset"],
+                "recordEndOffset": raw["recordEndOffset"],
                 "exportEvidenceId": base_export["evidenceId"],
             }
         else:
@@ -1235,6 +1389,12 @@ def build_render_state(
             "bindingOrigin": "INSTANCE_OVERRIDE",
             "fidelity": "SOURCE_EXACT_PARTIAL_CULL",
             "recordSha256": override["recordSha256"],
+            "encodedValueHex": override["encodedValueHex"],
+            "encodedValueSha256": override["encodedValueSha256"],
+            "propertyType": override["propertyType"],
+            "tagOffset": override["tagOffset"],
+            "valueOffset": override["valueOffset"],
+            "recordEndOffset": override["recordEndOffset"],
             "exportEvidenceId": source_export["evidenceId"],
         }
     return {
@@ -1450,9 +1610,53 @@ def apply_exact_sampler_bindings(
     return sorted(result, key=lambda row: row["bindingId"])
 
 
+def occurrence_identity_payload(
+    *,
+    active_element_id: Any,
+    cue_id: Any,
+    renderer_type: Any,
+    source_system_id: Any,
+    source_emitter: Any,
+    source_material_path: Any,
+    recipe: dict[str, Any],
+) -> dict[str, Any]:
+    recipe_identity = recipe.get("identity")
+    family_evidence = recipe.get("arithmeticFamilyEvidence")
+    require(
+        isinstance(recipe_identity, dict) and isinstance(family_evidence, dict),
+        "recipe identity evidence is missing",
+    )
+    selected_graph = recipe_identity.get("selectedGraphIdentity")
+    require(isinstance(selected_graph, dict), "selected graph identity is missing")
+    return {
+        "activeElementId": str(active_element_id or ""),
+        "cueId": str(cue_id or ""),
+        "rendererType": str(renderer_type or ""),
+        "sourceSystemId": str(source_system_id or ""),
+        "sourceEmitter": str(source_emitter or ""),
+        "sourceMaterialPath": str(source_material_path or ""),
+        "materialRecipeId": str(recipe.get("recipeId") or ""),
+        "rawMaterialEvidence": {
+            "rawExportEvidenceId": recipe_identity.get("rawExportEvidenceId"),
+            "physicalPackageSha256": recipe_identity.get(
+                "physicalPackageSha256"
+            ),
+            "exportIndex": recipe_identity.get("materialExportIndex"),
+            "objectPath": recipe_identity.get("materialObjectPath"),
+            "selectedGraphRawExportEvidenceId": selected_graph.get(
+                "rawExportEvidenceId"
+            ),
+            "arithmeticFamilyId": family_evidence.get("familyId"),
+            "familyIdentitySha256": family_evidence.get(
+                "familyIdentitySha256"
+            ),
+        },
+    }
+
+
 def build_occurrence_rows(
     active_inventory: dict[str, Any], recipe_by_path: dict[str, dict[str, Any]]
-) -> tuple[list[dict[str, Any]], str, set[str]]:
+) -> tuple[list[dict[str, Any]], str, str, set[str]]:
     require(
         active_inventory.get("schema")
         == "lostark.source-active-effect-inventory-receipt"
@@ -1502,6 +1706,15 @@ def build_occurrence_rows(
         require(key in recipe_by_path, f"active occurrence material is unresolved: {active_id}")
         recipe = recipe_by_path[key]
         used_recipe_ids.add(str(recipe["recipeId"]))
+        identity = occurrence_identity_payload(
+            active_element_id=active_id,
+            cue_id=element.get("cueId"),
+            renderer_type=element.get("rendererType"),
+            source_system_id=element.get("sourceSystemId"),
+            source_emitter=element.get("sourceEmitter"),
+            source_material_path=material_path,
+            recipe=recipe,
+        )
         occurrences.append(
             {
                 "occurrenceId": active_id,
@@ -1511,6 +1724,8 @@ def build_occurrence_rows(
                 "sourceEmitter": element.get("sourceEmitter"),
                 "sourceMaterialPath": material_path,
                 "materialRecipeId": recipe["recipeId"],
+                "identity": identity,
+                "identitySha256": canonical_sha256(identity),
                 "blockers": copy.deepcopy(recipe["blockers"]),
                 "blockerCount": len(recipe["blockers"]),
                 "admission": {
@@ -1535,7 +1750,59 @@ def build_occurrence_rows(
         used_recipe_ids == {str(recipe["recipeId"]) for recipe in recipe_by_path.values()},
         "not every Material recipe is used by an active occurrence",
     )
-    return sorted(occurrences, key=lambda row: row["occurrenceId"]), join_sha256, used_recipe_ids
+    sorted_occurrences = sorted(occurrences, key=lambda row: row["occurrenceId"])
+    identity_sha256 = canonical_sha256(
+        [row["identity"] for row in sorted_occurrences]
+    )
+    return sorted_occurrences, join_sha256, identity_sha256, used_recipe_ids
+
+
+def recipe_identity_fixture_payload(
+    recipes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "recipeId": recipe["recipeId"],
+            "sourceMaterialPath": recipe["sourceMaterialPath"],
+            "identity": recipe["identity"],
+        }
+        for recipe in sorted(recipes, key=lambda row: row["recipeId"])
+    ]
+
+
+def recipe_family_fixture_payload(
+    recipes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "recipeId": recipe["recipeId"],
+            "sourceMaterialPath": recipe["sourceMaterialPath"],
+            "arithmeticFamilyId": recipe["arithmeticFamilyId"],
+            "arithmeticFamilyEvidence": recipe["arithmeticFamilyEvidence"],
+        }
+        for recipe in sorted(recipes, key=lambda row: row["recipeId"])
+    ]
+
+
+def contract_render_field_fixture_payload(
+    recipes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for recipe in sorted(recipes, key=lambda row: row["recipeId"]):
+        fields = recipe.get("renderState", {}).get("fields", {})
+        require(isinstance(fields, dict), "recipe render fields are missing")
+        for field_name in sorted(fields):
+            field = fields[field_name]
+            if field.get("status") != "SERIALIZED_EXPLICIT":
+                continue
+            result.append(
+                {
+                    "recipeId": recipe["recipeId"],
+                    "fieldName": field_name,
+                    "field": field,
+                }
+            )
+    return result
 
 
 def build_contract(
@@ -1558,6 +1825,9 @@ def build_contract(
     graph_families, family_by_recipe = build_graph_families(
         rows, render_bindings, render_exports, graph_expressions
     )
+    graph_family_by_id = {
+        str(family["familyId"]): family for family in graph_families
+    }
     recipes: list[dict[str, Any]] = []
 
     for row in rows:
@@ -1621,6 +1891,7 @@ def build_contract(
             "rendererShapes": copy.deepcopy(row.get("rendererShapes", [])),
             "identity": {
                 "fidelity": "SOURCE_EXACT_INPUT",
+                "canonicalSourceMaterialPath": material_path,
                 "physicalPackage": row["sourcePhysicalPackage"],
                 "physicalPackageSha256": require_sha256(
                     row.get("sourcePhysicalPackageSha256"),
@@ -1630,6 +1901,9 @@ def build_contract(
                 "materialClass": material["className"],
                 "materialExportIndex": source_export["exportIndex"],
                 "rawExportEvidenceId": source_export["evidenceId"],
+                "selectedGraphIdentity": copy.deepcopy(
+                    binding["selectedGraphIdentity"]
+                ),
             },
             "inputs": {
                 "scalarOverrides": scalar_inputs,
@@ -1652,6 +1926,18 @@ def build_contract(
             },
             "renderState": render_state,
             "arithmeticFamilyId": family_by_recipe[key],
+            "arithmeticFamilyEvidence": {
+                "familyId": family_by_recipe[key],
+                "familyIdentitySha256": graph_family_by_id[
+                    family_by_recipe[key]
+                ]["identitySha256"],
+                "baseMaterialEvidenceId": graph_family_by_id[
+                    family_by_recipe[key]
+                ]["rawEvidence"]["baseMaterialEvidenceId"],
+                "exactIdentity": copy.deepcopy(
+                    graph_family_by_id[family_by_recipe[key]]["exactIdentity"]
+                ),
+            },
             "blockers": sorted(blockers),
         }
         recipe["blockerCount"] = len(recipe["blockers"])
@@ -1687,9 +1973,12 @@ def build_contract(
             }
 
     recipe_by_path = {folded(row["sourceMaterialPath"]): row for row in recipes}
-    occurrences, occurrence_join_sha256, used_recipe_ids = build_occurrence_rows(
-        active_inventory, recipe_by_path
-    )
+    (
+        occurrences,
+        occurrence_join_sha256,
+        occurrence_identity_sha256,
+        used_recipe_ids,
+    ) = build_occurrence_rows(active_inventory, recipe_by_path)
     scalar_count = sum(len(row["inputs"]["scalarOverrides"]) for row in recipes)
     vector_count = sum(len(row["inputs"]["vectorOverrides"]) for row in recipes)
     texture_count = sum(len(row["inputs"]["textureOverrides"]) for row in recipes)
@@ -1735,10 +2024,19 @@ def build_contract(
         )
         for recipe in recipes
     )
+    recipe_identity_sha256 = canonical_sha256(
+        recipe_identity_fixture_payload(recipes)
+    )
+    recipe_family_join_sha256 = canonical_sha256(
+        recipe_family_fixture_payload(recipes)
+    )
+    render_field_evidence_sha256 = canonical_sha256(
+        contract_render_field_fixture_payload(recipes)
+    )
 
     contract: dict[str, Any] = {
         "schema": "lostark.artist-31470-typed-material-evidence-contract",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
@@ -1779,6 +2077,10 @@ def build_contract(
             "unusedMaterialRecipeCount": len(recipes) - len(used_recipe_ids),
             "unexpectedOccurrenceMaterialCount": 0,
             "occurrenceMaterialJoinSha256": occurrence_join_sha256,
+            "occurrenceIdentitySha256": occurrence_identity_sha256,
+            "recipeIdentitySha256": recipe_identity_sha256,
+            "recipeFamilyJoinSha256": recipe_family_join_sha256,
+            "renderFieldEvidenceSha256": render_field_evidence_sha256,
             "scalarOverrideCount": scalar_count,
             "vectorOverrideCount": vector_count,
             "directTextureOverrideCount": texture_count,
@@ -1817,7 +2119,7 @@ def validate_contract(
     require(
         contract.get("schema")
         == "lostark.artist-31470-typed-material-evidence-contract"
-        and contract.get("formatVersion") == 1,
+        and contract.get("formatVersion") == 2,
         "unsupported typed Material contract",
     )
     if verify_digest:
@@ -1840,7 +2142,39 @@ def validate_contract(
     exact_sampler_field_ids: set[str] = set()
     family_ids = {str(row.get("familyId") or "") for row in families}
     require(len(family_ids) == len(families) and "" not in family_ids, "duplicate graph family ID")
+    require(
+        [str(row.get("familyId") or "") for row in families]
+        == sorted(family_ids),
+        "graph families are not in stable identity order",
+    )
+    family_by_id = {str(row["familyId"]): row for row in families}
     for family in families:
+        exact_identity = family.get("exactIdentity")
+        raw_evidence = family.get("rawEvidence")
+        require(
+            isinstance(exact_identity, dict)
+            and isinstance(raw_evidence, dict),
+            "graph family exact/raw identity is missing",
+        )
+        expected_family_id = stable_id(
+            "material-family",
+            canonical_sha256(exact_identity),
+            canonical_sha256(raw_evidence),
+        )
+        require(
+            family.get("familyId") == expected_family_id
+            and int(exact_identity.get("materialExportIndex", -1)) >= 0
+            and bool(exact_identity.get("physicalPackage"))
+            and bool(exact_identity.get("materialObjectPath"))
+            and family.get("identitySha256")
+            == canonical_sha256(
+                {
+                    "exactIdentity": exact_identity,
+                    "rawEvidence": raw_evidence,
+                }
+            ),
+            f"graph family ID is not exact-identity-derived: {family.get('familyId')}",
+        )
         require(
             family.get("graphProvenance") == "RECONSTRUCTED_GRAPH"
             and not bool(family.get("sourceExactGraph")),
@@ -1861,7 +2195,6 @@ def validate_contract(
             "graph family blocker set was weakened",
         )
         cooked_evidence = family.get("cookedEvidence")
-        raw_evidence = family.get("rawEvidence")
         require(
             isinstance(cooked_evidence, dict)
             and isinstance(raw_evidence, dict),
@@ -1929,6 +2262,23 @@ def validate_contract(
         require(bool(recipe_id), "contract recipe ID is blank")
         require(recipe_id not in recipe_by_id, f"duplicate contract recipe: {recipe_id}")
         recipe_by_id[recipe_id] = recipe
+        source_material_path = str(recipe.get("sourceMaterialPath") or "")
+        identity = recipe.get("identity")
+        require(
+            recipe_id == stable_id("material-recipe", source_material_path)
+            and isinstance(identity, dict)
+            and identity.get("canonicalSourceMaterialPath") == source_material_path
+            and canonical_path_targets_object(
+                source_material_path, identity.get("materialObjectPath")
+            )
+            and bool(identity.get("rawExportEvidenceId"))
+            and int(identity.get("materialExportIndex", -1)) >= 0,
+            f"recipe ID is not raw Material identity-derived: {recipe_id}",
+        )
+        require_sha256(
+            identity.get("physicalPackageSha256"),
+            f"{recipe_id}.physicalPackage",
+        )
         blockers = require_list(recipe.get("blockers"), f"{recipe_id}.blockers")
         require(
             blockers == sorted(set(blockers)),
@@ -1943,7 +2293,48 @@ def validate_contract(
             and bool(admission.get("product")) == allowed,
             f"recipe admission is not blocker-derived: {recipe_id}",
         )
-        require(recipe.get("arithmeticFamilyId") in family_ids, f"recipe family missing: {recipe_id}")
+        family_id = str(recipe.get("arithmeticFamilyId") or "")
+        require(family_id in family_ids, f"recipe family missing: {recipe_id}")
+        family = family_by_id[family_id]
+        selected_graph = identity.get("selectedGraphIdentity")
+        family_evidence = recipe.get("arithmeticFamilyEvidence")
+        require(
+            isinstance(selected_graph, dict)
+            and isinstance(family_evidence, dict)
+            and family_evidence
+            == {
+                "familyId": family_id,
+                "familyIdentitySha256": family["identitySha256"],
+                "baseMaterialEvidenceId": family["rawEvidence"][
+                    "baseMaterialEvidenceId"
+                ],
+                "exactIdentity": family["exactIdentity"],
+            }
+            and selected_graph.get("rawExportEvidenceId")
+            == family["rawEvidence"]["baseMaterialEvidenceId"]
+            and selected_graph.get("physicalPackageSha256")
+            == family["exactIdentity"]["physicalPackageSha256"]
+            and selected_graph.get("exportIndex")
+            == family["exactIdentity"]["materialExportIndex"]
+            and folded(selected_graph.get("objectPath"))
+            == folded(family["exactIdentity"]["materialObjectPath"]),
+            f"recipe-to-family raw evidence join changed: {recipe_id}",
+        )
+        if folded(identity.get("materialClass")) == "materialinstanceconstant":
+            require(
+                canonical_path_targets_object(
+                    selected_graph.get("rawParentReferencePath"),
+                    selected_graph.get("objectPath"),
+                ),
+                f"recipe raw MIC Parent join changed: {recipe_id}",
+            )
+        else:
+            require(
+                selected_graph.get("rawParentReferencePath") is None
+                and selected_graph.get("rawExportEvidenceId")
+                == identity.get("rawExportEvidenceId"),
+                f"raw Material self-graph join changed: {recipe_id}",
+            )
         static = recipe.get("staticPermutation")
         require(
             isinstance(static, dict)
@@ -1989,6 +2380,50 @@ def validate_contract(
         )
         render_fields = render.get("fields")
         require(isinstance(render_fields, dict), f"render fields missing: {recipe_id}")
+        for field_name, field in render_fields.items():
+            require(isinstance(field, dict), f"invalid render field: {recipe_id}.{field_name}")
+            status = field.get("status")
+            require(
+                status in {"SERIALIZED_EXPLICIT", "OMITTED_FROM_EXPORT"},
+                f"invalid render field status: {recipe_id}.{field_name}",
+            )
+            if status != "SERIALIZED_EXPLICIT":
+                continue
+            encoded_hex = str(field.get("encodedValueHex") or "")
+            try:
+                encoded_bytes = bytes.fromhex(encoded_hex)
+            except ValueError as error:
+                raise ValueError(
+                    f"invalid contract render bytes: {recipe_id}.{field_name}"
+                ) from error
+            require(
+                bool(encoded_bytes)
+                and hashlib.sha256(encoded_bytes).hexdigest()
+                == field.get("encodedValueSha256")
+                and bool(field.get("recordSha256"))
+                and bool(field.get("exportEvidenceId"))
+                and 0 <= int(field.get("tagOffset", -1))
+                <= int(field.get("valueOffset", -1))
+                <= int(field.get("recordEndOffset", -1)),
+                f"contract render field raw evidence changed: {recipe_id}.{field_name}",
+            )
+            if folded(field.get("propertyType")) == "boolproperty":
+                require(
+                    len(encoded_bytes) == 1
+                    and encoded_bytes[0] in {0, 1}
+                    and field.get("value") is bool(encoded_bytes[0]),
+                    f"contract render bool disagrees with raw bytes: {recipe_id}.{field_name}",
+                )
+            if field_name == "blendmode":
+                require(
+                    folded(field.get("value")) in BLEND_MODE_DOMAIN,
+                    f"contract blend enum is invalid: {recipe_id}",
+                )
+            elif field_name == "lightingmodel":
+                require(
+                    folded(field.get("value")) in LIGHTING_MODEL_DOMAIN,
+                    f"contract lighting enum is invalid: {recipe_id}",
+                )
         unresolved_render_default = any(
             render_fields.get(field_name, {}).get("status") == "OMITTED_FROM_EXPORT"
             for field_name in REQUIRED_RENDER_FIELDS
@@ -2150,6 +2585,11 @@ def validate_contract(
 
     occurrence_ids: set[str] = set()
     used_recipe_ids: set[str] = set()
+    require(
+        [row.get("occurrenceId") for row in occurrences]
+        == sorted(str(row.get("occurrenceId") or "") for row in occurrences),
+        "contract occurrences are not in stable identity order",
+    )
     for occurrence in occurrences:
         require(isinstance(occurrence, dict), "contract occurrence must be an object")
         occurrence_id = str(occurrence.get("occurrenceId") or "")
@@ -2162,9 +2602,21 @@ def validate_contract(
         require(recipe_id in recipe_by_id, f"occurrence recipe is missing: {recipe_id}")
         recipe = recipe_by_id[recipe_id]
         used_recipe_ids.add(recipe_id)
+        expected_identity = occurrence_identity_payload(
+            active_element_id=occurrence_id,
+            cue_id=occurrence.get("cueId"),
+            renderer_type=occurrence.get("rendererType"),
+            source_system_id=occurrence.get("sourceSystemId"),
+            source_emitter=occurrence.get("sourceEmitter"),
+            source_material_path=occurrence.get("sourceMaterialPath"),
+            recipe=recipe,
+        )
         require(
             folded(occurrence.get("sourceMaterialPath"))
             == folded(recipe.get("sourceMaterialPath"))
+            and occurrence.get("identity") == expected_identity
+            and occurrence.get("identitySha256")
+            == canonical_sha256(expected_identity)
             and occurrence.get("blockers") == recipe["blockers"]
             and int(occurrence.get("blockerCount", -1)) == recipe["blockerCount"]
             and occurrence.get("admission") == recipe["admission"],
@@ -2174,9 +2626,33 @@ def validate_contract(
         used_recipe_ids == set(recipe_by_id),
         "contract occurrence set does not use every Material recipe",
     )
+    occurrence_identity_sha256 = canonical_sha256(
+        [row["identity"] for row in occurrences]
+    )
 
     summary = contract.get("summary")
     require(isinstance(summary, dict), "contract summary missing")
+    recipe_identity_sha256 = canonical_sha256(
+        recipe_identity_fixture_payload(recipes)
+    )
+    recipe_family_join_sha256 = canonical_sha256(
+        recipe_family_fixture_payload(recipes)
+    )
+    render_field_evidence_sha256 = canonical_sha256(
+        contract_render_field_fixture_payload(recipes)
+    )
+    require(
+        summary.get("occurrenceIdentitySha256") == occurrence_identity_sha256
+        == EXPECTED_OCCURRENCE_IDENTITY_SHA256
+        and summary.get("recipeIdentitySha256") == recipe_identity_sha256
+        == EXPECTED_RECIPE_IDENTITY_SHA256
+        and summary.get("recipeFamilyJoinSha256") == recipe_family_join_sha256
+        == EXPECTED_RECIPE_FAMILY_JOIN_SHA256
+        and summary.get("renderFieldEvidenceSha256")
+        == render_field_evidence_sha256
+        == EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256,
+        "contract identity summary is not emitted-field-derived",
+    )
     expected_summary = {
         "materialRecipeCount": EXPECTED_RECIPE_COUNT,
         "materialOccurrenceCount": EXPECTED_OCCURRENCE_COUNT,
@@ -2354,7 +2830,7 @@ def verify_external_artifacts(
     require(
         render_receipt.get("schema")
         == "lostark.artist-31470-material-render-state-evidence-receipt"
-        and render_receipt.get("formatVersion") == 2,
+        and render_receipt.get("formatVersion") == 3,
         "unsupported render-state evidence receipt for deep verification",
     )
     validate_self_digest(render_receipt, "receiptSha256", "render-state receipt")

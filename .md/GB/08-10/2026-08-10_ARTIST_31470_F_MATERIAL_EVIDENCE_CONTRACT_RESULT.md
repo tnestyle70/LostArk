@@ -17,20 +17,20 @@ geometry/WModel은 수정하지 않았다.
   - raw UPK 19개에서 source/base export 48개, graph expression export 925개, Texture2D export 4개를
     직접 해독한다.
   - package raw SHA/size, export index/path/class, serial offset/size/SHA, tagged-property offset/type/value,
-    encoded value SHA와 record SHA를 생성한다.
+    encoded value bytes/SHA와 record SHA를 생성한다.
   - omitted field는 `OMITTED_FROM_EXPORT / UNRESOLVED_DEFAULT_PROVENANCE`로 남긴다.
   - tracked generator/parser는 EOL-canonical source SHA, UPK는 raw artifact SHA domain을 쓴다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
   - 27 binding, 48 unique raw source/base export, 925 graph expression, 4 Texture2D, 19 raw package의
-    generated/self-digested receipt다.
+    generated/self-digested format 3 receipt다.
 - `Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py`
   - active inventory, material closure, exact DDS receipt, raw render-state receipt를 pure builder로 join한다.
   - exact input/sampler/render/partial-cull과 reconstructed graph를 필드별로 분리한다.
   - blocker set이 비어 있을 때만 admission을 열 수 있게 하고 이번 slice에서는 0을 유지한다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json`
-  - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated contract다.
+  - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated format 2 contract다.
 - `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
-  - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 24개를 검증한다.
+  - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 28개를 검증한다.
 - `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`
   - shallow canonical/self check와 deep raw UPK/DDS/external manifest check를 제공한다.
 - `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
@@ -66,6 +66,17 @@ generator는 `material is not None`과 list type을 먼저 검증하며 authorit
 Stable field identity는 `(sourceMaterialPath, fieldKind, serializedArrayIndex,
 casefold(parameterName), bindingOrigin)`이다. blank/duplicate parameter는 0이다.
 
+## Material·occurrence identity closure
+
+- canonical `sourceMaterialPath`는 raw Material object path의 exact suffix, physical package SHA,
+  export index, raw export evidence ID와 함께 고정한다.
+- MIC의 raw `Parent` reference는 selected parent graph의 exact physical package SHA, export index,
+  object path와 결합한다. 유효한 두 Material row의 canonical path를 맞바꾸거나 parent graph만
+  맞바꾸는 실제-UPK 재생성 공격은 모두 실패한다.
+- 34 occurrence는 `activeElementId`, cue, renderer type, source system/emitter, source material path,
+  recipe ID, raw Material/base graph/family evidence를 하나의 per-occurrence identity로 갖는다.
+  Validator는 각 identity와 aggregate digest를 다시 계산하며 sealed occurrence swap도 거부한다.
+
 ## raw render-state 근거
 
 23 unique base Material/DecalMaterial export에서 다음 explicit field를 해독했다.
@@ -82,6 +93,9 @@ casefold(parameterName), bindingOrigin)`이다. blank/duplicate parameter는 0�
 25 MIC 중 `OverrideTwoSided` explicit은 13개, `bHasStaticPermutationResource` explicit은 24개다.
 Base `TwoSided`와 MIC override를 적용해 partial-cull exact recipe는 18개지만 full cull exact recipe는
 0이다. Omitted `TwoSided`, depth, lighting 값은 false나 class default로 만들지 않았다.
+93개 explicit render/static 관련 tagged field는 decoded value만 신뢰하지 않고 encoded bytes/SHA,
+record SHA, export evidence와 고정 fixture를 함께 검사한다. 원래 raw hash를 유지한 채 valid `BlendMode`나
+`TwoSided` 값만 바꾸는 receipt/contract 공격도 거부한다.
 
 `bHasStaticPermutationResource`는 resource 존재 flag일 뿐 selected static parameter 값이 아니다.
 Parent graph의 surviving switch default 94개도 `PARENT_DEFAULT_NOT_INSTANCE_SELECTION`으로 분리했다.
@@ -112,6 +126,9 @@ expression slot 1,803개와 unresolved input edge 502개다. 각 family의 evalu
 `RECONSTRUCTED_ARITHMETIC_FAMILY`, `sourceExact=false`, `implemented=false`를 가진다.
 두 aggregate는 closure summary의 복사가 아니라 23개 raw `Expressions` 배열과 925 expression input
 reference에서 family별로 다시 계산한다. family 사이에 count를 재분배해 aggregate만 유지하는 변조도 거부한다.
+각 `familyId`는 export index를 포함한 exact graph identity 전체와 raw base evidence 전체의 canonical
+digest에서 재계산한다. Recipe의 family ID/evidence도 selected graph와 일치해야 하며
+sealed exact-identity 또는 recipe-family swap은 실패한다.
 
 Aggregate blocker는 다음 8개다.
 
@@ -149,12 +166,13 @@ cd Tools/LevelPlacementExtractor
 python -m unittest -q test_build_artist_31470_material_evidence_contract
 ```
 
-결과: shallow `Ran 24 tests ... OK (skipped=1)`, deep `Ran 24 tests ... OK`.
+결과: shallow `Ran 28 tests ... OK (skipped=1)`, deep `Ran 28 tests ... OK`.
 
 공격 fixture는 static flag의 selected permutation 세탁, partial `TwoSided`의 full cull 승격, DDS hash와
 sampler origin 변경, parent-default shadowing, extra exact sampler 세탁, parent cycle, cooked stripped edge
 제거, reconstructed evaluator의 exact 승격, recipe/occurrence/aggregate blocker loss, occurrence join loss,
-tracked LF/CRLF와 external raw JSON 차이를 포함한다.
+canonical Material/parentGraph 실제-UPK swap, independent occurrence identity mutation, sealed occurrence/family
+swap, 원래 raw hash를 재사용한 render enum/bool substitution, tracked LF/CRLF와 external raw JSON 차이를 포함한다.
 
 ### shallow audit
 
@@ -180,6 +198,8 @@ PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 input
 Deep audit에서 raw render receipt 27 binding/48 source/base export/925 expression/4 Texture2D/19 package가
 `--check` 재생성 일치했고,
 4개 DDS와 source Texture2D UPK, external manifest의 raw size/SHA가 모두 일치했다.
+같은 deep 실행에서 `fx_e_me_ht_03_4_ma`/`fx_e_pa_fd_18_2_tr` canonical row swap과 parentGraph-only
+swap을 실제 source UPK에 대해 재생성했으며 둘 다 fail-closed로 거부됐다.
 
 ### 전체 ProjectAudit
 

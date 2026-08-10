@@ -18,7 +18,11 @@ from build_artist_31470_material_evidence_contract import (
     check_or_write_tracked_json,
     load_json,
     normalize_tracked_text_bytes,
+    occurrence_identity_payload,
     raw_file_sha256,
+    recipe_family_fixture_payload,
+    recipe_identity_fixture_payload,
+    contract_render_field_fixture_payload,
     validate_contract,
     verify_external_artifacts,
 )
@@ -56,6 +60,11 @@ SOURCE_PACK_MANIFEST = Path(
 def seal_receipt(receipt: dict) -> None:
     receipt.pop("receiptSha256", None)
     receipt["receiptSha256"] = canonical_sha256(receipt)
+
+
+def seal_contract(contract: dict) -> None:
+    contract.pop("contractSha256", None)
+    contract["contractSha256"] = canonical_sha256(contract)
 
 
 class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
@@ -183,6 +192,64 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         source["fields"]["parent"]["resolvedObjectPath"] = "wrong.parent"
         seal_receipt(render)
         with self.assertRaisesRegex(ValueError, "exact inheritance edge"):
+            self.build(render=render)
+
+    def test_canonical_material_path_and_selected_parent_graph_are_bound(self) -> None:
+        closure = copy.deepcopy(self.closure)
+        left = next(
+            row for row in closure["materials"]
+            if folded_path(row.get("sourceMaterialPath")).endswith(
+                "fx_e_me_ht_03_4_ma"
+            )
+        )
+        right = next(
+            row for row in closure["materials"]
+            if folded_path(row.get("sourceMaterialPath")).endswith(
+                "fx_e_pa_fd_18_2_tr"
+            )
+        )
+        left["sourceMaterialPath"], right["sourceMaterialPath"] = (
+            right["sourceMaterialPath"],
+            left["sourceMaterialPath"],
+        )
+        with self.assertRaisesRegex(
+            ValueError, "raw source export identity|canonical source Material"
+        ):
+            self.build(closure=closure)
+
+        closure = copy.deepcopy(self.closure)
+        left = next(
+            row for row in closure["materials"]
+            if folded_path(row.get("sourceMaterialPath")).endswith(
+                "fx_e_me_ht_03_4_ma"
+            )
+        )
+        right = next(
+            row for row in closure["materials"]
+            if folded_path(row.get("sourceMaterialPath")).endswith(
+                "fx_e_pa_fd_18_2_tr"
+            )
+        )
+        left["parentGraph"], right["parentGraph"] = (
+            right["parentGraph"],
+            left["parentGraph"],
+        )
+        with self.assertRaisesRegex(
+            ValueError, "raw base Material identity|raw MIC Parent"
+        ):
+            self.build(closure=closure)
+
+        render = copy.deepcopy(self.render)
+        render["bindings"][0]["sourceMaterialIdentity"], render["bindings"][1][
+            "sourceMaterialIdentity"
+        ] = (
+            render["bindings"][1]["sourceMaterialIdentity"],
+            render["bindings"][0]["sourceMaterialIdentity"],
+        )
+        seal_receipt(render)
+        with self.assertRaisesRegex(
+            ValueError, "canonical source Material identity binding"
+        ):
             self.build(render=render)
 
     def test_instance_parameter_value_and_order_require_raw_projection(self) -> None:
@@ -351,7 +418,9 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             left[evidence_name]["nonNullExpressionCount"] -= 1
             right[evidence_name]["nullExpressionCount"] -= 1
             right[evidence_name]["nonNullExpressionCount"] += 1
-        with self.assertRaisesRegex(ValueError, "raw evidence fixture changed"):
+        with self.assertRaisesRegex(
+            ValueError, "raw evidence fixture changed|exact-identity-derived"
+        ):
             validate_contract(contract, verify_digest=False)
 
         closure = copy.deepcopy(self.closure)
@@ -360,6 +429,35 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         graph["summary"]["nullExpressionCount"] += 1
         with self.assertRaisesRegex(ValueError, "raw expression evidence"):
             self.build(closure=closure)
+
+    def test_family_exact_identity_and_recipe_join_are_not_swappable(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        contract["graphFamilies"][0]["exactIdentity"][
+            "materialExportIndex"
+        ] += 1
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "exact-identity-derived"):
+            validate_contract(contract)
+
+        contract = copy.deepcopy(self.contract)
+        contract["graphFamilies"][:2] = reversed(contract["graphFamilies"][:2])
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "stable identity order"):
+            validate_contract(contract)
+
+        contract = copy.deepcopy(self.contract)
+        left, right = contract["materialRecipes"][:2]
+        for field_name in ("arithmeticFamilyId", "arithmeticFamilyEvidence"):
+            left[field_name], right[field_name] = (
+                right[field_name],
+                left[field_name],
+            )
+        contract["summary"]["recipeFamilyJoinSha256"] = canonical_sha256(
+            recipe_family_fixture_payload(contract["materialRecipes"])
+        )
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "recipe-to-family raw evidence join"):
+            validate_contract(contract)
 
     def test_static_switch_flag_is_not_a_selected_permutation(self) -> None:
         contract = copy.deepcopy(self.contract)
@@ -419,6 +517,71 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         seal_receipt(render)
         with self.assertRaisesRegex(ValueError, "enum domain/ordinal"):
             self.build(render=render)
+
+    def test_render_enum_and_bool_cannot_change_under_original_raw_hashes(self) -> None:
+        render = copy.deepcopy(self.render)
+        export = next(
+            row for row in render["exports"]
+            if row["fields"].get("blendmode", {}).get("status")
+            == "SERIALIZED_EXPLICIT"
+        )
+        blend = export["fields"]["blendmode"]
+        blend["value"] = (
+            "blend_translucent"
+            if folded_path(blend["value"]) != "blend_translucent"
+            else "blend_additive"
+        )
+        blend["enumOrdinal"] = blend["enumDomain"].index(blend["value"])
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "raw exact render-field evidence"):
+            self.build(render=render)
+
+        render = copy.deepcopy(self.render)
+        export = next(
+            row for row in render["exports"]
+            if row["fields"].get("twosided", {}).get("status")
+            == "SERIALIZED_EXPLICIT"
+        )
+        export["fields"]["twosided"]["value"] = not export["fields"][
+            "twosided"
+        ]["value"]
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "boolean disagrees with raw tagged bytes"):
+            self.build(render=render)
+
+        contract = copy.deepcopy(self.contract)
+        recipe = next(
+            row for row in contract["materialRecipes"]
+            if row["renderState"]["fields"]["blendmode"]["status"]
+            == "SERIALIZED_EXPLICIT"
+        )
+        blend = recipe["renderState"]["fields"]["blendmode"]
+        blend["value"] = (
+            "blend_translucent"
+            if folded_path(blend["value"]) != "blend_translucent"
+            else "blend_additive"
+        )
+        contract["summary"]["renderFieldEvidenceSha256"] = canonical_sha256(
+            contract_render_field_fixture_payload(contract["materialRecipes"])
+        )
+        seal_contract(contract)
+        with self.assertRaisesRegex(
+            ValueError, "contract identity summary|render-field"
+        ):
+            validate_contract(contract)
+
+        contract = copy.deepcopy(self.contract)
+        recipe = next(
+            row for row in contract["materialRecipes"]
+            if row["renderState"]["fields"]["twosided"]["status"]
+            == "SERIALIZED_EXPLICIT"
+        )
+        recipe["renderState"]["fields"]["twosided"]["value"] = not recipe[
+            "renderState"
+        ]["fields"]["twosided"]["value"]
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "bool disagrees with raw bytes"):
+            validate_contract(contract)
 
     def test_reconstructed_evaluator_cannot_be_promoted_to_exact(self) -> None:
         contract = copy.deepcopy(self.contract)
@@ -494,6 +657,59 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         ] = replacement
         with self.assertRaisesRegex(ValueError, "stable join changed"):
             self.build(active=active)
+
+    def test_occurrence_full_identity_and_sealed_swap_fail_closed(self) -> None:
+        active = copy.deepcopy(self.active)
+        active["activeElements"][0]["cueId"] += "/mutated"
+        with self.assertRaisesRegex(ValueError, "identity summary"):
+            self.build(active=active)
+
+        contract = copy.deepcopy(self.contract)
+        contract["occurrences"][0]["sourceEmitter"] += "_mutated"
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "occurrence blocker set diverged"):
+            validate_contract(contract)
+
+        contract = copy.deepcopy(self.contract)
+        left, right = contract["occurrences"][:2]
+        swapped_fields = (
+            "cueId",
+            "rendererType",
+            "sourceSystemId",
+            "sourceEmitter",
+            "sourceMaterialPath",
+            "materialRecipeId",
+            "blockers",
+            "blockerCount",
+            "admission",
+        )
+        for field_name in swapped_fields:
+            left[field_name], right[field_name] = (
+                right[field_name],
+                left[field_name],
+            )
+        recipe_by_id = {
+            recipe["recipeId"]: recipe for recipe in contract["materialRecipes"]
+        }
+        for occurrence in (left, right):
+            recipe = recipe_by_id[occurrence["materialRecipeId"]]
+            identity = occurrence_identity_payload(
+                active_element_id=occurrence["occurrenceId"],
+                cue_id=occurrence["cueId"],
+                renderer_type=occurrence["rendererType"],
+                source_system_id=occurrence["sourceSystemId"],
+                source_emitter=occurrence["sourceEmitter"],
+                source_material_path=occurrence["sourceMaterialPath"],
+                recipe=recipe,
+            )
+            occurrence["identity"] = identity
+            occurrence["identitySha256"] = canonical_sha256(identity)
+        contract["summary"]["occurrenceIdentitySha256"] = canonical_sha256(
+            [row["identity"] for row in contract["occurrences"]]
+        )
+        seal_contract(contract)
+        with self.assertRaisesRegex(ValueError, "identity summary"):
+            validate_contract(contract)
 
     def test_tracked_json_allows_only_eol_equivalence(self) -> None:
         value = {"a": 1, "b": 1.0}
@@ -618,6 +834,58 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                 canonical_closure, DDS_RECEIPT, SOURCE_PACKAGE_ROOT
             )
             self.assertEqual(lf_receipt, crlf_receipt)
+
+            closure = copy.deepcopy(self.closure)
+            left = next(
+                row for row in closure["materials"]
+                if folded_path(row.get("sourceMaterialPath")).endswith(
+                    "fx_e_me_ht_03_4_ma"
+                )
+            )
+            right = next(
+                row for row in closure["materials"]
+                if folded_path(row.get("sourceMaterialPath")).endswith(
+                    "fx_e_pa_fd_18_2_tr"
+                )
+            )
+            left["sourceMaterialPath"], right["sourceMaterialPath"] = (
+                right["sourceMaterialPath"],
+                left["sourceMaterialPath"],
+            )
+            closure_path = root / "swapped-canonical-material-paths.json"
+            closure_path.write_text(
+                json.dumps(closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError, "canonical source Material path"
+            ):
+                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+
+            closure = copy.deepcopy(self.closure)
+            left = next(
+                row for row in closure["materials"]
+                if folded_path(row.get("sourceMaterialPath")).endswith(
+                    "fx_e_me_ht_03_4_ma"
+                )
+            )
+            right = next(
+                row for row in closure["materials"]
+                if folded_path(row.get("sourceMaterialPath")).endswith(
+                    "fx_e_pa_fd_18_2_tr"
+                )
+            )
+            left["parentGraph"], right["parentGraph"] = (
+                right["parentGraph"],
+                left["parentGraph"],
+            )
+            closure_path = root / "swapped-parent-graphs.json"
+            closure_path.write_text(
+                json.dumps(closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "raw MIC Parent"):
+                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
 
             closure = copy.deepcopy(self.closure)
             row = next(
