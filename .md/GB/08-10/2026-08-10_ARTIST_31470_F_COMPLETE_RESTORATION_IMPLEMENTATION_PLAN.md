@@ -176,7 +176,9 @@ G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다�
 | R3 runtime consumer | custom/source oracle 조사 또는 idle | Playback -> Geometry -> Material shared runtime를 직렬 구현 | 각 frozen checkpoint review | 구현 1 + review |
 | R4 renderer family | core 변경 없이 분리 가능한 family lane | renderer foundation과 다른 family lane, 최종 결합 | family frozen review | interface freeze 뒤 구현 2 |
 | R5 Tool/Product | regression/fixture 지원 | Catalog -> Presentation -> Effect Tool transaction과 35/35 | final tree review | shared writer 1 |
-| R6 corpus expansion | 4-class corpus 적용 | Valtan corpus 적용과 integration | partition/final review | 구현 2 + review 순차 |
+| R6 runtime eye smoke | occurrence/fixture 회귀 지원 | exact published Artist F Debug/Release 실행 | smoke 결과와 numeric 재현 review | shared writer 1 |
+| R7 Artist F freeze | source/material final hash 확인 | smoke 재현을 numeric gate에 환류하고 pipeline 동결 | final frozen tree review | shared writer 1 |
+| R8 corpus expansion | 4-class corpus 적용 | Valtan corpus 적용과 integration | partition/final review | 구현 2 + review 순차 |
 
 한 wave 안에서는 파일 소유권을 바꾸지 않는다. 세션 1이 Source corrective를 끝낸 직후 같은 dirty
 worktree에서 renderer를 시작하지 않고, PASS commit을 종료한 뒤 새 exact integration parent에서 새
@@ -422,20 +424,28 @@ numeric packet을 검증한다. raw `eKind`, raw SourceRecipe, legacy heuristic 
 하지 않는다. 수동 관찰에서 이상이 보이면 해당 occurrence ID와 compiled revision을 기록하고 R3~R5의
 numeric oracle에 재현을 추가한 뒤 다시 admission한다.
 
-### R7. 4-class와 Valtan 확장
+### R7. Artist F 최종 동결과 회귀
+
+R6 수동 smoke에서 발견된 모든 이상을 occurrence ID와 compiled revision으로 numeric/structural fixture에
+환류한다. Debug/Release, focused/deep ProjectAudit, publish/prewarm rollback, no-I/O prepared attach를 다시
+통과하고 Source `35/399/629`, Geometry `7/7`, Material `27/34`, renderer `13/16/3/1/1/1`, Product
+`35/35`가 동일 frozen tree에서 유지될 때 Artist F compiler/runtime/renderer interface를 동결한다.
+수동으로만 맞춘 값이나 Product path 전용 class/count 분기는 0이어야 한다.
+
+### R8. 4-class와 Valtan 확장
 
 Artist F runtime/compiler/renderer를 동결한 뒤 세션 1은 4-class corpus, 세션 2는 Valtan
 Particle/Decal/Trail/Material/Camera corpus를 병렬 적용한다. production code에 class/count switch를
 추가하지 않고 fixture denominator만 확장한다. 공통 handler가 부족하면 corpus 값을 근사하지 않고
 확장을 멈춘 뒤 shared pipeline gate로 되돌아간다.
 
-현재부터 Artist F manual runtime smoke까지 남은 critical gate는 R1~R6 여섯 개다. 실제 구현량은
+현재부터 Artist F 최종 동결까지 남은 critical gate는 R1~R7 일곱 개다. 실제 구현량은
 Source/Material corrective보다 R3 typed consumer와 R4 renderer가 크며, 이 두 구간을 통과하기 전에는
 화면에 보이는 legacy effect를 복원 완료로 판정하지 않는다.
 
 ## 기존 G 상세 계약
 
-아래 G00~G11은 원래 계획의 상세 acceptance contract다. 현재 실행 순서는 앞의 R1~R7을 정본으로
+아래 G00~G11은 원래 계획의 상세 acceptance contract다. 현재 실행 순서는 앞의 R1~R8을 정본으로
 사용하며, 이미 PASS한 G를 재구현하지 않는다.
 
 ## G00. Known-red base와 public handshake 동결 (historical)
