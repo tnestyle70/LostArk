@@ -771,6 +771,22 @@ try {
 	Add-Check 'effect.artist-31470-source-execution-semantics' `
 		$artistSourceExecutionPassed `
 		$artistSourceExecutionDetail
+	$artistCustomHandlerOraclePassed = $false
+	$artistCustomHandlerOracleDetail = ''
+	try {
+		$artistCustomHandlerOracleDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistCustomHandlerOraclePassed =
+			$artistCustomHandlerOracleDetail -match
+			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=381 blocked=18 distributionBlocked=3 ownerless=0 product=false'
+	}
+	catch {
+		$artistCustomHandlerOracleDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-custom-handler-oracle' `
+		$artistCustomHandlerOraclePassed `
+		$artistCustomHandlerOracleDetail
 	$artistMaterialContractPassed = $false
 	$artistMaterialContractDetail = ''
 	try {

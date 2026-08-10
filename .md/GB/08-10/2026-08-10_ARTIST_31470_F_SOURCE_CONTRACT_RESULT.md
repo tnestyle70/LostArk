@@ -373,3 +373,68 @@ custom distribution 세 행이 실제 blocker이므로 이를 consumed로 세탁
 receipt LF/raw SHA-256은
 `de15843dfa2f151371c1e26c472f2d42a0bfd7c7f8c8a41a3cdd2da08eaccb9a`, self SHA-256은
 `7e1113dd05bcc9b51056cacc27da1805f7a6d26f65dda5b72c99d26c3141a71c`다.
+
+## G05-S2 exact seeded handler와 blocker owner closure 결과
+
+`skill.31470.custom-handler-oracle.receipt.json`을 추가했다. 이 receipt는 기존 G05-S의 29 blocked
+module을 source ID 그대로 join하고, 근거가 생긴 표준 seeded 11건만 exact handler capability로
+승격한다. class prefix/suffix 문자열 정규화는 사용하지 않았다.
+
+### 표준 seeded 11건
+
+- class family: Color 2, Lifetime 1, Location 2, LocationPrimitiveCylinder 3,
+  MeshRotation 1, Size 1, Velocity 1
+- current `Engine.u`: 7개 exact seeded class가 대응 base class를 상속하고 direct child가
+  `RandomSeedInfo` struct property 하나이며 UFunction child는 0임을 검증
+- current `EFEngine.dll`: 7개 exact seeded `Spawn` wrapper가 정확한 base
+  `SpawnEx(..., FRandomStream*)` export로 dispatch함을 wrapper bytes와 direct/vtable target으로 검증
+- fixed-seed numeric oracle: source first seed 또는 명시적 non-source oracle occurrence seed에서
+  UE3 LCG random unit을 만들고 time `0/.25/1`, draw offset `0/4/8`의 typed distribution input을 계산
+- capability grant: 7 family / 11 occurrence, `normalizedStringAliasAllowed=false`
+
+### 남은 native/evaluator blocker
+
+- EF custom module: 6 family / 15 occurrence `BLOCKED`
+  - `efparticlemodulelocationonground` 2
+  - `efparticlemodulelocationprimitivecylinderspin` 2
+  - `efparticlemodulelocationprimitivecylinderspin_seeded` 3
+  - `efparticlemoduletypedatadecal` 3
+  - `efparticlemoduletypedatalight` 1
+  - `efparticlemodulevelocityoverlifetime` 4
+- custom distribution:
+  `efdistributionvectormultiplyparticleparameter` 3 occurrence `BLOCKED`
+- current script class shape와 installed export 부재는 기록했지만 source-era/native evaluator 동등성으로
+  승격하지 않았다. exact native dispatch 또는 controlled numeric evaluator가 생기기 전까지 blocker다.
+
+### blocker ownership과 공개 결합 필드
+
+- base G05-S blocked module: 29
+- exact seeded capability가 해결: 11
+- 남은 blocked module: 18 = EF custom handler 15 + custom distribution owner module 3
+- `moduleBlockerOwnership`: 29/29
+- `distributionBlockerOwnership`: 3/3
+- ownerless blocker: 0
+- projected handler decision: `381 READY_FOR_HANDLER / 18 BLOCKED`
+- distribution decision: `626 READY_FOR_HANDLER / 3 BLOCKED`
+- Product admission: false
+
+runtime/compiler가 소비할 공개 필드는 `capabilityGrants[].handlerCapabilityId`,
+`exactSourceClass`, `baseHandlerCapabilityId`, `grant`, `requiredEvidenceDecision`과
+`moduleBlockerOwnership[]`, `distributionBlockerOwnership[]`이다. runtime은 이 receipt의 exact class
+join을 소비해야 하며 raw class 이름을 다시 normalize해서는 안 된다.
+
+### 자동 검증
+
+- focused unit/mutation: 21/21 PASS
+- builder deterministic deep `--check`: PASS
+- independent shallow oracle: ready 381, blocked 18, distribution blocked 3, ownerless 0 PASS
+- independent deep oracle: source deep receipt, Engine/EFGame script package, EFEngine/LOSTARK bytes,
+  14 script class serial, 7 native wrapper bytes/direct target PASS
+- focused shallow/deep ProjectAudit: PASS
+- duplicate top-level/nested JSON key, bool version, class/capability/occurrence reassignment,
+  source seed/random stream mutation, custom blocker 제거, owner 제거/교체, Product 승격 mutation: 모두 reject
+- 이미지, 스크린샷, GPU 화면, 육안 판정: 실행하지 않음
+
+custom handler oracle LF-canonical text SHA-256은
+`157e396df78270fe2aa00839f204b2a290841cc770c60b17eefc3ee4fc68eb67`, self SHA-256은
+`f69e53b54c779d8faeaaef1d832ec75c0462281edcfa0f522dc2e074c17c3111`다.
