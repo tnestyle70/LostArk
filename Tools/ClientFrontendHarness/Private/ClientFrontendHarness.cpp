@@ -5,6 +5,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
 #include "DataJson.h"
+#include "Effect_CascadeCompiler.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
@@ -15,6 +16,7 @@
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -3673,6 +3675,387 @@ namespace
 			CEffectDocumentCodec::Parse(serialized, roundTrip, status) &&
 			CEffectDocumentCodec::Validate_SourceContract(roundTrip, status) &&
 			CEffectDocumentCodec::Serialize(roundTrip) == serialized;
+		const std::string inputIdentity =
+			CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(roundTrip);
+		const EFFECT_CASCADE_INSPECTION_COMPILER_PROBE probeBefore =
+			CEffectCascadeCompiler::Get_Probe();
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> inspectionA;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> inspectionB;
+		const bool_t inspectedTwice = parsed &&
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				roundTrip, inputIdentity, inspectionA, status) &&
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				roundTrip, inputIdentity, inspectionB, status);
+		const EFFECT_CASCADE_INSPECTION_COMPILER_PROBE probeAfter =
+			CEffectCascadeCompiler::Get_Probe();
+		if (!inspectedTwice)
+			std::cerr << "Cascade inspection compile error: " << status << '\n';
+		const auto RendererCount = [&inspectionA](const EFFECT_RENDERER_TYPE type)
+		{
+			return nullptr == inspectionA ? 0u :
+				inspectionA->Consumption.RendererCounts[
+					static_cast<size_t>(type)];
+		};
+		bool_t stableInspectionIdentity = inspectedTwice;
+		bool_t handlerReceiptsComplete = inspectedTwice;
+		bool_t rawDistributionsIsolated = inspectedTwice;
+		bool_t fidelityBlocked = inspectedTwice;
+		size_t geometryEvidenceCount = 0u;
+		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& system :
+			inspectedTwice ? inspectionA->Systems :
+			std::vector<EFFECT_CASCADE_INSPECTION_SYSTEM>{})
+		{
+			stableInspectionIdentity = stableInspectionIdentity &&
+				!system.strSourceSystemId.empty() && system.iStableSemantic != 0u;
+			for (const EFFECT_CASCADE_INSPECTION_EMITTER& emitter : system.Emitters)
+			{
+				stableInspectionIdentity = stableInspectionIdentity &&
+					!emitter.Identity.strSourceSystemId.empty() &&
+					!emitter.Identity.strSourceOccurrenceId.empty() &&
+					!emitter.Identity.strCanonicalId.empty() &&
+					emitter.Identity.iStableReference != 0u;
+				fidelityBlocked = fidelityBlocked &&
+					emitter.SelectedLOD.bIdentityPreserved &&
+					!emitter.SelectedLOD.bExecutionFidelityProven &&
+					!emitter.SelectedLOD.Blockers.empty();
+				if (emitter.Geometry.has_value())
+				{
+					++geometryEvidenceCount;
+					fidelityBlocked = fidelityBlocked &&
+						!emitter.Geometry->bPayloadIntegrityValid &&
+						!emitter.Geometry->bRuntimeConsumerReady &&
+						!emitter.Geometry->ChannelConsumptionBlockers.empty();
+				}
+				for (const EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
+					emitter.OrderedOpcodes)
+				{
+					handlerReceiptsComplete = handlerReceiptsComplete &&
+						opcode.eOpcode != EFFECT_CASCADE_OPCODE::END &&
+						opcode.Reference.eRole != EFFECT_CASCADE_MODULE_ROLE::END &&
+						!opcode.Reference.strReceiptRole.empty() &&
+						!opcode.Reference.strCanonicalId.empty() &&
+						opcode.Reference.iStableReference != 0u &&
+						opcode.HandlerReceipt.eResult ==
+							EFFECT_CASCADE_HANDLER_RESULT::
+								STRUCTURE_CONSUMED_EXECUTION_BLOCKED &&
+						opcode.HandlerReceipt.eModuleCoverageStatus !=
+							EFFECT_SOURCE_COVERAGE_STATUS::END &&
+						opcode.HandlerReceipt.eAggregateBlockerRequirement !=
+							EFFECT_CASCADE_BLOCKER_REQUIREMENT::END &&
+						!opcode.HandlerReceipt.strReceiptNormalizedClass.empty() &&
+						opcode.HandlerReceipt.strExactSourceClass.empty() &&
+						opcode.HandlerReceipt.strAliasId.empty() &&
+						!opcode.HandlerReceipt.strOpcodeSchemaId.empty() &&
+						!opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size() ==
+							opcode.Properties.size() &&
+						!opcode.HandlerReceipt.RequiredPropertyReferenceIds.empty();
+					for (const EFFECT_CASCADE_PROPERTY_EVIDENCE& property :
+						opcode.Properties)
+					{
+						stableInspectionIdentity = stableInspectionIdentity &&
+							!property.Property.strCanonicalPath.empty() &&
+							!property.Property.strCanonicalReferenceId.empty() &&
+							property.Property.iStableSemantic != 0u &&
+							property.Property.iStableReference != 0u &&
+							property.eBlockerRequirement !=
+								EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
+					}
+				}
+				for (const EFFECT_CASCADE_DISTRIBUTION_EVIDENCE& distribution :
+					emitter.Distributions)
+				{
+					rawDistributionsIsolated = rawDistributionsIsolated &&
+						!distribution.bRawPayloadRead &&
+						!distribution.bExecutionAllowed &&
+						!distribution.Blockers.empty();
+				}
+			}
+		}
+		runner.Require(inspectedTwice && nullptr != inspectionA &&
+			inspectionA->iCompilerRevision ==
+				EFFECT_CASCADE_INSPECTION_COMPILER_REVISION &&
+			!inspectionA->bExecutable && !inspectionA->bProductAdmission &&
+			inspectionA->Consumption.iSystemCount == 7u &&
+			inspectionA->Consumption.iEmitterCount == 35u &&
+			inspectionA->Consumption.iOrderedOpcodeCount == 399u &&
+			inspectionA->Consumption.iDistributionEvidenceCount == 629u &&
+			inspectionA->Consumption.iUnknownClassCount == 0u &&
+			inspectionA->Consumption.iUnconsumedRequiredPropertyCount == 0u &&
+			inspectionA->Consumption.iConsumedPropertyCount >=
+				inspectionA->Consumption.iRequiredPropertyCount &&
+			RendererCount(EFFECT_RENDERER_TYPE::MESH_PARTICLE) == 13u &&
+			RendererCount(EFFECT_RENDERER_TYPE::SPRITE_PARTICLE) == 16u &&
+			RendererCount(EFFECT_RENDERER_TYPE::DECAL_PARTICLE) == 3u &&
+			RendererCount(EFFECT_RENDERER_TYPE::CASCADE_RIBBON) == 1u &&
+			RendererCount(EFFECT_RENDERER_TYPE::LIGHT_PARTICLE) == 1u &&
+			RendererCount(EFFECT_RENDERER_TYPE::SCREEN_POST) == 1u &&
+			stableInspectionIdentity && handlerReceiptsComplete &&
+			rawDistributionsIsolated && fidelityBlocked &&
+			geometryEvidenceCount == 13u,
+			"Artist F Inspection IR Preserves Fixture 7 Systems 35 Emitters 399 Opcodes 629 Isolated Distributions And Renderer Denominator");
+		runner.Require(inspectedTwice &&
+			inspectionA->strCanonicalDocumentIdentity == inputIdentity &&
+			inspectionA->strInspectionHash == inspectionB->strInspectionHash &&
+			CEffectCascadeCompiler::Matches_InputIdentity(
+				*inspectionA, inputIdentity) &&
+			probeAfter.iCompileAttemptCount ==
+				probeBefore.iCompileAttemptCount + 2u &&
+			probeAfter.iCompileSuccessCount ==
+				probeBefore.iCompileSuccessCount + 2u,
+			"Cascade Inspection Hash Is Deterministic And Input Identity Bound");
+
+		const auto CompileMutation = [&](const EFFECT_DOCUMENT_DESC& candidate)
+		{
+			std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> rejected;
+			const std::string candidateIdentity =
+				CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(candidate);
+			return CEffectCascadeCompiler::Compile_SourceInspection(
+				candidate, candidateIdentity, rejected, status);
+		};
+
+		EFFECT_DOCUMENT_DESC rawPayloadMutation = roundTrip;
+		rawPayloadMutation.Elements.front().SourceRecipe.Modules.front().strClassName =
+			"raw-payload-mutation-must-not-drive-inspection";
+		const std::string rawMutationIdentity =
+			CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(
+				rawPayloadMutation);
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> rawMutationInspection;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> reusedIdentityInspection;
+		const bool_t reusedIdentityRejected =
+			!CEffectCascadeCompiler::Compile_SourceInspection(
+				rawPayloadMutation, inputIdentity,
+				reusedIdentityInspection, status);
+		const bool_t rawPayloadNotMaterialized =
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				rawPayloadMutation, rawMutationIdentity,
+				rawMutationInspection, status);
+		runner.Require(reusedIdentityRejected && rawPayloadNotMaterialized &&
+			nullptr != rawMutationInspection &&
+			!CEffectCascadeCompiler::Matches_InputIdentity(
+				*inspectionA, rawMutationIdentity) &&
+			rawMutationInspection->strInspectionHash !=
+				inspectionA->strInspectionHash &&
+			rawMutationInspection->Consumption.iOrderedOpcodeCount ==
+				inspectionA->Consumption.iOrderedOpcodeCount,
+			"Raw B Reusing A Canonical Identity Is Rejected While Values Stay Unmaterialized");
+
+		EFFECT_CASCADE_INSPECTION_IR fabricatedInspection;
+		fabricatedInspection.strCanonicalDocumentIdentity = inputIdentity;
+		fabricatedInspection.strInspectionHash = "fnv1a64:0123456789abcdef";
+		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
+			fabricatedInspection, inputIdentity),
+			"Fabricated Default Inspection Cannot Match A Valid Looking Identity And Hash");
+
+		EFFECT_CASCADE_INSPECTION_IR tamperedInspection = *inspectionA;
+		tamperedInspection.Systems.front().Emitters.front().SelectedLOD.strEmitterNodeId =
+			"FX_PC_SDM_07:export:99999";
+		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
+			tamperedInspection, inputIdentity),
+			"Inspection Hash Binds Source Emitter Node And LOD Lineage");
+
+		EFFECT_DOCUMENT_DESC simultaneousUnknown = roundTrip;
+		EFFECT_SOURCE_LITERAL_DESC unknownRaw;
+		unknownRaw.strPropertyPath = "unknownsimultaneous";
+		unknownRaw.eKind = EFFECT_SOURCE_LITERAL_KIND::NUMBER;
+		simultaneousUnknown.Elements.front().SourceRecipe.Modules.front().Literals.push_back(
+			unknownRaw);
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC unknownCoverage;
+		unknownCoverage.strPropertyPath = "unknownsimultaneous";
+		unknownCoverage.strStorage = "literal";
+		unknownCoverage.strProvenance = "SOURCE_TAGGED_PRIMITIVE";
+		unknownCoverage.eStatus = EFFECT_SOURCE_COVERAGE_STATUS::SOURCE_DECODED;
+		simultaneousUnknown.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.push_back(
+			unknownCoverage);
+		runner.Require(!CompileMutation(simultaneousUnknown),
+			"Cascade Inspection Rejects Simultaneous Source And Coverage Unknown Property");
+
+		EFFECT_DOCUMENT_DESC efClassMutation = roundTrip;
+		efClassMutation.Elements.front().SourceRecipe.ModuleCoverage.front().strNormalizedClass =
+			"efparticlemodulerequired";
+		runner.Require(!CompileMutation(efClassMutation),
+			"Cascade Inspection Rejects EF Class Mutation Without Blanket Normalization");
+
+		EFFECT_DOCUMENT_DESC provenancePromotion = roundTrip;
+		provenancePromotion.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front().strProvenance =
+			"SOURCE_EXACT";
+		runner.Require(!CompileMutation(provenancePromotion),
+			"Cascade Inspection Rejects SOURCE_TAGGED To SOURCE_EXACT Provenance Promotion");
+
+		EFFECT_DOCUMENT_DESC aggregatePromotion = roundTrip;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC* pPromotedModule = nullptr;
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC* pPromotedProperty = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : aggregatePromotion.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				if (coverage.strNormalizedClass !=
+						"particlemodulecolorscaleoverlife" ||
+					coverage.eStatus != EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED)
+				{
+					continue;
+				}
+				const auto unresolved = std::find_if(
+					coverage.Properties.begin(), coverage.Properties.end(),
+					[](const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& property)
+					{
+						return property.eStatus ==
+							EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED;
+					});
+				if (unresolved != coverage.Properties.end())
+				{
+					pPromotedModule = &coverage;
+					pPromotedProperty = &*unresolved;
+					break;
+				}
+			}
+			if (nullptr != pPromotedModule)
+				break;
+		}
+		if (nullptr != pPromotedModule && nullptr != pPromotedProperty)
+		{
+			pPromotedModule->eStatus =
+				EFFECT_SOURCE_COVERAGE_STATUS::SOURCE_DECODED;
+			pPromotedModule->Blockers.clear();
+			pPromotedProperty->eStatus =
+				EFFECT_SOURCE_COVERAGE_STATUS::SOURCE_DECODED;
+			pPromotedProperty->strProvenance = "SOURCE_TAGGED_PRIMITIVE";
+		}
+		runner.Require(nullptr != pPromotedModule && nullptr != pPromotedProperty &&
+			!CompileMutation(aggregatePromotion),
+			"Cascade Inspection Rejects Unresolved ColorScale Module Property Aggregate Promotion");
+
+		EFFECT_DOCUMENT_DESC forgedLod = roundTrip;
+		forgedLod.Elements.front().SourceRecipe.CompilerEvidence.strSelectedLodPath =
+			"forged.particlelodlevel_0";
+		runner.Require(!CompileMutation(forgedLod),
+			"Cascade Inspection Rejects Forged Selected LOD Path");
+
+		EFFECT_DOCUMENT_DESC forgedEmitterNode = roundTrip;
+		forgedEmitterNode.Elements.front().SourceRecipe.CompilerEvidence.strSourceEmitterNodeId =
+			"FX_VALID_LOOKING_OTHER:export:1392";
+		runner.Require(!CompileMutation(forgedEmitterNode),
+			"Cascade Inspection Rejects Valid Looking Emitter Node Package Mismatch");
+
+		EFFECT_DOCUMENT_DESC aliasLineage = roundTrip;
+		aliasLineage.Elements.front().SourceRecipe.ModuleCoverage.front().strModuleStableId +=
+			".forged";
+		runner.Require(!CompileMutation(aliasLineage),
+			"Cascade Inspection Rejects Alias ID And Source Reference Lineage Drift");
+
+		EFFECT_DOCUMENT_DESC validLookingAliasMismatch = roundTrip;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC* pAliasCoverage = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : validLookingAliasMismatch.Elements)
+		{
+			const auto lifetime = std::find_if(
+				element.SourceRecipe.ModuleCoverage.begin(),
+				element.SourceRecipe.ModuleCoverage.end(),
+				[](const EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage)
+				{
+					return coverage.strNormalizedClass ==
+						"particlemodulelifetime";
+				});
+			if (lifetime != element.SourceRecipe.ModuleCoverage.end())
+			{
+				pAliasCoverage = &*lifetime;
+				break;
+			}
+		}
+		if (nullptr != pAliasCoverage)
+			pAliasCoverage->strNormalizedClass = "particlemodulecolor";
+		runner.Require(nullptr != pAliasCoverage &&
+			!CompileMutation(validLookingAliasMismatch),
+			"Cascade Inspection Rejects Valid Looking Opcode Alias Schema Mismatch");
+
+		EFFECT_DOCUMENT_DESC wrongTypedRole = roundTrip;
+		EFFECT_SOURCE_MODULE_REFERENCE_DESC& firstRole =
+			wrongTypedRole.Elements.front().SourceRecipe.CompilerEvidence.
+				ModuleReferenceOrder.front();
+		const bool_t wasRequiredRole = firstRole.strRole == "REQUIRED";
+		firstRole.strRole = "MODULE";
+		runner.Require(wasRequiredRole && !CompileMutation(wrongTypedRole),
+			"Cascade Inspection Rejects REQUIRED Opcode With Valid Looking MODULE Role");
+
+		EFFECT_DOCUMENT_DESC duplicateProperty = roundTrip;
+		duplicateProperty.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.push_back(
+			duplicateProperty.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front());
+		runner.Require(!CompileMutation(duplicateProperty),
+			"Cascade Inspection Rejects Duplicate Property Path And Reference");
+
+		EFFECT_DOCUMENT_DESC unknownStorage = roundTrip;
+		unknownStorage.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front().strStorage =
+			"unknown";
+		runner.Require(!CompileMutation(unknownStorage),
+			"Cascade Inspection Rejects Unknown Property Storage");
+
+		EFFECT_DOCUMENT_DESC duplicateReference = roundTrip;
+		if (duplicateReference.Elements.front().SourceRecipe.CompilerEvidence.ModuleReferenceOrder.size() > 1u)
+		{
+			duplicateReference.Elements.front().SourceRecipe.CompilerEvidence.ModuleReferenceOrder[1u].iSourceReferenceIndex =
+				duplicateReference.Elements.front().SourceRecipe.CompilerEvidence.ModuleReferenceOrder.front().iSourceReferenceIndex;
+		}
+		runner.Require(
+			duplicateReference.Elements.front().SourceRecipe.CompilerEvidence.ModuleReferenceOrder.size() > 1u &&
+			!CompileMutation(duplicateReference),
+			"Cascade Inspection Rejects Duplicate Module Reference Index");
+
+		EFFECT_DOCUMENT_DESC nonfiniteGeometry = roundTrip;
+		EFFECT_SOURCE_GEOMETRY_BINDING_DESC* pGeometry = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : nonfiniteGeometry.Elements)
+		{
+			if (element.SourceRecipe.GeometryBinding.bEnabled)
+			{
+				pGeometry = &element.SourceRecipe.GeometryBinding;
+				break;
+			}
+		}
+		if (nullptr != pGeometry)
+			pGeometry->fCarrierGeometryPreScale =
+				(std::numeric_limits<f32_t>::infinity)();
+		runner.Require(nullptr != pGeometry && !CompileMutation(nonfiniteGeometry),
+			"Cascade Inspection Rejects Nonfinite Typed Evidence");
+
+		EFFECT_DOCUMENT_DESC geometryAssetMismatch = roundTrip;
+		EFFECT_SOURCE_GEOMETRY_BINDING_DESC* pMismatchedGeometry = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : geometryAssetMismatch.Elements)
+		{
+			if (element.SourceRecipe.GeometryBinding.bEnabled)
+			{
+				pMismatchedGeometry = &element.SourceRecipe.GeometryBinding;
+				break;
+			}
+		}
+		if (nullptr != pMismatchedGeometry)
+		{
+			pMismatchedGeometry->strAssetId =
+				"Effect/Artist/Meshes/valid_looking_mismatch.wmodel";
+		}
+		runner.Require(nullptr != pMismatchedGeometry &&
+			!CompileMutation(geometryAssetMismatch),
+			"Cascade Inspection Rejects Safe Looking Geometry And Resource Binding Mismatch");
+
+		const std::array<std::string_view, 5u> legacyMigrationClasses = {
+			"particlemodulecollision",
+			"particlemodulesizemultiplyvelocity",
+			"particlemodulesubuvmovie",
+			"particlemodulesoundparameter",
+			"particlemodulevectorconstant"
+		};
+		bool_t legacyGapsClassified = true;
+		for (const std::string_view sourceClass : legacyMigrationClasses)
+		{
+			const EFFECT_CASCADE_CLASS_REPORT report =
+				CEffectCascadeCompiler::Classify_ReceiptClass(sourceClass);
+			legacyGapsClassified = legacyGapsClassified &&
+				report.eClassification ==
+					EFFECT_CASCADE_CLASS_CLASSIFICATION::
+						KNOWN_LEGACY_MIGRATION_GAP &&
+				report.strOpcodeSchemaId.empty() &&
+				!report.strReasonCode.empty();
+		}
+		runner.Require(legacyGapsClassified,
+			"Legacy Collision SizeMultiplyVelocity SubUVMovie SoundParameter VectorConstant Stay Explicit Migration Gaps");
 		const auto SameFloat3 = [](const float3_t& left, const float3_t& right)
 		{
 			return left.x == right.x && left.y == right.y && left.z == right.z;

@@ -13,9 +13,9 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{78406C04-3D55-4F36-B6D1-B5180A48F521}</ProjectGuid>
-    <RootNamespace>ClientFrontendHarness</RootNamespace>
-    <ProjectName>ClientFrontendHarness</ProjectName>
+    <ProjectGuid>{9B42E292-78B8-4B77-A65F-1CD55AB5D1D0}</ProjectGuid>
+    <RootNamespace>WModelGeometryContractHarness</RootNamespace>
+    <ProjectName>WModelGeometryContractHarness</ProjectName>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,7 +45,7 @@
   <PropertyGroup>
     <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
-    <TargetName>ClientFrontendHarness</TargetName>
+    <TargetName>WModelGeometryContractHarness</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -53,10 +53,9 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -71,10 +70,9 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -84,49 +82,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Private\ClientFrontendHarness.cpp" />
-	<ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
-	  <Link>Client\ActionPresentationTimeline.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
-	  <Link>Client\AnimationSkillBindingDocument.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
-	  <Link>Client\CharacterSelectionState.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
-	  <Link>Client\Effect_DocumentCodec.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp">
-	  <Link>Client\Effect_Catalog.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp">
-	  <Link>Client\Effect_CascadeCompiler.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp">
-	  <Link>Client\Effect_Distribution.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_Playback.cpp">
-	  <Link>Client\Effect_Playback.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
-	  <Link>Client\DataJson.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
-	  <Link>Client\LobbyCommandService.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\NetObjectRegistry.cpp">
-	  <Link>Client\NetObjectRegistry.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
-	  <Link>Client\PlayerSkillCatalog.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp">
-	  <Link>Client\ProjectDataRoot.cpp</Link>
-	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp">
-	  <Link>Client\RuntimeAssetRoot.cpp</Link>
-	</ClCompile>
+    <ProjectReference Include="..\..\..\Engine\Default\Engine.vcxproj">
+      <Project>{922BAEFB-8A3C-4F15-9F51-BF7C7ECC1CD7}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\WModelGeometryContractHarness.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

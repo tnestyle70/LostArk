@@ -40,6 +40,14 @@ CModel::CModel(const CModel& Prototype)
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
+	, m_bHasSelfConsistentUnauthenticatedGeometryMetadata { Prototype.m_bHasSelfConsistentUnauthenticatedGeometryMetadata }
+	, m_iGeometryFormatVersionMajor { Prototype.m_iGeometryFormatVersionMajor }
+	, m_iGeometryFormatVersionMinor { Prototype.m_iGeometryFormatVersionMinor }
+	, m_iGeometryChannelMask { Prototype.m_iGeometryChannelMask }
+	, m_iGeometryEvidenceFlags { Prototype.m_iGeometryEvidenceFlags }
+	, m_fGeometryPreScale { Prototype.m_fGeometryPreScale }
+	, m_GeometryPayloadSha256 { Prototype.m_GeometryPayloadSha256 }
+	, m_GeometryMetadataIdentitySha256 { Prototype.m_GeometryMetadataIdentitySha256 }
 {
     for (auto& pPrototype : Prototype.m_Bones)
         m_Bones.push_back(pPrototype->Clone());
@@ -521,6 +529,27 @@ HRESULT CModel::Ready_BinaryModel(
 		return E_FAIL;
 	}
 
+	m_bHasSelfConsistentUnauthenticatedGeometryMetadata =
+		asset.geometryMetadata.present;
+	m_iGeometryFormatVersionMajor = {};
+	m_iGeometryFormatVersionMinor = {};
+	m_iGeometryChannelMask = {};
+	m_iGeometryEvidenceFlags = {};
+	m_fGeometryPreScale = 1.f;
+	m_GeometryPayloadSha256.fill(0);
+	m_GeometryMetadataIdentitySha256.fill(0);
+	if (m_bHasSelfConsistentUnauthenticatedGeometryMetadata)
+	{
+		m_iGeometryFormatVersionMajor = asset.geometryMetadata.versionMajor;
+		m_iGeometryFormatVersionMinor = asset.geometryMetadata.versionMinor;
+		m_iGeometryChannelMask = asset.geometryMetadata.channelMask;
+		m_iGeometryEvidenceFlags = asset.geometryMetadata.evidenceFlags;
+		m_fGeometryPreScale = asset.geometryMetadata.geometryPreScale;
+		m_GeometryPayloadSha256 = asset.geometryMetadata.payloadSha256;
+		m_GeometryMetadataIdentitySha256 =
+			asset.geometryMetadata.metadataIdentitySha256;
+	}
+
 	if (FAILED(Ready_Bones(asset)) ||
 		FAILED(Ready_Meshes(asset)) ||
 		FAILED(Ready_Materials(asset)) ||
@@ -564,14 +593,34 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
 {
     m_iNumMeshes = static_cast<uint32_t>(asset.meshes.size());
     m_Meshes.reserve(m_iNumMeshes);
-    for (const MODEL_MESH_DATA& mesh : asset.meshes)
-    {
+	for (const MODEL_MESH_DATA& mesh : asset.meshes)
+	{
 		if (MODEL::NONANIM == m_eType)
 		{
-			for (const VTXMESH& vertex : mesh.vertices)
+			if (mesh.embeddedBounds.present)
 			{
-				Include_LocalPosition(XMVector3TransformCoord(
-					XMLoadFloat3(&vertex.vPosition), XMLoadFloat4x4(&m_PreTransformMatrix)));
+				const float3_t& minimum = mesh.embeddedBounds.minimum;
+				const float3_t& maximum = mesh.embeddedBounds.maximum;
+				for (uint32_t corner = 0; corner < 8; ++corner)
+				{
+					const float3_t position = {
+						0 != (corner & 1) ? maximum.x : minimum.x,
+						0 != (corner & 2) ? maximum.y : minimum.y,
+						0 != (corner & 4) ? maximum.z : minimum.z,
+					};
+					Include_LocalPosition(XMVector3TransformCoord(
+						XMLoadFloat3(&position),
+						XMLoadFloat4x4(&m_PreTransformMatrix)));
+				}
+			}
+			else
+			{
+				for (const VTXMESH& vertex : mesh.vertices)
+				{
+					Include_LocalPosition(XMVector3TransformCoord(
+						XMLoadFloat3(&vertex.vPosition),
+						XMLoadFloat4x4(&m_PreTransformMatrix)));
+				}
 			}
 		}
 

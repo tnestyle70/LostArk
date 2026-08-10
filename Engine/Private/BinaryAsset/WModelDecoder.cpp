@@ -131,7 +131,9 @@ namespace
 			CBinaryReader fileReader(bytes.data(), bytes.size());
 			const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 			if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
-				1 != fileHeader.versionMajor || 0 != fileHeader.flags ||
+				WINT_VERSION_MAJOR != fileHeader.versionMajor ||
+				fileHeader.versionMinor > WINT_GEOMETRY_VERSION_MINOR ||
+				0 != fileHeader.flags ||
 				fileHeader.contentSize != fileReader.Remaining())
 			{
 				outReport.error = "Invalid WINT WModel file header.";
@@ -149,6 +151,18 @@ namespace
 				return false;
 			}
 
+			const bool_t geometryContract =
+				WINT_GEOMETRY_VERSION_MINOR == fileHeader.versionMinor;
+			if (geometryContract &&
+				(2 != modelHeader.sectionCount || 0 != modelHeader.animationCount ||
+				0 != modelHeader.flags || 0 != modelHeader.reserved[0] ||
+				0 != modelHeader.reserved[1] || 0 != modelHeader.reserved[2] ||
+				0 != modelHeader.reserved[3]))
+			{
+				outReport.error = "WModel 1.1 requires canonical static WMOD metadata.";
+				return false;
+			}
+
 			if (sizeof(MODEL_SECTION_DESC) > reader.Remaining() / modelHeader.sectionCount)
 			{
 				outReport.error = "WMOD section table is truncated.";
@@ -160,6 +174,8 @@ namespace
 			vector<MODEL_SECTION_VIEW> sections;
 			sections.reserve(descriptors.size());
 			uint32_t animationCount = {};
+			size_t expectedGeometryOffset = sizeof(MODEL_META_HEADER) +
+				descriptors.size() * sizeof(MODEL_SECTION_DESC);
 			for (const MODEL_SECTION_DESC& source : descriptors)
 			{
 				if (source.offset > fileHeader.contentSize ||
@@ -169,6 +185,15 @@ namespace
 					outReport.error = "A WMOD section points outside the package.";
 					return false;
 				}
+
+				if (geometryContract &&
+					(source.offset != expectedGeometryOffset || 0 == source.size))
+				{
+					outReport.error = "WModel 1.1 sections must be non-empty and contiguous.";
+					return false;
+				}
+				if (geometryContract)
+					expectedGeometryOffset += static_cast<size_t>(source.size);
 
 				const MODEL_SECTION_TYPE type = static_cast<MODEL_SECTION_TYPE>(source.type);
 				if (type < MODEL_SECTION_TYPE::MESH || type > MODEL_SECTION_TYPE::ANIMATION)
@@ -185,6 +210,12 @@ namespace
 					ReadFixedName(source.name, sizeof(source.name)),
 					pContent + static_cast<size_t>(source.offset),
 					static_cast<size_t>(source.size) });
+			}
+
+			if (geometryContract && expectedGeometryOffset != fileHeader.contentSize)
+			{
+				outReport.error = "WModel 1.1 contains trailing section payload.";
+				return false;
 			}
 
 			if (animationCount != modelHeader.animationCount)
@@ -218,12 +249,18 @@ namespace
 			W_MESH_READ_RESULT meshResult{};
 			if (!CWMeshReader{}.ReadMemory(pMesh->pData, pMesh->size, meshResult, outReport))
 				return false;
+			if (meshResult.fileVersionMinor != fileHeader.versionMinor)
+			{
+				outReport.error = "WMOD and WMSH geometry format versions do not match.";
+				return false;
+			}
 			if (!CWMaterialReader{}.ReadMemory(
 				pMaterial->pData, pMaterial->size, desc, desc.meshPath,
 				meshResult.materialCount, outAsset.materials, outReport))
 				return false;
 
 			outAsset.meshes = move(meshResult.meshes);
+			outAsset.geometryMetadata = meshResult.geometryMetadata;
 			const MODEL_SECTION_VIEW* pSkeleton = FindSection(MODEL_SECTION_TYPE::SKELETON);
 			if (meshResult.skinned)
 			{
@@ -279,6 +316,8 @@ namespace
 			outReport.materialCount = static_cast<uint32_t>(outAsset.materials.size());
 			outReport.boneCount = static_cast<uint32_t>(outAsset.skeleton.bones.size());
 			outReport.animationCount = static_cast<uint32_t>(outAsset.animations.size());
+			outReport.hasGeometryMetadata = outAsset.geometryMetadata.present;
+			outReport.geometryEvidenceFlags = outAsset.geometryMetadata.evidenceFlags;
 			outReport.succeeded = true;
 			return true;
 		}
@@ -292,7 +331,7 @@ namespace
 
 const char_t* CWModelDecoder::Get_Name() const
 {
-	return "Winters WINT model package v1";
+	return "Winters WINT model package v1/v1.1 geometry";
 }
 
 bool_t CWModelDecoder::CanDecode(const filesystem::path& meshPath) const
@@ -315,6 +354,7 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 	MODEL_DECODE_REPORT& outReport) const
 {
 	outAsset = {};
+	MODEL_ASSET_DATA stagedAsset{};
 	outReport.meshPath = desc.meshPath;
 	outReport.decoderName = Get_Name();
 
@@ -326,7 +366,12 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 		return false;
 	}
 	if (HasMagic(probe + sizeof(FILE_HEADER), WMODEL_MAGIC))
-		return DecodeWModelPackage(desc, outAsset, outReport);
+	{
+		if (!DecodeWModelPackage(desc, stagedAsset, outReport))
+			return false;
+		outAsset = move(stagedAsset);
+		return true;
+	}
 
 	W_MESH_READ_RESULT meshResult{};
 	if (!CWMeshReader{}.Read(desc.meshPath, meshResult, outReport))
@@ -335,11 +380,12 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 	if (!CWMaterialReader{}.Read(
 		desc,
 		meshResult.materialCount,
-		outAsset.materials,
+		stagedAsset.materials,
 		outReport))
 		return false;
 
-	outAsset.meshes = move(meshResult.meshes);
+	stagedAsset.meshes = move(meshResult.meshes);
+	stagedAsset.geometryMetadata = meshResult.geometryMetadata;
 	bool_t usedBindPoseFallback = false;
 	if (meshResult.skinned)
 	{
@@ -354,11 +400,11 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 			!desc.skeletonPath.empty() || !desc.animationPaths.empty();
 		if (!filesystem::exists(skeletonPath) && !skeletonWasRequested)
 		{
-			ConvertToStaticBindPose(outAsset.meshes);
+			ConvertToStaticBindPose(stagedAsset.meshes);
 			meshResult.skinned = false;
 			usedBindPoseFallback = true;
 		}
-		else if (!CWSkeletonReader{}.Read(skeletonPath, outAsset.skeleton, outReport))
+		else if (!CWSkeletonReader{}.Read(skeletonPath, stagedAsset.skeleton, outReport))
 		{
 			return false;
 		}
@@ -369,7 +415,7 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 		}
 		else
 		{
-		if (meshResult.bones.size() != outAsset.skeleton.bones.size())
+		if (meshResult.bones.size() != stagedAsset.skeleton.bones.size())
 		{
 			outReport.error = "WMSH and WSKL bone counts do not match.";
 			return false;
@@ -377,17 +423,17 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 
 		for (uint32_t i = 0; i < meshResult.bones.size(); ++i)
 		{
-			if (meshResult.bones[i].nameHash != outAsset.skeleton.bones[i].nameHash)
+			if (meshResult.bones[i].nameHash != stagedAsset.skeleton.bones[i].nameHash)
 			{
 				outReport.error = "WMSH and WSKL bone order or name hash does not match.";
 				return false;
 			}
-			outAsset.skeleton.bones[i].inverseBind = meshResult.bones[i].inverseBind;
+			stagedAsset.skeleton.bones[i].inverseBind = meshResult.bones[i].inverseBind;
 		}
-		outAsset.hasSkeleton = true;
+		stagedAsset.hasSkeleton = true;
 
 		unordered_set<string> animationNames;
-		outAsset.animations.reserve(desc.animationPaths.size());
+		stagedAsset.animations.reserve(desc.animationPaths.size());
 		for (filesystem::path animationPath : desc.animationPaths)
 		{
 			if (animationPath.is_relative())
@@ -396,7 +442,7 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 			MODEL_ANIMATION_DATA animation{};
 			if (!CWAnimationReader{}.Read(
 				animationPath.lexically_normal(),
-				outAsset.skeleton,
+				stagedAsset.skeleton,
 				animation,
 				outReport))
 				return false;
@@ -405,7 +451,7 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 				outReport.error = "The model package contains duplicate animation clip names.";
 				return false;
 			}
-			outAsset.animations.push_back(move(animation));
+			stagedAsset.animations.push_back(move(animation));
 		}
 		}
 	}
@@ -416,11 +462,14 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 	}
 
 	outReport.usedSkinnedBindPose = usedBindPoseFallback ||
-		(meshResult.skinned && outAsset.animations.empty());
-	outReport.meshCount = static_cast<uint32_t>(outAsset.meshes.size());
-	outReport.materialCount = static_cast<uint32_t>(outAsset.materials.size());
-	outReport.boneCount = static_cast<uint32_t>(outAsset.skeleton.bones.size());
-	outReport.animationCount = static_cast<uint32_t>(outAsset.animations.size());
+		(meshResult.skinned && stagedAsset.animations.empty());
+	outReport.meshCount = static_cast<uint32_t>(stagedAsset.meshes.size());
+	outReport.materialCount = static_cast<uint32_t>(stagedAsset.materials.size());
+	outReport.boneCount = static_cast<uint32_t>(stagedAsset.skeleton.bones.size());
+	outReport.animationCount = static_cast<uint32_t>(stagedAsset.animations.size());
+	outReport.hasGeometryMetadata = stagedAsset.geometryMetadata.present;
+	outReport.geometryEvidenceFlags = stagedAsset.geometryMetadata.evidenceFlags;
 	outReport.succeeded = true;
+	outAsset = move(stagedAsset);
 	return true;
 }
