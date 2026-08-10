@@ -39,6 +39,8 @@ namespace
 	constexpr size_t MAX_SOURCE_BURSTS_PER_ELEMENT = 1024u;
 	constexpr size_t MAX_SOURCE_PRESENTATION_PARAMETERS = 256u;
 	constexpr size_t MAX_SOURCE_COVERAGE_PROPERTIES_PER_MODULE = 2048u;
+	constexpr size_t MAX_SOURCE_LOCAL_REFERENCE_BINDINGS_PER_ELEMENT = 2048u;
+	constexpr size_t MAX_SOURCE_TYPED_FIELDS_PER_REFERENCE = 256u;
 	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
 		"lostark.effect-source-presentation";
 
@@ -97,6 +99,10 @@ namespace
 	constexpr const char_t* SOURCE_LITERAL_KIND_TOKENS[] =
 	{
 		"boolean", "number", "string"
+	};
+	constexpr const char_t* SOURCE_TYPED_FIELD_KIND_TOKENS[] =
+	{
+		"boolean", "number", "string", "vector"
 	};
 	constexpr const char_t* DISTRIBUTION_INTERPOLATION_TOKENS[] =
 	{
@@ -443,6 +449,17 @@ namespace
 			});
 		return Normalized == "distributionfloatparticleparameter" ||
 			Normalized == "distributionvectorparticleparameter";
+	}
+
+	bool_t Is_UnresolvedSourceToken(const std::string_view Value)
+	{
+		std::string Normalized(Value);
+		std::transform(Normalized.begin(), Normalized.end(), Normalized.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char_t>(std::tolower(Character));
+			});
+		return Normalized.starts_with("unresolved");
 	}
 
 	Client::EFFECT_ELEMENT_KIND Kind_ForRenderer(
@@ -828,20 +845,59 @@ namespace
 			<< Client::CDataJson::Escape(Source.strSubUVMode) << "\" }";
 	}
 
+	bool_t Read_SourceAdmission(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_ADMISSION_DESC& Out,
+		std::string& strOutError);
+
 	bool_t Read_Distribution(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DISTRIBUTION_DESC& Out,
 		const bool_t bSourceContract,
 		std::string& strOutError)
 	{
+		if (!bSourceContract)
+		{
+			constexpr const char_t* SourceOnlyFields[] = {
+				"referenceId", "occurrenceId", "payloadStatus", "fidelity",
+				"executionAdmission", "parameterBinding", "parameterName"
+			};
+			for (const char_t* pField : SourceOnlyFields)
+			{
+				if (nullptr != Value.Find(pField))
+				{
+					strOutError =
+						"Legacy Effect distribution contains native-v14 evidence.";
+					return false;
+				}
+			}
+		}
 		if (bSourceContract && !Validate_ExactFields(Value,
-			{ "propertyPath", "sourceClass", "sourceObjectPath",
+			{ "propertyPath", "referenceId", "occurrenceId", "payloadStatus",
+				"fidelity", "executionAdmission", "sourceClass", "sourceObjectPath",
 				"parameterBinding", "parameterName", "componentCount",
 				"operation", "randomLockAxes", "lookupTableChunkSize",
 				"lookupTableNumElements", "lookupTableTimeScale",
 				"lookupTableStartTime", "defaultMinimum", "defaultMaximum",
 				"lookupTable", "keys" },
 			"Effect source distribution", strOutError))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pExecutionAdmission = bSourceContract ?
+			Find_Field(Value, "executionAdmission",
+				Client::DATA_JSON_TYPE::OBJECT, strOutError) : nullptr;
+		if (bSourceContract &&
+			(nullptr == pExecutionAdmission ||
+			 !Read_String(Value, "referenceId", Out.strReferenceId,
+				strOutError) ||
+			 !Read_String(Value, "occurrenceId", Out.strOccurrenceId,
+				strOutError) ||
+			 !Read_String(Value, "payloadStatus", Out.strPayloadStatus,
+				strOutError) ||
+			 !Read_String(Value, "fidelity", Out.strFidelity, strOutError) ||
+			 !Read_SourceAdmission(*pExecutionAdmission,
+				Out.ExecutionAdmission, strOutError)))
 		{
 			return false;
 		}
@@ -912,8 +968,14 @@ namespace
 				return false;
 			}
 		}
-		if (const Client::DATA_JSON_VALUE* pRandomLockAxes =
-			Value.Find("randomLockAxes"))
+		const Client::DATA_JSON_VALUE* pRandomLockAxes =
+			Value.Find("randomLockAxes");
+		if (bSourceContract && nullptr == pRandomLockAxes)
+		{
+			strOutError = "Missing or invalid field: randomLockAxes";
+			return false;
+		}
+		if (nullptr != pRandomLockAxes)
 		{
 			if (!pRandomLockAxes->Is_Number() ||
 				!std::isfinite(pRandomLockAxes->Get_Number()) ||
@@ -1142,6 +1204,124 @@ namespace
 			Read_StringArray(Value, "blockers", Out.Blockers, strOutError);
 	}
 
+	bool_t Read_SourceTypedField(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_TYPED_FIELD_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value, { "propertyPath", "kind", "value" },
+			"Effect source typed evidence field", strOutError))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pKind = Find_Field(
+			Value, "kind", Client::DATA_JSON_TYPE::STRING, strOutError);
+		const Client::DATA_JSON_VALUE* pValue = Value.Is_Object() ?
+			Value.Find("value") : nullptr;
+		if (nullptr == pKind || nullptr == pValue ||
+			!Read_String(Value, "propertyPath", Out.strPropertyPath,
+				strOutError) ||
+			!Parse_Token(pKind->Get_String(), SOURCE_TYPED_FIELD_KIND_TOKENS,
+				std::size(SOURCE_TYPED_FIELD_KIND_TOKENS), Out.eKind))
+		{
+			if (strOutError.empty())
+				strOutError = "Effect source typed evidence kind is invalid.";
+			return false;
+		}
+		switch (Out.eKind)
+		{
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::BOOLEAN:
+			if (!pValue->Is_Boolean())
+			{
+				strOutError = "Effect source typed Boolean evidence is invalid.";
+				return false;
+			}
+			Out.bBoolean = pValue->Get_Boolean();
+			return true;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER:
+			if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()))
+			{
+				strOutError = "Effect source typed number evidence is invalid.";
+				return false;
+			}
+			Out.fNumber = pValue->Get_Number();
+			return true;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::STRING:
+			if (!pValue->Is_String())
+			{
+				strOutError = "Effect source typed string evidence is invalid.";
+				return false;
+			}
+			Out.strString = pValue->Get_String();
+			return true;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::VECTOR:
+			return Read_Array(Value, "value", &Out.vVector.x, 4u, strOutError);
+		default:
+			strOutError = "Effect source typed evidence kind is invalid.";
+			return false;
+		}
+	}
+
+	bool_t Read_SourceLocalReferenceBinding(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value,
+			{ "referenceKind", "referenceId", "definitionId", "occurrenceId",
+				"moduleStableId", "propertyPath", "provenance", "exactPayload",
+				"currentDefaultEvidence", "executionAdmission" },
+			"Effect source local-reference binding", strOutError))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pExactPayload = Find_Field(
+			Value, "exactPayload", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pCurrentDefaultEvidence = Find_Field(
+			Value, "currentDefaultEvidence", Client::DATA_JSON_TYPE::ARRAY,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pExecutionAdmission = Find_Field(
+			Value, "executionAdmission", Client::DATA_JSON_TYPE::OBJECT,
+			strOutError);
+		if (nullptr == pExactPayload || nullptr == pCurrentDefaultEvidence ||
+			nullptr == pExecutionAdmission ||
+			!Read_String(Value, "referenceKind", Out.strReferenceKind,
+				strOutError) ||
+			!Read_String(Value, "referenceId", Out.strReferenceId, strOutError) ||
+			!Read_String(Value, "definitionId", Out.strDefinitionId, strOutError) ||
+			!Read_String(Value, "occurrenceId", Out.strOccurrenceId, strOutError) ||
+			!Read_String(Value, "moduleStableId", Out.strModuleStableId,
+				strOutError) ||
+			!Read_String(Value, "propertyPath", Out.strPropertyPath,
+				strOutError) ||
+			!Read_String(Value, "provenance", Out.strProvenance, strOutError) ||
+			!Read_SourceAdmission(*pExecutionAdmission,
+				Out.ExecutionAdmission, strOutError))
+		{
+			return false;
+		}
+		Out.ExactPayload.reserve(pExactPayload->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& FieldValue :
+			pExactPayload->Get_Array())
+		{
+			Client::EFFECT_SOURCE_TYPED_FIELD_DESC Field;
+			if (!Read_SourceTypedField(FieldValue, Field, strOutError))
+				return false;
+			Out.ExactPayload.push_back(std::move(Field));
+		}
+		Out.CurrentDefaultEvidence.reserve(
+			pCurrentDefaultEvidence->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& FieldValue :
+			pCurrentDefaultEvidence->Get_Array())
+		{
+			Client::EFFECT_SOURCE_TYPED_FIELD_DESC Field;
+			if (!Read_SourceTypedField(FieldValue, Field, strOutError))
+				return false;
+			Out.CurrentDefaultEvidence.push_back(std::move(Field));
+		}
+		return true;
+	}
+
 	bool_t Read_SourceMaterialAdmission(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_SOURCE_MATERIAL_ADMISSION_DESC& Out,
@@ -1196,7 +1376,7 @@ namespace
 				"sourceContractProfileId", "sourceContractSha256",
 				"sourceGraphSha256", "sourceClosureSha256",
 				"sourceMaterialClosureSha256", "sourcePeakActiveParticles",
-				"moduleCoverage", "compilerEvidence",
+				"localReferenceBindings", "moduleCoverage", "compilerEvidence",
 				"compiledExecutionAdmission", "materialAdmission",
 				"geometryBinding"
 			};
@@ -1216,7 +1396,8 @@ namespace
 				"sourceClosureSha256", "sourceMaterialClosureSha256",
 				"sourcePeakActiveParticles", "emitterDelaySeconds",
 				"emitterDurationSeconds", "emitterLoopCount", "bursts",
-				"modules", "moduleCoverage", "compilerEvidence",
+				"modules", "localReferenceBindings", "moduleCoverage",
+				"compilerEvidence",
 				"compiledExecutionAdmission", "materialAdmission",
 				"geometryBinding" },
 			"Effect source recipe", strOutError))
@@ -1230,6 +1411,9 @@ namespace
 		const Client::DATA_JSON_VALUE* pCoverage = bSourceContract ?
 			Find_Field(Value, "moduleCoverage", Client::DATA_JSON_TYPE::ARRAY,
 				strOutError) : nullptr;
+		const Client::DATA_JSON_VALUE* pLocalReferenceBindings = bSourceContract ?
+			Find_Field(Value, "localReferenceBindings",
+				Client::DATA_JSON_TYPE::ARRAY, strOutError) : nullptr;
 		const Client::DATA_JSON_VALUE* pCompilerEvidence = bSourceContract ?
 			Find_Field(Value, "compilerEvidence", Client::DATA_JSON_TYPE::OBJECT,
 				strOutError) : nullptr;
@@ -1243,7 +1427,8 @@ namespace
 			Find_Field(Value, "geometryBinding", Client::DATA_JSON_TYPE::OBJECT,
 				strOutError) : nullptr;
 		if (nullptr == pBursts || nullptr == pModules ||
-			(bSourceContract && (nullptr == pCoverage ||
+			(bSourceContract && (nullptr == pLocalReferenceBindings ||
+				nullptr == pCoverage ||
 				nullptr == pCompilerEvidence || nullptr == pExecutionAdmission ||
 				nullptr == pMaterialAdmission || nullptr == pGeometryBinding)) ||
 			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError) ||
@@ -1380,6 +1565,19 @@ namespace
 		}
 		if (bSourceContract)
 		{
+			Out.LocalReferenceBindings.reserve(
+				pLocalReferenceBindings->Get_Array().size());
+			for (const Client::DATA_JSON_VALUE& BindingValue :
+				pLocalReferenceBindings->Get_Array())
+			{
+				Client::EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC Binding;
+				if (!Read_SourceLocalReferenceBinding(
+					BindingValue, Binding, strOutError))
+				{
+					return false;
+				}
+				Out.LocalReferenceBindings.push_back(std::move(Binding));
+			}
 			Out.ModuleCoverage.reserve(pCoverage->Get_Array().size());
 			for (const Client::DATA_JSON_VALUE& CoverageValue :
 				pCoverage->Get_Array())
@@ -1412,7 +1610,8 @@ namespace
 					pProperties->Get_Array())
 				{
 					if (!Validate_ExactFields(PropertyValue,
-						{ "propertyPath", "storage", "status", "provenance" },
+						{ "propertyPath", "storage", "status", "provenance",
+							"blockers" },
 						"Effect source property coverage", strOutError))
 						return false;
 					const Client::DATA_JSON_VALUE* pPropertyStatus = Find_Field(
@@ -1426,6 +1625,8 @@ namespace
 							Property.strStorage, strOutError) ||
 						!Read_String(PropertyValue, "provenance",
 							Property.strProvenance, strOutError) ||
+						!Read_StringArray(PropertyValue, "blockers",
+							Property.Blockers, strOutError) ||
 						!Parse_Token(pPropertyStatus->Get_String(),
 							SOURCE_COVERAGE_STATUS_TOKENS,
 							std::size(SOURCE_COVERAGE_STATUS_TOKENS),
@@ -1548,6 +1749,77 @@ namespace
 		Output << " }";
 	}
 
+	void Write_SourceTypedField(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_TYPED_FIELD_DESC& Field)
+	{
+		Output << "{ \"propertyPath\": \""
+			<< Client::CDataJson::Escape(Field.strPropertyPath)
+			<< "\", \"kind\": \""
+			<< SOURCE_TYPED_FIELD_KIND_TOKENS[static_cast<size_t>(Field.eKind)]
+			<< "\", \"value\": ";
+		switch (Field.eKind)
+		{
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::BOOLEAN:
+			Output << (Field.bBoolean ? "true" : "false");
+			break;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER:
+			Output << std::setprecision(
+				std::numeric_limits<f64_t>::max_digits10) << Field.fNumber
+				<< std::setprecision(9);
+			break;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::STRING:
+			Output << '"' << Client::CDataJson::Escape(Field.strString) << '"';
+			break;
+		case Client::EFFECT_SOURCE_TYPED_FIELD_KIND::VECTOR:
+			Write_Float4(Output, Field.vVector);
+			break;
+		default:
+			Output << "null";
+			break;
+		}
+		Output << " }";
+	}
+
+	void Write_SourceLocalReferenceBinding(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& Binding)
+	{
+		Output << "{ \"referenceKind\": \""
+			<< Client::CDataJson::Escape(Binding.strReferenceKind)
+			<< "\", \"referenceId\": \""
+			<< Client::CDataJson::Escape(Binding.strReferenceId)
+			<< "\", \"definitionId\": \""
+			<< Client::CDataJson::Escape(Binding.strDefinitionId)
+			<< "\", \"occurrenceId\": \""
+			<< Client::CDataJson::Escape(Binding.strOccurrenceId)
+			<< "\", \"moduleStableId\": \""
+			<< Client::CDataJson::Escape(Binding.strModuleStableId)
+			<< "\", \"propertyPath\": \""
+			<< Client::CDataJson::Escape(Binding.strPropertyPath)
+			<< "\", \"provenance\": \""
+			<< Client::CDataJson::Escape(Binding.strProvenance)
+			<< "\", \"exactPayload\": [";
+		for (size_t iField = 0u; iField < Binding.ExactPayload.size(); ++iField)
+		{
+			if (iField > 0u)
+				Output << ", ";
+			Write_SourceTypedField(Output, Binding.ExactPayload[iField]);
+		}
+		Output << "], \"currentDefaultEvidence\": [";
+		for (size_t iField = 0u;
+			iField < Binding.CurrentDefaultEvidence.size(); ++iField)
+		{
+			if (iField > 0u)
+				Output << ", ";
+			Write_SourceTypedField(
+				Output, Binding.CurrentDefaultEvidence[iField]);
+		}
+		Output << "], \"executionAdmission\": ";
+		Write_SourceAdmission(Output, Binding.ExecutionAdmission);
+		Output << " }";
+	}
+
 	void Write_SourceMaterialAdmission(
 		std::ostringstream& Output,
 		const Client::EFFECT_SOURCE_MATERIAL_ADMISSION_DESC& Admission)
@@ -1657,7 +1929,11 @@ namespace
 				if (Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN == Literal.eKind)
 					Output << (Literal.bBoolean ? "true" : "false");
 				else if (Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER == Literal.eKind)
-					Output << Literal.fNumber;
+				{
+					Output << std::setprecision(
+						std::numeric_limits<f64_t>::max_digits10)
+						<< Literal.fNumber << std::setprecision(9);
+				}
 				else
 					Output << '"' << Client::CDataJson::Escape(
 						Literal.strString) << '"';
@@ -1673,8 +1949,22 @@ namespace
 					Module.Distributions[iDistribution];
 				Output << (0u == iDistribution ? "\n" : ",\n")
 					<< "              { \"propertyPath\": \""
-					<< Client::CDataJson::Escape(Distribution.strPropertyPath)
-					<< "\", \"sourceClass\": \""
+					<< Client::CDataJson::Escape(Distribution.strPropertyPath) << '"';
+				if (bSourceContract)
+				{
+					Output << ", \"referenceId\": \""
+						<< Client::CDataJson::Escape(Distribution.strReferenceId)
+						<< "\", \"occurrenceId\": \""
+						<< Client::CDataJson::Escape(Distribution.strOccurrenceId)
+						<< "\", \"payloadStatus\": \""
+						<< Client::CDataJson::Escape(Distribution.strPayloadStatus)
+						<< "\", \"fidelity\": \""
+						<< Client::CDataJson::Escape(Distribution.strFidelity)
+						<< "\", \"executionAdmission\": ";
+					Write_SourceAdmission(
+						Output, Distribution.ExecutionAdmission);
+				}
+				Output << ", \"sourceClass\": \""
 					<< Client::CDataJson::Escape(Distribution.strSourceClass)
 					<< "\", \"sourceObjectPath\": \""
 					<< Client::CDataJson::Escape(
@@ -1751,7 +2041,17 @@ namespace
 		Output << "        ]";
 		if (bSourceContract)
 		{
-			Output << ",\n        \"moduleCoverage\": [";
+			Output << ",\n        \"localReferenceBindings\": [";
+			for (size_t iBinding = 0u;
+				iBinding < Recipe.LocalReferenceBindings.size(); ++iBinding)
+			{
+				Output << (0u == iBinding ? "\n          " : ",\n          ");
+				Write_SourceLocalReferenceBinding(
+					Output, Recipe.LocalReferenceBindings[iBinding]);
+			}
+			if (!Recipe.LocalReferenceBindings.empty())
+				Output << '\n';
+			Output << "        ],\n        \"moduleCoverage\": [";
 			for (size_t iCoverage = 0u;
 				iCoverage < Recipe.ModuleCoverage.size(); ++iCoverage)
 			{
@@ -1783,7 +2083,9 @@ namespace
 							static_cast<size_t>(Property.eStatus)]
 						<< "\", \"provenance\": \""
 						<< Client::CDataJson::Escape(Property.strProvenance)
-						<< "\" }";
+						<< "\", \"blockers\": ";
+					Write_StringArray(Output, Property.Blockers);
+					Output << " }";
 				}
 				if (!Coverage.Properties.empty())
 					Output << '\n';
@@ -2551,6 +2853,25 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!Evidence.strLocalReferenceClosureSelfSha256.empty() ||
 			!Evidence.strGeometryParityFileSha256.empty() ||
 			!Evidence.strGeometryParitySelfSha256.empty();
+		const bool_t bDistributionEvidencePresent = std::any_of(
+			Recipe.Modules.begin(), Recipe.Modules.end(),
+			[](const EFFECT_SOURCE_MODULE_DESC& Module)
+			{
+				return std::any_of(Module.Distributions.begin(),
+					Module.Distributions.end(),
+					[](const EFFECT_DISTRIBUTION_DESC& Distribution)
+					{
+						return !Distribution.strReferenceId.empty() ||
+							!Distribution.strOccurrenceId.empty() ||
+							!Distribution.strPayloadStatus.empty() ||
+							!Distribution.strFidelity.empty() ||
+							!Distribution.strParameterName.empty() ||
+							Distribution.eParameterBinding !=
+								EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+							Distribution.ExecutionAdmission.bAllowed ||
+							!Distribution.ExecutionAdmission.Blockers.empty();
+					});
+			});
 		if (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 			Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
 			!Recipe.strSourceContractProfileId.empty() ||
@@ -2559,7 +2880,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!Recipe.strSourceClosureSha256.empty() ||
 			!Recipe.strSourceMaterialClosureSha256.empty() ||
 			0u != Recipe.iSourcePeakActiveParticles ||
+			!Recipe.LocalReferenceBindings.empty() ||
 			!Recipe.ModuleCoverage.empty() || bCompilerEvidencePresent ||
+			bDistributionEvidencePresent ||
 			Recipe.CompiledExecutionAdmission.bAllowed ||
 			!Recipe.CompiledExecutionAdmission.Blockers.empty() ||
 			!Recipe.MaterialAdmission.strStatus.empty() ||
@@ -3289,24 +3612,76 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
 			std::isfinite(Value.z);
 	};
+	const auto IsFiniteFloat4 = [](const float4_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z) && std::isfinite(Value.w);
+	};
+	const auto IsZeroFloat4 = [](const float4_t& Value)
+	{
+		return Value.x == 0.f && Value.y == 0.f && Value.z == 0.f &&
+			Value.w == 0.f;
+	};
+	const auto IsBlockedAdmission = [](const EFFECT_SOURCE_ADMISSION_DESC& Admission)
+	{
+		std::unordered_set<std::string> UniqueBlockers;
+		return !Admission.bAllowed && !Admission.Blockers.empty() &&
+			std::all_of(Admission.Blockers.begin(), Admission.Blockers.end(),
+				[&UniqueBlockers](const std::string& Blocker)
+				{
+					return !Blocker.empty() && Blocker.size() <= 256u &&
+						Has_VisibleCharacter(Blocker) &&
+						UniqueBlockers.insert(Blocker).second;
+				});
+	};
+	const auto IncludesBlockers = [](const std::vector<std::string>& Superset,
+		const std::vector<std::string>& Subset)
+	{
+		return std::all_of(Subset.begin(), Subset.end(),
+			[&Superset](const std::string& Blocker)
+			{
+				return std::find(Superset.begin(), Superset.end(), Blocker) !=
+					Superset.end();
+			});
+	};
+	const auto ValidateTypedFields = [&](const auto& Fields)
+	{
+		if (Fields.size() > MAX_SOURCE_TYPED_FIELDS_PER_REFERENCE)
+			return false;
+		std::unordered_set<std::string> PropertyPaths;
+		for (const EFFECT_SOURCE_TYPED_FIELD_DESC& Field : Fields)
+		{
+			if (Field.strPropertyPath.empty() ||
+				Field.strPropertyPath.size() > 512u ||
+				!Has_VisibleCharacter(Field.strPropertyPath) ||
+				Field.eKind >= EFFECT_SOURCE_TYPED_FIELD_KIND::END ||
+				!PropertyPaths.insert(Field.strPropertyPath).second ||
+				(EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER == Field.eKind &&
+					!std::isfinite(Field.fNumber)) ||
+				(EFFECT_SOURCE_TYPED_FIELD_KIND::STRING == Field.eKind &&
+					Field.strString.size() > 2048u) ||
+				(EFFECT_SOURCE_TYPED_FIELD_KIND::VECTOR == Field.eKind &&
+					!IsFiniteFloat4(Field.vVector)))
+			{
+				return false;
+			}
+		}
+		return true;
+	};
 	constexpr std::array<std::string_view, 6u> CompositionOrder = {
 		"carrierGeometryPreScale", "signedParticleScaleRotationLocation",
 		"emitterElementTransform", "cueLocalTransform",
 		"attachmentSocketOrRoot", "actorWorld"
 	};
-	const bool_t bArtistFContract = Document.strEffectAssetId ==
-		"effect.artist.skill.31470.native-v14.source-contract-candidate";
-
 	std::unordered_set<std::string> ElementIds;
 	std::unordered_set<std::string> EvidenceIds;
-	std::unordered_set<std::string> SourceCueIds;
 	std::string strEvidenceArtifactFileSha256;
 	std::string strEvidenceArtifactSelfSha256;
 	std::string strLocalReferenceFileSha256;
 	std::string strLocalReferenceSelfSha256;
 	std::string strGeometryFileSha256;
 	std::string strGeometrySelfSha256;
-	size_t iModuleReferenceCount = 0u;
+	std::unordered_set<std::string> LocalReferenceOccurrenceIds;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		if (!Is_StableId(Element.strElementId) ||
@@ -3358,6 +3733,8 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			0u == Recipe.iSourcePeakActiveParticles ||
 			Recipe.Modules.empty() ||
 			Recipe.Modules.size() > MAX_SOURCE_MODULES_PER_ELEMENT ||
+			Recipe.LocalReferenceBindings.size() >
+				MAX_SOURCE_LOCAL_REFERENCE_BINDINGS_PER_ELEMENT ||
 			Recipe.ModuleCoverage.size() != Recipe.Modules.size())
 		{
 			strOutError = "Source-contract recipe identity or coverage is invalid.";
@@ -3411,7 +3788,6 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			strOutError = "Source-contract compiler evidence is invalid.";
 			return false;
 		}
-		SourceCueIds.insert(Evidence.strSourceCueId);
 		for (size_t iReference = 0u;
 			iReference < Evidence.ModuleReferenceOrder.size(); ++iReference)
 		{
@@ -3433,8 +3809,6 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 				return false;
 			}
 		}
-		iModuleReferenceCount += Evidence.ModuleReferenceOrder.size();
-
 		std::unordered_set<uint32_t> ParameterIndices;
 		for (const EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC& Parameter :
 			Evidence.ParameterOverrides)
@@ -3452,11 +3826,63 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			}
 		}
 
-		if (Recipe.CompiledExecutionAdmission.bAllowed !=
-			Recipe.CompiledExecutionAdmission.Blockers.empty())
+		if (!IsBlockedAdmission(Recipe.CompiledExecutionAdmission))
 		{
 			strOutError = "Source-contract compiled execution is not fail-closed.";
 			return false;
+		}
+
+		std::unordered_map<std::string,
+			const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC*>
+			LocalReferenceBindingsByOccurrence;
+		std::unordered_set<std::string> DistributionBindingOccurrenceIds;
+		for (const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& Binding :
+			Recipe.LocalReferenceBindings)
+		{
+			const bool_t bDistributionReference =
+				Binding.strReferenceKind == "DISTRIBUTION_TARGET";
+			const bool_t bTypedDataReference =
+				Binding.strReferenceKind == "TYPEDATA_COMPONENT";
+			if ((!bDistributionReference && !bTypedDataReference) ||
+				Binding.strReferenceId.empty() ||
+				Binding.strReferenceId.size() > 512u ||
+				!Has_VisibleCharacter(Binding.strReferenceId) ||
+				Binding.strDefinitionId.empty() ||
+				Binding.strDefinitionId.size() > 512u ||
+				!Has_VisibleCharacter(Binding.strDefinitionId) ||
+				Binding.strOccurrenceId.empty() ||
+				Binding.strOccurrenceId.size() > 512u ||
+				!Has_VisibleCharacter(Binding.strOccurrenceId) ||
+				Binding.strModuleStableId.empty() ||
+				Binding.strModuleStableId.size() > 512u ||
+				!Has_VisibleCharacter(Binding.strModuleStableId) ||
+				Binding.strPropertyPath.empty() ||
+				Binding.strPropertyPath.size() > 512u ||
+				!Has_VisibleCharacter(Binding.strPropertyPath) ||
+				Binding.strProvenance.empty() ||
+				Binding.strProvenance.size() > 2048u ||
+				!Has_VisibleCharacter(Binding.strProvenance) ||
+				std::none_of(Recipe.Modules.begin(), Recipe.Modules.end(),
+					[&Binding](const EFFECT_SOURCE_MODULE_DESC& Module)
+					{
+						return Module.strStableId == Binding.strModuleStableId;
+					}) ||
+				!ValidateTypedFields(Binding.ExactPayload) ||
+				!ValidateTypedFields(Binding.CurrentDefaultEvidence) ||
+				!IsBlockedAdmission(Binding.ExecutionAdmission) ||
+				!IncludesBlockers(Recipe.CompiledExecutionAdmission.Blockers,
+					Binding.ExecutionAdmission.Blockers) ||
+				!LocalReferenceOccurrenceIds.insert(
+					Binding.strOccurrenceId).second ||
+				!LocalReferenceBindingsByOccurrence.emplace(
+					Binding.strOccurrenceId, &Binding).second)
+			{
+				strOutError =
+					"Source-contract local-reference binding is invalid.";
+				return false;
+			}
+			if (bDistributionReference)
+				DistributionBindingOccurrenceIds.insert(Binding.strOccurrenceId);
 		}
 		const bool_t bNonRenderLight =
 			Recipe.MaterialAdmission.strStatus ==
@@ -3516,28 +3942,6 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			strOutError = "Source-contract non-Mesh geometry binding is invalid.";
 			return false;
 		}
-		if (bArtistFContract &&
-			(Evidence.strSourceEvidenceStatus != "SOURCE_EVIDENCE_PARTIAL" ||
-			 Recipe.CompiledExecutionAdmission.bAllowed ||
-			 std::find(Recipe.CompiledExecutionAdmission.Blockers.begin(),
-				 Recipe.CompiledExecutionAdmission.Blockers.end(),
-				 "SOURCE_EVIDENCE_PARTIAL") ==
-				 Recipe.CompiledExecutionAdmission.Blockers.end() ||
-			 (!bNonRenderLight &&
-				 Recipe.MaterialAdmission.strStatus !=
-					 "BLOCKED_COOKED_PARTIAL_NO_TYPED_MATERIAL_RECIPE") ||
-			 (Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE &&
-				(std::abs(Geometry.fCarrierGeometryPreScale - 0.01f) > 1e-7f ||
-				 Geometry.strParticleScaleSemantics !=
-					 "DIMENSIONLESS_AXIS_REORDER_ONLY" ||
-				 Geometry.strStatus !=
-					 "GLTF_TO_WMODEL_PARITY_PROVEN_UPK_TO_GLTF_UNRESOLVED" ||
-				 Geometry.Blockers.empty()))))
-		{
-			strOutError = "Artist F source-contract fixture gate changed.";
-			return false;
-		}
-
 		std::unordered_map<std::string,
 			const EFFECT_SOURCE_MODULE_COVERAGE_DESC*> CoverageById;
 		for (const EFFECT_SOURCE_MODULE_COVERAGE_DESC& Coverage :
@@ -3557,8 +3961,10 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 				Coverage.strNormalizedClass.empty() ||
 				Coverage.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
 				!bBlockersValid ||
-				((Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED) !=
-					!Coverage.Blockers.empty()) ||
+				(Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED &&
+					Coverage.Blockers.empty()) ||
+				!IncludesBlockers(
+					Recipe.CompiledExecutionAdmission.Blockers, Coverage.Blockers) ||
 				Coverage.Properties.size() >
 					MAX_SOURCE_COVERAGE_PROPERTIES_PER_MODULE ||
 				!CoverageById.emplace(
@@ -3569,6 +3975,8 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			}
 		}
 
+		std::unordered_set<std::string>
+			ConsumedDistributionBindingOccurrenceIds;
 		for (const EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
 		{
 			const auto CoverageIterator = CoverageById.find(Module.strStableId);
@@ -3581,6 +3989,73 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			{
 				strOutError = "Source-contract module identity is invalid.";
 				return false;
+			}
+
+			std::unordered_set<std::string> CoveredProperties;
+			std::unordered_map<std::string,
+				const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC*>
+				CoveragePropertiesByKey;
+			for (const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& Property :
+				CoverageIterator->second->Properties)
+			{
+				std::unordered_set<std::string> PropertyBlockers;
+				const bool_t bPropertyBlockersValid = std::all_of(
+					Property.Blockers.begin(), Property.Blockers.end(),
+					[&PropertyBlockers](const std::string& Blocker)
+					{
+						return !Blocker.empty() && Blocker.size() <= 256u &&
+							Has_VisibleCharacter(Blocker) &&
+							PropertyBlockers.insert(Blocker).second;
+					});
+				const std::string strCoverageKey = Property.strStorage + "\n" +
+					Property.strPropertyPath;
+				if ((Property.strStorage != "literal" &&
+						Property.strStorage != "distribution") ||
+					Property.strPropertyPath.empty() ||
+					Property.strPropertyPath.size() > 512u ||
+					Property.strProvenance.empty() ||
+					Property.strProvenance.size() > 2048u ||
+					Property.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
+					!bPropertyBlockersValid ||
+					(Property.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED &&
+						Property.Blockers.empty()) ||
+					!IncludesBlockers(
+						CoverageIterator->second->Blockers, Property.Blockers) ||
+					!CoveredProperties.insert(strCoverageKey).second ||
+					!CoveragePropertiesByKey.emplace(
+						strCoverageKey, &Property).second)
+				{
+					strOutError =
+						"Source-contract property coverage is invalid.";
+					return false;
+				}
+			}
+			for (const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& Binding :
+				Recipe.LocalReferenceBindings)
+			{
+				if (Binding.strModuleStableId != Module.strStableId)
+					continue;
+				const auto BindingCoverage = std::find_if(
+					CoverageIterator->second->Properties.begin(),
+					CoverageIterator->second->Properties.end(),
+					[&Binding](
+						const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& Property)
+					{
+						const std::string_view ExpectedStorage =
+							Binding.strReferenceKind == "DISTRIBUTION_TARGET" ?
+								"distribution" : "literal";
+						return Property.strStorage == ExpectedStorage &&
+							Property.strPropertyPath == Binding.strPropertyPath;
+					});
+				if (BindingCoverage ==
+						CoverageIterator->second->Properties.end() ||
+					!IncludesBlockers(BindingCoverage->Blockers,
+						Binding.ExecutionAdmission.Blockers))
+				{
+					strOutError =
+						"Source local-reference blockers are not propagated.";
+					return false;
+				}
 			}
 
 			std::unordered_set<std::string> SourceProperties;
@@ -3600,11 +4075,110 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			for (const EFFECT_DISTRIBUTION_DESC& Distribution :
 				Module.Distributions)
 			{
-				if (!CEffectDistribution::Validate(Distribution, strOutError) ||
-					!SourceProperties.insert(
-						"distribution\n" +
-						Distribution.strPropertyPath).second)
+				const std::string strCoverageKey = "distribution\n" +
+					Distribution.strPropertyPath;
+				const auto PropertyCoverageIterator =
+					CoveragePropertiesByKey.find(strCoverageKey);
+				const bool_t bHasReference =
+					!Distribution.strReferenceId.empty();
+				const bool_t bHasOccurrence =
+					!Distribution.strOccurrenceId.empty();
+				if (Distribution.strPropertyPath.empty() ||
+					Distribution.strPropertyPath.size() > 256u ||
+					Distribution.strSourceClass.size() > 128u ||
+					Distribution.strSourceObjectPath.size() > 512u ||
+					Distribution.iComponentCount < 1u ||
+					Distribution.iComponentCount > 4u ||
+					Distribution.strPayloadStatus.empty() ||
+					Distribution.strPayloadStatus.size() > 256u ||
+					!Has_VisibleCharacter(Distribution.strPayloadStatus) ||
+					Distribution.strFidelity.empty() ||
+					Distribution.strFidelity.size() > 256u ||
+					!Has_VisibleCharacter(Distribution.strFidelity) ||
+					bHasReference != bHasOccurrence ||
+					!IsBlockedAdmission(Distribution.ExecutionAdmission) ||
+					PropertyCoverageIterator == CoveragePropertiesByKey.end() ||
+					!IncludesBlockers(
+						PropertyCoverageIterator->second->Blockers,
+						Distribution.ExecutionAdmission.Blockers) ||
+					!SourceProperties.insert(strCoverageKey).second)
+				{
+					strOutError =
+						"Source-contract distribution admission is invalid.";
 					return false;
+				}
+
+				const bool_t bUnresolved =
+					Is_UnresolvedSourceToken(Distribution.strPayloadStatus) ||
+					Is_UnresolvedSourceToken(Distribution.strFidelity);
+				if (bUnresolved &&
+					PropertyCoverageIterator->second->eStatus !=
+						EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED)
+				{
+					strOutError =
+						"Unresolved source distribution coverage is not unresolved.";
+					return false;
+				}
+				if (bUnresolved &&
+					(Distribution.eParameterBinding !=
+						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+					 !Distribution.strParameterName.empty() ||
+					 0u != Distribution.iOperation ||
+					 0u != Distribution.iRandomLockAxes ||
+					 0u != Distribution.iLookupTableChunkSize ||
+					 0u != Distribution.iLookupTableNumElements ||
+					 0.f != Distribution.fLookupTableTimeScale ||
+					 0.f != Distribution.fLookupTableStartTime ||
+					 !IsZeroFloat4(Distribution.vDefaultMinimum) ||
+					 !IsZeroFloat4(Distribution.vDefaultMaximum) ||
+					 !Distribution.LookupTable.empty() ||
+					 !Distribution.Keys.empty()))
+				{
+					strOutError =
+						"Unresolved source distribution carries executable payload.";
+					return false;
+				}
+
+				if (bHasOccurrence)
+				{
+					const auto BindingIterator =
+						LocalReferenceBindingsByOccurrence.find(
+							Distribution.strOccurrenceId);
+					if (BindingIterator ==
+							LocalReferenceBindingsByOccurrence.end() ||
+						BindingIterator->second->strReferenceKind !=
+							"DISTRIBUTION_TARGET" ||
+						BindingIterator->second->strReferenceId !=
+							Distribution.strReferenceId ||
+						BindingIterator->second->strOccurrenceId !=
+							Distribution.strOccurrenceId ||
+						BindingIterator->second->strModuleStableId !=
+							Module.strStableId ||
+						BindingIterator->second->strPropertyPath !=
+							Distribution.strPropertyPath ||
+						!IncludesBlockers(
+							BindingIterator->second->ExecutionAdmission.Blockers,
+							Distribution.ExecutionAdmission.Blockers) ||
+						!IncludesBlockers(
+							Distribution.ExecutionAdmission.Blockers,
+							BindingIterator->second->ExecutionAdmission.Blockers) ||
+						!IncludesBlockers(
+							PropertyCoverageIterator->second->Blockers,
+							BindingIterator->second->ExecutionAdmission.Blockers) ||
+						!ConsumedDistributionBindingOccurrenceIds.insert(
+							Distribution.strOccurrenceId).second)
+					{
+						strOutError =
+							"Source distribution local-reference link is invalid.";
+						return false;
+					}
+				}
+
+				if (!bUnresolved &&
+					!CEffectDistribution::Validate(Distribution, strOutError))
+				{
+					return false;
+				}
 				const bool_t bParticleParameter =
 					Is_ParticleParameterDistribution(Distribution.strSourceClass);
 				if ((bParticleParameter &&
@@ -3621,23 +4195,6 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 				}
 			}
 
-			std::unordered_set<std::string> CoveredProperties;
-			for (const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& Property :
-				CoverageIterator->second->Properties)
-			{
-				if ((Property.strStorage != "literal" &&
-						Property.strStorage != "distribution") ||
-					Property.strPropertyPath.empty() ||
-					Property.strProvenance.empty() ||
-					Property.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
-					!CoveredProperties.insert(
-						Property.strStorage + "\n" +
-						Property.strPropertyPath).second)
-				{
-					strOutError = "Source-contract property coverage is invalid.";
-					return false;
-				}
-			}
 			if (SourceProperties != CoveredProperties)
 			{
 				strOutError =
@@ -3645,16 +4202,14 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 				return false;
 			}
 		}
+		if (ConsumedDistributionBindingOccurrenceIds !=
+			DistributionBindingOccurrenceIds)
+		{
+			strOutError =
+				"Source-contract distribution bindings are orphaned or missing.";
+			return false;
+		}
 	}
-	if (bArtistFContract &&
-		(Document.Elements.size() != 35u || EvidenceIds.size() != 35u ||
-		 SourceCueIds.size() != 7u || iModuleReferenceCount != 399u))
-	{
-		strOutError =
-			"Artist F source-contract occurrence or module denominator changed.";
-		return false;
-	}
-
 	strOutError.clear();
 	return true;
 }
@@ -3959,6 +4514,13 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	Staged.Elements.reserve(pElements->Get_Array().size());
 	for (const DATA_JSON_VALUE& ElementValue : pElements->Get_Array())
 	{
+		if (!bSourceContract && ElementValue.Is_Object() &&
+			nullptr != ElementValue.Find("renderer"))
+		{
+			strOutError =
+				"Legacy Effect element contains native-v14 renderer evidence.";
+			return false;
+		}
 		if (!ElementValue.Is_Object() ||
 			(bSourceContract && !Validate_ExactFields(ElementValue,
 				{ "id", "displayName", "groupId", "sourceNode", "visible",

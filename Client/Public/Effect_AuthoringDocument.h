@@ -300,6 +300,7 @@ struct EFFECT_SOURCE_PROPERTY_COVERAGE_DESC final
 	std::string strProvenance;
 	EFFECT_SOURCE_COVERAGE_STATUS eStatus =
 		EFFECT_SOURCE_COVERAGE_STATUS::END;
+	std::vector<std::string> Blockers;
 };
 
 struct EFFECT_SOURCE_MODULE_COVERAGE_DESC final
@@ -362,12 +363,6 @@ struct EFFECT_SOURCE_COMPILER_EVIDENCE_DESC final
 	std::string strGeometryParitySelfSha256;
 };
 
-struct EFFECT_SOURCE_ADMISSION_DESC final
-{
-	bool_t bAllowed = false;
-	std::vector<std::string> Blockers;
-};
-
 struct EFFECT_SOURCE_MATERIAL_ADMISSION_DESC final
 {
 	std::string strStatus;
@@ -396,6 +391,40 @@ struct EFFECT_SOURCE_LITERAL_DESC final
 	bool_t bBoolean = false;
 	f64_t fNumber = 0.0;
 	std::string strString;
+};
+
+enum class EFFECT_SOURCE_TYPED_FIELD_KIND : uint8_t
+{
+	BOOLEAN,
+	NUMBER,
+	STRING,
+	VECTOR,
+	END
+};
+
+struct EFFECT_SOURCE_TYPED_FIELD_DESC final
+{
+	std::string strPropertyPath;
+	EFFECT_SOURCE_TYPED_FIELD_KIND eKind =
+		EFFECT_SOURCE_TYPED_FIELD_KIND::END;
+	bool_t bBoolean = false;
+	f64_t fNumber = 0.0;
+	std::string strString;
+	float4_t vVector = { 0.f, 0.f, 0.f, 0.f };
+};
+
+struct EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC final
+{
+	std::string strReferenceKind;
+	std::string strReferenceId;
+	std::string strDefinitionId;
+	std::string strOccurrenceId;
+	std::string strModuleStableId;
+	std::string strPropertyPath;
+	std::string strProvenance;
+	std::vector<EFFECT_SOURCE_TYPED_FIELD_DESC> ExactPayload;
+	std::vector<EFFECT_SOURCE_TYPED_FIELD_DESC> CurrentDefaultEvidence;
+	EFFECT_SOURCE_ADMISSION_DESC ExecutionAdmission;
 };
 
 struct EFFECT_SOURCE_MODULE_DESC final
@@ -429,6 +458,8 @@ struct EFFECT_CASCADE_RECIPE_DESC final
 	uint32_t iEmitterLoopCount = 1u;
 	std::vector<EFFECT_PARTICLE_BURST_DESC> Bursts;
 	std::vector<EFFECT_SOURCE_MODULE_DESC> Modules;
+	std::vector<EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC>
+		LocalReferenceBindings;
 	std::vector<EFFECT_SOURCE_MODULE_COVERAGE_DESC> ModuleCoverage;
 	EFFECT_SOURCE_COMPILER_EVIDENCE_DESC CompilerEvidence;
 	EFFECT_SOURCE_ADMISSION_DESC CompiledExecutionAdmission;

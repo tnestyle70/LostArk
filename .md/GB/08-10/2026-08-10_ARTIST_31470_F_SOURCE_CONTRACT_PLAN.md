@@ -70,7 +70,8 @@ Complete Effect로 합치지 않는다.
 4. renderer와 source space를 명시하고 모든 source module/property에 coverage를 한 번씩 부여한다.
 5. registry canonical SHA를 candidate의 모든 element와 receipt에 pin한다.
 6. Codec는 v14 Source Contract를 읽되 runtime/Product 경로가 소비하지 못하도록 fail-close한다.
-7. generator `--check`, focused unit test, Debug/Release Codec build/load, ProjectAudit를 실행한다.
+7. generator `--check`, focused unit test, source-only Debug Codec build/load, ProjectAudit를
+   실행한다. Client 실행과 시각 검증은 하지 않는다.
 
 ## 이 변경에서 금지하는 작업
 
@@ -83,12 +84,42 @@ Complete Effect로 합치지 않는다.
 
 ## 완료 조건
 
-- generator와 checked-in 네 output이 byte-exact다.
+- generator와 checked-in 네 output은 UTF-8 EOL-normalized `--check`에서 동일하다.
 - source receipt는 R, Derived contract는 F다.
 - renderer count는 `13/16/3/1/1/1`, active 35, excluded 93이다.
-- Debug/Release Codec가 후보를 Load하고 `Validate_SourceContract`를 통과한다.
+- Debug source harness가 후보를 Load하고 `Validate_SourceContract`를 통과한다.
 - Publisher는 계속 version 5~12만 허용하고 Catalog에 후보 ID가 없다.
 - Playback/Renderer/HLSL/Catalog/Tool의 scoped diff는 0이다.
 - candidate 상태는 `SOURCE_EXTRACTED`, aggregate evidence는 `SOURCE_EVIDENCE_PARTIAL`,
   assembly는 `MANUAL_MASTER_ASSEMBLY_PENDING`, visual은 `NOT_VISUAL_APPROVED`이며
   runtime/Product admission은 false다.
+
+## 2026-08-10 distribution/default closure 보강
+
+이 재개 단위는 Source Closure만 소유한다. WModel/scale, Material IR, compiler executor,
+Playback/renderer, Effect Tool, Catalog/Publisher 구현은 바꾸지 않는다.
+
+1. 15 distribution definition과 17 occurrence, PointLight definition/occurrence를 분리한다.
+   각 occurrence는 stable `referenceId`, `definitionId`, `occurrenceId`, 원본 module
+   reference order와 property identity를 보존한다.
+2. UE3 값 선택은 property별로
+   `INSTANCE_EXPLICIT -> NESTED_ARCHETYPE_TEMPLATE -> CLASS_CDO ->
+   PARENT_CDO_HIERARCHY -> EVALUATOR_DEFAULT` 순서만 허용한다.
+3. package identity receipt pin, pinned payload decode, 현재 exact physical source package를
+   각각 별도 축으로 기록한다. identity가 없는 external closure record와 current/recovery
+   package는 `SOURCE_EXACT`로 승격하지 않는다.
+4. semantic-blocked distribution은 executable payload를 `UNRESOLVED` variant로 scrub하고,
+   admission gate가 payload reader보다 먼저 실패하게 한다. raw decoded evidence와 current
+   default evidence는 closure에 별도로 남긴다.
+5. v14 SourceRecipe에는 distribution별 fidelity/admission과 18개 local-reference binding,
+   property blocker를 typed public field로 둔다. v13 field smuggling은 Codec이 거부한다.
+6. blocker token은 occurrence/property/module/element/receipt/registry/Product로 집합 포함
+   전파한다. admission은 blocker 집합이 비었을 때만 true이며 이 slice에서는 Product가
+   계속 false다.
+7. 외부 graph/UPK/script는 raw SHA-256, repo-tracked derived UTF-8 JSON은 LF canonical SHA-256,
+   generated JSON/header `--check`는 EOL-normalized compare를 사용한다. geometry generator는
+   별도 lane 소유이며 이 slice는 tracked geometry receipt link까지만 검증한다.
+
+검증은 production pure resolver/binder mutation test, generated round-trip, v13 rejection,
+source shallow/deep audit, JSON parse와 `git diff --check`로 닫는다. 사진, 스크린샷,
+Client 실행은 하지 않는다.

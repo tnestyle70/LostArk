@@ -5,6 +5,9 @@ param(
     [string]$SourceGraphRoot = '',
     [string]$SourceMeshRoot = '',
     [string]$RuntimeMeshRoot = '',
+    [string]$CurrentPackageRoot = '',
+    [string]$CurrentEFGameScriptPackage = '',
+    [string]$CurrentEngineScriptPackage = '',
     [string]$PointLightPackage = '',
     [string]$MeshRotationPackage = '',
     [string]$ColorScalePackage = ''
@@ -38,8 +41,9 @@ try {
     if ($DeepSourceAudit) {
         $deepInputs = @(
             $SourceGraphRoot,
-            $SourceMeshRoot,
-            $RuntimeMeshRoot,
+            $CurrentPackageRoot,
+            $CurrentEFGameScriptPackage,
+            $CurrentEngineScriptPackage,
             $PointLightPackage,
             $MeshRotationPackage,
             $ColorScalePackage
@@ -47,43 +51,38 @@ try {
         if (@($deepInputs | Where-Object {
             [string]::IsNullOrWhiteSpace($_) -or -not (Test-Path -LiteralPath $_)
         }).Count -ne 0) {
-            throw 'Deep Artist F source audit requires six explicit existing source paths.'
-        }
-        & python 'Tools/LevelPlacementExtractor/build_artist_31470_wmodel_geometry_parity.py' `
-        '--source-root' $SourceMeshRoot `
-        '--runtime-mesh-root' $RuntimeMeshRoot `
-        '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
-        '--output' 'Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json' `
-        '--check'
-        if ($LASTEXITCODE -ne 0) {
-            throw "Artist F WModel geometry parity check failed: $LASTEXITCODE"
+            throw 'Deep Artist F source audit requires seven explicit existing source paths.'
         }
 
-    & python 'Tools/LevelPlacementExtractor/build_artist_31470_local_reference_closure.py' `
-        '--source-receipt' 'Data/Effects/Imported/Artist/skill.31470.source-receipt.json' `
-        '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
-        '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
-        '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
-        '--point-light-package' $PointLightPackage `
-        '--mesh-rotation-recovery-package' $MeshRotationPackage `
-        '--color-scale-package' $ColorScalePackage `
-        '--output' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
-        '--check'
+        & python 'Tools/LevelPlacementExtractor/build_artist_31470_local_reference_closure.py' `
+            '--source-receipt' 'Data/Effects/Imported/Artist/skill.31470.source-receipt.json' `
+            '--action-cue-recipe' 'Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json' `
+            '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
+            '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
+            '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
+            '--current-package-root' $CurrentPackageRoot `
+            '--current-efgame-script-package' $CurrentEFGameScriptPackage `
+            '--current-engine-script-package' $CurrentEngineScriptPackage `
+            '--point-light-package' $PointLightPackage `
+            '--mesh-rotation-recovery-package' $MeshRotationPackage `
+            '--color-scale-package' $ColorScalePackage `
+            '--output' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
+            '--check'
         if ($LASTEXITCODE -ne 0) {
             throw "Artist F local-reference closure check failed: $LASTEXITCODE"
         }
 
-    & python 'Tools/LevelPlacementExtractor/build_artist_31470_source_evidence.py' `
-        '--source-receipt' 'Data/Effects/Imported/Artist/skill.31470.source-receipt.json' `
-        '--action-cue-recipe' 'Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json' `
-        '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
-        '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
-        '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
-        '--local-reference-closure' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
-        '--geometry-parity' 'Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json' `
-        '--source-graph-root' $SourceGraphRoot `
-        '--output' 'Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json' `
-        '--check'
+        & python 'Tools/LevelPlacementExtractor/build_artist_31470_source_evidence.py' `
+            '--source-receipt' 'Data/Effects/Imported/Artist/skill.31470.source-receipt.json' `
+            '--action-cue-recipe' 'Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json' `
+            '--active-inventory' 'Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json' `
+            '--normalized-graph' 'Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json' `
+            '--external-module-closure' 'Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json' `
+            '--local-reference-closure' 'Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json' `
+            '--geometry-parity' 'Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json' `
+            '--source-graph-root' $SourceGraphRoot `
+            '--output' 'Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json' `
+            '--check'
         if ($LASTEXITCODE -ne 0) {
             throw "Artist F source-evidence envelope check failed: $LASTEXITCODE"
         }
@@ -112,6 +111,7 @@ try {
     try {
         & python -m unittest -q `
             'test_build_artist_31470_source_contract' `
+            'test_build_artist_31470_local_reference_closure' `
             'test_build_imported_effect_documents'
         if ($LASTEXITCODE -ne 0) {
             throw "Artist F source-contract unit tests failed: $LASTEXITCODE"
@@ -138,6 +138,8 @@ try {
 
     $rendererCounts = @{}
     $moduleReferenceCount = 0
+    $localDistributionBindingCount = 0
+    $localComponentBindingCount = 0
     $evidenceIds = @{}
     $cueIds = @{}
     foreach ($element in @($candidate.elements)) {
@@ -154,6 +156,21 @@ try {
         $moduleReferenceCount += @($compiler.moduleReferenceOrder).Count
         $evidenceIds[[string]$compiler.evidenceId] = $true
         $cueIds[[string]$compiler.sourceCueId] = $true
+        foreach ($binding in @($element.sourceRecipe.localReferenceBindings)) {
+            if ([string]$binding.referenceKind -ceq 'DISTRIBUTION_TARGET') {
+                ++$localDistributionBindingCount
+            }
+            elseif ([string]$binding.referenceKind -ceq 'TYPEDATA_COMPONENT') {
+                ++$localComponentBindingCount
+            }
+            else {
+                throw "Unknown active local-reference kind: $($binding.referenceKind)"
+            }
+            if ([bool]$binding.executionAdmission.allowed -or
+                @($binding.executionAdmission.blockers).Count -eq 0) {
+                throw "Local reference is not fail-closed: $($binding.occurrenceId)"
+            }
+        }
         if ([string]$compiler.sourceEvidenceStatus -cne 'SOURCE_EVIDENCE_PARTIAL' -or
             [string]$compiler.lodSelectionPolicy -cne 'FIRST_LOD_ONLY' -or
             [int]$compiler.selectedLodArrayIndex -ne 0 -or
@@ -199,7 +216,27 @@ try {
         $evidenceIds.Count -ne 35 -or
         $cueIds.Count -ne 7 -or
         [int]$sourceEvidence.summary.activeSelectedModuleReferenceOrderCount -ne 399 -or
+        [int]$localReference.formatVersion -ne 5 -or
         [int]$localReference.summary.distributionTargetUniqueCount -ne 15 -or
+        [int]$localReference.summary.distributionTargetOccurrenceCount -ne 17 -or
+        [int]$localReference.summary.receiptPackageIdentityPinnedUniqueCount -ne 8 -or
+        [int]$localReference.summary.pinnedPayloadDecodedUniqueCount -ne 7 -or
+        [int]$localReference.summary.exactPhysicalSourcePackagePresentUniqueCount -ne 3 -or
+        [int]$localReference.summary.distributionTargetPayloadDecodedUniqueCount -ne 14 -or
+        [int]$localReference.summary.distributionTargetPayloadUnresolvedUniqueCount -ne 1 -or
+        [int]$localReference.summary.distributionTargetPayloadUnresolvedOccurrenceCount -ne 2 -or
+        [int]$localReference.summary.distributionTargetSemanticReadyUniqueCount -ne 9 -or
+        [int]$localReference.summary.distributionTargetSemanticReadyOccurrenceCount -ne 9 -or
+        [int]$localReference.summary.distributionTargetSemanticBlockedUniqueCount -ne 6 -or
+        [int]$localReference.summary.distributionTargetSemanticBlockedOccurrenceCount -ne 8 -or
+        [int]$localReference.summary.compiledExecutionAllowedOccurrenceCount -ne 0 -or
+        $localDistributionBindingCount -ne 17 -or
+        $localComponentBindingCount -ne 1 -or
+        [int]$receipt.summary.consumedLocalReferenceOccurrenceCount -ne 18 -or
+        [int]$receipt.productAdmission.blockerCount -ne
+            @($receipt.productAdmission.blockers).Count -or
+        ([bool]$receipt.productAdmission.allowed -ne
+            ([int]$receipt.productAdmission.blockerCount -eq 0)) -or
         [int]$geometryParity.summary.sourceDuplicateFullPayloadVertexCount -ne 78) {
         throw 'Artist F Source Contract boundary is invalid.'
     }

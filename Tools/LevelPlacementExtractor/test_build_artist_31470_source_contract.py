@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-import json
+import copy
 import hashlib
+import json
 import subprocess
 import sys
 import unittest
 from collections import Counter
 from pathlib import Path
+
+import build_artist_31470_source_contract as source_contract
+from effect_source_contract_io import tracked_text_sha256
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +36,9 @@ class Artist31470SourceContractTests(unittest.TestCase):
         cls.candidate = json.loads(CANDIDATE.read_text(encoding="utf-8"))
         cls.receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
         cls.registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+        cls.local_reference = json.loads(
+            LOCAL_REFERENCE_CLOSURE.read_text(encoding="utf-8")
+        )
         cls.elements = {row["id"]: row for row in cls.candidate["elements"]}
 
     def element(self, fragment: str) -> dict:
@@ -218,6 +225,315 @@ class Artist31470SourceContractTests(unittest.TestCase):
         self.assertEqual(len(cue_ids), 7)
         self.assertEqual(module_reference_count, 399)
 
+    def test_local_reference_denominators_and_source_identity_axes_are_exact(self) -> None:
+        summary = self.local_reference["summary"]
+        self.assertEqual(self.local_reference["formatVersion"], 5)
+        self.assertEqual(
+            {
+                name: summary[name]
+                for name in (
+                    "distributionTargetUniqueCount",
+                    "distributionTargetOccurrenceCount",
+                    "receiptPackageIdentityPinnedUniqueCount",
+                    "pinnedPayloadDecodedUniqueCount",
+                    "exactPhysicalSourcePackagePresentUniqueCount",
+                    "distributionTargetPayloadDecodedUniqueCount",
+                    "distributionTargetPayloadUnresolvedUniqueCount",
+                    "distributionTargetPayloadUnresolvedOccurrenceCount",
+                    "distributionTargetSemanticReadyUniqueCount",
+                    "distributionTargetSemanticReadyOccurrenceCount",
+                    "distributionTargetSemanticBlockedUniqueCount",
+                    "distributionTargetSemanticBlockedOccurrenceCount",
+                    "compiledExecutionAllowedOccurrenceCount",
+                )
+            },
+            {
+                "distributionTargetUniqueCount": 15,
+                "distributionTargetOccurrenceCount": 17,
+                "receiptPackageIdentityPinnedUniqueCount": 8,
+                "pinnedPayloadDecodedUniqueCount": 7,
+                "exactPhysicalSourcePackagePresentUniqueCount": 3,
+                "distributionTargetPayloadDecodedUniqueCount": 14,
+                "distributionTargetPayloadUnresolvedUniqueCount": 1,
+                "distributionTargetPayloadUnresolvedOccurrenceCount": 2,
+                "distributionTargetSemanticReadyUniqueCount": 9,
+                "distributionTargetSemanticReadyOccurrenceCount": 9,
+                "distributionTargetSemanticBlockedUniqueCount": 6,
+                "distributionTargetSemanticBlockedOccurrenceCount": 8,
+                "compiledExecutionAllowedOccurrenceCount": 0,
+            },
+        )
+        definitions = {
+            row["referenceId"]: row
+            for row in self.local_reference["distributionDefinitions"]
+        }
+        for reference_id in (
+            "distribution-target-000",
+            "distribution-target-001",
+            "distribution-target-002",
+            "distribution-target-003",
+            "distribution-target-007",
+            "distribution-target-008",
+            "distribution-target-009",
+        ):
+            definition = definitions[reference_id]
+            self.assertFalse(definition["receiptPackageIdentityPinned"])
+            self.assertFalse(definition["pinnedPayloadDecoded"])
+            self.assertFalse(definition["fidelity"].startswith("SOURCE_EXACT"))
+
+    def test_v14_bindings_preserve_distribution_and_point_light_boundaries(self) -> None:
+        bindings = [
+            binding
+            for element in self.candidate["elements"]
+            for binding in element["sourceRecipe"]["localReferenceBindings"]
+        ]
+        self.assertEqual(len(bindings), 18)
+        self.assertEqual(
+            Counter(binding["referenceKind"] for binding in bindings),
+            Counter({"DISTRIBUTION_TARGET": 17, "TYPEDATA_COMPONENT": 1}),
+        )
+        self.assertEqual(len({row["occurrenceId"] for row in bindings}), 18)
+        required_distribution_fields = {
+            "referenceId",
+            "occurrenceId",
+            "payloadStatus",
+            "fidelity",
+            "executionAdmission",
+        }
+        distributions = [
+            distribution
+            for element in self.candidate["elements"]
+            for module in element["sourceRecipe"]["modules"]
+            for distribution in module["distributions"]
+        ]
+        self.assertEqual(len(distributions), 629)
+        for distribution in distributions:
+            self.assertTrue(required_distribution_fields <= distribution.keys())
+            admission = distribution["executionAdmission"]
+            self.assertEqual(admission["allowed"], not admission["blockers"])
+
+        light = next(
+            row for row in bindings if row["referenceKind"] == "TYPEDATA_COMPONENT"
+        )
+        self.assertEqual(light["referenceId"], "typedata-point-light-component-000")
+        self.assertEqual(
+            {row["propertyPath"]: row["value"] for row in light["exactPayload"]},
+            {
+                "brightness": 10.0,
+                "bcastcompositeshadow": False,
+                "baffectcompositeshadowdirection": False,
+            },
+        )
+        self.assertEqual(
+            {
+                row["propertyPath"]: row["value"]
+                for row in light["currentDefaultEvidence"]
+            },
+            {
+                "radius": 200.0,
+                "falloffexponent": 2.0,
+                "lightcolor": [255, 255, 255, 0],
+            },
+        )
+        self.assertEqual(
+            set(light["executionAdmission"]["blockers"]),
+            {
+                "LIGHT_RENDERER_NOT_COMPILED",
+                "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED",
+                "SOURCE_ERA_SCRIPT_PACKAGE_IDENTITY_NOT_PINNED",
+            },
+        )
+
+    def test_target008_and_target014_remain_typed_and_fail_closed(self) -> None:
+        definitions = {
+            row["referenceId"]: row
+            for row in self.local_reference["distributionDefinitions"]
+        }
+        curve = definitions["distribution-target-008"]
+        self.assertEqual(
+            curve["semanticCoverage"]["evaluatorKind"], "STANDARD_CONSTANT_CURVE"
+        )
+        self.assertIn(
+            "CONSTANT_CURVE_COMPILER_NOT_IMPLEMENTED",
+            curve["executionAdmission"]["blockers"],
+        )
+        self.assertNotIn(
+            "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
+            curve["executionAdmission"]["blockers"],
+        )
+
+        rotation = definitions["distribution-target-014"]
+        self.assertEqual(rotation["sourcePayload"]["variant"], "UNRESOLVED")
+        self.assertIsNone(rotation["sourcePayload"]["properties"])
+        self.assertFalse(
+            rotation["sourceRevisionEvidence"]["sourceModuleQuorum"][
+                "provesChildTargetPayloadEqual"
+            ]
+        )
+        self.assertTrue(
+            {
+                "CROSS_REVISION_TARGET_PAYLOAD_NOT_SOURCE_EXACT",
+                "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
+                "OLD_SOURCE_ABSENT_BINDING_FALLBACK_UNRESOLVED",
+                "SELECTED_LOD_CLASS_DEFAULTS_UNRESOLVED",
+                "RUNTIME_PARAMETER_SOURCE_CLOSURE_UNPROVEN",
+            }
+            <= set(rotation["executionAdmission"]["blockers"])
+        )
+        self.assertEqual(len(rotation["occurrenceIds"]), 2)
+
+    def test_blocked_binder_rejects_before_payload_and_scrubs_evaluator_fields(self) -> None:
+        class PoisonPayload(dict):
+            def get(self, *_args: object, **_kwargs: object) -> object:
+                raise AssertionError("blocked payload was inspected")
+
+            def __bool__(self) -> bool:
+                raise AssertionError("blocked payload was inspected")
+
+        definitions = {
+            row["referenceId"]: row
+            for row in self.local_reference["distributionDefinitions"]
+        }
+        occurrences = {
+            row["referenceId"]: row
+            for row in self.local_reference["distributionOccurrences"]
+        }
+        for reference_id in (
+            "distribution-target-000",
+            "distribution-target-001",
+            "distribution-target-009",
+            "distribution-target-014",
+        ):
+            definition = copy.deepcopy(definitions[reference_id])
+            occurrence = copy.deepcopy(occurrences[reference_id])
+            definition["sourcePayload"] = PoisonPayload()
+            identity = occurrence["propertyIdentity"]
+            property_path = identity["propertyPath"]
+            self.assertTrue(property_path.endswith(".distribution"))
+            distribution_property = property_path[: -len(".distribution")]
+            distribution = {
+                "propertyPath": distribution_property,
+                "sourceClass": "poison",
+                "sourceObjectPath": "WRONG.Poison.Payload",
+                "parameterBinding": "actionCue",
+                "parameterName": "Poison",
+                "operation": 7,
+                "randomLockAxes": 7,
+                "lookupTableChunkSize": 4,
+                "lookupTableNumElements": 4,
+                "lookupTableTimeScale": 2.0,
+                "lookupTableStartTime": 3.0,
+                "defaultMinimum": [1.0, 2.0, 3.0, 4.0],
+                "defaultMaximum": [5.0, 6.0, 7.0, 8.0],
+                "lookupTable": [9.0],
+                "keys": [{"time": 0.0, "value": [1.0]}],
+            }
+            module_order = int(occurrence["referenceOrderIndex"])
+            modules = [
+                {
+                    "objectPath": f"FILLER_{index}.module",
+                    "stableId": f"filler:{index}",
+                    "distributions": [],
+                    "literals": [],
+                }
+                for index in range(module_order + 1)
+            ]
+            modules[module_order] = {
+                "objectPath": (
+                    f"{identity['logicalPackage']}.{identity['packageLocalPath']}"
+                ),
+                "stableId": f"source:{module_order}",
+                "distributions": [distribution],
+                "literals": [],
+            }
+            occurrence_key = source_contract.property_identity_key(
+                occurrence["activeElementId"],
+                identity["logicalPackage"],
+                identity["packageLocalPath"],
+                identity["propertyPath"],
+            )
+            bindings, _overlays, consumed = (
+                source_contract.bind_source_recipe_local_references(
+                    {"modules": modules},
+                    {"evidenceId": occurrence["activeElementId"]},
+                    {definition["definitionId"]: definition},
+                    {occurrence_key: occurrence},
+                    {},
+                    {},
+                )
+            )
+            self.assertEqual(consumed, {occurrence["occurrenceId"]})
+            self.assertEqual(len(bindings), 1)
+            self.assertEqual(distribution["payloadStatus"], "UNRESOLVED_SEMANTIC_CLOSURE")
+            self.assertFalse(distribution["executionAdmission"]["allowed"])
+            self.assertEqual(distribution["sourceObjectPath"], "")
+            self.assertEqual(distribution["operation"], 0)
+            self.assertEqual(distribution["randomLockAxes"], 0)
+            self.assertEqual(distribution["lookupTableChunkSize"], 0)
+            self.assertEqual(distribution["lookupTableNumElements"], 0)
+            self.assertEqual(distribution["lookupTable"], [])
+            self.assertEqual(distribution["keys"], [])
+            self.assertEqual(distribution["defaultMinimum"], [0.0] * 4)
+            self.assertEqual(distribution["defaultMaximum"], [0.0] * 4)
+            if reference_id == "distribution-target-000":
+                wrong_package_definition = copy.deepcopy(definition)
+                wrong_package_definition["logicalPackage"] = "WRONG_PACKAGE"
+                with self.assertRaisesRegex(
+                    ValueError, "definition module identity changed"
+                ):
+                    source_contract.bind_source_recipe_local_references(
+                        {"modules": copy.deepcopy(modules)},
+                        {"evidenceId": occurrence["activeElementId"]},
+                        {
+                            wrong_package_definition["definitionId"]: (
+                                wrong_package_definition
+                            )
+                        },
+                        {occurrence_key: occurrence},
+                        {},
+                        {},
+                    )
+
+    def test_local_reference_blockers_reach_every_public_admission_gate(self) -> None:
+        receipt_elements = {
+            row["elementId"]: row for row in self.receipt["elements"]
+        }
+        receipt_blockers = set(self.receipt["blockers"])
+        registry_blockers = set(self.registry["executionAdmission"]["blockers"])
+        product_blockers = set(self.receipt["productAdmission"]["blockers"])
+        for element in self.candidate["elements"]:
+            recipe = element["sourceRecipe"]
+            coverage = {
+                row["moduleStableId"]: row for row in recipe["moduleCoverage"]
+            }
+            receipt_element = receipt_elements[element["id"]]
+            for binding in recipe["localReferenceBindings"]:
+                blockers = set(binding["executionAdmission"]["blockers"])
+                module = coverage[binding["moduleStableId"]]
+                prop = next(
+                    row
+                    for row in module["properties"]
+                    if row["propertyPath"] == binding["propertyPath"]
+                )
+                self.assertTrue(blockers <= set(prop["blockers"]))
+                self.assertTrue(blockers <= set(module["blockers"]))
+                self.assertTrue(
+                    blockers <= set(recipe["compiledExecutionAdmission"]["blockers"])
+                )
+                self.assertTrue(blockers <= set(receipt_element["blockers"]))
+                self.assertTrue(blockers <= receipt_blockers)
+                self.assertTrue(blockers <= registry_blockers)
+                self.assertTrue(blockers <= product_blockers)
+
+        product = self.receipt["productAdmission"]
+        self.assertEqual(product["allowed"], product["blockerCount"] == 0)
+        self.assertEqual(product["blockerCount"], len(product["blockers"]))
+        self.assertEqual(
+            product["blockerSummary"]["uniqueBlockerCount"],
+            product["blockerCount"],
+        )
+        self.assertFalse(product["allowed"])
+
     def test_evidence_artifact_hash_chain_is_not_sidecar_only(self) -> None:
         links = {
             "sourceEvidence": (SOURCE_EVIDENCE, "evidenceSha256"),
@@ -242,7 +558,7 @@ class Artist31470SourceContractTests(unittest.TestCase):
             self.assertEqual(expected_self, actual_self)
             link = self.receipt["source"][name]
             self.assertEqual(
-                link["fileSha256"], hashlib.sha256(path.read_bytes()).hexdigest()
+                link["fileSha256"], tracked_text_sha256(path)
             )
             self.assertEqual(link["selfSha256"], expected_self)
         registry_links = self.registry["evidenceLinks"]

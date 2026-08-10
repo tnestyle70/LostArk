@@ -56,14 +56,24 @@ closure 완료 수치가 아니다.
 ### local distribution과 Light
 
 - referenced distribution target은 15 unique / 17 occurrence다.
-- 14 unique는 payload와 ParticleParameter 실행 필드를 decode했다.
-- 원본 package revision이 없는 1 unique / 2 Mesh occurrence는 unresolved로 남겼다.
-- PointLightComponent 1 unique / 1 occurrence는 decode했다.
-- 이 closure의 compiled execution allowed reference는 0이다.
+- package filename/bytes/SHA가 source receipt에 고정된 target은 8/15이고, 그중 pinned child
+  payload를 decode한 target은 7/15이며, 현재 exact source-era physical UPK가 존재하는 target은
+  3/15다.
+- raw record payload는 14 unique가 decoded이고 target014 1 unique / 2 occurrence는
+  cross-revision unresolved다. 이 수치는 source-exact 수치가 아니다.
+- semantic source-ready는 9 unique / 9 occurrence, semantic blocked는 6 unique / 8
+  occurrence다. compiled execution allowed는 0/17이다.
+- external module closure만 있는 target000-003/007-009는 receipt package identity가 없으므로
+  decoded record를 `SOURCE_EXACT`로 승격하지 않았다.
+- PointLightComponent 1 unique / 1 occurrence는 exact child `Brightness=10`과 두 explicit false
+  flag를 보존했다. 현재 archetype/CDO의 `Radius=200`, `FalloffExponent=2`, white는 current-only
+  evidence로 분리했고 source-era script/default 및 Light renderer blocker를 유지했다.
 
-### WModel과 scale
+### WModel과 scale (별도 geometry receipt 소비)
 
-7개 Mesh carrier에서 glTF와 현재 WModel의 position, normal, tangent XYZ, UV0,
+이 source slice가 geometry generator/runtime을 구현했다는 뜻이 아니다. 별도 geometry lane이 만든
+receipt를 tracked derived input으로 소비한다. 그 receipt는 7개 Mesh carrier에서 glTF와 현재
+WModel의 position, normal, tangent XYZ, UV0,
 topology 및 reversed winding 관계를 수치로 증명했다. 현재 cook의 geometry는 source cm 크기로
 저장되므로 MeshParticle에만 `carrierGeometryPreScale=0.01`을 적용하고, Cascade StartSize는
 signed dimensionless axis reorder로 유지한다. Sprite/Decal의 cm-to-m 변환과 섞지 않는다.
@@ -86,11 +96,21 @@ active material identity는 28개다. Light builtin 1개를 제외한 27개는 �
 ## 구현한 계약
 
 - runtime v13과 분리된 v14 `source_contract` parse/strict validation/serialize
+- 629 distribution 모두의 typed `referenceId/occurrenceId`, `payloadStatus`, `fidelity`,
+  `executionAdmission` public field. 이 중 local-reference 17 occurrence만 stable non-empty ID로
+  binding되고, 나머지 612 inline distribution은 empty ID와 별도 inline fidelity를 사용한다.
+- 17 distribution occurrence와 1 PointLight occurrence의 typed `localReferenceBindings` 및
+  exact/current evidence 분리
+- distribution definition/occurrence에서 instance explicit -> nested archetype/template -> class
+  CDO -> parent CDO hierarchy -> evaluator 순서의 field provenance
+- semantic-blocked distribution의 evaluator 입력 scrub와 admission-before-payload 검증
 - renderer type과 source space의 명시적 저장
 - source graph/closure/material/evidence/local-reference/geometry receipt SHA pin
 - selected LOD identity와 ordered module reference provenance
 - cue source position, cue local transform, parameter override, transform composition order
 - module/property coverage와 blocker
+- local reference blocker의 property -> module -> element -> receipt/registry -> Product 집합 포함
+  전파와 `blockerCount == 0` admission gate
 - material/geometry/compiled-execution admission
 - ParticleParameter의 `actionCue`/`none` binding 보존
 - v13 JSON 또는 in-memory 문서가 v14 evidence field를 싣고 무음 소거하는 우회 차단
@@ -99,33 +119,58 @@ active material identity는 28개다. Light builtin 1개를 제외한 27개는 �
 공용 `Effect_Playback`, `Effect_DocumentRenderer`, HLSL, `EffectCatalog`, Effect Tool은 이
 슬라이스에서 수정하지 않았다.
 
+## 미해결 native oracle과 Product 경계
+
+- target000의 current nested archetype `Constant=1.0`은
+  `CURRENT_REVISION_ARCHETYPE_EVIDENCE`일 뿐 source-era default가 아니다.
+  `CLASS_DEFAULT_ARCHETYPE_UNPROVEN`과 source-era Engine CDO/script blocker를 유지한다.
+- target001/009의 current effective NORMAL range `[0,100] -> [0,100]`은 네 range와 enum의
+  source-era provenance가 없어 실행할 수 없다.
+- target007/014의 `EFDistributionVectorMultiplyParticleParameter`는 custom evaluator와 runtime
+  parameter source가 닫히지 않았다. class 이름에 particleparameter가 포함돼도 표준 evaluator로
+  분류하지 않는다.
+- target014의 old 66,494-byte package/SHA는 부재한다. current 66,557-byte recovery payload의
+  `Constant=(1,1,.6)` 및 parent/reference quorum은 old child equality 근거로 쓰지 않았다.
+  cross-revision, old absent-binding fallback, selected LOD class-default blocker를 모두 유지한다.
+- target008은 standard ConstantCurve source payload를 보존하지만 curve compiler가 없다.
+- Product admission은 blocker 39종이 남아 false이고 Catalog/Product 연결은 0/35다.
+- source closure는 repo-tracked geometry receipt를 canonical text hash로 소비한다. raw WModel,
+  glTF/bin 및 geometry generator 자체의 role-aware hash 검증은 별도 geometry commit의
+  integration prerequisite다.
+
 ## 산출물 identity
 
+아래 file SHA는 repo-tracked UTF-8 text의 LF canonical hash다.
+
 - candidate file SHA-256:
-  `7f4d6827fac6eab2e58d43e72c401d92bda1462e344bc5b4f16245d09dbb50be`
+  `b88a37f569c8bbbbab323e1c4257b26b11a95ff0e02456b77d54f1147fda3914`
 - receipt file SHA-256:
-  `f69e1cddcd176cfcda24033a4fef64de6a4c2b5c46238564ff4bb6f10a3aa6a7`
+  `832fe22fae20568166c430dacfacc579fb60b5f53e685dfae6c3746e8dc44be6`
 - registry file SHA-256:
-  `49ff19a8a30db7ffa2573141f4e2afbe76e743f30de917a0b819b76a59217b81`
+  `bb59cbb547e6b6916c4a86f146a708e11e97cc3238d04126b8c4c15204d28014`
 - registry contract SHA-256:
-  `28f75bc5b8e1f56be42d962636c7dd43c932892036655ef3a414392115c252f4`
+  `88d801cdb94064b981d6fd629406e4d999521be0356777f136e99171ef922b1d`
 - generated header SHA-256:
-  `f4d3f92154c31b99c39d379dff9cfbecd384c55a85bf417a470ad9e236173bc7`
+  `e6d971e550d7d8425e3d2699983d5dcc862eb04c6474f979f1718e46d951073f`
 
 ## 자동 검증
 
-- `Test-Artist31470SourceContract.ps1`: PASS
-- generator `--check`: PASS, checked-in output byte identity
-- focused Python tests: 28/28 PASS
-- inventory/material/action/socket 추가 tests: 13/13 PASS
-- changed JSON parse: 16/16 PASS
-- ClientFrontendHarness Debug `--effect-source-contract`: 5/5 PASS
-- ClientFrontendHarness Release `--effect-source-contract`: 5/5 PASS
+- `Test-Artist31470SourceContract.ps1` shallow source slice: PASS
+- 같은 script의 `-DeepSourceAudit`: closure/evidence/contract `--check` PASS
+- focused source/extractor Python tests: 65/65 PASS
+- `Tools/LevelPlacementExtractor` 전체 discovery: 263/263 PASS
+- changed JSON parse: 5/5 PASS
+- ClientFrontendHarness Debug compile: PASS
+- ClientFrontendHarness Debug `--effect-source-contract`: 15/15 PASS
+- v14 serialize round-trip, v13/in-memory field smuggling, reference ID/order mutation,
+  admission-before-payload, evaluator scrub, blocker laundering 반례: PASS
 - Product publisher 지원 version: 5~12 유지
 - EffectCatalog candidate reference: 0
 - `git diff --check`: PASS, line-ending warning만 존재
 
 빌드는 컴파일·링크 오류 확인에만 사용했다. 이미지, 스크린샷, GPU 화면 판정은 수행하지 않았다.
+geometry generator의 raw glTF/bin/WModel 검증은 이 source commit에서 실행 완료로 주장하지 않으며
+별도 geometry commit과 함께 integration할 때의 prerequisite로 남긴다.
 
 ## 다음 Track A 경계
 

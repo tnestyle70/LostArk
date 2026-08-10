@@ -27,6 +27,8 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include <Windows.h>
 
@@ -3675,6 +3677,28 @@ namespace
 		{
 			return left.x == right.x && left.y == right.y && left.z == right.z;
 		};
+		const auto SameFloat4 = [](const float4_t& left, const float4_t& right)
+		{
+			return left.x == right.x && left.y == right.y &&
+				left.z == right.z && left.w == right.w;
+		};
+		const auto SameTypedField = [&SameFloat4](
+			const EFFECT_SOURCE_TYPED_FIELD_DESC& left,
+			const EFFECT_SOURCE_TYPED_FIELD_DESC& right)
+		{
+			return left.strPropertyPath == right.strPropertyPath &&
+				left.eKind == right.eKind &&
+				left.bBoolean == right.bBoolean &&
+				left.fNumber == right.fNumber &&
+				left.strString == right.strString &&
+				SameFloat4(left.vVector, right.vVector);
+		};
+		const auto SameTypedFields = [&SameTypedField](const auto& left,
+			const auto& right)
+		{
+			return left.size() == right.size() &&
+				std::equal(left.begin(), left.end(), right.begin(), SameTypedField);
+		};
 		const auto NearFloat3 = [](const float3_t& actual,
 			const float3_t& expected)
 		{
@@ -3712,6 +3736,10 @@ namespace
 		bool_t preserved = parsed && document.Elements.size() == 35u &&
 			roundTrip.Elements.size() == document.Elements.size();
 		size_t moduleReferenceCount = 0u;
+		size_t localReferenceBindingCount = 0u;
+		size_t linkedDistributionOccurrenceCount = 0u;
+		size_t pointLightBindingCount = 0u;
+		bool_t pointLightTypedPayloadPreserved = false;
 		size_t meshGeometryCount = 0u;
 		size_t nonMeshGeometryIdentityCount = 0u;
 		std::set<std::string> evidenceIds;
@@ -3745,8 +3773,22 @@ namespace
 			geometryFileHashes.insert(left.strGeometryParityFileSha256);
 			geometrySelfHashes.insert(left.strGeometryParitySelfSha256);
 			moduleReferenceCount += left.ModuleReferenceOrder.size();
+			localReferenceBindingCount += before.LocalReferenceBindings.size();
 			if (before.GeometryBinding.bEnabled)
+			{
 				++meshGeometryCount;
+				if (std::abs(before.GeometryBinding.fCarrierGeometryPreScale -
+						0.01f) > 0.0000001f ||
+					before.GeometryBinding.strParticleScaleSemantics !=
+						"DIMENSIONLESS_AXIS_REORDER_ONLY" ||
+					before.GeometryBinding.strStatus !=
+						"GLTF_TO_WMODEL_PARITY_PROVEN_UPK_TO_GLTF_UNRESOLVED" ||
+					before.GeometryBinding.Blockers.empty())
+				{
+					preserved = false;
+					break;
+				}
+			}
 			else if (before.GeometryBinding.fCarrierGeometryPreScale == 1.f)
 				++nonMeshGeometryIdentityCount;
 			const auto cue = expectedCues.find(left.strSourceCueId);
@@ -3811,7 +3853,112 @@ namespace
 					after.GeometryBinding.fCarrierGeometryPreScale &&
 				before.GeometryBinding.strParticleScaleSemantics ==
 					after.GeometryBinding.strParticleScaleSemantics &&
+				before.LocalReferenceBindings.size() ==
+					after.LocalReferenceBindings.size() &&
 				before.ModuleCoverage.size() == after.ModuleCoverage.size();
+			for (size_t iBinding = 0u;
+				preserved && iBinding < before.LocalReferenceBindings.size();
+				++iBinding)
+			{
+				const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& a =
+					before.LocalReferenceBindings[iBinding];
+				const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& b =
+					after.LocalReferenceBindings[iBinding];
+				preserved = a.strReferenceKind == b.strReferenceKind &&
+					a.strReferenceId == b.strReferenceId &&
+					a.strDefinitionId == b.strDefinitionId &&
+					a.strOccurrenceId == b.strOccurrenceId &&
+					a.strModuleStableId == b.strModuleStableId &&
+					a.strPropertyPath == b.strPropertyPath &&
+					a.strProvenance == b.strProvenance &&
+					SameTypedFields(a.ExactPayload, b.ExactPayload) &&
+					SameTypedFields(a.CurrentDefaultEvidence,
+						b.CurrentDefaultEvidence) &&
+					a.ExecutionAdmission.bAllowed ==
+						b.ExecutionAdmission.bAllowed &&
+					a.ExecutionAdmission.Blockers ==
+						b.ExecutionAdmission.Blockers;
+				if (a.strReferenceKind == "TYPEDATA_COMPONENT")
+				{
+					++pointLightBindingCount;
+					const auto FindField = [](const auto& Fields,
+						const std::string_view PropertyPath)
+					{
+						return std::find_if(Fields.begin(), Fields.end(),
+							[PropertyPath](const EFFECT_SOURCE_TYPED_FIELD_DESC& Field)
+							{
+								return Field.strPropertyPath == PropertyPath;
+							});
+					};
+					const auto Brightness = FindField(
+						a.ExactPayload, "brightness");
+					const auto CastComposite = FindField(
+						a.ExactPayload, "bcastcompositeshadow");
+					const auto AffectComposite = FindField(
+						a.ExactPayload, "baffectcompositeshadowdirection");
+					const auto Radius = FindField(
+						a.CurrentDefaultEvidence, "radius");
+					const auto Falloff = FindField(
+						a.CurrentDefaultEvidence, "falloffexponent");
+					const auto LightColor = FindField(
+						a.CurrentDefaultEvidence, "lightcolor");
+					pointLightTypedPayloadPreserved =
+						Brightness != a.ExactPayload.end() &&
+						Brightness->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER &&
+						Brightness->fNumber == 10.0 &&
+						CastComposite != a.ExactPayload.end() &&
+						CastComposite->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::BOOLEAN &&
+						!CastComposite->bBoolean &&
+						AffectComposite != a.ExactPayload.end() &&
+						AffectComposite->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::BOOLEAN &&
+						!AffectComposite->bBoolean &&
+						Radius != a.CurrentDefaultEvidence.end() &&
+						Radius->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER &&
+						Radius->fNumber == 200.0 &&
+						Falloff != a.CurrentDefaultEvidence.end() &&
+						Falloff->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::NUMBER &&
+						Falloff->fNumber == 2.0 &&
+						LightColor != a.CurrentDefaultEvidence.end() &&
+						LightColor->eKind ==
+							EFFECT_SOURCE_TYPED_FIELD_KIND::VECTOR &&
+						LightColor->vVector.x == 255.f &&
+						LightColor->vVector.y == 255.f &&
+						LightColor->vVector.z == 255.f;
+				}
+			}
+			preserved = preserved && before.Modules.size() == after.Modules.size();
+			for (size_t iModule = 0u;
+				preserved && iModule < before.Modules.size(); ++iModule)
+			{
+				const EFFECT_SOURCE_MODULE_DESC& a = before.Modules[iModule];
+				const EFFECT_SOURCE_MODULE_DESC& b = after.Modules[iModule];
+				preserved = a.strStableId == b.strStableId &&
+					a.Distributions.size() == b.Distributions.size();
+				for (size_t iDistribution = 0u;
+					preserved && iDistribution < a.Distributions.size();
+					++iDistribution)
+				{
+					const EFFECT_DISTRIBUTION_DESC& x =
+						a.Distributions[iDistribution];
+					const EFFECT_DISTRIBUTION_DESC& y =
+						b.Distributions[iDistribution];
+					preserved = x.strReferenceId == y.strReferenceId &&
+						x.strOccurrenceId == y.strOccurrenceId &&
+						x.strPayloadStatus == y.strPayloadStatus &&
+						x.strFidelity == y.strFidelity &&
+						x.ExecutionAdmission.bAllowed ==
+							y.ExecutionAdmission.bAllowed &&
+						x.ExecutionAdmission.Blockers ==
+							y.ExecutionAdmission.Blockers;
+					if (!x.strOccurrenceId.empty())
+						++linkedDistributionOccurrenceCount;
+				}
+			}
 			for (size_t iModule = 0u;
 				preserved && iModule < left.ModuleReferenceOrder.size(); ++iModule)
 			{
@@ -3838,7 +3985,9 @@ namespace
 					preserved && iProperty < a.Properties.size(); ++iProperty)
 				{
 					preserved = a.Properties[iProperty].strProvenance ==
-						b.Properties[iProperty].strProvenance;
+						b.Properties[iProperty].strProvenance &&
+						a.Properties[iProperty].Blockers ==
+						b.Properties[iProperty].Blockers;
 				}
 			}
 		}
@@ -3847,6 +3996,10 @@ namespace
 			uniqueParameterOverrideCount += cue.second;
 		preserved = preserved && evidenceIds.size() == 35u &&
 			cueIds.size() == 7u && moduleReferenceCount == 399u &&
+			localReferenceBindingCount == 18u &&
+			linkedDistributionOccurrenceCount == 17u &&
+			pointLightBindingCount == 1u &&
+			pointLightTypedPayloadPreserved &&
 			cueParameterOverrideCounts.size() == 7u &&
 			uniqueParameterOverrideCount == 9u &&
 			meshGeometryCount == 13u && nonMeshGeometryIdentityCount == 22u &&
@@ -3855,7 +4008,60 @@ namespace
 			localReferenceSelfHashes.size() == 1u &&
 			geometryFileHashes.size() == 1u && geometrySelfHashes.size() == 1u;
 		runner.Require(preserved,
-			"Artist F Source Contract Preserves 35 Occurrences 7 Cue Transforms 9 Overrides 399 Module References And Receipt Hashes");
+			"Artist F Source Contract Preserves 35 Occurrences 18 Local References Typed PointLight Evidence And Receipt Hashes");
+
+		EFFECT_DOCUMENT_DESC highPrecisionLiteral = roundTrip;
+		size_t highPrecisionElementIndex = highPrecisionLiteral.Elements.size();
+		size_t highPrecisionModuleIndex = 0u;
+		size_t highPrecisionLiteralIndex = 0u;
+		constexpr f64_t highPrecisionValue = 0.12345678901234566;
+		for (size_t iElement = 0u;
+			iElement < highPrecisionLiteral.Elements.size(); ++iElement)
+		{
+			auto& modules =
+				highPrecisionLiteral.Elements[iElement].SourceRecipe.Modules;
+			for (size_t iModule = 0u; iModule < modules.size(); ++iModule)
+			{
+				const auto literal = std::find_if(modules[iModule].Literals.begin(),
+					modules[iModule].Literals.end(),
+					[](const EFFECT_SOURCE_LITERAL_DESC& value)
+					{
+						return value.eKind == EFFECT_SOURCE_LITERAL_KIND::NUMBER;
+					});
+				if (literal == modules[iModule].Literals.end())
+					continue;
+				highPrecisionElementIndex = iElement;
+				highPrecisionModuleIndex = iModule;
+				highPrecisionLiteralIndex = static_cast<size_t>(
+					std::distance(modules[iModule].Literals.begin(), literal));
+				literal->fNumber = highPrecisionValue;
+				break;
+			}
+			if (highPrecisionElementIndex != highPrecisionLiteral.Elements.size())
+				break;
+		}
+		const bool_t foundHighPrecisionLiteral =
+			highPrecisionElementIndex < highPrecisionLiteral.Elements.size();
+		const std::string highPrecisionJson = foundHighPrecisionLiteral ?
+			CEffectDocumentCodec::Serialize(highPrecisionLiteral) : std::string{};
+		EFFECT_DOCUMENT_DESC highPrecisionRoundTrip;
+		const bool_t parsedHighPrecision = foundHighPrecisionLiteral &&
+			CEffectDocumentCodec::Parse(
+				highPrecisionJson, highPrecisionRoundTrip, status);
+		const bool_t preservedHighPrecision = parsedHighPrecision &&
+			highPrecisionElementIndex < highPrecisionRoundTrip.Elements.size() &&
+			highPrecisionModuleIndex < highPrecisionRoundTrip.Elements[
+				highPrecisionElementIndex].SourceRecipe.Modules.size() &&
+			highPrecisionLiteralIndex < highPrecisionRoundTrip.Elements[
+				highPrecisionElementIndex].SourceRecipe.Modules[
+					highPrecisionModuleIndex].Literals.size() &&
+			highPrecisionRoundTrip.Elements[highPrecisionElementIndex].SourceRecipe.
+				Modules[highPrecisionModuleIndex].Literals[
+					highPrecisionLiteralIndex].fNumber == highPrecisionValue &&
+			CEffectDocumentCodec::Serialize(highPrecisionRoundTrip) ==
+				highPrecisionJson;
+		runner.Require(preservedHighPrecision,
+			"Source Literal Number Round Trip Preserves Double Precision");
 
 		std::string legacy = serialized;
 		const std::string version14 = "\"version\": 14";
@@ -3872,19 +4078,6 @@ namespace
 			!CEffectDocumentCodec::Parse(legacy, rejected, status),
 			"Legacy Effect Rejects Native V14 Source Evidence Instead Of Erasing It");
 
-		EFFECT_DOCUMENT_DESC badScale = roundTrip;
-		const auto meshCarrier = std::find_if(
-			badScale.Elements.begin(), badScale.Elements.end(),
-			[](const EFFECT_ELEMENT_DESC& element)
-			{
-				return element.SourceRecipe.GeometryBinding.bEnabled;
-			});
-		if (meshCarrier != badScale.Elements.end())
-			meshCarrier->SourceRecipe.GeometryBinding.fCarrierGeometryPreScale = 1.f;
-		runner.Require(meshCarrier != badScale.Elements.end() &&
-			!CEffectDocumentCodec::Validate_SourceContract(badScale, status),
-			"Artist F Source Contract Fails Closed When Mesh Carrier PreScale Changes");
-
 		std::string badOrder = serialized;
 		const std::string sourceOrder =
 			"\"moduleReferenceOrder\": [{ \"order\": 0";
@@ -3895,6 +4088,215 @@ namespace
 		runner.Require(std::string::npos != orderOffset &&
 			!CEffectDocumentCodec::Parse(badOrder, rejected, status),
 			"Artist F Source Contract Fails Closed When Module Reference Order Changes");
+
+		std::string missingRandomLockAxes = serialized;
+		const std::string randomLockAxesField = ", \"randomLockAxes\": ";
+		const size_t randomLockAxesOffset =
+			missingRandomLockAxes.find(randomLockAxesField);
+		const size_t randomLockAxesEnd = std::string::npos == randomLockAxesOffset ?
+			std::string::npos : missingRandomLockAxes.find(
+				',', randomLockAxesOffset + randomLockAxesField.size());
+		if (std::string::npos != randomLockAxesOffset &&
+			std::string::npos != randomLockAxesEnd)
+		{
+			missingRandomLockAxes.erase(randomLockAxesOffset,
+				randomLockAxesEnd - randomLockAxesOffset);
+		}
+		runner.Require(std::string::npos != randomLockAxesOffset &&
+			std::string::npos != randomLockAxesEnd &&
+			!CEffectDocumentCodec::Parse(
+				missingRandomLockAxes, rejected, status),
+			"Source Contract Requires Explicit Distribution Random Lock Axes");
+
+		EFFECT_DOCUMENT_DESC badLocalReference = roundTrip;
+		EFFECT_DISTRIBUTION_DESC* pLinkedDistribution = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : badLocalReference.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_DESC& module :
+				element.SourceRecipe.Modules)
+			{
+				const auto linked = std::find_if(module.Distributions.begin(),
+					module.Distributions.end(),
+					[](const EFFECT_DISTRIBUTION_DESC& distribution)
+					{
+						return !distribution.strOccurrenceId.empty();
+					});
+				if (linked != module.Distributions.end())
+				{
+					pLinkedDistribution = &*linked;
+					break;
+				}
+			}
+			if (nullptr != pLinkedDistribution)
+				break;
+		}
+		if (nullptr != pLinkedDistribution)
+			pLinkedDistribution->strReferenceId += ".mismatch";
+		runner.Require(nullptr != pLinkedDistribution &&
+			!CEffectDocumentCodec::Validate_SourceContract(
+				badLocalReference, status),
+			"Source Distribution Rejects A Local Reference Identity Mismatch");
+
+		const auto FindFirstDistributionCoverage = [](
+			EFFECT_DOCUMENT_DESC& candidate)
+		{
+			using Result = std::pair<EFFECT_DISTRIBUTION_DESC*,
+				EFFECT_SOURCE_PROPERTY_COVERAGE_DESC*>;
+			for (EFFECT_ELEMENT_DESC& element : candidate.Elements)
+			{
+				for (EFFECT_SOURCE_MODULE_DESC& module :
+					element.SourceRecipe.Modules)
+				{
+					if (module.Distributions.empty())
+						continue;
+					EFFECT_DISTRIBUTION_DESC* pDistribution =
+						&module.Distributions.front();
+					const auto moduleCoverage = std::find_if(
+						element.SourceRecipe.ModuleCoverage.begin(),
+						element.SourceRecipe.ModuleCoverage.end(),
+						[&module](
+							const EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage)
+						{
+							return coverage.strModuleStableId == module.strStableId;
+						});
+					if (moduleCoverage ==
+						element.SourceRecipe.ModuleCoverage.end())
+					{
+						return Result{ pDistribution, nullptr };
+					}
+					const auto propertyCoverage = std::find_if(
+						moduleCoverage->Properties.begin(),
+						moduleCoverage->Properties.end(),
+						[pDistribution](
+							const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& property)
+						{
+							return property.strStorage == "distribution" &&
+								property.strPropertyPath ==
+									pDistribution->strPropertyPath;
+						});
+					return Result{ pDistribution,
+						propertyCoverage == moduleCoverage->Properties.end() ?
+							nullptr : &*propertyCoverage };
+				}
+			}
+			return Result{ nullptr, nullptr };
+		};
+		const auto ScrubAsUnresolved = [](
+			EFFECT_DISTRIBUTION_DESC& distribution,
+			EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& coverage)
+		{
+			distribution.strPayloadStatus =
+				"UNRESOLVED_SYNTHETIC_ADMISSION_ORACLE";
+			distribution.strFidelity =
+				"UNRESOLVED_SYNTHETIC_ADMISSION_ORACLE";
+			coverage.eStatus = EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED;
+			distribution.eParameterBinding =
+				EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
+			distribution.strParameterName.clear();
+			distribution.iOperation = 0u;
+			distribution.iRandomLockAxes = 0u;
+			distribution.iLookupTableChunkSize = 0u;
+			distribution.iLookupTableNumElements = 0u;
+			distribution.fLookupTableTimeScale = 0.f;
+			distribution.fLookupTableStartTime = 0.f;
+			distribution.vDefaultMinimum = { 0.f, 0.f, 0.f, 0.f };
+			distribution.vDefaultMaximum = { 0.f, 0.f, 0.f, 0.f };
+			distribution.LookupTable.clear();
+			distribution.Keys.clear();
+		};
+
+		EFFECT_DOCUMENT_DESC badUnresolvedAdmission = roundTrip;
+		auto [pUnresolvedDistribution, pUnresolvedCoverage] =
+			FindFirstDistributionCoverage(badUnresolvedAdmission);
+		if (nullptr != pUnresolvedDistribution && nullptr != pUnresolvedCoverage)
+		{
+			ScrubAsUnresolved(
+				*pUnresolvedDistribution, *pUnresolvedCoverage);
+			pUnresolvedDistribution->ExecutionAdmission.Blockers.clear();
+			pUnresolvedDistribution->vDefaultMinimum.x = 1.f;
+		}
+		status.clear();
+		runner.Require(nullptr != pUnresolvedDistribution &&
+			nullptr != pUnresolvedCoverage &&
+			!CEffectDocumentCodec::Validate_SourceContract(
+				badUnresolvedAdmission, status) &&
+			status == "Source-contract distribution admission is invalid.",
+			"Unresolved Distribution Admission Rejects Before Executable Payload Validation");
+
+		EFFECT_DOCUMENT_DESC badUnresolvedPayload = roundTrip;
+		auto [pPayloadDistribution, pPayloadCoverage] =
+			FindFirstDistributionCoverage(badUnresolvedPayload);
+		if (nullptr != pPayloadDistribution && nullptr != pPayloadCoverage)
+		{
+			ScrubAsUnresolved(*pPayloadDistribution, *pPayloadCoverage);
+			pPayloadDistribution->iOperation = 1u;
+		}
+		status.clear();
+		runner.Require(nullptr != pPayloadDistribution &&
+			nullptr != pPayloadCoverage &&
+			!CEffectDocumentCodec::Validate_SourceContract(
+				badUnresolvedPayload, status) &&
+			status ==
+				"Unresolved source distribution carries executable payload.",
+			"Unresolved Distribution Scrubs Every Evaluator Input");
+
+		EFFECT_DOCUMENT_DESC badBlockerPropagation = roundTrip;
+		bool_t removedRequiredBlocker = false;
+		for (EFFECT_ELEMENT_DESC& element : badBlockerPropagation.Elements)
+		{
+			for (const EFFECT_SOURCE_MODULE_DESC& module :
+				element.SourceRecipe.Modules)
+			{
+				const auto blocked = std::find_if(module.Distributions.begin(),
+					module.Distributions.end(),
+					[](const EFFECT_DISTRIBUTION_DESC& distribution)
+					{
+						return !distribution.ExecutionAdmission.Blockers.empty();
+					});
+				if (blocked == module.Distributions.end())
+					continue;
+				const std::string blocker =
+					blocked->ExecutionAdmission.Blockers.front();
+				auto& productBlockers =
+					element.SourceRecipe.CompiledExecutionAdmission.Blockers;
+				const size_t priorSize = productBlockers.size();
+				productBlockers.erase(std::remove(productBlockers.begin(),
+					productBlockers.end(), blocker), productBlockers.end());
+				removedRequiredBlocker = priorSize != productBlockers.size();
+				break;
+			}
+			if (removedRequiredBlocker)
+				break;
+		}
+		runner.Require(removedRequiredBlocker &&
+			!CEffectDocumentCodec::Validate_SourceContract(
+				badBlockerPropagation, status),
+			"Source Distribution Blockers Cannot Be Laundered At Product Admission");
+
+		EFFECT_DOCUMENT_DESC badBindingBlockerPropagation = roundTrip;
+		bool_t removedBindingOnlyBlocker = false;
+		for (EFFECT_ELEMENT_DESC& element :
+			badBindingBlockerPropagation.Elements)
+		{
+			const auto binding = std::find_if(
+				element.SourceRecipe.LocalReferenceBindings.begin(),
+				element.SourceRecipe.LocalReferenceBindings.end(),
+				[](const EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC& value)
+				{
+					return value.strReferenceKind == "DISTRIBUTION_TARGET" &&
+						value.ExecutionAdmission.Blockers.size() > 1u;
+				});
+			if (binding == element.SourceRecipe.LocalReferenceBindings.end())
+				continue;
+			binding->ExecutionAdmission.Blockers.erase(
+				binding->ExecutionAdmission.Blockers.begin());
+			removedBindingOnlyBlocker = true;
+			break;
+		}
+		runner.Require(removedBindingOnlyBlocker &&
+			!CEffectDocumentCodec::Validate_SourceContract(
+				badBindingBlockerPropagation, status),
+			"Source Distribution And Local Binding Blockers Cannot Diverge");
 
 		EFFECT_DOCUMENT_DESC legacyInMemory;
 		legacyInMemory.strEffectAssetId = "effect.legacy.native.field.guard";
@@ -3911,6 +4313,97 @@ namespace
 		{
 			return !CEffectDocumentCodec::Validate(candidate, status);
 		};
+
+		const std::string legacyJson =
+			CEffectDocumentCodec::Serialize(legacyInMemory);
+		EFFECT_DOCUMENT_DESC legacyJsonBaseline;
+		const bool_t legacyJsonBaselineValid =
+			CEffectDocumentCodec::Parse(legacyJson, legacyJsonBaseline, status);
+		std::string legacyRendererJson = legacyJson;
+		const std::string resourcesField = "      \"resources\": [";
+		const size_t resourcesOffset = legacyRendererJson.find(resourcesField);
+		if (std::string::npos != resourcesOffset)
+		{
+			legacyRendererJson.insert(resourcesOffset,
+				"      \"renderer\": { \"type\": \"spriteParticle\", "
+				"\"sourceSpace\": \"ue3CascadeV1\" },\n");
+		}
+		runner.Require(legacyBaselineValid && legacyJsonBaselineValid &&
+			std::string::npos != resourcesOffset &&
+			!CEffectDocumentCodec::Parse(
+				legacyRendererJson, rejected, status),
+			"Legacy JSON Rejects Isolated Native V14 Renderer Evidence");
+
+		EFFECT_DOCUMENT_DESC legacyRendererEvidence = legacyInMemory;
+		legacyRendererEvidence.Elements.front().Renderer.eType =
+			EFFECT_RENDERER_TYPE::SPRITE_PARTICLE;
+		legacyRendererEvidence.Elements.front().Renderer.eSourceSpace =
+			EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		runner.Require(RejectsLegacyNativeFields(legacyRendererEvidence),
+			"Legacy In-Memory Document Rejects Native V14 Renderer Evidence");
+
+		EFFECT_DOCUMENT_DESC legacyDistributionBaseline = legacyInMemory;
+		auto& legacyRecipe =
+			legacyDistributionBaseline.Elements.front().SourceRecipe;
+		legacyRecipe.bEnabled = true;
+		legacyRecipe.strRendererShape = "sprite";
+		EFFECT_SOURCE_MODULE_DESC legacyDistributionModule;
+		legacyDistributionModule.strStableId = "legacy.module@ref:0";
+		legacyDistributionModule.strClassName = "ParticleModuleSize";
+		legacyDistributionModule.strObjectPath = "legacy.module.size";
+		EFFECT_DISTRIBUTION_DESC legacyDistribution;
+		legacyDistribution.strPropertyPath = "StartSize";
+		legacyDistribution.strSourceClass = "DistributionFloatConstant";
+		legacyDistribution.strSourceObjectPath = "legacy.distribution.constant";
+		legacyDistributionModule.Distributions.push_back(legacyDistribution);
+		legacyRecipe.Modules.push_back(legacyDistributionModule);
+		const bool_t legacyDistributionBaselineValid =
+			CEffectDocumentCodec::Validate(legacyDistributionBaseline, status);
+		const std::string legacyDistributionJson =
+			legacyDistributionBaselineValid ?
+			CEffectDocumentCodec::Serialize(legacyDistributionBaseline) :
+			std::string{};
+		EFFECT_DOCUMENT_DESC legacyDistributionJsonBaseline;
+		const bool_t legacyDistributionJsonBaselineValid =
+			legacyDistributionBaselineValid && CEffectDocumentCodec::Parse(
+				legacyDistributionJson, legacyDistributionJsonBaseline, status);
+		const std::string sourceObjectPathField =
+			"\"sourceObjectPath\": \"legacy.distribution.constant\"";
+		const size_t sourceObjectPathOffset =
+			legacyDistributionJson.find(sourceObjectPathField);
+		std::string legacyParameterBindingJson = legacyDistributionJson;
+		std::string legacyParameterNameJson = legacyDistributionJson;
+		if (std::string::npos != sourceObjectPathOffset)
+		{
+			const size_t insertionOffset =
+				sourceObjectPathOffset + sourceObjectPathField.size();
+			legacyParameterBindingJson.insert(insertionOffset,
+				", \"parameterBinding\": \"actionCue\"");
+			legacyParameterNameJson.insert(insertionOffset,
+				", \"parameterName\": \"Scale\"");
+		}
+		runner.Require(legacyDistributionJsonBaselineValid &&
+			std::string::npos != sourceObjectPathOffset &&
+			!CEffectDocumentCodec::Parse(
+				legacyParameterBindingJson, rejected, status) &&
+			!CEffectDocumentCodec::Parse(
+				legacyParameterNameJson, rejected, status),
+			"Legacy JSON Rejects Isolated Distribution Parameter Evidence");
+
+		EFFECT_DOCUMENT_DESC legacyParameterBindingEvidence =
+			legacyDistributionBaseline;
+		legacyParameterBindingEvidence.Elements.front().SourceRecipe.Modules.front().
+			Distributions.front().eParameterBinding =
+				EFFECT_DISTRIBUTION_PARAMETER_BINDING::ACTION_CUE;
+		EFFECT_DOCUMENT_DESC legacyParameterNameEvidence =
+			legacyDistributionBaseline;
+		legacyParameterNameEvidence.Elements.front().SourceRecipe.Modules.front().
+			Distributions.front().strParameterName = "Scale";
+		runner.Require(
+			RejectsLegacyNativeFields(legacyParameterBindingEvidence) &&
+			RejectsLegacyNativeFields(legacyParameterNameEvidence),
+			"Legacy In-Memory Document Rejects Distribution Parameter Evidence");
+
 		EFFECT_DOCUMENT_DESC legacyCompilerEvidence = legacyInMemory;
 		legacyCompilerEvidence.Elements.front().SourceRecipe.CompilerEvidence.
 			strEvidenceId = "forbidden.native.evidence";
@@ -3933,12 +4426,29 @@ namespace
 		legacyModuleCoverage.Properties.push_back(legacyPropertyCoverage);
 		legacyCoverage.Elements.front().SourceRecipe.ModuleCoverage.push_back(
 			legacyModuleCoverage);
+		EFFECT_DOCUMENT_DESC legacyLocalReference = legacyInMemory;
+		EFFECT_SOURCE_LOCAL_REFERENCE_BINDING_DESC legacyBinding;
+		legacyBinding.strReferenceId = "forbidden.native.local-reference";
+		legacyLocalReference.Elements.front().SourceRecipe.LocalReferenceBindings.
+			push_back(legacyBinding);
+		EFFECT_DOCUMENT_DESC legacyDistributionEvidence = legacyInMemory;
+		EFFECT_SOURCE_MODULE_DESC legacySourceModule;
+		EFFECT_DISTRIBUTION_DESC legacySourceDistribution;
+		legacySourceDistribution.strPayloadStatus = "FORBIDDEN_NATIVE_STATUS";
+		legacySourceModule.Distributions.push_back(legacySourceDistribution);
+		legacyDistributionEvidence.Elements.front().SourceRecipe.Modules.push_back(
+			legacySourceModule);
 		runner.Require(legacyBaselineValid &&
+			RejectsLegacyNativeFields(legacyRendererEvidence) &&
+			RejectsLegacyNativeFields(legacyParameterBindingEvidence) &&
+			RejectsLegacyNativeFields(legacyParameterNameEvidence) &&
 			RejectsLegacyNativeFields(legacyCompilerEvidence) &&
 			RejectsLegacyNativeFields(legacyCompiledAdmission) &&
 			RejectsLegacyNativeFields(legacyMaterialAdmission) &&
 			RejectsLegacyNativeFields(legacyGeometryBinding) &&
-			RejectsLegacyNativeFields(legacyCoverage),
+			RejectsLegacyNativeFields(legacyCoverage) &&
+			RejectsLegacyNativeFields(legacyLocalReference) &&
+			RejectsLegacyNativeFields(legacyDistributionEvidence),
 			"Legacy In-Memory Document Rejects Every Native V14 Evidence Family Before Serialization");
 	}
 }
