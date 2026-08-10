@@ -22,8 +22,13 @@ namespace Engine
 		XMFLOAT4	vDirection;
 		XMFLOAT4	vPosition;
 		float		fRange;
+		float		fFalloffExponent = 1.f;
 		XMFLOAT4	vDiffuse, vAmbient, vSpecular;
 	}LIGHT_DESC;
+	static_assert(sizeof(LIGHT_DESC) == 92u);
+	static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
+	static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
+	static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
 
 	typedef struct tagShadowSettings
 	{

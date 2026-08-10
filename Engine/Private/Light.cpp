@@ -2,6 +2,22 @@
 
 #include "GameInstance.h"
 
+#include <cmath>
+
+namespace
+{
+	bool_t IsValidLightAttenuation(const LIGHT_DESC& LightDesc)
+	{
+		if (!std::isfinite(LightDesc.fFalloffExponent) ||
+			LightDesc.fFalloffExponent <= 0.f)
+		{
+			return false;
+		}
+		return LIGHT::POINT != LightDesc.eType ||
+			(std::isfinite(LightDesc.fRange) && LightDesc.fRange > 0.f);
+	}
+}
+
 CLight::CLight()
 {
 }
@@ -12,6 +28,9 @@ CLight::~CLight()
 
 HRESULT CLight::Initialize(const LIGHT_DESC& LightDesc)
 {
+	if (!IsValidLightAttenuation(LightDesc))
+		return E_INVALIDARG;
+
 	m_LightDesc = LightDesc;
 
 	return S_OK;
@@ -29,6 +48,9 @@ HRESULT CLight::Render_Desc(
 	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
 	bool_t bApplyDirectionalShadow)
 {
+	if (!IsValidLightAttenuation(LightDesc))
+		return E_INVALIDARG;
+
     uint32_t            iPassIndex = {};
 
     if (LIGHT::DIRECTIONAL == LightDesc.eType)
@@ -56,6 +78,10 @@ HRESULT CLight::Render_Desc(
             return E_FAIL;
         if (FAILED(pShader->Bind_RawValue("g_fLightRange", &LightDesc.fRange, sizeof LightDesc.fRange)))
             return E_FAIL;
+		if (FAILED(pShader->Bind_RawValue(
+			"g_fLightFalloffExponent", &LightDesc.fFalloffExponent,
+			sizeof LightDesc.fFalloffExponent)))
+			return E_FAIL;
 
         iPassIndex = ETOUI(DEFERRED::POINT);
     }
@@ -80,6 +106,9 @@ HRESULT CLight::Render_Desc(
 
 unique_ptr<CLight> CLight::Create(const LIGHT_DESC& LightDesc)
 {
+	if (!IsValidLightAttenuation(LightDesc))
+		return nullptr;
+
     auto pInstance = unique_ptr<CLight>(new CLight());
 
     if (FAILED(pInstance->Initialize(LightDesc)))
