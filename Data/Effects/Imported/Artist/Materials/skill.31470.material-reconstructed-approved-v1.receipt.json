@@ -28,51 +28,65 @@
       "contractSha256": "638fae77c5805a8d33cacb69b5cdd810d40d2f304606dd56f970dd2504c1cfcb",
       "trackedTextSha256": "a8728231ae0df26c8e203064712154989f3d42fbe5e7eaafff3db81aecda97a5"
     },
-    "generatorTrackedTextSha256": "95a8a003c774e8b4aad48f7dbcc405fd49c6f266f40788001a69ac269ee31714",
+    "generatorTrackedTextSha256": "f1c42f550dfef0f1782773dc04852867413d6652873acf067f5d296c20fc1d93",
     "hlslTrackedTextSha256": "2901471f07495ff079c64ea8234ca30cd26300819d56760dbdeabae353c0b718",
-    "verifierTrackedTextSha256": "44abc9a480e7d2023b989d63c7fdfa3e46875f0862b0c8e6049d3a770d132e3f",
-    "approvalTrackedTextSha256": "efff9d25b519c437efb725349feb349d6da619a6cc2f6a7c2ad62d6364cd8681",
+    "verifierTrackedTextSha256": "b264930b85d2f9274255f220745021c99882b334e96f3aa917e31e62ef2289b9",
+    "approvalTrackedTextSha256": "c3e35ff3f2b8675c14811f422a0435291a9c539d28b87cdc0fa548d710033669",
     "directImportClosure": {
       "hashRole": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
       "dependencyCount": 7,
       "dependencies": [
         {
           "dependencyId": "MATERIAL_EVIDENCE_VALIDATOR",
+          "moduleName": "build_artist_31470_material_evidence_contract",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py",
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py",
           "canonicalTextSha256": "d7882d9cc7af8d80183e96fdebffc7b1a633a1824e5dfe19cf9ab739acc13b8d"
         },
         {
           "dependencyId": "MATERIAL_RUNTIME_ORACLE_VALIDATOR",
+          "moduleName": "build_artist_31470_material_runtime_oracle",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
           "canonicalTextSha256": "82fc449f17568d7e7c217bb48da05f14574ef9efbe16e1293f866a409464c0d2"
         },
         {
           "dependencyId": "MATERIAL_SOURCE_VALUE_ACQUISITION_VALIDATOR",
+          "moduleName": "build_artist_31470_material_source_value_acquisition",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
           "canonicalTextSha256": "a70cd68a0efa7c9d1b2a8b35f7233f961d9702afbc0a5523cbb5d70c9f470c7b"
         },
         {
           "dependencyId": "RECONSTRUCTED_POLICY_APPROVAL",
+          "moduleName": "artist_31470_material_reconstructed_policy_approval",
           "relativePath": "Tools/LevelPlacementExtractor/artist_31470_material_reconstructed_policy_approval.py",
-          "canonicalTextSha256": "efff9d25b519c437efb725349feb349d6da619a6cc2f6a7c2ad62d6364cd8681"
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/artist_31470_material_reconstructed_policy_approval.py",
+          "canonicalTextSha256": "c3e35ff3f2b8675c14811f422a0435291a9c539d28b87cdc0fa548d710033669"
         },
         {
           "dependencyId": "RECONSTRUCTED_POLICY_WARP_VERIFIER",
+          "moduleName": "verify_artist_31470_material_reconstructed_policy_hlsl",
           "relativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py",
-          "canonicalTextSha256": "44abc9a480e7d2023b989d63c7fdfa3e46875f0862b0c8e6049d3a770d132e3f"
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py",
+          "canonicalTextSha256": "b264930b85d2f9274255f220745021c99882b334e96f3aa917e31e62ef2289b9"
         },
         {
           "dependencyId": "RUNTIME_WARP_SUPPORT",
+          "moduleName": "verify_artist_31470_material_runtime_oracle_hlsl",
           "relativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py",
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py",
           "canonicalTextSha256": "02562e758cb8e003136cfd0458804348eacd61f4ab632fbbaed17561203f0704"
         },
         {
           "dependencyId": "STRICT_JSON_OBJECT_LOADER",
+          "moduleName": "effect_source_contract_io",
           "relativePath": "Tools/LevelPlacementExtractor/effect_source_contract_io.py",
+          "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/effect_source_contract_io.py",
           "canonicalTextSha256": "98305194c7d68121417e9b1b09ceda66d0105acc567d3e9975d728fd802bbdfb"
         }
       ],
-      "projectionSha256": "e8e09d0cfe35b8e96014ec1de27501820a6ae5fadb9fb4f6710bfe0b2608bc32"
+      "projectionSha256": "3622e631e6a06e4b4d0e5cae6a23dfc6da27326f372a41536ec50c2eba28d642"
     }
   },
   "renderStatePolicies": [
@@ -34371,5 +34385,5 @@
     "rendererConsumerReadyRowCount": 0,
     "productReadyRowCount": 0
   },
-  "receiptSha256": "fb03b5cb2d6bf5cd17e1b5e7af3addf674c45e512c2dbd38d84a62255e6131b8"
+  "receiptSha256": "10c7cacac0c54bf22060ab54a5596d48785631dd65b12c1c2810a87eb013d1c7"
 }

@@ -8,6 +8,7 @@
 - A separate approval module pins the ordered 255-row policy projection, HLSL source/DXBC/input/output, and 107-row WARP descriptor projection. The generator-derived receipt alone is not the approval authority.
 - Builder and WARP replay use the shared no-BOM, duplicate-key-rejecting strict JSON object loader. Root, policy row, nested descriptor, and oracle duplicates are rejected before semantic validation.
 - `sourceEvidence.directImportClosure` pins canonical-EOL text hashes for the strict loader, three upstream Material validators, approval module, reconstructed verifier, and reused runtime WARP support. Shallow/deep validation recomputes this closure from the actual files.
+- The builder discovers the canonical repository from the invocation working directory and binds every direct import's actual resolved `module.__file__` to that repository path before hashing it. Shadow `PYTHONPATH` modules and relocated execution are rejected instead of being covered by hashes from a different fixed path.
 
 ## 목표
 
