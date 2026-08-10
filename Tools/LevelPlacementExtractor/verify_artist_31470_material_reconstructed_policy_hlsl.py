@@ -13,6 +13,8 @@ import struct
 from pathlib import Path
 from typing import Any, Iterable
 
+from effect_source_contract_io import load_strict_json_object
+
 from verify_artist_31470_material_runtime_oracle_hlsl import (
     D3D11_COMPARISON_LESS,
     D3D11_COMPARISON_NEVER,
@@ -84,12 +86,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def read_json(path: Path) -> dict[str, Any]:
-    def reject_constant(token: str) -> None:
-        raise RuntimeError(f"non-finite JSON constant is forbidden: {token}")
-
-    value = json.loads(path.read_text(encoding="utf-8-sig"), parse_constant=reject_constant)
-    require(isinstance(value, dict), f"JSON root is not an object: {path}")
-    return value
+    return load_strict_json_object(path)
 
 
 def policy_rows(receipt: dict[str, Any]) -> list[dict[str, Any]]:

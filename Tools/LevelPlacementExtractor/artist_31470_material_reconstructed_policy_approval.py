@@ -7,13 +7,14 @@ receipt reseal cannot silently select a different policy.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from typing import Any
 
 
 POLICY_PROJECTION_SHA256 = "1f9383fe927fb0ca3d93c56c9621807d9f48a0d8eb18793519dd91fe01e6c20d"
-APPROVED_RECEIPT_PROJECTION_SHA256 = "218a6690a39853f6ced984b377992165c6b6c6f74c4f61a668907d0f34586922"
+APPROVED_RECEIPT_PROJECTION_SHA256 = "5b5497020522345363b4cfa220054c87bb1aaf0feaf4993583e048225d35fb4f"
 HLSL_TRACKED_TEXT_SHA256 = "2901471f07495ff079c64ea8234ca30cd26300819d56760dbdeabae353c0b718"
 HLSL_DXBC_SHA256 = "a7a4192b0d1fa70e19be8a14c8b7001d4e4020b95459bf6f88da9d3b09922bd9"
 HLSL_INPUT_BYTES_SHA256 = "751c1969342ccf23e608c403e7d3c126b6bc07febd2d978d767347ecb3aaffd1"
@@ -37,7 +38,7 @@ def _canonical_sha256(value: Any) -> str:
 def policy_projection(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # The entire row is approval-relevant: owner/evidence/fidelity/admission
     # fields must not disappear behind a narrower selected-value projection.
-    return json.loads(json.dumps(rows, ensure_ascii=False, allow_nan=False))
+    return copy.deepcopy(rows)
 
 
 def approved_receipt_projection(receipt: dict[str, Any]) -> dict[str, Any]:
@@ -46,6 +47,15 @@ def approved_receipt_projection(receipt: dict[str, Any]) -> dict[str, Any]:
     # the generated candidate, while every other source/evidence identity is
     # independently pinned here.
     source_evidence.pop("approvalTrackedTextSha256", None)
+    closure = copy.deepcopy(source_evidence["directImportClosure"])
+    closure["dependencies"] = [
+        row
+        for row in closure["dependencies"]
+        if row["dependencyId"] != "RECONSTRUCTED_POLICY_APPROVAL"
+    ]
+    closure["dependencyCount"] = len(closure["dependencies"])
+    closure["projectionSha256"] = _canonical_sha256(closure["dependencies"])
+    source_evidence["directImportClosure"] = closure
     return {
         "schema": receipt["schema"],
         "formatVersion": receipt["formatVersion"],
