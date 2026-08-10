@@ -242,6 +242,72 @@ Geometry, Material contract hash와 compiler revision을 함께 결합해 불필
 
 아래 순서는 기존 G 전체를 다시 시작하는 계획이 아니라 `4ffe1102` 이후 남은 critical path다.
 
+### R0. 35/35 feasibility와 blocker owner 동결
+
+Playback과 renderer 구현 전에 Source 29개 blocked module과 Material 89개 unresolved render-state field가
+실제로 닫힐 수 있는지 행 단위로 증명한다. 이 gate는 문서상 owner 이름만 채우는 작업이 아니라,
+각 행에 실행 가능한 acquisition/oracle 경로와 실패 판정을 고정한다.
+
+Source feasibility matrix의 각 행은 다음을 가진다.
+
+```text
+moduleOccurrenceId
+exactSourceClass
+family
+requiredRuntimeOutputs
+sourceEraPackageOrBinaryIdentity
+currentRevisionEvidenceIdentity
+nativeEntryOrDispatchIdentity
+numericOracleInputDomain
+numericOracleExpectedOutput
+independentOracleImplementation
+fidelityDecision
+executionDecision
+owner
+remainingBlockers
+```
+
+Source safe denominator는 29 blocked module이다. standard seeded 11, EF custom 15, EF multiply
+distribution owner 3을 임의로 합치거나 denominator에서 제거하지 않는다. input digest parity는 output
+oracle가 아니다. source-era identity 또는 실제 native particle output 비교가 없으면 READY로 승격하지
+않고 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`와 blocker를 유지한다.
+
+Material feasibility matrix의 각 행은 다음을 가진다.
+
+```text
+materialRecipeId
+materialOccurrenceIds
+fieldId
+fieldKind
+bindingOriginAndOwner
+instanceRecordIdentity
+parentOrCdoIdentity
+staticOrShaderMapIdentity
+rendererConsumption
+acquisitionPath
+numericOracleInputDomain
+numericOracleExpectedOutput
+fidelityDecision
+executionDecision
+owner
+remainingBlockers
+```
+
+Material safe denominator는 27 recipe/34 occurrence, 162 render-state field 중 explicit 73/unresolved 89,
+static input 94, direct texture 71과 exact sampler 3 instance+1 parent다. unresolved 89를 validator correction과
+혼동하지 않는다. omitted field는 instance -> Parent Material -> nested default -> class CDO 순서로만
+해석하고, source-revision ShaderCache 또는 controlled runtime capture가 필요한 행은 그 acquisition이
+실제로 가능하기 전까지 BLOCK으로 유지한다.
+
+R0 합격 조건:
+
+- Source blocked 29/29와 Material unresolved 89/89가 matrix에 존재한다.
+- owner 없는 행 0, silent fallback 0, denominator shrink 0이다.
+- 각 READY 후보는 source-era evidence 또는 독립 actual-output numeric oracle을 가진다.
+- current-only/cross-revision 행을 `SOURCE_EXACT`로 승격한 행 0이다.
+- acquisition이 불가능한 행은 즉시 명시되어 Artist F 35/35의 hard blocker로 보고된다.
+- R0 matrix와 resolver/validator mutation test가 frozen review PASS하기 전 R2 이후 shared runtime 구현을 시작하지 않는다.
+
 ### R1. Frozen checkpoint 세 건 닫기
 
 1. 세션 1은 `9b046d6`을 corrective한다.
