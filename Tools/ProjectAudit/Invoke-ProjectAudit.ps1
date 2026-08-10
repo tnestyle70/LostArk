@@ -755,6 +755,22 @@ try {
 	Add-Check 'effect.artist-31470-source-contract' `
 		$artistSourceContractPassed `
 		$artistSourceContractDetail
+	$artistSourceExecutionPassed = $false
+	$artistSourceExecutionDetail = ''
+	try {
+		$artistSourceExecutionDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistSourceExecutionPassed =
+			$artistSourceExecutionDetail -match
+			'PASS: Artist F 31470 Source execution mode=shallow modules=399 ready=370 blocked=29'
+	}
+	catch {
+		$artistSourceExecutionDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-execution-semantics' `
+		$artistSourceExecutionPassed `
+		$artistSourceExecutionDetail
 	$artistMaterialContractPassed = $false
 	$artistMaterialContractDetail = ''
 	try {
