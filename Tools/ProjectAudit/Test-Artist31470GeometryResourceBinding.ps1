@@ -36,6 +36,26 @@ Push-Location $RepositoryRoot
 try {
     Push-Location 'Tools\ModelAssetConverter'
     try {
+        $deepEvidenceEnvironment = @{
+            ARTIST_GEOMETRY_SOURCE_ROOT = $SourceMeshRoot
+            ARTIST_GEOMETRY_LEGACY_ROOT = $LegacyMeshRoot
+            ARTIST_GEOMETRY_SOURCE_EXPORT_RECEIPT = $SourceExportReceipt
+            ARTIST_GEOMETRY_LEGACY_COOK_RECEIPT = $LegacyCookReceipt
+            ARTIST_GEOMETRY_SOURCE_PACKAGE_ROOT = $SourcePackageRoot
+            ARTIST_GEOMETRY_LEGACY_CONVERTER = $LegacyConverter
+        }
+        $previousDeepEvidenceEnvironment = @{}
+        foreach ($entry in $deepEvidenceEnvironment.GetEnumerator()) {
+            $previousDeepEvidenceEnvironment[$entry.Key] =
+                [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+            if ($DeepResourceAudit) {
+                [Environment]::SetEnvironmentVariable(
+                    $entry.Key, $entry.Value, 'Process')
+            }
+            else {
+                [Environment]::SetEnvironmentVariable($entry.Key, $null, 'Process')
+            }
+        }
         $previousErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
@@ -45,6 +65,10 @@ try {
         }
         finally {
             $ErrorActionPreference = $previousErrorActionPreference
+            foreach ($entry in $previousDeepEvidenceEnvironment.GetEnumerator()) {
+                [Environment]::SetEnvironmentVariable(
+                    $entry.Key, $entry.Value, 'Process')
+            }
         }
         if ($unitExitCode -ne 0) {
             $unitOutput | ForEach-Object { Write-Output $_.ToString() }
@@ -124,6 +148,13 @@ try {
             & python -B $builder verify-deployed `
                 --binding $binding `
                 --receipt $receipt `
+                --source-root $SourceMeshRoot `
+                --legacy-mesh-root $LegacyMeshRoot `
+                --source-manifest $sourceManifest `
+                --source-export-receipt $SourceExportReceipt `
+                --legacy-cook-receipt $LegacyCookReceipt `
+                --source-package-root $SourcePackageRoot `
+                --legacy-converter $LegacyConverter `
                 --expected-semantics $expectedSemantics `
                 --physical-mesh-root $PhysicalMeshRoot `
                 --decoder-harness $decoderHarness
@@ -155,6 +186,13 @@ try {
                 $corruptOutput = (& python -B $builder verify-deployed `
                     --binding $binding `
                     --receipt $receipt `
+                    --source-root $SourceMeshRoot `
+                    --legacy-mesh-root $LegacyMeshRoot `
+                    --source-manifest $sourceManifest `
+                    --source-export-receipt $SourceExportReceipt `
+                    --legacy-cook-receipt $LegacyCookReceipt `
+                    --source-package-root $SourcePackageRoot `
+                    --legacy-converter $LegacyConverter `
                     --expected-semantics $expectedSemantics `
                     --physical-mesh-root $negativePhysical `
                     --decoder-harness $decoderHarness 2>&1 | Out-String)
@@ -175,6 +213,13 @@ try {
                 $missingOutput = (& python -B $builder verify-deployed `
                     --binding $binding `
                     --receipt $receipt `
+                    --source-root $SourceMeshRoot `
+                    --legacy-mesh-root $LegacyMeshRoot `
+                    --source-manifest $sourceManifest `
+                    --source-export-receipt $SourceExportReceipt `
+                    --legacy-cook-receipt $LegacyCookReceipt `
+                    --source-package-root $SourcePackageRoot `
+                    --legacy-converter $LegacyConverter `
                     --expected-semantics $expectedSemantics `
                     --physical-mesh-root $negativePhysical `
                     --decoder-harness $decoderHarness 2>&1 | Out-String)

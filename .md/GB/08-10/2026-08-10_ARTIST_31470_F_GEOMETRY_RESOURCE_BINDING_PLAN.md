@@ -25,6 +25,10 @@ Source/Material 계약과 Effect runtime C++은 수정하지 않는다. 이미�
 ## 입력과 승인 경계
 
 - 승인된 G02 commit: `2b3d7a6c410f963b2e47aa7999504c422fff7c32`
+- 승인된 full tree SHA: `1b217af4a159e69c95daa4b71f4de86b2b8ded18`
+- 이 branch의 G02 base `513a2dde5ae317cab8fee18777397d887075e5c5`는 승인 commit의
+  graph descendant가 아니라 full tree가 같은 별도 commit이다. 따라서 receipt는 ancestry를
+  주장하지 않고 approved tree와 필수 4개 blob의 byte equivalence를 검증한다.
 - immutable semantic golden:
   `Tools/WModelGeometryContractHarness/Fixtures/artist_31470_v11_expected.json`
 - legacy runtime WModel, source glTF/bin, export/cook receipt, installed source package,
@@ -33,7 +37,9 @@ Source/Material 계약과 Effect runtime C++은 수정하지 않는다. 이미�
   `C:/Users/user/Desktop/LostArk/Client/Bin/Resources/Effect/Artist/Meshes`
 
 G02 golden과 candidate 전체 SHA, metadata payload/provenance SHA, decoded channels와 bounds가
-하나라도 다르면 binding을 만들지 않는다.
+하나라도 다르면 binding을 만들지 않는다. 외부 export/cook receipt, 기존 converter, 설치
+source package는 승인 tree 밖 관찰값이므로 `OBSERVED_UNVERIFIED`로만 보존한다. source glTF와
+legacy WModel bytes는 G02 golden의 행별 SHA와 다시 결합한다.
 
 ## 출력 계약
 
@@ -42,20 +48,26 @@ stable binding ID, Resources-relative carrier asset ID, payload/provenance SHA, 
 channel/evidence mask, submesh별 channel digest와 bounds, 모든 필드를 포함한 cache identity를
 소유한다.
 
+`geometryPreScale`은 JSON float만 허용한다. `channelMask`와 `evidenceFlags`는 bool이나
+정수값 float를 허용하지 않는 JSON integer다. cache identity는 이 타입 검증을 통과한 실제 typed
+row에서 다시 계산한다.
+
 Artist 전용 evidence receipt는 source/legacy/candidate identity, G02/tool/receipt identity,
 typed binding hash와 denominator를 소유한다. tracked JSON은 물리 Resources의 현재 상태를
 Product 근거로 과장하지 않는다.
 
 ## 배포 transaction
 
-1. 물리 7개가 receipt-pinned legacy SHA인지 모두 preflight한다.
-2. 외부의 비어 있는 backup root에 7개 원본과 manifest를 먼저 기록하고 다시 hash한다.
-3. 같은 directory의 임시 파일을 flush/hash한 뒤 `os.replace`로 정확한 7개만 교체한다.
-4. 7개 모두 Python parser와 C++ decoder로 expected tuple을 재검증한다.
-5. write 또는 post-validation 실패 시 7개 전체를 원본 bytes로 복원하고 residue 0을 확인한다.
+1. `os.scandir`의 실제 basename 중 target case-fold 집합을 구하고 정확한 ordinal basename 7개만
+   허용한다. case-only rename과 case-fold alias collision은 write 전에 거부한다.
+2. 물리 7개가 receipt-pinned legacy SHA인지 모두 preflight한다.
+3. 외부의 비어 있는 backup root에 7개 원본과 manifest를 먼저 기록하고 다시 hash한다.
+4. 같은 directory의 임시 파일을 flush/hash한 뒤 `os.replace`로 정확한 7개만 교체한다.
+5. postflight에서 actual basename set과 7개 모두를 Python parser/C++ decoder로 재검증한다.
+6. write 또는 post-validation 실패 시 7개 전체를 원본 bytes로 복원하고 residue 0을 확인한다.
 
-missing target, changed legacy hash, duplicate target/cache identity, 중간 교체 실패,
-post-validation 실패를 자동 test한다.
+missing target, changed legacy hash, case-only rename/case-fold alias, duplicate target/cache identity,
+coordinated raw receipt reseal, 중간 교체 실패, post-validation 실패를 자동 test한다.
 
 ## 완료 조건
 

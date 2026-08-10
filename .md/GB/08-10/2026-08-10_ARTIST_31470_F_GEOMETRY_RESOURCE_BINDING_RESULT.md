@@ -21,15 +21,26 @@
 - `Data/Effects/Imported/Artist/Geometry/skill.31470.geometry-binding.json`
   - schema `lostark.effect-geometry-binding`, format 1
   - binding SHA-256
-    `fdb52a200e8e5ee810195b98113d5d44eea866756b45a41cb2bc4743163b3daf`
+    `1dff0059706bdff9ed1433654035220da8cc8916fe94c0d4bc24b5330f57a004`
 - `Data/Effects/Imported/Artist/Geometry/skill.31470.geometry-resource-binding.receipt.json`
   - schema `lostark.artist-31470-geometry-resource-binding-receipt`, format 1
   - receipt SHA-256
-    `01f537423a98838cc4adbe6e804394bf7494ec849cd2222a6e75fa3a264f0329`
+    `5b4331c33dd2ead13f69c9e3c58a392665c5ce71ce96835ac568d841a09e9156`
 
-각 typed row의 cache identity는 asset ID, payload/provenance SHA, float32 preScale,
-channel/evidence mask, submesh channel digest와 bounds 전체에서 재도출한다. caller가 hash만
-다시 봉인해도 G02 immutable golden과 다르면 validator가 거부한다.
+각 typed row의 cache identity는 타입 검증을 통과한 실제 asset ID, payload/provenance SHA,
+JSON float preScale, exact integer channel/evidence mask, submesh channel digest와 bounds 전체에서
+재도출한다. caller가 hash만 다시 봉인해도 G02 immutable golden과 다르면 validator가 거부한다.
+
+G02 승인 commit은 이 branch의 graph ancestor가 아니다. 승인 commit
+`2b3d7a6c410f963b2e47aa7999504c422fff7c32`과 tree-equivalent base
+`513a2dde5ae317cab8fee18777397d887075e5c5`의 full tree SHA가 모두
+`1b217af4a159e69c95daa4b71f4de86b2b8ded18`인지 확인하고, source manifest, cooker,
+verifier, semantic golden 4개 blob도 현재 tree와 canonical byte equivalence를 확인한다.
+
+외부 authoritative pin이 없는 export receipt, cook receipt, legacy converter 3개와 설치 source
+package 7개는 총 10개의 `OBSERVED_UNVERIFIED` evidence로 남겼다. 이 값은 source-exact로
+승격하지 않는다. 다만 receipt의 manifest/export/cook 행과 실제 glTF/buffer/legacy bytes를
+row별로 다시 join하며 source glTF와 legacy WModel SHA는 G02 golden이 별도로 고정한다.
 
 ## 물리 배포와 backup
 
@@ -58,11 +69,15 @@ legacy v1.0 backup은 다음 외부 root에 보존했다.
 
 ## 자동 검증
 
-- Python GeometryBinding/transaction unit: 10/10 PASS
+- Python GeometryBinding/transaction unit: shallow 17 PASS + external-root 3 skip,
+  deep 20/20 PASS
   - exact JSON integer와 duplicate/BOM 거부
-  - payload/provenance/preScale coordinated re-seal 거부
+  - preScale JSON float-only, mask exact integer와 payload/provenance coordinated re-seal 거부
   - cache identity collision 거부
-  - missing/changed/duplicate physical target preflight 거부
+  - missing/changed/duplicate physical target와 case-only/case-fold alias preflight 거부
+  - 실제 glTF+export/cook receipt coordinated reseal, legacy bytes+cook row reseal 거부
+  - changed legacy physical revision과 checked receipt 동시 reseal dry-run 거부
+  - `OBSERVED_UNVERIFIED` external identity의 `SOURCE_EXACT` laundering 거부
   - replace 3번째 fault와 post-validation fault에서 7/7 rollback, residue 0
 - Engine + WModelGeometryContractHarness x64 Debug/Release build: PASS
 - GeometryBinding deep audit Debug/Release: PASS
