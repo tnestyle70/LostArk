@@ -27,6 +27,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <set>
 #include <sstream>
 #include <string>
@@ -5717,6 +5718,137 @@ namespace
 			RejectsLegacyNativeFields(legacyDistributionEvidence),
 			"Legacy In-Memory Document Rejects Every Native V14 Evidence Family Before Serialization");
 	}
+
+	void Test_Artist31470SourceRuntimeProgram(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& ProgramPath)
+	{
+		using namespace Client;
+		const std::string ProgramText = Read_Text(ProgramPath);
+		DATA_JSON_VALUE Root;
+		std::string Status;
+		std::shared_ptr<const EFFECT_SOURCE_RUNTIME_PROGRAM> Program;
+		const bool_t Parsed = !ProgramText.empty() &&
+			CDataJson::Parse(ProgramText, Root, Status) &&
+			CEffectRuntimeAuthorityCodec::Parse_SourceRuntimeProgram(
+				Root, Program, Status);
+		if (!Parsed)
+			std::cout << "Source runtime materialization status: " << Status << '\n';
+		const uint32_t ReadyOpcodeCount = nullptr == Program ? 0u :
+			static_cast<uint32_t>(std::count_if(
+				Program->Opcodes.begin(), Program->Opcodes.end(),
+				[](const EFFECT_RUNTIME_OPCODE& Opcode)
+				{
+					return Opcode.bReady;
+				}));
+		const uint32_t DistributionCount = nullptr == Program ? 0u :
+			static_cast<uint32_t>(std::accumulate(
+				Program->Opcodes.begin(), Program->Opcodes.end(), size_t{ 0u },
+				[](const size_t Count, const EFFECT_RUNTIME_OPCODE& Opcode)
+				{
+					return Count + Opcode.DistributionAdapters.size();
+				}));
+		runner.Require(Parsed && nullptr != Program &&
+			Program->strEffectAssetId == "effect.artist.skill.31470.f" &&
+			Program->Emitters.size() == 35u && Program->Opcodes.size() == 399u &&
+			ReadyOpcodeCount == 370u && DistributionCount == 629u &&
+			Program->HandlerReceipts.size() == 41u &&
+			Program->bSourceIdentitySelfConsistent &&
+			!Program->bRuntimeExecutionAdmission && !Program->bProductAdmission,
+			"Artist F Source Runtime Program Materializes 35 Emitters And 399 Typed Opcodes Fail Closed");
+
+		std::array<uint32_t,
+			static_cast<size_t>(EFFECT_RUNTIME_RENDERER_FAMILY::END)> Renderers{};
+		if (nullptr != Program)
+		{
+			for (const EFFECT_RUNTIME_EMITTER& Emitter : Program->Emitters)
+				++Renderers[static_cast<size_t>(Emitter.eRenderer)];
+		}
+		runner.Require(Renderers == std::array<uint32_t, 6u>{ 13u, 16u, 3u,
+			1u, 1u, 1u },
+			"Artist F Source Runtime Program Preserves Six Renderer Family Denominators");
+
+		const bool_t OrderedTypedPayload = nullptr != Program && std::all_of(
+			Program->Emitters.begin(), Program->Emitters.end(),
+			[&Program](const EFFECT_RUNTIME_EMITTER& Emitter)
+			{
+				for (uint32_t Index = 0u;
+					Index < Emitter.OrderedOpcodeIds.size(); ++Index)
+				{
+					const auto Opcode = std::find_if(
+						Program->Opcodes.begin(), Program->Opcodes.end(),
+						[&Emitter, &Index](const EFFECT_RUNTIME_OPCODE& Value)
+						{
+							return Value.strEmitterId == Emitter.strEmitterId &&
+								Value.iOrder == Index;
+						});
+					if (Opcode == Program->Opcodes.end() ||
+						Opcode->strOpcodeId != Emitter.OrderedOpcodeIds[Index] ||
+						Opcode->strPayloadClassName != Opcode->strExactSourceClass)
+					{
+						return false;
+					}
+				}
+				return true;
+			});
+		runner.Require(OrderedTypedPayload,
+			"Artist F Source Runtime Program Uses Immutable Emitter Opcode Order And Exact Class Payloads");
+
+		std::string HashMutation = ProgramText;
+		const size_t HashOffset = HashMutation.find("\"programSha256\": \"");
+		if (HashOffset != std::string::npos)
+		{
+			const size_t ValueOffset = HashOffset +
+				std::string("\"programSha256\": \"").size();
+			HashMutation[ValueOffset] =
+				HashMutation[ValueOffset] == '0' ? '1' : '0';
+		}
+		DATA_JSON_VALUE MutatedRoot;
+		std::shared_ptr<const EFFECT_SOURCE_RUNTIME_PROGRAM> Preserved = Program;
+		const bool_t HashRejected = HashOffset != std::string::npos &&
+			CDataJson::Parse(HashMutation, MutatedRoot, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_SourceRuntimeProgram(
+				MutatedRoot, Preserved, Status) && Preserved == Program;
+		runner.Require(HashRejected,
+			"Artist F Source Runtime Program Hash Mutation Rejects Transactionally");
+
+		std::string FloatingVersion = ProgramText;
+		const std::string IntegerVersion = "\"formatVersion\": 1";
+		const size_t VersionOffset = FloatingVersion.find(IntegerVersion);
+		if (VersionOffset != std::string::npos)
+		{
+			FloatingVersion.replace(VersionOffset, IntegerVersion.size(),
+				"\"formatVersion\": 1.0");
+		}
+		Preserved = Program;
+		const bool_t FloatingVersionRejected = VersionOffset != std::string::npos &&
+			CDataJson::Parse(FloatingVersion, MutatedRoot, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_SourceRuntimeProgram(
+				MutatedRoot, Preserved, Status) && Preserved == Program;
+		runner.Require(FloatingVersionRejected,
+			"Artist F Source Runtime Program Floating Version Rejects Transactionally");
+
+		const std::string DuplicateRoot =
+			"{\"schema\":\"forged\"," + ProgramText.substr(1u);
+		runner.Require(!CDataJson::Parse(DuplicateRoot, MutatedRoot, Status),
+			"Artist F Source Runtime Program Duplicate Root Key Rejects Before Materialization");
+
+		std::string NonfiniteMutation = ProgramText;
+		const std::string FiniteNeedle = "\"lookupTableTimeScale\": 0.0";
+		const size_t NonfiniteOffset = NonfiniteMutation.find(FiniteNeedle);
+		if (NonfiniteOffset != std::string::npos)
+		{
+			NonfiniteMutation.replace(NonfiniteOffset, FiniteNeedle.size(),
+				"\"lookupTableTimeScale\": 1e999");
+		}
+		Preserved = Program;
+		const bool_t NonfiniteRejected = NonfiniteOffset != std::string::npos &&
+			(!CDataJson::Parse(NonfiniteMutation, MutatedRoot, Status) ||
+				!CEffectRuntimeAuthorityCodec::Parse_SourceRuntimeProgram(
+					MutatedRoot, Preserved, Status)) && Preserved == Program;
+		runner.Require(NonfiniteRejected,
+			"Artist F Source Runtime Program Nonfinite Distribution Rejects Transactionally");
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -5736,6 +5868,14 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-source-contract" && argc > 2 && nullptr != argv[2])
 	{
 		Test_Artist31470SourceContractRoundTrip(
+			runner, std::filesystem::path(argv[2]));
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-source-runtime-program" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470SourceRuntimeProgram(
 			runner, std::filesystem::path(argv[2]));
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;

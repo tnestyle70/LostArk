@@ -11,6 +11,7 @@
 #include <limits>
 #include <set>
 #include <sstream>
+#include <unordered_map>
 
 #pragma comment(lib, "bcrypt.lib")
 
@@ -556,6 +557,738 @@ std::string Client::CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
 	for (const uint8_t Byte : Digest)
 		Output << std::setw(2) << static_cast<uint32_t>(Byte);
 	return Output.str();
+}
+
+namespace
+{
+	bool_t Is_OpaqueRuntimeId(const std::string_view Value)
+	{
+		return !Value.empty() && Value.size() <= 2048u && std::all_of(
+			Value.begin(), Value.end(), [](const unsigned char Character)
+			{
+				return Character >= 0x21u && Character <= 0x7eu &&
+					Character != '\\';
+			});
+	}
+
+	bool_t Read_OpaqueRuntimeId(
+		const DATA_JSON_VALUE& Object,
+		const std::string_view Name,
+		std::string& OutValue,
+		const bool_t bAllowEmpty = false)
+	{
+		const DATA_JSON_VALUE* Value = Required(
+			Object, Name, DATA_JSON_TYPE::STRING);
+		if (nullptr == Value ||
+			(!bAllowEmpty && !Is_OpaqueRuntimeId(Value->Get_String())) ||
+			(bAllowEmpty && !Value->Get_String().empty() &&
+				!Is_OpaqueRuntimeId(Value->Get_String())))
+		{
+			return false;
+		}
+		OutValue = Value->Get_String();
+		return true;
+	}
+
+	bool_t Read_FiniteNumber(
+		const DATA_JSON_VALUE& Object,
+		const std::string_view Name,
+		double& OutValue)
+	{
+		const DATA_JSON_VALUE* Value = Required(
+			Object, Name, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == Value || !std::isfinite(Value->Get_Number()))
+			return false;
+		OutValue = Value->Get_Number();
+		return true;
+	}
+
+	bool_t Read_NumberArray(
+		const DATA_JSON_VALUE& Value,
+		std::vector<double>& OutValues)
+	{
+		if (!Value.Is_Array())
+			return false;
+		std::vector<double> Staged;
+		Staged.reserve(Value.Get_Array().size());
+		for (const DATA_JSON_VALUE& Item : Value.Get_Array())
+		{
+			if (!Item.Is_Number() || !std::isfinite(Item.Get_Number()))
+				return false;
+			Staged.push_back(Item.Get_Number());
+		}
+		OutValues = std::move(Staged);
+		return true;
+	}
+
+	bool_t Read_Number4(
+		const DATA_JSON_VALUE& Value,
+		std::array<double, 4u>& OutValues)
+	{
+		std::vector<double> Values;
+		if (!Read_NumberArray(Value, Values) || Values.size() != 4u)
+			return false;
+		std::copy(Values.begin(), Values.end(), OutValues.begin());
+		return true;
+	}
+
+	bool_t Parse_RuntimeLiteral(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_LITERAL& OutLiteral)
+	{
+		if (!Has_ExactKeys(Value,
+			{ "literalId", "propertyPath", "kind", "value" }) ||
+			!Read_OpaqueRuntimeId(Value, "literalId", OutLiteral.strLiteralId) ||
+			!Read_OpaqueRuntimeId(
+				Value, "propertyPath", OutLiteral.strPropertyPath))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Kind = Required(
+			Value, "kind", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* Payload = Value.Find("value");
+		if (nullptr == Kind || nullptr == Payload)
+			return false;
+		if (Kind->Get_String() == "boolean" && Payload->Is_Boolean())
+		{
+			OutLiteral.eKind = EFFECT_RUNTIME_LITERAL_KIND::BOOLEAN;
+			OutLiteral.bBoolean = Payload->Get_Boolean();
+			return true;
+		}
+		if (Kind->Get_String() == "number" && Payload->Is_Number() &&
+			std::isfinite(Payload->Get_Number()))
+		{
+			OutLiteral.eKind = EFFECT_RUNTIME_LITERAL_KIND::NUMBER;
+			OutLiteral.fNumber = Payload->Get_Number();
+			return true;
+		}
+		if (Kind->Get_String() == "string" && Payload->Is_String())
+		{
+			OutLiteral.eKind = EFFECT_RUNTIME_LITERAL_KIND::STRING;
+			OutLiteral.strString = Payload->Get_String();
+			return true;
+		}
+		return false;
+	}
+
+	bool_t Parse_RuntimeDistributionKey(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_DISTRIBUTION_KEY& OutKey)
+	{
+		if (!Has_ExactKeys(Value, {
+			"time", "minimum", "maximum", "arriveTangentMinimum",
+			"leaveTangentMinimum", "arriveTangentMaximum",
+			"leaveTangentMaximum", "interpolation" }) ||
+			!Read_FiniteNumber(Value, "time", OutKey.fTime))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Minimum = Required(
+			Value, "minimum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Maximum = Required(
+			Value, "maximum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* ArriveMinimum = Required(
+			Value, "arriveTangentMinimum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* LeaveMinimum = Required(
+			Value, "leaveTangentMinimum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* ArriveMaximum = Required(
+			Value, "arriveTangentMaximum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* LeaveMaximum = Required(
+			Value, "leaveTangentMaximum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Interpolation = Required(
+			Value, "interpolation", DATA_JSON_TYPE::STRING);
+		if (nullptr == Minimum || nullptr == Maximum ||
+			nullptr == ArriveMinimum || nullptr == LeaveMinimum ||
+			nullptr == ArriveMaximum || nullptr == LeaveMaximum ||
+			nullptr == Interpolation ||
+			(Interpolation->Get_String() != "linear" &&
+				Interpolation->Get_String() != "constant" &&
+				Interpolation->Get_String() != "cubic") ||
+			!Read_Number4(*Minimum, OutKey.Minimum) ||
+			!Read_Number4(*Maximum, OutKey.Maximum) ||
+			!Read_Number4(*ArriveMinimum, OutKey.ArriveTangentMinimum) ||
+			!Read_Number4(*LeaveMinimum, OutKey.LeaveTangentMinimum) ||
+			!Read_Number4(*ArriveMaximum, OutKey.ArriveTangentMaximum) ||
+			!Read_Number4(*LeaveMaximum, OutKey.LeaveTangentMaximum))
+		{
+			return false;
+		}
+		OutKey.strInterpolation = Interpolation->Get_String();
+		return true;
+	}
+
+	bool_t Parse_RuntimeDistribution(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_DISTRIBUTION& OutDistribution)
+	{
+		if (!Has_ExactKeys(Value, { "payloadDistributionId", "descriptor" }) ||
+			!Read_OpaqueRuntimeId(Value, "payloadDistributionId",
+				OutDistribution.strPayloadDistributionId))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Descriptor = Required(
+			Value, "descriptor", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == Descriptor || !Has_ExactKeys(*Descriptor, {
+			"propertyPath", "sourceClass", "sourceObjectPath",
+			"componentCount", "operation", "randomLockAxes",
+			"lookupTableChunkSize", "lookupTableNumElements",
+			"lookupTableTimeScale", "lookupTableStartTime",
+			"defaultMinimum", "defaultMaximum", "lookupTable", "keys",
+			"referenceId", "occurrenceId", "payloadStatus", "fidelity" }) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "propertyPath",
+				OutDistribution.strPropertyPath) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "sourceClass",
+				OutDistribution.strSourceClass, true) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "sourceObjectPath",
+				OutDistribution.strSourceObjectPath, true) ||
+			!Read_U32(*Descriptor, "componentCount",
+				OutDistribution.iComponentCount) ||
+			OutDistribution.iComponentCount > 4u ||
+			!Read_U32(*Descriptor, "operation", OutDistribution.iOperation) ||
+			!Read_U32(*Descriptor, "randomLockAxes",
+				OutDistribution.iRandomLockAxes) ||
+			!Read_U32(*Descriptor, "lookupTableChunkSize",
+				OutDistribution.iLookupTableChunkSize) ||
+			!Read_U32(*Descriptor, "lookupTableNumElements",
+				OutDistribution.iLookupTableNumElements) ||
+			!Read_FiniteNumber(*Descriptor, "lookupTableTimeScale",
+				OutDistribution.fLookupTableTimeScale) ||
+			!Read_FiniteNumber(*Descriptor, "lookupTableStartTime",
+				OutDistribution.fLookupTableStartTime) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "referenceId",
+				OutDistribution.strReferenceId, true) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "occurrenceId",
+				OutDistribution.strOccurrenceId, true) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "payloadStatus",
+				OutDistribution.strPayloadStatus) ||
+			!Read_OpaqueRuntimeId(*Descriptor, "fidelity",
+				OutDistribution.strFidelity))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Minimum = Required(
+			*Descriptor, "defaultMinimum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Maximum = Required(
+			*Descriptor, "defaultMaximum", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Lookup = Required(
+			*Descriptor, "lookupTable", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Keys = Required(
+			*Descriptor, "keys", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Minimum || nullptr == Maximum || nullptr == Lookup ||
+			nullptr == Keys ||
+			!Read_Number4(*Minimum, OutDistribution.DefaultMinimum) ||
+			!Read_Number4(*Maximum, OutDistribution.DefaultMaximum) ||
+			!Read_NumberArray(*Lookup, OutDistribution.LookupTable))
+		{
+			return false;
+		}
+		for (const DATA_JSON_VALUE& Item : Keys->Get_Array())
+		{
+			EFFECT_RUNTIME_DISTRIBUTION_KEY Key;
+			if (!Parse_RuntimeDistributionKey(Item, Key))
+				return false;
+			OutDistribution.Keys.push_back(std::move(Key));
+		}
+		return true;
+	}
+
+	bool_t Parse_RuntimeDistributionAdapter(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_DISTRIBUTION_ADAPTER& OutAdapter)
+	{
+		if (!Has_ExactKeys(Value, { "distributionId", "payloadDistributionId",
+			"evaluatorCapabilityId", "decision", "blockers" }) ||
+			!Read_OpaqueRuntimeId(Value, "distributionId",
+				OutAdapter.strDistributionId) ||
+			!Read_OpaqueRuntimeId(Value, "payloadDistributionId",
+				OutAdapter.strPayloadDistributionId) ||
+			!Read_StableId(Value, "evaluatorCapabilityId",
+				OutAdapter.strEvaluatorCapabilityId))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Decision = Required(
+			Value, "decision", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* Blockers = Required(
+			Value, "blockers", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Decision || nullptr == Blockers ||
+			!Parse_Blockers(*Blockers, OutAdapter.Blockers))
+		{
+			return false;
+		}
+		OutAdapter.bReady = Decision->Get_String() == "READY_FOR_HANDLER";
+		return (OutAdapter.bReady && OutAdapter.Blockers.empty()) ||
+			(Decision->Get_String() == "BLOCKED" &&
+				!OutAdapter.Blockers.empty());
+	}
+
+	bool_t Parse_RuntimeOpcode(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_OPCODE& OutOpcode)
+	{
+		if (!Has_ExactKeys(Value, {
+			"opcodeId", "emitterId", "order", "opcode", "handlerId",
+			"exactSourceClass", "sourceObjectId", "sourceRecordSha256",
+			"payload", "distributionAdapters", "seed", "implicitDefaults",
+			"decision", "blockers" }) ||
+			!Read_OpaqueRuntimeId(Value, "opcodeId", OutOpcode.strOpcodeId) ||
+			!Read_OpaqueRuntimeId(Value, "emitterId", OutOpcode.strEmitterId) ||
+			!Read_U32(Value, "order", OutOpcode.iOrder) ||
+			!Read_StableId(Value, "opcode", OutOpcode.strOpcode) ||
+			!Read_StableId(Value, "handlerId", OutOpcode.strHandlerId) ||
+			!Read_StableId(Value, "exactSourceClass",
+				OutOpcode.strExactSourceClass) ||
+			!Read_OpaqueRuntimeId(Value, "sourceObjectId",
+				OutOpcode.strSourceObjectId) ||
+			!Read_Sha(Value, "sourceRecordSha256",
+				OutOpcode.strSourceRecordSha256))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Payload = Required(
+			Value, "payload", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Adapters = Required(
+			Value, "distributionAdapters", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Seed = Value.Find("seed");
+		const DATA_JSON_VALUE* Defaults = Required(
+			Value, "implicitDefaults", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Decision = Required(
+			Value, "decision", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* Blockers = Required(
+			Value, "blockers", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Payload || nullptr == Adapters || nullptr == Seed ||
+			nullptr == Defaults || nullptr == Decision || nullptr == Blockers ||
+			!Parse_Blockers(*Blockers, OutOpcode.Blockers))
+		{
+			return false;
+		}
+		OutOpcode.bReady = Decision->Get_String() == "READY_FOR_HANDLER";
+		if (!((OutOpcode.bReady && OutOpcode.Blockers.empty()) ||
+			(Decision->Get_String() == "BLOCKED" &&
+				!OutOpcode.Blockers.empty())))
+		{
+			return false;
+		}
+		if (!Has_ExactKeys(*Payload, { "stableId", "className", "objectPath",
+			"literals", "distributions", "payloadSha256" }) ||
+			!Read_OpaqueRuntimeId(*Payload, "stableId",
+				OutOpcode.strPayloadStableId) ||
+			!Read_StableId(*Payload, "className",
+				OutOpcode.strPayloadClassName) ||
+			OutOpcode.strPayloadClassName != OutOpcode.strExactSourceClass ||
+			!Read_OpaqueRuntimeId(*Payload, "objectPath",
+				OutOpcode.strPayloadObjectPath) ||
+			!Read_Sha(*Payload, "payloadSha256", OutOpcode.strPayloadSha256))
+		{
+			return false;
+		}
+		DATA_JSON_VALUE::OBJECT UnsignedPayload = Payload->Get_Object();
+		UnsignedPayload.erase("payloadSha256");
+		if (CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+				DATA_JSON_VALUE::Object(std::move(UnsignedPayload)))) !=
+			OutOpcode.strPayloadSha256)
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Literals = Required(
+			*Payload, "literals", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* Distributions = Required(
+			*Payload, "distributions", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Literals || nullptr == Distributions)
+			return false;
+		std::set<std::string> LiteralIds;
+		for (const DATA_JSON_VALUE& Item : Literals->Get_Array())
+		{
+			EFFECT_RUNTIME_LITERAL Literal;
+			if (!Parse_RuntimeLiteral(Item, Literal) ||
+				!LiteralIds.insert(Literal.strLiteralId).second)
+			{
+				return false;
+			}
+			OutOpcode.Literals.push_back(std::move(Literal));
+		}
+		std::set<std::string> PayloadDistributionIds;
+		for (const DATA_JSON_VALUE& Item : Distributions->Get_Array())
+		{
+			EFFECT_RUNTIME_DISTRIBUTION Distribution;
+			if (!Parse_RuntimeDistribution(Item, Distribution) ||
+				!PayloadDistributionIds.insert(
+					Distribution.strPayloadDistributionId).second)
+			{
+				return false;
+			}
+			OutOpcode.Distributions.push_back(std::move(Distribution));
+		}
+		std::set<std::string> DistributionIds;
+		std::set<std::string> AdaptedPayloadIds;
+		for (const DATA_JSON_VALUE& Item : Adapters->Get_Array())
+		{
+			EFFECT_RUNTIME_DISTRIBUTION_ADAPTER Adapter;
+			if (!Parse_RuntimeDistributionAdapter(Item, Adapter) ||
+				!DistributionIds.insert(Adapter.strDistributionId).second ||
+				!AdaptedPayloadIds.insert(
+					Adapter.strPayloadDistributionId).second ||
+				!PayloadDistributionIds.contains(
+					Adapter.strPayloadDistributionId))
+			{
+				return false;
+			}
+			OutOpcode.DistributionAdapters.push_back(std::move(Adapter));
+		}
+		if (AdaptedPayloadIds != PayloadDistributionIds)
+			return false;
+		OutOpcode.strSeedCanonicalJson =
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(*Seed);
+		for (const DATA_JSON_VALUE& Item : Defaults->Get_Array())
+		{
+			if (!Item.Is_Object())
+				return false;
+			OutOpcode.ImplicitDefaultCanonicalJson.push_back(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Item));
+		}
+		return true;
+	}
+
+	bool_t Parse_RendererFamily(
+		const std::string_view Value,
+		EFFECT_RUNTIME_RENDERER_FAMILY& OutFamily)
+	{
+		if (Value == "MeshParticle")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::MESH;
+		else if (Value == "SpriteParticle")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::SPRITE;
+		else if (Value == "DecalParticle")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::DECAL;
+		else if (Value == "CascadeRibbon")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::RIBBON;
+		else if (Value == "LightParticle")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::LIGHT;
+		else if (Value == "ScreenPost")
+			OutFamily = EFFECT_RUNTIME_RENDERER_FAMILY::SCREEN_POST;
+		else
+			return false;
+		return true;
+	}
+
+	bool_t Parse_RuntimeActionParameter(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_ACTION_PARAMETER& OutParameter)
+	{
+		if (!Has_ExactKeys(Value,
+			{ "name", "kind", "value", "sourceIndex", "sourceValueByteOffset" }) ||
+			!Read_OpaqueRuntimeId(Value, "name", OutParameter.strName) ||
+			!Read_StableId(Value, "kind", OutParameter.strKind) ||
+			!Read_U32(Value, "sourceIndex", OutParameter.iSourceIndex) ||
+			!Read_U32(Value, "sourceValueByteOffset",
+				OutParameter.iSourceValueByteOffset))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Payload = Value.Find("value");
+		if (nullptr == Payload)
+			return false;
+		if (OutParameter.strKind == "scalar" && Payload->Is_Number() &&
+			std::isfinite(Payload->Get_Number()))
+		{
+			OutParameter.Values.push_back(Payload->Get_Number());
+			return true;
+		}
+		return OutParameter.strKind == "vector" &&
+			Read_NumberArray(*Payload, OutParameter.Values) &&
+			OutParameter.Values.size() == 3u;
+	}
+
+	bool_t Parse_RuntimeEmitter(
+		const DATA_JSON_VALUE& Value,
+		EFFECT_RUNTIME_EMITTER& OutEmitter)
+	{
+		if (!Has_ExactKeys(Value, {
+			"emitterId", "evidenceId", "sourceOccurrenceId", "sourceSystemId",
+			"sourceEmitterPath", "rendererType", "selectedLod",
+			"actionCueParameterInputs", "orderedOpcodeIds" }) ||
+			!Read_OpaqueRuntimeId(Value, "emitterId", OutEmitter.strEmitterId) ||
+			!Read_StableId(Value, "evidenceId", OutEmitter.strEvidenceId) ||
+			!Read_OpaqueRuntimeId(Value, "sourceOccurrenceId",
+				OutEmitter.strSourceOccurrenceId) ||
+			!Read_OpaqueRuntimeId(Value, "sourceSystemId",
+				OutEmitter.strSourceSystemId) ||
+			!Read_OpaqueRuntimeId(Value, "sourceEmitterPath",
+				OutEmitter.strSourceEmitterPath))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Renderer = Required(
+			Value, "rendererType", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* SelectedLod = Required(
+			Value, "selectedLod", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Parameters = Required(
+			Value, "actionCueParameterInputs", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* OpcodeIds = Required(
+			Value, "orderedOpcodeIds", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Renderer ||
+			!Parse_RendererFamily(Renderer->Get_String(), OutEmitter.eRenderer) ||
+			nullptr == SelectedLod || nullptr == Parameters || nullptr == OpcodeIds ||
+			!Has_ExactKeys(*SelectedLod, { "sourceLodPath", "sourceLodNodeId",
+				"sourceLodRecordSha256", "fields" }) ||
+			!Read_OpaqueRuntimeId(*SelectedLod, "sourceLodPath",
+				OutEmitter.strSelectedLodPath) ||
+			!Read_OpaqueRuntimeId(*SelectedLod, "sourceLodNodeId",
+				OutEmitter.strSelectedLodNodeId) ||
+			!Read_Sha(*SelectedLod, "sourceLodRecordSha256",
+				OutEmitter.strSelectedLodRecordSha256))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* LodFields = Required(
+			*SelectedLod, "fields", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == LodFields || LodFields->Get_Array().size() != 2u)
+			return false;
+		std::set<std::string> LodFieldNames;
+		for (const DATA_JSON_VALUE& Field : LodFields->Get_Array())
+		{
+			if (!Has_ExactKeys(Field,
+				{ "fieldId", "fieldName", "decision", "oracleId" }))
+			{
+				return false;
+			}
+			std::string FieldId;
+			std::string FieldName;
+			std::string Decision;
+			std::string Oracle;
+			if (!Read_OpaqueRuntimeId(Field, "fieldId", FieldId) ||
+				!Read_StableId(Field, "fieldName", FieldName) ||
+				!Read_StableId(Field, "decision", Decision) ||
+				!Read_StableId(Field, "oracleId", Oracle) ||
+				Decision != "VERIFIED_IRRELEVANT" ||
+				!LodFieldNames.insert(FieldName).second)
+			{
+				return false;
+			}
+		}
+		if (LodFieldNames != std::set<std::string>{ "enabled", "level" })
+			return false;
+		for (const DATA_JSON_VALUE& Item : Parameters->Get_Array())
+		{
+			EFFECT_RUNTIME_ACTION_PARAMETER Parameter;
+			if (!Parse_RuntimeActionParameter(Item, Parameter))
+				return false;
+			OutEmitter.ActionCueParameters.push_back(std::move(Parameter));
+		}
+		for (const DATA_JSON_VALUE& Item : OpcodeIds->Get_Array())
+		{
+			if (!Item.Is_String() || !Is_OpaqueRuntimeId(Item.Get_String()))
+				return false;
+			OutEmitter.OrderedOpcodeIds.push_back(Item.Get_String());
+		}
+		return !OutEmitter.OrderedOpcodeIds.empty();
+	}
+}
+
+bool_t Client::CEffectRuntimeAuthorityCodec::Parse_SourceRuntimeProgram(
+	const DATA_JSON_VALUE& Value,
+	std::shared_ptr<const EFFECT_SOURCE_RUNTIME_PROGRAM>& OutProgram,
+	std::string& strOutError)
+{
+	if (!Has_ExactKeys(Value, {
+		"schema", "formatVersion", "effectAssetId",
+		"sourceExecutionReceiptSha256",
+		"sourceExecutionReceiptCanonicalSha256",
+		"sourceExecutionReceiptObservedRawSha256", "runtimeSemanticAuthority",
+		"emitters", "opcodes", "handlerReceipts", "executionContract",
+		"summary", "runtimeExecutionAdmission", "productAdmission",
+		"programSha256" }))
+	{
+		strOutError = "Source runtime program fields are invalid.";
+		return false;
+	}
+	const DATA_JSON_VALUE* Schema = Required(
+		Value, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* Authority = Required(
+		Value, "runtimeSemanticAuthority", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* Emitters = Required(
+		Value, "emitters", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* Opcodes = Required(
+		Value, "opcodes", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* HandlerReceipts = Required(
+		Value, "handlerReceipts", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* Contract = Required(
+		Value, "executionContract", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* Summary = Required(
+		Value, "summary", DATA_JSON_TYPE::OBJECT);
+	auto Staged = std::make_shared<EFFECT_SOURCE_RUNTIME_PROGRAM>();
+	if (nullptr == Schema || Schema->Get_String() !=
+			"lostark.effect-source-runtime-program" ||
+		!Read_ExactVersion(Value, "formatVersion",
+			EFFECT_SOURCE_RUNTIME_PROGRAM_FORMAT_VERSION) ||
+		!Read_StableId(Value, "effectAssetId", Staged->strEffectAssetId) ||
+		nullptr == Authority ||
+		Authority->Get_String() != "TYPED_SOURCE_PROGRAM_CANDIDATE" ||
+		!Read_Sha(Value, "sourceExecutionReceiptSha256",
+			Staged->strSourceExecutionReceiptSha256) ||
+		!Read_Sha(Value, "sourceExecutionReceiptCanonicalSha256",
+			Staged->strSourceExecutionReceiptCanonicalSha256) ||
+		!Read_Sha(Value, "sourceExecutionReceiptObservedRawSha256",
+			Staged->strSourceExecutionReceiptObservedRawSha256) ||
+		!Read_Sha(Value, "programSha256", Staged->strProgramSha256) ||
+		nullptr == Emitters || nullptr == Opcodes ||
+		nullptr == HandlerReceipts || nullptr == Contract || nullptr == Summary ||
+		!Parse_HandlerReceipts(*HandlerReceipts, Staged->HandlerReceipts) ||
+		!Parse_ExecutionContract(*Contract, Staged->ExecutionContract))
+	{
+		strOutError = "Source runtime program identity is invalid.";
+		return false;
+	}
+	DATA_JSON_VALUE::OBJECT UnsignedProgram = Value.Get_Object();
+	UnsignedProgram.erase("programSha256");
+	if (Compute_Sha256Hex(Serialize_CanonicalJson(
+		DATA_JSON_VALUE::Object(std::move(UnsignedProgram)))) !=
+		Staged->strProgramSha256)
+	{
+		strOutError = "Source runtime program canonical SHA mismatch.";
+		return false;
+	}
+	std::set<std::string> HandlerIds;
+	std::unordered_map<std::string,
+		const EFFECT_RUNTIME_HANDLER_RECEIPT*> HandlerById;
+	for (const EFFECT_RUNTIME_HANDLER_RECEIPT& Receipt : Staged->HandlerReceipts)
+	{
+		if (!HandlerIds.insert(Receipt.strHandlerId).second ||
+			!std::all_of(
+				Receipt.ExecutionContract.ExecutionBlockers.begin(),
+				Receipt.ExecutionContract.ExecutionBlockers.end(),
+				[&Staged](const std::string& Blocker)
+				{
+					return std::binary_search(
+						Staged->ExecutionContract.ExecutionBlockers.begin(),
+						Staged->ExecutionContract.ExecutionBlockers.end(),
+						Blocker);
+				}))
+		{
+			strOutError = "Source runtime handler receipt is duplicated.";
+			return false;
+		}
+		HandlerById.emplace(Receipt.strHandlerId, &Receipt);
+	}
+	std::set<std::string> OpcodeIds;
+	std::unordered_map<std::string, const EFFECT_RUNTIME_OPCODE*> OpcodeById;
+	uint32_t ReadyOpcodeCount = 0u;
+	uint32_t DistributionCount = 0u;
+	Staged->Opcodes.reserve(Opcodes->Get_Array().size());
+	for (const DATA_JSON_VALUE& Item : Opcodes->Get_Array())
+	{
+		EFFECT_RUNTIME_OPCODE Opcode;
+		if (!Parse_RuntimeOpcode(Item, Opcode) ||
+			!OpcodeIds.insert(Opcode.strOpcodeId).second)
+		{
+			strOutError = "Source runtime opcode is invalid or duplicated.";
+			return false;
+		}
+		const auto Handler = HandlerById.find(Opcode.strHandlerId);
+		if (Handler == HandlerById.end() || !std::all_of(
+			Opcode.Blockers.begin(), Opcode.Blockers.end(),
+			[&Staged](const std::string& Blocker)
+			{
+				return std::binary_search(
+					Staged->ExecutionContract.ExecutionBlockers.begin(),
+					Staged->ExecutionContract.ExecutionBlockers.end(),
+					Blocker);
+			}))
+		{
+			strOutError = "Source runtime opcode handler receipt mismatch.";
+			return false;
+		}
+		ReadyOpcodeCount += Opcode.bReady ? 1u : 0u;
+		DistributionCount += static_cast<uint32_t>(
+			Opcode.DistributionAdapters.size());
+		Staged->Opcodes.push_back(std::move(Opcode));
+		OpcodeById.emplace(Staged->Opcodes.back().strOpcodeId,
+			&Staged->Opcodes.back());
+	}
+	std::set<std::string> EmitterIds;
+	std::set<std::string> ReferencedOpcodeIds;
+	Staged->Emitters.reserve(Emitters->Get_Array().size());
+	for (const DATA_JSON_VALUE& Item : Emitters->Get_Array())
+	{
+		EFFECT_RUNTIME_EMITTER Emitter;
+		if (!Parse_RuntimeEmitter(Item, Emitter) ||
+			!EmitterIds.insert(Emitter.strEmitterId).second)
+		{
+			strOutError = "Source runtime emitter is invalid or duplicated.";
+			return false;
+		}
+		for (uint32_t Index = 0u;
+			Index < Emitter.OrderedOpcodeIds.size(); ++Index)
+		{
+			const std::string& OpcodeId = Emitter.OrderedOpcodeIds[Index];
+			const auto Opcode = OpcodeById.find(OpcodeId);
+			if (Opcode == OpcodeById.end() ||
+				Opcode->second->strEmitterId != Emitter.strEmitterId ||
+				Opcode->second->iOrder != Index ||
+				!ReferencedOpcodeIds.insert(OpcodeId).second)
+			{
+				strOutError = "Source runtime emitter opcode order mismatch.";
+				return false;
+			}
+		}
+		Staged->Emitters.push_back(std::move(Emitter));
+	}
+	if (ReferencedOpcodeIds != OpcodeIds)
+	{
+		strOutError = "Source runtime opcode coverage mismatch.";
+		return false;
+	}
+	if (!Has_ExactKeys(*Summary, { "emitterCount", "opcodeCount",
+		"readyOpcodeCount", "blockedOpcodeCount", "distributionCount",
+		"handlerReceiptCount", "silentFallbackCount" }))
+	{
+		strOutError = "Source runtime summary fields are invalid.";
+		return false;
+	}
+	uint32_t EmitterCount = 0u;
+	uint32_t OpcodeCount = 0u;
+	uint32_t SummaryReady = 0u;
+	uint32_t SummaryBlocked = 0u;
+	uint32_t SummaryDistributions = 0u;
+	uint32_t SummaryHandlers = 0u;
+	uint32_t SilentFallback = 0u;
+	if (!Read_U32(*Summary, "emitterCount", EmitterCount) ||
+		!Read_U32(*Summary, "opcodeCount", OpcodeCount) ||
+		!Read_U32(*Summary, "readyOpcodeCount", SummaryReady) ||
+		!Read_U32(*Summary, "blockedOpcodeCount", SummaryBlocked) ||
+		!Read_U32(*Summary, "distributionCount", SummaryDistributions) ||
+		!Read_U32(*Summary, "handlerReceiptCount", SummaryHandlers) ||
+		!Read_U32(*Summary, "silentFallbackCount", SilentFallback) ||
+		EmitterCount != Staged->Emitters.size() ||
+		OpcodeCount != Staged->Opcodes.size() ||
+		SummaryReady != ReadyOpcodeCount ||
+		SummaryBlocked != OpcodeCount - ReadyOpcodeCount ||
+		SummaryDistributions != DistributionCount ||
+		SummaryHandlers != Staged->HandlerReceipts.size() ||
+		0u != SilentFallback)
+	{
+		strOutError = "Source runtime summary mismatch.";
+		return false;
+	}
+	const DATA_JSON_VALUE* RuntimeAdmission = Required(
+		Value, "runtimeExecutionAdmission", DATA_JSON_TYPE::BOOLEAN);
+	const DATA_JSON_VALUE* ProductAdmission = Required(
+		Value, "productAdmission", DATA_JSON_TYPE::BOOLEAN);
+	if (nullptr == RuntimeAdmission || nullptr == ProductAdmission ||
+		RuntimeAdmission->Get_Boolean() !=
+			Staged->ExecutionContract.bExecutionAdmission ||
+		ProductAdmission->Get_Boolean())
+	{
+		strOutError = "Source runtime admission mismatch.";
+		return false;
+	}
+	Staged->bSourceIdentitySelfConsistent = true;
+	Staged->bRuntimeExecutionAdmission = RuntimeAdmission->Get_Boolean();
+	Staged->bProductAdmission = false;
+	OutProgram = std::move(Staged);
+	strOutError.clear();
+	return true;
 }
 
 bool_t Client::CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(

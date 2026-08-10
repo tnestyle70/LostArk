@@ -771,6 +771,24 @@ try {
 	Add-Check 'effect.artist-31470-source-execution-semantics' `
 		$artistSourceExecutionPassed `
 		$artistSourceExecutionDetail
+	$artistSourceRuntimeProgramPassed = $false
+	$artistSourceRuntimeProgramDetail = ''
+	try {
+		& '.\Tools\ProjectAudit\Test-Artist31470SourceRuntimeProgram.ps1'
+		$artistSourceRuntimeProgramPassed = 0 -eq $LASTEXITCODE
+		$artistSourceRuntimeProgramDetail = if ($artistSourceRuntimeProgramPassed) {
+			'focused Python and Debug C++ typed materializer PASS'
+		}
+		else {
+			"focused typed materializer failed: $LASTEXITCODE"
+		}
+	}
+	catch {
+		$artistSourceRuntimeProgramDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-runtime-program' `
+		$artistSourceRuntimeProgramPassed `
+		$artistSourceRuntimeProgramDetail
 	$artistMaterialContractPassed = $false
 	$artistMaterialContractDetail = ''
 	try {
