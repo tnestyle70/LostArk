@@ -18,7 +18,8 @@ GeometryBinding의 expected tuple과 대조한 외부 인증, source fidelity, P
 - `Engine/Private/BinaryAsset/Winters`: version/channel/hash/bounds fail-closed reader
 - `Engine/Public/BinaryAsset/ModelAssetData.h`: tangent-W/COLOR sidecar, embedded bounds, metadata identity
 - `Engine/Public/Model.h`, `Engine/Private/Model.cpp`: self-consistent metadata와 aggregate local AABB 노출
-- geometry 전용 Python/C++ harness, ProjectAudit, geometry 전용 PLAN/RESULT
+- geometry 전용 Python/C++ harness, writer-independent immutable golden, ProjectAudit,
+  geometry 전용 PLAN/RESULT
 
 다음은 이 단위가 소유하지 않는다.
 
@@ -54,6 +55,16 @@ downstream compiled GeometryBinding이 소유할 최소 인증 tuple은 다음�
 
 `{assetId, geometryPreScale=0.01,
 scaleSemantics=DIMENSIONLESS_AXIS_REORDER_ONLY, payloadHash, metadataIdentity}`
+
+decoder가 metadata 내부 hash를 다시 계산한 상태는 위 tuple과 대조한 외부 인증이 아니다.
+Engine/CModel은 계속 `SELF_CONSISTENT_UNAUTHENTICATED`만 노출하고, G08의 caller가 expected
+tuple을 제공하기 전에는 `externallyAuthenticated`나 Product 상태를 만들지 않는다.
+
+writer와 decoder가 같은 offset 오류를 공유하는 반례를 막기 위해 test 실행 중 cooker가
+생성하지 않는 850-byte WModel 1.1 frozen hex와 canonical-LF expected manifest를 Git에 둔다.
+C++ decoder는 decoded byte SHA, metadata payload/identity SHA, position/normal/tangentXYZ/W,
+UV, COLOR, index, bounds를 고정 기대값과 대조한다. hex 한 nibble과 manifest 한 field를
+각각 바꾼 fixture는 decoder gate 전에 거부한다.
 
 ## 좌표와 tangent basis
 
@@ -104,13 +115,15 @@ stage한 뒤에만 public output으로 move한다. 어느 후속 section에서�
 
 ## 검증 순서
 
-1. Python 4개 cooker/provenance/corruption 테스트와 parity EOL/raw 3개 테스트
-2. C++ decoder harness Debug/Release
+1. Python 5개 cooker/provenance/corruption/golden 테스트와 parity EOL/raw 3개 테스트
+2. writer-independent 850-byte immutable golden과 C++ decoder harness Debug/Release
 3. v1.0 static multi-submesh+hasBounds, skinned+skeleton+animation 회귀
 4. corrupt WModel 27종과 WMAT/WSKL/WANM transaction 회귀
 5. 실제 7개 candidate를 Python numeric oracle와 C++ decoder 양쪽에서 Debug/Release 검증
-6. Engine, UpdateLib, Client Debug/Release
-7. focused ProjectAudit 등록/실행, `git diff --check`, 소유 경계 확인
+6. 실제 Resources v1.0 corpus 2,586개 C++ sweep: static 2,535, skinned 51,
+   hasBounds 2,586, multi-submesh 665, legacy sidecar/geometry metadata 0
+7. Engine, UpdateLib, Client Debug/Release
+8. focused ProjectAudit 등록/실행, `git diff --check`, 소유 경계 확인
 
 실제 Resources와 Effect runtime diff는 0이어야 한다. geometry commit 뒤 Source Closure가
 candidate/receipt/registry/header를 재생성해야 하므로
