@@ -13,7 +13,7 @@
 
 NS_BEGIN(Client)
 
-inline constexpr uint32_t EFFECT_CASCADE_INSPECTION_COMPILER_REVISION = 2u;
+inline constexpr uint32_t EFFECT_CASCADE_INSPECTION_COMPILER_REVISION = 3u;
 
 enum class EFFECT_CASCADE_OPCODE : uint8_t
 {
@@ -49,6 +49,7 @@ enum class EFFECT_CASCADE_OPCODE : uint8_t
 	TYPE_DATA_RIBBON,
 	VELOCITY,
 	VELOCITY_OVER_LIFE,
+	UNKNOWN_EXACT_CLASS_QUARANTINE,
 	END
 };
 
@@ -121,14 +122,28 @@ enum class EFFECT_CASCADE_CLASS_LINEAGE_STATUS : uint8_t
 {
 	RECEIPT_NORMALIZED_ONLY,
 	EXACT_SOURCE_CLASS,
-	ALIAS_REQUIRED_EXECUTION_UNAPPROVED,
+	EXACT_CLASS_HANDLER_QUARANTINED,
 	EXPLICIT_ALIAS_EXECUTION_UNAPPROVED,
+	END
+};
+
+enum class EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND : uint8_t
+{
+	SOURCE_RECEIPT_SHA256,
+	CANDIDATE_SHA256,
+	END
+};
+
+enum class EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS : uint8_t
+{
+	SELF_CONSISTENT_UNAUTHENTICATED,
 	END
 };
 
 enum class EFFECT_CASCADE_PROPERTY_HANDLER_RESULT : uint8_t
 {
 	SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED,
+	QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED,
 	END
 };
 
@@ -198,6 +213,14 @@ struct EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT final
 		EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::END;
 	std::string strHandlerFieldId;
 	bool_t bRequired = false;
+};
+
+struct EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY final
+{
+	EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND eKind =
+		EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END;
+	std::string strExpectedCanonicalDocumentIdentity;
+	std::string strExpectedExternalIdentityToken;
 };
 
 struct EFFECT_CASCADE_HANDLER_RECEIPT final
@@ -280,6 +303,7 @@ struct EFFECT_CASCADE_INSPECTION_EMITTER final
 	std::vector<EFFECT_CASCADE_INSPECTION_OPCODE> OrderedOpcodes;
 	std::vector<EFFECT_CASCADE_DISTRIBUTION_EVIDENCE> Distributions;
 	std::optional<EFFECT_CASCADE_GEOMETRY_EVIDENCE> Geometry;
+	bool_t bSourceRecipeEnabled = false;
 	bool_t bSourceExecutionAdmission = false;
 	std::vector<std::string> Blockers;
 };
@@ -303,12 +327,15 @@ struct EFFECT_CASCADE_CLASS_REPORT final
 struct EFFECT_CASCADE_CONSUMPTION_RECEIPT final
 {
 	uint32_t iSystemCount = 0u;
+	uint32_t iDeclaredSourceElementCount = 0u;
+	uint32_t iDisabledSourceRecipeCount = 0u;
 	uint32_t iEmitterCount = 0u;
 	uint32_t iOrderedOpcodeCount = 0u;
 	uint32_t iDistributionEvidenceCount = 0u;
 	uint32_t iRequiredPropertyCount = 0u;
 	uint32_t iConsumedPropertyCount = 0u;
 	uint32_t iUnknownClassCount = 0u;
+	uint32_t iQuarantinedExactClassCount = 0u;
 	uint32_t iUnconsumedRequiredPropertyCount = 0u;
 	uint32_t iHandlerPropertyReceiptCount = 0u;
 	uint32_t iRawPayloadReadCount = 0u;
@@ -324,6 +351,12 @@ struct EFFECT_CASCADE_INSPECTION_IR final
 		EFFECT_CASCADE_INSPECTION_COMPILER_REVISION;
 	std::string strEffectAssetId;
 	std::string strCanonicalDocumentIdentity;
+	EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND eExternalIdentityKind =
+		EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END;
+	EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS eExternalIdentityStatus =
+		EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::END;
+	std::string strExpectedExternalIdentityToken;
+	bool_t bExternalIdentityAuthenticated = false;
 	std::string strInspectionHash;
 	std::vector<EFFECT_CASCADE_INSPECTION_SYSTEM> Systems;
 	EFFECT_CASCADE_CONSUMPTION_RECEIPT Consumption;
@@ -344,14 +377,14 @@ class CEffectCascadeCompiler final
 public:
 	static bool_t Compile_SourceInspection(
 		const EFFECT_DOCUMENT_DESC& Document,
-		std::string_view ExpectedCanonicalDocumentIdentity,
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity,
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>& OutInspection,
 		std::string& strOutError);
 	static std::string Build_CanonicalDocumentIdentity(
 		const EFFECT_DOCUMENT_DESC& Document);
 	static bool_t Matches_InputIdentity(
 		const EFFECT_CASCADE_INSPECTION_IR& Inspection,
-		std::string_view ExpectedCanonicalDocumentIdentity);
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity);
 	static EFFECT_CASCADE_CLASS_REPORT Classify_ReceiptClass(
 		std::string_view ReceiptClassKey);
 	static EFFECT_CASCADE_INSPECTION_COMPILER_PROBE Get_Probe();
