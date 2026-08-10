@@ -1,0 +1,411 @@
+{
+  "schema": "lostark.effect-reconstruction-approval-policy-source",
+  "formatVersion": 1,
+  "policyId": "artist.31470.f.reconstructed-approved-v1",
+  "policyVersion": 1,
+  "target": {
+    "characterClass": "ARTIST",
+    "skillId": 31470,
+    "inputSlot": "F",
+    "effectAssetId": "effect.artist.skill.31470.f"
+  },
+  "approvalDecision": {
+    "classification": "RECONSTRUCTED_APPROVED_V1",
+    "scope": "IMPLEMENTATION_AND_VALIDATION_ROUTE_ONLY",
+    "sourceFidelityPromotionAllowed": false,
+    "runtimeExecutionGranted": false,
+    "productAdmissionGranted": false
+  },
+  "frozenInputs": [
+    {
+      "laneId": "SOURCE",
+      "commitId": "7da937aeaa34c088c694e8eb4f53ff1f7f848ef3",
+      "treeId": "e5687551ac558abf63966c84f8cb5b33cf873188",
+      "receiptArtifacts": [
+        {
+          "path": "Data/Effects/Imported/Artist/Candidates/skill.31470.source-oracle-acquisition.receipt.json",
+          "blobId": "7df6558e8ce13276c3c2abc964a9f86e2ca0008f",
+          "schema": "lostark.effect-source-oracle-acquisition",
+          "formatVersion": 1,
+          "receiptSha256": "c49f4dfcabc09c765b2127c620c5dbc8676d18819de008eb813e583b3f07e98d"
+        }
+      ],
+      "requiredSourceArtifacts": []
+    },
+    {
+      "laneId": "MATERIAL",
+      "commitId": "cde8f3bddea2f9415f682b387d2705fd25794075",
+      "treeId": "7b8f1d60870fd5c5410a6ef3e8060842bfd09cfd",
+      "receiptArtifacts": [
+        {
+          "path": "Data/Effects/Imported/Artist/Materials/skill.31470.material-source-value-acquisition.receipt.json",
+          "blobId": "e99419b34d6183b6709b1ce444ebbd2ef42ea497",
+          "schema": "lostark.artist-31470-material-source-value-acquisition-receipt",
+          "formatVersion": 2,
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43"
+        },
+        {
+          "path": "Data/Effects/Imported/Artist/Materials/skill.31470.material-runtime-oracle.receipt.json",
+          "blobId": "ac7467e5aeb230ce4cb3c8a5e4270068f6e28bd0",
+          "schema": "lostark.artist-31470-material-runtime-oracle-receipt",
+          "formatVersion": 3,
+          "receiptSha256": "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6"
+        }
+      ],
+      "requiredSourceArtifacts": []
+    },
+    {
+      "laneId": "GEOMETRY",
+      "commitId": "0aca792819fdda3f541bb7cec7451c5ed93c6467",
+      "treeId": "ef01fb07c1381d2852f5b2c1f58a86b693a55786",
+      "receiptArtifacts": [
+        {
+          "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.geometry-resource-binding.receipt.json",
+          "blobId": "30d1de331ac0815cb3ac7d129638b16ce373d403",
+          "schema": "lostark.artist-31470-geometry-resource-binding-receipt",
+          "formatVersion": 1,
+          "receiptSha256": "5b4331c33dd2ead13f69c9e3c58a392665c5ce71ce96835ac568d841a09e9156"
+        }
+      ],
+      "requiredSourceArtifacts": []
+    },
+    {
+      "laneId": "RUNTIME_FOUNDATION",
+      "commitId": "38ebe7cf7dceb5054bde93812907173cc0f98c67",
+      "treeId": "1baecdfc51000380c525cb8041b7b5c3fc505a62",
+      "receiptArtifacts": [],
+      "requiredSourceArtifacts": [
+        {
+          "path": "Client/Public/Effect_RuntimeAuthority.h",
+          "blobId": "65646f785a291a6f6dfdb0112858965b501935d0"
+        },
+        {
+          "path": "Client/Private/Effect_RuntimeAuthority.cpp",
+          "blobId": "5a69e4b433e8c28bedd998735f6b6b7985c5b861"
+        },
+        {
+          "path": "Client/Public/Effect_Catalog.h",
+          "blobId": "4c9e9ce42e064fab445ac05e76e697fa50e4b8fe"
+        },
+        {
+          "path": "Client/Private/Effect_Catalog.cpp",
+          "blobId": "fc76075c8c7d80e5e18719d68c789d5430c390d8"
+        },
+        {
+          "path": "Tools/ProjectAudit/Test-EffectRuntimeAuthority.ps1",
+          "blobId": "b8e06f79b95f1e05d42e23bdb5dcfc87979813cc"
+        }
+      ]
+    }
+  ],
+  "denominators": {
+    "sourceExecutionRowCount": 29,
+    "materialRenderStateRowCount": 89,
+    "materialStaticPermutationRowCount": 94,
+    "materialSamplerRowCount": 72,
+    "materialExecutionRowCount": 255,
+    "materialArithmeticFamilyCount": 23,
+    "geometryCarrierCount": 7,
+    "effectOccurrenceCount": 35
+  },
+  "sourceFamilyPolicies": [
+    {
+      "upstreamNativeFamily": "UE3_STANDARD_SEEDED_SPAWN_TO_BASE_SPAWN_EX",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_NATIVE_SEEDED_WRAPPER_V1",
+      "closureBasis": "CURRENT_BINARY_SEMANTICS_AND_PUBLIC_UE3_BEHAVIOR",
+      "requiredOracleIds": [
+        "SAME_SEED_REPEAT_BIT_STABLE",
+        "DIFFERENT_SEED_CHANGES_OUTPUT",
+        "BASE_AND_CURRENT_PARTICLE_STATE_MATCH_INDEPENDENT_ORACLE"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_CYLINDER_SPIN_SEEDED_AND_UNSEEDED",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_EF_CYLINDER_SPIN_V1",
+      "closureBasis": "CURRENT_NATIVE_SHAPE_AND_INDEPENDENT_IMPLEMENTATION",
+      "requiredOracleIds": [
+        "SEEDED_AND_UNSEEDED_FIXED_BASIS_OUTPUT",
+        "SURFACE_HEIGHT_RADIUS_VELOCITY_ROTATION_MUTATION",
+        "SEED_STREAM_ORDER_MUTATION"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_LOCATION_ON_GROUND",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_GROUND_QUERY_V1",
+      "closureBasis": "CURRENT_TAGGED_INPUTS_AND_FIXED_SCENE_QUERY",
+      "requiredOracleIds": [
+        "FIXED_GROUND_SCENE_SKIP_ZERO_ONE_AND_NO_HIT",
+        "LOCAL_WORLD_TRANSFORM_MUTATION",
+        "GROUND_QUERY_FAILURE_ROLLBACK"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_DECAL_TYPEDATA",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_DECAL_TYPEDATA_V1",
+      "closureBasis": "CURRENT_TAGGED_INPUTS_AND_TYPED_RENDER_PACKET",
+      "requiredOracleIds": [
+        "DECAL_PROJECTION_ROTATION_SIZE_BLEND_FIXED_TIME",
+        "SIGNED_SOURCE_SPACE_MUTATION",
+        "INVALID_PROJECTION_ROLLBACK"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_POINT_LIGHT_TYPEDATA",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_LIGHT_TYPEDATA_V1",
+      "closureBasis": "CURRENT_TAGGED_AND_CDO_EVIDENCE_WITH_TYPED_LIGHT_PACKET",
+      "requiredOracleIds": [
+        "LIGHT_BRIGHTNESS_RADIUS_COLOR_FALLOFF_LIFETIME_FIXED_TIME",
+        "LIGHT_CDO_FIELD_MUTATION",
+        "DEFERRED_ATTENUATION_NUMERIC_ORACLE"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_VELOCITY_OVER_LIFETIME",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_VELOCITY_OVER_LIFE_V1",
+      "closureBasis": "CURRENT_TAGGED_INPUTS_AND_INDEPENDENT_VECTOR_MATH",
+      "requiredOracleIds": [
+        "LOCAL_AND_WORLD_VELOCITY_FIXED_NORMALIZED_LIFETIME",
+        "OWNER_SCALE_AND_ROTATION_MUTATION",
+        "FIXED_TIMESTEP_REPEAT_STABLE"
+      ]
+    },
+    {
+      "upstreamNativeFamily": "EF_DISTRIBUTION_VECTOR_MULTIPLY_PARTICLE_PARAMETER",
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_EF_VECTOR_MULTIPLY_V1",
+      "closureBasis": "CURRENT_NATIVE_SHAPE_AND_INDEPENDENT_PARAMETER_MATH",
+      "requiredOracleIds": [
+        "PARAMETER_PRESENT_AND_ABSENT_VECTOR_OUTPUT",
+        "DIRECT_NORMAL_ABS_MODE_MUTATION",
+        "FOUR_RANGE_AND_CONSTANT_FALLBACK_MUTATION"
+      ]
+    }
+  ],
+  "materialExecutionFamilies": [
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_CDO_RENDER_STATE_V1",
+      "closureBasis": "CURRENT_CDO_EXPLICIT_VALUE_AND_WARP_STATE_SEMANTICS",
+      "requiredOracleIds": [
+        "D3D11_RENDER_DESCRIPTOR_EXACT_MUTATION",
+        "CURRENT_CDO_VALUE_MUTATION",
+        "FAILED_STATE_STAGE_ROLLBACK"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_ARTIST_RENDER_POLICY_V1",
+      "closureBasis": "EXPLICIT_ARTIST_RECONSTRUCTION_POLICY_AND_WARP_STATE_SEMANTICS",
+      "requiredOracleIds": [
+        "POLICY_VALUE_ENUM_DOMAIN_MUTATION",
+        "D3D11_RENDER_DESCRIPTOR_EXACT_MUTATION",
+        "FAILED_STATE_STAGE_ROLLBACK"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_STATIC_EXPLICIT_SELECTION_V1",
+      "closureBasis": "SOURCE_EXACT_OVERRIDE_VALUE_WITH_RECONSTRUCTED_SELECTION_SEMANTICS",
+      "requiredOracleIds": [
+        "STATIC_TRUE_FALSE_PERMUTATION_HASH",
+        "EXACT_OVERRIDE_GUID_VALUE_MUTATION",
+        "UNKNOWN_STATIC_SWITCH_REJECTION"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_STATIC_NONOVERRIDE_SELECTION_V1",
+      "closureBasis": "SOURCE_EXACT_NONOVERRIDE_ENTRY_WITH_RECONSTRUCTED_INHERITANCE_SEMANTICS",
+      "requiredOracleIds": [
+        "STATIC_NONOVERRIDE_INHERITANCE_MUTATION",
+        "STATIC_TRUE_FALSE_PERMUTATION_HASH",
+        "UNKNOWN_STATIC_SWITCH_REJECTION"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_PARENT_DEFAULT_SELECTION_V1",
+      "closureBasis": "SOURCE_EXACT_PARENT_DEFAULT_VALUE_WITH_RECONSTRUCTED_NATIVE_SELECTION",
+      "requiredOracleIds": [
+        "PARENT_DEFAULT_SELECTION_MUTATION",
+        "STATIC_TRUE_FALSE_PERMUTATION_HASH",
+        "UNKNOWN_STATIC_SWITCH_REJECTION"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1",
+      "closureBasis": "SOURCE_ARCHIVE_TEXTURE_EXPORT_WITH_RECONSTRUCTED_DESCRIPTOR_DEFAULTS",
+      "requiredOracleIds": [
+        "ADDRESS_FILTER_SRGB_DESCRIPTOR_MUTATION",
+        "TEXTURE_EXPORT_BINDING_MUTATION",
+        "SAMPLER_STAGE_ROLLBACK"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_ROLE_SAMPLER_POLICY_V1",
+      "closureBasis": "EXPLICIT_TEXTURE_ROLE_POLICY_WHEN_SOURCE_EXPORT_IS_UNAVAILABLE",
+      "requiredOracleIds": [
+        "ROLE_POLICY_ENUM_DOMAIN_MUTATION",
+        "ADDRESS_FILTER_SRGB_DESCRIPTOR_MUTATION",
+        "SAMPLER_STAGE_ROLLBACK"
+      ]
+    },
+    {
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_ARITHMETIC_V1",
+      "closureBasis": "INDEPENDENT_CPU_AND_WARP_NUMERIC_IMPLEMENTATION",
+      "requiredOracleIds": [
+        "FAMILY_CPU_GOLDEN_SAMPLES",
+        "FAMILY_WARP_HLSL_GOLDEN_SAMPLES",
+        "GRAPH_EDGE_AND_OPERATION_ORDER_MUTATION"
+      ]
+    }
+  ],
+  "materialRowRules": [
+    {
+      "domain": "RENDER_STATE",
+      "conditions": [
+        {
+          "path": "defaultChain.currentOnlyCdoCandidate.field.status",
+          "equals": "CURRENT_SERIALIZED_EXPLICIT"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_CDO_RENDER_STATE_V1",
+      "evidenceFidelity": "CURRENT_REVISION_CDO_EXPLICIT_NOT_SOURCE_ERA"
+    },
+    {
+      "domain": "RENDER_STATE",
+      "conditions": [
+        {
+          "path": "defaultChain.currentOnlyCdoCandidate.field.status",
+          "equals": "OMITTED_FROM_CURRENT_CDO_EXPORT"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_ARTIST_RENDER_POLICY_V1",
+      "evidenceFidelity": "SOURCE_AND_CURRENT_DEFAULT_VALUE_UNAVAILABLE"
+    },
+    {
+      "domain": "STATIC_PERMUTATION",
+      "conditions": [
+        {
+          "path": "sourceValueDecision",
+          "equals": "SOURCE_EXACT_INSTANCE_OVERRIDE_VALUE_ACQUIRED"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_STATIC_EXPLICIT_SELECTION_V1",
+      "evidenceFidelity": "SOURCE_EXACT_OVERRIDE_VALUE_SELECTION_SEMANTICS_UNPROVEN"
+    },
+    {
+      "domain": "STATIC_PERMUTATION",
+      "conditions": [
+        {
+          "path": "sourceValueDecision",
+          "equals": "SOURCE_EXACT_NONOVERRIDE_ENTRY_OBSERVED_INHERITANCE_SEMANTICS_UNVERIFIED"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_STATIC_NONOVERRIDE_SELECTION_V1",
+      "evidenceFidelity": "SOURCE_EXACT_NONOVERRIDE_VALUE_INHERITANCE_SEMANTICS_UNPROVEN"
+    },
+    {
+      "domain": "STATIC_PERMUTATION",
+      "conditions": [
+        {
+          "path": "sourceValueDecision",
+          "equals": "SOURCE_EXACT_PARENT_DEFAULT_ONLY_NATIVE_ENTRY_ABSENT"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_PARENT_DEFAULT_SELECTION_V1",
+      "evidenceFidelity": "SOURCE_EXACT_PARENT_DEFAULT_VALUE_NATIVE_SELECTION_UNPROVEN"
+    },
+    {
+      "domain": "SAMPLER",
+      "conditions": [
+        {
+          "path": "previousAdmission",
+          "equals": "SOURCE_EXACT_SAMPLER"
+        },
+        {
+          "path": "partialSourceExactFields",
+          "equals": [
+            "addressx",
+            "addressy",
+            "lodgroup"
+          ]
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1",
+      "evidenceFidelity": "SOURCE_EXACT_TEXTURE_BINDING_PARTIAL_SAMPLER_TAGS"
+    },
+    {
+      "domain": "SAMPLER",
+      "conditions": [
+        {
+          "path": "previousAdmission",
+          "equals": "SOURCE_EXACT_SAMPLER"
+        },
+        {
+          "path": "partialSourceExactFields",
+          "equals": [
+            "lodgroup"
+          ]
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1",
+      "evidenceFidelity": "SOURCE_EXACT_TEXTURE_BINDING_SAMPLER_DEFAULT_UNPROVEN"
+    },
+    {
+      "domain": "SAMPLER",
+      "conditions": [
+        {
+          "path": "previousAdmission",
+          "equals": "BLOCKED"
+        },
+        {
+          "path": "sourceValueDecision",
+          "equals": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1",
+      "evidenceFidelity": "SOURCE_ARCHIVE_TEXTURE_EXPORT_PARTIAL_DESCRIPTOR_DEFAULT_UNPROVEN"
+    },
+    {
+      "domain": "SAMPLER",
+      "conditions": [
+        {
+          "path": "previousAdmission",
+          "equals": "BLOCKED"
+        },
+        {
+          "path": "sourceValueDecision",
+          "equals": "BLOCKED_SOURCE_TEXTURE_PACKAGE_NOT_IN_ARCHIVE"
+        }
+      ],
+      "policyFamilyId": "RECONSTRUCTED_APPROVED_ROLE_SAMPLER_POLICY_V1",
+      "evidenceFidelity": "SOURCE_TEXTURE_EXPORT_UNAVAILABLE_ROLE_POLICY_REQUIRED"
+    }
+  ],
+  "forbiddenClaims": [
+    "SOURCE_EXACT",
+    "SOURCE_EXACT_SAMPLER",
+    "SOURCE_EXACT_GRAPH",
+    "CURRENT_REVISION_AS_SOURCE_ERA",
+    "RECONSTRUCTION_APPROVAL_REMOVES_EVIDENCE_BLOCKER",
+    "RAW_SOURCE_RECIPE_IS_RUNTIME_AUTHORITY",
+    "PARTIAL_PRODUCT_ADMISSION",
+    "AUTOMATED_SCREENSHOT_OR_IMAGE_ORACLE"
+  ],
+  "requiredGlobalGates": [
+    "ALL_29_SOURCE_ROWS_HAVE_VERSIONED_HANDLER_AND_INDEPENDENT_NUMERIC_ORACLE",
+    "ALL_255_MATERIAL_ROWS_HAVE_VALUE_SELECTION_STATE_OUTPUT_AND_MUTATION_ORACLE",
+    "ALL_23_ARITHMETIC_FAMILIES_PASS_CPU_AND_WARP_INDEPENDENT_SAMPLES",
+    "ALL_7_GEOMETRY_BINDINGS_MATCH_EXPECTED_TUPLE_AND_CONSUME_PRESCALE_ONCE",
+    "ALL_35_OCCURRENCES_PASS_FIXED_SEED_TIME_RUNTIME_PACKET_ORACLE",
+    "ALL_35_OCCURRENCES_PASS_MANUAL_HUMAN_EYE_RUNTIME_VALIDATION",
+    "CATALOG_PREPARE_ATTACH_LOAD_PREWARM_HAS_ZERO_RUNTIME_IO_AND_TRANSACTIONAL_ROLLBACK",
+    "DEBUG_RELEASE_BUILD_HARNESS_AND_FOCUSED_PROJECT_AUDIT_PASS"
+  ],
+  "rollbackConditions": [
+    "FROZEN_COMMIT_TREE_BLOB_OR_RECEIPT_IDENTITY_MISMATCH",
+    "UPSTREAM_ROW_ID_OR_DENOMINATOR_MISMATCH",
+    "EVIDENCE_BLOCKER_OR_FIDELITY_LABEL_LOSS",
+    "UNKNOWN_OR_UNVERSIONED_RECONSTRUCTION_FAMILY",
+    "NUMERIC_STATE_OR_MUTATION_ORACLE_FAILURE",
+    "GEOMETRY_MATERIAL_RESOURCE_OR_PREPARED_IDENTITY_MISMATCH",
+    "RUNTIME_ATTACH_REVISION_POINTER_OR_HASH_MISMATCH",
+    "MANUAL_OCCURRENCE_VALIDATION_FAILURE",
+    "PARTIAL_OR_STALE_PRODUCT_STAGE"
+  ]
+}

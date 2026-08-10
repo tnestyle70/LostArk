@@ -952,6 +952,22 @@ try {
 	Add-Check 'effect.runtime-compiled-authority' `
 		$effectRuntimeAuthorityPassed `
 		$effectRuntimeAuthorityDetail
+	$artistReconstructedPolicyPassed = $false
+	$artistReconstructedPolicyDetail = ''
+	try {
+		$artistReconstructedPolicyDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedApprovalPolicy.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedPolicyPassed =
+			$artistReconstructedPolicyDetail -match
+			'PASS: Artist F 31470 reconstructed approval policy tests=41 source=29 material=255 sampler=72 arithmetic=23 geometry=7 sourceExact=false execution=false product=false'
+	}
+	catch {
+		$artistReconstructedPolicyDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-approval-policy' `
+		$artistReconstructedPolicyPassed `
+		$artistReconstructedPolicyDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
