@@ -205,3 +205,36 @@ evidence와 runtime compiler 사이에 pure typed adapter receipt를 하나 둔�
 이 adapter의 합격 범위는 source-side typed input과 evaluator receipt다. runtime compiler가 capability를
 결합하고 custom handler/evaluator oracle을 제공하기 전에는 35/35 실행 또는 Product 복원 완료를
 주장하지 않는다.
+
+## 2026-08-10 G05-S2 exact seeded handler와 blocker owner closure
+
+G05-S receipt의 29 blocked module을 이름 정규화로 줄이지 않고, 현재 설치 script/native binary와
+source payload를 결합한 별도 oracle receipt로 판정한다.
+
+1. 표준 Engine seeded class 7 family/11 occurrence는 `Engine.u`의 exact class→base superclass와
+   `RandomSeedInfo` 구조, `EFEngine.dll`의 exact seeded `Spawn` wrapper→base `SpawnEx(...,
+   FRandomStream*)` dispatch를 모두 확인한다. class 이름이나 `_seeded` suffix만으로 alias하지 않는다.
+2. source seed를 UE3 `FRandomStream` LCG에 넣고 fixed time `0/.25/1`, 연속 draw offset `0/4/8`의
+   random unit과 distribution 값을 계산한다. source seed array가 빈 한 occurrence만 명시적인 oracle
+   occurrence seed를 사용하며 source 값이라고 표기하지 않는다. exact seeded handler와 base handler가
+   받는 typed payload/stream 입력 SHA가 같아야 capability를 grant한다.
+3. grant public key는 `handlerCapabilityId`, `exactSourceClass`, `baseHandlerCapabilityId`,
+   `grant=EXACT_CLASS_HANDLER_ALIAS`, `requiredEvidenceDecision=NATIVE_EXACT_ALIAS_VERIFIED`다.
+   `normalizedStringAliasAllowed`는 항상 false다.
+4. EF custom module 6 family/15 occurrence와
+   `EFDistributionVectorMultiplyParticleParameter` 3 occurrence는 inspectable native dispatch 또는
+   controlled numeric evaluator가 없으므로 계속 차단한다. current script class metadata와 native export
+   부재는 blocker 근거이지 evaluator 동일성 근거가 아니다.
+5. 기존 blocked module 29개 모두에 `moduleBlockerOwnership`을 만들고, custom distribution 3개 모두에
+   `distributionBlockerOwnership`을 만든다. seeded 11개는 exact capability owner로 READY가 되고,
+   custom handler 15개와 custom distribution 소유 module 3개는 explicit owner/blocker를 유지한다.
+   ownerless blocker는 0이어야 한다.
+6. generator와 verifier는 source execution receipt self SHA, source module/record/payload/seed ID,
+   current Engine/EFGame script package identity, EFEngine/LOSTARK binary identity, native wrapper bytes,
+   capability/owner join을 검증한다. duplicate key, bool/float version, row reassignment, seed/random mutation,
+   blocker 제거, owner 제거/교체, Product 승격을 거부한다.
+7. shallow/deep focused audit와 deterministic `--check`를 통과한 뒤 한 commit으로 push한다. runtime,
+   material, geometry 파일은 수정하지 않으며 이미지·스크린샷·육안 판정은 수행하지 않는다.
+
+이 단계의 합격 결과는 source-side handler capability `381 READY / 18 BLOCKED`다. EF native/evaluator
+oracle이 생기기 전까지 remaining 18과 custom distribution 3은 실행/Product blocker로 남는다.
