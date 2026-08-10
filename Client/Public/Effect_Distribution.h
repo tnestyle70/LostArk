@@ -17,6 +17,13 @@ enum class EFFECT_DISTRIBUTION_INTERPOLATION : uint8_t
 	END
 };
 
+enum class EFFECT_DISTRIBUTION_PARAMETER_BINDING : uint8_t
+{
+	NONE,
+	ACTION_CUE,
+	END
+};
+
 struct EFFECT_DISTRIBUTION_KEY_DESC final
 {
 	f32_t fTime = 0.f;
@@ -35,6 +42,9 @@ struct EFFECT_DISTRIBUTION_DESC final
 	std::string strPropertyPath;
 	std::string strSourceClass;
 	std::string strSourceObjectPath;
+	std::string strParameterName;
+	EFFECT_DISTRIBUTION_PARAMETER_BINDING eParameterBinding =
+		EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
 	uint32_t iComponentCount = 1u;
 	uint32_t iOperation = 1u;
 	uint32_t iRandomLockAxes = 0u;

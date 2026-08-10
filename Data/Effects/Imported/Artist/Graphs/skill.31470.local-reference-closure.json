@@ -1,0 +1,1416 @@
+{
+  "schema": "lostark.effect-local-reference-closure",
+  "formatVersion": 2,
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "scope": "ACTIVE_FIRST_LOD_OBJECT_REFERENCES",
+  "inputs": {
+    "sourceReceiptSha256": "dd9d2eb7f9d536c1772865dfa62f92e51e55acbff2b19cbf6e8296ba0517a580",
+    "activeInventorySha256": "96ac2147e97c9c7ba2a442367b1e55882eec0d8d021278185900cb5c3837c29a",
+    "normalizedGraphSha256": "1ad52c6bf49df8ef1d273f02b3b58ad7d9cf4a0b24bcbc263bf8de00b187dcab",
+    "externalModuleClosureSha256": "44c042b85f614d120fff2a13e1843b10a0b79a4105bd2b21905650bb4e6f1f6d"
+  },
+  "parserCapability": {
+    "pointLightComponentClassIncluded": true,
+    "efDistributionFloatClassIncluded": true,
+    "efDistributionVectorClassIncluded": true,
+    "normalizedGraphStatus": "OLDER_THAN_CURRENT_PARSER_CAPABILITY",
+    "enumeration": "ALL_NONZERO_OBJECT_REFERENCES_NESTED_IN_ACTIVE_SELECTED_RAW_DISTRIBUTION_WRAPPERS"
+  },
+  "references": [
+    {
+      "referenceId": "distribution-target-000",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "BFX_HIGH_00:export:1730",
+      "propertyPath": "skiplocation.distribution",
+      "sourcePackageIndex": 651,
+      "targetNodeId": "",
+      "targetObjectPath": "explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4.distributionfloatparticleparameter_0",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "efparticlemodulelocationonground",
+      "sourceModulePath": "explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-024",
+          "sourceCueId": "skill-31470/clip-000/notify-022",
+          "rendererType": "SpriteParticle",
+          "moduleOrder": 10
+        },
+        {
+          "activeElementId": "source-active-026",
+          "sourceCueId": "skill-31470/clip-000/notify-022",
+          "rendererType": "MeshParticle",
+          "moduleOrder": 11
+        }
+      ],
+      "activeOccurrenceCount": 2,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4.distributionfloatparticleparameter_0",
+        "recordSha256": "bd0aca41a112bafb014c2f8fbe824f0710242d470fd9113516f27a79875d04cc",
+        "serialSize": null,
+        "propertyStreamEnd": 41
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [],
+        "decodedValues": {
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "parametername",
+          "parammode",
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-001",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_BS_02:export:12869",
+      "propertyPath": "rate.distribution",
+      "sourcePackageIndex": 198,
+      "targetNodeId": "",
+      "targetObjectPath": "item.par_g_gadgetskill_001.particlemodulespawn_16.distributionfloatparticleparameter_33",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulespawn",
+      "sourceModulePath": "item.par_g_gadgetskill_001.particlemodulespawn_16",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 7
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "item.par_g_gadgetskill_001.particlemodulespawn_16.distributionfloatparticleparameter_33",
+        "recordSha256": "d5866a40d52813b56295d3e4789b46b3f46731d83e3a25f95301eea97acc34a6",
+        "serialSize": null,
+        "propertyStreamEnd": 157
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "spawn"
+          },
+          "maxinput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 100.0
+          },
+          "maxoutput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 100.0
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 1.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "parammode"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-002",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_BS_02:export:7096",
+      "propertyPath": "startlocation.distribution",
+      "sourcePackageIndex": 284,
+      "targetNodeId": "",
+      "targetObjectPath": "item.par_g_gadgetskill_001.particlemodulelocation_10.distributionvectorparticleparameter_0",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulelocation",
+      "sourceModulePath": "item.par_g_gadgetskill_001.particlemodulelocation_10",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 5
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionvectorparticleparameter",
+        "objectPath": "item.par_g_gadgetskill_001.particlemodulelocation_10.distributionvectorparticleparameter_0",
+        "recordSha256": "850eb5f321fec3acb0796cab3269b30caf1929f8e65ce227b5e16ad424483951",
+        "serialSize": null,
+        "propertyStreamEnd": 325
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "location"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "maxinput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1000.0,
+              "y": 1000.0,
+              "z": 1000.0
+            }
+          },
+          "maxoutput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1000.0,
+              "y": 1000.0,
+              "z": 1000.0
+            }
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [],
+        "status": "SOURCE_DECODED"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-003",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_BS_07:export:8586",
+      "propertyPath": "startsize.distribution",
+      "sourcePackageIndex": 72,
+      "targetNodeId": "",
+      "targetObjectPath": "gadget.par_j_lightshafting_02.particlemodulesize_9.distributionvectorparticleparameter_2",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulesize",
+      "sourceModulePath": "gadget.par_j_lightshafting_02.particlemodulesize_9",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 2
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionvectorparticleparameter",
+        "objectPath": "gadget.par_j_lightshafting_02.particlemodulesize_9.distributionvectorparticleparameter_2",
+        "recordSha256": "0b98aa4f0841709b9218d865909b2d081e6ffe2c22ed3132bd24e6d33d9dd6bc",
+        "serialSize": null,
+        "propertyStreamEnd": 325
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "size"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "maxinput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1000.0,
+              "y": 1000.0,
+              "z": 1000.0
+            }
+          },
+          "maxoutput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1000.0,
+              "y": 1000.0,
+              "z": 1000.0
+            }
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 300.0,
+              "y": 100.0,
+              "z": 100.0
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [],
+        "status": "SOURCE_DECODED"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-004",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_CM_00:export:3246",
+      "propertyPath": "lifetime.distribution",
+      "sourcePackageIndex": 40,
+      "targetNodeId": "FX_CM_00:export:39",
+      "targetObjectPath": "dust.par_mp_dust_-x_high_01.particlemodulelifetime_1.distributionfloatparticleparameter_4",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulelifetime",
+      "sourceModulePath": "dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 1
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "dust.par_mp_dust_-x_high_01.particlemodulelifetime_1.distributionfloatparticleparameter_4",
+        "recordSha256": "38fc24a77a127738a70648868f068866faaedc7be6b2346e8479b592eaf96c09",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammode",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "lifetime"
+          },
+          "parammode": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "maxinput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 10.0
+          },
+          "maxoutput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 10.0
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 1.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [],
+        "status": "SOURCE_DECODED"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-005",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_CM_02:export:1899",
+      "propertyPath": "startalpha.distribution",
+      "sourcePackageIndex": 64,
+      "targetNodeId": "FX_CM_02:export:63",
+      "targetObjectPath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionfloatparticleparameter_0",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulecolor",
+      "sourceModulePath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 3
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionfloatparticleparameter_0",
+        "recordSha256": "4959fb4810eeec7ce7159738a965f3e4eee05feb0c2df9afefcd3abc65583e85",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammode",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "alpha"
+          },
+          "parammode": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "maxinput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 2.0
+          },
+          "maxoutput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 2.0
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 1.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [],
+        "status": "SOURCE_DECODED"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-006",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_CM_02:export:1899",
+      "propertyPath": "startcolor.distribution",
+      "sourcePackageIndex": 191,
+      "targetNodeId": "FX_CM_02:export:190",
+      "targetObjectPath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionvectorparticleparameter_1",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulecolor",
+      "sourceModulePath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 3
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionvectorparticleparameter",
+        "objectPath": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionvectorparticleparameter_1",
+        "recordSha256": "bbdd21d9cc4e4b9847d8fcc672bfdd047a41b19509cadaaaa0595ffe73f32df2",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "color"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "maxinput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 100.0,
+              "y": 100.0,
+              "z": 100.0
+            }
+          },
+          "maxoutput": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 100.0,
+              "y": 100.0,
+              "z": 100.0
+            }
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 3.0,
+              "y": 2.0,
+              "z": 1.0
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [],
+        "status": "SOURCE_DECODED"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-007",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_FS_AV_10:export:165",
+      "propertyPath": "colorscaleoverlife.distribution",
+      "sourcePackageIndex": 3,
+      "targetNodeId": "",
+      "targetObjectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulecolorscaleoverlife_22.efdistributionvectormultiplyparticleparameter_0",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulecolorscaleoverlife",
+      "sourceModulePath": "chunjie25.par_l_chunjie25_move_01.particlemodulecolorscaleoverlife_22",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-001",
+          "sourceCueId": "skill-31470/clip-000/notify-000",
+          "rendererType": "SpriteParticle",
+          "moduleOrder": 9
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED_EXTERNAL_PACKAGE_SEMANTIC_QUORUM",
+      "targetSourceRevision": {
+        "basis": "CURRENT_PACKAGE_PIN_AND_PRIOR_CLOSURE_SEMANTIC_QUORUM",
+        "physicalPackage": "YGI3SYH3SZ23S81G1CMHUFMHL.upk",
+        "bytes": 23741,
+        "sha256": "c163a79c1b679c76e2e4ac2607098a4ae24be6d4757e9465fe64b265fb4423c8",
+        "priorRequestedObjectQuorum": [
+          {
+            "objectId": "FX_FS_AV_10:export:145",
+            "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulecoloroverlife_1",
+            "priorClosureRecordSha256": "11168b54a4b19e08d0f5cdd9046f7efa7bbe7719a7e532d6e14716d033ca9e87",
+            "currentPackageRecordSha256": "11168b54a4b19e08d0f5cdd9046f7efa7bbe7719a7e532d6e14716d033ca9e87",
+            "semanticEqual": true
+          },
+          {
+            "objectId": "FX_FS_AV_10:export:165",
+            "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulecolorscaleoverlife_22",
+            "priorClosureRecordSha256": "bebe3981b94ef8907fe6a2f192422fb01d5562778d4da67a3bc1b6ce267242b2",
+            "currentPackageRecordSha256": "bebe3981b94ef8907fe6a2f192422fb01d5562778d4da67a3bc1b6ce267242b2",
+            "semanticEqual": true
+          },
+          {
+            "objectId": "FX_FS_AV_10:export:171",
+            "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulelifetime_20",
+            "priorClosureRecordSha256": "e78f77160199d9801a2a7af62008eabdcb3ffd61b821c760af92df1d95041134",
+            "currentPackageRecordSha256": "e78f77160199d9801a2a7af62008eabdcb3ffd61b821c760af92df1d95041134",
+            "semanticEqual": true
+          },
+          {
+            "objectId": "FX_FS_AV_10:export:189",
+            "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemoduleparameterdynamic_10",
+            "priorClosureRecordSha256": "f26b1a73798cd5c93aa9245996977e1e3267882195f2cf6fda90131ff3349e06",
+            "currentPackageRecordSha256": "f26b1a73798cd5c93aa9245996977e1e3267882195f2cf6fda90131ff3349e06",
+            "semanticEqual": true
+          },
+          {
+            "objectId": "FX_FS_AV_10:export:295",
+            "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulesizemultiplylife_35",
+            "priorClosureRecordSha256": "bb975819eef91cbd97a9cbdada0cb6521825d0ce92d933e03ea40c6bd4de1366",
+            "currentPackageRecordSha256": "bb975819eef91cbd97a9cbdada0cb6521825d0ce92d933e03ea40c6bd4de1366",
+            "semanticEqual": true
+          }
+        ]
+      },
+      "target": {
+        "className": "efdistributionvectormultiplyparticleparameter",
+        "objectPath": "chunjie25.par_l_chunjie25_move_01.particlemodulecolorscaleoverlife_22.efdistributionvectormultiplyparticleparameter_0",
+        "recordSha256": "843e9cfb746b6119d7e3ed8e58b1a169d3f6465d13b826c2ce5ad498ccf93a20",
+        "serialSize": 237,
+        "propertyStreamEnd": 237
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "color"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 1.0
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-008",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_DDM_00:export:4576",
+      "propertyPath": "alphascaleoverlife.distribution",
+      "sourcePackageIndex": 8,
+      "targetNodeId": "",
+      "targetObjectPath": "par_o_ddm_dslash_04_02_loc_int.particlemodulecolorscaleoverlife_10.distributionfloatconstantcurve_0",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulecolorscaleoverlife",
+      "sourceModulePath": "par_o_ddm_dslash_04_02_loc_int.particlemodulecolorscaleoverlife_10",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-012",
+          "sourceCueId": "skill-31470/clip-000/notify-018",
+          "rendererType": "MeshParticle",
+          "moduleOrder": 2
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatconstantcurve",
+        "objectPath": "par_o_ddm_dslash_04_02_loc_int.particlemodulecolorscaleoverlife_10.distributionfloatconstantcurve_0",
+        "recordSha256": "ee11ceead7dcb3a059946d41d118e679bdf658343b2170572e8bf1994bb43595",
+        "serialSize": null,
+        "propertyStreamEnd": 614
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": false,
+        "decodedFields": [],
+        "unresolvedRequiredFields": [],
+        "status": "NOT_APPLICABLE"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-009",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_FLM_01:export:3119",
+      "propertyPath": "lifetime.distribution",
+      "sourcePackageIndex": 22,
+      "targetNodeId": "",
+      "targetObjectPath": "par_m_flm_ribbon_02.particlemodulelifetime_0.distributionfloatparticleparameter_0",
+      "sourceDocument": "externalModuleClosure",
+      "sourceModuleClass": "particlemodulelifetime",
+      "sourceModulePath": "par_m_flm_ribbon_02.particlemodulelifetime_0",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-032",
+          "sourceCueId": "skill-31470/clip-000/notify-026",
+          "rendererType": "ScreenPost",
+          "moduleOrder": 1
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "par_m_flm_ribbon_02.particlemodulelifetime_0.distributionfloatparticleparameter_0",
+        "recordSha256": "528831e0804a652f99a9e968d6b3015b644c46ff133f6f72cb5a31ef27f2ed9d",
+        "serialSize": null,
+        "propertyStreamEnd": 157
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "maxinput",
+          "maxoutput"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "life"
+          },
+          "maxinput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 100.0
+          },
+          "maxoutput": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 100.0
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 1.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "parammode"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-010",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_SDM_07:export:1149",
+      "propertyPath": "startsize.distribution",
+      "sourcePackageIndex": 7,
+      "targetNodeId": "FX_PC_SDM_07:export:6",
+      "targetObjectPath": "par_v_sdm_ink_spw_01.particlemodulesize_1.distributionvectorparticleparameter_1",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulesize",
+      "sourceModulePath": "par_v_sdm_ink_spw_01.particlemodulesize_1",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-003",
+          "sourceCueId": "skill-31470/clip-000/notify-000",
+          "rendererType": "CascadeRibbon",
+          "moduleOrder": 2
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionvectorparticleparameter",
+        "objectPath": "par_v_sdm_ink_spw_01.particlemodulesize_1.distributionvectorparticleparameter_1",
+        "recordSha256": "82094e72b2d44ffc68b3e4f5d0e6ef7a4dbb4815df16b78024a81c20859a5263",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "size"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 15.0,
+              "y": 15.0,
+              "z": 15.0
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-011",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_SDM_07:export:667",
+      "propertyPath": "startalpha.distribution",
+      "sourcePackageIndex": 4,
+      "targetNodeId": "FX_PC_SDM_07:export:3",
+      "targetObjectPath": "par_v_sdm_ink_spw_01.particlemodulecolor_0.distributionfloatparticleparameter_1",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulecolor",
+      "sourceModulePath": "par_v_sdm_ink_spw_01.particlemodulecolor_0",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-003",
+          "sourceCueId": "skill-31470/clip-000/notify-000",
+          "rendererType": "CascadeRibbon",
+          "moduleOrder": 3
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "par_v_sdm_ink_spw_01.particlemodulecolor_0.distributionfloatparticleparameter_1",
+        "recordSha256": "1f5c4be787487ab6a2bdca8898bf8f656eddb318efe5f4f3c1544ea64f496f9a",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammode"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "alpha"
+          },
+          "parammode": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 1.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-012",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_SDM_07:export:667",
+      "propertyPath": "startcolor.distribution",
+      "sourcePackageIndex": 6,
+      "targetNodeId": "FX_PC_SDM_07:export:5",
+      "targetObjectPath": "par_v_sdm_ink_spw_01.particlemodulecolor_0.distributionvectorparticleparameter_0",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulecolor",
+      "sourceModulePath": "par_v_sdm_ink_spw_01.particlemodulecolor_0",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-003",
+          "sourceCueId": "skill-31470/clip-000/notify-000",
+          "rendererType": "CascadeRibbon",
+          "moduleOrder": 3
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionvectorparticleparameter",
+        "objectPath": "par_v_sdm_ink_spw_01.particlemodulecolor_0.distributionvectorparticleparameter_0",
+        "recordSha256": "ccb1a6e3e3a11127e3a0bc04e1132616348aa6f731eb8b9bcf0991b1ac827e79",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "color"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-013",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_SDM_07:export:765",
+      "propertyPath": "lifetime.distribution",
+      "sourcePackageIndex": 5,
+      "targetNodeId": "FX_PC_SDM_07:export:4",
+      "targetObjectPath": "par_v_sdm_ink_spw_01.particlemodulelifetime_0.distributionfloatparticleparameter_0",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulelifetime",
+      "sourceModulePath": "par_v_sdm_ink_spw_01.particlemodulelifetime_0",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-003",
+          "sourceCueId": "skill-31470/clip-000/notify-000",
+          "rendererType": "CascadeRibbon",
+          "moduleOrder": 1
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "PINNED_NORMALIZED_OR_EXTERNAL_CLOSURE"
+      },
+      "target": {
+        "className": "distributionfloatparticleparameter",
+        "objectPath": "par_v_sdm_ink_spw_01.particlemodulelifetime_0.distributionfloatparticleparameter_0",
+        "recordSha256": "6d4488fec6c7a66532a18290e889b943c46d0a0506abaec9ca1e6b98562d2c9d",
+        "serialSize": null,
+        "propertyStreamEnd": null
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammode"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "life"
+          },
+          "parammode": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "constant": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 2.0
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "distribution-target-014",
+      "referenceKind": "DISTRIBUTION_TARGET",
+      "sourceNodeId": "FX_PC_SDM_07:export:812",
+      "propertyPath": "startrotation.distribution",
+      "sourcePackageIndex": 12,
+      "targetNodeId": "",
+      "targetObjectPath": "par_v_smd_onestroke_swing_01.particlemodulemeshrotation_12.efdistributionvectormultiplyparticleparameter_0",
+      "sourceDocument": "normalizedGraph",
+      "sourceModuleClass": "particlemodulemeshrotation",
+      "sourceModulePath": "par_v_smd_onestroke_swing_01.particlemodulemeshrotation_12",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-013",
+          "sourceCueId": "skill-31470/clip-000/notify-018",
+          "rendererType": "MeshParticle",
+          "moduleOrder": 6
+        },
+        {
+          "activeElementId": "source-active-014",
+          "sourceCueId": "skill-31470/clip-000/notify-018",
+          "rendererType": "MeshParticle",
+          "moduleOrder": 6
+        }
+      ],
+      "activeOccurrenceCount": 2,
+      "targetPayloadStatus": "UNRESOLVED_SOURCE_REVISION_MISMATCH",
+      "targetSourceRevision": {
+        "basis": "RECOVERY_LEAD_ONLY",
+        "expected": {
+          "physicalPackage": "YGI3SWD3SHKB3D1EG9KMHCX6M.upk",
+          "bytes": 66494,
+          "sha256": "94398893ff136618bb92150b4ac352ebe7461255c176586bee90f21267488222"
+        },
+        "recoveryLead": {
+          "physicalPackage": "YGI3SWD3SHKB3D1EG9KMHCX6M.upk",
+          "bytes": 66557,
+          "sha256": "5a05218926f81e9ec4f9d8bc63bb7474bdb92e482b562b0af779c9fbb22e12a5",
+          "matchesSourceReceipt": false,
+          "objectPathMatchesOldGraphReference": true
+        }
+      },
+      "target": {
+        "className": "efdistributionvectormultiplyparticleparameter",
+        "objectPath": "par_v_smd_onestroke_swing_01.particlemodulemeshrotation_12.efdistributionvectormultiplyparticleparameter_0",
+        "recordSha256": "f0ce09114ef82398bb41d57f741417cf8ae263090c93e2e5e4e95ae22036a957",
+        "serialSize": 237,
+        "propertyStreamEnd": 237
+      },
+      "targetSemanticCoverage": {
+        "isParticleParameter": true,
+        "decodedFields": [
+          "parametername",
+          "parammodes",
+          "parammodes[1]",
+          "parammodes[2]"
+        ],
+        "decodedValues": {
+          "parametername": {
+            "type": "nameproperty",
+            "structType": null,
+            "value": "rotation"
+          },
+          "parammodes": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[1]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "parammodes[2]": {
+            "type": "byteproperty",
+            "structType": null,
+            "value": "dpm_direct"
+          },
+          "constant": {
+            "type": "structproperty",
+            "structType": "vector",
+            "value": {
+              "x": 1.0,
+              "y": 1.0,
+              "z": 0.6000000238418579
+            }
+          },
+          "bisdirty": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          }
+        },
+        "unresolvedRequiredFields": [
+          "maxinput",
+          "maxoutput"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED",
+          "DISTRIBUTION_TARGET_SOURCE_REVISION_UNRESOLVED",
+          "PARTICLE_PARAMETER_CLASS_DEFAULT_SEMANTICS_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "referenceId": "typedata-point-light-component-000",
+      "referenceKind": "TYPEDATA_COMPONENT",
+      "sourceNodeId": "FX_CM_02:export:268",
+      "propertyPath": "pointlightcomponent",
+      "sourcePackageIndex": 7055,
+      "targetObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+      "activeOccurrences": [
+        {
+          "activeElementId": "source-active-034",
+          "sourceCueId": "skill-31470/clip-000/notify-029",
+          "rendererType": "LightParticle",
+          "moduleOrder": 6
+        }
+      ],
+      "activeOccurrenceCount": 1,
+      "targetPayloadStatus": "SOURCE_DECODED",
+      "targetSourceRevision": {
+        "basis": "IMMUTABLE_SOURCE_RECEIPT_PACKAGE_MATCH",
+        "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
+        "bytes": 255488,
+        "sha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
+      },
+      "target": {
+        "className": "pointlightcomponent",
+        "objectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+        "recordSha256": "f7f06dd23c824e49f0db7f722edcff36d4ba08a7f2684a9d72f1211849d3fe32",
+        "serialSize": 190,
+        "propertyStreamEnd": 190,
+        "explicitProperties": {
+          "brightness": {
+            "type": "floatproperty",
+            "structType": null,
+            "value": 10.0
+          },
+          "bcastcompositeshadow": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          },
+          "baffectcompositeshadowdirection": {
+            "type": "boolproperty",
+            "structType": null,
+            "value": false
+          },
+          "lightguid": {
+            "type": "structproperty",
+            "structType": "guid",
+            "value": {
+              "size": 16,
+              "hex": "5f88644ffba4fb418d7cd729de5b4edf"
+            }
+          },
+          "lightmapguid": {
+            "type": "structproperty",
+            "structType": "guid",
+            "value": {
+              "size": 16,
+              "hex": "1ea55a7868d3f44c93470244d050996a"
+            }
+          }
+        }
+      },
+      "targetSemanticCoverage": {
+        "decodedFields": [
+          "baffectcompositeshadowdirection",
+          "bcastcompositeshadow",
+          "brightness",
+          "lightguid",
+          "lightmapguid"
+        ],
+        "unresolvedRequiredFields": [
+          "radius",
+          "falloffexponent",
+          "lightcolor"
+        ],
+        "status": "UNRESOLVED_CLASS_DEFAULT_SEMANTICS"
+      },
+      "compiledExecutionAdmission": {
+        "allowed": false,
+        "blockers": [
+          "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED",
+          "LIGHT_RENDERER_NOT_COMPILED"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "distributionTargetUniqueCount": 15,
+    "distributionTargetOccurrenceCount": 17,
+    "distributionTargetPayloadDecodedUniqueCount": 14,
+    "distributionTargetPayloadUnresolvedUniqueCount": 1,
+    "distributionTargetPayloadUnresolvedOccurrenceCount": 2,
+    "pointLightTargetUniqueCount": 1,
+    "pointLightTargetOccurrenceCount": 1,
+    "decodedParticleParameterSemanticFieldCounts": {
+      "MaxInput": 7,
+      "MaxOutput": 7,
+      "ParamMode": 25
+    },
+    "compiledExecutionAllowedReferenceCount": 0
+  },
+  "closureSha256": "85776bf1d35c59adc74ea5e324600db5099e5b92bb594aa1efbb623d8ba64c0d"
+}

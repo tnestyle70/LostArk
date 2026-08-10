@@ -16,6 +16,11 @@ SOCKET_BLOCK = re.compile(
     r"Sockets\[(?P<index>\d+)\]\s*=\s*\{(?P<body>.*?)\n\s*\}",
     re.DOTALL,
 )
+COMPACT_SOCKET = re.compile(
+    r"^\s*Sockets\[(?P<index>\d+)\]\s*=\s*\{\s*"
+    r"Name=(?P<socket>[^,}\s]+)\s*,\s*Bone=(?P<bone>[^,}\s]+)\s*\}\s*$",
+    re.MULTILINE,
+)
 NAME_FIELD = re.compile(r"^\s*(?P<name>SocketName|BoneName)\s*=\s*(?P<value>\S+)\s*$", re.MULTILINE)
 VECTOR_FIELD = re.compile(
     r"^\s*(?P<name>RelativeLocation|RelativeRotation|RelativeScale)\s*=\s*"
@@ -51,6 +56,10 @@ def parse_socket_contract(path: Path) -> dict[str, Any]:
             field.group("name"): field.group("value")
             for field in NAME_FIELD.finditer(body)
         }
+        # UModel's compact summary wraps all one-line entries in a
+        # ``Sockets[count]`` block.  That outer array is not a socket.
+        if "Sockets[" in body:
+            continue
         if set(names) != {"SocketName", "BoneName"}:
             raise ValueError(
                 f"socket {match.group('index')} identity is incomplete"
@@ -97,9 +106,35 @@ def parse_socket_contract(path: Path) -> dict[str, Any]:
                         scale.get("z", 1.0),
                     ],
                 },
+                "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES",
             }
         )
-    declared = re.search(r"Sockets\[(\d+)\]\s*=", text)
+
+    detailed_indices = {row["sourceIndex"] for row in sockets}
+    for match in COMPACT_SOCKET.finditer(text):
+        source_index = int(match.group("index"))
+        if source_index in detailed_indices:
+            continue
+        sockets.append(
+            {
+                "sourceIndex": source_index,
+                "socketName": match.group("socket"),
+                "boneName": match.group("bone"),
+                "sourceTransform": {
+                    "positionUeUnits": [0.0, 0.0, 0.0],
+                    "rotationUnrealUnits": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0],
+                },
+                "runtimeLocalTransform": {
+                    "position": [0.0, 0.0, 0.0],
+                    "rotationDegrees": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0],
+                },
+                "transformEvidence": "UMODEL_COMPACT_DEFAULT_TRANSFORM",
+            }
+        )
+    sockets.sort(key=lambda row: row["sourceIndex"])
+    declared = re.search(r"^\s*Sockets\[(\d+)\]\s*=\s*$", text, re.MULTILINE)
     if declared is None or int(declared.group(1)) != len(sockets):
         raise ValueError(
             "socket array count does not match parsed socket entries"

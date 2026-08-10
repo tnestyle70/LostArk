@@ -1,0 +1,222 @@
+{
+  "schema": "lostark.ue3-cooked-material-graph-evidence-set",
+  "formatVersion": 1,
+  "materials": [
+    {
+      "schema": "lostark.ue3-cooked-material-graph-evidence",
+      "formatVersion": 1,
+      "sourcePackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "sourcePackageVersion": 868,
+      "materialPath": "fx_m.fx_o_transition_01_ma",
+      "materialExportIndex": 122,
+      "materialSerialSize": 1273,
+      "materialPropertyStreamEnd": 1109,
+      "materialTrailingByteCount": 164,
+      "outputs": {
+        "diffusecolor": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "emissivecolor": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "opacitymask": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "normal": {
+          "packageIndex": 2993,
+          "mask": 1,
+          "maskr": 1,
+          "maskg": 1,
+          "maskb": 1,
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_16"
+        }
+      },
+      "expressions": [
+        {
+          "sourceOrder": 0,
+          "exportIndex": 2992,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_16",
+          "parameterName": "normal_tex",
+          "group": "texture",
+          "defaultValue": null,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_n",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 10,
+          "exportIndex": 2993,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_9",
+          "parameterName": "diffuse_tex",
+          "group": "texture",
+          "defaultValue": null,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_d",
+          "inputs": [],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 11,
+          "exportIndex": 2991,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_10",
+          "parameterName": "dissolve_texture",
+          "group": "dissolve",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_01.fx_c_atypical_016",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 12,
+          "exportIndex": 1597,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_2",
+          "parameterName": "specural_power",
+          "group": "specular",
+          "defaultValue": 40.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 14,
+          "exportIndex": 2990,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_0",
+          "parameterName": "spec_tex",
+          "group": "texture",
+          "defaultValue": null,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_s",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 15,
+          "exportIndex": 1592,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_0",
+          "parameterName": "specural_intensity",
+          "group": "specular",
+          "defaultValue": 5.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 21,
+          "exportIndex": 1594,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_11",
+          "parameterName": "dissolve_line_thickness",
+          "group": "dissolve",
+          "defaultValue": 1.100000023841858,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 23,
+          "exportIndex": 1595,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_12",
+          "parameterName": "transition_area",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 30,
+          "exportIndex": 1596,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_13",
+          "parameterName": "emissive_intensity",
+          "group": "emissive",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 41,
+          "exportIndex": 3131,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionvectorparameter_1",
+          "parameterName": "diffuse_color",
+          "group": "diffuse",
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 200,
+          "propertyStreamEnd": 200
+        },
+        {
+          "sourceOrder": 42,
+          "exportIndex": 1593,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_o_transition_01_ma.materialexpressionscalarparameter_1",
+          "parameterName": "fresnel_intensity",
+          "group": null,
+          "defaultValue": 1.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        }
+      ],
+      "namedTextures": [
+        {
+          "name": "normal_tex",
+          "group": "texture",
+          "sourceObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_n",
+          "expressionObjectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_16"
+        },
+        {
+          "name": "diffuse_tex",
+          "group": "texture",
+          "sourceObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_d",
+          "expressionObjectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_9"
+        },
+        {
+          "name": "dissolve_texture",
+          "group": "dissolve",
+          "sourceObjectPath": "fx_tex_01.fx_c_atypical_016",
+          "expressionObjectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_10"
+        },
+        {
+          "name": "spec_tex",
+          "group": "texture",
+          "sourceObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_s",
+          "expressionObjectPath": "fx_m.fx_o_transition_01_ma.materialexpressiontexturesampleparameter2d_0"
+        }
+      ],
+      "summary": {
+        "expressionEntryCount": 43,
+        "nonNullExpressionCount": 11,
+        "nullExpressionCount": 32,
+        "namedTextureCount": 4,
+        "unresolvedInputEdgeCount": 0,
+        "topologyStatus": "COOKED_PARTIAL",
+        "runtimeExactEligible": false
+      }
+    }
+  ]
+}

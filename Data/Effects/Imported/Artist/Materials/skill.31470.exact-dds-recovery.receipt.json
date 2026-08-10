@@ -1,0 +1,408 @@
+{
+  "schema": "lostark.artist-effect-exact-dds-recovery-receipt",
+  "formatVersion": 1,
+  "characterClass": "ARTIST",
+  "skillId": 31470,
+  "inputSlot": "F",
+  "status": "SOURCE_EXTRACTED",
+  "scope": "ISOLATED_MANUAL_AUDITION_FIXTURE_ONLY",
+  "visualApprovalStatus": "NOT_VISUAL_APPROVED",
+  "productPlacementStatus": "BLOCKED_NOT_PUBLISHED",
+  "fallbackPolicy": "FORBIDDEN",
+  "sourceEvidence": {
+    "activeMaterialClosure": {
+      "path": "Data/Effects/Imported/Artist/Materials/skill.31470.active-material-closure.json",
+      "byteCount": 985864,
+      "sha256": "92eac4d8c6d5e6a028267619f0c29400d27fd017c36bfa2a46abadacb7da6577"
+    },
+    "sourcePackManifest": {
+      "sourceRootId": "Resource_LostArk",
+      "relativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/source_pack_manifest.json",
+      "byteCount": 270014,
+      "sha256": "8ddce11f3cdd36efc4098b127da860b3e77e0f6916263412f1089cce3967d62d",
+      "upstreamInventorySha256": "1445954d37377c63536466eacd506028e7e7d7759e7a9482db30d0326b650844"
+    },
+    "extractor": {
+      "sourceRootId": "Resource_LostArk",
+      "relativePath": "06_Tools/UEViewerLostArk_runtime/umodel_lostark_v7.exe",
+      "byteCount": 1766400,
+      "sha256": "b9573cdcbb7e9d26dbf60a0e3af47fb5af8543140873da8483c26d58cf40b249"
+    },
+    "rawPackageParser": {
+      "implementation": "Tools/LevelPlacementExtractor/extract_ue3_effect_material_closure.py",
+      "purpose": "DIRECT_EXPORT_TABLE_AND_TAGGED_PROPERTY_VERIFICATION"
+    }
+  },
+  "localBindings": {
+    "sourcePackRoot": {
+      "sourceRootId": "Resource_LostArk",
+      "relativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3"
+    },
+    "outputRoot": ".codex_tmp/artist-f-dds-recovery/source-export",
+    "fixtureRoot": ".codex_tmp/artist-f-runtime",
+    "currentRuntimeObservation": {
+      "sourceRootId": "DesktopLostArk",
+      "relativePath": "Client/Bin/Resources",
+      "accessPolicy": "READ_ONLY_HASH_OBSERVATION"
+    },
+    "trackingPolicy": "GIT_IGNORED_LOCAL_VALIDATION_INPUT"
+  },
+  "extractionInvocations": [
+    {
+      "logicalPackage": "FX_TEX_00",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackRoot}",
+        "-out={outputRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_a_noise_011",
+        "-obj=fx_a_decal_014",
+        "FX_TEX_00"
+      ],
+      "exitCode": 0,
+      "foundPhysicalPackage": "Dependencies/YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "foundObjectCount": 2
+    },
+    {
+      "logicalPackage": "FX_TEX_01",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackRoot}",
+        "-out={outputRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_c_atypical_016",
+        "FX_TEX_01"
+      ],
+      "exitCode": 0,
+      "foundPhysicalPackage": "Dependencies/YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "foundObjectCount": 1
+    },
+    {
+      "logicalPackage": "FX_TEX_03",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackRoot}",
+        "-out={outputRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_e_ring_001_cl",
+        "FX_TEX_03"
+      ],
+      "exitCode": 0,
+      "foundPhysicalPackage": "Dependencies/YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+      "foundObjectCount": 1
+    },
+    {
+      "logicalPackage": "FX_TEX_00",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackRoot}",
+        "-out={outputRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_b_fluid_007",
+        "-obj=fx_bg_dustpanner_01",
+        "FX_TEX_00"
+      ],
+      "exitCode": 0,
+      "foundPhysicalPackage": "Dependencies/YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "foundObjectCount": 2
+    },
+    {
+      "logicalPackage": "FX_TEX_02",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackRoot}",
+        "-out={outputRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_d_normal_078",
+        "-obj=fx_d_environ_018",
+        "FX_TEX_02"
+      ],
+      "exitCode": 0,
+      "foundPhysicalPackage": "Dependencies/YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "foundObjectCount": 2
+    }
+  ],
+  "assets": [
+    {
+      "logicalObjectPath": "fx_tex_00.fx_a_noise_011",
+      "sourceMaterialBinding": {
+        "materialObjectPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
+        "parameterName": "uv_noise_tex",
+        "bindingEvidence": "MATERIAL_INSTANCE_OVERRIDE_EXACT",
+        "materialPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+        "materialPhysicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948"
+      },
+      "sourceTexture2D": {
+        "logicalPackage": "FX_TEX_00",
+        "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+        "physicalPackageRelativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies/YGI3SORGM3I11GHA5BMJ885CZ.upk",
+        "physicalPackageByteCount": 5889712,
+        "physicalPackageSha256": "c650b18b6998a4c26cb520aeed2a36f9d90f4f77228da218d0fe568b1ba9d1c5",
+        "className": "Texture2D",
+        "exportIndex": 314,
+        "packageReference": 315,
+        "serialOffset": 3541860,
+        "serialSize": 12343,
+        "serialSha256": "7de8bf159a99eaa81271c8eec09ca91a5889dfbddc624fc677bdcd15c53481c2",
+        "propertyStreamEnd": 297,
+        "properties": {
+          "sizeX": 128,
+          "sizeY": 128,
+          "originalSizeX": 128,
+          "originalSizeY": 128,
+          "format": "PF_DXT5",
+          "mipTailBaseIndex": 7,
+          "lodGroup": "TEXTUREGROUP_Effects",
+          "useCrunchCompression": true
+        },
+        "sampling": {
+          "addressU": "wrap",
+          "addressV": "wrap",
+          "colorSpace": "srgb",
+          "addressUEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "addressVEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "colorSpaceEvidence": "UE3_TEXTURE_CLASS_DEFAULT"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "FX_TEX_00/Texture2D/fx_a_noise_011.dds",
+      "fixtureAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
+      "copyPolicy": "BYTE_FOR_BYTE_FROM_FRESH_UMODEL_DDS_NO_REENCODE",
+      "dds": {
+        "byteCount": 16512,
+        "sha256": "c8d94d0750517d5654416e71bcd8666d79630c478c757d196e37ba056f87cc53",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "header128Sha256": "7b65b3aa9e2638c3700bbabd34ecbe7bea841bbd1de0e1e5a73f54f24a16f3af",
+        "flagsHex": "0x00081007",
+        "width": 128,
+        "height": 128,
+        "pitchOrLinearSize": 16384,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT5",
+        "mipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      }
+    },
+    {
+      "logicalObjectPath": "fx_tex_03.fx_e_ring_001_cl",
+      "sourceMaterialBinding": {
+        "materialObjectPath": "fx_m_mi_03.fx_mi.fx_m_pa_skull_02_23_tr",
+        "parameterName": "mainalpha_tex",
+        "bindingEvidence": "MATERIAL_INSTANCE_OVERRIDE_EXACT",
+        "materialPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+        "materialPhysicalPackageSha256": "2f729139288043929a9493f4f6c988754805bde8c2a8da44c90df170f41812ef"
+      },
+      "sourceTexture2D": {
+        "logicalPackage": "FX_TEX_03",
+        "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+        "physicalPackageRelativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies/YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+        "physicalPackageByteCount": 6344494,
+        "physicalPackageSha256": "f47383ab63e08875d6a98929eba42843cad1be059c299c59aa03c5eb3ae5b314",
+        "className": "Texture2D",
+        "exportIndex": 212,
+        "packageReference": 213,
+        "serialOffset": 4765803,
+        "serialSize": 35002,
+        "serialSha256": "dc9a1fcb76f6538c9b0dcfa8e5c52ffc1f5482faffda4d46cadf8f909ce52064",
+        "propertyStreamEnd": 377,
+        "properties": {
+          "sizeX": 256,
+          "sizeY": 256,
+          "originalSizeX": 256,
+          "originalSizeY": 256,
+          "format": "PF_DXT5",
+          "addressX": "TA_Clamp",
+          "addressY": "TA_Clamp",
+          "mipTailBaseIndex": 8,
+          "lodGroup": "TEXTUREGROUP_Effects",
+          "useCrunchCompression": true
+        },
+        "sampling": {
+          "addressU": "clamp",
+          "addressV": "clamp",
+          "colorSpace": "srgb",
+          "addressUEvidence": "SERIALIZED_PROPERTY_EXACT",
+          "addressVEvidence": "SERIALIZED_PROPERTY_EXACT",
+          "colorSpaceEvidence": "UE3_TEXTURE_CLASS_DEFAULT"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "FX_TEX_03/Texture2D/fx_e_ring_001_cl.dds",
+      "fixtureAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
+      "copyPolicy": "BYTE_FOR_BYTE_FROM_FRESH_UMODEL_DDS_NO_REENCODE",
+      "dds": {
+        "byteCount": 65664,
+        "sha256": "3c8987c8bc4bda1d3fd0f4840124e4fc1ba2eb3899307df8fe5852c4a760738e",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "header128Sha256": "bbeafd97d4a7046ae2ce8c122ab30d382b823f38fa9416afb388cf7d52906f31",
+        "flagsHex": "0x00081007",
+        "width": 256,
+        "height": 256,
+        "pitchOrLinearSize": 65536,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT5",
+        "mipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      }
+    },
+    {
+      "logicalObjectPath": "fx_tex_00.fx_a_decal_014",
+      "sourceMaterialBinding": {
+        "materialObjectPath": "fx_m_mi_04.fx_mi.fx_d_de_unlit_01_01_tr",
+        "parameterName": "emissive_tex",
+        "bindingEvidence": "MATERIAL_INSTANCE_OVERRIDE_EXACT",
+        "materialPhysicalPackage": "YGI3SB3OBJ3O1TGUMP6QMP8O5.upk",
+        "materialPhysicalPackageSha256": "aeb9a9b9efb7b8fa9f49fabf0ad19010390227f25a2e23b2044110a6012954f7"
+      },
+      "sourceTexture2D": {
+        "logicalPackage": "FX_TEX_00",
+        "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+        "physicalPackageRelativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies/YGI3SORGM3I11GHA5BMJ885CZ.upk",
+        "physicalPackageByteCount": 5889712,
+        "physicalPackageSha256": "c650b18b6998a4c26cb520aeed2a36f9d90f4f77228da218d0fe568b1ba9d1c5",
+        "className": "Texture2D",
+        "exportIndex": 125,
+        "packageReference": 126,
+        "serialOffset": 1210627,
+        "serialSize": 39979,
+        "serialSha256": "da7c1f8c318cab19d84c77fc9e307b27772edd6d7385de6ffdb2916fbe3fd9d6",
+        "propertyStreamEnd": 333,
+        "properties": {
+          "sizeX": 256,
+          "sizeY": 256,
+          "originalSizeX": 256,
+          "originalSizeY": 256,
+          "format": "PF_DXT5",
+          "mipTailBaseIndex": 8,
+          "lodBias": -1,
+          "lodGroup": "TEXTUREGROUP_Effects",
+          "useCrunchCompression": true
+        },
+        "sampling": {
+          "addressU": "wrap",
+          "addressV": "wrap",
+          "colorSpace": "srgb",
+          "addressUEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "addressVEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "colorSpaceEvidence": "UE3_TEXTURE_CLASS_DEFAULT"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "FX_TEX_00/Texture2D/fx_a_decal_014.dds",
+      "fixtureAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
+      "copyPolicy": "BYTE_FOR_BYTE_FROM_FRESH_UMODEL_DDS_NO_REENCODE",
+      "dds": {
+        "byteCount": 65664,
+        "sha256": "c2ead8a025cea1f70c8b03f9a488748ebd616828695199539d4e5010e5dc24ef",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "header128Sha256": "bbeafd97d4a7046ae2ce8c122ab30d382b823f38fa9416afb388cf7d52906f31",
+        "flagsHex": "0x00081007",
+        "width": 256,
+        "height": 256,
+        "pitchOrLinearSize": 65536,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT5",
+        "mipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      }
+    },
+    {
+      "logicalObjectPath": "fx_tex_01.fx_c_atypical_016",
+      "sourceMaterialBinding": {
+        "materialObjectPath": "fx_m_mi_o_00.fx_mi.fx_o_transition_05_2_ma",
+        "parameterName": "dissolve_texture",
+        "bindingEvidence": "PARENT_DEFAULT_TEXTURE_EXACT",
+        "materialPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+        "materialPhysicalPackageSha256": "e213e85e9092dabd4d8648fe7bceb77fc3a461e991548dcde09c5c6f174912ce"
+      },
+      "sourceTexture2D": {
+        "logicalPackage": "FX_TEX_01",
+        "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+        "physicalPackageRelativePath": "00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies/YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+        "physicalPackageByteCount": 3432777,
+        "physicalPackageSha256": "afc7d3cbb63907a353926c1a58649cc2145da23ada15d4509ae9691f6b80c793",
+        "className": "Texture2D",
+        "exportIndex": 25,
+        "packageReference": 26,
+        "serialOffset": 128513,
+        "serialSize": 17782,
+        "serialSha256": "debe87553952ad21e1b735107b041419e9fcf342c9b8c946383c5a664c3f5ff8",
+        "propertyStreamEnd": 333,
+        "properties": {
+          "sizeX": 256,
+          "sizeY": 256,
+          "originalSizeX": 256,
+          "originalSizeY": 256,
+          "format": "PF_DXT1",
+          "mipTailBaseIndex": 8,
+          "lodBias": -1,
+          "lodGroup": "TEXTUREGROUP_Effects",
+          "useCrunchCompression": true
+        },
+        "sampling": {
+          "addressU": "wrap",
+          "addressV": "wrap",
+          "colorSpace": "srgb",
+          "addressUEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "addressVEvidence": "UE3_TEXTURE_CLASS_DEFAULT",
+          "colorSpaceEvidence": "UE3_TEXTURE_CLASS_DEFAULT"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "FX_TEX_01/Texture2D/fx_c_atypical_016.dds",
+      "fixtureAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
+      "copyPolicy": "EXISTING_FIXTURE_PROVED_BYTE_IDENTICAL_TO_FRESH_UMODEL_DDS",
+      "dds": {
+        "byteCount": 32896,
+        "sha256": "bbd2dc3ba79d24a5806af63d00dee302a04fb5c6e8be343275a63a9353981f43",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "header128Sha256": "066080c82d1234693fff81d5c324a9d330773467917bc063f08481db2814fc0b",
+        "flagsHex": "0x00081007",
+        "width": 256,
+        "height": 256,
+        "pitchOrLinearSize": 32768,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT1",
+        "mipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      }
+    }
+  ],
+  "summary": {
+    "requestedAssetCount": 4,
+    "freshExtractionSuccessCount": 4,
+    "fixturePresentAndHashMatchedCount": 4,
+    "fallbackAssetCount": 0,
+    "reencodedAssetCount": 0,
+    "productPublishedAssetCount": 0
+  }
+}

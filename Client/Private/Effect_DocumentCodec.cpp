@@ -2,6 +2,7 @@
 
 #include "DataJson.h"
 #include "Effect_MaterialTemplate.h"
+#include "Generated/Effect_SourceContractRegistry.generated.h"
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
@@ -14,7 +15,9 @@
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
+#include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <system_error>
 #include <unordered_map>
@@ -35,6 +38,7 @@ namespace
 	constexpr size_t MAX_SOURCE_DISTRIBUTIONS_PER_MODULE = 128u;
 	constexpr size_t MAX_SOURCE_BURSTS_PER_ELEMENT = 1024u;
 	constexpr size_t MAX_SOURCE_PRESENTATION_PARAMETERS = 256u;
+	constexpr size_t MAX_SOURCE_COVERAGE_PROPERTIES_PER_MODULE = 2048u;
 	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
 		"lostark.effect-source-presentation";
 
@@ -42,6 +46,25 @@ namespace
 	{
 		"mesh", "sprite", "particle", "decal", "trail", "light",
 		"screenPost"
+	};
+	constexpr const char_t* RENDERER_TYPE_TOKENS[] =
+	{
+		"standaloneMesh", "legacyStandaloneSprite", "meshParticle",
+		"spriteParticle", "decalParticle", "animTrail", "cascadeRibbon",
+		"lightParticle", "screenPost"
+	};
+	constexpr const char_t* SOURCE_SPACE_TOKENS[] =
+	{
+		"clientMetersV1", "ue3CascadeV1", "screenSpaceV1"
+	};
+	constexpr const char_t* SOURCE_COVERAGE_STATUS_TOKENS[] =
+	{
+		"source_decoded", "deterministic_conversion", "metadata_only",
+		"unresolved"
+	};
+	constexpr const char_t* DISTRIBUTION_PARAMETER_BINDING_TOKENS[] =
+	{
+		"none", "actionCue"
 	};
 	constexpr const char_t* SLOT_TOKENS[] =
 	{
@@ -267,6 +290,45 @@ namespace
 		return true;
 	}
 
+	bool_t Read_Double(
+		const Client::DATA_JSON_VALUE& Object,
+		const char_t* pName,
+		f64_t& OutValue,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Find_Field(
+			Object, pName, Client::DATA_JSON_TYPE::NUMBER, strOutError);
+		if (nullptr == pValue || !std::isfinite(pValue->Get_Number()))
+			return false;
+		OutValue = pValue->Get_Number();
+		return true;
+	}
+
+	bool_t Read_StringArray(
+		const Client::DATA_JSON_VALUE& Object,
+		const char_t* pName,
+		std::vector<std::string>& OutValues,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Find_Field(
+			Object, pName, Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		if (nullptr == pValue)
+			return false;
+		OutValues.clear();
+		OutValues.reserve(pValue->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& Item : pValue->Get_Array())
+		{
+			if (!Item.Is_String())
+			{
+				strOutError = std::string("Effect source string array is invalid: ") +
+					pName;
+				return false;
+			}
+			OutValues.push_back(Item.Get_String());
+		}
+		return true;
+	}
+
 	bool_t Read_Array(
 		const Client::DATA_JSON_VALUE& Object,
 		const char_t* pName,
@@ -320,6 +382,88 @@ namespace
 		return false;
 	}
 
+	bool_t Validate_ExactFields(
+		const Client::DATA_JSON_VALUE& Object,
+		const std::initializer_list<std::string_view> Allowed,
+		const std::string_view Context,
+		std::string& strOutError)
+	{
+		if (!Object.Is_Object())
+		{
+			strOutError = std::string(Context) + " must be an object.";
+			return false;
+		}
+		for (const auto& [Name, Value] : Object.Get_Object())
+		{
+			UNREFERENCED_PARAMETER(Value);
+			if (std::find(Allowed.begin(), Allowed.end(), Name) == Allowed.end())
+			{
+				strOutError = std::string(Context) +
+					" contains an unknown native-v14 field: " + Name;
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Is_LowerHexSha256(const std::string_view Value)
+	{
+		return 64u == Value.size() && std::all_of(Value.begin(), Value.end(),
+			[](const char_t Character)
+			{
+				return (Character >= '0' && Character <= '9') ||
+					(Character >= 'a' && Character <= 'f');
+			});
+	}
+
+	std::string Normalize_SourceModuleClass(const std::string_view Value)
+	{
+		std::string Result(Value);
+		std::transform(Result.begin(), Result.end(), Result.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char_t>(std::tolower(Character));
+			});
+		constexpr std::string_view EffectPrefix = "efparticlemodule";
+		if (Result.starts_with(EffectPrefix))
+			Result = "particlemodule" + Result.substr(EffectPrefix.size());
+		constexpr std::string_view SeededSuffix = "_seeded";
+		if (Result.ends_with(SeededSuffix))
+			Result.resize(Result.size() - SeededSuffix.size());
+		return Result;
+	}
+
+	bool_t Is_ParticleParameterDistribution(const std::string_view Value)
+	{
+		std::string Normalized(Value);
+		std::transform(Normalized.begin(), Normalized.end(), Normalized.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char_t>(std::tolower(Character));
+			});
+		return Normalized == "distributionfloatparticleparameter" ||
+			Normalized == "distributionvectorparticleparameter";
+	}
+
+	Client::EFFECT_ELEMENT_KIND Kind_ForRenderer(
+		const Client::EFFECT_RENDERER_TYPE eType)
+	{
+		using namespace Client;
+		switch (eType)
+		{
+		case EFFECT_RENDERER_TYPE::STANDALONE_MESH: return EFFECT_ELEMENT_KIND::MESH;
+		case EFFECT_RENDERER_TYPE::LEGACY_STANDALONE_SPRITE: return EFFECT_ELEMENT_KIND::SPRITE;
+		case EFFECT_RENDERER_TYPE::MESH_PARTICLE:
+		case EFFECT_RENDERER_TYPE::SPRITE_PARTICLE: return EFFECT_ELEMENT_KIND::PARTICLE;
+		case EFFECT_RENDERER_TYPE::DECAL_PARTICLE: return EFFECT_ELEMENT_KIND::DECAL;
+		case EFFECT_RENDERER_TYPE::ANIM_TRAIL:
+		case EFFECT_RENDERER_TYPE::CASCADE_RIBBON: return EFFECT_ELEMENT_KIND::TRAIL;
+		case EFFECT_RENDERER_TYPE::LIGHT_PARTICLE: return EFFECT_ELEMENT_KIND::LIGHT;
+		case EFFECT_RENDERER_TYPE::SCREEN_POST: return EFFECT_ELEMENT_KIND::SCREEN_POST;
+		default: return EFFECT_ELEMENT_KIND::END;
+		}
+	}
+
 	void Write_Float2(std::ostringstream& Output, const float2_t& Value)
 	{
 		Output << '[' << Value.x << ", " << Value.y << ']';
@@ -334,6 +478,55 @@ namespace
 	{
 		Output << '[' << Value.x << ", " << Value.y << ", "
 			<< Value.z << ", " << Value.w << ']';
+	}
+
+	void Write_StringArray(
+		std::ostringstream& Output,
+		const std::vector<std::string>& Values)
+	{
+		Output << '[';
+		for (size_t iValue = 0u; iValue < Values.size(); ++iValue)
+		{
+			if (iValue > 0u)
+				Output << ", ";
+			Output << '"' << Client::CDataJson::Escape(Values[iValue]) << '"';
+		}
+		Output << ']';
+	}
+
+	bool_t Read_Renderer(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_RENDERER_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value, { "type", "sourceSpace" },
+			"Effect source renderer", strOutError))
+			return false;
+		const Client::DATA_JSON_VALUE* pType = Find_Field(
+			Value, "type", Client::DATA_JSON_TYPE::STRING, strOutError);
+		const Client::DATA_JSON_VALUE* pSpace = Find_Field(
+			Value, "sourceSpace", Client::DATA_JSON_TYPE::STRING, strOutError);
+		if (nullptr == pType || nullptr == pSpace ||
+			!Parse_Token(pType->Get_String(), RENDERER_TYPE_TOKENS,
+				std::size(RENDERER_TYPE_TOKENS), Out.eType) ||
+			!Parse_Token(pSpace->Get_String(), SOURCE_SPACE_TOKENS,
+				std::size(SOURCE_SPACE_TOKENS), Out.eSourceSpace))
+		{
+			strOutError = "Effect source renderer is invalid.";
+			return false;
+		}
+		return true;
+	}
+
+	void Write_Renderer(
+		std::ostringstream& Output,
+		const Client::EFFECT_RENDERER_DESC& Renderer)
+	{
+		Output << "      \"renderer\": { \"type\": \""
+			<< RENDERER_TYPE_TOKENS[static_cast<size_t>(Renderer.eType)]
+			<< "\", \"sourceSpace\": \""
+			<< SOURCE_SPACE_TOKENS[static_cast<size_t>(Renderer.eSourceSpace)]
+			<< "\" },\n";
 	}
 
 	bool_t Read_SourceMaterialProfile(
@@ -638,8 +831,20 @@ namespace
 	bool_t Read_Distribution(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DISTRIBUTION_DESC& Out,
+		const bool_t bSourceContract,
 		std::string& strOutError)
 	{
+		if (bSourceContract && !Validate_ExactFields(Value,
+			{ "propertyPath", "sourceClass", "sourceObjectPath",
+				"parameterBinding", "parameterName", "componentCount",
+				"operation", "randomLockAxes", "lookupTableChunkSize",
+				"lookupTableNumElements", "lookupTableTimeScale",
+				"lookupTableStartTime", "defaultMinimum", "defaultMaximum",
+				"lookupTable", "keys" },
+			"Effect source distribution", strOutError))
+		{
+			return false;
+		}
 		const Client::DATA_JSON_VALUE* pLookupTable = Find_Field(
 			Value, "lookupTable", Client::DATA_JSON_TYPE::ARRAY, strOutError);
 		const Client::DATA_JSON_VALUE* pKeys = Find_Field(
@@ -668,6 +873,44 @@ namespace
 				4u, strOutError))
 		{
 			return false;
+		}
+		if (bSourceContract)
+		{
+			const Client::DATA_JSON_VALUE* pBinding = Value.Find(
+				"parameterBinding");
+			const Client::DATA_JSON_VALUE* pName = Value.Find("parameterName");
+			const bool_t bParticleParameter =
+				Is_ParticleParameterDistribution(Out.strSourceClass);
+			if (bParticleParameter)
+			{
+				if (nullptr == pBinding || !pBinding->Is_String() ||
+					nullptr == pName || !pName->Is_String() ||
+					!Parse_Token(pBinding->Get_String(),
+						DISTRIBUTION_PARAMETER_BINDING_TOKENS,
+						std::size(DISTRIBUTION_PARAMETER_BINDING_TOKENS),
+						Out.eParameterBinding))
+				{
+					strOutError =
+						"Effect ParticleParameter binding is missing or invalid.";
+					return false;
+				}
+				Out.strParameterName = pName->Get_String();
+				if ((Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ==
+						Out.eParameterBinding && !Out.strParameterName.empty()) ||
+					(Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::ACTION_CUE ==
+						Out.eParameterBinding && Out.strParameterName.empty()))
+				{
+					strOutError =
+						"Effect ParticleParameter name and binding disagree.";
+					return false;
+				}
+			}
+			else if (nullptr != pBinding || nullptr != pName)
+			{
+				strOutError =
+					"Non-ParticleParameter distribution carries source binding fields.";
+				return false;
+			}
 		}
 		if (const Client::DATA_JSON_VALUE* pRandomLockAxes =
 			Value.Find("randomLockAxes"))
@@ -698,6 +941,14 @@ namespace
 		Out.Keys.reserve(pKeys->Get_Array().size());
 		for (const Client::DATA_JSON_VALUE& KeyValue : pKeys->Get_Array())
 		{
+			if (bSourceContract && !Validate_ExactFields(KeyValue,
+				{ "time", "minimum", "maximum", "arriveTangentMinimum",
+					"leaveTangentMinimum", "arriveTangentMaximum",
+					"leaveTangentMaximum", "interpolation" },
+				"Effect source distribution key", strOutError))
+			{
+				return false;
+			}
 			const Client::DATA_JSON_VALUE* pInterpolation =
 				KeyValue.Is_Object() ? KeyValue.Find("interpolation") : nullptr;
 			Client::EFFECT_DISTRIBUTION_KEY_DESC Key;
@@ -727,16 +978,274 @@ namespace
 		return true;
 	}
 
+	bool_t Read_SourceCompilerEvidence(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value,
+			{ "artifactFileSha256", "artifactSelfSha256", "evidenceId",
+				"sourceEvidenceStatus", "sourceCueId", "sourceOccurrenceId",
+				"sourceSystemId", "sourceEmitterPath", "sourceEmitterNodeId",
+				"lodSelectionPolicy", "selectedLodPath", "selectedLodNodeId",
+				"selectedLodArrayIndex", "selectedLodLevelProvenance",
+				"selectedLodEnabledProvenance", "nonSelectedLodCount",
+				"moduleReferenceOrder", "cueLocalTransform",
+				"parameterOverrides", "compositionOrder",
+				"localReferenceClosureFileSha256",
+				"localReferenceClosureSelfSha256", "geometryParityFileSha256",
+				"geometryParitySelfSha256" },
+			"Effect source compiler evidence", strOutError))
+			return false;
+
+		const Client::DATA_JSON_VALUE* pModules = Find_Field(
+			Value, "moduleReferenceOrder", Client::DATA_JSON_TYPE::ARRAY,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pCueTransform = Find_Field(
+			Value, "cueLocalTransform", Client::DATA_JSON_TYPE::OBJECT,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pParameters = Find_Field(
+			Value, "parameterOverrides", Client::DATA_JSON_TYPE::ARRAY,
+			strOutError);
+		if (nullptr == pModules || nullptr == pCueTransform ||
+			nullptr == pParameters ||
+			!Read_String(Value, "artifactFileSha256",
+				Out.strArtifactFileSha256, strOutError) ||
+			!Read_String(Value, "artifactSelfSha256",
+				Out.strArtifactSelfSha256, strOutError) ||
+			!Read_String(Value, "evidenceId", Out.strEvidenceId, strOutError) ||
+			!Read_String(Value, "sourceEvidenceStatus",
+				Out.strSourceEvidenceStatus, strOutError) ||
+			!Read_String(Value, "sourceCueId", Out.strSourceCueId, strOutError) ||
+			!Read_String(Value, "sourceOccurrenceId",
+				Out.strSourceOccurrenceId, strOutError) ||
+			!Read_String(Value, "sourceSystemId", Out.strSourceSystemId,
+				strOutError) ||
+			!Read_String(Value, "sourceEmitterPath", Out.strSourceEmitterPath,
+				strOutError) ||
+			!Read_String(Value, "sourceEmitterNodeId",
+				Out.strSourceEmitterNodeId, strOutError) ||
+			!Read_String(Value, "lodSelectionPolicy", Out.strLodSelectionPolicy,
+				strOutError) ||
+			!Read_String(Value, "selectedLodPath", Out.strSelectedLodPath,
+				strOutError) ||
+			!Read_String(Value, "selectedLodNodeId", Out.strSelectedLodNodeId,
+				strOutError) ||
+			!Read_UInt(Value, "selectedLodArrayIndex",
+				Out.iSelectedLodArrayIndex, strOutError) ||
+			!Read_String(Value, "selectedLodLevelProvenance",
+				Out.strSelectedLodLevelProvenance, strOutError) ||
+			!Read_String(Value, "selectedLodEnabledProvenance",
+				Out.strSelectedLodEnabledProvenance, strOutError) ||
+			!Read_UInt(Value, "nonSelectedLodCount", Out.iNonSelectedLodCount,
+				strOutError) ||
+			!Read_StringArray(Value, "compositionOrder", Out.CompositionOrder,
+				strOutError) ||
+			!Read_String(Value, "localReferenceClosureFileSha256",
+				Out.strLocalReferenceClosureFileSha256, strOutError) ||
+			!Read_String(Value, "localReferenceClosureSelfSha256",
+				Out.strLocalReferenceClosureSelfSha256, strOutError) ||
+			!Read_String(Value, "geometryParityFileSha256",
+				Out.strGeometryParityFileSha256, strOutError) ||
+			!Read_String(Value, "geometryParitySelfSha256",
+				Out.strGeometryParitySelfSha256, strOutError) ||
+			!Validate_ExactFields(*pCueTransform,
+				{ "sourcePositionUeUnits", "position", "rotationDegrees", "scale" },
+				"Effect source cue-local transform", strOutError) ||
+			!Read_Array(*pCueTransform, "sourcePositionUeUnits",
+				&Out.vCueSourcePositionUeUnits.x, 3u, strOutError) ||
+			!Read_Array(*pCueTransform, "position",
+				&Out.CueLocalTransform.vPosition.x, 3u, strOutError) ||
+			!Read_Array(*pCueTransform, "rotationDegrees",
+				&Out.CueLocalTransform.vRotationDegrees.x, 3u, strOutError) ||
+			!Read_Array(*pCueTransform, "scale",
+				&Out.CueLocalTransform.vScale.x, 3u, strOutError))
+			return false;
+
+		Out.ModuleReferenceOrder.reserve(pModules->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& ModuleValue : pModules->Get_Array())
+		{
+			if (!Validate_ExactFields(ModuleValue,
+				{ "order", "sourceReferenceIndex", "role", "sourceObjectId",
+					"sourceRecordSha256" }, "Effect source module reference",
+				strOutError))
+				return false;
+			Client::EFFECT_SOURCE_MODULE_REFERENCE_DESC Module;
+			if (!Read_UInt(ModuleValue, "order", Module.iOrder, strOutError) ||
+				!Read_UInt(ModuleValue, "sourceReferenceIndex",
+					Module.iSourceReferenceIndex, strOutError) ||
+				!Read_String(ModuleValue, "role", Module.strRole, strOutError) ||
+				!Read_String(ModuleValue, "sourceObjectId",
+					Module.strSourceObjectId, strOutError) ||
+				!Read_String(ModuleValue, "sourceRecordSha256",
+					Module.strSourceRecordSha256, strOutError))
+				return false;
+			Out.ModuleReferenceOrder.push_back(std::move(Module));
+		}
+
+		Out.ParameterOverrides.reserve(pParameters->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& ParameterValue :
+			pParameters->Get_Array())
+		{
+			if (!Validate_ExactFields(ParameterValue,
+				{ "sourceIndex", "name", "sourceTypeCode",
+					"sourceRecordByteOffset", "type", "scalarValue", "vectorValue",
+					"sourceValueByteOffset" }, "Effect source parameter override",
+				strOutError))
+				return false;
+			Client::EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC Parameter;
+			if (!Read_UInt(ParameterValue, "sourceIndex", Parameter.iSourceIndex,
+					strOutError) ||
+				!Read_String(ParameterValue, "name", Parameter.strName,
+					strOutError) ||
+				!Read_UInt(ParameterValue, "sourceTypeCode",
+					Parameter.iSourceTypeCode, strOutError) ||
+				!Read_UInt(ParameterValue, "sourceRecordByteOffset",
+					Parameter.iSourceRecordByteOffset, strOutError) ||
+				!Read_String(ParameterValue, "type", Parameter.strType,
+					strOutError) ||
+				!Read_UInt(ParameterValue, "sourceValueByteOffset",
+					Parameter.iSourceValueByteOffset, strOutError))
+				return false;
+			if (Parameter.strType == "scalar")
+			{
+				if (nullptr != ParameterValue.Find("vectorValue") ||
+					!Read_Double(ParameterValue, "scalarValue",
+						Parameter.fScalarValue, strOutError))
+					return false;
+			}
+			else if (Parameter.strType == "vector")
+			{
+				if (nullptr != ParameterValue.Find("scalarValue") ||
+					!Read_Array(ParameterValue, "vectorValue",
+						&Parameter.vVectorValue.x, 3u, strOutError))
+					return false;
+			}
+			else
+			{
+				strOutError = "Effect source parameter override type is invalid.";
+				return false;
+			}
+			Out.ParameterOverrides.push_back(std::move(Parameter));
+		}
+		return true;
+	}
+
+	bool_t Read_SourceAdmission(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_ADMISSION_DESC& Out,
+		std::string& strOutError)
+	{
+		return Validate_ExactFields(Value, { "allowed", "blockers" },
+			"Effect source execution admission", strOutError) &&
+			Read_Bool(Value, "allowed", Out.bAllowed, strOutError) &&
+			Read_StringArray(Value, "blockers", Out.Blockers, strOutError);
+	}
+
+	bool_t Read_SourceMaterialAdmission(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_MATERIAL_ADMISSION_DESC& Out,
+		std::string& strOutError)
+	{
+		return Validate_ExactFields(Value,
+			{ "status", "sourceMaterialPaths", "materialRecipeId",
+				"renderStateRecipeId", "blockers" },
+			"Effect source material admission", strOutError) &&
+			Read_String(Value, "status", Out.strStatus, strOutError) &&
+			Read_StringArray(Value, "sourceMaterialPaths",
+				Out.SourceMaterialPaths, strOutError) &&
+			Read_String(Value, "materialRecipeId", Out.strMaterialRecipeId,
+				strOutError) &&
+			Read_String(Value, "renderStateRecipeId", Out.strRenderStateRecipeId,
+				strOutError) &&
+			Read_StringArray(Value, "blockers", Out.Blockers, strOutError);
+	}
+
+	bool_t Read_SourceGeometryBinding(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_GEOMETRY_BINDING_DESC& Out,
+		std::string& strOutError)
+	{
+		return Validate_ExactFields(Value,
+			{ "enabled", "assetId", "receiptFileSha256", "receiptSelfSha256",
+				"carrierGeometryPreScale", "particleScaleSemantics", "status",
+				"blockers" }, "Effect source geometry binding", strOutError) &&
+			Read_Bool(Value, "enabled", Out.bEnabled, strOutError) &&
+			Read_String(Value, "assetId", Out.strAssetId, strOutError) &&
+			Read_String(Value, "receiptFileSha256", Out.strReceiptFileSha256,
+				strOutError) &&
+			Read_String(Value, "receiptSelfSha256", Out.strReceiptSelfSha256,
+				strOutError) &&
+			Read_Float(Value, "carrierGeometryPreScale",
+				Out.fCarrierGeometryPreScale, strOutError) &&
+			Read_String(Value, "particleScaleSemantics",
+				Out.strParticleScaleSemantics, strOutError) &&
+			Read_String(Value, "status", Out.strStatus, strOutError) &&
+			Read_StringArray(Value, "blockers", Out.Blockers, strOutError);
+	}
+
 	bool_t Read_SourceRecipe(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_CASCADE_RECIPE_DESC& Out,
+		const bool_t bSourceContract,
 		std::string& strOutError)
 	{
+		if (!bSourceContract)
+		{
+			constexpr const char_t* SourceOnlyFields[] = {
+				"sourceContractProfileId", "sourceContractSha256",
+				"sourceGraphSha256", "sourceClosureSha256",
+				"sourceMaterialClosureSha256", "sourcePeakActiveParticles",
+				"moduleCoverage", "compilerEvidence",
+				"compiledExecutionAdmission", "materialAdmission",
+				"geometryBinding"
+			};
+			for (const char_t* pField : SourceOnlyFields)
+			{
+				if (nullptr != Value.Find(pField))
+				{
+					strOutError =
+						"Legacy Effect sourceRecipe contains native-v14 evidence.";
+					return false;
+				}
+			}
+		}
+		if (bSourceContract && !Validate_ExactFields(Value,
+			{ "enabled", "rendererShape", "sourceContractProfileId",
+				"sourceContractSha256", "sourceGraphSha256",
+				"sourceClosureSha256", "sourceMaterialClosureSha256",
+				"sourcePeakActiveParticles", "emitterDelaySeconds",
+				"emitterDurationSeconds", "emitterLoopCount", "bursts",
+				"modules", "moduleCoverage", "compilerEvidence",
+				"compiledExecutionAdmission", "materialAdmission",
+				"geometryBinding" },
+			"Effect source recipe", strOutError))
+		{
+			return false;
+		}
 		const Client::DATA_JSON_VALUE* pBursts = Find_Field(
 			Value, "bursts", Client::DATA_JSON_TYPE::ARRAY, strOutError);
 		const Client::DATA_JSON_VALUE* pModules = Find_Field(
 			Value, "modules", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pCoverage = bSourceContract ?
+			Find_Field(Value, "moduleCoverage", Client::DATA_JSON_TYPE::ARRAY,
+				strOutError) : nullptr;
+		const Client::DATA_JSON_VALUE* pCompilerEvidence = bSourceContract ?
+			Find_Field(Value, "compilerEvidence", Client::DATA_JSON_TYPE::OBJECT,
+				strOutError) : nullptr;
+		const Client::DATA_JSON_VALUE* pExecutionAdmission = bSourceContract ?
+			Find_Field(Value, "compiledExecutionAdmission",
+				Client::DATA_JSON_TYPE::OBJECT, strOutError) : nullptr;
+		const Client::DATA_JSON_VALUE* pMaterialAdmission = bSourceContract ?
+			Find_Field(Value, "materialAdmission", Client::DATA_JSON_TYPE::OBJECT,
+				strOutError) : nullptr;
+		const Client::DATA_JSON_VALUE* pGeometryBinding = bSourceContract ?
+			Find_Field(Value, "geometryBinding", Client::DATA_JSON_TYPE::OBJECT,
+				strOutError) : nullptr;
 		if (nullptr == pBursts || nullptr == pModules ||
+			(bSourceContract && (nullptr == pCoverage ||
+				nullptr == pCompilerEvidence || nullptr == pExecutionAdmission ||
+				nullptr == pMaterialAdmission || nullptr == pGeometryBinding)) ||
 			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError) ||
 			!Read_String(Value, "rendererShape", Out.strRendererShape,
 				strOutError) ||
@@ -745,13 +1254,38 @@ namespace
 			!Read_Float(Value, "emitterDurationSeconds",
 				Out.fEmitterDurationSeconds, strOutError) ||
 			!Read_UInt(Value, "emitterLoopCount", Out.iEmitterLoopCount,
-				strOutError))
+				strOutError) ||
+			(bSourceContract &&
+				(!Read_String(Value, "sourceContractProfileId",
+					Out.strSourceContractProfileId, strOutError) ||
+				 !Read_String(Value, "sourceContractSha256",
+					Out.strSourceContractSha256, strOutError) ||
+				 !Read_String(Value, "sourceGraphSha256",
+					Out.strSourceGraphSha256, strOutError) ||
+				 !Read_String(Value, "sourceClosureSha256",
+					Out.strSourceClosureSha256, strOutError) ||
+				 !Read_String(Value, "sourceMaterialClosureSha256",
+					Out.strSourceMaterialClosureSha256, strOutError) ||
+				 !Read_UInt(Value, "sourcePeakActiveParticles",
+					Out.iSourcePeakActiveParticles, strOutError) ||
+				 !Read_SourceCompilerEvidence(*pCompilerEvidence,
+					Out.CompilerEvidence, strOutError) ||
+				 !Read_SourceAdmission(*pExecutionAdmission,
+					Out.CompiledExecutionAdmission, strOutError) ||
+				 !Read_SourceMaterialAdmission(*pMaterialAdmission,
+					Out.MaterialAdmission, strOutError) ||
+				 !Read_SourceGeometryBinding(*pGeometryBinding,
+					Out.GeometryBinding, strOutError))))
 		{
 			return false;
 		}
 		Out.Bursts.reserve(pBursts->Get_Array().size());
 		for (const Client::DATA_JSON_VALUE& BurstValue : pBursts->Get_Array())
 		{
+			if (bSourceContract && !Validate_ExactFields(BurstValue,
+				{ "timeSeconds", "countMinimum", "countMaximum" },
+				"Effect source burst", strOutError))
+				return false;
 			Client::EFFECT_PARTICLE_BURST_DESC Burst;
 			if (!BurstValue.Is_Object() ||
 				!Read_Float(BurstValue, "timeSeconds", Burst.fTimeSeconds,
@@ -768,6 +1302,10 @@ namespace
 		Out.Modules.reserve(pModules->Get_Array().size());
 		for (const Client::DATA_JSON_VALUE& ModuleValue : pModules->Get_Array())
 		{
+			if (bSourceContract && !Validate_ExactFields(ModuleValue,
+				{ "stableId", "className", "objectPath", "literals",
+					"distributions" }, "Effect source module", strOutError))
+				return false;
 			const Client::DATA_JSON_VALUE* pLiterals = ModuleValue.Is_Object() ?
 				ModuleValue.Find("literals") : nullptr;
 			const Client::DATA_JSON_VALUE* pDistributions =
@@ -788,6 +1326,10 @@ namespace
 			for (const Client::DATA_JSON_VALUE& LiteralValue :
 				pLiterals->Get_Array())
 			{
+				if (bSourceContract && !Validate_ExactFields(LiteralValue,
+					{ "propertyPath", "kind", "value" },
+					"Effect source literal", strOutError))
+					return false;
 				const Client::DATA_JSON_VALUE* pKind = LiteralValue.Is_Object() ?
 					LiteralValue.Find("kind") : nullptr;
 				Client::EFFECT_SOURCE_LITERAL_DESC Literal;
@@ -827,6 +1369,7 @@ namespace
 				Client::EFFECT_DISTRIBUTION_DESC Distribution;
 				if (!DistributionValue.Is_Object() ||
 					!Read_Distribution(DistributionValue, Distribution,
+						bSourceContract,
 						strOutError))
 				{
 					return false;
@@ -835,18 +1378,240 @@ namespace
 			}
 			Out.Modules.push_back(std::move(Module));
 		}
+		if (bSourceContract)
+		{
+			Out.ModuleCoverage.reserve(pCoverage->Get_Array().size());
+			for (const Client::DATA_JSON_VALUE& CoverageValue :
+				pCoverage->Get_Array())
+			{
+				if (!Validate_ExactFields(CoverageValue,
+					{ "moduleStableId", "normalizedClass", "status",
+						"blockers", "properties" }, "Effect source module coverage",
+					strOutError))
+					return false;
+				const Client::DATA_JSON_VALUE* pStatus = Find_Field(
+					CoverageValue, "status", Client::DATA_JSON_TYPE::STRING,
+					strOutError);
+				const Client::DATA_JSON_VALUE* pProperties = Find_Field(
+					CoverageValue, "properties", Client::DATA_JSON_TYPE::ARRAY,
+					strOutError);
+				Client::EFFECT_SOURCE_MODULE_COVERAGE_DESC Coverage;
+				if (nullptr == pStatus || nullptr == pProperties ||
+					!Read_String(CoverageValue, "moduleStableId",
+						Coverage.strModuleStableId, strOutError) ||
+					!Read_String(CoverageValue, "normalizedClass",
+						Coverage.strNormalizedClass, strOutError) ||
+					!Read_StringArray(CoverageValue, "blockers", Coverage.Blockers,
+						strOutError) ||
+					!Parse_Token(pStatus->Get_String(),
+						SOURCE_COVERAGE_STATUS_TOKENS,
+						std::size(SOURCE_COVERAGE_STATUS_TOKENS),
+						Coverage.eStatus))
+					return false;
+				for (const Client::DATA_JSON_VALUE& PropertyValue :
+					pProperties->Get_Array())
+				{
+					if (!Validate_ExactFields(PropertyValue,
+						{ "propertyPath", "storage", "status", "provenance" },
+						"Effect source property coverage", strOutError))
+						return false;
+					const Client::DATA_JSON_VALUE* pPropertyStatus = Find_Field(
+						PropertyValue, "status", Client::DATA_JSON_TYPE::STRING,
+						strOutError);
+					Client::EFFECT_SOURCE_PROPERTY_COVERAGE_DESC Property;
+					if (nullptr == pPropertyStatus ||
+						!Read_String(PropertyValue, "propertyPath",
+							Property.strPropertyPath, strOutError) ||
+						!Read_String(PropertyValue, "storage",
+							Property.strStorage, strOutError) ||
+						!Read_String(PropertyValue, "provenance",
+							Property.strProvenance, strOutError) ||
+						!Parse_Token(pPropertyStatus->Get_String(),
+							SOURCE_COVERAGE_STATUS_TOKENS,
+							std::size(SOURCE_COVERAGE_STATUS_TOKENS),
+							Property.eStatus))
+						return false;
+					Coverage.Properties.push_back(std::move(Property));
+				}
+				Out.ModuleCoverage.push_back(std::move(Coverage));
+			}
+		}
 		return true;
+	}
+
+	void Write_SourceCompilerEvidence(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& Evidence)
+	{
+		Output << "{ \"artifactFileSha256\": \"" << Evidence.strArtifactFileSha256
+			<< "\", \"artifactSelfSha256\": \"" << Evidence.strArtifactSelfSha256
+			<< "\", \"evidenceId\": \""
+			<< Client::CDataJson::Escape(Evidence.strEvidenceId)
+			<< "\", \"sourceEvidenceStatus\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceEvidenceStatus)
+			<< "\", \"sourceCueId\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceCueId)
+			<< "\", \"sourceOccurrenceId\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceOccurrenceId)
+			<< "\", \"sourceSystemId\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceSystemId)
+			<< "\", \"sourceEmitterPath\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceEmitterPath)
+			<< "\", \"sourceEmitterNodeId\": \""
+			<< Client::CDataJson::Escape(Evidence.strSourceEmitterNodeId)
+			<< "\", \"lodSelectionPolicy\": \""
+			<< Client::CDataJson::Escape(Evidence.strLodSelectionPolicy)
+			<< "\", \"selectedLodPath\": \""
+			<< Client::CDataJson::Escape(Evidence.strSelectedLodPath)
+			<< "\", \"selectedLodNodeId\": \""
+			<< Client::CDataJson::Escape(Evidence.strSelectedLodNodeId)
+			<< "\", \"selectedLodArrayIndex\": "
+			<< Evidence.iSelectedLodArrayIndex
+			<< ", \"selectedLodLevelProvenance\": \""
+			<< Client::CDataJson::Escape(Evidence.strSelectedLodLevelProvenance)
+			<< "\", \"selectedLodEnabledProvenance\": \""
+			<< Client::CDataJson::Escape(Evidence.strSelectedLodEnabledProvenance)
+			<< "\", \"nonSelectedLodCount\": "
+			<< Evidence.iNonSelectedLodCount << ", \"moduleReferenceOrder\": [";
+		for (size_t iModule = 0u;
+			iModule < Evidence.ModuleReferenceOrder.size(); ++iModule)
+		{
+			const Client::EFFECT_SOURCE_MODULE_REFERENCE_DESC& Module =
+				Evidence.ModuleReferenceOrder[iModule];
+			if (iModule > 0u)
+				Output << ", ";
+			Output << "{ \"order\": " << Module.iOrder
+				<< ", \"sourceReferenceIndex\": "
+				<< Module.iSourceReferenceIndex << ", \"role\": \""
+				<< Client::CDataJson::Escape(Module.strRole)
+				<< "\", \"sourceObjectId\": \""
+				<< Client::CDataJson::Escape(Module.strSourceObjectId)
+				<< "\", \"sourceRecordSha256\": \""
+				<< Module.strSourceRecordSha256 << "\" }";
+		}
+		Output << "], \"cueLocalTransform\": { \"sourcePositionUeUnits\": ";
+		Write_Float3(Output, Evidence.vCueSourcePositionUeUnits);
+		Output << ", \"position\": ";
+		Write_Float3(Output, Evidence.CueLocalTransform.vPosition);
+		Output << ", \"rotationDegrees\": ";
+		Write_Float3(Output, Evidence.CueLocalTransform.vRotationDegrees);
+		Output << ", \"scale\": ";
+		Write_Float3(Output, Evidence.CueLocalTransform.vScale);
+		Output << " }, \"parameterOverrides\": [";
+		for (size_t iParameter = 0u;
+			iParameter < Evidence.ParameterOverrides.size(); ++iParameter)
+		{
+			const Client::EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC& Parameter =
+				Evidence.ParameterOverrides[iParameter];
+			if (iParameter > 0u)
+				Output << ", ";
+			Output << "{ \"sourceIndex\": " << Parameter.iSourceIndex
+				<< ", \"name\": \""
+				<< Client::CDataJson::Escape(Parameter.strName)
+				<< "\", \"sourceTypeCode\": " << Parameter.iSourceTypeCode
+				<< ", \"sourceRecordByteOffset\": "
+				<< Parameter.iSourceRecordByteOffset << ", \"type\": \""
+				<< Parameter.strType << "\", ";
+			if (Parameter.strType == "scalar")
+			{
+				Output << "\"scalarValue\": "
+					<< std::setprecision(std::numeric_limits<f64_t>::max_digits10)
+					<< Parameter.fScalarValue << std::setprecision(9);
+			}
+			else
+			{
+				Output << "\"vectorValue\": ";
+				Write_Float3(Output, Parameter.vVectorValue);
+			}
+			Output << ", \"sourceValueByteOffset\": "
+				<< Parameter.iSourceValueByteOffset << " }";
+		}
+		Output << "], \"compositionOrder\": ";
+		Write_StringArray(Output, Evidence.CompositionOrder);
+		Output << ", \"localReferenceClosureFileSha256\": \""
+			<< Evidence.strLocalReferenceClosureFileSha256
+			<< "\", \"localReferenceClosureSelfSha256\": \""
+			<< Evidence.strLocalReferenceClosureSelfSha256
+			<< "\", \"geometryParityFileSha256\": \""
+			<< Evidence.strGeometryParityFileSha256
+			<< "\", \"geometryParitySelfSha256\": \""
+			<< Evidence.strGeometryParitySelfSha256 << "\" }";
+	}
+
+	void Write_SourceAdmission(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_ADMISSION_DESC& Admission)
+	{
+		Output << "{ \"allowed\": " << (Admission.bAllowed ? "true" : "false")
+			<< ", \"blockers\": ";
+		Write_StringArray(Output, Admission.Blockers);
+		Output << " }";
+	}
+
+	void Write_SourceMaterialAdmission(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_MATERIAL_ADMISSION_DESC& Admission)
+	{
+		Output << "{ \"status\": \""
+			<< Client::CDataJson::Escape(Admission.strStatus)
+			<< "\", \"sourceMaterialPaths\": ";
+		Write_StringArray(Output, Admission.SourceMaterialPaths);
+		Output << ", \"materialRecipeId\": \""
+			<< Client::CDataJson::Escape(Admission.strMaterialRecipeId)
+			<< "\", \"renderStateRecipeId\": \""
+			<< Client::CDataJson::Escape(Admission.strRenderStateRecipeId)
+			<< "\", \"blockers\": ";
+		Write_StringArray(Output, Admission.Blockers);
+		Output << " }";
+	}
+
+	void Write_SourceGeometryBinding(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_GEOMETRY_BINDING_DESC& Binding)
+	{
+		Output << "{ \"enabled\": " << (Binding.bEnabled ? "true" : "false")
+			<< ", \"assetId\": \""
+			<< Client::CDataJson::Escape(Binding.strAssetId)
+			<< "\", \"receiptFileSha256\": \""
+			<< Binding.strReceiptFileSha256
+			<< "\", \"receiptSelfSha256\": \""
+			<< Binding.strReceiptSelfSha256
+			<< "\", \"carrierGeometryPreScale\": "
+			<< Binding.fCarrierGeometryPreScale
+			<< ", \"particleScaleSemantics\": \""
+			<< Client::CDataJson::Escape(Binding.strParticleScaleSemantics)
+			<< "\", \"status\": \""
+			<< Client::CDataJson::Escape(Binding.strStatus)
+			<< "\", \"blockers\": ";
+		Write_StringArray(Output, Binding.Blockers);
+		Output << " }";
 	}
 
 	void Write_SourceRecipe(
 		std::ostringstream& Output,
-		const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe)
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe,
+		const bool_t bSourceContract)
 	{
 		Output << "      \"sourceRecipe\": { \"enabled\": "
 			<< (Recipe.bEnabled ? "true" : "false")
 			<< ", \"rendererShape\": \""
-			<< Client::CDataJson::Escape(Recipe.strRendererShape)
-			<< "\", \"emitterDelaySeconds\": "
+			<< Client::CDataJson::Escape(Recipe.strRendererShape) << '"';
+		if (bSourceContract)
+		{
+			Output << ", \"sourceContractProfileId\": \""
+				<< Client::CDataJson::Escape(Recipe.strSourceContractProfileId)
+				<< "\", \"sourceContractSha256\": \""
+				<< Recipe.strSourceContractSha256
+				<< "\", \"sourceGraphSha256\": \""
+				<< Recipe.strSourceGraphSha256
+				<< "\", \"sourceClosureSha256\": \""
+				<< Recipe.strSourceClosureSha256
+				<< "\", \"sourceMaterialClosureSha256\": \""
+				<< Recipe.strSourceMaterialClosureSha256
+				<< "\", \"sourcePeakActiveParticles\": "
+				<< Recipe.iSourcePeakActiveParticles;
+		}
+		Output << ", \"emitterDelaySeconds\": "
 			<< Recipe.fEmitterDelaySeconds
 			<< ", \"emitterDurationSeconds\": "
 			<< Recipe.fEmitterDurationSeconds
@@ -913,8 +1678,18 @@ namespace
 					<< Client::CDataJson::Escape(Distribution.strSourceClass)
 					<< "\", \"sourceObjectPath\": \""
 					<< Client::CDataJson::Escape(
-						Distribution.strSourceObjectPath)
-					<< "\", \"componentCount\": "
+						Distribution.strSourceObjectPath) << '"';
+				if (bSourceContract &&
+					Is_ParticleParameterDistribution(Distribution.strSourceClass))
+				{
+					Output << ", \"parameterBinding\": \""
+						<< DISTRIBUTION_PARAMETER_BINDING_TOKENS[
+							static_cast<size_t>(Distribution.eParameterBinding)]
+						<< "\", \"parameterName\": \""
+						<< Client::CDataJson::Escape(Distribution.strParameterName)
+						<< '"';
+				}
+				Output << ", \"componentCount\": "
 					<< Distribution.iComponentCount
 					<< ", \"operation\": " << Distribution.iOperation
 					<< ", \"randomLockAxes\": "
@@ -973,7 +1748,59 @@ namespace
 		}
 		if (!Recipe.Modules.empty())
 			Output << '\n';
-		Output << "        ] }";
+		Output << "        ]";
+		if (bSourceContract)
+		{
+			Output << ",\n        \"moduleCoverage\": [";
+			for (size_t iCoverage = 0u;
+				iCoverage < Recipe.ModuleCoverage.size(); ++iCoverage)
+			{
+				const Client::EFFECT_SOURCE_MODULE_COVERAGE_DESC& Coverage =
+					Recipe.ModuleCoverage[iCoverage];
+				Output << (0u == iCoverage ? "\n" : ",\n")
+					<< "          { \"moduleStableId\": \""
+					<< Client::CDataJson::Escape(Coverage.strModuleStableId)
+					<< "\", \"normalizedClass\": \""
+					<< Client::CDataJson::Escape(Coverage.strNormalizedClass)
+					<< "\", \"status\": \""
+					<< SOURCE_COVERAGE_STATUS_TOKENS[
+						static_cast<size_t>(Coverage.eStatus)]
+					<< "\", \"blockers\": ";
+				Write_StringArray(Output, Coverage.Blockers);
+				Output << ", \"properties\": [";
+				for (size_t iProperty = 0u;
+					iProperty < Coverage.Properties.size(); ++iProperty)
+				{
+					const Client::EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& Property =
+						Coverage.Properties[iProperty];
+					Output << (0u == iProperty ? "\n" : ",\n")
+						<< "            { \"propertyPath\": \""
+						<< Client::CDataJson::Escape(Property.strPropertyPath)
+						<< "\", \"storage\": \""
+						<< Client::CDataJson::Escape(Property.strStorage)
+						<< "\", \"status\": \""
+						<< SOURCE_COVERAGE_STATUS_TOKENS[
+							static_cast<size_t>(Property.eStatus)]
+						<< "\", \"provenance\": \""
+						<< Client::CDataJson::Escape(Property.strProvenance)
+						<< "\" }";
+				}
+				if (!Coverage.Properties.empty())
+					Output << '\n';
+				Output << "          ] }";
+			}
+			if (!Recipe.ModuleCoverage.empty())
+				Output << '\n';
+			Output << "        ],\n        \"compilerEvidence\": ";
+			Write_SourceCompilerEvidence(Output, Recipe.CompilerEvidence);
+			Output << ",\n        \"compiledExecutionAdmission\": ";
+			Write_SourceAdmission(Output, Recipe.CompiledExecutionAdmission);
+			Output << ",\n        \"materialAdmission\": ";
+			Write_SourceMaterialAdmission(Output, Recipe.MaterialAdmission);
+			Output << ",\n        \"geometryBinding\": ";
+			Write_SourceGeometryBinding(Output, Recipe.GeometryBinding);
+		}
+		Output << " }";
 	}
 
 	bool_t Read_PresentationDetail(
@@ -1667,10 +2494,90 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
 {
-	if (Document.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION)
+	if (Document.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		Document.iLoadedFormatVersion < EFFECT_AUTHORING_MIN_SUPPORTED_VERSION ||
+		Document.iLoadedFormatVersion > EFFECT_SOURCE_CONTRACT_FORMAT_VERSION)
 	{
 		strOutError = "Unsupported Effect document version.";
 		return false;
+	}
+	if (Document.bSourceContract ||
+		Document.iLoadedFormatVersion == EFFECT_SOURCE_CONTRACT_FORMAT_VERSION)
+	{
+		strOutError =
+			"Native-v14 source contracts are not runtime Effect documents.";
+		return false;
+	}
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
+		const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& Evidence =
+			Recipe.CompilerEvidence;
+		const EFFECT_SOURCE_GEOMETRY_BINDING_DESC& Geometry =
+			Recipe.GeometryBinding;
+		const bool_t bCompilerEvidencePresent =
+			!Evidence.strArtifactFileSha256.empty() ||
+			!Evidence.strArtifactSelfSha256.empty() ||
+			!Evidence.strEvidenceId.empty() ||
+			!Evidence.strSourceEvidenceStatus.empty() ||
+			!Evidence.strSourceCueId.empty() ||
+			!Evidence.strSourceOccurrenceId.empty() ||
+			!Evidence.strSourceSystemId.empty() ||
+			!Evidence.strSourceEmitterPath.empty() ||
+			!Evidence.strSourceEmitterNodeId.empty() ||
+			!Evidence.strLodSelectionPolicy.empty() ||
+			!Evidence.strSelectedLodPath.empty() ||
+			!Evidence.strSelectedLodNodeId.empty() ||
+			0u != Evidence.iSelectedLodArrayIndex ||
+			!Evidence.strSelectedLodLevelProvenance.empty() ||
+			!Evidence.strSelectedLodEnabledProvenance.empty() ||
+			0u != Evidence.iNonSelectedLodCount ||
+			!Evidence.ModuleReferenceOrder.empty() ||
+			Evidence.vCueSourcePositionUeUnits.x != 0.f ||
+			Evidence.vCueSourcePositionUeUnits.y != 0.f ||
+			Evidence.vCueSourcePositionUeUnits.z != 0.f ||
+			Evidence.CueLocalTransform.vPosition.x != 0.f ||
+			Evidence.CueLocalTransform.vPosition.y != 0.f ||
+			Evidence.CueLocalTransform.vPosition.z != 0.f ||
+			Evidence.CueLocalTransform.vRotationDegrees.x != 0.f ||
+			Evidence.CueLocalTransform.vRotationDegrees.y != 0.f ||
+			Evidence.CueLocalTransform.vRotationDegrees.z != 0.f ||
+			Evidence.CueLocalTransform.vScale.x != 1.f ||
+			Evidence.CueLocalTransform.vScale.y != 1.f ||
+			Evidence.CueLocalTransform.vScale.z != 1.f ||
+			!Evidence.ParameterOverrides.empty() ||
+			!Evidence.CompositionOrder.empty() ||
+			!Evidence.strLocalReferenceClosureFileSha256.empty() ||
+			!Evidence.strLocalReferenceClosureSelfSha256.empty() ||
+			!Evidence.strGeometryParityFileSha256.empty() ||
+			!Evidence.strGeometryParitySelfSha256.empty();
+		if (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+			Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
+			!Recipe.strSourceContractProfileId.empty() ||
+			!Recipe.strSourceContractSha256.empty() ||
+			!Recipe.strSourceGraphSha256.empty() ||
+			!Recipe.strSourceClosureSha256.empty() ||
+			!Recipe.strSourceMaterialClosureSha256.empty() ||
+			0u != Recipe.iSourcePeakActiveParticles ||
+			!Recipe.ModuleCoverage.empty() || bCompilerEvidencePresent ||
+			Recipe.CompiledExecutionAdmission.bAllowed ||
+			!Recipe.CompiledExecutionAdmission.Blockers.empty() ||
+			!Recipe.MaterialAdmission.strStatus.empty() ||
+			!Recipe.MaterialAdmission.SourceMaterialPaths.empty() ||
+			!Recipe.MaterialAdmission.strMaterialRecipeId.empty() ||
+			!Recipe.MaterialAdmission.strRenderStateRecipeId.empty() ||
+			!Recipe.MaterialAdmission.Blockers.empty() ||
+			Geometry.bEnabled || !Geometry.strAssetId.empty() ||
+			!Geometry.strReceiptFileSha256.empty() ||
+			!Geometry.strReceiptSelfSha256.empty() ||
+			Geometry.fCarrierGeometryPreScale != 1.f ||
+			!Geometry.strParticleScaleSemantics.empty() ||
+			!Geometry.strStatus.empty() || !Geometry.Blockers.empty())
+		{
+			strOutError =
+				"Legacy Effect documents cannot carry native-v14 source-contract fields.";
+			return false;
+		}
 	}
 	if (!Is_StableId(Document.strEffectAssetId))
 	{
@@ -2335,6 +3242,423 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	return true;
 }
 
+bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::string& strOutError)
+{
+	if (Document.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		Document.iLoadedFormatVersion != EFFECT_SOURCE_CONTRACT_FORMAT_VERSION ||
+		!Document.bSourceContract)
+	{
+		strOutError = "Effect document is not a native-v14 source contract.";
+		return false;
+	}
+	if (!Is_StableId(Document.strEffectAssetId) ||
+		Document.strDisplayName.empty() || Document.strDisplayName.size() > 128u ||
+		Document.Elements.empty() || Document.Elements.size() > MAX_ELEMENTS)
+	{
+		strOutError = "Source-contract document identity or size is invalid.";
+		return false;
+	}
+
+	const auto SafeAssetId = [](const std::string& Value)
+	{
+		return !Value.empty() && Value.size() <= MAX_RESOURCE_ID_BYTES &&
+			'/' != Value.front() && std::string::npos == Value.find('\\') &&
+			std::string::npos == Value.find(':') &&
+			std::string::npos == Value.find("../") &&
+			std::string::npos == Value.find("/..");
+	};
+	const auto ShapeForRenderer = [](const EFFECT_RENDERER_TYPE eType)
+		-> std::string_view
+	{
+		switch (eType)
+		{
+		case EFFECT_RENDERER_TYPE::MESH_PARTICLE: return "mesh";
+		case EFFECT_RENDERER_TYPE::SPRITE_PARTICLE: return "sprite";
+		case EFFECT_RENDERER_TYPE::DECAL_PARTICLE: return "decal";
+		case EFFECT_RENDERER_TYPE::CASCADE_RIBBON: return "ribbon";
+		case EFFECT_RENDERER_TYPE::LIGHT_PARTICLE: return "light";
+		case EFFECT_RENDERER_TYPE::SCREEN_POST: return "screenPost";
+		default: return {};
+		}
+	};
+
+	const auto IsFiniteFloat3 = [](const float3_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z);
+	};
+	constexpr std::array<std::string_view, 6u> CompositionOrder = {
+		"carrierGeometryPreScale", "signedParticleScaleRotationLocation",
+		"emitterElementTransform", "cueLocalTransform",
+		"attachmentSocketOrRoot", "actorWorld"
+	};
+	const bool_t bArtistFContract = Document.strEffectAssetId ==
+		"effect.artist.skill.31470.native-v14.source-contract-candidate";
+
+	std::unordered_set<std::string> ElementIds;
+	std::unordered_set<std::string> EvidenceIds;
+	std::unordered_set<std::string> SourceCueIds;
+	std::string strEvidenceArtifactFileSha256;
+	std::string strEvidenceArtifactSelfSha256;
+	std::string strLocalReferenceFileSha256;
+	std::string strLocalReferenceSelfSha256;
+	std::string strGeometryFileSha256;
+	std::string strGeometrySelfSha256;
+	size_t iModuleReferenceCount = 0u;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (!Is_StableId(Element.strElementId) ||
+			!ElementIds.insert(Element.strElementId).second ||
+			Element.eKind >= EFFECT_ELEMENT_KIND::END ||
+			Element.Renderer.eType >= EFFECT_RENDERER_TYPE::END ||
+			Element.Renderer.eSourceSpace >= EFFECT_SOURCE_SPACE::END ||
+			Kind_ForRenderer(Element.Renderer.eType) != Element.eKind)
+		{
+			strOutError = "Source-contract Element identity or renderer is invalid.";
+			return false;
+		}
+		const EFFECT_SOURCE_SPACE eExpectedSpace =
+			EFFECT_RENDERER_TYPE::SCREEN_POST == Element.Renderer.eType ?
+				EFFECT_SOURCE_SPACE::SCREEN_SPACE_V1 :
+				EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		if (Element.Renderer.eSourceSpace != eExpectedSpace)
+		{
+			strOutError = "Source-contract renderer source space is inconsistent.";
+			return false;
+		}
+		for (const EFFECT_RESOURCE_BINDING_DESC& Resource :
+			Element.ResourceBindings)
+		{
+			if (!Is_StableId(Resource.strSlotId) ||
+				!SafeAssetId(Resource.strAssetId))
+			{
+				strOutError = "Source-contract resource identity is unsafe.";
+				return false;
+			}
+		}
+		if (Element.Material.SourceMaterial.bEnabled)
+		{
+			strOutError =
+				"Source-contract candidates cannot enable a runtime Material profile.";
+			return false;
+		}
+
+		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
+		const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& Evidence =
+			Recipe.CompilerEvidence;
+		if (!Recipe.bEnabled ||
+			Recipe.strRendererShape != ShapeForRenderer(Element.Renderer.eType) ||
+			Recipe.strSourceContractProfileId != EFFECT_SOURCE_CONTRACT_PROFILE_ID ||
+			Recipe.strSourceContractSha256 != EFFECT_SOURCE_CONTRACT_SHA256 ||
+			!Is_LowerHexSha256(Recipe.strSourceGraphSha256) ||
+			!Is_LowerHexSha256(Recipe.strSourceClosureSha256) ||
+			!Is_LowerHexSha256(Recipe.strSourceMaterialClosureSha256) ||
+			0u == Recipe.iSourcePeakActiveParticles ||
+			Recipe.Modules.empty() ||
+			Recipe.Modules.size() > MAX_SOURCE_MODULES_PER_ELEMENT ||
+			Recipe.ModuleCoverage.size() != Recipe.Modules.size())
+		{
+			strOutError = "Source-contract recipe identity or coverage is invalid.";
+			return false;
+		}
+
+		const auto SharedSha = [&](const std::string& Value,
+			std::string& Shared) -> bool_t
+		{
+			if (!Is_LowerHexSha256(Value))
+				return false;
+			if (Shared.empty())
+				Shared = Value;
+			return Shared == Value;
+		};
+		if (!SharedSha(Evidence.strArtifactFileSha256,
+				strEvidenceArtifactFileSha256) ||
+			!SharedSha(Evidence.strArtifactSelfSha256,
+				strEvidenceArtifactSelfSha256) ||
+			!SharedSha(Evidence.strLocalReferenceClosureFileSha256,
+				strLocalReferenceFileSha256) ||
+			!SharedSha(Evidence.strLocalReferenceClosureSelfSha256,
+				strLocalReferenceSelfSha256) ||
+			!SharedSha(Evidence.strGeometryParityFileSha256,
+				strGeometryFileSha256) ||
+			!SharedSha(Evidence.strGeometryParitySelfSha256,
+				strGeometrySelfSha256) ||
+			Evidence.strSourceEvidenceStatus.empty() ||
+			Evidence.strEvidenceId.empty() ||
+			!EvidenceIds.insert(Evidence.strEvidenceId).second ||
+			Evidence.strSourceCueId.empty() ||
+			Evidence.strSourceOccurrenceId.empty() ||
+			Evidence.strSourceSystemId.empty() ||
+			Evidence.strSourceEmitterPath.empty() ||
+			Evidence.strSourceEmitterNodeId.empty() ||
+			Evidence.strLodSelectionPolicy != "FIRST_LOD_ONLY" ||
+			Evidence.strSelectedLodPath.empty() ||
+			Evidence.strSelectedLodNodeId.empty() ||
+			0u != Evidence.iSelectedLodArrayIndex ||
+			Evidence.strSelectedLodLevelProvenance.empty() ||
+			Evidence.strSelectedLodEnabledProvenance.empty() ||
+			Evidence.ModuleReferenceOrder.size() != Recipe.Modules.size() ||
+			Evidence.CompositionOrder.size() != CompositionOrder.size() ||
+			!std::equal(Evidence.CompositionOrder.begin(),
+				Evidence.CompositionOrder.end(), CompositionOrder.begin()) ||
+			!IsFiniteFloat3(Evidence.vCueSourcePositionUeUnits) ||
+			!IsFiniteFloat3(Evidence.CueLocalTransform.vPosition) ||
+			!IsFiniteFloat3(Evidence.CueLocalTransform.vRotationDegrees) ||
+			!IsFiniteFloat3(Evidence.CueLocalTransform.vScale))
+		{
+			strOutError = "Source-contract compiler evidence is invalid.";
+			return false;
+		}
+		SourceCueIds.insert(Evidence.strSourceCueId);
+		for (size_t iReference = 0u;
+			iReference < Evidence.ModuleReferenceOrder.size(); ++iReference)
+		{
+			const EFFECT_SOURCE_MODULE_REFERENCE_DESC& Reference =
+				Evidence.ModuleReferenceOrder[iReference];
+			const std::string strExpectedStableId = Reference.strSourceObjectId +
+				"@ref:" + std::to_string(Reference.iSourceReferenceIndex);
+			if (Reference.iOrder != iReference ||
+				Reference.iSourceReferenceIndex != iReference ||
+				(Reference.strRole != "REQUIRED" &&
+					Reference.strRole != "MODULE" &&
+					Reference.strRole != "SPAWN" &&
+					Reference.strRole != "TYPE_DATA") ||
+				Reference.strSourceObjectId.empty() ||
+				!Is_LowerHexSha256(Reference.strSourceRecordSha256) ||
+				Recipe.Modules[iReference].strStableId != strExpectedStableId)
+			{
+				strOutError = "Source-contract module reference order is invalid.";
+				return false;
+			}
+		}
+		iModuleReferenceCount += Evidence.ModuleReferenceOrder.size();
+
+		std::unordered_set<uint32_t> ParameterIndices;
+		for (const EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC& Parameter :
+			Evidence.ParameterOverrides)
+		{
+			if (!ParameterIndices.insert(Parameter.iSourceIndex).second ||
+				Parameter.strName.empty() ||
+				(Parameter.strType != "scalar" && Parameter.strType != "vector") ||
+				(Parameter.strType == "scalar" &&
+					!std::isfinite(Parameter.fScalarValue)) ||
+				(Parameter.strType == "vector" &&
+					!IsFiniteFloat3(Parameter.vVectorValue)))
+			{
+				strOutError = "Source-contract cue parameter evidence is invalid.";
+				return false;
+			}
+		}
+
+		if (Recipe.CompiledExecutionAdmission.bAllowed !=
+			Recipe.CompiledExecutionAdmission.Blockers.empty())
+		{
+			strOutError = "Source-contract compiled execution is not fail-closed.";
+			return false;
+		}
+		const bool_t bNonRenderLight =
+			Recipe.MaterialAdmission.strStatus ==
+				"NON_RENDER_BUILTIN_NOT_APPLICABLE";
+		const bool_t bBlockedMaterial = Recipe.MaterialAdmission.strStatus.starts_with(
+			"BLOCKED_");
+		if (Recipe.MaterialAdmission.strStatus.empty() ||
+			(bBlockedMaterial &&
+				(Recipe.MaterialAdmission.Blockers.empty() ||
+				 !Recipe.MaterialAdmission.strMaterialRecipeId.empty() ||
+				 !Recipe.MaterialAdmission.strRenderStateRecipeId.empty())) ||
+			(!bBlockedMaterial && !bNonRenderLight &&
+				(Recipe.MaterialAdmission.strMaterialRecipeId.empty() ||
+				 Recipe.MaterialAdmission.strRenderStateRecipeId.empty() ||
+				 !Recipe.MaterialAdmission.Blockers.empty())) ||
+			(bNonRenderLight &&
+				(Element.Renderer.eType != EFFECT_RENDERER_TYPE::LIGHT_PARTICLE ||
+				 !Recipe.MaterialAdmission.Blockers.empty())))
+		{
+			strOutError = "Source-contract material admission is invalid.";
+			return false;
+		}
+
+		const EFFECT_SOURCE_GEOMETRY_BINDING_DESC& Geometry =
+			Recipe.GeometryBinding;
+		if (Geometry.strReceiptFileSha256 != strGeometryFileSha256 ||
+			Geometry.strReceiptSelfSha256 != strGeometrySelfSha256 ||
+			!std::isfinite(Geometry.fCarrierGeometryPreScale) ||
+			Geometry.fCarrierGeometryPreScale <= 0.f)
+		{
+			strOutError = "Source-contract geometry receipt binding is invalid.";
+			return false;
+		}
+		const auto MeshBinding = std::find_if(
+			Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+			});
+		if (Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE)
+		{
+			if (!Geometry.bEnabled || Geometry.strAssetId.empty() ||
+				MeshBinding == Element.ResourceBindings.end() ||
+				Geometry.strAssetId != MeshBinding->strAssetId ||
+				Geometry.strParticleScaleSemantics.empty() ||
+				Geometry.strStatus.empty())
+			{
+				strOutError = "Source-contract Mesh carrier scale contract is invalid.";
+				return false;
+			}
+		}
+		else if (Geometry.bEnabled || !Geometry.strAssetId.empty() ||
+			std::abs(Geometry.fCarrierGeometryPreScale - 1.f) > 1e-7f ||
+			Geometry.strParticleScaleSemantics != "NOT_APPLICABLE" ||
+			Geometry.strStatus != "NOT_APPLICABLE" || !Geometry.Blockers.empty())
+		{
+			strOutError = "Source-contract non-Mesh geometry binding is invalid.";
+			return false;
+		}
+		if (bArtistFContract &&
+			(Evidence.strSourceEvidenceStatus != "SOURCE_EVIDENCE_PARTIAL" ||
+			 Recipe.CompiledExecutionAdmission.bAllowed ||
+			 std::find(Recipe.CompiledExecutionAdmission.Blockers.begin(),
+				 Recipe.CompiledExecutionAdmission.Blockers.end(),
+				 "SOURCE_EVIDENCE_PARTIAL") ==
+				 Recipe.CompiledExecutionAdmission.Blockers.end() ||
+			 (!bNonRenderLight &&
+				 Recipe.MaterialAdmission.strStatus !=
+					 "BLOCKED_COOKED_PARTIAL_NO_TYPED_MATERIAL_RECIPE") ||
+			 (Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE &&
+				(std::abs(Geometry.fCarrierGeometryPreScale - 0.01f) > 1e-7f ||
+				 Geometry.strParticleScaleSemantics !=
+					 "DIMENSIONLESS_AXIS_REORDER_ONLY" ||
+				 Geometry.strStatus !=
+					 "GLTF_TO_WMODEL_PARITY_PROVEN_UPK_TO_GLTF_UNRESOLVED" ||
+				 Geometry.Blockers.empty()))))
+		{
+			strOutError = "Artist F source-contract fixture gate changed.";
+			return false;
+		}
+
+		std::unordered_map<std::string,
+			const EFFECT_SOURCE_MODULE_COVERAGE_DESC*> CoverageById;
+		for (const EFFECT_SOURCE_MODULE_COVERAGE_DESC& Coverage :
+			Recipe.ModuleCoverage)
+		{
+			std::unordered_set<std::string> CoverageBlockers;
+			const bool_t bBlockersValid = std::all_of(
+				Coverage.Blockers.begin(), Coverage.Blockers.end(),
+				[&CoverageBlockers](const std::string& Blocker)
+				{
+					return !Blocker.empty() &&
+						CoverageBlockers.insert(Blocker).second;
+				});
+			if (Coverage.strModuleStableId.empty() ||
+				Coverage.strModuleStableId.size() > 512u ||
+				!Has_VisibleCharacter(Coverage.strModuleStableId) ||
+				Coverage.strNormalizedClass.empty() ||
+				Coverage.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
+				!bBlockersValid ||
+				((Coverage.eStatus == EFFECT_SOURCE_COVERAGE_STATUS::UNRESOLVED) !=
+					!Coverage.Blockers.empty()) ||
+				Coverage.Properties.size() >
+					MAX_SOURCE_COVERAGE_PROPERTIES_PER_MODULE ||
+				!CoverageById.emplace(
+					Coverage.strModuleStableId, &Coverage).second)
+			{
+				strOutError = "Source-contract module coverage is invalid.";
+				return false;
+			}
+		}
+
+		for (const EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
+		{
+			const auto CoverageIterator = CoverageById.find(Module.strStableId);
+			if (Module.strStableId.empty() || Module.strStableId.size() > 512u ||
+				!Has_VisibleCharacter(Module.strStableId) || Module.strClassName.empty() ||
+				Module.strObjectPath.empty() ||
+				CoverageIterator == CoverageById.end() ||
+				CoverageIterator->second->strNormalizedClass !=
+					Normalize_SourceModuleClass(Module.strClassName))
+			{
+				strOutError = "Source-contract module identity is invalid.";
+				return false;
+			}
+
+			std::unordered_set<std::string> SourceProperties;
+			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+			{
+				if (Literal.strPropertyPath.empty() ||
+					Literal.eKind >= EFFECT_SOURCE_LITERAL_KIND::END ||
+					(EFFECT_SOURCE_LITERAL_KIND::NUMBER == Literal.eKind &&
+						!std::isfinite(Literal.fNumber)) ||
+					!SourceProperties.insert(
+						"literal\n" + Literal.strPropertyPath).second)
+				{
+					strOutError = "Source-contract literal is invalid or duplicated.";
+					return false;
+				}
+			}
+			for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+				Module.Distributions)
+			{
+				if (!CEffectDistribution::Validate(Distribution, strOutError) ||
+					!SourceProperties.insert(
+						"distribution\n" +
+						Distribution.strPropertyPath).second)
+					return false;
+				const bool_t bParticleParameter =
+					Is_ParticleParameterDistribution(Distribution.strSourceClass);
+				if ((bParticleParameter &&
+						Distribution.eParameterBinding >=
+							EFFECT_DISTRIBUTION_PARAMETER_BINDING::END) ||
+					(!bParticleParameter &&
+						(Distribution.eParameterBinding !=
+							EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+						 !Distribution.strParameterName.empty())))
+				{
+					strOutError =
+						"Source-contract ParticleParameter binding is invalid.";
+					return false;
+				}
+			}
+
+			std::unordered_set<std::string> CoveredProperties;
+			for (const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& Property :
+				CoverageIterator->second->Properties)
+			{
+				if ((Property.strStorage != "literal" &&
+						Property.strStorage != "distribution") ||
+					Property.strPropertyPath.empty() ||
+					Property.strProvenance.empty() ||
+					Property.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
+					!CoveredProperties.insert(
+						Property.strStorage + "\n" +
+						Property.strPropertyPath).second)
+				{
+					strOutError = "Source-contract property coverage is invalid.";
+					return false;
+				}
+			}
+			if (SourceProperties != CoveredProperties)
+			{
+				strOutError =
+					"Source-contract property coverage does not match source payload.";
+				return false;
+			}
+		}
+	}
+	if (bArtistFContract &&
+		(Document.Elements.size() != 35u || EvidenceIds.size() != 35u ||
+		 SourceCueIds.size() != 7u || iModuleReferenceCount != 399u))
+	{
+		strOutError =
+			"Artist F source-contract occurrence or module denominator changed.";
+		return false;
+	}
+
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -2512,6 +3836,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	const DATA_JSON_VALUE* pVersion = Root.Find("version");
 	const DATA_JSON_VALUE* pAssetId = Root.Find("effectAssetId");
 	const DATA_JSON_VALUE* pDisplayName = Root.Find("displayName");
+	const DATA_JSON_VALUE* pPurpose = Root.Find("purpose");
 	const DATA_JSON_VALUE* pElements = Root.Find("elements");
 	if ((nullptr != pSchema && (!pSchema->Is_String() || pSchema->Get_String() != EFFECT_DOCUMENT_SCHEMA)) ||
 		nullptr == pVersion || !pVersion->Is_Number() ||
@@ -2525,21 +3850,50 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	const double Version = pVersion->Get_Number();
 	if (!std::isfinite(Version) || Version != std::floor(Version) ||
 		Version < EFFECT_AUTHORING_MIN_SUPPORTED_VERSION ||
-		Version > EFFECT_AUTHORING_FORMAT_VERSION)
+		Version > EFFECT_SOURCE_CONTRACT_FORMAT_VERSION)
 	{
 		strOutError = "Effect document version is not supported.";
 		return false;
 	}
 	const uint32_t iSourceVersion = static_cast<uint32_t>(Version);
+	const bool_t bSourceContract =
+		iSourceVersion == EFFECT_SOURCE_CONTRACT_FORMAT_VERSION;
+	if (bSourceContract)
+	{
+		if (nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != EFFECT_DOCUMENT_SCHEMA ||
+			nullptr == pPurpose || !pPurpose->Is_String() ||
+			pPurpose->Get_String() != "source_contract" ||
+			!Validate_ExactFields(Root,
+				{ "schema", "version", "purpose", "effectAssetId",
+					"displayName", "particleSystem", "modelCues", "elements" },
+				"Effect source-contract document", strOutError))
+		{
+			if (strOutError.empty())
+				strOutError = "Native-v14 source-contract root is invalid.";
+			return false;
+		}
+	}
+	else if (nullptr != pPurpose)
+	{
+		strOutError = "Legacy Effect documents cannot declare source-contract purpose.";
+		return false;
+	}
 
 	EFFECT_DOCUMENT_DESC Staged;
 	Staged.iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	Staged.iLoadedFormatVersion = iSourceVersion;
+	Staged.bSourceContract = bSourceContract;
 	Staged.strEffectAssetId = pAssetId->Get_String();
 	Staged.strDisplayName = pDisplayName->Get_String();
 	if (iSourceVersion >= 8u)
 	{
 		const DATA_JSON_VALUE* pParticleSystem = Root.Find("particleSystem");
 		if (nullptr == pParticleSystem || !pParticleSystem->Is_Object() ||
+			(bSourceContract && !Validate_ExactFields(*pParticleSystem,
+				{ "uniformScaleMultiplier", "yawOffsetDegrees",
+					"directionYawDegrees", "initialSpeedMultiplier" },
+				"Effect source-contract particleSystem", strOutError)) ||
 			!Read_Float(*pParticleSystem, "uniformScaleMultiplier",
 				Staged.ParticleSystem.fUniformScaleMultiplier, strOutError) ||
 			!Read_Float(*pParticleSystem, "yawOffsetDegrees",
@@ -2565,7 +3919,12 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		Staged.ModelCues.reserve(pModelCues->Get_Array().size());
 		for (const DATA_JSON_VALUE& CueValue : pModelCues->Get_Array())
 		{
-			if (!CueValue.Is_Object())
+			if (!CueValue.Is_Object() ||
+				(bSourceContract && !Validate_ExactFields(CueValue,
+					{ "cueId", "modelAssetId", "clipName",
+						"startDelaySeconds", "durationSeconds", "visible",
+						"localTransform", "assetPreTransform" },
+					"Effect source-contract Model Cue", strOutError)))
 			{
 				strOutError = "Effect Model Cue must be an object.";
 				return false;
@@ -2600,7 +3959,13 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	Staged.Elements.reserve(pElements->Get_Array().size());
 	for (const DATA_JSON_VALUE& ElementValue : pElements->Get_Array())
 	{
-		if (!ElementValue.Is_Object())
+		if (!ElementValue.Is_Object() ||
+			(bSourceContract && !Validate_ExactFields(ElementValue,
+				{ "id", "displayName", "groupId", "sourceNode", "visible",
+					"kind", "renderer", "resources", "material",
+					"actionCueAttachment", "transformInheritance", "detail",
+					"sourceRecipe", "sourcePresentation" },
+				"Effect source-contract Element", strOutError)))
 		{
 			strOutError = "Effect Element must be an object.";
 			return false;
@@ -2618,6 +3983,17 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			return false;
 		}
 		Element.strElementId = pId->Get_String();
+		if (bSourceContract)
+		{
+			const DATA_JSON_VALUE* pRenderer = ElementValue.Find("renderer");
+			if (nullptr == pRenderer || !pRenderer->Is_Object() ||
+				!Read_Renderer(*pRenderer, Element.Renderer, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect source-contract renderer is missing.";
+				return false;
+			}
+		}
 		if (iSourceVersion >= 6u)
 		{
 			const DATA_JSON_VALUE* pElementDisplayName =
@@ -2669,7 +4045,10 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		}
 		for (const DATA_JSON_VALUE& ResourceValue : pResources->Get_Array())
 		{
-			if (!ResourceValue.Is_Object())
+			if (!ResourceValue.Is_Object() ||
+				(bSourceContract && !Validate_ExactFields(ResourceValue,
+					{ "slotId", "assetId" },
+					"Effect source-contract resource", strOutError)))
 			{
 				strOutError = "Effect resource must be an object.";
 				return false;
@@ -2731,7 +4110,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			strOutError = "Effect render profile is invalid.";
 			return false;
 		}
-		if (iSourceVersion >= 11u &&
+		if (!bSourceContract && iSourceVersion >= 11u &&
 			Element.Material.strTemplateId ==
 				EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
 			!Element.Material.SourceMaterial.bEnabled)
@@ -2767,6 +4146,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				ElementValue.Find("sourceRecipe");
 			if (nullptr == pSourceRecipe || !pSourceRecipe->Is_Object() ||
 				!Read_SourceRecipe(*pSourceRecipe, Element.SourceRecipe,
+					bSourceContract,
 					strOutError))
 			{
 				if (strOutError.empty())
@@ -2790,7 +4170,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		}
 		Staged.Elements.push_back(std::move(Element));
 	}
-	if (!Validate(Staged, strOutError))
+	if (!(bSourceContract ? Validate_SourceContract(Staged, strOutError) :
+		Validate(Staged, strOutError)))
 		return false;
 	OutDocument = std::move(Staged);
 	strOutError.clear();
@@ -2800,11 +4181,17 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 std::string Client::CEffectDocumentCodec::Serialize(
 	const EFFECT_DOCUMENT_DESC& Document)
 {
+	const uint32_t iSerializedVersion = Document.iLoadedFormatVersion;
+	const bool_t bSourceContract =
+		iSerializedVersion == EFFECT_SOURCE_CONTRACT_FORMAT_VERSION &&
+		Document.bSourceContract;
 	std::ostringstream Output;
 	Output << std::setprecision(9) << "{\n"
 		<< "  \"schema\": \"" << EFFECT_DOCUMENT_SCHEMA << "\",\n"
-		<< "  \"version\": " << EFFECT_AUTHORING_FORMAT_VERSION << ",\n"
-		<< "  \"effectAssetId\": \"" << CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
+		<< "  \"version\": " << iSerializedVersion << ",\n";
+	if (bSourceContract)
+		Output << "  \"purpose\": \"source_contract\",\n";
+	Output << "  \"effectAssetId\": \"" << CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
 		<< "  \"displayName\": \"" << CDataJson::Escape(Document.strDisplayName) << "\",\n"
 		<< "  \"particleSystem\": { \"uniformScaleMultiplier\": "
 		<< Document.ParticleSystem.fUniformScaleMultiplier
@@ -2852,13 +4239,17 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< "      \"groupId\": \"" << CDataJson::Escape(Element.strGroupId) << "\",\n"
 			<< "      \"sourceNode\": \"" << CDataJson::Escape(Element.strSourceNode) << "\",\n"
 			<< "      \"visible\": " << (Element.bVisible ? "true" : "false") << ",\n"
-			<< "      \"kind\": \"" << To_Token(Element.eKind) << "\",\n"
-			<< "      \"resources\": [";
+			<< "      \"kind\": \"" << To_Token(Element.eKind) << "\",\n";
+		if (bSourceContract)
+			Write_Renderer(Output, Element.Renderer);
+		Output << "      \"resources\": [";
 		for (size_t iResource = 0u; iResource < Element.ResourceBindings.size(); ++iResource)
 		{
 			const EFFECT_RESOURCE_BINDING_DESC& Binding = Element.ResourceBindings[iResource];
 			Output << (0u == iResource ? "\n" : ",\n")
-				<< "        { \"slotId\": \"" << CDataJson::Escape(Binding.strSlotId)
+				<< "        { \"" << (iSerializedVersion >= 6u ?
+					"slotId" : "slot") << "\": \""
+				<< CDataJson::Escape(Binding.strSlotId)
 				<< "\", \"assetId\": \"" << CDataJson::Escape(Binding.strAssetId) << "\" }";
 		}
 		if (!Element.ResourceBindings.empty())
@@ -2903,7 +4294,7 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< "\" },\n";
 		Write_Detail(Output, Element.Detail);
 		Output << ",\n";
-		Write_SourceRecipe(Output, Element.SourceRecipe);
+		Write_SourceRecipe(Output, Element.SourceRecipe, bSourceContract);
 		Output << ",\n";
 		Write_SourcePresentation(Output, Element.SourcePresentation);
 		Output << "\n    }";
@@ -2960,7 +4351,9 @@ namespace
 
 		// Authoring save preserves valid partial drafts. The publisher/runtime gate
 		// still calls Validate_Drawable before a document can ship or render.
-		if (!CEffectDocumentCodec::Validate(Document, strOutError))
+		if (!(Document.bSourceContract ?
+			CEffectDocumentCodec::Validate_SourceContract(Document, strOutError) :
+			CEffectDocumentCodec::Validate(Document, strOutError)))
 			return false;
 		std::error_code Error;
 		std::filesystem::create_directories(Path.parent_path(), Error);

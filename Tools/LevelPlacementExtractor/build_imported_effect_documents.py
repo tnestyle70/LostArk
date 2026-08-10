@@ -1240,10 +1240,32 @@ def build_distribution_recipe(
     module: SourceObject,
     property_path: str,
     raw_wrapper: dict[str, Any],
+    include_source_contract_bindings: bool = False,
 ) -> dict[str, Any]:
     component_count = 1 if folded(raw_wrapper.get("structType")) == "rawdistributionfloat" else 3
     raw = distribution_properties(raw_wrapper) or {}
     target = distribution_target(index, module, property_path)
+    target_class = folded(target.class_name) if target else ""
+    particle_parameter_classes = {
+        "distributionfloatparticleparameter",
+        "distributionvectorparticleparameter",
+    }
+    parameter_name = ""
+    parameter_binding = "none"
+    if include_source_contract_bindings and target_class in particle_parameter_classes:
+        source_parameter_name = prop(target.properties, "parametername")
+        if source_parameter_name is None or folded(source_parameter_name) in {
+            "", "none"
+        }:
+            parameter_name = ""
+        elif not isinstance(source_parameter_name, str):
+            raise ValueError(
+                "UE3 ParticleParameter distribution has malformed ParameterName: "
+                f"{target.object_path}"
+            )
+        else:
+            parameter_name = source_parameter_name
+            parameter_binding = "actionCue"
     default_minimum, default_maximum, keys = referenced_distribution_defaults(
         target, component_count
     )
@@ -1253,7 +1275,6 @@ def build_distribution_recipe(
     ]
     operation = int(finite_number(prop(raw, "op")) or 0)
     if operation == 0:
-        target_class = folded(target.class_name) if target else ""
         operation = 2 if "uniform" in target_class else 1
     if operation not in (1, 2, 3):
         raise ValueError(
@@ -1292,7 +1313,7 @@ def build_distribution_recipe(
             "edvlf_yz": 3,
             "edvlf_xyz": 4,
         }.get(folded(prop(target.properties, "lockedaxes")) if target else "", 0)
-    return {
+    recipe = {
         "propertyPath": property_path,
         "sourceClass": target.class_name if target else "",
         "sourceObjectPath": target.object_path if target else "",
@@ -1308,19 +1329,32 @@ def build_distribution_recipe(
         "lookupTable": lookup_table,
         "keys": keys,
     }
+    if include_source_contract_bindings and target_class in particle_parameter_classes:
+        recipe["parameterBinding"] = parameter_binding
+        recipe["parameterName"] = parameter_name
+    return recipe
 
 
 def flatten_source_properties(
     index: SourceIndex,
     module: SourceObject,
     semantic_overlay: dict[str, Any] | None = None,
+    include_source_contract_bindings: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     literals: list[dict[str, Any]] = []
     distributions: list[dict[str, Any]] = []
 
     def visit(value: Any, path: str) -> None:
         if isinstance(value, dict) and value.get("type") == "structproperty" and folded(value.get("structType")) in {"rawdistributionfloat", "rawdistributionvector"}:
-            distributions.append(build_distribution_recipe(index, module, path, value))
+            distributions.append(
+                build_distribution_recipe(
+                    index,
+                    module,
+                    path,
+                    value,
+                    include_source_contract_bindings,
+                )
+            )
             return
         if isinstance(value, dict) and "type" in value and "value" in value:
             visit(value.get("value"), path)
@@ -1496,6 +1530,7 @@ def build_source_recipe(
     renderer_shape: str,
     bursts: list[dict[str, Any]],
     semantic_overlay: dict[str, Any] | None = None,
+    include_source_contract_bindings: bool = False,
 ) -> dict[str, Any]:
     required = first_module(modules, "particlemodulerequired")
     delay_distribution = distribution_float(index, required, "emitterdelay")
@@ -1508,7 +1543,10 @@ def build_source_recipe(
     source_modules = []
     for module in modules:
         literals, distributions = flatten_source_properties(
-            index, module, semantic_overlay
+            index,
+            module,
+            semantic_overlay,
+            include_source_contract_bindings,
         )
         source_modules.append(
             {
@@ -1885,6 +1923,7 @@ def build_document(
     graph: dict[str, Any],
     closure: dict[str, Any],
     semantic_overlay: dict[str, Any] | None = None,
+    include_source_contract_bindings: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if int(source_receipt["skillId"]) != int(graph["skillId"]):
         raise ValueError("source receipt and normalized graph skillId differ")
@@ -1980,6 +2019,7 @@ def build_document(
         source_recipe = build_source_recipe(
             index, modules, renderer_shape, bursts,
             semantic_overlay,
+            include_source_contract_bindings,
         )
         source_presentation = default_source_presentation()
         if renderer_shape == "light":

@@ -264,6 +264,166 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         self.assertEqual(recipe["lookupTableChunkSize"], 6)
         self.assertEqual(recipe["lookupTableNumElements"], 2)
 
+    def test_particle_parameter_distribution_keeps_exact_parameter_name(self) -> None:
+        for struct_type, source_class, property_path, parameter_name in (
+            (
+                "rawdistributionfloat",
+                "DistributionFloatParticleParameter",
+                "lifetime",
+                "Lifetime",
+            ),
+            (
+                "rawdistributionvector",
+                "distributionvectorparticleparameter",
+                "startsize",
+                "Size",
+            ),
+        ):
+            raw_wrapper = {
+                "type": "structproperty",
+                "structType": struct_type,
+                "value": {
+                    "properties": {
+                        "distribution": value("objectproperty", 1),
+                    },
+                },
+            }
+            graph = {
+                "nodes": [
+                    {
+                        "nodeId": "module",
+                        "package": "TEST",
+                        "className": "particlemodulelifetime",
+                        "objectPath": "particlemodule_0",
+                        "properties": {property_path: raw_wrapper},
+                    },
+                    {
+                        "nodeId": "distribution",
+                        "package": "TEST",
+                        "className": source_class,
+                        "objectPath": "particleparameter_0",
+                        "properties": {
+                            "parametername": value(
+                                "nameproperty", parameter_name
+                            ),
+                            "constant": value("floatproperty", 2.0),
+                        },
+                    },
+                ],
+                "edges": [
+                    {
+                        "sourceNodeId": "module",
+                        "targetNodeId": "distribution",
+                        "property": f"{property_path}.distribution",
+                        "referenceIndex": 1,
+                    },
+                ],
+            }
+            index = SourceIndex(graph, {"packages": []})
+            module = index.get_id("module")
+            self.assertIsNotNone(module)
+            recipe = build_distribution_recipe(
+                index, module, property_path, raw_wrapper, True
+            )
+            self.assertEqual("actionCue", recipe["parameterBinding"])
+            self.assertEqual(parameter_name, recipe["parameterName"])
+            self.assertEqual(source_class, recipe["sourceClass"])
+
+    def test_particle_parameter_distribution_preserves_name_none_as_no_binding(self) -> None:
+        raw_wrapper = {
+            "type": "structproperty",
+            "structType": "rawdistributionfloat",
+            "value": {
+                "properties": {
+                    "distribution": value("objectproperty", 1),
+                },
+            },
+        }
+        graph = {
+            "nodes": [
+                {
+                    "nodeId": "module",
+                    "package": "TEST",
+                    "className": "particlemodulelifetime",
+                    "objectPath": "particlemodule_0",
+                    "properties": {"lifetime": raw_wrapper},
+                },
+                {
+                    "nodeId": "distribution",
+                    "package": "TEST",
+                    "className": "distributionfloatparticleparameter",
+                    "objectPath": "particleparameter_0",
+                    "properties": {},
+                },
+            ],
+            "edges": [
+                {
+                    "sourceNodeId": "module",
+                    "targetNodeId": "distribution",
+                    "property": "lifetime.distribution",
+                    "referenceIndex": 1,
+                },
+            ],
+        }
+        index = SourceIndex(graph, {"packages": []})
+        module = index.get_id("module")
+        self.assertIsNotNone(module)
+        recipe = build_distribution_recipe(
+            index, module, "lifetime", raw_wrapper, True
+        )
+        self.assertEqual("none", recipe["parameterBinding"])
+        self.assertEqual("", recipe["parameterName"])
+
+    def test_particle_parameter_distribution_rejects_malformed_parameter_name(self) -> None:
+        raw_wrapper = {
+            "type": "structproperty",
+            "structType": "rawdistributionfloat",
+            "value": {
+                "properties": {
+                    "distribution": value("objectproperty", 1),
+                },
+            },
+        }
+        graph = {
+            "nodes": [
+                {
+                    "nodeId": "module",
+                    "package": "TEST",
+                    "className": "particlemodulelifetime",
+                    "objectPath": "particlemodule_0",
+                    "properties": {"lifetime": raw_wrapper},
+                },
+                {
+                    "nodeId": "distribution",
+                    "package": "TEST",
+                    "className": "distributionfloatparticleparameter",
+                    "objectPath": "particleparameter_0",
+                    "properties": {
+                        "parametername": value("intproperty", 7),
+                    },
+                },
+            ],
+            "edges": [
+                {
+                    "sourceNodeId": "module",
+                    "targetNodeId": "distribution",
+                    "property": "lifetime.distribution",
+                    "referenceIndex": 1,
+                },
+            ],
+        }
+        index = SourceIndex(graph, {"packages": []})
+        module = index.get_id("module")
+        self.assertIsNotNone(module)
+        with self.assertRaisesRegex(ValueError, "malformed ParameterName"):
+            build_distribution_recipe(index, module, "lifetime", raw_wrapper, True)
+
+        legacy_recipe = build_distribution_recipe(
+            index, module, "lifetime", raw_wrapper, False
+        )
+        self.assertNotIn("parameterBinding", legacy_recipe)
+        self.assertNotIn("parameterName", legacy_recipe)
+
     def test_cooked_distribution_rejects_noncanonical_stride(self) -> None:
         raw_wrapper = value(
             "structproperty",

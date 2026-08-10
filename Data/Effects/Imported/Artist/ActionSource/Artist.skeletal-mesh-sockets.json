@@ -1,0 +1,1252 @@
+{
+  "schema": "lostark.ue3-skeletal-mesh-sockets",
+  "formatVersion": 1,
+  "source": {
+    "fileName": "pc_sp_00_sk.props.txt",
+    "sha256": "abd830b359b54675833acb258768e3fd225dd2872832bf52b5448acfbf8b4381",
+    "positionUnitScale": 0.01,
+    "rotationUnitScaleDegrees": 0.0054931640625
+  },
+  "sockets": [
+    {
+      "sourceIndex": 0,
+      "socketName": "interactionkey",
+      "boneName": "b_effectname",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "UMODEL_COMPACT_DEFAULT_TRANSFORM"
+    },
+    {
+      "sourceIndex": 1,
+      "socketName": "wp_sdm_r_battle",
+      "boneName": "b_wp_1",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 2,
+      "socketName": "wp_sdm_r_normal",
+      "boneName": "bip001-spine2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          -2.01397,
+          14.6022,
+          3.73308
+        ],
+        "rotationUnrealUnits": [
+          -5497.0,
+          -842.0,
+          -17527.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          -0.0201397,
+          0.146022,
+          0.037330800000000004
+        ],
+        "rotationDegrees": [
+          -30.1959228515625,
+          -4.625244140625,
+          -96.2786865234375
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 3,
+      "socketName": "sc_prop3_01",
+      "boneName": "bip001-prop3",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 4,
+      "socketName": "fx_down_01",
+      "boneName": "b_effectroot",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          16384.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          90.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 5,
+      "socketName": "effectroot",
+      "boneName": "b_effectroot",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          16384.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          90.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 6,
+      "socketName": "fx_hit_01",
+      "boneName": "bip001-spine2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 7,
+      "socketName": "fx_l_foot",
+      "boneName": "bip001-l-foot",
+      "sourceTransform": {
+        "positionUeUnits": [
+          6.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          -16384.0,
+          -16384.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.06,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          -90.0,
+          -90.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 8,
+      "socketName": "fx_r_foot",
+      "boneName": "bip001-r-foot",
+      "sourceTransform": {
+        "positionUeUnits": [
+          6.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          -16384.0,
+          -16384.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.06,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          -90.0,
+          -90.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 9,
+      "socketName": "fx_state_02",
+      "boneName": "bip001-head",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 10,
+      "socketName": "fx_state_01",
+      "boneName": "bip001-spine2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 11,
+      "socketName": "fx_buff_01",
+      "boneName": "b_root",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 12,
+      "socketName": "fx_r_hand",
+      "boneName": "bip001-r-hand",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 13,
+      "socketName": "fx_mark_03",
+      "boneName": "b_effectname",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          25.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.25
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 14,
+      "socketName": "fx_mark_01",
+      "boneName": "b_effectname",
+      "sourceTransform": {
+        "positionUeUnits": [
+          -3.049,
+          16.7502,
+          -10.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          -0.03049,
+          0.167502,
+          -0.1
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 15,
+      "socketName": "fx_mark_02",
+      "boneName": "b_effectname",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          5.56272,
+          -10.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.055627199999999995,
+          -0.1
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 16,
+      "socketName": "fx_l_hand",
+      "boneName": "bip001-l-hand",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 17,
+      "socketName": "fx_death_01",
+      "boneName": "bip001-spine2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 18,
+      "socketName": "weapon_lhand",
+      "boneName": "b_wp_2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 19,
+      "socketName": "weapon_rhand",
+      "boneName": "b_wp_1",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 20,
+      "socketName": "grabbed_socket_body",
+      "boneName": "bip001-pelvis",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          16384.0,
+          32768.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          90.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 21,
+      "socketName": "grabbed_socket_head",
+      "boneName": "bip001-head",
+      "sourceTransform": {
+        "positionUeUnits": [
+          5.74999,
+          -1.21669,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          16384.0,
+          32768.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.05749990000000001,
+          -0.012166900000000001,
+          0.0
+        ],
+        "rotationDegrees": [
+          90.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 22,
+      "socketName": "midcontrol",
+      "boneName": "b_wp_1",
+      "sourceTransform": {
+        "positionUeUnits": [
+          40.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.4,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 23,
+      "socketName": "wp_smw_r_battle",
+      "boneName": "b_wp_1",
+      "sourceTransform": {
+        "positionUeUnits": [
+          5.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.05,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 24,
+      "socketName": "wp_smw_r_normal",
+      "boneName": "bip001-spine2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          17.8811,
+          12.4139,
+          -9.2433
+        ],
+        "rotationUnrealUnits": [
+          4207.0,
+          31608.0,
+          49698.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.178811,
+          0.124139,
+          -0.092433
+        ],
+        "rotationDegrees": [
+          23.1097412109375,
+          173.6279296875,
+          272.999267578125
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 25,
+      "socketName": "wp_sru_r_normal",
+      "boneName": "bip001-spine",
+      "sourceTransform": {
+        "positionUeUnits": [
+          4.02173,
+          14.5506,
+          0.0052271
+        ],
+        "rotationUnrealUnits": [
+          -110.0,
+          17170.0,
+          -15042.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0402173,
+          0.145506,
+          5.2271e-05
+        ],
+        "rotationDegrees": [
+          -0.604248046875,
+          94.317626953125,
+          -82.628173828125
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 26,
+      "socketName": "sc_music_prop",
+      "boneName": "bip001-prop3",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 27,
+      "socketName": "sc_music_wp_1",
+      "boneName": "b_wp_1",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 28,
+      "socketName": "sc_music_root",
+      "boneName": "b_root",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          16384.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          90.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 29,
+      "socketName": "sc_music_wp_2",
+      "boneName": "b_wp_2",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    },
+    {
+      "sourceIndex": 30,
+      "socketName": "wp_sru_r_battle",
+      "boneName": "b_wp_3",
+      "sourceTransform": {
+        "positionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationUnrealUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "runtimeLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "transformEvidence": "EXPLICIT_SOCKET_PROPERTIES"
+    }
+  ]
+}
