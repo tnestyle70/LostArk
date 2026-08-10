@@ -29,7 +29,8 @@ geometry/WModel은 수정하지 않았다.
   - exact input/sampler/render/partial-cull과 reconstructed graph를 필드별로 분리한다.
   - blocker set이 비어 있을 때만 admission을 열 수 있게 하고 이번 slice에서는 0을 유지한다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json`
-  - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated format 3 contract다.
+  - 27 recipe, 34 occurrence, 23 arithmetic family, exact sampler 0, rejected legacy sampler 4의
+    generated format 4 contract다.
 - `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
   - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 32개를 검증한다.
 - `Tools/LevelPlacementExtractor/build_artist_31470_material_oracle_acquisition.py`
@@ -57,9 +58,10 @@ geometry/WModel은 수정하지 않았다.
 | scalar override | 342 |
 | vector override | 19 |
 | direct texture override | 71 |
-| exact direct sampler / unproven direct sampler | 3 / 68 |
-| exact parent-default sampler | 1 |
-| exact sampler 전체 | 4 |
+| exact direct sampler / unproven direct sampler | 0 / 71 |
+| exact parent-default sampler | 0 |
+| rejected legacy exact sampler | 4 (instance 3 / parent default 1) |
+| strict sampler execution denominator | 72 |
 | surviving parent default / static-switch parent default | 297 / 94 |
 | raw graph expression export | 925 |
 | unique arithmetic family | 23 |
@@ -112,8 +114,10 @@ record SHA, export evidence와 고정 fixture를 함께 검사한다. 원래 raw
 `TwoSided` 값만 바꾸는 receipt/contract 공격도 거부한다.
 
 `bHasStaticPermutationResource`는 resource 존재 flag일 뿐 selected static parameter 값이 아니다.
-Parent graph의 surviving switch default 94개도 `PARENT_DEFAULT_NOT_INSTANCE_SELECTION`으로 분리했다.
-따라서 `SOURCE_EXACT_STATIC_PERMUTATION` recipe는 0이다.
+Corrective는 parent expression의 raw ExpressionGUID를 MIC native `FStaticParameterSet`과 exact join했다.
+94행 중 override true 23은 source exact instance value를 확보했고, nonoverride 43은 raw entry를
+확인했으나 inheritance semantics가 미증명이며, 28은 exact GUID entry가 없다. Consumer output pilot이
+없으므로 `SOURCE_EXACT_STATIC_PERMUTATION` recipe와 execution-ready row는 계속 0이다.
 
 ## exact input과 parent default 경계
 
@@ -125,12 +129,13 @@ Parent graph의 surviving switch default 94개도 `PARENT_DEFAULT_NOT_INSTANCE_S
   같은 kind/name의 closer override 부재를 모두 증명한 경우에만 exact다.
 - parent default는 항상 `bindingOrigin=PARENT_DEFAULT`를 유지한다. raw Material 자체의 default는
   `SELF_DEFAULT`로 분리한다.
-- exact DDS/sampler 4건은 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1`이다. 네 번째
+- 이전 exact DDS/sampler 4건의 identity는 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1`로 보존한다. 네 번째
   `fx_tex_01.fx_c_atypical_016 / dissolve_texture`를 direct override로 세지 않는다.
-- 4건 모두 raw Texture2D의 class/export/reference/serial offset·size·SHA와 tagged sampler field를
-  DDS receipt에 join한다. Parent-default 1건은 raw expression의 Texture reference도 함께 요구한다.
-- 나머지 direct texture override 68개에는 address/filter/color-space 값을 만들지 않고
-  `SAMPLER_EVIDENCE_MISSING`을 유지한다.
+- 4건 모두 raw Texture2D class/export/reference/serial과 tagged fields를 재감사했지만 AddressX/Y,
+  sRGB, Filter 중 일부가 omitted였다. DDS projection의 class default는 source-specific provider가 아니므로
+  `rejectedSamplerBindings`로 철회했다.
+- direct texture override 71개와 parent default 1개, strict 72행 모두 address/filter/color-space의
+  full descriptor를 만들지 않고 `UNRESOLVED_SAMPLER_PROVENANCE`를 유지한다.
 
 ## arithmetic graph와 admission
 
@@ -206,7 +211,9 @@ python -B -m unittest -q `
   test_build_artist_31470_material_oracle_acquisition
 ```
 
-결과: shallow `Ran 38 tests ... OK (skipped=1)`, deep `Ran 38 tests ... OK`.
+결과: corrective shallow `33 contract tests + 6 oracle acquisition tests = 39 run`, `38 PASS / 1 skip`
+(`1` deep raw mutation은 explicit root가 없는 실행에서 skip). Deep root를 명시한 focused audit는 별도
+`--check` 경계에서 재현한다.
 
 공격 fixture는 static flag의 selected permutation 세탁, partial `TwoSided`의 full cull 승격, DDS hash와
 sampler origin 변경, parent-default shadowing, extra exact sampler 세탁, parent cycle, cooked stripped edge
@@ -226,7 +233,7 @@ powershell -ExecutionPolicy Bypass -File `
 결과:
 
 ```text
-PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
+PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 inputs=342/19/71 samplers=0/72 rejectedLegacy=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
 ```
 
 ### deep raw audit
@@ -235,7 +242,7 @@ PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 in
 모두 명시해 실행했다.
 
 ```text
-PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
+PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 inputs=342/19/71 samplers=0/72 rejectedLegacy=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
 ```
 
 Deep audit에서 raw render receipt 27 binding/48 source/base export/925 expression/4 Texture2D/19 package가
@@ -256,7 +263,7 @@ lane이 검증한다. 이 RESULT에는 실행하지 않은 전체 audit나 이�
 
 - MIC native `FStaticParameterSet` selected values 해독과 source-era static permutation 증명
 - source-era Engine/EFGame default/archetype 근거를 포함한 omitted render-state closure
-- 나머지 direct texture 68개와 필요한 parent texture의 sampler evidence
+- strict sampler 72개 전체의 source-specific full descriptor provider
 - ShaderCache binary schema/material membership/static-parameter-map-key 해독과 독립 numeric oracle
 - 23 arithmetic family evaluator 구현 및 독립 oracle 대조
 - typed compiler/runtime/HLSL/renderer 소비와 27/27 recipe, 34/34 occurrence execution admission
@@ -274,7 +281,8 @@ Product material 완료로 판정하지 않는다.
 - MIC Parent reference와 selected parent graph package/export/object identity를 결합한다.
 - 모든 exact input field ID를 owner recipe/path, kind, serialized order, name, origin, raw array/expression
   record bytes와 decoded value에서 재도출한다.
-- exact sampler의 Texture2D export/serial/tagged sampler property/DDS와 owning input field를 결합한다.
+- rejected legacy sampler 4개의 Texture2D export/serial/tagged fields/DDS와 owning input field를
+  결합하고 omitted default를 `SOURCE_EXACT`로 승격하지 못하게 한다.
 - recipe composition digest가 ordered inputs/static/render/family evidence를 포함하고 occurrence identity가
   그 digest를 소비한다.
 - graph family ID와 recipe-family link를 exact raw identity에서 재도출한다.

@@ -71,9 +71,10 @@ try {
     $archive = $receipt.sourceRevisionShaderCacheAcquisition
     $hlsl = $receipt.hlslVerification
     $stateProvider = $receipt.warpStateProviderVerification
+    $matrices = $receipt.materialFeasibilityMatrices
     $feasibility = $receipt.materialFeasibilityMatrices.summary
     if ($receipt.schema -cne 'lostark.artist-31470-material-runtime-oracle-receipt' -or
-        [int]$receipt.formatVersion -ne 2 -or
+        [int]$receipt.formatVersion -ne 3 -or
         [int]$summary.materialFamilyCount -ne 23 -or
         [int]$summary.implementedEvaluatorCount -ne 23 -or
         [int]$summary.cpuVerifiedEvaluatorCount -ne 23 -or
@@ -90,15 +91,23 @@ try {
         [int]$summary.familyNumericSampleCount -ne 92 -or
         [int]$summary.recipeNumericSampleCount -ne 108 -or
         [int]$summary.hlslSampleCount -ne 200 -or
-        [int]$summary.materialFeasibilityRowCount -ne 251 -or
+        [int]$summary.materialFeasibilityRowCount -ne 255 -or
         [int]$summary.materialFeasibilityReadyCount -ne 0 -or
-        [int]$summary.materialFeasibilityBlockedCount -ne 251 -or
+        [int]$summary.materialFeasibilityBlockedCount -ne 255 -or
         [int]$feasibility.renderStateRowCount -ne 89 -or
         [int]$feasibility.renderStateReadinessCount -ne 0 -or
         [int]$feasibility.staticPermutationRowCount -ne 94 -or
         [int]$feasibility.staticPermutationReadinessCount -ne 0 -or
-        [int]$feasibility.directUnprovenSamplerRowCount -ne 68 -or
-        [int]$feasibility.directUnprovenSamplerReadinessCount -ne 0 -or
+        [int]$feasibility.staticExactGuidJoinCount -ne 66 -or
+        [int]$feasibility.staticOverrideTrueSourceValueAcquiredCount -ne 23 -or
+        [int]$feasibility.staticNonoverrideSemanticsUnverifiedCount -ne 43 -or
+        [int]$feasibility.staticNoExactGuidEntryCount -ne 28 -or
+        [int]$feasibility.strictSamplerRowCount -ne 72 -or
+        [int]$feasibility.strictSamplerReadinessCount -ne 0 -or
+        [int]$feasibility.strictSamplerRejectedLegacyExactRowCount -ne 4 -or
+        [int]$feasibility.strictSamplerSourceTextureEvidenceRowCount -ne 72 -or
+        [int]$feasibility.totalRowCount -ne 255 -or
+        [int]$feasibility.blockedRowCount -ne 255 -or
         [int]$feasibility.ownerlessRowCount -ne 0 -or
         [int]$feasibility.unknownDecisionRowCount -ne 0 -or
         -not [bool]$feasibility.evidenceIntegrity -or
@@ -120,8 +129,40 @@ try {
         throw 'Artist F Material runtime denominator or fail-closed admission changed.'
     }
 
+    foreach ($row in @($matrices.staticPermutationRows)) {
+        $parent = $row.parentIdentity
+        $selection = $row.instanceRecordIdentity.micNativeSelection
+        if ([string]::IsNullOrWhiteSpace([string]$parent.expressionGuidHex) -or
+            [string]::IsNullOrWhiteSpace([string]$parent.defaultValuePropertyRecordSha256) -or
+            [string]::IsNullOrWhiteSpace([string]$parent.expressionGuidPropertyRecordSha256)) {
+            throw "Artist F static parent GUID/value provenance missing: $($row.matrixRowId)"
+        }
+        if ([string]$selection.selectionOutcome -cne 'NO_EXACT_GUID_NATIVE_ENTRY') {
+            if ([int]$selection.exactNameAndGuidMatchCount -ne 1 -or
+                [string]$selection.entry.expressionGuidHex -cne [string]$parent.expressionGuidHex -or
+                [string]::IsNullOrWhiteSpace([string]$selection.nativeTail.nativeTailSha256) -or
+                $null -eq $selection.entry.value -or
+                $null -eq $selection.entry.bOverride) {
+                throw "Artist F static native GUID/value/bOverride provenance changed: $($row.matrixRowId)"
+            }
+        }
+    }
+
+    foreach ($row in @($matrices.strictSamplerRows)) {
+        $fields = $row.sourceTextureEvidence.fields
+        if ($null -eq $fields.addressx -or
+            $null -eq $fields.addressy -or
+            $null -eq $fields.srgb -or
+            $null -eq $fields.filter -or
+            $null -eq $fields.lodgroup -or
+            [string]::IsNullOrWhiteSpace([string]$row.sourceValueAcquisitionEvidence.receiptSha256) -or
+            [string]$row.executionDecision -cne 'BLOCKED') {
+            throw "Artist F strict sampler source provenance changed: $($row.matrixRowId)"
+        }
+    }
+
     $mode = if ($DeepMaterialRuntimeAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material runtime mode=$mode family=23 recipe=27 occurrence=34 fields=729+94 render=73/162 feasibility=0/89+0/94+0/68 oracle=92+108/200 statePilots=4 sourceExact=0 shaderCache=0/624 readiness=false product=false"
+    Write-Output "PASS: Artist F 31470 Material runtime mode=$mode family=23 recipe=27 occurrence=34 fields=729+94 render=73/162 feasibility=0/89+0/94+0/72 static=23/43/28 oracle=92+108/200 statePilots=4 sourceExact=0 shaderCache=0/624 readiness=false product=false"
 }
 finally {
     Pop-Location

@@ -14,6 +14,7 @@ from build_artist_31470_material_runtime_oracle import (
     DEFAULT_OUTPUT,
     DEFAULT_RENDER_RECEIPT,
     DEFAULT_SHADER_RECEIPT,
+    DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
     build_material_feasibility_matrices,
     build_receipt,
     build_recipe_numeric_samples,
@@ -40,6 +41,9 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         cls.material = read_json(DEFAULT_MATERIAL_CONTRACT)
         cls.render = read_json(DEFAULT_RENDER_RECEIPT)
         cls.shader = read_json(DEFAULT_SHADER_RECEIPT)
+        cls.source_value_acquisition = read_json(
+            DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT
+        )
         cls.receipt = read_json(DEFAULT_OUTPUT)
 
     def rebuild(self, *, render: dict | None = None) -> dict:
@@ -47,9 +51,11 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
             copy.deepcopy(self.material),
             copy.deepcopy(render if render is not None else self.render),
             copy.deepcopy(self.shader),
+            copy.deepcopy(self.source_value_acquisition),
             DEFAULT_MATERIAL_CONTRACT,
             DEFAULT_RENDER_RECEIPT,
             DEFAULT_SHADER_RECEIPT,
+            DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
             DEFAULT_HLSL,
             copy.deepcopy(self.receipt["sourceRevisionShaderCacheAcquisition"]),
             copy.deepcopy(self.receipt["hlslVerification"]),
@@ -71,9 +77,9 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         self.assertEqual(summary["familyNumericSampleCount"], 92)
         self.assertEqual(summary["recipeNumericSampleCount"], 108)
         self.assertEqual(summary["hlslSampleCount"], 200)
-        self.assertEqual(summary["materialFeasibilityRowCount"], 251)
+        self.assertEqual(summary["materialFeasibilityRowCount"], 255)
         self.assertEqual(summary["materialFeasibilityReadyCount"], 0)
-        self.assertEqual(summary["materialFeasibilityBlockedCount"], 251)
+        self.assertEqual(summary["materialFeasibilityBlockedCount"], 255)
         self.assertEqual(summary["sourceExactEvaluatorCount"], 0)
         self.assertEqual(summary["productRecipeCount"], 0)
         self.assertEqual(summary["productOccurrenceCount"], 0)
@@ -83,7 +89,22 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         matrices = self.receipt["materialFeasibilityMatrices"]
         self.assertEqual(len(matrices["renderStateRows"]), 89)
         self.assertEqual(len(matrices["staticPermutationRows"]), 94)
-        self.assertEqual(len(matrices["directUnprovenSamplerRows"]), 68)
+        self.assertEqual(len(matrices["strictSamplerRows"]), 72)
+        matrix_summary = matrices["summary"]
+        self.assertEqual(matrix_summary["staticExactGuidJoinCount"], 66)
+        self.assertEqual(
+            matrix_summary["staticOverrideTrueSourceValueAcquiredCount"], 23
+        )
+        self.assertEqual(
+            matrix_summary["staticNonoverrideSemanticsUnverifiedCount"], 43
+        )
+        self.assertEqual(matrix_summary["staticNoExactGuidEntryCount"], 28)
+        self.assertEqual(
+            matrix_summary["strictSamplerRejectedLegacyExactRowCount"], 4
+        )
+        self.assertEqual(
+            matrix_summary["strictSamplerSourceTextureEvidenceRowCount"], 72
+        )
 
     def test_checked_receipt_rebuilds_from_pinned_sources(self) -> None:
         self.assertEqual(self.rebuild(), self.receipt)
@@ -155,6 +176,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                     self.material,
                     mutated_render,
                     self.shader,
+                    self.source_value_acquisition,
                     material_contract_path=DEFAULT_MATERIAL_CONTRACT,
                     render_receipt_path=render_path,
                 )
@@ -187,6 +209,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                     self.material,
                     mutated_shader,
                     downstream["warpStateProviderVerification"],
+                    self.source_value_acquisition,
                 )
             )
             seal_receipt(downstream)
@@ -197,6 +220,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                     self.material,
                     self.render,
                     mutated_shader,
+                    self.source_value_acquisition,
                     material_contract_path=DEFAULT_MATERIAL_CONTRACT,
                     render_receipt_path=DEFAULT_RENDER_RECEIPT,
                 )
@@ -241,7 +265,11 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         validate_runtime_receipt(mutated)
         with self.assertRaisesRegex(ValueError, "typed input is not source-bound"):
             validate_runtime_receipt_source_bindings(
-                mutated, self.material, self.render, self.shader
+                mutated,
+                self.material,
+                self.render,
+                self.shader,
+                self.source_value_acquisition,
             )
 
     def test_occurrence_cannot_bind_another_recipe_sha_or_evaluator(self) -> None:
@@ -271,7 +299,11 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         seal_receipt(mutated)
         with self.assertRaisesRegex(ValueError, "raw-expression-bound"):
             validate_runtime_receipt_source_bindings(
-                mutated, self.material, self.render, self.shader
+                mutated,
+                self.material,
+                self.render,
+                self.shader,
+                self.source_value_acquisition,
             )
 
     def test_input_and_static_order_owner_reseal_is_rejected(self) -> None:
@@ -292,14 +324,18 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                 seal_receipt(mutated)
                 with self.assertRaisesRegex(ValueError, error):
                     validate_runtime_receipt_source_bindings(
-                        mutated, self.material, self.render, self.shader
+                        mutated,
+                        self.material,
+                        self.render,
+                        self.shader,
+                        self.source_value_acquisition,
                     )
 
     def test_material_feasibility_denominator_and_owner_reseal_are_rejected(self) -> None:
         for collection in (
             "renderStateRows",
             "staticPermutationRows",
-            "directUnprovenSamplerRows",
+            "strictSamplerRows",
         ):
             with self.subTest(collection=collection):
                 shrunk = copy.deepcopy(self.receipt)
@@ -325,7 +361,11 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         seal_receipt(owner_swapped)
         with self.assertRaisesRegex(ValueError, "matrices are not source-bound"):
             validate_runtime_receipt_source_bindings(
-                owner_swapped, self.material, self.render, self.shader
+                owner_swapped,
+                self.material,
+                self.render,
+                self.shader,
+                self.source_value_acquisition,
             )
 
     def test_source_archive_projection_and_tracked_hash_reseal_are_rejected(self) -> None:
@@ -349,6 +389,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
                 DEFAULT_MATERIAL_CONTRACT,
                 DEFAULT_RENDER_RECEIPT,
                 DEFAULT_SHADER_RECEIPT,
+                DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
                 DEFAULT_HLSL,
             )
 

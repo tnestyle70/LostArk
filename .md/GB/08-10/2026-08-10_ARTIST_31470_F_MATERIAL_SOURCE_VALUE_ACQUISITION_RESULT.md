@@ -12,9 +12,11 @@ Artist F Material은 아직 R2로 진입할 수 없다. 다만 기존 `0/94 stat
 | sampler full descriptor | 72 | 0 | 0 |
 | 합계 | 255 | 23 | 0 |
 
-따라서 acquisition receipt 자체의 evidence integrity는 PASS지만, 입력이 된 frozen Material
-`627ddc76ef58e45f35821363c93197157da4cf89`의 evidence-integrity PASS는 철회해야 한다. Product는
-false이고 R2는 `NO-GO`다.
+Unit A 시점에는 acquisition receipt 자체만 evidence integrity PASS였고 입력이 된 frozen Material
+`627ddc76ef58e45f35821363c93197157da4cf89`의 evidence-integrity PASS를 철회해야 했다. Unit B는
+exact 4를 BLOCK으로 재분류하고 static 94의 GUID/value/`bOverride` lineage 및 strict 72/total 255를
+typed contract와 runtime receipt에 coordinated reseal했다. 현재 Material evidence integrity는 다시
+PASS지만 execution readiness는 0/255다. Product는 false이고 R2는 `NO-GO`다.
 
 이 결과는 최신 계획 정본 `7ffb8a3bf123703ea451cbe53a178f449f102fbe`의
 `Material 0/89 + 0/94 + 0/68` 뒤에 발견된 post-plan corrective delta다.
@@ -59,13 +61,14 @@ false이고 R2는 `NO-GO`다.
 - 1행: AddressX/AddressY만 serialized clamp, sRGB omitted
 - 4행 모두 Filter와 source-revision class/config default provider가 없다.
 
-따라서 `SOURCE_EXACT_SAMPLER 4/4`는 `BLOCKED 4/4`로 바뀌어야 하고, shared receipt의 sampler
-denominator는 `68 -> 72`, 전체 feasibility denominator는 `251 -> 255`로 coordinated reseal해야
-한다. 이 acquisition unit은 frozen 627 shared contract를 직접 수정하지 않았다.
+따라서 `SOURCE_EXACT_SAMPLER 4/4`는 `BLOCKED 4/4`로 바뀌었고, typed contract의 direct sampler는
+exact 0/unproven 71, strict sampler denominator는 `68 -> 72`, 전체 feasibility denominator는
+`251 -> 255`로 coordinated reseal됐다.
 
 추가로 `fx_tex_04.fx_h_wave_01`은 Artist F 31470 matrix에서 실제 소비하지만
 `Artist.resource-source-manifest.json`에는 skillIds `[31920]`만 있어 기존 skill selector에서 빠진다.
-후속 corrective가 manifest/selector 계약을 함께 고쳐야 한다.
+이번 corrective는 current fallback을 exact로 세탁하지 않고 이 selector 경계를 receipt에 그대로
+보존했다. 별도 source manifest 수정 없이는 해당 행을 source-exact로 승격할 수 없다.
 
 ## render-state 89와 CDO
 
@@ -107,6 +110,10 @@ semantics만 증명하며 source 값을 증명하지 않는다. render source va
   - source-revision runtime bundle/debug API가 없다.
   - process injection과 anti-cheat 우회는 시도하지 않았고 허용하지 않는다.
 
+위 driver/Git/remote 수치는 이 generator가 재실행하는 검증 manifest가 아니라 2026-08-10 외부
+read-only audit의 corroboration-only snapshot이다. 접근 가능한 경로와 readable bytes만을 범위로 하며
+NVIDIA share-locked 13개 파일은 제외됐다. VSS는 `PERMISSION_UNCHECKED`, global exhaustion claim은 false다.
+
 최소 missing artifact는 source package revision과 인증된 `Engine.u/Core.u`, version-coupled native
 EFEngine/LOSTARK binary, SystemSettings TextureGroup config, ShaderCache/material map, vendor-authorized
 offline capture path를 하나의 build identity로 묶은 bundle이다.
@@ -120,10 +127,10 @@ offline capture path를 하나의 build identity로 묶은 bundle이다.
 
 receipt의 row-set digest는 다음과 같다.
 
-- render 89: `5603960afae9ec2ae4f2b65c40d9f29a213b4e3262966d73ce7260ab910fda53`
-- static 94: `aa561032b1629239c5e61a06fa3dab97140340bbeeb5c8361290b147d285b292`
-- sampler 72: `d0906370f6d3d0cb3ac96b5fc446f4e124d90ca6b731a49b8189aea6e956e449`
-- invalidated exact 4: `c919819547cf7eedb481106b13d38c0dd4da9d636187e26022ceb1ccabf25b91`
+- render 89: `f0f20d487a76778fc8daae91e6b19b3f1621d64b1a6b6a73eaf3ced1da109cd3`
+- static 94: `4952bd40f2dab08bb5e88122baf6d154fc71c5b9462f8c3a90a69cbfaa5d74a9`
+- sampler 72: `420ebef1ebd4bee9c405f2f7cd735b18b837a8315b7440c1bc61bd0d342f6de7`
+- invalidated exact 4: `5c640f8e90a5563a7660419d7a9120842787b2f274424c5be33e85262306e37b`
 
 ## 검증
 
@@ -131,15 +138,17 @@ receipt의 row-set digest는 다음과 같다.
 python -m unittest Tools.LevelPlacementExtractor.test_build_artist_31470_material_source_value_acquisition -v
 ```
 
-결과: 6 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
-default의 SOURCE_EXACT 승격, exact-4/72 denominator, Product/R2 closure를 검사했다.
+결과: 7 tests PASS. raw source full rebuild, GUID/value/`bOverride` coordinated reseal, omitted
+default의 SOURCE_EXACT 승격, exact-4/72 denominator, external snapshot/VSS qualification,
+Product/R2 closure를 검사했다.
 
-전체 `Invoke-ProjectAudit.ps1`도 실행했지만 이 branch 밖의 기존 baseline 12개 항목 때문에 FAIL했다.
+Unit A에서 전체 `Invoke-ProjectAudit.ps1`도 실행했지만 이 branch 밖의 기존 baseline 12개 항목 때문에 FAIL했다.
 대표 원인은 source-contract publisher version 문자열 불일치, 미빌드 WModel harness, 누락 runtime
 character asset, Artist/31210 rollout stage mismatch다. 이번 5개 신규 파일은 audit 실행 전후 동일했고,
-Material acquisition focused test와 generated receipt check는 각각 PASS했다. 이 FAIL을 Material
+Unit B는 전체 audit를 재실행했다고 기록하지 않고 Material evidence/runtime focused audit와 raw
+generated receipt checks를 다시 PASS했다. Unit A의 FAIL을 Material
 source-value PASS로 기록하지도, 이번 범위에서 무관한 baseline을 수정하지도 않았다.
 
-후속 Unit B는 이 receipt를 입력으로 frozen 627의 exact 4, static 94 reason, sampler/total denominator,
-dependent hash와 테스트를 coordinated corrective해야 한다. 그 review가 PASS하기 전까지 이 결과를
-최종 Material evidence-integrity 복구로 해석하지 않는다.
+Unit B는 이 receipt를 입력으로 exact 4, static 94 reason, sampler/total denominator, dependent hash와
+테스트를 coordinated corrective했다. 이 복구는 evidence-integrity만 다시 열었으며 0/255 execution
+readiness, Product false, R2 NO-GO는 그대로다.

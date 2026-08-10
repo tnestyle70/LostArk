@@ -66,9 +66,10 @@ EXPRESSION_PARAMETER_FIELDS = (
     "parametername",
     "group",
     "defaultvalue",
+    "expressionguid",
     "texture",
 )
-TEXTURE_SAMPLER_FIELDS = ("addressx", "addressy", "srgb")
+TEXTURE_SAMPLER_FIELDS = ("addressx", "addressy", "srgb", "filter", "lodgroup")
 BLEND_MODE_DOMAIN = (
     "blend_opaque",
     "blend_masked",

@@ -10,6 +10,7 @@ HLSL implementations can be compared without image-based validation.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -30,7 +31,7 @@ from extract_ue3_placements import (
 
 
 SCHEMA = "lostark.artist-31470-material-runtime-oracle-receipt"
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 EVALUATOR_VERSION = 1
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GENERATOR_PATH = Path(__file__).resolve()
@@ -46,6 +47,9 @@ UE3_PACKAGE_PARSER_PATH = Path(
 HLSL_VERIFIER_PATH = Path(
     __file__
 ).resolve().with_name("verify_artist_31470_material_runtime_oracle_hlsl.py")
+SOURCE_VALUE_ACQUISITION_GENERATOR_PATH = Path(__file__).resolve().with_name(
+    "build_artist_31470_material_source_value_acquisition.py"
+)
 DEFAULT_MATERIAL_CONTRACT = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.typed-material-evidence-contract.json"
@@ -57,6 +61,10 @@ DEFAULT_RENDER_RECEIPT = REPO_ROOT / (
 DEFAULT_SHADER_RECEIPT = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.shader-cache-oracle.receipt.json"
+)
+DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT = REPO_ROOT / (
+    "Data/Effects/Imported/Artist/Materials/"
+    "skill.31470.material-source-value-acquisition.receipt.json"
 )
 DEFAULT_HLSL = REPO_ROOT / (
     "Tools/MaterialEvaluatorHarness/Shader_Artist31470MaterialOracle.hlsl"
@@ -743,6 +751,7 @@ def build_material_feasibility_matrices(
     material_contract: dict[str, Any],
     shader_receipt: dict[str, Any],
     warp_state_verification: dict[str, Any] | None,
+    source_value_acquisition: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     occurrences_by_recipe: dict[str, list[str]] = defaultdict(list)
     for occurrence in material_contract.get("occurrences") or []:
@@ -772,6 +781,18 @@ def build_material_feasibility_matrices(
     )
     state_provider_verified = bool(
         warp_state_verification and warp_state_verification.get("verified")
+    )
+    native_by_recipe: dict[str, dict[str, Any]] = {}
+    for native_row in shader_receipt.get("recipeNativeKeys") or []:
+        recipe_id = str(native_row.get("recipeId") or "")
+        require(
+            bool(recipe_id) and recipe_id not in native_by_recipe,
+            "duplicate or blank MIC native recipe identity",
+        )
+        native_by_recipe[recipe_id] = native_row
+    require(
+        len(native_by_recipe) == 27,
+        "MIC native recipe denominator changed",
     )
 
     render_rows: list[dict[str, Any]] = []
@@ -873,11 +894,114 @@ def build_material_feasibility_matrices(
             )
 
         static_permutation = recipe.get("staticPermutation") or {}
+        native_row = native_by_recipe[recipe_id]
+        static_parameter_set = native_row.get("staticParameterSet")
+        native_switches = (
+            static_parameter_set.get("staticSwitchParameters") or []
+            if isinstance(static_parameter_set, dict)
+            else []
+        )
         for source_section in ("selectedParameters", "parentDefaults"):
             for source_index, field in enumerate(
                 static_permutation.get(source_section) or []
             ):
                 field_id = field["fieldId"]
+                expression_guid_hex = str(field.get("expressionGuidHex") or "")
+                require(
+                    len(expression_guid_hex) == 32,
+                    f"static ExpressionGUID is missing: {field_id}",
+                )
+                name_matches = [
+                    row
+                    for row in native_switches
+                    if str(row.get("parameterName") or "").casefold()
+                    == str(field.get("parameterName") or "").casefold()
+                ]
+                guid_matches = [
+                    row
+                    for row in name_matches
+                    if row.get("expressionGuidHex") == expression_guid_hex
+                ]
+                require(
+                    len(guid_matches) <= 1,
+                    f"ambiguous MIC static GUID join: {field_id}",
+                )
+                matched = guid_matches[0] if guid_matches else None
+                source_value_acquired = bool(
+                    matched is not None and matched.get("bOverride") is True
+                )
+                if matched is None:
+                    selection_outcome = "NO_EXACT_GUID_NATIVE_ENTRY"
+                    fidelity_decision = (
+                        "SOURCE_EXACT_PARENT_DEFAULT_ONLY_NATIVE_ENTRY_ABSENT"
+                    )
+                    remaining_blockers = [
+                        "STATIC_PERMUTATION_SELECTION_UNRESOLVED",
+                        "NO_EXACT_GUID_NATIVE_ENTRY",
+                        "STATIC_PERMUTATION_CONSUMER_OUTPUT_PILOT_MISSING",
+                        "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    ]
+                elif matched.get("bOverride") is True:
+                    selection_outcome = "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY"
+                    fidelity_decision = (
+                        "SOURCE_EXACT_INSTANCE_OVERRIDE_VALUE_ACQUIRED"
+                    )
+                    remaining_blockers = [
+                        "STATIC_PERMUTATION_CONSUMER_OUTPUT_PILOT_MISSING",
+                        "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    ]
+                else:
+                    require(
+                        matched.get("value") is field.get("value"),
+                        f"MIC nonoverride value disagrees with parent default: {field_id}",
+                    )
+                    selection_outcome = "EXACT_GUID_NONOVERRIDE_ENTRY"
+                    fidelity_decision = (
+                        "SOURCE_EXACT_NONOVERRIDE_ENTRY_OBSERVED_"
+                        "INHERITANCE_SEMANTICS_UNVERIFIED"
+                    )
+                    remaining_blockers = [
+                        "NONOVERRIDE_STATIC_INHERITANCE_SEMANTICS_UNVERIFIED",
+                        "STATIC_PERMUTATION_CONSUMER_OUTPUT_PILOT_MISSING",
+                        "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    ]
+                native_selection = {
+                    "staticParameterSetPresent": isinstance(
+                        static_parameter_set, dict
+                    ),
+                    "nameMatchCount": len(name_matches),
+                    "exactNameAndGuidMatchCount": len(guid_matches),
+                    "selectionOutcome": selection_outcome,
+                }
+                if matched is not None:
+                    native_selection["nativeTail"] = {
+                        "physicalPackage": native_row["physicalPackage"],
+                        "physicalPackageSha256": native_row[
+                            "physicalPackageSha256"
+                        ],
+                        "exportIndex": native_row["exportIndex"],
+                        "serialSha256": native_row["serialSha256"],
+                        "propertyStreamEnd": native_row["propertyStreamEnd"],
+                        "nativeTailByteCount": native_row["nativeTailByteCount"],
+                        "nativeTailSha256": native_row["nativeTailSha256"],
+                        "staticParameterSetOffset": static_parameter_set["offset"],
+                        "staticParameterSetByteSize": static_parameter_set[
+                            "byteSize"
+                        ],
+                        "staticParameterSetRawSha256": static_parameter_set[
+                            "rawSha256"
+                        ],
+                        "staticParameterSetSemanticSha256": static_parameter_set[
+                            "semanticSha256"
+                        ],
+                    }
+                    native_selection["entry"] = {
+                        "parameterName": matched["parameterName"],
+                        "entryOffset": matched["entryOffset"],
+                        "value": matched["value"],
+                        "bOverride": matched["bOverride"],
+                        "expressionGuidHex": matched["expressionGuidHex"],
+                    }
                 static_rows.append(
                     {
                         "matrixRowId": feasibility_row_id(
@@ -896,7 +1020,8 @@ def build_material_feasibility_matrices(
                         "instanceRecordIdentity": {
                             "available": bool(instance_identity),
                             "identity": instance_identity,
-                            "selectionOutcome": "NO_INSTANCE_STATIC_SELECTION_RECORD",
+                            "selectionOutcome": selection_outcome,
+                            "micNativeSelection": native_selection,
                         },
                         "parentIdentity": {
                             "available": bool(parent_identity),
@@ -905,6 +1030,15 @@ def build_material_feasibility_matrices(
                                 "lineageSha256"
                             ],
                             "selectionRole": field.get("selectionRole"),
+                            "parameterName": field.get("parameterName"),
+                            "parentDefaultValue": field.get("value"),
+                            "expressionGuidHex": expression_guid_hex,
+                            "defaultValuePropertyRecordSha256": field[
+                                "provenance"
+                            ]["valuePropertyRecordSha256"],
+                            "expressionGuidPropertyRecordSha256": field[
+                                "provenance"
+                            ]["expressionGuidPropertyRecordSha256"],
                         },
                         "nestedDefaultIdentity": unavailable_identity(
                             "NO_ADDITIONAL_STATIC_SELECTION_RECORD"
@@ -925,33 +1059,53 @@ def build_material_feasibility_matrices(
                             "CONTROLLED_RUNTIME_CAPTURE",
                         ],
                         "oracleProvider": {
-                            "providerId": "NONE_SOURCE_SELECTION_PROVIDER",
-                            "providerAvailable": False,
+                            "providerId": "SOURCE_MIC_NATIVE_STATIC_PARAMETER_SET",
+                            "providerAvailable": matched is not None,
                             "parentDefaultIsNotInstanceSelection": True,
+                            "sourceValueAcquired": source_value_acquired,
                         },
                         "pilotFixtureIds": [],
                         "numericOracleInputDomain": [False, True],
                         "numericOracleExpectedOutput": None,
                         "numericTolerance": None,
-                        "pilotDecision": "BLOCKED_NO_SOURCE_SELECTION_PILOT",
-                        "fidelityDecision": "SOURCE_EXACT_PARENT_DEFAULT_ONLY",
+                        "pilotDecision": (
+                            "SOURCE_VALUE_ACQUIRED_CONSUMER_OUTPUT_PILOT_MISSING"
+                            if source_value_acquired
+                            else "BLOCKED_NO_SOURCE_SELECTION_OUTPUT_PILOT"
+                        ),
+                        "sourceValueAcquired": source_value_acquired,
+                        "fidelityDecision": fidelity_decision,
                         "executionDecision": "BLOCKED",
                         "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
                         "finalRuntimeOwner": "G09_STATIC_PERMUTATION_COMPILER",
-                        "remainingBlockers": [
-                            "STATIC_PERMUTATION_SELECTION_UNRESOLVED",
-                            "PARENT_DEFAULT_NOT_INSTANCE_SELECTION",
-                            "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
-                        ],
+                        "remainingBlockers": remaining_blockers,
                     }
                 )
 
-        texture_overrides = (recipe.get("inputs") or {}).get("textureOverrides") or []
-        for source_index, field in enumerate(texture_overrides):
+        inputs = recipe.get("inputs") or {}
+        sampler_sources: list[tuple[str, int, dict[str, Any]]] = [
+            ("textureOverrides", source_index, field)
+            for source_index, field in enumerate(inputs.get("textureOverrides") or [])
+        ]
+        sampler_sources.extend(
+            ("parentDefaults", source_index, field)
+            for source_index, field in enumerate(inputs.get("parentDefaults") or [])
+            if field.get("fieldKind") == "texture"
+            and field.get("sampler", {}).get("fidelity")
+            == "UNRESOLVED_SAMPLER_PROVENANCE"
+        )
+        for source_section, source_index, field in sampler_sources:
             sampler = field.get("sampler") or {}
-            if sampler.get("fidelity") != "UNRESOLVED":
-                continue
+            require(
+                sampler.get("fidelity")
+                in {"UNRESOLVED", "UNRESOLVED_SAMPLER_PROVENANCE"},
+                f"unexpected sampler fidelity reached strict matrix: {field.get('fieldId')}",
+            )
             field_id = field["fieldId"]
+            source_texture_evidence = sampler.get("sourceTextureEvidence")
+            sampler_blocker = str(
+                sampler.get("blocker") or "SAMPLER_EVIDENCE_MISSING"
+            )
             sampler_rows.append(
                 {
                     "matrixRowId": feasibility_row_id(
@@ -960,11 +1114,15 @@ def build_material_feasibility_matrices(
                     "materialRecipeId": recipe_id,
                     "materialOccurrenceIds": occurrence_ids,
                     "fieldId": field_id,
-                    "fieldKind": "DIRECT_TEXTURE_SAMPLER",
+                    "fieldKind": (
+                        "DIRECT_TEXTURE_SAMPLER"
+                        if source_section == "textureOverrides"
+                        else "PARENT_DEFAULT_TEXTURE_SAMPLER"
+                    ),
                     "bindingOriginAndOwner": {
                         "bindingOrigin": field.get("bindingOrigin"),
                         "evidenceOwnerRecipeId": source_owner_recipe_id(field),
-                        "sourceSection": "textureOverrides",
+                        "sourceSection": source_section,
                         "sourceSectionIndex": source_index,
                     },
                     "instanceRecordIdentity": {
@@ -974,12 +1132,16 @@ def build_material_feasibility_matrices(
                         "sourceLineageSha256": field["provenance"][
                             "lineageSha256"
                         ],
-                        "samplerOutcome": sampler.get("blocker"),
+                        "samplerOutcome": sampler_blocker,
                     },
                     "parentIdentity": {
                         "available": bool(parent_identity),
                         "identity": parent_identity,
-                        "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD",
+                        "samplerOutcome": (
+                            "SOURCE_TEXTURE_EXPORT_PARTIAL_FIELDS_ONLY"
+                            if isinstance(source_texture_evidence, dict)
+                            else "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+                        ),
                     },
                     "nestedDefaultIdentity": unavailable_identity(
                         "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
@@ -989,6 +1151,11 @@ def build_material_feasibility_matrices(
                     ),
                     "shaderCacheIdentity": shader_identity,
                     "runtimeCaptureIdentity": capture_identity,
+                    "sourceTextureEvidence": source_texture_evidence,
+                    "previouslyAdmittedExactSamplerReaudit": (
+                        sampler.get("fidelity")
+                        == "UNRESOLVED_SAMPLER_PROVENANCE"
+                    ),
                     "rendererConsumption": {
                         "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
                         "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
@@ -997,6 +1164,7 @@ def build_material_feasibility_matrices(
                         "TEXTURE_EXPORT_RECORD",
                         "PARENT_TEXTURE_DEFAULT",
                         "TEXTURE2D_CLASS_CDO",
+                        "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
                         "SOURCE_REVISION_SHADER_CACHE",
                         "CONTROLLED_RUNTIME_CAPTURE",
                     ],
@@ -1019,16 +1187,115 @@ def build_material_feasibility_matrices(
                     "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
                     "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
                     "remainingBlockers": [
-                        "SAMPLER_EVIDENCE_MISSING",
+                        sampler_blocker,
                         "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
                         "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
                     ],
                 }
             )
 
+    if source_value_acquisition is not None:
+        require(
+            source_value_acquisition.get("schema")
+            == "lostark.artist-31470-material-source-value-acquisition-receipt"
+            and source_value_acquisition.get("formatVersion") == 2,
+            "unsupported Material source-value acquisition receipt",
+        )
+        acquisition_payload = copy.deepcopy(source_value_acquisition)
+        acquisition_digest = acquisition_payload.pop("receiptSha256", None)
+        require(
+            acquisition_digest == canonical_sha256(acquisition_payload),
+            "Material source-value acquisition receipt digest mismatch",
+        )
+        acquisition_sampler_rows = (
+            source_value_acquisition.get("matrices", {}).get("strictSamplerRows")
+            or []
+        )
+        require(
+            len(acquisition_sampler_rows) == 72,
+            "Material source-value sampler denominator changed",
+        )
+        acquisition_by_id = {
+            row.get("matrixRowId"): row for row in acquisition_sampler_rows
+        }
+        require(
+            len(acquisition_by_id) == 72 and None not in acquisition_by_id,
+            "duplicate Material source-value sampler row identity",
+        )
+        for row in sampler_rows:
+            acquisition_row = acquisition_by_id.get(row["matrixRowId"])
+            require(
+                isinstance(acquisition_row, dict)
+                and acquisition_row.get("materialRecipeId")
+                == row["materialRecipeId"]
+                and acquisition_row.get("fieldId") == row["fieldId"]
+                and acquisition_row.get("bindingOriginAndOwner")
+                == row["bindingOriginAndOwner"],
+                f"Material source-value sampler row join changed: {row['matrixRowId']}",
+            )
+            texture_evidence = acquisition_row.get("textureExportEvidence")
+            raw_fields = (
+                texture_evidence.get("fields")
+                if isinstance(texture_evidence, dict)
+                else None
+            )
+            require(
+                isinstance(raw_fields, dict)
+                and set(raw_fields)
+                == {"addressx", "addressy", "srgb", "filter", "lodgroup"}
+                and all(
+                    raw_fields[name].get("status")
+                    in {"SERIALIZED_EXPLICIT", "OMITTED_FROM_EXPORT"}
+                    for name in raw_fields
+                )
+                and acquisition_row.get("sourceValueAcquired") is False
+                and acquisition_row.get("executionReady") is False,
+                f"Material source-value sampler provenance changed: {row['matrixRowId']}",
+            )
+            row["sourceTextureEvidence"] = copy.deepcopy(texture_evidence)
+            row["sourceValueAcquisitionEvidence"] = {
+                "receiptSha256": source_value_acquisition["receiptSha256"],
+                "baselineKind": acquisition_row["baselineKind"],
+                "partialSourceExactFields": copy.deepcopy(
+                    acquisition_row["partialSourceExactFields"]
+                ),
+                "partialCurrentOnlyFields": copy.deepcopy(
+                    acquisition_row["partialCurrentOnlyFields"]
+                ),
+                "fullDescriptorSourceExact": acquisition_row[
+                    "fullDescriptorSourceExact"
+                ],
+                "sourceValueDecision": acquisition_row["sourceValueDecision"],
+                "strictReauditDecision": acquisition_row[
+                    "strictReauditDecision"
+                ],
+            }
+
     require(len(render_rows) == 89, "Material render-state feasibility denominator changed")
     require(len(static_rows) == 94, "Material static feasibility denominator changed")
-    require(len(sampler_rows) == 68, "Material sampler feasibility denominator changed")
+    require(len(sampler_rows) == 72, "Material sampler feasibility denominator changed")
+    static_outcomes = Counter(
+        row["instanceRecordIdentity"]["selectionOutcome"] for row in static_rows
+    )
+    require(
+        static_outcomes
+        == Counter(
+            {
+                "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY": 23,
+                "EXACT_GUID_NONOVERRIDE_ENTRY": 43,
+                "NO_EXACT_GUID_NATIVE_ENTRY": 28,
+            }
+        ),
+        "Material static GUID/native outcome denominator changed",
+    )
+    sampler_origins = Counter(
+        row["bindingOriginAndOwner"]["bindingOrigin"] for row in sampler_rows
+    )
+    require(
+        sampler_origins
+        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1}),
+        "Material strict sampler origin denominator changed",
+    )
     all_rows = render_rows + static_rows + sampler_rows
     require(
         len({row["matrixRowId"] for row in all_rows}) == len(all_rows),
@@ -1045,7 +1312,7 @@ def build_material_feasibility_matrices(
     return {
         "renderStateRows": render_rows,
         "staticPermutationRows": static_rows,
-        "directUnprovenSamplerRows": sampler_rows,
+        "strictSamplerRows": sampler_rows,
         "summary": {
             "renderStateRowCount": len(render_rows),
             "renderStateReadinessCount": sum(
@@ -1057,11 +1324,37 @@ def build_material_feasibility_matrices(
                 row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
                 for row in static_rows
             ),
-            "directUnprovenSamplerRowCount": len(sampler_rows),
-            "directUnprovenSamplerReadinessCount": sum(
+            "staticExactGuidJoinCount": sum(
+                count
+                for outcome, count in static_outcomes.items()
+                if outcome != "NO_EXACT_GUID_NATIVE_ENTRY"
+            ),
+            "staticOverrideTrueSourceValueAcquiredCount": static_outcomes[
+                "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY"
+            ],
+            "staticNonoverrideSemanticsUnverifiedCount": static_outcomes[
+                "EXACT_GUID_NONOVERRIDE_ENTRY"
+            ],
+            "staticNoExactGuidEntryCount": static_outcomes[
+                "NO_EXACT_GUID_NATIVE_ENTRY"
+            ],
+            "staticPermutationRowSetSha256": canonical_sha256(static_rows),
+            "strictSamplerRowCount": len(sampler_rows),
+            "strictSamplerReadinessCount": sum(
                 row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
                 for row in sampler_rows
             ),
+            "strictSamplerRejectedLegacyExactRowCount": sum(
+                row.get("previouslyAdmittedExactSamplerReaudit") is True
+                for row in sampler_rows
+            ),
+            "strictSamplerSourceTextureEvidenceRowCount": sum(
+                isinstance(row.get("sourceTextureEvidence"), dict)
+                and set(row["sourceTextureEvidence"].get("fields", {}))
+                == {"addressx", "addressy", "srgb", "filter", "lodgroup"}
+                for row in sampler_rows
+            ),
+            "strictSamplerRowSetSha256": canonical_sha256(sampler_rows),
             "totalRowCount": len(all_rows),
             "executionReadinessCount": readiness_count,
             "blockedRowCount": len(all_rows) - readiness_count,
@@ -1124,9 +1417,11 @@ def build_receipt(
     material_contract: dict[str, Any],
     render_receipt: dict[str, Any],
     shader_receipt: dict[str, Any],
+    source_value_acquisition: dict[str, Any],
     material_contract_path: Path,
     render_receipt_path: Path,
     shader_receipt_path: Path,
+    source_value_acquisition_path: Path,
     hlsl_path: Path,
     source_archive: dict[str, Any],
     hlsl_verification: dict[str, Any] | None = None,
@@ -1386,7 +1681,10 @@ def build_receipt(
         occurrence_bindings.append(row)
 
     feasibility_matrices = build_material_feasibility_matrices(
-        material_contract, shader_receipt, warp_state_verification
+        material_contract,
+        shader_receipt,
+        warp_state_verification,
+        source_value_acquisition,
     )
     feasibility_summary = feasibility_matrices["summary"]
     receipt = {
@@ -1402,6 +1700,12 @@ def build_receipt(
             "renderReceiptTrackedTextSha256": tracked_text_sha256(render_receipt_path),
             "shaderCacheReceiptSha256": shader_receipt["receiptSha256"],
             "shaderCacheReceiptTrackedTextSha256": tracked_text_sha256(shader_receipt_path),
+            "sourceValueAcquisitionReceiptSha256": source_value_acquisition[
+                "receiptSha256"
+            ],
+            "sourceValueAcquisitionTrackedTextSha256": tracked_text_sha256(
+                source_value_acquisition_path
+            ),
             "hlslTrackedTextSha256": tracked_text_sha256(hlsl_path),
             "generatorTrackedTextSha256": tracked_text_sha256(GENERATOR_PATH),
             "materialContractBuilderTrackedTextSha256": tracked_text_sha256(
@@ -1415,6 +1719,9 @@ def build_receipt(
             ),
             "hlslVerifierTrackedTextSha256": tracked_text_sha256(
                 HLSL_VERIFIER_PATH
+            ),
+            "sourceValueAcquisitionGeneratorTrackedTextSha256": tracked_text_sha256(
+                SOURCE_VALUE_ACQUISITION_GENERATOR_PATH
             ),
         },
         "sourceRevisionShaderCacheAcquisition": source_archive,
@@ -1519,6 +1826,7 @@ def build_receipt(
         material_contract,
         render_receipt,
         shader_receipt,
+        source_value_acquisition,
         material_contract_path=material_contract_path,
         render_receipt_path=render_receipt_path,
     )
@@ -1540,12 +1848,15 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         "renderReceiptTrackedTextSha256",
         "shaderCacheReceiptSha256",
         "shaderCacheReceiptTrackedTextSha256",
+        "sourceValueAcquisitionReceiptSha256",
+        "sourceValueAcquisitionTrackedTextSha256",
         "hlslTrackedTextSha256",
         "generatorTrackedTextSha256",
         "materialContractBuilderTrackedTextSha256",
         "shaderCacheOracleTrackedTextSha256",
         "ue3PackageParserTrackedTextSha256",
         "hlslVerifierTrackedTextSha256",
+        "sourceValueAcquisitionGeneratorTrackedTextSha256",
     ):
         require(isinstance(source.get(key), str) and len(source[key]) == 64, f"source evidence SHA is invalid: {key}")
     acquisition = receipt.get("sourceRevisionShaderCacheAcquisition") or {}
@@ -1693,16 +2004,16 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     matrix_summary = matrices.get("summary") or {}
     render_matrix = matrices.get("renderStateRows") or []
     static_matrix = matrices.get("staticPermutationRows") or []
-    sampler_matrix = matrices.get("directUnprovenSamplerRows") or []
+    sampler_matrix = matrices.get("strictSamplerRows") or []
     require(
         len(render_matrix) == 89
         and len(static_matrix) == 94
-        and len(sampler_matrix) == 68,
+        and len(sampler_matrix) == 72,
         "Material feasibility denominator changed",
     )
     all_matrix_rows = render_matrix + static_matrix + sampler_matrix
     require(
-        len({row.get("matrixRowId") for row in all_matrix_rows}) == 251,
+        len({row.get("matrixRowId") for row in all_matrix_rows}) == 255,
         "Material feasibility row identity changed",
     )
     require(
@@ -1715,13 +2026,111 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         ),
         "Material feasibility owner or decision changed",
     )
+    static_outcomes = Counter(
+        row.get("instanceRecordIdentity", {}).get("selectionOutcome")
+        for row in static_matrix
+    )
+    require(
+        static_outcomes
+        == Counter(
+            {
+                "EXACT_GUID_INSTANCE_OVERRIDE_ENTRY": 23,
+                "EXACT_GUID_NONOVERRIDE_ENTRY": 43,
+                "NO_EXACT_GUID_NATIVE_ENTRY": 28,
+            }
+        ),
+        "Material static GUID/native outcome changed",
+    )
+    for row in static_matrix:
+        parent = row.get("parentIdentity") or {}
+        native = row.get("instanceRecordIdentity", {}).get("micNativeSelection") or {}
+        outcome = native.get("selectionOutcome")
+        require(
+            len(str(parent.get("expressionGuidHex") or "")) == 32
+            and isinstance(parent.get("parentDefaultValue"), bool)
+            and len(str(parent.get("defaultValuePropertyRecordSha256") or "")) == 64
+            and len(str(parent.get("expressionGuidPropertyRecordSha256") or "")) == 64
+            and outcome
+            == row.get("instanceRecordIdentity", {}).get("selectionOutcome"),
+            "Material static parent/native identity changed",
+        )
+        if outcome == "NO_EXACT_GUID_NATIVE_ENTRY":
+            require(
+                native.get("exactNameAndGuidMatchCount") == 0
+                and row.get("sourceValueAcquired") is False,
+                "Material unmatched static row gained a source value",
+            )
+            continue
+        entry = native.get("entry") or {}
+        native_tail = native.get("nativeTail") or {}
+        require(
+            native.get("exactNameAndGuidMatchCount") == 1
+            and entry.get("expressionGuidHex") == parent.get("expressionGuidHex")
+            and str(entry.get("parameterName") or "").casefold()
+            == str(parent.get("parameterName") or "").casefold()
+            and isinstance(entry.get("value"), bool)
+            and isinstance(entry.get("bOverride"), bool)
+            and type(entry.get("entryOffset")) is int
+            and len(str(native_tail.get("nativeTailSha256") or "")) == 64
+            and len(str(native_tail.get("staticParameterSetRawSha256") or "")) == 64
+            and len(str(native_tail.get("staticParameterSetSemanticSha256") or ""))
+            == 64
+            and row.get("sourceValueAcquired") is entry.get("bOverride"),
+            "Material static GUID/value/bOverride provenance changed",
+        )
+        if entry.get("bOverride") is False:
+            require(
+                entry.get("value") is parent.get("parentDefaultValue")
+                and "NONOVERRIDE_STATIC_INHERITANCE_SEMANTICS_UNVERIFIED"
+                in row.get("remainingBlockers", []),
+                "Material nonoverride static semantics were laundered",
+            )
+    sampler_origins = Counter(
+        row.get("bindingOriginAndOwner", {}).get("bindingOrigin")
+        for row in sampler_matrix
+    )
+    require(
+        sampler_origins
+        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1})
+        and sum(
+            row.get("previouslyAdmittedExactSamplerReaudit") is True
+            for row in sampler_matrix
+        )
+        == 4
+        and all(
+            set(row.get("sourceTextureEvidence", {}).get("fields", {}))
+            == {"addressx", "addressy", "srgb", "filter", "lodgroup"}
+            and len(
+                str(
+                    row.get("sourceValueAcquisitionEvidence", {}).get(
+                        "receiptSha256"
+                    )
+                    or ""
+                )
+            )
+            == 64
+            for row in sampler_matrix
+        ),
+        "Material strict sampler origin/evidence denominator changed",
+    )
     require(
         matrix_summary.get("renderStateRowCount") == 89
         and matrix_summary.get("staticPermutationRowCount") == 94
-        and matrix_summary.get("directUnprovenSamplerRowCount") == 68
-        and matrix_summary.get("totalRowCount") == 251
+        and matrix_summary.get("staticExactGuidJoinCount") == 66
+        and matrix_summary.get("staticOverrideTrueSourceValueAcquiredCount") == 23
+        and matrix_summary.get("staticNonoverrideSemanticsUnverifiedCount") == 43
+        and matrix_summary.get("staticNoExactGuidEntryCount") == 28
+        and matrix_summary.get("staticPermutationRowSetSha256")
+        == canonical_sha256(static_matrix)
+        and matrix_summary.get("strictSamplerRowCount") == 72
+        and matrix_summary.get("strictSamplerReadinessCount") == 0
+        and matrix_summary.get("strictSamplerRejectedLegacyExactRowCount") == 4
+        and matrix_summary.get("strictSamplerSourceTextureEvidenceRowCount") == 72
+        and matrix_summary.get("strictSamplerRowSetSha256")
+        == canonical_sha256(sampler_matrix)
+        and matrix_summary.get("totalRowCount") == 255
         and matrix_summary.get("executionReadinessCount") == 0
-        and matrix_summary.get("blockedRowCount") == 251
+        and matrix_summary.get("blockedRowCount") == 255
         and matrix_summary.get("ownerlessRowCount") == 0
         and matrix_summary.get("unknownDecisionRowCount") == 0
         and matrix_summary.get("evidenceIntegrity") is True
@@ -1746,9 +2155,9 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
             "Material WARP state provider pilot changed",
         )
     require(
-        summary.get("materialFeasibilityRowCount") == 251
+        summary.get("materialFeasibilityRowCount") == 255
         and summary.get("materialFeasibilityReadyCount") == 0
-        and summary.get("materialFeasibilityBlockedCount") == 251,
+        and summary.get("materialFeasibilityBlockedCount") == 255,
         "Material feasibility top-level summary changed",
     )
     admission = receipt.get("admission") or {}
@@ -1766,6 +2175,7 @@ def validate_runtime_receipt_source_bindings(
     material_contract: dict[str, Any],
     render_receipt: dict[str, Any],
     shader_receipt: dict[str, Any],
+    source_value_acquisition: dict[str, Any],
     *,
     material_contract_path: Path = DEFAULT_MATERIAL_CONTRACT,
     render_receipt_path: Path = DEFAULT_RENDER_RECEIPT,
@@ -1920,6 +2330,7 @@ def validate_runtime_receipt_source_bindings(
         material_contract,
         shader_receipt,
         receipt.get("warpStateProviderVerification"),
+        source_value_acquisition,
     )
     require(
         receipt.get("materialFeasibilityMatrices") == expected_matrices,
@@ -1932,31 +2343,39 @@ def validate_runtime_receipt_tracked_sources(
     material_contract_path: Path,
     render_receipt_path: Path,
     shader_receipt_path: Path,
+    source_value_acquisition_path: Path,
     hlsl_path: Path,
 ) -> None:
     source = receipt.get("sourceEvidence") or {}
     material_contract = read_json(material_contract_path)
     render_receipt = read_json(render_receipt_path)
     shader_receipt = read_json(shader_receipt_path)
+    source_value_acquisition = read_json(source_value_acquisition_path)
     require(
         source.get("materialContractSha256")
         == material_contract.get("contractSha256")
         and source.get("renderReceiptSha256")
         == render_receipt.get("receiptSha256")
         and source.get("shaderCacheReceiptSha256")
-        == shader_receipt.get("receiptSha256"),
+        == shader_receipt.get("receiptSha256")
+        and source.get("sourceValueAcquisitionReceiptSha256")
+        == source_value_acquisition.get("receiptSha256"),
         "Material oracle checked source identity changed",
     )
     tracked_sources = {
         "materialContractTrackedTextSha256": material_contract_path,
         "renderReceiptTrackedTextSha256": render_receipt_path,
         "shaderCacheReceiptTrackedTextSha256": shader_receipt_path,
+        "sourceValueAcquisitionTrackedTextSha256": source_value_acquisition_path,
         "hlslTrackedTextSha256": hlsl_path,
         "generatorTrackedTextSha256": GENERATOR_PATH,
         "materialContractBuilderTrackedTextSha256": MATERIAL_CONTRACT_BUILDER_PATH,
         "shaderCacheOracleTrackedTextSha256": SHADER_CACHE_ORACLE_PATH,
         "ue3PackageParserTrackedTextSha256": UE3_PACKAGE_PARSER_PATH,
         "hlslVerifierTrackedTextSha256": HLSL_VERIFIER_PATH,
+        "sourceValueAcquisitionGeneratorTrackedTextSha256": (
+            SOURCE_VALUE_ACQUISITION_GENERATOR_PATH
+        ),
     }
     for key, path in tracked_sources.items():
         require(
@@ -1980,14 +2399,17 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
     material_contract = read_json(args.material_contract)
     render_receipt = read_json(args.render_receipt)
     shader_receipt = read_json(args.shader_receipt)
+    source_value_acquisition = read_json(args.source_value_acquisition_receipt)
     source_archive = scan_source_archive(args.source_archive_root)
     initial = build_receipt(
         material_contract,
         render_receipt,
         shader_receipt,
+        source_value_acquisition,
         args.material_contract,
         args.render_receipt,
         args.shader_receipt,
+        args.source_value_acquisition_receipt,
         args.hlsl,
         source_archive,
     )
@@ -2003,9 +2425,11 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
             material_contract,
             render_receipt,
             shader_receipt,
+            source_value_acquisition,
             args.material_contract,
             args.render_receipt,
             args.shader_receipt,
+            args.source_value_acquisition_receipt,
             args.hlsl,
             source_archive,
             hlsl_verification,
@@ -2019,6 +2443,11 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--material-contract", type=Path, default=DEFAULT_MATERIAL_CONTRACT)
     parser.add_argument("--render-receipt", type=Path, default=DEFAULT_RENDER_RECEIPT)
     parser.add_argument("--shader-receipt", type=Path, default=DEFAULT_SHADER_RECEIPT)
+    parser.add_argument(
+        "--source-value-acquisition-receipt",
+        type=Path,
+        default=DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
+    )
     parser.add_argument("--hlsl", type=Path, default=DEFAULT_HLSL)
     parser.add_argument("--source-archive-root", type=Path, default=DEFAULT_SOURCE_ARCHIVE_ROOT)
     parser.add_argument("--d3dcompiler", type=Path, default=Path(r"C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\d3dcompiler_47.dll"))
@@ -2037,11 +2466,15 @@ def main(argv: Iterable[str] | None = None) -> int:
         material_contract = read_json(args.material_contract)
         render_receipt = read_json(args.render_receipt)
         shader_receipt = read_json(args.shader_receipt)
+        source_value_acquisition = read_json(
+            args.source_value_acquisition_receipt
+        )
         validate_runtime_receipt_source_bindings(
             receipt,
             material_contract,
             render_receipt,
             shader_receipt,
+            source_value_acquisition,
             material_contract_path=args.material_contract,
             render_receipt_path=args.render_receipt,
         )
@@ -2050,11 +2483,12 @@ def main(argv: Iterable[str] | None = None) -> int:
             args.material_contract,
             args.render_receipt,
             args.shader_receipt,
+            args.source_value_acquisition_receipt,
             args.hlsl,
         )
         print(
             "PASS: Artist F Material runtime oracle shallow "
-            "family=23 recipe=27 occurrence=34 feasibility=0/251 product=false"
+            "family=23 recipe=27 occurrence=34 feasibility=0/255 product=false"
         )
         return 0
     candidate = build_from_paths(args)
@@ -2063,7 +2497,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         require(read_json(args.output) == candidate, "Material runtime oracle receipt is stale")
         print(
             "PASS: Artist F Material runtime oracle deep "
-            "family=23 recipe=27 occurrence=34 feasibility=0/251 product=false"
+            "family=23 recipe=27 occurrence=34 feasibility=0/255 product=false"
         )
         return 0
     write_json_atomic(args.output, candidate)

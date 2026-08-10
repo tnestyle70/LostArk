@@ -142,27 +142,33 @@ try {
     $summary = $contract.summary
     $admission = $contract.admission
     if ($contract.schema -cne 'lostark.artist-31470-typed-material-evidence-contract' -or
-        [int]$contract.formatVersion -ne 3 -or
+        [int]$contract.formatVersion -ne 4 -or
         @($contract.materialRecipes).Count -ne 27 -or
         @($contract.occurrences).Count -ne 34 -or
         @($contract.graphFamilies).Count -ne 23 -or
-        @($contract.exactSamplerBindings).Count -ne 4 -or
+        @($contract.exactSamplerBindings).Count -ne 0 -or
+        @($contract.rejectedSamplerBindings).Count -ne 4 -or
         [int]$summary.scalarOverrideCount -ne 342 -or
         [int]$summary.vectorOverrideCount -ne 19 -or
         [int]$summary.directTextureOverrideCount -ne 71 -or
-        [int]$summary.directTextureExactSamplerCount -ne 3 -or
-        [int]$summary.directTextureUnprovenSamplerCount -ne 68 -or
-        [int]$summary.parentDefaultExactSamplerCount -ne 1 -or
+        [int]$summary.directTextureExactSamplerCount -ne 0 -or
+        [int]$summary.directTextureUnprovenSamplerCount -ne 71 -or
+        [int]$summary.parentDefaultExactSamplerCount -ne 0 -or
+        [int]$summary.exactSamplerBindingCount -ne 0 -or
+        [int]$summary.previouslyAdmittedExactSamplerBindingCount -ne 4 -or
+        [int]$summary.rejectedSamplerBindingCount -ne 4 -or
+        [int]$summary.strictSamplerExecutionRowCount -ne 72 -or
+        [string]$summary.rejectedSamplerBindingSetSha256 -cne 'dfc923cab4dd2155385c2c066f261cea689a863c8e8179b48d2677556a849d4c' -or
         [int]$summary.usedMaterialRecipeCount -ne 27 -or
         [int]$summary.unusedMaterialRecipeCount -ne 0 -or
         [int]$summary.unexpectedOccurrenceMaterialCount -ne 0 -or
         [string]$summary.occurrenceMaterialJoinSha256 -cne '1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296' -or
-        [string]$summary.occurrenceIdentitySha256 -cne 'faf2027f930a7905e87e867cb3a89b9ca75e2647b57872045dd2369dff5e6317' -or
+        [string]$summary.occurrenceIdentitySha256 -cne '8110cc2e44b885b82093b029d763a44301ba3787dee56ab0d90bb37e135d8c11' -or
         [string]$summary.recipeIdentitySha256 -cne 'f4cb7f8d5fae3699d55eb56a1a0442c6d55a0e5f062766a23fb654d665d24e22' -or
         [string]$summary.recipeFamilyJoinSha256 -cne '9877829577c550acb7452e8ff279c7819f17151513cee53994bee116620838f2' -or
         [string]$summary.renderFieldEvidenceSha256 -cne '6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9' -or
-        [string]$summary.exactInputLineageSha256 -cne '891e93591f63b03466408829b8eb961f8a363889862db1132184285f6bd420e3' -or
-        [string]$summary.recipeCompositionSha256 -cne '0214ba2113f429ee5d7a31d1ca4c560780ad65b1e741e22e85e3dfc3f914bf3c' -or
+        [string]$summary.exactInputLineageSha256 -cne '52c73db22b2e8bbe35b655719f082c73bd0df6dce5bce6a5243b1dc5e17be2ec' -or
+        [string]$summary.recipeCompositionSha256 -cne '39b73297b4e96e26dd2d5b79aacf85f32bb083407823b571c80c4d8dce05c9f6' -or
         [int]$summary.cookedStrippedNullExpressionCount -ne 1803 -or
         [int]$summary.unresolvedGraphEdgeCount -ne 502 -or
         [int]$summary.sourceExactGraphFamilyCount -ne 0 -or
@@ -179,13 +185,25 @@ try {
     }
 
     $originCounts = @{}
-    foreach ($binding in @($contract.exactSamplerBindings)) {
+    foreach ($binding in @($contract.rejectedSamplerBindings)) {
         $origin = [string]$binding.bindingOrigin
         $originCounts[$origin] = 1 + [int]$originCounts[$origin]
+        $rawFields = $binding.sourceTextureEvidence.rawSamplerFields
+        if ([bool]$binding.sourceSpecificAdmission -or
+            [bool]$binding.legacyDdsProjection.sourceSpecificAdmission -or
+            [string]$binding.fidelity -cne 'UNRESOLVED_SAMPLER_PROVENANCE' -or
+            [string]$binding.decision -cne 'BLOCKED_INCOMPLETE_SOURCE_SPECIFIC_SAMPLER_DESCRIPTOR' -or
+            $null -eq $rawFields.addressx -or
+            $null -eq $rawFields.addressy -or
+            $null -eq $rawFields.srgb -or
+            $null -eq $rawFields.filter -or
+            $null -eq $rawFields.lodgroup) {
+            throw "Artist F rejected sampler provenance changed: $($binding.rejectionId)"
+        }
     }
     if ([int]$originCounts['INSTANCE_OVERRIDE'] -ne 3 -or
         [int]$originCounts['PARENT_DEFAULT'] -ne 1) {
-        throw 'Artist F exact sampler origin denominator changed.'
+        throw 'Artist F rejected legacy-exact sampler origin denominator changed.'
     }
     foreach ($family in @($contract.graphFamilies)) {
         if ([string]$family.graphProvenance -cne 'RECONSTRUCTED_GRAPH' -or
@@ -237,7 +255,7 @@ try {
     }
 
     $mode = if ($DeepMaterialAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material evidence mode=$mode recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false"
+    Write-Output "PASS: Artist F 31470 Material evidence mode=$mode recipes=27 occurrences=34 inputs=342/19/71 samplers=0/72 rejectedLegacy=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false"
 }
 finally {
     Pop-Location

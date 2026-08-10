@@ -6,17 +6,18 @@ Material R0 corrective의 evidence integrity는 PASS했지만 execution readines
 
 - render-state omitted: `0/89 READY`, `89 BLOCKED`
 - static permutation: `0/94 READY`, `94 BLOCKED`
-- direct-unproven sampler: `0/68 READY`, `68 BLOCKED`
-- 합계: `0/251 READY`, `251 BLOCKED`, ownerless 0, unknown decision 0
+- strict sampler: `0/72 READY`, `72 BLOCKED`
+- 합계: `0/255 READY`, `255 BLOCKED`, ownerless 0, unknown decision 0
 - evidence-integrity admission: true
 - execution-readiness admission: false
 - runtime handler/renderer consumption: false
 - Product admission: false
-- format version: 2
-- receipt canonical SHA-256: `4c80a0d8d25712b7449c726d19d9af87ad2831b5c78231fdc42145a9c17dc4d8`
+- format version: 3
+- receipt canonical SHA-256: `02763f767c7cdbd940a351e5982a67721f7a6f56a195fe42926196618f9bde8a`
 
-251개 행은 모두 stable owner와 조사 경로를 가지므로 “누가 조사할지 모르는 상태”는 제거됐다. 그러나
-source-specific 값을 정하는 독립 provider와 actual output pilot은 아직 없다. 따라서 이 receipt는
+255개 행은 모두 stable owner와 조사 경로를 가지므로 “누가 조사할지 모르는 상태”는 제거됐다. Static
+23행은 source-exact instance value를 확보했지만 consumer actual-output pilot이 없고, 나머지 행을 모두
+닫는 source-specific provider도 없다. 따라서 이 receipt는
 final materializer, Playback 또는 renderer의 실행 입력으로 승격할 수 없다.
 
 기존 arithmetic evaluator는 23 family와 27 recipe의 재구성 수치 동작을 CPU와 WARP에서 검증한다.
@@ -36,13 +37,16 @@ rasterizer/cull, sampler address 네 descriptor pilot을 실제 생성하고 `Ge
 ### Static permutation 94
 
 94행은 ordered `sourceSection/sourceSectionIndex/sourceOwnerRecipeId`와 parent/default evidence를 보존한다.
-parent default가 있더라도 instance selection evidence, source ShaderCache join 또는 통제된 source runtime
-capture가 없으면 선택된 permutation으로 승격하지 않는다. 현재 94행 모두 `BLOCKED`다.
+raw ExpressionGUID와 MIC native `FStaticParameterSet`을 exact join한 결과는 override true 23,
+nonoverride 43, exact GUID entry 없음 28이다. 23개 값은 source-exact instance value를 확보했지만 consumer
+output pilot이 없고, nonoverride 43개는 inheritance semantics가 미증명이다. 현재 94행 모두 `BLOCKED`다.
 
-### Direct-unproven sampler 68
+### Strict sampler 72
 
-texture path와 recipe ownership은 exact하지만 sampler descriptor provenance는 별개다. texture identity나
-현재 revision sampler를 source-era sampler 값으로 세탁하지 않는다. 68행 모두 `BLOCKED`다.
+texture path와 recipe ownership은 exact하지만 sampler descriptor provenance는 별개다. 기존 blocked
+68개와 이전 exact 4개를 합친 72개 모두 AddressX/Y, sRGB, Filter, LODGroup의 source/current
+explicit·omitted provenance를 보존한다. 이전 exact 4개도 class/config default가 없어 전부 철회했다.
+texture identity나 현재 revision sampler를 source-era sampler 값으로 세탁하지 않으며 72행 모두 `BLOCKED`다.
 
 ## Evidence-integrity corrective
 
@@ -68,7 +72,7 @@ Windows SDK `d3dcompiler_47.dll` SHA-256은
 
 D3D11 WARP actual dispatch의 최대 절대 오차는 `1.1444091796875e-05`, 허용오차는 `2.0e-05`였다.
 state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 descriptor tolerance는 0이다.
-이 두 oracle은 reconstruction evaluator와 provider implementation을 검증할 뿐, 251개 source-specific
+이 두 oracle은 reconstruction evaluator와 provider implementation을 검증할 뿐, 255개 source-specific
 값의 acquisition을 대신하지 않는다.
 
 ## Source-revision acquisition
@@ -76,6 +80,7 @@ state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 des
 - installed cache: shader object 271, `FMaterialShaderMap` 25, shader reference 534
 - Artist base Material join `0/23`
 - Artist MIC static parameter set join `0/24`
+- source MIC native-tail exact ExpressionGUID join `66/94 = override true 23 + nonoverride 43`
 - local source archive: 1,813 UPK / 624 unique package / ShaderCache 또는 `sc_lv_*` candidate 0
 - controlled source-revision runtime capture path: unavailable
 
@@ -86,17 +91,22 @@ state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 des
 
 - `python -B Tools/LevelPlacementExtractor/test_build_artist_31470_material_runtime_oracle.py`
   - 16/16 PASS
+- `python -B -m unittest test_build_artist_31470_material_source_value_acquisition`
+  - raw source rebuild 및 mutation 7/7 PASS
 - shallow receipt check
-  - family 23, recipe 27, occurrence 34, feasibility `0/251`, Product false PASS
+  - family 23, recipe 27, occurrence 34, feasibility `0/255`, Product false PASS
 - independent WARP verifier
   - HLSL numeric sample 200, state-object pilot 4 PASS
-- focused ProjectAudit shallow/deep
-  - source archive 1,813/624 재계산, checked receipt 재현, `0/89 + 0/94 + 0/68` PASS
+- focused ProjectAudit shallow
+  - evidence contract와 runtime oracle 두 audit 모두 PASS, `0/89 + 0/94 + 0/72`
+- explicit raw/deep inputs
+  - render receipt source UPK `--check`, source-value acquisition raw rebuild, source archive 1,813/624와
+    WARP checked receipt 재현 PASS
 - JSON parse와 `git diff --check` PASS
 
-전체 `Invoke-ProjectAudit.ps1`에서는 이 corrective가 소유한
-`effect.artist-31470-material-runtime-oracle` 항목이 실패 목록에 없었다. 전체 결과는 다음 외부 baseline
-12항목 때문에 exit 1이었다.
+전체 `Invoke-ProjectAudit.ps1`의 아래 12개 외부 baseline 실패 목록은 Unit A 실행 기록이다. Unit B는
+변경 범위의 두 focused ProjectAudit와 raw receipt checks를 다시 실행했으며 전체 audit를 재실행했다고
+기록하지 않는다.
 
 - `maps.extracted-area-runtime-roots`
 - `maps.character-select-area-contract`
@@ -116,7 +126,7 @@ PASS했다. 이미지 캡처, 육안 비교와 이미지 기반 자동 검증은
 
 ## 다음 경계
 
-R0 execution-readiness는 BLOCK이다. Source-specific provider와 actual output pilot을 확보해 251개 행을
+R0 execution-readiness는 BLOCK이다. Source-specific provider와 actual output pilot을 확보해 255개 행을
 모두 `FEASIBLE` 또는 독립 증거가 있는 `VERIFIED_IRRELEVANT`로 닫기 전에는 final materializer/schema,
 Playback, geometry/material consumer와 six renderer 작업을 시작하지 않는다. 해결 경로가 실제로 없는
 행은 값을 추측하지 않고 복원 범위의 hard blocker로 유지한다.
