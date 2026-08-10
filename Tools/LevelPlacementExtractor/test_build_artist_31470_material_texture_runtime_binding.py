@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -41,7 +42,15 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
         cls.source_pack = binding.read_json(binding.DEFAULT_SOURCE_PACK)
         cls.receipt = binding.read_json(binding.DEFAULT_OUTPUT)
 
-    def validate(self, receipt: dict, *, require_approval: bool = True) -> None:
+    def validate(
+        self,
+        receipt: dict,
+        *,
+        require_approval: bool = True,
+        runtime_cook: dict | None = None,
+        resource_export: dict | None = None,
+        source_pack: dict | None = None,
+    ) -> None:
         binding.validate_receipt(
             receipt,
             self.policy,
@@ -51,6 +60,9 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
             self.candidate,
             runtime_oracle=self.runtime_oracle,
             acquisition=self.acquisition,
+            runtime_cook=runtime_cook,
+            resource_export=resource_export,
+            source_pack=source_pack,
             require_approval=require_approval,
         )
 
@@ -250,13 +262,16 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
             seal_receipt(candidate)
             self.assert_invalid(candidate)
 
-    def test_coordinated_source_package_reseal_hits_independent_approval(self) -> None:
+    def test_coordinated_source_package_reseal_hits_external_or_independent_pin(self) -> None:
         candidate = copy.deepcopy(self.receipt)
         row = next(row for row in candidate["textureResources"] if row["sourcePackage"] is not None)
         row["sourcePackage"]["rawSha256"] = "0" * 64
         seal_row(row)
         seal_receipt(candidate)
-        with self.assertRaisesRegex(ValueError, "independent approval pin"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "texture resources are not pinned external-evidence-derived|independent approval pin",
+        ):
             self.validate(candidate)
 
     def test_pure_validator_rejects_unknown_texture_resource_semantic(self) -> None:
@@ -357,6 +372,58 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
                         acquisition=self.acquisition,
                         **kwargs,
                     )
+
+    def test_pure_validator_reads_and_rejects_mutated_default_external_bytes(self) -> None:
+        mutated = copy.deepcopy(self.runtime_cook)
+        mutated["runtimeRoot"] = "C:/forged-runtime-root"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime-cook-receipt.json"
+            path.write_text(
+                json.dumps(mutated, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(binding, "DEFAULT_RUNTIME_COOK", path):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "approved external evidence byte count changed|approved external raw evidence changed",
+                ):
+                    self.validate(self.receipt, require_approval=False)
+
+    def test_pure_validator_rejects_supplied_coordinated_runtime_asset_reseal(self) -> None:
+        logical = "fx_tex_00.fx_a_decal_013"
+        forged_asset = "Effect/Artist/Textures/forged_resealed.dds"
+        mutated_cook = copy.deepcopy(self.runtime_cook)
+        cook_row = next(
+            row for row in mutated_cook["assets"] if row["sourceAssetPath"] == logical
+        )
+        cook_row["runtimeAssetId"] = forged_asset
+
+        candidate = copy.deepcopy(self.receipt)
+        resource = next(
+            row for row in candidate["textureResources"]
+            if row["logicalTexturePath"] == logical
+        )
+        resource["runtimeAssetId"] = forged_asset
+        resource["runtimeCookEvidence"]["runtimeAssetId"] = forged_asset
+        resource["candidateObservations"] = []
+        seal_row(resource)
+        for binding_row in candidate["materialTextureBindings"]:
+            if binding_row["logicalTexturePath"] == logical:
+                binding_row["runtimeAssetId"] = forged_asset
+                seal_row(binding_row)
+        seal_receipt(candidate)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "supplied runtime cook object differs from approved external authority",
+        ):
+            self.validate(
+                candidate,
+                require_approval=False,
+                runtime_cook=mutated_cook,
+                resource_export=self.resource_export,
+                source_pack=self.source_pack,
+            )
 
     def test_strict_json_rejects_duplicate_keys_and_bom(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
