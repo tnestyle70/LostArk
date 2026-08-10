@@ -835,6 +835,22 @@ try {
 	Add-Check 'effect.artist-31470-shader-cache-oracle' `
 		$artistShaderCachePassed `
 		$artistShaderCacheDetail
+	$artistMaterialRuntimePassed = $false
+	$artistMaterialRuntimeDetail = ''
+	try {
+		$artistMaterialRuntimeDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialRuntimeOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialRuntimePassed =
+			$artistMaterialRuntimeDetail -match
+			'PASS: Artist F 31470 Material runtime mode=shallow family=23 recipe=27 occurrence=34'
+	}
+	catch {
+		$artistMaterialRuntimeDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-runtime-oracle' `
+		$artistMaterialRuntimePassed `
+		$artistMaterialRuntimeDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
