@@ -63,24 +63,39 @@ try {
     $receipt = Get-Content -LiteralPath $receiptPath -Raw -Encoding UTF8 |
         ConvertFrom-Json
     $summary = $receipt.summary
+    $matrixSummary = $receipt.feasibilityMatrix.summary
     if ($receipt.schema -cne 'lostark.effect-custom-handler-oracle' -or
-        [int]$receipt.formatVersion -ne 1 -or
+        [int]$receipt.formatVersion -ne 2 -or
         $receipt.characterClass -cne 'ARTIST' -or
         [int]$receipt.skillId -ne 31470 -or
         $receipt.inputSlot -cne 'F' -or
         [int]$summary.sourceBlockedModuleCount -ne 29 -or
         [int]$summary.standardSeededOccurrenceCount -ne 11 -or
+        [int]$summary.currentCrossRevisionAliasEvidenceCount -ne 7 -or
+        [int]$summary.actualNativeParticleOutputOracleCount -ne 0 -or
+        [int]$summary.nativeExactAliasAdmissionCount -ne 0 -or
+        [int]$summary.capabilityGrantCount -ne 0 -or
         [int]$summary.blockedCustomModuleOccurrenceCount -ne 15 -or
         [int]$summary.blockedCustomDistributionOccurrenceCount -ne 3 -or
         [int]$summary.moduleBlockerOwnerCount -ne 29 -or
-        [int]$summary.resolvedModuleBlockerCount -ne 11 -or
-        [int]$summary.remainingBlockedModuleCount -ne 18 -or
+        [int]$summary.resolvedModuleBlockerCount -ne 0 -or
+        [int]$summary.remainingBlockedModuleCount -ne 29 -or
         [int]$summary.distributionBlockerOwnerCount -ne 3 -or
         [int]$summary.ownerlessBlockerCount -ne 0 -or
-        [int]$summary.projectedModuleDecisionCountsAfterJoin.READY_FOR_HANDLER -ne 381 -or
-        [int]$summary.projectedModuleDecisionCountsAfterJoin.BLOCKED -ne 18 -or
+        [int]$summary.projectedModuleDecisionCountsAfterJoin.READY_FOR_HANDLER -ne 370 -or
+        [int]$summary.projectedModuleDecisionCountsAfterJoin.BLOCKED -ne 29 -or
+        [int]$summary.projectedDistributionDecisionCountsAfterJoin.READY_FOR_HANDLER -ne 626 -or
+        [int]$summary.projectedDistributionDecisionCountsAfterJoin.BLOCKED -ne 3 -or
         [int]$summary.productAdmissionCount -ne 0 -or
         [int]$summary.silentFallbackCount -ne 0 -or
+        [int]$receipt.capabilityGrants.Count -ne 0 -or
+        [int]$receipt.feasibilityMatrix.moduleRows.Count -ne 29 -or
+        [int]$receipt.feasibilityMatrix.distributionRows.Count -ne 3 -or
+        [int]$matrixSummary.actualNativeParticleOutputOracleCount -ne 0 -or
+        [int]$matrixSummary.actualNativeDistributionOutputOracleCount -ne 0 -or
+        [int]$matrixSummary.blockedModuleRowCount -ne 29 -or
+        [int]$matrixSummary.unresolvedExecutionRowCount -ne 29 -or
+        $matrixSummary.executionReadinessDecision -cne 'BLOCKED' -or
         [bool]$receipt.productAdmission.allowed) {
         throw 'Artist F custom handler oracle summary contract changed.'
     }
@@ -88,7 +103,8 @@ try {
     $mode = if ($Deep) { 'deep' } else { 'shallow' }
     Write-Host (
         "PASS: Artist F 31470 custom handler oracle mode=$mode " +
-        'ready=381 blocked=18 distributionBlocked=3 ownerless=0 product=false'
+        'ready=370 blocked=29 distributionReady=626 distributionBlocked=3 ' +
+        'outputOracles=0 ownerless=0 product=false'
     )
 }
 finally {
