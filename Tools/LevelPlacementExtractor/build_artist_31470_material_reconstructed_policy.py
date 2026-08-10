@@ -12,19 +12,29 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import importlib
 import json
 import math
 import struct
 from pathlib import Path
 from typing import Any, Iterable
 
-from effect_source_contract_io import (
-    load_strict_json_object,
-    tracked_text_sha256,
-)
+import effect_source_contract_io as effect_source_contract_io_module
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def discover_repository_root() -> Path:
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if (
+            (candidate / ".git").exists()
+            and (candidate / "Tools/LevelPlacementExtractor").is_dir()
+            and (candidate / "Data/Effects/Imported/Artist/Materials").is_dir()
+        ):
+            return candidate
+    raise RuntimeError("cannot locate canonical LostArk repository root from current working directory")
+
+
+ROOT = discover_repository_root()
 MATERIAL_ROOT = ROOT / "Data/Effects/Imported/Artist/Materials"
 DEFAULT_RUNTIME_RECEIPT = MATERIAL_ROOT / "skill.31470.material-runtime-oracle.receipt.json"
 DEFAULT_ACQUISITION_RECEIPT = MATERIAL_ROOT / "skill.31470.material-source-value-acquisition.receipt.json"
@@ -40,6 +50,15 @@ DIRECT_IMPORT_DEPENDENCY_PATHS = {
     "RUNTIME_WARP_SUPPORT": ROOT / "Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py",
     "RECONSTRUCTED_POLICY_APPROVAL": DEFAULT_APPROVAL,
     "RECONSTRUCTED_POLICY_WARP_VERIFIER": DEFAULT_VERIFIER,
+}
+DIRECT_IMPORT_MODULE_NAMES = {
+    "STRICT_JSON_OBJECT_LOADER": "effect_source_contract_io",
+    "MATERIAL_EVIDENCE_VALIDATOR": "build_artist_31470_material_evidence_contract",
+    "MATERIAL_RUNTIME_ORACLE_VALIDATOR": "build_artist_31470_material_runtime_oracle",
+    "MATERIAL_SOURCE_VALUE_ACQUISITION_VALIDATOR": "build_artist_31470_material_source_value_acquisition",
+    "RUNTIME_WARP_SUPPORT": "verify_artist_31470_material_runtime_oracle_hlsl",
+    "RECONSTRUCTED_POLICY_APPROVAL": "artist_31470_material_reconstructed_policy_approval",
+    "RECONSTRUCTED_POLICY_WARP_VERIFIER": "verify_artist_31470_material_reconstructed_policy_hlsl",
 }
 DEFAULT_OUTPUT = MATERIAL_ROOT / "skill.31470.material-reconstructed-approved-v1.receipt.json"
 
@@ -87,7 +106,8 @@ def require(condition: bool, message: str) -> None:
 
 
 def read_json(path: Path) -> dict[str, Any]:
-    return load_strict_json_object(path)
+    module = load_direct_import_module("STRICT_JSON_OBJECT_LOADER")
+    return module.load_strict_json_object(path)
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -104,22 +124,65 @@ def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
+def canonical_tracked_text_sha256(path: Path) -> str:
+    payload = path.read_bytes()
+    text = payload.decode("utf-8")
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+    return hashlib.sha256(normalized).hexdigest()
+
+
+def validate_builder_module_identity() -> None:
+    expected = (ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_reconstructed_policy.py").resolve()
+    actual = Path(__file__).resolve()
+    require(actual == expected, f"builder module path mismatch: expected={expected} actual={actual}")
+
+
+def load_direct_import_module(dependency_id: str) -> Any:
+    require(dependency_id in DIRECT_IMPORT_MODULE_NAMES, f"unknown direct import dependency: {dependency_id}")
+    module = (
+        effect_source_contract_io_module
+        if dependency_id == "STRICT_JSON_OBJECT_LOADER"
+        else importlib.import_module(DIRECT_IMPORT_MODULE_NAMES[dependency_id])
+    )
+    module_file = getattr(module, "__file__", None)
+    require(isinstance(module_file, str) and module_file, f"loaded module has no __file__: {dependency_id}")
+    actual = Path(module_file).resolve()
+    expected = DIRECT_IMPORT_DEPENDENCY_PATHS[dependency_id].resolve()
+    require(
+        actual == expected,
+        f"loaded module path mismatch: {dependency_id} expected={expected} actual={actual}",
+    )
+    return module
+
+
+def loaded_direct_import_paths() -> dict[str, Path]:
+    validate_builder_module_identity()
+    return {
+        dependency_id: Path(load_direct_import_module(dependency_id).__file__).resolve()
+        for dependency_id in sorted(DIRECT_IMPORT_MODULE_NAMES)
+    }
+
+
 def direct_import_closure(
-    dependency_paths: dict[str, Path] = DIRECT_IMPORT_DEPENDENCY_PATHS,
+    dependency_paths: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
+    loaded_paths = loaded_direct_import_paths()
+    hash_paths = loaded_paths if dependency_paths is None else dependency_paths
+    require(set(hash_paths) == set(loaded_paths), "direct import dependency ID set changed")
     rows = []
-    for dependency_id, path in sorted(dependency_paths.items()):
+    for dependency_id, loaded_path in sorted(loaded_paths.items()):
+        path = hash_paths[dependency_id]
         require(path.is_file(), f"direct import dependency is missing: {dependency_id}")
-        identity_path = DIRECT_IMPORT_DEPENDENCY_PATHS.get(dependency_id, path)
-        try:
-            relative_path = identity_path.resolve().relative_to(ROOT.resolve()).as_posix()
-        except ValueError:
-            relative_path = identity_path.name
+        expected_path = DIRECT_IMPORT_DEPENDENCY_PATHS[dependency_id].resolve()
+        relative_path = expected_path.relative_to(ROOT.resolve()).as_posix()
+        loaded_relative_path = loaded_path.relative_to(ROOT.resolve()).as_posix()
         rows.append(
             {
                 "dependencyId": dependency_id,
+                "moduleName": DIRECT_IMPORT_MODULE_NAMES[dependency_id],
                 "relativePath": relative_path,
-                "canonicalTextSha256": tracked_text_sha256(path),
+                "loadedModuleRelativePath": loaded_relative_path,
+                "canonicalTextSha256": canonical_tracked_text_sha256(path),
             }
         )
     return {
@@ -132,7 +195,7 @@ def direct_import_closure(
 
 def validate_direct_import_closure(
     evidence: dict[str, Any],
-    dependency_paths: dict[str, Path] = DIRECT_IMPORT_DEPENDENCY_PATHS,
+    dependency_paths: dict[str, Path] | None = None,
 ) -> None:
     require(
         evidence == direct_import_closure(dependency_paths),
@@ -171,13 +234,13 @@ def validate_frozen_upstreams(
     acquisition_receipt: dict[str, Any],
     material_contract: dict[str, Any],
 ) -> None:
-    from build_artist_31470_material_evidence_contract import validate_contract
-    from build_artist_31470_material_runtime_oracle import validate_runtime_receipt
-    from build_artist_31470_material_source_value_acquisition import validate_receipt_semantics
+    material_evidence = load_direct_import_module("MATERIAL_EVIDENCE_VALIDATOR")
+    runtime_oracle = load_direct_import_module("MATERIAL_RUNTIME_ORACLE_VALIDATOR")
+    source_acquisition = load_direct_import_module("MATERIAL_SOURCE_VALUE_ACQUISITION_VALIDATOR")
 
-    validate_runtime_receipt(runtime_receipt)
-    validate_contract(material_contract)
-    validate_receipt_semantics(acquisition_receipt, material_contract)
+    runtime_oracle.validate_runtime_receipt(runtime_receipt)
+    material_evidence.validate_contract(material_contract)
+    source_acquisition.validate_receipt_semantics(acquisition_receipt, material_contract)
     require(
         runtime_receipt.get("receiptSha256") == PINNED_RUNTIME_RECEIPT_SHA256,
         "runtime oracle is not the frozen cde8f3bd input",
@@ -645,9 +708,8 @@ def build_receipt(
     )
     all_rows = render_rows + static_rows + sampler_rows
     require([row["policyOrder"] for row in all_rows] == list(range(EXPECTED_TOTAL_ROWS)), "policy order is not stable")
-    from artist_31470_material_reconstructed_policy_approval import require_approved_rows
-
-    require_approved_rows(all_rows)
+    approval = load_direct_import_module("RECONSTRUCTED_POLICY_APPROVAL")
+    approval.require_approved_rows(all_rows)
 
     recipe_occurrences: dict[str, list[str]] = {}
     for occurrence in material_contract["occurrences"]:
@@ -678,20 +740,20 @@ def build_receipt(
         "sourceEvidence": {
             "runtimeOracle": {
                 "receiptSha256": runtime_receipt["receiptSha256"],
-                "trackedTextSha256": tracked_text_sha256(runtime_path),
+                "trackedTextSha256": canonical_tracked_text_sha256(runtime_path),
             },
             "sourceValueAcquisition": {
                 "receiptSha256": acquisition_receipt["receiptSha256"],
-                "trackedTextSha256": tracked_text_sha256(acquisition_path),
+                "trackedTextSha256": canonical_tracked_text_sha256(acquisition_path),
             },
             "typedMaterialContract": {
                 "contractSha256": material_contract["contractSha256"],
-                "trackedTextSha256": tracked_text_sha256(contract_path),
+                "trackedTextSha256": canonical_tracked_text_sha256(contract_path),
             },
-            "generatorTrackedTextSha256": tracked_text_sha256(Path(__file__)),
-            "hlslTrackedTextSha256": tracked_text_sha256(hlsl_path),
-            "verifierTrackedTextSha256": tracked_text_sha256(verifier_path),
-            "approvalTrackedTextSha256": tracked_text_sha256(DEFAULT_APPROVAL),
+            "generatorTrackedTextSha256": canonical_tracked_text_sha256(Path(__file__)),
+            "hlslTrackedTextSha256": canonical_tracked_text_sha256(hlsl_path),
+            "verifierTrackedTextSha256": canonical_tracked_text_sha256(verifier_path),
+            "approvalTrackedTextSha256": canonical_tracked_text_sha256(DEFAULT_APPROVAL),
             "directImportClosure": direct_import_closure(),
         },
         "renderStatePolicies": render_rows,
@@ -902,9 +964,8 @@ def validate_verification(receipt: dict[str, Any]) -> None:
         require(result.get("actualSrv") == expected_srv, "WARP SRV zero-tolerance mismatch")
         require(result.get("numericTolerance") == 0.0 and result.get("decision") == "PASS", "WARP SRV row did not pass exactly")
     require(warp.get("srvRowResultsSha256") == canonical_sha256(srv_rows), "WARP SRV row digest mismatch")
-    from artist_31470_material_reconstructed_policy_approval import require_approved_oracles
-
-    require_approved_oracles(receipt)
+    approval = load_direct_import_module("RECONSTRUCTED_POLICY_APPROVAL")
+    approval.require_approved_oracles(receipt)
 
 
 def validate_policy_receipt(
@@ -939,9 +1000,8 @@ def validate_policy_receipt(
     validate_self_digest(receipt, "receiptSha256", "reconstructed Material policy")
     validate_direct_import_closure(receipt["sourceEvidence"]["directImportClosure"])
     validate_verification(receipt)
-    from artist_31470_material_reconstructed_policy_approval import require_approved_receipt
-
-    require_approved_receipt(receipt)
+    approval = load_direct_import_module("RECONSTRUCTED_POLICY_APPROVAL")
+    approval.require_approved_receipt(receipt)
     expected = build_receipt(
         runtime_receipt,
         acquisition_receipt,
@@ -984,10 +1044,9 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
     )
     if not args.run_hlsl:
         return provisional
-    from verify_artist_31470_material_reconstructed_policy_hlsl import run_hlsl_oracle, run_warp_descriptor_oracle
-
-    hlsl_verification = run_hlsl_oracle(provisional, args.hlsl, args.d3dcompiler)
-    warp_verification = run_warp_descriptor_oracle(provisional)
+    verifier = load_direct_import_module("RECONSTRUCTED_POLICY_WARP_VERIFIER")
+    hlsl_verification = verifier.run_hlsl_oracle(provisional, args.hlsl, args.d3dcompiler)
+    warp_verification = verifier.run_warp_descriptor_oracle(provisional)
     candidate = build_receipt(
         runtime_receipt,
         acquisition_receipt,
