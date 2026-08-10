@@ -245,8 +245,13 @@ def extract_requested_package(
                 "objectId": f"{logical_package.upper()}:export:{entry.index}",
                 "exportIndex": entry.index,
                 "className": class_name,
+                "classPath": package_ref_path(entry.class_index, imports, exports),
                 "objectName": entry.object_name,
                 "objectPath": package_ref_path(entry.index + 1, imports, exports),
+                "archetypeIndex": entry.archetype_index,
+                "archetypePath": package_ref_path(
+                    entry.archetype_index, imports, exports
+                ),
                 "properties": properties,
                 "references": references,
                 "requestedDirectly": entry in requested_entries,

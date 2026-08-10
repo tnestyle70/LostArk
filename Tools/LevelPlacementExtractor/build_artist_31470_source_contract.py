@@ -6,6 +6,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 import re
 import sys
 from collections import Counter, defaultdict
@@ -13,6 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from build_imported_effect_documents import build_document
+from effect_source_contract_io import (
+    generated_text_matches,
+    tracked_text_sha256,
+)
 
 
 PROFILE_ID = "ue3CascadeSourceContractV1"
@@ -60,10 +65,6 @@ def canonical_sha256(value: Any) -> str:
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
-
-
-def file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def repository_path(path: Path) -> str:
@@ -156,34 +157,527 @@ def attachment_from_cue(cue: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def local_reference_index(
-    closure: dict[str, Any],
-) -> dict[tuple[str, int, str], dict[str, Any]]:
-    result: dict[tuple[str, int, str], dict[str, Any]] = {}
-    for reference in closure.get("references", []):
-        if reference.get("referenceKind") != "DISTRIBUTION_TARGET":
-            continue
-        property_path = str(reference["propertyPath"])
+def qualified_object_identity(value: str) -> tuple[str, str]:
+    """Return the case-insensitive UE package/local-path identity."""
+    logical_package, separator, package_local_path = value.partition(".")
+    require(
+        separator != "" and logical_package != "" and package_local_path != "",
+        f"qualified UE object path is malformed: {value}",
+    )
+    return logical_package.casefold(), package_local_path.casefold()
+
+
+def property_identity_key(
+    active_element_id: str,
+    logical_package: str,
+    package_local_path: str,
+    property_path: str,
+) -> tuple[str, str, str, str]:
+    return (
+        active_element_id,
+        logical_package.casefold(),
+        package_local_path.casefold(),
+        property_path.casefold(),
+    )
+
+
+def definition_index(
+    closure: dict[str, Any], definition_field: str
+) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for definition in closure.get(definition_field, []):
+        definition_id = str(definition.get("definitionId") or "")
+        require(definition_id != "", f"{definition_field} has an empty definitionId")
         require(
-            property_path.casefold().endswith(".distribution"),
-            f"local distribution reference path is malformed: {property_path}",
+            definition_id not in result,
+            f"duplicate local-reference definition: {definition_id}",
         )
-        recipe_property = property_path[: -len(".distribution")]
-        for occurrence in reference["activeOccurrences"]:
-            key = (
-                str(occurrence["activeElementId"]),
-                int(occurrence["moduleOrder"]),
-                recipe_property.casefold(),
-            )
-            require(key not in result, f"duplicate local-reference occurrence: {key}")
-            result[key] = reference
+        result[definition_id] = definition
     return result
+
+
+def occurrence_index(
+    closure: dict[str, Any], occurrence_field: str
+) -> dict[tuple[str, str, str, str], dict[str, Any]]:
+    result: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for occurrence in closure.get(occurrence_field, []):
+        identity = occurrence.get("propertyIdentity") or {}
+        key = property_identity_key(
+            str(occurrence.get("activeElementId") or ""),
+            str(identity.get("logicalPackage") or ""),
+            str(identity.get("packageLocalPath") or ""),
+            str(identity.get("propertyPath") or ""),
+        )
+        require(
+            all(key),
+            f"{occurrence_field} has an incomplete property identity: "
+            f"{occurrence.get('occurrenceId')}",
+        )
+        require(key not in result, f"duplicate local-reference occurrence: {key}")
+        result[key] = occurrence
+    return result
+
+
+def validate_local_reference_boundary(closure: dict[str, Any]) -> None:
+    definitions = list(closure.get("distributionDefinitions", []))
+    occurrences = list(closure.get("distributionOccurrences", []))
+    component_definitions = list(closure.get("componentDefinitions", []))
+    component_occurrences = list(closure.get("componentOccurrences", []))
+    summary = closure.get("summary") or {}
+    computed = {
+        "distributionTargetUniqueCount": len(definitions),
+        "distributionTargetOccurrenceCount": len(occurrences),
+        "receiptPackageIdentityPinnedUniqueCount": sum(
+            bool(row.get("receiptPackageIdentityPinned")) for row in definitions
+        ),
+        "pinnedPayloadDecodedUniqueCount": sum(
+            bool(row.get("pinnedPayloadDecoded")) for row in definitions
+        ),
+        "exactPhysicalSourcePackagePresentUniqueCount": sum(
+            bool(row.get("exactPhysicalSourcePackagePresent"))
+            for row in definitions
+        ),
+        "pointLightTargetUniqueCount": len(component_definitions),
+        "pointLightTargetOccurrenceCount": len(component_occurrences),
+        "activeReferenceOccurrenceCount": len(occurrences) + len(component_occurrences),
+    }
+    for name, value in computed.items():
+        require(
+            int(summary.get(name, -1)) == value,
+            f"local-reference summary changed: {name}",
+        )
+    require(
+        (
+            computed["distributionTargetUniqueCount"],
+            computed["distributionTargetOccurrenceCount"],
+            computed["receiptPackageIdentityPinnedUniqueCount"],
+            computed["pinnedPayloadDecodedUniqueCount"],
+            computed["exactPhysicalSourcePackagePresentUniqueCount"],
+            computed["pointLightTargetUniqueCount"],
+            computed["pointLightTargetOccurrenceCount"],
+        )
+        == (15, 17, 8, 7, 3, 1, 1),
+        "Artist 31470 local-reference evidence boundary changed",
+    )
+    external_unpinned = {
+        str(row["referenceId"])
+        for row in definitions
+        if row.get("sourceDocument") == "externalModuleClosure"
+    }
+    require(
+        external_unpinned
+        == {
+            "distribution-target-000",
+            "distribution-target-001",
+            "distribution-target-002",
+            "distribution-target-003",
+            "distribution-target-007",
+            "distribution-target-008",
+            "distribution-target-009",
+        },
+        "external-module local-reference identity set changed",
+    )
+    for definition in definitions:
+        if str(definition["referenceId"]) not in external_unpinned:
+            continue
+        require(
+            not bool(definition.get("receiptPackageIdentityPinned"))
+            and not bool(definition.get("pinnedPayloadDecoded"))
+            and not str(definition.get("fidelity") or "").startswith(
+                "SOURCE_EXACT"
+            ),
+            "external-module record was promoted to SOURCE_EXACT without package identity: "
+            + str(definition["referenceId"]),
+        )
+
+    occurrence_definition_ids = {
+        str(occurrence["definitionId"]) for occurrence in occurrences
+    }
+    require(
+        occurrence_definition_ids
+        == {str(definition["definitionId"]) for definition in definitions},
+        "distribution definitions and occurrences are not a closed set",
+    )
+    component_occurrence_definition_ids = {
+        str(occurrence["definitionId"]) for occurrence in component_occurrences
+    }
+    require(
+        component_occurrence_definition_ids
+        == {
+            str(definition["definitionId"]) for definition in component_definitions
+        },
+        "component definitions and occurrences are not a closed set",
+    )
+
+
+def admission_from_blockers(blockers: list[str] | set[str]) -> dict[str, Any]:
+    unique = sorted({str(blocker) for blocker in blockers if str(blocker)})
+    return {"allowed": len(unique) == 0, "blockers": unique}
+
+
+def distribution_pre_payload_gate(
+    definition: dict[str, Any], occurrence: dict[str, Any]
+) -> dict[str, Any]:
+    """Decide payload readability without touching sourcePayload or numeric fields."""
+    semantic_status = str(
+        (definition.get("semanticCoverage") or {}).get("status") or ""
+    )
+    blockers = {
+        *list((definition.get("executionAdmission") or {}).get("blockers") or []),
+        *list((occurrence.get("executionAdmission") or {}).get("blockers") or []),
+    }
+    require(
+        semantic_status in {"SEMANTIC_SOURCE_READY", "SEMANTIC_BLOCKED"},
+        "local distribution semantic status is invalid: "
+        + str(definition.get("definitionId")),
+    )
+    require(blockers, "local distribution occurrence is not fail-closed")
+    return {
+        "payloadReadable": semantic_status == "SEMANTIC_SOURCE_READY",
+        "executionAdmission": admission_from_blockers(blockers),
+    }
+
+
+def typed_field(property_path: str, source_value: Any) -> dict[str, Any] | None:
+    if not isinstance(source_value, dict) or "value" not in source_value:
+        return None
+    value = source_value["value"]
+    if isinstance(value, bool):
+        kind = "boolean"
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        if not math.isfinite(float(value)):
+            return None
+        kind = "number"
+    elif isinstance(value, str):
+        kind = "string"
+    elif isinstance(value, dict) and all(axis in value for axis in ("x", "y", "z")):
+        values = [value["x"], value["y"], value["z"], value.get("w", 0.0)]
+        if not all(
+            isinstance(component, (int, float))
+            and not isinstance(component, bool)
+            and math.isfinite(float(component))
+            for component in values
+        ):
+            return None
+        value = values
+        kind = "vector"
+    elif isinstance(value, dict) and all(
+        channel in value for channel in ("r", "g", "b")
+    ):
+        values = [value["r"], value["g"], value["b"], value.get("a", 0.0)]
+        if not all(
+            isinstance(component, (int, float))
+            and not isinstance(component, bool)
+            and math.isfinite(float(component))
+            for component in values
+        ):
+            return None
+        value = values
+        kind = "vector"
+    else:
+        return None
+    return {"propertyPath": property_path, "kind": kind, "value": value}
+
+
+def typed_properties(properties: Any) -> list[dict[str, Any]]:
+    if not isinstance(properties, dict):
+        return []
+    result = []
+    for property_path, value in properties.items():
+        field = typed_field(str(property_path), value)
+        if field is not None:
+            result.append(field)
+    return result
+
+
+def current_default_evidence(definition: dict[str, Any]) -> list[dict[str, Any]]:
+    result = []
+    resolved_fields = (definition.get("semanticCoverage") or {}).get(
+        "resolvedFields"
+    ) or {}
+    if not isinstance(resolved_fields, dict):
+        return result
+    for property_path, resolution in resolved_fields.items():
+        if not isinstance(resolution, dict):
+            continue
+        selected = resolution.get("selected")
+        if not isinstance(selected, dict):
+            continue
+        evidence_status = str(selected.get("evidenceStatus") or "")
+        if (
+            selected.get("tier") == "INSTANCE_EXPLICIT"
+            or not evidence_status.startswith("CURRENT_")
+        ):
+            continue
+        field = typed_field(str(property_path), selected.get("value"))
+        if field is not None:
+            result.append(field)
+    return result
+
+
+def scrub_unresolved_distribution(distribution: dict[str, Any]) -> None:
+    source_class = str(distribution.get("sourceClass") or "")
+    distribution["sourceClass"] = source_class
+    distribution["sourceObjectPath"] = ""
+    folded_class = source_class.casefold()
+    if folded_class in {
+        "distributionfloatparticleparameter",
+        "distributionvectorparticleparameter",
+    }:
+        distribution["parameterBinding"] = "none"
+        distribution["parameterName"] = ""
+    else:
+        distribution.pop("parameterBinding", None)
+        distribution.pop("parameterName", None)
+    distribution["operation"] = 0
+    distribution["randomLockAxes"] = 0
+    distribution["lookupTableChunkSize"] = 0
+    distribution["lookupTableNumElements"] = 0
+    distribution["lookupTableTimeScale"] = 0.0
+    distribution["lookupTableStartTime"] = 0.0
+    distribution["defaultMinimum"] = [0.0, 0.0, 0.0, 0.0]
+    distribution["defaultMaximum"] = [0.0, 0.0, 0.0, 0.0]
+    distribution["lookupTable"] = []
+    distribution["keys"] = []
+
+
+def blocker_summary(blocker_sets: list[list[str]]) -> dict[str, Any]:
+    counts = Counter(
+        blocker for blockers in blocker_sets for blocker in sorted(set(blockers))
+    )
+    token_counts = {token: counts[token] for token in sorted(counts)}
+    return {
+        "uniqueBlockerCount": len(token_counts),
+        "occurrenceCount": sum(token_counts.values()),
+        "tokenCounts": token_counts,
+    }
+
+
+def bind_source_recipe_local_references(
+    recipe: dict[str, Any],
+    evidence: dict[str, Any],
+    distribution_definitions: dict[str, dict[str, Any]],
+    distribution_occurrences: dict[tuple[str, str, str, str], dict[str, Any]],
+    component_definitions: dict[str, dict[str, Any]],
+    component_occurrences: dict[tuple[str, str, str, str], dict[str, Any]],
+) -> tuple[
+    list[dict[str, Any]],
+    dict[tuple[str, str], dict[str, Any]],
+    set[str],
+]:
+    bindings: list[dict[str, Any]] = []
+    property_overlays: dict[tuple[str, str], dict[str, Any]] = {}
+    consumed_occurrence_ids: set[str] = set()
+    active_element_id = str(evidence["evidenceId"])
+
+    for module_order, module in enumerate(recipe.get("modules", [])):
+        logical_package, package_local_path = qualified_object_identity(
+            str(module["objectPath"])
+        )
+        module_stable_id = str(module["stableId"])
+        for distribution in module.get("distributions", []):
+            property_path = str(distribution["propertyPath"])
+            occurrence = distribution_occurrences.get(
+                property_identity_key(
+                    active_element_id,
+                    logical_package,
+                    package_local_path,
+                    property_path + ".distribution",
+                )
+            )
+            if occurrence is None:
+                distribution.update(
+                    {
+                        "referenceId": "",
+                        "occurrenceId": "",
+                        "payloadStatus": "INLINE_SOURCE_PAYLOAD",
+                        "fidelity": "DETERMINISTIC_SOURCE_RECIPE",
+                        "executionAdmission": admission_from_blockers(
+                            ["TRACK_A_COMPILED_EXECUTION_NOT_IMPLEMENTED"]
+                        ),
+                    }
+                )
+                continue
+
+            occurrence_id = str(occurrence["occurrenceId"])
+            definition_id = str(occurrence["definitionId"])
+            definition = distribution_definitions.get(definition_id)
+            require(
+                definition is not None,
+                f"distribution definition is missing: {definition_id}",
+            )
+            require(
+                occurrence.get("referenceKind") == "DISTRIBUTION_TARGET"
+                and definition.get("referenceKind") == "DISTRIBUTION_TARGET"
+                and occurrence.get("referenceId") == definition.get("referenceId")
+                and occurrence_id in definition.get("occurrenceIds", []),
+                f"distribution occurrence identity changed: {occurrence_id}",
+            )
+            require(
+                int(occurrence["referenceOrderIndex"]) == module_order,
+                f"distribution module order changed: {occurrence_id}",
+            )
+            require(
+                (
+                    str(definition["logicalPackage"]).casefold(),
+                    str(definition["sourceModulePath"]).casefold(),
+                )
+                == (logical_package, package_local_path),
+                f"distribution definition module identity changed: {definition_id}",
+            )
+
+            gate = distribution_pre_payload_gate(definition, occurrence)
+            execution_admission = gate["executionAdmission"]
+            source_class = str(definition.get("sourceClass") or "")
+            require(
+                source_class != "",
+                f"distribution source class metadata is missing: {definition_id}",
+            )
+            distribution["sourceClass"] = source_class
+            distribution.update(
+                {
+                    "referenceId": str(definition["referenceId"]),
+                    "occurrenceId": occurrence_id,
+                    "payloadStatus": (
+                        str(definition["payloadStatus"])
+                        if gate["payloadReadable"]
+                        else "UNRESOLVED_SEMANTIC_CLOSURE"
+                    ),
+                    "fidelity": str(definition["fidelity"]),
+                    "executionAdmission": copy.deepcopy(execution_admission),
+                }
+            )
+
+            exact_payload: list[dict[str, Any]] = []
+            if gate["payloadReadable"]:
+                source_payload_metadata = definition.get("sourcePayload") or {}
+                require(
+                    source_payload_metadata.get("variant") == "DECODED_EVIDENCE"
+                    and str(source_payload_metadata.get("className") or "").casefold()
+                    == source_class.casefold(),
+                    f"readable distribution payload is not decoded: {definition_id}",
+                )
+                if bool(definition.get("pinnedPayloadDecoded")):
+                    exact_payload = typed_properties(
+                        source_payload_metadata.get("properties")
+                    )
+                source_object_path = str(distribution.get("sourceObjectPath") or "")
+                expected_source_object_path = (
+                    f"{definition['logicalPackage']}."
+                    f"{definition['targetPackageLocalPath']}"
+                )
+                if not source_object_path:
+                    distribution["sourceObjectPath"] = expected_source_object_path
+                    source_object_path = expected_source_object_path
+                require(
+                    qualified_object_identity(source_object_path)
+                    == (
+                        str(definition["logicalPackage"]).casefold(),
+                        str(definition["targetPackageLocalPath"]).casefold(),
+                    ),
+                    f"distribution target identity changed: {occurrence_id}",
+                )
+            else:
+                scrub_unresolved_distribution(distribution)
+
+            binding = {
+                "referenceKind": "DISTRIBUTION_TARGET",
+                "referenceId": str(definition["referenceId"]),
+                "definitionId": definition_id,
+                "occurrenceId": occurrence_id,
+                "moduleStableId": module_stable_id,
+                "propertyPath": property_path,
+                "provenance": str(definition["fidelity"]),
+                "exactPayload": exact_payload,
+                "currentDefaultEvidence": current_default_evidence(definition),
+                "executionAdmission": copy.deepcopy(execution_admission),
+            }
+            bindings.append(binding)
+            consumed_occurrence_ids.add(occurrence_id)
+
+        for literal in module.get("literals", []):
+            property_path = str(literal["propertyPath"])
+            occurrence = component_occurrences.get(
+                property_identity_key(
+                    active_element_id,
+                    logical_package,
+                    package_local_path,
+                    property_path,
+                )
+            )
+            if occurrence is None:
+                continue
+            occurrence_id = str(occurrence["occurrenceId"])
+            definition_id = str(occurrence["definitionId"])
+            definition = component_definitions.get(definition_id)
+            require(
+                definition is not None,
+                f"component definition is missing: {definition_id}",
+            )
+            require(
+                occurrence.get("referenceKind") == "TYPEDATA_COMPONENT"
+                and definition.get("referenceKind") == "TYPEDATA_COMPONENT"
+                and occurrence.get("referenceId") == definition.get("referenceId")
+                and occurrence_id in definition.get("occurrenceIds", []),
+                f"component occurrence identity changed: {occurrence_id}",
+            )
+            require(
+                int(occurrence["referenceOrderIndex"]) == module_order,
+                f"component module order changed: {occurrence_id}",
+            )
+            require(
+                (
+                    str(definition["logicalPackage"]).casefold(),
+                    str(definition["sourceModulePath"]).casefold(),
+                )
+                == (logical_package, package_local_path),
+                f"component definition module identity changed: {definition_id}",
+            )
+            execution_admission = admission_from_blockers(
+                list((definition.get("executionAdmission") or {}).get("blockers") or [])
+                + list(
+                    (occurrence.get("executionAdmission") or {}).get("blockers") or []
+                )
+            )
+            require(
+                execution_admission["blockers"],
+                f"component occurrence is not fail-closed: {occurrence_id}",
+            )
+            exact_payload_source = definition.get("exactPayload") or {}
+            exact_payload = typed_properties(
+                exact_payload_source.get("explicitProperties")
+                if isinstance(exact_payload_source, dict)
+                else {}
+            )
+            bindings.append(
+                {
+                    "referenceKind": "TYPEDATA_COMPONENT",
+                    "referenceId": str(definition["referenceId"]),
+                    "definitionId": definition_id,
+                    "occurrenceId": occurrence_id,
+                    "moduleStableId": module_stable_id,
+                    "propertyPath": property_path,
+                    "provenance": str(definition["fidelity"]),
+                    "exactPayload": exact_payload,
+                    "currentDefaultEvidence": current_default_evidence(definition),
+                    "executionAdmission": copy.deepcopy(execution_admission),
+                }
+            )
+            property_overlays[(module_stable_id, property_path)] = {
+                "status": "unresolved",
+                "provenance": str(definition["fidelity"]),
+                "blockers": copy.deepcopy(execution_admission["blockers"]),
+            }
+            consumed_occurrence_ids.add(occurrence_id)
+
+    bindings.sort(key=lambda item: item["occurrenceId"])
+    return bindings, property_overlays, consumed_occurrence_ids
 
 
 def aggregate_coverage_status(
     properties: list[dict[str, Any]], blockers: list[str]
 ) -> str:
-    if blockers:
+    if not properties and blockers:
         return "unresolved"
     return max(
         (str(row["status"]) for row in properties),
@@ -195,7 +689,7 @@ def aggregate_coverage_status(
 def module_coverage(
     recipe: dict[str, Any],
     evidence: dict[str, Any],
-    local_references: dict[tuple[str, int, str], dict[str, Any]],
+    property_overlays: dict[tuple[str, str], dict[str, Any]],
     renderer_name: str,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -218,28 +712,35 @@ def module_coverage(
             ).casefold(),
             f"source module identity changed: {evidence['evidenceId']}[{module_order}]",
         )
-        properties = []
-        blockers: list[str] = []
+        properties: list[dict[str, Any]] = []
+        module_seed_blockers: list[str] = []
         seed_status = str(source_module["randomSeedStatus"])
         if seed_status != "NOT_SEEDED":
-            blockers.append("RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED")
+            module_seed_blockers.append(
+                "RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED"
+            )
         if str(source_module["nativeTailStatus"]).startswith("UNRESOLVED"):
-            blockers.append("EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN")
+            module_seed_blockers.append("EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN")
         normalized = normalize_module_class(str(module.get("className") or ""))
         literal_paths = {
             str(literal["propertyPath"]).casefold()
             for literal in module.get("literals", [])
         }
         if normalized == "particlemodulerequired" and "buselocalspace" not in literal_paths:
-            blockers.append("REQUIRED_BUSELOCALSPACE_CLASS_DEFAULT_UNRESOLVED")
+            module_seed_blockers.append(
+                "REQUIRED_BUSELOCALSPACE_CLASS_DEFAULT_UNRESOLVED"
+            )
         if "typedatadecal" in normalized:
-            blockers.append("DECAL_CLASS_DEFAULT_REGISTRY_MISSING")
+            module_seed_blockers.append("DECAL_CLASS_DEFAULT_REGISTRY_MISSING")
         if "typedataribbon" in normalized:
-            blockers.append("RIBBON_CLASS_DEFAULT_REGISTRY_MISSING")
+            module_seed_blockers.append("RIBBON_CLASS_DEFAULT_REGISTRY_MISSING")
         if "typedatalight" in normalized:
-            blockers.append("POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED")
-        if renderer_name == "ScreenPost" and normalized == "particlemodulerequired":
-            blockers.append("SCREEN_POST_CLASS_DEFAULT_REGISTRY_MISSING")
+            module_seed_blockers.append("POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED")
+        if (
+            renderer_name == "ScreenPost"
+            and normalized == "particlemodulerequired"
+        ):
+            module_seed_blockers.append("SCREEN_POST_CLASS_DEFAULT_REGISTRY_MISSING")
         for literal in module.get("literals", []):
             path = str(literal["propertyPath"])
             folded_path = path.casefold()
@@ -255,42 +756,67 @@ def module_coverage(
                     else "metadata_only"
                 )
                 provenance = seed_status
+            overlay = property_overlays.get((str(module["stableId"]), path))
+            property_blockers: list[str] = []
+            if overlay is not None:
+                status = str(overlay["status"])
+                provenance = str(overlay["provenance"])
+                property_blockers = copy.deepcopy(overlay["blockers"])
             properties.append(
                 {
                     "propertyPath": path,
                     "storage": "literal",
                     "status": status,
                     "provenance": provenance,
+                    "blockers": sorted(set(property_blockers)),
                 }
             )
         for distribution in module.get("distributions", []):
             path = str(distribution["propertyPath"])
-            reference = local_references.get(
-                (evidence["evidenceId"], module_order, path.casefold())
-            )
             status = "deterministic_conversion"
             provenance = "RAW_DISTRIBUTION_TO_TYPED_SOURCE_RECIPE"
-            if reference is not None and (
-                str(reference["targetPayloadStatus"]).startswith("UNRESOLVED")
-                or str(reference["targetSemanticCoverage"]["status"]).startswith(
-                    "UNRESOLVED"
-                )
-            ):
+            payload_status = str(distribution["payloadStatus"])
+            fidelity = str(distribution["fidelity"])
+            property_blockers = copy.deepcopy(
+                distribution["executionAdmission"]["blockers"]
+            )
+            if payload_status.casefold().startswith(
+                "unresolved"
+            ) or fidelity.casefold().startswith("unresolved"):
                 status = "unresolved"
                 provenance = "OBJECT_REFERENCE_TARGET_OR_CLASS_DEFAULT_UNRESOLVED"
-                blockers.append(
-                    "DISTRIBUTION_TARGET_OR_PARTICLE_PARAMETER_SEMANTICS_UNRESOLVED"
-                )
+            elif distribution.get("referenceId"):
+                provenance = fidelity
             properties.append(
                 {
                     "propertyPath": path,
                     "storage": "distribution",
                     "status": status,
                     "provenance": provenance,
+                    "blockers": sorted(set(property_blockers)),
                 }
             )
         properties.sort(key=lambda item: (item["propertyPath"], item["storage"]))
-        blockers = sorted(set(blockers))
+        module_seed_blockers = sorted(set(module_seed_blockers))
+        if module_seed_blockers and properties:
+            properties[0]["blockers"] = sorted(
+                {*properties[0]["blockers"], *module_seed_blockers}
+            )
+            if properties[0]["status"] != "unresolved":
+                properties[0]["status"] = "unresolved"
+                properties[0]["provenance"] = (
+                    "MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED"
+                )
+        blockers = sorted(
+            {
+                *module_seed_blockers,
+                *(
+                    blocker
+                    for prop in properties
+                    for blocker in prop.get("blockers", [])
+                ),
+            }
+        )
         rows.append(
             {
                 "moduleStableId": module["stableId"],
@@ -461,12 +987,53 @@ def build_registry(
                     }
                 )
 
+    registry_blocker_occurrences: list[list[str]] = []
+    for element in elements:
+        recipe = element["sourceRecipe"]
+        element_property_blocker_occurrences = [
+            copy.deepcopy(prop["blockers"])
+            for coverage in recipe["moduleCoverage"]
+            for prop in coverage["properties"]
+            if prop["blockers"]
+        ]
+        registry_blocker_occurrences.extend(element_property_blocker_occurrences)
+        property_blocker_union = {
+            blocker
+            for blockers in element_property_blocker_occurrences
+            for blocker in blockers
+        }
+        compiled_only_blockers = sorted(
+            set(recipe["compiledExecutionAdmission"]["blockers"])
+            - property_blocker_union
+        )
+        if compiled_only_blockers:
+            registry_blocker_occurrences.append(compiled_only_blockers)
+        if recipe["materialAdmission"]["blockers"]:
+            registry_blocker_occurrences.append(
+                copy.deepcopy(recipe["materialAdmission"]["blockers"])
+            )
+        if recipe["geometryBinding"]["blockers"]:
+            registry_blocker_occurrences.append(
+                copy.deepcopy(recipe["geometryBinding"]["blockers"])
+            )
+    registry_blockers = sorted(
+        {
+            blocker
+            for blockers in registry_blocker_occurrences
+            for blocker in blockers
+        }
+    )
+    registry_execution_admission = admission_from_blockers(registry_blockers)
+
     registry: dict[str, Any] = {
         "schema": "lostark.effect-source-contract-registry",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "profileId": PROFILE_ID,
         "effectDocumentVersion": 14,
-        "runtimeAdmission": False,
+        "runtimeAdmission": registry_execution_admission["allowed"],
+        "executionAdmission": registry_execution_admission,
+        "blockers": registry_blockers,
+        "blockerSummary": blocker_summary(registry_blocker_occurrences),
         "sourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
         "evidenceLinks": copy.deepcopy(evidence_links),
         "coverageSeed": {
@@ -615,6 +1182,11 @@ def build_source_contract(
         and geometry_parity.get("skillId") == 31470,
         "linked source evidence skill mismatch",
     )
+    require(
+        local_reference_closure.get("formatVersion") == 5,
+        "local-reference closure formatVersion is not 5",
+    )
+    validate_local_reference_boundary(local_reference_closure)
     for artifact, self_field in (
         (source_evidence, "evidenceSha256"),
         (local_reference_closure, "closureSha256"),
@@ -638,7 +1210,18 @@ def build_source_contract(
     evidence_by_id = {
         row["evidenceId"]: row for row in source_evidence["occurrences"]
     }
-    local_references = local_reference_index(local_reference_closure)
+    distribution_definitions = definition_index(
+        local_reference_closure, "distributionDefinitions"
+    )
+    distribution_occurrences = occurrence_index(
+        local_reference_closure, "distributionOccurrences"
+    )
+    component_definitions = definition_index(
+        local_reference_closure, "componentDefinitions"
+    )
+    component_occurrences = occurrence_index(
+        local_reference_closure, "componentOccurrences"
+    )
     geometry_by_asset = {
         row["assetId"]: row for row in geometry_parity["assets"]
     }
@@ -652,6 +1235,8 @@ def build_source_contract(
 
     elements = []
     receipt_elements = []
+    receipt_blocker_occurrences: list[list[str]] = []
+    consumed_local_reference_occurrence_ids: set[str] = set()
     for row in active_rows:
         element_id = row["selectedLegacyElementId"]
         renderer_name = row["rendererType"]
@@ -678,18 +1263,39 @@ def build_source_contract(
         recipe["rendererShape"] = shape
         recipe["sourceContractProfileId"] = PROFILE_ID
         recipe["sourceContractSha256"] = ""
-        recipe["sourceGraphSha256"] = file_sha256(normalized_graph_path)
-        recipe["sourceClosureSha256"] = file_sha256(module_closure_path)
-        recipe["sourceMaterialClosureSha256"] = file_sha256(material_closure_path)
+        recipe["sourceGraphSha256"] = tracked_text_sha256(normalized_graph_path)
+        recipe["sourceClosureSha256"] = tracked_text_sha256(module_closure_path)
+        recipe["sourceMaterialClosureSha256"] = tracked_text_sha256(
+            material_closure_path
+        )
         recipe["sourcePeakActiveParticles"] = source_peak(row)
+        (
+            recipe["localReferenceBindings"],
+            property_overlays,
+            consumed_occurrence_ids,
+        ) = bind_source_recipe_local_references(
+            recipe,
+            evidence,
+            distribution_definitions,
+            distribution_occurrences,
+            component_definitions,
+            component_occurrences,
+        )
+        require(
+            consumed_local_reference_occurrence_ids.isdisjoint(
+                consumed_occurrence_ids
+            ),
+            f"local-reference occurrence was consumed twice: {row['activeElementId']}",
+        )
+        consumed_local_reference_occurrence_ids.update(consumed_occurrence_ids)
         recipe["moduleCoverage"] = module_coverage(
             recipe,
             evidence,
-            local_references,
+            property_overlays,
             renderer_name,
         )
         recipe["compilerEvidence"] = {
-            "artifactFileSha256": file_sha256(source_evidence_path),
+            "artifactFileSha256": tracked_text_sha256(source_evidence_path),
             "artifactSelfSha256": source_evidence["evidenceSha256"],
             "evidenceId": evidence["evidenceId"],
             "sourceEvidenceStatus": source_evidence["status"],
@@ -725,13 +1331,13 @@ def build_source_contract(
             "cueLocalTransform": copy.deepcopy(evidence["cueLocalTransform"]),
             "parameterOverrides": copy.deepcopy(evidence["parameterOverrides"]),
             "compositionOrder": copy.deepcopy(evidence["compositionOrder"]),
-            "localReferenceClosureFileSha256": file_sha256(
+            "localReferenceClosureFileSha256": tracked_text_sha256(
                 local_reference_closure_path
             ),
             "localReferenceClosureSelfSha256": local_reference_closure[
                 "closureSha256"
             ],
-            "geometryParityFileSha256": file_sha256(geometry_parity_path),
+            "geometryParityFileSha256": tracked_text_sha256(geometry_parity_path),
             "geometryParitySelfSha256": geometry_parity["receiptSha256"],
         }
 
@@ -742,16 +1348,21 @@ def build_source_contract(
                 for blocker in coverage["blockers"]
             }
         )
-        recipe["compiledExecutionAdmission"] = {
-            "allowed": False,
-            "blockers": sorted(
-                {
-                    "SOURCE_EVIDENCE_PARTIAL",
-                    "TRACK_A_COMPILED_EXECUTION_NOT_IMPLEMENTED",
-                    *module_blockers,
-                }
-            ),
-        }
+        recipe["compiledExecutionAdmission"] = admission_from_blockers(
+            {
+                "SOURCE_EVIDENCE_PARTIAL",
+                "TRACK_A_COMPILED_EXECUTION_NOT_IMPLEMENTED",
+                *module_blockers,
+            }
+        )
+        for binding in recipe["localReferenceBindings"]:
+            require(
+                set(binding["executionAdmission"]["blockers"]).issubset(
+                    recipe["compiledExecutionAdmission"]["blockers"]
+                ),
+                "local-reference blockers were not propagated to element admission: "
+                + binding["occurrenceId"],
+            )
 
         source_materials = copy.deepcopy(row.get("sourceMaterials", []))
         non_render_builtin = (
@@ -790,7 +1401,7 @@ def build_source_contract(
             recipe["geometryBinding"] = {
                 "enabled": True,
                 "assetId": mesh_assets[0],
-                "receiptFileSha256": file_sha256(geometry_parity_path),
+                "receiptFileSha256": tracked_text_sha256(geometry_parity_path),
                 "receiptSelfSha256": geometry_parity["receiptSha256"],
                 "carrierGeometryPreScale": geometry["scaleContract"][
                     "carrierGeometryPreScale"
@@ -805,13 +1416,47 @@ def build_source_contract(
             recipe["geometryBinding"] = {
                 "enabled": False,
                 "assetId": "",
-                "receiptFileSha256": file_sha256(geometry_parity_path),
+                "receiptFileSha256": tracked_text_sha256(geometry_parity_path),
                 "receiptSelfSha256": geometry_parity["receiptSha256"],
                 "carrierGeometryPreScale": 1.0,
                 "particleScaleSemantics": "NOT_APPLICABLE",
                 "status": "NOT_APPLICABLE",
                 "blockers": [],
             }
+
+        element_blocker_occurrences = [
+            copy.deepcopy(prop["blockers"])
+            for coverage in recipe["moduleCoverage"]
+            for prop in coverage["properties"]
+            if prop["blockers"]
+        ]
+        property_blocker_union = {
+            blocker
+            for blockers in element_blocker_occurrences
+            for blocker in blockers
+        }
+        compiled_only_blockers = sorted(
+            set(recipe["compiledExecutionAdmission"]["blockers"])
+            - property_blocker_union
+        )
+        if compiled_only_blockers:
+            element_blocker_occurrences.append(compiled_only_blockers)
+        if recipe["materialAdmission"]["blockers"]:
+            element_blocker_occurrences.append(
+                copy.deepcopy(recipe["materialAdmission"]["blockers"])
+            )
+        if recipe["geometryBinding"]["blockers"]:
+            element_blocker_occurrences.append(
+                copy.deepcopy(recipe["geometryBinding"]["blockers"])
+            )
+        element_blockers = sorted(
+            {
+                *recipe["compiledExecutionAdmission"]["blockers"],
+                *recipe["materialAdmission"]["blockers"],
+                *recipe["geometryBinding"]["blockers"],
+            }
+        )
+        receipt_blocker_occurrences.extend(element_blocker_occurrences)
 
         elements.append(element)
         receipt_elements.append(
@@ -828,6 +1473,12 @@ def build_source_contract(
                 "sourceOccurrenceId": evidence["sourceOccurrenceId"],
                 "cueLocalTransform": copy.deepcopy(evidence["cueLocalTransform"]),
                 "parameterOverrides": copy.deepcopy(evidence["parameterOverrides"]),
+                "localReferenceOccurrenceIds": [
+                    binding["occurrenceId"]
+                    for binding in recipe["localReferenceBindings"]
+                ],
+                "blockers": element_blockers,
+                "blockerSummary": blocker_summary(element_blocker_occurrences),
                 "coverageStatus": (
                     "UNRESOLVED"
                     if any(
@@ -840,20 +1491,35 @@ def build_source_contract(
             }
         )
 
+    expected_local_reference_occurrence_ids = {
+        str(occurrence["occurrenceId"])
+        for occurrence in (
+            list(local_reference_closure["distributionOccurrences"])
+            + list(local_reference_closure["componentOccurrences"])
+        )
+    }
+    require(
+        consumed_local_reference_occurrence_ids
+        == expected_local_reference_occurrence_ids,
+        "local-reference occurrence consumption is incomplete: "
+        f"missing={sorted(expected_local_reference_occurrence_ids - consumed_local_reference_occurrence_ids)} "
+        f"extra={sorted(consumed_local_reference_occurrence_ids - expected_local_reference_occurrence_ids)}",
+    )
+
     evidence_links = {
         "sourceEvidence": {
             "path": repository_path(source_evidence_path),
-            "fileSha256": file_sha256(source_evidence_path),
+            "fileSha256": tracked_text_sha256(source_evidence_path),
             "selfSha256": source_evidence["evidenceSha256"],
         },
         "localReferenceClosure": {
             "path": repository_path(local_reference_closure_path),
-            "fileSha256": file_sha256(local_reference_closure_path),
+            "fileSha256": tracked_text_sha256(local_reference_closure_path),
             "selfSha256": local_reference_closure["closureSha256"],
         },
         "wmodelGeometryParity": {
             "path": repository_path(geometry_parity_path),
-            "fileSha256": file_sha256(geometry_parity_path),
+            "fileSha256": tracked_text_sha256(geometry_parity_path),
             "selfSha256": geometry_parity["receiptSha256"],
         },
     }
@@ -878,9 +1544,40 @@ def build_source_contract(
         str((row.get("shaderGraph") or {}).get("topologyStatus") or "NON_RENDER_BUILTIN")
         for row in inventory["materialEvidence"]
     )
+    product_global_blockers = [
+        "MANUAL_MASTER_ASSEMBLY_PENDING",
+        "NATIVE_V14_RUNTIME_NOT_IMPLEMENTED",
+        "NOT_VISUAL_APPROVED",
+        "PRODUCT_CATALOG_UNCHANGED_AND_BLOCKED",
+    ]
+    product_blocker_occurrences = [
+        *receipt_blocker_occurrences,
+        product_global_blockers,
+    ]
+    product_blockers = sorted(
+        {
+            blocker
+            for blockers in product_blocker_occurrences
+            for blocker in blockers
+        }
+    )
+    product_blocker_summary = blocker_summary(product_blocker_occurrences)
+    product_allowed = product_blocker_summary["uniqueBlockerCount"] == 0
+    source_contract_runtime_admission = (
+        bool(registry["runtimeAdmission"])
+        and bool(elements)
+        and all(
+            element["sourceRecipe"]["compiledExecutionAdmission"]["allowed"]
+            for element in elements
+        )
+    )
+    require(
+        set(registry["blockers"]).issubset(product_blockers),
+        "registry blockers were not propagated to Product admission",
+    )
     receipt = {
         "schema": "lostark.effect-source-contract-candidate-receipt",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "characterClass": "Artist",
         "skillId": 31470,
         "derivedInputSlot": "F",
@@ -889,36 +1586,49 @@ def build_source_contract(
         "aggregateSourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
         "manualAssemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING",
         "visualApprovalStatus": "NOT_VISUAL_APPROVED",
-        "runtimeAdmission": "NOT_IMPLEMENTED_IN_THIS_SLICE",
+        "runtimeAdmission": (
+            "ADMITTED"
+            if source_contract_runtime_admission
+            else "NOT_IMPLEMENTED_IN_THIS_SLICE"
+        ),
+        "blockers": product_blockers,
+        "blockerSummary": product_blocker_summary,
         "productAdmission": {
-            "allowed": False,
-            "reason": "NATIVE_V14_SOURCE_CONTRACT_IS_NOT_RUNTIME_EXECUTABLE",
+            "allowed": product_allowed,
+            "reason": (
+                "ADMITTED"
+                if product_allowed
+                else "NATIVE_V14_SOURCE_CONTRACT_HAS_UNRESOLVED_BLOCKERS"
+            ),
+            "blockerCount": product_blocker_summary["uniqueBlockerCount"],
+            "blockers": product_blockers,
+            "blockerSummary": copy.deepcopy(product_blocker_summary),
             "publisherStillAcceptsVersions": [5, 6, 7, 8, 9, 10, 11, 12],
         },
         "source": {
             "sourceReceipt": {
                 "path": repository_path(source_receipt_path),
-                "sha256": file_sha256(source_receipt_path),
+                "sha256": tracked_text_sha256(source_receipt_path),
             },
             "actionCueRecipe": {
                 "path": repository_path(action_cue_recipe_path),
-                "sha256": file_sha256(action_cue_recipe_path),
+                "sha256": tracked_text_sha256(action_cue_recipe_path),
             },
             "activeInventory": {
                 "path": repository_path(active_inventory_path),
-                "sha256": file_sha256(active_inventory_path),
+                "sha256": tracked_text_sha256(active_inventory_path),
             },
             "normalizedGraph": {
                 "path": repository_path(normalized_graph_path),
-                "sha256": file_sha256(normalized_graph_path),
+                "sha256": tracked_text_sha256(normalized_graph_path),
             },
             "moduleClosure": {
                 "path": repository_path(module_closure_path),
-                "sha256": file_sha256(module_closure_path),
+                "sha256": tracked_text_sha256(module_closure_path),
             },
             "materialClosure": {
                 "path": repository_path(material_closure_path),
-                "sha256": file_sha256(material_closure_path),
+                "sha256": tracked_text_sha256(material_closure_path),
             },
             "sourceEvidence": copy.deepcopy(evidence_links["sourceEvidence"]),
             "localReferenceClosure": copy.deepcopy(
@@ -954,9 +1664,13 @@ def build_source_contract(
             ],
             "materialCount": len(inventory["materialEvidence"]),
             "materialShaderTopologyStatusCounts": dict(material_status_counts),
-            "sourceContractRuntimeAdmission": False,
+            "sourceContractRuntimeAdmission": source_contract_runtime_admission,
             "visualApprovalComplete": False,
             "aggregateSourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
+            "consumedLocalReferenceOccurrenceCount": len(
+                consumed_local_reference_occurrence_ids
+            ),
+            "blockerSummary": copy.deepcopy(product_blocker_summary),
             "coverageDenominators": copy.deepcopy(source_evidence["summary"]),
             "localReferenceDenominators": copy.deepcopy(
                 local_reference_closure["summary"]
@@ -972,7 +1686,7 @@ def build_source_contract(
 
 def check_or_write(path: Path, content: bytes, check: bool) -> None:
     if check:
-        if not path.is_file() or path.read_bytes() != content:
+        if not generated_text_matches(path, content):
             raise ValueError(f"generated output is stale: {path}")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1025,7 +1739,9 @@ def main() -> int:
         f"{'check' if args.check else 'write'}: "
         f"elements={receipt['summary']['activeElementCount']} "
         f"renderers={receipt['summary']['rendererCounts']} "
-        "sourceEvidence=partial runtimeAdmission=false productAdmission=false"
+        "sourceEvidence=partial "
+        f"runtimeAdmission={str(receipt['summary']['sourceContractRuntimeAdmission']).lower()} "
+        f"productAdmission={str(receipt['productAdmission']['allowed']).lower()}"
     )
     return 0
 

@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from effect_source_contract_io import (
+    generated_text_matches,
+    raw_file_sha256,
+    tracked_text_sha256,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -20,10 +25,6 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON root must be an object: {path}")
     return value
-
-
-def file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def canonical_sha256(value: Any) -> str:
@@ -158,14 +159,25 @@ def source_object_indexes(
     return graph_objects, external_objects
 
 
-def external_path_index(external: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    result: dict[str, dict[str, Any]] = {}
+def qualified_package_path(value: str) -> tuple[str, str]:
+    logical_package, separator, package_local_path = value.partition(".")
+    require(
+        bool(separator and logical_package and package_local_path),
+        f"external object path is not package-qualified: {value}",
+    )
+    return logical_package.casefold(), package_local_path.casefold()
+
+
+def external_path_index(
+    external: dict[str, Any],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    result: dict[tuple[str, str], dict[str, Any]] = {}
     for package in external["packages"]:
-        logical = str(package["logicalPackage"])
+        logical = str(package["logicalPackage"]).casefold()
         for row in package["objects"]:
-            relative = str(row["objectPath"])
-            result[relative.casefold()] = row
-            result[f"{logical}.{relative}".casefold()] = row
+            key = (logical, str(row["objectPath"]).casefold())
+            require(key not in result, f"duplicate qualified external object: {key}")
+            result[key] = row
     return result
 
 
@@ -179,7 +191,7 @@ def load_pinned_source_graphs(
         path = source_graph_root / f"{logical}.particle-graph.json"
         require(path.is_file(), f"pinned source graph is missing: {path}")
         require(
-            file_sha256(path) == package["graphSha256"],
+            raw_file_sha256(path) == package["graphSha256"],
             f"pinned source graph hash changed: {path}",
         )
         graph = load_json(path)
@@ -190,7 +202,7 @@ def load_pinned_source_graphs(
                 "logicalPackage": logical,
                 "graphAsset": path.name,
                 "bytes": path.stat().st_size,
-                "sha256": file_sha256(path),
+                "sha256": raw_file_sha256(path),
             }
         )
     return objects, pins
@@ -200,7 +212,7 @@ def build_reference_order(
     element: dict[str, Any],
     graph: dict[str, Any],
     graph_by_id: dict[str, dict[str, Any]],
-    external_by_path: dict[str, dict[str, Any]],
+    external_by_path: dict[tuple[str, str], dict[str, Any]],
 ) -> list[dict[str, Any]]:
     lod_id = str(element["sourceLodNode"]["nodeId"])
     system = next(
@@ -228,7 +240,9 @@ def build_reference_order(
     for order, (reference, module) in enumerate(zip(references, evidence)):
         target = graph_by_id.get(str(reference.get("targetNodeId") or ""))
         if target is None:
-            target = external_by_path.get(str(reference.get("objectPath", "")).casefold())
+            target = external_by_path.get(
+                qualified_package_path(str(reference.get("objectPath", "")))
+            )
         require(target is not None, f"selected module target is missing: {reference}")
         module_identity = str(module.get("nodeId") or module.get("objectId") or "")
         target_identity = str(target.get("nodeId") or target.get("objectId") or "")
@@ -653,32 +667,32 @@ def build_evidence(
         "inputs": {
             "sourceReceipt": {
                 "path": repository_path(source_receipt_path),
-                "sha256": file_sha256(source_receipt_path),
+                "sha256": tracked_text_sha256(source_receipt_path),
             },
             "actionCueRecipe": {
                 "path": repository_path(action_recipe_path),
-                "sha256": file_sha256(action_recipe_path),
+                "sha256": tracked_text_sha256(action_recipe_path),
             },
             "activeInventory": {
                 "path": repository_path(active_inventory_path),
-                "sha256": file_sha256(active_inventory_path),
+                "sha256": tracked_text_sha256(active_inventory_path),
             },
             "normalizedGraph": {
                 "path": repository_path(normalized_graph_path),
-                "sha256": file_sha256(normalized_graph_path),
+                "sha256": tracked_text_sha256(normalized_graph_path),
             },
             "externalModuleClosure": {
                 "path": repository_path(external_closure_path),
-                "sha256": file_sha256(external_closure_path),
+                "sha256": tracked_text_sha256(external_closure_path),
             },
             "localReferenceClosure": {
                 "path": repository_path(local_reference_closure_path),
-                "sha256": file_sha256(local_reference_closure_path),
+                "sha256": tracked_text_sha256(local_reference_closure_path),
                 "selfSha256": local_references["closureSha256"],
             },
             "wmodelGeometryParity": {
                 "path": repository_path(geometry_parity_path),
-                "sha256": file_sha256(geometry_parity_path),
+                "sha256": tracked_text_sha256(geometry_parity_path),
                 "selfSha256": geometry["receiptSha256"],
             },
             "pinnedSourceGraphs": source_graph_pins,
@@ -738,7 +752,7 @@ def main() -> int:
     content = json_bytes(evidence)
     if args.check:
         require(
-            args.output.is_file() and args.output.read_bytes() == content,
+            generated_text_matches(args.output, content),
             f"generated output is stale: {args.output}",
         )
     else:

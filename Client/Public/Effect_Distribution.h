@@ -37,9 +37,20 @@ struct EFFECT_DISTRIBUTION_KEY_DESC final
 		EFFECT_DISTRIBUTION_INTERPOLATION::LINEAR;
 };
 
+struct EFFECT_SOURCE_ADMISSION_DESC final
+{
+	bool_t bAllowed = false;
+	std::vector<std::string> Blockers;
+};
+
 struct EFFECT_DISTRIBUTION_DESC final
 {
 	std::string strPropertyPath;
+	std::string strReferenceId;
+	std::string strOccurrenceId;
+	std::string strPayloadStatus;
+	std::string strFidelity;
+	EFFECT_SOURCE_ADMISSION_DESC ExecutionAdmission;
 	std::string strSourceClass;
 	std::string strSourceObjectPath;
 	std::string strParameterName;

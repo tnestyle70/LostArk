@@ -26,6 +26,7 @@ def is_particle_graph_class(class_name: str) -> bool:
     return (
         folded == "particlesystem"
         or folded == "particlelodlevel"
+        or folded == "lightcomponent"
         or folded == "pointlightcomponent"
         or (folded.startswith("particle") and folded.endswith("emitter"))
         or folded.startswith("particlemodule")
@@ -200,8 +201,13 @@ def extract_package(package_path: Path, logical_name: str, aes_key: str) -> dict
                 "objectId": f"{logical_name}:export:{entry.index}",
                 "exportIndex": entry.index,
                 "className": class_name,
+                "classPath": package_ref_path(entry.class_index, imports, exports),
                 "objectName": entry.object_name,
                 "objectPath": package_ref_path(entry.index + 1, imports, exports),
+                "archetypeIndex": entry.archetype_index,
+                "archetypePath": package_ref_path(
+                    entry.archetype_index, imports, exports
+                ),
                 "serialSize": entry.serial_size,
                 "propertyStreamEnd": property_end,
                 "properties": properties,
