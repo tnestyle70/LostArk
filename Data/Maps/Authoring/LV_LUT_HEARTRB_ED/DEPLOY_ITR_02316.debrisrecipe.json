@@ -1,0 +1,378 @@
+{
+  "schema": "lostark.deploy-wall-debris-recipe",
+  "formatVersion": 1,
+  "provenance": "PROJECT_AUTHORED",
+  "sourceAssetId": "DEPLOY_ITR_02316",
+  "sourceFracturedWModel": "Client/Bin/Resources/Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_FRACTURED.wmodel",
+  "sourceSha256": "d908fb3567e4d13d2259b02a0dc08a701c81e7e8ac9d48851e3d14fc0f7a513f",
+  "partition": {
+    "method": "area-weighted-principal-axis-grid",
+    "verticalSplits": 4,
+    "horizontalSplits": 3,
+    "sourceTriangleCount": 17731,
+    "coverage": "EVERY_SOURCE_TRIANGLE_EXACTLY_ONCE",
+    "sourceChunkPivotsRecovered": false
+  },
+  "pieces": [
+    {
+      "pieceId": "piece.00",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_00.wmodel",
+      "pivotWModelUnits": [
+        -29.974507576,
+        7.432107387,
+        -65.188438449
+      ],
+      "pivotMetersAtScale1": [
+        -0.299745076,
+        0.074321074,
+        -0.651884384
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -93.745933533,
+          -52.364006042,
+          -53.867347717
+        ],
+        "max": [
+          92.031272888,
+          85.761108398,
+          80.669570923
+        ]
+      },
+      "triangleCount": 818,
+      "vertexCount": 1414,
+      "indexCount": 2454,
+      "sha256": "cd7b45d652eed38fb74c325a82d338a14a73f8e2a3c9bdab78eb859edf745088"
+    },
+    {
+      "pieceId": "piece.01",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_01.wmodel",
+      "pivotWModelUnits": [
+        -10.643193972,
+        7.0914871,
+        -24.219069673
+      ],
+      "pivotMetersAtScale1": [
+        -0.10643194,
+        0.070914871,
+        -0.242190697
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -106.132461548,
+          -52.023387909,
+          -56.346031189
+        ],
+        "max": [
+          109.121444702,
+          83.805892944,
+          79.869514465
+        ]
+      },
+      "triangleCount": 509,
+      "vertexCount": 848,
+      "indexCount": 1527,
+      "sha256": "31efd6be7432c3d8e613f98cfdbce1616522b0378a95f3954032a54788675e12"
+    },
+    {
+      "pieceId": "piece.02",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_02.wmodel",
+      "pivotWModelUnits": [
+        14.055072298,
+        12.583987558,
+        34.852778637
+      ],
+      "pivotMetersAtScale1": [
+        0.140550723,
+        0.125839876,
+        0.348527786
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -130.830734253,
+          -39.211463928,
+          -102.546058655
+        ],
+        "max": [
+          109.665374756,
+          80.835189819,
+          102.301582336
+        ]
+      },
+      "triangleCount": 1157,
+      "vertexCount": 1318,
+      "indexCount": 3471,
+      "sha256": "97ea4ff6eeec176d349854cb6bb0d3568c4965db0564b6274d683d85af695937"
+    },
+    {
+      "pieceId": "piece.03",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_03.wmodel",
+      "pivotWModelUnits": [
+        -30.466048578,
+        67.284763211,
+        -62.606129505
+      ],
+      "pivotMetersAtScale1": [
+        -0.304660486,
+        0.672847632,
+        -0.626061295
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -76.370758057,
+          -112.216636658,
+          -38.056186676
+        ],
+        "max": [
+          85.027565002,
+          81.960250854,
+          55.652133942
+        ]
+      },
+      "triangleCount": 1185,
+      "vertexCount": 1773,
+      "indexCount": 3555,
+      "sha256": "9faa251fe30e73a32cecd574aae80b37e71687296d1273f6ef74e056a86b75d7"
+    },
+    {
+      "pieceId": "piece.04",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_04.wmodel",
+      "pivotWModelUnits": [
+        -8.533623261,
+        77.944341959,
+        -25.36810804
+      ],
+      "pivotMetersAtScale1": [
+        -0.085336233,
+        0.77944342,
+        -0.25368108
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -67.654495239,
+          -122.876220703,
+          -53.333385468
+        ],
+        "max": [
+          63.095142365,
+          76.291267395,
+          50.346130371
+        ]
+      },
+      "triangleCount": 1337,
+      "vertexCount": 1776,
+      "indexCount": 4011,
+      "sha256": "c80a4ad47b1e36055a4dfe5a79e7a27f2a5f96b8c54b9d35c1f5aa8185e8d058"
+    },
+    {
+      "pieceId": "piece.05",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_05.wmodel",
+      "pivotWModelUnits": [
+        11.744102538,
+        69.329992661,
+        10.060919218
+      ],
+      "pivotMetersAtScale1": [
+        0.117441025,
+        0.693299927,
+        0.100609192
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -84.570549011,
+          -64.873657227,
+          -52.260402679
+        ],
+        "max": [
+          86.430862427,
+          77.898033142,
+          95.138961792
+        ]
+      },
+      "triangleCount": 2264,
+      "vertexCount": 2674,
+      "indexCount": 6792,
+      "sha256": "4851d882457d63170b3b57b5b8cf91b3f32b220d1c95fdb01725df0be2ccf112"
+    },
+    {
+      "pieceId": "piece.06",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_06.wmodel",
+      "pivotWModelUnits": [
+        -21.477768498,
+        163.925766675,
+        -57.53600057
+      ],
+      "pivotMetersAtScale1": [
+        -0.214777685,
+        1.639257667,
+        -0.575360006
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -80.421333313,
+          -85.712471008,
+          -26.240732193
+        ],
+        "max": [
+          76.548156738,
+          55.806991577,
+          41.197597504
+        ]
+      },
+      "triangleCount": 2271,
+      "vertexCount": 2595,
+      "indexCount": 6813,
+      "sha256": "9dfa609e175a131b37e335cfe4d26b607f2ef43e93948bb9cf67cf9fe10122c1"
+    },
+    {
+      "pieceId": "piece.07",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_07.wmodel",
+      "pivotWModelUnits": [
+        -6.678223801,
+        163.220944586,
+        -27.037318922
+      ],
+      "pivotMetersAtScale1": [
+        -0.066782238,
+        1.632209446,
+        -0.270373189
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -64.640823364,
+          -87.597595215,
+          -50.360553741
+        ],
+        "max": [
+          70.219261169,
+          49.712223053,
+          54.244274139
+        ]
+      },
+      "triangleCount": 2150,
+      "vertexCount": 2840,
+      "indexCount": 6450,
+      "sha256": "d571db8fe4b70b62406fd59eb532209316343ead2c64692d789b8dc9cd93b507"
+    },
+    {
+      "pieceId": "piece.08",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_08.wmodel",
+      "pivotWModelUnits": [
+        -3.077884063,
+        159.132060575,
+        2.44642144
+      ],
+      "pivotMetersAtScale1": [
+        -0.030778841,
+        1.591320606,
+        0.024464214
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -68.254180908,
+          -80.071922302,
+          -49.474876404
+        ],
+        "max": [
+          56.888420105,
+          58.683933258,
+          57.694442749
+        ]
+      },
+      "triangleCount": 1148,
+      "vertexCount": 1418,
+      "indexCount": 3444,
+      "sha256": "f0620a919bec7a5133dab5582e20fda21b2e0553a1d8e25d9cfd247cfac0085d"
+    },
+    {
+      "pieceId": "piece.09",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_09.wmodel",
+      "pivotWModelUnits": [
+        -30.449972132,
+        268.791505042,
+        -56.530780692
+      ],
+      "pivotMetersAtScale1": [
+        -0.304499721,
+        2.68791505,
+        -0.565307807
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -71.515342712,
+          -77.697982788,
+          -27.537204742
+        ],
+        "max": [
+          75.830184937,
+          113.054138184,
+          52.239551544
+        ]
+      },
+      "triangleCount": 2489,
+      "vertexCount": 2862,
+      "indexCount": 7467,
+      "sha256": "dd930db727c54890c39c011b36c9d75d92abe1c87293fb16f8dae09f4c1cea04"
+    },
+    {
+      "pieceId": "piece.10",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_10.wmodel",
+      "pivotWModelUnits": [
+        -10.183406688,
+        279.702265447,
+        -24.530174486
+      ],
+      "pivotMetersAtScale1": [
+        -0.101834067,
+        2.797022654,
+        -0.245301745
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -57.373439789,
+          -90.114723206,
+          -43.105209351
+        ],
+        "max": [
+          61.070209503,
+          125.460212708,
+          42.9245224
+        ]
+      },
+      "triangleCount": 1570,
+      "vertexCount": 2351,
+      "indexCount": 4710,
+      "sha256": "b44a88f9ae44870a46c69ccb78e786b3cd0e5b815b6a88d4b9f828aa25fc6849"
+    },
+    {
+      "pieceId": "piece.11",
+      "assetId": "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_11.wmodel",
+      "pivotWModelUnits": [
+        5.766441499,
+        277.563997642,
+        -10.312399942
+      ],
+      "pivotMetersAtScale1": [
+        0.057664415,
+        2.775639976,
+        -0.103123999
+      ],
+      "localBoundsWModelUnits": {
+        "min": [
+          -71.866592407,
+          -83.214981079,
+          -32.777553558
+        ],
+        "max": [
+          47.581920624,
+          127.598480225,
+          41.870628357
+        ]
+      },
+      "triangleCount": 833,
+      "vertexCount": 1166,
+      "indexCount": 2499,
+      "sha256": "dc750d8cdb1f6a744ae3681f1a2b9c1081d2028e8c3f2e30421851c465df2663"
+    }
+  ]
+}

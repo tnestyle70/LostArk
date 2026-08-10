@@ -120,7 +120,8 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
+			m_bDebrisSuppressSource);
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
 	CGameInstance::Get().Add_RenderObject(
@@ -138,7 +139,8 @@ HRESULT CDeployPropObject::Render()
 {
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
+			m_bDebrisSuppressSource);
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_CommonShaderResources()))
@@ -167,7 +169,8 @@ HRESULT CDeployPropObject::Render_Shadow()
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
+			m_bDebrisSuppressSource);
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_ShadowShaderResources(

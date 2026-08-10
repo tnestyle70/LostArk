@@ -285,13 +285,16 @@ prepared miss는 동기 fallback 없이 fail-closed한다.
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
 Valtan의 `World Destruction` 모드에는 제품 Server와 분리된 `Destruction Model View`가 있다.
-`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json`의
+`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json` format v2의
 stable debris element를 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` world instance에
-연결한다. source placement 하나는 Wall Mesh Emitter 하나이고 runtime이 stable fragment 12개를 파생해
-각각 CModel proxy와 PhysX actor로 재생한다. All Fragments/Solo Emitter/Solo Fragment,
-play/pause/restart, 1/60 single-step과 reset 후 고정-step seek를 제공한다. direction과 speed는 초기
-linear velocity로 변환되고 gravity scale/lifetime/trigger는 authoring policy다. source fractured wall은
-제자리에 남고 fragment model/state/life/pose/velocity는 read-only runtime sample이다.
+연결한다. element의 source placement 하나만 Wall Mesh Emitter이고 runtime이 stable fragment 12개를
+파생해 각각 CModel proxy와 PhysX actor로 재생한다. 같은 벽을 중복 표시하는 placement는
+`suppressionAliasPlacementIds`에 stable ID로 저장하며 debris를 추가 생성하지 않는다. All Fragments/Solo
+Emitter/Solo Fragment, play/pause/restart, 1/60 single-step과 reset 후 고정-step seek를 제공한다.
+direction과 speed는 초기 linear velocity로 변환되고 gravity scale/lifetime/trigger는 authoring policy다.
+activation부터 fragment lifetime 만료 뒤까지 source와 suppression alias는 숨겨 두고 Reset/Clear에서
+이전 상태를 복원한다. fragment model/state/life/pose/velocity는 read-only runtime sample이다. format v1은
+자동 추측 변환 없이 fail-closed하며 MapTool에서 v2로 다시 authoring해야 한다.
 이 파일은 제품 publisher 입력이 아니며 `Gameplay.world.json kind=destroyable`의 Server admission,
 동적 navigation/collision과 Shared replication은 계속 fail-closed다.
 맵 담당자의 실제 실행·확장 절차는 `.md/TEAM/MAP_DESTRUCTION_PHYSX_HANDOFF.md`를 따른다.

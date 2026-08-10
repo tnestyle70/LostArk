@@ -1690,6 +1690,14 @@ bool_t Client::CMapTool::Load_EncounterReference()
 
 bool_t Client::CMapTool::Reload_DestructionAuthoring()
 {
+	if (m_bDestructionSimulationElementDraftDirty)
+	{
+		m_DestructionStatus =
+			"Apply or Revert the debris Detail draft before reloading";
+		m_DestructionSimulationStatus = m_DestructionStatus;
+		return false;
+	}
+
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
 	if (nullptr == descriptor || descriptor->encounterReference.empty() ||
 		descriptor->worldEventsDocument.empty())
@@ -1749,6 +1757,10 @@ bool_t Client::CMapTool::Reload_DestructionAuthoring()
 		m_DestructionStatus = validationStatus;
 		return false;
 	}
+	const uint64_t previousPlacementId = m_iSelectedDeployPlacementId;
+	const std::string previousGroupId = m_SelectedDestructionGroupId;
+	const std::string previousProfileId =
+		m_SelectedDestructionSimulationProfileId;
 
 	Restore_DestructionPreview();
 	m_bDestructionPickArmed = false;
@@ -1763,8 +1775,52 @@ bool_t Client::CMapTool::Reload_DestructionAuthoring()
 	m_EncounterReference = std::move(stagedEncounter);
 	m_DestructionDocument = std::move(stagedDestruction);
 	m_EncounterReferenceStatus = encounterStatus;
-	m_DestructionStatus = destructionStatus + " " + validationStatus;
+
+	bool_t selectionRestored = false;
+	if (0u != previousPlacementId)
+	{
+		selectionRestored = Select_DestructionWall(
+			previousPlacementId, "authoring reload");
+	}
+	if (!selectionRestored && !previousGroupId.empty())
+	{
+		const DESTRUCTION_GROUP* previousGroup =
+			m_DestructionDocument.Find_Group(previousGroupId);
+		if (nullptr != previousGroup)
+		{
+			m_SelectedDestructionGroupId = previousGroup->groupId;
+			selectionRestored = true;
+		}
+	}
+
+	const DESTRUCTION_SIMULATION_PROFILE* previousProfile =
+		previousProfileId.empty() ? nullptr :
+		m_DestructionSimulationDocument.Find_Profile(previousProfileId);
+	if (nullptr != previousProfile &&
+		previousProfile->groupId == m_SelectedDestructionGroupId)
+	{
+		Select_DestructionSimulationProfile(previousProfile->profileId);
+	}
+	else if (selectionRestored &&
+		m_SelectedDestructionSimulationProfileId.empty())
+	{
+		const auto matchingProfile = std::find_if(
+			m_DestructionSimulationDocument.Get_Profiles().begin(),
+			m_DestructionSimulationDocument.Get_Profiles().end(),
+			[this](const DESTRUCTION_SIMULATION_PROFILE& profile)
+			{
+				return profile.groupId == m_SelectedDestructionGroupId;
+			});
+		if (matchingProfile !=
+			m_DestructionSimulationDocument.Get_Profiles().end())
+		{
+			Select_DestructionSimulationProfile(matchingProfile->profileId);
+		}
+	}
+	if (selectionRestored)
+		Sync_DestructionDraftFromSelection();
 	Refresh_DestructionHighlight();
+	m_DestructionStatus = destructionStatus + " " + validationStatus;
 	return true;
 }
 
@@ -2298,81 +2354,170 @@ bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes()
 		return false;
 	}
 
-	vector<pair<wstring_t, unique_ptr<CPrototype>>> stagedPrototypes;
-	vector<pair<wstring_t, std::filesystem::path>> stagedFingerprints;
 	std::unordered_set<wstring_t> uniqueTags;
-	stagedPrototypes.reserve(specs.size());
-	stagedFingerprints.reserve(specs.size());
+	vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*> genericSpecs;
+	vector<string> exactSourceAssetIds;
 	for (const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& spec : specs)
 	{
 		if (spec.prototypeTag.empty() || spec.assetId.empty() ||
 			!std::isfinite(spec.fUniformScale) || spec.fUniformScale <= 0.f ||
+			!std::isfinite(spec.vSourceLocalPivotMeters.x) ||
+			!std::isfinite(spec.vSourceLocalPivotMeters.y) ||
+			!std::isfinite(spec.vSourceLocalPivotMeters.z) ||
 			!uniqueTags.emplace(spec.prototypeTag).second)
 		{
 			m_Status =
 				"PROJECT_AUTHORED debris model recipe is invalid or duplicated";
 			return false;
 		}
-
-		const std::filesystem::path modelPath =
-			CRuntimeAssetRoot::Resolve(spec.assetId).lexically_normal();
-		std::error_code modelError;
-		if (modelPath.empty() || !std::filesystem::is_regular_file(
-			modelPath, modelError) || modelError)
+		if (spec.sourceDeployAssetId.empty())
 		{
-			m_Status = "PROJECT_AUTHORED debris unavailable: missing " +
-				spec.assetId;
-			return false;
+			genericSpecs.push_back(&spec);
 		}
-
-		const shared_ptr<CModel> existing = dynamic_pointer_cast<CModel>(
-			CGameInstance::Get().Clone_Prototype(
-				m_iAuthoringLevelIndex, spec.prototypeTag));
-		if (nullptr != existing)
+		else if (std::find(
+			exactSourceAssetIds.begin(), exactSourceAssetIds.end(),
+			spec.sourceDeployAssetId) == exactSourceAssetIds.end())
 		{
-			const auto fingerprint =
-				m_PrototypeModelPaths.find(spec.prototypeTag);
-			if (fingerprint == m_PrototypeModelPaths.end() ||
-				fingerprint->second.lexically_normal() != modelPath)
-			{
-				m_Status =
-					"PROJECT_AUTHORED debris prototype tag collision: " +
-					spec.assetId;
-				return false;
-			}
-			continue;
+			exactSourceAssetIds.push_back(spec.sourceDeployAssetId);
 		}
-
-		const f32_t modelScale = 0.01f * spec.fUniformScale;
-		auto model = CModel::Create(
-			m_pDevice,
-			m_pContext,
-			MODEL::NONANIM,
-			modelPath.string().c_str(),
-			XMMatrixScaling(modelScale, modelScale, modelScale));
-		if (nullptr == model)
-		{
-			m_Status = "PROJECT_AUTHORED debris model decode failed: " +
-				spec.assetId;
-			return false;
-		}
-
-		unique_ptr<CPrototype> prototype = std::move(model);
-		stagedPrototypes.emplace_back(
-			spec.prototypeTag, std::move(prototype));
-		stagedFingerprints.emplace_back(spec.prototypeTag, modelPath);
 	}
-
-	if (!stagedPrototypes.empty() && FAILED(
-		CGameInstance::Get().Add_Prototypes(
-			m_iAuthoringLevelIndex, std::move(stagedPrototypes))))
+	if (genericSpecs.empty())
 	{
-		m_Status =
-			"PROJECT_AUTHORED debris prototype batch commit failed; no models admitted";
+		m_Status = "PROJECT_AUTHORED generic debris recipe is empty";
 		return false;
 	}
-	for (const auto& [prototypeTag, modelPath] : stagedFingerprints)
-		m_PrototypeModelPaths.emplace(prototypeTag, modelPath);
+
+	auto admitBatch = [this](
+		const vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*>& batch,
+		const bool_t required,
+		const string& label,
+		bool_t& outReady,
+		string& outWarning)
+	{
+		outReady = false;
+		vector<pair<wstring_t, unique_ptr<CPrototype>>> stagedPrototypes;
+		vector<pair<wstring_t, std::filesystem::path>> stagedFingerprints;
+		stagedPrototypes.reserve(batch.size());
+		stagedFingerprints.reserve(batch.size());
+		for (const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC* spec : batch)
+		{
+			const std::filesystem::path modelPath =
+				CRuntimeAssetRoot::Resolve(spec->assetId).lexically_normal();
+			std::error_code modelError;
+			if (modelPath.empty() || !std::filesystem::is_regular_file(
+				modelPath, modelError) || modelError)
+			{
+				const string message = label + " missing " + spec->assetId;
+				if (required)
+				{
+					m_Status = message;
+					return false;
+				}
+				outWarning = message;
+				return true;
+			}
+
+			const shared_ptr<CModel> existing = dynamic_pointer_cast<CModel>(
+				CGameInstance::Get().Clone_Prototype(
+					m_iAuthoringLevelIndex, spec->prototypeTag));
+			if (nullptr != existing)
+			{
+				const auto fingerprint =
+					m_PrototypeModelPaths.find(spec->prototypeTag);
+				if (fingerprint == m_PrototypeModelPaths.end() ||
+					fingerprint->second.lexically_normal() != modelPath)
+				{
+					m_Status =
+						"PROJECT_AUTHORED debris prototype tag collision: " +
+						spec->assetId;
+					return false;
+				}
+				continue;
+			}
+
+			const f32_t modelScale = 0.01f * spec->fUniformScale;
+			auto model = CModel::Create(
+				m_pDevice,
+				m_pContext,
+				MODEL::NONANIM,
+				modelPath.string().c_str(),
+				XMMatrixScaling(modelScale, modelScale, modelScale));
+			if (nullptr == model)
+			{
+				const string message = label + " decode failed " + spec->assetId;
+				if (required)
+				{
+					m_Status = message;
+					return false;
+				}
+				outWarning = message;
+				return true;
+			}
+
+			unique_ptr<CPrototype> prototype = std::move(model);
+			stagedPrototypes.emplace_back(
+				spec->prototypeTag, std::move(prototype));
+			stagedFingerprints.emplace_back(spec->prototypeTag, modelPath);
+		}
+
+		if (!stagedPrototypes.empty() && FAILED(
+			CGameInstance::Get().Add_Prototypes(
+				m_iAuthoringLevelIndex, std::move(stagedPrototypes))))
+		{
+			const string message = label + " prototype batch commit failed";
+			if (required)
+			{
+				m_Status = message;
+				return false;
+			}
+			outWarning = message;
+			return true;
+		}
+		for (const auto& [prototypeTag, modelPath] : stagedFingerprints)
+			m_PrototypeModelPaths.emplace(prototypeTag, modelPath);
+		outReady = true;
+		return true;
+	};
+
+	bool_t genericReady = false;
+	string warning;
+	if (!admitBatch(
+		genericSpecs, true, "Generic debris", genericReady, warning) ||
+		!genericReady)
+	{
+		return false;
+	}
+	vector<string> unavailableExactRecipes;
+	for (const string& sourceAssetId : exactSourceAssetIds)
+	{
+		vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*> exactSpecs;
+		for (const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& spec : specs)
+		{
+			if (spec.sourceDeployAssetId == sourceAssetId)
+				exactSpecs.push_back(&spec);
+		}
+		bool_t exactReady = false;
+		warning.clear();
+		if (!admitBatch(
+			exactSpecs, false, "Exact debris " + sourceAssetId,
+			exactReady, warning))
+		{
+			return false;
+		}
+		if (!exactReady)
+			unavailableExactRecipes.push_back(warning);
+	}
+
+	m_Status = "PROJECT_AUTHORED generic debris models ready";
+	if (unavailableExactRecipes.empty())
+	{
+		m_Status += "; exact wall recipes ready";
+	}
+	else
+	{
+		m_Status += "; exact wall recipe fallback: " +
+			unavailableExactRecipes.front();
+	}
 
 	return true;
 }
@@ -2857,9 +3002,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		Ensure_DestructionDebrisAuthoringPrototypes();
 	const std::string stagedDebrisPrototypeStatus =
 		descriptor.destructionSimulationDocument.empty() ?
-		"PROJECT_AUTHORED debris is not declared for this Area" :
-		(stagedDebrisPrototypesReady ?
-			"PROJECT_AUTHORED debris models ready" : m_Status);
+		"PROJECT_AUTHORED debris is not declared for this Area" : m_Status;
 
 	CMapAssetCatalog previousCatalog = m_Catalog;
 	m_Catalog = stagedCatalog;
@@ -4092,27 +4235,50 @@ bool_t Client::CMapTool::Load_WorldDestruction()
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
 	m_bDestructionSimulationClearRequested = false;
-	m_DestructionDocument = std::move(staged);
-	m_SelectedDestructionGroupId.clear();
-	m_SelectedDestructionBindingId.clear();
-	m_SelectedDestructionStageId.clear();
+	const std::string previousGroupId = m_SelectedDestructionGroupId;
 	const std::string previousProfileId =
 		m_SelectedDestructionSimulationProfileId;
+	m_DestructionDocument = std::move(staged);
+	m_SelectedDestructionBindingId.clear();
+	m_SelectedDestructionStageId.clear();
 	Reset_DestructionSimulationUI();
 	m_bDestructionSimulationClearRequested = false;
+	const DESTRUCTION_GROUP* selectedGroup = previousGroupId.empty() ? nullptr :
+		m_DestructionDocument.Find_Group(previousGroupId);
 	const DESTRUCTION_SIMULATION_PROFILE* selectedProfile =
+		previousProfileId.empty() ? nullptr :
 		m_DestructionSimulationDocument.Find_Profile(previousProfileId);
-	if (nullptr == selectedProfile &&
+	if (nullptr != selectedProfile && nullptr != selectedGroup &&
+		selectedProfile->groupId != selectedGroup->groupId)
+	{
+		selectedProfile = nullptr;
+	}
+	if (nullptr == selectedProfile && nullptr != selectedGroup)
+	{
+		const auto found = std::find_if(
+			m_DestructionSimulationDocument.Get_Profiles().begin(),
+			m_DestructionSimulationDocument.Get_Profiles().end(),
+			[selectedGroup](const DESTRUCTION_SIMULATION_PROFILE& profile)
+			{
+				return profile.groupId == selectedGroup->groupId;
+			});
+		if (found != m_DestructionSimulationDocument.Get_Profiles().end())
+			selectedProfile = &*found;
+	}
+
+	if (nullptr != selectedGroup)
+		m_SelectedDestructionGroupId = selectedGroup->groupId;
+	else if (nullptr == selectedProfile &&
 		!m_DestructionSimulationDocument.Get_Profiles().empty())
 	{
 		selectedProfile =
 			&m_DestructionSimulationDocument.Get_Profiles().front();
 	}
+	else if (nullptr == selectedProfile)
+		m_SelectedDestructionGroupId.clear();
+
 	if (nullptr != selectedProfile)
-	{
-		m_SelectedDestructionGroupId = selectedProfile->groupId;
 		Select_DestructionSimulationProfile(selectedProfile->profileId);
-	}
 	Refresh_DestructionHighlight();
 	m_DestructionStatus = status;
 	return true;
@@ -4202,6 +4368,10 @@ bool_t Client::CMapTool::Load_DestructionSimulation()
 		return false;
 	}
 
+	const std::string selectedGroupId = m_SelectedDestructionGroupId;
+	const std::string selectedProfileId =
+		m_SelectedDestructionSimulationProfileId;
+
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
 	const std::filesystem::path path = Get_DestructionSimulationPath();
 	if (nullptr == descriptor || path.empty())
@@ -4244,14 +4414,45 @@ bool_t Client::CMapTool::Load_DestructionSimulation()
 	m_bDestructionSimulationClearRequested = false;
 	m_DestructionSimulationDocument = std::move(staged);
 	Reset_DestructionSimulationUI();
-	if (!m_DestructionSimulationDocument.Get_Profiles().empty())
+	const DESTRUCTION_GROUP* selectedGroup = selectedGroupId.empty() ? nullptr :
+		m_DestructionDocument.Find_Group(selectedGroupId);
+	const DESTRUCTION_SIMULATION_PROFILE* selectedProfile =
+		selectedProfileId.empty() ? nullptr :
+		m_DestructionSimulationDocument.Find_Profile(selectedProfileId);
+	if (nullptr != selectedProfile && nullptr != selectedGroup &&
+		selectedProfile->groupId != selectedGroup->groupId)
 	{
-		const DESTRUCTION_SIMULATION_PROFILE& firstProfile =
-			m_DestructionSimulationDocument.Get_Profiles().front();
-		m_SelectedDestructionGroupId = firstProfile.groupId;
-		Select_DestructionSimulationProfile(firstProfile.profileId);
-		Refresh_DestructionHighlight();
+		selectedProfile = nullptr;
 	}
+	if (nullptr == selectedProfile && nullptr != selectedGroup)
+	{
+		const auto found = std::find_if(
+			m_DestructionSimulationDocument.Get_Profiles().begin(),
+			m_DestructionSimulationDocument.Get_Profiles().end(),
+			[selectedGroup](const DESTRUCTION_SIMULATION_PROFILE& profile)
+			{
+				return profile.groupId == selectedGroup->groupId;
+			});
+		if (found != m_DestructionSimulationDocument.Get_Profiles().end())
+			selectedProfile = &*found;
+	}
+
+	if (nullptr != selectedGroup)
+		m_SelectedDestructionGroupId = selectedGroup->groupId;
+	else if (nullptr == selectedProfile &&
+		!m_DestructionSimulationDocument.Get_Profiles().empty())
+	{
+		selectedProfile =
+			&m_DestructionSimulationDocument.Get_Profiles().front();
+	}
+	else
+		m_SelectedDestructionGroupId.clear();
+
+	if (nullptr != selectedProfile)
+		Select_DestructionSimulationProfile(selectedProfile->profileId);
+	else if (nullptr != selectedGroup)
+		status += "; selected group has no simulation profile; create default";
+	Refresh_DestructionHighlight();
 	m_DestructionSimulationStatus = status;
 	return true;
 }
@@ -4440,6 +4641,21 @@ bool_t Client::CMapTool::Create_DefaultDestructionSimulationProfile()
 		m_DestructionSimulationStatus =
 			"Select a non-empty destruction group before creating a profile";
 		return false;
+	}
+	const auto existingProfile = std::find_if(
+		m_DestructionSimulationDocument.Get_Profiles().begin(),
+		m_DestructionSimulationDocument.Get_Profiles().end(),
+		[group](const DESTRUCTION_SIMULATION_PROFILE& profile)
+		{
+			return profile.profileId == group->groupId + ".preview";
+		});
+	if (existingProfile != m_DestructionSimulationDocument.Get_Profiles().end())
+	{
+		Select_DestructionSimulationProfile(existingProfile->profileId);
+		m_DestructionSimulationStatus =
+			"Selected the existing simulation profile for group " +
+			group->groupId;
+		return true;
 	}
 
 	DESTRUCTION_SIMULATION_PROFILE profile;
@@ -4932,6 +5148,13 @@ bool_t Client::CMapTool::Select_DestructionWall(
 	const uint64_t runtimePlacementId,
 	const char_t* source)
 {
+	if (m_bDestructionSimulationElementDraftDirty)
+	{
+		m_DestructionStatus =
+			"Apply or Revert the debris Detail draft before selecting another wall";
+		return false;
+	}
+
 	Restore_DestructionPreview();
 	const auto entry = std::find_if(
 		m_DeployRuntime.Get_Entries().begin(),
@@ -4997,9 +5220,21 @@ bool_t Client::CMapTool::Select_DestructionWall(
 			});
 		if (profile != m_DestructionSimulationDocument.Get_Profiles().end())
 			Select_DestructionSimulationProfile(profile->profileId);
+		else
+		{
+			Reset_DestructionSimulationUI();
+			m_SelectedDestructionGroupId = owner->groupId;
+			m_DestructionSimulationStatus =
+				"Selected wall group has no simulation profile; create default";
+		}
 	}
 	else if (!m_bDestructionAdvancedMode)
+	{
 		m_SelectedDestructionGroupId.clear();
+		Reset_DestructionSimulationUI();
+		m_DestructionSimulationStatus =
+			"Selected wall is not assigned to a destruction group";
+	}
 
 	Sync_DestructionDraftFromSelection();
 	if (!Refresh_DestructionHighlight())
@@ -6586,11 +6821,13 @@ void Client::CMapTool::Render_DestructionSimulationWindow(
 	ImGui::TextDisabled(
 		"Authoring preview only; Server state and collision are unchanged");
 	ImGui::TextColored(ImVec4(0.95f, 0.72f, 0.22f, 1.f),
-		"PROJECT_AUTHORED proxy debris cloud: %u PhysX stone pieces per wall",
+		"PROJECT_AUTHORED destruction: %u PhysX pieces per wall",
 		CDestructionSimulationRuntime::PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
 	ImGui::TextWrapped(
-		"Source reference %s is not recovered. The preview uses four generic "
-		"Valtan stone meshes and is not source-exact.",
+		"DEPLOY_ITR_02316 uses 12 macro shards derived from every triangle of "
+		"its exact fractured wall mesh. Other Deploy assets use the four generic "
+		"Valtan stone fallbacks. Original chunk pivots and source particle %s "
+		"were not recovered, so the flight remains PROJECT_AUTHORED.",
 		CDestructionSimulationRuntime::PROJECT_AUTHORED_SOURCE_PARTICLE_ID);
 	if (m_bDestructionDebrisPrototypesReady)
 	{
