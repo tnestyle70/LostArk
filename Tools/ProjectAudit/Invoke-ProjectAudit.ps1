@@ -822,6 +822,22 @@ try {
 	Add-Check 'effect.derived-artifact-publisher' `
 		$effectDerivedPublisherPassed `
 		$effectDerivedPublisherDetail
+	$effectRuntimeAuthorityPassed = $false
+	$effectRuntimeAuthorityDetail = ''
+	try {
+		$effectRuntimeAuthorityDetail = (& `
+			'.\Tools\ProjectAudit\Test-EffectRuntimeAuthority.ps1' `
+			2>&1 | Out-String).Trim()
+		$effectRuntimeAuthorityPassed =
+			$effectRuntimeAuthorityDetail -match
+			'PASS: format3 immutable compiled authority'
+	}
+	catch {
+		$effectRuntimeAuthorityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.runtime-compiled-authority' `
+		$effectRuntimeAuthorityPassed `
+		$effectRuntimeAuthorityDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'

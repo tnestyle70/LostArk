@@ -23,6 +23,9 @@ namespace
 	std::map<std::string,
 		std::shared_ptr<const Client::EFFECT_COMPONENT_DESC>,
 		std::less<>> g_Components;
+	std::map<std::string,
+		std::shared_ptr<const Client::EFFECT_COMPILED_RUNTIME_DOCUMENT>,
+		std::less<>> g_RuntimeAuthorities;
     uint64_t g_iRuntimeRevision = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
 
@@ -473,6 +476,9 @@ struct Client::CEffectCatalog::RUNTIME_SNAPSHOT final
 		std::shared_ptr<const EFFECT_ASSEMBLY_DESC>, std::less<>> Assemblies;
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_COMPONENT_DESC>, std::less<>> Components;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>, std::less<>>
+		RuntimeAuthorities;
 	uint64_t iRuntimeRevision = 0u;
 	std::string strStatus;
 };
@@ -503,16 +509,30 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
         g_strStatus = strOutStatus;
         return false;
     }
-    const DATA_JSON_VALUE* pVersion = Required(
+    const DATA_JSON_VALUE* pSchema = Required(
+		Root, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* pVersion = Required(
         Root, "formatVersion", DATA_JSON_TYPE::NUMBER);
 	const DATA_JSON_VALUE* pComponents = Required(
 		Root, "components", DATA_JSON_TYPE::ARRAY);
     const DATA_JSON_VALUE* pEffects = Required(
         Root, "effects", DATA_JSON_TYPE::ARRAY);
-    if (nullptr == pVersion || 2.0 != pVersion->Get_Number() ||
+	const bool_t bIntegralCatalogVersion = nullptr != pVersion &&
+		!pVersion->Was_FloatingPointToken();
+    const bool_t bLegacyCatalog = bIntegralCatalogVersion &&
+		2.0 == pVersion->Get_Number();
+	const bool_t bDerivedCatalog = bIntegralCatalogVersion &&
+		3.0 == pVersion->Get_Number() && nullptr != pSchema &&
+		pSchema->Get_String() == "lostark.effect-runtime-catalog" &&
+		Root.Get_Object().size() == 4u &&
+		Root.Get_Object().contains("schema") &&
+		Root.Get_Object().contains("formatVersion") &&
+		Root.Get_Object().contains("components") &&
+		Root.Get_Object().contains("effects");
+    if ((!bLegacyCatalog && !bDerivedCatalog) ||
 		nullptr == pComponents || nullptr == pEffects)
     {
-        strOutStatus = "Effect runtime catalog must be formatVersion 2 with Component and Effect arrays.";
+        strOutStatus = "Effect runtime catalog must be legacy formatVersion 2 or typed formatVersion 3.";
         g_strStatus = strOutStatus;
         return false;
     }
@@ -525,6 +545,9 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_ASSEMBLY_DESC>, std::less<>>
 		StagedAssemblies;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>, std::less<>>
+		StagedRuntimeAuthorities;
 	for (const DATA_JSON_VALUE& ComponentValue : pComponents->Get_Array())
 	{
 		EFFECT_COMPONENT_DESC Component;
@@ -555,6 +578,33 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
         }
         const DATA_JSON_VALUE* pAssetId = Required(
             Entry, "effectAssetId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPayloadKind = Required(
+			Entry, "payloadKind", DATA_JSON_TYPE::STRING);
+		if (bDerivedCatalog && nullptr != pPayloadKind &&
+			pPayloadKind->Get_String() == "IMMUTABLE_COMPILED_IR")
+		{
+			std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> Document;
+			if (!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				Entry, Document, Error) || nullptr == Document ||
+				nullptr == pAssetId ||
+				Document->Identity.strEffectAssetId != pAssetId->Get_String() ||
+				Staged.contains(pAssetId->Get_String()) ||
+				!StagedRuntimeAuthorities.emplace(
+					pAssetId->Get_String(), std::move(Document)).second)
+			{
+				strOutStatus = "Effect compiled runtime authority rejected: " + Error;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			continue;
+		}
+		if (bDerivedCatalog && (nullptr == pPayloadKind ||
+			pPayloadKind->Get_String() != "LEGACY_ASSEMBLY_V1"))
+		{
+			strOutStatus = "Effect runtime catalog has an unsupported payload kind.";
+			g_strStatus = strOutStatus;
+			return false;
+		}
         const DATA_JSON_VALUE* pAuthoringVersion = Required(
             Entry, "authoringFormatVersion", DATA_JSON_TYPE::NUMBER);
         const DATA_JSON_VALUE* pContentSha = Required(
@@ -571,7 +621,8 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
             AuthoringVersion < EFFECT_AUTHORING_MIN_SUPPORTED_VERSION ||
             AuthoringVersion > EFFECT_AUTHORING_FORMAT_VERSION ||
             nullptr == pContentSha || !Is_LowerHexSha256(pContentSha->Get_String()) ||
-			nullptr == pDependencies || nullptr == pAssembly)
+			nullptr == pDependencies || nullptr == pAssembly ||
+			StagedRuntimeAuthorities.contains(pAssetId->Get_String()))
         {
             strOutStatus = "Effect runtime catalog entry has an invalid header.";
             g_strStatus = strOutStatus;
@@ -683,10 +734,12 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
     g_Effects = std::move(Staged);
 	g_Assemblies = std::move(StagedAssemblies);
 	g_Components = std::move(StagedComponents);
+	g_RuntimeAuthorities = std::move(StagedRuntimeAuthorities);
     ++g_iRuntimeRevision;
     g_strStatus = "Loaded " + std::to_string(g_Effects.size()) +
-        " Effect Assemblies and " + std::to_string(g_Components.size()) +
-		" Components.";
+        " Effect Assemblies, " + std::to_string(g_Components.size()) +
+		" Components, and " + std::to_string(g_RuntimeAuthorities.size()) +
+		" immutable compiled authorities.";
     strOutStatus = g_strStatus;
     return true;
 }
@@ -698,6 +751,7 @@ Client::CEffectCatalog::Capture_Runtime()
 	Snapshot->Effects = g_Effects;
 	Snapshot->Assemblies = g_Assemblies;
 	Snapshot->Components = g_Components;
+	Snapshot->RuntimeAuthorities = g_RuntimeAuthorities;
 	Snapshot->iRuntimeRevision = g_iRuntimeRevision;
 	Snapshot->strStatus = g_strStatus;
 	return Snapshot;
@@ -715,6 +769,7 @@ bool_t Client::CEffectCatalog::Restore_Runtime(
 	g_Effects = pSnapshot->Effects;
 	g_Assemblies = pSnapshot->Assemblies;
 	g_Components = pSnapshot->Components;
+	g_RuntimeAuthorities = pSnapshot->RuntimeAuthorities;
 	g_iRuntimeRevision = pSnapshot->iRuntimeRevision;
 	g_strStatus = pSnapshot->strStatus;
 	strOutStatus = "Restored Effect runtime catalog revision " +
@@ -743,9 +798,23 @@ Client::CEffectCatalog::Find_Component(const std::string& strComponentAssetId)
 	return g_Components.end() == Iterator ? nullptr : Iterator->second;
 }
 
+std::shared_ptr<const Client::EFFECT_COMPILED_RUNTIME_DOCUMENT>
+Client::CEffectCatalog::Find_RuntimeAuthority(
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator = g_RuntimeAuthorities.find(strEffectAssetId);
+	return g_RuntimeAuthorities.end() == Iterator ? nullptr : Iterator->second;
+}
+
 bool_t Client::CEffectCatalog::Contains(const std::string& strEffectAssetId)
 {
     return g_Effects.contains(strEffectAssetId);
+}
+
+bool_t Client::CEffectCatalog::Contains_RuntimeAuthority(
+	const std::string& strEffectAssetId)
+{
+	return g_RuntimeAuthorities.contains(strEffectAssetId);
 }
 
 std::vector<std::string> Client::CEffectCatalog::Get_EffectAssetIds()
@@ -766,6 +835,15 @@ std::vector<std::string> Client::CEffectCatalog::Get_ComponentAssetIds()
 	return Result;
 }
 
+std::vector<std::string> Client::CEffectCatalog::Get_RuntimeAuthorityAssetIds()
+{
+	std::vector<std::string> Result;
+	Result.reserve(g_RuntimeAuthorities.size());
+	for (const auto& [AssetId, Document] : g_RuntimeAuthorities)
+		Result.push_back(AssetId);
+	return Result;
+}
+
 uint64_t Client::CEffectCatalog::Get_RuntimeRevision()
 {
     return g_iRuntimeRevision;
@@ -781,5 +859,6 @@ void Client::CEffectCatalog::Clear()
     g_Effects.clear();
 	g_Assemblies.clear();
 	g_Components.clear();
+	g_RuntimeAuthorities.clear();
     g_strStatus = "Effect catalog cleared.";
 }

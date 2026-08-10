@@ -11,6 +11,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
+#include "Effect_RuntimeAuthority.h"
 #include "PlayerSkillCatalog.h"
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
@@ -3659,6 +3660,301 @@ namespace
 		resourceRootEnvironment.Restore();
 	}
 
+	std::string Build_RuntimeAuthorityFixtureEntry()
+	{
+		using namespace Client;
+		const std::string HashA(64u, 'a');
+		const std::string HashB(64u, 'b');
+		const std::string HashC(64u, 'c');
+		const std::string HashD(64u, 'd');
+		const std::string HashE(64u, 'e');
+		const std::string HashF(64u, 'f');
+		const std::string Hash1(64u, '1');
+		const std::string Hash2(64u, '2');
+		const std::string Hash3(64u, '3');
+		const std::string Hash4(64u, '4');
+		const std::string Hash5(64u, '5');
+		const std::string Hash6(64u, '6');
+		const std::string Hash9(64u, '9');
+		const std::string Identity =
+			"{\"schema\":\"lostark.effect-derived-identity\","
+			"\"formatVersion\":1,\"sourceContractHash\":\"" + HashA +
+			"\",\"sourceSemanticClosureHash\":\"" + HashB +
+			"\",\"geometryContractHash\":\"" + HashC +
+			"\",\"materialContractHash\":\"" + HashD +
+			"\",\"resourceBindingHash\":\"" + HashE +
+			"\",\"compilerInputHash\":\"" + HashF + "\"}";
+		const std::string Contract =
+			"{\"artifactBindingBlockerSet\":[],"
+			"\"artifactBindingBlockerCount\":0,"
+			"\"executionBlockerSet\":[],\"executionBlockerCount\":0,"
+			"\"executionAdmission\":true}";
+		const std::string Ir =
+			"{\"schema\":\"lostark.effect-compiled-ir\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"effect.fixture.runtime.authority\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"executionContract\":" + Contract +
+			",\"program\":{\"opcodes\":[],\"resourceBindings\":[],"
+			"\"handlerReceipts\":[]}}";
+		DATA_JSON_VALUE IrValue;
+		std::string Error;
+		if (!CDataJson::Parse(Ir, IrValue, Error))
+			return {};
+		const std::string IrSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(IrValue));
+		const std::string Artifact =
+			"{\"schema\":\"lostark.effect-compiled-artifact\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"effect.fixture.runtime.authority\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"compiledIr\":" + Ir +
+			",\"executionAdmission\":true,\"productAdmission\":false}";
+		DATA_JSON_VALUE ArtifactValue;
+		if (!CDataJson::Parse(Artifact, ArtifactValue, Error))
+			return {};
+		const std::string ArtifactSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(ArtifactValue));
+		const std::string ToolDependencies =
+			"[{\"role\":\"DERIVED_ARTIFACT_GENERATOR\","
+			"\"path\":\"Tools/EffectPipeline/build_effect_derived_artifact.py\","
+			"\"rawSha256\":\"" + Hash1 +
+			"\",\"canonicalSha256\":\"" + Hash2 +
+			"\",\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"},"
+			"{\"role\":\"DERIVED_ARTIFACT_SCHEMA\","
+			"\"path\":\"Tools/EffectPipeline/Schemas/contract.json\","
+			"\"rawSha256\":\"" + Hash2 +
+			"\",\"canonicalSha256\":\"" + Hash3 +
+			"\",\"hashDomain\":\"CANONICAL_JSON\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"},"
+			"{\"role\":\"EFFECT_PUBLISHER\","
+			"\"path\":\"Tools/EffectPipeline/Publish-Effects.ps1\","
+			"\"rawSha256\":\"" + Hash3 +
+			"\",\"canonicalSha256\":\"" + Hash4 +
+			"\",\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"}]";
+		const std::string Receipt =
+			"{\"schema\":\"lostark.effect-compiled-artifact-receipt\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"effect.fixture.runtime.authority\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"sourceContractVersion\":14,"
+			"\"authoringCarrierSha256\":\"" + Hash4 +
+			"\",\"assemblySha256\":\"" + Hash5 +
+			"\",\"compiledArtifactSha256\":\"" + ArtifactSha +
+			"\",\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptRawSha256\":\"" + Hash5 +
+			"\",\"compilerReceiptCanonicalSha256\":\"" + Hash6 +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"toolDependencies\":" + ToolDependencies +
+			",\"artifactBindingBlockerSet\":[],"
+			"\"artifactBindingBlockerCount\":0,\"executionBlockerSet\":[],"
+			"\"executionBlockerCount\":0,\"executionAdmission\":true,"
+			"\"productAdmission\":false,"
+			"\"publicationState\":\"CODE_ONLY_NOT_ADMITTED\"}";
+		DATA_JSON_VALUE ReceiptValue;
+		if (!CDataJson::Parse(Receipt, ReceiptValue, Error))
+			return {};
+		const std::string ReceiptSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(ReceiptValue));
+		return
+			"{\"payloadKind\":\"IMMUTABLE_COMPILED_IR\","
+			"\"effectAssetId\":\"effect.fixture.runtime.authority\","
+			"\"authoringFormatVersion\":13,"
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"authoringCarrierSha256\":\"" + Hash4 +
+			"\",\"assemblySha256\":\"" + Hash5 +
+			"\",\"compiledArtifactSha256\":\"" + ArtifactSha +
+			"\",\"compiledReceiptSha256\":\"" + ReceiptSha +
+			"\",\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"executionAdmission\":true,\"productAdmission\":false,"
+			"\"compiledArtifact\":" + Artifact +
+			",\"compiledReceipt\":" + Receipt + "}";
+	}
+
+	void Test_EffectRuntimeAuthorityCatalog(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE NumberTokens;
+		std::string NumberStatus;
+		const bool_t CanonicalNumberTokens = CDataJson::Parse(
+			"{\"d\":1e0,\"c\":-0.0,\"b\":1,\"a\":1.0}",
+			NumberTokens, NumberStatus) &&
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(NumberTokens) ==
+				"{\"a\":1.0,\"b\":1,\"c\":-0.0,\"d\":1.0}";
+		runner.Require(CanonicalNumberTokens,
+			"Runtime Authority Canonical JSON Preserves Integer And Float Token Domains");
+		const std::string EntryText = Build_RuntimeAuthorityFixtureEntry();
+		DATA_JSON_VALUE Entry;
+		std::string Status;
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> Parsed;
+		const bool_t ParsedFixture = !EntryText.empty() &&
+			CDataJson::Parse(EntryText, Entry, Status) &&
+			CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				Entry, Parsed, Status);
+		runner.Require(ParsedFixture && nullptr != Parsed &&
+			Parsed->Identity.strEffectAssetId ==
+				"effect.fixture.runtime.authority" &&
+			Parsed->Identity.iArtifactRevision == 1u &&
+			Parsed->bArtifactBindingSelfConsistent &&
+			!Parsed->bExternalIdentityAuthenticated &&
+			Parsed->bArtifactExecutionAdmission &&
+			!Parsed->bTypedProgramMaterialized &&
+			!Parsed->bRuntimeExecutionAdmission &&
+			!Parsed->bProductAdmission && Parsed->iOpcodeCount == 0u &&
+			Parsed->iResourceBindingCount == 0u &&
+			Parsed->RuntimeBlockers == std::vector<std::string>{
+				"COMPILED_AUTHORITY_EXTERNAL_AUTHENTICATION_PENDING",
+				"TYPED_RUNTIME_PROGRAM_ADAPTER_PENDING" },
+			"Format3 Compiled Authority Parses As Immutable Non-Executable Runtime Input");
+
+		std::string ProductMutation = EntryText;
+		const std::string ProductField = "\"productAdmission\":false";
+		const size_t ProductOffset = ProductMutation.find(ProductField);
+		if (ProductOffset != std::string::npos)
+			ProductMutation.replace(
+				ProductOffset, ProductField.size(), "\"productAdmission\":true");
+		DATA_JSON_VALUE MutatedEntry;
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> Preserved = Parsed;
+		const bool_t ProductRejected =
+			std::string::npos != ProductOffset &&
+			CDataJson::Parse(ProductMutation, MutatedEntry, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				MutatedEntry, Preserved, Status) && Preserved == Parsed;
+		runner.Require(ProductRejected,
+			"Format3 Product Promotion Rejects Before Replacing Parsed Authority");
+
+		std::string HashMutation = EntryText;
+		const std::string IrHashField = "\"compiledIrSha256\":\"" +
+			Parsed->Identity.strCompiledIrSha256 + "\"";
+		const size_t HashOffset = HashMutation.find(IrHashField);
+		if (HashOffset != std::string::npos)
+			HashMutation[HashOffset + IrHashField.size() - 2u] =
+				HashMutation[HashOffset + IrHashField.size() - 2u] == '0' ? '1' : '0';
+		const bool_t HashRejected = std::string::npos != HashOffset &&
+			CDataJson::Parse(HashMutation, MutatedEntry, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				MutatedEntry, Preserved, Status) && Preserved == Parsed;
+		runner.Require(HashRejected,
+			"Format3 Cross-Layer Compiled IR Hash Mutation Rejects Transactionally");
+
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		const std::filesystem::path ModuleDirectory =
+			0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(ModuleBuffer).parent_path();
+		const std::filesystem::path CatalogPath = ModuleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code Error;
+		std::filesystem::create_directories(CatalogPath.parent_path(), Error);
+		std::vector<char> PriorBytes;
+		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		if (HadPrior)
+		{
+			std::ifstream Prior(CatalogPath, std::ios::binary);
+			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		const std::string CatalogText =
+			"{\"schema\":\"lostark.effect-runtime-catalog\","
+			"\"formatVersion\":3,\"components\":[],\"effects\":[" +
+			EntryText + "]}";
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(CatalogText.data(),
+				static_cast<std::streamsize>(CatalogText.size()));
+		}
+		CEffectCatalog::Clear();
+		const bool_t CatalogLoaded = CEffectCatalog::Load(Status);
+		const uint64_t Revision = CEffectCatalog::Get_RuntimeRevision();
+		const std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>
+			CatalogAuthority = CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority");
+		runner.Require(CatalogLoaded && Revision != 0u &&
+			nullptr != CatalogAuthority &&
+			CatalogAuthority->Identity.strCompiledIrSha256 ==
+				Parsed->Identity.strCompiledIrSha256 &&
+			CEffectCatalog::Contains_RuntimeAuthority(
+				"effect.fixture.runtime.authority") &&
+			!CEffectCatalog::Contains("effect.fixture.runtime.authority") &&
+			nullptr == CEffectCatalog::Find("effect.fixture.runtime.authority") &&
+			CEffectCatalog::Get_RuntimeAuthorityAssetIds() ==
+				std::vector<std::string>{ "effect.fixture.runtime.authority" },
+			"Format3 Catalog Commits Compiled Authority Without Raw Drawable Document");
+
+		std::string FloatingVersionCatalog = CatalogText;
+		const std::string CatalogVersion = "\"formatVersion\":3";
+		const size_t CatalogVersionOffset =
+			FloatingVersionCatalog.find(CatalogVersion);
+		if (CatalogVersionOffset != std::string::npos)
+		{
+			FloatingVersionCatalog.replace(CatalogVersionOffset,
+				CatalogVersion.size(), "\"formatVersion\":3.0");
+		}
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(FloatingVersionCatalog.data(),
+				static_cast<std::streamsize>(FloatingVersionCatalog.size()));
+		}
+		const bool_t FloatingVersionRejected =
+			!CEffectCatalog::Load(Status);
+		runner.Require(std::string::npos != CatalogVersionOffset &&
+			FloatingVersionRejected &&
+			CEffectCatalog::Get_RuntimeRevision() == Revision &&
+			CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority") == CatalogAuthority,
+			"Format3 Floating Point Version Rejects And Preserves Prior Catalog");
+
+		const std::string InvalidCatalog =
+			"{\"schema\":\"lostark.effect-runtime-catalog\","
+			"\"formatVersion\":3,\"components\":[],\"effects\":[" +
+			ProductMutation + "]}";
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(InvalidCatalog.data(),
+				static_cast<std::streamsize>(InvalidCatalog.size()));
+		}
+		const bool_t ReloadRejected = !CEffectCatalog::Load(Status);
+		runner.Require(ReloadRejected &&
+			CEffectCatalog::Get_RuntimeRevision() == Revision &&
+			CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority") == CatalogAuthority,
+			"Format3 Catalog Failed Reload Preserves Prior Revision And Pointer");
+
+		CEffectCatalog::Clear();
+		if (HadPrior)
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(PriorBytes.data(),
+				static_cast<std::streamsize>(PriorBytes.size()));
+		}
+		else
+		{
+			std::filesystem::remove(CatalogPath, Error);
+		}
+	}
+
 	void Test_Artist31470SourceContractRoundTrip(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& path)
@@ -5468,6 +5764,12 @@ int main(const int argc, char* argv[])
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-runtime-authority")
+	{
+		Test_EffectRuntimeAuthorityCatalog(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

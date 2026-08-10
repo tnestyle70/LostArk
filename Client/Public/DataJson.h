@@ -29,10 +29,12 @@ public:
 public:
 	static DATA_JSON_VALUE Null();
 	static DATA_JSON_VALUE Boolean(bool_t value);
-	static DATA_JSON_VALUE Number(double value);
+	static DATA_JSON_VALUE Number(
+		double value, bool_t bFloatingPointToken = false);
 	static DATA_JSON_VALUE String(string value);
 	static DATA_JSON_VALUE Array(ARRAY value);
-	static DATA_JSON_VALUE Object(OBJECT value);
+	static DATA_JSON_VALUE Object(
+		OBJECT value, vector<string> insertionOrder = {});
 
 	DATA_JSON_TYPE Get_Type() const { return m_eType; }
 	bool_t Is_Null() const {
@@ -56,18 +58,26 @@ public:
 
 	bool_t Get_Boolean() const { return m_Boolean; }
 	double Get_Number() const { return m_Number; }
+	bool_t Was_FloatingPointToken() const {
+		return m_bFloatingPointToken;
+	}
 	const string& Get_String() const { return m_String; }
 	const ARRAY& Get_Array() const { return m_Array; }
 	const OBJECT& Get_Object() const { return m_Object; }
+	const vector<string>& Get_ObjectInsertionOrder() const {
+		return m_ObjectInsertionOrder;
+	}
 	const DATA_JSON_VALUE* Find(string_view key) const;
 
 private:
 	DATA_JSON_TYPE m_eType = DATA_JSON_TYPE::NULL_VALUE;
 	bool_t m_Boolean = false;
 	double m_Number = {};
+	bool_t m_bFloatingPointToken = false;
 	string m_String;
 	ARRAY m_Array;
 	OBJECT m_Object;
+	vector<string> m_ObjectInsertionOrder;
 };
 
 struct DATA_JSON_PARSE_LIMITS final

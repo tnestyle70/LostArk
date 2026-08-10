@@ -297,6 +297,9 @@
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Effect_Playback.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -706,6 +709,9 @@
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>

@@ -103,6 +103,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp">
 	  <Link>Client\Effect_CascadeCompiler.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp">
+	  <Link>Client\Effect_RuntimeAuthority.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp">
 	  <Link>Client\Effect_Distribution.cpp</Link>
 	</ClCompile>
