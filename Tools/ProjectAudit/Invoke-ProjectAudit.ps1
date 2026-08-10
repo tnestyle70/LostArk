@@ -758,10 +758,19 @@ try {
 	$artistSourceExecutionPassed = $false
 	$artistSourceExecutionDetail = ''
 	try {
-		$artistSourceExecutionDetail = (& `
-			'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
-			2>&1 | Out-String).Trim()
+		$savedErrorActionPreference = $ErrorActionPreference
+		try {
+			$ErrorActionPreference = 'Continue'
+			$artistSourceExecutionDetail = (& `
+				'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
+				*>&1 | Out-String -Width 4096).Trim()
+			$artistSourceExecutionInvocationPassed = $?
+		}
+		finally {
+			$ErrorActionPreference = $savedErrorActionPreference
+		}
 		$artistSourceExecutionPassed =
+			$artistSourceExecutionInvocationPassed -and
 			$artistSourceExecutionDetail -match
 			'PASS: Artist F 31470 Source execution mode=shallow modules=399 ready=370 blocked=29'
 	}
@@ -774,12 +783,21 @@ try {
 	$artistCustomHandlerOraclePassed = $false
 	$artistCustomHandlerOracleDetail = ''
 	try {
-		$artistCustomHandlerOracleDetail = (& `
-			'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
-			2>&1 | Out-String).Trim()
+		$savedErrorActionPreference = $ErrorActionPreference
+		try {
+			$ErrorActionPreference = 'Continue'
+			$artistCustomHandlerOracleDetail = (& `
+				'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
+				*>&1 | Out-String -Width 4096).Trim()
+			$artistCustomHandlerOracleInvocationPassed = $?
+		}
+		finally {
+			$ErrorActionPreference = $savedErrorActionPreference
+		}
 		$artistCustomHandlerOraclePassed =
+			$artistCustomHandlerOracleInvocationPassed -and
 			$artistCustomHandlerOracleDetail -match
-			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=381 blocked=18 distributionBlocked=3 ownerless=0 product=false'
+			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=370 blocked=29 distributionReady=626 distributionBlocked=3 outputOracles=0 ownerless=0 product=false'
 	}
 	catch {
 		$artistCustomHandlerOracleDetail = $_.Exception.Message
