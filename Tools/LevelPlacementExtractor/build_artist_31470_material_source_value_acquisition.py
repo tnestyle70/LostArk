@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import build_artist_31470_material_evidence_contract as material_contract
+import build_artist_31470_material_runtime_oracle as material_runtime_oracle
 import extract_artist_31470_shader_cache_oracle as shader_oracle
 from extract_artist_31470_material_render_state import parse_property_records
 from extract_ue3_effect_material_closure import load_package
@@ -91,6 +92,16 @@ TARGET_TEXTURE_FIELDS = ("addressx", "addressy", "srgb", "filter", "lodgroup")
 DRIVER_CACHE_AUDIT = {
     "evidenceKind": "EXTERNAL_READ_ONLY_AUDIT_SNAPSHOT",
     "admissionInput": False,
+    "corroborationOnly": True,
+    "regeneratedByThisGenerator": False,
+    "verificationManifest": None,
+    "reproducibility": "CORROBORATION_ONLY_NOT_REGENERATED_BY_THIS_BUILDER",
+    "observedDate": "2026-08-10",
+    "observationTimePrecision": "SESSION_DATE_ONLY",
+    "accessCaveat": (
+        "COUNTS_AND_ZERO_MATCHES_COVER_ONLY_THE_PATHS_AND_READABLE_BYTES_REPORTED_"
+        "BY_THE_EXTERNAL_READ_ONLY_AUDIT;_13_ACTIVE_NVIDIA_NVPH_FILES_WERE_SHARE_LOCKED"
+    ),
     "roots": [
         {
             "rootKind": "WINDOWS_D3D_SHADER_CACHE",
@@ -146,6 +157,16 @@ DRIVER_CACHE_AUDIT = {
 GIT_AND_REMOTE_AUDIT = {
     "evidenceKind": "EXTERNAL_READ_ONLY_AUDIT_SNAPSHOT",
     "admissionInput": False,
+    "corroborationOnly": True,
+    "regeneratedByThisGenerator": False,
+    "verificationManifest": None,
+    "reproducibility": "CORROBORATION_ONLY_NOT_REGENERATED_BY_THIS_BUILDER",
+    "observedDate": "2026-08-10",
+    "observationTimePrecision": "SESSION_DATE_ONLY",
+    "accessCaveat": (
+        "COUNTS_COVER_ONLY_REPOSITORY_OBJECTS_LOCAL_LFS_STORAGE_AND_REMOTE_"
+        "ENDPOINTS_ACCESSIBLE_TO_THE_EXTERNAL_READ_ONLY_AUDIT_SESSION"
+    ),
     "reachableGit": {
         "ue3UpkOrScriptPackagePathCount": 0,
         "providerDecision": "NO_PROVIDER",
@@ -965,8 +986,8 @@ def texture_export_evidence(
 def validate_previous_exact_sampler(
     binding: dict[str, Any], texture: dict[str, Any]
 ) -> None:
-    previous = binding["sampling"]["provenance"]["rawSamplerFields"]
-    for name in ("addressx", "addressy", "srgb"):
+    previous = binding["sourceTextureEvidence"]["rawSamplerFields"]
+    for name in TARGET_TEXTURE_FIELDS:
         expected = previous[name]
         actual = texture["fields"][name]
         require(expected["status"] == actual["status"], "exact sampler field status changed")
@@ -984,21 +1005,25 @@ def build_sampler_rows(
     package_cache: PackageCache,
     current_install_root: Path,
 ) -> list[dict[str, Any]]:
-    occurrences_by_recipe: dict[str, list[str]] = defaultdict(list)
-    for occurrence in contract["occurrences"]:
-        occurrences_by_recipe[occurrence["materialRecipeId"]].append(
-            occurrence["occurrenceId"]
-        )
-
+    rejected_by_field = {
+        row["inputFieldId"]: row for row in contract["rejectedSamplerBindings"]
+    }
+    require(len(rejected_by_field) == 4, "rejected sampler denominator changed")
     seeds: list[dict[str, Any]] = []
-    for baseline in runtime_receipt["materialFeasibilityMatrices"]["directUnprovenSamplerRows"]:
+    for baseline in runtime_receipt["materialFeasibilityMatrices"]["strictSamplerRows"]:
+        previous = rejected_by_field.get(baseline["fieldId"])
         seeds.append(
             {
-                "baselineKind": "PREVIOUSLY_BLOCKED_68",
+                "baselineKind": (
+                    "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
+                    if previous is not None
+                    else "PREVIOUSLY_BLOCKED_68"
+                ),
                 "matrixRowId": baseline["matrixRowId"],
                 "materialRecipeId": baseline["materialRecipeId"],
                 "materialOccurrenceIds": baseline["materialOccurrenceIds"],
                 "fieldId": baseline["fieldId"],
+                "fieldKind": baseline["fieldKind"],
                 "bindingOriginAndOwner": baseline["bindingOriginAndOwner"],
                 "logicalTexturePath": baseline["instanceRecordIdentity"]["textureObjectPath"],
                 "rendererConsumption": baseline["rendererConsumption"],
@@ -1009,44 +1034,7 @@ def build_sampler_rows(
                 "numericTolerance": baseline["numericTolerance"],
                 "owner": baseline["owner"],
                 "finalRuntimeOwner": baseline["finalRuntimeOwner"],
-                "previousExactBinding": None,
-            }
-        )
-    for binding in contract["exactSamplerBindings"]:
-        recipe_id = binding["materialRecipeId"]
-        seeds.append(
-            {
-                "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
-                "matrixRowId": stable_id(
-                    "material-feasibility-sampler", binding["bindingId"], "strict-reaudit"
-                ),
-                "materialRecipeId": recipe_id,
-                "materialOccurrenceIds": sorted(occurrences_by_recipe[recipe_id]),
-                "fieldId": binding["inputFieldId"],
-                "bindingOriginAndOwner": {
-                    "bindingOrigin": binding["bindingOrigin"],
-                    "evidenceOwnerRecipeId": recipe_id,
-                    "previousBindingId": binding["bindingId"],
-                },
-                "logicalTexturePath": binding["logicalTexturePath"],
-                "rendererConsumption": {
-                    "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
-                    "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
-                },
-                "pilotFixtureIds": ["warp-sampler-address-toggle"],
-                "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
-                "numericOracleInputDomain": [
-                    "Texture2D AddressX/AddressY/Filter/sRGB",
-                    "source-revision TextureGroup filter configuration",
-                ],
-                "numericOracleExpectedOutput": [
-                    "D3D11_SAMPLER_DESC",
-                    "D3D11 shader-resource-view color format",
-                ],
-                "numericTolerance": {"absolute": 0.0, "relative": 0.0},
-                "owner": "G05-M",
-                "finalRuntimeOwner": "G05-M",
-                "previousExactBinding": binding,
+                "previousExactBinding": previous,
             }
         )
     require(len(seeds) == 72, "strict sampler seed denominator changed")
@@ -1079,7 +1067,7 @@ def build_sampler_rows(
         )
         row = {
             **seed,
-            "fieldKind": "DIRECT_TEXTURE_SAMPLER",
+            "fieldKind": seed.get("fieldKind", "DIRECT_TEXTURE_SAMPLER"),
             "textureExportEvidence": texture,
             "partialSourceExactFields": source_exact_fields,
             "partialCurrentOnlyFields": current_only_fields,
@@ -1156,11 +1144,9 @@ def cluster_summary(
 
 def build_receipt(
     contract: dict[str, Any],
-    runtime_receipt: dict[str, Any],
     render_receipt: dict[str, Any],
     shader_receipt: dict[str, Any],
     contract_path: Path,
-    runtime_receipt_path: Path,
     render_receipt_path: Path,
     shader_receipt_path: Path,
     source_archive_root: Path,
@@ -1168,7 +1154,6 @@ def build_receipt(
     current_install_root: Path,
 ) -> dict[str, Any]:
     require(contract.get("contractSha256"), "typed contract digest missing")
-    require(runtime_receipt.get("receiptSha256"), "runtime receipt digest missing")
     require(render_receipt.get("receiptSha256"), "render receipt digest missing")
     require(shader_receipt.get("receiptSha256"), "shader receipt digest missing")
     manifest_by_logical, manifest_identity = manifest_index(source_pack_root)
@@ -1186,12 +1171,24 @@ def build_receipt(
     )
     current_snapshot = current_candidate_snapshot(current_install_root)
     native_sets = static_native_sets(shader_receipt, package_cache)
-    render_rows = build_render_rows(runtime_receipt, render_receipt, current_snapshot)
+    baseline_runtime = {
+        "materialFeasibilityMatrices": (
+            material_runtime_oracle.build_material_feasibility_matrices(
+                contract,
+                shader_receipt,
+                warp_state_verification=None,
+                source_value_acquisition=None,
+            )
+        )
+    }
+    render_rows = build_render_rows(
+        baseline_runtime, render_receipt, current_snapshot
+    )
     static_rows = build_static_rows(
-        contract, runtime_receipt, native_sets, package_cache
+        contract, baseline_runtime, native_sets, package_cache
     )
     sampler_rows = build_sampler_rows(
-        contract, runtime_receipt, package_cache, current_install_root
+        contract, baseline_runtime, package_cache, current_install_root
     )
 
     exact4 = [
@@ -1269,7 +1266,7 @@ def build_receipt(
 
     receipt = {
         "schema": "lostark.artist-31470-material-source-value-acquisition-receipt",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "root": CONTRACT_ROOT,
         "characterClass": "ARTIST",
         "skillId": 31470,
@@ -1277,10 +1274,16 @@ def build_receipt(
         "scope": "SOURCE_VALUE_ACQUISITION_ONLY",
         "source": [
             source_evidence(contract_path, "TYPED_MATERIAL_EVIDENCE_CONTRACT"),
-            source_evidence(runtime_receipt_path, "MATERIAL_RUNTIME_ORACLE_RECEIPT"),
             source_evidence(render_receipt_path, "RAW_RENDER_STATE_EVIDENCE_RECEIPT"),
             source_evidence(shader_receipt_path, "SHADER_CACHE_NATIVE_TAIL_RECEIPT"),
             source_evidence(SCRIPT_PATH, "SOURCE_VALUE_ACQUISITION_GENERATOR", json_input=False),
+            source_evidence(
+                SCRIPT_PATH.with_name(
+                    "build_artist_31470_material_runtime_oracle.py"
+                ),
+                "MATERIAL_FEASIBILITY_MATRIX_BUILDER",
+                json_input=False,
+            ),
             source_evidence(
                 SCRIPT_PATH.with_name("extract_artist_31470_material_render_state.py"),
                 "UE3_TAGGED_PROPERTY_PARSER",
@@ -1293,6 +1296,14 @@ def build_receipt(
             ),
         ],
         "externalArtifactSearch": {
+            "scopeBoundary": {
+                "claim": "ACCESSIBLE_LOCAL_AND_REMOTE_SCOPE_ONLY",
+                "globalExhaustionClaim": False,
+                "volumeShadowCopy": {
+                    "status": "PERMISSION_UNCHECKED",
+                    "admissionInput": False,
+                },
+            },
             "sourcePackManifest": manifest_identity,
             "sourceArchive": archive,
             "currentRevisionCandidates": current_snapshot,
@@ -1316,7 +1327,7 @@ def build_receipt(
                 "previousExactReaudit": 4,
                 "strictDenominator": 72,
                 "bindingOriginCounts": {"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1},
-                "shared627ReceiptChangedHere": False,
+                "shared627ReceiptChangedHere": True,
             },
             {
                 "requirementId": "static-blanket-reason-retirement",
@@ -1324,7 +1335,7 @@ def build_receipt(
                 "exactGuidOverrideTrue": 23,
                 "exactGuidNonoverrideSemanticsUnverified": 43,
                 "noExactGuidEntry": 28,
-                "shared627ReceiptChangedHere": False,
+                "shared627ReceiptChangedHere": True,
             },
             {
                 "requirementId": "artist-resource-manifest-texture-selector",
@@ -1351,14 +1362,13 @@ def build_receipt(
         "summary": summary,
         "admission": {
             "acquisitionReceiptEvidenceIntegrity": True,
-            "upstreamFrozen627EvidenceIntegrity": False,
+            "upstreamMaterialEvidenceIntegrity": True,
             "sourceValueProviderPartial": True,
             "executionReady": False,
             "product": False,
             "r2Entry": False,
             "decision": "R0_BLOCK_R2_NO_GO",
             "blockers": [
-                "PREVIOUSLY_ADMITTED_EXACT_SAMPLER_4_INVALID",
                 "RENDER_STATE_89_SOURCE_VALUES_UNRESOLVED",
                 "STATIC_71_SOURCE_SELECTIONS_UNRESOLVED",
                 "STRICT_SAMPLER_72_FULL_DESCRIPTORS_UNRESOLVED",
@@ -1374,11 +1384,9 @@ def build_receipt(
 def validate_receipt(
     receipt: dict[str, Any],
     contract: dict[str, Any],
-    runtime_receipt: dict[str, Any],
     render_receipt: dict[str, Any],
     shader_receipt: dict[str, Any],
     contract_path: Path,
-    runtime_receipt_path: Path,
     render_receipt_path: Path,
     shader_receipt_path: Path,
     source_archive_root: Path,
@@ -1388,7 +1396,7 @@ def validate_receipt(
     require(
         receipt.get("schema")
         == "lostark.artist-31470-material-source-value-acquisition-receipt"
-        and receipt.get("formatVersion") == 1
+        and receipt.get("formatVersion") == 2
         and receipt.get("scope") == "SOURCE_VALUE_ACQUISITION_ONLY",
         "unsupported source-value acquisition receipt",
     )
@@ -1399,11 +1407,9 @@ def validate_receipt(
     require(canonical_sha256(payload) == digest, "receipt digest mismatch")
     expected = build_receipt(
         contract,
-        runtime_receipt,
         render_receipt,
         shader_receipt,
         contract_path,
-        runtime_receipt_path,
         render_receipt_path,
         shader_receipt_path,
         source_archive_root,
@@ -1422,7 +1428,6 @@ def output_bytes(value: dict[str, Any]) -> bytes:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", type=Path, required=True)
-    parser.add_argument("--runtime-receipt", type=Path, required=True)
     parser.add_argument("--render-receipt", type=Path, required=True)
     parser.add_argument("--shader-receipt", type=Path, required=True)
     parser.add_argument("--source-archive-root", type=Path, required=True)
@@ -1436,7 +1441,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     contract = load_json(args.contract)
-    runtime_receipt = load_json(args.runtime_receipt)
     render_receipt = load_json(args.render_receipt)
     shader_receipt = load_json(args.shader_receipt)
     if args.check:
@@ -1444,11 +1448,9 @@ def main(argv: list[str] | None = None) -> int:
         validate_receipt(
             checked,
             contract,
-            runtime_receipt,
             render_receipt,
             shader_receipt,
             args.contract,
-            args.runtime_receipt,
             args.render_receipt,
             args.shader_receipt,
             args.source_archive_root,
@@ -1465,11 +1467,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     receipt = build_receipt(
         contract,
-        runtime_receipt,
         render_receipt,
         shader_receipt,
         args.contract,
-        args.runtime_receipt,
         args.render_receipt,
         args.shader_receipt,
         args.source_archive_root,

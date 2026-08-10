@@ -24,10 +24,6 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
             REPO_ROOT
             / "Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json"
         )
-        cls.runtime_path = (
-            REPO_ROOT
-            / "Data/Effects/Imported/Artist/Materials/skill.31470.material-runtime-oracle.receipt.json"
-        )
         cls.render_path = (
             REPO_ROOT
             / "Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json"
@@ -50,17 +46,14 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
             r"C:\ProgramData\Smilegate\Games\LOSTARK"
         )
         cls.contract = acquisition.load_json(cls.contract_path)
-        cls.runtime = acquisition.load_json(cls.runtime_path)
         cls.render = acquisition.load_json(cls.render_path)
         cls.shader = acquisition.load_json(cls.shader_path)
         cls.committed = acquisition.load_json(cls.output_path)
         cls.rebuilt = acquisition.build_receipt(
             cls.contract,
-            cls.runtime,
             cls.render,
             cls.shader,
             cls.contract_path,
-            cls.runtime_path,
             cls.render_path,
             cls.shader_path,
             cls.source_archive_root,
@@ -73,11 +66,9 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
         acquisition.validate_receipt(
             receipt,
             cls.contract,
-            cls.runtime,
             cls.render,
             cls.shader,
             cls.contract_path,
-            cls.runtime_path,
             cls.render_path,
             cls.shader_path,
             cls.source_archive_root,
@@ -131,24 +122,46 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
                 ),
             )
 
-    def test_coordinated_static_guid_reseal_is_rejected(self) -> None:
-        mutated = copy.deepcopy(self.committed)
-        row = next(
-            row
-            for row in mutated["matrices"]["staticPermutationRows"]
-            if row["sourceValueAcquired"]
-        )
-        replacement = "00" * 16
-        row["parentExpression"]["expressionGuidHex"] = replacement
-        row["parentExpression"]["expressionGuidProperty"]["value"]["hex"] = replacement
-        row["micNativeSelection"]["entry"]["expressionGuidHex"] = replacement
-        row["micNativeSelection"]["entry"]["rawExpressionGuidHex"] = replacement
-        mutated["summary"]["staticRowSetSha256"] = acquisition.canonical_sha256(
-            mutated["matrices"]["staticPermutationRows"]
-        )
-        self.reseal(mutated)
-        with self.assertRaisesRegex(ValueError, "stale or laundered"):
-            self.validate(mutated)
+    def test_coordinated_static_guid_value_and_override_reseals_are_rejected(self) -> None:
+        for mutation_kind in ("guid", "value", "override"):
+            with self.subTest(mutation_kind=mutation_kind):
+                mutated = copy.deepcopy(self.committed)
+                row = next(
+                    row
+                    for row in mutated["matrices"]["staticPermutationRows"]
+                    if row["sourceValueAcquired"]
+                )
+                entry = row["micNativeSelection"]["entry"]
+                if mutation_kind == "guid":
+                    replacement = "00" * 16
+                    row["parentExpression"]["expressionGuidHex"] = replacement
+                    row["parentExpression"]["expressionGuidProperty"]["value"][
+                        "hex"
+                    ] = replacement
+                    entry["expressionGuidHex"] = replacement
+                    entry["rawExpressionGuidHex"] = replacement
+                elif mutation_kind == "value":
+                    entry["value"] = not entry["value"]
+                    entry["rawValueUint32Hex"] = (
+                        "01000000" if entry["value"] else "00000000"
+                    )
+                else:
+                    entry["bOverride"] = False
+                    entry["rawOverrideUint32Hex"] = "00000000"
+                    row["sourceValueAcquired"] = False
+                    row["sourceValueDecision"] = (
+                        "SOURCE_EXACT_NONOVERRIDE_ENTRY_OBSERVED_"
+                        "INHERITANCE_SEMANTICS_UNVERIFIED"
+                    )
+                    row["executionDecision"] = "BLOCKED"
+                mutated["summary"]["staticRowSetSha256"] = (
+                    acquisition.canonical_sha256(
+                        mutated["matrices"]["staticPermutationRows"]
+                    )
+                )
+                self.reseal(mutated)
+                with self.assertRaisesRegex(ValueError, "stale or laundered"):
+                    self.validate(mutated)
 
     def test_previous_exact_four_are_blocked_and_denominator_is_72(self) -> None:
         rows = self.committed["matrices"]["strictSamplerRows"]
@@ -200,12 +213,37 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
 
     def test_execution_and_product_remain_closed(self) -> None:
         admission = self.committed["admission"]
-        self.assertFalse(admission["upstreamFrozen627EvidenceIntegrity"])
+        self.assertTrue(admission["upstreamMaterialEvidenceIntegrity"])
         self.assertFalse(admission["executionReady"])
         self.assertFalse(admission["product"])
         self.assertFalse(admission["r2Entry"])
         self.assertEqual(0, self.committed["summary"]["strictExecutionReadyCount"])
         self.assertEqual(0, self.committed["summary"]["productCount"])
+
+    def test_external_search_snapshots_are_qualified_corroboration_only(self) -> None:
+        search = self.committed["externalArtifactSearch"]
+        boundary = search["scopeBoundary"]
+        self.assertEqual("ACCESSIBLE_LOCAL_AND_REMOTE_SCOPE_ONLY", boundary["claim"])
+        self.assertFalse(boundary["globalExhaustionClaim"])
+        self.assertEqual(
+            "PERMISSION_UNCHECKED", boundary["volumeShadowCopy"]["status"]
+        )
+        self.assertFalse(boundary["volumeShadowCopy"]["admissionInput"])
+
+        for snapshot_name in ("driverShaderCaches", "gitAndRemote"):
+            snapshot = search[snapshot_name]
+            self.assertEqual(
+                "EXTERNAL_READ_ONLY_AUDIT_SNAPSHOT", snapshot["evidenceKind"]
+            )
+            self.assertFalse(snapshot["admissionInput"])
+            self.assertTrue(snapshot["corroborationOnly"])
+            self.assertFalse(snapshot["regeneratedByThisGenerator"])
+            self.assertIsNone(snapshot["verificationManifest"])
+            self.assertEqual("2026-08-10", snapshot["observedDate"])
+            self.assertEqual(
+                "SESSION_DATE_ONLY", snapshot["observationTimePrecision"]
+            )
+            self.assertTrue(snapshot["accessCaveat"])
 
 
 if __name__ == "__main__":

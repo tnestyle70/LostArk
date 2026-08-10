@@ -16,8 +16,10 @@ Material evidence contract로 고정한다. 이 단계는 원본 입력과 실�
 - 27개는 `MaterialInstanceConstant` 25개와 raw `Material` 2개다.
 - instance scalar override 342개, vector override 19개, non-null texture override 71개다.
 - 기존 343/20 관찰은 builtin row의 누락 필드를 PowerShell `@($null).Count == 1`로 센 오류다.
-- exact DDS/sampler binding은 4개지만 origin은 instance override 3개와 parent default 1개다.
-  따라서 direct texture override 71개 중 exact sampler는 3개, sampler-unproven은 68개다.
+- exact DDS asset binding이 있던 4개 sampler를 재감사한 결과 source Texture2D의 omitted
+  AddressX/Y·sRGB·Filter를 class default로 추측한 사실이 확인됐다. 네 행은 legacy exact에서
+  `BLOCKED`로 철회하며 direct texture override 71개 전부 sampler-unproven이다. Parent default 1개까지
+  합친 strict execution denominator는 72다.
 - exact `(parent package SHA, Material path)` 기준 arithmetic family는 23개다. 이 23개 graph의
   cooked-stripped null expression slot 합계는 1,803개, unresolved input edge 합계는 502개다.
   23/23 모두 `RECONSTRUCTED_GRAPH`이며 Source-exact graph admission은 금지한다.
@@ -29,7 +31,7 @@ Material evidence contract로 고정한다. 이 단계는 원본 입력과 실�
 | 등급 | 허용 근거 | 금지 경계 |
 |---|---|---|
 | `SOURCE_EXACT_INPUT` | exact package/export의 identity, scalar/vector/texture override, surviving parent default | cooked-stripped 연산 의미로 승격 금지 |
-| `SOURCE_EXACT_SAMPLER` | pinned DDS receipt의 asset/binding별 4건만 | 다른 texture override에 sampler default 전파 금지 |
+| `SOURCE_EXACT_SAMPLER` | source-specific full descriptor 5-field provenance가 모두 있을 때만; 현재 0건 | DDS identity나 omitted class default만으로 승격 금지 |
 | `SOURCE_EXACT_STATIC_PERMUTATION` | MIC selected static parameter payload가 해독된 경우만 | `bHasStaticPermutationResource`를 선택값으로 사용 금지 |
 | `SOURCE_EXACT_RENDER_STATE` | raw Material export에 명시적으로 직렬화된 필드만 | omitted 값을 false/default로 간주 금지 |
 | `SOURCE_EXACT_PARTIAL_CULL` | explicit `TwoSided` 또는 exact MIC `OverrideTwoSided`만 | full cull mode 정확성 주장 금지 |
@@ -73,8 +75,9 @@ builder는 다음을 수행한다.
    일치해야 `SOURCE_EXACT_INPUT`이다. Surviving parent default는 exact parent package/export,
    exact inheritance edge, raw expression export와 default/texture property record, 같은 이름의 closer
    override 부재를 모두 필드별로 증명하고 `bindingOrigin=PARENT_DEFAULT`를 보존할 때만 exact다.
-4. exact sampler 4건을 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1`로 검증하고 나머지 68 direct
-   texture override에는 sampler 값을 만들지 않는다.
+4. 이전 exact sampler 4건을 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1` identity로 보존하되
+   `rejectedSamplerBindings`로 분리한다. 71 direct와 parent default 1의 strict 72행 모두에
+   AddressX/Y, sRGB, Filter, LODGroup raw explicit/omitted provenance를 요구하고 값을 만들지 않는다.
 5. parent static-switch default와 MIC selected permutation을 별도 배열에 둔다. 후자는 현재 비어 있고
    `bHasStaticPermutationResource`가 true여도 blocker를 유지한다.
 6. explicit render-state 필드와 omitted/default-unproven 필드를 분리한다. Enum/bool 값은 raw encoded
@@ -93,8 +96,8 @@ builder는 다음을 수행한다.
 
 ### `Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json`
 
-27 recipe와 34 occurrence, 필드별 provenance/fidelity, sampler origin 분모, static/render/graph/evaluator
-blocker, aggregate admission을 가진 generated contract다.
+27 recipe와 34 occurrence, 필드별 provenance/fidelity, rejected legacy sampler 4, strict sampler 72,
+static/render/graph/evaluator blocker, aggregate admission을 가진 generated format 4 contract다.
 
 ### `Tools/LevelPlacementExtractor/build_artist_31470_material_oracle_acquisition.py`
 
@@ -129,7 +132,8 @@ tracked LF/CRLF equivalence와 raw artifact CRLF mutation 차단을 포함한다
 
 ### `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`
 
-shallow mode에서 두 generator의 self/check와 unit test, 27/34 및 342/19/71, exact sampler 3+1,
+shallow mode에서 두 generator의 self/check와 unit test, 27/34 및 342/19/71, exact sampler 0,
+rejected legacy 3+1과 strict sampler 72,
 Product 0을 검증한다. deep mode는 source package root, exact DDS root, source-pack manifest를 명시적으로
 받아 raw UPK/DDS/external JSON SHA를 다시 검증한다.
 
@@ -152,7 +156,8 @@ focused audit를 호출해 `effect.artist-31470-material-evidence-contract` 결�
 - typed generator `--check`가 checkout LF/CRLF에는 무관하지만 다른 byte/token 변화는 거부한다.
 - recipe 27/27, rendered occurrence 34/34 join이 닫힌다.
 - scalar/vector/direct texture override가 정확히 342/19/71이고 blank/duplicate가 0이다.
-- exact sampler는 전체 4, 그중 instance 3/parent default 1이며 direct unproven은 68이다.
+- exact sampler는 0이며 legacy exact 4는 instance 3/parent default 1 identity를 유지한 채 BLOCKED다.
+  direct unproven은 71, strict execution denominator는 72다.
 - static permutation, full render state, cooked arithmetic evaluator blocker가 유지되어 Product admission은 0이다.
 - 23/23 installed Material leaf와 1,596 ShaderCache export/선택 후보 11개가 raw identity로 재현되며,
   direct native-state-key join은 0/23이고 decoder/evaluator/Product는 열리지 않는다.

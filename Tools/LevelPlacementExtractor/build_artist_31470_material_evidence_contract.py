@@ -47,7 +47,7 @@ EXPECTED_RAW_RENDER_FIELD_EVIDENCE_SHA256 = (
     "33706c4a19abf5ebb1bbf7647d1fca6f6eff4bbac3357d494e1eb06425cdaeff"
 )
 EXPECTED_OCCURRENCE_IDENTITY_SHA256 = (
-    "faf2027f930a7905e87e867cb3a89b9ca75e2647b57872045dd2369dff5e6317"
+    "8110cc2e44b885b82093b029d763a44301ba3787dee56ab0d90bb37e135d8c11"
 )
 EXPECTED_RECIPE_IDENTITY_SHA256 = (
     "f4cb7f8d5fae3699d55eb56a1a0442c6d55a0e5f062766a23fb654d665d24e22"
@@ -59,16 +59,16 @@ EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256 = (
     "6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9"
 )
 EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256 = (
-    "c51178bebaf92f2583cef2f7e0b80750c643e9c09c7eb4bbd1e29ddf5708e8f2"
+    "23dfa38d922edc5676a461968e6fbe3c6442b7ab5459dce1fd294a36d76d080a"
 )
 EXPECTED_CONTRACT_EXACT_INPUT_LINEAGE_SHA256 = (
-    "891e93591f63b03466408829b8eb961f8a363889862db1132184285f6bd420e3"
+    "52c73db22b2e8bbe35b655719f082c73bd0df6dce5bce6a5243b1dc5e17be2ec"
 )
 EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256 = (
-    "f1e5ac9e39cd6dceda1c7353b4032b9359f59f4993f0a50f7ea8e09bf94b0d69"
+    "d11258f05f897542930b23016a07248d7136d1dd20c565cd943ff1f6c74674e2"
 )
 EXPECTED_RECIPE_COMPOSITION_SHA256 = (
-    "0214ba2113f429ee5d7a31d1ca4c560780ad65b1e741e22e85e3dfc3f914bf3c"
+    "39b73297b4e96e26dd2d5b79aacf85f32bb083407823b571c80c4d8dce05c9f6"
 )
 
 BLEND_MODE_DOMAIN = (
@@ -627,6 +627,7 @@ def raw_exact_input_fixture_payload(
                         for name in (
                             "parametername",
                             "defaultvalue",
+                            "expressionguid",
                             "texture",
                         )
                     },
@@ -1647,6 +1648,29 @@ def parent_default_rows(
         )
         raw_field_name = "texture" if kind == "texture" else "defaultvalue"
         raw_default_field = raw_expression.get("fields", {}).get(raw_field_name)
+        raw_guid_field = raw_expression.get("fields", {}).get("expressionguid")
+        expression_guid_hex: str | None = None
+        expression_guid_lineage: dict[str, Any] | None = None
+        if kind == "staticSwitch":
+            raw_guid_value = (
+                raw_guid_field.get("value")
+                if isinstance(raw_guid_field, dict)
+                else None
+            )
+            require(
+                isinstance(raw_guid_field, dict)
+                and raw_guid_field.get("status") == "SERIALIZED_EXPLICIT"
+                and isinstance(raw_guid_value, dict)
+                and raw_guid_value.get("size") == 16
+                and len(str(raw_guid_value.get("hex") or "")) == 32,
+                f"static parent default lacks an exact ExpressionGUID: {material_path}.{name}",
+            )
+            expression_guid_hex = str(raw_guid_value["hex"]).lower()
+            expression_guid_lineage = immutable_property_lineage(
+                raw_expression,
+                raw_guid_field,
+                f"{material_path}.{name}.expressionGuid",
+            )
         exact_value_proven = (
             isinstance(raw_default_field, dict)
             and raw_default_field.get("status") == "SERIALIZED_EXPLICIT"
@@ -1684,6 +1708,8 @@ def parent_default_rows(
             "normalizedParameterName": normalized_name,
             "value": copy.deepcopy(value),
         }
+        if expression_guid_hex is not None:
+            decoded_canonical_value["expressionGuidHex"] = expression_guid_hex
         if kind == "texture" and exact_value_proven:
             decoded_canonical_value["packageIndex"] = int(
                 raw_default_field["value"]
@@ -1710,6 +1736,8 @@ def parent_default_rows(
                 else None
             ),
         }
+        if expression_guid_lineage is not None:
+            lineage["expressionGuidPropertyLineage"] = expression_guid_lineage
         lineage_sha256 = canonical_sha256(lineage)
         evidence = {
             "fieldId": stable_id(
@@ -1754,9 +1782,14 @@ def parent_default_rows(
                 "lineageSha256": lineage_sha256,
             },
         }
+        if expression_guid_lineage is not None:
+            evidence["provenance"]["expressionGuidPropertyRecordSha256"] = (
+                raw_guid_field["recordSha256"]
+            )
         if not exact_value_proven:
             evidence["blocker"] = "PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED"
         if kind == "staticSwitch":
+            evidence["expressionGuidHex"] = expression_guid_hex
             evidence["selectionRole"] = "PARENT_DEFAULT_NOT_INSTANCE_SELECTION"
             static_defaults.append(evidence)
             continue
@@ -2095,7 +2128,7 @@ def validate_dds_receipt(
     return [by_path[key] for key in sorted(by_path)]
 
 
-def apply_exact_sampler_bindings(
+def audit_rejected_sampler_bindings(
     recipes: list[dict[str, Any]], dds_assets: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     recipes_by_path = {folded(row["sourceMaterialPath"]): row for row in recipes}
@@ -2153,55 +2186,94 @@ def apply_exact_sampler_bindings(
         require(isinstance(raw_texture, dict), f"raw Texture2D join missing: {logical_path}")
         raw_export = raw_texture["export"]
         sampling = raw_texture["sampling"]
-        binding_id = stable_id(
+        previous_binding_id = stable_id(
             "exact-sampler",
             logical_path,
             expected["materialPath"],
             expected["parameterName"],
             expected["bindingOrigin"],
         )
+        raw_sampler_fields = copy.deepcopy(raw_export["fields"])
+        required_field_names = ("addressx", "addressy", "srgb", "filter", "lodgroup")
+        require(
+            set(raw_sampler_fields) == set(required_field_names),
+            f"raw sampler descriptor field set changed: {logical_path}",
+        )
+        omitted_field_names = [
+            name
+            for name in required_field_names
+            if raw_sampler_fields[name].get("status") == "OMITTED_FROM_EXPORT"
+        ]
+        explicit_field_names = [
+            name
+            for name in required_field_names
+            if raw_sampler_fields[name].get("status") == "SERIALIZED_EXPLICIT"
+        ]
+        require(
+            len(omitted_field_names) + len(explicit_field_names)
+            == len(required_field_names)
+            and bool(omitted_field_names),
+            f"legacy exact sampler unexpectedly has a complete source descriptor: {logical_path}",
+        )
+        rejection_id = stable_id(
+            "rejected-sampler",
+            previous_binding_id,
+            "SAMPLER_DESCRIPTOR_SOURCE_DEFAULTS_UNRESOLVED",
+        )
+        source_texture_evidence = {
+            "logicalTexturePath": logical_path,
+            "rawTextureExportEvidenceId": raw_export["evidenceId"],
+            "rawTextureClassName": raw_export["className"],
+            "rawTextureExportIndex": raw_export["exportIndex"],
+            "rawTexturePackageReference": raw_export["packageReference"],
+            "rawTextureSerialOffset": raw_export["serialOffset"],
+            "rawTextureSerialSize": raw_export["serialSize"],
+            "texturePackageSha256": asset["sourceTexture2D"][
+                "physicalPackageSha256"
+            ],
+            "textureSerialSha256": asset["sourceTexture2D"]["serialSha256"],
+            "rawSamplerFields": raw_sampler_fields,
+            "serializedExplicitFieldNames": explicit_field_names,
+            "omittedFieldNames": omitted_field_names,
+        }
         field["sampler"] = {
-            "bindingId": binding_id,
-            "fidelity": "SOURCE_EXACT_SAMPLER",
-            "addressU": sampling["addressU"],
-            "addressV": sampling["addressV"],
-            "colorSpace": sampling["colorSpace"],
-            "provenance": {
-                "addressUEvidence": sampling["addressUEvidence"],
-                "addressVEvidence": sampling["addressVEvidence"],
-                "colorSpaceEvidence": sampling["colorSpaceEvidence"],
-                "ddsSha256": asset["dds"]["sha256"],
-                "texturePackageSha256": asset["sourceTexture2D"][
-                    "physicalPackageSha256"
-                ],
-                "textureSerialSha256": asset["sourceTexture2D"]["serialSha256"],
-                "rawTextureExportEvidenceId": raw_export["evidenceId"],
-                "rawTextureClassName": raw_export["className"],
-                "rawTextureExportIndex": raw_export["exportIndex"],
-                "rawTexturePackageReference": raw_export["packageReference"],
-                "rawTextureSerialOffset": raw_export["serialOffset"],
-                "rawTextureSerialSize": raw_export["serialSize"],
-                "rawSamplerFields": copy.deepcopy(raw_export["fields"]),
-            },
+            "fidelity": "UNRESOLVED_SAMPLER_PROVENANCE",
+            "blocker": "SAMPLER_DESCRIPTOR_SOURCE_DEFAULTS_UNRESOLVED",
+            "rejectionId": rejection_id,
+            "sourceTextureEvidence": source_texture_evidence,
         }
         result.append(
             {
-                "bindingId": binding_id,
+                "rejectionId": rejection_id,
+                "previousBindingId": previous_binding_id,
+                "previousFidelity": "SOURCE_EXACT_SAMPLER",
                 "materialRecipeId": recipe["recipeId"],
                 "inputFieldId": field["fieldId"],
                 "logicalTexturePath": logical_path,
                 "parameterName": expected["parameterName"],
                 "bindingOrigin": expected["bindingOrigin"],
-                "fidelity": "SOURCE_EXACT_SAMPLER",
+                "fidelity": "UNRESOLVED_SAMPLER_PROVENANCE",
+                "decision": "BLOCKED_INCOMPLETE_SOURCE_SPECIFIC_SAMPLER_DESCRIPTOR",
                 "dds": {
                     "relativePath": asset["sourceExtractedDdsRelativePath"],
                     "byteCount": asset["dds"]["byteCount"],
                     "sha256": asset["dds"]["sha256"],
                 },
-                "sampling": copy.deepcopy(field["sampler"]),
+                "sourceTextureEvidence": source_texture_evidence,
+                "legacyDdsProjection": {
+                    "sampling": copy.deepcopy(sampling),
+                    "sourceSpecificAdmission": False,
+                    "reason": "OMITTED_FIELDS_USED_UNAUTHENTICATED_CLASS_DEFAULTS",
+                },
+                "requiredSourceProviders": [
+                    "SOURCE_REVISION_TEXTURE2D_CDO",
+                    "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+                    "SOURCE_REVISION_NATIVE_SAMPLER_CAPTURE",
+                ],
+                "sourceSpecificAdmission": False,
             }
         )
-    return sorted(result, key=lambda row: row["bindingId"])
+    return sorted(result, key=lambda row: row["rejectionId"])
 
 
 def occurrence_identity_payload(
@@ -2570,6 +2642,23 @@ def validate_emitted_input_field(
                 property_lineage is None,
                 f"unresolved default gained property lineage: {recipe_id}.{collection_name}",
             )
+        if collection_name == "staticParentDefaults":
+            expression_guid_hex = str(field.get("expressionGuidHex") or "")
+            expression_guid_lineage = lineage.get("expressionGuidPropertyLineage")
+            validate_property_lineage(
+                expression_guid_lineage,
+                f"{recipe_id}.{collection_name}[{source_order}].expressionGuid",
+            )
+            require(
+                len(expression_guid_hex) == 32
+                and decoded.get("expressionGuidHex") == expression_guid_hex
+                and expression_guid_lineage.get("export") == raw_expression
+                and field.get("provenance", {}).get(
+                    "expressionGuidPropertyRecordSha256"
+                )
+                == expression_guid_lineage.get("recordSha256"),
+                f"static ExpressionGUID lineage changed: {recipe_id}.{collection_name}",
+            )
         if binding_origin == "PARENT_DEFAULT":
             require(
                 lineage.get("inheritanceEdgeEvidenceId")
@@ -2760,7 +2849,7 @@ def build_contract(
 
     recipes.sort(key=lambda row: row["recipeId"])
     dds_assets = validate_dds_receipt(dds_receipt, texture_exports)
-    exact_sampler_bindings = apply_exact_sampler_bindings(recipes, dds_assets)
+    rejected_sampler_bindings = audit_rejected_sampler_bindings(recipes, dds_assets)
     for recipe in recipes:
         unresolved_sampler_count = sum(
             field["sampler"]["fidelity"] != "SOURCE_EXACT_SAMPLER"
@@ -2821,8 +2910,23 @@ def build_contract(
         for row in recipes
         for field in row["inputs"]["parentDefaults"]
     )
-    require(direct_exact == 3, f"exact override sampler denominator changed: {direct_exact}")
-    require(parent_exact == 1, f"exact parent sampler denominator changed: {parent_exact}")
+    require(direct_exact == 0, f"exact override sampler denominator changed: {direct_exact}")
+    require(parent_exact == 0, f"exact parent sampler denominator changed: {parent_exact}")
+    require(
+        len(rejected_sampler_bindings) == 4,
+        "rejected legacy sampler denominator changed",
+    )
+    rejected_sampler_origins = Counter(
+        row["bindingOrigin"] for row in rejected_sampler_bindings
+    )
+    require(
+        rejected_sampler_origins
+        == Counter({"INSTANCE_OVERRIDE": 3, "PARENT_DEFAULT": 1}),
+        "rejected legacy sampler origin denominator changed",
+    )
+    strict_sampler_execution_row_count = (
+        texture_count + rejected_sampler_origins["PARENT_DEFAULT"]
+    )
     aggregate_blockers = sorted(
         {blocker for recipe in recipes for blocker in recipe["blockers"]}
     )
@@ -2864,21 +2968,22 @@ def build_contract(
 
     contract: dict[str, Any] = {
         "schema": "lostark.artist-31470-typed-material-evidence-contract",
-        "formatVersion": 3,
+        "formatVersion": 4,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
         "fidelityVocabulary": [
             "SOURCE_EXACT_INPUT",
-            "SOURCE_EXACT_SAMPLER",
             "SOURCE_EXACT_STATIC_PERMUTATION",
             "SOURCE_EXACT_RENDER_STATE",
             "SOURCE_EXACT_PARTIAL_CULL",
             "RECONSTRUCTED_ARITHMETIC_FAMILY",
+            "UNRESOLVED_SAMPLER_PROVENANCE",
         ],
         "sourceEvidence": copy.deepcopy(source_evidence or {}),
         "graphFamilies": graph_families,
-        "exactSamplerBindings": exact_sampler_bindings,
+        "exactSamplerBindings": [],
+        "rejectedSamplerBindings": rejected_sampler_bindings,
         "materialRecipes": recipes,
         "occurrences": occurrences,
         "admission": {
@@ -2917,7 +3022,15 @@ def build_contract(
             "directTextureExactSamplerCount": direct_exact,
             "directTextureUnprovenSamplerCount": texture_count - direct_exact,
             "parentDefaultExactSamplerCount": parent_exact,
-            "exactSamplerBindingCount": len(exact_sampler_bindings),
+            "exactSamplerBindingCount": 0,
+            "previouslyAdmittedExactSamplerBindingCount": len(
+                rejected_sampler_bindings
+            ),
+            "rejectedSamplerBindingCount": len(rejected_sampler_bindings),
+            "strictSamplerExecutionRowCount": strict_sampler_execution_row_count,
+            "rejectedSamplerBindingSetSha256": canonical_sha256(
+                rejected_sampler_bindings
+            ),
             "arithmeticFamilyCount": len(graph_families),
             "cookedStrippedNullExpressionCount": sum(
                 row["cookedEvidence"]["nullExpressionCount"]
@@ -2950,7 +3063,7 @@ def validate_contract(
         contract.get("schema")
         == "lostark.artist-31470-typed-material-evidence-contract"
         and type(contract.get("formatVersion")) is int
-        and contract.get("formatVersion") == 3
+        and contract.get("formatVersion") == 4
         and contract.get("characterClass") == "ARTIST"
         and type(contract.get("skillId")) is int
         and contract.get("skillId") == 31470
@@ -2965,17 +3078,25 @@ def validate_contract(
     samplers = require_list(
         contract.get("exactSamplerBindings"), "contract exact samplers"
     )
+    rejected_samplers = require_list(
+        contract.get("rejectedSamplerBindings"), "contract rejected samplers"
+    )
     require(len(recipes) == EXPECTED_RECIPE_COUNT, "contract recipe denominator changed")
     require(
         len(occurrences) == EXPECTED_OCCURRENCE_COUNT,
         "contract occurrence denominator changed",
     )
     require(len(families) == EXPECTED_GRAPH_FAMILY_COUNT, "contract family denominator changed")
-    require(len(samplers) == 4, "contract exact sampler denominator changed")
+    require(len(samplers) == 0, "contract exact sampler denominator changed")
+    require(
+        len(rejected_samplers) == 4,
+        "contract rejected sampler denominator changed",
+    )
     recipe_by_id: dict[str, dict[str, Any]] = {}
     all_input_fields: dict[str, dict[str, Any]] = {}
     input_field_owners: dict[str, str] = {}
     exact_sampler_field_ids: set[str] = set()
+    rejected_sampler_field_ids: set[str] = set()
     family_ids = {str(row.get("familyId") or "") for row in families}
     require(len(family_ids) == len(families) and "" not in family_ids, "duplicate graph family ID")
     require(
@@ -3405,10 +3526,28 @@ def validate_contract(
         for field in texture_fields:
             sampler = field.get("sampler")
             require(isinstance(sampler, dict), f"texture sampler state missing: {field['fieldId']}")
-            if sampler.get("fidelity") == "SOURCE_EXACT_SAMPLER":
-                provenance = sampler.get("provenance")
+            require(
+                sampler.get("fidelity") != "SOURCE_EXACT_SAMPLER",
+                f"omitted sampler defaults were laundered as source-exact: {field['fieldId']}",
+            )
+            if sampler.get("fidelity") == "UNRESOLVED_SAMPLER_PROVENANCE":
+                provenance = sampler.get("sourceTextureEvidence")
+                raw_fields = (
+                    provenance.get("rawSamplerFields")
+                    if isinstance(provenance, dict)
+                    else None
+                )
                 require(
-                    bool(sampler.get("bindingId"))
+                    set(sampler)
+                    == {
+                        "fidelity",
+                        "blocker",
+                        "rejectionId",
+                        "sourceTextureEvidence",
+                    }
+                    and sampler.get("blocker")
+                    == "SAMPLER_DESCRIPTOR_SOURCE_DEFAULTS_UNRESOLVED"
+                    and bool(sampler.get("rejectionId"))
                     and isinstance(provenance, dict)
                     and bool(provenance.get("rawTextureExportEvidenceId"))
                     and folded(provenance.get("rawTextureClassName")) == "texture2d"
@@ -3419,13 +3558,25 @@ def validate_contract(
                     and int(provenance.get("rawTextureSerialOffset", -1)) >= 0
                     and isinstance(provenance.get("rawTextureSerialSize"), int)
                     and int(provenance.get("rawTextureSerialSize", 0)) > 0
-                    and bool(provenance.get("rawSamplerFields")),
-                    f"exact sampler provenance is incomplete: {field['fieldId']}",
+                    and isinstance(raw_fields, dict)
+                    and set(raw_fields)
+                    == {"addressx", "addressy", "srgb", "filter", "lodgroup"}
+                    and all(
+                        raw_fields[name].get("status")
+                        in {"SERIALIZED_EXPLICIT", "OMITTED_FROM_EXPORT"}
+                        for name in raw_fields
+                    )
+                    and any(
+                        raw_fields[name].get("status") == "OMITTED_FROM_EXPORT"
+                        for name in raw_fields
+                    ),
+                    f"rejected sampler provenance is incomplete: {field['fieldId']}",
                 )
-                exact_sampler_field_ids.add(field["fieldId"])
+                rejected_sampler_field_ids.add(field["fieldId"])
             else:
                 require(
                     set(sampler) == {"fidelity", "blocker"}
+                    and sampler.get("fidelity") == "UNRESOLVED"
                     and sampler.get("blocker") == "SAMPLER_EVIDENCE_MISSING",
                     f"unproven sampler gained values: {field['fieldId']}",
                 )
@@ -3462,6 +3613,46 @@ def validate_contract(
     require(
         sampler_field_ids == exact_sampler_field_ids,
         "exact sampler field set was laundered",
+    )
+    require(
+        [row.get("rejectionId") for row in rejected_samplers]
+        == sorted(str(row.get("rejectionId") or "") for row in rejected_samplers),
+        "rejected sampler bindings are not in stable identity order",
+    )
+    rejected_binding_field_ids: set[str] = set()
+    for rejected in rejected_samplers:
+        field_id = str(rejected.get("inputFieldId") or "")
+        field_sampler = all_input_fields.get(field_id, {}).get("sampler", {})
+        require(
+            field_id in all_input_fields
+            and field_id not in rejected_binding_field_ids
+            and rejected.get("materialRecipeId") == input_field_owners[field_id]
+            and rejected.get("previousFidelity") == "SOURCE_EXACT_SAMPLER"
+            and rejected.get("fidelity") == "UNRESOLVED_SAMPLER_PROVENANCE"
+            and rejected.get("decision")
+            == "BLOCKED_INCOMPLETE_SOURCE_SPECIFIC_SAMPLER_DESCRIPTOR"
+            and rejected.get("sourceSpecificAdmission") is False
+            and rejected.get("bindingOrigin")
+            == all_input_fields[field_id].get("bindingOrigin")
+            and rejected.get("rejectionId") == field_sampler.get("rejectionId")
+            and rejected.get("sourceTextureEvidence")
+            == field_sampler.get("sourceTextureEvidence")
+            and rejected.get("legacyDdsProjection", {}).get(
+                "sourceSpecificAdmission"
+            )
+            is False
+            and rejected.get("requiredSourceProviders")
+            == [
+                "SOURCE_REVISION_TEXTURE2D_CDO",
+                "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+                "SOURCE_REVISION_NATIVE_SAMPLER_CAPTURE",
+            ],
+            f"rejected sampler binding join is invalid: {field_id}",
+        )
+        rejected_binding_field_ids.add(field_id)
+    require(
+        rejected_binding_field_ids == rejected_sampler_field_ids,
+        "rejected sampler field set was laundered",
     )
 
     occurrence_ids: set[str] = set()
@@ -3561,10 +3752,13 @@ def validate_contract(
         "scalarOverrideCount": EXPECTED_SCALAR_OVERRIDE_COUNT,
         "vectorOverrideCount": EXPECTED_VECTOR_OVERRIDE_COUNT,
         "directTextureOverrideCount": EXPECTED_TEXTURE_OVERRIDE_COUNT,
-        "directTextureExactSamplerCount": 3,
-        "directTextureUnprovenSamplerCount": 68,
-        "parentDefaultExactSamplerCount": 1,
-        "exactSamplerBindingCount": 4,
+        "directTextureExactSamplerCount": 0,
+        "directTextureUnprovenSamplerCount": 71,
+        "parentDefaultExactSamplerCount": 0,
+        "exactSamplerBindingCount": 0,
+        "previouslyAdmittedExactSamplerBindingCount": 4,
+        "rejectedSamplerBindingCount": 4,
+        "strictSamplerExecutionRowCount": 72,
         "arithmeticFamilyCount": EXPECTED_GRAPH_FAMILY_COUNT,
         "cookedStrippedNullExpressionCount": EXPECTED_NULL_EXPRESSION_COUNT,
         "unresolvedGraphEdgeCount": EXPECTED_UNRESOLVED_EDGE_COUNT,
@@ -3583,6 +3777,11 @@ def validate_contract(
         == EXPECTED_OCCURRENCE_MATERIAL_JOIN_SHA256,
         "contract occurrence/material join digest changed",
     )
+    require(
+        summary.get("rejectedSamplerBindingSetSha256")
+        == canonical_sha256(rejected_samplers),
+        "rejected sampler binding set digest changed",
+    )
     partial_cull_count = sum(
         bool(recipe["renderState"]["partialCullExact"])
         for recipe in recipes
@@ -3594,8 +3793,16 @@ def validate_contract(
     )
     sampler_origins = Counter(row.get("bindingOrigin") for row in samplers)
     require(
-        sampler_origins == Counter({"INSTANCE_OVERRIDE": 3, "PARENT_DEFAULT": 1}),
+        sampler_origins == Counter(),
         "exact sampler origin denominator changed",
+    )
+    rejected_sampler_origins = Counter(
+        row.get("bindingOrigin") for row in rejected_samplers
+    )
+    require(
+        rejected_sampler_origins
+        == Counter({"INSTANCE_OVERRIDE": 3, "PARENT_DEFAULT": 1}),
+        "rejected sampler origin denominator changed",
     )
     admission = contract.get("admission")
     require(isinstance(admission, dict), "contract aggregate admission missing")
@@ -3817,7 +4024,7 @@ def main() -> int:
         f"{'check' if args.check else 'write'}: "
         f"recipes={contract['summary']['materialRecipeCount']} "
         f"occurrences={contract['summary']['materialOccurrenceCount']} "
-        "samplers=3+1 graphs=23 reconstructed product=0"
+        "samplers=0/72 rejected=4 graphs=23 reconstructed product=0"
     )
     return 0
 

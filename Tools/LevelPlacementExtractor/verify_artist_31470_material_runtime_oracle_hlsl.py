@@ -859,6 +859,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     from build_artist_31470_material_runtime_oracle import (
         DEFAULT_RENDER_RECEIPT,
         DEFAULT_SHADER_RECEIPT,
+        DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
         DEFAULT_MATERIAL_CONTRACT,
         read_json,
         validate_runtime_receipt,
@@ -872,6 +873,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         read_json(DEFAULT_MATERIAL_CONTRACT),
         read_json(DEFAULT_RENDER_RECEIPT),
         read_json(DEFAULT_SHADER_RECEIPT),
+        read_json(DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT),
         material_contract_path=DEFAULT_MATERIAL_CONTRACT,
         render_receipt_path=DEFAULT_RENDER_RECEIPT,
     )
@@ -880,6 +882,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         DEFAULT_MATERIAL_CONTRACT,
         DEFAULT_RENDER_RECEIPT,
         DEFAULT_SHADER_RECEIPT,
+        DEFAULT_SOURCE_VALUE_ACQUISITION_RECEIPT,
         args.hlsl,
     )
     result = run_hlsl_oracle(receipt, args.hlsl, args.d3dcompiler)

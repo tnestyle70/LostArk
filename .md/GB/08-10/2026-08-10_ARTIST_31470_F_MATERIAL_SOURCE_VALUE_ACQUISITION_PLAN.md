@@ -18,9 +18,9 @@ pilot이나 final consumer가 없으면 execution-ready로 승격하지 않는�
 
 - 입력 정본
   - typed Material evidence contract
-  - Material runtime oracle receipt
   - raw render-state evidence receipt
   - ShaderCache/native-tail oracle receipt
+  - runtime feasibility matrix builder의 stable row identity derivation
   - `Effect_DIMENSIONMASTER_20260803_v3/source_pack_manifest.json`과 해당 raw UPK
 - read-only 후보
   - local source archive 전체
@@ -52,12 +52,16 @@ generator는 다음을 raw artifact에서 다시 계산한다.
 6. source archive 1,813 package의 raw SHA 중복 제거, v3 manifest 621개와 extra package의 class/key
    search를 재검증한다.
 7. driver cache, Git/remote, controlled-capture 감사 결과를 admission input이 아닌 read-only
-   exhaustion snapshot으로 고정한다.
+   corroboration snapshot으로 고정한다. 이 generator가 재생성하지 않은 observation은
+   `corroborationOnly=true`, `regeneratedByThisGenerator=false`, null verification manifest,
+   session-date precision과 access caveat를 명시한다. VSS는 `PERMISSION_UNCHECKED`이며 global exhaustion을
+   주장하지 않는다.
 8. row set, acquired-value set, invalidated exact-sampler set에 각각 canonical SHA-256을 부여한다.
 
 ### generated receipt와 mutation test
 
 - `skill.31470.material-source-value-acquisition.receipt.json`
+  - format version 2이며 runtime receipt를 입력으로 소비하지 않는 acyclic evidence receipt
   - render `89`, static `94`, strict sampler `72` 전 행
   - provider/raw offset/default chain/consumer pilot/decision/owner
   - source archive, current CDO, driver/Git/remote/capture exhaustion
@@ -70,7 +74,8 @@ generator는 다음을 raw artifact에서 다시 계산한다.
 ## 종료 조건
 
 - static 94/94 raw parent identity가 재검증되고 MIC exact join 분모가 고정된다.
-- 기존 exact sampler 4/4를 행 단위로 재감사하고 strict sampler denominator 72를 별도 제안한다.
+- 기존 exact sampler 4/4를 행 단위로 재감사하고 strict sampler denominator 72를 coordinated
+  Material corrective에 적용한다.
 - source Texture2D 존재/explicit field/omitted default를 72/72에 기록한다.
 - render 89/89의 최소 missing source artifact와 safe capture 경계를 기록한다.
 - source-value delta와 execution-readiness delta를 분리한다.

@@ -3,15 +3,16 @@
 ## 목표
 
 도화가 F의 Material 증거를 `23 arithmetic family / 27 material recipe / 34 rendered occurrence`로
-보존하면서 R0 실행 가능성을 행 단위로 판정한다. 기존 receipt의 render-state omitted 89개,
-static permutation 94개, direct-unproven sampler 68개를 각각 안정 ID를 가진 251개 행으로 만든다.
+보존하면서 R0 실행 가능성을 행 단위로 판정한다. corrected receipt의 render-state omitted 89개,
+static permutation 94개, strict sampler 72개를 각각 안정 ID를 가진 255개 행으로 만든다. strict sampler는
+기존 blocked 68개와 재감사에서 철회된 legacy exact 4개를 모두 포함한다.
 
 이 단계는 두 판정을 분리한다.
 
 - evidence integrity: 입력 정본, 소유권, 순서, evaluator, archive identity와 검증 결과가 서로 일치하는가
 - execution readiness: 각 행에 source 값을 정하는 독립 provider와 actual output pilot가 있는가
 
-evidence integrity가 PASS여도 251개 중 하나라도 `BLOCKED`, ownerless 또는 unknown이면 execution
+evidence integrity가 PASS여도 255개 중 하나라도 `BLOCKED`, ownerless 또는 unknown이면 execution
 readiness는 BLOCK이다. 이 경우 final materializer, Playback, renderer와 Product admission으로 넘어가지 않는다.
 
 ## 입력과 판정 경계
@@ -41,7 +42,9 @@ provider가 아니다. WARP state object 생성은 D3D11 descriptor가 어떤 �
    `sourceSection/sourceSectionIndex/sourceOwnerRecipeId` 순서로 다시 결합한다.
 5. occurrence마다 recipe, binding, evaluator owner를 exact mapping으로 검증한다. set membership만으로는
    다른 recipe의 binding/evaluator를 수용하지 않는다.
-6. render-state 89, static permutation 94, direct-unproven sampler 68의 feasibility row를 만든다.
+6. render-state 89, static permutation 94, strict sampler 72의 feasibility row를 만든다. Static은
+   exact ExpressionGUID로 MIC native `FStaticParameterSet`과 결합해 override true 23, nonoverride 43,
+   unmatched 28을 구분하고 sampler는 72/72의 AddressX/Y, sRGB, Filter, LODGroup raw provenance를 보존한다.
 7. 각 row에 instance, parent, nested default, CDO, ShaderCache, runtime capture identity와 availability,
    acquisition outcome, provider, input domain, expected output, tolerance, pilot, decision, owner를 기록한다.
 8. source archive 1,813/624 projection과 generator/verifier/HLSL/입력 receipt의 실제 canonical hash를
@@ -71,7 +74,7 @@ feasibility row는 계속 `BLOCKED`다.
 
 ### receipt, tests, ProjectAudit
 
-- `skill.31470.material-runtime-oracle.receipt.json` format version 2
+- `skill.31470.material-runtime-oracle.receipt.json` format version 3
 - `test_build_artist_31470_material_runtime_oracle.py`
 - `Test-Artist31470MaterialRuntimeOracle.ps1`
 
@@ -86,7 +89,9 @@ bit와 execution-readiness 세탁을 각각 공격한다. render root identity �
 
 - family/recipe/occurrence `23/27/34`, input/static `729/94` 분모 보존
 - exact recipe-to-binding/evaluator ownership 및 ordered source identity 손실 0
-- render-state/static/sampler matrix `89/94/68`, 합계 251행, denominator shrink 0
+- render-state/static/sampler matrix `89/94/72`, 합계 255행, denominator shrink 0
+- static exact GUID join `66 = override true 23 + nonoverride 43`, unmatched 28
+- strict sampler 72/72의 5-field raw source provenance와 rejected legacy exact 4행 보존
 - ownerless 0, unknown decision 0
 - WARP numeric sample 200 및 state-object pilot 4 actual 실행
 - non-finite output와 coordinated reseal mutation 전부 거부
@@ -95,7 +100,7 @@ bit와 execution-readiness 세탁을 각각 공격한다. render root identity �
 
 ### Execution-readiness PASS
 
-- `renderStateRows 89/89`, `staticPermutationRows 94/94`, `directUnprovenSamplerRows 68/68`가 모두
+- `renderStateRows 89/89`, `staticPermutationRows 94/94`, `strictSamplerRows 72/72`가 모두
   `FEASIBLE` 또는 독립 증거가 있는 `VERIFIED_IRRELEVANT`
 - source-specific provider, actual output pilot, input domain, expected output, tolerance, final runtime owner가
   모든 행에 존재
