@@ -223,3 +223,19 @@ ErrorRecord로 전달되던 문제는 focused audit 내부에서 output을 captu
 
 이 RESULT는 Material evidence contract 첫 slice만 완료로 기록한다. 위 항목이 닫히기 전에는 완전 복원이나
 Product material 완료로 판정하지 않는다.
+
+## WIP checkpoint: exact-evidence lineage
+
+후속 integrity review에서 genuine-looking `recordSha256`/`serialSha256` 교환과 closure·receipt 공동
+재봉인, recipe input 전체 재배치가 shallow 경계에서 수용되는 반례가 확인됐다. 현재 WIP는 다음 기반만
+부분 구현한 중간 체크포인트다.
+
+- 외부 source-pack manifest의 raw byte fixture와 `(physicalPackage, SHA) -> logicalPackage` 정본
+- canonical Material path를 `objectPath` 또는 `logicalPackage.objectPath`로 제한하는 경계
+- raw export/expression evidence ID 재계산과 instance array decoded projection/lineage 초안
+- raw input/render/Texture2D fixture 확장을 위한 builder 구조
+
+아직 parent-default lineage, exact sampler owner, render lineage, recipe composition digest, occurrence 소비,
+formatVersion 3 생성물·audit·공격 fixture 연결이 끝나지 않았다. 따라서 이 체크포인트의 generator/unit/deep
+audit는 완료 검증으로 기록하지 않으며, 기존 checked contract의 Product admission 0도 열지 않는다. 현재
+검증 범위는 두 Python 파일의 `py_compile`과 `git diff --check`뿐이다.

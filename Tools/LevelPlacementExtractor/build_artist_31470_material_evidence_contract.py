@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import re
+import struct
 import sys
 from collections import Counter
 from pathlib import Path
@@ -17,6 +18,11 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+CONTRACT_ROOT = "ARTIST/31470/F"
+EXPECTED_SOURCE_PACK_MANIFEST_BYTE_COUNT = 270014
+EXPECTED_SOURCE_PACK_MANIFEST_SHA256 = (
+    "8ddce11f3cdd36efc4098b127da860b3e77e0f6916263412f1089cce3967d62d"
+)
 
 EXPECTED_RECIPE_COUNT = 27
 EXPECTED_OCCURRENCE_COUNT = 34
@@ -52,6 +58,10 @@ EXPECTED_RECIPE_FAMILY_JOIN_SHA256 = (
 EXPECTED_CONTRACT_RENDER_FIELD_EVIDENCE_SHA256 = (
     "6d5d70af3215c36509e86340af00aafceb94182f5c93b903c4ca951283a8d5b9"
 )
+EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256 = ""
+EXPECTED_CONTRACT_EXACT_INPUT_LINEAGE_SHA256 = ""
+EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256 = ""
+EXPECTED_RECIPE_COMPOSITION_SHA256 = ""
 
 BLEND_MODE_DOMAIN = (
     "blend_opaque",
@@ -161,12 +171,21 @@ def folded(value: Any) -> str:
     return str(value or "").casefold()
 
 
-def canonical_path_targets_object(canonical_path: Any, object_path: Any) -> bool:
+def canonical_path_targets_object(
+    canonical_path: Any, object_path: Any, logical_package: Any
+) -> bool:
     canonical = folded(canonical_path)
     target = folded(object_path)
-    return bool(canonical and target) and (
-        canonical == target or canonical.endswith(f".{target}")
-    )
+    logical = folded(logical_package)
+    return bool(canonical and target and logical) and canonical in {
+        target,
+        f"{logical}.{target}",
+    }
+
+
+def exact_json_int(value: Any, expected: int, label: str) -> int:
+    require(type(value) is int and value == expected, f"invalid exact integer: {label}")
+    return value
 
 
 def require_sha256(value: Any, label: str) -> str:
@@ -277,6 +296,24 @@ def repository_path(path: Path) -> str:
 def stable_id(prefix: str, *parts: Any) -> str:
     payload = "::".join(folded(part) for part in parts).encode("utf-8")
     return f"{prefix}-{hashlib.sha256(payload).hexdigest()[:16]}"
+
+
+def raw_export_evidence_id(
+    package_sha256: Any, object_path: Any, class_name: Any
+) -> str:
+    payload = (
+        f"{package_sha256}::{folded(object_path)}::{folded(class_name)}"
+    ).encode()
+    return "render-export-" + hashlib.sha256(payload).hexdigest()[:16]
+
+
+def raw_expression_evidence_id(
+    package_sha256: Any, object_path: Any, source_order: Any
+) -> str:
+    payload = (
+        f"{package_sha256}::{folded(object_path)}::{int(source_order)}"
+    ).encode()
+    return "graph-expression-" + hashlib.sha256(payload).hexdigest()[:16]
 
 
 def finite_number(value: Any, label: str) -> float:
@@ -480,6 +517,128 @@ def comparable_raw_expression_projection(expression: dict[str, Any]) -> dict[str
     return projection
 
 
+def immutable_export_identity(export: dict[str, Any]) -> dict[str, Any]:
+    return {
+        name: copy.deepcopy(export.get(name))
+        for name in (
+            "evidenceId",
+            "logicalPackage",
+            "physicalPackage",
+            "physicalPackageSha256",
+            "exportIndex",
+            "packageReference",
+            "objectPath",
+            "className",
+            "serialOffset",
+            "serialSize",
+            "serialSha256",
+        )
+    }
+
+
+def raw_exact_input_fixture_payload(
+    rows: list[dict[str, Any]],
+    bindings: dict[str, dict[str, Any]],
+    exports: dict[str, dict[str, Any]],
+    graph_expressions: dict[tuple[str, int], dict[str, Any]],
+) -> list[dict[str, Any]]:
+    fixture: list[dict[str, Any]] = []
+    consumed_sources: set[str] = set()
+    consumed_bases: set[str] = set()
+    for row in rows:
+        binding = bindings[folded(row["sourceMaterialPath"])]
+        source_id = str(binding["sourceExportEvidenceId"])
+        source = exports[source_id]
+        if source_id not in consumed_sources:
+            consumed_sources.add(source_id)
+            for kind, field_name in (
+                ("scalar", "scalarparametervalues"),
+                ("vector", "vectorparametervalues"),
+                ("texture", "textureparametervalues"),
+            ):
+                field = source["fields"].get(field_name)
+                if not isinstance(field, dict) or field.get("status") != "SERIALIZED_EXPLICIT":
+                    continue
+                fixture.append(
+                    {
+                        "kind": "INSTANCE_ARRAY",
+                        "parameterKind": kind,
+                        "exportIdentity": immutable_export_identity(source),
+                        "property": copy.deepcopy(field),
+                        "decodedProjection": copy.deepcopy(
+                            source.get("instanceParameters", {}).get(kind)
+                        ),
+                    }
+                )
+        base_id = str(binding["renderStateExportEvidenceId"])
+        if base_id in consumed_bases:
+            continue
+        consumed_bases.add(base_id)
+        base = exports[base_id]
+        fixture.append(
+            {
+                "kind": "BASE_EXPRESSIONS_ARRAY",
+                "exportIdentity": immutable_export_identity(base),
+                "property": copy.deepcopy(base["fields"]["expressions"]),
+            }
+        )
+        raw_references = require_list(
+            base["fields"]["expressions"].get("value"),
+            f"{base_id}.rawExpressions",
+        )
+        for source_order, reference in enumerate(raw_references):
+            if reference == 0:
+                continue
+            expression = graph_expressions[(base_id, source_order)]
+            projection = expression.get("projection", {})
+            if not projection.get("parameterName") or (
+                projection.get("defaultValue") is None
+                and not projection.get("textureObjectPath")
+            ):
+                continue
+            fixture.append(
+                {
+                    "kind": "PARAMETER_EXPRESSION",
+                    "baseExportEvidenceId": base_id,
+                    "baseExpressionsRecordSha256": base["fields"]["expressions"].get(
+                        "recordSha256"
+                    ),
+                    "sourceOrder": source_order,
+                    "rawReference": reference,
+                    "expressionIdentity": immutable_export_identity(expression),
+                    "fields": {
+                        name: copy.deepcopy(expression.get("fields", {}).get(name))
+                        for name in (
+                            "parametername",
+                            "defaultvalue",
+                            "texture",
+                        )
+                    },
+                    "decodedProjection": {
+                        name: copy.deepcopy(projection.get(name))
+                        for name in (
+                            "parameterName",
+                            "defaultValue",
+                            "texturePackageIndex",
+                            "textureObjectPath",
+                        )
+                    },
+                }
+            )
+    return sorted(
+        fixture,
+        key=lambda row: canonical_sha256(row),
+    )
+
+
+def raw_texture_fixture_payload(
+    texture_exports: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        copy.deepcopy(texture_exports[key]) for key in sorted(texture_exports)
+    ]
+
+
 def validate_render_receipt(
     receipt: dict[str, Any], rows: list[dict[str, Any]]
 ) -> tuple[
@@ -491,10 +650,25 @@ def validate_render_receipt(
     require(
         receipt.get("schema")
         == "lostark.artist-31470-material-render-state-evidence-receipt"
-        and receipt.get("formatVersion") == 3,
+        and type(receipt.get("formatVersion")) is int
+        and receipt.get("formatVersion") == 3
+        and receipt.get("root") == CONTRACT_ROOT,
         "unsupported render-state evidence receipt",
     )
     validate_self_digest(receipt, "receiptSha256", "render-state receipt")
+    manifest = receipt.get("source", {}).get("sourcePackManifest")
+    require(
+        isinstance(manifest, dict)
+        and manifest.get("hashDomain") == "RAW_ARTIFACT_BYTES"
+        and type(manifest.get("byteCount")) is int
+        and manifest.get("byteCount") == EXPECTED_SOURCE_PACK_MANIFEST_BYTE_COUNT
+        and manifest.get("sha256") == EXPECTED_SOURCE_PACK_MANIFEST_SHA256
+        and type(manifest.get("schemaVersion")) is int
+        and manifest.get("schemaVersion") == 1
+        and manifest.get("identityStatus")
+        == "AUTHENTICATED_IMMUTABLE_FIXTURE",
+        "source-pack manifest provenance is not authenticated",
+    )
     export_rows = require_list(receipt.get("exports"), "render-state exports")
     exports: dict[str, dict[str, Any]] = {}
     for export in export_rows:
@@ -504,6 +678,23 @@ def validate_render_receipt(
         require(evidence_id not in exports, f"duplicate render export: {evidence_id}")
         require_sha256(export.get("physicalPackageSha256"), f"{evidence_id}.package")
         require_sha256(export.get("serialSha256"), f"{evidence_id}.serial")
+        require(
+            bool(export.get("logicalPackage"))
+            and evidence_id
+            == raw_export_evidence_id(
+                export.get("physicalPackageSha256"),
+                export.get("objectPath"),
+                export.get("className"),
+            )
+            and type(export.get("exportIndex")) is int
+            and type(export.get("packageReference")) is int
+            and export.get("packageReference") == export.get("exportIndex") + 1
+            and type(export.get("serialOffset")) is int
+            and type(export.get("serialSize")) is int
+            and export.get("serialOffset") >= 0
+            and export.get("serialSize") > 0,
+            f"render export immutable identity is invalid: {evidence_id}",
+        )
         fields = export.get("fields")
         require(isinstance(fields, dict), f"render-state fields missing: {evidence_id}")
         for field_name, field in fields.items():
@@ -633,11 +824,16 @@ def validate_render_receipt(
             f"raw source export identity disagrees with closure: {path}",
         )
         require(
-            canonical_path_targets_object(path, source_export.get("objectPath")),
+            canonical_path_targets_object(
+                path,
+                source_export.get("objectPath"),
+                source_export.get("logicalPackage"),
+            ),
             f"canonical source Material path does not target raw export: {path}",
         )
         expected_source_identity = {
             "canonicalSourceMaterialPath": path,
+            "logicalPackage": source_export["logicalPackage"],
             "physicalPackage": source_export["physicalPackage"],
             "physicalPackageSha256": source_export["physicalPackageSha256"],
             "exportIndex": source_export["exportIndex"],
@@ -714,10 +910,14 @@ def validate_render_receipt(
             )
             require(
                 canonical_path_targets_object(
-                    raw_parent_reference, base_export.get("objectPath")
+                    raw_parent_reference,
+                    base_export.get("objectPath"),
+                    base_export.get("logicalPackage"),
                 )
                 and canonical_path_targets_object(
-                    material.get("parent"), base_export.get("objectPath")
+                    material.get("parent"),
+                    base_export.get("objectPath"),
+                    base_export.get("logicalPackage"),
                 ),
                 f"raw MIC Parent does not select parentGraph export: {path}",
             )
@@ -727,6 +927,7 @@ def validate_render_receipt(
                 f"raw Material graph does not target source export: {path}",
             )
         expected_graph_identity = {
+            "logicalPackage": base_export["logicalPackage"],
             "physicalPackage": base_export["physicalPackage"],
             "physicalPackageSha256": base_export["physicalPackageSha256"],
             "exportIndex": base_export["exportIndex"],
@@ -752,7 +953,13 @@ def validate_render_receipt(
             bool(evidence_id)
             and evidence_id not in graph_expressions_by_id
             and base_id in exports
-            and source_order >= 0,
+            and source_order >= 0
+            and evidence_id
+            == raw_expression_evidence_id(
+                expression.get("physicalPackageSha256"),
+                expression.get("objectPath"),
+                source_order,
+            ),
             f"invalid raw graph-expression identity: {evidence_id}",
         )
         key = (base_id, source_order)
@@ -771,6 +978,8 @@ def validate_render_receipt(
             == folded(base.get("physicalPackage"))
             and expression.get("physicalPackageSha256")
             == base.get("physicalPackageSha256")
+            and folded(expression.get("logicalPackage"))
+            == folded(base.get("logicalPackage"))
             and folded(expression.get("className")).startswith("materialexpression")
             and bool(expression.get("objectPath")),
             f"raw graph-expression package/class identity changed: {evidence_id}",
@@ -901,6 +1110,25 @@ def validate_render_receipt(
         set(texture_exports) == set(EXPECTED_DDS_BINDINGS),
         "raw Texture2D evidence coverage changed",
     )
+    exact_input_fixture_sha256 = canonical_sha256(
+        raw_exact_input_fixture_payload(
+            rows, bindings, exports, graph_expressions
+        )
+    )
+    if EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256:
+        require(
+            exact_input_fixture_sha256
+            == EXPECTED_RAW_EXACT_INPUT_LINEAGE_SHA256,
+            "raw exact-input lineage fixture changed",
+        )
+    raw_texture_sha256 = canonical_sha256(
+        raw_texture_fixture_payload(texture_exports)
+    )
+    if EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256:
+        require(
+            raw_texture_sha256 == EXPECTED_RAW_TEXTURE_EVIDENCE_SHA256,
+            "raw Texture2D evidence fixture changed",
+        )
 
     raw_binding_fixture = sorted(
         [
@@ -927,6 +1155,21 @@ def validate_render_receipt(
             raw_render_fixture.append(
                 {
                     "exportEvidenceId": export["evidenceId"],
+                    "exportIdentity": {
+                        name: export[name]
+                        for name in (
+                            "logicalPackage",
+                            "physicalPackage",
+                            "physicalPackageSha256",
+                            "exportIndex",
+                            "packageReference",
+                            "objectPath",
+                            "className",
+                            "serialOffset",
+                            "serialSize",
+                            "serialSha256",
+                        )
+                    },
                     "fieldName": field_name,
                     "field": field,
                 }
@@ -954,22 +1197,200 @@ def validate_render_receipt(
     return bindings, exports, graph_expressions, texture_exports
 
 
+def nested_struct_property(row: Any, name: str, label: str) -> dict[str, Any]:
+    require(isinstance(row, dict), f"raw struct row is invalid: {label}")
+    by_name = {folded(key): value for key, value in row.items()}
+    value = by_name.get(name.casefold())
+    require(isinstance(value, dict), f"raw struct property is missing: {label}.{name}")
+    return value
+
+
+def raw_linear_color(value: Any, label: str) -> list[float]:
+    require(
+        isinstance(value, dict)
+        and type(value.get("size")) is int
+        and value.get("size") == 16,
+        f"raw linear color shape is invalid: {label}",
+    )
+    encoded_hex = str(value.get("hex") or "")
+    try:
+        encoded = bytes.fromhex(encoded_hex)
+    except ValueError as error:
+        raise ValueError(f"raw linear color bytes are invalid: {label}") from error
+    require(len(encoded) == 16, f"raw linear color byte count changed: {label}")
+    return [float(component) for component in struct.unpack("<4f", encoded)]
+
+
+def immutable_property_lineage(
+    export: dict[str, Any], field: dict[str, Any], label: str
+) -> dict[str, Any]:
+    require(
+        field.get("status") == "SERIALIZED_EXPLICIT",
+        f"exact property lineage is not explicit: {label}",
+    )
+    encoded_sha256 = require_sha256(
+        field.get("encodedValueSha256"), f"{label}.encodedValue"
+    )
+    record_sha256 = require_sha256(field.get("recordSha256"), f"{label}.record")
+    return {
+        "export": immutable_export_identity(export),
+        "property": {
+            name: copy.deepcopy(field.get(name))
+            for name in (
+                "propertyName",
+                "arrayIndex",
+                "propertyType",
+                "structType",
+                "declaredDataSize",
+                "serializedPayloadSize",
+                "tagOffset",
+                "valueOffset",
+                "recordEndOffset",
+                "absoluteLogicalTagOffset",
+                "absoluteLogicalValueOffset",
+                "absoluteLogicalRecordEndOffset",
+            )
+        },
+        "encodedValueSha256": encoded_sha256,
+        "recordSha256": record_sha256,
+    }
+
+
+def raw_instance_parameter_projection(
+    source_export: dict[str, Any],
+    array_record: dict[str, Any],
+    kind: str,
+    label: str,
+) -> list[dict[str, Any]]:
+    raw_rows = require_list(array_record.get("value"), f"{label}.rawArray")
+    projected_rows = require_list(
+        source_export.get("instanceParameters", {}).get(kind),
+        f"{label}.rawProjection",
+    )
+    require(
+        len(raw_rows) == len(projected_rows),
+        f"raw parameter array/projection count changed: {label}",
+    )
+    result: list[dict[str, Any]] = []
+    for index, (raw_row, projected) in enumerate(zip(raw_rows, projected_rows)):
+        name_field = nested_struct_property(
+            raw_row, "parametername", f"{label}[{index}]"
+        )
+        value_field = nested_struct_property(
+            raw_row, "parametervalue", f"{label}[{index}]"
+        )
+        guid_field = nested_struct_property(
+            raw_row, "expressionguid", f"{label}[{index}]"
+        )
+        name = str(name_field.get("value") or "")
+        require(
+            folded(name_field.get("type")) == "nameproperty" and bool(name),
+            f"raw parameter name is invalid: {label}[{index}]",
+        )
+        require(isinstance(projected, dict), f"raw parameter projection is invalid: {label}[{index}]")
+        require(
+            projected.get("name") == name,
+            f"raw parameter name disagrees with projection: {label}[{index}]",
+        )
+        decoded: dict[str, Any] = {
+            "parameterName": name,
+            "normalizedParameterName": name.casefold(),
+        }
+        if kind == "scalar":
+            raw_value = finite_number(
+                value_field.get("value"), f"{label}[{index}].value"
+            )
+            require(
+                folded(value_field.get("type")) == "floatproperty"
+                and projected.get("value") == raw_value,
+                f"raw scalar value disagrees with projection: {label}[{index}]",
+            )
+            decoded["value"] = raw_value
+        elif kind == "vector":
+            require(
+                folded(value_field.get("type")) == "structproperty"
+                and folded(value_field.get("structType")) == "linearcolor",
+                f"raw vector type is invalid: {label}[{index}]",
+            )
+            raw_value = raw_linear_color(
+                value_field.get("value"), f"{label}[{index}].value"
+            )
+            require(
+                projected.get("value") == raw_value,
+                f"raw vector value disagrees with projection: {label}[{index}]",
+            )
+            decoded["value"] = raw_value
+        elif kind == "texture":
+            raw_reference = value_field.get("value")
+            require(
+                folded(value_field.get("type")) == "objectproperty"
+                and type(raw_reference) is int
+                and raw_reference != 0
+                and projected.get("packageIndex") == raw_reference
+                and bool(projected.get("sourceObjectPath")),
+                f"raw texture reference disagrees with projection: {label}[{index}]",
+            )
+            decoded["value"] = str(projected["sourceObjectPath"])
+            decoded["packageIndex"] = raw_reference
+        else:
+            raise ValueError(f"unsupported raw parameter kind: {kind}")
+        guid_value = guid_field.get("value")
+        require(
+            folded(guid_field.get("type")) == "structproperty"
+            and folded(guid_field.get("structType")) == "guid"
+            and isinstance(guid_value, dict)
+            and type(guid_value.get("size")) is int
+            and guid_value.get("size") == 16
+            and len(str(guid_value.get("hex") or "")) == 32,
+            f"raw expression GUID is invalid: {label}[{index}]",
+        )
+        decoded["expressionGuidHex"] = str(guid_value["hex"])
+        result.append(decoded)
+    return result
+
+
 def parameter_rows(
     row: dict[str, Any],
     kind: str,
     array_name: str,
     array_record: dict[str, Any] | None,
+    source_export: dict[str, Any],
 ) -> list[dict[str, Any]]:
     material_path = str(row["sourceMaterialPath"])
     values = require_list(row["material"].get(array_name), f"{material_path}.{array_name}")
     seen: set[str] = set()
     result: list[dict[str, Any]] = []
-    record_sha = None
-    if array_record and array_record.get("status") == "SERIALIZED_EXPLICIT":
-        record_sha = require_sha256(
-            array_record.get("recordSha256"),
-            f"{material_path}.{array_name}.record",
+    if not values:
+        require(
+            require_list(
+                source_export.get("instanceParameters", {}).get(kind),
+                f"{material_path}.{array_name}.rawProjection",
+            )
+            == [],
+            f"raw empty parameter projection changed: {material_path}.{array_name}",
         )
+        return result
+    require(
+        isinstance(array_record, dict)
+        and array_record.get("status") == "SERIALIZED_EXPLICIT",
+        f"raw parameter array lineage missing: {material_path}.{array_name}",
+    )
+    raw_projection = raw_instance_parameter_projection(
+        source_export,
+        array_record,
+        kind,
+        f"{material_path}.{array_name}",
+    )
+    property_lineage = immutable_property_lineage(
+        source_export,
+        array_record,
+        f"{material_path}.{array_name}",
+    )
+    recipe_id = stable_id("material-recipe", material_path)
+    require(
+        len(raw_projection) == len(values),
+        f"closure/raw parameter count changed: {material_path}.{array_name}",
+    )
     for index, value in enumerate(values):
         require(isinstance(value, dict), f"invalid parameter row: {material_path}.{array_name}[{index}]")
         name = str(value.get("name") or "")
@@ -997,6 +1418,31 @@ def parameter_rows(
             )
         else:
             raise ValueError(f"unsupported parameter kind: {kind}")
+        raw_value = raw_projection[index]
+        require(
+            raw_value["parameterName"] == name
+            and raw_value["normalizedParameterName"] == key
+            and raw_value["value"] == decoded_value,
+            f"closure input disagrees with raw tagged array: {material_path}.{name}",
+        )
+        if kind == "texture":
+            require(
+                raw_value["packageIndex"] == int(value["packageIndex"]),
+                f"closure texture reference disagrees with raw tagged array: {material_path}.{name}",
+            )
+        lineage = {
+            "owner": {
+                "recipeId": recipe_id,
+                "canonicalSourceMaterialPath": material_path,
+                "rawMaterialExport": immutable_export_identity(source_export),
+            },
+            "fieldKind": kind,
+            "bindingOrigin": "INSTANCE_OVERRIDE",
+            "serializedArrayIndex": index,
+            "decodedCanonicalValue": copy.deepcopy(raw_value),
+            "propertyLineage": property_lineage,
+        }
+        lineage_sha256 = canonical_sha256(lineage)
         field_id = stable_id(
             "material-input",
             material_path,
@@ -1004,6 +1450,7 @@ def parameter_rows(
             index,
             name,
             "INSTANCE_OVERRIDE",
+            lineage_sha256,
         )
         evidence: dict[str, Any] = {
             "fieldId": field_id,
@@ -1018,7 +1465,9 @@ def parameter_rows(
                 "physicalPackage": row["sourcePhysicalPackage"],
                 "physicalPackageSha256": row["sourcePhysicalPackageSha256"],
                 "materialObjectPath": row["material"]["objectPath"],
-                "parameterArrayRecordSha256": record_sha,
+                "parameterArrayRecordSha256": array_record["recordSha256"],
+                "lineage": lineage,
+                "lineageSha256": lineage_sha256,
             },
         }
         if kind == "texture":
@@ -1842,18 +2291,21 @@ def build_contract(
             "scalar",
             "scalarParameters",
             array_records.get("scalarparametervalues"),
+            source_export,
         )
         vector_inputs = parameter_rows(
             row,
             "vector",
             "vectorParameters",
             array_records.get("vectorparametervalues"),
+            source_export,
         )
         texture_inputs = parameter_rows(
             row,
             "texture",
             "textureParameters",
             array_records.get("textureparametervalues"),
+            source_export,
         )
         instance_inputs = {
             "scalar": scalar_inputs,
@@ -2269,7 +2721,9 @@ def validate_contract(
             and isinstance(identity, dict)
             and identity.get("canonicalSourceMaterialPath") == source_material_path
             and canonical_path_targets_object(
-                source_material_path, identity.get("materialObjectPath")
+                source_material_path,
+                identity.get("materialObjectPath"),
+                identity.get("logicalPackage"),
             )
             and bool(identity.get("rawExportEvidenceId"))
             and int(identity.get("materialExportIndex", -1)) >= 0,
@@ -2325,6 +2779,7 @@ def validate_contract(
                 canonical_path_targets_object(
                     selected_graph.get("rawParentReferencePath"),
                     selected_graph.get("objectPath"),
+                    selected_graph.get("logicalPackage"),
                 ),
                 f"recipe raw MIC Parent join changed: {recipe_id}",
             )

@@ -39,6 +39,11 @@ MATERIAL_CLOSURE_PARSER_PATH = SCRIPT_PATH.with_name(
     "extract_ue3_effect_material_closure.py"
 )
 MATERIAL_GRAPH_PARSER_PATH = SCRIPT_PATH.with_name("extract_ue3_material_graph.py")
+CONTRACT_ROOT = "ARTIST/31470/F"
+EXPECTED_SOURCE_PACK_MANIFEST_BYTE_COUNT = 270014
+EXPECTED_SOURCE_PACK_MANIFEST_SHA256 = (
+    "8ddce11f3cdd36efc4098b127da860b3e77e0f6916263412f1089cce3967d62d"
+)
 
 SOURCE_INSTANCE_FIELDS = (
     "parent",
@@ -127,6 +132,60 @@ def canonical_sha256(value: Any) -> str:
 
 def raw_file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def exact_json_int(value: Any, expected: int, label: str) -> int:
+    require(type(value) is int and value == expected, f"invalid exact integer: {label}")
+    return value
+
+
+def source_manifest_packages(
+    manifest_path: Path,
+) -> tuple[dict[tuple[str, str], str], dict[str, Any]]:
+    require(manifest_path.is_file(), f"source-pack manifest is missing: {manifest_path}")
+    manifest_bytes = manifest_path.read_bytes()
+    require(
+        len(manifest_bytes) == EXPECTED_SOURCE_PACK_MANIFEST_BYTE_COUNT
+        and hashlib.sha256(manifest_bytes).hexdigest()
+        == EXPECTED_SOURCE_PACK_MANIFEST_SHA256,
+        "source-pack manifest raw bytes changed",
+    )
+    manifest = load_json(manifest_path)
+    exact_json_int(manifest.get("schemaVersion"), 1, "source-pack manifest schemaVersion")
+    rows = manifest.get("packages")
+    require(isinstance(rows, list), "source-pack manifest packages must be a list")
+    result: dict[tuple[str, str], str] = {}
+    logical_owners: dict[str, tuple[str, str]] = {}
+    for row in rows:
+        require(isinstance(row, dict), "source-pack manifest package must be an object")
+        if row.get("resolved") is not True:
+            continue
+        physical = str(row.get("physicalPackage") or "")
+        package_sha256 = str(row.get("sha256") or "")
+        logical = str(row.get("logicalPackage") or "")
+        require(
+            bool(physical) and bool(logical) and len(package_sha256) == 64,
+            "resolved source-pack manifest identity is incomplete",
+        )
+        key = (physical.casefold(), package_sha256)
+        require(key not in result, f"duplicate manifest physical/SHA identity: {physical}")
+        logical_key = logical.casefold()
+        require(
+            logical_key not in logical_owners,
+            f"duplicate manifest logical package: {logical}",
+        )
+        result[key] = logical
+        logical_owners[logical_key] = key
+    require(bool(result), "source-pack manifest has no resolved packages")
+    evidence = {
+        "pathHint": manifest_path.name,
+        "hashDomain": "RAW_ARTIFACT_BYTES",
+        "byteCount": len(manifest_bytes),
+        "sha256": EXPECTED_SOURCE_PACK_MANIFEST_SHA256,
+        "schemaVersion": 1,
+        "identityStatus": "AUTHENTICATED_IMMUTABLE_FIXTURE",
+    }
+    return result, evidence
 
 
 def normalize_tracked_text_bytes(content: bytes) -> bytes:
@@ -306,12 +365,16 @@ def package_file_index(root: Path) -> dict[str, Path]:
     return result
 
 
-def canonical_path_targets_object(canonical_path: Any, object_path: Any) -> bool:
+def canonical_path_targets_object(
+    canonical_path: Any, object_path: Any, logical_package: Any
+) -> bool:
     canonical = folded(canonical_path)
     target = folded(object_path)
-    return bool(canonical and target) and (
-        canonical == target or canonical.endswith(f".{target}")
-    )
+    logical = folded(logical_package)
+    return bool(canonical and target and logical) and canonical in {
+        target,
+        f"{logical}.{target}",
+    }
 
 
 def field_evidence(
@@ -714,6 +777,7 @@ def build_receipt(
     closure_path: Path,
     exact_dds_receipt_path: Path,
     source_package_root: Path,
+    source_pack_manifest_path: Path,
     aes_key: str = LOSTARK_KR_AES_KEY,
 ) -> dict[str, Any]:
     closure = load_json(closure_path)
@@ -725,6 +789,9 @@ def build_receipt(
         "unsupported exact DDS receipt",
     )
     rows = require_material_rows(closure)
+    manifest_packages, manifest_evidence = source_manifest_packages(
+        source_pack_manifest_path
+    )
     package_paths = package_file_index(source_package_root)
     package_cache: dict[str, Any] = {}
     exports_by_id: dict[str, dict[str, Any]] = {}
@@ -737,7 +804,20 @@ def build_receipt(
         require(key in package_paths, f"physical UPK is missing: {physical_name}")
         if key not in package_cache:
             package_cache[key] = load_package(package_paths[key], aes_key)
+            loaded = package_cache[key]
+            require(
+                (key, loaded.sha256) in manifest_packages,
+                f"raw package is absent from authenticated source manifest: {physical_name}",
+            )
         return package_cache[key]
+
+    def logical_package(physical_name: str, package_sha256: str) -> str:
+        key = (physical_name.casefold(), package_sha256)
+        require(
+            key in manifest_packages,
+            f"package identity is absent from authenticated source manifest: {physical_name}",
+        )
+        return manifest_packages[key]
 
     def add_export(value: dict[str, Any]) -> str:
         evidence_id = str(value["evidenceId"])
@@ -784,8 +864,16 @@ def build_receipt(
             {material_class},
             source_fields,
         )
+        source_export["logicalPackage"] = logical_package(
+            source_export["physicalPackage"],
+            source_export["physicalPackageSha256"],
+        )
         require(
-            canonical_path_targets_object(source_path, source_export["objectPath"]),
+            canonical_path_targets_object(
+                source_path,
+                source_export["objectPath"],
+                source_export["logicalPackage"],
+            ),
             f"canonical source Material path does not target the raw export: {source_path}",
         )
         if material_class == "materialinstanceconstant":
@@ -840,6 +928,10 @@ def build_receipt(
             {"material", "decalmaterial"},
             BASE_MATERIAL_FIELDS,
         )
+        base_export["logicalPackage"] = logical_package(
+            base_export["physicalPackage"],
+            base_export["physicalPackageSha256"],
+        )
         base_evidence_id = add_export(base_export)
         if material_class == "materialinstanceconstant":
             parent_field = source_export["fields"]["parent"]
@@ -848,9 +940,12 @@ def build_receipt(
                 and canonical_path_targets_object(
                     parent_field.get("resolvedObjectPath"),
                     base_export["objectPath"],
+                    base_export["logicalPackage"],
                 )
                 and canonical_path_targets_object(
-                    material.get("parent"), base_export["objectPath"]
+                    material.get("parent"),
+                    base_export["objectPath"],
+                    base_export["logicalPackage"],
                 ),
                 f"raw MIC Parent does not select the parentGraph export: {source_path}",
             )
@@ -930,6 +1025,7 @@ def build_receipt(
                     reference,
                     expected_expression,
                 )
+                evidence["logicalPackage"] = base_export["logicalPackage"]
                 evidence_id = evidence["evidenceId"]
                 require(
                     evidence_id not in graph_expressions_by_id,
@@ -943,6 +1039,7 @@ def build_receipt(
                 "renderStateExportEvidenceId": base_evidence_id,
                 "sourceMaterialIdentity": {
                     "canonicalSourceMaterialPath": source_path,
+                    "logicalPackage": source_export["logicalPackage"],
                     "physicalPackage": source_export["physicalPackage"],
                     "physicalPackageSha256": source_export[
                         "physicalPackageSha256"
@@ -952,6 +1049,7 @@ def build_receipt(
                     "rawExportEvidenceId": source_evidence_id,
                 },
                 "selectedGraphIdentity": {
+                    "logicalPackage": base_export["logicalPackage"],
                     "physicalPackage": base_export["physicalPackage"],
                     "physicalPackageSha256": base_export[
                         "physicalPackageSha256"
@@ -987,13 +1085,20 @@ def build_receipt(
         texture = asset.get("sourceTexture2D")
         require(isinstance(texture, dict), f"Texture2D evidence missing: {logical_path}")
         physical_name = str(texture.get("physicalPackage") or "")
-        texture_sampler_exports.append(
-            texture_sampler_evidence(asset, package(physical_name))
+        texture_evidence = texture_sampler_evidence(
+            asset, package(physical_name)
         )
+        texture_export = texture_evidence["export"]
+        texture_export["logicalPackage"] = logical_package(
+            texture_export["physicalPackage"],
+            texture_export["physicalPackageSha256"],
+        )
+        texture_sampler_exports.append(texture_evidence)
 
     receipt: dict[str, Any] = {
         "schema": "lostark.artist-31470-material-render-state-evidence-receipt",
         "formatVersion": 3,
+        "root": CONTRACT_ROOT,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
@@ -1014,6 +1119,7 @@ def build_receipt(
                 "sourceRootId": "Resource_LostArk",
                 "hashDomain": "RAW_ARTIFACT_BYTES",
             },
+            "sourcePackManifest": manifest_evidence,
             "generator": {
                 "path": repository_path(SCRIPT_PATH),
                 "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
@@ -1047,6 +1153,8 @@ def build_receipt(
                 repository_path(exact_dds_receipt_path),
                 "--source-package-root",
                 "{SOURCE_PACKAGE_ROOT}",
+                "--source-pack-manifest",
+                "{SOURCE_PACK_MANIFEST}",
                 "--output",
                 "Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json",
                 "--check",
@@ -1099,6 +1207,7 @@ def main() -> int:
     parser.add_argument("--material-closure", required=True, type=Path)
     parser.add_argument("--exact-dds-receipt", required=True, type=Path)
     parser.add_argument("--source-package-root", required=True, type=Path)
+    parser.add_argument("--source-pack-manifest", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--aes-key", default=LOSTARK_KR_AES_KEY)
     parser.add_argument("--check", action="store_true")
@@ -1107,6 +1216,7 @@ def main() -> int:
         args.material_closure,
         args.exact_dds_receipt,
         args.source_package_root,
+        args.source_pack_manifest,
         args.aes_key,
     )
     check_or_write_json(args.output, receipt, args.check)
