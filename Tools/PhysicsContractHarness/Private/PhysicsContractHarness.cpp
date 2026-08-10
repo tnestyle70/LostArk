@@ -42,6 +42,7 @@ namespace
 				DESTRUCTION_SIMULATION_TRIGGER_KIND::IMMEDIATE;
 			profile.Elements.push_back(std::move(element));
 		}
+		profile.Elements.front().suppressionAliasPlacementIds.push_back(103u);
 		return profile;
 	}
 
@@ -110,14 +111,16 @@ namespace
 		const bool roundTrip = saved && loaded.Load(
 			validPath, "TEST_AREA", status) &&
 			loaded.Get_Profiles().size() == 1u &&
-			loaded.Get_Profiles().front().Elements.size() == 2u;
+			loaded.Get_Profiles().front().Elements.size() == 2u &&
+			loaded.Get_Profiles().front().Elements.front().suppressionAliasPlacementIds.size() == 1u &&
+			loaded.Get_Profiles().front().Elements.front().suppressionAliasPlacementIds.front() == 103u;
 		std::string validText;
 		const bool readValid = Read_Text(validPath, validText);
 
 		std::string badVersion = validText;
 		const bool wroteBadVersion = readValid &&
-			Replace_First(badVersion, "\"formatVersion\": 1",
-				"\"formatVersion\": 2") &&
+			Replace_First(badVersion, "\"formatVersion\": 2",
+				"\"formatVersion\": 1") &&
 			Write_Text(badVersionPath, badVersion);
 		const bool rejectedVersion = wroteBadVersion &&
 			!loaded.Load(badVersionPath, "TEST_AREA", status) &&
@@ -155,6 +158,13 @@ namespace
 			duplicatePlacement.Elements[0].sourceRuntimePlacementId;
 		const bool rejectedDuplicatePlacement =
 			!loaded.Add_Profile(duplicatePlacement, status);
+		DESTRUCTION_SIMULATION_PROFILE duplicateAlias = profile;
+		duplicateAlias.profileId =
+			"destroyable.group.contract.duplicate-alias";
+		duplicateAlias.Elements.front().suppressionAliasPlacementIds.front() =
+			duplicateAlias.Elements.back().sourceRuntimePlacementId;
+		const bool rejectedDuplicateAlias =
+			!loaded.Add_Profile(duplicateAlias, status);
 		DESTRUCTION_SIMULATION_PROFILE badId = profile;
 		badId.profileId = "bad/profile/id";
 		const bool rejectedBadId = !loaded.Add_Profile(badId, status);
@@ -166,11 +176,12 @@ namespace
 		const bool builtWorld =
 			world.Add_Group(profile.groupId, status) &&
 			world.Add_Member(profile.groupId, 101u, status) &&
-			world.Add_Member(profile.groupId, 102u, status);
+			world.Add_Member(profile.groupId, 102u, status) &&
+			world.Add_Member(profile.groupId, 103u, status);
 		const bool acceptedCrossReferences = builtWorld &&
 			loaded.Validate_GroupReferences(world, status);
 		const bool rejectedCrossMismatch =
-			world.Add_Member(profile.groupId, 103u, status) &&
+			world.Add_Member(profile.groupId, 104u, status) &&
 			!loaded.Validate_GroupReferences(world, status);
 
 		CDestructionSimulationDocument changed = loaded;
@@ -227,7 +238,8 @@ namespace
 		const bool builtPairWorld =
 			pairWorld.Add_Group(profile.groupId, status) &&
 			pairWorld.Add_Member(profile.groupId, 101u, status) &&
-			pairWorld.Add_Member(profile.groupId, 102u, status);
+			pairWorld.Add_Member(profile.groupId, 102u, status) &&
+			pairWorld.Add_Member(profile.groupId, 103u, status);
 		CDestructionSimulationDocument pairSimulation;
 		pairSimulation.Reset_Empty();
 		const bool builtPairSimulation =
@@ -311,6 +323,7 @@ namespace
 		const bool passed = roundTrip && rejectedVersion && rejectedSchema &&
 			rejectedArea && rejectedMalformed && rejectedDuplicateProfile &&
 			rejectedDuplicateElement && rejectedDuplicatePlacement &&
+			rejectedDuplicateAlias &&
 			rejectedBadId && rejectedEmptySavePath &&
 			acceptedCrossReferences && rejectedCrossMismatch &&
 			rejectedLockedReplace && preservedDestination &&
@@ -323,6 +336,7 @@ namespace
 			<< ((rejectedVersion && rejectedSchema && rejectedArea &&
 				rejectedMalformed && rejectedDuplicateProfile &&
 				rejectedDuplicateElement && rejectedDuplicatePlacement &&
+				rejectedDuplicateAlias &&
 				rejectedBadId && rejectedEmptySavePath) ? "true" : "false")
 			<< '\n'
 			<< "documentCrossReferences="
