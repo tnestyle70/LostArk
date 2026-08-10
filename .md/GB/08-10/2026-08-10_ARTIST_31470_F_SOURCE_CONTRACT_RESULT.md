@@ -297,3 +297,79 @@ Product admission은 계속 `false` (`0/35`)다.
 oracle, semantic closure를 명시 입력으로 받는 source-contract `--check`, 91개 unit/mutation
 test를 같은 실행에서 검증한다. 최종 실행은 모두 PASS했다. 이미지·스크린샷·육안 판정은
 실행하지 않았다.
+
+## G05-S source execution semantics adapter 결과
+
+`skill.31470.source-execution-semantics.receipt.json`을 추가했다. 이 파일은 기존 candidate를
+Product로 승인하는 문서가 아니라, source evidence를 다음 typed compiler가 소비할 수 있게
+물질화한 fail-closed adapter receipt다.
+
+### 분모와 결정
+
+- occurrence: 35
+- selected LOD field: `70 VERIFIED_IRRELEVANT`
+- module: `370 READY_FOR_HANDLER / 29 BLOCKED`
+- top-level property: `1,029 READY_FOR_HANDLER / 402 VERIFIED_IRRELEVANT / 3 BLOCKED`
+- primitive leaf: `1,170 READY_FOR_HANDLER / 402 VERIFIED_IRRELEVANT`
+- distribution: `626 READY_FOR_HANDLER / 3 BLOCKED`
+- native tail: `399 VERIFIED_IRRELEVANT`
+- seed: `14 READY_FOR_HANDLER`
+- implicit default: `13 READY_FOR_HANDLER / 1 VERIFIED_IRRELEVANT`
+- typed payload: literal 1,590 / distribution 629, unclassified 0, silent fallback 0
+- Product admission: false
+
+`allRowsClassifiedAndBound=true`지만 `allRowsConsumedOrIrrelevant=false`다. exact custom handler와
+custom distribution 세 행이 실제 blocker이므로 이를 consumed로 세탁하지 않았다.
+
+### 실제로 닫힌 의미
+
+- installed current package 70개를 열고 external module 248 occurrence가 참조하는 178 unique
+  export를 다시 decode했다. source closure와 tagged property가 모두 같고 각 export는
+  `serialSize == propertyStreamEnd`였다. 따라서 native tail은 current-revision 범위에서 실행
+  입력이 아님을 검증했다. historical source exact로는 승격하지 않았다.
+- inline distribution 612개는 operation, lookup chunk/count, default minimum/maximum, lookup/key를
+  typed descriptor로 보존했다. fixed time `0/.25/1`과 fixed random vector 세 세트의 값을 생성기와
+  독립 verifier가 별도로 계산해 일치시켰다. operation 409, chunk/count 각 257의 reconstructed
+  provenance는 source tagged field와 분리했다.
+- standard local distribution/curve 14 occurrence를 닫았다. target000 두 occurrence는 current
+  archetype chain의 `Constant=1`과 `ParameterName=None`을 결합해 constant fallback 1로,
+  target001은 Spawn 0의 normal mapping으로 0, target009는 life 0.6000000238의 normal mapping으로
+  0.6000000238을 계산했다. target002/004/005/006은 typed ActionCue direct input을, target003은
+  scalar/vector type mismatch의 constant fallback을, target008은 cubic curve oracle을 사용한다.
+- target014 current child의 `rotation`, `DPM_DIRECT`, `Constant=(1,1,0.6000000238)`은 별도 current
+  observation으로 보존했다. old 66,494-byte package와 custom multiply evaluator가 없으므로 두
+  occurrence를 실행값으로 승인하지 않았다. target007 한 occurrence도 같은 custom evaluator
+  blocker를 유지했다.
+- source seed array 5개와 32-byte struct body 8개에서 seed를 보존했고 class-default empty array
+  1개를 구분했다. current Engine/EFGame seeded CDO 8종의 ParameterName/selection/reset policy를
+  직접 decode해 같은 정책임을 확인했다. 이는 current script evidence이며 source-era exact가 아니다.
+- Required local-space 8개는 current inherited false, Decal 3개와 Ribbon 1개는 current CDO value,
+  Light 1개는 local PointLight default chain으로 물질화했다. ScreenPost implicit default는 source
+  field가 아니어서 renderer projection irrelevance로 닫았다.
+- PointLight는 exact instance Brightness/flags와 current Radius 200/Falloff 2/white를 분리했다.
+  LightGuid/LightMapGuid는 runtime light simulation 입력이 아니므로 전용 irrelevance row다.
+
+### 남은 blocker
+
+- `efparticlemodule*` 또는 `_seeded`인 exact class 26 occurrence/13 class family는 자동 alias하지
+  않았다. exact handler numeric oracle이 없어 `EXACT_SOURCE_CLASS_HANDLER_NUMERIC_ORACLE_REQUIRED`다.
+- 위 custom distribution 3 occurrence를 소유하는 standard module 3개도 함께 차단돼 module 총
+  blocker는 29개다.
+- typed runtime compiler capability 결합과 최종 Product admission은 Integration/G06 이후 단계가
+  소유한다. 이 source receipt만으로 35/35 실행 완료를 주장하지 않는다.
+
+### 자동 검증
+
+- focused unit/mutation: 22/22 PASS
+- independent shallow oracle: modules 399, ready 370, blocked 29, distributions 629, blocked 3 PASS
+- independent deep oracle: current UPK 70개, external module export 178개, Engine/EFGame CDO PASS
+- generator deterministic deep `--check`: PASS
+- focused shallow/deep ProjectAudit: PASS
+- 전체 `Invoke-ProjectAudit.ps1`: 실행했으나 이 lane 밖의 publisher v14 expectation,
+  four-class Artist/31210 stage mismatch, 미배포 Character resource 등 기존 통합 항목으로 exit 1.
+  새 `effect.artist-31470-source-execution-semantics`는 focused audit에서 별도로 PASS
+- 이미지, 스크린샷, GPU 화면, 육안 판정: 실행하지 않음
+
+receipt LF/raw SHA-256은
+`de15843dfa2f151371c1e26c472f2d42a0bfd7c7f8c8a41a3cdd2da08eaccb9a`, self SHA-256은
+`7e1113dd05bcc9b51056cacc27da1805f7a6d26f65dda5b72c99d26c3141a71c`다.
