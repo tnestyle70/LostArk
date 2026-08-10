@@ -120,7 +120,8 @@ stage한 뒤에만 public output으로 move한다. 어느 후속 section에서�
 2. writer-independent 850-byte immutable golden과 C++ decoder harness Debug/Release
 3. v1.0 static multi-submesh+hasBounds, skinned+skeleton+animation 회귀
 4. exact SHA로 고정한 corrupt WModel 29종 + WSKL 1종 + WANM 1종의 의도된
-   error category와 transaction 회귀. missing/rename/empty fixture는 exact exit 1
+   error category와 transaction 회귀. missing/rename/case-only rename/empty fixture는
+   exact exit 1이며 실제 directory entry 이름 집합은 ordinal case-sensitive exact match
 5. 실제 7개 candidate를 Python numeric oracle와 C++ decoder 양쪽에서 Debug/Release 검증
 6. 실제 Resources v1.0 corpus 2,586개 C++ sweep: static 2,535, skinned 51,
    hasBounds 2,586, multi-submesh 665, legacy sidecar/geometry metadata 0

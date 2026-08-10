@@ -457,17 +457,28 @@ namespace
 		if (error)
 			return false;
 		const std::filesystem::directory_iterator end;
-		size_t corruptNamedEntryCount = 0;
+		std::vector<std::wstring> corruptNamedEntries;
 		for (; iterator != end; iterator.increment(error))
 		{
 			if (error)
 				return false;
 			const std::wstring fileName = iterator->path().filename().wstring();
 			if (std::wstring_view(fileName).starts_with(L"corrupt_"))
-				++corruptNamedEntryCount;
+				corruptNamedEntries.push_back(fileName);
 		}
-		if (error || corruptNamedEntryCount != kCorruptFixtureManifest.size())
+		if (error || corruptNamedEntries.size() != kCorruptFixtureManifest.size())
 			return false;
+		for (const CORRUPT_FIXTURE_EXPECTATION& expectation :
+			kCorruptFixtureManifest)
+		{
+			if (corruptNamedEntries.end() == std::find(
+					corruptNamedEntries.begin(),
+					corruptNamedEntries.end(),
+					std::wstring(expectation.fileName)))
+			{
+				return false;
+			}
+		}
 		const auto countKind = [](CORRUPT_FIXTURE_KIND kind)
 		{
 			return std::count_if(

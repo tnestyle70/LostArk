@@ -91,7 +91,9 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
   - exact name/size/SHA의 corrupt WModel 29종 + WSKL 1종 + WANM 1종 거부
   - 각 corrupt fixture의 valid baseline delta와 의도된 error category 일치
   - WModel/WSKL/WANM 실패에서 transactional empty output
-  - missing/renamed/empty required fixture는 각각 exact exit 1
+  - missing/renamed/case-only renamed/empty required fixture는 각각 exact exit 1
+  - NTFS case-insensitive path resolution 전 actual directory entry 31개를 ordinal
+    case-sensitive exact manifest set과 비교
   - manifest whole-file hash mutation과 semantic field mutation을 별도 거부
 - 7-carrier deep audit Debug/Release: PASS
   - carrier 7, COLOR 2, negative-W carrier 4
@@ -150,3 +152,11 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 이 판정은 WModel evidence/format/decoder/cooker gate 완료를 뜻한다. source fidelity, runtime
 `geometryPreScale` 소비, GeometryBinding 외부 authentication, Resources 배포 또는 Product 승인으로
 승격하지 않는다. `Client/Bin/Resources`와 Effect runtime은 변경하지 않았고 Product는 false다.
+
+## Delta-2 독립 검토 경계
+
+`8d806bbb` consolidated review는 P0 0, P2 0이고 NTFS case-only rename P1 한 건만 남겼다.
+Delta-2는 actual directory entry의 ordinal exact-set gate와
+`corrupt_header.wmodel -> corrupt_Header.wmodel` exact-exit-1 fixture를 추가했다. Debug/Release
+harness와 focused ProjectAudit은 통과했으며, 최종 독립 재감사는 이 case-only delta만 남아 있다.
+Product와 source-fidelity admission은 계속 false다.
