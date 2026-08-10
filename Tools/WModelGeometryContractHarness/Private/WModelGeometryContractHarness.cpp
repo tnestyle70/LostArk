@@ -5,13 +5,16 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <cwctype>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <process.h>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -28,6 +31,19 @@ namespace
 	constexpr uint32_t kColor0 = 1u << 6;
 	constexpr float kTangentHandednessAbsoluteTolerance = 1e-6f;
 	constexpr uint32_t kExpectedLegacyResourceCorpusCount = 2586u;
+	constexpr uint32_t kExpectedLegacyStaticCount = 2535u;
+	constexpr uint32_t kExpectedLegacySkinnedCount = 51u;
+	constexpr uint32_t kExpectedLegacyBoundsCount = 2586u;
+	constexpr uint32_t kExpectedLegacyMultiSubmeshCount = 665u;
+	constexpr size_t kWriterIndependentGoldenByteCount = 850u;
+	constexpr std::string_view kWriterIndependentGoldenSha256 =
+		"6bb409094185d9c41f6cb241d42bdc767b0a3868f7ed981d194e8fe1ccd23627";
+	constexpr std::string_view kWriterIndependentManifestSha256 =
+		"73b1753200514f534baf622d1732623f70842afddc4c83da551faac5df19ccdd";
+	constexpr std::string_view kWriterIndependentPayloadSha256 =
+		"c50feb075b6ef7509238f4cdabe0a247ad44036c31a0664b923d118f2c828dfe";
+	constexpr std::string_view kWriterIndependentMetadataIdentitySha256 =
+		"e99ee5ce041cc1f2d050f9737bb81e6acebe56c02370f7022418914144164f6a";
 	constexpr uint32_t kProductSourceFidelity =
 		MODEL_GEOMETRY_CLEAN_SOURCE_EXPORT |
 		MODEL_GEOMETRY_UPK_TO_GLTF_EXACT |
@@ -111,6 +127,89 @@ namespace
 		if (nullptr != algorithm)
 			BCryptCloseAlgorithmProvider(algorithm, 0);
 		return succeeded ? Hex_Digest(digest) : std::string{};
+	}
+
+	bool Read_File_Bytes(
+		const std::filesystem::path& path,
+		std::vector<uint8_t>& outBytes)
+	{
+		std::ifstream stream(path, std::ios::binary | std::ios::ate);
+		if (!stream)
+			return false;
+		const std::streamoff length = stream.tellg();
+		if (length < 0 || static_cast<uint64_t>(length) > SIZE_MAX)
+			return false;
+		outBytes.resize(static_cast<size_t>(length));
+		stream.seekg(0, std::ios::beg);
+		return outBytes.empty() ||
+			static_cast<bool>(stream.read(
+				reinterpret_cast<char*>(outBytes.data()), length));
+	}
+
+	bool Canonicalize_Utf8_Lf(
+		const std::vector<uint8_t>& source,
+		std::vector<uint8_t>& outBytes)
+	{
+		if (source.size() >= 3u && source[0] == 0xefu &&
+			source[1] == 0xbbu && source[2] == 0xbfu)
+		{
+			return false;
+		}
+		outBytes.clear();
+		outBytes.reserve(source.size());
+		for (size_t index = 0; index < source.size(); ++index)
+		{
+			if ('\r' == source[index])
+			{
+				if (index + 1u < source.size() && '\n' == source[index + 1u])
+					++index;
+				outBytes.push_back('\n');
+			}
+			else
+			{
+				outBytes.push_back(source[index]);
+			}
+		}
+		return true;
+	}
+
+	int Hex_Nibble(uint8_t value)
+	{
+		if (value >= '0' && value <= '9')
+			return value - '0';
+		if (value >= 'a' && value <= 'f')
+			return value - 'a' + 10;
+		return -1;
+	}
+
+	bool Decode_Lowercase_Hex_File(
+		const std::filesystem::path& path,
+		std::vector<uint8_t>& outBytes)
+	{
+		std::vector<uint8_t> encoded;
+		if (!Read_File_Bytes(path, encoded))
+			return false;
+		std::vector<uint8_t> nibbles;
+		nibbles.reserve(encoded.size());
+		for (const uint8_t value : encoded)
+		{
+			if (0 != std::isspace(static_cast<unsigned char>(value)))
+				continue;
+			if (Hex_Nibble(value) < 0)
+				return false;
+			nibbles.push_back(value);
+		}
+		if (nibbles.empty() || 0 != nibbles.size() % 2u)
+			return false;
+		outBytes.clear();
+		outBytes.reserve(nibbles.size() / 2u);
+		for (size_t index = 0; index < nibbles.size(); index += 2u)
+		{
+			outBytes.push_back(static_cast<uint8_t>(
+				(Hex_Nibble(nibbles[index]) << 4) |
+				Hex_Nibble(nibbles[index + 1u])));
+		}
+		return true;
 	}
 
 	std::string Json_Escape(const std::string& value)
@@ -375,16 +474,38 @@ namespace
 
 		const std::array<float, 3> expectedW = { -1.f, 1.f, -1.f };
 		const std::array<float, 3> expectedBinormalZ = { 1.f, -1.f, 1.f };
+		const std::array<float3_t, 3> expectedPosition = {
+			float3_t{ 100.f, 200.f, -300.f },
+			float3_t{ 400.f, 200.f, -300.f },
+			float3_t{ 100.f, 600.f, -800.f },
+		};
+		const std::array<float2_t, 3> expectedUv0 = {
+			float2_t{ 0.f, 0.f },
+			float2_t{ 1.f, 0.f },
+			float2_t{ 0.f, 1.f },
+		};
 		const std::array<uint32_t, 3> expectedColor = {
 			0x44332211u, 0x88776655u, 0xccbbaa99u
 		};
 		if (mesh.tangentHandedness.size() != mesh.vertices.size() ||
-			mesh.color0Rgba8.size() != mesh.vertices.size())
+			mesh.color0Rgba8.size() != mesh.vertices.size() ||
+			mesh.name != "fixture" || 0 != mesh.materialIndex)
 			return false;
 		for (size_t i = 0; i < mesh.vertices.size(); ++i)
 		{
 			const VTXMESH& vertex = mesh.vertices[i];
-			if (!Nearly_Equal(mesh.tangentHandedness[i], expectedW[i]) ||
+			if (!Nearly_Equal(vertex.vPosition.x, expectedPosition[i].x) ||
+				!Nearly_Equal(vertex.vPosition.y, expectedPosition[i].y) ||
+				!Nearly_Equal(vertex.vPosition.z, expectedPosition[i].z) ||
+				!Nearly_Equal(vertex.vNormal.x, 0.f) ||
+				!Nearly_Equal(vertex.vNormal.y, 1.f) ||
+				!Nearly_Equal(vertex.vNormal.z, 0.f) ||
+				!Nearly_Equal(vertex.vTangent.x, 1.f) ||
+				!Nearly_Equal(vertex.vTangent.y, 0.f) ||
+				!Nearly_Equal(vertex.vTangent.z, 0.f) ||
+				!Nearly_Equal(vertex.vTexcoord.x, expectedUv0[i].x) ||
+				!Nearly_Equal(vertex.vTexcoord.y, expectedUv0[i].y) ||
+				!Nearly_Equal(mesh.tangentHandedness[i], expectedW[i]) ||
 				!Nearly_Equal(vertex.vBinormal.z, expectedBinormalZ[i]) ||
 				mesh.color0Rgba8[i] != expectedColor[i])
 			{
@@ -392,6 +513,54 @@ namespace
 			}
 		}
 		return true;
+	}
+
+	bool Validate_Writer_Independent_Golden(
+		const std::filesystem::path& hexPath,
+		const std::filesystem::path& manifestPath)
+	{
+		std::vector<uint8_t> manifestBytes;
+		std::vector<uint8_t> canonicalManifestBytes;
+		std::vector<uint8_t> goldenBytes;
+		if (!Read_File_Bytes(manifestPath, manifestBytes) ||
+			!Canonicalize_Utf8_Lf(manifestBytes, canonicalManifestBytes) ||
+			Sha256_Hex(canonicalManifestBytes) != kWriterIndependentManifestSha256 ||
+			!Decode_Lowercase_Hex_File(hexPath, goldenBytes) ||
+			goldenBytes.size() != kWriterIndependentGoldenByteCount ||
+			Sha256_Hex(goldenBytes) != kWriterIndependentGoldenSha256)
+		{
+			return false;
+		}
+
+		std::error_code error;
+		const std::filesystem::path temporaryPath =
+			std::filesystem::temp_directory_path(error) /
+			(L"lostark-wmodel-v11-independent-" +
+				std::to_wstring(static_cast<uint32_t>(_getpid())) +
+				L".wmodel");
+		if (error)
+			return false;
+		{
+			std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
+			if (!stream || !stream.write(
+				reinterpret_cast<const char*>(goldenBytes.data()),
+				static_cast<std::streamsize>(goldenBytes.size())))
+			{
+				std::filesystem::remove(temporaryPath, error);
+				return false;
+			}
+		}
+
+		MODEL_ASSET_DATA asset{};
+		MODEL_DECODE_REPORT report{};
+		const bool valid = Validate_Color_V11(temporaryPath) &&
+			Decode(temporaryPath, asset, report) && report.succeeded &&
+			Hex_Digest(asset.geometryMetadata.payloadSha256) ==
+				kWriterIndependentPayloadSha256 &&
+			Hex_Digest(asset.geometryMetadata.metadataIdentitySha256) ==
+				kWriterIndependentMetadataIdentitySha256;
+		std::filesystem::remove(temporaryPath, error);
+		return valid && !error;
 	}
 
 	bool Validate_NoColor_V11(const std::filesystem::path& path)
@@ -694,8 +863,17 @@ namespace
 				{
 					return MODEL_VERTEX_KIND::STATIC == mesh.vertexKind;
 				});
+			const bool legacySidecarsAbsent = std::all_of(
+				asset.meshes.begin(), asset.meshes.end(),
+				[](const MODEL_MESH_DATA& mesh)
+				{
+					return !mesh.embeddedBounds.present && !mesh.hasColor0 &&
+						mesh.tangentHandedness.empty() && mesh.color0Rgba8.empty() &&
+						!mesh.indices.empty() &&
+						(!mesh.vertices.empty() || !mesh.skinnedVertices.empty());
+				});
 			if ((layout.skinned && !decodedSkinned) ||
-				(!layout.skinned && !decodedStatic))
+				(!layout.skinned && !decodedStatic) || !legacySidecarsAbsent)
 				return false;
 			if (layout.skinned)
 				++skinnedCount;
@@ -708,8 +886,10 @@ namespace
 		}
 
 		const bool valid = files.size() == kExpectedLegacyResourceCorpusCount &&
-			staticCount > 0 && skinnedCount > 0 && hasBoundsCount > 0 &&
-			multiSubmeshCount > 0;
+			staticCount == kExpectedLegacyStaticCount &&
+			skinnedCount == kExpectedLegacySkinnedCount &&
+			hasBoundsCount == kExpectedLegacyBoundsCount &&
+			multiSubmeshCount == kExpectedLegacyMultiSubmeshCount;
 		std::cout << "Legacy WModel C++ corpus sweep: files=" << files.size()
 			<< " static=" << staticCount << " skinned=" << skinnedCount
 			<< " hasBounds=" << hasBoundsCount
@@ -751,11 +931,24 @@ int wmain(int argc, wchar_t** argv)
 			std::filesystem::absolute(argv[2]).lexically_normal();
 		return Sweep_Legacy_Resource_Corpus(resourceRoot) ? 0 : 1;
 	}
+	if (4 == argc &&
+		std::wstring_view(argv[1]) == L"--writer-independent-golden")
+	{
+		const bool valid = Validate_Writer_Independent_Golden(
+			std::filesystem::absolute(argv[2]).lexically_normal(),
+			std::filesystem::absolute(argv[3]).lexically_normal());
+		std::cout << "WModel writer-independent immutable golden: bytes="
+			<< kWriterIndependentGoldenByteCount << ' '
+			<< "decodedSemantic=" << valid
+			<< " externallyAuthenticated=0 product=false\n";
+		return valid ? 0 : 1;
+	}
 	if (2 != argc)
 	{
 		std::wcerr << L"usage: WModelGeometryContractHarness <suite-directory> "
 			L"| --candidate <wmodel> | --dump-candidate <wmodel> "
-			L"| --legacy-corpus <Resources>\n";
+			L"| --legacy-corpus <Resources> "
+			L"| --writer-independent-golden <hex> <expected-json>\n";
 		return 2;
 	}
 

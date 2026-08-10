@@ -679,6 +679,49 @@ def write_harness_suite(output_root: Path) -> None:
 
 
 class WModelGeometryContractTests(unittest.TestCase):
+    def test_writer_independent_immutable_golden_identity(self) -> None:
+        fixture_root = (
+            Path(__file__).resolve().parents[1]
+            / "WModelGeometryContractHarness"
+            / "Fixtures"
+        )
+        hex_path = fixture_root / "wmodel_v11_writer_independent_golden.hex"
+        manifest_path = (
+            fixture_root
+            / "wmodel_v11_writer_independent_golden.expected.json"
+        )
+        encoded = hex_path.read_text(encoding="ascii")
+        compact = "".join(encoded.split())
+        self.assertEqual(compact, compact.lower())
+        self.assertTrue(compact)
+        self.assertTrue(all(value in "0123456789abcdef" for value in compact))
+        payload = bytes.fromhex(compact)
+        manifest_bytes = manifest_path.read_bytes()
+        canonical_manifest = manifest_bytes.replace(b"\r\n", b"\n").replace(
+            b"\r", b"\n"
+        )
+        self.assertFalse(canonical_manifest.startswith(b"\xef\xbb\xbf"))
+        manifest = json.loads(canonical_manifest.decode("utf-8"))
+        self.assertEqual(
+            manifest.get("schema"),
+            "lostark.wmodel-v11-writer-independent-golden",
+        )
+        self.assertIs(type(manifest.get("formatVersion")), int)
+        self.assertEqual(manifest.get("formatVersion"), 1)
+        self.assertEqual(len(payload), manifest.get("decodedByteCount"))
+        self.assertEqual(
+            hashlib.sha256(payload).hexdigest(), manifest.get("decodedSha256")
+        )
+        self.assertEqual(
+            hashlib.sha256(canonical_manifest).hexdigest(),
+            "73b1753200514f534baf622d1732623f70842afddc4c83da551faac5df19ccdd",
+        )
+        mutated_payload = bytes((payload[0] ^ 0x01,)) + payload[1:]
+        self.assertNotEqual(
+            hashlib.sha256(mutated_payload).hexdigest(),
+            manifest.get("decodedSha256"),
+        )
+
     def test_round_trip_preserves_channels_basis_bounds_and_blockers(self) -> None:
         self.assertTrue(strict_json_equal({"b": 2, "a": 1}, {"a": 1, "b": 2}))
         self.assertFalse(strict_json_equal({"value": True}, {"value": 1}))
