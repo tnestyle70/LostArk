@@ -2,6 +2,7 @@
 
 #include "MainApp.h"
 
+#include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
@@ -15,6 +16,7 @@
 #include "Level_Loading.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
+#include "PartyWindowView.h"
 #include "Profiler.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
@@ -200,6 +202,8 @@ HRESULT CMainApp::Initialize()
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
 	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
+	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice);
+	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -225,6 +229,37 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (kDown && !m_bKDown)
 			m_pSkillWindowView->Toggle();
 		m_bKDown = kDown;
+	}
+
+	/* Enter opens the chat input the same way K toggles the skill window: only while nothing
+	else already owns text input, so it cannot hijack an unrelated focused field. Once open,
+	ImGui::GetIO().WantTextInput is true for as long as the InputText keeps focus, which both
+	naturally blocks this same re-open check and (via the keyboardCaptured/SetInputBlocked
+	logic below) blocks gameplay key polling while typing -- no separate plumbing needed for
+	that part. Escape closes it and is checked outside the WantTextInput guard, since that is
+	exactly the state Escape needs to fire in. */
+	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput)
+	{
+		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
+		an input box that would render invisible outside Bern/Valtan. */
+		const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t chatLevelAllowed =
+			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel;
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t enterDown = chatLevelAllowed && windowFocused &&
+			0 != (GetAsyncKeyState(VK_RETURN) & 0x8000);
+		if (enterDown && !m_bEnterDown && !m_pChatWindowView->Is_Open())
+			m_pChatWindowView->Open_Input();
+		m_bEnterDown = enterDown;
+	}
+	if (nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open())
+	{
+		const bool_t escapeDown =
+			0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+		if (escapeDown && !m_bEscapeDown)
+			m_pChatWindowView->Close_Input();
+		m_bEscapeDown = escapeDown;
 	}
 
 	if (nullptr != m_pImGuiLayer)
@@ -317,7 +352,26 @@ HRESULT CMainApp::Render()
 		}
 	#endif
 		RenderCombatHUD();
+		RenderStanceSkillIcons();
 		RenderSkillCooldowns();
+		if (nullptr != m_pChatWindowView)
+		{
+			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
+			this list as real in-game stages are added. */
+			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+			if (ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+				m_pChatWindowView->Render();
+		}
+		if (nullptr != m_pPartyWindowView)
+		{
+			/* Same level set as the chat window. UI-only placeholder roster for now (no party
+			Shared protocol to gate on actual invite-accepted state yet). */
+			const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
+			if (ETOUI(LEVEL::BERN) == partyLevel || ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
+			{
+				m_pPartyWindowView->Render();
+			}
+		}
 #ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
 		{
@@ -506,6 +560,94 @@ void CMainApp::RenderSkillCooldowns()
 	}
 }
 
+void CMainApp::RenderStanceSkillIcons()
+{
+	/* LanceMaster is the only class whose Q/W/E/R/A/S/D/F means a different skill depending on
+	stance, so HUD_Layout.json no longer carries a static Lance_Skill_Q..F icon at all (removed
+	-- it could only ever show one stance's set). This owns the whole icon for both stances
+	directly: the shared "Skill_Q".."Skill_F" slots (ownerClass null) still draw the plain
+	background/frame every class shares, and this draws only the icon in between, once, for
+	whichever stance is actually active -- not an overlay patched on top of a wrong icon. */
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid ||
+		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER != player.eCharacterClass)
+	{
+		return;
+	}
+
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
+		return;
+
+	const bool_t isShortSpear =
+		LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance;
+
+	struct LANCE_SLOT_ICON { const char* pInputSlot; const char* pLongSpearIcon; const char* pShortSpearIcon; };
+	constexpr LANCE_SLOT_ICON LANCE_SLOT_ICONS[] =
+	{
+		{ "Q", "UI/Skill/LanceMaster/34040_DoubleStrike.png", "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
+		{ "W", "UI/Skill/LanceMaster/34090_ThornJab.png", "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
+		{ "E", "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png", "UI/Skill/LanceMaster/34560_ThrustOfDestruction.png" },
+		{ "R", "UI/Skill/LanceMaster/34160_SpearDive.png", "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
+		{ "A", "UI/Skill/LanceMaster/34140_SoulCutter.png", "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
+		{ "S", "UI/Skill/LanceMaster/34120_ChainSlash.png", "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
+		/* D/F have no short-spear skill in PlayerSkills.json -- left blank (no icon drawn,
+		just the shared empty-slot frame underneath) for a key that does nothing in that stance. */
+		{ "D", "UI/Skill/LanceMaster/34110_HalfMoonSlash.png", nullptr },
+		{ "F", "UI/Skill/LanceMaster/34150_RagingDragonSlash.png", nullptr },
+	};
+
+	constexpr f32_t REF_WIDTH = 1280.f;
+	constexpr f32_t REF_HEIGHT = 720.f;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
+	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	ID3D11ShaderResourceView* pEmptySlotSRV =
+		m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/Empty Slot.png");
+
+	for (const LANCE_SLOT_ICON& Slot : LANCE_SLOT_ICONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect(
+			string("Skill_") + Slot.pInputSlot, fX, fY, fWidth, fHeight))
+		{
+			continue;
+		}
+
+		const ImVec2 vTopLeft(
+			pViewport->WorkPos.x + fX * fScaleX,
+			pViewport->WorkPos.y + fY * fScaleY);
+		const ImVec2 vBotRight(
+			vTopLeft.x + fWidth * fScaleX,
+			vTopLeft.y + fHeight * fScaleY);
+
+		/* Icon first, then the shared frame's border/tab back on top -- the shared "Skill_Q"
+		slot already drew that same border underneath before this runs, so redrawing it here
+		is what keeps it above the icon instead of the icon covering it. */
+		const char* pIconPath = isShortSpear ? Slot.pShortSpearIcon : Slot.pLongSpearIcon;
+		if (nullptr != pIconPath)
+		{
+			if (ID3D11ShaderResourceView* pIconSRV = m_pHUDRuntimeView->Load_Texture(pIconPath))
+				pDrawList->AddImage(pIconSRV, vTopLeft, vBotRight);
+		}
+		if (nullptr != pEmptySlotSRV)
+			pDrawList->AddImage(pEmptySlotSRV, vTopLeft, vBotRight);
+	}
+}
+
 void CMainApp::RenderCombatHUDText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -533,10 +675,14 @@ void CMainApp::RenderCombatHUDText()
 			L" / " + std::to_wstring(player.iMaximumHp);
 		const wstring mana = L"MANA  " + std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
+		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
+		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels
+		are drawn here in C++, not from that JSON, so they need the same transform by hand or
+		they drift off the now-smaller HP/mana bars. */
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
-			position(448.f, 614.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
+			position(504.419f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), mana.c_str(),
-			position(889.f, 614.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
+			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!boss.isValid || 0u == boss.iMaximumHp ||
