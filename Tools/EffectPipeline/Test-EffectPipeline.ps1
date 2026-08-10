@@ -197,6 +197,13 @@ try {
     & $publisher -Mode Publish -DataRoot $dataRoot -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Baseline publish failed.' }
     $baseline = [IO.File]::ReadAllBytes($output)
+    $baselineRuntime = Get-Content -LiteralPath $output -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    if ([int]$baselineRuntime.formatVersion -ne 2 -or
+        $null -ne $baselineRuntime.PSObject.Properties['schema'] -or
+        $null -ne $baselineRuntime.effects[0].PSObject.Properties['payloadKind']) {
+        throw 'Legacy-only publish no longer preserves the format-2 catalog shape.'
+    }
 
     $componentPath = Join-Path $components 'Fixture_00.particlesystem.wfx.json'
     $assemblyPath = Join-Path $assemblies "$effectId.assembly.json"

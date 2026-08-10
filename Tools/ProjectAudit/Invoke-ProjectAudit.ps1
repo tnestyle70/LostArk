@@ -806,6 +806,22 @@ try {
 	Add-Check 'effect.typed-cascade-compiler' `
 		$effectCascadeCompilerPassed `
 		$effectCascadeCompilerDetail
+	$effectDerivedPublisherPassed = $false
+	$effectDerivedPublisherDetail = ''
+	try {
+		$effectDerivedPublisherDetail = (& `
+			'.\Tools\ProjectAudit\Test-EffectDerivedArtifactPublisher.ps1' `
+			2>&1 | Out-String).Trim()
+		$effectDerivedPublisherPassed =
+			$effectDerivedPublisherDetail -match
+			'PASS: derived Effect artifact publisher schema tests=14 execution=true product=false'
+	}
+	catch {
+		$effectDerivedPublisherDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.derived-artifact-publisher' `
+		$effectDerivedPublisherPassed `
+		$effectDerivedPublisherDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
