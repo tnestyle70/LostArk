@@ -13,8 +13,11 @@ from build_artist_31470_reconstructed_source_capability import (
     ACQUISITION_PATH,
     CLASS_CONTRACTS,
     CUSTOM_PATH,
+    DECAL_SOURCE_CLASS,
     EVIDENCE_BLOCKERS,
+    EXPECTED_DECAL_NEAR_PLANE,
     EXPECTED_FAMILY_COUNTS,
+    IMPLEMENTATION_VERSIONS,
     OUTPUT_PATH,
     SOURCE_PATH,
     SOURCE_RECEIPT_PATH,
@@ -115,7 +118,10 @@ class ReconstructedSourceCapabilityTests(unittest.TestCase):
         owned_variants = set()
         for policy in policies:
             self.assertIs(type(policy["implementationVersion"]), int)
-            self.assertEqual(policy["implementationVersion"], 1)
+            self.assertEqual(
+                policy["implementationVersion"],
+                IMPLEMENTATION_VERSIONS[policy["policyFamilyId"]],
+            )
             self.assertEqual(len(policy["implementationSha256"]), 64)
             self.assertEqual(
                 canonical_sha256(policy["semanticContract"]),
@@ -261,65 +267,76 @@ class ReconstructedSourceCapabilityTests(unittest.TestCase):
             self.custom,
             self.acquisition,
         )
-        cases: list[tuple[str, str, callable]] = []
+        cases: list[tuple[str, str, callable, bool]] = []
 
         def seeded_mutation(source: dict, module: dict) -> None:
             descriptor = self._descriptor(module, "lifetime")
             descriptor["lookupTable"] = [value + 0.125 for value in descriptor["lookupTable"]]
 
-        cases.append(("particlemodulelifetime_seeded", "source.reconstructed.seeded.v1", seeded_mutation))
+        cases.append(("particlemodulelifetime_seeded", "source.reconstructed.seeded.v1", seeded_mutation, False))
 
         def cylinder_mutation(source: dict, module: dict) -> None:
             literal = next(row for row in module["typedPayload"]["literals"] if row["propertyPath"] == "benabled")
             literal["value"] = not literal["value"]
 
-        cases.append(("efparticlemodulelocationprimitivecylinderspin", "source.reconstructed.cylinder-spin.v1", cylinder_mutation))
+        cases.append(("efparticlemodulelocationprimitivecylinderspin", "source.reconstructed.cylinder-spin.v1", cylinder_mutation, False))
 
         def ground_mutation(source: dict, module: dict) -> None:
             adapter = self._adapter(module, "skiplocation")
             adapter["numericOracleSamples"][0]["value"] = [0.0]
 
-        cases.append(("efparticlemodulelocationonground", "source.reconstructed.ground.v1", ground_mutation))
+        cases.append(("efparticlemodulelocationonground", "source.reconstructed.ground.v1", ground_mutation, False))
 
         def decal_mutation(source: dict, module: dict) -> None:
             literal = next(row for row in module["typedPayload"]["literals"] if row["propertyPath"] == "nearplane")
             literal["value"] = float(literal["value"]) + 25.0
 
-        cases.append(("efparticlemoduletypedatadecal", "source.reconstructed.decal.v1", decal_mutation))
+        cases.append(("efparticlemoduletypedatadecal", "source.reconstructed.decal.v1", decal_mutation, True))
 
         def light_mutation(source: dict, module: dict) -> None:
             field = next(row for row in source["pointLightAdapter"]["fields"] if row["fieldPath"] == "brightness")
             field["value"] = float(field["value"]) + 1.0
 
-        cases.append(("efparticlemoduletypedatalight", "source.reconstructed.light.v1", light_mutation))
+        cases.append(("efparticlemoduletypedatalight", "source.reconstructed.light.v1", light_mutation, False))
 
         def velocity_mutation(source: dict, module: dict) -> None:
             descriptor = self._descriptor(module, "veloverlife")
             descriptor["lookupTable"] = [value * 1.5 for value in descriptor["lookupTable"]]
 
-        cases.append(("efparticlemodulevelocityoverlifetime", "source.reconstructed.velocity.v1", velocity_mutation))
+        cases.append(("efparticlemodulevelocityoverlifetime", "source.reconstructed.velocity.v1", velocity_mutation, False))
 
         def vector_mutation(source: dict, module: dict) -> None:
             adapter = self._adapter(module, "startrotation")
             field = next(row for row in adapter["currentRevisionFields"] if row["fieldPath"] == "constant")
             field["value"]["z"] = float(field["value"]["z"]) + 0.25
 
-        cases.append(("particlemodulemeshrotation", "source.reconstructed.ef-vector-multiply.v1", vector_mutation))
+        cases.append(("particlemodulemeshrotation", "source.reconstructed.ef-vector-multiply.v1", vector_mutation, False))
 
         changed_families = set()
-        for source_class, family_id, mutator in cases:
+        for source_class, family_id, mutator, mutation_must_reject in cases:
             mutated_source = copy.deepcopy(self.source)
             _, module = self._blocked_module(mutated_source, source_class)
             module_id = module["moduleOccurrenceId"]
             baseline_output = self._output_for(baseline_rows, module_id)
             mutator(mutated_source, module)
-            mutated_rows = build_occurrence_rows(
-                mutated_source,
-                build_family_policies(self.root, self.source),
-                self.custom,
-                self.acquisition,
-            )
-            self.assertNotEqual(baseline_output, self._output_for(mutated_rows, module_id))
+            if mutation_must_reject:
+                with self.assertRaises(ValueError):
+                    build_occurrence_rows(
+                        mutated_source,
+                        build_family_policies(self.root, self.source),
+                        self.custom,
+                        self.acquisition,
+                    )
+            else:
+                mutated_rows = build_occurrence_rows(
+                    mutated_source,
+                    build_family_policies(self.root, self.source),
+                    self.custom,
+                    self.acquisition,
+                )
+                self.assertNotEqual(
+                    baseline_output, self._output_for(mutated_rows, module_id)
+                )
             changed_families.add(family_id)
         self.assertEqual(changed_families, set(EXPECTED_FAMILY_COUNTS))
 
@@ -518,6 +535,211 @@ class ReconstructedSourceCapabilityTests(unittest.TestCase):
         }
         mutated["familyPolicies"][0]["implementationSha256"] = canonical_sha256(implementation)
         self._assert_invalid(mutated)
+
+    def test_26_decal_current_cdo_defaults_and_outputs_are_exact(self) -> None:
+        policy = next(
+            row for row in self.receipt["familyPolicies"]
+            if row["policyFamilyId"] == "source.reconstructed.decal.v1"
+        )
+        self.assertEqual(policy["implementationVersion"], 2)
+        self.assertEqual(
+            policy["semanticContract"]["algorithm"],
+            "EXPLICIT_DECAL_FRUSTUM_DESCRIPTOR_FROM_SOURCE_NEAR_PLANE_AND_CURRENT_EFGAME_CDO_DEFAULTS",
+        )
+        binding = next(
+            row for row in policy["semanticContract"]["variantBindings"]
+            if row["variant"] == "EF_DECAL_DESCRIPTOR"
+        )
+        defaults = {
+            row["fieldPath"]: row["value"]
+            for row in binding["explicitDefaults"]
+            if row["fieldPath"].startswith("decal.")
+        }
+        self.assertEqual(defaults, {
+            "decal.blendRange": [100.0, 100.0],
+            "decal.defaultSize": [50.0, 50.0],
+            "decal.farPlane": 300.0,
+            "decal.supports3dDrawMode": True,
+            "decal.yawOnly": True,
+        })
+        self.assertEqual(
+            set(binding["inputSchema"]["fields"]),
+            {
+                "time", "fixedSeed", "randomUnits", "sourceLiterals",
+                "evaluatedDistributions", "nearPlane", "farPlane",
+                "defaultSize", "blendRange", "yawOnly",
+                "supports3dDrawMode",
+            },
+        )
+        self.assertEqual(
+            set(binding["outputSchema"]["fields"]),
+            {"variant", "frustum", "yawOnly", "supports3dDrawMode"},
+        )
+
+        rows = [
+            row for row in self.receipt["occurrences"]
+            if row["exactSourceClass"] == DECAL_SOURCE_CLASS
+        ]
+        self.assertEqual(len(rows), 3)
+        expected_default_sha = canonical_sha256(binding["explicitDefaults"])
+        for row in rows:
+            self.assertEqual(row["explicitDefaultsSha256"], expected_default_sha)
+            self.assertFalse(row["sourceExact"])
+            self.assertTrue(set(EVIDENCE_BLOCKERS).issubset(row["preservedEvidenceBlockers"]))
+            near_literal = next(
+                literal for literal in row["sourceLiteralBindings"]
+                if literal["propertyPath"] == "nearplane"
+            )
+            self.assertIs(type(near_literal["value"]), float)
+            self.assertEqual(near_literal["value"], EXPECTED_DECAL_NEAR_PLANE)
+            for sample in row["numericSamples"]:
+                typed_inputs = sample["typedInputs"]
+                output = sample["output"]
+                self.assertEqual(typed_inputs["nearPlane"], -300.0)
+                self.assertEqual(typed_inputs["farPlane"], 300.0)
+                self.assertEqual(typed_inputs["defaultSize"], [50.0, 50.0])
+                self.assertEqual(typed_inputs["blendRange"], [100.0, 100.0])
+                self.assertIs(typed_inputs["yawOnly"], True)
+                self.assertIs(typed_inputs["supports3dDrawMode"], True)
+                self.assertEqual(
+                    output["frustum"],
+                    [-300.0, 300.0, 50.0, 50.0, 100.0, 100.0],
+                )
+                self.assertIs(output["yawOnly"], True)
+                self.assertIs(output["supports3dDrawMode"], True)
+
+    def test_27_decal_cdo_and_implicit_default_mutations_fail_closed(self) -> None:
+        mutations = []
+
+        def root_yaw(source: dict) -> None:
+            source["currentRevisionDefaultEvidence"]["decal"]["values"][
+                "bonlycalcrotationyaw"
+            ] = False
+
+        mutations.append(("root-yaw", root_yaw))
+
+        def cdo_support(source: dict) -> None:
+            source["currentRevisionDefaultEvidence"]["classDefaultObjects"][
+                "efParticleModuleTypeDataDecal"
+            ]["properties"]["bsupported3ddrawmode"]["value"] = False
+
+        mutations.append(("cdo-support", cdo_support))
+
+        def occurrence_yaw(source: dict) -> None:
+            _, module = self._blocked_module(source, DECAL_SOURCE_CLASS)
+            module["implicitDefaults"][0]["values"]["bonlycalcrotationyaw"] = False
+
+        mutations.append(("occurrence-yaw", occurrence_yaw))
+
+        def occurrence_provenance(source: dict) -> None:
+            _, module = self._blocked_module(source, DECAL_SOURCE_CLASS)
+            module["implicitDefaults"][0]["provenance"] = "FORGED"
+
+        mutations.append(("occurrence-provenance", occurrence_provenance))
+
+        def near_plane(source: dict) -> None:
+            _, module = self._blocked_module(source, DECAL_SOURCE_CLASS)
+            literal = next(
+                row for row in module["typedPayload"]["literals"]
+                if row["propertyPath"] == "nearplane"
+            )
+            literal["value"] = -299.0
+
+        mutations.append(("near-plane", near_plane))
+
+        def far_plane(source: dict) -> None:
+            source["currentRevisionDefaultEvidence"]["decal"]["values"][
+                "farplane"
+            ] = 301.0
+
+        mutations.append(("far-plane", far_plane))
+
+        for name, mutate in mutations:
+            with self.subTest(name=name):
+                source = copy.deepcopy(self.source)
+                mutate(source)
+                with self.assertRaises(ValueError):
+                    build_family_policies(self.root, source)
+
+    def test_28_coordinated_resealed_decal_yaw_attack_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.receipt)
+        policy = next(
+            row for row in mutated["familyPolicies"]
+            if row["policyFamilyId"] == "source.reconstructed.decal.v1"
+        )
+        binding = next(
+            row for row in policy["semanticContract"]["variantBindings"]
+            if row["variant"] == "EF_DECAL_DESCRIPTOR"
+        )
+        yaw_default = next(
+            row for row in binding["explicitDefaults"]
+            if row["fieldPath"] == "decal.yawOnly"
+        )
+        yaw_default["value"] = False
+        policy["familySemanticImplementationSha256"] = canonical_sha256(
+            policy["semanticContract"]
+        )
+        implementation = {
+            "implementationId": policy["implementationId"],
+            "implementationVersion": policy["implementationVersion"],
+            "familySemanticImplementationSha256": policy[
+                "familySemanticImplementationSha256"
+            ],
+            "semanticContract": copy.deepcopy(policy["semanticContract"]),
+        }
+        policy["implementationSha256"] = canonical_sha256(implementation)
+        explicit_defaults_sha = canonical_sha256(binding["explicitDefaults"])
+        for row in mutated["occurrences"]:
+            if row["exactSourceClass"] != DECAL_SOURCE_CLASS:
+                continue
+            row["implementationSha256"] = policy["implementationSha256"]
+            row["familySemanticImplementationSha256"] = policy[
+                "familySemanticImplementationSha256"
+            ]
+            row["explicitDefaultsSha256"] = explicit_defaults_sha
+            for sample in row["numericSamples"]:
+                sample["typedInputs"]["yawOnly"] = False
+                sample["typedInputSha256"] = canonical_sha256(sample["typedInputs"])
+                sample["output"]["yawOnly"] = False
+                sample["outputSha256"] = canonical_sha256(sample["output"])
+        self._assert_invalid(mutated)
+
+    def test_29_implicit_default_overlap_matrix_has_no_other_conflict(self) -> None:
+        implicit_counts: dict[str, int] = {}
+        for occurrence in self.source["occurrences"]:
+            for module in occurrence["modules"]:
+                if module["decision"] != "BLOCKED":
+                    continue
+                rows = module.get("implicitDefaults") or []
+                if rows:
+                    implicit_counts[module["exactSourceClass"]] = (
+                        implicit_counts.get(module["exactSourceClass"], 0) + len(rows)
+                    )
+        self.assertEqual(implicit_counts, {
+            DECAL_SOURCE_CLASS: 3,
+            "efparticlemoduletypedatalight": 1,
+        })
+
+        policies = build_family_policies(self.root, self.source)
+        light_policy = next(
+            row for row in policies
+            if row["policyFamilyId"] == "source.reconstructed.light.v1"
+        )
+        light_binding = light_policy["semanticContract"]["variantBindings"][0]
+        self.assertFalse(any(
+            row["fieldPath"].startswith("light.")
+            for row in light_binding["explicitDefaults"]
+        ))
+        light_row = next(
+            row for row in self.receipt["occurrences"]
+            if row["exactSourceClass"] == "efparticlemoduletypedatalight"
+        )
+        expected_fields = {
+            row["fieldPath"]: row["value"]
+            for row in self.source["pointLightAdapter"]["fields"]
+        }
+        for sample in light_row["numericSamples"]:
+            self.assertEqual(sample["typedInputs"]["pointLightFields"], expected_fields)
 
 
 if __name__ == "__main__":

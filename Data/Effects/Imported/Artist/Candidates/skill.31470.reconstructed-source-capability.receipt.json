@@ -36,13 +36,13 @@
   "toolIdentity": {
     "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
     "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-    "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+    "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
   },
   "executionDependencies": [
     {
       "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
       "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-      "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+      "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
     },
     {
       "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -65,13 +65,13 @@
       "canonicalTextSha256": "98305194c7d68121417e9b1b09ceda66d0105acc567d3e9975d728fd802bbdfb"
     }
   ],
-  "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+  "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
   "familyPolicies": [
     {
       "policyFamilyId": "source.reconstructed.seeded.v1",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "semanticContract": {
         "algorithm": "UE3_LCG_FIXED_STREAM_THEN_EXACT_CLASS_VARIANT_DISTRIBUTION_PROJECTION",
         "variantBindings": [
@@ -1180,15 +1180,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -1232,7 +1232,7 @@
       "policyFamilyId": "source.reconstructed.cylinder-spin.v1",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "semanticContract": {
         "algorithm": "EVALUATE_SIX_DISTRIBUTIONS_THEN_AXIS_PLANE_POLAR_POSITION_AND_TANGENT_VELOCITY",
         "variantBindings": [
@@ -1808,15 +1808,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -1860,7 +1860,7 @@
       "policyFamilyId": "source.reconstructed.ground.v1",
       "implementationId": "source.reconstructed.ground.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "cb225f6e48240b991f9151a1e44a1f4bac82064cf05aa3cb96345d32593e44dc",
+      "familySemanticImplementationSha256": "82b8f69c7fe3f2e86fcc4e34b190d69ef3a506dde383dd07f4b92e0699620237",
       "semanticContract": {
         "algorithm": "FIXED_GROUND_PLANE_QUERY_WITH_EXPLICIT_SKIP_PARAMETER_FALLBACK",
         "variantBindings": [
@@ -2032,15 +2032,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "4efc2ae7cc2193b3319a2c6b9d4083f57108b39a1c7c3ad7abf12fa7f48d3287",
+      "implementationSha256": "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -2083,10 +2083,10 @@
     {
       "policyFamilyId": "source.reconstructed.decal.v1",
       "implementationId": "source.reconstructed.decal.v1.implementation",
-      "implementationVersion": 1,
-      "familySemanticImplementationSha256": "56ff1fa2ae838d2852f73da47c76a41b2c673e2b7d353d941ddd13236a5b2e61",
+      "implementationVersion": 2,
+      "familySemanticImplementationSha256": "79ce052e9dbf8bb01eb96bd3d01e4d5d5b58840f02aaa5999d8dcb3fe5c41dcb",
       "semanticContract": {
-        "algorithm": "EXPLICIT_DECAL_FRUSTUM_DESCRIPTOR_FROM_NEAR_PLANE_AND_POLICY_DEFAULTS",
+        "algorithm": "EXPLICIT_DECAL_FRUSTUM_DESCRIPTOR_FROM_SOURCE_NEAR_PLANE_AND_CURRENT_EFGAME_CDO_DEFAULTS",
         "variantBindings": [
           {
             "exactSourceClass": "efparticlemoduletypedatadecal",
@@ -2145,6 +2145,9 @@
                 },
                 "yawOnly": {
                   "type": "BOOLEAN"
+                },
+                "supports3dDrawMode": {
+                  "type": "BOOLEAN"
                 }
               }
             },
@@ -2163,6 +2166,9 @@
                   "length": 6
                 },
                 "yawOnly": {
+                  "type": "BOOLEAN"
+                },
+                "supports3dDrawMode": {
                   "type": "BOOLEAN"
                 }
               }
@@ -2193,8 +2199,14 @@
                 "sourceExact": false
               },
               {
+                "fieldPath": "decal.supports3dDrawMode",
+                "value": true,
+                "provenance": "RECONSTRUCTED_APPROVED_V1_POLICY_DEFAULT_NOT_SOURCE_EVIDENCE",
+                "sourceExact": false
+              },
+              {
                 "fieldPath": "decal.yawOnly",
-                "value": false,
+                "value": true,
                 "provenance": "RECONSTRUCTED_APPROVED_V1_POLICY_DEFAULT_NOT_SOURCE_EVIDENCE",
                 "sourceExact": false
               },
@@ -2275,15 +2287,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "685cac8d5eee8f6858b9319a880daa96a36701b404be4d7cf1e1121f8c122c8d",
+      "implementationSha256": "bfef25b543f0385fff3df382ce5aa187da07a72de27065414786cf1ea9c58d35",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -2327,7 +2339,7 @@
       "policyFamilyId": "source.reconstructed.light.v1",
       "implementationId": "source.reconstructed.light.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "a9e1ea9b457650ed38cab27a0a3eeb0bf424d14291e6bddbb80624d83e4a65b9",
+      "familySemanticImplementationSha256": "6e449884cf1db1a69ce6a2c981e28df28a3cbaaacda5d0b62fde2b44a8d6de96",
       "semanticContract": {
         "algorithm": "POINT_LIGHT_DESCRIPTOR_FROM_EXPLICIT_INSTANCE_AND_CURRENT_ARCHETYPE_CDO_FIELDS",
         "variantBindings": [
@@ -2536,15 +2548,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "8eb0f619fc63a914bc5186f801300fdbe4f02d9dde56b4acc1ae2be368b5cda1",
+      "implementationSha256": "958862ab91669d7f7690e32f3ff99ae7da7b8246f86c04bc96a8f77195696f25",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -2588,7 +2600,7 @@
       "policyFamilyId": "source.reconstructed.velocity.v1",
       "implementationId": "source.reconstructed.velocity.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "d3032d9adb98f34db621c8540d209ef6bb8acc45f343316b5402739d67618ff1",
+      "familySemanticImplementationSha256": "fd881bef21981211534fb40ae2e52f1a170a37028be40de7ef36695b11184a7f",
       "semanticContract": {
         "algorithm": "COMPONENTWISE_VELOCITY_MULTIPLY_OVER_LIFETIME",
         "variantBindings": [
@@ -2733,15 +2745,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "a3578a61ec2a257be3daa901b909f0194e8bd5b4d380beaac125e4c1332c0144",
+      "implementationSha256": "247c478524b98e610d03244ccea904602c60dce9a5133ef4ba3049f99aadaef4",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -2785,7 +2797,7 @@
       "policyFamilyId": "source.reconstructed.ef-vector-multiply.v1",
       "implementationId": "source.reconstructed.ef-vector-multiply.v1.implementation",
       "implementationVersion": 1,
-      "familySemanticImplementationSha256": "3fb73309f36948716f133f70e06e15cf3c6123ef8e3609884c431c87dbf932f0",
+      "familySemanticImplementationSha256": "ffdbf30755a9ea38ae587e7f79c3943852080c90271a4ccf2424f5e0e79cc99b",
       "semanticContract": {
         "algorithm": "DPM_COMPONENT_MAP_THEN_COMPONENTWISE_BASE_VECTOR_MULTIPLY",
         "variantBindings": [
@@ -3154,15 +3166,15 @@
         },
         "absoluteTolerance": 1e-06,
         "relativeTolerance": 1e-06,
-        "executionDependencySetSha256": "c21252c8cc44cf9510e2592bc50d5cc8ba6cde38784f6cc57c00d5e4eb65d634",
+        "executionDependencySetSha256": "537651b04655f082e44d4874f0244f06da708f241b8deedf2dbec1e38434a9af",
         "genericFallbackAllowed": false
       },
-      "implementationSha256": "ed37a6394fd2c27f4b8f6c7ac0638029a17207da90bc835c258a58b3c5f1d3d1",
+      "implementationSha256": "991d9f5169fec733f988e521ac3a96bdf03f164a4120d756ddbacbdd0b18d30c",
       "executionDependencies": [
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_source_capability.py",
           "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT_NO_BOM",
-          "canonicalTextSha256": "28919a1ac78fee55ec198d5e8374f2482679cda75f6b3b428966f78d4608d211"
+          "canonicalTextSha256": "cdef2f30f9165a531795af9787d6468812c3db41877395f279350e5490be2f9c"
         },
         {
           "path": "Tools/LevelPlacementExtractor/build_artist_31470_source_execution_semantics.py",
@@ -3216,8 +3228,8 @@
       "variant": "SEEDED_LIFETIME",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "50b290f01ed7fa5f86d2d24940a4a997ea12804e03d7fe83de1afae661c6a58c",
       "variantOutputSchemaSha256": "aa8e728186d8376aeef859016f816d711bfbba30c3c2e8c27f34cece24aa5bff",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -3507,8 +3519,8 @@
       "variant": "SEEDED_SIZE",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "10ed57181160d677a7a40fd94031093a4e32587bf9f3047e9364174b7125efe7",
       "variantOutputSchemaSha256": "65c1f822df1336940d8e88eeb8efac63b11d70dff125c3a03fb23aec20957728",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -3816,8 +3828,8 @@
       "variant": "SEEDED_VELOCITY",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "21b601a0ab996a292734c4d6ff6b2f6d13810168c5f17aa2f236abd19f9fb81f",
       "variantOutputSchemaSha256": "d7cfe9fd7485d081d86fd663dbd9a7ff55f1584c05e2ee50ca24d6ea2186b9e2",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -4179,8 +4191,8 @@
       "variant": "EF_VELOCITY_OVER_LIFETIME",
       "implementationId": "source.reconstructed.velocity.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a3578a61ec2a257be3daa901b909f0194e8bd5b4d380beaac125e4c1332c0144",
-      "familySemanticImplementationSha256": "d3032d9adb98f34db621c8540d209ef6bb8acc45f343316b5402739d67618ff1",
+      "implementationSha256": "247c478524b98e610d03244ccea904602c60dce9a5133ef4ba3049f99aadaef4",
+      "familySemanticImplementationSha256": "fd881bef21981211534fb40ae2e52f1a170a37028be40de7ef36695b11184a7f",
       "variantInputSchemaSha256": "0c966235798d6e90a77912df2704be1c6b21281440ba873aa1b6f6400210a92e",
       "variantOutputSchemaSha256": "fc19a3215dc4c156f87541473bcb358a8dd11e09748f984d71219fb9fa2e40b3",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -4433,8 +4445,8 @@
       "variant": "EF_POINT_LIGHT_DESCRIPTOR",
       "implementationId": "source.reconstructed.light.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "8eb0f619fc63a914bc5186f801300fdbe4f02d9dde56b4acc1ae2be368b5cda1",
-      "familySemanticImplementationSha256": "a9e1ea9b457650ed38cab27a0a3eeb0bf424d14291e6bddbb80624d83e4a65b9",
+      "implementationSha256": "958862ab91669d7f7690e32f3ff99ae7da7b8246f86c04bc96a8f77195696f25",
+      "familySemanticImplementationSha256": "6e449884cf1db1a69ce6a2c981e28df28a3cbaaacda5d0b62fde2b44a8d6de96",
       "variantInputSchemaSha256": "32dd37f6f1cca6a36e3b1735afb32c48ea2b7b5faa26bd4f7c3248beb9035efd",
       "variantOutputSchemaSha256": "24bcbac8c5b9b79b7a753bc872ac66c7cff80f1c86c5215d8bc286ddb2113239",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -4818,8 +4830,8 @@
       "variant": "EF_COLOR_SCALE_PARAMETER_MULTIPLY",
       "implementationId": "source.reconstructed.ef-vector-multiply.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "ed37a6394fd2c27f4b8f6c7ac0638029a17207da90bc835c258a58b3c5f1d3d1",
-      "familySemanticImplementationSha256": "3fb73309f36948716f133f70e06e15cf3c6123ef8e3609884c431c87dbf932f0",
+      "implementationSha256": "991d9f5169fec733f988e521ac3a96bdf03f164a4120d756ddbacbdd0b18d30c",
+      "familySemanticImplementationSha256": "ffdbf30755a9ea38ae587e7f79c3943852080c90271a4ccf2424f5e0e79cc99b",
       "variantInputSchemaSha256": "aaa11f1ff212900f45d7448fca9bc1a181b8f0da5eb971f9d780c63a74cb3bd4",
       "variantOutputSchemaSha256": "9667424c3d292a252cb8ed90caaa3bc4a951836ff4cedcea080570711494d6a1",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -5346,8 +5358,8 @@
       "variant": "SEEDED_LOCATION",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "79e73048fc65f74074ea8e3bdf47bf77392e18aaebbecf7dcdb5078533860bca",
       "variantOutputSchemaSha256": "b299ccbbb370c0212216d666f1ae935e0f57ca3ebc5a502fb53669909ea5306d",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -5654,12 +5666,12 @@
       "policyFamilyId": "source.reconstructed.decal.v1",
       "variant": "EF_DECAL_DESCRIPTOR",
       "implementationId": "source.reconstructed.decal.v1.implementation",
-      "implementationVersion": 1,
-      "implementationSha256": "685cac8d5eee8f6858b9319a880daa96a36701b404be4d7cf1e1121f8c122c8d",
-      "familySemanticImplementationSha256": "56ff1fa2ae838d2852f73da47c76a41b2c673e2b7d353d941ddd13236a5b2e61",
-      "variantInputSchemaSha256": "84aa0e07876fce23ee6ca1417073e6e1da5bd06b9cf4bd43d428e30a28058c4c",
-      "variantOutputSchemaSha256": "aa79e9250e04429f0e8ea6265a6add6f0de69dc9c074556156988f10f4818358",
-      "explicitDefaultsSha256": "0a23434de54c97b5ac1ae20fbf912ec55b568fa63b1b0df445d59a8958a6946c",
+      "implementationVersion": 2,
+      "implementationSha256": "bfef25b543f0385fff3df382ce5aa187da07a72de27065414786cf1ea9c58d35",
+      "familySemanticImplementationSha256": "79ce052e9dbf8bb01eb96bd3d01e4d5d5b58840f02aaa5999d8dcb3fe5c41dcb",
+      "variantInputSchemaSha256": "3ae4b6c7c482987eaea8b6605dbd761b52aa4463aa85d1ca99193027b58c5070",
+      "variantOutputSchemaSha256": "98b0638eabc80ce997392ac3ab5635d0e66b2770a75f0a209f27bd824e7130ab",
+      "explicitDefaultsSha256": "1ac952d51761a1db3b4d62578fc72c3d7f1ecad45beba18fdee87e090a47491f",
       "sourceLiteralBindings": [
         {
           "literalId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15::module:006::literal:000",
@@ -5753,9 +5765,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "44702f5fe1e97a7e622f0a6d52d82a067154e429690dd584b576c1560b491405",
+          "typedInputSha256": "46ccc3342a0584239be526232ace487b33cd993dcc82c09ac3b3db0ca6ac45f7",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -5766,9 +5779,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -5813,9 +5827,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "c85c19cc46abd61b3a6a1009a2f5164e341c77ef6a79f6d9c5009096b4f7688c",
+          "typedInputSha256": "5deef230e375a4e40b02548e757b147e35a0b193db178cc71ce642aa072b0cec",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -5826,9 +5841,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -5873,9 +5889,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "99f28a37a0fe99604391ada39ffc9af4b64ea1c73dc8f2f069c1d415838c33d3",
+          "typedInputSha256": "8ef378caf02fe8bcb1b032875b084071d989a4e10cdf166290a75fe6d9ebad65",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -5886,9 +5903,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         }
@@ -5924,8 +5942,8 @@
       "variant": "SEEDED_CYLINDER",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "365d749a82e49f842eaf0edbf35c6221062f61d8b59aa50d96d4ecd0c4ecdbab",
       "variantOutputSchemaSha256": "2c339f420c97f767cdedcbb78e80352a2c4b534bf1cecd4aefdde6d2bd87838f",
       "explicitDefaultsSha256": "6520708fdc05f48f9f6004a4216d0f16c91f78b72bc41e3f54021ed04f46a2fc",
@@ -6628,8 +6646,8 @@
       "variant": "EF_GROUND_PLANE_QUERY",
       "implementationId": "source.reconstructed.ground.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "4efc2ae7cc2193b3319a2c6b9d4083f57108b39a1c7c3ad7abf12fa7f48d3287",
-      "familySemanticImplementationSha256": "cb225f6e48240b991f9151a1e44a1f4bac82064cf05aa3cb96345d32593e44dc",
+      "implementationSha256": "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f",
+      "familySemanticImplementationSha256": "82b8f69c7fe3f2e86fcc4e34b190d69ef3a506dde383dd07f4b92e0699620237",
       "variantInputSchemaSha256": "6c6dca0a8f0dd76daae6ac2a40bd4d829a365be473c69cfa4deb5979d93a1069",
       "variantOutputSchemaSha256": "69af99d2c858cfe3b3b8aa860003cdcb091c96097ed488f603e072f986f49c4f",
       "explicitDefaultsSha256": "388fff9ddfb925608796bfe93adeb3cd072ae327e35da024e8167dfb39d46445",
@@ -7011,8 +7029,8 @@
       "variant": "EF_GROUND_PLANE_QUERY",
       "implementationId": "source.reconstructed.ground.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "4efc2ae7cc2193b3319a2c6b9d4083f57108b39a1c7c3ad7abf12fa7f48d3287",
-      "familySemanticImplementationSha256": "cb225f6e48240b991f9151a1e44a1f4bac82064cf05aa3cb96345d32593e44dc",
+      "implementationSha256": "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f",
+      "familySemanticImplementationSha256": "82b8f69c7fe3f2e86fcc4e34b190d69ef3a506dde383dd07f4b92e0699620237",
       "variantInputSchemaSha256": "6c6dca0a8f0dd76daae6ac2a40bd4d829a365be473c69cfa4deb5979d93a1069",
       "variantOutputSchemaSha256": "69af99d2c858cfe3b3b8aa860003cdcb091c96097ed488f603e072f986f49c4f",
       "explicitDefaultsSha256": "388fff9ddfb925608796bfe93adeb3cd072ae327e35da024e8167dfb39d46445",
@@ -7394,8 +7412,8 @@
       "variant": "SEEDED_CYLINDER",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "365d749a82e49f842eaf0edbf35c6221062f61d8b59aa50d96d4ecd0c4ecdbab",
       "variantOutputSchemaSha256": "2c339f420c97f767cdedcbb78e80352a2c4b534bf1cecd4aefdde6d2bd87838f",
       "explicitDefaultsSha256": "6520708fdc05f48f9f6004a4216d0f16c91f78b72bc41e3f54021ed04f46a2fc",
@@ -8020,8 +8038,8 @@
       "variant": "EF_VELOCITY_OVER_LIFETIME",
       "implementationId": "source.reconstructed.velocity.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a3578a61ec2a257be3daa901b909f0194e8bd5b4d380beaac125e4c1332c0144",
-      "familySemanticImplementationSha256": "d3032d9adb98f34db621c8540d209ef6bb8acc45f343316b5402739d67618ff1",
+      "implementationSha256": "247c478524b98e610d03244ccea904602c60dce9a5133ef4ba3049f99aadaef4",
+      "familySemanticImplementationSha256": "fd881bef21981211534fb40ae2e52f1a170a37028be40de7ef36695b11184a7f",
       "variantInputSchemaSha256": "0c966235798d6e90a77912df2704be1c6b21281440ba873aa1b6f6400210a92e",
       "variantOutputSchemaSha256": "fc19a3215dc4c156f87541473bcb358a8dd11e09748f984d71219fb9fa2e40b3",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -8273,12 +8291,12 @@
       "policyFamilyId": "source.reconstructed.decal.v1",
       "variant": "EF_DECAL_DESCRIPTOR",
       "implementationId": "source.reconstructed.decal.v1.implementation",
-      "implementationVersion": 1,
-      "implementationSha256": "685cac8d5eee8f6858b9319a880daa96a36701b404be4d7cf1e1121f8c122c8d",
-      "familySemanticImplementationSha256": "56ff1fa2ae838d2852f73da47c76a41b2c673e2b7d353d941ddd13236a5b2e61",
-      "variantInputSchemaSha256": "84aa0e07876fce23ee6ca1417073e6e1da5bd06b9cf4bd43d428e30a28058c4c",
-      "variantOutputSchemaSha256": "aa79e9250e04429f0e8ea6265a6add6f0de69dc9c074556156988f10f4818358",
-      "explicitDefaultsSha256": "0a23434de54c97b5ac1ae20fbf912ec55b568fa63b1b0df445d59a8958a6946c",
+      "implementationVersion": 2,
+      "implementationSha256": "bfef25b543f0385fff3df382ce5aa187da07a72de27065414786cf1ea9c58d35",
+      "familySemanticImplementationSha256": "79ce052e9dbf8bb01eb96bd3d01e4d5d5b58840f02aaa5999d8dcb3fe5c41dcb",
+      "variantInputSchemaSha256": "3ae4b6c7c482987eaea8b6605dbd761b52aa4463aa85d1ca99193027b58c5070",
+      "variantOutputSchemaSha256": "98b0638eabc80ce997392ac3ab5635d0e66b2770a75f0a209f27bd824e7130ab",
+      "explicitDefaultsSha256": "1ac952d51761a1db3b4d62578fc72c3d7f1ecad45beba18fdee87e090a47491f",
       "sourceLiteralBindings": [
         {
           "literalId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43::module:006::literal:000",
@@ -8372,9 +8390,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "44702f5fe1e97a7e622f0a6d52d82a067154e429690dd584b576c1560b491405",
+          "typedInputSha256": "46ccc3342a0584239be526232ace487b33cd993dcc82c09ac3b3db0ca6ac45f7",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -8385,9 +8404,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -8432,9 +8452,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "c85c19cc46abd61b3a6a1009a2f5164e341c77ef6a79f6d9c5009096b4f7688c",
+          "typedInputSha256": "5deef230e375a4e40b02548e757b147e35a0b193db178cc71ce642aa072b0cec",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -8445,9 +8466,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -8492,9 +8514,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "99f28a37a0fe99604391ada39ffc9af4b64ea1c73dc8f2f069c1d415838c33d3",
+          "typedInputSha256": "8ef378caf02fe8bcb1b032875b084071d989a4e10cdf166290a75fe6d9ebad65",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -8505,9 +8528,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         }
@@ -8543,8 +8567,8 @@
       "variant": "EF_VELOCITY_OVER_LIFETIME",
       "implementationId": "source.reconstructed.velocity.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a3578a61ec2a257be3daa901b909f0194e8bd5b4d380beaac125e4c1332c0144",
-      "familySemanticImplementationSha256": "d3032d9adb98f34db621c8540d209ef6bb8acc45f343316b5402739d67618ff1",
+      "implementationSha256": "247c478524b98e610d03244ccea904602c60dce9a5133ef4ba3049f99aadaef4",
+      "familySemanticImplementationSha256": "fd881bef21981211534fb40ae2e52f1a170a37028be40de7ef36695b11184a7f",
       "variantInputSchemaSha256": "0c966235798d6e90a77912df2704be1c6b21281440ba873aa1b6f6400210a92e",
       "variantOutputSchemaSha256": "fc19a3215dc4c156f87541473bcb358a8dd11e09748f984d71219fb9fa2e40b3",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -8796,12 +8820,12 @@
       "policyFamilyId": "source.reconstructed.decal.v1",
       "variant": "EF_DECAL_DESCRIPTOR",
       "implementationId": "source.reconstructed.decal.v1.implementation",
-      "implementationVersion": 1,
-      "implementationSha256": "685cac8d5eee8f6858b9319a880daa96a36701b404be4d7cf1e1121f8c122c8d",
-      "familySemanticImplementationSha256": "56ff1fa2ae838d2852f73da47c76a41b2c673e2b7d353d941ddd13236a5b2e61",
-      "variantInputSchemaSha256": "84aa0e07876fce23ee6ca1417073e6e1da5bd06b9cf4bd43d428e30a28058c4c",
-      "variantOutputSchemaSha256": "aa79e9250e04429f0e8ea6265a6add6f0de69dc9c074556156988f10f4818358",
-      "explicitDefaultsSha256": "0a23434de54c97b5ac1ae20fbf912ec55b568fa63b1b0df445d59a8958a6946c",
+      "implementationVersion": 2,
+      "implementationSha256": "bfef25b543f0385fff3df382ce5aa187da07a72de27065414786cf1ea9c58d35",
+      "familySemanticImplementationSha256": "79ce052e9dbf8bb01eb96bd3d01e4d5d5b58840f02aaa5999d8dcb3fe5c41dcb",
+      "variantInputSchemaSha256": "3ae4b6c7c482987eaea8b6605dbd761b52aa4463aa85d1ca99193027b58c5070",
+      "variantOutputSchemaSha256": "98b0638eabc80ce997392ac3ab5635d0e66b2770a75f0a209f27bd824e7130ab",
+      "explicitDefaultsSha256": "1ac952d51761a1db3b4d62578fc72c3d7f1ecad45beba18fdee87e090a47491f",
       "sourceLiteralBindings": [
         {
           "literalId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_6::module:006::literal:000",
@@ -8895,9 +8919,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "44702f5fe1e97a7e622f0a6d52d82a067154e429690dd584b576c1560b491405",
+          "typedInputSha256": "46ccc3342a0584239be526232ace487b33cd993dcc82c09ac3b3db0ca6ac45f7",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -8908,9 +8933,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -8955,9 +8981,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "c85c19cc46abd61b3a6a1009a2f5164e341c77ef6a79f6d9c5009096b4f7688c",
+          "typedInputSha256": "5deef230e375a4e40b02548e757b147e35a0b193db178cc71ce642aa072b0cec",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -8968,9 +8995,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         },
@@ -9015,9 +9043,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "typedInputSha256": "99f28a37a0fe99604391ada39ffc9af4b64ea1c73dc8f2f069c1d415838c33d3",
+          "typedInputSha256": "8ef378caf02fe8bcb1b032875b084071d989a4e10cdf166290a75fe6d9ebad65",
           "output": {
             "variant": "EF_DECAL_DESCRIPTOR",
             "frustum": [
@@ -9028,9 +9057,10 @@
               100.0,
               100.0
             ],
-            "yawOnly": false
+            "yawOnly": true,
+            "supports3dDrawMode": true
           },
-          "outputSha256": "7350081569e16e50f75492256e9a00aa2c0ecf890a7451d41d907c0940ef3116",
+          "outputSha256": "2806682e9e0d896562cfcaf2ac44ef8ea088d3e8e7a6634d5f6dd36534e27677",
           "absoluteTolerance": 1e-06,
           "relativeTolerance": 1e-06
         }
@@ -9066,8 +9096,8 @@
       "variant": "EF_VELOCITY_OVER_LIFETIME",
       "implementationId": "source.reconstructed.velocity.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a3578a61ec2a257be3daa901b909f0194e8bd5b4d380beaac125e4c1332c0144",
-      "familySemanticImplementationSha256": "d3032d9adb98f34db621c8540d209ef6bb8acc45f343316b5402739d67618ff1",
+      "implementationSha256": "247c478524b98e610d03244ccea904602c60dce9a5133ef4ba3049f99aadaef4",
+      "familySemanticImplementationSha256": "fd881bef21981211534fb40ae2e52f1a170a37028be40de7ef36695b11184a7f",
       "variantInputSchemaSha256": "0c966235798d6e90a77912df2704be1c6b21281440ba873aa1b6f6400210a92e",
       "variantOutputSchemaSha256": "fc19a3215dc4c156f87541473bcb358a8dd11e09748f984d71219fb9fa2e40b3",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -9320,8 +9350,8 @@
       "variant": "SEEDED_CYLINDER",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "365d749a82e49f842eaf0edbf35c6221062f61d8b59aa50d96d4ecd0c4ecdbab",
       "variantOutputSchemaSha256": "2c339f420c97f767cdedcbb78e80352a2c4b534bf1cecd4aefdde6d2bd87838f",
       "explicitDefaultsSha256": "6520708fdc05f48f9f6004a4216d0f16c91f78b72bc41e3f54021ed04f46a2fc",
@@ -10003,8 +10033,8 @@
       "variant": "SEEDED_LOCATION",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "79e73048fc65f74074ea8e3bdf47bf77392e18aaebbecf7dcdb5078533860bca",
       "variantOutputSchemaSha256": "b299ccbbb370c0212216d666f1ae935e0f57ca3ebc5a502fb53669909ea5306d",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -10312,8 +10342,8 @@
       "variant": "SEEDED_COLOR",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "deae6357c89c948139ede6693757c359a65321757164a2b3940e61568e3e25a8",
       "variantOutputSchemaSha256": "0e81b125f473c23d7f89b352c09dcc41868f18b2fe37c9827babb24556815955",
       "explicitDefaultsSha256": "92e741fc2cf74dec001d29177ae58a2ab6cd375efb131e083dbfa2cb13bca1b9",
@@ -10700,8 +10730,8 @@
       "variant": "EF_CYLINDER_SPIN",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "variantInputSchemaSha256": "f7e4f943aac5063ec733fff2a3b2b30375170826a57d2f139cfcc1a34b8b104a",
       "variantOutputSchemaSha256": "1e1d42f57d0a2e85b2f6c682ea21f7818b8cd2e9bf5163c60a214674a48b4f37",
       "explicitDefaultsSha256": "7bc6b96f8ef9086acacbcb59b7e787e5e18cc4546271728c40e62b7aef65f612",
@@ -11373,8 +11403,8 @@
       "variant": "EF_CYLINDER_SPIN",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "variantInputSchemaSha256": "f7e4f943aac5063ec733fff2a3b2b30375170826a57d2f139cfcc1a34b8b104a",
       "variantOutputSchemaSha256": "1e1d42f57d0a2e85b2f6c682ea21f7818b8cd2e9bf5163c60a214674a48b4f37",
       "explicitDefaultsSha256": "7bc6b96f8ef9086acacbcb59b7e787e5e18cc4546271728c40e62b7aef65f612",
@@ -12024,8 +12054,8 @@
       "variant": "EF_CYLINDER_SPIN_SEEDED",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "variantInputSchemaSha256": "99b27e8e32bef65bfc1027fd31dabbeb9cbbc7ce3bc8f7104767426383101b25",
       "variantOutputSchemaSha256": "c9f2dfbd3b28dc81acb1d46a484e64d1d79a4a5ad921254d08eb726b3db8342e",
       "explicitDefaultsSha256": "7bc6b96f8ef9086acacbcb59b7e787e5e18cc4546271728c40e62b7aef65f612",
@@ -12730,8 +12760,8 @@
       "variant": "EF_CYLINDER_SPIN_SEEDED",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "variantInputSchemaSha256": "99b27e8e32bef65bfc1027fd31dabbeb9cbbc7ce3bc8f7104767426383101b25",
       "variantOutputSchemaSha256": "c9f2dfbd3b28dc81acb1d46a484e64d1d79a4a5ad921254d08eb726b3db8342e",
       "explicitDefaultsSha256": "7bc6b96f8ef9086acacbcb59b7e787e5e18cc4546271728c40e62b7aef65f612",
@@ -13436,8 +13466,8 @@
       "variant": "EF_CYLINDER_SPIN_SEEDED",
       "implementationId": "source.reconstructed.cylinder-spin.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "a07627f52a6ecffdac1b1549bc9a7a44bd2477829e6586cf994ce9e2b52dd074",
-      "familySemanticImplementationSha256": "aed1b080a90d46971a1d42b4706f7a03a131e796d711a8748aeab2bef07c3178",
+      "implementationSha256": "0c671d3504174eb66f2bb6ec4524c0c3ff24e5a20f5efc43f58ffe03c12cd2ab",
+      "familySemanticImplementationSha256": "bcae856cf52f9a429b6a81af5150832deb86b051160df50c9b8cbd62781ceb5b",
       "variantInputSchemaSha256": "99b27e8e32bef65bfc1027fd31dabbeb9cbbc7ce3bc8f7104767426383101b25",
       "variantOutputSchemaSha256": "c9f2dfbd3b28dc81acb1d46a484e64d1d79a4a5ad921254d08eb726b3db8342e",
       "explicitDefaultsSha256": "7bc6b96f8ef9086acacbcb59b7e787e5e18cc4546271728c40e62b7aef65f612",
@@ -14142,8 +14172,8 @@
       "variant": "EF_MESH_ROTATION_PARAMETER_MULTIPLY",
       "implementationId": "source.reconstructed.ef-vector-multiply.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "ed37a6394fd2c27f4b8f6c7ac0638029a17207da90bc835c258a58b3c5f1d3d1",
-      "familySemanticImplementationSha256": "3fb73309f36948716f133f70e06e15cf3c6123ef8e3609884c431c87dbf932f0",
+      "implementationSha256": "991d9f5169fec733f988e521ac3a96bdf03f164a4120d756ddbacbdd0b18d30c",
+      "familySemanticImplementationSha256": "ffdbf30755a9ea38ae587e7f79c3943852080c90271a4ccf2424f5e0e79cc99b",
       "variantInputSchemaSha256": "2ae371ba4dafcdba139a772310fa3ead396c05f02b1ee9e77ba8c65847834484",
       "variantOutputSchemaSha256": "4040a397c9886679963b37ba4202add32430bf620aef8a70132a004d34320985",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -14601,8 +14631,8 @@
       "variant": "EF_MESH_ROTATION_PARAMETER_MULTIPLY",
       "implementationId": "source.reconstructed.ef-vector-multiply.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "ed37a6394fd2c27f4b8f6c7ac0638029a17207da90bc835c258a58b3c5f1d3d1",
-      "familySemanticImplementationSha256": "3fb73309f36948716f133f70e06e15cf3c6123ef8e3609884c431c87dbf932f0",
+      "implementationSha256": "991d9f5169fec733f988e521ac3a96bdf03f164a4120d756ddbacbdd0b18d30c",
+      "familySemanticImplementationSha256": "ffdbf30755a9ea38ae587e7f79c3943852080c90271a4ccf2424f5e0e79cc99b",
       "variantInputSchemaSha256": "2ae371ba4dafcdba139a772310fa3ead396c05f02b1ee9e77ba8c65847834484",
       "variantOutputSchemaSha256": "4040a397c9886679963b37ba4202add32430bf620aef8a70132a004d34320985",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -15060,8 +15090,8 @@
       "variant": "SEEDED_COLOR",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "deae6357c89c948139ede6693757c359a65321757164a2b3940e61568e3e25a8",
       "variantOutputSchemaSha256": "0e81b125f473c23d7f89b352c09dcc41868f18b2fe37c9827babb24556815955",
       "explicitDefaultsSha256": "92e741fc2cf74dec001d29177ae58a2ab6cd375efb131e083dbfa2cb13bca1b9",
@@ -15448,8 +15478,8 @@
       "variant": "SEEDED_MESH_ROTATION",
       "implementationId": "source.reconstructed.seeded.v1.implementation",
       "implementationVersion": 1,
-      "implementationSha256": "999a7622313826e5af9f0339af108af7ad72863fdafa4f750cad99c00116c35c",
-      "familySemanticImplementationSha256": "2203ecad66d878989050efd8f220e44eb0d5ec599d82b418797cca4a38ac860d",
+      "implementationSha256": "ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01",
+      "familySemanticImplementationSha256": "720302c18e517a9578d2e7f162bd34e4774326657fd44887980e8a800fad5c9d",
       "variantInputSchemaSha256": "4d45465aadf45899df18fefbfa111a1357a3d294ad4a9428059991ee28ad71cf",
       "variantOutputSchemaSha256": "ce9ea40bfab00db3359969713f59cd271cc69874ff7dd67bb9a040c24cf9dc4f",
       "explicitDefaultsSha256": "37864470fb20da536b2b06b68e99136a6376ba6bfae763b77762b1d8a6d7a913",
@@ -15801,5 +15831,5 @@
     "allowed": false,
     "decision": "BLOCKED_FINAL_INTEGRATION_PRODUCT_ADMISSION_REQUIRED"
   },
-  "receiptSha256": "15f2964158246fa076d8052bc4f1d7cab8fc9bd25c07164a88509593377faf2b"
+  "receiptSha256": "5d1b827cb3bbd9ac4ddbf3c3dd976a584d9251017e9979b5aae771e8e9a1ae1f"
 }

@@ -125,3 +125,51 @@ PASS: Artist F 31470 reconstructed Source capability mode=deep families=7 occurr
 
 따라서 현재 상태는 `CAPABILITY_EVIDENCE_READY_FOR_INDEPENDENT_REVIEW`, Runtime execution은 BLOCK,
 Product는 false다.
+
+## 2026-08-11 Decal current-CDO corrective
+
+### 재현과 수정 결과
+
+기존 generator는 세 `EF_DECAL_DESCRIPTOR` occurrence의 Source semantics가 모두 다음 값을 보존해도
+`decal.yawOnly=false`를 독립적으로 하드코딩했다.
+
+- exact source literal: `nearPlane=-300.0` (3/3)
+- current EFGAME CDO와 implicit default: `farPlane=300.0`, `defaultSize=50x50`,
+  `blendRange=100x100`, `bonlycalcrotationyaw=true`, `bsupported3ddrawmode=true` (3/3)
+
+Corrective generator는 root current-default evidence, exact CDO object/class/export/record/property set,
+세 occurrence의 unique implicit-default owner/provenance/value set을 compositional하게 대조한다. Decal
+implementation은 v2로 올렸고 closed typed input/output schema와 9개 numeric sample에는
+`yawOnly=true`, `supports3dDrawMode=true`를 추가했다. output frustum은 세 행 모두
+`[-300, 300, 50, 50, 100, 100]`이다. source fidelity와 blocker는 바뀌지 않았고 runtime/Product는 false다.
+
+### 일곱 family explicit-default 충돌 전수 조사
+
+| capability family | blocked occurrence | Source semantics implicitDefaults overlap | 판정 |
+|---|---:|---|---|
+| seeded | 11 | 없음; fixed oracle context와 seed fallback만 사용 | 충돌 없음 |
+| cylinder-spin | 5 | 없음; fixed oracle context와 explicit literal fallback만 사용 | 충돌 없음 |
+| ground | 2 | 없음; fixed ground query threshold만 사용 | 충돌 없음 |
+| decal | 3 | Decal current EFGAME CDO 3행 | 기존 yaw false 충돌 수정, 3/3 exact join |
+| light | 1 | Light current default chain 1행 | `light.*` explicit default 없음; typed pointLightAdapter field 직접 소비 |
+| velocity | 4 | 없음; fixed input velocity context만 사용 | 충돌 없음 |
+| ef-vector-multiply | 3 | 없음; fixed base vector context만 사용 | 충돌 없음 |
+
+### corrective 검증 상태
+
+- Python unit/mutation: 29/29 PASS
+- 기존 denominator 유지: family 7, occurrence 29, property 148, distribution 65, sample 87
+- Decal exact: occurrence 3, sample 9, near/CDO/implicit-default/schema/output 3/3 PASS
+- coordinated resealed yaw/default/sample mutation REJECT
+- sourceExact 0, runtime execution 0, Product 0
+- generator `--check` PASS
+- focused ProjectAudit shallow PASS
+- focused ProjectAudit deep PASS; 설치 binary/package identity prerequisite 재검증 포함
+- receipt/PLAN/RESULT JSON·UTF-8 parse PASS
+- `git diff --check` PASS
+- Python cache 산출물 없음
+
+Corrective receipt self SHA는 `5d1b827cb3bbd9ac4ddbf3c3dd976a584d9251017e9979b5aae771e8e9a1ae1f`,
+Decal implementation SHA는 `bfef25b543f0385fff3df382ce5aa187da07a72de27065414786cf1ea9c58d35`,
+explicit defaults SHA는 `1ac952d51761a1db3b4d62578fc72c3d7f1ecad45beba18fdee87e090a47491f`다.
+독립 frozen review 전에는 integration authority로 승격하지 않는다.
