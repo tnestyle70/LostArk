@@ -268,3 +268,39 @@ actual particle output oracle로 사용한 문제가 확인됐다. 따라서 아
 7. evidence integrity는 frozen reviewer가 별도로 판정한다. 현재 receipt의
    `executionReadinessDecision=BLOCKED`는 Source 29/29 actual-output pilot이 생기기 전까지 유지하며,
    final materializer/Playback/Renderer 진입 근거로 사용하지 않는다.
+
+## 2026-08-10 R0-S3 source actual-output provider acquisition closure
+
+최종 계획 정본 `7ffb8a3bf123703ea451cbe53a178f449f102fbe`와 frozen Source corrective
+`c927e397811d4e5718efd27b187eb59775023685`를 입력으로 사용한다. 이 단계는 새 값을 복원하는
+구현이 아니라, 29개 blocker를 실제 출력까지 닫을 provider가 현재 접근 가능한 범위에 존재하는지
+판정하고 다음 단계 진입 여부를 동결하는 acquisition 단위다.
+
+1. c927의 29 occurrence를 exact class 15개와 native family cluster 7개로 다시 묶는다. 각 class/family는
+   required mutated particle/component output, occurrence ID, source-era provider, actual-output pilot,
+   tolerance, owner와 fidelity decision을 보존한다. aggregate가 29행을 숨기지 않도록 occurrence ID의
+   29/29 unique coverage를 함께 검증한다.
+2. 로컬 사용자/Program Files/ProgramData, 현재 설치 manifest/cache/LPK, Desktop backup과 ZIP,
+   SourcePackages, Recycle Bin, FileHistory, OneDrive, Windows.old, 접근 가능한 USN journal을 read-only로
+   조사한다. VSS는 비관리자 token에서 inventory 권한이 없으므로 `PERMISSION_UNCHECKED`로 분리하며
+   `EXHAUSTED`로 세탁하지 않는다. 복구, mount, 권한 상승과 쓰기는 수행하지 않는다.
+3. 모든 local/remote Git ref와 pre-purge bundle, GitHub Actions artifact/cache와 Release, user container
+   package, local LFS content store, unreachable object를 조사한다. candidate가 있으면 bytes/SHA/format/
+   export 성격을 기록하고 native/script output provider가 아니면 명시적으로 reject한다.
+4. current `EFEngine.dll` callable surface는 source-era fidelity와 분리한다. 표준 seeded 7 wrapper가
+   addressable하더라도 live `UObject + emitter + world + distribution graph` 없이 standalone actual-output
+   pilot이 되지 않으며, current-only capture나 wrapper/dataflow digest는 READY를 만들지 않는다.
+   exact EF custom entry와 custom distribution `GetValue` export가 없으면 0으로 기록한다.
+5. source exact package와 current installed package identity를 비교한다. package input이 남아 있어도
+   native implementation이 없으면 provider가 아니며, package revision mismatch를 source exact runtime
+   identity로 승격하지 않는다.
+6. provider를 얻지 못하면 `SOURCE_EXACT`는 29/29 BLOCK, actual-output oracle 0, blocker delta 0을 유지한다.
+   `RECONSTRUCTED_NUMERICALLY_VERIFIED` 최대 복원 분기는 별도로 정의하되 사용자 명시 승인 전에는
+   시작하거나 Product로 흘리지 않는다.
+7. 다음 획득 시 필요한 최소 artifact contract를 두 대안으로 고정한다. 하나는 동일 revision의
+   `EFEngine.dll + LOSTARK.exe + Engine.u + EFGame.u + target UPK` 묶음이고, 다른 하나는 같은 identity를
+   증명하는 source-era runtime pre/post numeric capture다. 둘 다 fixed seed/time/world/parameter input,
+   29 occurrence→15 class→7 family mapping, expected mutated output과 tolerance를 제공해야 한다.
+8. deterministic receipt, coordinated-reseal mutation test, shallow/deep focused audit와 ProjectAudit 항목을
+   추가한다. 성공 조건은 acquisition evidence의 정직한 동결이며 execution readiness, R2 진입과
+   Product admission은 계속 false다.

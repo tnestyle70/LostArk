@@ -787,6 +787,22 @@ try {
 	Add-Check 'effect.artist-31470-custom-handler-oracle' `
 		$artistCustomHandlerOraclePassed `
 		$artistCustomHandlerOracleDetail
+	$artistSourceOracleAcquisitionPassed = $false
+	$artistSourceOracleAcquisitionDetail = ''
+	try {
+		$artistSourceOracleAcquisitionDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470SourceOracleAcquisition.ps1' `
+			| Out-String).Trim()
+		$artistSourceOracleAcquisitionPassed =
+			$artistSourceOracleAcquisitionDetail -match
+			'PASS: Artist F 31470 Source oracle acquisition mode=shallow classes=15 families=7 blocked=29 providers=0 pilots=0 vss=permission-unchecked nextStage=NO-GO product=false'
+	}
+	catch {
+		$artistSourceOracleAcquisitionDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-oracle-acquisition' `
+		$artistSourceOracleAcquisitionPassed `
+		$artistSourceOracleAcquisitionDetail
 	$artistMaterialContractPassed = $false
 	$artistMaterialContractDetail = ''
 	try {
