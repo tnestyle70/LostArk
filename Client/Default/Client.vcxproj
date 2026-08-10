@@ -30,6 +30,7 @@
     <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
+    <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
     <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h" />
     <ClInclude Include="..\Public\Effect_ComponentDocument.h" />
     <ClInclude Include="..\Public\Effect_Distribution.h" />
@@ -137,6 +138,7 @@
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
+    <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
     <ClCompile Include="..\Private\Effect_Distribution.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp" />

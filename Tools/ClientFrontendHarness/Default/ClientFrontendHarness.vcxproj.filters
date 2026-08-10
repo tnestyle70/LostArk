@@ -30,6 +30,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Filter>Client</Filter>
     </ClCompile>
