@@ -201,6 +201,9 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 - 최신 server tick
 - current/max HP
 - current/max resource
+- current/max identity — class identity 게이지다. max가 0이면 그 class는 게이지가 없고 UI는 아무것도
+  그리지 않는다. 현재 Warlord만 보유하며 방어 태세를 유지하는 동안 소모되고 0에서 기본 stance로
+  자동 복귀한다. UI가 소모량이나 복귀를 자체 판정하지 않는다.
 - server action
 - skill ID, input slot, 표시 이름, action ID
 - cooldown duration tick, cooldown end tick, 표시 damage
@@ -222,7 +225,7 @@ damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI�
 
 | 파일 | 수정하는 값 | 주 소비자 |
 |---|---|---|
-| `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed | Server spawn, HUD snapshot |
+| `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed, 기본 stance가 아닌 stance의 이동 배율, identity 게이지 최대치와 충전·소모 속도 | Server spawn, HUD snapshot |
 | `Data/Balance/PlayerSkills.json` | slot, 이름, `skillKind`, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId`, `comboStages` | Server skill, UI definition, Effect presentation |
 | `Data/Balance/DamageProfiles.json` | attack power에 곱하는 damage rate percent | Server 판정, UI 예상 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |

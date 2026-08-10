@@ -205,6 +205,8 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumHp = snapshot.iMaximumHp;
 	m_Player.iCurrentResource = snapshot.iCurrentResource;
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
+	m_Player.iCurrentIdentity = snapshot.iCurrentIdentity;
+	m_Player.iMaximumIdentity = snapshot.iMaximumIdentity;
 	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.eAction = snapshot.eAction;
 	m_Player.eStance = snapshot.eStance;

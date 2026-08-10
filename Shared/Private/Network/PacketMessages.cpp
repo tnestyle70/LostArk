@@ -75,6 +75,7 @@ namespace
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
+			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
 			Is_Valid_Cooldowns(snapshot.Cooldowns) &&
 			snapshot.iComboStage <= LostArk::Shared::MAX_COMBO_STAGES &&
 			(0 == snapshot.iComboStage ||
@@ -977,6 +978,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iMaximumHp);
 		writer.Write_U32(player.iCurrentResource);
 		writer.Write_U32(player.iMaximumResource);
+		writer.Write_U32(player.iCurrentIdentity);
+		writer.Write_U32(player.iMaximumIdentity);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.iComboStage);
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
@@ -1083,6 +1086,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumHp) ||
 			!reader.Read_U32(player.iCurrentResource) ||
 			!reader.Read_U32(player.iMaximumResource) ||
+			!reader.Read_U32(player.iCurrentIdentity) ||
+			!reader.Read_U32(player.iMaximumIdentity) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
 			!reader.Read_U8(player.iComboStage) ||

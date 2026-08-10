@@ -18,6 +18,14 @@
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
+	quarter second, slow enough to swallow the per-cell steps of a grid path. */
+	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	/* Off until the spawn-frame crash the chains introduced is understood. The
+	solver, the Engine bone seam and the Warlord chain tuning all stay in place;
+	this is the switch that turns them back on. See
+	.md/JS/08-10/2026-08-10_LOSTARK_WARLORD_BONE_CHAIN_RESULT.md. */
+	constexpr bool_t BONE_CHAINS_ENABLED = false;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
@@ -92,6 +100,10 @@ HRESULT CCharacter::Initialize(void* pArg)
 	unavailable. */
 	Load_ClipChains();
 	Load_EffectCues();
+	/* Secondary motion is optional per class: a spec with no chains simply never
+	activates the solver. */
+	m_BoneChains.Initialize(
+		m_pBodyModel, m_pSpec->pBoneChains, m_pSpec->iNumBoneChains);
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -691,10 +703,25 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 		STATE::POSITION,
 		XMVectorSetW(next, 1.f));
 
-	//G3에서는 위치만 보간하고, Yaw는 서버 최신값을 즉시 반영
+	/* The server recomputes yaw per path segment, and a grid path changes
+	direction at every cell, so copying the latest value straight in reads as a
+	series of snaps. Turning toward it at a fixed rate keeps the server's yaw
+	authoritative and only spreads the change over a few frames. */
+	f32_t difference = m_fNetworkTargetYawDegrees - m_fPresentationYawDegrees;
+	while (difference > 180.f)
+		difference -= 360.f;
+	while (difference < -180.f)
+		difference += 360.f;
+
+	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	if (fabsf(difference) <= step)
+		m_fPresentationYawDegrees = m_fNetworkTargetYawDegrees;
+	else
+		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
+
 	m_pTransformCom->Rotation(
 		0.f,
-		m_fNetworkTargetYawDegrees,
+		m_fPresentationYawDegrees,
 		0.f);
 }
 
@@ -723,6 +750,12 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 		return false;
 	}
 	//network state apply!
+	/* The first snapshot is where the character is, not somewhere it turned to,
+	so it takes the yaw outright; spawning would otherwise spin into place. */
+	if (!m_hasNetworkState)
+		m_fPresentationYawDegrees = yawDegrees;
+	if (!m_hasNetworkState)
+		m_BoneChains.Reset();
 	m_hasNetworkState = true;
 	m_vNetworkTargetPosition = position;
 	m_fNetworkTargetYawDegrees = yawDegrees;
@@ -904,7 +937,17 @@ void CCharacter::Update_ActionEmissiveOverride(
 
 void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
 {
+	const bool_t hasChanged = m_eStance != stance;
 	m_eStance = stance;
+	/* A stance that owns its own idle and run has to take over the pose the
+	character is already holding; Set_Locomotion only fires on a move edge. A
+	skill keeps its clip and picks the new stance up when it ends. */
+	if (hasChanged && !Is_PlayingSkill())
+	{
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+	}
 	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
@@ -923,11 +966,29 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 		pPart->Set_Visible(isVisible);
 }
 
+const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) const
+{
+	const char_t* pClipName = m_pSpec->AnimationClips[ETOUI(eAnim)];
+	if (CHARACTER_ANIM::IDLE != eAnim && CHARACTER_ANIM::RUN != eAnim)
+		return pClipName;
+	for (uint32_t i = 0; i < m_pSpec->iNumStanceLocomotion; ++i)
+	{
+		const STANCE_LOCOMOTION_SPEC& stance = m_pSpec->pStanceLocomotion[i];
+		if (stance.eStance != m_eStance)
+			continue;
+		const char_t* pOverride = CHARACTER_ANIM::IDLE == eAnim ?
+			stance.pIdleClip : stance.pRunClip;
+		if (nullptr != pOverride)
+			return pOverride;
+	}
+	return pClipName;
+}
+
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
 		return false;
-	return Set_Animation(m_pSpec->AnimationClips[ETOUI(eAnim)], isLoop);
+	return Set_Animation(Resolve_LocomotionClip(eAnim), isLoop);
 }
 
 bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
@@ -998,6 +1059,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
+	/* The parts have just advanced their animation, so the chains solve on this
+	frame's pose and finish before anything binds bone matrices. */
+	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
+		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
+	{
+		m_BoneChains.Update(m_pBodyModel, fTimeDelta);
+	}
 	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
 		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{

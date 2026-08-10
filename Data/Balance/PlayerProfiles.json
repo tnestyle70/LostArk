@@ -10,6 +10,10 @@
       "attackPower": 100,
       "defense": 105,
       "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
       "defaultStance": "LANCE_MASTER_LONG_SPEAR"
     },
     {
@@ -20,6 +24,10 @@
       "attackPower": 100,
       "defense": 95,
       "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
       "defaultStance": "NONE"
     },
     {
@@ -30,6 +38,10 @@
       "attackPower": 100,
       "defense": 110,
       "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
       "defaultStance": "NONE"
     },
     {
@@ -40,6 +52,10 @@
       "attackPower": 100,
       "defense": 90,
       "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
       "defaultStance": "NONE"
     },
     {
@@ -50,6 +66,10 @@
       "attackPower": 100,
       "defense": 100,
       "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
       "defaultStance": "NONE"
     },
     {
@@ -60,6 +80,10 @@
       "attackPower": 100,
       "defense": 130,
       "moveSpeed": 2.8,
+      "defenseStanceMoveSpeedScale": 0.6,
+      "maximumIdentity": 1000,
+      "identityRegenPerSecond": 40,
+      "identityDrainPerSecond": 120,
       "defaultStance": "WARLORD_NORMAL"
     }
   ]

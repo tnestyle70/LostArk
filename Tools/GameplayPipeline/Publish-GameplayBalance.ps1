@@ -332,7 +332,9 @@ $knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR',
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @(
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',
-		'attackPower','defense','moveSpeed','defaultStance') 'player profile'
+		'attackPower','defense','moveSpeed','defenseStanceMoveSpeedScale',
+		'maximumIdentity','identityRegenPerSecond','identityDrainPerSecond',
+		'defaultStance') 'player profile'
 	Assert-JsonString $player.defaultStance 'player defaultStance'
 	if ($player.defaultStance -notin $knownStances) {
 		throw "Player defaultStance is unknown: $($player.characterClass) $($player.defaultStance)"
@@ -344,6 +346,27 @@ foreach ($player in @($playerDocument.players)) {
 	Assert-JsonInteger $player.attackPower 'player attackPower' 1 ([uint32]::MaxValue)
 	Assert-JsonInteger $player.defense 'player defense' 1 ([uint32]::MaxValue)
 	Assert-JsonNumber $player.moveSpeed 'player moveSpeed'
+	Assert-JsonNumber $player.defenseStanceMoveSpeedScale 'player defenseStanceMoveSpeedScale'
+	# Identity is opt-in: a class without the resource stores 0 across all three
+	# and the server never gives it a gauge.
+	Assert-JsonInteger $player.maximumIdentity 'player maximumIdentity' 0 ([uint32]::MaxValue)
+	Assert-JsonInteger $player.identityRegenPerSecond 'player identityRegenPerSecond' 0 ([uint32]::MaxValue)
+	Assert-JsonInteger $player.identityDrainPerSecond 'player identityDrainPerSecond' 0 ([uint32]::MaxValue)
+	if ([uint32]$player.maximumIdentity -eq 0) {
+		if ([uint32]$player.identityRegenPerSecond -ne 0 -or
+			[uint32]$player.identityDrainPerSecond -ne 0) {
+			throw "Player identity rates need a gauge to fill: $($player.characterClass)"
+		}
+	}
+	elseif ([uint32]$player.identityDrainPerSecond -eq 0) {
+		# A gauge that never drains would hold a stance open forever, which is the
+		# one thing the drain exists to stop.
+		throw "Player identity gauge never drains: $($player.characterClass)"
+	}
+	if ([double]$player.defenseStanceMoveSpeedScale -le 0.0 -or
+		[double]$player.defenseStanceMoveSpeedScale -gt 1.0) {
+		throw "Player defenseStanceMoveSpeedScale must be within (0,1]: $($player.characterClass)"
+	}
 	Assert-StableId $player.characterClass 'player characterClass'
 	# attackPower is the multiplicand every damage rate is applied to, so a zero
 	# would silently disarm the class rather than fail loudly at load.
@@ -361,6 +384,9 @@ foreach ($player in @($playerDocument.players)) {
 		[uint32]$player.maximumResource, [uint32]$player.resourceRegenPerSecond,
 		[uint32]$player.attackPower, [uint32]$player.defense,
 		(Format-InvariantFloat $player.moveSpeed 'player moveSpeed'),
+		(Format-InvariantFloat $player.defenseStanceMoveSpeedScale 'player defenseStanceMoveSpeedScale'),
+		[uint32]$player.maximumIdentity, [uint32]$player.identityRegenPerSecond,
+		[uint32]$player.identityDrainPerSecond,
 		$player.defaultStance) -join "`t"))
 }
 if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
