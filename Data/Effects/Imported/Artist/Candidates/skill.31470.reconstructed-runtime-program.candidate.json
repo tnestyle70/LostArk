@@ -654,18 +654,18 @@
       "artifactId": "materialTextureBinding",
       "order": 12,
       "path": "Data/Effects/Imported/Artist/Materials/skill.31470.material-texture-runtime-binding.receipt.json",
-      "authorityCommitId": "fda3b5637847f9205915ad25ff02215424024b88",
-      "authorityTreeId": "2f00f00851ee93f498dd6c13d6a3055209d4d8c3",
-      "blobId": "3105c22a3c8e9b73b47b721ffab72d1254fc1750",
+      "authorityCommitId": "1a0b1a6834d562dac02db4f57dda54644d75695b",
+      "authorityTreeId": "84cc7ef8cde7a7cf5194b0ed2ccf56a45a927b57",
+      "blobId": "1a917e44d5605e322e2c554db21573d856b05874",
       "schema": "lostark.artist-31470-material-texture-runtime-binding-receipt",
       "versionField": "formatVersion",
-      "versionValue": 1,
+      "versionValue": 2,
       "hashDomain": "GIT_OBJECT_CANONICAL_LF_JSON",
-      "trackedTextSha256": "3a097a174df6b940989c7ce6c7b4e3b7798256d200cf73e25e694dc827e4346e",
-      "canonicalJsonSha256": "bd0abbb81cc6daa46f83f9ca8850512f597280c8df42fe5ee23b8e140720bcaf",
+      "trackedTextSha256": "87a28be564308117ac666206382c94ce5ee2bf37a47111cbef717994a0266077",
+      "canonicalJsonSha256": "6b83552e90b18500fec831939087c57e368225878982c0cd71de431e03a1d27b",
       "selfHashField": "receiptSha256",
-      "selfSha256": "39c91577c09b853fa55a8fd5531c1cddc4fef928d77a6caa7f67c472a56159e0",
-      "rowSha256": "652d2b655289765ed02d9e98126f1e979e7836b2702a0e8dff6147c687e1ce51"
+      "selfSha256": "3e722cf02085497c63083fbf51161ff5fd6670be91607737863b9c4019e55b48",
+      "rowSha256": "44de8f2af1b6dfdd2dffbacbec7201cf1add0f4b1c2c8129cf299203f2587620"
     }
   ],
   "handlerRegistry": [
@@ -294043,9 +294043,11 @@
       "sourceBindingId": "material-texture-binding-8591f083aaa70588051a",
       "sourceBindingRowSha256": "bae4afda1e7f86b9ebbae31f244a8f966a75aeac74393f9a1b69960d83472828",
       "sourceTextureResourceId": "material-texture-resource-ecb71b88e1b361084aa7",
-      "sourceTextureResourceRowSha256": "f2a0fada70250d93718784e0ceafd661622d8eca422addf2eb05e65cb29937b6",
+      "sourceTextureResourceRowSha256": "69d1cf3481823afc4bd65f21428e0c074ce11b5caa7a6134e17ca2f7a89adf2b",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_h_wave_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294054,7 +294056,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "196443da30c516e2c0327232d4772e0a67ed6788bf22954e30117678e53b33cf"
+      "rowSha256": "1e39f3135692dbdf5484d5485de7358cd481366a26a684a32148be90ac17cbca"
     },
     {
       "bindingId": "material-input-f7f3ac4458ba6a16::runtime-texture-binding",
@@ -294068,22 +294070,22 @@
         "source-active-010"
       ],
       "sourceBindingId": "material-texture-binding-e07f468e19510e02645f",
-      "sourceBindingRowSha256": "44c838e1bf9b970e213fcdce5a56968d6b2becf8b3d8ded8fceca0dcb51bfcd7",
+      "sourceBindingRowSha256": "c4c407b87aee386c08ddd25db6da3caa78c158c811635054365e1236c0c9712a",
       "sourceTextureResourceId": "material-texture-resource-ab9078b6d245113c4b82",
-      "sourceTextureResourceRowSha256": "a663733bddd1e3f687db8614935c833b04b81ccb4af93e246c4398ccfe9b6fe1",
+      "sourceTextureResourceRowSha256": "4a4c79432dcc1d223f0837dd368abd8f4001ffc26928703f90ba528069b728ca",
       "sourceProvisioningProposalId": "material-texture-provisioning-ab9078b6d245113c4b82",
-      "sourceProvisioningProposalRowSha256": "04723cb3c34f11f302fd7316c1cdb8c6540a8943e0392fdb5fdff18d25f212fa",
-      "sourceReceiptStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
-      "resolutionStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "bindingBasis": "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET",
+      "sourceProvisioningProposalRowSha256": "a050bad711c0a98b7c4e4572860a976efa8542fafb5367fa16a2f3585f70ecd6",
+      "sourceDeploymentRowId": "exact-dds-runtime-deployment-035e334f7398505eea7c",
+      "sourceDeploymentRowSha256": "329392ee94c2a1bbaafb8326cf4651205fbab6d6ca2a7251bcd9dff1eed4d303",
+      "sourceReceiptStatus": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
+      "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
+      "bindingBasis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
       "sourceExact": false,
       "blockers": [
-        "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-        "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "908ba74cf28186788e77d6fb9b596639e7fd799b636bb1c8461ecb87328c9bbb"
+      "rowSha256": "fd2235712f4eb0df34739b090fb98d8619278a7a6a520c651da34fc28b747309"
     },
     {
       "bindingId": "material-input-72b9eeafb6f8eba5::runtime-texture-binding",
@@ -294098,9 +294100,11 @@
       "sourceBindingId": "material-texture-binding-db8b1d7e18fa5f8035e0",
       "sourceBindingRowSha256": "59e1edbac789e095e9dd692644eff59e3dc15bd6860bd1e0412af0a6fed7ea31",
       "sourceTextureResourceId": "material-texture-resource-5a257a557e3f7ea42183",
-      "sourceTextureResourceRowSha256": "9739e81ed2682b6b5cdbad8a786afe440b96ce2a04684d67a41f0af63a65d98b",
+      "sourceTextureResourceRowSha256": "7109e703696a07d8de4566c58fa8d68704b41b1ffdae7370c93625dfb7872abc",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_e_fluid_021.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294109,7 +294113,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "c352378cee723a4b6181bcabcbe0e3a126586d1cba2680798ecb9e2c74136bbd"
+      "rowSha256": "f8c8b05128246eba9c053d35706fff23b65a2b39b8b5252f0692ad51cbc10fa6"
     },
     {
       "bindingId": "material-input-fb27adb50913c489::runtime-texture-binding",
@@ -294124,9 +294128,11 @@
       "sourceBindingId": "material-texture-binding-bed9956688958930d8a6",
       "sourceBindingRowSha256": "c6f48f0375eea9a06dece7d3c2bf2dd5487cd74ce42de5c9b71c03d80a6baf5e",
       "sourceTextureResourceId": "material-texture-resource-73d77ddcf559a501dc83",
-      "sourceTextureResourceRowSha256": "4e8faca8cea1eedbc5584080023e4cd46b298718ce3a610423185b9bfc691c0d",
+      "sourceTextureResourceRowSha256": "5c3cc34fc181c53c9cc8230f99afd6a17d266bfa14fab60c378d59abd7fe8e81",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_decal_013.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294135,7 +294141,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "28a403803515a637b3eab966cd92b2ea3ac279abd7789cd9a9679a1147bb33ed"
+      "rowSha256": "900198e6a215de62bd0af83d89fce600b08db7e56317180e4459f1bf4430317c"
     },
     {
       "bindingId": "material-input-e3c9e51c794ab716::runtime-texture-binding",
@@ -294150,9 +294156,11 @@
       "sourceBindingId": "material-texture-binding-08f62a0f82cb00db3c78",
       "sourceBindingRowSha256": "70dd8e51974484e355a229742dab2688d4c00c87e6cbc360f4271e5df90b245e",
       "sourceTextureResourceId": "material-texture-resource-e48041d91d9e30874c3a",
-      "sourceTextureResourceRowSha256": "83fbe77da7e57ea9d542105d703ec7bdd1611a9e75295597c5d725e4163ba65d",
+      "sourceTextureResourceRowSha256": "64e1f05c83f6bcbac5db591d07a89d4c1f5e33491eabb67e84ead19ceabe8332",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_e_fluid_021_n.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294161,7 +294169,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "f711fb60425663ed656eed420486a7dbcf0570a05c28b82874d36b4ab8e52631"
+      "rowSha256": "a9642d1105e1e542f4fe38be6ea2696a6da8c7e934550048b80dcc19d093ec6c"
     },
     {
       "bindingId": "material-input-473f89fc414d7edf::runtime-texture-binding",
@@ -294176,9 +294184,11 @@
       "sourceBindingId": "material-texture-binding-d95b2d06c17143dc57fb",
       "sourceBindingRowSha256": "5b2e520f7f06b4536ce4bf5340771c1a61bd224809be2e706eec5c47e0145809",
       "sourceTextureResourceId": "material-texture-resource-dee17b8e5ddd1843a8fe",
-      "sourceTextureResourceRowSha256": "cced72657bb867a95b10dead2844973c706a5821ce8ba515611a7b3f3380a3b6",
+      "sourceTextureResourceRowSha256": "b43eaae5331b95e7931f7de70010bce00e79cb0306dee13b94490ac5ab77c46f",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_20.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294187,7 +294197,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "b73561e212a9178a709aa06171125404aacde5afd45a6bfa0d5e7785ecd2d25c"
+      "rowSha256": "872199a617638317f807f97a6f83ef67e6b8481f850f8be6c270558ea237056f"
     },
     {
       "bindingId": "material-input-c4aa32d42db40b09::runtime-texture-binding",
@@ -294202,9 +294212,11 @@
       "sourceBindingId": "material-texture-binding-e1ce74bccbe01dfea4af",
       "sourceBindingRowSha256": "841b4167fa06ed0852f09bac6bd9c7203b18e182fa7cffaff6c39cd08a845aec",
       "sourceTextureResourceId": "material-texture-resource-17ceef594ddb8a19400e",
-      "sourceTextureResourceRowSha256": "16fda036c5749505c02ec630a3e0dc95f41be4980317331d9a4e997760a20f19",
+      "sourceTextureResourceRowSha256": "4236ea9160f48973fcf506555d32f9c19c4dd37aa73b3290ca3a1d06a9691938",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_caustictile_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294213,7 +294225,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "a923b942eac0f2700dc368fc55920a520627c2a89f30ebb2911b98f39c1882cb"
+      "rowSha256": "61c2d5d8889d8341004cc89db0b6976fc64b05eaf280778dd0490d45e5155480"
     },
     {
       "bindingId": "material-input-cd3a976464959381::runtime-texture-binding",
@@ -294228,9 +294240,11 @@
       "sourceBindingId": "material-texture-binding-a313684c0649d50f576e",
       "sourceBindingRowSha256": "39876d78ac43009094757379fd372e520880fb5a93e4130aaa6bdbceb157ad0f",
       "sourceTextureResourceId": "material-texture-resource-2dd83a7564c41c8d5be3",
-      "sourceTextureResourceRowSha256": "17648e86035904f6cb4c4b3d36f3b081bd911c788a1f1a9413f890b8c54ee18b",
+      "sourceTextureResourceRowSha256": "977399afb85a6afe388dc18fda2de6d50be1d30a784ac57b2106ff08301d1ce0",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294239,7 +294253,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "5dda5d3f9d7ee05a52b6660c0a8570335291e501cb01aaf846f5da8b79e829c1"
+      "rowSha256": "368d4c390450ba065705d7353ec3e8d564bce90875070cb95de2ccd6c3ae0d12"
     },
     {
       "bindingId": "material-input-1e83861998ec5f67::runtime-texture-binding",
@@ -294254,9 +294268,11 @@
       "sourceBindingId": "material-texture-binding-01c201d313626b76f9f5",
       "sourceBindingRowSha256": "2b5369546d4955ae008c177385a015a13864152f5115341f0fa61ace41a122f5",
       "sourceTextureResourceId": "material-texture-resource-b65c5f7ca534463a8531",
-      "sourceTextureResourceRowSha256": "4a1dbf3f6bf66761f5e6ba1a06477cdca8d6bfa832599bd52dcc29d7108a7ded",
+      "sourceTextureResourceRowSha256": "1a881eb2d0c0d88e2011255db5401b22507ad15243a4c55c8a8949f9e60b0a9a",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_19.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294265,7 +294281,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "587e7edef52e07769b760928979565453110a9410b232ca87f8e2341c4bfd659"
+      "rowSha256": "db6f1684fb44d557ae3b3958240a6b6b69a62ef56aca14a996a587da8170eb5f"
     },
     {
       "bindingId": "material-input-75efc29fef0cb95a::runtime-texture-binding",
@@ -294280,9 +294296,11 @@
       "sourceBindingId": "material-texture-binding-515f25146dac34bb5d22",
       "sourceBindingRowSha256": "ce3f7e9d4aea8f1721e79e4533f89d7a435f8a801e215c2ec5a91c2eb8a60d4f",
       "sourceTextureResourceId": "material-texture-resource-9246f2dc7327f8b238df",
-      "sourceTextureResourceRowSha256": "bdb1820b751347a4d9a49c08ba7981cbabc2695f42fa2e615949c2dc7e47604a",
+      "sourceTextureResourceRowSha256": "57303f41f05bf0153f4a03f9fcf03db10c9882e6a6b9a7ceeb0ceb933a5836e0",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294291,7 +294309,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "8b0284e9e16f078dd7c98fffa4dc91f6ab041e5bb4036d33e3a553b32b47d070"
+      "rowSha256": "4e53b29113093858154e6142a7926862ec486a62751e3ece0b8e162706d9903a"
     },
     {
       "bindingId": "material-input-3c6503f3b8165e28::runtime-texture-binding",
@@ -294306,9 +294324,11 @@
       "sourceBindingId": "material-texture-binding-8bfcdc28823e535c69a8",
       "sourceBindingRowSha256": "e2bb2eeafa3951499e49ca463c44c806270fa914974cde511862afef83f3e4d9",
       "sourceTextureResourceId": "material-texture-resource-a86cba3e7d56a22f69aa",
-      "sourceTextureResourceRowSha256": "230995ba50c6a69dd4ffd4d6319e30e00c572fa5cf80ef326fe8362844ff1c61",
+      "sourceTextureResourceRowSha256": "1ae89e055c5b9d2f78c3aca38908670de412a6bcdd19b362c8d2d0498c7e7205",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_ice_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294317,7 +294337,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "d6c543c4ba2ce83387d6ddf6d5e8b24254ec4e2807cc5578dabf6095f9c60764"
+      "rowSha256": "aceedab99983e80601adb4a2d4dbee020ac02a7bb5ab7b985d9b71a2d9c3d9a0"
     },
     {
       "bindingId": "material-input-323ed9dbf8e8f9ee::runtime-texture-binding",
@@ -294332,9 +294352,11 @@
       "sourceBindingId": "material-texture-binding-cbee5b99ab27c2a9632f",
       "sourceBindingRowSha256": "e2e150fd0a588b97f49790f7c38ba386a715771b806fa83487563a2f2ebcaa5b",
       "sourceTextureResourceId": "material-texture-resource-1da48ad07553b2bdcd8c",
-      "sourceTextureResourceRowSha256": "8ed1b1de7f6fc3f9771dfeee7c0cece63bd9061127df328868e847a6a96e62d0",
+      "sourceTextureResourceRowSha256": "4fd97fc0eab301392fbcc02168339f7b06c5d9b2e29c748607111b6ca3481187",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_atypical_098.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294343,7 +294365,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "5b0307ff54236b53d9f52081b958fbd428bfd2e7279b332f8b70f58c8e389008"
+      "rowSha256": "adadf1d800d1c953dbe9511ee290a9fcdec682afd082e8a80cad3401ea5b1cf7"
     },
     {
       "bindingId": "material-input-2f830bc7586bd3e0::runtime-texture-binding",
@@ -294358,9 +294380,11 @@
       "sourceBindingId": "material-texture-binding-a4c475d027829789f525",
       "sourceBindingRowSha256": "7cf6a4e30723fbe7020dc3daededbe49e22ed08f6d3dcd791b2397ff63e58b44",
       "sourceTextureResourceId": "material-texture-resource-5200d01affe600bb33d2",
-      "sourceTextureResourceRowSha256": "bd11d25018a8d4155d64d2f09d5fa94cd56b7738830e386333595c7f3e496354",
+      "sourceTextureResourceRowSha256": "7604512e7ba950a17a328fa99671c55bf482c84a76a93b21d88e9c7666c29c80",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294369,7 +294393,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "cb35318d5f382de91486aeccb4f175ddd4ab43d7ff1d07ec6ba74ef34f3f0e0d"
+      "rowSha256": "2eafc143fc589f9f1c9f7e0b2c19a55f53f14e9f859f7bf1d616ec8952103b8a"
     },
     {
       "bindingId": "material-input-e51237e20a813da8::runtime-texture-binding",
@@ -294384,9 +294408,11 @@
       "sourceBindingId": "material-texture-binding-eca038f40fb21544357d",
       "sourceBindingRowSha256": "0dada6ec79e5b460635d2b63ec80f1773ac6c8736fe17b9cf0cd1cb65c8e6748",
       "sourceTextureResourceId": "material-texture-resource-5200d01affe600bb33d2",
-      "sourceTextureResourceRowSha256": "bd11d25018a8d4155d64d2f09d5fa94cd56b7738830e386333595c7f3e496354",
+      "sourceTextureResourceRowSha256": "7604512e7ba950a17a328fa99671c55bf482c84a76a93b21d88e9c7666c29c80",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294395,7 +294421,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "54dbd5f75e313536a4614de9986c1fc324d3815d1c25e1b72aa1d21e6a717e7f"
+      "rowSha256": "12cebe22f81d210f0a0efb6582e170d4c097e94226f655e9fe874dfbaff4b470"
     },
     {
       "bindingId": "material-input-4881555679832b06::runtime-texture-binding",
@@ -294410,9 +294436,11 @@
       "sourceBindingId": "material-texture-binding-c37e1b9977fffd0eae83",
       "sourceBindingRowSha256": "fc69088e817ada6d2e49749ceaaf335493b3c581e91be4e7d90ecb5a40c00621",
       "sourceTextureResourceId": "material-texture-resource-df9326f5f0bbdf88d424",
-      "sourceTextureResourceRowSha256": "775c705f527524454df211318d68638803064a58ceac004a9c897223f4cad778",
+      "sourceTextureResourceRowSha256": "960552d0a3d95d30d4bb6b8869299e90ccfc8d27060d59a76a6f6a7b3a669818",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_environ_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294421,7 +294449,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "44427a80f064bfef524c57454c1bce005280deaf08443f74c18e2a8a0cafd053"
+      "rowSha256": "6265c461a15878a63ebe2e0b9f0aacd7366e776ad21fd70f14e8641baf29c8f3"
     },
     {
       "bindingId": "material-input-66baf039d113a534::runtime-texture-binding",
@@ -294436,9 +294464,11 @@
       "sourceBindingId": "material-texture-binding-4f8915900051d4612d87",
       "sourceBindingRowSha256": "c084bb6b3a7762bcfbee33b162fc744a01533a4ab41ebc5a334471ea8773cee4",
       "sourceTextureResourceId": "material-texture-resource-dc2c5ef818c697390efe",
-      "sourceTextureResourceRowSha256": "b4c49ffbcf2cf8ca2e8d083e79d4949eb5d7595062ba800a03713ee17c6cdbff",
+      "sourceTextureResourceRowSha256": "d14961d99a2437db975cfad59808c8e8442c44c5d7d8c3f2fb8e86301e33ab35",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_environ_002_n.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294447,7 +294477,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "00c3d97ede7888af52844e663eb3a8504f0172ba2c30ceb7f3a016310c3f0dff"
+      "rowSha256": "ac6abf586eefdd305916092469d8a656f8c44b81151abf48c7e91ae8f56dc859"
     },
     {
       "bindingId": "material-input-36f7e31a26f2ff32::runtime-texture-binding",
@@ -294462,9 +294492,11 @@
       "sourceBindingId": "material-texture-binding-df8fab13ac5efd9be6f2",
       "sourceBindingRowSha256": "c7d701d786e79756d85ac28f174b949d9d0cb2005db1fd08dd9a17544e090293",
       "sourceTextureResourceId": "material-texture-resource-4147531ad8b8fd486c00",
-      "sourceTextureResourceRowSha256": "f9a191f28e531f00c487470e38b789b01e6b83b234f860d01280bd4c6f16dd1e",
+      "sourceTextureResourceRowSha256": "4c1c675e053e2e193ca196b3f90002937788734b3b2105b0882fed8fdad30020",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_16.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294473,7 +294505,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "b7550c289a0ddfdac2f25a92f235ce5cd531b7a9d79160864f67a61c33052283"
+      "rowSha256": "32fbe4fbfb4cb5da6b9c6b12ad2bd8d90013f7ded200394c349b05fb9dcdc3af"
     },
     {
       "bindingId": "material-input-37ec7928a038c53f::runtime-texture-binding",
@@ -294488,9 +294520,11 @@
       "sourceBindingId": "material-texture-binding-c7746c94b5d66ca5f8b2",
       "sourceBindingRowSha256": "84052e54e60e843f782d57fef206f3e1e9d2ef6a003bdb34df6281ef20666b7a",
       "sourceTextureResourceId": "material-texture-resource-17ceef594ddb8a19400e",
-      "sourceTextureResourceRowSha256": "16fda036c5749505c02ec630a3e0dc95f41be4980317331d9a4e997760a20f19",
+      "sourceTextureResourceRowSha256": "4236ea9160f48973fcf506555d32f9c19c4dd37aa73b3290ca3a1d06a9691938",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_caustictile_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294499,7 +294533,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "36298461adf3841498a6c65cc3a823a40dc8b4a1cd08927ad9042318245ca908"
+      "rowSha256": "4c98cb7d0c32b01a179beedf367ea8c65a135ee91262694ea5341a14dfecbf56"
     },
     {
       "bindingId": "material-input-3d9f8a48d3cfbaae::runtime-texture-binding",
@@ -294514,9 +294548,11 @@
       "sourceBindingId": "material-texture-binding-e970fdf0b531e91124ad",
       "sourceBindingRowSha256": "7063e461fd820667e90d9c9652f6b8bb96fef8b3b99aafce66c1b35195a28364",
       "sourceTextureResourceId": "material-texture-resource-2dd83a7564c41c8d5be3",
-      "sourceTextureResourceRowSha256": "17648e86035904f6cb4c4b3d36f3b081bd911c788a1f1a9413f890b8c54ee18b",
+      "sourceTextureResourceRowSha256": "977399afb85a6afe388dc18fda2de6d50be1d30a784ac57b2106ff08301d1ce0",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294525,7 +294561,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "123fde38a3f92f06f794c83ebbbdfb183d7c52a6bf1a6b1c5a42a637dd394cf9"
+      "rowSha256": "73a7e43ceaa03f5f5ede87352c0b2db7e5e79816021a38162d4c1103780f26c5"
     },
     {
       "bindingId": "material-input-cb99e1071041360d::runtime-texture-binding",
@@ -294540,9 +294576,11 @@
       "sourceBindingId": "material-texture-binding-1875db32e4fff5edbfc3",
       "sourceBindingRowSha256": "f451cc83e2a235b4f927758fd1a1f2bdb742b888226c47a91b1a2206405e49d4",
       "sourceTextureResourceId": "material-texture-resource-315ee462695d995d1cb5",
-      "sourceTextureResourceRowSha256": "fc9eb2b1e3be7bd42f256ef95255c0940cbb4ba7e014bca130e55e142e8a146f",
+      "sourceTextureResourceRowSha256": "a9eca5f42557bbfe10712f621fd6c509a8c365f72a9bb62ce5a65acbf2697e4f",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_c_atypical_007_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294551,7 +294589,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "a95c73ef453fc8834c185a2889a4cfb2da16d17d8ee37b66e40aaa916ca09ddf"
+      "rowSha256": "f486528cfe4a58e0ba080be4431e839f467566b2f5da453b1dbefc7fb330542f"
     },
     {
       "bindingId": "material-input-3084d12ada62be0f::runtime-texture-binding",
@@ -294567,9 +294605,11 @@
       "sourceBindingId": "material-texture-binding-ad56d241006451e2a76b",
       "sourceBindingRowSha256": "1b4024942a9baca1f59c901e95836694c3fbdf9b7b0ca83e8984f12645761a9e",
       "sourceTextureResourceId": "material-texture-resource-e18ba13a6b3cc40e9bd9",
-      "sourceTextureResourceRowSha256": "e27be01ba3101c62306ccff3ac6e00525cf784038eeee9f3f8f7d7045738a8cf",
+      "sourceTextureResourceRowSha256": "c3d352f2f95647b6903908869df4c7ee26f24c970d3afed858e9335a488d10b4",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_smokesq_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294578,7 +294618,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "26ea68f2ee34bc86985fead0acbaa46c4681cc841674f4efff7449f063ca9627"
+      "rowSha256": "bb9c871606b9e55cb9ab2e40fc89fdbd9efb9f9642911c738ce16efe7401acbd"
     },
     {
       "bindingId": "material-input-827cc010de506ef6::runtime-texture-binding",
@@ -294593,9 +294633,11 @@
       "sourceBindingId": "material-texture-binding-f7c408a75ec6c357a1b8",
       "sourceBindingRowSha256": "de7647f523f9e60724b9523cc5ac37b353e59b54cb0c0fea737808a7dba6ee7b",
       "sourceTextureResourceId": "material-texture-resource-9246f2dc7327f8b238df",
-      "sourceTextureResourceRowSha256": "bdb1820b751347a4d9a49c08ba7981cbabc2695f42fa2e615949c2dc7e47604a",
+      "sourceTextureResourceRowSha256": "57303f41f05bf0153f4a03f9fcf03db10c9882e6a6b9a7ceeb0ceb933a5836e0",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294604,7 +294646,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "c46378af595a7a921cbe466b45207b306a8082f973a0780ef96d5973a5944bc2"
+      "rowSha256": "5442e3679fc84559b46e9cf990747d49ddc2786bfb10539de23411ac352af541"
     },
     {
       "bindingId": "material-input-e4e50bfd3b772add::runtime-texture-binding",
@@ -294619,9 +294661,11 @@
       "sourceBindingId": "material-texture-binding-65d5fb996b2a2e142e54",
       "sourceBindingRowSha256": "0ea32597990463b22f50a5dbbf2bd39d49824c11d3d177dbbe8f847b66a1b643",
       "sourceTextureResourceId": "material-texture-resource-a86cba3e7d56a22f69aa",
-      "sourceTextureResourceRowSha256": "230995ba50c6a69dd4ffd4d6319e30e00c572fa5cf80ef326fe8362844ff1c61",
+      "sourceTextureResourceRowSha256": "1ae89e055c5b9d2f78c3aca38908670de412a6bcdd19b362c8d2d0498c7e7205",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_ice_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294630,7 +294674,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "0e7bf46f6fd5b65bec316ed009a755a48e0c731a5d94b511947af5e89538fc97"
+      "rowSha256": "a37339327be5e6fb62066dc00ef737be50625e10c10991a697371f8013a3826c"
     },
     {
       "bindingId": "material-input-51b4106e0790666d::runtime-texture-binding",
@@ -294645,9 +294689,11 @@
       "sourceBindingId": "material-texture-binding-364f6ed3ef79dbe9bc20",
       "sourceBindingRowSha256": "2259bb5793899f52748c28a6088b08c3af10a49f81416d1f6f649a2a472bf0b8",
       "sourceTextureResourceId": "material-texture-resource-1da48ad07553b2bdcd8c",
-      "sourceTextureResourceRowSha256": "8ed1b1de7f6fc3f9771dfeee7c0cece63bd9061127df328868e847a6a96e62d0",
+      "sourceTextureResourceRowSha256": "4fd97fc0eab301392fbcc02168339f7b06c5d9b2e29c748607111b6ca3481187",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_atypical_098.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294656,7 +294702,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "d6deefdab62502d2c51f97b8eb683c5abc0f1773c4790c613123016c0b92d116"
+      "rowSha256": "2575b26c24b0e7ab2c7217076d62514e0e2fc92099ca38ba24ce634e80876a5a"
     },
     {
       "bindingId": "material-input-dde4466db9b00e05::runtime-texture-binding",
@@ -294671,9 +294717,11 @@
       "sourceBindingId": "material-texture-binding-9da0bf94c6a79fd0f4d9",
       "sourceBindingRowSha256": "058d5c47caf0f959639ba4a471e17a82d9b98f035b8ac80f45729d122665ad35",
       "sourceTextureResourceId": "material-texture-resource-5200d01affe600bb33d2",
-      "sourceTextureResourceRowSha256": "bd11d25018a8d4155d64d2f09d5fa94cd56b7738830e386333595c7f3e496354",
+      "sourceTextureResourceRowSha256": "7604512e7ba950a17a328fa99671c55bf482c84a76a93b21d88e9c7666c29c80",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294682,7 +294730,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "6b65c1c59475b19e91f37f5389fc2c4b0282099acac5656b315a04c74b59873f"
+      "rowSha256": "9bbd9f5cd5cd292e64c86c143c819d1cb78af56599b1902c5c78774c28b9b834"
     },
     {
       "bindingId": "material-input-adf8710a3f8cad4a::runtime-texture-binding",
@@ -294697,9 +294745,11 @@
       "sourceBindingId": "material-texture-binding-8fef2aaa05e7425f8d66",
       "sourceBindingRowSha256": "93d29b91d702a883da8c7ad3cb544cef6ed6f4a36f34e22748abff08b2543bcc",
       "sourceTextureResourceId": "material-texture-resource-9219891095374c9ec99d",
-      "sourceTextureResourceRowSha256": "14fe40d44054f98d81c538ea711f5ffdf91eebbf011a0977e4a0e32f1d2c9057",
+      "sourceTextureResourceRowSha256": "8f93c589b9134b1a5cfa0d95e65a988a58f0cbafa4eec5ac70646819e0d48e36",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_hit_006_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294708,7 +294758,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "5e242bb6a7e3196a085cd30b5410c02c4d3cb6b6a6c1a3530c1ac5f22f03692e"
+      "rowSha256": "adf177763d4ad78a92143df52e24544438165d1a1769257946de5b0c3f28fef2"
     },
     {
       "bindingId": "material-input-787a89b9e8277bec::runtime-texture-binding",
@@ -294723,9 +294773,11 @@
       "sourceBindingId": "material-texture-binding-730682ddc9311277b447",
       "sourceBindingRowSha256": "cd20274eca661aab7d62f0829c793bd449714334a69bfb477124428639419485",
       "sourceTextureResourceId": "material-texture-resource-0dadafb62b8b0a3d301a",
-      "sourceTextureResourceRowSha256": "0d78fc083aa984da1062ae246c297e098daeede5b3ac583bea39e92ffa531ffb",
+      "sourceTextureResourceRowSha256": "b9a366612b7b294bd757b2457348df7e7210b9bbdbbaffd2031f834d9028b0f2",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_014.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294734,7 +294786,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "ef3972f76a8af81439e4b2822b6355d1f3f7a0410d721b927a5e53bdd8157a6b"
+      "rowSha256": "cfcc0b82bee5dbc00629b05eb652166cecc6869d27ddb7a66551e360079595c9"
     },
     {
       "bindingId": "material-input-5d670256e1374c43::runtime-texture-binding",
@@ -294749,9 +294801,11 @@
       "sourceBindingId": "material-texture-binding-8ed611b426cd9bdaf6d6",
       "sourceBindingRowSha256": "ad240690b7edac8a1370ed72dda397e9887b48e14d4d0a2a3341c772f98b326c",
       "sourceTextureResourceId": "material-texture-resource-0dadafb62b8b0a3d301a",
-      "sourceTextureResourceRowSha256": "0d78fc083aa984da1062ae246c297e098daeede5b3ac583bea39e92ffa531ffb",
+      "sourceTextureResourceRowSha256": "b9a366612b7b294bd757b2457348df7e7210b9bbdbbaffd2031f834d9028b0f2",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_014.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294760,7 +294814,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "f22202e0aa1313b459fbee4f365771181ab2a015707ba43df1215057ae2de418"
+      "rowSha256": "11f28bcc74d0b7e69b464785f295fb241814c51f966824ceaeb9e7b4c5046d68"
     },
     {
       "bindingId": "material-input-1696e0b5fad71a9a::runtime-texture-binding",
@@ -294775,9 +294829,11 @@
       "sourceBindingId": "material-texture-binding-1d233889fa58bf643a7c",
       "sourceBindingRowSha256": "c84ed929009b1a8ba9d439a22e6c8b656ccaf0354ecfc015e3638efe4e50c751",
       "sourceTextureResourceId": "material-texture-resource-360bbb8b76bdd90f548b",
-      "sourceTextureResourceRowSha256": "0aa87679679021339e88c3eeb13b1fcfe1dd429ec33671664ea2d9962dc8c3ee",
+      "sourceTextureResourceRowSha256": "751ce49498e1711c23ddbaf44ecd0bc84c88d885c3fc9267215b06cffe4b43e5",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_trail_002_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294786,7 +294842,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "52ac301fc0baec7cbd3f1de16d0b7daf88f4ec69ed19ae896e9e57c6c981f551"
+      "rowSha256": "8cb41ad9b41793526c08d1c1be7f1f73b57d0c57eec468e2f41ca7c1d85b0d9a"
     },
     {
       "bindingId": "material-input-cfa49df868b896ff::runtime-texture-binding",
@@ -294801,9 +294857,11 @@
       "sourceBindingId": "material-texture-binding-bba4527e4f86abe5bfe2",
       "sourceBindingRowSha256": "0ad54cf8646ce49d4aa9e2306ad4171eeaed46c45b2149f5213aa33915123c3a",
       "sourceTextureResourceId": "material-texture-resource-da7199f32da2312d2403",
-      "sourceTextureResourceRowSha256": "d02864e68f93e13f93b7df3708c128fb343d92c1234495b6ce1c146a17238b1a",
+      "sourceTextureResourceRowSha256": "d9fa565f598f30f8ddaf84729ad2932cb36198261afdbb5f37b132769e2e64c8",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_h_atypical_01_1.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294812,7 +294870,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "d43eaaa9732df00cbed70f480d90eedbebea0d09ca45c421a1ecd809ac91c96e"
+      "rowSha256": "e28ab5e9b290e1ca226e4750889fffd75794c738980cee65ace4eaff67c3ef64"
     },
     {
       "bindingId": "material-input-1b7706c194188fc4::runtime-texture-binding",
@@ -294827,9 +294885,11 @@
       "sourceBindingId": "material-texture-binding-47083701e9d036c5ff35",
       "sourceBindingRowSha256": "cb04ea47159f99eec4998ac1d27854bb2056ca67493072d20b079118dea927e8",
       "sourceTextureResourceId": "material-texture-resource-6bc63f04ea0c175d3efc",
-      "sourceTextureResourceRowSha256": "5ba8fe0c9774fc606d9b1ffa53079ecc188dcafcbbf8669fe1ad63cde10eb364",
+      "sourceTextureResourceRowSha256": "3d72decd6aa7319da305833ec35ec7915ade72c32ae3f482a3528f561a35c620",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_j_risingforce_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294838,7 +294898,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "1f2e13b532631d1e4e86f65b660f97f9c042093b285361ef3f2268361925b333"
+      "rowSha256": "c64d6d6443c5ac1169b7f0f1eee8becd4cb166fded73561926cda5801652884f"
     },
     {
       "bindingId": "material-input-8ea842de52932b7f::runtime-texture-binding",
@@ -294853,9 +294913,11 @@
       "sourceBindingId": "material-texture-binding-8ded80930d77cc4def97",
       "sourceBindingRowSha256": "e41cd37463259c11a7dc341c28321415ec6a46f635c5dfb9ae64e7e710016ac1",
       "sourceTextureResourceId": "material-texture-resource-9b2c4deea295d38e9bff",
-      "sourceTextureResourceRowSha256": "df42ddaf615ed81973ae454df5f2209f1e8304682d8a478fd68c600f4538b8c2",
+      "sourceTextureResourceRowSha256": "b03e7e02b45fd05c865d2726b5258edb1364fc383d546117d7b7016d29249caa",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_trail_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294864,7 +294926,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "6664b196636e54f982137aca16d38fb52a309095c699cb4877e375e9d64f9161"
+      "rowSha256": "04d70de330c7f89eea8d5c3cc70984f25a2697acc312b316b811b8774ccd8de1"
     },
     {
       "bindingId": "material-input-2e53e35902c0b7d4::runtime-texture-binding",
@@ -294879,9 +294941,11 @@
       "sourceBindingId": "material-texture-binding-c4b3f831f5ea5eb74f45",
       "sourceBindingRowSha256": "a118976cca0805c814d8e29f7499a490678f91285f4a473ed4eddc9e65bb2a91",
       "sourceTextureResourceId": "material-texture-resource-a35c9509610d11c815a5",
-      "sourceTextureResourceRowSha256": "d74df2728acdefa5fd42825b8dc5e5ba44b9d88d8deb4628732ad69e2d02373f",
+      "sourceTextureResourceRowSha256": "662b720c83ae96bae9f334f123a857543caac0b506cce74cb440798cdbecc129",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_noise_001.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294890,7 +294954,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "169422560448b069d1756786f05deca8ec91d4343ddbf7e0cf9033ffdca4d17a"
+      "rowSha256": "8e3e6b0615d09c596e109239e27c7486d176089d6acd6786add84e62a24e3442"
     },
     {
       "bindingId": "material-input-af9c1a76c01c0085::runtime-texture-binding",
@@ -294905,9 +294969,11 @@
       "sourceBindingId": "material-texture-binding-5c6a40247785b50bac2a",
       "sourceBindingRowSha256": "64aff897444c67bd2c3a132ab1e2d90f4705efb8c6c9417163ddc0091c8fdcec",
       "sourceTextureResourceId": "material-texture-resource-da7199f32da2312d2403",
-      "sourceTextureResourceRowSha256": "d02864e68f93e13f93b7df3708c128fb343d92c1234495b6ce1c146a17238b1a",
+      "sourceTextureResourceRowSha256": "d9fa565f598f30f8ddaf84729ad2932cb36198261afdbb5f37b132769e2e64c8",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_h_atypical_01_1.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294916,7 +294982,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "faea9368bc82f3f4ebae47091fe42f1bc6cfc263e36c3f84e0cf7cd67ef3186d"
+      "rowSha256": "34eb2874c758372417f82f7e2d975944a5c7ac05b1a4c01d181ea97f92be712c"
     },
     {
       "bindingId": "material-input-b1209b74fc27fd06::runtime-texture-binding",
@@ -294931,9 +294997,11 @@
       "sourceBindingId": "material-texture-binding-e91154a1e228ad4a9e7e",
       "sourceBindingRowSha256": "7d8a3204206abcc4a2c2652f092dba6d81d7100d6d203385335043a7014b652b",
       "sourceTextureResourceId": "material-texture-resource-907fe81a25e3cadf43d1",
-      "sourceTextureResourceRowSha256": "c7e1d7c650d93c8ab4a6fb9d3febe554a253672719dd20b62b57568871128c58",
+      "sourceTextureResourceRowSha256": "14f3272b517ce157bdabe673a395d1e4d8e85b85f011ba0fb330713171265aec",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_noise_003.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294942,7 +295010,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "0821704b47f9c38339e0aabac6841398f9a7908ea8f8afaaba0858aed7f19428"
+      "rowSha256": "5ba118a66686c02ba7dc49342f6e3d632d9f9218722bff9c3e3cf7ed8b35d67b"
     },
     {
       "bindingId": "material-input-42d4c420d367d87b::runtime-texture-binding",
@@ -294957,9 +295025,11 @@
       "sourceBindingId": "material-texture-binding-2d208a77f30ddbb917c4",
       "sourceBindingRowSha256": "d7b52d0778aef0bb521e304ff5cb13b90821270e4e78f30afc8ac3ca2c6e4e3a",
       "sourceTextureResourceId": "material-texture-resource-bb9a7b4c44984e5b0b6f",
-      "sourceTextureResourceRowSha256": "61ebf8ba00d3da6ec831ce5de7ccd30175f3f5dd3ec004e9d21c5c6a0f9b70e2",
+      "sourceTextureResourceRowSha256": "d85e8ba768cd17307324299826770bcf97f88fa3170ff9d47b31e18f991884ac",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_030.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294968,7 +295038,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "bc8235dd53889147412e0c5a2098977cbd4b189b3ac48f8abc0a634812d1103b"
+      "rowSha256": "ed631dd68853a08a00990983b5748d57c1a524ce1c02152bfbacaf56fc7ced61"
     },
     {
       "bindingId": "material-input-3b15ba6c6048626d::runtime-texture-binding",
@@ -294984,9 +295054,11 @@
       "sourceBindingId": "material-texture-binding-d86b5bbb30067d2aebb3",
       "sourceBindingRowSha256": "f35a87103576e5af0cafdde679e3bd406ecc34c97b158fc092f6c9838f169b6b",
       "sourceTextureResourceId": "material-texture-resource-5dc44a59f165549a0dc7",
-      "sourceTextureResourceRowSha256": "cd16f0e575d472784fcbb52bbe7326f3b2a8f53cb9aa38d97b9d8bc808e28ea9",
+      "sourceTextureResourceRowSha256": "7080900feb2f58f9c1e8e7e99641370ddaf8fb27d6e7f7476962809856bcfb30",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_atypical_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -294995,7 +295067,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "7079188489e2b2967d192983058698f0b41d5b7ca1e15113dfb1a557d1a836ad"
+      "rowSha256": "6f165ea469272b8e82aa0e2a0b4a5d1069237a389b6e2350195fcbccd38fc1da"
     },
     {
       "bindingId": "material-input-46479651d3519f0b::runtime-texture-binding",
@@ -295011,9 +295083,11 @@
       "sourceBindingId": "material-texture-binding-aae6b44aa877b228c427",
       "sourceBindingRowSha256": "ed8334359d6296856876800f94878c3fbf448fdc72838e692ed8184ab272e2b9",
       "sourceTextureResourceId": "material-texture-resource-a35c9509610d11c815a5",
-      "sourceTextureResourceRowSha256": "d74df2728acdefa5fd42825b8dc5e5ba44b9d88d8deb4628732ad69e2d02373f",
+      "sourceTextureResourceRowSha256": "662b720c83ae96bae9f334f123a857543caac0b506cce74cb440798cdbecc129",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_noise_001.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295022,7 +295096,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "6ca7dcc222b0112ed3b76a70be2871ee3e1ec791455431e87fbfd21afe02a0e6"
+      "rowSha256": "c8f279e8ea57a1ab55cb1e378c3fab2bc52d2873fb6e6017f47fe9aaf57022bb"
     },
     {
       "bindingId": "material-input-baf9bb89db9f89ee::runtime-texture-binding",
@@ -295035,22 +295109,22 @@
         "source-active-022"
       ],
       "sourceBindingId": "material-texture-binding-41d5f394f23aae7a1ab0",
-      "sourceBindingRowSha256": "3163c42fd370a15467225c6002a12223411cd5b663cb541f324736ea72c964d9",
+      "sourceBindingRowSha256": "9dcf0b1e39e27e0c20137c08f116185368c43f8bd54d81fedaa6100dbab73489",
       "sourceTextureResourceId": "material-texture-resource-0821a3da70a9ebd8f1e6",
-      "sourceTextureResourceRowSha256": "39409b64fc3ed158f571166051f010673bb934af3dda42e3dde6c341d5d04b39",
+      "sourceTextureResourceRowSha256": "459a399ddd7fa3246b617ba7ef04655b8c537148cadaea1ad5e4bc9c99f266d4",
       "sourceProvisioningProposalId": "material-texture-provisioning-0821a3da70a9ebd8f1e6",
-      "sourceProvisioningProposalRowSha256": "9e336c26f4aea6e36bf48082e371b105087f52dfb904818528f0e96280c4c337",
-      "sourceReceiptStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
-      "resolutionStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "bindingBasis": "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET",
+      "sourceProvisioningProposalRowSha256": "3a2666104502f2246fb43a27f560b13674231a293d00be37b80c114f49db9b38",
+      "sourceDeploymentRowId": "exact-dds-runtime-deployment-a4657d5bd2ec3dc67683",
+      "sourceDeploymentRowSha256": "1ad0a8034948116522051cfd7f7aba150e82769036d19acb7f39903c6d151293",
+      "sourceReceiptStatus": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
+      "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
+      "bindingBasis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
       "sourceExact": false,
       "blockers": [
-        "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-        "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "55e96b7ce2a597a18ec6c17519d78373f642ff9be9170033ac3d6cf6db2d5df3"
+      "rowSha256": "f30e7f83ccdf2c6054cfa56281cc141d6d064e9fd206c536cc5f1c1680ee99c6"
     },
     {
       "bindingId": "material-input-67c56cbf42c09219::runtime-texture-binding",
@@ -295065,9 +295139,11 @@
       "sourceBindingId": "material-texture-binding-7060a4c326e79a89231a",
       "sourceBindingRowSha256": "88cd14dfc75a207572ef0336c9f5a78557bfb2c81748dd54a5ae142dcaaa91c0",
       "sourceTextureResourceId": "material-texture-resource-9246f2dc7327f8b238df",
-      "sourceTextureResourceRowSha256": "bdb1820b751347a4d9a49c08ba7981cbabc2695f42fa2e615949c2dc7e47604a",
+      "sourceTextureResourceRowSha256": "57303f41f05bf0153f4a03f9fcf03db10c9882e6a6b9a7ceeb0ceb933a5836e0",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295076,7 +295152,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "05de0ca409b691347ab53555fa4774bf4feef02db293bfc8a182853af715067c"
+      "rowSha256": "d223bb7c93115a3cf958f51f37bc79c312b2fd80b2085ed55209519b1ebd7f67"
     },
     {
       "bindingId": "material-input-2b80e2c1df640774::runtime-texture-binding",
@@ -295091,9 +295167,11 @@
       "sourceBindingId": "material-texture-binding-e04e9a96af960f168fe6",
       "sourceBindingRowSha256": "aad68b4c4928d2ff9a1cfe3954f52719301f1e2cbc44aeed07bfcd1532b335de",
       "sourceTextureResourceId": "material-texture-resource-a86cba3e7d56a22f69aa",
-      "sourceTextureResourceRowSha256": "230995ba50c6a69dd4ffd4d6319e30e00c572fa5cf80ef326fe8362844ff1c61",
+      "sourceTextureResourceRowSha256": "1ae89e055c5b9d2f78c3aca38908670de412a6bcdd19b362c8d2d0498c7e7205",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_ice_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295102,7 +295180,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "fd76331bb8de98c9fb1444509ec85b272ddc8407c08302a0b00961913bf9973f"
+      "rowSha256": "979ce9257430931c665ff032565774642a8080291942c1ec4d93a61f8cb05d42"
     },
     {
       "bindingId": "material-input-e962f534ec691618::runtime-texture-binding",
@@ -295117,9 +295195,11 @@
       "sourceBindingId": "material-texture-binding-fa94dec6bbfa3022ea2d",
       "sourceBindingRowSha256": "6b49568920dd14ae460dda0baf4ec1cbfa407499dc408cb7c9896465a9f4ba05",
       "sourceTextureResourceId": "material-texture-resource-1da48ad07553b2bdcd8c",
-      "sourceTextureResourceRowSha256": "8ed1b1de7f6fc3f9771dfeee7c0cece63bd9061127df328868e847a6a96e62d0",
+      "sourceTextureResourceRowSha256": "4fd97fc0eab301392fbcc02168339f7b06c5d9b2e29c748607111b6ca3481187",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_atypical_098.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295128,7 +295208,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "653e2938d867c3397ca4638db559f3e4c31dcf811f0b8327017627a93548816b"
+      "rowSha256": "624a3591910b070aee25f78c6bc5cd283efb7a3fc3e0298c34aac5cb77b1a2ad"
     },
     {
       "bindingId": "material-input-2156cadb7e91d8b8::runtime-texture-binding",
@@ -295143,9 +295223,11 @@
       "sourceBindingId": "material-texture-binding-bd7bc274a491e059f016",
       "sourceBindingRowSha256": "bbd7803412b205167f95d9f0dc15885888383caeba98dac6883f0bca30efd32d",
       "sourceTextureResourceId": "material-texture-resource-5200d01affe600bb33d2",
-      "sourceTextureResourceRowSha256": "bd11d25018a8d4155d64d2f09d5fa94cd56b7738830e386333595c7f3e496354",
+      "sourceTextureResourceRowSha256": "7604512e7ba950a17a328fa99671c55bf482c84a76a93b21d88e9c7666c29c80",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_a_noise_002.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295154,7 +295236,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "f9c716c45d6c613e626371cfd59f20bac68a13d6965519a109b12811f0a7f563"
+      "rowSha256": "460aa455a8e458965257fb63130a638d31193d9a2fa645bf6ec4d483388be129"
     },
     {
       "bindingId": "material-input-2801b1f3bd6d41ce::runtime-texture-binding",
@@ -295170,9 +295252,11 @@
       "sourceBindingId": "material-texture-binding-31444fe98d3f31301527",
       "sourceBindingRowSha256": "d01c8d92ee507ea281a50bf7f48396d7fc9538417b36c106ac6a50f780a93035",
       "sourceTextureResourceId": "material-texture-resource-fef71e12088e915375a6",
-      "sourceTextureResourceRowSha256": "937f51e7cc5336119a83efef2b86aff85dd899d8466ce466681b142ecfdbdc38",
+      "sourceTextureResourceRowSha256": "978be98ff8afd523c4218d986794b1459bdebce1156d0b811f7196bfa7949441",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_b_fluid_007.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295181,7 +295265,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "261c1decbd88684cdcd66452a30e630192c17ab0100681a2fd54848dfdf03ec0"
+      "rowSha256": "3b82bf5e91bfb152172050e3ac3c1f6d10106f2fbf709cfeb49bd9ff2a61c5d4"
     },
     {
       "bindingId": "material-input-7910dd7ab378bbec::runtime-texture-binding",
@@ -295197,9 +295281,11 @@
       "sourceBindingId": "material-texture-binding-92baaec9f9f17a7024ae",
       "sourceBindingRowSha256": "ddb7e30881d28a24276ee9a8e70e26b3ca5d7bda771009e710f4c753ddac9e39",
       "sourceTextureResourceId": "material-texture-resource-1e8d3e08eb4ca9b02270",
-      "sourceTextureResourceRowSha256": "e0151502844e6292464887174daf6cec9c035b1d6c469b8d716bc880a4bd86be",
+      "sourceTextureResourceRowSha256": "20f591243012739d40f8bba44ea00e7be08858e0cda39e933a176fafe4f1c203",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_bg_dustpanner_01.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295208,7 +295294,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "b774843dfab9132269c8513a80a976e67de1dd9de46565e7c828fc4fb651fec9"
+      "rowSha256": "fb2e05810aaed0f6be18fd4f7310294c00ef7030aca43d566f140236a95cdff2"
     },
     {
       "bindingId": "material-input-ea6ccea9bb8eb73b::runtime-texture-binding",
@@ -295224,9 +295310,11 @@
       "sourceBindingId": "material-texture-binding-da5d76c5e03be20e55fb",
       "sourceBindingRowSha256": "5b52dfbdc081e5c623417e21cc6f7d4f7453c7bde891cb2662a0a40a297c2cd0",
       "sourceTextureResourceId": "material-texture-resource-b31109eaaf70c222fc75",
-      "sourceTextureResourceRowSha256": "ef3a2d51f9bd5760eb8fba963f8b7c8f445b4ec7e8346decb5009111a6b228fe",
+      "sourceTextureResourceRowSha256": "310b24b0709747a66ed2fefebc27673317cc0249d17b7b9179af3b5b5a0884bc",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_normal_078.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295235,7 +295323,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "f83dd8f1c1cf3679bd416e80bd47481d02271c0f541ce8cfe20ac7543e8c3bac"
+      "rowSha256": "dfc42095a4a8bd6e3efa265b334e521b3c6360a13d810acd9811ed787b1b224c"
     },
     {
       "bindingId": "material-input-6d770743fc5578fc::runtime-texture-binding",
@@ -295251,9 +295339,11 @@
       "sourceBindingId": "material-texture-binding-86dc78607eea5d80da2d",
       "sourceBindingRowSha256": "7590bf998440cefa14370672f13800360f1d4ffc5913c561e1e740ad6d57787b",
       "sourceTextureResourceId": "material-texture-resource-65c07c09c10618933d7e",
-      "sourceTextureResourceRowSha256": "3f089ab7256dc4d39218c4e58b69f1dce0fcbf04799dfee857937a3059d7053f",
+      "sourceTextureResourceRowSha256": "c82995e2148aba6aea5c986f3584d0df28233eb9266773667690aaded793a9c7",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_environ_018.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295262,7 +295352,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "4daead5f99b440f62dfb9227c82bea77fa3d22ade1f36cda2028402e662ab397"
+      "rowSha256": "1cf261dd3e01a805794baa1a9327f34e08084ece9e06a00759ab9694aa7580e1"
     },
     {
       "bindingId": "material-input-747740c44c027d77::runtime-texture-binding",
@@ -295277,9 +295367,11 @@
       "sourceBindingId": "material-texture-binding-12e7a5ddfeaf719f8e5e",
       "sourceBindingRowSha256": "aae96e14d78d8c72bdd33c2f552e5293e9a4dac4facdf3e88313a3d9cb5b921c",
       "sourceTextureResourceId": "material-texture-resource-aa9b54e3015d26b32d68",
-      "sourceTextureResourceRowSha256": "2b716f46ddc432511ac880046029c8d09cce7c43a4a51c99549e736f62ae85f2",
+      "sourceTextureResourceRowSha256": "a4124603412cc4314d0df401e162df0a8426fc42228c8b79ece0ab0bb54ebefa",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/wp_mn_lrcn_01_d.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295288,7 +295380,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "8e8d0156040bd9c8e4b7c3eb7cd2ecb54df545f1e147c80f080902f8c2113462"
+      "rowSha256": "244eefab58f949f4c0eb4a487e516130f20d29ea1998ab098da1d3e4e18beb1a"
     },
     {
       "bindingId": "material-input-beba0f169c671db6::runtime-texture-binding",
@@ -295303,9 +295395,11 @@
       "sourceBindingId": "material-texture-binding-b4711a70a7faeb437017",
       "sourceBindingRowSha256": "aadcd55312aca584afc0aecc3c70d58ce0592baab03ed8028c1c30b1c7881d64",
       "sourceTextureResourceId": "material-texture-resource-d157fa9570f0dcae4cb3",
-      "sourceTextureResourceRowSha256": "495cdee60d10a305333431d3eeec7881fd2f590cd1ebde1fee1064dbf9b96885",
+      "sourceTextureResourceRowSha256": "fd163517db4d43a347d5d56f17b707c3b5457aa7bf851a4c50814fe07b168037",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/wp_mn_lrcn_01_n.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295314,7 +295408,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "adb7cf945b1e482191356a730717508ed3415ba3b678fda6d901a8295a8fb978"
+      "rowSha256": "9e62e6decb33b5e653d9c42ef11b462380166b76d218c089aff7295903a7767a"
     },
     {
       "bindingId": "material-input-abd36b3f09cae5fa::runtime-texture-binding",
@@ -295329,9 +295423,11 @@
       "sourceBindingId": "material-texture-binding-c872cb0680327ecfab5c",
       "sourceBindingRowSha256": "059c0af0b24cca49a481357678f7a42d0dab7f3709e685b07310a4502db5988f",
       "sourceTextureResourceId": "material-texture-resource-42c0954624b970896d53",
-      "sourceTextureResourceRowSha256": "3f454aa556d1db4af21096c43c03466c358e16725161f4fb8e45bb9b0711210c",
+      "sourceTextureResourceRowSha256": "75920e53cc8e87fa39d81131cd1069c4ac2682a3685ec0e05f61242494d0f0eb",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/wp_mn_lrcn_01_s.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295340,7 +295436,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "bc26192b7313046520d2a90b5d77a60ea298d6293cd43385ffbd2f7615e18a12"
+      "rowSha256": "7cc0820173c644a37452d1d3de79a4b0313143ea7e395fc8b7817935611a3c6e"
     },
     {
       "bindingId": "material-input-960660ad26ebc817::runtime-texture-binding",
@@ -295353,22 +295449,22 @@
         "source-active-004"
       ],
       "sourceBindingId": "material-texture-binding-0ffec474cf4c9d83f087",
-      "sourceBindingRowSha256": "368d5c5c255157e75e9159f44c5c573630a79ff6bd07cef98093bd323ee723df",
+      "sourceBindingRowSha256": "224e3c46c268a81724a6383e6c9b664a8c19aadfdd7563a53a9cff7cc4908185",
       "sourceTextureResourceId": "material-texture-resource-243ca9e992ac7e8163a1",
-      "sourceTextureResourceRowSha256": "47dc079d7b33683e41d037d7597283a23132883dc516d48bd1951848968570c0",
+      "sourceTextureResourceRowSha256": "3dcdca21093a729b824c4a300ce399164b31aa919a14670da8293d67f24ff218",
       "sourceProvisioningProposalId": "material-texture-provisioning-243ca9e992ac7e8163a1",
-      "sourceProvisioningProposalRowSha256": "5689f794ea70d9583e313030f69b5bfbfc6efc7be3dc3d70a6b0207467894491",
-      "sourceReceiptStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
-      "resolutionStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "bindingBasis": "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET",
+      "sourceProvisioningProposalRowSha256": "227e6d51844c6cb8fe2db5aee49f6516a2fa0db4138bcfb22660c5b850842775",
+      "sourceDeploymentRowId": "exact-dds-runtime-deployment-a078d792444e902e5f00",
+      "sourceDeploymentRowSha256": "ef25bf80d0562e01dd39ee4fcf927aee894a275208f648f2be895cc923df83cb",
+      "sourceReceiptStatus": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
+      "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
+      "bindingBasis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
       "sourceExact": false,
       "blockers": [
-        "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-        "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "a7154f2eeb1da345e474ea03dd01010074d3da2aaf4ea7c2171f1c344d7eac5b"
+      "rowSha256": "70f72255daa4f21d846a57b76420d3d18f04ec4674fc3e04dacf15e89aa8ed74"
     },
     {
       "bindingId": "material-input-f0b98bc645b24021::runtime-texture-binding",
@@ -295383,9 +295479,11 @@
       "sourceBindingId": "material-texture-binding-e9d9ce6c3782cc15bf47",
       "sourceBindingRowSha256": "18b0a867ab27b89df26fa2563b7148a76b8d5035854d216ea8725aa2db4e91f1",
       "sourceTextureResourceId": "material-texture-resource-a35c9509610d11c815a5",
-      "sourceTextureResourceRowSha256": "d74df2728acdefa5fd42825b8dc5e5ba44b9d88d8deb4628732ad69e2d02373f",
+      "sourceTextureResourceRowSha256": "662b720c83ae96bae9f334f123a857543caac0b506cce74cb440798cdbecc129",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_noise_001.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295394,7 +295492,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "3a1282d842e9182b081416c2957980c0db6247329bf210b0dcfda04dc3d58bf0"
+      "rowSha256": "f3caa3fb075f6b2b6577b5e1629066bb6fda5dfe2f924bb9d0d997c604bb2e8b"
     },
     {
       "bindingId": "material-input-aa07db539b5504ef::runtime-texture-binding",
@@ -295409,9 +295507,11 @@
       "sourceBindingId": "material-texture-binding-5347914307e06b5d8a4f",
       "sourceBindingRowSha256": "5d12fffe931e7dae74cba0202bf00931e4e70729cef0877a3a9667e9a39db774",
       "sourceTextureResourceId": "material-texture-resource-bb9a7b4c44984e5b0b6f",
-      "sourceTextureResourceRowSha256": "61ebf8ba00d3da6ec831ce5de7ccd30175f3f5dd3ec004e9d21c5c6a0f9b70e2",
+      "sourceTextureResourceRowSha256": "d85e8ba768cd17307324299826770bcf97f88fa3170ff9d47b31e18f991884ac",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_030.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295420,7 +295520,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "bf206072226e8a99adf5750ad0bfa97dbf4040dbf78305cc93a136288ad71533"
+      "rowSha256": "b6ff7ae5a13a002fb4e40b4c44fa46b4bde80629336e6b2f898568a803919e19"
     },
     {
       "bindingId": "material-input-338847b1c520f058::runtime-texture-binding",
@@ -295433,22 +295533,22 @@
         "source-active-000"
       ],
       "sourceBindingId": "material-texture-binding-d7e3ed59157bb4c1d6c3",
-      "sourceBindingRowSha256": "50a2499af88a31a74b3605ad23ae0e2c29d1c14385cb6ba7d57fe74af4e359ed",
+      "sourceBindingRowSha256": "e3a472dcfd0c66d42bd0c01fc192054ade510f9affdab6d4a2cb523066a2f0ed",
       "sourceTextureResourceId": "material-texture-resource-8eb26fcb57923bb62526",
-      "sourceTextureResourceRowSha256": "29c599e7fe41eddc05cf76bd0fc592174c5cc924dca0c75c42c3333e7d650ccd",
+      "sourceTextureResourceRowSha256": "be4d27022fc8060afde4ce229ab9479e984cf3facd8e20e03e55d0e28a466d0d",
       "sourceProvisioningProposalId": "material-texture-provisioning-8eb26fcb57923bb62526",
-      "sourceProvisioningProposalRowSha256": "14fbfa38995c522d1d784a80f5fb46f8755be7a2ae4d233277ffa4a7e43c076c",
-      "sourceReceiptStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
-      "resolutionStatus": "UNRESOLVED_RUNTIME_ASSET",
-      "bindingBasis": "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET",
+      "sourceProvisioningProposalRowSha256": "31e5c79f57152b4b5420bf6c2812ea073c2c1125dd81cbfb5a5a18b54676844d",
+      "sourceDeploymentRowId": "exact-dds-runtime-deployment-08444b58e6edcbdd2155",
+      "sourceDeploymentRowSha256": "254e3726ce1e54c5ff4cd78446f2d8c02a7fba98f76c383e281dbb529ad91f44",
+      "sourceReceiptStatus": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
+      "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
+      "bindingBasis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
       "sourceExact": false,
       "blockers": [
-        "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-        "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "e687836ddd6edba3964049807fd2e0a5129c00b12c5672c2941640436311e5dd"
+      "rowSha256": "c71271c310a8de8779a17c8cbd31cdf8bb1da47b9ef50727812e57040e51513f"
     },
     {
       "bindingId": "material-input-7aed8cfe5ba9669b::runtime-texture-binding",
@@ -295463,9 +295563,11 @@
       "sourceBindingId": "material-texture-binding-9e32a04708b50c0aef70",
       "sourceBindingRowSha256": "e737f4289447552fbfd4dff50215b5bdd73810f3b764477a188736fb680d7e3d",
       "sourceTextureResourceId": "material-texture-resource-4147531ad8b8fd486c00",
-      "sourceTextureResourceRowSha256": "f9a191f28e531f00c487470e38b789b01e6b83b234f860d01280bd4c6f16dd1e",
+      "sourceTextureResourceRowSha256": "4c1c675e053e2e193ca196b3f90002937788734b3b2105b0882fed8fdad30020",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_16.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295474,7 +295576,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "9476174a6530d255d72732e11fa509a8d81385f327f5412cf34b508d24ad1647"
+      "rowSha256": "b8a1e5c3a022fc2464cca480269b0ad823bd63ce7269bfde56ae06025e8c9eb9"
     },
     {
       "bindingId": "material-input-824d2830713d096e::runtime-texture-binding",
@@ -295489,9 +295591,11 @@
       "sourceBindingId": "material-texture-binding-b84d45de687cac9470b5",
       "sourceBindingRowSha256": "f9c90f03be43976897975f1123b48fd79ed93c714ae1d4098c83ba6f08cb1811",
       "sourceTextureResourceId": "material-texture-resource-8c71732abc01155b4cf2",
-      "sourceTextureResourceRowSha256": "fb7f680a9b00bf2ac8dda28ec5c1c4613f4ace308a5b580de5b17e798e7e8407",
+      "sourceTextureResourceRowSha256": "5b0799d65c328b23ab902ef22c258de8dc85a1b51c3828149be613b352f730aa",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_l_environment_001.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295500,7 +295604,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "edc0a31bf85201a14431ec5f31443612fe3ee37cd40273c31886da1097f1b62d"
+      "rowSha256": "3217d11947dd3d93dfddddeee3c4790a050fd7bb333f934c4571a89f59856bf1"
     },
     {
       "bindingId": "material-input-4569c3fd1757a400::runtime-texture-binding",
@@ -295515,9 +295619,11 @@
       "sourceBindingId": "material-texture-binding-56310e91bb36906858d7",
       "sourceBindingRowSha256": "045e466138e0806cf5ff90347dd8abcca2e11f9e2567c7722fe65397063d1320",
       "sourceTextureResourceId": "material-texture-resource-a89e977683be32174371",
-      "sourceTextureResourceRowSha256": "5d874b4fcf623c51892bf89448655fe11dcc7da3f59abda7b8efa4c34e276632",
+      "sourceTextureResourceRowSha256": "d2f89347a7b7074ba939804d44d7e7696522a9114793e01910e495979cfdbbbb",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_j_smoke_01_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295526,7 +295632,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "02a9e6747c5962adac9ea52499164a7c797e9c430cabe7746f261dd3e7310e26"
+      "rowSha256": "8b4e556fb65a806f32cab605814115b264e41f29344d08986f43c15647c57178"
     },
     {
       "bindingId": "material-input-27540010adeccbdf::runtime-texture-binding",
@@ -295541,9 +295647,11 @@
       "sourceBindingId": "material-texture-binding-90669b028ba4b00e95ea",
       "sourceBindingRowSha256": "c523165a391feda151497df928cab7b2beac023d389d52cc022f57a3e2a4d2bd",
       "sourceTextureResourceId": "material-texture-resource-4147531ad8b8fd486c00",
-      "sourceTextureResourceRowSha256": "f9a191f28e531f00c487470e38b789b01e6b83b234f860d01280bd4c6f16dd1e",
+      "sourceTextureResourceRowSha256": "4c1c675e053e2e193ca196b3f90002937788734b3b2105b0882fed8fdad30020",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_16.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295552,7 +295660,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "99792d0b0ee272eec84b0b04c72fba156f7651522502d86675ec0bffb36779ed"
+      "rowSha256": "278812ca6ecae9b0dbe9f7b6880a7cf38c820db98cf7e62827e6d807fdb0e5ff"
     },
     {
       "bindingId": "material-input-cc8fba7dad283ae7::runtime-texture-binding",
@@ -295567,9 +295675,11 @@
       "sourceBindingId": "material-texture-binding-f2b853c0e2f4819185cf",
       "sourceBindingRowSha256": "af921cd11ca19786f25daa790ba3b28a256ff5a658ed678f10ff801cfa8b7644",
       "sourceTextureResourceId": "material-texture-resource-1f61f570e67c01850886",
-      "sourceTextureResourceRowSha256": "28656d3c5074addd07f17f4b8484efb9a1e13e2eeec18d1581712beaeb736b82",
+      "sourceTextureResourceRowSha256": "6225a0873764d253e0dfbbfe0595064967e63831b19b5ecfb1efd29a9f35af14",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_fluid_013.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295578,7 +295688,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "5ccaa95592ab77a46b6ff317082ffb152ba4087bceb7f2036e807fef2c48c3ba"
+      "rowSha256": "c3561867bd238ceae1461aab193e129a600123e79e92bcb1259e3a9f1fa3ba77"
     },
     {
       "bindingId": "material-input-815bfc0630d9a68a::runtime-texture-binding",
@@ -295593,9 +295703,11 @@
       "sourceBindingId": "material-texture-binding-52cd67fee463960a7c8c",
       "sourceBindingRowSha256": "d8e0de987449988445d95a3bc7cc46fc78edbf44a22a6fce633a3c43cc4c1a5b",
       "sourceTextureResourceId": "material-texture-resource-0eaddbe8a1e55dd899a4",
-      "sourceTextureResourceRowSha256": "c1db5975a9922c70b80fd36823bcebb5586563cf2b46d5e118d037afe73d8d81",
+      "sourceTextureResourceRowSha256": "e23c7220fe52a04d41275981eb7c2ababcbb1596293ad3d45acfc5086bc5ce87",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_c_noise_009.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295604,7 +295716,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "62e77e6acf2d33d43a597607522e0ea0225f9dc35e18589d4c13bfe2402cb9e6"
+      "rowSha256": "926d65e1224cfeccfefd9af3e7430d907494763fd80f7f069be88755b9b5eda4"
     },
     {
       "bindingId": "material-input-bdb70d9010d428cf::runtime-texture-binding",
@@ -295619,9 +295731,11 @@
       "sourceBindingId": "material-texture-binding-690c4334069193a6e838",
       "sourceBindingRowSha256": "a3102cbe64077a294d28718b768d5d193617fa1f3d4486b745272baf289250fd",
       "sourceTextureResourceId": "material-texture-resource-6cad113c99abee65f847",
-      "sourceTextureResourceRowSha256": "992a8db1d5181f34db908b237aee1df404ac8abc754c32e1bf00cd0805176175",
+      "sourceTextureResourceRowSha256": "5d8573a32e7ecb5254ab7af31d2abf1ce0e707c0cefee49ca32e17d82d6f0a3e",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_e_noise_008.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295630,7 +295744,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "1c3ccefceca81cc579286d551b0565736b4cd832f71486e0fe9a21792ea96024"
+      "rowSha256": "b8669a69a234237dcb2bf9ae8ea59a8acf3ac337cdc4175a55812e2ab12c0fb4"
     },
     {
       "bindingId": "material-input-a9c25d6f93e51403::runtime-texture-binding",
@@ -295645,9 +295759,11 @@
       "sourceBindingId": "material-texture-binding-09ff2e4e85823134797f",
       "sourceBindingRowSha256": "76beadd6a1de91ce400cfead3564df9ff12dc7211303eaddef43963150358514",
       "sourceTextureResourceId": "material-texture-resource-395e38bc0d19b8c9da54",
-      "sourceTextureResourceRowSha256": "95ecb028486aa35dc6aada267bc5a19db8fcf7d412f3e8572f12617088903c39",
+      "sourceTextureResourceRowSha256": "ec44e744e0b6f93d91b543cb67e1647f981d2a772e1c77372dbe1ae90ca98b31",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_021.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295656,7 +295772,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "787dbde4359ba64e85a31761c7cae0600b895a4d3e212edb99d93d654ffbdbe1"
+      "rowSha256": "d27682634774a8683386807348c4506cde99f798661cbda60c2dbd7d12ccaf5d"
     },
     {
       "bindingId": "material-input-89f2e8474576e742::runtime-texture-binding",
@@ -295671,9 +295787,11 @@
       "sourceBindingId": "material-texture-binding-aeecf141c7c89b5c80e9",
       "sourceBindingRowSha256": "5298e1246984c9a263e9ca34ccb9b81a6b0d2304770c1076a0866d72a24750a3",
       "sourceTextureResourceId": "material-texture-resource-3753589d6a1f0d947b68",
-      "sourceTextureResourceRowSha256": "d1e87775d8b74b0daa0fc4c8c25e24ec940ac5e799a0fbf326693a589fa608ae",
+      "sourceTextureResourceRowSha256": "e94f24fd611c3643745f75aa86c11bc39266a8d7bcc2e48e46a9d96dab422312",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_atypical_012.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295682,7 +295800,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "0da90cdfa856be421c99c026179aaf71b65edd071985c2e7b4c7f143ed212eb1"
+      "rowSha256": "12566cf8fe14fdad6017d5f86cbcdaea1c6f429899566f640a7adeef5836d74b"
     },
     {
       "bindingId": "material-input-cb33861f6d80fecb::runtime-texture-binding",
@@ -295697,9 +295815,11 @@
       "sourceBindingId": "material-texture-binding-a10440edf45b2e2c3672",
       "sourceBindingRowSha256": "c3971851bad82a125b076579976cddd1e7026c98c76a05af10d3648c64c61049",
       "sourceTextureResourceId": "material-texture-resource-a35c9509610d11c815a5",
-      "sourceTextureResourceRowSha256": "d74df2728acdefa5fd42825b8dc5e5ba44b9d88d8deb4628732ad69e2d02373f",
+      "sourceTextureResourceRowSha256": "662b720c83ae96bae9f334f123a857543caac0b506cce74cb440798cdbecc129",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_noise_001.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295708,7 +295828,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "2ee06a4619e195449ddae6c8c4028d6314fbe255607a5541f295521b1c20fe5c"
+      "rowSha256": "41733f46ec9a2f31cad08b4ac46a083c62368dc35b2cc1c96aa93df92fa568b2"
     },
     {
       "bindingId": "material-input-e8cdf5bc22fb2889::runtime-texture-binding",
@@ -295723,9 +295843,11 @@
       "sourceBindingId": "material-texture-binding-7b5b5b583f2db1ce361c",
       "sourceBindingRowSha256": "f26f90e0c8923d1902d6325f775495ef72ea553da72a03f034c4ee154a430040",
       "sourceTextureResourceId": "material-texture-resource-f889f091d7060dd160c4",
-      "sourceTextureResourceRowSha256": "ef04cd80a8595f63ce0c6cd9eed783adfa797e7ef11d0558534c23dcdd4ba765",
+      "sourceTextureResourceRowSha256": "841f18c9abafaf88f1a9d9ce3489f6992ca7803b8077750f44eef6a6f0f13fe5",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_m_trail_004_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295734,7 +295856,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "85661321357c7eabc72d05b647e507b386732ca3194e1e5829a02944c19e99a9"
+      "rowSha256": "3727b52201d99112f8b78dcad878206b8009132ffedd76925f8d383dc401060a"
     },
     {
       "bindingId": "material-input-d1afbde85befe0d0::runtime-texture-binding",
@@ -295749,9 +295871,11 @@
       "sourceBindingId": "material-texture-binding-82414b76e684d385fcbe",
       "sourceBindingRowSha256": "17d72134e0d06aa6af38b5030ab1055e2f2abcad129bcabaa66ad4d3dbf9c84d",
       "sourceTextureResourceId": "material-texture-resource-133863c9f1a959930f66",
-      "sourceTextureResourceRowSha256": "b3e62780374c649d2f347c6a0e2652f7d02d826acc6ef1fe893c99c3f6aba8a4",
+      "sourceTextureResourceRowSha256": "5a19c7935e203cb3d9cbeb44de60cf8caa502a38f3a703d12f21073b9222b701",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_033.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295760,7 +295884,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "2822a5d85b7a54c141602d54568d4f3aef054af3af7765060394aece8689a101"
+      "rowSha256": "4c7daab88b476bb63dafa2e51c8ce96f55028e20d875736c40058d92d0500f2e"
     },
     {
       "bindingId": "material-input-f025bcccbe3547b1::runtime-texture-binding",
@@ -295775,9 +295899,11 @@
       "sourceBindingId": "material-texture-binding-6fbde65808081097ff29",
       "sourceBindingRowSha256": "f35ed33f60def7acf4596f30920e09426646848c659c264f71808ece48fd78ae",
       "sourceTextureResourceId": "material-texture-resource-1f61f570e67c01850886",
-      "sourceTextureResourceRowSha256": "28656d3c5074addd07f17f4b8484efb9a1e13e2eeec18d1581712beaeb736b82",
+      "sourceTextureResourceRowSha256": "6225a0873764d253e0dfbbfe0595064967e63831b19b5ecfb1efd29a9f35af14",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_fluid_013.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295786,7 +295912,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "c76472ef7bb09a799810e32f1296e518c295802d8c62a61127fc3795d56713c8"
+      "rowSha256": "73c046e1235a5d93545ab978c7d0f4f3ea1de8e10e2b0c694ec8a3ebe5836077"
     },
     {
       "bindingId": "material-input-9b837252d3d0ae52::runtime-texture-binding",
@@ -295801,9 +295927,11 @@
       "sourceBindingId": "material-texture-binding-fcaf849ff07306f7c307",
       "sourceBindingRowSha256": "d21e4f479df43fa0455b879c517a024dc19d51254057ffa660c20c1b417baf06",
       "sourceTextureResourceId": "material-texture-resource-0eaddbe8a1e55dd899a4",
-      "sourceTextureResourceRowSha256": "c1db5975a9922c70b80fd36823bcebb5586563cf2b46d5e118d037afe73d8d81",
+      "sourceTextureResourceRowSha256": "e23c7220fe52a04d41275981eb7c2ababcbb1596293ad3d45acfc5086bc5ce87",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_c_noise_009.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295812,7 +295940,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "ba620de7e15e7c4787ca72f5cb71a95dc29aaf8938628dc99f7ed0400fd56202"
+      "rowSha256": "e69373f727270cdeaf9d7ba0b723e739316f6c01614a6899fbf575deb9d68b16"
     },
     {
       "bindingId": "material-input-21152204a54f1241::runtime-texture-binding",
@@ -295827,9 +295955,11 @@
       "sourceBindingId": "material-texture-binding-0f9fb8bbc28a0a037142",
       "sourceBindingRowSha256": "736a85e5875e9fc831b907378cf52d8b9246293239f549aef4d5333ec3e77fb1",
       "sourceTextureResourceId": "material-texture-resource-6cad113c99abee65f847",
-      "sourceTextureResourceRowSha256": "992a8db1d5181f34db908b237aee1df404ac8abc754c32e1bf00cd0805176175",
+      "sourceTextureResourceRowSha256": "5d8573a32e7ecb5254ab7af31d2abf1ce0e707c0cefee49ca32e17d82d6f0a3e",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_e_noise_008.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295838,7 +295968,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "9a80bb892f5cb28aef885f6fd854cc3043d2d3ef6f034cb183950992a8416288"
+      "rowSha256": "9bc2f8f38834f9cce16f3f9ace683031ac6c7c3b3d3cbb0e3ceeb9528976fed5"
     },
     {
       "bindingId": "material-input-6b91ebdb0fe18f90::runtime-texture-binding",
@@ -295853,9 +295983,11 @@
       "sourceBindingId": "material-texture-binding-ac3094c5ae168ccc2a66",
       "sourceBindingRowSha256": "582cb4b96f410cd4c03b68196ad81b355081192bff9ed8cac459fa7fb41e345a",
       "sourceTextureResourceId": "material-texture-resource-395e38bc0d19b8c9da54",
-      "sourceTextureResourceRowSha256": "95ecb028486aa35dc6aada267bc5a19db8fcf7d412f3e8572f12617088903c39",
+      "sourceTextureResourceRowSha256": "ec44e744e0b6f93d91b543cb67e1647f981d2a772e1c77372dbe1ae90ca98b31",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_021.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295864,7 +295996,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "c755dd7f7fa5fee8a60980d86104ab7d0da5a2571cdc3667d5cc00896665fef9"
+      "rowSha256": "30a522c15b00d09bf53f3ead7cc31b809ae6b3d887282eca0dee6c12e5535081"
     },
     {
       "bindingId": "material-input-3e3a826a40153b8d::runtime-texture-binding",
@@ -295880,9 +296012,11 @@
       "sourceBindingId": "material-texture-binding-44aac43f1c54ea580348",
       "sourceBindingRowSha256": "3887e3d7ca74e33806b462dfc240420bfda6ed08c6d663672de53b7226b55ad4",
       "sourceTextureResourceId": "material-texture-resource-360bbb8b76bdd90f548b",
-      "sourceTextureResourceRowSha256": "0aa87679679021339e88c3eeb13b1fcfe1dd429ec33671664ea2d9962dc8c3ee",
+      "sourceTextureResourceRowSha256": "751ce49498e1711c23ddbaf44ecd0bc84c88d885c3fc9267215b06cffe4b43e5",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_d_trail_002_cl.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295891,7 +296025,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "75eccc92522d70b968d50adbd19dac9b4701cf710ed663bf3aac3dd93534048a"
+      "rowSha256": "174286b8e5cf40f354d2816ddb74cfd60451923141d6400881bdc92b87033987"
     },
     {
       "bindingId": "material-input-35f5337597f009ac::runtime-texture-binding",
@@ -295907,9 +296041,11 @@
       "sourceBindingId": "material-texture-binding-8dae4b6ac34fcac46ffc",
       "sourceBindingRowSha256": "637be2eb18a487a1c7222a26beb61f3917aa2d494d5a3ecbf595eeacab76300e",
       "sourceTextureResourceId": "material-texture-resource-83bdf45697ebf1526cf6",
-      "sourceTextureResourceRowSha256": "2a33ec6927c2296aaa56a626252a08f8c31f66bd70be5b46bafb047a4ad84ea1",
+      "sourceTextureResourceRowSha256": "5b61bec82b7ba5a7185efbe5d6ce0dcf13eb92a64228853ab286e203eda1603e",
       "sourceProvisioningProposalId": "",
       "sourceProvisioningProposalRowSha256": "",
+      "sourceDeploymentRowId": "",
+      "sourceDeploymentRowSha256": "",
       "sourceReceiptStatus": "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT",
       "runtimeAssetId": "Effect/Artist/Textures/fx_i_noise_03.dds",
       "resolutionStatus": "RESOLVED_EXACT_RUNTIME_ASSET",
@@ -295918,7 +296054,7 @@
       "blockers": [
         "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
       ],
-      "rowSha256": "21ddb051c923965894c81c266dc210e5312c00b35566b5fcfab930656609360f"
+      "rowSha256": "b88718577253f95651bbbbd8a6df9b9bf530452db6dad6531ebfde17cb199e79"
     }
   ],
   "rendererTextureResources": [
@@ -297655,7 +297791,7 @@
     {
       "sectionName": "inputArtifacts",
       "rowCount": 13,
-      "orderedSha256": "0a0de8e6a27f1012670f22f64779cef049ca1d9eb0344157a34bdcc223e0c928"
+      "orderedSha256": "938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa"
     },
     {
       "sectionName": "handlerRegistry",
@@ -297750,7 +297886,7 @@
     {
       "sectionName": "materialTextureBindings",
       "rowCount": 72,
-      "orderedSha256": "a21f7f1f1b64dcd9fa865e8e45e3892b0fa273f64133746820fc1aeb81d57fed"
+      "orderedSha256": "b53090439ac7c9ffa1895fa43b72cc0a7a298352565ca6fdb37e4410bb8bd507"
     },
     {
       "sectionName": "rendererTextureResources",
@@ -297771,8 +297907,8 @@
   "blockerOwnership": {
     "version": 1,
     "fieldCount": 6108,
-    "tokenOccurrenceCount": 6678,
-    "projectionSha256": "c5ba50fd76fd0b14f849c5bb6adf7e0259a2f885d3dd28d4588c67eb5db576d0"
+    "tokenOccurrenceCount": 6670,
+    "projectionSha256": "d47b33c183d863761470585348dc4da2cc48e69a12b3594515444d20e5c04650"
   },
   "blockerUnion": [
     "BLOCKED_NO_SOURCE_ERA_ACTUAL_OUTPUT_PROVIDER",
@@ -297780,7 +297916,6 @@
     "COOKED_STRIPPED_ARITHMETIC_GRAPH",
     "CURRENT_REVISION_CROSS_REVISION_EVIDENCE",
     "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
-    "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
     "EXACT_NATIVE_DISTRIBUTION_OUTPUT_ORACLE_REQUIRED",
     "EXACT_NATIVE_PARTICLE_OUTPUT_ORACLE_REQUIRED",
     "EXACT_SOURCE_CLASS_HANDLER_NUMERIC_ORACLE_REQUIRED",
@@ -297798,7 +297933,6 @@
     "MANUAL_HUMAN_EYE_VALIDATION_0_OF_35",
     "MATERIAL_RUNTIME_HANDLER_CONSUMPTION_PENDING",
     "MATERIAL_TEXTURE_FIELD_RUNTIME_RESOURCE_BINDING_NOT_COMPLETE",
-    "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
     "NONOVERRIDE_STATIC_INHERITANCE_SEMANTICS_UNVERIFIED",
     "NO_EXACT_GUID_NATIVE_ENTRY",
     "PRODUCT_ADMISSION_NOT_OPEN",
@@ -297866,7 +298000,6 @@
       "COOKED_STRIPPED_ARITHMETIC_GRAPH",
       "CURRENT_REVISION_CROSS_REVISION_EVIDENCE",
       "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
-      "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
       "EXACT_NATIVE_DISTRIBUTION_OUTPUT_ORACLE_REQUIRED",
       "EXACT_NATIVE_PARTICLE_OUTPUT_ORACLE_REQUIRED",
       "EXACT_SOURCE_CLASS_HANDLER_NUMERIC_ORACLE_REQUIRED",
@@ -297884,7 +298017,6 @@
       "MANUAL_HUMAN_EYE_VALIDATION_0_OF_35",
       "MATERIAL_RUNTIME_HANDLER_CONSUMPTION_PENDING",
       "MATERIAL_TEXTURE_FIELD_RUNTIME_RESOURCE_BINDING_NOT_COMPLETE",
-      "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
       "NONOVERRIDE_STATIC_INHERITANCE_SEMANTICS_UNVERIFIED",
       "NO_EXACT_GUID_NATIVE_ENTRY",
       "PRODUCT_ADMISSION_NOT_OPEN",
@@ -297978,7 +298110,7 @@
     "materialSrvDescriptorCount": 72,
     "materialSrvDescriptorProjectionSha256": "47d4c6bea3fa30805ae5a085cfe2094c56766a04ae45d4c76120dbefecedb14f",
     "materialTextureBindingCount": 72,
-    "resolvedMaterialTextureBindingCount": 68,
+    "resolvedMaterialTextureBindingCount": 72,
     "rendererTextureResourceCount": 57,
     "rendererTextureSlotCounts": {
       "base": 19,
@@ -297996,5 +298128,5 @@
     "runtimeExecution": false,
     "product": false
   },
-  "programSha256": "d2a87b52d1756656152a4ede59230a4b30ece9c1585433c8a79f2bac9913b05f"
+  "programSha256": "618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b"
 }

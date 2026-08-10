@@ -9,6 +9,7 @@ object, every emitted row is sealed, and every executable choice is explicit.
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import hashlib
 import json
@@ -84,21 +85,30 @@ EXPECTED_MATERIAL_POLICY_CANONICAL_SHA256 = (
     "412f8466ef50c67aa2c4a14a54a7f9f8df50ca7978b58a4daad0a69db93dc801"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_RECEIPT_SHA256 = (
-    "39c91577c09b853fa55a8fd5531c1cddc4fef928d77a6caa7f67c472a56159e0"
+    "3e722cf02085497c63083fbf51161ff5fd6670be91607737863b9c4019e55b48"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_CANONICAL_SHA256 = (
-    "bd0abbb81cc6daa46f83f9ca8850512f597280c8df42fe5ee23b8e140720bcaf"
+    "6b83552e90b18500fec831939087c57e368225878982c0cd71de431e03a1d27b"
+)
+EXPECTED_MATERIAL_TEXTURE_BINDING_TRACKED_TEXT_SHA256 = (
+    "87a28be564308117ac666206382c94ce5ee2bf37a47111cbef717994a0266077"
+)
+EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_TRACKED_TEXT_SHA256 = (
+    "6c2906e105fa65b284e4ddf566233e06fbfbabe07d5cecf231de434f86a52040"
+)
+EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_PROJECTION_SHA256 = (
+    "be605d29418bb44e7d86c3ecd61a1b9c6807dded201875075532cf961133a876"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_TREE_ID = (
-    "2f00f00851ee93f498dd6c13d6a3055209d4d8c3"
+    "84cc7ef8cde7a7cf5194b0ed2ccf56a45a927b57"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_BLOB_ID = (
-    "3105c22a3c8e9b73b47b721ffab72d1254fc1750"
+    "1a917e44d5605e322e2c554db21573d856b05874"
 )
 # Filled from the exact normalized 72-row program projection below.  This is a
 # fixture-specific offline trust pin, not a production-parser constant.
 EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256 = (
-    "68cefbf719310b090c92e1475c01c46642854f7a050009b6cb2026418e07ce0e"
+    "df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c"
 )
 EXPECTED_MATERIAL_FAMILY_SAMPLES_SHA256 = (
     "5350e20004898130541c6dc147ce2c14fa8a7870bee36a9baeaf14dcda33b5d3"
@@ -119,8 +129,10 @@ EXPECTED_GEOMETRY_CARRIERS_SHA256 = (
     "a602be873f49bb21954a0554c467c6945d26c328a5f46218af7ad6cf22254ba3"
 )
 EXPECTED_BLOCKER_OWNERSHIP_PROJECTION_SHA256 = (
-    "c5ba50fd76fd0b14f849c5bb6adf7e0259a2f885d3dd28d4588c67eb5db576d0"
+    "d47b33c183d863761470585348dc4da2cc48e69a12b3594515444d20e5c04650"
 )
+EXPECTED_BLOCKER_OWNERSHIP_FIELD_COUNT = 6108
+EXPECTED_BLOCKER_TOKEN_OCCURRENCE_COUNT = 6670
 EXPECTED_ACTION_CUE_PROJECTION_SHA256 = {
     "skill-31470/clip-000/notify-000": "af843d4cc8b81bae1f0a47ba3cb40c2962daae3bcd800e18eb5c50dd62bdcf1e",
     "skill-31470/clip-000/notify-014": "47a93850834f949645c79cdbdba0583cb0c3efe3e12683ec63d17bfe6cb074a6",
@@ -142,7 +154,7 @@ SOURCE_EVIDENCE_COMMIT = "7da937aeaa34c088c694e8eb4f53ff1f7f848ef3"
 SOURCE_CAPABILITY_COMMIT = "2fa2a2701e0ec9a8f990c65fef3fabb9e5a3e408"
 MATERIAL_EVIDENCE_COMMIT = "cde8f3bddea2f9415f682b387d2705fd25794075"
 MATERIAL_POLICY_COMMIT = "97597531215fa9c9873fe1be3ba8cd23db60031d"
-MATERIAL_TEXTURE_BINDING_COMMIT = "fda3b5637847f9205915ad25ff02215424024b88"
+MATERIAL_TEXTURE_BINDING_COMMIT = "1a0b1a6834d562dac02db4f57dda54644d75695b"
 GEOMETRY_COMMIT = "0aca792819fdda3f541bb7cec7451c5ed93c6467"
 
 APPROVAL_PATH = (
@@ -187,6 +199,10 @@ MATERIAL_POLICY_PATH = (
 MATERIAL_TEXTURE_BINDING_PATH = (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.material-texture-runtime-binding.receipt.json"
+)
+MATERIAL_TEXTURE_BINDING_APPROVAL_PATH = (
+    "Tools/LevelPlacementExtractor/"
+    "artist_31470_material_texture_runtime_binding_approval.py"
 )
 GEOMETRY_BINDING_PATH = (
     "Data/Effects/Imported/Artist/Geometry/"
@@ -401,7 +417,8 @@ ROW_KEYS: dict[str, tuple[str, ...]] = {
         "logicalTexturePath", "samplerPolicyRowId", "materialOccurrenceIds",
         "sourceBindingId", "sourceBindingRowSha256", "sourceTextureResourceId",
         "sourceTextureResourceRowSha256", "sourceProvisioningProposalId",
-        "sourceProvisioningProposalRowSha256", "sourceReceiptStatus",
+        "sourceProvisioningProposalRowSha256", "sourceDeploymentRowId",
+        "sourceDeploymentRowSha256", "sourceReceiptStatus",
         "runtimeAssetId", "resolutionStatus", "bindingBasis", "sourceExact",
         "blockers", "rowSha256",
     ),
@@ -889,6 +906,17 @@ def verify_self_hash(value: dict[str, Any], field: str, label: str) -> str:
     return expected
 
 
+def verify_embedded_row_hash(row: Any, label: str) -> None:
+    require(type(row) is dict and type(row.get("rowSha256")) is str,
+            f"{label}: missing rowSha256")
+    unsigned = copy.deepcopy(row)
+    expected = unsigned.pop("rowSha256")
+    require(len(expected) == 64
+            and all(character in "0123456789abcdef" for character in expected),
+            f"{label}: invalid rowSha256")
+    require(canonical_sha256(unsigned) == expected, f"{label}: rowSha256 mismatch")
+
+
 def seal_row(row: dict[str, Any], section: str) -> dict[str, Any]:
     require("rowSha256" not in row, f"{section}: row already sealed")
     expected_keys = ROW_KEYS[section][:-1]
@@ -1102,11 +1130,45 @@ def git_authority_bundle() -> tuple[dict[str, dict[str, Any]], list[dict[str, An
 _EXPECTED_INPUT_ARTIFACTS_CANONICAL: bytes | None = None
 _FROZEN_SOURCE_CAPABILITY_BY_MODULE: dict[str, dict[str, Any]] | None = None
 _FROZEN_EMITTER_IDENTITY_CANONICAL: bytes | None = None
+_MATERIAL_TEXTURE_APPROVAL_VALIDATED = False
+
+
+def validate_material_texture_independent_approval() -> None:
+    global _MATERIAL_TEXTURE_APPROVAL_VALIDATED
+    if _MATERIAL_TEXTURE_APPROVAL_VALIDATED:
+        return
+    raw = git_blob(
+        MATERIAL_TEXTURE_BINDING_COMMIT,
+        MATERIAL_TEXTURE_BINDING_APPROVAL_PATH,
+    )
+    require(canonical_lf_text_sha256(raw)
+            == EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_TRACKED_TEXT_SHA256,
+            "Material texture independent approval tracked identity mismatch")
+    try:
+        syntax = ast.parse(raw.decode("utf-8"), MATERIAL_TEXTURE_BINDING_APPROVAL_PATH)
+    except (SyntaxError, UnicodeDecodeError) as exc:
+        raise ContractError(
+            "Material texture independent approval is not strict UTF-8 Python"
+        ) from exc
+    values: list[str] = []
+    for statement in syntax.body:
+        if (type(statement) is ast.Assign
+                and len(statement.targets) == 1
+                and type(statement.targets[0]) is ast.Name
+                and statement.targets[0].id
+                == "APPROVED_RECEIPT_PROJECTION_SHA256"
+                and type(statement.value) is ast.Constant
+                and type(statement.value.value) is str):
+            values.append(statement.value.value)
+    require(values == [EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_PROJECTION_SHA256],
+            "Material texture independent approval projection mismatch")
+    _MATERIAL_TEXTURE_APPROVAL_VALIDATED = True
 
 
 def expected_input_artifacts_canonical() -> bytes:
     global _EXPECTED_INPUT_ARTIFACTS_CANONICAL
     if _EXPECTED_INPUT_ARTIFACTS_CANONICAL is None:
+        validate_material_texture_independent_approval()
         _, rows = git_authority_bundle()
         _EXPECTED_INPUT_ARTIFACTS_CANONICAL = canonical_json_bytes(rows)
     return _EXPECTED_INPUT_ARTIFACTS_CANONICAL
@@ -3259,7 +3321,7 @@ def build_material_sections(
         require(texture_binding_receipt.get("schema")
                 == "lostark.artist-31470-material-texture-runtime-binding-receipt"
                 and type(texture_binding_receipt.get("formatVersion")) is int
-                and texture_binding_receipt["formatVersion"] == 1
+                and texture_binding_receipt["formatVersion"] == 2
                 and texture_binding_receipt.get("characterClass") == "ARTIST"
                 and texture_binding_receipt.get("skillId") == 31470
                 and texture_binding_receipt.get("inputSlot") == "F",
@@ -3276,11 +3338,26 @@ def build_material_sections(
             row["proposalId"]: row
             for row in texture_binding_receipt["provisioningProposals"]
         }
-        require(len(texture_binding_by_policy) == 72
+        summary = texture_binding_receipt["summary"]
+        admission = texture_binding_receipt["admission"]
+        require(len(texture_binding_receipt["materialTextureBindings"]) == 72
+                and len(texture_binding_by_policy) == 72
+                and len(texture_binding_receipt["textureResources"]) == 48
                 and len(texture_resource_by_id) == 48
+                and len(texture_binding_receipt["provisioningProposals"]) == 4
                 and len(proposal_by_id) == 4
-                and texture_binding_receipt["summary"]["resolvedBindingRowCount"] == 68
-                and texture_binding_receipt["summary"]["unresolvedBindingRowCount"] == 4
+                and summary["resolvedBindingRowCount"] == 72
+                and summary["unresolvedBindingRowCount"] == 0
+                and summary["runtimeCookBindingRowCount"] == 68
+                and summary["deploymentBindingRowCount"] == 4
+                and summary["completedProvisioningProposalCount"] == 4
+                and admission["completeRuntimeBinding"] == {
+                    "ready": True, "blockers": [],
+                }
+                and admission["rendererConsumer"] == {
+                    "ready": False,
+                    "blockers": ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"],
+                }
                 and texture_binding_receipt["admission"]["product"] is False,
                 "Material texture runtime binding receipt denominator mismatch")
     texture_binding_rows: list[dict[str, Any]] = []
@@ -3301,6 +3378,8 @@ def build_material_sections(
         source_texture_resource_row_sha256 = ""
         source_provisioning_proposal_id = ""
         source_provisioning_proposal_row_sha256 = ""
+        source_deployment_row_id = ""
+        source_deployment_row_sha256 = ""
         source_receipt_status = ""
         if texture_binding_receipt is not None:
             require(source_binding is not None
@@ -3315,7 +3394,11 @@ def build_material_sections(
                     and normalize_sampler_descriptor(source_binding["samplerDescriptor"])
                     == next(row["samplerDescriptor"] for row in policy_rows
                             if row["policyRowId"] == raw["policyRowId"]),
-                    f"Material texture receipt policy join mismatch: {raw['policyRowId']}")
+                     f"Material texture receipt policy join mismatch: {raw['policyRowId']}")
+            verify_embedded_row_hash(
+                source_binding,
+                f"Material texture source binding {raw['policyRowId']}",
+            )
             owner = source_binding["bindingOriginAndOwner"]
             require(owner == {
                 "bindingOrigin": input_row["bindingOrigin"],
@@ -3338,6 +3421,10 @@ def build_material_sections(
                     and resource["status"] == source_binding["status"]
                     and resource["runtimeAssetId"] == source_binding["runtimeAssetId"],
                     f"Material texture receipt resource join mismatch: {raw['policyRowId']}")
+            verify_embedded_row_hash(
+                resource,
+                f"Material texture source resource {raw['policyRowId']}",
+            )
             source_binding_id = source_binding["bindingId"]
             source_binding_row_sha256 = source_binding["rowSha256"]
             source_texture_resource_id = resource["textureResourceId"]
@@ -3350,31 +3437,56 @@ def build_material_sections(
                         and resource["runtimeAssetAdmission"] is True
                         and resource["runtimeCookEvidence"] is not None
                         and resource["resourceExportEvidence"] is not None
+                        and resource["deploymentEvidence"] is None
                         and resource["provisioningProposalId"] is None,
                         f"resolved Material texture evidence incomplete: {raw['policyRowId']}")
                 resolution_status = "RESOLVED_EXACT_RUNTIME_ASSET"
                 binding_basis = "EXACT_FULL_LOGICAL_PATH_RUNTIME_COOK_RECEIPT"
                 binding_blockers = ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"]
             else:
-                require(source_binding["status"] == "UNRESOLVED_RUNTIME_ASSET"
-                        and source_binding["runtimeAssetId"] is None
-                        and source_binding["runtimeAssetAdmission"] is False
-                        and resource["runtimeAssetAdmission"] is False
+                require(source_binding["status"]
+                        == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+                        and type(source_binding["runtimeAssetId"]) is str
+                        and source_binding["runtimeAssetId"]
+                        and source_binding["runtimeAssetAdmission"] is True
+                        and resource["runtimeAssetAdmission"] is True
+                        and resource["runtimeCookEvidence"] is None
+                        and resource["resourceExportEvidence"] is None
                         and resource["exactDdsEvidence"] is not None
+                        and resource["deploymentEvidence"] is not None
                         and resource["provisioningProposalId"] in proposal_by_id,
-                        f"unresolved Material texture evidence mismatch: {raw['policyRowId']}")
+                        f"deployed Material texture evidence mismatch: {raw['policyRowId']}")
+                runtime_asset_id = source_binding["runtimeAssetId"]
+                require_safe_renderer_texture_asset_id(runtime_asset_id)
                 proposal = proposal_by_id[resource["provisioningProposalId"]]
-                require(proposal["textureResourceId"] == resource["textureResourceId"],
+                verify_embedded_row_hash(
+                    proposal,
+                    f"Material texture source proposal {raw['policyRowId']}",
+                )
+                deployment = resource["deploymentEvidence"]
+                require(proposal["textureResourceId"] == resource["textureResourceId"]
+                        and proposal["logicalTexturePath"] == resource["logicalTexturePath"]
+                        and proposal["proposedRuntimeAssetId"] == runtime_asset_id
+                        and proposal["deploymentStatus"]
+                        == "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT"
+                        and proposal["runtimeAssetAdmission"] is True
+                        and proposal["deploymentEvidence"] == deployment
+                        and deployment["basis"]
+                        == "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+                        and deployment["proposalId"] == proposal["proposalId"]
+                        and deployment["runtimeAssetId"] == runtime_asset_id
+                        and deployment["deploymentStatus"] == "COMMITTED_POST_VERIFIED"
+                        and deployment["postVerified"] is True
+                        and deployment["runtimeAssetDeploymentAdmission"] is True
+                        and deployment["sourceExactMaterialClaim"] is False,
                         f"Material texture provisioning owner mismatch: {raw['policyRowId']}")
                 source_provisioning_proposal_id = proposal["proposalId"]
                 source_provisioning_proposal_row_sha256 = proposal["rowSha256"]
-                resolution_status = "UNRESOLVED_RUNTIME_ASSET"
-                binding_basis = "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET"
-                binding_blockers = [
-                    "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-                    "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
-                    "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE",
-                ]
+                source_deployment_row_id = deployment["deploymentRowId"]
+                source_deployment_row_sha256 = deployment["deploymentRowSha256"]
+                resolution_status = "RESOLVED_EXACT_RUNTIME_ASSET"
+                binding_basis = "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+                binding_blockers = ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"]
         row = {
             "bindingId": raw["fieldId"] + "::runtime-texture-binding",
             "order": len(texture_binding_rows),
@@ -3389,6 +3501,8 @@ def build_material_sections(
             "sourceTextureResourceRowSha256": source_texture_resource_row_sha256,
             "sourceProvisioningProposalId": source_provisioning_proposal_id,
             "sourceProvisioningProposalRowSha256": source_provisioning_proposal_row_sha256,
+            "sourceDeploymentRowId": source_deployment_row_id,
+            "sourceDeploymentRowSha256": source_deployment_row_sha256,
             "sourceReceiptStatus": source_receipt_status,
             "runtimeAssetId": runtime_asset_id if texture_binding_receipt is not None else "",
             "resolutionStatus": resolution_status,
@@ -4759,7 +4873,9 @@ def validate_policy_route_binding(program: dict[str, Any]) -> None:
     require(texture_artifact["authorityTreeId"]
             == EXPECTED_MATERIAL_TEXTURE_BINDING_TREE_ID
             and texture_artifact["blobId"]
-            == EXPECTED_MATERIAL_TEXTURE_BINDING_BLOB_ID,
+            == EXPECTED_MATERIAL_TEXTURE_BINDING_BLOB_ID
+            and texture_artifact["trackedTextSha256"]
+            == EXPECTED_MATERIAL_TEXTURE_BINDING_TRACKED_TEXT_SHA256,
             "Material texture binding Git tree/blob identity mismatch")
 
     route = program["policyRouteBinding"]
@@ -5624,6 +5740,8 @@ def validate_nested_shapes(program: dict[str, Any]) -> None:
         row["artifactId"] == "materialTextureBinding"
         for row in program["inputArtifacts"]
     )
+    require(has_texture_binding_receipt,
+            "Material texture binding receipt is a mandatory R2 authority")
     source_binding_ids: set[str] = set()
     for row in program["materialTextureBindings"]:
         require_json_int(row["order"], "Material texture binding order", 0)
@@ -5635,74 +5753,62 @@ def validate_nested_shapes(program: dict[str, Any]) -> None:
                             "Material texture occurrence IDs", unique=True)
         require(row["sourceExact"] is False,
                 "Material texture binding cannot claim Source exact")
-        if has_texture_binding_receipt:
-            require(type(row["sourceBindingId"]) is str and row["sourceBindingId"]
-                    and row["sourceBindingId"] not in source_binding_ids
-                    and type(row["sourceTextureResourceId"]) is str
-                    and row["sourceTextureResourceId"],
-                    "Material texture receipt identity/uniqueness mismatch")
-            source_binding_ids.add(row["sourceBindingId"])
-            require_sha256(row["sourceBindingRowSha256"],
-                           "Material texture source binding row")
-            require_sha256(row["sourceTextureResourceRowSha256"],
-                           "Material texture source resource row")
-        else:
-            require(all(row[key] == "" for key in (
-                "sourceBindingId", "sourceBindingRowSha256", "sourceTextureResourceId",
-                "sourceTextureResourceRowSha256", "sourceProvisioningProposalId",
-                "sourceProvisioningProposalRowSha256", "sourceReceiptStatus",
-            )), "legacy Material texture binding carries receipt identity")
-        if type(row["runtimeAssetId"]) is str and row["runtimeAssetId"] != "":
-            require(has_texture_binding_receipt,
-                    "resolved Material texture lacks frozen binding receipt")
-            require_safe_renderer_texture_asset_id(row["runtimeAssetId"])
-            require(row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
-                    and row["bindingBasis"]
+        require(type(row["sourceBindingId"]) is str and row["sourceBindingId"]
+                and row["sourceBindingId"] not in source_binding_ids
+                and type(row["sourceTextureResourceId"]) is str
+                and row["sourceTextureResourceId"],
+                "Material texture receipt identity/uniqueness mismatch")
+        source_binding_ids.add(row["sourceBindingId"])
+        require_sha256(row["sourceBindingRowSha256"],
+                       "Material texture source binding row")
+        require_sha256(row["sourceTextureResourceRowSha256"],
+                       "Material texture source resource row")
+        require_safe_renderer_texture_asset_id(row["runtimeAssetId"])
+        require(row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
+                and row["blockers"] == ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"],
+                "resolved Material texture runtime binding contract mismatch")
+        if row["sourceReceiptStatus"] == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT":
+            require(row["bindingBasis"]
                     == "EXACT_FULL_LOGICAL_PATH_RUNTIME_COOK_RECEIPT"
-                    and row["sourceReceiptStatus"]
-                    == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
                     and row["sourceProvisioningProposalId"] == ""
                     and row["sourceProvisioningProposalRowSha256"] == ""
-                    and row["blockers"]
-                    == ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"],
-                    "resolved Material texture runtime binding contract mismatch")
-        elif row["runtimeAssetId"] is None:
+                    and row["sourceDeploymentRowId"] == ""
+                    and row["sourceDeploymentRowSha256"] == "",
+                    "runtime-cook Material texture source contract mismatch")
+        elif (row["sourceReceiptStatus"]
+              == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"):
             require_sha256(row["sourceProvisioningProposalRowSha256"],
                            "Material texture source provisioning proposal row")
-            require(has_texture_binding_receipt
-                    and row["resolutionStatus"] == "UNRESOLVED_RUNTIME_ASSET"
-                    and row["bindingBasis"]
-                    == "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET"
-                    and row["sourceReceiptStatus"] == "UNRESOLVED_RUNTIME_ASSET"
+            require_sha256(row["sourceDeploymentRowSha256"],
+                           "Material texture source deployment row")
+            require(row["bindingBasis"]
+                    == "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
                     and type(row["sourceProvisioningProposalId"]) is str
                     and row["sourceProvisioningProposalId"]
-                    and row["blockers"] == [
-                        "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
-                        "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
-                        "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE",
-                    ], "unresolved Material texture receipt contract mismatch")
+                    and type(row["sourceDeploymentRowId"]) is str
+                    and row["sourceDeploymentRowId"],
+                    "deployed Material texture source contract mismatch")
         else:
-            require(not has_texture_binding_receipt and row["runtimeAssetId"] == ""
-                    and row["resolutionStatus"]
-                    == "UNRESOLVED_EXACT_LOGICAL_TEXTURE_RESOURCE_BINDING"
-                    and row["bindingBasis"] == "NO_BASENAME_GUESS"
-                    and row["blockers"]
-                    == ["MATERIAL_TEXTURE_FIELD_RUNTIME_RESOURCE_BINDING_NOT_COMPLETE"],
-                    "legacy unresolved Material texture binding contract mismatch")
-    require((not has_texture_binding_receipt and not source_binding_ids)
-            or len(source_binding_ids) == 72,
+            raise ContractError(
+                "unknown Material texture source receipt status: "
+                + str(row["sourceReceiptStatus"])
+            )
+    require(len(source_binding_ids) == 72,
             "Material texture source binding reverse denominator mismatch")
-    if has_texture_binding_receipt:
-        require(sum(
-            row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
-            for row in program["materialTextureBindings"]
-        ) == 68 and sum(
-            row["resolutionStatus"] == "UNRESOLVED_RUNTIME_ASSET"
-            for row in program["materialTextureBindings"]
-        ) == 4, "Material texture resolved/unresolved denominator mismatch")
-        require(canonical_sha256(program["materialTextureBindings"])
-                == EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256,
-                "Material texture frozen 72-row projection mismatch")
+    require(sum(
+        row["sourceReceiptStatus"] == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
+        for row in program["materialTextureBindings"]
+    ) == 68 and sum(
+        row["sourceReceiptStatus"]
+        == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+        for row in program["materialTextureBindings"]
+    ) == 4 and sum(
+        row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
+        for row in program["materialTextureBindings"]
+    ) == 72, "Material texture source/runtime resolution denominator mismatch")
+    require(canonical_sha256(program["materialTextureBindings"])
+            == EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256,
+            "Material texture frozen 72-row projection mismatch")
     for row in program["rendererTextureResources"]:
         require_json_int(row["order"], "renderer texture resource order", 0)
         require(row["slotId"] in RENDERER_TEXTURE_SLOTS,
@@ -6669,6 +6775,10 @@ def validate_program(program: dict[str, Any], expected: dict[str, Any] | None = 
                  "blocker ownership contract")
     expected_blocker_ownership = build_blocker_ownership_contract(program_sections)
     require(program["blockerOwnership"] == expected_blocker_ownership
+            and program["blockerOwnership"]["fieldCount"]
+            == EXPECTED_BLOCKER_OWNERSHIP_FIELD_COUNT
+            and program["blockerOwnership"]["tokenOccurrenceCount"]
+            == EXPECTED_BLOCKER_TOKEN_OCCURRENCE_COUNT
             and program["blockerOwnership"]["projectionSha256"]
             == EXPECTED_BLOCKER_OWNERSHIP_PROJECTION_SHA256,
             "blocker ownership does not match frozen owner/path/token projection")
