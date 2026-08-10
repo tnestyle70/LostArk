@@ -7,8 +7,12 @@ import copy
 import hashlib
 import json
 import math
+import subprocess
 import struct
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from build_artist_31470_material_reconstructed_policy import (
     DEFAULT_ACQUISITION_RECEIPT,
@@ -17,9 +21,13 @@ from build_artist_31470_material_reconstructed_policy import (
     DEFAULT_OUTPUT,
     DEFAULT_RUNTIME_RECEIPT,
     DEFAULT_VERIFIER,
+    DIRECT_IMPORT_DEPENDENCY_PATHS,
+    ROOT,
     canonical_sha256,
+    direct_import_closure,
     read_json,
     resolve_current_texture_filter_candidate,
+    validate_direct_import_closure,
     validate_policy_receipt,
 )
 from artist_31470_material_reconstructed_policy_approval import require_approved_receipt
@@ -63,6 +71,24 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
     def assert_rejected(self, receipt: dict) -> None:
         with self.assertRaises((ValueError, TypeError, OverflowError)):
             self.validate(receipt)
+
+    def run_cli(self, receipt_path: Path, *, deep: bool) -> subprocess.CompletedProcess[str]:
+        command = [
+            sys.executable,
+            "-B",
+            str(ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_reconstructed_policy.py"),
+            "--output",
+            str(receipt_path),
+        ]
+        command.extend(["--run-hlsl", "--check"] if deep else ["--shallow-check"])
+        return subprocess.run(
+            command,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=90,
+            check=False,
+        )
 
     def test_baseline_receipt_is_valid(self) -> None:
         self.validate(copy.deepcopy(self.receipt))
@@ -425,6 +451,96 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
                 hlsl_path=DEFAULT_HLSL,
                 verifier_path=DEFAULT_VERIFIER,
             )
+
+    def test_actual_cli_rejects_duplicate_keys_and_bom_shallow_and_deep(self) -> None:
+        source = DEFAULT_OUTPUT.read_text(encoding="utf-8")
+        mutations = {
+            "root": source.replace(
+                '  "schema":',
+                '  "schema": "FORGED",\n  "schema":',
+                1,
+            ).encode("utf-8"),
+            "row": source.replace(
+                '      "policyRowId":',
+                '      "policyRowId": "FORGED",\n      "policyRowId":',
+                1,
+            ).encode("utf-8"),
+            "descriptor": source.replace(
+                '      "selectedDescriptor": {',
+                '      "selectedDescriptor": {\n        "type": "FORGED",',
+                1,
+            ).encode("utf-8"),
+            "oracle": source.replace(
+                '  "hlslVerification": {',
+                '  "hlslVerification": {\n    "backend": "FORGED",',
+                1,
+            ).encode("utf-8"),
+            "bom": b"\xef\xbb\xbf" + source.encode("utf-8"),
+        }
+        self.assertNotEqual(mutations["root"], source.encode("utf-8"))
+        self.assertNotEqual(mutations["row"], source.encode("utf-8"))
+        self.assertNotEqual(mutations["descriptor"], source.encode("utf-8"))
+        self.assertNotEqual(mutations["oracle"], source.encode("utf-8"))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, payload in mutations.items():
+                path = root / f"{name}.json"
+                path.write_bytes(payload)
+                for deep in (False, True):
+                    with self.subTest(name=name, deep=deep):
+                        result = self.run_cli(path, deep=deep)
+                        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                        failure_text = result.stdout + result.stderr
+                        if name == "bom":
+                            self.assertIn("JSON must be UTF-8 without BOM", failure_text)
+                        else:
+                            self.assertIn("duplicate JSON key", failure_text)
+
+    def test_actual_cli_lf_crlf_receipt_parity_shallow_and_deep(self) -> None:
+        source = DEFAULT_OUTPUT.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = {
+                "lf": root / "lf.json",
+                "crlf": root / "crlf.json",
+            }
+            paths["lf"].write_bytes(source)
+            paths["crlf"].write_bytes(source.replace(b"\n", b"\r\n"))
+            for name, path in paths.items():
+                for deep in (False, True):
+                    with self.subTest(name=name, deep=deep):
+                        result = self.run_cli(path, deep=deep)
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_direct_import_closure_is_pinned_and_actual_hash_mutation_rejected(self) -> None:
+        evidence = self.receipt["sourceEvidence"]["directImportClosure"]
+        self.assertEqual(evidence, direct_import_closure())
+
+        candidate = copy.deepcopy(self.receipt)
+        row = candidate["sourceEvidence"]["directImportClosure"]["dependencies"][0]
+        row["canonicalTextSha256"] = "0" * 64
+        candidate["sourceEvidence"]["directImportClosure"]["projectionSha256"] = canonical_sha256(
+            candidate["sourceEvidence"]["directImportClosure"]["dependencies"]
+        )
+        reseal_receipt(candidate)
+        self.assert_rejected(candidate)
+
+        dependency_id = "RUNTIME_WARP_SUPPORT"
+        original = DIRECT_IMPORT_DEPENDENCY_PATHS[dependency_id].read_bytes()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            crlf = root / "crlf.py"
+            crlf.write_bytes(original.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n"))
+            crlf_paths = dict(DIRECT_IMPORT_DEPENDENCY_PATHS)
+            crlf_paths[dependency_id] = crlf
+            validate_direct_import_closure(evidence, crlf_paths)
+
+            mutated = root / "mutated.py"
+            mutated.write_bytes(original + b"\nDEPENDENCY_MUTATION = True\n")
+            mutated_paths = dict(DIRECT_IMPORT_DEPENDENCY_PATHS)
+            mutated_paths[dependency_id] = mutated
+            with self.assertRaises(ValueError):
+                validate_direct_import_closure(evidence, mutated_paths)
 
 
 if __name__ == "__main__":

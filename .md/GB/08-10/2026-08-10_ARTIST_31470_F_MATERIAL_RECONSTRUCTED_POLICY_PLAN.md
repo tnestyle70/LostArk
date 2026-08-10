@@ -6,6 +6,8 @@
 - D3D11 verification projects every field of the depth-stencil, rasterizer, and sampler descriptors, including sampler `BorderColor`.
 - Sampler HLSL receives primitive filter/address/sRGB policy fields rather than the expected output vector, and 72 typed SRGB/LINEAR mappings are verified with `CreateShaderResourceView -> GetDesc` on WARP.
 - A separate approval module pins the ordered 255-row policy projection, HLSL source/DXBC/input/output, and 107-row WARP descriptor projection. The generator-derived receipt alone is not the approval authority.
+- Builder and WARP replay use the shared no-BOM, duplicate-key-rejecting strict JSON object loader. Root, policy row, nested descriptor, and oracle duplicates are rejected before semantic validation.
+- `sourceEvidence.directImportClosure` pins canonical-EOL text hashes for the strict loader, three upstream Material validators, approval module, reconstructed verifier, and reused runtime WARP support. Shallow/deep validation recomputes this closure from the actual files.
 
 ## 목표
 
