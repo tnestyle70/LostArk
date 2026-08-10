@@ -1,79 +1,95 @@
-# 2026-08-10 Artist 31470 F Cascade Inspection IR Result
+# 2026-08-10 Artist 31470 F Generic Cascade Compiler Core Result
 
 ## 결과
 
-도화가 F Source Contract를 실행하지 않고 검사하는 immutable typed Cascade inspection IR checkpoint를 추가했다. 이 변경은 실행 compiler 완료가 아니다. 결과는 의도적으로 항상 `bExecutable=false`, `bProductAdmission=false`이며 Product admission은 0/35다.
+도화가 F Source Contract를 실행하지 않고 검사하는 immutable typed Cascade inspection IR을 revision 2로
+강화했다. 이 변경은 G04 generic compiler core이며 실행 compiler 완료가 아니다. 결과는 항상
+`bExecutable=false`, `bProductAdmission=false`이고 Product admission은 0/35다.
 
-기존 Product Playback, DocumentRenderer, PresentationService, 여섯 renderer family의 실행 코드는 변경하지 않았다. 따라서 raw executor도 그대로이며 새 inspection IR로 되돌아오거나 실행되는 경로는 없다.
+기존 Product Playback, DocumentRenderer, PresentationService, Catalog, EffectObject, 여섯 renderer family,
+Geometry/Material runtime consumer는 수정하지 않았다. raw SourceRecipe executor도 그대로이며 이 inspection
+IR을 제품 실행 권위로 사용하지 않는다.
 
 ## 구현한 계약
 
 - `CEffectCascadeCompiler::Compile_SourceInspection`
-  - compiler가 직렬화한 전체 document로 canonical identity를 계산하고 caller의 expected identity와 대조한다.
-  - System → occurrence → element composite identity, source emitter node, selected LOD, ordered module reference를 보존한다.
-  - module role을 `REQUIRED/MODULE/SPAWN/TYPE_DATA` typed enum으로 보존하고 opcode/role 조합을 검증한다.
-  - opcode-specific allowed/required property schema와 handler required/consumed reference receipt를 생성한다.
-  - canonical property path와 reference ID, typed storage/status/provenance/blocker requirement를 검증한다.
-  - distribution payload를 읽지 않고 `bRawPayloadRead=false`, `bExecutionAllowed=false` evidence로 격리한다.
-  - renderer/source-space와 metadata-only geometry evidence를 보존하되 runtime consumer readiness를 false로 유지한다.
-  - public IR의 모든 inspection field와 receipt를 deterministic hash에 포함하고 self-verification한다.
-- existing `normalizedClass`는 receipt normalization으로만 보존한다. `strExactSourceClass`, `strAliasId`, exact lineage는 비워 두고 `SOURCE_EXACT_CLASS_LINEAGE_ADAPTER_PENDING` blocker를 유지한다.
-- checksum은 인증 근거가 아니므로 `CANONICAL_DOCUMENT_CHECKSUM_NOT_AUTHENTICATION` blocker를 유지한다.
-- collision, sizemultiplyvelocity, subuvmovie, soundparameter, vectorconstant는 silent alias 없이 explicit legacy migration gap으로 분류한다.
-- fixture 전용 분모 `7/35/399/629`와 renderer `13/16/3/1/1/1`은 ClientFrontendHarness에만 존재한다.
+  - domain-separated 전체 document serialization hash를 caller identity와 대조한다.
+  - System → occurrence/emitter → selected LOD → ordered module → property/distribution 구조를 immutable IR로 만든다.
+  - selected LOD의 emitter path/node, selected path/node, array index를 canonical lineage ID와 stable reference에
+    결합하고 node reuse, noncanonical suffix, free-form provenance promotion을 거부한다.
+  - source execution admission true를 typed class/payload/handler closure 전에 거부한다.
+  - raw module literal/distribution payload는 읽지 않고 distribution evidence를
+    `bRawPayloadRead=false`, `bExecutionAllowed=false`로 격리한다.
+- opcode-specific handler receipt
+  - 각 allowed property는 `{property key, storage, handlerFieldId, required, result}` receipt를 가진다.
+  - source와 coverage가 함께 만든 unknown property도 handler schema에 없으면 거부한다.
+  - required/consumed/handler receipt count를 별도로 재계산하고 raw payload/executable count는 0만 허용한다.
+  - source receipt의 property blocker를 IR에 보존한다. decoded/metadata property는 blocker를 금지하고,
+    deterministic distribution과 unresolved property는 canonical blocker 집합을 필수로 요구한다.
+  - distribution 격리 evidence는 source property blocker에
+    `SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING`만 합성한 정확한 집합이어야 한다.
+- exact class와 alias lineage
+  - G00 bridge의 optional `strExactSourceClass/strAliasId`를 typed receipt로 보존한다.
+  - transport가 없으면 `RECEIPT_NORMALIZED_ONLY`와 pending blocker를 유지한다.
+  - exact와 normalized가 같으면 `EXACT_SOURCE_CLASS`로 구조 보존한다.
+  - exact와 normalized가 다르면 alias가 없을 때 `ALIAS_REQUIRED_EXECUTION_UNAPPROVED`, alias가 있어도
+    `EXPLICIT_ALIAS_EXECUTION_UNAPPROVED`로 보존하고 실행 blocker를 유지한다.
+  - well-shaped alias string을 명시적 registry/evaluator로 세탁하지 않는다.
+- `Matches_InputIdentity`
+  - count와 hash만 다시 보는 대신 system/emitter/LOD/module/property/distribution/class/handler receipt 전체를
+    typed schema로 재검증한 뒤 inspection hash를 비교한다.
+  - forged handler field receipt, role/reference drift, property/storage/provenance mutation과 self-shaped IR을 거부한다.
+- production compiler에는 Artist ID 또는 `7/35/399/629`, renderer 분모 hardcode가 없다. fixture count는
+  ClientFrontendHarness에만 있다.
+- legacy migration gap은 module 세 종류와 실제 distribution class 두 종류를 구분한다:
+  `particlemodulecollision`, `particlemodulesizemultiplyvelocity`, `particlemodulesubuvmovie`,
+  `distributionfloatsoundparameter`, `distributionvectorconstant`.
+
+## 현재 fixture 실측
+
+checked Source candidate를 독립 JSON walk로 다시 계산한 결과는 다음과 같다.
+
+```text
+systems            7
+emitters           35
+ordered modules    399
+distributions      629
+exact raw class    373
+normalized delta    26
+```
+
+26개 normalized-difference reference는 EF custom/seeded class lineage이며 G04에서 executable alias로
+승격하지 않는다.
 
 ## 자동 검증
 
-Debug와 Release에서 같은 25개 gate를 실행했다.
+실행 완료:
 
-1. fixture 7 systems / 35 emitters / 399 opcodes / 629 isolated distributions 및 renderer 분모
-2. deterministic canonical identity와 inspection hash
-3. raw B가 A canonical identity를 재사용하는 경우 거부
-4. 임의 default IR과 valid-looking ID/hash의 `Matches_InputIdentity` 거부
-5. source emitter node와 LOD lineage의 hash binding
-6. source+coverage simultaneous unknown property 거부
-7. EF class mutation 거부
-8. `SOURCE_TAGGED`에서 `SOURCE_EXACT` provenance promotion 거부
-9. unresolved ColorScale module/property aggregate promotion 거부
-10. forged selected LOD path 거부
-11. valid-looking emitter node package mismatch 거부
-12. module stable/alias lineage drift 거부
-13. opcode alias schema mismatch 거부
-14. `REQUIRED` opcode의 valid-looking wrong role 거부
-15. duplicate property path/reference 거부
-16. unknown storage 거부
-17. duplicate module reference index 거부
-18. nonfinite geometry evidence 거부
-19. geometry asset ID와 mesh ResourceBinding mismatch 거부
-20. 다섯 legacy migration gap의 explicit classification
-21. Source Contract codec roundtrip
-22. legacy v14 field rejection
-23. geometry scale contract preservation
-24. ordered reference preservation
-25. native source field preservation
-
-실행 결과:
-
-- ClientFrontendHarness x64 Debug build: PASS
-- Debug `ClientFrontendHarness.exe --effect-source-contract <Artist F candidate>`: 25/25 PASS, `failures : 0`
-- ClientFrontendHarness x64 Release build: PASS
-- Release `ClientFrontendHarness.exe --effect-source-contract <Artist F candidate>`: 25/25 PASS, `failures : 0`
-- `Test-EffectCascadeCompiler.ps1` with Debug harness: PASS
-- `Test-EffectCascadeCompiler.ps1` with Release harness: PASS
-- Client x64 Debug build: PASS
-- Client x64 Release build: PASS
+- `Test-Artist31470SourceContract.ps1`: 52 tests PASS, 7/35/399, Product false
+- independent fixture JSON walk: 7/35/399/629, exact 373, alias-required 26 PASS
+- Engine x64 Debug/Release build: PASS
+- `UpdateLib.bat Debug/Release`: PASS
+- ClientFrontendHarness x64 Debug/Release build: PASS
+- Debug/Release `--effect-source-contract`: 각각 48/48 PASS, failures 0
+- Debug/Release `Test-EffectCascadeCompiler.ps1 -HarnessPath ...`: PASS
+- Debug/Release `Test-EffectSourceClassLineage.ps1 -HarnessPath ...`: 각각 6/6 mutation PASS
+- Client/ClientFrontendHarness project와 filter XML parse: PASS
 - `git diff --check`: PASS
-- 이미지 캡처/육안 검증: 수행하지 않음
+
+G04는 Engine public 계약을 변경하지 않았고 G00 bridge의 Debug Client full build가 선행 통과했으므로,
+full Client 재빌드는 이 lane에서 중복 실행하지 않았다. 최종 통합 worktree가 모든 lane 결합 뒤
+Debug/Release Client build와 전체 회귀를 소유한다.
+
+이미지 캡처, 육안 검증, 이미지 기반 자동 판정은 수행하지 않았다.
 
 ## 남은 blocker
 
-1. Source typed adapter: reviewed Source commit의 exact raw class/alias lineage, receipt-bound typed distribution execution admission/reference ID, source-authenticated provenance를 연결해야 한다.
-2. typed opcode executor: 현재 Product raw executor는 그대로이며 hot path를 compiled opcode/payload만 소비하도록 바꾸지 않았다.
-3. geometry consumer: `geometryPreScale=0.01`, model cache identity, bounds와 tangent/color channel consumption이 runtime에서 닫히지 않았다.
-4. material closure: rendered material 27개의 typed recipe, arithmetic family evaluator, HLSL/render-state 소비가 없다.
-5. renderer closure: Mesh/Sprite/Decal/Ribbon/Light/Post 여섯 family가 typed IR을 소비하지 않는다.
-6. Effect Tool: exact catalog revision/prepared hash attach, Product Play의 authored disk reload 제거, IR stable ID/order 기반 filter가 없다.
-7. catalog transaction: publish/load/prewarm/no-I/O와 failed stage rollback을 compiled authority로 연결하지 않았다.
-8. legacy class migration gap 다섯 종류는 실행 opcode schema가 없다.
+1. Source generated candidate는 아직 optional exact class/alias transport를 채우지 않았고 G01의 receipt-bound
+   regeneration이 필요하다.
+2. 26 custom/seeded normalized delta에는 G05-S/G06의 reviewed alias/evaluator registry와 numeric oracle가 없다.
+3. typed distribution payload, executor, Geometry/Material consumer, 여섯 renderer, Effect Tool prepared revision,
+   Catalog transaction은 각각 G05-G10 소유이며 이 commit에서 실행하지 않는다.
+4. canonical document FNV hash는 deterministic mutation binding이지 historical source authentication이 아니다.
 
-따라서 이 커밋은 Source inspection 구조와 공격 검증을 고정하는 비실행형 WIP checkpoint이며 도화가 F 복원 완료 또는 renderer 완료 근거가 아니다.
+따라서 이 checkpoint는 G04 generic non-executable compiler/inspection core로만 통합 가능하며 도화가 F
+복원 완료 또는 Product admission 근거가 아니다.
