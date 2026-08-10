@@ -30,7 +30,7 @@ from extract_ue3_placements import (
 
 
 SCHEMA = "lostark.artist-31470-material-runtime-oracle-receipt"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 EVALUATOR_VERSION = 1
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GENERATOR_PATH = Path(__file__).resolve()
@@ -68,6 +68,20 @@ DEFAULT_OUTPUT = REPO_ROOT / (
 DEFAULT_SOURCE_ARCHIVE_ROOT = Path(
     r"C:\Users\user\Desktop\Resource_LostArk\00_SourcePackages"
 )
+
+PINNED_SOURCE_ARCHIVE_PROJECTION = {
+    "scope": "LOCAL_SOURCE_ARCHIVE_RAW_UPK_NAME_TABLE_INVENTORY",
+    "hashRole": "EXTERNAL_RAW_BYTES",
+    "fileCount": 1813,
+    "duplicateContentFileCount": 1189,
+    "uniquePackageContentCount": 624,
+    "physicalByteCountAllFiles": 1932762844,
+    "physicalByteCountUniqueContent": 795157410,
+    "inventoryProjectionSha256": "60922d43d423006e9a7868bbf5eef8cd68bddeeeef38113098822cc30c7fbbec",
+    "shaderCacheNameCandidateCount": 0,
+    "shaderCacheCandidateProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "decision": "SOURCE_REVISION_SHADER_CACHE_NOT_PRESENT_IN_SCANNED_ARCHIVE",
+}
 
 
 FEATURE_SECOND_TEXTURE = 1 << 0
@@ -184,15 +198,27 @@ def strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def reject_nonfinite_json_constant(token: str) -> None:
+    raise ValueError(f"non-finite JSON constant is forbidden: {token}")
+
+
 def read_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=strict_object)
+    value = json.loads(
+        path.read_text(encoding="utf-8-sig"),
+        object_pairs_hook=strict_object,
+        parse_constant=reject_nonfinite_json_constant,
+    )
     require(isinstance(value, dict), f"expected JSON object: {path}")
     return value
 
 
 def canonical_bytes(value: Any) -> bytes:
     return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
     ).encode("utf-8")
 
 
@@ -313,6 +339,87 @@ def normalize_typed_value(field: dict[str, Any]) -> Any:
         require(type(value) is bool, "Material static switch value is invalid")
         return value
     raise ValueError(f"unsupported typed Material value kind: {kind}")
+
+
+def source_owner_recipe_id(field: dict[str, Any]) -> str:
+    owner = (((field.get("provenance") or {}).get("lineage") or {}).get("owner") or {})
+    recipe_id = owner.get("recipeId")
+    require(isinstance(recipe_id, str) and recipe_id, "Material field source owner is missing")
+    return recipe_id
+
+
+def build_ordered_input_binding(
+    recipe_id: str,
+    source_section: str,
+    source_section_index: int,
+    field: dict[str, Any],
+) -> dict[str, Any]:
+    require(
+        source_owner_recipe_id(field) == recipe_id,
+        "Material input source owner recipe changed",
+    )
+    typed_value = normalize_typed_value(field)
+    return {
+        "fieldId": field["fieldId"],
+        "fieldKind": str(field["fieldKind"]).casefold(),
+        "sourceSection": source_section,
+        "sourceSectionIndex": source_section_index,
+        "sourceOwnerRecipeId": recipe_id,
+        "bindingRole": classify_binding_role(field),
+        "bindingOrigin": field["bindingOrigin"],
+        "parameterName": field["parameterName"],
+        "normalizedParameterName": field["normalizedParameterName"],
+        "typedValue": typed_value,
+        "typedValueSha256": canonical_sha256(typed_value),
+        "sourceFieldValueSha256": canonical_sha256(field.get("value")),
+        "sourceLineageSha256": field["provenance"]["lineageSha256"],
+    }
+
+
+def build_ordered_static_binding(
+    recipe_id: str,
+    source_section: str,
+    source_section_index: int,
+    field: dict[str, Any],
+) -> dict[str, Any]:
+    require(
+        source_owner_recipe_id(field) == recipe_id,
+        "Material static switch source owner recipe changed",
+    )
+    typed_value = normalize_typed_value(field)
+    return {
+        "fieldId": field["fieldId"],
+        "sourceSection": source_section,
+        "sourceSectionIndex": source_section_index,
+        "sourceOwnerRecipeId": recipe_id,
+        "parameterName": field["parameterName"],
+        "normalizedParameterName": field["normalizedParameterName"],
+        "bindingOrigin": field["bindingOrigin"],
+        "selectionRole": field.get("selectionRole"),
+        "typedValue": typed_value,
+        "typedValueSha256": canonical_sha256(typed_value),
+        "sourceFieldValueSha256": canonical_sha256(field.get("value")),
+        "sourceLineageSha256": field["provenance"]["lineageSha256"],
+    }
+
+
+def family_expression_projection(
+    expressions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "evidenceId": row["evidenceId"],
+            "sourceOrder": row["sourceOrder"],
+            "rawReferenceFromBaseExpressions": row["rawReferenceFromBaseExpressions"],
+            "className": row["className"],
+            "objectPath": row["objectPath"],
+            "projection": row["projection"],
+            "serialSha256": row["serialSha256"],
+        }
+        for row in sorted(
+            expressions, key=lambda row: (row["sourceOrder"], row["exportIndex"])
+        )
+    ]
 
 
 def feature_mask_for_static_switches(
@@ -589,17 +696,392 @@ def scan_source_archive(root: Path) -> dict[str, Any]:
     }
 
 
-def build_receipt(
+RENDER_STATE_CONSUMERS = {
+    "lightingmodel": "MATERIAL_SHADER_LIGHTING_PERMUTATION",
+    "twosided": "D3D11_RASTERIZER_DESC.CullMode",
+    "bdisabledepthtest": "D3D11_DEPTH_STENCIL_DESC.DepthEnable",
+    "opacitymaskclipvalue": "PIXEL_SHADER_OPACITY_MASK_CLIP_THRESHOLD",
+    "buseonelayerdistortion": "EFFECT_DISTORTION_COMPOSITE_PATH",
+}
+
+RENDER_STATE_PILOTS = {
+    "twosided": ["warp-rasterizer-two-sided-toggle"],
+    "bdisabledepthtest": ["warp-depth-disable-toggle"],
+}
+
+
+def compact_export_identity(value: dict[str, Any] | None) -> dict[str, Any]:
+    source = value or {}
+    return {
+        key: source.get(key)
+        for key in (
+            "evidenceId",
+            "logicalPackage",
+            "physicalPackage",
+            "physicalPackageSha256",
+            "exportIndex",
+            "objectPath",
+            "serialSha256",
+            "rawExportEvidenceId",
+        )
+        if source.get(key) is not None
+    }
+
+
+def feasibility_row_id(kind: str, recipe_id: str, field_id: str) -> str:
+    digest = canonical_sha256(
+        {"kind": kind, "recipeId": recipe_id, "fieldId": field_id}
+    )
+    return f"material-feasibility-{kind}-{digest[:16]}"
+
+
+def unavailable_identity(reason: str) -> dict[str, Any]:
+    return {"available": False, "outcome": reason}
+
+
+def build_material_feasibility_matrices(
+    material_contract: dict[str, Any],
+    shader_receipt: dict[str, Any],
+    warp_state_verification: dict[str, Any] | None,
+) -> dict[str, Any]:
+    occurrences_by_recipe: dict[str, list[str]] = defaultdict(list)
+    for occurrence in material_contract.get("occurrences") or []:
+        occurrences_by_recipe[occurrence["materialRecipeId"]].append(
+            occurrence["occurrenceId"]
+        )
+    for occurrence_ids in occurrences_by_recipe.values():
+        occurrence_ids.sort()
+
+    shader_summary = shader_receipt.get("summary") or {}
+    shader_identity = {
+        "available": False,
+        "receiptSha256": shader_receipt.get("receiptSha256"),
+        "exactMaterialShaderMapJoinCount": shader_summary.get(
+            "exactMaterialShaderMapJoinCount"
+        ),
+        "sourceBaseMaterialIdJoinCount": shader_summary.get(
+            "sourceBaseMaterialIdJoinCount"
+        ),
+        "sourceMicStaticParameterSetJoinCount": shader_summary.get(
+            "sourceMicStaticParameterSetJoinCount"
+        ),
+        "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN",
+    }
+    capture_identity = unavailable_identity(
+        "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+    )
+    state_provider_verified = bool(
+        warp_state_verification and warp_state_verification.get("verified")
+    )
+
+    render_rows: list[dict[str, Any]] = []
+    static_rows: list[dict[str, Any]] = []
+    sampler_rows: list[dict[str, Any]] = []
+
+    for recipe in sorted(
+        material_contract.get("materialRecipes") or [],
+        key=lambda row: row["recipeId"],
+    ):
+        recipe_id = recipe["recipeId"]
+        occurrence_ids = occurrences_by_recipe.get(recipe_id, [])
+        identity = recipe.get("identity") or {}
+        instance_identity = compact_export_identity(identity.get("rawMaterialExport"))
+        parent_identity = compact_export_identity(identity.get("selectedGraphIdentity"))
+
+        render_fields = (recipe.get("renderState") or {}).get("fields") or {}
+        for field_name in RENDER_STATE_FIELDS:
+            source_field = render_fields[field_name]
+            if source_field.get("status") != "OMITTED_FROM_EXPORT":
+                continue
+            pilot_ids = RENDER_STATE_PILOTS.get(field_name, [])
+            provider_available = state_provider_verified and bool(pilot_ids)
+            render_rows.append(
+                {
+                    "matrixRowId": feasibility_row_id(
+                        "render-state", recipe_id, field_name
+                    ),
+                    "materialRecipeId": recipe_id,
+                    "materialOccurrenceIds": occurrence_ids,
+                    "fieldId": f"{recipe_id}:{field_name}",
+                    "fieldKind": "RENDER_STATE_DEFAULT",
+                    "bindingOriginAndOwner": {
+                        "bindingOrigin": source_field.get("bindingOrigin"),
+                        "evidenceOwnerRecipeId": recipe_id,
+                    },
+                    "instanceRecordIdentity": {
+                        "available": bool(instance_identity),
+                        "identity": instance_identity,
+                        "fieldOutcome": "OMITTED_FROM_INSTANCE_EXPORT",
+                    },
+                    "parentIdentity": {
+                        "available": bool(parent_identity),
+                        "identity": parent_identity,
+                        "fieldOutcome": "OMITTED_FROM_PARENT_EXPORT",
+                    },
+                    "nestedDefaultIdentity": unavailable_identity(
+                        "NO_SERIALIZED_NESTED_DEFAULT_RECORD"
+                    ),
+                    "classCdoIdentity": unavailable_identity(
+                        "SOURCE_REVISION_MATERIAL_CDO_NOT_ACQUIRED"
+                    ),
+                    "shaderCacheIdentity": shader_identity,
+                    "runtimeCaptureIdentity": capture_identity,
+                    "rendererConsumption": {
+                        "consumer": RENDER_STATE_CONSUMERS[field_name],
+                        "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    },
+                    "acquisitionPath": [
+                        "INSTANCE_RECORD",
+                        "PARENT_MATERIAL",
+                        "NESTED_DEFAULT",
+                        "CLASS_CDO",
+                        "SOURCE_REVISION_SHADER_CACHE",
+                        "CONTROLLED_RUNTIME_CAPTURE",
+                    ],
+                    "oracleProvider": {
+                        "providerId": "D3D11_WARP_STATE_DESCRIPTOR_PILOT"
+                        if pilot_ids
+                        else "NONE",
+                        "providerAvailable": provider_available,
+                        "sourceValueProviderAvailable": False,
+                    },
+                    "pilotFixtureIds": pilot_ids,
+                    "numericOracleInputDomain": [False, True]
+                    if pilot_ids
+                    else [],
+                    "numericOracleExpectedOutput": (
+                        "EXACT_D3D11_STATE_DESCRIPTOR_MUTATION"
+                        if pilot_ids
+                        else None
+                    ),
+                    "numericTolerance": 0.0 if pilot_ids else None,
+                    "pilotDecision": (
+                        "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE"
+                        if provider_available
+                        else "BLOCKED_NO_APPLICABLE_SOURCE_VALUE_PILOT"
+                    ),
+                    "fidelityDecision": "UNRESOLVED_DEFAULT_PROVENANCE",
+                    "executionDecision": "BLOCKED",
+                    "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+                    "finalRuntimeOwner": "G09_MATERIAL_BINDING_AND_RENDERER_CONSUMER",
+                    "remainingBlockers": [
+                        "RENDER_STATE_DEFAULT_PROVENANCE_UNRESOLVED",
+                        "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+                        "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    ],
+                }
+            )
+
+        static_permutation = recipe.get("staticPermutation") or {}
+        for source_section in ("selectedParameters", "parentDefaults"):
+            for source_index, field in enumerate(
+                static_permutation.get(source_section) or []
+            ):
+                field_id = field["fieldId"]
+                static_rows.append(
+                    {
+                        "matrixRowId": feasibility_row_id(
+                            "static", recipe_id, field_id
+                        ),
+                        "materialRecipeId": recipe_id,
+                        "materialOccurrenceIds": occurrence_ids,
+                        "fieldId": field_id,
+                        "fieldKind": "STATIC_PERMUTATION_SELECTION",
+                        "bindingOriginAndOwner": {
+                            "bindingOrigin": field.get("bindingOrigin"),
+                            "evidenceOwnerRecipeId": source_owner_recipe_id(field),
+                            "sourceSection": source_section,
+                            "sourceSectionIndex": source_index,
+                        },
+                        "instanceRecordIdentity": {
+                            "available": bool(instance_identity),
+                            "identity": instance_identity,
+                            "selectionOutcome": "NO_INSTANCE_STATIC_SELECTION_RECORD",
+                        },
+                        "parentIdentity": {
+                            "available": bool(parent_identity),
+                            "identity": parent_identity,
+                            "defaultLineageSha256": field["provenance"][
+                                "lineageSha256"
+                            ],
+                            "selectionRole": field.get("selectionRole"),
+                        },
+                        "nestedDefaultIdentity": unavailable_identity(
+                            "NO_ADDITIONAL_STATIC_SELECTION_RECORD"
+                        ),
+                        "classCdoIdentity": unavailable_identity(
+                            "SOURCE_REVISION_STATIC_PARAMETER_CDO_NOT_ACQUIRED"
+                        ),
+                        "shaderCacheIdentity": shader_identity,
+                        "runtimeCaptureIdentity": capture_identity,
+                        "rendererConsumption": {
+                            "consumer": "MATERIAL_STATIC_SHADER_PERMUTATION",
+                            "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                        },
+                        "acquisitionPath": [
+                            "INSTANCE_MIC_STATIC_SELECTION",
+                            "PARENT_EXPRESSION_DEFAULT",
+                            "SOURCE_REVISION_SHADER_CACHE",
+                            "CONTROLLED_RUNTIME_CAPTURE",
+                        ],
+                        "oracleProvider": {
+                            "providerId": "NONE_SOURCE_SELECTION_PROVIDER",
+                            "providerAvailable": False,
+                            "parentDefaultIsNotInstanceSelection": True,
+                        },
+                        "pilotFixtureIds": [],
+                        "numericOracleInputDomain": [False, True],
+                        "numericOracleExpectedOutput": None,
+                        "numericTolerance": None,
+                        "pilotDecision": "BLOCKED_NO_SOURCE_SELECTION_PILOT",
+                        "fidelityDecision": "SOURCE_EXACT_PARENT_DEFAULT_ONLY",
+                        "executionDecision": "BLOCKED",
+                        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+                        "finalRuntimeOwner": "G09_STATIC_PERMUTATION_COMPILER",
+                        "remainingBlockers": [
+                            "STATIC_PERMUTATION_SELECTION_UNRESOLVED",
+                            "PARENT_DEFAULT_NOT_INSTANCE_SELECTION",
+                            "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                        ],
+                    }
+                )
+
+        texture_overrides = (recipe.get("inputs") or {}).get("textureOverrides") or []
+        for source_index, field in enumerate(texture_overrides):
+            sampler = field.get("sampler") or {}
+            if sampler.get("fidelity") != "UNRESOLVED":
+                continue
+            field_id = field["fieldId"]
+            sampler_rows.append(
+                {
+                    "matrixRowId": feasibility_row_id(
+                        "sampler", recipe_id, field_id
+                    ),
+                    "materialRecipeId": recipe_id,
+                    "materialOccurrenceIds": occurrence_ids,
+                    "fieldId": field_id,
+                    "fieldKind": "DIRECT_TEXTURE_SAMPLER",
+                    "bindingOriginAndOwner": {
+                        "bindingOrigin": field.get("bindingOrigin"),
+                        "evidenceOwnerRecipeId": source_owner_recipe_id(field),
+                        "sourceSection": "textureOverrides",
+                        "sourceSectionIndex": source_index,
+                    },
+                    "instanceRecordIdentity": {
+                        "available": True,
+                        "identity": instance_identity,
+                        "textureObjectPath": field.get("value"),
+                        "sourceLineageSha256": field["provenance"][
+                            "lineageSha256"
+                        ],
+                        "samplerOutcome": sampler.get("blocker"),
+                    },
+                    "parentIdentity": {
+                        "available": bool(parent_identity),
+                        "identity": parent_identity,
+                        "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD",
+                    },
+                    "nestedDefaultIdentity": unavailable_identity(
+                        "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+                    ),
+                    "classCdoIdentity": unavailable_identity(
+                        "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+                    ),
+                    "shaderCacheIdentity": shader_identity,
+                    "runtimeCaptureIdentity": capture_identity,
+                    "rendererConsumption": {
+                        "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+                        "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    },
+                    "acquisitionPath": [
+                        "TEXTURE_EXPORT_RECORD",
+                        "PARENT_TEXTURE_DEFAULT",
+                        "TEXTURE2D_CLASS_CDO",
+                        "SOURCE_REVISION_SHADER_CACHE",
+                        "CONTROLLED_RUNTIME_CAPTURE",
+                    ],
+                    "oracleProvider": {
+                        "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+                        "providerAvailable": state_provider_verified,
+                        "sourceValueProviderAvailable": False,
+                    },
+                    "pilotFixtureIds": ["warp-sampler-address-toggle"],
+                    "numericOracleInputDomain": ["WRAP", "CLAMP"],
+                    "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+                    "numericTolerance": 0.0,
+                    "pilotDecision": (
+                        "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE"
+                        if state_provider_verified
+                        else "BLOCKED_PROVIDER_PILOT_NOT_EXECUTED"
+                    ),
+                    "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+                    "executionDecision": "BLOCKED",
+                    "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+                    "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+                    "remainingBlockers": [
+                        "SAMPLER_EVIDENCE_MISSING",
+                        "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+                        "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED",
+                    ],
+                }
+            )
+
+    require(len(render_rows) == 89, "Material render-state feasibility denominator changed")
+    require(len(static_rows) == 94, "Material static feasibility denominator changed")
+    require(len(sampler_rows) == 68, "Material sampler feasibility denominator changed")
+    all_rows = render_rows + static_rows + sampler_rows
+    require(
+        len({row["matrixRowId"] for row in all_rows}) == len(all_rows),
+        "duplicate Material feasibility matrix row ID",
+    )
+    require(
+        all(row["owner"] and row["finalRuntimeOwner"] for row in all_rows),
+        "ownerless Material feasibility row",
+    )
+    readiness_count = sum(
+        row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
+        for row in all_rows
+    )
+    return {
+        "renderStateRows": render_rows,
+        "staticPermutationRows": static_rows,
+        "directUnprovenSamplerRows": sampler_rows,
+        "summary": {
+            "renderStateRowCount": len(render_rows),
+            "renderStateReadinessCount": sum(
+                row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
+                for row in render_rows
+            ),
+            "staticPermutationRowCount": len(static_rows),
+            "staticPermutationReadinessCount": sum(
+                row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
+                for row in static_rows
+            ),
+            "directUnprovenSamplerRowCount": len(sampler_rows),
+            "directUnprovenSamplerReadinessCount": sum(
+                row["executionDecision"] in {"READY", "VERIFIED_IRRELEVANT"}
+                for row in sampler_rows
+            ),
+            "totalRowCount": len(all_rows),
+            "executionReadinessCount": readiness_count,
+            "blockedRowCount": len(all_rows) - readiness_count,
+            "ownerlessRowCount": 0,
+            "unknownDecisionRowCount": 0,
+            "evidenceIntegrity": True,
+            "executionReadiness": readiness_count == len(all_rows),
+        },
+    }
+
+
+def validate_upstream_material_receipts(
     material_contract: dict[str, Any],
     render_receipt: dict[str, Any],
     shader_receipt: dict[str, Any],
     material_contract_path: Path,
     render_receipt_path: Path,
-    shader_receipt_path: Path,
-    hlsl_path: Path,
-    source_archive: dict[str, Any],
-    hlsl_verification: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> None:
+    """Authenticate every upstream receipt before trusting downstream joins."""
+
     validate_contract(material_contract)
     validate_shader_receipt(shader_receipt, material_contract_path)
     require(
@@ -607,11 +1089,24 @@ def build_receipt(
         == "lostark.artist-31470-material-render-state-evidence-receipt",
         "render receipt schema mismatch",
     )
-    require(type(render_receipt.get("formatVersion")) is int and render_receipt["formatVersion"] == 3, "render receipt version mismatch")
-    require(render_receipt.get("characterClass") == "ARTIST" and render_receipt.get("skillId") == 31470 and render_receipt.get("inputSlot") == "F", "render receipt root identity mismatch")
+    require(
+        type(render_receipt.get("formatVersion")) is int
+        and render_receipt["formatVersion"] == 3,
+        "render receipt version mismatch",
+    )
+    require(
+        render_receipt.get("characterClass") == "ARTIST"
+        and type(render_receipt.get("skillId")) is int
+        and render_receipt["skillId"] == 31470
+        and render_receipt.get("inputSlot") == "F",
+        "render receipt root identity mismatch",
+    )
     sealed_render = dict(render_receipt)
     claimed_render = sealed_render.pop("receiptSha256", None)
-    require(claimed_render == canonical_sha256(sealed_render), "render receipt digest mismatch")
+    require(
+        claimed_render == canonical_sha256(sealed_render),
+        "render receipt digest mismatch",
+    )
     pinned_render = (
         (material_contract.get("sourceEvidence") or {})
         .get("renderStateReceipt")
@@ -623,7 +1118,31 @@ def build_receipt(
         == tracked_text_sha256(render_receipt_path),
         "Material contract does not pin the supplied render receipt",
     )
-    require(source_archive.get("shaderCacheNameCandidateCount") == 0, "source archive ShaderCache candidate requires review")
+
+
+def build_receipt(
+    material_contract: dict[str, Any],
+    render_receipt: dict[str, Any],
+    shader_receipt: dict[str, Any],
+    material_contract_path: Path,
+    render_receipt_path: Path,
+    shader_receipt_path: Path,
+    hlsl_path: Path,
+    source_archive: dict[str, Any],
+    hlsl_verification: dict[str, Any] | None = None,
+    warp_state_verification: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    validate_upstream_material_receipts(
+        material_contract,
+        render_receipt,
+        shader_receipt,
+        material_contract_path,
+        render_receipt_path,
+    )
+    require(
+        source_archive == PINNED_SOURCE_ARCHIVE_PROJECTION,
+        "source archive deep projection changed",
+    )
 
     expressions_by_base: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for expression in render_receipt.get("graphExpressions") or []:
@@ -695,18 +1214,7 @@ def build_receipt(
                     "expectedFloat4": evaluate_cpu(mask, sample),
                 }
             )
-        expression_projection = [
-            {
-                "evidenceId": row["evidenceId"],
-                "sourceOrder": row["sourceOrder"],
-                "rawReferenceFromBaseExpressions": row["rawReferenceFromBaseExpressions"],
-                "className": row["className"],
-                "objectPath": row["objectPath"],
-                "projection": row["projection"],
-                "serialSha256": row["serialSha256"],
-            }
-            for row in sorted(expressions, key=lambda row: (row["sourceOrder"], row["exportIndex"]))
-        ]
+        expression_projection = family_expression_projection(expressions)
         renderer_shapes = sorted(
             {
                 shape
@@ -760,49 +1268,32 @@ def build_receipt(
         fields = []
         inputs = recipe.get("inputs") or {}
         for section in ("scalarOverrides", "vectorOverrides", "textureOverrides", "parentDefaults"):
-            for field in inputs.get(section) or []:
+            for source_index, field in enumerate(inputs.get(section) or []):
                 field_id = field.get("fieldId")
                 require(isinstance(field_id, str) and field_id not in all_field_ids, "duplicate Material input field ID")
                 all_field_ids.add(field_id)
-                role = classify_binding_role(field)
-                role_counts[role] += 1
-                kind = str(field["fieldKind"]).casefold()
-                kind_counts[kind] += 1
-                fields.append(
-                    {
-                        "fieldId": field_id,
-                        "fieldKind": kind,
-                        "bindingRole": role,
-                        "bindingOrigin": field["bindingOrigin"],
-                        "parameterName": field["parameterName"],
-                        "normalizedParameterName": field["normalizedParameterName"],
-                        "typedValue": normalize_typed_value(field),
-                        "typedValueSha256": canonical_sha256(normalize_typed_value(field)),
-                        "sourceFieldValueSha256": canonical_sha256(field.get("value")),
-                        "sourceLineageSha256": field["provenance"]["lineageSha256"],
-                    }
+                binding = build_ordered_input_binding(
+                    recipe["recipeId"], section, source_index, field
                 )
+                role = binding["bindingRole"]
+                role_counts[role] += 1
+                kind = binding["fieldKind"]
+                kind_counts[kind] += 1
+                fields.append(binding)
         require(fields, f"recipe has no Material inputs: {recipe['recipeId']}")
 
         static_switches = []
         static_permutation = recipe.get("staticPermutation") or {}
         for section in ("selectedParameters", "parentDefaults"):
-            for field in static_permutation.get(section) or []:
+            for source_index, field in enumerate(static_permutation.get(section) or []):
                 field_id = field.get("fieldId")
                 require(isinstance(field_id, str) and field_id not in all_field_ids, "duplicate Material static switch field ID")
                 all_field_ids.add(field_id)
                 static_switch_count += 1
                 static_switches.append(
-                    {
-                        "fieldId": field_id,
-                        "parameterName": field["parameterName"],
-                        "normalizedParameterName": field["normalizedParameterName"],
-                        "bindingOrigin": field["bindingOrigin"],
-                        "typedValue": normalize_typed_value(field),
-                        "typedValueSha256": canonical_sha256(normalize_typed_value(field)),
-                        "sourceFieldValueSha256": canonical_sha256(field.get("value")),
-                        "sourceLineageSha256": field["provenance"]["lineageSha256"],
-                    }
+                    build_ordered_static_binding(
+                        recipe["recipeId"], section, source_index, field
+                    )
                 )
 
         family_id = recipe["arithmeticFamilyId"]
@@ -894,6 +1385,10 @@ def build_receipt(
         row["bindingSha256"] = canonical_sha256(row)
         occurrence_bindings.append(row)
 
+    feasibility_matrices = build_material_feasibility_matrices(
+        material_contract, shader_receipt, warp_state_verification
+    )
+    feasibility_summary = feasibility_matrices["summary"]
     receipt = {
         "schema": SCHEMA,
         "formatVersion": FORMAT_VERSION,
@@ -952,12 +1447,22 @@ def build_receipt(
         "familyEvaluators": evaluators,
         "materialRecipeBindings": recipe_bindings,
         "occurrenceBindings": occurrence_bindings,
+        "materialFeasibilityMatrices": feasibility_matrices,
         "hlslVerification": hlsl_verification
         or {
             "verified": False,
             "blocker": "HLSL_WARP_NUMERIC_ORACLE_NOT_EXECUTED",
         },
+        "warpStateProviderVerification": warp_state_verification
+        or {
+            "verified": False,
+            "blocker": "D3D11_WARP_STATE_PROVIDER_PILOT_NOT_EXECUTED",
+        },
         "admission": {
+            "evidenceIntegrityAdmission": True,
+            "executionReadinessAdmission": feasibility_summary[
+                "executionReadiness"
+            ],
             "arithmeticFamilyEvaluationAdmission": bool(
                 hlsl_verification and hlsl_verification.get("verified")
             ),
@@ -998,11 +1503,25 @@ def build_receipt(
             "runtimeHandlerConsumedOccurrenceCount": 0,
             "productRecipeCount": 0,
             "productOccurrenceCount": 0,
+            "materialFeasibilityRowCount": feasibility_summary["totalRowCount"],
+            "materialFeasibilityReadyCount": feasibility_summary[
+                "executionReadinessCount"
+            ],
+            "materialFeasibilityBlockedCount": feasibility_summary[
+                "blockedRowCount"
+            ],
         },
     }
     seal_receipt(receipt)
     validate_runtime_receipt(receipt)
-    validate_runtime_receipt_source_bindings(receipt, material_contract)
+    validate_runtime_receipt_source_bindings(
+        receipt,
+        material_contract,
+        render_receipt,
+        shader_receipt,
+        material_contract_path=material_contract_path,
+        render_receipt_path=render_receipt_path,
+    )
     return receipt
 
 
@@ -1030,9 +1549,10 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     ):
         require(isinstance(source.get(key), str) and len(source[key]) == 64, f"source evidence SHA is invalid: {key}")
     acquisition = receipt.get("sourceRevisionShaderCacheAcquisition") or {}
-    require(type(acquisition.get("fileCount")) is int and acquisition["fileCount"] > 0, "source archive file denominator is invalid")
-    require(type(acquisition.get("uniquePackageContentCount")) is int and acquisition["uniquePackageContentCount"] > 0, "source archive unique denominator is invalid")
-    require(acquisition.get("shaderCacheNameCandidateCount") == 0 and acquisition.get("decision") == "SOURCE_REVISION_SHADER_CACHE_NOT_PRESENT_IN_SCANNED_ARCHIVE", "source archive ShaderCache decision changed")
+    require(
+        acquisition == PINNED_SOURCE_ARCHIVE_PROJECTION,
+        "source archive deep projection changed",
+    )
     families = receipt.get("familyEvaluators") or []
     recipes = receipt.get("materialRecipeBindings") or []
     occurrences = receipt.get("occurrenceBindings") or []
@@ -1055,9 +1575,13 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         for sample, source_sample in zip(family["sampleRows"], ORACLE_INPUTS, strict=True):
             require(sample["sampleId"] == source_sample["sampleId"] and sample["inputSha256"] == canonical_sha256(source_sample), "family input sample identity changed")
             expected = evaluate_cpu(family["featureMask"], source_sample)
+            require(
+                all(math.isfinite(float(value)) for value in sample["expectedFloat4"]),
+                "family CPU numeric output is non-finite",
+            )
             require(all(abs(float(a) - float(b)) <= 1.0e-7 for a, b in zip(sample["expectedFloat4"], expected, strict=True)), "family CPU numeric output changed")
     recipe_ids: set[str] = set()
-    binding_shas: set[str] = set()
+    recipe_binding_by_id: dict[str, dict[str, Any]] = {}
     field_ids: set[str] = set()
     static_field_ids: set[str] = set()
     resolved_render_states = 0
@@ -1068,9 +1592,14 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         sealed_recipe = dict(recipe)
         claimed_recipe = sealed_recipe.pop("bindingSha256", None)
         require(claimed_recipe == canonical_sha256(sealed_recipe), "Material recipe binding digest mismatch")
-        binding_shas.add(claimed_recipe)
+        recipe_binding_by_id[recipe["recipeId"]] = recipe
         family = evaluator_by_family.get(recipe["familyId"])
-        require(family is not None and recipe["evaluatorId"] == family["evaluatorId"], "Material recipe evaluator reference changed")
+        require(
+            family is not None
+            and recipe["evaluatorId"] == family["evaluatorId"]
+            and recipe["evaluatorVersion"] == family["evaluatorVersion"],
+            "Material recipe evaluator reference changed",
+        )
         require(recipe.get("bindingCompileAdmission") is True and recipe.get("runtimeHandlerConsumptionAdmission") is False and recipe.get("productAdmission") is False, "Material recipe admission changed")
         fields = recipe.get("orderedInputBindings") or []
         require(len(fields) == recipe.get("inputBindingCount") and fields, "Material recipe input denominator changed")
@@ -1081,6 +1610,14 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
             require(field.get("fieldKind") in {"scalar", "vector", "texture"}, "Material typed input kind changed")
             require(field.get("typedValue") is not None, "Material typed input value is missing")
             require(field.get("typedValueSha256") == canonical_sha256(field["typedValue"]), "Material typed input value digest changed")
+            require(
+                field.get("sourceSection")
+                in {"scalarOverrides", "vectorOverrides", "textureOverrides", "parentDefaults"}
+                and type(field.get("sourceSectionIndex")) is int
+                and field["sourceSectionIndex"] >= 0
+                and field.get("sourceOwnerRecipeId") == recipe["recipeId"],
+                "Material input order owner changed",
+            )
         static_switches = recipe.get("orderedStaticSwitchBindings") or []
         require(len(static_switches) == recipe.get("staticSwitchBindingCount"), "Material static switch denominator changed")
         for field in static_switches:
@@ -1088,6 +1625,13 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
             static_field_ids.add(field["fieldId"])
             require(type(field.get("typedValue")) is bool, "Material static switch value changed")
             require(field.get("typedValueSha256") == canonical_sha256(field["typedValue"]), "Material static switch value digest changed")
+            require(
+                field.get("sourceSection") in {"selectedParameters", "parentDefaults"}
+                and type(field.get("sourceSectionIndex")) is int
+                and field["sourceSectionIndex"] >= 0
+                and field.get("sourceOwnerRecipeId") == recipe["recipeId"],
+                "Material static switch order owner changed",
+            )
         recipe_feature_mask, decisions = feature_mask_for_static_switches(
             family["featureMask"], static_switches
         )
@@ -1096,6 +1640,14 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         require(recipe.get("runtimeOperandBindings") == expected_operands, "Material recipe runtime operands changed")
         expected_samples = build_recipe_numeric_samples(recipe_feature_mask, expected_operands)
         require(recipe.get("numericBindingSamples") == expected_samples, "Material recipe numeric binding oracle changed")
+        require(
+            all(
+                math.isfinite(float(value))
+                for sample in recipe.get("numericBindingSamples") or []
+                for value in sample.get("expectedFloat4") or []
+            ),
+            "Material recipe numeric binding output is non-finite",
+        )
         render_state = recipe.get("renderStateBindings") or []
         require(len(render_state) == len(RENDER_STATE_FIELDS) and len(render_state) == recipe.get("renderStateBindingCount"), "Material render-state denominator changed")
         require([field.get("fieldName") for field in render_state] == list(RENDER_STATE_FIELDS), "Material render-state order changed")
@@ -1116,7 +1668,15 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         sealed_occurrence = dict(occurrence)
         claimed_occurrence = sealed_occurrence.pop("bindingSha256", None)
         require(claimed_occurrence == canonical_sha256(sealed_occurrence), "Material occurrence binding digest mismatch")
-        require(occurrence["materialRecipeId"] in recipe_ids and occurrence["materialBindingSha256"] in binding_shas, "Material occurrence recipe binding changed")
+        recipe_binding = recipe_binding_by_id.get(occurrence["materialRecipeId"])
+        require(
+            recipe_binding is not None
+            and occurrence["materialBindingSha256"]
+            == recipe_binding["bindingSha256"]
+            and occurrence["evaluatorId"] == recipe_binding["evaluatorId"]
+            and occurrence["evaluatorVersion"] == recipe_binding["evaluatorVersion"],
+            "Material occurrence exact recipe binding changed",
+        )
         require(occurrence.get("runtimeHandlerConsumptionAdmission") is False and occurrence.get("productAdmission") is False, "Material occurrence admission changed")
     summary = receipt.get("summary") or {}
     require(summary.get("materialFamilyCount") == 23 and summary.get("implementedEvaluatorCount") == 23 and summary.get("cpuVerifiedEvaluatorCount") == 23, "Material evaluator summary changed")
@@ -1129,13 +1689,86 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     require(summary.get("totalTypedFieldBindingCount") == len(field_ids) + len(static_field_ids), "Material typed field summary changed")
     require(summary.get("renderStateBindingCount") == render_state_count and summary.get("resolvedRenderStateBindingCount") == resolved_render_states and summary.get("unresolvedRenderStateBindingCount") == render_state_count - resolved_render_states, "Material render-state summary changed")
     require(summary.get("familyNumericSampleCount") == 92 and summary.get("recipeNumericSampleCount") == 108 and summary.get("hlslSampleCount") == 200, "Material numeric sample summary changed")
+    matrices = receipt.get("materialFeasibilityMatrices") or {}
+    matrix_summary = matrices.get("summary") or {}
+    render_matrix = matrices.get("renderStateRows") or []
+    static_matrix = matrices.get("staticPermutationRows") or []
+    sampler_matrix = matrices.get("directUnprovenSamplerRows") or []
+    require(
+        len(render_matrix) == 89
+        and len(static_matrix) == 94
+        and len(sampler_matrix) == 68,
+        "Material feasibility denominator changed",
+    )
+    all_matrix_rows = render_matrix + static_matrix + sampler_matrix
+    require(
+        len({row.get("matrixRowId") for row in all_matrix_rows}) == 251,
+        "Material feasibility row identity changed",
+    )
+    require(
+        all(
+            row.get("owner")
+            and row.get("finalRuntimeOwner")
+            and row.get("executionDecision") == "BLOCKED"
+            and row.get("remainingBlockers")
+            for row in all_matrix_rows
+        ),
+        "Material feasibility owner or decision changed",
+    )
+    require(
+        matrix_summary.get("renderStateRowCount") == 89
+        and matrix_summary.get("staticPermutationRowCount") == 94
+        and matrix_summary.get("directUnprovenSamplerRowCount") == 68
+        and matrix_summary.get("totalRowCount") == 251
+        and matrix_summary.get("executionReadinessCount") == 0
+        and matrix_summary.get("blockedRowCount") == 251
+        and matrix_summary.get("ownerlessRowCount") == 0
+        and matrix_summary.get("unknownDecisionRowCount") == 0
+        and matrix_summary.get("evidenceIntegrity") is True
+        and matrix_summary.get("executionReadiness") is False,
+        "Material feasibility summary changed",
+    )
+    state_verification = receipt.get("warpStateProviderVerification") or {}
+    require(
+        state_verification.get("verified") in {True, False},
+        "Material WARP state provider verification changed",
+    )
+    if state_verification.get("verified"):
+        require(
+            state_verification.get("backend") == "D3D11_WARP_STATE_OBJECTS"
+            and state_verification.get("pilotCount") == 4
+            and len(state_verification.get("pilots") or []) == 4
+            and all(
+                pilot.get("decision") == "PASS"
+                and pilot.get("numericTolerance") == 0.0
+                for pilot in state_verification["pilots"]
+            ),
+            "Material WARP state provider pilot changed",
+        )
+    require(
+        summary.get("materialFeasibilityRowCount") == 251
+        and summary.get("materialFeasibilityReadyCount") == 0
+        and summary.get("materialFeasibilityBlockedCount") == 251,
+        "Material feasibility top-level summary changed",
+    )
     admission = receipt.get("admission") or {}
     require(admission.get("materialRuntimeHandlerConsumptionAdmission") is False and admission.get("rendererConsumptionAdmission") is False and admission.get("productAdmission") is False, "Material Product admission opened")
     require(admission.get("arithmeticFamilyEvaluationAdmission") is bool(hlsl.get("verified")), "Material arithmetic admission changed")
+    require(
+        admission.get("evidenceIntegrityAdmission") is True
+        and admission.get("executionReadinessAdmission") is False,
+        "Material evidence/readiness admission changed",
+    )
 
 
 def validate_runtime_receipt_source_bindings(
-    receipt: dict[str, Any], material_contract: dict[str, Any]
+    receipt: dict[str, Any],
+    material_contract: dict[str, Any],
+    render_receipt: dict[str, Any],
+    shader_receipt: dict[str, Any],
+    *,
+    material_contract_path: Path = DEFAULT_MATERIAL_CONTRACT,
+    render_receipt_path: Path = DEFAULT_RENDER_RECEIPT,
 ) -> None:
     """Join every executable-looking runtime binding back to the pinned contract.
 
@@ -1144,7 +1777,16 @@ def validate_runtime_receipt_source_bindings(
     source authentication.
     """
 
-    validate_contract(material_contract)
+    validate_upstream_material_receipts(
+        material_contract,
+        render_receipt,
+        shader_receipt,
+        material_contract_path,
+        render_receipt_path,
+    )
+    expressions_by_base: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for expression in render_receipt.get("graphExpressions") or []:
+        expressions_by_base[expression["baseMaterialEvidenceId"]].append(expression)
     source_families = {
         row["familyId"]: row
         for row in material_contract.get("graphFamilies") or []
@@ -1156,6 +1798,21 @@ def validate_runtime_receipt_source_bindings(
             runtime["familyIdentitySha256"] == source["identitySha256"]
             and runtime["evaluatorId"] == source["evaluator"]["evaluatorId"],
             "runtime family identity is not source-bound",
+        )
+        expressions = expressions_by_base.get(
+            source["rawEvidence"]["baseMaterialEvidenceId"]
+        ) or []
+        require(expressions, "runtime family raw expression evidence is missing")
+        expected_mask, expected_evidence = classify_family_features(expressions)
+        expected_projection = family_expression_projection(expressions)
+        require(
+            runtime["featureMask"] == expected_mask
+            and runtime["features"] == feature_names(expected_mask)
+            and runtime["featureEvidence"] == expected_evidence
+            and runtime["rawExpressionCount"] == len(expected_projection)
+            and runtime["rawExpressionProjectionSha256"]
+            == canonical_sha256(expected_projection),
+            "runtime family feature mask is not raw-expression-bound",
         )
 
     source_recipes = {
@@ -1172,58 +1829,40 @@ def validate_runtime_receipt_source_bindings(
             and runtime["familyId"] == source["arithmeticFamilyId"],
             "runtime recipe identity is not source-bound",
         )
-        expected_inputs: dict[str, dict[str, Any]] = {}
+        expected_inputs: list[dict[str, Any]] = []
         for section in (
             "scalarOverrides",
             "vectorOverrides",
             "textureOverrides",
             "parentDefaults",
         ):
-            for field in (source.get("inputs") or {}).get(section) or []:
-                typed_value = normalize_typed_value(field)
-                expected_inputs[field["fieldId"]] = {
-                    "fieldId": field["fieldId"],
-                    "fieldKind": str(field["fieldKind"]).casefold(),
-                    "bindingRole": classify_binding_role(field),
-                    "bindingOrigin": field["bindingOrigin"],
-                    "parameterName": field["parameterName"],
-                    "normalizedParameterName": field["normalizedParameterName"],
-                    "typedValue": typed_value,
-                    "typedValueSha256": canonical_sha256(typed_value),
-                    "sourceFieldValueSha256": canonical_sha256(field.get("value")),
-                    "sourceLineageSha256": field["provenance"]["lineageSha256"],
-                }
+            for source_index, field in enumerate(
+                (source.get("inputs") or {}).get(section) or []
+            ):
+                expected_inputs.append(
+                    build_ordered_input_binding(
+                        source["recipeId"], section, source_index, field
+                    )
+                )
         runtime_inputs = runtime.get("orderedInputBindings") or []
         require(
-            len(runtime_inputs) == len(expected_inputs)
-            and all(
-                expected_inputs.get(field["fieldId"]) == field
-                for field in runtime_inputs
-            ),
+            runtime_inputs == expected_inputs,
             "runtime typed input is not source-bound",
         )
 
-        expected_switches: dict[str, dict[str, Any]] = {}
+        expected_switches: list[dict[str, Any]] = []
         for section in ("selectedParameters", "parentDefaults"):
-            for field in (source.get("staticPermutation") or {}).get(section) or []:
-                typed_value = normalize_typed_value(field)
-                expected_switches[field["fieldId"]] = {
-                    "fieldId": field["fieldId"],
-                    "parameterName": field["parameterName"],
-                    "normalizedParameterName": field["normalizedParameterName"],
-                    "bindingOrigin": field["bindingOrigin"],
-                    "typedValue": typed_value,
-                    "typedValueSha256": canonical_sha256(typed_value),
-                    "sourceFieldValueSha256": canonical_sha256(field.get("value")),
-                    "sourceLineageSha256": field["provenance"]["lineageSha256"],
-                }
+            for source_index, field in enumerate(
+                (source.get("staticPermutation") or {}).get(section) or []
+            ):
+                expected_switches.append(
+                    build_ordered_static_binding(
+                        source["recipeId"], section, source_index, field
+                    )
+                )
         runtime_switches = runtime.get("orderedStaticSwitchBindings") or []
         require(
-            len(runtime_switches) == len(expected_switches)
-            and all(
-                expected_switches.get(field["fieldId"]) == field
-                for field in runtime_switches
-            ),
+            runtime_switches == expected_switches,
             "runtime static switch is not source-bound",
         )
 
@@ -1254,6 +1893,10 @@ def validate_runtime_receipt_source_bindings(
         row["occurrenceId"]: row
         for row in material_contract.get("occurrences") or []
     }
+    runtime_recipe_bindings = {
+        row["recipeId"]: row
+        for row in receipt.get("materialRecipeBindings") or []
+    }
     for runtime in receipt.get("occurrenceBindings") or []:
         source = source_occurrences.get(runtime["occurrenceId"])
         require(source is not None, "runtime occurrence is absent from Material contract")
@@ -1264,12 +1907,72 @@ def validate_runtime_receipt_source_bindings(
             and runtime["materialRecipeId"] == source["materialRecipeId"],
             "runtime occurrence identity is not source-bound",
         )
+        binding = runtime_recipe_bindings.get(runtime["materialRecipeId"])
+        require(
+            binding is not None
+            and runtime["materialBindingSha256"] == binding["bindingSha256"]
+            and runtime["evaluatorId"] == binding["evaluatorId"]
+            and runtime["evaluatorVersion"] == binding["evaluatorVersion"],
+            "runtime occurrence exact recipe binding is not source-bound",
+        )
+
+    expected_matrices = build_material_feasibility_matrices(
+        material_contract,
+        shader_receipt,
+        receipt.get("warpStateProviderVerification"),
+    )
+    require(
+        receipt.get("materialFeasibilityMatrices") == expected_matrices,
+        "Material feasibility matrices are not source-bound",
+    )
+
+
+def validate_runtime_receipt_tracked_sources(
+    receipt: dict[str, Any],
+    material_contract_path: Path,
+    render_receipt_path: Path,
+    shader_receipt_path: Path,
+    hlsl_path: Path,
+) -> None:
+    source = receipt.get("sourceEvidence") or {}
+    material_contract = read_json(material_contract_path)
+    render_receipt = read_json(render_receipt_path)
+    shader_receipt = read_json(shader_receipt_path)
+    require(
+        source.get("materialContractSha256")
+        == material_contract.get("contractSha256")
+        and source.get("renderReceiptSha256")
+        == render_receipt.get("receiptSha256")
+        and source.get("shaderCacheReceiptSha256")
+        == shader_receipt.get("receiptSha256"),
+        "Material oracle checked source identity changed",
+    )
+    tracked_sources = {
+        "materialContractTrackedTextSha256": material_contract_path,
+        "renderReceiptTrackedTextSha256": render_receipt_path,
+        "shaderCacheReceiptTrackedTextSha256": shader_receipt_path,
+        "hlslTrackedTextSha256": hlsl_path,
+        "generatorTrackedTextSha256": GENERATOR_PATH,
+        "materialContractBuilderTrackedTextSha256": MATERIAL_CONTRACT_BUILDER_PATH,
+        "shaderCacheOracleTrackedTextSha256": SHADER_CACHE_ORACLE_PATH,
+        "ue3PackageParserTrackedTextSha256": UE3_PACKAGE_PARSER_PATH,
+        "hlslVerifierTrackedTextSha256": HLSL_VERIFIER_PATH,
+    }
+    for key, path in tracked_sources.items():
+        require(
+            source.get(key) == tracked_text_sha256(path),
+            f"Material oracle tracked source changed: {key}",
+        )
 
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    temporary.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     temporary.replace(path)
 
 
@@ -1289,9 +1992,13 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
         source_archive,
     )
     if args.run_hlsl:
-        from verify_artist_31470_material_runtime_oracle_hlsl import run_hlsl_oracle
+        from verify_artist_31470_material_runtime_oracle_hlsl import (
+            run_hlsl_oracle,
+            run_warp_state_provider_oracle,
+        )
 
         hlsl_verification = run_hlsl_oracle(initial, args.hlsl, args.d3dcompiler)
+        warp_state_verification = run_warp_state_provider_oracle()
         return build_receipt(
             material_contract,
             render_receipt,
@@ -1302,6 +2009,7 @@ def build_from_paths(args: argparse.Namespace) -> dict[str, Any]:
             args.hlsl,
             source_archive,
             hlsl_verification,
+            warp_state_verification,
         )
     return initial
 
@@ -1326,29 +2034,37 @@ def main(argv: Iterable[str] | None = None) -> int:
     if args.shallow_check:
         receipt = read_json(args.output)
         validate_runtime_receipt(receipt)
+        material_contract = read_json(args.material_contract)
+        render_receipt = read_json(args.render_receipt)
+        shader_receipt = read_json(args.shader_receipt)
         validate_runtime_receipt_source_bindings(
-            receipt, read_json(args.material_contract)
+            receipt,
+            material_contract,
+            render_receipt,
+            shader_receipt,
+            material_contract_path=args.material_contract,
+            render_receipt_path=args.render_receipt,
         )
-        tracked_sources = {
-            "hlslTrackedTextSha256": args.hlsl,
-            "generatorTrackedTextSha256": GENERATOR_PATH,
-            "materialContractBuilderTrackedTextSha256": MATERIAL_CONTRACT_BUILDER_PATH,
-            "shaderCacheOracleTrackedTextSha256": SHADER_CACHE_ORACLE_PATH,
-            "ue3PackageParserTrackedTextSha256": UE3_PACKAGE_PARSER_PATH,
-            "hlslVerifierTrackedTextSha256": HLSL_VERIFIER_PATH,
-        }
-        for key, path in tracked_sources.items():
-            require(
-                receipt["sourceEvidence"][key] == tracked_text_sha256(path),
-                f"Material oracle tracked source changed: {key}",
-            )
-        print("PASS: Artist F Material runtime oracle shallow family=23 recipe=27 occurrence=34 product=false")
+        validate_runtime_receipt_tracked_sources(
+            receipt,
+            args.material_contract,
+            args.render_receipt,
+            args.shader_receipt,
+            args.hlsl,
+        )
+        print(
+            "PASS: Artist F Material runtime oracle shallow "
+            "family=23 recipe=27 occurrence=34 feasibility=0/251 product=false"
+        )
         return 0
     candidate = build_from_paths(args)
     if args.check:
         require(args.output.is_file(), f"Material runtime oracle receipt is missing: {args.output}")
         require(read_json(args.output) == candidate, "Material runtime oracle receipt is stale")
-        print("PASS: Artist F Material runtime oracle deep family=23 recipe=27 occurrence=34 product=false")
+        print(
+            "PASS: Artist F Material runtime oracle deep "
+            "family=23 recipe=27 occurrence=34 feasibility=0/251 product=false"
+        )
         return 0
     write_json_atomic(args.output, candidate)
     print(f"wrote {args.output}")
