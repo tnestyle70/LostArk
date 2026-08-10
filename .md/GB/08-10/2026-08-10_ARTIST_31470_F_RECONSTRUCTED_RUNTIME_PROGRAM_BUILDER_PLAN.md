@@ -19,8 +19,10 @@ admission은 모두 false로 유지한다.
 - Material evidence/runtime: `cde8f3bddea2f9415f682b387d2705fd25794075`
 - Material reconstructed policy: `97597531215fa9c9873fe1be3ba8cd23db60031d`
 - Geometry binding/receipt: `0aca792819fdda3f541bb7cec7451c5ed93c6467`
-- Material runtime texture binding corrective: `fda3b5637847f9205915ad25ff02215424024b88`
-  (`materialTextureBindings` 72행 = resolved 68 + explicit unresolved 4)
+- Material runtime texture binding 72/72: `1a0b1a6834d562dac02db4f57dda54644d75695b`
+  (`materialTextureBindings` 72행 = runtime-cook 68 + exact-DDS deployment 4, unresolved 0)
+- exact-DDS transactional deployment: `01b8b8a8bace09a3576f116771daf4859aa485a3`
+  (13번째 Material receipt가 commit/tree/blob와 4개 deployment row를 transitively 결합)
 
 입력은 mutable worktree 파일이 아니라 Git commit/tree/blob ID로 읽는다. tracked JSON은 LF
 canonical text와 canonical JSON hash를 함께 보존하고, duplicate key, BOM, nonfinite 값을 거부한다.
@@ -56,8 +58,11 @@ exact key와 JSON type으로 검증한다. raw JSON bag이나 canonical JSON str
   exact join한다.
 - candidate Detail presentation 값은 `DIAGNOSTIC_ONLY_FORBIDDEN_CONSUMPTION`이다. ScreenPost, Light,
   Decal, Ribbon은 별도 typed adapter만 실행 권위 후보로 보존한다.
-- Material logical texture는 68 exact runtime asset과 4 explicit deployment-pending 행으로 나눈다.
-  unresolved 4와 R4 SRV consumer blocker를 유지하며 renderer slot 57행은 preview projection으로만 둔다.
+- Material logical texture 72행은 모두 `RESOLVED_EXACT_RUNTIME_ASSET`으로 정규화한다. 원본 receipt의
+  status는 runtime-cook 68과 reconstructed exact-DDS deployment 4로 분리해 보존하고, 후자의 proposal와
+  deployment row ID/SHA를 함께 보존한다. 해소된 unresolved/deployment-pending blocker만 제거하고
+  R4 SRV consumer blocker와 기존 sampler/source-fidelity blocker는 유지한다. renderer slot 57행은
+  preview projection으로만 둔다.
 - `sourceExact=false`, `runtimeExecution=false`, `product=false`를 재도출한다.
 
 ## 검증 계획
@@ -67,9 +72,11 @@ exact key와 JSON type으로 검증한다. raw JSON bag이나 canonical JSON str
 3. unknown semantic, owner/order/count, schedule, duration default, burst sentinel, seeded Lifetime,
    capability projection, approval 29/255/23/7, D3D 107/SRV 72, Geometry tuple/cache,
    unsafe resource path, runtime/Product flip 거부
-4. tracked LF/CRLF canonical equivalence
-5. focused ProjectAudit 등록과 실행
-6. JSON parse, `git diff --check`, 전체 ProjectAudit 결과 분리 기록
+4. 배포 4행 runtime asset 교환, status/basis/proposal/deployment row 위조·누락, 구 68+4 receipt A/B,
+   R4 blocker 공동 제거와 전체 canonical reseal 거부
+5. tracked LF/CRLF canonical equivalence
+6. focused ProjectAudit 등록과 실행
+7. JSON parse, `git diff --check`, 전체 ProjectAudit 결과 분리 기록
 
 ## 완료 조건
 

@@ -61,6 +61,14 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
         self.assertEqual(summary["geometryCarrierCount"], 7)
         self.assertEqual(summary["geometryUseCount"], 13)
         self.assertEqual(summary["sourceExactRowCount"], 0)
+        self.assertEqual(summary["resolvedMaterialTextureBindingCount"], 72)
+        self.assertNotIn(
+            "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED", self.program["blockerUnion"]
+        )
+        self.assertNotIn(
+            "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING", self.program["blockerUnion"]
+        )
+        self.assertIn("R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE", self.program["blockerUnion"])
         self.assertFalse(self.program["admission"]["runtimeExecution"])
         self.assertFalse(self.program["admission"]["product"])
 
@@ -388,18 +396,28 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
     def test_08_material_texture_receipt_projection_is_immutable(self) -> None:
         self.assertEqual(len(self.program["inputArtifacts"]), 13)
         self.assertEqual(
-            self.program["summary"]["resolvedMaterialTextureBindingCount"], 68
+            self.program["summary"]["resolvedMaterialTextureBindingCount"], 72
         )
+        self.assertEqual(sum(
+            row["sourceReceiptStatus"] == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
+            for row in self.program["materialTextureBindings"]
+        ), 68)
+        self.assertEqual(sum(
+            row["sourceReceiptStatus"]
+            == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            for row in self.program["materialTextureBindings"]
+        ), 4)
 
-        def resolved_asset_swap(program):
-            resolved = [
+        def deployed_asset_swap(program):
+            deployed = [
                 i for i, row in enumerate(program["materialTextureBindings"])
-                if row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
+                if row["sourceReceiptStatus"]
+                == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
             ]
             left, right = next(
                 (left, right)
-                for left in resolved
-                for right in resolved
+                for left in deployed
+                for right in deployed
                 if left < right
                 and program["materialTextureBindings"][left]["runtimeAssetId"]
                 != program["materialTextureBindings"][right]["runtimeAssetId"]
@@ -421,19 +439,73 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             )
             return [("materialTextureBindings", index)]
 
-        def unresolved_promotion(program):
+        def deployed_status_and_basis_downgrade(program):
             index = next(
                 i for i, row in enumerate(program["materialTextureBindings"])
-                if row["resolutionStatus"] == "UNRESOLVED_RUNTIME_ASSET"
+                if row["sourceReceiptStatus"]
+                == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
             )
             row = program["materialTextureBindings"][index]
-            row["runtimeAssetId"] = "Effect/Artist/Textures/forged-provision.dds"
-            row["resolutionStatus"] = "RESOLVED_EXACT_RUNTIME_ASSET"
             row["bindingBasis"] = "EXACT_FULL_LOGICAL_PATH_RUNTIME_COOK_RECEIPT"
             row["sourceReceiptStatus"] = "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
             row["sourceProvisioningProposalId"] = ""
             row["sourceProvisioningProposalRowSha256"] = ""
-            row["blockers"] = ["R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"]
+            row["sourceDeploymentRowId"] = ""
+            row["sourceDeploymentRowSha256"] = ""
+            return [("materialTextureBindings", index)]
+
+        def deployed_proposal_and_row_forge(program):
+            index = next(
+                i for i, row in enumerate(program["materialTextureBindings"])
+                if row["sourceReceiptStatus"]
+                == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            )
+            row = program["materialTextureBindings"][index]
+            row["sourceProvisioningProposalId"] += ".forged"
+            row["sourceProvisioningProposalRowSha256"] = "1" * 64
+            row["sourceDeploymentRowId"] += ".forged"
+            row["sourceDeploymentRowSha256"] = "2" * 64
+            return [("materialTextureBindings", index)]
+
+        def deployment_evidence_omission(program):
+            index = next(
+                i for i, row in enumerate(program["materialTextureBindings"])
+                if row["sourceReceiptStatus"]
+                == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            )
+            row = program["materialTextureBindings"][index]
+            row["sourceDeploymentRowId"] = ""
+            row["sourceDeploymentRowSha256"] = ""
+            return [("materialTextureBindings", index)]
+
+        def old_unresolved_row_downgrade(program):
+            index = next(
+                i for i, row in enumerate(program["materialTextureBindings"])
+                if row["sourceReceiptStatus"]
+                == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            )
+            row = program["materialTextureBindings"][index]
+            row["runtimeAssetId"] = None
+            row["resolutionStatus"] = "UNRESOLVED_RUNTIME_ASSET"
+            row["bindingBasis"] = "EXACT_DDS_PROVISIONING_PENDING_NO_RUNTIME_ASSET"
+            row["sourceReceiptStatus"] = "UNRESOLVED_RUNTIME_ASSET"
+            row["sourceDeploymentRowId"] = ""
+            row["sourceDeploymentRowSha256"] = ""
+            row["blockers"] = [
+                "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED",
+                "EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING",
+                "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE",
+            ]
+            sections = {
+                section: program[section] for section in builder.SECTION_NAMES
+            }
+            program["blockerOwnership"] = (
+                builder.build_blocker_ownership_contract(sections)
+            )
+            program["blockerUnion"] = (
+                builder.derive_program_blockers_from_sections(sections)
+            )
+            program["admission"]["blockers"] = program["blockerUnion"]
             return [("materialTextureBindings", index)]
 
         def receipt_artifact_alias(program):
@@ -459,9 +531,35 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             ]
             return []
 
+        def old_68_4_receipt_authority(program):
+            index = next(
+                i for i, row in enumerate(program["inputArtifacts"])
+                if row["artifactId"] == "materialTextureBinding"
+            )
+            row = program["inputArtifacts"][index]
+            row.update({
+                "authorityCommitId": "fda3b5637847f9205915ad25ff02215424024b88",
+                "authorityTreeId": "2f00f00851ee93f498dd6c13d6a3055209d4d8c3",
+                "blobId": "3105c22a3c8e9b73b47b721ffab72d1254fc1750",
+                "versionValue": 1,
+                "trackedTextSha256": (
+                    "3a097a174df6b940989c7ce6c7b4e3b7798256d200cf73e25e694dc827e4346e"
+                ),
+                "canonicalJsonSha256": (
+                    "bd0abbb81cc6daa46f83f9ca8850512f597280c8df42fe5ee23b8e140720bcaf"
+                ),
+                "selfSha256": (
+                    "39c91577c09b853fa55a8fd5531c1cddc4fef928d77a6caa7f67c472a56159e0"
+                ),
+            })
+            return [("inputArtifacts", index)]
+
         for attack in (
-            resolved_asset_swap, safe_asset_substitution, unresolved_promotion,
+            deployed_asset_swap, safe_asset_substitution,
+            deployed_status_and_basis_downgrade, deployed_proposal_and_row_forge,
+            deployment_evidence_omission, old_unresolved_row_downgrade,
             receipt_artifact_alias, receipt_artifact_sha, receipt_artifact_omission,
+            old_68_4_receipt_authority,
         ):
             with self.subTest(attack=attack.__name__):
                 self._assert_invalid(attack)
@@ -577,6 +675,7 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             ("R5_SCREEN_POST_RUNTIME_PROBE_NOT_COMPLETE", 1, "screen"),
             ("R5_POINT_LIGHT_RUNTIME_PROBE_NOT_COMPLETE", 1, "light"),
             ("R5_DECAL_RUNTIME_PROBE_NOT_COMPLETE", 3, "decal"),
+            ("R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE", 72, "texture"),
         )
 
         for token, expected_count, owner_kind in cases:
@@ -609,6 +708,10 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
                     for index, row in enumerate(program["materialPolicyRows"]):
                         if remove_from(row, "evidenceBlockers"):
                             changed.add(("materialPolicyRows", index))
+                elif owner_kind == "texture":
+                    for index, row in enumerate(program["materialTextureBindings"]):
+                        if remove_from(row, "blockers"):
+                            changed.add(("materialTextureBindings", index))
                 else:
                     adapter_field = {
                         "screen": "screenPostAdapter",

@@ -50,6 +50,14 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
     $candidate = Get-Content -LiteralPath $candidatePath -Raw -Encoding UTF8 |
         ConvertFrom-Json
     $summary = $candidate.summary
+    $textureBindings = @($candidate.materialTextureBindings)
+    $cookTextureCount = @($textureBindings | Where-Object {
+            $_.sourceReceiptStatus -ceq 'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT'
+        }).Count
+    $deploymentTextureCount = @($textureBindings | Where-Object {
+            $_.sourceReceiptStatus -ceq
+                'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT'
+        }).Count
     if ($candidate.schema -cne 'lostark.artist-31470-reconstructed-runtime-program' -or
         [int]$candidate.formatVersion -ne 1 -or
         @($candidate.inputArtifacts).Count -ne 13 -or
@@ -68,7 +76,12 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
         [int]$summary.materialOccurrenceCount -ne 34 -or
         [int]$summary.materialPolicyCount -ne 255 -or
         [int]$summary.materialTextureBindingCount -ne 72 -or
-        [int]$summary.resolvedMaterialTextureBindingCount -ne 68 -or
+        [int]$summary.resolvedMaterialTextureBindingCount -ne 72 -or
+        $cookTextureCount -ne 68 -or
+        $deploymentTextureCount -ne 4 -or
+        @($textureBindings | Where-Object {
+                $_.resolutionStatus -cne 'RESOLVED_EXACT_RUNTIME_ASSET'
+            }).Count -ne 0 -or
         [int]$summary.rendererTextureResourceCount -ne 57 -or
         [int]$summary.geometryCarrierCount -ne 7 -or
         [int]$summary.geometryUseCount -ne 13 -or
@@ -76,6 +89,12 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
         [bool]$candidate.admission.sourceExact -or
         [bool]$candidate.admission.runtimeExecution -or
         [bool]$candidate.admission.product -or
+        @($candidate.blockerUnion) -contains
+            'MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED' -or
+        @($candidate.blockerUnion) -contains
+            'EXACT_DDS_TRANSACTIONAL_DEPLOYMENT_PENDING' -or
+        @($candidate.blockerUnion) -notcontains
+            'R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE' -or
         @($candidate.blockerUnion) -contains
             'DECAL_YAW_ONLY_CDO_DEFAULT_CAPABILITY_OUTPUT_CONFLICT' -or
         @($candidate.blockerUnion) -notcontains 'R5_DECAL_RUNTIME_PROBE_NOT_COMPLETE') {
@@ -85,7 +104,8 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
     Write-Output (
         'PASS: Artist F 31470 reconstructed runtime program tests=12 ' +
         'emitters=35 schedules=7 modules=399 properties=1434 leaves=1572 ' +
-        'distributions=629 material=23/27/34/255 textures=68/72+57 ' +
+        'distributions=629 material=23/27/34/255 ' +
+        'textures=72/72(68cook+4deployment)+57 ' +
         'geometry=7/13 sourceExact=0 runtime=false product=false')
 }
 finally {
