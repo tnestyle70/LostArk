@@ -197,6 +197,24 @@ try {
         [IO.File]::Move($renamedFixtureTarget, $renamedFixture)
     }
 
+    $caseRenamedFixture = Join-Path $suiteRoot 'corrupt_header.wmodel'
+    $caseRenamedFixtureTarget = Join-Path $suiteRoot 'corrupt_Header.wmodel'
+    $caseRenameStaging = Join-Path $suiteRoot 'case-rename-staging.tmp'
+    if (Test-Path -LiteralPath $caseRenameStaging) {
+        throw "Corrupt fixture case-rename staging path exists: $caseRenameStaging"
+    }
+    [IO.File]::Move($caseRenamedFixture, $caseRenameStaging)
+    [IO.File]::Move($caseRenameStaging, $caseRenamedFixtureTarget)
+    try {
+        & $executable $suiteRoot
+        Assert-ExactExitCode $LASTEXITCODE 1 `
+            'Case-only renamed required corrupt fixture'
+    }
+    finally {
+        [IO.File]::Move($caseRenamedFixtureTarget, $caseRenameStaging)
+        [IO.File]::Move($caseRenameStaging, $caseRenamedFixture)
+    }
+
     $emptyFixture = Join-Path $suiteRoot 'corrupt_bounds.wmodel'
     $emptyFixtureBytes = [IO.File]::ReadAllBytes($emptyFixture)
     [IO.File]::WriteAllBytes($emptyFixture, [byte[]]@())
