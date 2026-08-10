@@ -105,10 +105,21 @@ namespace
 		memcpy(destination.data(), pSource, destination.size());
 	}
 
-	bool_t NearlyEqual(f32_t left, f32_t right, f32_t absoluteTolerance = 1e-5f)
+	bool_t NearlyEqual(f32_t left, f32_t right,
+		f32_t relativeTolerance = 1e-5f,
+		f32_t absoluteTolerance = 1e-5f)
 	{
-		const f32_t scale = (max)(1.f, (max)(fabsf(left), fabsf(right)));
-		return fabsf(left - right) <= absoluteTolerance * scale;
+		if (!isfinite(left) || !isfinite(right) ||
+			!isfinite(relativeTolerance) || !isfinite(absoluteTolerance) ||
+			relativeTolerance < 0.f || absoluteTolerance < 0.f)
+			return false;
+
+		const f32_t difference = fabsf(left - right);
+		const f32_t scale = (max)(fabsf(left), fabsf(right));
+		const f32_t relativeBound = relativeTolerance * scale;
+		if (!isfinite(difference) || !isfinite(scale) || !isfinite(relativeBound))
+			return false;
+		return difference <= (max)(absoluteTolerance, relativeBound);
 	}
 
 	bool_t ValidateGeometryMetadata(
@@ -138,12 +149,13 @@ namespace
 			return false;
 		}
 
+		const f32_t reciprocalSourceScale = 1.f / source.sourceToWModelScale;
 		if (!isfinite(source.sourceToWModelScale) ||
 			!isfinite(source.geometryPreScale) ||
 			source.sourceToWModelScale <= 0.f ||
 			source.geometryPreScale <= 0.f ||
-			!NearlyEqual(
-				source.sourceToWModelScale * source.geometryPreScale, 1.f))
+			!isfinite(reciprocalSourceScale) || reciprocalSourceScale <= 0.f ||
+			!NearlyEqual(source.geometryPreScale, reciprocalSourceScale, 1e-6f, 0.f))
 		{
 			outError = "WMSH geometry metadata scale contract is invalid.";
 			return false;
@@ -153,9 +165,9 @@ namespace
 			source.payloadSha256,
 			source.sourceGltfSha256,
 			source.sourceBufferSetSha256,
-			source.sourcePackageSha256,
-			source.sourceObjectSha256,
-			source.legacyConverterSha256,
+			source.sourcePackageObservedUnboundSha256,
+			source.sourceObjectPathHash,
+			source.legacyConverterObservedUnboundSha256,
 			source.geometryToolSha256,
 			source.sourceExportReceiptSha256,
 			source.legacyCookReceiptSha256,
@@ -199,14 +211,16 @@ namespace
 		CopyDigest(destination.payloadSha256, source.payloadSha256);
 		CopyDigest(destination.sourceGltfSha256, source.sourceGltfSha256);
 		CopyDigest(destination.sourceBufferSetSha256, source.sourceBufferSetSha256);
-		CopyDigest(destination.sourcePackageSha256, source.sourcePackageSha256);
-		CopyDigest(destination.sourceObjectSha256, source.sourceObjectSha256);
-		CopyDigest(destination.legacyConverterSha256, source.legacyConverterSha256);
+		CopyDigest(destination.sourcePackageObservedUnboundSha256,
+			source.sourcePackageObservedUnboundSha256);
+		CopyDigest(destination.sourceObjectPathHash, source.sourceObjectPathHash);
+		CopyDigest(destination.legacyConverterObservedUnboundSha256,
+			source.legacyConverterObservedUnboundSha256);
 		CopyDigest(destination.geometryToolSha256, source.geometryToolSha256);
 		CopyDigest(destination.sourceExportReceiptSha256, source.sourceExportReceiptSha256);
 		CopyDigest(destination.legacyCookReceiptSha256, source.legacyCookReceiptSha256);
 		CopyDigest(destination.metadataSha256, source.metadataSha256);
-		CopyDigest(destination.provenanceSha256, source.metadataSha256);
+		CopyDigest(destination.metadataIdentitySha256, source.metadataSha256);
 		return true;
 	}
 
@@ -214,13 +228,16 @@ namespace
 	{
 		for (uint32_t axis = 0; axis < 3; ++axis)
 		{
+			const f32_t halfMinimum = 0.5f * bounds.minimum[axis];
+			const f32_t halfMaximum = 0.5f * bounds.maximum[axis];
+			const f32_t expectedCenter = halfMinimum + halfMaximum;
 			if (!isfinite(bounds.minimum[axis]) ||
 				!isfinite(bounds.maximum[axis]) ||
 				!isfinite(bounds.center[axis]) ||
+				!isfinite(halfMinimum) || !isfinite(halfMaximum) ||
+				!isfinite(expectedCenter) ||
 				bounds.minimum[axis] > bounds.maximum[axis] ||
-				!NearlyEqual(
-					bounds.center[axis],
-					0.5f * (bounds.minimum[axis] + bounds.maximum[axis])))
+				!NearlyEqual(bounds.center[axis], expectedCenter))
 				return false;
 		}
 		return isfinite(bounds.radius) && bounds.radius >= 0.f;
@@ -249,9 +266,17 @@ namespace
 				(&derivedMinimum.x)[axis] = (min)((&derivedMinimum.x)[axis], values[axis]);
 				(&derivedMaximum.x)[axis] = (max)((&derivedMaximum.x)[axis], values[axis]);
 				const f32_t delta = values[axis] - bounds.center[axis];
-				distanceSquared += delta * delta;
+				const f32_t squaredDelta = delta * delta;
+				const f32_t accumulatedDistance = distanceSquared + squaredDelta;
+				if (!isfinite(delta) || !isfinite(squaredDelta) ||
+					!isfinite(accumulatedDistance))
+					return false;
+				distanceSquared = accumulatedDistance;
 			}
-			derivedRadius = (max)(derivedRadius, sqrtf(distanceSquared));
+			const f32_t distance = sqrtf(distanceSquared);
+			if (!isfinite(distance))
+				return false;
+			derivedRadius = (max)(derivedRadius, distance);
 		}
 
 		for (uint32_t axis = 0; axis < 3; ++axis)
@@ -271,10 +296,24 @@ namespace
 			: fallback;
 	}
 
+	bool_t TryNormalizeGeometryBasis(vector_t value, vector_t& outNormalized)
+	{
+		const f32_t lengthSquared = XMVectorGetX(XMVector3LengthSq(value));
+		if (!isfinite(lengthSquared) || lengthSquared <= 1e-12f)
+			return false;
+
+		outNormalized = XMVector3Normalize(value);
+		float3_t normalized{};
+		XMStoreFloat3(&normalized, outNormalized);
+		return IsFinite3(normalized);
+	}
+
 	bool_t MakeStaticVertex(const uint8_t* pSource,
 		bool_t strictHandedness,
 		bool_t hasColor0,
-		VTXMESH& outVertex)
+		VTXMESH& outVertex,
+		f32_t& outTangentHandedness,
+		uint32_t& outColor0Rgba8)
 	{
 		memcpy(&outVertex.vPosition, pSource + 0, sizeof(float3_t));
 		memcpy(&outVertex.vNormal, pSource + 12, sizeof(float3_t));
@@ -288,15 +327,31 @@ namespace
 			!isfinite(outVertex.vTexcoord.y) || !isfinite(handedness) ||
 			(strictHandedness && !NearlyEqual(fabsf(handedness), 1.f, 1e-6f)))
 			return false;
-		outVertex.fTangentHandedness = handedness;
+		outTangentHandedness = handedness;
+		outColor0Rgba8 = {};
 		if (hasColor0)
-			memcpy(&outVertex.iColorRGBA8, pSource + STRIDE_STATIC, sizeof(uint32_t));
+			memcpy(&outColor0Rgba8, pSource + STRIDE_STATIC, sizeof(uint32_t));
 
-		const vector_t normal = SafeNormalize3(XMLoadFloat3(&outVertex.vNormal), XMVectorSet(0.f, 1.f, 0.f, 0.f));
-		const vector_t tangent = SafeNormalize3(XMLoadFloat3(&outVertex.vTangent), XMVectorSet(1.f, 0.f, 0.f, 0.f));
-		const vector_t binormal = XMVectorScale(
-			SafeNormalize3(XMVector3Cross(normal, tangent), XMVectorSet(0.f, 0.f, 1.f, 0.f)),
-			handedness);
+		vector_t normal{};
+		vector_t tangent{};
+		vector_t unitBinormal{};
+		if (strictHandedness)
+		{
+			if (!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vNormal), normal) ||
+				!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vTangent), tangent) ||
+				!TryNormalizeGeometryBasis(XMVector3Cross(normal, tangent), unitBinormal))
+				return false;
+		}
+		else
+		{
+			normal = SafeNormalize3(
+				XMLoadFloat3(&outVertex.vNormal), XMVectorSet(0.f, 1.f, 0.f, 0.f));
+			tangent = SafeNormalize3(
+				XMLoadFloat3(&outVertex.vTangent), XMVectorSet(1.f, 0.f, 0.f, 0.f));
+			unitBinormal = SafeNormalize3(
+				XMVector3Cross(normal, tangent), XMVectorSet(0.f, 0.f, 1.f, 0.f));
+		}
+		const vector_t binormal = XMVectorScale(unitBinormal, handedness);
 
 		XMStoreFloat3(&outVertex.vNormal, normal);
 		XMStoreFloat3(&outVertex.vTangent, tangent);
@@ -608,17 +663,29 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			else
 			{
 				mesh.vertices.resize(sourceMesh.vertexCount);
+				if (geometryContract)
+					mesh.tangentHandedness.resize(sourceMesh.vertexCount);
+				if (geometryContract && hasColor0)
+					mesh.color0Rgba8.resize(sourceMesh.vertexCount);
 				for (uint32_t i = 0; i < sourceMesh.vertexCount; ++i)
 				{
+					f32_t tangentHandedness = { 1.f };
+					uint32_t color0Rgba8 = {};
 					if (!MakeStaticVertex(
 						pVertices + static_cast<size_t>(i) * meshHeader.vertexStride,
 						geometryContract,
 						hasColor0,
-						mesh.vertices[i]))
+						mesh.vertices[i],
+						tangentHandedness,
+						color0Rgba8))
 					{
 						outReport.error = "A static vertex contains invalid geometry channel data.";
 						return false;
 					}
+					if (geometryContract)
+						mesh.tangentHandedness[i] = tangentHandedness;
+					if (geometryContract && hasColor0)
+						mesh.color0Rgba8[i] = color0Rgba8;
 				}
 
 				if (geometryContract)

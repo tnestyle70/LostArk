@@ -49,13 +49,16 @@ try {
         -Configuration $Configuration
 
     if ($DeepGeometryAudit) {
+        $decoderHarness = Join-Path $RepositoryRoot `
+            "Tools\WModelGeometryContractHarness\Bin\$Configuration\WModelGeometryContractHarness.exe"
         $required = @(
             $SourceMeshRoot,
             $RuntimeMeshRoot,
             $SourceExportReceipt,
             $LegacyCookReceipt,
             $SourcePackageRoot,
-            $LegacyConverter
+            $LegacyConverter,
+            $decoderHarness
         )
         if (@($required | Where-Object {
             [string]::IsNullOrWhiteSpace($_) -or
@@ -64,18 +67,32 @@ try {
             throw 'Deep geometry audit requires six explicit existing source paths.'
         }
 
-        & python -B `
-            'Tools\ModelAssetConverter\verify_artist_31470_wmodel_geometry_contract.py' `
-            '--source-root' $SourceMeshRoot `
-            '--runtime-mesh-root' $RuntimeMeshRoot `
-            '--source-manifest' `
-                'Data\Effects\Imported\Artist\Artist.resource-source-manifest.json' `
-            '--source-export-receipt' $SourceExportReceipt `
-            '--legacy-cook-receipt' $LegacyCookReceipt `
-            '--source-package-root' $SourcePackageRoot `
-            '--legacy-converter' $LegacyConverter
-        if ($LASTEXITCODE -ne 0) {
-            throw "Artist 31470 seven-carrier geometry oracle failed: $LASTEXITCODE"
+        $runtimeDirectories = @(
+            (Join-Path $RepositoryRoot "Engine\Bin\$Configuration"),
+            (Join-Path $RepositoryRoot 'Engine\ThirdPartyLib\FMOD\Bin'),
+            (Join-Path $RepositoryRoot "Engine\ThirdPartyLib\Assimp\Bin\$Configuration"),
+            (Join-Path $RepositoryRoot "Engine\ThirdPartyLib\PhysX\Bin\$Configuration")
+        )
+        $previousPath = $env:PATH
+        try {
+            $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
+            & python -B `
+                'Tools\ModelAssetConverter\verify_artist_31470_wmodel_geometry_contract.py' `
+                '--source-root' $SourceMeshRoot `
+                '--runtime-mesh-root' $RuntimeMeshRoot `
+                '--source-manifest' `
+                    'Data\Effects\Imported\Artist\Artist.resource-source-manifest.json' `
+                '--source-export-receipt' $SourceExportReceipt `
+                '--legacy-cook-receipt' $LegacyCookReceipt `
+                '--source-package-root' $SourcePackageRoot `
+                '--legacy-converter' $LegacyConverter `
+                '--decoder-harness' $decoderHarness
+            if ($LASTEXITCODE -ne 0) {
+                throw "Artist 31470 seven-carrier geometry oracle failed: $LASTEXITCODE"
+            }
+        }
+        finally {
+            $env:PATH = $previousPath
         }
     }
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,7 @@ from typing import Any
 from cook_wmodel_geometry_contract import (
     cook_wmodel_geometry_contract,
     load_json_object,
-    load_pinned_provenance,
+    load_geometry_provenance_evidence,
     verify_source_against_geometry_contract,
 )
 
@@ -41,6 +42,7 @@ def verify_artist_31470(
     legacy_cook_receipt_path: Path,
     source_package_root: Path,
     legacy_converter_path: Path,
+    decoder_harness_path: Path,
 ) -> dict[str, Any]:
     manifest, _ = load_json_object(source_manifest_path, "source manifest")
     manifest_assets = {
@@ -60,7 +62,7 @@ def verify_artist_31470(
             source_package = source_package_root / str(
                 manifest_row.get("physicalPackage", "")
             )
-            provenance, expected_gltf, expected_wmodel = load_pinned_provenance(
+            provenance, expected_gltf, expected_wmodel = load_geometry_provenance_evidence(
                 source_object,
                 source_gltf,
                 legacy_wmodel,
@@ -82,10 +84,26 @@ def verify_artist_31470(
             candidate = temporary_root / f"{name}.wmodel"
             candidate.write_bytes(output)
             oracle = verify_source_against_geometry_contract(source_gltf, candidate)
+            decoder_gate = subprocess.run(
+                [str(decoder_harness_path.resolve()), "--candidate", str(candidate)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            require(
+                decoder_gate.returncode == 0,
+                f"C++ WModelDecoder rejected {name}: "
+                + (decoder_gate.stdout + decoder_gate.stderr).strip(),
+            )
             require(
                 not cook_receipt["runtimeProductAdmission"]
                 and not oracle["productAdmission"],
                 f"geometry-only cook may not admit {name}",
+            )
+            require(
+                oracle["sourceToWModelScale"] == 100.0
+                and abs(oracle["geometryPreScale"] - 0.01) <= 1e-9,
+                f"Artist geometry scale contract differs for {name}",
             )
             rows.append(
                 {
@@ -95,6 +113,7 @@ def verify_artist_31470(
                     "candidateWModelSha256": cook_receipt["outputSha256"],
                     "hasColor0": cook_receipt["geometry"]["hasColor0"],
                     "productBlockers": cook_receipt["runtimeProductBlockers"],
+                    "cppDecoderGate": "SELF_CONSISTENT_UNAUTHENTICATED_PASS",
                     "oracle": oracle,
                 }
             )
@@ -151,7 +170,9 @@ def verify_artist_31470(
         "asymmetricBoundsFixtureCount": sum(
             bool(row["oracle"]["asymmetricBoundsFixture"]) for row in rows
         ),
-        "payloadIntegrityVerifiedCount": len(rows),
+        "selfConsistencyVerifiedCount": len(rows),
+        "externallyAuthenticatedPayloadIntegrityCount": 0,
+        "cppDecoderCandidateGateCount": len(rows),
         "sourceFidelityClosedCount": 0,
         "runtimeGeometryPreScaleConsumedCount": 0,
         "color0ShaderConsumedCount": 0,
@@ -197,6 +218,7 @@ def main() -> int:
     parser.add_argument("--legacy-cook-receipt", required=True, type=Path)
     parser.add_argument("--source-package-root", required=True, type=Path)
     parser.add_argument("--legacy-converter", required=True, type=Path)
+    parser.add_argument("--decoder-harness", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     receipt = verify_artist_31470(
@@ -207,6 +229,7 @@ def main() -> int:
         args.legacy_cook_receipt,
         args.source_package_root,
         args.legacy_converter,
+        args.decoder_harness,
     )
     content = json.dumps(receipt, ensure_ascii=False, indent=2) + "\n"
     if args.output is not None:
@@ -216,7 +239,8 @@ def main() -> int:
         "Artist 31470 WModel geometry contract: "
         f"carriers={receipt['carrierCount']} color0={receipt['color0CarrierCount']} "
         f"negativeW={receipt['negativeSourceTangentWCarrierCount']} "
-        "integrity=7 sourceFidelity=0 preScaleConsumed=0 product=false"
+        "selfConsistency=7 externallyAuthenticated=0 cppDecoder=7 "
+        "sourceFidelity=0 preScaleConsumed=0 product=false"
     )
     return 0
 

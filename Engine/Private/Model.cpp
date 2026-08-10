@@ -40,14 +40,14 @@ CModel::CModel(const CModel& Prototype)
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
-	, m_bHasIntegrityVerifiedGeometryPayload { Prototype.m_bHasIntegrityVerifiedGeometryPayload }
+	, m_bHasSelfConsistentUnauthenticatedGeometryMetadata { Prototype.m_bHasSelfConsistentUnauthenticatedGeometryMetadata }
 	, m_iGeometryFormatVersionMajor { Prototype.m_iGeometryFormatVersionMajor }
 	, m_iGeometryFormatVersionMinor { Prototype.m_iGeometryFormatVersionMinor }
 	, m_iGeometryChannelMask { Prototype.m_iGeometryChannelMask }
 	, m_iGeometryEvidenceFlags { Prototype.m_iGeometryEvidenceFlags }
 	, m_fGeometryPreScale { Prototype.m_fGeometryPreScale }
 	, m_GeometryPayloadSha256 { Prototype.m_GeometryPayloadSha256 }
-	, m_GeometryProvenanceSha256 { Prototype.m_GeometryProvenanceSha256 }
+	, m_GeometryMetadataIdentitySha256 { Prototype.m_GeometryMetadataIdentitySha256 }
 {
     for (auto& pPrototype : Prototype.m_Bones)
         m_Bones.push_back(pPrototype->Clone());
@@ -529,15 +529,16 @@ HRESULT CModel::Ready_BinaryModel(
 		return E_FAIL;
 	}
 
-	m_bHasIntegrityVerifiedGeometryPayload = asset.geometryMetadata.present;
+	m_bHasSelfConsistentUnauthenticatedGeometryMetadata =
+		asset.geometryMetadata.present;
 	m_iGeometryFormatVersionMajor = {};
 	m_iGeometryFormatVersionMinor = {};
 	m_iGeometryChannelMask = {};
 	m_iGeometryEvidenceFlags = {};
 	m_fGeometryPreScale = 1.f;
 	m_GeometryPayloadSha256.fill(0);
-	m_GeometryProvenanceSha256.fill(0);
-	if (m_bHasIntegrityVerifiedGeometryPayload)
+	m_GeometryMetadataIdentitySha256.fill(0);
+	if (m_bHasSelfConsistentUnauthenticatedGeometryMetadata)
 	{
 		m_iGeometryFormatVersionMajor = asset.geometryMetadata.versionMajor;
 		m_iGeometryFormatVersionMinor = asset.geometryMetadata.versionMinor;
@@ -545,7 +546,8 @@ HRESULT CModel::Ready_BinaryModel(
 		m_iGeometryEvidenceFlags = asset.geometryMetadata.evidenceFlags;
 		m_fGeometryPreScale = asset.geometryMetadata.geometryPreScale;
 		m_GeometryPayloadSha256 = asset.geometryMetadata.payloadSha256;
-		m_GeometryProvenanceSha256 = asset.geometryMetadata.provenanceSha256;
+		m_GeometryMetadataIdentitySha256 =
+			asset.geometryMetadata.metadataIdentitySha256;
 	}
 
 	if (FAILED(Ready_Bones(asset)) ||

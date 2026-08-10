@@ -3,6 +3,8 @@
 
 #include "Engine_Typedef.h"
 
+#include <cstddef>
+
 namespace Engine
 {
 	typedef struct tagEngineDesc
@@ -129,8 +131,6 @@ namespace Engine
 		XMFLOAT3			vTangent;
 		XMFLOAT3			vBinormal;
 		XMFLOAT2			vTexcoord;
-		FLOAT				fTangentHandedness = { 1.f };
-		uint32_t			iColorRGBA8 = {};
 
 		static constexpr uint32_t		iNumElements = { 5 };
 		static constexpr D3D11_INPUT_ELEMENT_DESC		Elements[] = {
@@ -141,6 +141,12 @@ namespace Engine
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 	}VTXMESH;
+	static_assert(sizeof(VTXMESH) == 56);
+	static_assert(offsetof(VTXMESH, vPosition) == 0);
+	static_assert(offsetof(VTXMESH, vNormal) == 12);
+	static_assert(offsetof(VTXMESH, vTangent) == 24);
+	static_assert(offsetof(VTXMESH, vBinormal) == 36);
+	static_assert(offsetof(VTXMESH, vTexcoord) == 48);
 
 	typedef struct tagVertexMeshInstance
 	{

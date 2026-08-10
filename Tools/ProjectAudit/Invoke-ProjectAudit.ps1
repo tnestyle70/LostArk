@@ -755,6 +755,25 @@ try {
 	Add-Check 'effect.artist-31470-source-contract' `
 		$artistSourceContractPassed `
 		$artistSourceContractDetail
+	$artistGeometryContractPassed = $false
+	$artistGeometryContractDetail = ''
+	try {
+		& '.\Tools\ProjectAudit\Test-Artist31470WModelGeometryContract.ps1' `
+			-Configuration Debug
+		$artistGeometryContractPassed = 0 -eq $LASTEXITCODE
+		$artistGeometryContractDetail = if ($artistGeometryContractPassed) {
+			'focused Debug cooker/EOL/decoder contract PASS'
+		}
+		else {
+			"focused Debug geometry audit exit=$LASTEXITCODE"
+		}
+	}
+	catch {
+		$artistGeometryContractDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-wmodel-geometry-contract' `
+		$artistGeometryContractPassed `
+		$artistGeometryContractDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'

@@ -4,7 +4,7 @@
 The bundled legacy converter remains the material/container producer.  This
 tool verifies that its static mesh is the same geometry revision as the source
 glTF, then replaces only the WMSH section with a versioned payload that keeps
-tangent handedness, optional COLOR_0, WModel-space bounds, and pinned hashes.
+tangent handedness, optional COLOR_0, WModel-space bounds, and role-labelled hashes.
 It never changes an input file in place.
 """
 
@@ -51,9 +51,9 @@ MGEF_COLOR0_PRESERVED_FROM_GLTF = 1 << 1
 MGEF_BOUNDS_WMODEL_SPACE = 1 << 2
 MGEF_SOURCE_GLTF_SHA256 = 1 << 3
 MGEF_SOURCE_BUFFER_SET_SHA256 = 1 << 4
-MGEF_SOURCE_PACKAGE_SHA256 = 1 << 5
-MGEF_SOURCE_OBJECT_SHA256 = 1 << 6
-MGEF_LEGACY_CONVERTER_SHA256 = 1 << 7
+MGEF_SOURCE_PACKAGE_OBSERVED_UNBOUND_SHA256 = 1 << 5
+MGEF_SOURCE_OBJECT_PATH_HASH_UNAUTHENTICATED = 1 << 6
+MGEF_LEGACY_CONVERTER_OBSERVED_UNBOUND_SHA256 = 1 << 7
 MGEF_GEOMETRY_TOOL_SHA256 = 1 << 8
 MGEF_SOURCE_EXPORT_RECEIPT_SHA256 = 1 << 9
 MGEF_LEGACY_COOK_RECEIPT_SHA256 = 1 << 10
@@ -65,9 +65,9 @@ MGEF_REQUIRED_PAYLOAD = (
     | MGEF_BOUNDS_WMODEL_SPACE
     | MGEF_SOURCE_GLTF_SHA256
     | MGEF_SOURCE_BUFFER_SET_SHA256
-    | MGEF_SOURCE_PACKAGE_SHA256
-    | MGEF_SOURCE_OBJECT_SHA256
-    | MGEF_LEGACY_CONVERTER_SHA256
+    | MGEF_SOURCE_PACKAGE_OBSERVED_UNBOUND_SHA256
+    | MGEF_SOURCE_OBJECT_PATH_HASH_UNAUTHENTICATED
+    | MGEF_LEGACY_CONVERTER_OBSERVED_UNBOUND_SHA256
     | MGEF_GEOMETRY_TOOL_SHA256
     | MGEF_SOURCE_EXPORT_RECEIPT_SHA256
     | MGEF_LEGACY_COOK_RECEIPT_SHA256
@@ -127,6 +127,37 @@ def load_json_object(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     return value, sha256_bytes(payload)
 
 
+def canonical_lf_utf8_bytes(payload: bytes, label: str) -> bytes:
+    text = payload.decode("utf-8")
+    require(not text.startswith("\ufeff"), f"{label} may not contain a UTF-8 BOM")
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
+def load_tracked_json_object(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
+    canonical_payload = canonical_lf_utf8_bytes(path.read_bytes(), label)
+    value = json.loads(canonical_payload.decode("utf-8"))
+    require(isinstance(value, dict), f"{label} root must be an object")
+    return value, sha256_bytes(canonical_payload)
+
+
+def correlate_legacy_manifest_raw_hash(
+    canonical_lf_payload: bytes, receipt_hash: str
+) -> str:
+    lf_digest = sha256_bytes(canonical_lf_payload).hex()
+    crlf_payload = canonical_lf_payload.replace(b"\n", b"\r\n")
+    crlf_digest = sha256_bytes(crlf_payload).hex()
+    normalized_receipt_hash = receipt_hash.casefold()
+    require(
+        normalized_receipt_hash in (lf_digest, crlf_digest),
+        "source export receipt legacy raw manifest SHA-256 does not match an LF/CRLF variant",
+    )
+    return (
+        "LEGACY_RAW_SHA256_MATCHES_CANONICAL_LF_VARIANT"
+        if normalized_receipt_hash == lf_digest
+        else "LEGACY_RAW_SHA256_MATCHES_CANONICAL_CRLF_VARIANT"
+    )
+
+
 def unique_row(rows: Iterable[Any], predicate: Any, label: str) -> dict[str, Any]:
     matches = [value for value in rows if isinstance(value, dict) and predicate(value)]
     require(len(matches) == 1, f"{label} must resolve exactly one row")
@@ -139,7 +170,7 @@ def path_ends_with(path: Path, logical_path: str) -> bool:
     )
 
 
-def load_pinned_provenance(
+def load_geometry_provenance_evidence(
     source_object: str,
     source_gltf: Path,
     legacy_wmodel: Path,
@@ -148,8 +179,12 @@ def load_pinned_provenance(
     legacy_cook_receipt_path: Path,
     source_package_path: Path,
     legacy_converter_path: Path,
-) -> tuple[Provenance, bytes, bytes]:
-    manifest, manifest_sha256 = load_json_object(
+) -> tuple[GeometryProvenanceEvidence, bytes, bytes]:
+    manifest_payload = source_manifest_path.read_bytes()
+    manifest_canonical_payload = canonical_lf_utf8_bytes(
+        manifest_payload, "source manifest"
+    )
+    manifest, manifest_canonical_sha256 = load_tracked_json_object(
         source_manifest_path, "source manifest"
     )
     export_receipt, export_receipt_sha256 = load_json_object(
@@ -159,9 +194,23 @@ def load_pinned_provenance(
         legacy_cook_receipt_path, "legacy cook receipt"
     )
     require(
-        str(export_receipt.get("sourceManifestSha256", "")).casefold()
-        == manifest_sha256.hex(),
-        "source export receipt does not pin the supplied source manifest",
+        manifest.get("schema") == "lostark.class-effect-resource-source-manifest"
+        and manifest.get("formatVersion") == 1,
+        "source manifest schema/version is unsupported",
+    )
+    require(
+        export_receipt.get("schema") == "lostark.effect-resource-export-receipt"
+        and export_receipt.get("formatVersion") == 1,
+        "source export receipt schema/version is unsupported",
+    )
+    require(
+        cook_receipt.get("schema") == "lostark.effect-runtime-resource-cook-receipt"
+        and cook_receipt.get("formatVersion") == 1,
+        "legacy cook receipt schema/version is unsupported",
+    )
+    manifest_hash_correlation = correlate_legacy_manifest_raw_hash(
+        manifest_canonical_payload,
+        str(export_receipt.get("sourceManifestSha256", "")),
     )
     manifest_row = unique_row(
         manifest.get("assets") or [],
@@ -174,8 +223,11 @@ def load_pinned_provenance(
         == str(manifest_row.get("physicalPackage", "")).casefold(),
         "source package does not match the source manifest",
     )
+    require(
+        source_package_path.is_file() and source_package_path.stat().st_size > 0,
+        "late-observed source package is empty",
+    )
     source_package_sha256 = sha256_file(source_package_path)
-    require(any(source_package_sha256), "source package SHA-256 is empty")
 
     export_row = unique_row(
         export_receipt.get("assets") or [],
@@ -247,13 +299,18 @@ def load_pinned_provenance(
         == legacy_wmodel_sha256.hex(),
         "legacy WModel does not match the cook receipt",
     )
+    require(
+        legacy_converter_path.is_file() and legacy_converter_path.stat().st_size > 0,
+        "current legacy converter identity is empty",
+    )
     legacy_converter_sha256 = sha256_file(legacy_converter_path)
-    require(any(legacy_converter_sha256), "legacy converter SHA-256 is empty")
     return (
-        Provenance(
+        GeometryProvenanceEvidence(
             source_object=source_object,
-            source_package_sha256=source_package_sha256,
-            legacy_converter_sha256=legacy_converter_sha256,
+            source_manifest_canonical_lf_sha256=manifest_canonical_sha256,
+            source_manifest_legacy_hash_correlation=manifest_hash_correlation,
+            source_package_observed_unbound_sha256=source_package_sha256,
+            legacy_converter_observed_unbound_sha256=legacy_converter_sha256,
             source_export_receipt_sha256=export_receipt_sha256,
             legacy_cook_receipt_sha256=cook_receipt_sha256,
         ),
@@ -274,6 +331,16 @@ def fixed_bytes(value: str, capacity: int) -> bytes:
 
 def f32(value: float) -> float:
     return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def checked_f32(value: float, label: str) -> float:
+    require(math.isfinite(value), f"{label} is non-finite")
+    try:
+        result = f32(value)
+    except (OverflowError, struct.error) as error:
+        raise ValueError(f"{label} exceeds float32") from error
+    require(math.isfinite(result), f"{label} is non-finite after float32 rounding")
+    return result
 
 
 def f32_rounding_error_bound(value: float) -> float:
@@ -332,10 +399,12 @@ def write_atomic(path: Path, value: bytes) -> None:
 
 
 @dataclass(frozen=True)
-class Provenance:
+class GeometryProvenanceEvidence:
     source_object: str
-    source_package_sha256: bytes
-    legacy_converter_sha256: bytes
+    source_manifest_canonical_lf_sha256: bytes
+    source_manifest_legacy_hash_correlation: str
+    source_package_observed_unbound_sha256: bytes
+    legacy_converter_observed_unbound_sha256: bytes
     source_export_receipt_sha256: bytes
     legacy_cook_receipt_sha256: bytes
 
@@ -399,6 +468,16 @@ def accessor_values(
         buffer_cache[buffer_index] = payload
     payload = buffer_cache[buffer_index]
 
+    view_offset = int(view.get("byteOffset", 0))
+    view_length = int(view.get("byteLength", -1))
+    require(
+        view_offset >= 0
+        and view_length >= 0
+        and view_offset <= len(payload)
+        and view_length <= len(payload) - view_offset,
+        "glTF bufferView exceeds its buffer",
+    )
+
     component_type = int(accessor.get("componentType", -1))
     value_type = str(accessor.get("type", ""))
     require(component_type in COMPONENT_FORMATS, "unsupported glTF component type")
@@ -410,12 +489,15 @@ def accessor_values(
     require(count >= 0, "glTF accessor count is invalid")
     stride = int(view.get("byteStride", value_size))
     require(stride >= value_size, "glTF accessor stride is invalid")
-    offset = int(view.get("byteOffset", 0)) + int(accessor.get("byteOffset", 0))
-    require(
-        offset >= 0
-        and (count == 0 or offset + (count - 1) * stride + value_size <= len(payload)),
-        "glTF accessor exceeds its buffer",
+    accessor_offset = int(accessor.get("byteOffset", 0))
+    relative_end = accessor_offset + (
+        0 if count == 0 else (count - 1) * stride + value_size
     )
+    require(
+        accessor_offset >= 0 and relative_end <= view_length,
+        "glTF accessor exceeds its bufferView",
+    )
+    offset = view_offset + accessor_offset
     unpacker = struct.Struct("<" + format_code * component_count)
     values = [unpacker.unpack_from(payload, offset + row * stride) for row in range(count)]
     evidence = {
@@ -426,6 +508,38 @@ def accessor_values(
         "count": count,
     }
     return values, evidence
+
+
+def require_nondegenerate_basis(
+    normal: tuple[float, float, float],
+    tangent: tuple[float, float, float],
+) -> None:
+    normal_length_squared = sum(value * value for value in normal)
+    tangent_length_squared = sum(value * value for value in tangent)
+    require(
+        math.isfinite(normal_length_squared)
+        and math.isfinite(tangent_length_squared)
+        and normal_length_squared > 1e-12
+        and tangent_length_squared > 1e-12,
+        "normal/tangent basis has a zero or non-finite axis",
+    )
+    normal_length = math.sqrt(normal_length_squared)
+    tangent_length = math.sqrt(tangent_length_squared)
+    normalized_normal = tuple(value / normal_length for value in normal)
+    normalized_tangent = tuple(value / tangent_length for value in tangent)
+    cross = (
+        normalized_normal[1] * normalized_tangent[2]
+        - normalized_normal[2] * normalized_tangent[1],
+        normalized_normal[2] * normalized_tangent[0]
+        - normalized_normal[0] * normalized_tangent[2],
+        normalized_normal[0] * normalized_tangent[1]
+        - normalized_normal[1] * normalized_tangent[0],
+    )
+    cross_length_squared = sum(value * value for value in cross)
+    require(
+        math.isfinite(cross_length_squared) and cross_length_squared > 1e-12,
+        "normal/tangent basis is parallel or degenerate",
+    )
 
 
 def node_is_identity(node: dict[str, Any]) -> bool:
@@ -473,6 +587,11 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
     gltf_bytes = path.read_bytes()
     document = json.loads(gltf_bytes.decode("utf-8"))
     require(isinstance(document, dict), "glTF root must be an object")
+    require(
+        isinstance(document.get("asset"), dict)
+        and document["asset"].get("version") == "2.0",
+        "glTF asset version must be 2.0",
+    )
     nodes = document.get("nodes") or []
     parents: dict[int, int] = {}
     for parent_index, node in enumerate(nodes):
@@ -548,6 +667,7 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                     and math.isclose(abs(tangent[3]), 1.0, abs_tol=1e-6),
                     "glTF contains an invalid vertex channel value",
                 )
+                require_nondegenerate_basis(normal, tangent[:3])
                 color = (
                     bytes(int(value) for value in decoded["COLOR_0"][index])
                     if has_color0
@@ -760,6 +880,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         "WModel 1.1 is not a canonical static package",
     )
     mesh_sections: list[bytes] = []
+    material_sections: list[bytes] = []
     table = FILE_HEADER.size + MODEL_HEADER.size
     require(
         table + model[1] * SECTION_DESC.size <= len(data),
@@ -780,20 +901,40 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         )
         expected_section_offset += size
         section_types.append(type_id)
+        section_payload = data[
+            FILE_HEADER.size + offset : FILE_HEADER.size + offset + size
+        ]
         if type_id == 1:
-            mesh_sections.append(
-                data[
-                    FILE_HEADER.size + offset :
-                    FILE_HEADER.size + offset + size
-                ]
-            )
+            mesh_sections.append(section_payload)
+        elif type_id == 2:
+            material_sections.append(section_payload)
     require(
         expected_section_offset == content_size,
         "WModel 1.1 contains trailing section payload",
     )
     require(
-        len(mesh_sections) == 1 and sorted(section_types) == [1, 2],
+        len(mesh_sections) == 1
+        and len(material_sections) == 1
+        and sorted(section_types) == [1, 2],
         "WModel 1.1 requires exactly one mesh and one material section",
+    )
+    material = material_sections[0]
+    require(
+        len(material) >= FILE_HEADER.size + 8,
+        "WModel 1.1 material section is truncated",
+    )
+    material_outer = FILE_HEADER.unpack_from(material, 0)
+    material_magic, material_count = struct.unpack_from(
+        "<4sI", material, FILE_HEADER.size
+    )
+    require(
+        material_outer[0] == b"WINT"
+        and material_outer[1] == WINT_VERSION_MAJOR
+        and material_outer[3] == 0
+        and material_outer[4] == len(material) - FILE_HEADER.size
+        and material_magic in (b"WMAT", b"WMA2")
+        and material_count <= MAX_MATERIALS,
+        "WModel 1.1 embedded material container is invalid",
     )
     mesh = mesh_sections[0]
     require(len(mesh) >= FILE_HEADER.size + MESH_HEADER.size + GEOMETRY_METADATA_SIZE, "WMSH 1.1 is truncated")
@@ -877,6 +1018,13 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
     require(offset + GEOMETRY_METADATA_SIZE == len(mesh), "WMSH 1.1 payload size is invalid")
     metadata = mesh[offset:]
     metadata_prefix = GEOMETRY_METADATA_PREFIX.unpack_from(metadata, 0)
+    source_scale = metadata_prefix[6]
+    geometry_pre_scale = metadata_prefix[7]
+    reciprocal_source_scale = (
+        1.0 / source_scale
+        if math.isfinite(source_scale) and source_scale > 0.0
+        else math.nan
+    )
     require(
         metadata_prefix[:3] == (b"WGEO", 1, 0)
         and metadata_prefix[3] == GEOMETRY_METADATA_SIZE
@@ -886,15 +1034,17 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         and metadata_prefix[4] & MGEF_PRODUCT_PROVENANCE == 0
         and bool(metadata_prefix[4] & MGEF_COLOR0_PRESERVED_FROM_GLTF)
         == has_color0
-        and math.isfinite(metadata_prefix[6])
-        and math.isfinite(metadata_prefix[7])
-        and metadata_prefix[6] > 0.0
-        and metadata_prefix[7] > 0.0
+        and math.isfinite(source_scale)
+        and math.isfinite(geometry_pre_scale)
+        and source_scale > 0.0
+        and geometry_pre_scale > 0.0
+        and math.isfinite(reciprocal_source_scale)
+        and reciprocal_source_scale > 0.0
         and math.isclose(
-            metadata_prefix[6] * metadata_prefix[7],
-            1.0,
+            geometry_pre_scale,
+            reciprocal_source_scale,
             rel_tol=1e-6,
-            abs_tol=1e-6,
+            abs_tol=0.0,
         ),
         "WMSH 1.1 metadata header is invalid",
     )
@@ -941,6 +1091,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
                 and math.isclose(abs(values[11]), 1.0, abs_tol=1e-6),
                 "WMSH 1.1 vertex channel or tangent W is invalid",
             )
+            require_nondegenerate_basis(values[3:6], values[8:11])
             color = raw[STRIDE_STATIC:STRIDE_STATIC_COLOR0] if has_color0 else None
             vertices.append({"values": values, "color0": color})
             vertex_bytes.extend(raw)
@@ -957,13 +1108,32 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         positions = [value["values"][:3] for value in vertices]
         minimum = tuple(min(value[axis] for value in positions) for axis in range(3))
         maximum = tuple(max(value[axis] for value in positions) for axis in range(3))
-        center = tuple(0.5 * (minimum[axis] + maximum[axis]) for axis in range(3))
-        radius = max(
-            math.sqrt(
-                sum((value[axis] - center[axis]) ** 2 for axis in range(3))
+        center = tuple(
+            checked_f32(
+                checked_f32(0.5 * minimum[axis], "bounds half minimum")
+                + checked_f32(0.5 * maximum[axis], "bounds half maximum"),
+                "bounds center",
             )
-            for value in positions
+            for axis in range(3)
         )
+        distances = []
+        for position in positions:
+            distance_squared = 0.0
+            for axis in range(3):
+                delta = checked_f32(
+                    position[axis] - center[axis], "bounds center delta"
+                )
+                squared_delta = checked_f32(
+                    delta * delta, "bounds squared center delta"
+                )
+                distance_squared = checked_f32(
+                    distance_squared + squared_delta,
+                    "bounds accumulated squared distance",
+                )
+            distance = math.sqrt(distance_squared)
+            require(math.isfinite(distance), "bounds radius intermediate is non-finite")
+            distances.append(distance)
+        radius = max(distances)
         require(
             all(math.isfinite(value) for value in bounds)
             and all(bounds[axis] <= bounds[axis + 3] for axis in range(3))
@@ -1000,7 +1170,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
         "payloadSha256": digests[0],
         "sourceGltfSha256": digests[1],
         "sourceBufferSetSha256": digests[2],
-        "provenanceSha256": digests[-1],
+        "metadataIdentitySha256": digests[-1],
         "submeshes": submeshes,
     }
 
@@ -1161,6 +1331,8 @@ def verify_source_against_geometry_contract(
     return {
         "sourceObjectGltfSha256": source_gltf_sha256.hex(),
         "wmodelSha256": sha256_file(geometry_wmodel).hex(),
+        "sourceToWModelScale": runtime["sourceToWModelScale"],
+        "geometryPreScale": runtime["geometryPreScale"],
         "submeshCount": len(runtime["submeshes"]),
         "vertexCount": total_vertices,
         "indexCount": total_indices,
@@ -1232,18 +1404,18 @@ def transform_source_vertex(vertex: dict[str, Any], scale: float) -> tuple[tuple
     uv0 = vertex["uv0"]
     tangent = vertex["tangent"]
     values = (
-        f32(position[0] * scale),
-        f32(position[1] * scale),
-        f32(-position[2] * scale),
-        f32(normal[0]),
-        f32(normal[1]),
-        f32(-normal[2]),
-        f32(uv0[0]),
-        f32(uv0[1]),
-        f32(tangent[0]),
-        f32(tangent[1]),
-        f32(-tangent[2]),
-        f32(-tangent[3]),
+        checked_f32(position[0] * scale, "transformed position X"),
+        checked_f32(position[1] * scale, "transformed position Y"),
+        checked_f32(-position[2] * scale, "transformed position Z"),
+        checked_f32(normal[0], "transformed normal X"),
+        checked_f32(normal[1], "transformed normal Y"),
+        checked_f32(-normal[2], "transformed normal Z"),
+        checked_f32(uv0[0], "transformed UV X"),
+        checked_f32(uv0[1], "transformed UV Y"),
+        checked_f32(tangent[0], "transformed tangent X"),
+        checked_f32(tangent[1], "transformed tangent Y"),
+        checked_f32(-tangent[2], "transformed tangent Z"),
+        checked_f32(-tangent[3], "transformed tangent W"),
     )
     verify_reflected_tangent_basis(
         tuple(float(value) for value in normal),
@@ -1323,16 +1495,34 @@ def build_submesh_payload(
 
     minimum = [min(values[axis] for values in target_vertices) for axis in range(3)]
     maximum = [max(values[axis] for values in target_vertices) for axis in range(3)]
-    center = [f32(0.5 * (minimum[axis] + maximum[axis])) for axis in range(3)]
-    radius = f32(
-        max(
-            math.sqrt(
-                sum((values[axis] - center[axis]) ** 2 for axis in range(3))
-            )
-            for values in target_vertices
+    center = [
+        checked_f32(
+            checked_f32(0.5 * minimum[axis], "bounds half minimum")
+            + checked_f32(0.5 * maximum[axis], "bounds half maximum"),
+            "bounds center",
         )
+        for axis in range(3)
+    ]
+    distances: list[float] = []
+    for values in target_vertices:
+        distance_squared = 0.0
+        for axis in range(3):
+            delta = checked_f32(values[axis] - center[axis], "bounds center delta")
+            squared_delta = checked_f32(
+                delta * delta, "bounds squared center delta"
+            )
+            distance_squared = checked_f32(
+                distance_squared + squared_delta,
+                "bounds accumulated squared distance",
+            )
+        distance = math.sqrt(distance_squared)
+        require(math.isfinite(distance), "bounds radius intermediate is non-finite")
+        distances.append(distance)
+    radius = checked_f32(max(distances), "bounds radius")
+    bounds = tuple(
+        checked_f32(value, "WModel-space bounds")
+        for value in (*minimum, *maximum, *center, radius)
     )
-    bounds = tuple(f32(value) for value in (*minimum, *maximum, *center, radius))
     return (
         bytes(vertex_blob),
         index_blob,
@@ -1350,7 +1540,7 @@ def build_geometry_metadata(
     payload: bytes,
     source_gltf_sha256: bytes,
     source_buffer_set_sha256: bytes,
-    provenance: Provenance,
+    provenance: GeometryProvenanceEvidence,
     source_to_wmodel_scale: float,
     geometry_pre_scale: float,
     has_color0: bool,
@@ -1373,9 +1563,9 @@ def build_geometry_metadata(
         sha256_bytes(payload),
         source_gltf_sha256,
         source_buffer_set_sha256,
-        provenance.source_package_sha256,
+        provenance.source_package_observed_unbound_sha256,
         sha256_bytes(provenance.source_object.encode("utf-8")),
-        provenance.legacy_converter_sha256,
+        provenance.legacy_converter_observed_unbound_sha256,
         geometry_tool_sha256,
         provenance.source_export_receipt_sha256,
         provenance.legacy_cook_receipt_sha256,
@@ -1389,7 +1579,7 @@ def build_geometry_metadata(
 def build_mesh_section(
     source_primitives: list[SourcePrimitive],
     legacy_submeshes: list[LegacySubmesh],
-    provenance: Provenance,
+    provenance: GeometryProvenanceEvidence,
     source_gltf_sha256: bytes,
     source_buffer_set_sha256: bytes,
     source_to_wmodel_scale: float,
@@ -1542,22 +1732,29 @@ def rebuild_wmodel(
 def cook_wmodel_geometry_contract(
     source_gltf: Path,
     legacy_wmodel: Path,
-    provenance: Provenance,
+    provenance: GeometryProvenanceEvidence,
     source_to_wmodel_scale: float = 100.0,
     geometry_pre_scale: float = 0.01,
     expected_source_gltf_sha256: bytes | None = None,
     expected_legacy_wmodel_sha256: bytes | None = None,
 ) -> tuple[bytes, dict[str, Any]]:
+    reciprocal_source_scale = (
+        1.0 / source_to_wmodel_scale
+        if math.isfinite(source_to_wmodel_scale) and source_to_wmodel_scale > 0.0
+        else math.nan
+    )
     require(
         math.isfinite(source_to_wmodel_scale)
         and math.isfinite(geometry_pre_scale)
         and source_to_wmodel_scale > 0.0
         and geometry_pre_scale > 0.0
+        and math.isfinite(reciprocal_source_scale)
+        and reciprocal_source_scale > 0.0
         and math.isclose(
-            source_to_wmodel_scale * geometry_pre_scale,
-            1.0,
+            geometry_pre_scale,
+            reciprocal_source_scale,
             rel_tol=1e-6,
-            abs_tol=1e-6,
+            abs_tol=0.0,
         ),
         "sourceToWModelScale and geometryPreScale must be finite positive inverses",
     )
@@ -1583,6 +1780,9 @@ def cook_wmodel_geometry_contract(
         "PIVOT_EXACT_UNRESOLVED",
         "UPK_TO_GLTF_EXACT_UNRESOLVED",
         "CLEAN_SOURCE_EXPORT_UNPROVEN",
+        "SOURCE_PACKAGE_OBSERVED_UNBOUND",
+        "SOURCE_OBJECT_PATH_HASH_UNAUTHENTICATED",
+        "LEGACY_CONVERTER_OBSERVED_UNBOUND",
         "LEGACY_CONVERTER_HISTORICAL_INVOCATION_UNPROVEN",
         "RUNTIME_RESOURCE_NOT_REPLACED",
         "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
@@ -1596,6 +1796,38 @@ def cook_wmodel_geometry_contract(
         "sourceGltf": str(source_gltf).replace("\\", "/"),
         "sourceGltfSha256": source_gltf_sha256.hex(),
         "sourceBufferSetSha256": source_buffer_set_sha256.hex(),
+        "provenanceEvidence": {
+            "sourceManifest": {
+                "hashRole": "TRACKED_CANONICAL_LF",
+                "canonicalLfSha256":
+                    provenance.source_manifest_canonical_lf_sha256.hex(),
+                "legacyReceiptCorrelation":
+                    provenance.source_manifest_legacy_hash_correlation,
+            },
+            "sourcePackage": {
+                "status": "OBSERVED_UNBOUND",
+                "sha256":
+                    provenance.source_package_observed_unbound_sha256.hex(),
+            },
+            "sourceObject": {
+                "status": "PATH_HASH_UNAUTHENTICATED",
+                "pathHashSha256":
+                    sha256_bytes(provenance.source_object.encode("utf-8")).hex(),
+            },
+            "legacyConverter": {
+                "status": "OBSERVED_UNBOUND",
+                "sha256":
+                    provenance.legacy_converter_observed_unbound_sha256.hex(),
+            },
+            "sourceExportReceipt": {
+                "status": "RAW_SHA256_CORRELATED_BY_LEGACY_COOK_RECEIPT",
+                "sha256": provenance.source_export_receipt_sha256.hex(),
+            },
+            "legacyCookReceipt": {
+                "status": "RAW_SHA256_OBSERVED_EXTERNAL_RECEIPT",
+                "sha256": provenance.legacy_cook_receipt_sha256.hex(),
+            },
+        },
         "legacyWModel": str(legacy_wmodel).replace("\\", "/"),
         "legacyWModelSha256": legacy_sha256.hex(),
         "sourceToWModelScale": source_to_wmodel_scale,
@@ -1631,7 +1863,7 @@ def main() -> int:
         provenance,
         expected_source_gltf_sha256,
         expected_legacy_wmodel_sha256,
-    ) = load_pinned_provenance(
+    ) = load_geometry_provenance_evidence(
         args.source_object,
         args.source_gltf,
         args.legacy_wmodel,

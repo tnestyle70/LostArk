@@ -35,9 +35,9 @@ enum MODEL_GEOMETRY_EVIDENCE_FLAG : uint32_t
 	MODEL_GEOMETRY_BOUNDS_WMODEL_SPACE = 1u << 2,
 	MODEL_GEOMETRY_SOURCE_GLTF_SHA256 = 1u << 3,
 	MODEL_GEOMETRY_SOURCE_BUFFER_SET_SHA256 = 1u << 4,
-	MODEL_GEOMETRY_SOURCE_PACKAGE_SHA256 = 1u << 5,
-	MODEL_GEOMETRY_SOURCE_OBJECT_SHA256 = 1u << 6,
-	MODEL_GEOMETRY_LEGACY_CONVERTER_SHA256 = 1u << 7,
+	MODEL_GEOMETRY_SOURCE_PACKAGE_OBSERVED_UNBOUND_SHA256 = 1u << 5,
+	MODEL_GEOMETRY_SOURCE_OBJECT_PATH_HASH_UNAUTHENTICATED = 1u << 6,
+	MODEL_GEOMETRY_LEGACY_CONVERTER_OBSERVED_UNBOUND_SHA256 = 1u << 7,
 	MODEL_GEOMETRY_TOOL_SHA256 = 1u << 8,
 	MODEL_GEOMETRY_SOURCE_EXPORT_RECEIPT_SHA256 = 1u << 9,
 	MODEL_GEOMETRY_LEGACY_COOK_RECEIPT_SHA256 = 1u << 10,
@@ -68,14 +68,14 @@ struct MODEL_GEOMETRY_METADATA_DATA
 	array<uint8_t, 32> payloadSha256 = {};
 	array<uint8_t, 32> sourceGltfSha256 = {};
 	array<uint8_t, 32> sourceBufferSetSha256 = {};
-	array<uint8_t, 32> sourcePackageSha256 = {};
-	array<uint8_t, 32> sourceObjectSha256 = {};
-	array<uint8_t, 32> legacyConverterSha256 = {};
+	array<uint8_t, 32> sourcePackageObservedUnboundSha256 = {};
+	array<uint8_t, 32> sourceObjectPathHash = {};
+	array<uint8_t, 32> legacyConverterObservedUnboundSha256 = {};
 	array<uint8_t, 32> geometryToolSha256 = {};
 	array<uint8_t, 32> sourceExportReceiptSha256 = {};
 	array<uint8_t, 32> legacyCookReceiptSha256 = {};
 	array<uint8_t, 32> metadataSha256 = {};
-	array<uint8_t, 32> provenanceSha256 = {};
+	array<uint8_t, 32> metadataIdentitySha256 = {};
 };
 
 struct MODEL_MESH_DATA
@@ -86,6 +86,8 @@ struct MODEL_MESH_DATA
 	vector<VTXMESH> vertices;
 	vector<VTXANIMMESH> skinnedVertices;
 	vector<uint32_t> indices;
+	vector<f32_t> tangentHandedness;
+	vector<uint32_t> color0Rgba8;
 	bool_t hasColor0 = { false };
 	MODEL_MESH_BOUNDS_DATA embeddedBounds;
 };

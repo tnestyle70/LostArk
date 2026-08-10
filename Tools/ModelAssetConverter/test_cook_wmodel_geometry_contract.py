@@ -22,10 +22,10 @@ from cook_wmodel_geometry_contract import (
     STRIDE_STATIC,
     SUBMESH_DESC,
     VF_STATIC_BASE,
-    Provenance,
+    GeometryProvenanceEvidence,
     cook_wmodel_geometry_contract,
     fixed_bytes,
-    load_pinned_provenance,
+    load_geometry_provenance_evidence,
     parse_geometry_wmodel,
     sha256_bytes,
     transform_source_vertex,
@@ -56,6 +56,15 @@ SOURCE_VERTICES: tuple[dict[str, Any], ...] = (
         "color0": bytes((0x99, 0xAA, 0xBB, 0xCC)),
     },
 )
+
+MESH_BONE_ENTRY = struct.Struct("<Q32si16fI16s")
+SKELETON_HEADER = struct.Struct("<4sIII4I")
+SKELETON_BONE = struct.Struct("<Q64si16fII27I")
+GLOBAL_ROOT = struct.Struct("<16f16I")
+ANIMATION_HEADER = struct.Struct("<4sIffIIB7s")
+ANIMATION_CHANNEL = struct.Struct("<QIIIIIIiI")
+VECTOR_KEY = struct.Struct("<f3f")
+QUATERNION_KEY = struct.Struct("<f4f")
 
 
 def _json_bytes(value: Any) -> bytes:
@@ -216,11 +225,141 @@ def _build_legacy_wmodel(path: Path) -> Path:
     return path
 
 
-def _provenance() -> Provenance:
-    return Provenance(
+def _identity_matrix() -> tuple[float, ...]:
+    return (
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    )
+
+
+def _build_legacy_static_multisubmesh(path: Path) -> Path:
+    transformed = [
+        transform_source_vertex(dict(row), 100.0)[0] for row in SOURCE_VERTICES
+    ]
+    one_vertex_block = b"".join(
+        struct.pack("<3f3f2f3ff", *values) for values in transformed
+    )
+    one_index_block = struct.pack("<3H", 0, 2, 1)
+    content = (
+        MESH_HEADER.pack(
+            b"WMSH", 2, 0, VF_STATIC_BASE, STRIDE_STATIC,
+            6, 6, 2, 1, b"\0\0\0",
+        )
+        + SUBMESH_DESC.pack(
+            0, 3, 0, 3, 0, 0x31470, fixed_bytes("legacy-static-a", 20)
+        )
+        + SUBMESH_DESC.pack(
+            len(one_vertex_block), 3, len(one_index_block), 3,
+            1, 0x31471, fixed_bytes("legacy-static-b", 20),
+        )
+        + one_vertex_block
+        + one_vertex_block
+        + one_index_block
+        + one_index_block
+        + BOUNDS_V1.pack(*([0.0] * 10))
+        + BOUNDS_V1.pack(*([0.0] * 10))
+    )
+    path.write_bytes(_wrap_wint(content))
+    return path
+
+
+def _fnv_skeleton_hash(bone_hashes: tuple[int, ...]) -> int:
+    value = 0xCBF29CE484222325
+    for bone_hash in bone_hashes:
+        value ^= bone_hash
+        value = (value * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return value
+
+
+def _build_legacy_skinned_fixture(root: Path) -> tuple[Path, Path, Path]:
+    root.mkdir(parents=True, exist_ok=True)
+    mesh_path = root / "legacy_skinned.wmesh"
+    skeleton_path = root / "legacy_skinned.wskel"
+    animation_path = root / "legacy_skinned.wanim"
+    bone_hash = 0xA31470
+    identity = _identity_matrix()
+
+    transformed = [
+        transform_source_vertex(dict(row), 100.0)[0] for row in SOURCE_VERTICES
+    ]
+    vertex_blob = b"".join(
+        struct.pack(
+            "<3f3f2f3f4I4f",
+            *values[:11],
+            0, 0, 0, 0,
+            1.0, 0.0, 0.0, 0.0,
+        )
+        for values in transformed
+    )
+    index_blob = struct.pack("<3H", 0, 2, 1)
+    mesh_content = (
+        MESH_HEADER.pack(
+            b"WMSH", 1, 1, VF_STATIC_BASE | (1 << 4), 76,
+            3, 3, 2, 1, b"\0\0\0",
+        )
+        + SUBMESH_DESC.pack(
+            0, 3, 0, 3, 0, 0x31472, fixed_bytes("legacy-skinned", 20)
+        )
+        + vertex_blob
+        + index_blob
+        + MESH_BONE_ENTRY.pack(
+            bone_hash,
+            fixed_bytes("root", 32),
+            -1,
+            *identity,
+            0,
+            bytes(16),
+        )
+        + BOUNDS_V1.pack(*([0.0] * 10))
+    )
+    mesh_path.write_bytes(_wrap_wint(mesh_content))
+
+    skeleton_content = (
+        SKELETON_HEADER.pack(b"WSKL", 1, 0, 0, 0, 0, 0, 0)
+        + SKELETON_BONE.pack(
+            bone_hash,
+            fixed_bytes("root", 64),
+            -1,
+            *identity,
+            0,
+            0,
+            *([0] * 27),
+        )
+        + GLOBAL_ROOT.pack(*identity, *([0] * 16))
+    )
+    skeleton_path.write_bytes(_wrap_wint(skeleton_content))
+
+    position_key = VECTOR_KEY.pack(0.0, 0.0, 0.0, 0.0)
+    rotation_key = QUATERNION_KEY.pack(0.0, 0.0, 0.0, 0.0, 1.0)
+    scale_key = VECTOR_KEY.pack(0.0, 1.0, 1.0, 1.0)
+    key_block = position_key + rotation_key + scale_key
+    animation_content = (
+        ANIMATION_HEADER.pack(b"WANM", 1, 1.0, 1.0, 3, 0, 1, bytes(7))
+        + ANIMATION_CHANNEL.pack(
+            bone_hash,
+            1, 0,
+            1, len(position_key),
+            1, len(position_key) + len(rotation_key),
+            0,
+            0,
+        )
+        + key_block
+        + struct.pack("<Q", _fnv_skeleton_hash((bone_hash,)))
+    )
+    animation_path.write_bytes(_wrap_wint(animation_content))
+    return mesh_path, skeleton_path, animation_path
+
+
+def _provenance() -> GeometryProvenanceEvidence:
+    return GeometryProvenanceEvidence(
         source_object="fixture.mesh",
-        source_package_sha256=sha256_bytes(b"fixture-package"),
-        legacy_converter_sha256=sha256_bytes(b"fixture-converter"),
+        source_manifest_canonical_lf_sha256=sha256_bytes(b"fixture-manifest\n"),
+        source_manifest_legacy_hash_correlation=
+            "LEGACY_RAW_SHA256_MATCHES_CANONICAL_LF_VARIANT",
+        source_package_observed_unbound_sha256=sha256_bytes(b"fixture-package"),
+        legacy_converter_observed_unbound_sha256=sha256_bytes(b"fixture-converter"),
         source_export_receipt_sha256=sha256_bytes(b"fixture-export-receipt"),
         legacy_cook_receipt_sha256=sha256_bytes(b"fixture-cook-receipt"),
     )
@@ -240,6 +379,7 @@ def _mesh_layout(value: bytes | bytearray) -> dict[str, int]:
     table = FILE_HEADER.size + MODEL_HEADER.size
     mesh_start = -1
     mesh_size = -1
+    material_start = -1
     for row in range(model[1]):
         type_id, _, offset, size, _ = SECTION_DESC.unpack_from(
             value, table + row * SECTION_DESC.size
@@ -247,8 +387,12 @@ def _mesh_layout(value: bytes | bytearray) -> dict[str, int]:
         if type_id == 1:
             mesh_start = FILE_HEADER.size + offset
             mesh_size = size
+        elif type_id == 2:
+            material_start = FILE_HEADER.size + offset
     if mesh_start < 0:
         raise ValueError("fixture WModel has no mesh section")
+    if material_start < 0:
+        raise ValueError("fixture WModel has no material section")
     mesh_header = mesh_start + FILE_HEADER.size
     header = MESH_HEADER.unpack_from(value, mesh_header)
     submesh_count = header[1]
@@ -262,6 +406,7 @@ def _mesh_layout(value: bytes | bytearray) -> dict[str, int]:
     metadata = mesh_start + mesh_size - GEOMETRY_METADATA_SIZE
     return {
         "meshStart": mesh_start,
+        "materialStart": material_start,
         "meshHeader": mesh_header,
         "vertices": vertices,
         "bounds": bounds,
@@ -323,6 +468,12 @@ def _corruptions(valid: bytes) -> dict[str, bytes]:
 
     value = bytearray(valid)
     layout = _mesh_layout(value)
+    material_magic = layout["materialStart"] + FILE_HEADER.size
+    value[material_magic : material_magic + 4] = b"BAD!"
+    result["corrupt_material_container.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
     struct.pack_into("<I", value, layout["meshHeader"] + 16, 49)
     result["corrupt_stride.wmodel"] = bytes(value)
 
@@ -353,6 +504,37 @@ def _corruptions(valid: bytes) -> dict[str, bytes]:
 
     value = bytearray(valid)
     layout = _mesh_layout(value)
+    struct.pack_into("<3f", value, layout["vertices"] + 12, 0.0, 0.0, 0.0)
+    _resign_geometry(value)
+    result["corrupt_zero_normal.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    struct.pack_into("<3f", value, layout["vertices"] + 32, 0.0, 0.0, 0.0)
+    _resign_geometry(value)
+    result["corrupt_zero_tangent.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    normal = struct.unpack_from("<3f", value, layout["vertices"] + 12)
+    struct.pack_into("<3f", value, layout["vertices"] + 32, *normal)
+    _resign_geometry(value)
+    result["corrupt_parallel_basis.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    struct.pack_into("<2f", value, layout["metadata"] + 20, 1e20, 1e20)
+    _resign_geometry(value)
+    result["corrupt_scale_overflow_pair.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    struct.pack_into("<2f", value, layout["metadata"] + 20, 100.0, 0.02)
+    _resign_geometry(value)
+    result["corrupt_scale_wrong_reciprocal.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
     value[layout["metadataDigests"]] ^= 0x80
     result["corrupt_payload_hash.wmodel"] = bytes(value)
 
@@ -380,6 +562,33 @@ def _corruptions(valid: bytes) -> dict[str, bytes]:
     struct.pack_into("<f", value, layout["bounds"], maximum_x + 1.0)
     _resign_geometry(value)
     result["corrupt_bounds_inverted.wmodel"] = bytes(value)
+
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    maximum_float32 = struct.unpack("<f", struct.pack("<I", 0x7F7FFFFF))[0]
+    struct.pack_into("<f", value, layout["vertices"], maximum_float32)
+    minimum = (100.0, 200.0, -800.0)
+    maximum = (maximum_float32, 600.0, -300.0)
+    center = tuple(
+        struct.unpack(
+            "<f",
+            struct.pack(
+                "<f", 0.5 * minimum[axis] + 0.5 * maximum[axis]
+            ),
+        )[0]
+        for axis in range(3)
+    )
+    struct.pack_into(
+        "<10f",
+        value,
+        layout["bounds"],
+        *minimum,
+        *maximum,
+        *center,
+        maximum_float32,
+    )
+    _resign_geometry(value)
+    result["corrupt_bounds_float_intermediate.wmodel"] = bytes(value)
 
     value = bytearray(valid)
     layout = _mesh_layout(value)
@@ -425,6 +634,16 @@ def write_harness_suite(output_root: Path) -> None:
     (output_root / "valid_no_color.wmodel").write_bytes(valid_no_color.read_bytes())
     legacy = output_root / "valid_color" / "valid_color.legacy.wmodel"
     (output_root / "legacy_v10.wmodel").write_bytes(legacy.read_bytes())
+    _build_legacy_static_multisubmesh(
+        output_root / "legacy_static_multisubmesh_bounds.wmesh"
+    )
+    _, valid_skeleton, valid_animation = _build_legacy_skinned_fixture(output_root)
+    corrupt_skeleton = bytearray(valid_skeleton.read_bytes())
+    corrupt_skeleton[FILE_HEADER.size : FILE_HEADER.size + 4] = b"BAD!"
+    (output_root / "corrupt_skeleton.wskel").write_bytes(corrupt_skeleton)
+    corrupt_animation = bytearray(valid_animation.read_bytes())
+    corrupt_animation[FILE_HEADER.size : FILE_HEADER.size + 4] = b"BAD!"
+    (output_root / "corrupt_animation.wanim").write_bytes(corrupt_animation)
     invalid_names = []
     for name, payload in _corruptions(valid_color.read_bytes()).items():
         (output_root / name).write_bytes(payload)
@@ -497,13 +716,30 @@ class WModelGeometryContractTests(unittest.TestCase):
     def test_corrupt_version_stride_channel_hash_bounds_and_metadata_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _, candidate, _ = _cook_fixture(root, "valid_color", True)
+            source, candidate, _ = _cook_fixture(root, "valid_color", True)
             for name, payload in _corruptions(candidate.read_bytes()).items():
                 with self.subTest(name=name):
                     with self.assertRaises(ValueError):
                         parse_geometry_wmodel(payload)
 
-    def test_pinned_provenance_correlates_actual_files_and_receipts(self) -> None:
+            legacy = root / "valid_color" / "valid_color.legacy.wmodel"
+            with self.assertRaisesRegex(ValueError, "finite positive inverses"):
+                cook_wmodel_geometry_contract(
+                    source, legacy, _provenance(), 1e20, 1e20
+                )
+            with self.assertRaisesRegex(ValueError, "finite positive inverses"):
+                cook_wmodel_geometry_contract(
+                    source, legacy, _provenance(), 100.0, 0.02
+                )
+
+            source_document = json.loads(source.read_text(encoding="utf-8"))
+            position_view = source_document["accessors"][0]["bufferView"]
+            source_document["bufferViews"][position_view]["byteLength"] = 1
+            source.write_bytes(_json_bytes(source_document))
+            with self.assertRaisesRegex(ValueError, "exceeds its bufferView"):
+                cook_wmodel_geometry_contract(source, legacy, _provenance())
+
+    def test_role_aware_provenance_and_manifest_eol_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = _write_source_gltf(root / "source", "fixture", True)
@@ -514,6 +750,8 @@ class WModelGeometryContractTests(unittest.TestCase):
             converter.write_bytes(b"fixture-converter")
             manifest_path = root / "source-manifest.json"
             manifest = {
+                "schema": "lostark.class-effect-resource-source-manifest",
+                "formatVersion": 1,
                 "assets": [
                     {
                         "sourceAssetPath": "fixture.mesh",
@@ -523,7 +761,8 @@ class WModelGeometryContractTests(unittest.TestCase):
                     }
                 ]
             }
-            manifest_path.write_bytes(_json_bytes(manifest))
+            canonical_manifest = _json_bytes(manifest)
+            manifest_path.write_bytes(canonical_manifest)
             export_receipt_path = root / "export-receipt.json"
             outputs = [
                 {
@@ -540,8 +779,10 @@ class WModelGeometryContractTests(unittest.TestCase):
                 },
             ]
             export_receipt = {
+                "schema": "lostark.effect-resource-export-receipt",
+                "formatVersion": 1,
                 "sourceManifestSha256": hashlib.sha256(
-                    manifest_path.read_bytes()
+                    canonical_manifest.replace(b"\n", b"\r\n")
                 ).hexdigest(),
                 "assets": [
                     {
@@ -555,6 +796,8 @@ class WModelGeometryContractTests(unittest.TestCase):
             export_receipt_path.write_bytes(_json_bytes(export_receipt))
             cook_receipt_path = root / "cook-receipt.json"
             cook_receipt = {
+                "schema": "lostark.effect-runtime-resource-cook-receipt",
+                "formatVersion": 1,
                 "sourceExportReceiptSha256": hashlib.sha256(
                     export_receipt_path.read_bytes()
                 ).hexdigest(),
@@ -573,7 +816,7 @@ class WModelGeometryContractTests(unittest.TestCase):
             }
             cook_receipt_path.write_bytes(_json_bytes(cook_receipt))
 
-            provenance, gltf_digest, wmodel_digest = load_pinned_provenance(
+            provenance, gltf_digest, wmodel_digest = load_geometry_provenance_evidence(
                 "fixture.mesh",
                 source,
                 legacy,
@@ -583,15 +826,165 @@ class WModelGeometryContractTests(unittest.TestCase):
                 package,
                 converter,
             )
-            self.assertEqual(provenance.source_package_sha256, sha256_bytes(package.read_bytes()))
+            self.assertEqual(
+                provenance.source_package_observed_unbound_sha256,
+                sha256_bytes(package.read_bytes()),
+            )
+            self.assertEqual(
+                provenance.source_manifest_legacy_hash_correlation,
+                "LEGACY_RAW_SHA256_MATCHES_CANONICAL_CRLF_VARIANT",
+            )
             self.assertEqual(gltf_digest, sha256_bytes(source.read_bytes()))
             self.assertEqual(wmodel_digest, sha256_bytes(legacy.read_bytes()))
+
+            lf_output, lf_receipt = cook_wmodel_geometry_contract(
+                source,
+                legacy,
+                provenance,
+                expected_source_gltf_sha256=gltf_digest,
+                expected_legacy_wmodel_sha256=wmodel_digest,
+            )
+            manifest_path.write_bytes(canonical_manifest.replace(b"\n", b"\r\n"))
+            crlf_provenance, crlf_gltf_digest, crlf_wmodel_digest = (
+                load_geometry_provenance_evidence(
+                    "fixture.mesh",
+                    source,
+                    legacy,
+                    manifest_path,
+                    export_receipt_path,
+                    cook_receipt_path,
+                    package,
+                    converter,
+                )
+            )
+            crlf_output, crlf_receipt = cook_wmodel_geometry_contract(
+                source,
+                legacy,
+                crlf_provenance,
+                expected_source_gltf_sha256=crlf_gltf_digest,
+                expected_legacy_wmodel_sha256=crlf_wmodel_digest,
+            )
+            self.assertEqual(
+                provenance.source_manifest_canonical_lf_sha256,
+                crlf_provenance.source_manifest_canonical_lf_sha256,
+            )
+            self.assertEqual(lf_output, crlf_output)
+            self.assertEqual(lf_receipt, crlf_receipt)
+
+            manifest_path.write_bytes(b"\xef\xbb\xbf" + canonical_manifest)
+            with self.assertRaisesRegex(ValueError, "UTF-8 BOM"):
+                load_geometry_provenance_evidence(
+                    "fixture.mesh",
+                    source,
+                    legacy,
+                    manifest_path,
+                    export_receipt_path,
+                    cook_receipt_path,
+                    package,
+                    converter,
+                )
+
+            semantic_manifest = dict(manifest)
+            semantic_manifest["semanticMutation"] = True
+            manifest_path.write_bytes(_json_bytes(semantic_manifest))
+            with self.assertRaisesRegex(ValueError, "legacy raw manifest SHA-256"):
+                load_geometry_provenance_evidence(
+                    "fixture.mesh",
+                    source,
+                    legacy,
+                    manifest_path,
+                    export_receipt_path,
+                    cook_receipt_path,
+                    package,
+                    converter,
+                )
+
+            manifest_path.write_bytes(canonical_manifest)
+            original_manifest = manifest_path.read_bytes()
+            original_export_receipt = export_receipt_path.read_bytes()
+            original_cook_receipt = cook_receipt_path.read_bytes()
+            invalid_receipts = (
+                (manifest_path, manifest, "formatVersion", 2, "source manifest"),
+                (
+                    export_receipt_path,
+                    export_receipt,
+                    "schema",
+                    "unsupported",
+                    "source export receipt",
+                ),
+                (
+                    cook_receipt_path,
+                    cook_receipt,
+                    "formatVersion",
+                    2,
+                    "legacy cook receipt",
+                ),
+            )
+            for invalid_path, source_value, field, invalid_value, label in invalid_receipts:
+                with self.subTest(invalid_receipt=label):
+                    invalid_document = dict(source_value)
+                    invalid_document[field] = invalid_value
+                    invalid_path.write_bytes(_json_bytes(invalid_document))
+                    with self.assertRaisesRegex(ValueError, "schema/version"):
+                        load_geometry_provenance_evidence(
+                            "fixture.mesh",
+                            source,
+                            legacy,
+                            manifest_path,
+                            export_receipt_path,
+                            cook_receipt_path,
+                            package,
+                            converter,
+                        )
+                    manifest_path.write_bytes(original_manifest)
+                    export_receipt_path.write_bytes(original_export_receipt)
+                    cook_receipt_path.write_bytes(original_cook_receipt)
+
+            package.write_bytes(package.read_bytes() + b"-late-mutation")
+            package_provenance, _, _ = load_geometry_provenance_evidence(
+                "fixture.mesh",
+                source,
+                legacy,
+                manifest_path,
+                export_receipt_path,
+                cook_receipt_path,
+                package,
+                converter,
+            )
+            package_output, package_receipt = cook_wmodel_geometry_contract(
+                source, legacy, package_provenance
+            )
+            self.assertNotEqual(lf_output, package_output)
+            self.assertEqual(
+                package_receipt["provenanceEvidence"]["sourcePackage"]["status"],
+                "OBSERVED_UNBOUND",
+            )
+
+            converter.write_bytes(converter.read_bytes() + b"-late-mutation")
+            converter_provenance, _, _ = load_geometry_provenance_evidence(
+                "fixture.mesh",
+                source,
+                legacy,
+                manifest_path,
+                export_receipt_path,
+                cook_receipt_path,
+                package,
+                converter,
+            )
+            converter_output, converter_receipt = cook_wmodel_geometry_contract(
+                source, legacy, converter_provenance
+            )
+            self.assertNotEqual(package_output, converter_output)
+            self.assertEqual(
+                converter_receipt["provenanceEvidence"]["legacyConverter"]["status"],
+                "OBSERVED_UNBOUND",
+            )
 
             mutated = source.read_bytes().replace(b'"2.0"', b'"2.1"', 1)
             self.assertEqual(len(mutated), source.stat().st_size)
             source.write_bytes(mutated)
             with self.assertRaisesRegex(ValueError, "glTF SHA-256"):
-                load_pinned_provenance(
+                load_geometry_provenance_evidence(
                     "fixture.mesh",
                     source,
                     legacy,
