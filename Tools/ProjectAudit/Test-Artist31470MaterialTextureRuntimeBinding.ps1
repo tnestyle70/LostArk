@@ -72,31 +72,32 @@ try {
     $resolvedBindings = @($bindings | Where-Object {
         $_.status -ceq 'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT'
     })
-    $unresolvedBindings = @($bindings | Where-Object {
-        $_.status -ceq 'UNRESOLVED_RUNTIME_ASSET'
+    $deploymentBindings = @($bindings | Where-Object {
+        $_.status -ceq 'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT'
     })
     $resolvedResources = @($resources | Where-Object {
         $_.status -ceq 'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT'
     })
-    $unresolvedResources = @($resources | Where-Object {
-        $_.status -ceq 'UNRESOLVED_RUNTIME_ASSET'
+    $deploymentResources = @($resources | Where-Object {
+        $_.status -ceq 'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT'
     })
     if ($receipt.schema -cne 'lostark.artist-31470-material-texture-runtime-binding-receipt' -or
-        [int]$receipt.formatVersion -ne 1 -or
+        $receipt.formatVersion.GetType().FullName -cne 'System.Int32' -or
+        [int]$receipt.formatVersion -ne 2 -or
         $receipt.characterClass -cne 'ARTIST' -or
         [int]$receipt.skillId -ne 31470 -or
         $receipt.inputSlot -cne 'F' -or
         $bindings.Count -ne 72 -or
         $resources.Count -ne 48 -or
         $resolvedBindings.Count -ne 68 -or
-        $unresolvedBindings.Count -ne 4 -or
+        $deploymentBindings.Count -ne 4 -or
         $resolvedResources.Count -ne 44 -or
-        $unresolvedResources.Count -ne 4 -or
+        $deploymentResources.Count -ne 4 -or
         $proposals.Count -ne 4 -or
         [int]$receipt.summary.materialOccurrenceLinkCount -ne 83 -or
         [int]$receipt.summary.sourcePackageBoundUniqueTextureCount -ne 45 -or
         [int]$receipt.summary.sourcePackageUnboundUniqueTextureCount -ne 3 -or
-        [bool]$receipt.admission.completeRuntimeBinding.ready -or
+        -not [bool]$receipt.admission.completeRuntimeBinding.ready -or
         [bool]$receipt.admission.rendererConsumer.ready -or
         [bool]$receipt.admission.product) {
         throw 'Artist F Material texture runtime binding denominator or fail-closed boundary changed.'
@@ -115,16 +116,16 @@ try {
     }
     foreach ($proposal in $proposals) {
         if ($proposal.policy -cne 'RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V1' -or
-            $proposal.deploymentStatus -cne 'PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED' -or
+            $proposal.deploymentStatus -cne 'COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT' -or
             [bool]$proposal.sourceExact -or
-            [bool]$proposal.runtimeAssetAdmission -or
+            -not [bool]$proposal.runtimeAssetAdmission -or
             [bool]$proposal.productAdmission) {
-            throw "Artist F Material texture proposal was promoted: $($proposal.proposalId)"
+            throw "Artist F Material texture deployment lineage changed: $($proposal.proposalId)"
         }
     }
 
     $mode = if ($DeepMaterialTextureBindingAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material texture runtime binding mode=$mode rows=68+4/72 unique=44+4/48 proposals=4 product=false"
+    Write-Output "PASS: Artist F 31470 Material texture runtime binding mode=$mode rows=68cook+4deployment/72 unique=44cook+4deployment/48 completedProposals=4 product=false"
 }
 finally {
     Pop-Location
