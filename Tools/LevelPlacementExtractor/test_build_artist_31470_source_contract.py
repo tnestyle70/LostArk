@@ -401,6 +401,7 @@ class Artist31470SourceContractTests(unittest.TestCase):
         for reference_id in (
             "distribution-target-000",
             "distribution-target-001",
+            "distribution-target-007",
             "distribution-target-009",
             "distribution-target-014",
         ):

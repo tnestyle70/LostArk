@@ -108,9 +108,10 @@ Playback/renderer, Effect Tool, Catalog/Publisher 구현은 바꾸지 않는다.
 3. package identity receipt pin, pinned payload decode, 현재 exact physical source package를
    각각 별도 축으로 기록한다. identity가 없는 external closure record와 current/recovery
    package는 `SOURCE_EXACT`로 승격하지 않는다.
-4. semantic-blocked distribution은 executable payload를 `UNRESOLVED` variant로 scrub하고,
-   admission gate가 payload reader보다 먼저 실패하게 한다. raw decoded evidence와 current
-   default evidence는 closure에 별도로 남긴다.
+4. semantic-blocked distribution은 admission gate가 payload reader보다 먼저 실패하게 하고
+   transport를 `UNRESOLVED` variant로 유지한다. transport의 inert numeric shape를 source 값이나
+   evaluator oracle로 소비하지 않으며 raw decoded evidence와 current default evidence는 closure에
+   별도 fidelity로 남긴다.
 5. v14 SourceRecipe에는 distribution별 fidelity/admission과 18개 local-reference binding,
    property blocker를 typed public field로 둔다. v13 field smuggling은 Codec이 거부한다.
 6. blocker token은 occurrence/property/module/element/receipt/registry/Product로 집합 포함
@@ -123,3 +124,41 @@ Playback/renderer, Effect Tool, Catalog/Publisher 구현은 바꾸지 않는다.
 검증은 production pure resolver/binder mutation test, generated round-trip, v13 rejection,
 source shallow/deep audit, JSON parse와 `git diff --check`로 닫는다. 사진, 스크린샷,
 Client 실행은 하지 않는다.
+
+## 2026-08-10 G01/G05-S code-only semantic closure checkpoint
+
+최종 candidate/receipt/registry/header를 다시 생성하기 전에 다음 pure code 경계를 먼저 고정한다.
+
+1. `artist_31470_source_semantic_closure.py`는 frozen input 다섯 개의 canonical SHA를 검증하고
+   35 selected LOD, 399 ordered module, 1,434 top-level property, 1,572 primitive leaf,
+   629 distribution을 stable occurrence ID로 열거한다.
+2. 모든 행은 `sourceFidelity`, `artifactBindingIntegrity`, `executionAdmission`,
+   `productAdmission`과 네 blocker set을 독립적으로 가진다. handler receipt와 독립 numeric
+   oracle이 없는 구조 decode를 `EXECUTION_CONSUMED`로 표기하지 않는다.
+3. 612 inline distribution과 17 local-reference occurrence는 510 stable definition/reference ID와
+   629 stable occurrence ID를 가진다. lookup/target이 없는 137행은 class-default 값을 0으로
+   만들지 않고 `DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED`로 차단한다.
+4. operation reconstruction 409행, lookup chunk/count reconstruction 각 257행, explicit random
+   operation 82행을 source field와 분리한다. reconstruction fidelity는 `RECONSTRUCTED_GRAPH`이며
+   numeric execution evidence는 계속 `UNVERIFIED`다.
+5. external native-tail 248, seed 14, Required local-space default 8, Decal 3, Ribbon 1,
+   ScreenPost 1, Light 1, selected-LOD Level/Enabled 70 field와 PointLight exact/current field를
+   dedicated row로 두고 첫 property에 blocker를 몰아넣지 않는다. LOD와 PointLight field의
+   실행 blocker는 module aggregate, opt-in coverage, compiled/receipt/registry admission까지
+   집합 포함으로 전파한다.
+6. raw `Module.strClassName`은 `exactSourceClass`에 그대로 저장한다. 승인 alias table은 비어
+   있으며 `efparticlemodule` prefix와 `_seeded` suffix를 자동 alias로 만들지 않는다.
+   따라서 26 module occurrence는 exact class 전용 handler/alias 근거가 생길 때까지 실행을 막는다.
+7. `verify_artist_31470_source_semantic_closure.py`는 builder를 import하지 않고 raw tree에서
+   분모, ID, class lineage, fidelity, family별 blocker axis/admission/integrity,
+   native/default/seed/Light 결정을 다시 계산한다. self hash를 다시 봉인한 axis 이동이나
+   fallback evaluator/oracle mutation도 거부한다.
+8. 기존 Source generator는 `--source-semantic-closure` opt-in에서 이 oracle을 먼저 실행하고,
+   temp candidate의 399 module coverage에 `exactSourceClass`와 `aliasId`를 모두 기록한다.
+   module coverage blocker는 검증된 artifact/execution axis 합집합을 보존한다. opt-in이 없는
+   checked-in `--check` 결과는 바꾸지 않는다.
+
+이 checkpoint의 합격 주장은 pure resolver/binder/oracle과 temp-output mutation PASS까지만이다.
+399/1,434/1,572/629 실행 consumption과 G05-S numeric reconstruction 완료는 주장하지 않는다.
+Geometry/Material Gate dependency를 결합하고 class-lineage Codec conflict를 해결한 뒤 Source owner가
+최종 네 output을 한 번만 재생성한다.

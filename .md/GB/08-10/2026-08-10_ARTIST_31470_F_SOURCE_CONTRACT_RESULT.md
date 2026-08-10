@@ -51,7 +51,7 @@ closure 완료 수치가 아니다.
 - seeded module 14 occurrence 중 8개는 opaque metadata, 5개는 seed-array-only,
   1개는 class-default unresolved다.
 - module coverage 399건은
-  `source_decoded 13 / deterministic_conversion 108 / metadata_only 2 / unresolved 276`이다.
+  `source_decoded 13 / deterministic_conversion 108 / metadata_only 4 / unresolved 274`이다.
 
 ### local distribution과 Light
 
@@ -103,7 +103,8 @@ active material identity는 28개다. Light builtin 1개를 제외한 27개는 �
   exact/current evidence 분리
 - distribution definition/occurrence에서 instance explicit -> nested archetype/template -> class
   CDO -> parent CDO hierarchy -> evaluator 순서의 field provenance
-- semantic-blocked distribution의 evaluator 입력 scrub와 admission-before-payload 검증
+- semantic-blocked distribution의 payload 비열람과 admission-before-payload 검증. inert transport
+  numeric shape는 source/evaluator evidence로 소비하지 않음
 - renderer type과 source space의 명시적 저장
 - source graph/closure/material/evidence/local-reference/geometry receipt SHA pin
 - selected LOD identity와 ordered module reference provenance
@@ -138,34 +139,104 @@ active material identity는 28개다. Light builtin 1개를 제외한 27개는 �
   glTF/bin 및 geometry generator 자체의 role-aware hash 검증은 별도 geometry commit의
   integration prerequisite다.
 
+## G01/G05-S code-only semantic closure checkpoint
+
+최종 checked-in Source output은 재생성하지 않았다. 대신 frozen input에서 temp semantic closure를
+생성하고 별도 oracle로 다시 계산하는 code-only 경계를 추가했다.
+
+### 분모와 결정
+
+- selected LOD default field: `70 UNRESOLVED` (`Level` 35 + `Enabled` 35)
+- ordered module: `399 UNRESOLVED`
+- top-level property: `1,434 UNRESOLVED`
+- primitive leaf: `1,572 UNRESOLVED`
+- distribution: `629 UNRESOLVED`
+- native-tail implicit slot: `151 VERIFIED_IRRELEVANT / 248 UNRESOLVED`
+- local distribution: `15 definition / 17 occurrence`, stable definition/reference/occurrence ID
+- 전체 distribution identity: `510 definition/reference / 629 occurrence`
+- PointLight: 1 definition/occurrence, exact child 5 field와 current-only 3 field 모두 실행
+  handler/oracle가 없어 `UNRESOLVED`
+- seed: `14 UNRESOLVED`
+- implicit default: `RequiredLocalSpace 8 / Decal 3 / Ribbon 1 / ScreenPost 1 / Light 1`
+- Product: `0/35`
+
+기존 `source_decoded`와 `deterministic_conversion`은 source/structural 상태이지 실행 consumption
+증거가 아니다. 현재 registry의 197 field rule과 32 class는 모두 `runtimeImplemented=false`이고
+opcode도 미할당이므로, handler receipt와 독립 numeric oracle 없이 `EXECUTION_CONSUMED`로
+승격하지 않았다. requested 399/1,434/1,572/629의 full consumption은 아직 BLOCK이다.
+
+### fail-closed 경계
+
+- lookup/target이 없는 137 inline distribution은 legacy zero recipe를 실행 근거로 쓰지 않는다.
+- operation reconstruction 409, lookup chunk/count reconstruction 각 257, explicit random operation
+  82를 field-level로 분리하고 reconstruction fidelity를 source exact와 합치지 않는다.
+- external module 248의 fidelity는 `CURRENT_REVISION_EVIDENCE`다. native-tail, seed, default를
+  닫아도 historical source fidelity로 자동 승격하지 않는다.
+- target000/001/007/009/014는 pre-payload rejection을 유지하며 target007 poison mutation을
+  production binder regression에 추가했다.
+- PointLight exact child에는 Brightness, 두 composite-shadow flag, LightGuid, LightMapGuid를
+  보존했다. Radius/Falloff/Color current default와 GUID/flag 실행 무관성을 추측하지 않는다.
+- selected-LOD Level/Enabled 실행 blocker 두 개는 semantic module과 opt-in coverage 399/399에
+  전파한다. PointLight binding과 8 field의 고유 실행 blocker 다섯 개도 Light module coverage,
+  compiled admission, element/global receipt와 registry까지 보존한다.
+- 네 blocker set, artifact binding integrity, execution admission, Product admission은 각 행에서
+  독립적으로 검증된다.
+- module axis 재분류 mutation은 oracle이 거부하고, opt-in Source coverage transport는 검증된
+  artifact/execution blocker 합집합을 보존한다.
+
+### class-lineage bridge
+
+Integration bridge `ccb60a519d1c9e2fb955652e862561b9b670438e`를 cherry-pick했다. Source
+semantic row와 opt-in temp candidate의 399 module coverage는 모두 raw class와 정확히 같은
+`exactSourceClass`와 `aliasId`를 가진다. 승인 alias table은 비어 있고 alias ID는 전부 empty다.
+`efparticlemodule` prefix 또는 `_seeded` suffix를 자동 표준 alias로 만들지 않았으며 이에 해당하는
+26 occurrence/12 exact class family는 exact handler/alias evidence가 생길 때까지 blocker를 유지한다.
+
+현 bridge Codec는 `normalizedClass == Normalize_SourceModuleClass(raw class)`를 계속 요구하면서
+empty alias mismatch도 허용한다. Source 규칙의 `normalizedClass=exactSourceClass.casefold()`와
+충돌하므로 final candidate Codec round-trip 전 Integration이 이 실제 conflict를 해결해야 한다.
+Source lane은 schema/Codec를 수정하지 않았다.
+
+이 checkpoint는 pure resolver/binder, independent oracle, temp-output generation과 mutation test
+PASS만 주장한다. G01의 consumed-or-irrelevant 종료, G05-S evaluator/numeric reconstruction,
+Gate 1 checked output regeneration은 아직 완료가 아니다.
+
 ## 산출물 identity
 
 아래 file SHA는 repo-tracked UTF-8 text의 LF canonical hash다.
 
 - candidate file SHA-256:
-  `b88a37f569c8bbbbab323e1c4257b26b11a95ff0e02456b77d54f1147fda3914`
+  `8dbcd0c871d0a9f1698e65093b90462bb4d0f95b246c3c8db629d7d24d89f599`
 - receipt file SHA-256:
-  `832fe22fae20568166c430dacfacc579fb60b5f53e685dfae6c3746e8dc44be6`
+  `90010f2d13799bca6e9531d582d98fc1bc759b494ba8f7473b2a4970be735b4b`
 - registry file SHA-256:
-  `bb59cbb547e6b6916c4a86f146a708e11e97cc3238d04126b8c4c15204d28014`
+  `599e9fa3940d2af9be0f61b1cf4b04ad2ed37e733e4cf289286c8599f66c9a44`
 - registry contract SHA-256:
-  `88d801cdb94064b981d6fd629406e4d999521be0356777f136e99171ef922b1d`
+  `698583c9d234f31b588c6a0d468106391d7affbd964e92d98ae5e7fc45041969`
 - generated header SHA-256:
-  `e6d971e550d7d8425e3d2699983d5dcc862eb04c6474f979f1718e46d951073f`
+  `33f6a0f654b0a1bbbe0f99f7cd2353a96c2ed89192e5f0143919ff0cceb8b9dc`
 
 ## 자동 검증
 
-- `Test-Artist31470SourceContract.ps1` shallow source slice: PASS
-- 같은 script의 `-DeepSourceAudit`: closure/evidence/contract `--check` PASS
-- focused source/extractor Python tests: 65/65 PASS
-- `Tools/LevelPlacementExtractor` 전체 discovery: 263/263 PASS
-- changed JSON parse: 5/5 PASS
-- ClientFrontendHarness Debug compile: PASS
-- ClientFrontendHarness Debug `--effect-source-contract`: 15/15 PASS
-- v14 serialize round-trip, v13/in-memory field smuggling, reference ID/order mutation,
-  admission-before-payload, evaluator scrub, blocker laundering 반례: PASS
+- code-only semantic closure temp write / deterministic `--check` / independent oracle:
+  `399 / 1,434 / 1,572 / 629`, Product `0/35`, PASS
+- focused semantic closure mutation suite: 38/38 PASS
+- `Test-Artist31470SourceContract.ps1` shallow Source slice: 90/90 PASS
+- `Tools/LevelPlacementExtractor` 전체 discovery: 304개 중 Source 포함 303 PASS,
+  소유 범위 밖 Material render-state receipt mismatch 1 ERROR
+- 전체 `Invoke-ProjectAudit.ps1`: `effect.artist-31470-source-contract` PASS. 전체 audit은
+  map/resource, G09, Material/Geometry prerequisite, WFX/authored rollout 등 소유 범위 밖 13개 실패
+- `-DeepSourceAudit`은 현재 세션에 필요한 외부 source path 7개가 제공되지 않아 실행하지 않았다.
+  대신 frozen input 다섯 개의 canonical SHA와 source/local self hash는 builder와 독립 oracle 양쪽에서
+  검증했다.
+- Integration bridge producer evidence: Debug/Release harness compile PASS, class-lineage audit 6/6,
+  기존 Source 52 PASS, Debug Client full build PASS. 현재 Source worktree에는 harness binary가 없어
+  같은 C++ audit을 재실행하지 않았다.
+- v14 opt-in class-lineage transport, stable ID/order, local raw-lineage, admission/integrity,
+  default/reconstruction/random-stream, PointLight, blocker-axis laundering 반례: PASS
 - Product publisher 지원 version: 5~12 유지
 - EffectCatalog candidate reference: 0
+- checked-in candidate/receipt/registry/header 변경: 0
 - `git diff --check`: PASS, line-ending warning만 존재
 
 빌드는 컴파일·링크 오류 확인에만 사용했다. 이미지, 스크린샷, GPU 화면 판정은 수행하지 않았다.

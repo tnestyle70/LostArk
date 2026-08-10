@@ -18,6 +18,9 @@ from effect_source_contract_io import (
     generated_text_matches,
     tracked_text_sha256,
 )
+from verify_artist_31470_source_semantic_closure import (
+    verify_semantic_closure as verify_source_semantic_closure,
+)
 
 
 PROFILE_ID = "ue3CascadeSourceContractV1"
@@ -691,6 +694,7 @@ def module_coverage(
     evidence: dict[str, Any],
     property_overlays: dict[tuple[str, str], dict[str, Any]],
     renderer_name: str,
+    semantic_modules: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     modules = recipe.get("modules", [])
@@ -699,6 +703,11 @@ def module_coverage(
         len(modules) == len(source_modules),
         f"source module order changed: {evidence['evidenceId']}",
     )
+    if semantic_modules is not None:
+        require(
+            len(semantic_modules) == len(source_modules),
+            f"semantic module order changed: {evidence['evidenceId']}",
+        )
     for module_order, (module, source_module) in enumerate(
         zip(modules, source_modules)
     ):
@@ -712,6 +721,48 @@ def module_coverage(
             ).casefold(),
             f"source module identity changed: {evidence['evidenceId']}[{module_order}]",
         )
+        semantic_module = (
+            semantic_modules[module_order]
+            if semantic_modules is not None
+            else None
+        )
+        if semantic_module is not None:
+            exact_source_class = str(
+                semantic_module.get("exactSourceClass") or ""
+            )
+            normalized = str(semantic_module.get("normalizedClass") or "")
+            alias_id = str(semantic_module.get("aliasId") or "")
+            alias_evidence_id = str(
+                semantic_module.get("aliasEvidenceId") or ""
+            )
+            require(
+                semantic_module.get("order") == module_order
+                and semantic_module.get("sourceObjectId")
+                == source_module["sourceObjectId"]
+                and semantic_module.get("sourceRecordSha256")
+                == source_module["sourceRecordSha256"]
+                and exact_source_class == source_module["sourceClass"]
+                and exact_source_class == module["className"],
+                f"semantic source class lineage changed: "
+                f"{evidence['evidenceId']}[{module_order}]",
+            )
+            if normalized != exact_source_class.casefold():
+                require(
+                    alias_id != "" and alias_evidence_id != "",
+                    f"unapproved source class alias: "
+                    f"{evidence['evidenceId']}[{module_order}]",
+                )
+            else:
+                require(
+                    alias_id == "" and alias_evidence_id == "",
+                    f"exact source class has an alias: "
+                    f"{evidence['evidenceId']}[{module_order}]",
+                )
+        else:
+            exact_source_class = ""
+            alias_id = ""
+            normalized = normalize_module_class(str(module.get("className") or ""))
+
         properties: list[dict[str, Any]] = []
         module_seed_blockers: list[str] = []
         seed_status = str(source_module["randomSeedStatus"])
@@ -721,7 +772,15 @@ def module_coverage(
             )
         if str(source_module["nativeTailStatus"]).startswith("UNRESOLVED"):
             module_seed_blockers.append("EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN")
-        normalized = normalize_module_class(str(module.get("className") or ""))
+        if semantic_module is not None:
+            module_seed_blockers.extend(
+                str(blocker)
+                for axis_name in (
+                    "artifactBindingBlockers",
+                    "executionBlockers",
+                )
+                for blocker in semantic_module.get(axis_name, [])
+            )
         literal_paths = {
             str(literal["propertyPath"]).casefold()
             for literal in module.get("literals", [])
@@ -798,7 +857,7 @@ def module_coverage(
             )
         properties.sort(key=lambda item: (item["propertyPath"], item["storage"]))
         module_seed_blockers = sorted(set(module_seed_blockers))
-        if module_seed_blockers and properties:
+        if module_seed_blockers and properties and semantic_module is None:
             properties[0]["blockers"] = sorted(
                 {*properties[0]["blockers"], *module_seed_blockers}
             )
@@ -817,15 +876,21 @@ def module_coverage(
                 ),
             }
         )
-        rows.append(
-            {
-                "moduleStableId": module["stableId"],
-                "normalizedClass": normalized,
-                "status": aggregate_coverage_status(properties, blockers),
-                "blockers": blockers,
-                "properties": properties,
-            }
-        )
+        row = {
+            "moduleStableId": module["stableId"],
+            "normalizedClass": normalized,
+            "status": (
+                "unresolved"
+                if semantic_module is not None
+                else aggregate_coverage_status(properties, blockers)
+            ),
+            "blockers": blockers,
+            "properties": properties,
+        }
+        if semantic_module is not None:
+            row["exactSourceClass"] = exact_source_class
+            row["aliasId"] = alias_id
+        rows.append(row)
     return rows
 
 
@@ -883,9 +948,15 @@ def build_registry(
 ) -> dict[str, Any]:
     classes: dict[str, dict[str, Any]] = {}
     for element in elements:
+        coverage_by_module = {
+            str(row["moduleStableId"]): row
+            for row in element["sourceRecipe"].get("moduleCoverage", [])
+        }
         for module in element["sourceRecipe"].get("modules", []):
             original_class = str(module.get("className") or "")
-            normalized = normalize_module_class(original_class)
+            coverage = coverage_by_module.get(str(module.get("stableId") or ""))
+            require(coverage is not None, "source module coverage is missing")
+            normalized = str(coverage.get("normalizedClass") or "")
             require(normalized != "", "source module class is empty")
             row = classes.setdefault(
                 normalized,
@@ -1156,6 +1227,7 @@ def build_source_contract(
     geometry_parity_path: Path,
     candidate_artifact_name: str,
     registry_artifact_name: str,
+    source_semantic_closure_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     source_receipt = load_json(source_receipt_path)
     action_recipe = load_json(action_cue_recipe_path)
@@ -1166,6 +1238,11 @@ def build_source_contract(
     source_evidence = load_json(source_evidence_path)
     local_reference_closure = load_json(local_reference_closure_path)
     geometry_parity = load_json(geometry_parity_path)
+    source_semantic_closure = (
+        load_json(source_semantic_closure_path)
+        if source_semantic_closure_path is not None
+        else None
+    )
 
     require(source_receipt.get("skillId") == 31470, "source receipt skill mismatch")
     require(source_receipt.get("inputSlot") == "R", "Imported receipt was modified")
@@ -1197,6 +1274,27 @@ def build_source_contract(
         require(
             expected == canonical_sha256(unsigned),
             f"linked source evidence self hash is invalid: {self_field}",
+        )
+    semantic_occurrence_by_evidence: dict[str, dict[str, Any]] = {}
+    if source_semantic_closure is not None:
+        verify_source_semantic_closure(
+            source_semantic_closure,
+            inventory,
+            graph,
+            module_closure,
+            source_evidence,
+            local_reference_closure,
+        )
+        semantic_occurrence_rows = source_semantic_closure["occurrences"]
+        semantic_occurrence_by_evidence = {
+            str(row["evidenceId"]): row
+            for row in semantic_occurrence_rows
+        }
+        require(
+            len(semantic_occurrence_rows)
+            == len(semantic_occurrence_by_evidence)
+            == 35,
+            "source semantic closure occurrence identity changed",
         )
 
     legacy, conversion = build_document(
@@ -1252,6 +1350,15 @@ def build_source_contract(
             and evidence["sourceEmitterPath"] == row["sourceEmitter"],
             f"source evidence occurrence join changed: {row['activeElementId']}",
         )
+        semantic_occurrence = (
+            semantic_occurrence_by_evidence.get(row["activeElementId"])
+            if source_semantic_closure is not None
+            else None
+        )
+        require(
+            source_semantic_closure is None or semantic_occurrence is not None,
+            f"source semantic occurrence is missing: {row['activeElementId']}",
+        )
 
         element["kind"] = kind
         element["renderer"] = {"type": runtime_type, "sourceSpace": source_space}
@@ -1293,6 +1400,11 @@ def build_source_contract(
             evidence,
             property_overlays,
             renderer_name,
+            (
+                list(semantic_occurrence["modules"])
+                if semantic_occurrence is not None
+                else None
+            ),
         )
         recipe["compilerEvidence"] = {
             "artifactFileSha256": tracked_text_sha256(source_evidence_path),
@@ -1523,6 +1635,15 @@ def build_source_contract(
             "selfSha256": geometry_parity["receiptSha256"],
         },
     }
+    if (
+        source_semantic_closure is not None
+        and source_semantic_closure_path is not None
+    ):
+        evidence_links["sourceSemanticClosure"] = {
+            "path": repository_path(source_semantic_closure_path),
+            "fileSha256": tracked_text_sha256(source_semantic_closure_path),
+            "selfSha256": source_semantic_closure["closureSha256"],
+        }
     registry = build_registry(elements, evidence_links)
     for element in elements:
         element["sourceRecipe"]["sourceContractSha256"] = registry[
@@ -1681,6 +1802,13 @@ def build_source_contract(
         },
         "legacyProjectionReceiptSummary": copy.deepcopy(conversion.get("summary", {})),
     }
+    if source_semantic_closure is not None:
+        receipt["source"]["sourceSemanticClosure"] = copy.deepcopy(
+            evidence_links["sourceSemanticClosure"]
+        )
+        receipt["summary"]["sourceSemanticClosureDenominators"] = copy.deepcopy(
+            source_semantic_closure["summary"]["denominators"]
+        )
     return candidate, receipt, registry
 
 
@@ -1706,6 +1834,7 @@ def main() -> int:
     parser.add_argument("--source-evidence", required=True, type=Path)
     parser.add_argument("--local-reference-closure", required=True, type=Path)
     parser.add_argument("--geometry-parity", required=True, type=Path)
+    parser.add_argument("--source-semantic-closure", type=Path)
     parser.add_argument("--output-candidate", required=True, type=Path)
     parser.add_argument("--output-receipt", required=True, type=Path)
     parser.add_argument("--output-registry", required=True, type=Path)
@@ -1725,6 +1854,7 @@ def main() -> int:
         args.geometry_parity,
         args.output_candidate.name,
         args.output_registry.name,
+        args.source_semantic_closure,
     )
     outputs = (
         (args.output_candidate, json_bytes(candidate)),
