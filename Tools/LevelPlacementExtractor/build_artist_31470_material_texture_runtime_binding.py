@@ -3,9 +3,9 @@
 
 The receipt joins reconstructed sampler-policy ownership to the frozen Artist
 resource export/cook evidence by the complete logical texture path.  It never
-uses an object basename as an identity.  Exact DDS recovery evidence is kept as
-a deployment proposal until a transactional deployment/verification receipt
-exists; it is not promoted to a current runtime binding by this tool.
+uses an object basename as an identity.  Exact DDS recovery evidence is
+admitted only through the frozen transactional deployment receipt.  That path
+remains reconstructed and never becomes a source-exact Material claim.
 """
 
 from __future__ import annotations
@@ -41,6 +41,9 @@ DEFAULT_CONTRACT = MATERIAL_ROOT / "skill.31470.typed-material-evidence-contract
 DEFAULT_RUNTIME_ORACLE = MATERIAL_ROOT / "skill.31470.material-runtime-oracle.receipt.json"
 DEFAULT_ACQUISITION = MATERIAL_ROOT / "skill.31470.material-source-value-acquisition.receipt.json"
 DEFAULT_EXACT_DDS = MATERIAL_ROOT / "skill.31470.exact-dds-recovery.receipt.json"
+DEFAULT_EXACT_DDS_DEPLOYMENT = (
+    MATERIAL_ROOT / "skill.31470.exact-dds-runtime-deployment.receipt.json"
+)
 DEFAULT_RESOURCE_MANIFEST = ROOT / "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json"
 DEFAULT_CANDIDATE = (
     ROOT
@@ -67,27 +70,41 @@ DIRECT_IMPORT_DEPENDENCY_PATHS = {
     "MATERIAL_EVIDENCE_VALIDATOR": ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py",
     "MATERIAL_POLICY_VALIDATOR": ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_reconstructed_policy.py",
     "TEXTURE_RUNTIME_BINDING_APPROVAL": DEFAULT_APPROVAL,
+    "EXACT_DDS_RUNTIME_DEPLOYMENT_APPROVAL": (
+        ROOT
+        / "Tools/LevelPlacementExtractor/"
+        "artist_31470_exact_dds_runtime_deployment_approval.py"
+    ),
 }
 DIRECT_IMPORT_MODULE_NAMES = {
     "STRICT_JSON_OBJECT_LOADER": "effect_source_contract_io",
     "MATERIAL_EVIDENCE_VALIDATOR": "build_artist_31470_material_evidence_contract",
     "MATERIAL_POLICY_VALIDATOR": "build_artist_31470_material_reconstructed_policy",
     "TEXTURE_RUNTIME_BINDING_APPROVAL": "artist_31470_material_texture_runtime_binding_approval",
+    "EXACT_DDS_RUNTIME_DEPLOYMENT_APPROVAL": (
+        "artist_31470_exact_dds_runtime_deployment_approval"
+    ),
 }
 
 SCHEMA = "lostark.artist-31470-material-texture-runtime-binding-receipt"
-FORMAT_VERSION = 1
-BINDING_CONTRACT_ID = "ARTIST_31470_MATERIAL_TEXTURE_RUNTIME_BINDING_V1"
+FORMAT_VERSION = 2
+BINDING_CONTRACT_ID = "ARTIST_31470_MATERIAL_TEXTURE_RUNTIME_BINDING_V2"
 RESOLVED_STATUS = "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
-UNRESOLVED_STATUS = "UNRESOLVED_RUNTIME_ASSET"
+DEPLOYED_STATUS = "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
 PROVISIONING_POLICY = "RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V1"
-UNRESOLVED_BLOCKER = "RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED"
+DEPLOYMENT_BASIS = "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
+DEPLOYMENT_COMPLETE_STATUS = "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT"
+R4_BLOCKER = "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
 EXPECTED_POLICY_ROWS = 72
 EXPECTED_UNIQUE_TEXTURES = 48
-EXPECTED_RESOLVED_ROWS = 68
-EXPECTED_UNRESOLVED_ROWS = 4
-EXPECTED_RESOLVED_TEXTURES = 44
-EXPECTED_UNRESOLVED_TEXTURES = 4
+EXPECTED_RESOLVED_ROWS = 72
+EXPECTED_UNRESOLVED_ROWS = 0
+EXPECTED_COOK_BINDING_ROWS = 68
+EXPECTED_DEPLOYMENT_BINDING_ROWS = 4
+EXPECTED_RESOLVED_TEXTURES = 48
+EXPECTED_UNRESOLVED_TEXTURES = 0
+EXPECTED_COOK_TEXTURES = 44
+EXPECTED_DEPLOYMENT_TEXTURES = 4
 EXPECTED_OCCURRENCE_LINKS = 83
 EXPECTED_MISSING_LOGICAL_PATHS = {
     "fx_tex_00.fx_a_decal_014",
@@ -99,6 +116,7 @@ TEXTURE_RESOURCE_KEYS = {
     "textureResourceId", "logicalTexturePath", "status", "runtimeAssetId",
     "sourceResourceManifest", "sourcePackage", "sourceEvidenceBlockers",
     "runtimeCookEvidence", "resourceExportEvidence", "exactDdsEvidence",
+    "deploymentEvidence",
     "candidateObservations", "blockers", "provisioningProposalId",
     "runtimeAssetAdmission", "sourceExact", "rowSha256",
 }
@@ -131,10 +149,31 @@ EXACT_DDS_TEXTURE_KEYS = {
 EXACT_DDS_PAYLOAD_KEYS = {
     "byteCount", "rawSha256", "header128Sha256", "width", "height", "fourCC",
 }
+DEPLOYMENT_EVIDENCE_KEYS = {
+    "basis", "artifactAuthorityCommit", "artifactAuthorityTree",
+    "receiptRelativePath", "receiptGitBlob", "receiptTrackedTextSha256",
+    "receiptSha256", "approvalProjectionSha256", "implementationProjectionSha256",
+    "deploymentRowId", "proposalId", "deploymentRowSha256", "deploymentStatus",
+    "runtimeAssetId", "byteCount", "rawSha256", "pathCaseVerified",
+    "regularFileVerified", "symlinkFreeVerified", "postVerified",
+    "sourceExactMaterialClaim", "runtimeAssetDeploymentAdmission",
+}
+DEPLOYMENT_ROW_KEYS = {
+    "deploymentRowId", "proposalId", "textureResourceId", "logicalTexturePath",
+    "runtimeAssetId", "policy", "sourceExactDdsEvidence", "targetBefore",
+    "deployedFile", "deploymentStatus", "sourceExactMaterialClaim",
+    "runtimeAssetDeploymentAdmission", "rendererConsumerAdmission",
+    "productAdmission", "blockers", "rowSha256",
+}
+DEPLOYED_FILE_KEYS = {
+    "runtimeAssetId", "byteCount", "rawSha256", "pathCaseVerified",
+    "regularFileVerified", "symlinkFreeVerified", "postVerified",
+}
 PROVISIONING_PROPOSAL_KEYS = {
     "proposalId", "textureResourceId", "logicalTexturePath", "policy",
     "proposedRuntimeAssetId", "sourceExactDdsEvidence", "deploymentStatus",
-    "requiredReceipt", "sourceExact", "runtimeAssetAdmission", "productAdmission",
+    "requiredReceipt", "deploymentEvidence", "sourceExact",
+    "runtimeAssetAdmission", "productAdmission",
     "rowSha256",
 }
 MATERIAL_BINDING_KEYS = {
@@ -201,6 +240,119 @@ def raw_file_sha256(path: Path) -> str:
 
 def read_json(path: Path) -> dict[str, Any]:
     return strict_io_module.load_strict_json_object(path)
+
+
+def load_approved_tracked_authorities() -> dict[str, dict[str, Any]]:
+    approval = approval_module()
+    specifications = {
+        "materialPolicy": (
+            DEFAULT_POLICY,
+            approval.POLICY_TRACKED_TEXT_SHA256,
+            "receiptSha256",
+            approval.POLICY_RECEIPT_SHA256,
+        ),
+        "typedMaterialContract": (
+            DEFAULT_CONTRACT,
+            approval.MATERIAL_CONTRACT_TRACKED_TEXT_SHA256,
+            "contractSha256",
+            approval.MATERIAL_CONTRACT_SHA256,
+        ),
+        "materialRuntimeOracle": (
+            DEFAULT_RUNTIME_ORACLE,
+            approval.RUNTIME_ORACLE_TRACKED_TEXT_SHA256,
+            "receiptSha256",
+            approval.RUNTIME_ORACLE_RECEIPT_SHA256,
+        ),
+        "materialSourceValueAcquisition": (
+            DEFAULT_ACQUISITION,
+            approval.ACQUISITION_TRACKED_TEXT_SHA256,
+            "receiptSha256",
+            approval.ACQUISITION_RECEIPT_SHA256,
+        ),
+        "resourceSourceManifest": (
+            DEFAULT_RESOURCE_MANIFEST,
+            approval.RESOURCE_MANIFEST_TRACKED_TEXT_SHA256,
+            None,
+            None,
+        ),
+        "exactDdsRecoveryReceipt": (
+            DEFAULT_EXACT_DDS,
+            approval.EXACT_DDS_TRACKED_TEXT_SHA256,
+            None,
+            None,
+        ),
+        "nativeV14Candidate": (
+            DEFAULT_CANDIDATE,
+            approval.CANDIDATE_TRACKED_TEXT_SHA256,
+            None,
+            None,
+        ),
+    }
+    authorities: dict[str, dict[str, Any]] = {}
+    for evidence_id, (path, expected_digest, self_key, expected_self) in (
+        specifications.items()
+    ):
+        require(path.is_file(), f"approved tracked evidence is missing: {evidence_id}")
+        before = path.read_bytes()
+        actual_digest = tracked_text_sha256(path)
+        require(
+            actual_digest == expected_digest,
+            f"approved tracked evidence changed: {evidence_id}",
+        )
+        document = read_json(path)
+        require(
+            path.read_bytes() == before,
+            f"approved tracked evidence changed while reading: {evidence_id}",
+        )
+        if self_key is not None:
+            require(
+                document.get(self_key) == expected_self,
+                f"approved tracked self identity changed: {evidence_id}",
+            )
+        authorities[evidence_id] = {
+            "relativePath": path.resolve().relative_to(ROOT.resolve()).as_posix(),
+            "trackedTextSha256": actual_digest,
+            "selfDigest": expected_self,
+            "document": document,
+        }
+    return authorities
+
+
+def bind_supplied_tracked_inputs(
+    policy: dict[str, Any],
+    contract: dict[str, Any],
+    runtime_oracle: dict[str, Any] | None,
+    acquisition: dict[str, Any] | None,
+    resource_manifest: dict[str, Any],
+    exact_dds: dict[str, Any],
+    candidate: dict[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    authorities = load_approved_tracked_authorities()
+    supplied = {
+        "materialPolicy": policy,
+        "typedMaterialContract": contract,
+        "materialRuntimeOracle": runtime_oracle,
+        "materialSourceValueAcquisition": acquisition,
+        "resourceSourceManifest": resource_manifest,
+        "exactDdsRecoveryReceipt": exact_dds,
+        "nativeV14Candidate": candidate,
+    }
+    for evidence_id, supplied_document in supplied.items():
+        if supplied_document is not None:
+            require(
+                strict_equal(supplied_document, authorities[evidence_id]["document"]),
+                f"supplied tracked object differs from approved authority: {evidence_id}",
+            )
+    return (
+        authorities["materialPolicy"]["document"],
+        authorities["typedMaterialContract"]["document"],
+        authorities["materialRuntimeOracle"]["document"],
+        authorities["materialSourceValueAcquisition"]["document"],
+        authorities["resourceSourceManifest"]["document"],
+        authorities["exactDdsRecoveryReceipt"]["document"],
+        authorities["nativeV14Candidate"]["document"],
+        authorities,
+    )
 
 
 def load_approved_external_authorities() -> dict[str, dict[str, Any]]:
@@ -539,36 +691,299 @@ def approval_module() -> Any:
     return load_direct_import_module("TEXTURE_RUNTIME_BINDING_APPROVAL")
 
 
+def deployment_approval_module() -> Any:
+    return load_direct_import_module("EXACT_DDS_RUNTIME_DEPLOYMENT_APPROVAL")
+
+
+def load_approved_deployment_authority() -> dict[str, Any]:
+    approval = approval_module()
+    path = DEFAULT_EXACT_DDS_DEPLOYMENT
+    require(path.is_file(), "approved exact-DDS deployment receipt is missing")
+    tracked_digest = tracked_text_sha256(path)
+    require(
+        tracked_digest == approval.DEPLOYMENT_RECEIPT_TRACKED_TEXT_SHA256,
+        "approved exact-DDS deployment tracked bytes changed",
+    )
+    before = path.read_bytes()
+    document = read_json(path)
+    require(path.read_bytes() == before, "exact-DDS deployment receipt changed while reading")
+    require_exact_keys(
+        document,
+        {
+            "schema", "formatVersion", "characterClass", "skillId", "inputSlot",
+            "deploymentContract", "sourceEvidence", "assets", "recoveryBackup",
+            "admission", "summary", "receiptSha256",
+        },
+        "exact-DDS deployment receipt",
+    )
+    require(
+        document.get("schema")
+        == "lostark.artist-31470-exact-dds-runtime-deployment-receipt"
+        and document.get("characterClass") == "ARTIST"
+        and type(document.get("skillId")) is int
+        and document["skillId"] == 31470
+        and document.get("inputSlot") == "F",
+        "unsupported exact-DDS deployment receipt",
+    )
+    require_exact_integer(document.get("formatVersion"), 1, "deployment formatVersion")
+    self_digest = require_sha256(document.get("receiptSha256"), "deployment receiptSha256")
+    self_candidate = copy.deepcopy(document)
+    self_candidate.pop("receiptSha256")
+    require(
+        self_digest == canonical_sha256(self_candidate)
+        == approval.DEPLOYMENT_RECEIPT_SHA256,
+        "exact-DDS deployment receipt self identity changed",
+    )
+    source = document.get("sourceEvidence")
+    require(isinstance(source, dict), "deployment source evidence is missing")
+    require(
+        source.get("authorityCommit") == "fda3b5637847f9205915ad25ff02215424024b88"
+        and source.get("authorityTree") == "2f00f00851ee93f498dd6c13d6a3055209d4d8c3"
+        and source.get("implementationEvidence", {}).get("projectionSha256")
+        == approval.DEPLOYMENT_IMPLEMENTATION_PROJECTION_SHA256,
+        "exact-DDS deployment internal authority changed",
+    )
+    deployment_approval = deployment_approval_module()
+    require(
+        deployment_approval.APPROVED_RECEIPT_PROJECTION_SHA256
+        == approval.DEPLOYMENT_APPROVAL_PROJECTION_SHA256
+        and deployment_approval.receipt_projection_sha256(document)
+        == approval.DEPLOYMENT_APPROVAL_PROJECTION_SHA256,
+        "exact-DDS deployment independent approval changed",
+    )
+    deployment_approval.require_approved_receipt(document)
+    require(
+        strict_equal(
+            document.get("admission"),
+            {
+                "transactionCommitted": True,
+                "allFourRuntimeAssetsPostVerified": True,
+                "sourceExactMaterialClaim": False,
+                "rendererTextureSrvConsumerComplete": False,
+                "r4Complete": False,
+                "productReady": False,
+                "blockers": [R4_BLOCKER],
+            },
+        ),
+        "exact-DDS deployment admission changed",
+    )
+    require(
+        strict_equal(
+            document.get("summary"),
+            {
+                "requestedAssetCount": 4,
+                "deployedAssetCount": 4,
+                "postVerifiedAssetCount": 4,
+                "runtimeAssetDeploymentAdmittedCount": 4,
+                "recoveryBackupPayloadFileCount": 0,
+                "recoveryAbsentTargetMarkerCount": 4,
+                "sourceExactMaterialClaimCount": 0,
+                "rendererConsumerReadyCount": 0,
+                "productReadyCount": 0,
+            },
+        ),
+        "exact-DDS deployment summary changed",
+    )
+    return {
+        "relativePath": approval.DEPLOYMENT_RECEIPT_RELATIVE_PATH,
+        "artifactAuthorityCommit": approval.DEPLOYMENT_ARTIFACT_COMMIT,
+        "artifactAuthorityTree": approval.DEPLOYMENT_ARTIFACT_TREE,
+        "gitBlob": approval.DEPLOYMENT_RECEIPT_GIT_BLOB,
+        "trackedTextSha256": tracked_digest,
+        "receiptSha256": self_digest,
+        "approvalProjectionSha256": approval.DEPLOYMENT_APPROVAL_PROJECTION_SHA256,
+        "implementationProjectionSha256": approval.DEPLOYMENT_IMPLEMENTATION_PROJECTION_SHA256,
+        "document": document,
+    }
+
+
+def validate_deployment_rows(
+    deployment: dict[str, Any],
+    exact_dds_rows: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    rows = deployment.get("assets")
+    require(isinstance(rows, list) and len(rows) == EXPECTED_DEPLOYMENT_TEXTURES, "deployment row denominator changed")
+    result: dict[str, dict[str, Any]] = {}
+    runtime_ids: set[str] = set()
+    for index, row in enumerate(rows):
+        require_exact_keys(row, DEPLOYMENT_ROW_KEYS, f"deployment assets[{index}]")
+        validate_row_digest(row, f"deployment assets[{index}]")
+        logical = validate_logical_texture_path(row.get("logicalTexturePath"))
+        require(
+            logical in EXPECTED_MISSING_LOGICAL_PATHS and logical not in result,
+            f"unexpected or duplicate deployment logical path: {logical}",
+        )
+        exact_row = exact_dds_rows.get(logical.casefold())
+        exact_evidence = row.get("sourceExactDdsEvidence")
+        require_exact_keys(exact_evidence, EXACT_DDS_EVIDENCE_KEYS, f"deployment[{logical}].exactDds")
+        require(
+            exact_row is not None
+            and strict_equal(exact_evidence, exact_dds_projection(exact_row)),
+            f"deployment exact-DDS evidence mismatch: {logical}",
+        )
+        asset_id = validate_runtime_asset_id(row.get("runtimeAssetId"))
+        require(asset_id.casefold() not in runtime_ids, f"deployment runtime asset collision: {asset_id}")
+        runtime_ids.add(asset_id.casefold())
+        deployed_file = row.get("deployedFile")
+        require_exact_keys(deployed_file, DEPLOYED_FILE_KEYS, f"deployment[{logical}].deployedFile")
+        dds = exact_evidence["dds"]
+        require(
+            row.get("policy") == PROVISIONING_POLICY
+            and row.get("deploymentStatus") == "COMMITTED_POST_VERIFIED"
+            and asset_id == exact_evidence["fixtureAssetId"]
+            and deployed_file.get("runtimeAssetId")
+            == exact_evidence["fixtureAssetId"]
+            and row.get("proposalId")
+            == "material-texture-provisioning-"
+            + hashlib.sha256(logical.encode("utf-8")).hexdigest()[:20]
+            and row.get("textureResourceId")
+            == "material-texture-resource-"
+            + hashlib.sha256(logical.encode("utf-8")).hexdigest()[:20]
+            and strict_equal(
+                deployed_file,
+                {
+                    "runtimeAssetId": asset_id,
+                    "byteCount": dds["byteCount"],
+                    "rawSha256": dds["rawSha256"],
+                    "pathCaseVerified": True,
+                    "regularFileVerified": True,
+                    "symlinkFreeVerified": True,
+                    "postVerified": True,
+                },
+            )
+            and row.get("sourceExactMaterialClaim") is False
+            and row.get("runtimeAssetDeploymentAdmission") is True
+            and row.get("rendererConsumerAdmission") is False
+            and row.get("productAdmission") is False
+            and row.get("blockers") == [R4_BLOCKER],
+            f"deployment row contract changed: {logical}",
+        )
+        result[logical] = row
+    require(set(result) == EXPECTED_MISSING_LOGICAL_PATHS, "deployment reverse coverage changed")
+    return result
+
+
+def deployment_projection(
+    row: dict[str, Any],
+    authority: dict[str, Any],
+) -> dict[str, Any]:
+    deployed_file = row["deployedFile"]
+    return {
+        "basis": DEPLOYMENT_BASIS,
+        "artifactAuthorityCommit": authority["artifactAuthorityCommit"],
+        "artifactAuthorityTree": authority["artifactAuthorityTree"],
+        "receiptRelativePath": authority["relativePath"],
+        "receiptGitBlob": authority["gitBlob"],
+        "receiptTrackedTextSha256": authority["trackedTextSha256"],
+        "receiptSha256": authority["receiptSha256"],
+        "approvalProjectionSha256": authority["approvalProjectionSha256"],
+        "implementationProjectionSha256": authority["implementationProjectionSha256"],
+        "deploymentRowId": row["deploymentRowId"],
+        "proposalId": row["proposalId"],
+        "deploymentRowSha256": row["rowSha256"],
+        "deploymentStatus": row["deploymentStatus"],
+        "runtimeAssetId": row["runtimeAssetId"],
+        "byteCount": deployed_file["byteCount"],
+        "rawSha256": deployed_file["rawSha256"],
+        "pathCaseVerified": deployed_file["pathCaseVerified"],
+        "regularFileVerified": deployed_file["regularFileVerified"],
+        "symlinkFreeVerified": deployed_file["symlinkFreeVerified"],
+        "postVerified": deployed_file["postVerified"],
+        "sourceExactMaterialClaim": row["sourceExactMaterialClaim"],
+        "runtimeAssetDeploymentAdmission": row["runtimeAssetDeploymentAdmission"],
+    }
+
+
+def resolve_case_exact_runtime_file(
+    runtime_root: Path,
+    runtime_asset_id: str,
+) -> Path:
+    asset_id = validate_runtime_asset_id(runtime_asset_id)
+    require(
+        runtime_root.is_dir() and not runtime_root.is_symlink(),
+        "runtime Resources authority root is missing or is a symlink",
+    )
+    current = runtime_root
+    for index, part in enumerate(PurePosixPath(asset_id).parts):
+        matches = [
+            entry for entry in current.iterdir()
+            if entry.name.casefold() == part.casefold()
+        ]
+        require(
+            len(matches) == 1 and matches[0].name == part,
+            f"runtime asset path case/collision mismatch: {asset_id}",
+        )
+        current = matches[0]
+        require(
+            not current.is_symlink(),
+            f"runtime asset path contains a symlink: {asset_id}",
+        )
+        if index != len(PurePosixPath(asset_id).parts) - 1:
+            require(current.is_dir(), f"runtime asset parent is not a directory: {asset_id}")
+    require(current.is_file(), f"runtime asset is not a regular file: {asset_id}")
+    return current
+
+
+def verify_deployed_runtime_files(
+    deployment_rows: dict[str, dict[str, Any]],
+    runtime_root: Path | None = None,
+) -> None:
+    if runtime_root is None:
+        runtime_root = DEFAULT_RUNTIME_RESOURCES
+    require(
+        set(deployment_rows) == EXPECTED_MISSING_LOGICAL_PATHS,
+        "runtime deployment verification denominator changed",
+    )
+    verified: set[str] = set()
+    for logical in sorted(deployment_rows):
+        row = deployment_rows[logical]
+        asset_id = row["runtimeAssetId"]
+        require(asset_id.casefold() not in verified, f"runtime deployment alias: {asset_id}")
+        verified.add(asset_id.casefold())
+        path = resolve_case_exact_runtime_file(runtime_root, asset_id)
+        deployed = row["deployedFile"]
+        require(
+            path.stat().st_size == deployed["byteCount"]
+            and raw_file_sha256(path) == deployed["rawSha256"],
+            f"deployed runtime payload identity changed: {logical}",
+        )
+    require(len(verified) == EXPECTED_DEPLOYMENT_TEXTURES, "runtime deployment file count changed")
+
+
 def source_evidence(
-    policy: dict[str, Any],
-    contract: dict[str, Any],
-    policy_path: Path,
-    contract_path: Path,
-    resource_manifest_path: Path,
-    exact_dds_path: Path,
-    candidate_path: Path,
     runtime_cook_path: Path,
     resource_export_path: Path,
     source_pack_path: Path,
+    deployment_authority: dict[str, Any],
+    tracked_authorities: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     approval = approval_module()
-    tracked_rows = {
-        "materialPolicy": (policy_path, policy["receiptSha256"]),
-        "typedMaterialContract": (contract_path, contract["contractSha256"]),
-        "resourceSourceManifest": (resource_manifest_path, None),
-        "exactDdsRecoveryReceipt": (exact_dds_path, None),
-        "nativeV14Candidate": (candidate_path, None),
-    }
     evidence: dict[str, Any] = {
         "frozenMaterialPolicyCommit": "97597531215fa9c9873fe1be3ba8cd23db60031d",
         "directImportClosure": direct_import_closure(),
+        "exactDdsRuntimeDeploymentReceipt": {
+            "relativePath": deployment_authority["relativePath"],
+            "artifactAuthorityCommit": deployment_authority["artifactAuthorityCommit"],
+            "artifactAuthorityTree": deployment_authority["artifactAuthorityTree"],
+            "gitBlob": deployment_authority["gitBlob"],
+            "trackedTextSha256": deployment_authority["trackedTextSha256"],
+            "receiptSha256": deployment_authority["receiptSha256"],
+            "approvalProjectionSha256": deployment_authority[
+                "approvalProjectionSha256"
+            ],
+            "implementationProjectionSha256": deployment_authority[
+                "implementationProjectionSha256"
+            ],
+            "hashRole": "FROZEN_GIT_ARTIFACT_AND_TRACKED_UTF8_EOL_CANONICAL",
+        },
     }
-    for evidence_id, (path, self_digest) in tracked_rows.items():
+    for evidence_id, authority in tracked_authorities.items():
         row = {
-            "relativePath": path.resolve().relative_to(ROOT.resolve()).as_posix(),
-            "trackedTextSha256": tracked_text_sha256(path),
+            "relativePath": authority["relativePath"],
+            "trackedTextSha256": authority["trackedTextSha256"],
             "hashRole": "TRACKED_UTF8_EOL_CANONICAL",
         }
+        self_digest = authority["selfDigest"]
         if self_digest is not None:
             row["selfDigest"] = self_digest
         evidence[evidence_id] = row
@@ -603,47 +1018,70 @@ def source_evidence(
 
 def validate_tracked_source_evidence(
     evidence: dict[str, Any],
-    policy: dict[str, Any],
-    contract: dict[str, Any],
-    policy_path: Path,
-    contract_path: Path,
-    resource_manifest_path: Path,
-    exact_dds_path: Path,
-    candidate_path: Path,
+    tracked_authorities: dict[str, dict[str, Any]],
     external_authorities: dict[str, dict[str, Any]],
+    deployment_authority: dict[str, Any],
 ) -> None:
-    approval = approval_module()
     require_exact_keys(
         evidence,
         {
             "frozenMaterialPolicyCommit", "directImportClosure", "materialPolicy",
-            "typedMaterialContract", "resourceSourceManifest", "exactDdsRecoveryReceipt",
-            "nativeV14Candidate", "runtimeCookReceipt", "resourceExportReceipt",
-            "sourcePackManifest",
+            "typedMaterialContract", "materialRuntimeOracle",
+            "materialSourceValueAcquisition", "resourceSourceManifest",
+            "exactDdsRecoveryReceipt", "nativeV14Candidate", "runtimeCookReceipt",
+            "resourceExportReceipt",
+            "sourcePackManifest", "exactDdsRuntimeDeploymentReceipt",
         },
         "source evidence",
     )
     require(evidence.get("frozenMaterialPolicyCommit") == "97597531215fa9c9873fe1be3ba8cd23db60031d", "frozen policy commit changed")
     validate_direct_import_closure(evidence.get("directImportClosure"))
-    expected = {
-        "materialPolicy": (policy_path, approval.POLICY_TRACKED_TEXT_SHA256, policy["receiptSha256"]),
-        "typedMaterialContract": (contract_path, approval.MATERIAL_CONTRACT_TRACKED_TEXT_SHA256, contract["contractSha256"]),
-        "resourceSourceManifest": (resource_manifest_path, approval.RESOURCE_MANIFEST_TRACKED_TEXT_SHA256, None),
-        "exactDdsRecoveryReceipt": (exact_dds_path, approval.EXACT_DDS_TRACKED_TEXT_SHA256, None),
-        "nativeV14Candidate": (candidate_path, approval.CANDIDATE_TRACKED_TEXT_SHA256, None),
-    }
-    for evidence_id, (path, digest, self_digest) in expected.items():
+    require(
+        strict_equal(
+            evidence.get("exactDdsRuntimeDeploymentReceipt"),
+            {
+                "relativePath": deployment_authority["relativePath"],
+                "artifactAuthorityCommit": deployment_authority[
+                    "artifactAuthorityCommit"
+                ],
+                "artifactAuthorityTree": deployment_authority["artifactAuthorityTree"],
+                "gitBlob": deployment_authority["gitBlob"],
+                "trackedTextSha256": deployment_authority["trackedTextSha256"],
+                "receiptSha256": deployment_authority["receiptSha256"],
+                "approvalProjectionSha256": deployment_authority[
+                    "approvalProjectionSha256"
+                ],
+                "implementationProjectionSha256": deployment_authority[
+                    "implementationProjectionSha256"
+                ],
+                "hashRole": "FROZEN_GIT_ARTIFACT_AND_TRACKED_UTF8_EOL_CANONICAL",
+            },
+        )
+        and tracked_text_sha256(DEFAULT_EXACT_DDS_DEPLOYMENT)
+        == deployment_authority["trackedTextSha256"],
+        "exact-DDS deployment source evidence changed",
+    )
+    require(
+        set(tracked_authorities)
+        == {
+            "materialPolicy", "typedMaterialContract", "materialRuntimeOracle",
+            "materialSourceValueAcquisition", "resourceSourceManifest",
+            "exactDdsRecoveryReceipt", "nativeV14Candidate",
+        },
+        "approved tracked authority set changed",
+    )
+    for evidence_id, authority in tracked_authorities.items():
         row = evidence.get(evidence_id)
         require(isinstance(row, dict), f"missing tracked evidence: {evidence_id}")
         expected_row = {
-            "relativePath": path.resolve().relative_to(ROOT.resolve()).as_posix(),
-            "trackedTextSha256": digest,
+            "relativePath": authority["relativePath"],
+            "trackedTextSha256": authority["trackedTextSha256"],
             "hashRole": "TRACKED_UTF8_EOL_CANONICAL",
         }
+        self_digest = authority["selfDigest"]
         if self_digest is not None:
             expected_row["selfDigest"] = self_digest
         require(strict_equal(row, expected_row), f"tracked source evidence changed: {evidence_id}")
-        require(tracked_text_sha256(path) == digest, f"tracked source bytes changed: {evidence_id}")
     require(
         set(external_authorities)
         == {"runtimeCookReceipt", "resourceExportReceipt", "sourcePackManifest"},
@@ -750,6 +1188,8 @@ def build_texture_resources(
     cook_rows: dict[str, dict[str, Any]],
     export_rows: dict[str, dict[str, Any]],
     exact_dds_rows: dict[str, dict[str, Any]],
+    deployment_rows: dict[str, dict[str, Any]],
+    deployment_authority: dict[str, Any],
     candidate: dict[str, Any],
 ) -> list[dict[str, Any]]:
     resources: list[dict[str, Any]] = []
@@ -811,6 +1251,7 @@ def build_texture_resources(
                 "runtimeCookEvidence": cook_projection(cook_row),
                 "resourceExportEvidence": export_projection(export_row, output),
                 "exactDdsEvidence": None,
+                "deploymentEvidence": None,
                 "candidateObservations": candidate_observations(candidate, asset_id),
                 "blockers": [],
                 "provisioningProposalId": None,
@@ -820,22 +1261,35 @@ def build_texture_resources(
         else:
             require(logical_path in EXPECTED_MISSING_LOGICAL_PATHS, f"unexpected runtime cook gap: {logical_path}")
             require(dds_row is not None, f"runtime cook gap lacks exact DDS evidence: {logical_path}")
+            deployment_row = deployment_rows.get(logical_path)
+            require(
+                deployment_row is not None,
+                f"runtime cook gap lacks exact deployment evidence: {logical_path}",
+            )
             proposal_id = "material-texture-provisioning-" + hashlib.sha256(logical_path.encode("utf-8")).hexdigest()[:20]
+            asset_id = validate_runtime_asset_id(deployment_row["runtimeAssetId"])
+            asset_folded = asset_id.casefold()
+            require(asset_folded not in used_asset_ids, f"runtime asset many-to-one mapping: {asset_id}")
+            used_asset_ids[asset_folded] = logical_path
             row = {
                 "textureResourceId": texture_id,
                 "logicalTexturePath": logical_path,
-                "status": UNRESOLVED_STATUS,
-                "runtimeAssetId": None,
+                "status": DEPLOYED_STATUS,
+                "runtimeAssetId": asset_id,
                 "sourceResourceManifest": None,
                 "sourcePackage": source_package,
                 "sourceEvidenceBlockers": source_package_blockers,
                 "runtimeCookEvidence": None,
                 "resourceExportEvidence": None,
                 "exactDdsEvidence": exact_dds_projection(dds_row),
-                "candidateObservations": [],
-                "blockers": [UNRESOLVED_BLOCKER],
+                "deploymentEvidence": deployment_projection(
+                    deployment_row,
+                    deployment_authority,
+                ),
+                "candidateObservations": candidate_observations(candidate, asset_id),
+                "blockers": [],
                 "provisioningProposalId": proposal_id,
-                "runtimeAssetAdmission": False,
+                "runtimeAssetAdmission": True,
                 "sourceExact": False,
             }
         resources.append(row_with_digest(row))
@@ -848,7 +1302,7 @@ def build_provisioning_proposals(
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for resource in resources:
-        if resource["status"] != UNRESOLVED_STATUS:
+        if resource["status"] != DEPLOYED_STATUS:
             continue
         exact = resource["exactDdsEvidence"]
         target = validate_runtime_asset_id(exact["fixtureAssetId"])
@@ -859,14 +1313,15 @@ def build_provisioning_proposals(
             "policy": PROVISIONING_POLICY,
             "proposedRuntimeAssetId": target,
             "sourceExactDdsEvidence": copy.deepcopy(exact),
-            "deploymentStatus": "PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED",
-            "requiredReceipt": "TRANSACTIONAL_RUNTIME_RESOURCE_DEPLOYMENT_AND_VERIFICATION_RECEIPT",
+            "deploymentStatus": DEPLOYMENT_COMPLETE_STATUS,
+            "requiredReceipt": approval_module().DEPLOYMENT_RECEIPT_RELATIVE_PATH,
+            "deploymentEvidence": copy.deepcopy(resource["deploymentEvidence"]),
             "sourceExact": False,
-            "runtimeAssetAdmission": False,
+            "runtimeAssetAdmission": True,
             "productAdmission": False,
         }
         rows.append(row_with_digest(row))
-    require(len(rows) == EXPECTED_UNRESOLVED_TEXTURES, "provisioning proposal denominator changed")
+    require(len(rows) == EXPECTED_DEPLOYMENT_TEXTURES, "provisioning proposal denominator changed")
     return rows
 
 
@@ -986,12 +1441,39 @@ def build_receipt(
     source_pack_path: Path = DEFAULT_SOURCE_PACK,
     runtime_oracle: dict[str, Any] | None = None,
     acquisition: dict[str, Any] | None = None,
+    deployment_receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    if runtime_oracle is None:
-        runtime_oracle = read_json(DEFAULT_RUNTIME_ORACLE)
-    if acquisition is None:
-        acquisition = read_json(DEFAULT_ACQUISITION)
+    (
+        policy,
+        contract,
+        runtime_oracle,
+        acquisition,
+        resource_manifest,
+        exact_dds,
+        candidate,
+        tracked_authorities,
+    ) = bind_supplied_tracked_inputs(
+        policy,
+        contract,
+        runtime_oracle,
+        acquisition,
+        resource_manifest,
+        exact_dds,
+        candidate,
+    )
     exact_dds_rows = validate_upstream_documents(policy, contract, runtime_oracle, acquisition, exact_dds)
+    deployment_authority = load_approved_deployment_authority()
+    approved_deployment = deployment_authority["document"]
+    if deployment_receipt is not None:
+        require(
+            strict_equal(deployment_receipt, approved_deployment),
+            "supplied deployment receipt differs from approved tracked authority",
+        )
+    deployment_rows = validate_deployment_rows(
+        approved_deployment,
+        exact_dds_rows,
+    )
+    verify_deployed_runtime_files(deployment_rows)
     resource_rows = validate_resource_manifest(resource_manifest)
     validate_candidate(candidate)
     cook_rows = validate_runtime_cook(runtime_cook)
@@ -1006,10 +1488,19 @@ def build_receipt(
         cook_rows,
         export_rows,
         exact_dds_rows,
+        deployment_rows,
+        deployment_authority,
         candidate,
     )
-    actual_missing = {row["logicalTexturePath"] for row in resources if row["status"] == UNRESOLVED_STATUS}
-    require(actual_missing == EXPECTED_MISSING_LOGICAL_PATHS, "unresolved logical texture set changed")
+    actual_deployed = {
+        row["logicalTexturePath"]
+        for row in resources
+        if row["status"] == DEPLOYED_STATUS
+    }
+    require(
+        actual_deployed == EXPECTED_MISSING_LOGICAL_PATHS,
+        "exact-DDS deployment logical texture set changed",
+    )
     proposals = build_provisioning_proposals(resources)
     bindings = build_material_bindings(policy, contract, resources)
     receipt = {
@@ -1020,46 +1511,58 @@ def build_receipt(
         "inputSlot": "F",
         "bindingContract": {
             "contractId": BINDING_CONTRACT_ID,
-            "contractVersion": 1,
+            "contractVersion": 2,
             "logicalJoinKey": "FULL_CASE_SENSITIVE_LOGICAL_TEXTURE_PATH",
-            "runtimeAssetAuthority": "FROZEN_ARTIST_RUNTIME_COOK_RECEIPT",
+            "runtimeAssetAuthority": (
+                "FROZEN_ARTIST_RUNTIME_COOK_OR_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            ),
             "basenameInferenceAllowed": False,
             "provisioningPolicy": PROVISIONING_POLICY,
             "sourceExact": False,
         },
         "sourceEvidence": source_evidence(
-            policy,
-            contract,
-            policy_path,
-            contract_path,
-            resource_manifest_path,
-            exact_dds_path,
-            candidate_path,
             runtime_cook_path,
             resource_export_path,
             source_pack_path,
+            deployment_authority,
+            tracked_authorities,
         ),
         "textureResources": resources,
         "materialTextureBindings": bindings,
         "provisioningProposals": proposals,
         "admission": {
             "bindingReceipt": {"ready": True, "rowCount": EXPECTED_POLICY_ROWS},
-            "resolvedRuntimeAssets": {"ready": False, "rowCount": EXPECTED_RESOLVED_ROWS},
-            "completeRuntimeBinding": {"ready": False, "blockers": ["MATERIAL_TEXTURE_RUNTIME_BINDINGS_INCOMPLETE"]},
-            "rendererConsumer": {"ready": False},
+            "resolvedRuntimeAssets": {"ready": True, "rowCount": EXPECTED_RESOLVED_ROWS},
+            "completeRuntimeBinding": {"ready": True, "blockers": []},
+            "rendererConsumer": {"ready": False, "blockers": [R4_BLOCKER]},
             "product": False,
         },
         "summary": {
             "samplerPolicyRowCount": len(bindings),
             "uniqueLogicalTextureCount": len(resources),
-            "resolvedBindingRowCount": sum(row["status"] == RESOLVED_STATUS for row in bindings),
-            "unresolvedBindingRowCount": sum(row["status"] == UNRESOLVED_STATUS for row in bindings),
-            "resolvedUniqueTextureCount": sum(row["status"] == RESOLVED_STATUS for row in resources),
-            "unresolvedUniqueTextureCount": sum(row["status"] == UNRESOLVED_STATUS for row in resources),
+            "resolvedBindingRowCount": sum(
+                row["status"] in {RESOLVED_STATUS, DEPLOYED_STATUS}
+                for row in bindings
+            ),
+            "unresolvedBindingRowCount": 0,
+            "runtimeCookBindingRowCount": sum(
+                row["status"] == RESOLVED_STATUS for row in bindings
+            ),
+            "deploymentBindingRowCount": sum(
+                row["status"] == DEPLOYED_STATUS for row in bindings
+            ),
+            "resolvedUniqueTextureCount": len(resources),
+            "unresolvedUniqueTextureCount": 0,
+            "runtimeCookUniqueTextureCount": sum(
+                row["status"] == RESOLVED_STATUS for row in resources
+            ),
+            "deploymentUniqueTextureCount": sum(
+                row["status"] == DEPLOYED_STATUS for row in resources
+            ),
             "sourcePackageBoundUniqueTextureCount": sum(row["sourcePackage"] is not None for row in resources),
             "sourcePackageUnboundUniqueTextureCount": sum(row["sourcePackage"] is None for row in resources),
             "materialOccurrenceLinkCount": sum(len(row["materialOccurrenceIds"]) for row in bindings),
-            "provisioningProposalCount": len(proposals),
+            "completedProvisioningProposalCount": len(proposals),
             "sourceExactBindingRowCount": 0,
             "rendererReadyBindingRowCount": 0,
             "productReadyBindingRowCount": 0,
@@ -1081,6 +1584,7 @@ def build_receipt(
         runtime_cook=runtime_cook,
         resource_export=resource_export,
         source_pack=source_pack,
+        deployment_receipt=approved_deployment,
         require_approval=False,
     )
     return receipt
@@ -1104,6 +1608,7 @@ def validate_receipt(
     runtime_cook: dict[str, Any] | None = None,
     resource_export: dict[str, Any] | None = None,
     source_pack: dict[str, Any] | None = None,
+    deployment_receipt: dict[str, Any] | None = None,
     require_approval: bool = True,
 ) -> None:
     require(
@@ -1130,14 +1635,30 @@ def validate_receipt(
     candidate_receipt = copy.deepcopy(receipt)
     candidate_receipt.pop("receiptSha256")
     require(digest == canonical_sha256(candidate_receipt), "binding receipt self digest mismatch")
-    if runtime_oracle is None:
-        runtime_oracle = read_json(DEFAULT_RUNTIME_ORACLE)
-    if acquisition is None:
-        acquisition = read_json(DEFAULT_ACQUISITION)
+    (
+        policy,
+        contract,
+        runtime_oracle,
+        acquisition,
+        resource_manifest,
+        exact_dds,
+        candidate,
+        tracked_authorities,
+    ) = bind_supplied_tracked_inputs(
+        policy,
+        contract,
+        runtime_oracle,
+        acquisition,
+        resource_manifest,
+        exact_dds,
+        candidate,
+    )
     external_authorities = load_approved_external_authorities()
     approved_runtime_cook = external_authorities["runtimeCookReceipt"]["document"]
     approved_resource_export = external_authorities["resourceExportReceipt"]["document"]
     approved_source_pack = external_authorities["sourcePackManifest"]["document"]
+    deployment_authority = load_approved_deployment_authority()
+    approved_deployment = deployment_authority["document"]
     for label, supplied, approved in (
         ("runtime cook", runtime_cook, approved_runtime_cook),
         ("resource export", resource_export, approved_resource_export),
@@ -1148,28 +1669,32 @@ def validate_receipt(
                 strict_equal(supplied, approved),
                 f"supplied {label} object differs from approved external authority",
             )
+    if deployment_receipt is not None:
+        require(
+            strict_equal(deployment_receipt, approved_deployment),
+            "supplied deployment receipt differs from approved tracked authority",
+        )
     exact_rows = validate_upstream_documents(policy, contract, runtime_oracle, acquisition, exact_dds)
+    deployment_rows = validate_deployment_rows(approved_deployment, exact_rows)
+    verify_deployed_runtime_files(deployment_rows)
     manifest_rows = validate_resource_manifest(resource_manifest)
     validate_candidate(candidate)
     validate_tracked_source_evidence(
         receipt["sourceEvidence"],
-        policy,
-        contract,
-        policy_path,
-        contract_path,
-        resource_manifest_path,
-        exact_dds_path,
-        candidate_path,
+        tracked_authorities,
         external_authorities,
+        deployment_authority,
     )
     require(
         strict_equal(
             receipt["bindingContract"],
             {
             "contractId": BINDING_CONTRACT_ID,
-            "contractVersion": 1,
+            "contractVersion": 2,
             "logicalJoinKey": "FULL_CASE_SENSITIVE_LOGICAL_TEXTURE_PATH",
-            "runtimeAssetAuthority": "FROZEN_ARTIST_RUNTIME_COOK_RECEIPT",
+            "runtimeAssetAuthority": (
+                "FROZEN_ARTIST_RUNTIME_COOK_OR_EXACT_DDS_DEPLOYMENT_RECEIPT"
+            ),
             "basenameInferenceAllowed": False,
             "provisioningPolicy": PROVISIONING_POLICY,
             "sourceExact": False,
@@ -1240,7 +1765,7 @@ def validate_receipt(
             require_sha256(package.get("sourceRowSha256"), f"{logical}.sourcePackage.sourceRowSha256")
             require(row.get("sourceEvidenceBlockers") == [], f"bound source package has blockers: {logical}")
         status = row.get("status")
-        require(status in {RESOLVED_STATUS, UNRESOLVED_STATUS}, f"invalid texture resource status: {logical}")
+        require(status in {RESOLVED_STATUS, DEPLOYED_STATUS}, f"invalid texture resource status: {logical}")
         require(row.get("sourceExact") is False, f"texture binding was promoted to source exact: {logical}")
         if status == RESOLVED_STATUS:
             asset_id = validate_runtime_asset_id(row.get("runtimeAssetId"))
@@ -1266,7 +1791,12 @@ def validate_receipt(
                 require_sha256(evidence_row.get("rawSha256"), f"{logical}.{name}.rawSha256")
                 require_sha256(evidence_row.get("sourceRowSha256"), f"{logical}.{name}.sourceRowSha256")
             require_sha256(export.get("outputRowSha256"), f"{logical}.export.outputRowSha256")
-            require(row.get("exactDdsEvidence") is None and row.get("blockers") == [], f"resolved row retains blockers: {logical}")
+            require(
+                row.get("exactDdsEvidence") is None
+                and row.get("deploymentEvidence") is None
+                and row.get("blockers") == [],
+                f"resolved cook row retains alternate evidence/blockers: {logical}",
+            )
             require(row.get("provisioningProposalId") is None and row.get("runtimeAssetAdmission") is True, f"resolved admission mismatch: {logical}")
             observations = row.get("candidateObservations")
             require(isinstance(observations, list), f"candidate observations must be a list: {logical}")
@@ -1277,9 +1807,15 @@ def validate_receipt(
                 f"candidate observation mismatch: {logical}",
             )
         else:
-            require(logical in EXPECTED_MISSING_LOGICAL_PATHS, f"unexpected unresolved texture: {logical}")
-            require(row.get("runtimeAssetId") is None, f"unresolved texture has runtime asset ID: {logical}")
-            require(row.get("runtimeCookEvidence") is None and row.get("resourceExportEvidence") is None, f"unresolved texture has cook/export evidence: {logical}")
+            require(logical in EXPECTED_MISSING_LOGICAL_PATHS, f"unexpected deployed texture: {logical}")
+            asset_id = validate_runtime_asset_id(row.get("runtimeAssetId"))
+            require(asset_id.casefold() not in asset_ids, f"runtime asset ID collision: {asset_id}")
+            asset_ids.add(asset_id.casefold())
+            require(
+                row.get("runtimeCookEvidence") is None
+                and row.get("resourceExportEvidence") is None,
+                f"deployed texture has cook/export evidence: {logical}",
+            )
             exact = exact_rows.get(logical.casefold())
             exact_evidence = row.get("exactDdsEvidence")
             require_exact_keys(exact_evidence, EXACT_DDS_EVIDENCE_KEYS, f"{logical}.exactDdsEvidence")
@@ -1297,13 +1833,33 @@ def validate_receipt(
                 exact is not None and strict_equal(exact_evidence, exact_dds_projection(exact)),
                 f"exact DDS evidence mismatch: {logical}",
             )
-            proposal_id = "material-texture-provisioning-" + hashlib.sha256(logical.encode("utf-8")).hexdigest()[:20]
+            deployment_row = deployment_rows.get(logical)
+            deployment_evidence = row.get("deploymentEvidence")
+            require_exact_keys(
+                deployment_evidence,
+                DEPLOYMENT_EVIDENCE_KEYS,
+                f"{logical}.deploymentEvidence",
+            )
             require(
-                row.get("candidateObservations") == []
-                and row.get("blockers") == [UNRESOLVED_BLOCKER]
+                deployment_row is not None
+                and strict_equal(
+                    deployment_evidence,
+                    deployment_projection(deployment_row, deployment_authority),
+                )
+                and deployment_evidence["runtimeAssetId"] == asset_id,
+                f"exact deployment evidence mismatch: {logical}",
+            )
+            proposal_id = "material-texture-provisioning-" + hashlib.sha256(logical.encode("utf-8")).hexdigest()[:20]
+            observations = row.get("candidateObservations")
+            require(isinstance(observations, list), f"candidate observations must be a list: {logical}")
+            for observation in observations:
+                require_exact_keys(observation, CANDIDATE_OBSERVATION_KEYS, f"{logical}.candidateObservation")
+            require(
+                strict_equal(observations, candidate_observations(candidate, asset_id))
+                and row.get("blockers") == []
                 and row.get("provisioningProposalId") == proposal_id
-                and row.get("runtimeAssetAdmission") is False,
-                f"unresolved fail-closed boundary changed: {logical}",
+                and row.get("runtimeAssetAdmission") is True,
+                f"deployed admission boundary changed: {logical}",
             )
     require(set(resource_by_logical) == {row["logicalTexturePath"] for row in policy["samplerPolicies"]}, "texture resource reverse coverage changed")
     expected_resources = build_texture_resources(
@@ -1313,6 +1869,8 @@ def validate_receipt(
         validate_runtime_cook(approved_runtime_cook),
         validate_resource_export(approved_resource_export),
         exact_rows,
+        deployment_rows,
+        deployment_authority,
         candidate,
     )
     require(
@@ -1328,6 +1886,11 @@ def validate_receipt(
         require_exact_keys(exact_proposal, EXACT_DDS_EVIDENCE_KEYS, "proposal exact DDS evidence")
         require_exact_keys(exact_proposal.get("sourceTexture2D"), EXACT_DDS_TEXTURE_KEYS, "proposal exact DDS texture")
         require_exact_keys(exact_proposal.get("dds"), EXACT_DDS_PAYLOAD_KEYS, "proposal exact DDS payload")
+        require_exact_keys(
+            proposal.get("deploymentEvidence"),
+            DEPLOYMENT_EVIDENCE_KEYS,
+            "proposal deployment evidence",
+        )
         validate_row_digest(proposal, f"proposal {proposal.get('proposalId')}")
     require(
         strict_equal(proposals, expected_proposals),
@@ -1344,15 +1907,25 @@ def validate_receipt(
         strict_equal(bindings, expected_bindings),
         "Material texture bindings are not policy/owner-derived",
     )
-    resolved_rows = sum(row["status"] == RESOLVED_STATUS for row in expected_bindings)
+    resolved_rows = sum(
+        row["status"] in {RESOLVED_STATUS, DEPLOYED_STATUS}
+        for row in expected_bindings
+    )
     unresolved_rows = len(expected_bindings) - resolved_rows
     require(resolved_rows == EXPECTED_RESOLVED_ROWS and unresolved_rows == EXPECTED_UNRESOLVED_ROWS, "binding resolution denominator changed")
+    require(
+        sum(row["status"] == RESOLVED_STATUS for row in expected_bindings)
+        == EXPECTED_COOK_BINDING_ROWS
+        and sum(row["status"] == DEPLOYED_STATUS for row in expected_bindings)
+        == EXPECTED_DEPLOYMENT_BINDING_ROWS,
+        "binding authority denominator changed",
+    )
     require(sum(len(row["materialOccurrenceIds"]) for row in expected_bindings) == EXPECTED_OCCURRENCE_LINKS, "occurrence link denominator changed")
     expected_admission = {
         "bindingReceipt": {"ready": True, "rowCount": EXPECTED_POLICY_ROWS},
-        "resolvedRuntimeAssets": {"ready": False, "rowCount": EXPECTED_RESOLVED_ROWS},
-        "completeRuntimeBinding": {"ready": False, "blockers": ["MATERIAL_TEXTURE_RUNTIME_BINDINGS_INCOMPLETE"]},
-        "rendererConsumer": {"ready": False},
+        "resolvedRuntimeAssets": {"ready": True, "rowCount": EXPECTED_RESOLVED_ROWS},
+        "completeRuntimeBinding": {"ready": True, "blockers": []},
+        "rendererConsumer": {"ready": False, "blockers": [R4_BLOCKER]},
         "product": False,
     }
     require(strict_equal(receipt["admission"], expected_admission), "binding admission changed")
@@ -1361,12 +1934,16 @@ def validate_receipt(
         "uniqueLogicalTextureCount": EXPECTED_UNIQUE_TEXTURES,
         "resolvedBindingRowCount": EXPECTED_RESOLVED_ROWS,
         "unresolvedBindingRowCount": EXPECTED_UNRESOLVED_ROWS,
+        "runtimeCookBindingRowCount": EXPECTED_COOK_BINDING_ROWS,
+        "deploymentBindingRowCount": EXPECTED_DEPLOYMENT_BINDING_ROWS,
         "resolvedUniqueTextureCount": EXPECTED_RESOLVED_TEXTURES,
         "unresolvedUniqueTextureCount": EXPECTED_UNRESOLVED_TEXTURES,
+        "runtimeCookUniqueTextureCount": EXPECTED_COOK_TEXTURES,
+        "deploymentUniqueTextureCount": EXPECTED_DEPLOYMENT_TEXTURES,
         "sourcePackageBoundUniqueTextureCount": 45,
         "sourcePackageUnboundUniqueTextureCount": 3,
         "materialOccurrenceLinkCount": EXPECTED_OCCURRENCE_LINKS,
-        "provisioningProposalCount": EXPECTED_UNRESOLVED_TEXTURES,
+        "completedProvisioningProposalCount": EXPECTED_DEPLOYMENT_TEXTURES,
         "sourceExactBindingRowCount": 0,
         "rendererReadyBindingRowCount": 0,
         "productReadyBindingRowCount": 0,
@@ -1385,6 +1962,7 @@ def deep_verify(
     source_root = source_pack_path.parent.resolve()
     verified_packages: set[str] = set()
     verified_assets: set[str] = set()
+    resource_by_id: dict[str, dict[str, Any]] = {}
     physical_casefold: dict[str, str] = {}
     texture_root = runtime_resources / "Effect/Artist/Textures"
     require(texture_root.is_dir(), f"Artist texture root is missing: {texture_root}")
@@ -1396,6 +1974,7 @@ def deep_verify(
         require(key not in physical_casefold, f"runtime Resources casefold collision: {relative}")
         physical_casefold[key] = relative
     for resource in receipt["textureResources"]:
+        resource_by_id[resource["textureResourceId"]] = resource
         package = resource["sourcePackage"]
         if package is not None:
             relative_package = validate_relative_path(package["relativePath"], "source package relativePath")
@@ -1411,13 +1990,39 @@ def deep_verify(
             validate_runtime_asset_id(asset_id)
             actual_case = physical_casefold.get(asset_id.casefold())
             require(actual_case == asset_id, f"runtime asset path/case mismatch: expected={asset_id} actual={actual_case}")
-            path = (runtime_resources / Path(*PurePosixPath(asset_id).parts)).resolve()
-            require(runtime_resources.resolve() in path.parents, f"runtime asset escaped root: {asset_id}")
-            cook = resource["runtimeCookEvidence"]
-            require(path.stat().st_size == cook["byteSize"], f"runtime asset size mismatch: {asset_id}")
-            require(raw_file_sha256(path) == cook["rawSha256"], f"runtime asset hash mismatch: {asset_id}")
+            lexical_path = runtime_resources / Path(*PurePosixPath(asset_id).parts)
+            path = lexical_path.resolve()
+            require(
+                runtime_resources.resolve() in path.parents
+                and lexical_path.is_file()
+                and not lexical_path.is_symlink(),
+                f"runtime asset escaped root or is not a regular non-symlink file: {asset_id}",
+            )
+            payload = (
+                resource["runtimeCookEvidence"]
+                if resource["status"] == RESOLVED_STATUS
+                else resource["deploymentEvidence"]
+            )
+            expected_byte_count = (
+                payload["byteSize"]
+                if resource["status"] == RESOLVED_STATUS
+                else payload["byteCount"]
+            )
+            require(path.stat().st_size == expected_byte_count, f"runtime asset size mismatch: {asset_id}")
+            require(raw_file_sha256(path) == payload["rawSha256"], f"runtime asset hash mismatch: {asset_id}")
             verified_assets.add(asset_id)
     require(len(verified_assets) == EXPECTED_RESOLVED_TEXTURES, "deep runtime asset denominator changed")
+    verified_bindings = 0
+    for binding_row in receipt["materialTextureBindings"]:
+        resource = resource_by_id.get(binding_row["textureResourceId"])
+        require(
+            resource is not None
+            and binding_row["runtimeAssetId"] == resource["runtimeAssetId"]
+            and resource["runtimeAssetId"] in verified_assets,
+            f"deep binding/runtime reverse join failed: {binding_row['bindingId']}",
+        )
+        verified_bindings += 1
+    require(verified_bindings == EXPECTED_POLICY_ROWS, "deep binding denominator changed")
 
 
 def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
@@ -1491,7 +2096,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             runtime_oracle=runtime_oracle,
             acquisition=acquisition,
         )
-        print("PASS: Artist F Material texture runtime binding validate-only 68/72 resolved 44/48 unique product=false")
+        print("PASS: Artist F Material texture runtime binding validate-only 72/72 resolved 48/48 unique deployment=4 product=false")
         return 0
     runtime_cook = read_json(args.runtime_cook)
     resource_export = read_json(args.resource_export)
@@ -1547,7 +2152,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     mode = "check" if args.check else "write"
     if args.deep_verify:
         mode += "+deep"
-    print(f"PASS: Artist F Material texture runtime binding mode={mode} rows=68+4/72 unique=44+4/48 proposals=4 product=false")
+    print(
+        f"PASS: Artist F Material texture runtime binding mode={mode} "
+        "rows=68cook+4deployment/72 unique=44cook+4deployment/48 "
+        "completedProposals=4 product=false"
+    )
     return 0
 
 

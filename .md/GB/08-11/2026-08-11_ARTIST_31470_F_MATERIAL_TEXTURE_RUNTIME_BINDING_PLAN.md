@@ -1,106 +1,121 @@
 # 2026-08-11 Artist 31470 F Material Texture Runtime Binding Plan
 
-## 현재 실제 반영 상태와 이번 경계
+## 목표와 현재 경계
 
-Material reconstructed policy `97597531215fa9c9873fe1be3ba8cd23db60031d`는 sampler descriptor
-72/72를 선택했지만, 각 `logicalTexturePath`를 실제 Resources asset ID에 결합하는 계약은 없다.
-이번 변경은 그 72행만 다룬다. C++, renderer, runtime program builder, Product admission은 수정하지 않는다.
+Material reconstructed policy의 sampler 72행을 실제 Resources 상대 runtime asset ID에 전부
+결합한다. 기존 68행은 frozen runtime-cook/export receipt의 full logical path 결합을 그대로
+사용한다. 나머지 4행은 독립 PASS를 받은 exact-DDS deployment receipt와 실제 배포 파일을
+함께 검증한 뒤 reconstructed deployment 결합으로만 승인한다.
 
-후속 external-identity corrective는 generator에 전달된 Python object와 receipt에 기록한 외부 파일
-identity가 서로 다른 상태로 재봉인될 수 있는 경계를 닫는다. Pure validator는 호출자가 외부 object를
-주었는지와 `require_approval` 값에 관계없이 기본 runtime-cook, resource-export, source-pack 파일의
-실제 bytes를 항상 읽는다. 각 파일은 승인된 byte count, raw SHA-256, canonical JSON SHA-256과 strict
-JSON parse를 모두 통과해야 하며, 전달 object는 이 승인 파일에서 parse한 object와 strict-equal일
-때만 허용한다.
+이번 변경이 닫는 범위는 다음과 같다.
 
-실측 denominator는 다음과 같다.
+- sampler policy 72/72와 unique logical texture 48/48의 runtime asset 결합
+- runtime-cook 기반 68행, 44개 unique texture의 기존 증거 보존
+- exact-DDS deployment 기반 4행, 4개 unique texture의 별도 typed 증거
+- material occurrence link 83개의 owner/path/descriptor/SRV 역결합
+- 배포 proposal 4개의 완료·배포 lineage 보존
 
-- sampler policy: 72행, unique logical texture 48개
-- frozen Artist runtime-cook full-path join: 44/48 texture, policy 68/72행
-- cook 결합된 현재 Resources 파일: 44/44 size/SHA 일치
-- exact-DDS만 있고 current runtime-cook mapping이 없는 texture: 4개, policy 4행
-- native-v14 candidate texture slot: 57행, unique asset ID 36개; Material field authority로 사용하지 않음
-- pinned source-pack manifest package identity: unique texture 45/48. `wp_mn_lrcn_01`의 3개 texture는
-  resource manifest와 runtime cook/export에는 있지만 source-pack package row가 없어 별도 evidence
-  blocker로 보존함
+이번 변경은 Material source fidelity, renderer SRV 소비, R4 또는 Product를 승인하지 않는다.
+네 행의 fidelity는 `RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT`이며
+`SOURCE_EXACT`로 승격할 수 없다. 전체 receipt의 `sourceExact`, renderer admission, Product도
+계속 false다.
 
-4개 미결합 texture는 다음과 같다.
+## 고정 deployment 권위
 
-- `fx_tex_00.fx_a_decal_014`
-- `fx_tex_00.fx_a_noise_011`
-- `fx_tex_01.fx_c_atypical_016`
-- `fx_tex_03.fx_e_ring_001_cl`
+Material validator는 아래 artifact를 기본 tracked 경로에서 직접 읽는다. 호출자가 넘긴 JSON
+object는 이 파일을 대체하지 못하며, 실제 parse 결과와 strict-equal일 때만 보조 입력으로
+허용한다.
 
-이 네 행은 basename으로 추측하지 않는다. exact-DDS receipt의 authenticated DDS/export identity와 다음
-exact-DDS receipt가 이미 소유한 nested `fixtureAssetId`를 provisioning proposal로만 기록한다.
+| 항목 | 고정값 |
+|---|---|
+| original authority commit | `01b8b8a8bace09a3576f116771daf4859aa485a3` |
+| authority tree | `60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4` |
+| receipt path | `Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json` |
+| receipt Git blob | `5d1e3766e90dc3d816b9948d85991ff57a207dca` |
+| tracked-text SHA-256 | `7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18` |
+| receipt self SHA-256 | `de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466` |
+| independent approval projection | `419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc` |
+| implementation projection | `0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b` |
 
-- `Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds`
-- `Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds`
-- `Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds`
-- `Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds`
+deployment receipt의 네 행은 logical path, proposal ID, texture resource ID, runtime asset ID,
+exact-DDS export/payload, deployed file size/SHA, exact path case, regular-file/symlink-free,
+post-verify 결과를 모두 결합한다. Material validator는 receipt 검증과 별도로
+`Client/Bin/Resources` 아래 실제 네 DDS를 다시 열어 path case, alias/collision, symlink,
+byte count와 raw SHA-256을 검사한다.
 
-이 제안은 `RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V1`이며 source exact 승격이 아니다.
-transactional deploy/verification receipt가 생기기 전에는 `UNRESOLVED_RUNTIME_ASSET`과 runtime admission
-false를 유지한다.
+Material policy, typed contract, runtime oracle, source-value acquisition, resource manifest,
+exact-DDS receipt, native-v14 candidate의 일곱 tracked semantic 입력도 caller object를 권위로
+사용하지 않는다. validator는 항상 기본 tracked bytes를 strict parse하고 approval의 tracked/self
+pin을 검증한다. supplied object가 있으면 기본 parse 결과와 strict-equal이어야 하며, candidate
+observation은 pinned candidate에서만 계산한다.
 
-## 추가·수정할 파일
+## v2 receipt 계약
 
-| 구분 | 절대 경로 | 역할 |
-|---|---|---|
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Tools/LevelPlacementExtractor/build_artist_31470_material_texture_runtime_binding.py` | frozen Material/cook/export/UPK/DDS/candidate evidence를 72행 binding receipt로 결합하고 검증한다. |
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Tools/LevelPlacementExtractor/artist_31470_material_texture_runtime_binding_approval.py` | 72행 결정 projection과 frozen external identity를 독립 pin한다. |
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Tools/LevelPlacementExtractor/test_build_artist_31470_material_texture_runtime_binding.py` | owner/path/status/asset/reseal/path-safety/duplicate-key mutation을 거부한다. |
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Data/Effects/Imported/Artist/Materials/skill.31470.material-texture-runtime-binding.receipt.json` | 68 resolved + 4 unresolved runtime binding과 네 provisioning proposal의 generated 정본이다. |
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Tools/ProjectAudit/Test-Artist31470MaterialTextureRuntimeBinding.ps1` | shallow checked receipt와 optional external deep file/hash 검증을 실행한다. |
-| 수정 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | focused non-deep check를 permanent audit에 등록한다. |
-| 추가 | `C:/Users/user/.codex/worktrees/artist-f-v2-material-texture-binding/LostArk/.md/GB/08-11/2026-08-11_ARTIST_31470_F_MATERIAL_TEXTURE_RUNTIME_BINDING_RESULT.md` | 실제 검증 결과와 미완료 4행을 분리 기록한다. |
+`formatVersion`을 exact JSON integer 2로 올린다. 기존 의미와 구분하기 위해 contract ID도
+`ARTIST_31470_MATERIAL_TEXTURE_RUNTIME_BINDING_V2`로 올린다.
 
-## receipt 계약과 생성 흐름
+| 구분 | 행 | unique texture | status/basis |
+|---|---:|---:|---|
+| runtime-cook 결합 | 68 | 44 | `RESOLVED_EXACT_RUNTIME_COOK_RECEIPT` |
+| exact-DDS deployment 결합 | 4 | 4 | `RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT` |
+| 전체 | 72 | 48 | runtime asset binding ready |
 
-각 binding은 `samplerPolicyRowId`, `recipeId`, `materialInputFieldId`, `logicalTexturePath`, ordered
-`materialOccurrenceIds` 전체에서 stable `bindingId`를 다시 만든다. Policy 72행과 typed contract의 recipe
-input owner/occurrence reverse join이 정확히 하나씩 존재해야 한다.
+네 deployment resource는 `deploymentEvidence`에 artifact commit/tree/blob, receipt tracked/self,
+approval/implementation projection, deployment row ID/SHA, runtime ID, size/SHA와 post-verify flag를
+소유한다. 네 provisioning proposal은 삭제하지 않고
+`COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT` lineage로 보존한다.
 
-resolved 행은 logical path 전체 문자열로 runtime-cook row와 source export row를 각각 하나만 찾는다.
-Cook `sourceFile`은 export output relative path와 같고, exported DDS와 runtime copied DDS의 size/SHA가
-같아야 한다. Runtime asset ID는 `Effect/Artist/Textures/*.dds`의 안전한 flat path만 허용한다.
+admission은 다음처럼 분리한다.
 
-각 logical path는 tracked Artist source resource manifest의 physical UPK row와 external source-pack
-manifest의 raw size/SHA에 결합한다. Deep mode는 실제 UPK와 runtime DDS bytes를 다시 해시한다.
+- `bindingReceipt.ready=true`, rowCount 72
+- `resolvedRuntimeAssets.ready=true`, rowCount 72
+- `completeRuntimeBinding.ready=true`
+- `rendererConsumer.ready=false`, blocker `R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE`
+- `product=false`
 
-외부 세 receipt의 authority는 caller object가 아니라 기본 pinned 경로의 실제 파일 bytes다. Receipt의
-`sourceEvidence` 외부 행도 validator가 방금 읽어 계산한 byte count/raw SHA와 다시 결합한다. 따라서
-동일한 원본 파일 identity를 기록하면서 메모리 object만 바꾸거나, forged object와 receipt 행을 함께
-재봉인해도 승인 authority를 대체할 수 없다.
+## 변경 파일
 
-unresolved 네 행은 cook/export mapping을 만들지 않는다. exact-DDS receipt row와 authenticated Texture2D
-export/DDS identity를 복사하고 `RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED` blocker를 유지한다.
-Provisioning proposal은 exact-DDS receipt의 기존 `fixtureAssetId`와 exact source DDS identity만 결합하며
-새 flat path를 만들거나 deploy 완료를 주장하지 않는다.
+| 파일 | 역할 |
+|---|---|
+| `Tools/LevelPlacementExtractor/build_artist_31470_material_texture_runtime_binding.py` | 68 cook + 4 deployment typed join, 실제 tracked receipt/Resources 검증, v2 receipt 생성·검증 |
+| `Tools/LevelPlacementExtractor/artist_31470_material_texture_runtime_binding_approval.py` | deployment artifact pins와 최종 v2 projection 승인 |
+| `Tools/LevelPlacementExtractor/test_build_artist_31470_material_texture_runtime_binding.py` | 기존 mutation 27개와 deployment 공격 회귀 |
+| `Data/Effects/Imported/Artist/Materials/skill.31470.material-texture-runtime-binding.receipt.json` | 생성된 72/72 v2 정본 |
+| `Tools/ProjectAudit/Test-Artist31470MaterialTextureRuntimeBinding.ps1` | shallow/deep 분모와 fail-closed 경계 검사 |
+| `.md/GB/08-11/2026-08-11_ARTIST_31470_F_MATERIAL_TEXTURE_RUNTIME_BINDING_RESULT.md` | 실제 검증 결과와 다음 R4 경계 기록 |
 
-## 불변식과 실패 처리
+exact-DDS deployment commit의 generator/receipt/approval/test/audit/PLAN/RESULT는 `-x` cherry-pick으로
+같은 브랜치에 포함하되 그 파일을 이번 Material receipt의 새 evidence authority로 재작성하지 않는다.
 
-- JSON은 UTF-8 BOM, duplicate key, non-finite 숫자를 거부한다.
-- `formatVersion`은 exact JSON integer다.
-- policy 72, unique logical 48, resolved 68, unresolved 4, provisioning proposal 4를 다시 유도한다.
-- policy row, recipe/input owner, occurrence, descriptor/SRV identity의 제거·교환·재봉인을 거부한다.
-- source logical path와 runtime asset ID는 casefold collision과 many-to-one mapping을 거부한다.
-- 절대 경로, drive path, backslash, `..`, wrong prefix/suffix를 runtime asset ID로 허용하지 않는다.
-- candidate slot은 exact asset ID 관찰값일 뿐 authority/admission이 아니다.
-- 외부 object 인자는 dependency injection이 아니라 pinned 파일 parse 결과와의 동등성 assertion이다.
-- runtime-cook/export/source-pack은 실제 기본 파일의 byte count/raw SHA/canonical JSON identity를 항상
-  다시 검증하며 `require_approval=false`도 이 검사를 우회하지 않는다.
-- 네 proposal은 target file이나 transactional deployment receipt가 없으므로 resolved로 승격할 수 없다.
-- 실패하면 output 파일을 부분 교체하지 않는다. `--check`는 파일을 쓰지 않는다.
+## 실패와 rollback
+
+다음 중 하나라도 발생하면 receipt 생성과 validation을 실패시킨다.
+
+- deployment receipt commit/tree/blob/tracked/self/approval/implementation identity 불일치
+- deployment 4행 누락, 순서/owner/logical/runtime ID 교환, 가짜 완료 상태
+- deployment runtime ID 또는 deployed-file ID가 exact-DDS fixture ID와 exact-case 불일치
+- exact-DDS row와 deployment row의 path/size/SHA 불일치
+- 실제 Resources 파일 누락, casefold alias, case mismatch, symlink, size/SHA 불일치
+- supplied/resealed deployment object가 기본 tracked parse 결과와 불일치
+- 일곱 tracked supplied object가 기본 tracked parse 결과와 불일치
+- 72 policy, 48 logical, 83 occurrence, 68+4/44+4 분모 불일치
+- runtime asset traversal, absolute path, backslash, wrong prefix/suffix, many-to-one alias
+- sourceExact, renderer, R4, Product의 무근거 승격
+
+generator는 완성된 candidate를 검증한 뒤에만 atomic replace하며 `--check`는 출력 파일을
+수정하지 않는다. 실제 Resources 배포는 이 변경에서 수행하지 않는다.
 
 ## 검증
 
-1. focused Python unit mutation suite. 기본 외부 파일 bytes 변조와 consumed runtime asset/object/receipt
-   coordinated reseal을 pure validator 직접 호출로 거부한다.
-2. generator `--check` deterministic rebuild
-3. focused ProjectAudit shallow
-4. external cook/export/source-pack/UPK/Resources를 지정한 deep audit
-5. strict JSON parse, `git diff --check`, 전체 ProjectAudit 결과 분리 기록
+1. 기존 27개를 포함한 Python mutation suite
+2. deployment row omit/swap/path/size/SHA/status와 authority commit/tree/blob/self 공격
+3. 4행 A/B 교환, coordinated reseal, supplied object 대체 공격
+4. tracked deployment receipt bytes와 실제 deployed DDS bytes 변조 공격
+5. sourceExact/Product 승격 공격
+6. generator deterministic `--check`와 validate-only
+7. focused ProjectAudit shallow/deep
+8. deep mode에서 source UPK와 runtime DDS 48/48 path/size/SHA 역결합
+9. JSON parse와 `git diff --check`
 
-이번 변경은 Python/JSON/PowerShell만 추가하므로 `.vcxproj`와 `.vcxproj.filters` 등록 및 C++ build는
-해당하지 않는다.
+C++ 또는 project 파일 변경이 없으므로 C++ build와 `.vcxproj/.filters` 등록은 이번 검증 범위가
+아니다. renderer 소비는 후속 R4 수직 슬라이스에서 별도로 닫는다.

@@ -1,14 +1,14 @@
 {
   "schema": "lostark.artist-31470-material-texture-runtime-binding-receipt",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "characterClass": "ARTIST",
   "skillId": 31470,
   "inputSlot": "F",
   "bindingContract": {
-    "contractId": "ARTIST_31470_MATERIAL_TEXTURE_RUNTIME_BINDING_V1",
-    "contractVersion": 1,
+    "contractId": "ARTIST_31470_MATERIAL_TEXTURE_RUNTIME_BINDING_V2",
+    "contractVersion": 2,
     "logicalJoinKey": "FULL_CASE_SENSITIVE_LOGICAL_TEXTURE_PATH",
-    "runtimeAssetAuthority": "FROZEN_ARTIST_RUNTIME_COOK_RECEIPT",
+    "runtimeAssetAuthority": "FROZEN_ARTIST_RUNTIME_COOK_OR_EXACT_DDS_DEPLOYMENT_RECEIPT",
     "basenameInferenceAllowed": false,
     "provisioningPolicy": "RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V1",
     "sourceExact": false
@@ -16,12 +16,17 @@
   "sourceEvidence": {
     "frozenMaterialPolicyCommit": "97597531215fa9c9873fe1be3ba8cd23db60031d",
     "directImportClosure": {
-      "dependencyCount": 5,
+      "dependencyCount": 6,
       "dependencies": [
         {
           "dependencyId": "TEXTURE_RUNTIME_BINDING_BUILDER",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_texture_runtime_binding.py",
-          "trackedTextSha256": "9d38f6fb7515e69fc842f3d0c60cde52e945783053aff075e280d93bc114bfbe"
+          "trackedTextSha256": "3db641ab39389954f6d3c0de04abdaf34e4bdba14af26211ed1ace41152fc5e1"
+        },
+        {
+          "dependencyId": "EXACT_DDS_RUNTIME_DEPLOYMENT_APPROVAL",
+          "relativePath": "Tools/LevelPlacementExtractor/artist_31470_exact_dds_runtime_deployment_approval.py",
+          "trackedTextSha256": "892cc0a19efbab088dcec1c9078541cbf8904f2b9f58d6ed5f58ec71fbc4f9fb"
         },
         {
           "dependencyId": "MATERIAL_EVIDENCE_VALIDATOR",
@@ -41,10 +46,21 @@
         {
           "dependencyId": "TEXTURE_RUNTIME_BINDING_APPROVAL",
           "relativePath": "Tools/LevelPlacementExtractor/artist_31470_material_texture_runtime_binding_approval.py",
-          "trackedTextSha256": "a963d9442b3d3232b75f3944f3b6db462e7152f5f11bfb3654cdaefc370b66f9"
+          "trackedTextSha256": "6c2906e105fa65b284e4ddf566233e06fbfbabe07d5cecf231de434f86a52040"
         }
       ],
-      "projectionSha256": "9df416638dd2a850cb02c428cbccc0d1a90d9ba584b8347b2d102a66f52bfb51"
+      "projectionSha256": "bffb07c2af2ff27e90723b7eaf3e3c9a8ccb3c5ccf09ce89fdd2f0253f4a133f"
+    },
+    "exactDdsRuntimeDeploymentReceipt": {
+      "relativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+      "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+      "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+      "gitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+      "trackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+      "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+      "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+      "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+      "hashRole": "FROZEN_GIT_ARTIFACT_AND_TRACKED_UTF8_EOL_CANONICAL"
     },
     "materialPolicy": {
       "relativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.material-reconstructed-approved-v1.receipt.json",
@@ -57,6 +73,18 @@
       "trackedTextSha256": "a8728231ae0df26c8e203064712154989f3d42fbe5e7eaafff3db81aecda97a5",
       "hashRole": "TRACKED_UTF8_EOL_CANONICAL",
       "selfDigest": "638fae77c5805a8d33cacb69b5cdd810d40d2f304606dd56f970dd2504c1cfcb"
+    },
+    "materialRuntimeOracle": {
+      "relativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.material-runtime-oracle.receipt.json",
+      "trackedTextSha256": "58b06308713f87262a9a716e48fc29ba5137ab77507f0e9d3ee633938e5ddb34",
+      "hashRole": "TRACKED_UTF8_EOL_CANONICAL",
+      "selfDigest": "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6"
+    },
+    "materialSourceValueAcquisition": {
+      "relativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.material-source-value-acquisition.receipt.json",
+      "trackedTextSha256": "cfbf89625b612aa623aa47c0f7c85c721037a2856088a652a886b37c261bb40f",
+      "hashRole": "TRACKED_UTF8_EOL_CANONICAL",
+      "selfDigest": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43"
     },
     "resourceSourceManifest": {
       "relativePath": "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json",
@@ -135,6 +163,7 @@
         "outputRowSha256": "d5f9d5af1c7121da6f40251ba877e84c96a97501a52fb6d9f1ca1b09af19b5f9"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0",
@@ -146,13 +175,13 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "4e8faca8cea1eedbc5584080023e4cd46b298718ce3a610423185b9bfc691c0d"
+      "rowSha256": "5c3cc34fc181c53c9cc8230f99afd6a17d266bfa14fab60c378d59abd7fe8e81"
     },
     {
       "textureResourceId": "material-texture-resource-0821a3da70a9ebd8f1e6",
       "logicalTexturePath": "fx_tex_00.fx_a_decal_014",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
       "sourceResourceManifest": null,
       "sourcePackage": {
         "logicalPackage": "FX_TEX_00",
@@ -191,14 +220,36 @@
         },
         "sourceRowSha256": "944c42536da5030912f2ff5a9655e6dce1cf6b6d31ce5453a26f5acf9c0644e0"
       },
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-a4657d5bd2ec3dc67683",
+        "proposalId": "material-texture-provisioning-0821a3da70a9ebd8f1e6",
+        "deploymentRowSha256": "1ad0a8034948116522051cfd7f7aba150e82769036d19acb7f39903c6d151293",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
+        "byteCount": 65664,
+        "rawSha256": "c2ead8a025cea1f70c8b03f9a488748ebd616828695199539d4e5010e5dc24ef",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "candidateObservations": [],
-      "blockers": [
-        "RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED"
-      ],
+      "blockers": [],
       "provisioningProposalId": "material-texture-provisioning-0821a3da70a9ebd8f1e6",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "39409b64fc3ed158f571166051f010673bb934af3dda42e3dde6c341d5d04b39"
+      "rowSha256": "459a399ddd7fa3246b617ba7ef04655b8c537148cadaea1ad5e4bc9c99f266d4"
     },
     {
       "textureResourceId": "material-texture-resource-df9326f5f0bbdf88d424",
@@ -245,6 +296,7 @@
         "outputRowSha256": "6ec09fcd304a5ae0acef8f4895822cac3ba84f709348cccce7e7670695211e3f"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17",
@@ -256,7 +308,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "775c705f527524454df211318d68638803064a58ceac004a9c897223f4cad778"
+      "rowSha256": "960552d0a3d95d30d4bb6b8869299e90ccfc8d27060d59a76a6f6a7b3a669818"
     },
     {
       "textureResourceId": "material-texture-resource-dc2c5ef818c697390efe",
@@ -305,12 +357,13 @@
         "outputRowSha256": "f10a06866259c31cd1284d5f181eb5cd2cfe2d02ad71ec51558f344cfd5466ec"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "b4c49ffbcf2cf8ca2e8d083e79d4949eb5d7595062ba800a03713ee17c6cdbff"
+      "rowSha256": "d14961d99a2437db975cfad59808c8e8442c44c5d7d8c3f2fb8e86301e33ab35"
     },
     {
       "textureResourceId": "material-texture-resource-a86cba3e7d56a22f69aa",
@@ -364,6 +417,7 @@
         "outputRowSha256": "d5d41989056203e2820803f509383dccc34789e160f932004161cf6a5794768a"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
@@ -380,7 +434,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "230995ba50c6a69dd4ffd4d6319e30e00c572fa5cf80ef326fe8362844ff1c61"
+      "rowSha256": "1ae89e055c5b9d2f78c3aca38908670de412a6bcdd19b362c8d2d0498c7e7205"
     },
     {
       "textureResourceId": "material-texture-resource-5200d01affe600bb33d2",
@@ -434,6 +488,7 @@
         "outputRowSha256": "6cae8743867c6ea9716fb2648afaeaaa1d09f2cb79d9f605d836f8e56bd8f50b"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
@@ -450,13 +505,13 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "bd11d25018a8d4155d64d2f09d5fa94cd56b7738830e386333595c7f3e496354"
+      "rowSha256": "7604512e7ba950a17a328fa99671c55bf482c84a76a93b21d88e9c7666c29c80"
     },
     {
       "textureResourceId": "material-texture-resource-ab9078b6d245113c4b82",
       "logicalTexturePath": "fx_tex_00.fx_a_noise_011",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
       "sourceResourceManifest": null,
       "sourcePackage": {
         "logicalPackage": "FX_TEX_00",
@@ -495,14 +550,36 @@
         },
         "sourceRowSha256": "5ad13318217fe10670d87b16c93d8ea5805d9e18df94d044dd11a9e0dc6e2ae3"
       },
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-035e334f7398505eea7c",
+        "proposalId": "material-texture-provisioning-ab9078b6d245113c4b82",
+        "deploymentRowSha256": "329392ee94c2a1bbaafb8326cf4651205fbab6d6ca2a7251bcd9dff1eed4d303",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
+        "byteCount": 16512,
+        "rawSha256": "c8d94d0750517d5654416e71bcd8666d79630c478c757d196e37ba056f87cc53",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "candidateObservations": [],
-      "blockers": [
-        "RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED"
-      ],
+      "blockers": [],
       "provisioningProposalId": "material-texture-provisioning-ab9078b6d245113c4b82",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "a663733bddd1e3f687db8614935c833b04b81ccb4af93e246c4398ccfe9b6fe1"
+      "rowSha256": "4a4c79432dcc1d223f0837dd368abd8f4001ffc26928703f90ba528069b728ca"
     },
     {
       "textureResourceId": "material-texture-resource-fef71e12088e915375a6",
@@ -552,6 +629,7 @@
         "outputRowSha256": "97c5f8e157b8614a44d8d3412979906cea98ee421f36b05a5f8c5fdd82429d6e"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
@@ -568,7 +646,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "937f51e7cc5336119a83efef2b86aff85dd899d8466ce466681b142ecfdbdc38"
+      "rowSha256": "978be98ff8afd523c4218d986794b1459bdebce1156d0b811f7196bfa7949441"
     },
     {
       "textureResourceId": "material-texture-resource-1e8d3e08eb4ca9b02270",
@@ -618,6 +696,7 @@
         "outputRowSha256": "d6210dc90f52eb49cc425b93212670dc12c4cd107bb37bf43b1409abc4cc2f42"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
@@ -634,7 +713,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "e0151502844e6292464887174daf6cec9c035b1d6c469b8d716bc880a4bd86be"
+      "rowSha256": "20f591243012739d40f8bba44ea00e7be08858e0cda39e933a176fafe4f1c203"
     },
     {
       "textureResourceId": "material-texture-resource-315ee462695d995d1cb5",
@@ -681,18 +760,19 @@
         "outputRowSha256": "0fdf201058d30bae16d93b66a5e64bbc1cb6570132192e0491bb2b41a5ea5615"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "fc9eb2b1e3be7bd42f256ef95255c0940cbb4ba7e014bca130e55e142e8a146f"
+      "rowSha256": "a9eca5f42557bbfe10712f621fd6c509a8c365f72a9bb62ce5a65acbf2697e4f"
     },
     {
       "textureResourceId": "material-texture-resource-243ca9e992ac7e8163a1",
       "logicalTexturePath": "fx_tex_01.fx_c_atypical_016",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
       "sourceResourceManifest": null,
       "sourcePackage": {
         "logicalPackage": "FX_TEX_01",
@@ -731,14 +811,36 @@
         },
         "sourceRowSha256": "9d051b4212153fa318db97d74d4da773abcc8da123adedc518e7c6f4ef533493"
       },
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-a078d792444e902e5f00",
+        "proposalId": "material-texture-provisioning-243ca9e992ac7e8163a1",
+        "deploymentRowSha256": "ef25bf80d0562e01dd39ee4fcf927aee894a275208f648f2be895cc923df83cb",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
+        "byteCount": 32896,
+        "rawSha256": "bbd2dc3ba79d24a5806af63d00dee302a04fb5c6e8be343275a63a9353981f43",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "candidateObservations": [],
-      "blockers": [
-        "RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED"
-      ],
+      "blockers": [],
       "provisioningProposalId": "material-texture-provisioning-243ca9e992ac7e8163a1",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "47dc079d7b33683e41d037d7597283a23132883dc516d48bd1951848968570c0"
+      "rowSha256": "3dcdca21093a729b824c4a300ce399164b31aa919a14670da8293d67f24ff218"
     },
     {
       "textureResourceId": "material-texture-resource-0eaddbe8a1e55dd899a4",
@@ -788,6 +890,7 @@
         "outputRowSha256": "bcb2dd3a8e44877d7cab641af6642e5743df9b0ec432ff84b7ffdd818d08f402"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3",
@@ -804,7 +907,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "c1db5975a9922c70b80fd36823bcebb5586563cf2b46d5e118d037afe73d8d81"
+      "rowSha256": "e23c7220fe52a04d41275981eb7c2ababcbb1596293ad3d45acfc5086bc5ce87"
     },
     {
       "textureResourceId": "material-texture-resource-1da48ad07553b2bdcd8c",
@@ -858,6 +961,7 @@
         "outputRowSha256": "b1c25472aa9a8b6276318391e864e4f4f2ee063a03659e305f2188dd83c05a0f"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
@@ -874,7 +978,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "8ed1b1de7f6fc3f9771dfeee7c0cece63bd9061127df328868e847a6a96e62d0"
+      "rowSha256": "4fd97fc0eab301392fbcc02168339f7b06c5d9b2e29c748607111b6ca3481187"
     },
     {
       "textureResourceId": "material-texture-resource-65c07c09c10618933d7e",
@@ -923,6 +1027,7 @@
         "outputRowSha256": "c151b723b76f076ba5a7cf6f6b0c7fb575a03103e923eb32721889569b490e6d"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
@@ -939,7 +1044,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "3f089ab7256dc4d39218c4e58b69f1dce0fcbf04799dfee857937a3059d7053f"
+      "rowSha256": "c82995e2148aba6aea5c986f3584d0df28233eb9266773667690aaded793a9c7"
     },
     {
       "textureResourceId": "material-texture-resource-9246f2dc7327f8b238df",
@@ -993,6 +1098,7 @@
         "outputRowSha256": "15e8c9eb28f644eb5d61728bbf6cf6ffed0fecc550dcd40e963093bac4f16ad2"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
@@ -1009,7 +1115,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "bdb1820b751347a4d9a49c08ba7981cbabc2695f42fa2e615949c2dc7e47604a"
+      "rowSha256": "57303f41f05bf0153f4a03f9fcf03db10c9882e6a6b9a7ceeb0ceb933a5836e0"
     },
     {
       "textureResourceId": "material-texture-resource-1f61f570e67c01850886",
@@ -1058,12 +1164,13 @@
         "outputRowSha256": "a9ff6fbba9820c7a7e9b67055f9d8c720eacddca451c96ab79129d36a481bcd0"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "28656d3c5074addd07f17f4b8484efb9a1e13e2eeec18d1581712beaeb736b82"
+      "rowSha256": "6225a0873764d253e0dfbbfe0595064967e63831b19b5ecfb1efd29a9f35af14"
     },
     {
       "textureResourceId": "material-texture-resource-9219891095374c9ec99d",
@@ -1110,6 +1217,7 @@
         "outputRowSha256": "f0f86f79d238337b73c9b90f4bc2d228578ae6cc9b7bc3c0cbf2bd25f48a7526"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16",
@@ -1121,7 +1229,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "14fe40d44054f98d81c538ea711f5ffdf91eebbf011a0977e4a0e32f1d2c9057"
+      "rowSha256": "8f93c589b9134b1a5cfa0d95e65a988a58f0cbafa4eec5ac70646819e0d48e36"
     },
     {
       "textureResourceId": "material-texture-resource-2dd83a7564c41c8d5be3",
@@ -1174,6 +1282,7 @@
         "outputRowSha256": "26cad932350c4e07d8a35f5b825d5a0eef974d9cb3ab6f684853e772055a7827"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0",
@@ -1190,7 +1299,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "17648e86035904f6cb4c4b3d36f3b081bd911c788a1f1a9413f890b8c54ee18b"
+      "rowSha256": "977399afb85a6afe388dc18fda2de6d50be1d30a784ac57b2106ff08301d1ce0"
     },
     {
       "textureResourceId": "material-texture-resource-0dadafb62b8b0a3d301a",
@@ -1240,6 +1349,7 @@
         "outputRowSha256": "23fc2b93885dc786b5d4827cadc33a63a1aa714027c458c956567f12260a3961"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16",
@@ -1251,7 +1361,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "0d78fc083aa984da1062ae246c297e098daeede5b3ac583bea39e92ffa531ffb"
+      "rowSha256": "b9a366612b7b294bd757b2457348df7e7210b9bbdbbaffd2031f834d9028b0f2"
     },
     {
       "textureResourceId": "material-texture-resource-395e38bc0d19b8c9da54",
@@ -1301,6 +1411,7 @@
         "outputRowSha256": "5565c3ea2937ce126dcf218c267904a1128e5ea1700f33e79062a5a4d762bf55"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3",
@@ -1317,7 +1428,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "95ecb028486aa35dc6aada267bc5a19db8fcf7d412f3e8572f12617088903c39"
+      "rowSha256": "ec44e744e0b6f93d91b543cb67e1647f981d2a772e1c77372dbe1ae90ca98b31"
     },
     {
       "textureResourceId": "material-texture-resource-bb9a7b4c44984e5b0b6f",
@@ -1370,6 +1481,7 @@
         "outputRowSha256": "20144f601d3a66df758884e7ab925b8b310c7cf85132f6b455bb91bb95448e14"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
@@ -1381,7 +1493,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "61ebf8ba00d3da6ec831ce5de7ccd30175f3f5dd3ec004e9d21c5c6a0f9b70e2"
+      "rowSha256": "d85e8ba768cd17307324299826770bcf97f88fa3170ff9d47b31e18f991884ac"
     },
     {
       "textureResourceId": "material-texture-resource-133863c9f1a959930f66",
@@ -1430,6 +1542,7 @@
         "outputRowSha256": "bb7193551f84ead8ed15801c40b7efc4068ca3b26c066a5497b5c8209639a821"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
@@ -1441,7 +1554,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "b3e62780374c649d2f347c6a0e2652f7d02d826acc6ef1fe893c99c3f6aba8a4"
+      "rowSha256": "5a19c7935e203cb3d9cbeb44de60cf8caa502a38f3a703d12f21073b9222b701"
     },
     {
       "textureResourceId": "material-texture-resource-b31109eaaf70c222fc75",
@@ -1490,12 +1603,13 @@
         "outputRowSha256": "2987aefc83344d278352f79d3002bc925c5abb4421b8849fb5a0bac159c78841"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "ef3a2d51f9bd5760eb8fba963f8b7c8f445b4ec7e8346decb5009111a6b228fe"
+      "rowSha256": "310b24b0709747a66ed2fefebc27673317cc0249d17b7b9179af3b5b5a0884bc"
     },
     {
       "textureResourceId": "material-texture-resource-360bbb8b76bdd90f548b",
@@ -1542,6 +1656,7 @@
         "outputRowSha256": "a73fbce864e73f34ce1c5e2bdf0e43d78a0409ab2cb5707afbca79dfe5bfc8a2"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28",
@@ -1563,7 +1678,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "0aa87679679021339e88c3eeb13b1fcfe1dd429ec33671664ea2d9962dc8c3ee"
+      "rowSha256": "751ce49498e1711c23ddbaf44ecd0bc84c88d885c3fc9267215b06cffe4b43e5"
     },
     {
       "textureResourceId": "material-texture-resource-5a257a557e3f7ea42183",
@@ -1612,6 +1727,7 @@
         "outputRowSha256": "72ad5c52083bcc7d5d8dbb25c04146c2419f3af222cb8d6a807ecd07cb58faba"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0",
@@ -1623,7 +1739,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "9739e81ed2682b6b5cdbad8a786afe440b96ce2a04684d67a41f0af63a65d98b"
+      "rowSha256": "7109e703696a07d8de4566c58fa8d68704b41b1ffdae7370c93625dfb7872abc"
     },
     {
       "textureResourceId": "material-texture-resource-e48041d91d9e30874c3a",
@@ -1670,12 +1786,13 @@
         "outputRowSha256": "25777019a6136695241177052cbcd9e2c26a1c34bfc5d3e569e143d9a3d1e93b"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "83fbe77da7e57ea9d542105d703ec7bdd1611a9e75295597c5d725e4163ba65d"
+      "rowSha256": "64e1f05c83f6bcbac5db591d07a89d4c1f5e33491eabb67e84ead19ceabe8332"
     },
     {
       "textureResourceId": "material-texture-resource-6cad113c99abee65f847",
@@ -1723,6 +1840,7 @@
         "outputRowSha256": "22a3533da95ea9b5adf7f0f154c77fdeb4d25602ef8b083fd7d881e23001889a"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3",
@@ -1739,13 +1857,13 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "992a8db1d5181f34db908b237aee1df404ac8abc754c32e1bf00cd0805176175"
+      "rowSha256": "5d8573a32e7ecb5254ab7af31d2abf1ce0e707c0cefee49ca32e17d82d6f0a3e"
     },
     {
       "textureResourceId": "material-texture-resource-8eb26fcb57923bb62526",
       "logicalTexturePath": "fx_tex_03.fx_e_ring_001_cl",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
       "sourceResourceManifest": null,
       "sourcePackage": {
         "logicalPackage": "FX_TEX_03",
@@ -1784,14 +1902,36 @@
         },
         "sourceRowSha256": "043af92a7f689f5b40ed52313fe4a83e3c2ba78a950d2ebdc679af9a9b8a2593"
       },
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-08444b58e6edcbdd2155",
+        "proposalId": "material-texture-provisioning-8eb26fcb57923bb62526",
+        "deploymentRowSha256": "254e3726ce1e54c5ff4cd78446f2d8c02a7fba98f76c383e281dbb529ad91f44",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
+        "byteCount": 65664,
+        "rawSha256": "3c8987c8bc4bda1d3fd0f4840124e4fc1ba2eb3899307df8fe5852c4a760738e",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "candidateObservations": [],
-      "blockers": [
-        "RUNTIME_COOK_OR_TRANSACTIONAL_DEPLOY_RECEIPT_REQUIRED"
-      ],
+      "blockers": [],
       "provisioningProposalId": "material-texture-provisioning-8eb26fcb57923bb62526",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "29c599e7fe41eddc05cf76bd0fc592174c5cc924dca0c75c42c3333e7d650ccd"
+      "rowSha256": "be4d27022fc8060afde4ce229ab9479e984cf3facd8e20e03e55d0e28a466d0d"
     },
     {
       "textureResourceId": "material-texture-resource-da7199f32da2312d2403",
@@ -1840,6 +1980,7 @@
         "outputRowSha256": "ce0d09d184f91dbee1b20fcb9eb8c615feb98169bbfa66bf21a51b69fb513286"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
@@ -1856,7 +1997,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "d02864e68f93e13f93b7df3708c128fb343d92c1234495b6ce1c146a17238b1a"
+      "rowSha256": "d9fa565f598f30f8ddaf84729ad2932cb36198261afdbb5f37b132769e2e64c8"
     },
     {
       "textureResourceId": "material-texture-resource-ecb71b88e1b361084aa7",
@@ -1903,12 +2044,13 @@
         "outputRowSha256": "fd300d03c82b47ff79cfeefa7649a9e4e48c00b135fe890a35bc69befbcb4d60"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "f2a0fada70250d93718784e0ceafd661622d8eca422addf2eb05e65cb29937b6"
+      "rowSha256": "69d1cf3481823afc4bd65f21428e0c074ce11b5caa7a6134e17ca2f7a89adf2b"
     },
     {
       "textureResourceId": "material-texture-resource-83bdf45697ebf1526cf6",
@@ -1957,6 +2099,7 @@
         "outputRowSha256": "a1d38f931760353535c54c698028253054470327ca71df6023a1bfe12093f72c"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28",
@@ -1973,7 +2116,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "2a33ec6927c2296aaa56a626252a08f8c31f66bd70be5b46bafb047a4ad84ea1"
+      "rowSha256": "5b61bec82b7ba5a7185efbe5d6ce0dcf13eb92a64228853ab286e203eda1603e"
     },
     {
       "textureResourceId": "material-texture-resource-6bc63f04ea0c175d3efc",
@@ -2021,6 +2164,7 @@
         "outputRowSha256": "b8b2b04e0eacc0774477cc02aa9d4da052a0d3c27b2ed755c97ee5775812eedc"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_9",
@@ -2032,7 +2176,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "5ba8fe0c9774fc606d9b1ffa53079ecc188dcafcbbf8669fe1ad63cde10eb364"
+      "rowSha256": "3d72decd6aa7319da305833ec35ec7915ade72c32ae3f482a3528f561a35c620"
     },
     {
       "textureResourceId": "material-texture-resource-a89e977683be32174371",
@@ -2079,6 +2223,7 @@
         "outputRowSha256": "d553796b78941a9cc05b42f9a2a7c256c223dca83fceec1262b15c7a7f3425a7"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10",
@@ -2090,7 +2235,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "5d874b4fcf623c51892bf89448655fe11dcc7da3f59abda7b8efa4c34e276632"
+      "rowSha256": "d2f89347a7b7074ba939804d44d7e7696522a9114793e01910e495979cfdbbbb"
     },
     {
       "textureResourceId": "material-texture-resource-4147531ad8b8fd486c00",
@@ -2138,6 +2283,7 @@
         "outputRowSha256": "ffb2ab452047c5952862c6b3b4a6cb7de9b0964753c9def76a19f0d2503b32b7"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10",
@@ -2154,7 +2300,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "f9a191f28e531f00c487470e38b789b01e6b83b234f860d01280bd4c6f16dd1e"
+      "rowSha256": "4c1c675e053e2e193ca196b3f90002937788734b3b2105b0882fed8fdad30020"
     },
     {
       "textureResourceId": "material-texture-resource-b65c5f7ca534463a8531",
@@ -2202,12 +2348,13 @@
         "outputRowSha256": "1cf11b01bd23dc6bfb85589ff1859908bcaa4bab7e30f3bf8d16a51bec9341bc"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "4a1dbf3f6bf66761f5e6ba1a06477cdca8d6bfa832599bd52dcc29d7108a7ded"
+      "rowSha256": "1a881eb2d0c0d88e2011255db5401b22507ad15243a4c55c8a8949f9e60b0a9a"
     },
     {
       "textureResourceId": "material-texture-resource-dee17b8e5ddd1843a8fe",
@@ -2255,6 +2402,7 @@
         "outputRowSha256": "38f57bf5917d029aab8650efe7f64b595c4735f090d19a36f1682c0c4669de01"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_3",
@@ -2266,7 +2414,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "cced72657bb867a95b10dead2844973c706a5821ce8ba515611a7b3f3380a3b6"
+      "rowSha256": "b43eaae5331b95e7931f7de70010bce00e79cb0306dee13b94490ac5ab77c46f"
     },
     {
       "textureResourceId": "material-texture-resource-17ceef594ddb8a19400e",
@@ -2315,6 +2463,7 @@
         "outputRowSha256": "3be6507ca6e7b76b09a814522b4d95427a1f60980d4ab18ecaa7070c9f2144d6"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0",
@@ -2331,7 +2480,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "16fda036c5749505c02ec630a3e0dc95f41be4980317331d9a4e997760a20f19"
+      "rowSha256": "4236ea9160f48973fcf506555d32f9c19c4dd37aa73b3290ca3a1d06a9691938"
     },
     {
       "textureResourceId": "material-texture-resource-8c71732abc01155b4cf2",
@@ -2382,6 +2531,7 @@
         "outputRowSha256": "97263f5cf584531c266be97f3103539111c7d427abba9dc18545fb4bb85e29de"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10",
@@ -2393,7 +2543,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "fb7f680a9b00bf2ac8dda28ec5c1c4613f4ace308a5b580de5b17e798e7e8407"
+      "rowSha256": "5b0799d65c328b23ab902ef22c258de8dc85a1b51c3828149be613b352f730aa"
     },
     {
       "textureResourceId": "material-texture-resource-5dc44a59f165549a0dc7",
@@ -2440,6 +2590,7 @@
         "outputRowSha256": "25a309ef3f1ce297bd8371f4567cc1de9a51a0c599b677586852420f6a4887c5"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_2",
@@ -2456,7 +2607,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "cd16f0e575d472784fcbb52bbe7326f3b2a8f53cb9aa38d97b9d8bc808e28ea9"
+      "rowSha256": "7080900feb2f58f9c1e8e7e99641370ddaf8fb27d6e7f7476962809856bcfb30"
     },
     {
       "textureResourceId": "material-texture-resource-3753589d6a1f0d947b68",
@@ -2503,6 +2654,7 @@
         "outputRowSha256": "92764d8552c034e31db7dd82451880b9db093af5e4aa6519c1f6f3e4ae720e04"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
@@ -2514,7 +2666,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "d1e87775d8b74b0daa0fc4c8c25e24ec940ac5e799a0fbf326693a589fa608ae"
+      "rowSha256": "e94f24fd611c3643745f75aa86c11bc39266a8d7bcc2e48e46a9d96dab422312"
     },
     {
       "textureResourceId": "material-texture-resource-a35c9509610d11c815a5",
@@ -2568,6 +2720,7 @@
         "outputRowSha256": "7a5526f647faa970d69a08869c68ba78573061f9d5b132267e6baefe260740c9"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
@@ -2589,7 +2742,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "d74df2728acdefa5fd42825b8dc5e5ba44b9d88d8deb4628732ad69e2d02373f"
+      "rowSha256": "662b720c83ae96bae9f334f123a857543caac0b506cce74cb440798cdbecc129"
     },
     {
       "textureResourceId": "material-texture-resource-907fe81a25e3cadf43d1",
@@ -2639,6 +2792,7 @@
         "outputRowSha256": "516e705cd739180dab04ef502799344249d0e56a2ee362cf05d7426ee65676b9"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
@@ -2650,7 +2804,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "c7e1d7c650d93c8ab4a6fb9d3febe554a253672719dd20b62b57568871128c58"
+      "rowSha256": "14f3272b517ce157bdabe673a395d1e4d8e85b85f011ba0fb330713171265aec"
     },
     {
       "textureResourceId": "material-texture-resource-e18ba13a6b3cc40e9bd9",
@@ -2698,6 +2852,7 @@
         "outputRowSha256": "efb70f8f24720eeb5539f803d10ba4994718bcadf04f37d8d50078f32a1a48c9"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_23",
@@ -2714,7 +2869,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "e27be01ba3101c62306ccff3ac6e00525cf784038eeee9f3f8f7d7045738a8cf"
+      "rowSha256": "c3d352f2f95647b6903908869df4c7ee26f24c970d3afed858e9335a488d10b4"
     },
     {
       "textureResourceId": "material-texture-resource-f889f091d7060dd160c4",
@@ -2763,6 +2918,7 @@
         "outputRowSha256": "e22127389052b9e46e73235a9c99fbd5a87e8c53bbea215d8dffbd581fca26b1"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
@@ -2774,7 +2930,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "ef04cd80a8595f63ce0c6cd9eed783adfa797e7ef11d0558534c23dcdd4ba765"
+      "rowSha256": "841f18c9abafaf88f1a9d9ce3489f6992ca7803b8077750f44eef6a6f0f13fe5"
     },
     {
       "textureResourceId": "material-texture-resource-9b2c4deea295d38e9bff",
@@ -2821,6 +2977,7 @@
         "outputRowSha256": "b4fa5f249a341ff942f73040f24481249765de774be7b6beda00b0cf86be3399"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
@@ -2832,7 +2989,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "df42ddaf615ed81973ae454df5f2209f1e8304682d8a478fd68c600f4538b8c2"
+      "rowSha256": "b03e7e02b45fd05c865d2726b5258edb1364fc383d546117d7b7016d29249caa"
     },
     {
       "textureResourceId": "material-texture-resource-aa9b54e3015d26b32d68",
@@ -2874,6 +3031,7 @@
         "outputRowSha256": "6c1b7375007a74d041d04894ca440e3f1be49004d89eb1e726e329abc3dff77f"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6",
@@ -2885,7 +3043,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "2b716f46ddc432511ac880046029c8d09cce7c43a4a51c99549e736f62ae85f2"
+      "rowSha256": "a4124603412cc4314d0df401e162df0a8426fc42228c8b79ece0ab0bb54ebefa"
     },
     {
       "textureResourceId": "material-texture-resource-d157fa9570f0dcae4cb3",
@@ -2927,12 +3085,13 @@
         "outputRowSha256": "7c692e4c6ab5fe6d2eaaaf7680bb1383b6ca975e8e2ea9627ec483f36f53913d"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [],
       "blockers": [],
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "495cdee60d10a305333431d3eeec7881fd2f590cd1ebde1fee1064dbf9b96885"
+      "rowSha256": "fd163517db4d43a347d5d56f17b707c3b5457aa7bf851a4c50814fe07b168037"
     },
     {
       "textureResourceId": "material-texture-resource-42c0954624b970896d53",
@@ -2974,6 +3133,7 @@
         "outputRowSha256": "5cba1aa33c25431c0757fd1af269736ce7cd47fda6ae1bc9c9259482fc4f901b"
       },
       "exactDdsEvidence": null,
+      "deploymentEvidence": null,
       "candidateObservations": [
         {
           "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6",
@@ -2985,7 +3145,7 @@
       "provisioningProposalId": null,
       "runtimeAssetAdmission": true,
       "sourceExact": false,
-      "rowSha256": "3f454aa556d1db4af21096c43c03466c358e16725161f4fb8e45bb9b0711210c"
+      "rowSha256": "75920e53cc8e87fa39d81131cd1069c4ac2682a3685ec0e05f61242494d0f0eb"
     }
   ],
   "materialTextureBindings": [
@@ -3073,8 +3233,8 @@
       ],
       "logicalTexturePath": "fx_tex_00.fx_a_noise_011",
       "textureResourceId": "material-texture-resource-ab9078b6d245113c4b82",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
       "samplerDescriptor": {
         "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
         "filter": {
@@ -3125,11 +3285,11 @@
         "sourceSectionIndex": 1
       },
       "policySourceRowSha256": "7242473926fec1df95c3fb08af1a5fad42a577f3980e52a34571b10c6501d89e",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "rendererConsumerAdmission": false,
       "productAdmission": false,
       "sourceExact": false,
-      "rowSha256": "44c838e1bf9b970e213fcdce5a56968d6b2becf8b3d8ded8fceca0dcb51bfcd7"
+      "rowSha256": "c4c407b87aee386c08ddd25db6da3caa78c158c811635054365e1236c0c9712a"
     },
     {
       "bindingId": "material-texture-binding-db8b1d7e18fa5f8035e0",
@@ -5666,8 +5826,8 @@
       ],
       "logicalTexturePath": "fx_tex_00.fx_a_decal_014",
       "textureResourceId": "material-texture-resource-0821a3da70a9ebd8f1e6",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
       "samplerDescriptor": {
         "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
         "filter": {
@@ -5718,11 +5878,11 @@
         "sourceSectionIndex": 0
       },
       "policySourceRowSha256": "2aa100e61b9b93f02ec1c0de8c7f0cf64ecf05cfe3a00f2d03d800fe3647f7c2",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "rendererConsumerAdmission": false,
       "productAdmission": false,
       "sourceExact": false,
-      "rowSha256": "3163c42fd370a15467225c6002a12223411cd5b663cb541f324736ea72c964d9"
+      "rowSha256": "9dcf0b1e39e27e0c20137c08f116185368c43f8bd54d81fedaa6100dbab73489"
     },
     {
       "bindingId": "material-texture-binding-7060a4c326e79a89231a",
@@ -6510,8 +6670,8 @@
       ],
       "logicalTexturePath": "fx_tex_01.fx_c_atypical_016",
       "textureResourceId": "material-texture-resource-243ca9e992ac7e8163a1",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
       "samplerDescriptor": {
         "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
         "filter": {
@@ -6562,11 +6722,11 @@
         "sourceSectionIndex": 0
       },
       "policySourceRowSha256": "bbd98a9e4b30f3d64b34875738c9c9e68ad633c4a0584b16ec05acf30767a1f4",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "rendererConsumerAdmission": false,
       "productAdmission": false,
       "sourceExact": false,
-      "rowSha256": "368d5c5c255157e75e9159f44c5c573630a79ff6bd07cef98093bd323ee723df"
+      "rowSha256": "224e3c46c268a81724a6383e6c9b664a8c19aadfdd7563a53a9cff7cc4908185"
     },
     {
       "bindingId": "material-texture-binding-e9d9ce6c3782cc15bf47",
@@ -6720,8 +6880,8 @@
       ],
       "logicalTexturePath": "fx_tex_03.fx_e_ring_001_cl",
       "textureResourceId": "material-texture-resource-8eb26fcb57923bb62526",
-      "status": "UNRESOLVED_RUNTIME_ASSET",
-      "runtimeAssetId": null,
+      "status": "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+      "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
       "samplerDescriptor": {
         "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
         "filter": {
@@ -6772,11 +6932,11 @@
         "sourceSectionIndex": 2
       },
       "policySourceRowSha256": "3d7a17335972955b5ed4f7406986f4e063ecf5a43171d139b01fd637ff906593",
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "rendererConsumerAdmission": false,
       "productAdmission": false,
       "sourceExact": false,
-      "rowSha256": "50a2499af88a31a74b3605ad23ae0e2c29d1c14385cb6ba7d57fe74af4e359ed"
+      "rowSha256": "e3a472dcfd0c66d42bd0c01fc192054ade510f9affdab6d4a2cb523066a2f0ed"
     },
     {
       "bindingId": "material-texture-binding-9e32a04708b50c0aef70",
@@ -8074,12 +8234,36 @@
         },
         "sourceRowSha256": "944c42536da5030912f2ff5a9655e6dce1cf6b6d31ce5453a26f5acf9c0644e0"
       },
-      "deploymentStatus": "PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED",
-      "requiredReceipt": "TRANSACTIONAL_RUNTIME_RESOURCE_DEPLOYMENT_AND_VERIFICATION_RECEIPT",
+      "deploymentStatus": "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT",
+      "requiredReceipt": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-a4657d5bd2ec3dc67683",
+        "proposalId": "material-texture-provisioning-0821a3da70a9ebd8f1e6",
+        "deploymentRowSha256": "1ad0a8034948116522051cfd7f7aba150e82769036d19acb7f39903c6d151293",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_decal_014.dds",
+        "byteCount": 65664,
+        "rawSha256": "c2ead8a025cea1f70c8b03f9a488748ebd616828695199539d4e5010e5dc24ef",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "sourceExact": false,
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "productAdmission": false,
-      "rowSha256": "9e336c26f4aea6e36bf48082e371b105087f52dfb904818528f0e96280c4c337"
+      "rowSha256": "3a2666104502f2246fb43a27f560b13674231a293d00be37b80c114f49db9b38"
     },
     {
       "proposalId": "material-texture-provisioning-ab9078b6d245113c4b82",
@@ -8113,12 +8297,36 @@
         },
         "sourceRowSha256": "5ad13318217fe10670d87b16c93d8ea5805d9e18df94d044dd11a9e0dc6e2ae3"
       },
-      "deploymentStatus": "PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED",
-      "requiredReceipt": "TRANSACTIONAL_RUNTIME_RESOURCE_DEPLOYMENT_AND_VERIFICATION_RECEIPT",
+      "deploymentStatus": "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT",
+      "requiredReceipt": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-035e334f7398505eea7c",
+        "proposalId": "material-texture-provisioning-ab9078b6d245113c4b82",
+        "deploymentRowSha256": "329392ee94c2a1bbaafb8326cf4651205fbab6d6ca2a7251bcd9dff1eed4d303",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_00/fx_a_noise_011.dds",
+        "byteCount": 16512,
+        "rawSha256": "c8d94d0750517d5654416e71bcd8666d79630c478c757d196e37ba056f87cc53",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "sourceExact": false,
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "productAdmission": false,
-      "rowSha256": "04723cb3c34f11f302fd7316c1cdb8c6540a8943e0392fdb5fdff18d25f212fa"
+      "rowSha256": "a050bad711c0a98b7c4e4572860a976efa8542fafb5367fa16a2f3585f70ecd6"
     },
     {
       "proposalId": "material-texture-provisioning-243ca9e992ac7e8163a1",
@@ -8152,12 +8360,36 @@
         },
         "sourceRowSha256": "9d051b4212153fa318db97d74d4da773abcc8da123adedc518e7c6f4ef533493"
       },
-      "deploymentStatus": "PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED",
-      "requiredReceipt": "TRANSACTIONAL_RUNTIME_RESOURCE_DEPLOYMENT_AND_VERIFICATION_RECEIPT",
+      "deploymentStatus": "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT",
+      "requiredReceipt": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-a078d792444e902e5f00",
+        "proposalId": "material-texture-provisioning-243ca9e992ac7e8163a1",
+        "deploymentRowSha256": "ef25bf80d0562e01dd39ee4fcf927aee894a275208f648f2be895cc923df83cb",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_01/fx_c_atypical_016.dds",
+        "byteCount": 32896,
+        "rawSha256": "bbd2dc3ba79d24a5806af63d00dee302a04fb5c6e8be343275a63a9353981f43",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "sourceExact": false,
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "productAdmission": false,
-      "rowSha256": "5689f794ea70d9583e313030f69b5bfbfc6efc7be3dc3d70a6b0207467894491"
+      "rowSha256": "227e6d51844c6cb8fe2db5aee49f6516a2fa0db4138bcfb22660c5b850842775"
     },
     {
       "proposalId": "material-texture-provisioning-8eb26fcb57923bb62526",
@@ -8191,12 +8423,36 @@
         },
         "sourceRowSha256": "043af92a7f689f5b40ed52313fe4a83e3c2ba78a950d2ebdc679af9a9b8a2593"
       },
-      "deploymentStatus": "PROPOSED_TRANSACTIONAL_DEPLOYMENT_NOT_VERIFIED",
-      "requiredReceipt": "TRANSACTIONAL_RUNTIME_RESOURCE_DEPLOYMENT_AND_VERIFICATION_RECEIPT",
+      "deploymentStatus": "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT",
+      "requiredReceipt": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+      "deploymentEvidence": {
+        "basis": "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT",
+        "artifactAuthorityCommit": "01b8b8a8bace09a3576f116771daf4859aa485a3",
+        "artifactAuthorityTree": "60a229b3460e2738ef8cf4f9199a1beb8cdeb6d4",
+        "receiptRelativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
+        "receiptGitBlob": "5d1e3766e90dc3d816b9948d85991ff57a207dca",
+        "receiptTrackedTextSha256": "7fff1e38bce7a10b67d2b5a89c1f76f798409003b2802051f10dc177e745be18",
+        "receiptSha256": "de52ea2770129d254aa007a5a547ac5027977c809ace951bf6a87e8342b8c466",
+        "approvalProjectionSha256": "419f6e2c403b0a39b49e64b2cb46b73ae48a2ed420fa0e355983da73a913d3dc",
+        "implementationProjectionSha256": "0eda2556731377fbee03aad19ccb44c90c2092bb61eedf0ff7178540f7f9c78b",
+        "deploymentRowId": "exact-dds-runtime-deployment-08444b58e6edcbdd2155",
+        "proposalId": "material-texture-provisioning-8eb26fcb57923bb62526",
+        "deploymentRowSha256": "254e3726ce1e54c5ff4cd78446f2d8c02a7fba98f76c383e281dbb529ad91f44",
+        "deploymentStatus": "COMMITTED_POST_VERIFIED",
+        "runtimeAssetId": "Effect/Artist/Textures/FX_TEX_03/fx_e_ring_001_cl.dds",
+        "byteCount": 65664,
+        "rawSha256": "3c8987c8bc4bda1d3fd0f4840124e4fc1ba2eb3899307df8fe5852c4a760738e",
+        "pathCaseVerified": true,
+        "regularFileVerified": true,
+        "symlinkFreeVerified": true,
+        "postVerified": true,
+        "sourceExactMaterialClaim": false,
+        "runtimeAssetDeploymentAdmission": true
+      },
       "sourceExact": false,
-      "runtimeAssetAdmission": false,
+      "runtimeAssetAdmission": true,
       "productAdmission": false,
-      "rowSha256": "14fbfa38995c522d1d784a80f5fb46f8755be7a2ae4d233277ffa4a7e43c076c"
+      "rowSha256": "31e5c79f57152b4b5420bf6c2812ea073c2c1125dd81cbfb5a5a18b54676844d"
     }
   ],
   "admission": {
@@ -8205,34 +8461,39 @@
       "rowCount": 72
     },
     "resolvedRuntimeAssets": {
-      "ready": false,
-      "rowCount": 68
+      "ready": true,
+      "rowCount": 72
     },
     "completeRuntimeBinding": {
-      "ready": false,
-      "blockers": [
-        "MATERIAL_TEXTURE_RUNTIME_BINDINGS_INCOMPLETE"
-      ]
+      "ready": true,
+      "blockers": []
     },
     "rendererConsumer": {
-      "ready": false
+      "ready": false,
+      "blockers": [
+        "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
+      ]
     },
     "product": false
   },
   "summary": {
     "samplerPolicyRowCount": 72,
     "uniqueLogicalTextureCount": 48,
-    "resolvedBindingRowCount": 68,
-    "unresolvedBindingRowCount": 4,
-    "resolvedUniqueTextureCount": 44,
-    "unresolvedUniqueTextureCount": 4,
+    "resolvedBindingRowCount": 72,
+    "unresolvedBindingRowCount": 0,
+    "runtimeCookBindingRowCount": 68,
+    "deploymentBindingRowCount": 4,
+    "resolvedUniqueTextureCount": 48,
+    "unresolvedUniqueTextureCount": 0,
+    "runtimeCookUniqueTextureCount": 44,
+    "deploymentUniqueTextureCount": 4,
     "sourcePackageBoundUniqueTextureCount": 45,
     "sourcePackageUnboundUniqueTextureCount": 3,
     "materialOccurrenceLinkCount": 83,
-    "provisioningProposalCount": 4,
+    "completedProvisioningProposalCount": 4,
     "sourceExactBindingRowCount": 0,
     "rendererReadyBindingRowCount": 0,
     "productReadyBindingRowCount": 0
   },
-  "receiptSha256": "39c91577c09b853fa55a8fd5531c1cddc4fef928d77a6caa7f67c472a56159e0"
+  "receiptSha256": "3e722cf02085497c63083fbf51161ff5fd6670be91607737863b9c4019e55b48"
 }
