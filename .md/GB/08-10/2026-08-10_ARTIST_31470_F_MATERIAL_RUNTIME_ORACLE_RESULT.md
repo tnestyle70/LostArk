@@ -90,9 +90,9 @@ state provider backend는 `D3D11_WARP_STATE_OBJECTS`, pilot count는 4이며 des
 ## 검증
 
 - `python -B Tools/LevelPlacementExtractor/test_build_artist_31470_material_runtime_oracle.py`
-  - 21/21 PASS
+  - 23/23 PASS
 - `python -B -m unittest test_build_artist_31470_material_source_value_acquisition`
-  - raw source rebuild 및 mutation 11/11 PASS
+  - raw source rebuild 및 mutation 12/12 PASS
 - shallow receipt check
   - family 23, recipe 27, occurrence 34, feasibility `0/255`, Product false PASS
 - independent WARP verifier
@@ -145,6 +145,25 @@ evaluator/HLSL 분류와 일부 numeric lane, acquisition admission, WARP pilot 
 
 이 강화는 evidence-integrity validator만 수정했다. readiness는 계속 `0/255`, Product는 false,
 R2는 `NO-GO`이며 Materializer/Playback/Renderer나 shared C++는 변경하지 않았다.
+
+## d390 후속 전체 semantic projection corrective
+
+`d39097c34be763946958ee27417790d2135db209` 후속 감사에서는 acquisition external search/capture와
+runtime summary map/count/blocker, family flag/blocker 및 occurrence unknown key를 dependent hash와 함께
+다시 봉인하는 경로를 재현했다. 현재 경계는 다음과 같이 닫혔다.
+
+- runtime root, sourceEvidence, summary, admission, family evaluator와 occurrence binding은 exact key
+  schema를 요구하고 summary의 input kind/role 및 모든 count를 실제 row에서 다시 유도한다.
+- family 23은 reconstructed/sourceExact false, CPU/HLSL verified, arithmetic admission true와 고정
+  evidence/runtime blocker를 요구하며 occurrence 34는 runtime/Product false exact schema를 요구한다.
+- sourceEvidence와 receipt self cycle을 제외한 runtime 전체 의미를 import-free approval digest에
+  대조한다. strict sampler 72에 반복되는 acquisition receipt digest만 cycle sentinel로 정규화하고,
+  정규화된 row-set digest를 다시 계산하므로 sampler 의미 필드는 projection에서 빠지지 않는다.
+- acquisition global/VSS/capture/source/owner/cluster/corrective/missing/blocker mutation과 runtime
+  root/source/summary/admission/family/occurrence coordinated reseal regression을 모두 거부한다.
+
+재생성 후 acquisition 12/12, runtime 23/23, raw/deep `--check`, standalone WARP와 두 focused
+ProjectAudit가 PASS했다. readiness `0/255`, Product false, R2 `NO-GO`는 그대로다.
 
 ## 다음 경계
 

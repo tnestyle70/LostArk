@@ -11,16 +11,16 @@
     "renderReceiptTrackedTextSha256": "c6e5a1f82581628e185221a77d1f0a3b8593d3145514998e7f15f3061ab1e824",
     "shaderCacheReceiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
     "shaderCacheReceiptTrackedTextSha256": "f1c1b5cb7ffe05a6577327bace8cda48afb78a2e4d6801c81cf3a057b0803d0c",
-    "sourceValueAcquisitionReceiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
-    "sourceValueAcquisitionTrackedTextSha256": "18399642cdf93ee3d93d52150abe4669a2b6a817ac87a848ffd8146ee7e08da2",
+    "sourceValueAcquisitionReceiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+    "sourceValueAcquisitionTrackedTextSha256": "cfbf89625b612aa623aa47c0f7c85c721037a2856088a652a886b37c261bb40f",
     "hlslTrackedTextSha256": "66dcc266f68bb6d960214b8ca79472a4c65e5dcda1f5a21e78e2fb7da49d13c7",
-    "generatorTrackedTextSha256": "972b395f018aabd824501610f79f4e75c1a1fc5bef97cca36711b6f3497a7f1b",
+    "generatorTrackedTextSha256": "82fc449f17568d7e7c217bb48da05f14574ef9efbe16e1293f866a409464c0d2",
     "materialContractBuilderTrackedTextSha256": "d7882d9cc7af8d80183e96fdebffc7b1a633a1824e5dfe19cf9ab739acc13b8d",
     "shaderCacheOracleTrackedTextSha256": "1738307ff3cdc73b5665d0489d1d408affb8046c793c343d0500a541a5882a47",
     "ue3PackageParserTrackedTextSha256": "897d1899271450ee6fa0828ddd783737e26f9d9d000a9f6f86f6ff6b8a53edf1",
     "hlslVerifierTrackedTextSha256": "02562e758cb8e003136cfd0458804348eacd61f4ab632fbbaed17561203f0704",
-    "sourceValueAcquisitionGeneratorTrackedTextSha256": "d00054ee10518a549493ccc16f09d55849ef18aaff99e41ca669874879964a09",
-    "materialEvidenceApprovalTrackedTextSha256": "a5ec9b7a8a498c03f9caeff4ecef573dcb0aa4a30a8735d40f993420d90bb6c6"
+    "sourceValueAcquisitionGeneratorTrackedTextSha256": "a70cd68a0efa7c9d1b2a8b35f7233f961d9702afbc0a5523cbb5d70c9f470c7b",
+    "materialEvidenceApprovalTrackedTextSha256": "4539aee90713a07116ed291e66a23df232b03a5ec537254345cd3d1af94c4f7c"
   },
   "sourceRevisionShaderCacheAcquisition": {
     "scope": "LOCAL_SOURCE_ARCHIVE_RAW_UPK_NAME_TABLE_INVENTORY",
@@ -46464,7 +46464,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46632,7 +46632,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46799,7 +46799,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46966,7 +46966,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47147,7 +47147,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -47315,7 +47315,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47482,7 +47482,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47649,7 +47649,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47816,7 +47816,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47983,7 +47983,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48150,7 +48150,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48317,7 +48317,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48484,7 +48484,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48651,7 +48651,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48818,7 +48818,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48999,7 +48999,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -49167,7 +49167,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49334,7 +49334,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49501,7 +49501,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49696,7 +49696,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -49866,7 +49866,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50033,7 +50033,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50200,7 +50200,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50367,7 +50367,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50534,7 +50534,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50729,7 +50729,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -50898,7 +50898,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51065,7 +51065,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51260,7 +51260,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51429,7 +51429,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51596,7 +51596,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51791,7 +51791,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51960,7 +51960,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52127,7 +52127,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52294,7 +52294,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52461,7 +52461,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52657,7 +52657,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -52827,7 +52827,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52994,7 +52994,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53161,7 +53161,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53328,7 +53328,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53495,7 +53495,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53662,7 +53662,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53830,7 +53830,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53998,7 +53998,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54180,7 +54180,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -54349,7 +54349,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54516,7 +54516,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54697,7 +54697,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54865,7 +54865,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -55032,7 +55032,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55199,7 +55199,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55366,7 +55366,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55561,7 +55561,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "addressx",
@@ -55730,7 +55730,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55897,7 +55897,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56092,7 +56092,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -56261,7 +56261,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56428,7 +56428,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56595,7 +56595,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56762,7 +56762,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56929,7 +56929,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57096,7 +57096,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57263,7 +57263,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57458,7 +57458,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -57627,7 +57627,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57794,7 +57794,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57961,7 +57961,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58128,7 +58128,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58295,7 +58295,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58491,7 +58491,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -58661,7 +58661,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "5e472e8a854adf17fcee9db6c84162306180358d224f030cbb9702975f0b5282",
+          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58687,7 +58687,7 @@
       "strictSamplerReadinessCount": 0,
       "strictSamplerRejectedLegacyExactRowCount": 4,
       "strictSamplerSourceTextureEvidenceRowCount": 72,
-      "strictSamplerRowSetSha256": "5e49a40bf96e2ccf3c0ba22f0986b98f59c0e9937b993297695d9af61a130d3f",
+      "strictSamplerRowSetSha256": "b6fdb39cac86dd1d7b55a9619601bd9edb74210d525d79f46a0c9bfea48313ac",
       "totalRowCount": 255,
       "executionReadinessCount": 0,
       "blockedRowCount": 255,
@@ -58989,5 +58989,5 @@
     "materialFeasibilityReadyCount": 0,
     "materialFeasibilityBlockedCount": 255
   },
-  "receiptSha256": "bd142f6a6b41dfbb2b17064bbef3ed76d2420cc395677995521215f66cc0cbd9"
+  "receiptSha256": "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6"
 }

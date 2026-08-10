@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from artist_31470_material_evidence_approval import (
+    APPROVED_RUNTIME_SEMANTIC_PROJECTION_SHA256,
     APPROVED_CONTROLLED_CAPTURE_ASSESSMENT_SHA256,
     APPROVED_EVALUATOR_CONTRACT_SHA256,
     APPROVED_HLSL_REPLAY_BINDING_SHA256,
@@ -107,6 +108,141 @@ PINNED_SOURCE_ARCHIVE_PROJECTION = {
     "shaderCacheCandidateProjectionSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "decision": "SOURCE_REVISION_SHADER_CACHE_NOT_PRESENT_IN_SCANNED_ARCHIVE",
 }
+
+RUNTIME_ROOT_KEYS = {
+    "schema",
+    "formatVersion",
+    "characterClass",
+    "skillId",
+    "inputSlot",
+    "sourceEvidence",
+    "sourceRevisionShaderCacheAcquisition",
+    "controlledCaptureAssessment",
+    "evaluatorContract",
+    "familyEvaluators",
+    "materialRecipeBindings",
+    "occurrenceBindings",
+    "materialFeasibilityMatrices",
+    "hlslVerification",
+    "warpStateProviderVerification",
+    "admission",
+    "summary",
+    "receiptSha256",
+}
+
+RUNTIME_SOURCE_EVIDENCE_KEYS = {
+    "materialContractSha256",
+    "materialContractTrackedTextSha256",
+    "renderReceiptSha256",
+    "renderReceiptTrackedTextSha256",
+    "shaderCacheReceiptSha256",
+    "shaderCacheReceiptTrackedTextSha256",
+    "sourceValueAcquisitionReceiptSha256",
+    "sourceValueAcquisitionTrackedTextSha256",
+    "hlslTrackedTextSha256",
+    "generatorTrackedTextSha256",
+    "materialContractBuilderTrackedTextSha256",
+    "shaderCacheOracleTrackedTextSha256",
+    "ue3PackageParserTrackedTextSha256",
+    "hlslVerifierTrackedTextSha256",
+    "sourceValueAcquisitionGeneratorTrackedTextSha256",
+    "materialEvidenceApprovalTrackedTextSha256",
+}
+
+FAMILY_EVALUATOR_KEYS = {
+    "familyId",
+    "familyIdentitySha256",
+    "evaluatorId",
+    "evaluatorVersion",
+    "rendererShapes",
+    "featureMask",
+    "features",
+    "featureEvidence",
+    "rawExpressionProjectionSha256",
+    "rawExpressionCount",
+    "fidelity",
+    "graphProvenance",
+    "sourceExact",
+    "implemented",
+    "cpuNumericOracleVerified",
+    "hlslNumericOracleVerified",
+    "sampleRows",
+    "evidenceBlockers",
+    "runtimeBlockers",
+    "arithmeticEvaluationAdmission",
+    "evaluatorSha256",
+}
+
+OCCURRENCE_BINDING_KEYS = {
+    "occurrenceId",
+    "sourceOccurrenceIdentitySha256",
+    "cueId",
+    "rendererType",
+    "materialRecipeId",
+    "materialBindingSha256",
+    "evaluatorId",
+    "evaluatorVersion",
+    "runtimeHandlerConsumptionAdmission",
+    "productAdmission",
+    "bindingSha256",
+}
+
+RUNTIME_SUMMARY_KEYS = {
+    "materialFamilyCount",
+    "implementedEvaluatorCount",
+    "cpuVerifiedEvaluatorCount",
+    "hlslVerifiedEvaluatorCount",
+    "reconstructedNumericallyVerifiedEvaluatorCount",
+    "sourceExactEvaluatorCount",
+    "materialRecipeBindingCount",
+    "materialOccurrenceBindingCount",
+    "inputBindingCount",
+    "inputKindCounts",
+    "inputRoleCounts",
+    "unknownInputRoleCount",
+    "staticSwitchBindingCount",
+    "totalTypedFieldBindingCount",
+    "renderStateBindingCount",
+    "resolvedRenderStateBindingCount",
+    "unresolvedRenderStateBindingCount",
+    "familyNumericSampleCount",
+    "recipeNumericSampleCount",
+    "hlslSampleCount",
+    "runtimeHandlerConsumedRecipeCount",
+    "runtimeHandlerConsumedOccurrenceCount",
+    "productRecipeCount",
+    "productOccurrenceCount",
+    "materialFeasibilityRowCount",
+    "materialFeasibilityReadyCount",
+    "materialFeasibilityBlockedCount",
+}
+
+RUNTIME_ADMISSION_KEYS = {
+    "evidenceIntegrityAdmission",
+    "executionReadinessAdmission",
+    "arithmeticFamilyEvaluationAdmission",
+    "materialRuntimeHandlerConsumptionAdmission",
+    "rendererConsumptionAdmission",
+    "productAdmission",
+    "blockers",
+}
+
+RUNTIME_BLOCKERS = [
+    "FULL_RENDER_AND_STATIC_STATE_CLOSURE_PENDING",
+    "MATERIAL_RUNTIME_HANDLER_CONSUMPTION_PENDING",
+    "RECONSTRUCTED_EVALUATOR_NOT_YET_BOUND_TO_COMMON_SHADER_PATH",
+    "SAMPLER_BINDINGS_INCOMPLETE",
+]
+
+FAMILY_EVIDENCE_BLOCKERS = [
+    "COOKED_STRIPPED_ARITHMETIC_GRAPH",
+    "SOURCE_REVISION_SHADER_CACHE_NOT_ACQUIRED",
+]
+
+FAMILY_RUNTIME_BLOCKERS = [
+    "MATERIAL_RUNTIME_HANDLER_CONSUMPTION_PENDING",
+    "RECONSTRUCTED_EVALUATOR_NOT_YET_BOUND_TO_COMMON_SHADER_PATH",
+]
 
 
 FEATURE_SECOND_TEXTURE = 1 << 0
@@ -262,6 +398,32 @@ def canonical_bytes(value: Any) -> bytes:
 
 def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def runtime_semantic_projection(receipt: dict[str, Any]) -> dict[str, Any]:
+    """Return every runtime semantic field outside tracked-source/self cycles.
+
+    The strict sampler rows repeat the acquisition receipt self digest.  That
+    digest changes when this independently approved module's tracked source
+    identity changes, so only that repeated dependency hash is normalized.
+    Every sampler classification, raw field, value, decision, and admission
+    remains in the approved projection and is also source-bound separately.
+    """
+
+    projection = {
+        key: copy.deepcopy(receipt[key])
+        for key in sorted(RUNTIME_ROOT_KEYS - {"sourceEvidence", "receiptSha256"})
+    }
+    for row in projection["materialFeasibilityMatrices"]["strictSamplerRows"]:
+        row["sourceValueAcquisitionEvidence"][
+            "receiptSha256"
+        ] = "DEPENDENCY_CYCLE_EXCLUDED"
+    projection["materialFeasibilityMatrices"]["summary"][
+        "strictSamplerRowSetSha256"
+    ] = canonical_sha256(
+        projection["materialFeasibilityMatrices"]["strictSamplerRows"]
+    )
+    return projection
 
 
 def raw_sha256(data: bytes) -> str:
@@ -2327,6 +2489,10 @@ def validate_warp_state_provider_verification(receipt: dict[str, Any]) -> None:
 
 
 def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
+    require(
+        isinstance(receipt, dict) and set(receipt) == RUNTIME_ROOT_KEYS,
+        "Material runtime oracle root schema changed",
+    )
     require(receipt.get("schema") == SCHEMA, "Material runtime oracle schema mismatch")
     require(type(receipt.get("formatVersion")) is int and receipt["formatVersion"] == FORMAT_VERSION, "Material runtime oracle version mismatch")
     require(receipt.get("characterClass") == "ARTIST" and type(receipt.get("skillId")) is int and receipt["skillId"] == 31470 and receipt.get("inputSlot") == "F", "Material runtime oracle root identity mismatch")
@@ -2334,24 +2500,11 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     claimed = sealed.pop("receiptSha256", None)
     require(claimed == canonical_sha256(sealed), "Material runtime oracle self digest mismatch")
     source = receipt.get("sourceEvidence") or {}
-    for key in (
-        "materialContractSha256",
-        "materialContractTrackedTextSha256",
-        "renderReceiptSha256",
-        "renderReceiptTrackedTextSha256",
-        "shaderCacheReceiptSha256",
-        "shaderCacheReceiptTrackedTextSha256",
-        "sourceValueAcquisitionReceiptSha256",
-        "sourceValueAcquisitionTrackedTextSha256",
-        "hlslTrackedTextSha256",
-        "generatorTrackedTextSha256",
-        "materialContractBuilderTrackedTextSha256",
-        "shaderCacheOracleTrackedTextSha256",
-        "ue3PackageParserTrackedTextSha256",
-        "hlslVerifierTrackedTextSha256",
-        "sourceValueAcquisitionGeneratorTrackedTextSha256",
-        "materialEvidenceApprovalTrackedTextSha256",
-    ):
+    require(
+        isinstance(source, dict) and set(source) == RUNTIME_SOURCE_EVIDENCE_KEYS,
+        "Material runtime source evidence schema changed",
+    )
+    for key in RUNTIME_SOURCE_EVIDENCE_KEYS:
         require(isinstance(source.get(key), str) and len(source[key]) == 64, f"source evidence SHA is invalid: {key}")
     acquisition = receipt.get("sourceRevisionShaderCacheAcquisition") or {}
     require(
@@ -2369,6 +2522,10 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     evaluator_ids: set[str] = set()
     evaluator_by_family: dict[str, dict[str, Any]] = {}
     for family in families:
+        require(
+            isinstance(family, dict) and set(family) == FAMILY_EVALUATOR_KEYS,
+            "family evaluator schema changed",
+        )
         require(family["familyId"] not in family_ids and family["evaluatorId"] not in evaluator_ids, "duplicate Material evaluator identity")
         family_ids.add(family["familyId"])
         evaluator_ids.add(family["evaluatorId"])
@@ -2377,7 +2534,16 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         claimed_family = sealed_family.pop("evaluatorSha256", None)
         require(claimed_family == canonical_sha256(sealed_family), "family evaluator digest mismatch")
         require(family.get("evaluatorVersion") == EVALUATOR_VERSION and family.get("fidelity") == "RECONSTRUCTED_NUMERICALLY_VERIFIED" and family.get("graphProvenance") == "RECONSTRUCTED_GRAPH", "family evaluator fidelity changed")
-        require(family.get("sourceExact") is False and family.get("implemented") is True and family.get("cpuNumericOracleVerified") is True, "family evaluator admission changed")
+        require(
+            family.get("sourceExact") is False
+            and family.get("implemented") is True
+            and family.get("cpuNumericOracleVerified") is True
+            and family.get("hlslNumericOracleVerified") is True
+            and family.get("arithmeticEvaluationAdmission") is True
+            and family.get("evidenceBlockers") == FAMILY_EVIDENCE_BLOCKERS
+            and family.get("runtimeBlockers") == FAMILY_RUNTIME_BLOCKERS,
+            "family evaluator admission changed",
+        )
         require(len(family.get("sampleRows") or []) == len(ORACLE_INPUTS), "family sample denominator changed")
         require(family.get("features") == feature_names(family["featureMask"]), "family feature mask changed")
         for sample, source_sample in zip(family["sampleRows"], ORACLE_INPUTS, strict=True):
@@ -2394,6 +2560,8 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     recipe_binding_by_id: dict[str, dict[str, Any]] = {}
     field_ids: set[str] = set()
     static_field_ids: set[str] = set()
+    input_kind_counts: Counter[str] = Counter()
+    input_role_counts: Counter[str] = Counter()
     resolved_render_states = 0
     render_state_count = 0
     for recipe in recipes:
@@ -2418,6 +2586,8 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
             field_ids.add(field["fieldId"])
             require(not field["bindingRole"].startswith("UNKNOWN"), "unknown Material input role")
             require(field.get("fieldKind") in {"scalar", "vector", "texture"}, "Material typed input kind changed")
+            input_kind_counts[field["fieldKind"]] += 1
+            input_role_counts[field["bindingRole"]] += 1
             require(field.get("typedValue") is not None, "Material typed input value is missing")
             require(field.get("typedValueSha256") == canonical_sha256(field["typedValue"]), "Material typed input value digest changed")
             require(
@@ -2481,6 +2651,11 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         require(recipe.get("fullRenderStateAdmission") is all(field["status"] == "SERIALIZED_EXPLICIT" for field in render_state), "Material render-state admission changed")
     occurrence_ids: set[str] = set()
     for occurrence in occurrences:
+        require(
+            isinstance(occurrence, dict)
+            and set(occurrence) == OCCURRENCE_BINDING_KEYS,
+            "Material occurrence binding schema changed",
+        )
         require(occurrence["occurrenceId"] not in occurrence_ids, "duplicate Material occurrence binding")
         occurrence_ids.add(occurrence["occurrenceId"])
         sealed_occurrence = dict(occurrence)
@@ -2498,6 +2673,10 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         require(occurrence.get("runtimeHandlerConsumptionAdmission") is False and occurrence.get("productAdmission") is False, "Material occurrence admission changed")
     validate_hlsl_verification(receipt)
     summary = receipt.get("summary") or {}
+    require(
+        isinstance(summary, dict) and set(summary) == RUNTIME_SUMMARY_KEYS,
+        "Material runtime summary schema changed",
+    )
     runtime_recipe_count = sum(
         row.get("runtimeHandlerConsumptionAdmission") is True for row in recipes
     )
@@ -2522,17 +2701,70 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         == 0,
         "Material runtime/Product consumption summary changed",
     )
-    require(summary.get("materialFamilyCount") == 23 and summary.get("implementedEvaluatorCount") == 23 and summary.get("cpuVerifiedEvaluatorCount") == 23, "Material evaluator summary changed")
     hlsl = receipt.get("hlslVerification") or {}
     expected_hlsl_count = 23 if hlsl.get("verified") else 0
-    require(summary.get("hlslVerifiedEvaluatorCount") == expected_hlsl_count, "HLSL evaluator summary changed")
-    require(summary.get("sourceExactEvaluatorCount") == 0 and summary.get("materialRecipeBindingCount") == 27 and summary.get("materialOccurrenceBindingCount") == 34 and summary.get("unknownInputRoleCount") == 0, "Material binding summary changed")
-    require(summary.get("inputBindingCount") == len(field_ids), "Material input summary changed")
-    require(summary.get("staticSwitchBindingCount") == len(static_field_ids), "Material static switch summary changed")
-    require(summary.get("totalTypedFieldBindingCount") == len(field_ids) + len(static_field_ids), "Material typed field summary changed")
-    require(summary.get("renderStateBindingCount") == render_state_count and summary.get("resolvedRenderStateBindingCount") == resolved_render_states and summary.get("unresolvedRenderStateBindingCount") == render_state_count - resolved_render_states, "Material render-state summary changed")
-    require(summary.get("familyNumericSampleCount") == 92 and summary.get("recipeNumericSampleCount") == 108 and summary.get("hlslSampleCount") == 200, "Material numeric sample summary changed")
+    family_numeric_sample_count = sum(
+        len(row.get("sampleRows") or []) for row in families
+    )
+    recipe_numeric_sample_count = sum(
+        len(row.get("numericBindingSamples") or []) for row in recipes
+    )
+    expected_summary_before_feasibility = {
+        "materialFamilyCount": len(families),
+        "implementedEvaluatorCount": sum(
+            row.get("implemented") is True for row in families
+        ),
+        "cpuVerifiedEvaluatorCount": sum(
+            row.get("cpuNumericOracleVerified") is True for row in families
+        ),
+        "hlslVerifiedEvaluatorCount": expected_hlsl_count,
+        "reconstructedNumericallyVerifiedEvaluatorCount": sum(
+            row.get("fidelity") == "RECONSTRUCTED_NUMERICALLY_VERIFIED"
+            for row in families
+        ),
+        "sourceExactEvaluatorCount": sum(
+            row.get("sourceExact") is True for row in families
+        ),
+        "materialRecipeBindingCount": len(recipes),
+        "materialOccurrenceBindingCount": len(occurrences),
+        "inputBindingCount": len(field_ids),
+        "inputKindCounts": dict(sorted(input_kind_counts.items())),
+        "inputRoleCounts": dict(sorted(input_role_counts.items())),
+        "unknownInputRoleCount": sum(
+            role.startswith("UNKNOWN") for role in input_role_counts
+        ),
+        "staticSwitchBindingCount": len(static_field_ids),
+        "totalTypedFieldBindingCount": len(field_ids) + len(static_field_ids),
+        "renderStateBindingCount": render_state_count,
+        "resolvedRenderStateBindingCount": resolved_render_states,
+        "unresolvedRenderStateBindingCount": render_state_count
+        - resolved_render_states,
+        "familyNumericSampleCount": family_numeric_sample_count,
+        "recipeNumericSampleCount": recipe_numeric_sample_count,
+        "hlslSampleCount": hlsl.get("sampleCount"),
+        "runtimeHandlerConsumedRecipeCount": runtime_recipe_count,
+        "runtimeHandlerConsumedOccurrenceCount": runtime_occurrence_count,
+        "productRecipeCount": product_recipe_count,
+        "productOccurrenceCount": product_occurrence_count,
+    }
+    require(
+        all(
+            type(summary.get(key)) is type(value)
+            and summary.get(key) == value
+            for key, value in expected_summary_before_feasibility.items()
+        )
+        and family_numeric_sample_count == 92
+        and recipe_numeric_sample_count == 108
+        and hlsl.get("sampleCount") == 200,
+        "Material derived runtime summary changed",
+    )
     matrices = receipt.get("materialFeasibilityMatrices") or {}
+    require(
+        isinstance(matrices, dict)
+        and set(matrices)
+        == {"renderStateRows", "staticPermutationRows", "strictSamplerRows", "summary"},
+        "Material feasibility matrix schema changed",
+    )
     matrix_summary = matrices.get("summary") or {}
     render_matrix = matrices.get("renderStateRows") or []
     static_matrix = matrices.get("staticPermutationRows") or []
@@ -2671,18 +2903,38 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     )
     validate_warp_state_provider_verification(receipt)
     require(
-        summary.get("materialFeasibilityRowCount") == 255
-        and summary.get("materialFeasibilityReadyCount") == 0
-        and summary.get("materialFeasibilityBlockedCount") == 255,
+        type(summary.get("materialFeasibilityRowCount")) is int
+        and summary.get("materialFeasibilityRowCount") == len(all_matrix_rows) == 255
+        and type(summary.get("materialFeasibilityReadyCount")) is int
+        and summary.get("materialFeasibilityReadyCount")
+        == sum(row.get("executionDecision") != "BLOCKED" for row in all_matrix_rows)
+        == 0
+        and type(summary.get("materialFeasibilityBlockedCount")) is int
+        and summary.get("materialFeasibilityBlockedCount")
+        == sum(row.get("executionDecision") == "BLOCKED" for row in all_matrix_rows)
+        == 255,
         "Material feasibility top-level summary changed",
     )
     admission = receipt.get("admission") or {}
-    require(admission.get("materialRuntimeHandlerConsumptionAdmission") is False and admission.get("rendererConsumptionAdmission") is False and admission.get("productAdmission") is False, "Material Product admission opened")
-    require(admission.get("arithmeticFamilyEvaluationAdmission") is bool(hlsl.get("verified")), "Material arithmetic admission changed")
+    require(
+        isinstance(admission, dict) and set(admission) == RUNTIME_ADMISSION_KEYS,
+        "Material runtime admission schema changed",
+    )
     require(
         admission.get("evidenceIntegrityAdmission") is True
-        and admission.get("executionReadinessAdmission") is False,
+        and admission.get("executionReadinessAdmission") is False
+        and admission.get("arithmeticFamilyEvaluationAdmission")
+        is bool(hlsl.get("verified"))
+        and admission.get("materialRuntimeHandlerConsumptionAdmission") is False
+        and admission.get("rendererConsumptionAdmission") is False
+        and admission.get("productAdmission") is False
+        and admission.get("blockers") == RUNTIME_BLOCKERS,
         "Material evidence/readiness admission changed",
+    )
+    require(
+        canonical_sha256(runtime_semantic_projection(receipt))
+        == APPROVED_RUNTIME_SEMANTIC_PROJECTION_SHA256,
+        "Material runtime approved semantic projection changed",
     )
 
 

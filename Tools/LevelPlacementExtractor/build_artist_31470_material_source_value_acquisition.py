@@ -21,6 +21,9 @@ from pathlib import Path
 from typing import Any
 
 from artist_31470_material_evidence_approval import (
+    APPROVED_ACQUISITION_SEMANTIC_PROJECTION_SHA256,
+    APPROVED_CONTROLLED_RUNTIME_CAPTURE_SHA256,
+    APPROVED_EXTERNAL_ARTIFACT_SEARCH_SHA256,
     APPROVED_STATIC_ROW_SET_SHA256,
     APPROVED_STRICT_SAMPLER_ROW_SET_SHA256,
 )
@@ -244,6 +247,126 @@ CONTROLLED_CAPTURE_ASSESSMENT = {
     ),
 }
 
+ACQUISITION_ROOT_KEYS = {
+    "schema",
+    "formatVersion",
+    "root",
+    "characterClass",
+    "skillId",
+    "inputSlot",
+    "scope",
+    "source",
+    "externalArtifactSearch",
+    "provenanceClusters",
+    "matrices",
+    "coordinatedCorrectiveRequirements",
+    "minimumMissingExternalArtifacts",
+    "summary",
+    "admission",
+    "receiptSha256",
+}
+
+ACQUISITION_SOURCE_SPECS = (
+    (
+        "TYPED_MATERIAL_EVIDENCE_CONTRACT",
+        "Data/Effects/Imported/Artist/Materials/"
+        "skill.31470.typed-material-evidence-contract.json",
+        "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
+        True,
+    ),
+    (
+        "RAW_RENDER_STATE_EVIDENCE_RECEIPT",
+        "Data/Effects/Imported/Artist/Materials/"
+        "skill.31470.material-render-state-evidence.receipt.json",
+        "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
+        True,
+    ),
+    (
+        "SHADER_CACHE_NATIVE_TAIL_RECEIPT",
+        "Data/Effects/Imported/Artist/Materials/"
+        "skill.31470.shader-cache-oracle.receipt.json",
+        "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
+        True,
+    ),
+    (
+        "SOURCE_VALUE_ACQUISITION_GENERATOR",
+        "Tools/LevelPlacementExtractor/"
+        "build_artist_31470_material_source_value_acquisition.py",
+        "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        False,
+    ),
+    (
+        "INDEPENDENT_MATERIAL_EVIDENCE_APPROVAL",
+        "Tools/LevelPlacementExtractor/artist_31470_material_evidence_approval.py",
+        "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        False,
+    ),
+    (
+        "MATERIAL_FEASIBILITY_MATRIX_BUILDER",
+        "Tools/LevelPlacementExtractor/"
+        "build_artist_31470_material_runtime_oracle.py",
+        "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        False,
+    ),
+    (
+        "UE3_TAGGED_PROPERTY_PARSER",
+        "Tools/LevelPlacementExtractor/"
+        "extract_artist_31470_material_render_state.py",
+        "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        False,
+    ),
+    (
+        "UE3_MIC_NATIVE_TAIL_PARSER",
+        "Tools/LevelPlacementExtractor/"
+        "extract_artist_31470_shader_cache_oracle.py",
+        "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+        False,
+    ),
+)
+
+ACQUISITION_SUMMARY_KEYS = {
+    "renderStateRowCount",
+    "renderStateSourceValueAcquiredCount",
+    "staticPermutationRowCount",
+    "staticExactGuidJoinCount",
+    "staticOverrideTrueSourceValueAcquiredCount",
+    "staticNonoverrideSemanticsUnverifiedCount",
+    "staticNoExactGuidEntryCount",
+    "previousDirectUnprovenSamplerRowCount",
+    "previouslyAdmittedExactSamplerReauditCount",
+    "previouslyAdmittedExactSamplerBlockedCount",
+    "strictSamplerRowCount",
+    "strictSamplerSourceValueAcquiredCount",
+    "strictExecutionRowCount",
+    "strictExecutionReadyCount",
+    "valueProvenanceDelta",
+    "executionReadinessDelta",
+    "productCount",
+    "renderRowSetSha256",
+    "staticRowSetSha256",
+    "strictSamplerRowSetSha256",
+    "invalidatedPreviousExactSamplerSetSha256",
+}
+
+ACQUISITION_ADMISSION_KEYS = {
+    "acquisitionReceiptEvidenceIntegrity",
+    "upstreamMaterialEvidenceIntegrity",
+    "sourceValueProviderPartial",
+    "executionReady",
+    "product",
+    "r2Entry",
+    "decision",
+    "blockers",
+}
+
+ACQUISITION_BLOCKERS = [
+    "RENDER_STATE_89_SOURCE_VALUES_UNRESOLVED",
+    "STATIC_71_SOURCE_SELECTIONS_UNRESOLVED",
+    "STRICT_SAMPLER_72_FULL_DESCRIPTORS_UNRESOLVED",
+    "SOURCE_SPECIFIC_ACTUAL_OUTPUT_READINESS_ZERO",
+    "FINAL_RUNTIME_CONSUMERS_NOT_IMPLEMENTED",
+]
+
 
 def require(condition: bool, message: str) -> None:
     if not condition:
@@ -314,6 +437,103 @@ def source_evidence(path: Path, role: str, *, json_input: bool = True) -> dict[s
         ),
         "canonicalTextSha256": digest,
     }
+
+
+def acquisition_semantic_projection(receipt: dict[str, Any]) -> dict[str, Any]:
+    """Return the acyclic, independently approved Material acquisition meaning.
+
+    ``source`` contains the tracked hashes of this generator and of the approval
+    module, and ``receiptSha256`` seals the complete candidate.  Excluding only
+    those two dependency-cycle fields leaves every evidence, matrix, decision,
+    count, and admission field under an independent fixed identity.
+    """
+
+    return {
+        key: copy.deepcopy(receipt[key])
+        for key in sorted(ACQUISITION_ROOT_KEYS - {"source", "receiptSha256"})
+    }
+
+
+def _validate_acquisition_sources(receipt: dict[str, Any]) -> None:
+    sources = receipt.get("source")
+    require(
+        isinstance(sources, list) and len(sources) == len(ACQUISITION_SOURCE_SPECS),
+        "acquisition source identity set changed",
+    )
+    for actual, (role, relative_path, hash_domain, json_input) in zip(
+        sources, ACQUISITION_SOURCE_SPECS, strict=True
+    ):
+        require(
+            isinstance(actual, dict)
+            and set(actual)
+            == {"role", "path", "hashDomain", "canonicalTextSha256"},
+            f"acquisition source schema changed: {role}",
+        )
+        expected = source_evidence(
+            REPO_ROOT / relative_path,
+            role,
+            json_input=json_input,
+        )
+        require(
+            actual == expected and actual["hashDomain"] == hash_domain,
+            f"acquisition source identity changed: {role}",
+        )
+
+
+def _validate_external_artifact_search(receipt: dict[str, Any]) -> None:
+    search = receipt.get("externalArtifactSearch")
+    require(
+        isinstance(search, dict)
+        and set(search)
+        == {
+            "scopeBoundary",
+            "sourcePackManifest",
+            "sourceArchive",
+            "currentRevisionCandidates",
+            "driverShaderCaches",
+            "gitAndRemote",
+            "controlledRuntimeCapture",
+        },
+        "external artifact search schema changed",
+    )
+    require(
+        canonical_sha256(search) == APPROVED_EXTERNAL_ARTIFACT_SEARCH_SHA256,
+        "external artifact search approved projection changed",
+    )
+    require(
+        search.get("scopeBoundary")
+        == {
+            "claim": "ACCESSIBLE_LOCAL_AND_REMOTE_SCOPE_ONLY",
+            "globalExhaustionClaim": False,
+            "volumeShadowCopy": {
+                "status": "PERMISSION_UNCHECKED",
+                "admissionInput": False,
+            },
+        },
+        "external artifact access boundary changed",
+    )
+    for key, expected in (
+        ("driverShaderCaches", DRIVER_CACHE_AUDIT),
+        ("gitAndRemote", GIT_AND_REMOTE_AUDIT),
+    ):
+        snapshot = search.get(key)
+        require(
+            snapshot == expected
+            and snapshot.get("evidenceKind")
+            == "EXTERNAL_READ_ONLY_AUDIT_SNAPSHOT"
+            and snapshot.get("admissionInput") is False
+            and snapshot.get("corroborationOnly") is True
+            and snapshot.get("regeneratedByThisGenerator") is False
+            and snapshot.get("verificationManifest") is None,
+            f"external corroboration boundary changed: {key}",
+        )
+    controlled = search.get("controlledRuntimeCapture")
+    require(
+        controlled == CONTROLLED_CAPTURE_ASSESSMENT
+        and canonical_sha256(controlled)
+        == APPROVED_CONTROLLED_RUNTIME_CAPTURE_SHA256,
+        "controlled runtime capture boundary changed",
+    )
 
 
 def compact_property(record: dict[str, Any]) -> dict[str, Any]:
@@ -1756,6 +1976,10 @@ def validate_receipt_semantics(
     receipt: dict[str, Any], contract: dict[str, Any]
 ) -> None:
     require(
+        isinstance(receipt, dict) and set(receipt) == ACQUISITION_ROOT_KEYS,
+        "source-value acquisition root schema changed",
+    )
+    require(
         receipt.get("schema")
         == "lostark.artist-31470-material-source-value-acquisition-receipt"
         and type(receipt.get("formatVersion")) is int
@@ -1773,30 +1997,16 @@ def validate_receipt_semantics(
     payload.pop("receiptSha256", None)
     require(canonical_sha256(payload) == digest, "receipt digest mismatch")
 
-    source_roles = {
-        row.get("role"): row for row in receipt.get("source") or []
-    }
-    require(
-        len(source_roles) == 8
-        and "INDEPENDENT_MATERIAL_EVIDENCE_APPROVAL" in source_roles
-        and all(
-            isinstance(row.get("path"), str)
-            and row["path"]
-            and row.get("hashDomain")
-            in {
-                "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
-                "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
-            }
-            and _require_sha256(
-                row.get("canonicalTextSha256"),
-                f"acquisition source {role}",
-            )
-            for role, row in source_roles.items()
-        ),
-        "acquisition source identity set changed",
-    )
+    _validate_acquisition_sources(receipt)
+    _validate_external_artifact_search(receipt)
 
     matrices = receipt.get("matrices") or {}
+    require(
+        isinstance(matrices, dict)
+        and set(matrices)
+        == {"renderStateRows", "staticPermutationRows", "strictSamplerRows"},
+        "source-value acquisition matrix schema changed",
+    )
     render_rows = matrices.get("renderStateRows") or []
     static_rows = matrices.get("staticPermutationRows") or []
     sampler_rows = matrices.get("strictSamplerRows") or []
@@ -1979,9 +2189,64 @@ def validate_receipt_semantics(
                     "legacy exact sampler decoded/raw projection changed",
                 )
 
+    clusters = receipt.get("provenanceClusters")
+    require(
+        isinstance(clusters, dict)
+        and set(clusters)
+        == {
+            "renderByField",
+            "staticByDecision",
+            "staticRecipeCount",
+            "samplerByPreviousAdmission",
+            "samplerBindingOriginCounts",
+            "samplerUniqueTextureCount",
+            "samplerSourceArchiveTextureCount",
+            "samplerCurrentOnlyTextureCount",
+        },
+        "source-value acquisition provenance cluster schema changed",
+    )
+    corrective = receipt.get("coordinatedCorrectiveRequirements")
+    require(
+        isinstance(corrective, list)
+        and len(corrective) == 3
+        and [row.get("requirementId") for row in corrective]
+        == [
+            "strict-sampler-denominator-72",
+            "static-blanket-reason-retirement",
+            "artist-resource-manifest-texture-selector",
+        ]
+        and all(row.get("decision") == "REQUIRED" for row in corrective),
+        "coordinated corrective requirement changed",
+    )
+    missing = receipt.get("minimumMissingExternalArtifacts")
+    require(
+        isinstance(missing, dict)
+        and set(missing) == {"renderState", "staticPermutation", "sampler"}
+        and all(isinstance(value, str) and value for value in missing.values()),
+        "minimum missing external artifact boundary changed",
+    )
+
     summary = receipt.get("summary") or {}
     require(
+        isinstance(summary, dict) and set(summary) == ACQUISITION_SUMMARY_KEYS,
+        "source-value acquisition summary schema changed",
+    )
+    expected_invalidated_exact4 = [
+        {
+            "matrixRowId": row["matrixRowId"],
+            "fieldId": row["fieldId"],
+            "logicalTexturePath": row["logicalTexturePath"],
+            "rawSamplerFields": row["textureExportEvidence"]["fields"],
+            "strictReauditDecision": row["strictReauditDecision"],
+        }
+        for row in sampler_rows
+        if row.get("baselineKind") == "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
+    ]
+    require(
         summary.get("renderStateRowCount") == 89
+        and summary.get("renderStateSourceValueAcquiredCount")
+        == sum(row.get("sourceValueAcquired") is True for row in render_rows)
+        == 0
         and summary.get("staticPermutationRowCount") == 94
         and summary.get("staticExactGuidJoinCount") == 66
         and summary.get("staticOverrideTrueSourceValueAcquiredCount") == 23
@@ -1989,28 +2254,49 @@ def validate_receipt_semantics(
         and summary.get("staticNoExactGuidEntryCount") == 28
         and summary.get("previouslyAdmittedExactSamplerReauditCount") == 4
         and summary.get("previouslyAdmittedExactSamplerBlockedCount") == 4
+        and summary.get("previousDirectUnprovenSamplerRowCount") == 68
         and summary.get("strictSamplerRowCount") == 72
         and summary.get("strictSamplerSourceValueAcquiredCount") == 0
         and summary.get("strictExecutionRowCount") == 255
         and summary.get("strictExecutionReadyCount") == 0
         and summary.get("productCount") == 0
+        and summary.get("valueProvenanceDelta")
+        == {
+            "renderState": 0,
+            "staticPermutation": 23,
+            "fullSamplerDescriptor": 0,
+        }
+        and summary.get("executionReadinessDelta") == 0
         and summary.get("renderRowSetSha256") == canonical_sha256(render_rows)
         and summary.get("staticRowSetSha256")
         == canonical_sha256(static_rows)
         == APPROVED_STATIC_ROW_SET_SHA256
         and summary.get("strictSamplerRowSetSha256")
-        == APPROVED_STRICT_SAMPLER_ROW_SET_SHA256,
+        == APPROVED_STRICT_SAMPLER_ROW_SET_SHA256
+        and summary.get("invalidatedPreviousExactSamplerSetSha256")
+        == canonical_sha256(expected_invalidated_exact4),
         "source-value acquisition summary changed",
     )
     admission = receipt.get("admission") or {}
     require(
+        isinstance(admission, dict) and set(admission) == ACQUISITION_ADMISSION_KEYS,
+        "source-value acquisition admission schema changed",
+    )
+    require(
         admission.get("acquisitionReceiptEvidenceIntegrity") is True
         and admission.get("upstreamMaterialEvidenceIntegrity") is True
+        and admission.get("sourceValueProviderPartial") is True
         and admission.get("executionReady") is False
         and admission.get("product") is False
         and admission.get("r2Entry") is False
-        and admission.get("decision") == "R0_BLOCK_R2_NO_GO",
+        and admission.get("decision") == "R0_BLOCK_R2_NO_GO"
+        and admission.get("blockers") == ACQUISITION_BLOCKERS,
         "source-value acquisition admission changed",
+    )
+    require(
+        canonical_sha256(acquisition_semantic_projection(receipt))
+        == APPROVED_ACQUISITION_SEMANTIC_PROJECTION_SHA256,
+        "source-value acquisition approved semantic projection changed",
     )
 
 
