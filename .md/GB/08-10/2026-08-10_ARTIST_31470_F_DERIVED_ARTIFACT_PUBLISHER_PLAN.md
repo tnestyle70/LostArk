@@ -110,3 +110,21 @@ root만 사용한다. 다음을 actual builder/publisher CLI로 검증한다.
 focused PowerShell audit는 Python unit과 synthetic publisher CLI를 실행한다. `git diff --check`, JSON
 schema parse, 현재 tracked catalog `-Mode Validate`가 완료 조건이다. Engine/Client full build는 public C++
 변경이 없으므로 요청하지 않는다.
+## Frozen-review correction after `39856bb`
+
+The requester blocker arrays are summaries only. They must never create execution admission.
+Each of the six upstream inputs now has an exact role-specific schema/root identity and a typed
+`executionContract` whose blocker sets are recomputed from its authenticated evidence rows. The
+builder recomputes the ordered union across all six inputs and the compiled IR, compares that union
+to the request summary, and rejects before staging if either union is non-empty.
+
+The compiled IR has an exact root, the canonical six-hash identity, typed handler receipts, and an
+execution contract derived from those receipts. A separate `lostark.effect-compiler-receipt` binds
+the compiler input hash, compiled IR canonical hash, revision, execution contract, and deterministic
+receipt token. The emitted artifact/Assembly/receipt/runtime entry preserve that token. Product
+admission remains false even for the synthetic zero-blocker fixture.
+
+`Publish-Effects.ps1` also exposes a temp-path-only test fault selector. Tests force failure after the
+old destination is moved to backup and after the new destination is moved into place. Both paths
+must restore the exact old bytes and leave zero `.tmp`/`.bak` residue. No actual Artist output is
+created by this lane.

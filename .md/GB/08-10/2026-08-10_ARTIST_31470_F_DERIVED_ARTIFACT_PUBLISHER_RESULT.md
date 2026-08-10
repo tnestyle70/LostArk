@@ -98,3 +98,34 @@ G06은 runtime catalog format 3의 `payloadKind=IMMUTABLE_COMPILED_IR` entry에�
 `compiledArtifact`와 `compiledReceipt`만 parse해야 한다. v13 carrier와 Assembly는 identity/hash 확인용이며
 Playback/Renderer 입력이 아니다. G05-S/G/M final hash와 actual Artist F output은 모든 final hash가 동결된
 Gate 10B에서만 builder request로 공급한다.
+## Corrective checkpoint after independent review
+
+The `39856bb` coordinated-rehash counterexample is closed. A request with empty blocker summaries
+cannot override blockers reported by any of the six typed upstream contracts or the compiled IR.
+The builder derives the complete blocker union from evidence rows and compiler handler receipts,
+verifies an exact compiler receipt/token, and rejects both a summary mismatch and a correctly
+summarized non-zero union before creating any output. The synthetic admitted fixture remains
+`executionAdmission=true`, `productAdmission=false`; actual Artist outputs remain zero.
+
+Publisher transaction fault injection now covers `AfterBackupMove` and `AfterCommitMove`. Both
+forced failures preserve the pre-existing runtime catalog byte-for-byte and leave no temporary or
+backup file. Fault injection is restricted to Publish mode under the operating-system temp root.
+
+Corrective verification:
+
+```text
+python -B Tools/EffectPipeline/test_build_effect_derived_artifact.py
+  PASS: 14/14, including coordinated six-input/IR rehash rejection and two publisher move faults
+powershell -NoProfile -ExecutionPolicy Bypass \
+  -File Tools/ProjectAudit/Test-EffectDerivedArtifactPublisher.ps1
+  PASS: tests=14 authenticated-blocker-union=true rollback=true product=false
+powershell -NoProfile -ExecutionPolicy Bypass \
+  -File Tools/EffectPipeline/Test-EffectPipeline.ps1
+  PASS: legacy format-2 pipeline and rollback regression
+JSON schema parse PASS; PowerShell parser PASS; git diff --check PASS
+```
+Corrective full `Invoke-ProjectAudit.ps1` run: this lane's
+`effect.derived-artifact-publisher` check passed and was absent from the failure list. The aggregate
+command remained exit 1 for 13 out-of-lane repository/resource checks (maps, project visibility,
+G09/source/material/geometry, WFX/readiness/four-class rollout, and missing actor resources). No
+full C++ build was requested because this lane changes no C++ or runtime execution file.

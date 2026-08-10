@@ -27,6 +27,120 @@
         "canonicalSha256": { "$ref": "#/$defs/sha256" }
       }
     },
+    "executionContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactBindingBlockerSet",
+        "artifactBindingBlockerCount",
+        "executionBlockerSet",
+        "executionBlockerCount",
+        "executionAdmission"
+      ],
+      "properties": {
+        "artifactBindingBlockerSet": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stableId" },
+          "uniqueItems": true
+        },
+        "artifactBindingBlockerCount": { "type": "integer", "minimum": 0 },
+        "executionBlockerSet": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stableId" },
+          "uniqueItems": true
+        },
+        "executionBlockerCount": { "type": "integer", "minimum": 0 },
+        "executionAdmission": { "type": "boolean" }
+      }
+    },
+    "evidenceRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "evidenceSha256", "executionContract"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/stableId" },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" },
+        "executionContract": { "$ref": "#/$defs/executionContract" }
+      }
+    },
+    "sourceContractInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "version",
+        "effectAssetId",
+        "displayName",
+        "documentRole",
+        "readOnly",
+        "runtimeSemanticAuthority",
+        "derivedTargetEffectAssetId",
+        "executionContract",
+        "evidenceRows"
+      ],
+      "properties": {
+        "schema": { "const": "lostark.effect-authoring" },
+        "version": { "type": "integer", "const": 14 },
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "documentRole": { "const": "READ_ONLY_SOURCE_CONTRACT" },
+        "readOnly": { "const": true },
+        "runtimeSemanticAuthority": {
+          "const": "EVIDENCE_ONLY_NOT_RUNTIME_SEMANTICS"
+        },
+        "derivedTargetEffectAssetId": { "$ref": "#/$defs/stableId" },
+        "executionContract": { "$ref": "#/$defs/executionContract" },
+        "evidenceRows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceRow" }
+        }
+      }
+    },
+    "typedUpstreamInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "formatVersion",
+        "effectAssetId",
+        "contractRole",
+        "runtimeSemanticAuthority",
+        "derivedTargetEffectAssetId",
+        "executionContract",
+        "evidenceRows"
+      ],
+      "properties": {
+        "schema": {
+          "enum": [
+            "lostark.effect-source-semantic-closure",
+            "lostark.effect-geometry-contract",
+            "lostark.effect-material-contract",
+            "lostark.effect-resource-binding-contract",
+            "lostark.effect-compiler-input-contract"
+          ]
+        },
+        "formatVersion": { "type": "integer", "const": 1 },
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "contractRole": {
+          "enum": [
+            "SOURCE_SEMANTIC_CLOSURE",
+            "GEOMETRY_CONTRACT",
+            "MATERIAL_CONTRACT",
+            "RESOURCE_BINDING_CONTRACT",
+            "COMPILER_INPUT_CONTRACT"
+          ]
+        },
+        "runtimeSemanticAuthority": {
+          "const": "EVIDENCE_ONLY_NOT_RUNTIME_SEMANTICS"
+        },
+        "derivedTargetEffectAssetId": { "$ref": "#/$defs/stableId" },
+        "executionContract": { "$ref": "#/$defs/executionContract" },
+        "evidenceRows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceRow" }
+        }
+      }
+    },
     "buildRequest": {
       "type": "object",
       "additionalProperties": false,
@@ -56,7 +170,8 @@
             "materialContract",
             "resourceBinding",
             "compilerInput",
-            "compiledIr"
+            "compiledIr",
+            "compilerReceipt"
           ],
           "properties": {
             "sourceContract": { "$ref": "#/$defs/fileReference" },
@@ -65,7 +180,8 @@
             "materialContract": { "$ref": "#/$defs/fileReference" },
             "resourceBinding": { "$ref": "#/$defs/fileReference" },
             "compilerInput": { "$ref": "#/$defs/fileReference" },
-            "compiledIr": { "$ref": "#/$defs/fileReference" }
+            "compiledIr": { "$ref": "#/$defs/fileReference" },
+            "compilerReceipt": { "$ref": "#/$defs/fileReference" }
           }
         },
         "compilerRevision": { "$ref": "#/$defs/stableId" },
@@ -144,11 +260,17 @@
     "compiledIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["artifactRevision", "compilerRevision", "compiledIrSha256"],
+      "required": [
+        "artifactRevision",
+        "compilerRevision",
+        "compiledIrSha256",
+        "compilerReceiptTokenSha256"
+      ],
       "properties": {
         "artifactRevision": { "type": "integer", "minimum": 1 },
         "compilerRevision": { "$ref": "#/$defs/stableId" },
-        "compiledIrSha256": { "$ref": "#/$defs/sha256" }
+        "compiledIrSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptTokenSha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "assemblyCarrier": {
@@ -181,13 +303,17 @@
     },
     "compiledIr": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "schema",
         "formatVersion",
         "effectAssetId",
         "artifactRevision",
         "compilerRevision",
-        "runtimeSemanticAuthority"
+        "runtimeSemanticAuthority",
+        "derivedIdentity",
+        "executionContract",
+        "program"
       ],
       "properties": {
         "schema": { "const": "lostark.effect-compiled-ir" },
@@ -195,7 +321,63 @@
         "effectAssetId": { "$ref": "#/$defs/stableId" },
         "artifactRevision": { "type": "integer", "minimum": 1 },
         "compilerRevision": { "$ref": "#/$defs/stableId" },
-        "runtimeSemanticAuthority": { "const": "IMMUTABLE_COMPILED_IR" }
+        "runtimeSemanticAuthority": { "const": "IMMUTABLE_COMPILED_IR" },
+        "derivedIdentity": { "$ref": "#/$defs/derivedIdentity" },
+        "executionContract": { "$ref": "#/$defs/executionContract" },
+        "program": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["opcodes", "resourceBindings", "handlerReceipts"],
+          "properties": {
+            "opcodes": { "type": "array" },
+            "resourceBindings": { "type": "array" },
+            "handlerReceipts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["handlerId", "handlerSha256", "executionContract"],
+                "properties": {
+                  "handlerId": { "$ref": "#/$defs/stableId" },
+                  "handlerSha256": { "$ref": "#/$defs/sha256" },
+                  "executionContract": { "$ref": "#/$defs/executionContract" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "compilerReceiptInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "formatVersion",
+        "effectAssetId",
+        "artifactRevision",
+        "compilerRevision",
+        "runtimeSemanticAuthority",
+        "receiptAuthority",
+        "derivedIdentity",
+        "compilerInputHash",
+        "compiledIrSha256",
+        "executionContract",
+        "compilerReceiptTokenSha256"
+      ],
+      "properties": {
+        "schema": { "const": "lostark.effect-compiler-receipt" },
+        "formatVersion": { "type": "integer", "const": 1 },
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "artifactRevision": { "type": "integer", "minimum": 1 },
+        "compilerRevision": { "$ref": "#/$defs/stableId" },
+        "runtimeSemanticAuthority": { "const": "IMMUTABLE_COMPILED_IR" },
+        "receiptAuthority": { "const": "TYPED_CASCADE_COMPILER_RECEIPT_V1" },
+        "derivedIdentity": { "$ref": "#/$defs/derivedIdentity" },
+        "compilerInputHash": { "$ref": "#/$defs/sha256" },
+        "compiledIrSha256": { "$ref": "#/$defs/sha256" },
+        "executionContract": { "$ref": "#/$defs/executionContract" },
+        "compilerReceiptTokenSha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "compiledArtifact": {
@@ -210,6 +392,7 @@
         "runtimeSemanticAuthority",
         "derivedIdentity",
         "compiledIrSha256",
+        "compilerReceiptTokenSha256",
         "compiledIr",
         "executionAdmission",
         "productAdmission"
@@ -223,6 +406,7 @@
         "runtimeSemanticAuthority": { "const": "IMMUTABLE_COMPILED_IR" },
         "derivedIdentity": { "$ref": "#/$defs/derivedIdentity" },
         "compiledIrSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptTokenSha256": { "$ref": "#/$defs/sha256" },
         "compiledIr": { "$ref": "#/$defs/compiledIr" },
         "executionAdmission": { "const": true },
         "productAdmission": { "const": false }
@@ -244,6 +428,9 @@
         "assemblySha256",
         "compiledArtifactSha256",
         "compiledIrSha256",
+        "compilerReceiptRawSha256",
+        "compilerReceiptCanonicalSha256",
+        "compilerReceiptTokenSha256",
         "toolDependencies",
         "artifactBindingBlockerSet",
         "artifactBindingBlockerCount",
@@ -266,6 +453,9 @@
         "assemblySha256": { "$ref": "#/$defs/sha256" },
         "compiledArtifactSha256": { "$ref": "#/$defs/sha256" },
         "compiledIrSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptRawSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptTokenSha256": { "$ref": "#/$defs/sha256" },
         "toolDependencies": {
           "type": "array",
           "minItems": 3,
@@ -329,6 +519,7 @@
         "artifactRevision",
         "compilerRevision",
         "compiledIrSha256",
+        "compilerReceiptTokenSha256",
         "executionAdmission",
         "productAdmission",
         "compiledArtifact",
@@ -347,6 +538,7 @@
         "artifactRevision": { "type": "integer", "minimum": 1 },
         "compilerRevision": { "$ref": "#/$defs/stableId" },
         "compiledIrSha256": { "$ref": "#/$defs/sha256" },
+        "compilerReceiptTokenSha256": { "$ref": "#/$defs/sha256" },
         "executionAdmission": { "const": true },
         "productAdmission": { "const": false },
         "compiledArtifact": { "$ref": "#/$defs/compiledArtifact" },
@@ -398,6 +590,10 @@
   },
   "oneOf": [
     { "$ref": "#/$defs/buildRequest" },
+    { "$ref": "#/$defs/sourceContractInput" },
+    { "$ref": "#/$defs/typedUpstreamInput" },
+    { "$ref": "#/$defs/compiledIr" },
+    { "$ref": "#/$defs/compilerReceiptInput" },
     { "$ref": "#/$defs/authoringCarrier" },
     { "$ref": "#/$defs/assemblyCarrier" },
     { "$ref": "#/$defs/compiledArtifact" },

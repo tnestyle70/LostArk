@@ -56,20 +56,32 @@ class DerivedArtifactContractTests(unittest.TestCase):
     def _make_request(
         self, effect_id: str, compiler_revision: str, artifact_revision: int
     ) -> dict:
+        zero_execution = derived._make_execution_contract((), ())
         values = {
             "sourceContract": {
                 "schema": "lostark.effect-authoring",
                 "version": 14,
                 "effectAssetId": effect_id + ".source",
                 "displayName": "Read-only source fixture",
-                "elements": [],
+                "documentRole": "READ_ONLY_SOURCE_CONTRACT",
+                "readOnly": True,
+                "runtimeSemanticAuthority": "EVIDENCE_ONLY_NOT_RUNTIME_SEMANTICS",
+                "derivedTargetEffectAssetId": effect_id,
+                "executionContract": zero_execution,
+                "evidenceRows": [],
             },
-            "sourceSemanticClosure": {"schema": "fixture.semantic", "closed": True},
-            "geometryContract": {"schema": "fixture.geometry", "carriers": []},
-            "materialContract": {"schema": "fixture.material", "recipes": []},
-            "resourceBinding": {"schema": "fixture.resources", "bindings": []},
-            "compilerInput": {"schema": "fixture.compiler-input", "inputs": []},
         }
+        for input_name, (schema, role) in derived.UPSTREAM_INPUT_CONTRACTS.items():
+            values[input_name] = {
+                "schema": schema,
+                "formatVersion": 1,
+                "effectAssetId": effect_id + "." + input_name,
+                "contractRole": role,
+                "runtimeSemanticAuthority": "EVIDENCE_ONLY_NOT_RUNTIME_SEMANTICS",
+                "derivedTargetEffectAssetId": effect_id,
+                "executionContract": zero_execution,
+                "evidenceRows": [],
+            }
         inputs: dict[str, dict[str, str]] = {}
         for name, value in values.items():
             path = self.input_root / f"{effect_id}.{name}.json"
@@ -81,6 +93,12 @@ class DerivedArtifactContractTests(unittest.TestCase):
                     derived.canonical_json_bytes(value)
                 ).hexdigest(),
             }
+        identity = derived._make_derived_identity(
+            {
+                identity_name: inputs[input_name]["canonicalSha256"]
+                for input_name, identity_name in derived.INPUT_TO_IDENTITY
+            }
+        )
         compiled_ir = {
             "schema": "lostark.effect-compiled-ir",
             "formatVersion": 1,
@@ -88,6 +106,8 @@ class DerivedArtifactContractTests(unittest.TestCase):
             "artifactRevision": artifact_revision,
             "compilerRevision": compiler_revision,
             "runtimeSemanticAuthority": "IMMUTABLE_COMPILED_IR",
+            "derivedIdentity": identity,
+            "executionContract": zero_execution,
             "program": {
                 "opcodes": [],
                 "resourceBindings": [],
@@ -101,6 +121,31 @@ class DerivedArtifactContractTests(unittest.TestCase):
             "rawSha256": raw_sha(compiled_path),
             "canonicalSha256": hashlib.sha256(
                 derived.canonical_json_bytes(compiled_ir)
+            ).hexdigest(),
+        }
+        compiler_receipt = {
+            "schema": "lostark.effect-compiler-receipt",
+            "formatVersion": 1,
+            "effectAssetId": effect_id,
+            "artifactRevision": artifact_revision,
+            "compilerRevision": compiler_revision,
+            "runtimeSemanticAuthority": "IMMUTABLE_COMPILED_IR",
+            "receiptAuthority": "TYPED_CASCADE_COMPILER_RECEIPT_V1",
+            "derivedIdentity": identity,
+            "compilerInputHash": identity["compilerInputHash"],
+            "compiledIrSha256": inputs["compiledIr"]["canonicalSha256"],
+            "executionContract": zero_execution,
+        }
+        compiler_receipt["compilerReceiptTokenSha256"] = (
+            derived.make_compiler_receipt_token(compiler_receipt)
+        )
+        compiler_receipt_path = self.input_root / f"{effect_id}.compiler-receipt.json"
+        write_json(compiler_receipt_path, compiler_receipt)
+        inputs["compilerReceipt"] = {
+            "path": compiler_receipt_path.relative_to(self.input_root).as_posix(),
+            "rawSha256": raw_sha(compiler_receipt_path),
+            "canonicalSha256": hashlib.sha256(
+                derived.canonical_json_bytes(compiler_receipt)
             ).hexdigest(),
         }
         return {
@@ -132,7 +177,12 @@ class DerivedArtifactContractTests(unittest.TestCase):
         return documents, targets
 
     def _run_publisher(
-        self, data_root: Path, resource_root: Path, output: Path, mode: str = "Publish"
+        self,
+        data_root: Path,
+        resource_root: Path,
+        output: Path,
+        mode: str = "Publish",
+        fault: str = "None",
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
@@ -150,6 +200,8 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 str(resource_root),
                 "-OutputPath",
                 str(output),
+                "-TestFaultInjection",
+                fault,
             ],
             text=True,
             capture_output=True,
@@ -192,6 +244,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertEqual(
             schema["$defs"]["derivedRuntimeEntry"]["properties"]["productAdmission"]["const"],
             False,
+        )
+        self.assertEqual(
+            schema["$defs"]["compilerReceiptInput"]["properties"]["receiptAuthority"]["const"],
+            "TYPED_CASCADE_COMPILER_RECEIPT_V1",
+        )
+        self.assertIn(
+            "compilerReceipt",
+            schema["$defs"]["buildRequest"]["properties"]["inputs"]["required"],
         )
         production = MODULE_PATH.read_text(encoding="utf-8") + PUBLISHER.read_text(
             encoding="utf-8"
@@ -286,6 +346,78 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 self._build(request=request, outputs=outputs)
             self.assertEqual(before, {key: path.read_bytes() for key, path in outputs.items()})
 
+        # Reproduce the coordinated-rehash attack from the frozen review: all
+        # six inputs and the compiled IR honestly report a blocker while the
+        # requester attempts to summarize them as empty.
+        request = copy.deepcopy(self.request)
+        blocked = derived._make_execution_contract((), ("FIXTURE_BLOCKER",))
+        for input_name, identity_name in derived.INPUT_TO_IDENTITY:
+            reference = request["inputs"][input_name]
+            path = self.input_root / reference["path"]
+            value = derived.load_json(path)
+            value["evidenceRows"] = [
+                {
+                    "evidenceId": input_name + ".blocked",
+                    "evidenceSha256": "1" * 64,
+                    "executionContract": blocked,
+                }
+            ]
+            value["executionContract"] = blocked
+            write_json(path, value)
+            reference["rawSha256"] = raw_sha(path)
+            reference["canonicalSha256"] = hashlib.sha256(
+                derived.canonical_json_bytes(value)
+            ).hexdigest()
+
+        identity = derived._make_derived_identity(
+            {
+                identity_name: request["inputs"][input_name]["canonicalSha256"]
+                for input_name, identity_name in derived.INPUT_TO_IDENTITY
+            }
+        )
+        compiled_reference = request["inputs"]["compiledIr"]
+        compiled_path = self.input_root / compiled_reference["path"]
+        compiled = derived.load_json(compiled_path)
+        compiled["derivedIdentity"] = identity
+        compiled["executionContract"] = blocked
+        compiled["program"]["handlerReceipts"] = [
+            {
+                "handlerId": "fixture.blocked",
+                "handlerSha256": "2" * 64,
+                "executionContract": blocked,
+            }
+        ]
+        write_json(compiled_path, compiled)
+        compiled_reference["rawSha256"] = raw_sha(compiled_path)
+        compiled_reference["canonicalSha256"] = hashlib.sha256(
+            derived.canonical_json_bytes(compiled)
+        ).hexdigest()
+
+        receipt_reference = request["inputs"]["compilerReceipt"]
+        receipt_path = self.input_root / receipt_reference["path"]
+        compiler_receipt = derived.load_json(receipt_path)
+        compiler_receipt["derivedIdentity"] = identity
+        compiler_receipt["compilerInputHash"] = identity["compilerInputHash"]
+        compiler_receipt["compiledIrSha256"] = compiled_reference[
+            "canonicalSha256"
+        ]
+        compiler_receipt["executionContract"] = blocked
+        compiler_receipt["compilerReceiptTokenSha256"] = (
+            derived.make_compiler_receipt_token(compiler_receipt)
+        )
+        write_json(receipt_path, compiler_receipt)
+        receipt_reference["rawSha256"] = raw_sha(receipt_path)
+        receipt_reference["canonicalSha256"] = hashlib.sha256(
+            derived.canonical_json_bytes(compiler_receipt)
+        ).hexdigest()
+
+        with self.assertRaisesRegex(derived.ContractError, "authenticated upstream union"):
+            self._build(request=request, outputs=outputs)
+        request["executionBlockerSet"] = ["FIXTURE_BLOCKER"]
+        with self.assertRaisesRegex(derived.ContractError, "authenticated upstream evidence"):
+            self._build(request=request, outputs=outputs)
+        self.assertEqual(before, {key: path.read_bytes() for key, path in outputs.items()})
+
     def test_input_and_compiled_ir_hash_mutations_are_rejected(self) -> None:
         semantic = self.input_root / self.request["inputs"]["sourceSemanticClosure"]["path"]
         semantic.write_bytes(semantic.read_bytes() + b" ")
@@ -304,14 +436,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
             semantic
         )
         derived.build_bundle_documents(self.request, self.input_root)
-        semantic_value["closed"] = False
+        semantic_value["contractRole"] = "FORGED_ROLE"
         write_json(semantic, semantic_value)
         self.request["inputs"]["sourceSemanticClosure"]["rawSha256"] = raw_sha(
             semantic
         )
         with self.assertRaisesRegex(derived.ContractError, "canonical SHA mismatch"):
             derived.build_bundle_documents(self.request, self.input_root)
-        semantic_value["closed"] = True
+        semantic_value["contractRole"] = "SOURCE_SEMANTIC_CLOSURE"
         write_json(semantic, semantic_value)
         self.request["inputs"]["sourceSemanticClosure"]["rawSha256"] = raw_sha(
             semantic
@@ -358,6 +490,32 @@ class DerivedArtifactContractTests(unittest.TestCase):
             request["inputs"]["geometryContract"]["path"] = unsafe
             with self.assertRaises(derived.ContractError):
                 derived.build_bundle_documents(request, self.input_root)
+        request = copy.deepcopy(self.request)
+        semantic_reference = request["inputs"]["sourceSemanticClosure"]
+        semantic_path = self.input_root / semantic_reference["path"]
+        semantic_original = derived.load_json(semantic_path)
+        semantic_forged = copy.deepcopy(semantic_original)
+        semantic_forged["schema"] = "lostark.effect-forged-closure"
+        write_json(semantic_path, semantic_forged)
+        semantic_reference["rawSha256"] = raw_sha(semantic_path)
+        semantic_reference["canonicalSha256"] = hashlib.sha256(
+            derived.canonical_json_bytes(semantic_forged)
+        ).hexdigest()
+        with self.assertRaisesRegex(derived.ContractError, "schema mismatch"):
+            derived.build_bundle_documents(request, self.input_root)
+        write_json(semantic_path, semantic_original)
+        request = copy.deepcopy(self.request)
+        receipt_reference = request["inputs"]["compilerReceipt"]
+        receipt_path = self.input_root / receipt_reference["path"]
+        receipt = derived.load_json(receipt_path)
+        receipt["compilerReceiptTokenSha256"] = "0" * 64
+        write_json(receipt_path, receipt)
+        receipt_reference["rawSha256"] = raw_sha(receipt_path)
+        receipt_reference["canonicalSha256"] = hashlib.sha256(
+            derived.canonical_json_bytes(receipt)
+        ).hexdigest()
+        with self.assertRaisesRegex(derived.ContractError, "authentication token"):
+            derived.build_bundle_documents(request, self.input_root)
 
     def test_carrier_raw_semantics_and_runtime_carrier_embedding_are_rejected(self) -> None:
         _, outputs = self._build()
@@ -494,6 +652,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertFalse(runtime["effects"][0]["productAdmission"])
         self.assertEqual(runtime["effects"][0]["payloadKind"], "IMMUTABLE_COMPILED_IR")
         committed = output.read_bytes()
+        for fault in ("AfterBackupMove", "AfterCommitMove"):
+            faulted = self._run_publisher(
+                data_root, resources, output, fault=fault
+            )
+            self.assertNotEqual(faulted.returncode, 0)
+            self.assertEqual(output.read_bytes(), committed)
+            self.assertEqual(list(output.parent.glob("*.tmp")), [])
+            self.assertEqual(list(output.parent.glob("*.bak")), [])
         validate_result = self._run_publisher(
             data_root, resources, output, mode="Validate"
         )

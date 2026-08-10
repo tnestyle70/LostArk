@@ -26,6 +26,7 @@ DERIVED_IDENTITY_SCHEMA = "lostark.effect-derived-identity"
 AUTHORING_SCHEMA = "lostark.effect-authoring"
 ASSEMBLY_SCHEMA = "lostark.effect-assembly"
 COMPILED_IR_SCHEMA = "lostark.effect-compiled-ir"
+COMPILER_RECEIPT_SCHEMA = "lostark.effect-compiler-receipt"
 COMPILED_ARTIFACT_SCHEMA = "lostark.effect-compiled-artifact"
 COMPILED_RECEIPT_SCHEMA = "lostark.effect-compiled-artifact-receipt"
 RUNTIME_CATALOG_SCHEMA = "lostark.effect-runtime-catalog"
@@ -40,6 +41,8 @@ IDENTITY_CARRIER_ROLE = "DERIVED_IDENTITY_CARRIER"
 SEMANTIC_AUTHORITY = "IMMUTABLE_COMPILED_IR"
 LEGACY_PAYLOAD_KIND = "LEGACY_ASSEMBLY_V1"
 CODE_ONLY_PUBLICATION_STATE = "CODE_ONLY_NOT_ADMITTED"
+SOURCE_INPUT_ROLE = "READ_ONLY_SOURCE_CONTRACT"
+COMPILER_RECEIPT_AUTHORITY = "TYPED_CASCADE_COMPILER_RECEIPT_V1"
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 STABLE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
@@ -80,6 +83,28 @@ INPUT_TO_IDENTITY = (
     ("resourceBinding", "resourceBindingHash"),
     ("compilerInput", "compilerInputHash"),
 )
+UPSTREAM_INPUT_CONTRACTS = {
+    "sourceSemanticClosure": (
+        "lostark.effect-source-semantic-closure",
+        "SOURCE_SEMANTIC_CLOSURE",
+    ),
+    "geometryContract": (
+        "lostark.effect-geometry-contract",
+        "GEOMETRY_CONTRACT",
+    ),
+    "materialContract": (
+        "lostark.effect-material-contract",
+        "MATERIAL_CONTRACT",
+    ),
+    "resourceBinding": (
+        "lostark.effect-resource-binding-contract",
+        "RESOURCE_BINDING_CONTRACT",
+    ),
+    "compilerInput": (
+        "lostark.effect-compiler-input-contract",
+        "COMPILER_INPUT_CONTRACT",
+    ),
+}
 
 
 class ContractError(ValueError):
@@ -223,7 +248,109 @@ def _require_string_array(value: Any, label: str) -> list[str]:
             raise ContractError(f"{label} contains duplicate blocker: {token}")
         seen.add(token)
         result.append(token)
+    if result != sorted(result):
+        raise ContractError(f"{label} must use canonical ordinal order")
     return result
+
+
+def _validate_execution_contract(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ContractError(f"{label} must be an object")
+    _require_exact_keys(
+        value,
+        (
+            "artifactBindingBlockerSet",
+            "artifactBindingBlockerCount",
+            "executionBlockerSet",
+            "executionBlockerCount",
+            "executionAdmission",
+        ),
+        label,
+    )
+    artifact = _require_string_array(
+        value["artifactBindingBlockerSet"],
+        f"{label}.artifactBindingBlockerSet",
+    )
+    execution = _require_string_array(
+        value["executionBlockerSet"], f"{label}.executionBlockerSet"
+    )
+    _require_exact_int(
+        value["artifactBindingBlockerCount"],
+        len(artifact),
+        f"{label}.artifactBindingBlockerCount",
+    )
+    _require_exact_int(
+        value["executionBlockerCount"],
+        len(execution),
+        f"{label}.executionBlockerCount",
+    )
+    expected_admission = not artifact and not execution
+    _require_bool(
+        value["executionAdmission"], expected_admission, f"{label}.executionAdmission"
+    )
+    return {
+        "artifactBindingBlockerSet": artifact,
+        "artifactBindingBlockerCount": len(artifact),
+        "executionBlockerSet": execution,
+        "executionBlockerCount": len(execution),
+        "executionAdmission": expected_admission,
+    }
+
+
+def _make_execution_contract(
+    artifact_blockers: Iterable[str], execution_blockers: Iterable[str]
+) -> dict[str, Any]:
+    artifact = sorted(set(artifact_blockers))
+    execution = sorted(set(execution_blockers))
+    value = {
+        "artifactBindingBlockerSet": artifact,
+        "artifactBindingBlockerCount": len(artifact),
+        "executionBlockerSet": execution,
+        "executionBlockerCount": len(execution),
+        "executionAdmission": not artifact and not execution,
+    }
+    _validate_execution_contract(value, "executionContract")
+    return value
+
+
+def _combine_execution_contracts(
+    contracts: Iterable[dict[str, Any]], label: str
+) -> dict[str, Any]:
+    artifact: set[str] = set()
+    execution: set[str] = set()
+    for contract in contracts:
+        artifact.update(contract["artifactBindingBlockerSet"])
+        execution.update(contract["executionBlockerSet"])
+    combined = _make_execution_contract(artifact, execution)
+    _validate_execution_contract(combined, label)
+    return combined
+
+
+def _validate_evidence_rows(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, list):
+        raise ContractError(f"{label} must be an array")
+    ids: set[str] = set()
+    contracts: list[dict[str, Any]] = []
+    for index, row in enumerate(value):
+        row_label = f"{label}[{index}]"
+        if not isinstance(row, dict):
+            raise ContractError(f"{row_label} must be an object")
+        _require_exact_keys(
+            row,
+            ("evidenceId", "evidenceSha256", "executionContract"),
+            row_label,
+        )
+        evidence_id = _require_stable_id(row["evidenceId"], f"{row_label}.evidenceId")
+        if evidence_id in ids:
+            raise ContractError(f"{label} contains duplicate evidenceId: {evidence_id}")
+        ids.add(evidence_id)
+        _require_sha(row["evidenceSha256"], f"{row_label}.evidenceSha256")
+        contracts.append(
+            _validate_execution_contract(
+                row["executionContract"], f"{row_label}.executionContract"
+            )
+        )
+    return _combine_execution_contracts(contracts, f"{label}.aggregate")
 
 
 def _safe_input_path(input_root: Path, relative: Any, label: str) -> Path:
@@ -251,7 +378,7 @@ def _safe_input_path(input_root: Path, relative: Any, label: str) -> Path:
 
 def _validate_file_reference(
     value: Any, input_root: Path, label: str
-) -> tuple[Path, str]:
+) -> tuple[Path, str, str]:
     if not isinstance(value, dict):
         raise ContractError(f"{label} must be an object")
     _require_exact_keys(value, ("path", "rawSha256", "canonicalSha256"), label)
@@ -265,7 +392,7 @@ def _validate_file_reference(
     actual_canonical = sha256_bytes(canonical_json_bytes(load_json(path)))
     if actual_canonical != expected_canonical:
         raise ContractError(f"{label} canonical SHA mismatch")
-    return path, expected_canonical
+    return path, expected_raw, expected_canonical
 
 
 def validate_derived_identity(value: Any) -> dict[str, Any]:
@@ -440,29 +567,254 @@ def validate_assembly_carrier(value: dict[str, Any]) -> None:
         raise ContractError("compiledArtifactIdentity must be an object")
     _require_exact_keys(
         compiled,
-        ("artifactRevision", "compilerRevision", "compiledIrSha256"),
+        (
+            "artifactRevision",
+            "compilerRevision",
+            "compiledIrSha256",
+            "compilerReceiptTokenSha256",
+        ),
         "compiledArtifactIdentity",
     )
     _require_positive_int(compiled["artifactRevision"], "artifactRevision")
     _require_stable_id(compiled["compilerRevision"], "compilerRevision")
     _require_sha(compiled["compiledIrSha256"], "compiledIrSha256")
+    _require_sha(
+        compiled["compilerReceiptTokenSha256"], "compilerReceiptTokenSha256"
+    )
+
+
+def _validate_upstream_contract(
+    input_name: str, value: dict[str, Any], target_effect_id: str
+) -> dict[str, Any]:
+    if input_name == "sourceContract":
+        _require_exact_keys(
+            value,
+            (
+                "schema",
+                "version",
+                "effectAssetId",
+                "displayName",
+                "documentRole",
+                "readOnly",
+                "runtimeSemanticAuthority",
+                "derivedTargetEffectAssetId",
+                "executionContract",
+                "evidenceRows",
+            ),
+            input_name,
+        )
+        if value["schema"] != AUTHORING_SCHEMA:
+            raise ContractError("source contract schema mismatch")
+        _require_exact_int(value["version"], SOURCE_CONTRACT_VERSION, "source contract version")
+        _require_stable_id(value["effectAssetId"], "source contract effectAssetId")
+        _require_display_name(value["displayName"])
+        if value["documentRole"] != SOURCE_INPUT_ROLE:
+            raise ContractError("source contract documentRole mismatch")
+        _require_bool(value["readOnly"], True, "source contract readOnly")
+    else:
+        schema, contract_role = UPSTREAM_INPUT_CONTRACTS[input_name]
+        _require_exact_keys(
+            value,
+            (
+                "schema",
+                "formatVersion",
+                "effectAssetId",
+                "contractRole",
+                "runtimeSemanticAuthority",
+                "derivedTargetEffectAssetId",
+                "executionContract",
+                "evidenceRows",
+            ),
+            input_name,
+        )
+        if value["schema"] != schema:
+            raise ContractError(f"{input_name} schema mismatch")
+        _require_exact_int(value["formatVersion"], FORMAT_VERSION, f"{input_name}.formatVersion")
+        _require_stable_id(value["effectAssetId"], f"{input_name}.effectAssetId")
+        if value["contractRole"] != contract_role:
+            raise ContractError(f"{input_name}.contractRole mismatch")
+    if value["runtimeSemanticAuthority"] != "EVIDENCE_ONLY_NOT_RUNTIME_SEMANTICS":
+        raise ContractError(f"{input_name} runtimeSemanticAuthority mismatch")
+    if value["derivedTargetEffectAssetId"] != target_effect_id:
+        raise ContractError(f"{input_name} target effect identity mismatch")
+    root_contract = _validate_execution_contract(
+        value["executionContract"], f"{input_name}.executionContract"
+    )
+    row_contract = _validate_evidence_rows(value["evidenceRows"], f"{input_name}.evidenceRows")
+    if root_contract != row_contract:
+        raise ContractError(f"{input_name} execution contract is not derived from evidence rows")
+    return root_contract
+
+
+def _reject_reserved_execution_fields(value: Any, label: str) -> None:
+    reserved = {
+        "artifactBindingBlockerSet",
+        "artifactBindingBlockerCount",
+        "executionBlockerSet",
+        "executionBlockerCount",
+        "executionAdmission",
+        "blockers",
+    }
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in reserved:
+                raise ContractError(f"{label} contains execution authority outside typed receipt: {key}")
+            _reject_reserved_execution_fields(child, f"{label}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_reserved_execution_fields(child, f"{label}[{index}]")
+
+
+def _validate_handler_receipts(value: Any) -> dict[str, Any]:
+    if not isinstance(value, list):
+        raise ContractError("compiled IR handlerReceipts must be an array")
+    ids: set[str] = set()
+    contracts: list[dict[str, Any]] = []
+    for index, row in enumerate(value):
+        label = f"compiled IR handlerReceipts[{index}]"
+        if not isinstance(row, dict):
+            raise ContractError(f"{label} must be an object")
+        _require_exact_keys(
+            row, ("handlerId", "handlerSha256", "executionContract"), label
+        )
+        handler_id = _require_stable_id(row["handlerId"], f"{label}.handlerId")
+        if handler_id in ids:
+            raise ContractError(f"duplicate compiled IR handlerId: {handler_id}")
+        ids.add(handler_id)
+        _require_sha(row["handlerSha256"], f"{label}.handlerSha256")
+        contracts.append(
+            _validate_execution_contract(
+                row["executionContract"], f"{label}.executionContract"
+            )
+        )
+    return _combine_execution_contracts(contracts, "compiled IR handler aggregate")
 
 
 def validate_compiled_ir(
-    value: dict[str, Any], effect_asset_id: str, compiler_revision: str, artifact_revision: int
-) -> str:
-    if value.get("schema") != COMPILED_IR_SCHEMA:
+    value: dict[str, Any],
+    effect_asset_id: str,
+    compiler_revision: str,
+    artifact_revision: int,
+    derived_identity: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    _require_exact_keys(
+        value,
+        (
+            "schema",
+            "formatVersion",
+            "effectAssetId",
+            "artifactRevision",
+            "compilerRevision",
+            "runtimeSemanticAuthority",
+            "derivedIdentity",
+            "executionContract",
+            "program",
+        ),
+        "compiled IR",
+    )
+    if value["schema"] != COMPILED_IR_SCHEMA:
         raise ContractError("compiled IR schema mismatch")
-    _require_exact_int(value.get("formatVersion"), FORMAT_VERSION, "compiled IR formatVersion")
-    if value.get("effectAssetId") != effect_asset_id:
+    _require_exact_int(value["formatVersion"], FORMAT_VERSION, "compiled IR formatVersion")
+    if value["effectAssetId"] != effect_asset_id:
         raise ContractError("compiled IR effectAssetId mismatch")
-    if value.get("compilerRevision") != compiler_revision:
+    if value["compilerRevision"] != compiler_revision:
         raise ContractError("compiled IR compilerRevision mismatch")
-    if value.get("artifactRevision") != artifact_revision:
+    if value["artifactRevision"] != artifact_revision:
         raise ContractError("compiled IR artifactRevision mismatch")
-    if value.get("runtimeSemanticAuthority") != SEMANTIC_AUTHORITY:
+    if value["runtimeSemanticAuthority"] != SEMANTIC_AUTHORITY:
         raise ContractError("compiled IR semantic authority mismatch")
-    return sha256_bytes(canonical_json_bytes(value))
+    if validate_derived_identity(value["derivedIdentity"]) != derived_identity:
+        raise ContractError("compiled IR canonical six-hash identity mismatch")
+    program = value["program"]
+    if not isinstance(program, dict):
+        raise ContractError("compiled IR program must be an object")
+    _require_exact_keys(
+        program, ("opcodes", "resourceBindings", "handlerReceipts"), "compiled IR program"
+    )
+    if not isinstance(program["opcodes"], list) or not isinstance(
+        program["resourceBindings"], list
+    ):
+        raise ContractError("compiled IR program arrays are invalid")
+    _reject_reserved_execution_fields(program["opcodes"], "compiled IR opcodes")
+    _reject_reserved_execution_fields(
+        program["resourceBindings"], "compiled IR resourceBindings"
+    )
+    root_contract = _validate_execution_contract(
+        value["executionContract"], "compiled IR executionContract"
+    )
+    handler_contract = _validate_handler_receipts(program["handlerReceipts"])
+    if root_contract != handler_contract:
+        raise ContractError("compiled IR execution contract is not derived from handler receipts")
+    return sha256_bytes(canonical_json_bytes(value)), root_contract
+
+
+def _compiler_receipt_token_payload(value: dict[str, Any]) -> dict[str, Any]:
+    return {key: item for key, item in value.items() if key != "compilerReceiptTokenSha256"}
+
+
+def make_compiler_receipt_token(value: dict[str, Any]) -> str:
+    return sha256_bytes(canonical_json_bytes(_compiler_receipt_token_payload(value)))
+
+
+def validate_compiler_receipt(
+    value: dict[str, Any],
+    effect_asset_id: str,
+    compiler_revision: str,
+    artifact_revision: int,
+    derived_identity: dict[str, Any],
+    compiled_ir_sha256: str,
+    compiled_ir_contract: dict[str, Any],
+) -> str:
+    _require_exact_keys(
+        value,
+        (
+            "schema",
+            "formatVersion",
+            "effectAssetId",
+            "artifactRevision",
+            "compilerRevision",
+            "runtimeSemanticAuthority",
+            "receiptAuthority",
+            "derivedIdentity",
+            "compilerInputHash",
+            "compiledIrSha256",
+            "executionContract",
+            "compilerReceiptTokenSha256",
+        ),
+        "compiler receipt",
+    )
+    if value["schema"] != COMPILER_RECEIPT_SCHEMA:
+        raise ContractError("compiler receipt schema mismatch")
+    _require_exact_int(value["formatVersion"], FORMAT_VERSION, "compiler receipt formatVersion")
+    if value["effectAssetId"] != effect_asset_id:
+        raise ContractError("compiler receipt effectAssetId mismatch")
+    if value["compilerRevision"] != compiler_revision:
+        raise ContractError("compiler receipt compilerRevision mismatch")
+    if value["artifactRevision"] != artifact_revision:
+        raise ContractError("compiler receipt artifactRevision mismatch")
+    if value["runtimeSemanticAuthority"] != SEMANTIC_AUTHORITY:
+        raise ContractError("compiler receipt semantic authority mismatch")
+    if value["receiptAuthority"] != COMPILER_RECEIPT_AUTHORITY:
+        raise ContractError("compiler receipt authority mismatch")
+    if validate_derived_identity(value["derivedIdentity"]) != derived_identity:
+        raise ContractError("compiler receipt canonical six-hash identity mismatch")
+    if value["compilerInputHash"] != derived_identity["compilerInputHash"]:
+        raise ContractError("compiler receipt compiler input hash mismatch")
+    if value["compiledIrSha256"] != compiled_ir_sha256:
+        raise ContractError("compiler receipt compiled IR hash mismatch")
+    if (
+        _validate_execution_contract(
+            value["executionContract"], "compiler receipt executionContract"
+        )
+        != compiled_ir_contract
+    ):
+        raise ContractError("compiler receipt execution contract mismatch")
+    token = _require_sha(
+        value["compilerReceiptTokenSha256"], "compiler receipt token"
+    )
+    if token != make_compiler_receipt_token(value):
+        raise ContractError("compiler receipt authentication token mismatch")
+    return token
 
 
 def validate_compiled_artifact(value: dict[str, Any]) -> None:
@@ -475,6 +827,7 @@ def validate_compiled_artifact(value: dict[str, Any]) -> None:
         "runtimeSemanticAuthority",
         "derivedIdentity",
         "compiledIrSha256",
+        "compilerReceiptTokenSha256",
         "compiledIr",
         "executionAdmission",
         "productAdmission",
@@ -490,11 +843,23 @@ def validate_compiled_artifact(value: dict[str, Any]) -> None:
         raise ContractError("compiled artifact semantic authority mismatch")
     validate_derived_identity(value["derivedIdentity"])
     expected_ir_sha = _require_sha(value["compiledIrSha256"], "compiled artifact compiledIrSha256")
+    _require_sha(
+        value["compilerReceiptTokenSha256"],
+        "compiled artifact compilerReceiptTokenSha256",
+    )
     if not isinstance(value["compiledIr"], dict):
         raise ContractError("compiled artifact compiledIr must be an object")
-    actual_ir_sha = validate_compiled_ir(value["compiledIr"], effect_id, compiler, revision)
+    actual_ir_sha, execution_contract = validate_compiled_ir(
+        value["compiledIr"],
+        effect_id,
+        compiler,
+        revision,
+        value["derivedIdentity"],
+    )
     if actual_ir_sha != expected_ir_sha:
         raise ContractError("compiled artifact IR hash mismatch")
+    if not execution_contract["executionAdmission"]:
+        raise ContractError("compiled artifact embeds blocked compiled IR")
     _require_bool(value["executionAdmission"], True, "compiled artifact executionAdmission")
     _require_bool(value["productAdmission"], False, "compiled artifact productAdmission")
 
@@ -513,6 +878,9 @@ def validate_compiled_receipt(value: dict[str, Any]) -> None:
         "assemblySha256",
         "compiledArtifactSha256",
         "compiledIrSha256",
+        "compilerReceiptRawSha256",
+        "compilerReceiptCanonicalSha256",
+        "compilerReceiptTokenSha256",
         "toolDependencies",
         "artifactBindingBlockerSet",
         "artifactBindingBlockerCount",
@@ -540,6 +908,9 @@ def validate_compiled_receipt(value: dict[str, Any]) -> None:
         "assemblySha256",
         "compiledArtifactSha256",
         "compiledIrSha256",
+        "compilerReceiptRawSha256",
+        "compilerReceiptCanonicalSha256",
+        "compilerReceiptTokenSha256",
     ):
         _require_sha(value[field], f"compiled receipt {field}")
     _validate_tool_dependencies(value["toolDependencies"])
@@ -589,51 +960,87 @@ def _validate_request(request: dict[str, Any], input_root: Path) -> dict[str, An
     execution_blockers = _require_string_array(
         request["executionBlockerSet"], "executionBlockerSet"
     )
-    if artifact_blockers or execution_blockers:
-        raise ContractError("derived output blocked before staging")
-
     inputs = request["inputs"]
     if not isinstance(inputs, dict):
         raise ContractError("build request inputs must be an object")
     _require_exact_keys(
         inputs,
-        tuple(name for name, _ in INPUT_TO_IDENTITY) + ("compiledIr",),
+        tuple(name for name, _ in INPUT_TO_IDENTITY)
+        + ("compiledIr", "compilerReceipt"),
         "build request inputs",
     )
     hashes: dict[str, str] = {}
-    source_path: Path | None = None
+    upstream_contracts: list[dict[str, Any]] = []
     for input_name, identity_name in INPUT_TO_IDENTITY:
-        path, digest = _validate_file_reference(inputs[input_name], input_root, input_name)
-        hashes[identity_name] = digest
-        if input_name == "sourceContract":
-            source_path = path
-    assert source_path is not None
-    source = load_json(source_path)
-    if source.get("schema") != AUTHORING_SCHEMA:
-        raise ContractError("source contract schema mismatch")
-    _require_exact_int(source.get("version"), SOURCE_CONTRACT_VERSION, "source contract version")
+        path, _, canonical_sha = _validate_file_reference(
+            inputs[input_name], input_root, input_name
+        )
+        hashes[identity_name] = canonical_sha
+        upstream_contracts.append(
+            _validate_upstream_contract(input_name, load_json(path), effect_id)
+        )
+    derived_identity = _make_derived_identity(hashes)
 
-    compiled_path, expected_compiled_sha = _validate_file_reference(
+    compiled_path, _, expected_compiled_sha = _validate_file_reference(
         inputs["compiledIr"], input_root, "compiledIr"
     )
     compiled_ir = load_json(compiled_path)
-    actual_canonical_sha = validate_compiled_ir(
-        compiled_ir, effect_id, compiler_revision, artifact_revision
+    actual_canonical_sha, compiled_ir_contract = validate_compiled_ir(
+        compiled_ir,
+        effect_id,
+        compiler_revision,
+        artifact_revision,
+        derived_identity,
     )
     # The request pins canonical compiled semantics, not checkout-dependent JSON whitespace.
     if actual_canonical_sha != expected_compiled_sha:
         raise ContractError("compiledIr.sha256 must pin canonical JSON semantics")
+
+    compiler_receipt_path, compiler_receipt_raw, compiler_receipt_canonical = (
+        _validate_file_reference(
+            inputs["compilerReceipt"], input_root, "compilerReceipt"
+        )
+    )
+    compiler_receipt = load_json(compiler_receipt_path)
+    compiler_receipt_token = validate_compiler_receipt(
+        compiler_receipt,
+        effect_id,
+        compiler_revision,
+        artifact_revision,
+        derived_identity,
+        actual_canonical_sha,
+        compiled_ir_contract,
+    )
+
+    derived_contract = _combine_execution_contracts(
+        (*upstream_contracts, compiled_ir_contract), "derived execution contract"
+    )
+    if artifact_blockers != derived_contract["artifactBindingBlockerSet"]:
+        raise ContractError(
+            "request artifactBindingBlockerSet does not match authenticated upstream union"
+        )
+    if execution_blockers != derived_contract["executionBlockerSet"]:
+        raise ContractError(
+            "request executionBlockerSet does not match authenticated upstream union"
+        )
+    if not derived_contract["executionAdmission"]:
+        raise ContractError("derived output blocked by authenticated upstream evidence")
 
     return {
         "effectAssetId": effect_id,
         "displayName": display_name,
         "compilerRevision": compiler_revision,
         "artifactRevision": artifact_revision,
-        "derivedIdentity": _make_derived_identity(hashes),
+        "derivedIdentity": derived_identity,
         "compiledIr": compiled_ir,
         "compiledIrSha256": actual_canonical_sha,
-        "artifactBindingBlockerSet": artifact_blockers,
-        "executionBlockerSet": execution_blockers,
+        "compilerReceiptRawSha256": compiler_receipt_raw,
+        "compilerReceiptCanonicalSha256": compiler_receipt_canonical,
+        "compilerReceiptTokenSha256": compiler_receipt_token,
+        "artifactBindingBlockerSet": derived_contract[
+            "artifactBindingBlockerSet"
+        ],
+        "executionBlockerSet": derived_contract["executionBlockerSet"],
     }
 
 
@@ -646,6 +1053,9 @@ def build_bundle_documents(request: dict[str, Any], input_root: Path) -> dict[st
         "artifactRevision": normalized["artifactRevision"],
         "compilerRevision": normalized["compilerRevision"],
         "compiledIrSha256": normalized["compiledIrSha256"],
+        "compilerReceiptTokenSha256": normalized[
+            "compilerReceiptTokenSha256"
+        ],
     }
     authoring = {
         "schema": AUTHORING_SCHEMA,
@@ -684,6 +1094,9 @@ def build_bundle_documents(request: dict[str, Any], input_root: Path) -> dict[st
         "runtimeSemanticAuthority": SEMANTIC_AUTHORITY,
         "derivedIdentity": identity,
         "compiledIrSha256": normalized["compiledIrSha256"],
+        "compilerReceiptTokenSha256": normalized[
+            "compilerReceiptTokenSha256"
+        ],
         "compiledIr": normalized["compiledIr"],
         "executionAdmission": True,
         "productAdmission": False,
@@ -703,6 +1116,13 @@ def build_bundle_documents(request: dict[str, Any], input_root: Path) -> dict[st
         "assemblySha256": sha256_bytes(assembly_bytes),
         "compiledArtifactSha256": sha256_bytes(artifact_bytes),
         "compiledIrSha256": normalized["compiledIrSha256"],
+        "compilerReceiptRawSha256": normalized["compilerReceiptRawSha256"],
+        "compilerReceiptCanonicalSha256": normalized[
+            "compilerReceiptCanonicalSha256"
+        ],
+        "compilerReceiptTokenSha256": normalized[
+            "compilerReceiptTokenSha256"
+        ],
         "toolDependencies": _current_tool_dependencies(),
         "artifactBindingBlockerSet": normalized["artifactBindingBlockerSet"],
         "artifactBindingBlockerCount": 0,
@@ -829,12 +1249,16 @@ def validate_bundle_files(
         compiled_identity["compilerRevision"] != compiler_revision
         or compiled_identity["artifactRevision"] != artifact_revision
         or compiled_identity["compiledIrSha256"] != compiled_ir_sha
+        or compiled_identity["compilerReceiptTokenSha256"]
+        != artifact["compilerReceiptTokenSha256"]
     ):
         raise ContractError("Assembly compiled artifact identity mismatch")
     if (
         receipt["compilerRevision"] != compiler_revision
         or receipt["artifactRevision"] != artifact_revision
         or receipt["compiledIrSha256"] != compiled_ir_sha
+        or receipt["compilerReceiptTokenSha256"]
+        != artifact["compilerReceiptTokenSha256"]
     ):
         raise ContractError("compiled receipt revision mismatch")
     expected_raw = {
@@ -872,6 +1296,9 @@ def prepare_runtime_entry(
         "artifactRevision": artifact["artifactRevision"],
         "compilerRevision": artifact["compilerRevision"],
         "compiledIrSha256": artifact["compiledIrSha256"],
+        "compilerReceiptTokenSha256": artifact[
+            "compilerReceiptTokenSha256"
+        ],
         "executionAdmission": True,
         "productAdmission": False,
         "compiledArtifact": artifact,
@@ -895,6 +1322,7 @@ def validate_derived_runtime_entry(value: dict[str, Any]) -> None:
         "artifactRevision",
         "compilerRevision",
         "compiledIrSha256",
+        "compilerReceiptTokenSha256",
         "executionAdmission",
         "productAdmission",
         "compiledArtifact",
@@ -916,6 +1344,7 @@ def validate_derived_runtime_entry(value: dict[str, Any]) -> None:
         "compiledArtifactSha256",
         "compiledReceiptSha256",
         "compiledIrSha256",
+        "compilerReceiptTokenSha256",
     ):
         _require_sha(value[field], f"runtime {field}")
     artifact_revision = _require_positive_int(value["artifactRevision"], "runtime artifactRevision")
@@ -943,6 +1372,10 @@ def validate_derived_runtime_entry(value: dict[str, Any]) -> None:
         or receipt["compilerRevision"] != compiler_revision
         or artifact["compiledIrSha256"] != value["compiledIrSha256"]
         or receipt["compiledIrSha256"] != value["compiledIrSha256"]
+        or artifact["compilerReceiptTokenSha256"]
+        != value["compilerReceiptTokenSha256"]
+        or receipt["compilerReceiptTokenSha256"]
+        != value["compilerReceiptTokenSha256"]
         or artifact["derivedIdentity"] != identity
         or receipt["derivedIdentity"] != identity
     ):
