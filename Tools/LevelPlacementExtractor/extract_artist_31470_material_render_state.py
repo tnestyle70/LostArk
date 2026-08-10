@@ -8,6 +8,7 @@ properties remain omitted evidence; this tool never substitutes engine defaults.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import struct
@@ -34,6 +35,10 @@ from extract_ue3_placements import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = Path(__file__).resolve()
 PARSER_PATH = SCRIPT_PATH.with_name("extract_ue3_placements.py")
+MATERIAL_CLOSURE_PARSER_PATH = SCRIPT_PATH.with_name(
+    "extract_ue3_effect_material_closure.py"
+)
+MATERIAL_GRAPH_PARSER_PATH = SCRIPT_PATH.with_name("extract_ue3_material_graph.py")
 
 SOURCE_INSTANCE_FIELDS = (
     "parent",
@@ -51,6 +56,35 @@ RENDER_STATE_FIELDS = (
     "opacitymaskclipvalue",
     "buseonelayerdistortion",
 )
+BASE_MATERIAL_FIELDS = (*RENDER_STATE_FIELDS, "expressions")
+EXPRESSION_PARAMETER_FIELDS = (
+    "parametername",
+    "group",
+    "defaultvalue",
+    "texture",
+)
+TEXTURE_SAMPLER_FIELDS = ("addressx", "addressy", "srgb")
+BLEND_MODE_DOMAIN = (
+    "blend_opaque",
+    "blend_masked",
+    "blend_translucent",
+    "blend_additive",
+    "blend_modulate",
+    "blend_softmasked",
+    "blend_alphacomposite",
+    "blend_ditheredtranslucent",
+    "blend_max",
+)
+LIGHTING_MODEL_DOMAIN = (
+    "mlm_phong",
+    "mlm_nondirectional",
+    "mlm_unlit",
+    "mlm_shprtdiffuse",
+    "mlm_custom",
+    "mlm_anisotropic",
+    "mlm_max",
+)
+TEXTURE_ADDRESS_DOMAIN = ("ta_wrap", "ta_clamp", "ta_mirror")
 
 
 def require(condition: bool, message: str) -> None:
@@ -306,6 +340,21 @@ def field_evidence(
         result["resolvedObjectPath"] = (
             package_ref_path(value, imports, exports) if value else None
         )
+    enum_domains = {
+        "blendmode": BLEND_MODE_DOMAIN,
+        "lightingmodel": LIGHTING_MODEL_DOMAIN,
+        "addressx": TEXTURE_ADDRESS_DOMAIN,
+        "addressy": TEXTURE_ADDRESS_DOMAIN,
+    }
+    domain = enum_domains.get(field_name.casefold())
+    if domain is not None:
+        normalized_value = folded(value)
+        require(
+            normalized_value in domain,
+            f"enum value is outside pinned domain: {field_name}={value}",
+        )
+        result["enumDomain"] = list(domain)
+        result["enumOrdinal"] = domain.index(normalized_value)
     return result
 
 
@@ -382,6 +431,260 @@ def export_evidence(
     }
 
 
+def nested_property_value(value: Any, name: str) -> Any:
+    if not isinstance(value, dict):
+        return None
+    properties = value.get("properties")
+    if not isinstance(properties, dict):
+        return None
+    wanted = name.casefold()
+    for key, item in properties.items():
+        if key.casefold() == wanted and isinstance(item, dict):
+            return item.get("value")
+    return None
+
+
+def raw_expression_inputs(
+    records: list[dict[str, Any]], imports: list[Any], exports: list[Any]
+) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for record in records:
+        reference = nested_property_value(record.get("value"), "expression")
+        if not isinstance(reference, int):
+            continue
+        row: dict[str, Any] = {
+            "input": record["propertyName"],
+            "packageIndex": reference,
+        }
+        for name in ("outputindex", "mask", "maskr", "maskg", "maskb", "maska"):
+            value = nested_property_value(record.get("value"), name)
+            if isinstance(value, (bool, int, float)):
+                row[name] = value
+        row["objectPath"] = (
+            package_ref_path(reference, imports, exports) if reference else None
+        )
+        row["propertyRecordSha256"] = record["recordSha256"]
+        result.append(row)
+    return result
+
+
+def expression_evidence(
+    package: Any,
+    base_material_evidence_id: str,
+    source_order: int,
+    package_reference: int,
+    expected: dict[str, Any],
+) -> dict[str, Any]:
+    require(package_reference > 0, "expression evidence cannot target a null reference")
+    require(
+        int(expected.get("sourceOrder", -1)) == source_order,
+        "expression source order changed",
+    )
+    require(
+        int(expected.get("exportIndex", -1)) + 1 == package_reference,
+        f"expression package reference changed at source order {source_order}",
+    )
+    entry = package.exports[package_reference - 1]
+    class_name = package_ref_name(
+        entry.class_index, package.imports, package.exports
+    ) or ""
+    object_path = package_ref_path(
+        package_reference, package.imports, package.exports
+    )
+    require(
+        folded(class_name).startswith("materialexpression"),
+        f"graph expression class is invalid: {class_name}",
+    )
+    require(
+        folded(class_name) == folded(expected.get("className"))
+        and folded(object_path) == folded(expected.get("objectPath")),
+        f"graph expression identity changed: {object_path}",
+    )
+    serial = package.logical[
+        entry.serial_offset : entry.serial_offset + entry.serial_size
+    ]
+    records, property_start, property_end = parse_property_records(
+        serial, package.names, package.summary.version
+    )
+    fields = {
+        name: field_evidence(
+            records,
+            name,
+            entry.serial_offset,
+            package.imports,
+            package.exports,
+        )
+        for name in EXPRESSION_PARAMETER_FIELDS
+    }
+    inputs = raw_expression_inputs(records, package.imports, package.exports)
+    texture_field = fields["texture"]
+    texture_reference = (
+        int(texture_field["value"])
+        if texture_field["status"] == "SERIALIZED_EXPLICIT"
+        else 0
+    )
+    projection = {
+        "sourceOrder": source_order,
+        "exportIndex": entry.index,
+        "className": class_name,
+        "objectPath": object_path,
+        "parameterName": (
+            fields["parametername"].get("value")
+            if fields["parametername"]["status"] == "SERIALIZED_EXPLICIT"
+            else None
+        ),
+        "group": (
+            fields["group"].get("value")
+            if fields["group"]["status"] == "SERIALIZED_EXPLICIT"
+            else None
+        ),
+        "defaultValue": (
+            fields["defaultvalue"].get("value")
+            if fields["defaultvalue"]["status"] == "SERIALIZED_EXPLICIT"
+            else None
+        ),
+        "texturePackageIndex": texture_reference,
+        "textureObjectPath": (
+            texture_field.get("resolvedObjectPath") if texture_reference else None
+        ),
+        "inputs": inputs,
+        "serialSize": entry.serial_size,
+        "propertyStreamEnd": property_end,
+    }
+    comparable_expected = {
+        "sourceOrder": expected.get("sourceOrder"),
+        "exportIndex": expected.get("exportIndex"),
+        "className": expected.get("className"),
+        "objectPath": expected.get("objectPath"),
+        "parameterName": expected.get("parameterName"),
+        "group": expected.get("group"),
+        "defaultValue": expected.get("defaultValue"),
+        "textureObjectPath": expected.get("textureObjectPath"),
+        "inputs": expected.get("inputs"),
+        "serialSize": expected.get("serialSize"),
+        "propertyStreamEnd": expected.get("propertyStreamEnd"),
+    }
+    comparable_projection = {
+        key: value for key, value in projection.items()
+        if key != "texturePackageIndex"
+    }
+    comparable_projection["inputs"] = [
+        {
+            key: value for key, value in row.items()
+            if key != "propertyRecordSha256"
+        }
+        for row in inputs
+    ]
+    require(
+        comparable_projection == comparable_expected,
+        f"closure expression projection disagrees with raw UPK: {object_path}",
+    )
+    return {
+        "evidenceId": stable_expression_evidence_id(
+            package.sha256, object_path, source_order
+        ),
+        "baseMaterialEvidenceId": base_material_evidence_id,
+        "physicalPackage": package.path.name,
+        "physicalPackageSha256": package.sha256,
+        "packageVersion": package.summary.version,
+        "sourceOrder": source_order,
+        "rawReferenceFromBaseExpressions": package_reference,
+        "exportIndex": entry.index,
+        "packageReference": package_reference,
+        "objectPath": object_path,
+        "className": class_name,
+        "serialOffset": entry.serial_offset,
+        "serialSize": entry.serial_size,
+        "serialSha256": hashlib.sha256(serial).hexdigest(),
+        "propertyStreamStart": property_start,
+        "propertyStreamEnd": property_end,
+        "fields": fields,
+        "projection": projection,
+    }
+
+
+def stable_expression_evidence_id(
+    package_sha256: str, object_path: str, source_order: int
+) -> str:
+    payload = f"{package_sha256}::{folded(object_path)}::{source_order}".encode()
+    return "graph-expression-" + hashlib.sha256(payload).hexdigest()[:16]
+
+
+def texture_sampler_evidence(
+    asset: dict[str, Any], package: Any
+) -> dict[str, Any]:
+    logical_path = str(asset.get("logicalObjectPath") or "")
+    texture = asset.get("sourceTexture2D")
+    dds = asset.get("dds")
+    require(
+        isinstance(texture, dict) and isinstance(dds, dict),
+        f"DDS texture evidence is incomplete: {logical_path}",
+    )
+    relative_path = logical_path.split(".", 1)[1]
+    export = export_evidence(
+        package,
+        relative_path,
+        str(texture.get("physicalPackageSha256") or ""),
+        int(texture.get("exportIndex", -1)),
+        {"texture2d"},
+        TEXTURE_SAMPLER_FIELDS,
+    )
+    require(
+        folded(texture.get("className")) == "texture2d"
+        and int(texture.get("packageReference", -1))
+        == int(export["packageReference"])
+        and int(texture.get("serialOffset", -1)) == int(export["serialOffset"])
+        and int(texture.get("serialSize", -1)) == int(export["serialSize"])
+        and texture.get("serialSha256") == export["serialSha256"],
+        f"DDS Texture2D export identity disagrees with raw UPK: {logical_path}",
+    )
+    sampling = texture.get("sampling")
+    require(isinstance(sampling, dict), f"DDS sampler projection missing: {logical_path}")
+    normalized: dict[str, Any] = {}
+    for axis, field_name, result_name, evidence_name in (
+        ("U", "addressx", "addressU", "addressUEvidence"),
+        ("V", "addressy", "addressV", "addressVEvidence"),
+    ):
+        field = export["fields"][field_name]
+        if field["status"] == "SERIALIZED_EXPLICIT":
+            address = folded(field["value"]).removeprefix("ta_")
+            evidence = "SERIALIZED_PROPERTY_EXACT"
+        else:
+            address = "wrap"
+            evidence = "UE3_TEXTURE_CLASS_DEFAULT"
+        require(
+            sampling.get(result_name) == address
+            and sampling.get(evidence_name) == evidence,
+            f"DDS sampler {axis} projection disagrees with raw UPK: {logical_path}",
+        )
+        normalized[result_name] = address
+        normalized[evidence_name] = evidence
+    srgb_field = export["fields"]["srgb"]
+    if srgb_field["status"] == "SERIALIZED_EXPLICIT":
+        color_space = "srgb" if srgb_field["value"] else "linear"
+        color_evidence = "SERIALIZED_PROPERTY_EXACT"
+    else:
+        color_space = "srgb"
+        color_evidence = "UE3_TEXTURE_CLASS_DEFAULT"
+    require(
+        sampling.get("colorSpace") == color_space
+        and sampling.get("colorSpaceEvidence") == color_evidence,
+        f"DDS color-space projection disagrees with raw UPK: {logical_path}",
+    )
+    normalized["colorSpace"] = color_space
+    normalized["colorSpaceEvidence"] = color_evidence
+    return {
+        "logicalObjectPath": logical_path,
+        "export": export,
+        "sampling": normalized,
+        "dds": {
+            "relativePath": asset.get("sourceExtractedDdsRelativePath"),
+            "byteCount": dds.get("byteCount"),
+            "sha256": dds.get("sha256"),
+        },
+    }
+
+
 def require_material_rows(closure: dict[str, Any]) -> list[dict[str, Any]]:
     require(
         closure.get("schema") == "lostark.ue3-effect-material-closure"
@@ -400,14 +703,24 @@ def require_material_rows(closure: dict[str, Any]) -> list[dict[str, Any]]:
 
 def build_receipt(
     closure_path: Path,
+    exact_dds_receipt_path: Path,
     source_package_root: Path,
     aes_key: str = LOSTARK_KR_AES_KEY,
 ) -> dict[str, Any]:
     closure = load_json(closure_path)
+    exact_dds_receipt = load_json(exact_dds_receipt_path)
+    require(
+        exact_dds_receipt.get("schema")
+        == "lostark.artist-effect-exact-dds-recovery-receipt"
+        and exact_dds_receipt.get("formatVersion") == 1,
+        "unsupported exact DDS receipt",
+    )
     rows = require_material_rows(closure)
     package_paths = package_file_index(source_package_root)
     package_cache: dict[str, Any] = {}
     exports_by_id: dict[str, dict[str, Any]] = {}
+    graph_expressions_by_id: dict[str, dict[str, Any]] = {}
+    processed_graphs: dict[str, dict[str, Any]] = {}
     bindings: list[dict[str, Any]] = []
 
     def package(physical_name: str) -> Any:
@@ -441,7 +754,7 @@ def build_receipt(
         source_fields = (
             SOURCE_INSTANCE_FIELDS
             if material_class == "materialinstanceconstant"
-            else RENDER_STATE_FIELDS
+            else BASE_MATERIAL_FIELDS
         )
         source_export_index = material.get("exportIndex")
         if source_export_index is None and material_class == "material":
@@ -461,11 +774,6 @@ def build_receipt(
             int(source_export_index if source_export_index is not None else -1),
             {material_class},
             source_fields,
-        )
-        source_evidence_id = add_export(source_export)
-        require(
-            folded(source_export["className"]) == material_class,
-            f"source material class mismatch: {source_path}",
         )
         if material_class == "materialinstanceconstant":
             decoded_instance = decode_material_instance(
@@ -496,6 +804,16 @@ def build_receipt(
                     raw_value == material.get(closure_name),
                     f"closure field disagrees with raw UPK: {source_path}.{closure_name}",
                 )
+            source_export["instanceParameters"] = {
+                "scalar": copy.deepcopy(decoded_instance["scalarParameters"]),
+                "vector": copy.deepcopy(decoded_instance["vectorParameters"]),
+                "texture": copy.deepcopy(decoded_instance["textureParameters"]),
+            }
+        source_evidence_id = add_export(source_export)
+        require(
+            folded(source_export["className"]) == material_class,
+            f"source material class mismatch: {source_path}",
+        )
 
         graph_holder = row.get("materialGraph") or row.get("parentGraph")
         require(isinstance(graph_holder, dict), f"base Material graph missing: {source_path}")
@@ -507,9 +825,86 @@ def build_receipt(
             str(graph_holder.get("physicalPackageSha256") or ""),
             int(graph.get("materialExportIndex", -1)),
             {"material", "decalmaterial"},
-            RENDER_STATE_FIELDS,
+            BASE_MATERIAL_FIELDS,
         )
         base_evidence_id = add_export(base_export)
+        raw_expression_field = base_export["fields"]["expressions"]
+        require(
+            raw_expression_field["status"] == "SERIALIZED_EXPLICIT"
+            and isinstance(raw_expression_field.get("value"), list),
+            f"base Material raw Expressions array missing: {source_path}",
+        )
+        raw_expression_refs = raw_expression_field["value"]
+        expected_expressions = graph.get("expressions")
+        require(
+            isinstance(expected_expressions, list),
+            f"closure graph expressions missing: {source_path}",
+        )
+        expected_by_order = {
+            int(expression.get("sourceOrder", -1)): expression
+            for expression in expected_expressions
+            if isinstance(expression, dict)
+        }
+        require(
+            len(expected_by_order) == len(expected_expressions),
+            f"duplicate closure expression source order: {source_path}",
+        )
+        require(
+            len(raw_expression_refs)
+            == int(graph.get("summary", {}).get("expressionEntryCount", -1)),
+            f"closure graph expression denominator disagrees with raw UPK: {source_path}",
+        )
+        require(
+            sum(isinstance(reference, int) and reference != 0 for reference in raw_expression_refs)
+            == len(expected_expressions),
+            f"closure non-null expression denominator disagrees with raw UPK: {source_path}",
+        )
+        graph_identity = (
+            f"{base_export['physicalPackageSha256']}::"
+            f"{folded(base_export['objectPath'])}"
+        )
+        graph_projection = {
+            "baseMaterialEvidenceId": base_evidence_id,
+            "rawExpressionReferences": copy.deepcopy(raw_expression_refs),
+            "closureExpressionCount": len(expected_expressions),
+        }
+        previous_graph = processed_graphs.get(graph_identity)
+        require(
+            previous_graph is None or previous_graph == graph_projection,
+            f"repeated graph projection changed: {graph_identity}",
+        )
+        if previous_graph is None:
+            processed_graphs[graph_identity] = graph_projection
+            base_package = package(str(graph_holder.get("physicalPackage") or ""))
+            for source_order, reference in enumerate(raw_expression_refs):
+                require(
+                    isinstance(reference, int),
+                    f"raw expression reference is not an integer: {graph_identity}",
+                )
+                expected_expression = expected_by_order.get(source_order)
+                if reference == 0:
+                    require(
+                        expected_expression is None,
+                        f"closure expression occupies a raw null slot: {graph_identity}@{source_order}",
+                    )
+                    continue
+                require(
+                    expected_expression is not None,
+                    f"raw expression is absent from closure: {graph_identity}@{source_order}",
+                )
+                evidence = expression_evidence(
+                    base_package,
+                    base_evidence_id,
+                    source_order,
+                    reference,
+                    expected_expression,
+                )
+                evidence_id = evidence["evidenceId"]
+                require(
+                    evidence_id not in graph_expressions_by_id,
+                    f"duplicate graph expression evidence ID: {evidence_id}",
+                )
+                graph_expressions_by_id[evidence_id] = evidence
         bindings.append(
             {
                 "sourceMaterialPath": source_path,
@@ -523,9 +918,25 @@ def build_receipt(
             }
         )
 
+    texture_sampler_exports: list[dict[str, Any]] = []
+    dds_assets = exact_dds_receipt.get("assets")
+    require(isinstance(dds_assets, list) and len(dds_assets) == 4, "exact DDS asset denominator changed")
+    seen_texture_paths: set[str] = set()
+    for asset in dds_assets:
+        require(isinstance(asset, dict), "exact DDS asset must be an object")
+        logical_path = folded(asset.get("logicalObjectPath"))
+        require(bool(logical_path) and logical_path not in seen_texture_paths, "duplicate exact DDS texture path")
+        seen_texture_paths.add(logical_path)
+        texture = asset.get("sourceTexture2D")
+        require(isinstance(texture, dict), f"Texture2D evidence missing: {logical_path}")
+        physical_name = str(texture.get("physicalPackage") or "")
+        texture_sampler_exports.append(
+            texture_sampler_evidence(asset, package(physical_name))
+        )
+
     receipt: dict[str, Any] = {
         "schema": "lostark.artist-31470-material-render-state-evidence-receipt",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "characterClass": "ARTIST",
         "skillId": 31470,
         "inputSlot": "F",
@@ -534,6 +945,13 @@ def build_receipt(
                 "path": repository_path(closure_path),
                 "hashDomain": "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
                 "canonicalTextSha256": tracked_json_text_sha256(closure_path),
+            },
+            "exactDdsReceipt": {
+                "path": repository_path(exact_dds_receipt_path),
+                "hashDomain": "TRACKED_DERIVED_EOL_CANONICAL_TEXT",
+                "canonicalTextSha256": tracked_json_text_sha256(
+                    exact_dds_receipt_path
+                ),
             },
             "sourcePackages": {
                 "sourceRootId": "Resource_LostArk",
@@ -549,11 +967,27 @@ def build_receipt(
                 "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
                 "canonicalTextSha256": tracked_source_text_sha256(PARSER_PATH),
             },
+            "materialClosureParser": {
+                "path": repository_path(MATERIAL_CLOSURE_PARSER_PATH),
+                "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+                "canonicalTextSha256": tracked_source_text_sha256(
+                    MATERIAL_CLOSURE_PARSER_PATH
+                ),
+            },
+            "materialGraphParser": {
+                "path": repository_path(MATERIAL_GRAPH_PARSER_PATH),
+                "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+                "canonicalTextSha256": tracked_source_text_sha256(
+                    MATERIAL_GRAPH_PARSER_PATH
+                ),
+            },
             "reproductionCommand": [
                 "python",
                 repository_path(SCRIPT_PATH),
                 "--material-closure",
                 repository_path(closure_path),
+                "--exact-dds-receipt",
+                repository_path(exact_dds_receipt_path),
                 "--source-package-root",
                 "{SOURCE_PACKAGE_ROOT}",
                 "--output",
@@ -569,10 +1003,24 @@ def build_receipt(
                 folded(row["objectPath"]),
             ),
         ),
+        "graphExpressions": sorted(
+            graph_expressions_by_id.values(),
+            key=lambda row: (
+                row["baseMaterialEvidenceId"],
+                row["sourceOrder"],
+            ),
+        ),
+        "textureSamplerExports": sorted(
+            texture_sampler_exports,
+            key=lambda row: folded(row["logicalObjectPath"]),
+        ),
         "summary": {
             "materialRecipeCount": len(bindings),
             "uniqueRawExportCount": len(exports_by_id),
             "rawPackageCount": len(package_cache),
+            "uniqueBaseMaterialGraphCount": len(processed_graphs),
+            "graphExpressionEvidenceCount": len(graph_expressions_by_id),
+            "textureSamplerExportCount": len(texture_sampler_exports),
             "sourceMaterialInstanceCount": sum(
                 folded(exports_by_id[row["sourceExportEvidenceId"]]["className"])
                 == "materialinstanceconstant"
@@ -592,13 +1040,17 @@ def build_receipt(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--material-closure", required=True, type=Path)
+    parser.add_argument("--exact-dds-receipt", required=True, type=Path)
     parser.add_argument("--source-package-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--aes-key", default=LOSTARK_KR_AES_KEY)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     receipt = build_receipt(
-        args.material_closure, args.source_package_root, args.aes_key
+        args.material_closure,
+        args.exact_dds_receipt,
+        args.source_package_root,
+        args.aes_key,
     )
     check_or_write_json(args.output, receipt, args.check)
     print(
@@ -606,6 +1058,8 @@ def main() -> int:
         f"{'check' if args.check else 'write'}: "
         f"recipes={receipt['summary']['materialRecipeCount']} "
         f"exports={receipt['summary']['uniqueRawExportCount']} "
+        f"expressions={receipt['summary']['graphExpressionEvidenceCount']} "
+        f"textures={receipt['summary']['textureSamplerExportCount']} "
         f"packages={receipt['summary']['rawPackageCount']}"
     )
     return 0

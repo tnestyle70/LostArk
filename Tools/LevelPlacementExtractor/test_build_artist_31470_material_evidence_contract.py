@@ -4,19 +4,25 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from build_artist_31470_material_evidence_contract import (
     build_contract,
+    build_from_paths,
     canonical_sha256,
     check_or_write_tracked_json,
     load_json,
     normalize_tracked_text_bytes,
     raw_file_sha256,
     validate_contract,
+    verify_external_artifacts,
 )
+from extract_artist_31470_material_render_state import build_receipt
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +41,15 @@ DDS_RECEIPT = REPO_ROOT / (
 RENDER_RECEIPT = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.material-render-state-evidence.receipt.json"
+)
+SOURCE_PACKAGE_ROOT = Path(
+    os.environ.get("ARTIST_F_MATERIAL_SOURCE_PACKAGE_ROOT", "__unavailable__")
+)
+EXACT_DDS_ROOT = Path(
+    os.environ.get("ARTIST_F_MATERIAL_EXACT_DDS_ROOT", "__unavailable__")
+)
+SOURCE_PACK_MANIFEST = Path(
+    os.environ.get("ARTIST_F_MATERIAL_SOURCE_PACK_MANIFEST", "__unavailable__")
 )
 
 
@@ -82,6 +97,22 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         self.assertEqual(summary["arithmeticFamilyCount"], 23)
         self.assertEqual(summary["cookedStrippedNullExpressionCount"], 1803)
         self.assertEqual(summary["unresolvedGraphEdgeCount"], 502)
+        self.assertEqual(summary["usedMaterialRecipeCount"], 27)
+        self.assertEqual(summary["unusedMaterialRecipeCount"], 0)
+        self.assertEqual(summary["unexpectedOccurrenceMaterialCount"], 0)
+        self.assertEqual(
+            summary["occurrenceMaterialJoinSha256"],
+            "1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296",
+        )
+        parent_defaults = [
+            field
+            for recipe in self.contract["materialRecipes"]
+            for field in recipe["inputs"]["parentDefaults"]
+        ]
+        self.assertEqual(len(parent_defaults), 297)
+        self.assertTrue(
+            all(field["fidelity"] == "SOURCE_EXACT_INPUT" for field in parent_defaults)
+        )
         self.assertEqual(self.contract["admission"]["productRecipeCount"], 0)
         self.assertEqual(self.contract["admission"]["productOccurrenceCount"], 0)
 
@@ -110,7 +141,10 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
                     material["scalarParameters"][1]["name"] = material[
                         "scalarParameters"
                     ][0]["name"]
-                with self.assertRaisesRegex(ValueError, pattern):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f"{pattern}|blank scalarParameters|raw instance parameter projection",
+                ):
                     self.build(closure=closure)
 
     def test_duplicate_material_path_and_parent_cycle_fail_closed(self) -> None:
@@ -151,6 +185,69 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exact inheritance edge"):
             self.build(render=render)
 
+    def test_instance_parameter_value_and_order_require_raw_projection(self) -> None:
+        closure = copy.deepcopy(self.closure)
+        row = next(
+            row
+            for row in closure["materials"]
+            if row.get("material") and row["material"].get("scalarParameters")
+        )
+        row["material"]["scalarParameters"][0]["value"] = 124.0
+        with self.assertRaisesRegex(ValueError, "raw instance parameter projection"):
+            self.build(closure=closure)
+
+        render = copy.deepcopy(self.render)
+        source = next(
+            export
+            for export in render["exports"]
+            if export.get("instanceParameters", {}).get("scalar")
+        )
+        source["instanceParameters"]["scalar"][0]["value"] = 124.0
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "raw instance parameter projection"):
+            self.build(render=render)
+
+        render = copy.deepcopy(self.render)
+        source = next(
+            export
+            for export in render["exports"]
+            if len(export.get("instanceParameters", {}).get("scalar", [])) >= 2
+        )
+        source["instanceParameters"]["scalar"][:2] = reversed(
+            source["instanceParameters"]["scalar"][:2]
+        )
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "raw instance parameter projection"):
+            self.build(render=render)
+
+    def test_parent_expression_value_requires_raw_export_evidence(self) -> None:
+        closure = copy.deepcopy(self.closure)
+        expression = next(
+            expression
+            for row in closure["materials"]
+            if row.get("material")
+            for expression in (row.get("materialGraph") or row.get("parentGraph"))["graph"]["expressions"]
+            if isinstance(expression.get("defaultValue"), (int, float))
+            and not isinstance(expression.get("defaultValue"), bool)
+            and float(expression["defaultValue"]) == 1.0
+        )
+        expression["defaultValue"] = 18.0
+        with self.assertRaisesRegex(ValueError, "raw graph-expression projection"):
+            self.build(closure=closure)
+
+        render = copy.deepcopy(self.render)
+        raw_expression = next(
+            expression
+            for expression in render["graphExpressions"]
+            if expression["fields"]["defaultvalue"]["status"]
+            == "SERIALIZED_EXPLICIT"
+        )
+        raw_expression["projection"]["defaultValue"] = 18.0
+        raw_expression["fields"]["defaultvalue"]["value"] = 18.0
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "raw graph-expression projection"):
+            self.build(render=render)
+
     def test_dds_hash_sampler_origin_and_shadowing_fail_closed(self) -> None:
         dds = copy.deepcopy(self.dds)
         dds["assets"][0]["dds"]["sha256"] = "0" * 64
@@ -181,7 +278,8 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             "name"
         ] = "dissolve_texture"
         with self.assertRaisesRegex(
-            ValueError, "DDS input join is not unique|shadowed|denominator"
+            ValueError,
+            "DDS input join is not unique|shadowed|denominator|raw instance parameter projection",
         ):
             self.build(closure=closure)
 
@@ -197,8 +295,30 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             "fidelity": "SOURCE_EXACT_SAMPLER",
             "provenance": {"ddsSha256": "0" * 64},
         }
-        with self.assertRaisesRegex(ValueError, "sampler field set was laundered"):
+        with self.assertRaisesRegex(
+            ValueError, "sampler field set was laundered|exact sampler provenance"
+        ):
             validate_contract(contract, verify_digest=False)
+
+    def test_texture2d_class_export_and_serial_join_fail_closed(self) -> None:
+        for field_name, value in (
+            ("className", "Material"),
+            ("exportIndex", 999),
+            ("serialSha256", "0" * 64),
+        ):
+            with self.subTest(field_name=field_name):
+                dds = copy.deepcopy(self.dds)
+                dds["assets"][0]["sourceTexture2D"][field_name] = value
+                with self.assertRaisesRegex(
+                    ValueError, "DDS receipt disagrees with raw Texture2D export"
+                ):
+                    self.build(dds=dds)
+
+        render = copy.deepcopy(self.render)
+        render["textureSamplerExports"][0]["export"]["className"] = "Material"
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "raw Texture2D identity"):
+            self.build(render=render)
 
     def test_cooked_stripped_edge_and_graph_exact_laundering_fail_closed(self) -> None:
         closure = copy.deepcopy(self.closure)
@@ -215,6 +335,31 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         family["sourceExactGraph"] = True
         with self.assertRaisesRegex(ValueError, "laundered as Source exact"):
             validate_contract(contract, verify_digest=False)
+
+    def test_per_family_graph_count_redistribution_fails_closed(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        left, right = contract["graphFamilies"][:2]
+        left["cookedEvidence"]["nullExpressionCount"] += 1
+        right["cookedEvidence"]["nullExpressionCount"] -= 1
+        with self.assertRaisesRegex(ValueError, "count was redistributed"):
+            validate_contract(contract, verify_digest=False)
+
+        contract = copy.deepcopy(self.contract)
+        left, right = contract["graphFamilies"][:2]
+        for evidence_name in ("cookedEvidence", "rawEvidence"):
+            left[evidence_name]["nullExpressionCount"] += 1
+            left[evidence_name]["nonNullExpressionCount"] -= 1
+            right[evidence_name]["nullExpressionCount"] -= 1
+            right[evidence_name]["nonNullExpressionCount"] += 1
+        with self.assertRaisesRegex(ValueError, "raw evidence fixture changed"):
+            validate_contract(contract, verify_digest=False)
+
+        closure = copy.deepcopy(self.closure)
+        row = next(row for row in closure["materials"] if row.get("material"))
+        graph = (row.get("materialGraph") or row.get("parentGraph"))["graph"]
+        graph["summary"]["nullExpressionCount"] += 1
+        with self.assertRaisesRegex(ValueError, "raw expression evidence"):
+            self.build(closure=closure)
 
     def test_static_switch_flag_is_not_a_selected_permutation(self) -> None:
         contract = copy.deepcopy(self.contract)
@@ -242,6 +387,16 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "promoted to full exact"):
             validate_contract(contract, verify_digest=False)
 
+        contract = copy.deepcopy(self.contract)
+        recipe = next(
+            row for row in contract["materialRecipes"]
+            if not row["renderState"]["partialCullExact"]
+        )
+        recipe["renderState"]["partialCullExact"] = True
+        contract["summary"]["sourceExactPartialCullRecipeCount"] += 1
+        with self.assertRaisesRegex(ValueError, "partial cull exactness"):
+            validate_contract(contract, verify_digest=False)
+
     def test_corrupt_explicit_render_state_value_fails_closed(self) -> None:
         render = copy.deepcopy(self.render)
         export = next(
@@ -252,6 +407,17 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         export["fields"]["blendmode"]["value"] = 7
         seal_receipt(render)
         with self.assertRaisesRegex(ValueError, "render enum field is invalid"):
+            self.build(render=render)
+
+        render = copy.deepcopy(self.render)
+        export = next(
+            row for row in render["exports"]
+            if row["fields"].get("blendmode", {}).get("status")
+            == "SERIALIZED_EXPLICIT"
+        )
+        export["fields"]["blendmode"]["enumOrdinal"] += 1
+        seal_receipt(render)
+        with self.assertRaisesRegex(ValueError, "enum domain/ordinal"):
             self.build(render=render)
 
     def test_reconstructed_evaluator_cannot_be_promoted_to_exact(self) -> None:
@@ -282,10 +448,51 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "aggregate blocker set"):
             validate_contract(contract, verify_digest=False)
 
+    def test_sampler_and_render_default_blockers_are_field_derived(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        recipe = next(
+            recipe
+            for recipe in contract["materialRecipes"]
+            if "SAMPLER_BINDINGS_INCOMPLETE" in recipe["blockers"]
+        )
+        recipe["blockers"].remove("SAMPLER_BINDINGS_INCOMPLETE")
+        recipe["blockerCount"] -= 1
+        with self.assertRaisesRegex(ValueError, "sampler blocker is not field-derived"):
+            validate_contract(contract, verify_digest=False)
+
+        contract = copy.deepcopy(self.contract)
+        recipe = next(
+            recipe
+            for recipe in contract["materialRecipes"]
+            if "RENDER_STATE_DEFAULT_PROVENANCE_UNRESOLVED" in recipe["blockers"]
+        )
+        recipe["blockers"].remove(
+            "RENDER_STATE_DEFAULT_PROVENANCE_UNRESOLVED"
+        )
+        recipe["blockerCount"] -= 1
+        with self.assertRaisesRegex(ValueError, "render default blocker is not field-derived"):
+            validate_contract(contract, verify_digest=False)
+
     def test_occurrence_join_loss_fails_closed(self) -> None:
         active = copy.deepcopy(self.active)
         active["activeElements"].pop()
         with self.assertRaisesRegex(ValueError, "active element denominator changed"):
+            self.build(active=active)
+
+        active = copy.deepcopy(self.active)
+        active["activeElements"][0]["materialParameterEvidence"][0][
+            "sourceMaterialPath"
+        ] = active["activeElements"][1]["sourceMaterials"][0]
+        with self.assertRaisesRegex(ValueError, "occurrence material evidence join"):
+            self.build(active=active)
+
+        active = copy.deepcopy(self.active)
+        replacement = active["activeElements"][1]["sourceMaterials"][0]
+        active["activeElements"][0]["sourceMaterials"][0] = replacement
+        active["activeElements"][0]["materialParameterEvidence"][0][
+            "sourceMaterialPath"
+        ] = replacement
+        with self.assertRaisesRegex(ValueError, "stable join changed"):
             self.build(active=active)
 
     def test_tracked_json_allows_only_eol_equivalence(self) -> None:
@@ -299,6 +506,84 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "stale"):
                 check_or_write_tracked_json(path, value, check=True)
 
+    def test_build_from_paths_and_cli_allow_only_tracked_eol_changes(self) -> None:
+        temp_root = REPO_ROOT / ".codex_tmp"
+        temp_root.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temp_root) as directory:
+            root = Path(directory)
+            inputs = {
+                "active": ACTIVE_INVENTORY,
+                "closure": MATERIAL_CLOSURE,
+                "dds": DDS_RECEIPT,
+                "render": RENDER_RECEIPT,
+            }
+            copied: dict[str, Path] = {}
+            for name, source in inputs.items():
+                path = root / f"{name}.json"
+                path.write_bytes(normalize_tracked_text_bytes(source.read_bytes()))
+                copied[name] = path
+            baseline = build_from_paths(
+                copied["active"], copied["closure"], copied["dds"], copied["render"]
+            )
+            for path in copied.values():
+                path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+            crlf = build_from_paths(
+                copied["active"], copied["closure"], copied["dds"], copied["render"]
+            )
+            self.assertEqual(baseline, crlf)
+
+            output = root / "contract.json"
+            command = [
+                sys.executable,
+                str(REPO_ROOT / "Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py"),
+                "--active-inventory",
+                str(copied["active"]),
+                "--material-closure",
+                str(copied["closure"]),
+                "--exact-dds-receipt",
+                str(copied["dds"]),
+                "--render-state-receipt",
+                str(copied["render"]),
+                "--output",
+                str(output),
+            ]
+            subprocess.run(command, cwd=REPO_ROOT, check=True, capture_output=True)
+            output.write_bytes(output.read_bytes().replace(b"\n", b"\r\n"))
+            subprocess.run(
+                [*command, "--check"], cwd=REPO_ROOT, check=True, capture_output=True
+            )
+            value = json.loads(output.read_text(encoding="utf-8"))
+            output.write_text(
+                json.dumps(value, ensure_ascii=False, indent=4) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(subprocess.CalledProcessError):
+                subprocess.run(
+                    [*command, "--check"],
+                    cwd=REPO_ROOT,
+                    check=True,
+                    capture_output=True,
+                )
+
+    def test_direct_parser_dependency_hash_is_pinned(self) -> None:
+        temp_root = REPO_ROOT / ".codex_tmp"
+        temp_root.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temp_root) as directory:
+            render = copy.deepcopy(self.render)
+            render["source"]["materialClosureParser"][
+                "canonicalTextSha256"
+            ] = "0" * 64
+            seal_receipt(render)
+            render_path = Path(directory) / "render.json"
+            render_path.write_text(
+                json.dumps(render, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "materialClosureParser hash"):
+                build_from_paths(
+                    ACTIVE_INVENTORY, MATERIAL_CLOSURE, DDS_RECEIPT, render_path
+                )
+
     def test_external_artifact_hash_is_raw_not_json_normalized(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             left = Path(directory) / "external-lf.json"
@@ -306,6 +591,123 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             left.write_bytes(b'{"a":1}\n')
             right.write_bytes(b'{"a":1}\r\n')
             self.assertNotEqual(raw_file_sha256(left), raw_file_sha256(right))
+
+    @unittest.skipUnless(
+        SOURCE_PACKAGE_ROOT.is_dir()
+        and EXACT_DDS_ROOT.is_dir()
+        and SOURCE_PACK_MANIFEST.is_file(),
+        "deep Artist F Material roots are unavailable",
+    )
+    def test_deep_raw_builder_and_verifier_reject_honestly_regenerated_mutations(self) -> None:
+        temp_root = REPO_ROOT / ".codex_tmp"
+        temp_root.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temp_root) as directory:
+            root = Path(directory)
+
+            canonical_closure = root / "canonical-closure.json"
+            canonical_closure.write_bytes(
+                normalize_tracked_text_bytes(MATERIAL_CLOSURE.read_bytes())
+            )
+            lf_receipt = build_receipt(
+                canonical_closure, DDS_RECEIPT, SOURCE_PACKAGE_ROOT
+            )
+            canonical_closure.write_bytes(
+                canonical_closure.read_bytes().replace(b"\n", b"\r\n")
+            )
+            crlf_receipt = build_receipt(
+                canonical_closure, DDS_RECEIPT, SOURCE_PACKAGE_ROOT
+            )
+            self.assertEqual(lf_receipt, crlf_receipt)
+
+            closure = copy.deepcopy(self.closure)
+            row = next(
+                row
+                for row in closure["materials"]
+                if row.get("material") and row["material"].get("scalarParameters")
+            )
+            row["material"]["scalarParameters"][0]["value"] = 124.0
+            closure_path = root / "mutated-instance.json"
+            closure_path.write_text(
+                json.dumps(closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "closure input disagrees with raw UPK"):
+                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+
+            closure = copy.deepcopy(self.closure)
+            expression = next(
+                expression
+                for row in closure["materials"]
+                if row.get("material")
+                for expression in (row.get("materialGraph") or row.get("parentGraph"))["graph"]["expressions"]
+                if isinstance(expression.get("defaultValue"), (int, float))
+                and not isinstance(expression.get("defaultValue"), bool)
+                and float(expression["defaultValue"]) == 1.0
+            )
+            expression["defaultValue"] = 18.0
+            closure_path = root / "mutated-parent-expression.json"
+            closure_path.write_text(
+                json.dumps(closure, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError, "closure expression projection disagrees with raw UPK"
+            ):
+                build_receipt(closure_path, DDS_RECEIPT, SOURCE_PACKAGE_ROOT)
+
+            verify_external_artifacts(
+                self.dds,
+                self.render,
+                SOURCE_PACKAGE_ROOT,
+                EXACT_DDS_ROOT,
+                SOURCE_PACK_MANIFEST,
+            )
+            manifest_bytes = SOURCE_PACK_MANIFEST.read_bytes()
+            mutated_manifest = root / "mutated-source-pack-manifest.json"
+            if b"\r\n" in manifest_bytes:
+                mutated_manifest.write_bytes(manifest_bytes.replace(b"\r\n", b"\n"))
+            else:
+                mutated_manifest.write_bytes(manifest_bytes.replace(b"\n", b"\r\n"))
+            self.assertNotEqual(
+                raw_file_sha256(mutated_manifest), raw_file_sha256(SOURCE_PACK_MANIFEST)
+            )
+            with self.assertRaisesRegex(ValueError, "manifest raw bytes changed"):
+                verify_external_artifacts(
+                    self.dds,
+                    self.render,
+                    SOURCE_PACKAGE_ROOT,
+                    EXACT_DDS_ROOT,
+                    mutated_manifest,
+                )
+            for field_name, replacement in (
+                ("className", "Material"),
+                ("exportIndex", 999),
+                ("serialSha256", "0" * 64),
+            ):
+                with self.subTest(field_name=field_name):
+                    dds = copy.deepcopy(self.dds)
+                    dds["assets"][0]["sourceTexture2D"][field_name] = replacement
+                    dds_path = root / f"forged-{field_name}.json"
+                    dds_path.write_text(
+                        json.dumps(dds, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "Texture2D|raw Texture2D|DDS receipt disagrees|"
+                        "export index changed|serial SHA-256 changed|class changed",
+                    ):
+                        build_receipt(MATERIAL_CLOSURE, dds_path, SOURCE_PACKAGE_ROOT)
+                    with self.assertRaisesRegex(
+                        ValueError, "DDS receipt disagrees with raw Texture2D export"
+                    ):
+                        verify_external_artifacts(
+                            dds,
+                            self.render,
+                            SOURCE_PACKAGE_ROOT,
+                            EXACT_DDS_ROOT,
+                            SOURCE_PACK_MANIFEST,
+                        )
 
     def test_duplicate_json_object_key_is_corrupt(self) -> None:
         with self.assertRaisesRegex(ValueError, "duplicate JSON object key"):

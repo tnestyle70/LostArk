@@ -33,6 +33,7 @@ try {
         }
         & python 'Tools/LevelPlacementExtractor/extract_artist_31470_material_render_state.py' `
             '--material-closure' $materialClosure `
+            '--exact-dds-receipt' $ddsReceipt `
             '--source-package-root' $SourcePackageRoot `
             '--output' $renderReceipt `
             '--check'
@@ -64,6 +65,14 @@ try {
 
     Push-Location 'Tools/LevelPlacementExtractor'
     try {
+        $savedSourcePackageRoot = $env:ARTIST_F_MATERIAL_SOURCE_PACKAGE_ROOT
+        $savedExactDdsRoot = $env:ARTIST_F_MATERIAL_EXACT_DDS_ROOT
+        $savedSourcePackManifest = $env:ARTIST_F_MATERIAL_SOURCE_PACK_MANIFEST
+        if ($DeepMaterialAudit) {
+            $env:ARTIST_F_MATERIAL_SOURCE_PACKAGE_ROOT = $SourcePackageRoot
+            $env:ARTIST_F_MATERIAL_EXACT_DDS_ROOT = $ExactDdsRoot
+            $env:ARTIST_F_MATERIAL_SOURCE_PACK_MANIFEST = $SourcePackManifest
+        }
         $savedErrorActionPreference = $ErrorActionPreference
         try {
             $ErrorActionPreference = 'Continue'
@@ -74,6 +83,9 @@ try {
         }
         finally {
             $ErrorActionPreference = $savedErrorActionPreference
+            $env:ARTIST_F_MATERIAL_SOURCE_PACKAGE_ROOT = $savedSourcePackageRoot
+            $env:ARTIST_F_MATERIAL_EXACT_DDS_ROOT = $savedExactDdsRoot
+            $env:ARTIST_F_MATERIAL_SOURCE_PACK_MANIFEST = $savedSourcePackManifest
         }
         if ($unitTestExitCode -ne 0) {
             throw "Artist F typed Material unit tests failed: $unitTestExitCode $unitTestOutput"
@@ -85,6 +97,16 @@ try {
 
     $contract = Get-Content -LiteralPath $contractPath -Raw -Encoding UTF8 |
         ConvertFrom-Json
+    $rawReceipt = Get-Content -LiteralPath $renderReceipt -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    if ($rawReceipt.schema -cne 'lostark.artist-31470-material-render-state-evidence-receipt' -or
+        [int]$rawReceipt.formatVersion -ne 2 -or
+        @($rawReceipt.graphExpressions).Count -ne 925 -or
+        @($rawReceipt.textureSamplerExports).Count -ne 4 -or
+        [int]$rawReceipt.summary.rawPackageCount -ne 19 -or
+        [int]$rawReceipt.summary.uniqueBaseMaterialGraphCount -ne 23) {
+        throw 'Artist F raw Material evidence denominator changed.'
+    }
     $summary = $contract.summary
     $admission = $contract.admission
     if ($contract.schema -cne 'lostark.artist-31470-typed-material-evidence-contract' -or
@@ -99,6 +121,10 @@ try {
         [int]$summary.directTextureExactSamplerCount -ne 3 -or
         [int]$summary.directTextureUnprovenSamplerCount -ne 68 -or
         [int]$summary.parentDefaultExactSamplerCount -ne 1 -or
+        [int]$summary.usedMaterialRecipeCount -ne 27 -or
+        [int]$summary.unusedMaterialRecipeCount -ne 0 -or
+        [int]$summary.unexpectedOccurrenceMaterialCount -ne 0 -or
+        [string]$summary.occurrenceMaterialJoinSha256 -cne '1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296' -or
         [int]$summary.cookedStrippedNullExpressionCount -ne 1803 -or
         [int]$summary.unresolvedGraphEdgeCount -ne 502 -or
         [int]$summary.sourceExactGraphFamilyCount -ne 0 -or

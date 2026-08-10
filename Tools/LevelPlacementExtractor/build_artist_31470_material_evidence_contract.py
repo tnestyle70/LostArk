@@ -26,6 +26,36 @@ EXPECTED_TEXTURE_OVERRIDE_COUNT = 71
 EXPECTED_GRAPH_FAMILY_COUNT = 23
 EXPECTED_NULL_EXPRESSION_COUNT = 1803
 EXPECTED_UNRESOLVED_EDGE_COUNT = 502
+EXPECTED_GRAPH_EXPRESSION_COUNT = 925
+EXPECTED_RAW_PACKAGE_COUNT = 19
+EXPECTED_OCCURRENCE_MATERIAL_JOIN_SHA256 = (
+    "1c56ff7bf67dc94a61129372a0e71f57a74171ee47ddf57702cd88b95606b296"
+)
+EXPECTED_GRAPH_FAMILY_RAW_EVIDENCE_SHA256 = (
+    "d610d0b7b0b088c1cde880382c788366e2d880a239762722b5c60c88ae84e272"
+)
+
+BLEND_MODE_DOMAIN = (
+    "blend_opaque",
+    "blend_masked",
+    "blend_translucent",
+    "blend_additive",
+    "blend_modulate",
+    "blend_softmasked",
+    "blend_alphacomposite",
+    "blend_ditheredtranslucent",
+    "blend_max",
+)
+LIGHTING_MODEL_DOMAIN = (
+    "mlm_phong",
+    "mlm_nondirectional",
+    "mlm_unlit",
+    "mlm_shprtdiffuse",
+    "mlm_custom",
+    "mlm_anisotropic",
+    "mlm_max",
+)
+TEXTURE_ADDRESS_DOMAIN = ("ta_wrap", "ta_clamp", "ta_mirror")
 
 EXPECTED_DDS_BINDINGS: dict[str, dict[str, Any]] = {
     "fx_tex_00.fx_a_noise_011": {
@@ -320,13 +350,112 @@ def validate_graph(graph: dict[str, Any], material_path: str) -> None:
     )
 
 
+def validate_enum_evidence(
+    field: dict[str, Any], domain: tuple[str, ...], label: str
+) -> None:
+    value = folded(field.get("value"))
+    require(value in domain, f"enum value is outside pinned domain: {label}")
+    require(
+        field.get("enumDomain") == list(domain)
+        and int(field.get("enumOrdinal", -1)) == domain.index(value),
+        f"enum domain/ordinal evidence changed: {label}",
+    )
+
+
+def comparable_instance_parameters(material: dict[str, Any]) -> dict[str, Any]:
+    """Return the order-preserving raw projection admitted as exact input."""
+    result: dict[str, Any] = {}
+    for raw_name, closure_name in (
+        ("scalar", "scalarParameters"),
+        ("vector", "vectorParameters"),
+        ("texture", "textureParameters"),
+    ):
+        values = require_list(material.get(closure_name), closure_name)
+        projected: list[dict[str, Any]] = []
+        for index, value in enumerate(values):
+            require(isinstance(value, dict), f"invalid {closure_name}[{index}]")
+            name = str(value.get("name") or "")
+            require(bool(name.strip()), f"blank {closure_name}[{index}] name")
+            if raw_name == "scalar":
+                projected.append(
+                    {"name": name, "value": finite_number(value.get("value"), name)}
+                )
+            elif raw_name == "vector":
+                vector = require_list(value.get("value"), f"{closure_name}[{index}].value")
+                require(len(vector) == 4, f"invalid vector width: {name}")
+                projected.append(
+                    {
+                        "name": name,
+                        "value": [
+                            finite_number(component, f"{name}[{axis}]")
+                            for axis, component in enumerate(vector)
+                        ],
+                    }
+                )
+            else:
+                package_index = value.get("packageIndex")
+                source_path = str(value.get("sourceObjectPath") or "")
+                require(
+                    isinstance(package_index, int)
+                    and not isinstance(package_index, bool)
+                    and package_index != 0
+                    and bool(source_path),
+                    f"invalid texture reference: {name}",
+                )
+                projected.append(
+                    {
+                        "name": name,
+                        "sourceObjectPath": source_path,
+                        "packageIndex": package_index,
+                    }
+                )
+        result[raw_name] = projected
+    return result
+
+
+def comparable_expression_projection(expression: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sourceOrder": expression.get("sourceOrder"),
+        "exportIndex": expression.get("exportIndex"),
+        "className": expression.get("className"),
+        "objectPath": expression.get("objectPath"),
+        "parameterName": expression.get("parameterName"),
+        "group": expression.get("group"),
+        "defaultValue": expression.get("defaultValue"),
+        "textureObjectPath": expression.get("textureObjectPath"),
+        "inputs": expression.get("inputs"),
+        "serialSize": expression.get("serialSize"),
+        "propertyStreamEnd": expression.get("propertyStreamEnd"),
+    }
+
+
+def comparable_raw_expression_projection(expression: dict[str, Any]) -> dict[str, Any]:
+    projection = copy.deepcopy(expression.get("projection"))
+    require(isinstance(projection, dict), "raw graph expression projection is missing")
+    projection.pop("texturePackageIndex", None)
+    projection["inputs"] = [
+        {
+            key: value
+            for key, value in input_row.items()
+            if key != "propertyRecordSha256"
+        }
+        for input_row in require_list(projection.get("inputs"), "raw expression inputs")
+    ]
+    return projection
+
+
 def validate_render_receipt(
     receipt: dict[str, Any], rows: list[dict[str, Any]]
-) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+) -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[tuple[str, int], dict[str, Any]],
+    dict[str, dict[str, Any]],
+]:
     require(
         receipt.get("schema")
         == "lostark.artist-31470-material-render-state-evidence-receipt"
-        and receipt.get("formatVersion") == 1,
+        and receipt.get("formatVersion") == 2,
         "unsupported render-state evidence receipt",
     )
     validate_self_digest(receipt, "receiptSha256", "render-state receipt")
@@ -369,6 +498,13 @@ def validate_render_receipt(
                     require(
                         isinstance(value, str) and bool(value),
                         f"render enum field is invalid: {evidence_id}.{field_name}",
+                    )
+                    validate_enum_evidence(
+                        field,
+                        BLEND_MODE_DOMAIN
+                        if normalized_field == "blendmode"
+                        else LIGHTING_MODEL_DOMAIN,
+                        f"{evidence_id}.{field_name}",
                     )
                 elif normalized_field in {
                     "twosided",
@@ -470,6 +606,11 @@ def validate_render_receipt(
                         and evidence.get("value") == expected_value,
                         f"source flag disagrees with closure: {path}.{field_name}",
                     )
+            require(
+                source_export.get("instanceParameters")
+                == comparable_instance_parameters(material),
+                f"raw instance parameter projection disagrees with closure: {path}",
+            )
             for field_name, closure_name in (
                 ("scalarparametervalues", "scalarParameters"),
                 ("vectorparametervalues", "vectorParameters"),
@@ -496,7 +637,185 @@ def validate_render_receipt(
             == int(graph.get("materialExportIndex", -2)),
             f"raw base Material identity disagrees with {holder_name}: {path}",
         )
-    return bindings, exports
+
+    graph_expressions: dict[tuple[str, int], dict[str, Any]] = {}
+    graph_expressions_by_id: dict[str, dict[str, Any]] = {}
+    for expression in require_list(
+        receipt.get("graphExpressions"), "raw graph-expression evidence"
+    ):
+        require(isinstance(expression, dict), "raw graph expression must be an object")
+        evidence_id = str(expression.get("evidenceId") or "")
+        base_id = str(expression.get("baseMaterialEvidenceId") or "")
+        source_order = int(expression.get("sourceOrder", -1))
+        require(
+            bool(evidence_id)
+            and evidence_id not in graph_expressions_by_id
+            and base_id in exports
+            and source_order >= 0,
+            f"invalid raw graph-expression identity: {evidence_id}",
+        )
+        key = (base_id, source_order)
+        require(key not in graph_expressions, f"duplicate raw graph expression: {key}")
+        require_sha256(expression.get("physicalPackageSha256"), f"{evidence_id}.package")
+        require_sha256(expression.get("serialSha256"), f"{evidence_id}.serial")
+        require(
+            int(expression.get("packageReference", -1))
+            == int(expression.get("exportIndex", -2)) + 1
+            == int(expression.get("rawReferenceFromBaseExpressions", -3)),
+            f"raw graph-expression reference changed: {evidence_id}",
+        )
+        base = exports[base_id]
+        require(
+            folded(expression.get("physicalPackage"))
+            == folded(base.get("physicalPackage"))
+            and expression.get("physicalPackageSha256")
+            == base.get("physicalPackageSha256")
+            and folded(expression.get("className")).startswith("materialexpression")
+            and bool(expression.get("objectPath")),
+            f"raw graph-expression package/class identity changed: {evidence_id}",
+        )
+        for field_name, field in expression.get("fields", {}).items():
+            require(isinstance(field, dict), f"invalid expression field: {evidence_id}.{field_name}")
+            status = field.get("status")
+            require(
+                status in {"SERIALIZED_EXPLICIT", "OMITTED_FROM_EXPORT"},
+                f"invalid expression field status: {evidence_id}.{field_name}",
+            )
+            if status == "SERIALIZED_EXPLICIT":
+                require_sha256(field.get("recordSha256"), f"{evidence_id}.{field_name}.record")
+                require_sha256(field.get("encodedValueSha256"), f"{evidence_id}.{field_name}.value")
+        graph_expressions[key] = expression
+        graph_expressions_by_id[evidence_id] = expression
+
+    consumed_expression_ids: set[str] = set()
+    consumed_base_ids: set[str] = set()
+    for row in rows:
+        _, holder = graph_holder(row)
+        graph = holder["graph"]
+        binding = bindings[folded(row["sourceMaterialPath"])]
+        base_id = str(binding["renderStateExportEvidenceId"])
+        if base_id in consumed_base_ids:
+            continue
+        consumed_base_ids.add(base_id)
+        expressions_field = exports[base_id]["fields"].get("expressions")
+        require(
+            isinstance(expressions_field, dict)
+            and expressions_field.get("status") == "SERIALIZED_EXPLICIT",
+            f"raw base Expressions array is missing: {base_id}",
+        )
+        raw_references = require_list(
+            expressions_field.get("value"), f"{base_id}.expressions"
+        )
+        summary = graph.get("summary", {})
+        require(
+            len(raw_references) == int(summary.get("expressionEntryCount", -1))
+            and sum(reference != 0 for reference in raw_references)
+            == int(summary.get("nonNullExpressionCount", -1)),
+            f"raw expression denominator disagrees with graph closure: {base_id}",
+        )
+        closure_by_order: dict[int, dict[str, Any]] = {}
+        for closure_expression in require_list(
+            graph.get("expressions"), f"{base_id}.closureExpressions"
+        ):
+            source_order = int(closure_expression.get("sourceOrder", -1))
+            require(
+                source_order >= 0 and source_order not in closure_by_order,
+                f"duplicate closure graph expression order: {base_id}:{source_order}",
+            )
+            closure_by_order[source_order] = closure_expression
+        require(
+            len(closure_by_order) == sum(reference != 0 for reference in raw_references),
+            f"closure graph expression coverage changed: {base_id}",
+        )
+        for source_order, raw_reference in enumerate(raw_references):
+            if raw_reference == 0:
+                require(
+                    source_order not in closure_by_order,
+                    f"closure expression occupies a raw null slot: {base_id}:{source_order}",
+                )
+                continue
+            key = (base_id, source_order)
+            require(key in graph_expressions, f"raw graph-expression evidence missing: {key}")
+            expression = graph_expressions[key]
+            require(
+                int(expression.get("rawReferenceFromBaseExpressions", -1))
+                == raw_reference
+                and comparable_raw_expression_projection(expression)
+                == comparable_expression_projection(closure_by_order[source_order]),
+                f"raw graph-expression projection disagrees with closure: {key}",
+            )
+            consumed_expression_ids.add(str(expression["evidenceId"]))
+    require(
+        len(consumed_base_ids) == EXPECTED_GRAPH_FAMILY_COUNT
+        and len(graph_expressions_by_id) == EXPECTED_GRAPH_EXPRESSION_COUNT
+        and consumed_expression_ids == set(graph_expressions_by_id),
+        "raw graph-expression evidence coverage changed",
+    )
+
+    texture_exports: dict[str, dict[str, Any]] = {}
+    for texture_row in require_list(
+        receipt.get("textureSamplerExports"), "raw texture sampler exports"
+    ):
+        require(isinstance(texture_row, dict), "raw texture sampler row must be an object")
+        key = folded(texture_row.get("logicalObjectPath"))
+        require(key in EXPECTED_DDS_BINDINGS, f"unexpected raw Texture2D evidence: {key}")
+        require(key not in texture_exports, f"duplicate raw Texture2D evidence: {key}")
+        export = texture_row.get("export")
+        sampling = texture_row.get("sampling")
+        dds = texture_row.get("dds")
+        require(
+            isinstance(export, dict)
+            and isinstance(sampling, dict)
+            and isinstance(dds, dict)
+            and folded(export.get("className")) == "texture2d"
+            and folded(export.get("objectPath")) == key.split(".")[-1]
+            and int(export.get("packageReference", -1))
+            == int(export.get("exportIndex", -2)) + 1,
+            f"raw Texture2D identity is invalid: {key}",
+        )
+        require_sha256(export.get("physicalPackageSha256"), f"{key}.package")
+        require_sha256(export.get("serialSha256"), f"{key}.serial")
+        for axis, enum_field in (("addressU", "addressx"), ("addressV", "addressy")):
+            field = export.get("fields", {}).get(enum_field)
+            require(isinstance(field, dict), f"raw sampler field missing: {key}.{enum_field}")
+            if field.get("status") == "SERIALIZED_EXPLICIT":
+                validate_enum_evidence(field, TEXTURE_ADDRESS_DOMAIN, f"{key}.{enum_field}")
+                require(
+                    sampling.get(axis) == folded(field.get("value")).removeprefix("ta_"),
+                    f"raw sampler projection changed: {key}.{enum_field}",
+                )
+            else:
+                require(
+                    field.get("status") == "OMITTED_FROM_EXPORT"
+                    and sampling.get(f"{axis}Evidence") == "UE3_TEXTURE_CLASS_DEFAULT",
+                    f"raw sampler default provenance changed: {key}.{enum_field}",
+                )
+        require(
+            int(dds.get("byteCount", -1)) == EXPECTED_DDS_BINDINGS[key]["ddsByteCount"]
+            and dds.get("sha256") == EXPECTED_DDS_BINDINGS[key]["ddsSha256"],
+            f"raw Texture2D DDS binding changed: {key}",
+        )
+        texture_exports[key] = texture_row
+    require(
+        set(texture_exports) == set(EXPECTED_DDS_BINDINGS),
+        "raw Texture2D evidence coverage changed",
+    )
+
+    summary = receipt.get("summary")
+    require(isinstance(summary, dict), "render-state receipt summary missing")
+    expected_summary = {
+        "materialRecipeCount": EXPECTED_RECIPE_COUNT,
+        "uniqueRawExportCount": 48,
+        "rawPackageCount": EXPECTED_RAW_PACKAGE_COUNT,
+        "uniqueBaseMaterialGraphCount": EXPECTED_GRAPH_FAMILY_COUNT,
+        "graphExpressionEvidenceCount": EXPECTED_GRAPH_EXPRESSION_COUNT,
+        "textureSamplerExportCount": 4,
+        "sourceMaterialInstanceCount": 25,
+        "sourceRawMaterialCount": 2,
+    }
+    for name, expected in expected_summary.items():
+        require(int(summary.get(name, -1)) == expected, f"render receipt summary drift: {name}")
+    return bindings, exports, graph_expressions, texture_exports
 
 
 def parameter_rows(
@@ -594,6 +913,7 @@ def parent_default_rows(
     instance_inputs: dict[str, list[dict[str, Any]]],
     binding: dict[str, Any],
     exports: dict[str, dict[str, Any]],
+    graph_expressions: dict[tuple[str, int], dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     material_path = str(row["sourceMaterialPath"])
     material_class = folded(row["material"].get("className"))
@@ -645,6 +965,41 @@ def parent_default_rows(
             expression_export >= 0 and source_order >= 0,
             f"parent default expression identity missing: {material_path}.{name}",
         )
+        raw_expression = graph_expressions.get(
+            (str(base_export["evidenceId"]), source_order)
+        )
+        require(
+            isinstance(raw_expression, dict)
+            and int(raw_expression.get("exportIndex", -1)) == expression_export
+            and folded(raw_expression.get("objectPath"))
+            == folded(expression.get("objectPath")),
+            f"raw parent-default expression join missing: {material_path}.{name}",
+        )
+        raw_field_name = "texture" if kind == "texture" else "defaultvalue"
+        raw_default_field = raw_expression.get("fields", {}).get(raw_field_name)
+        exact_value_proven = (
+            isinstance(raw_default_field, dict)
+            and raw_default_field.get("status") == "SERIALIZED_EXPLICIT"
+            and (
+                (
+                    kind == "texture"
+                    and folded(raw_default_field.get("resolvedObjectPath"))
+                    == folded(texture_path)
+                    and isinstance(raw_default_field.get("value"), int)
+                    and not isinstance(raw_default_field.get("value"), bool)
+                    and int(raw_default_field["value"]) != 0
+                )
+                or (
+                    kind != "texture"
+                    and raw_default_field.get("value") == default_value
+                )
+            )
+        )
+        fidelity = (
+            "SOURCE_EXACT_INPUT"
+            if exact_value_proven
+            else "UNRESOLVED_PARENT_DEFAULT_EVIDENCE"
+        )
         evidence = {
             "fieldId": stable_id(
                 "material-default",
@@ -663,7 +1018,7 @@ def parent_default_rows(
             "expressionObjectPath": expression.get("objectPath"),
             "bindingOrigin": binding_origin,
             "value": value,
-            "fidelity": "SOURCE_EXACT_INPUT",
+            "fidelity": fidelity,
             "closerOverridePresent": normalized_name in override_names.get(kind, set()),
             "provenance": {
                 "physicalPackage": base_export["physicalPackage"],
@@ -671,6 +1026,14 @@ def parent_default_rows(
                 "materialObjectPath": base_export["objectPath"],
                 "materialExportIndex": base_export["exportIndex"],
                 "graphHolder": holder_name,
+                "graphExpressionEvidenceId": raw_expression["evidenceId"],
+                "graphExpressionSerialSha256": raw_expression["serialSha256"],
+                "valuePropertyRecordSha256": (
+                    raw_default_field.get("recordSha256")
+                    if isinstance(raw_default_field, dict)
+                    and raw_default_field.get("status") == "SERIALIZED_EXPLICIT"
+                    else None
+                ),
                 "inheritanceEdgeEvidenceId": (
                     binding["sourceExportEvidenceId"]
                     if binding_origin == "PARENT_DEFAULT"
@@ -678,6 +1041,8 @@ def parent_default_rows(
                 ),
             },
         }
+        if not exact_value_proven:
+            evidence["blocker"] = "PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED"
         if kind == "staticSwitch":
             evidence["selectionRole"] = "PARENT_DEFAULT_NOT_INSTANCE_SELECTION"
             static_defaults.append(evidence)
@@ -685,6 +1050,11 @@ def parent_default_rows(
         if evidence["closerOverridePresent"]:
             continue
         if kind == "texture":
+            evidence["texturePackageIndex"] = (
+                int(raw_default_field["value"])
+                if exact_value_proven
+                else None
+            )
             evidence["sampler"] = {
                 "fidelity": "UNRESOLVED",
                 "blocker": "SAMPLER_EVIDENCE_MISSING",
@@ -695,6 +1065,9 @@ def parent_default_rows(
 
 def build_graph_families(
     rows: list[dict[str, Any]],
+    bindings: dict[str, dict[str, Any]],
+    exports: dict[str, dict[str, Any]],
+    graph_expressions: dict[tuple[str, int], dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, str]]:
     families: dict[str, dict[str, Any]] = {}
     recipe_family: dict[str, str] = {}
@@ -711,6 +1084,51 @@ def build_graph_families(
         key = f"{package_sha}::{graph_path.casefold()}"
         family_id = stable_id("material-family", package_sha, graph_path)
         summary = graph["summary"]
+        binding = bindings[folded(row["sourceMaterialPath"])]
+        base_id = str(binding["renderStateExportEvidenceId"])
+        raw_references = require_list(
+            exports[base_id]["fields"]["expressions"].get("value"),
+            f"{base_id}.rawExpressions",
+        )
+        non_null = sum(reference != 0 for reference in raw_references)
+        raw_expression_rows = [
+            graph_expressions[(base_id, source_order)]
+            for source_order, reference in enumerate(raw_references)
+            if reference != 0
+        ]
+        unresolved_edges = sum(
+            int(input_row.get("packageIndex", -1)) == 0
+            for expression in raw_expression_rows
+            for input_row in require_list(
+                expression.get("projection", {}).get("inputs"),
+                f"{expression['evidenceId']}.inputs",
+            )
+        )
+        raw_counts = {
+            "expressionEntryCount": len(raw_references),
+            "nonNullExpressionCount": non_null,
+            "nullExpressionCount": len(raw_references) - non_null,
+            "unresolvedInputEdgeCount": unresolved_edges,
+        }
+        for name, value in raw_counts.items():
+            require(
+                int(summary.get(name, -1)) == value,
+                f"graph summary disagrees with raw expression evidence: {graph_path}.{name}",
+            )
+        expression_evidence_digest = canonical_sha256(
+            [
+                {
+                    "evidenceId": expression["evidenceId"],
+                    "sourceOrder": expression["sourceOrder"],
+                    "rawReference": expression["rawReferenceFromBaseExpressions"],
+                    "inputPackageIndices": [
+                        input_row.get("packageIndex")
+                        for input_row in expression["projection"]["inputs"]
+                    ],
+                }
+                for expression in raw_expression_rows
+            ]
+        )
         family = {
             "familyId": family_id,
             "graphProvenance": "RECONSTRUCTED_GRAPH",
@@ -723,12 +1141,15 @@ def build_graph_families(
             },
             "cookedEvidence": {
                 "topologyStatus": summary["topologyStatus"],
-                "expressionEntryCount": int(summary.get("expressionEntryCount", -1)),
-                "nonNullExpressionCount": int(summary.get("nonNullExpressionCount", -1)),
-                "nullExpressionCount": int(summary.get("nullExpressionCount", -1)),
-                "unresolvedInputEdgeCount": int(
-                    summary.get("unresolvedInputEdgeCount", -1)
-                ),
+                **raw_counts,
+            },
+            "rawEvidence": {
+                **raw_counts,
+                "baseMaterialEvidenceId": base_id,
+                "expressionsRecordSha256": exports[base_id]["fields"][
+                    "expressions"
+                ]["recordSha256"],
+                "expressionEvidenceSha256": expression_evidence_digest,
             },
             "evaluator": {
                 "evaluatorId": stable_id(
@@ -825,7 +1246,10 @@ def build_render_state(
     }
 
 
-def validate_dds_receipt(dds_receipt: dict[str, Any]) -> list[dict[str, Any]]:
+def validate_dds_receipt(
+    dds_receipt: dict[str, Any],
+    texture_exports: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     require(
         dds_receipt.get("schema")
         == "lostark.artist-effect-exact-dds-recovery-receipt"
@@ -877,7 +1301,39 @@ def validate_dds_receipt(dds_receipt: dict[str, Any]) -> list[dict[str, Any]]:
                 sampling.get(field_name) == expected[field_name],
                 f"sampler evidence drift: {key}.{field_name}",
             )
-        by_path[key] = asset
+        asset_copy = copy.deepcopy(asset)
+        if texture_exports is not None:
+            require(key in texture_exports, f"raw Texture2D evidence missing: {key}")
+            raw_texture = texture_exports[key]
+            raw_export = raw_texture["export"]
+            identity_fields = (
+                "physicalPackage",
+                "physicalPackageByteCount",
+                "physicalPackageSha256",
+                "className",
+                "exportIndex",
+                "packageReference",
+                "serialOffset",
+                "serialSize",
+                "serialSha256",
+                "propertyStreamEnd",
+            )
+            require(
+                all(
+                    folded(raw_export.get(name)) == folded(texture.get(name))
+                    if name in {"physicalPackage", "className"}
+                    else raw_export.get(name) == texture.get(name)
+                    for name in identity_fields
+                )
+                and raw_texture.get("sampling") == sampling
+                and raw_texture.get("dds", {}).get("relativePath")
+                == asset.get("sourceExtractedDdsRelativePath")
+                and raw_texture.get("dds", {}).get("byteCount") == dds.get("byteCount")
+                and raw_texture.get("dds", {}).get("sha256") == dds.get("sha256"),
+                f"DDS receipt disagrees with raw Texture2D export: {key}",
+            )
+            asset_copy["rawTextureEvidence"] = copy.deepcopy(raw_texture)
+        by_path[key] = asset_copy
     require(
         set(by_path) == set(EXPECTED_DDS_BINDINGS),
         "exact DDS golden set changed",
@@ -920,6 +1376,17 @@ def apply_exact_sampler_bindings(
                 not field.get("closerOverridePresent"),
                 f"parent DDS default has a closer override: {logical_path}",
             )
+            require(
+                bool(field.get("provenance", {}).get("graphExpressionEvidenceId"))
+                and bool(
+                    field.get("provenance", {}).get(
+                        "valuePropertyRecordSha256"
+                    )
+                )
+                and isinstance(field.get("texturePackageIndex"), int)
+                and int(field["texturePackageIndex"]) != 0,
+                f"parent DDS binding lacks raw expression texture reference: {logical_path}",
+            )
             direct_names = {
                 folded(item.get("parameterName"))
                 for item in recipe["inputs"]["textureOverrides"]
@@ -928,7 +1395,10 @@ def apply_exact_sampler_bindings(
                 expected["parameterName"].casefold() not in direct_names,
                 f"parent DDS default was shadowed by an override: {logical_path}",
             )
-        sampling = asset["sourceTexture2D"]["sampling"]
+        raw_texture = asset.get("rawTextureEvidence")
+        require(isinstance(raw_texture, dict), f"raw Texture2D join missing: {logical_path}")
+        raw_export = raw_texture["export"]
+        sampling = raw_texture["sampling"]
         binding_id = stable_id(
             "exact-sampler",
             logical_path,
@@ -951,6 +1421,13 @@ def apply_exact_sampler_bindings(
                     "physicalPackageSha256"
                 ],
                 "textureSerialSha256": asset["sourceTexture2D"]["serialSha256"],
+                "rawTextureExportEvidenceId": raw_export["evidenceId"],
+                "rawTextureClassName": raw_export["className"],
+                "rawTextureExportIndex": raw_export["exportIndex"],
+                "rawTexturePackageReference": raw_export["packageReference"],
+                "rawTextureSerialOffset": raw_export["serialOffset"],
+                "rawTextureSerialSize": raw_export["serialSize"],
+                "rawSamplerFields": copy.deepcopy(raw_export["fields"]),
             },
         }
         result.append(
@@ -975,7 +1452,7 @@ def apply_exact_sampler_bindings(
 
 def build_occurrence_rows(
     active_inventory: dict[str, Any], recipe_by_path: dict[str, dict[str, Any]]
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], str, set[str]]:
     require(
         active_inventory.get("schema")
         == "lostark.source-active-effect-inventory-receipt"
@@ -986,6 +1463,8 @@ def build_occurrence_rows(
     require(len(elements) == 35, f"active element denominator changed: {len(elements)}")
     seen: set[str] = set()
     occurrences: list[dict[str, Any]] = []
+    join_rows: list[dict[str, str]] = []
+    used_recipe_ids: set[str] = set()
     builtin_count = 0
     for element in elements:
         require(isinstance(element, dict), "active element must be an object")
@@ -998,6 +1477,20 @@ def build_occurrence_rows(
         )
         require(len(materials) == 1, f"active material join is not singular: {active_id}")
         material_path = str(materials[0] or "")
+        material_parameter_evidence = require_list(
+            element.get("materialParameterEvidence"),
+            f"{active_id}.materialParameterEvidence",
+        )
+        require(
+            len(material_parameter_evidence) == 1
+            and isinstance(material_parameter_evidence[0], dict)
+            and folded(material_parameter_evidence[0].get("sourceMaterialPath"))
+            == folded(material_path),
+            f"occurrence material evidence join changed: {active_id}",
+        )
+        join_rows.append(
+            {"activeElementId": active_id, "sourceMaterialPath": material_path}
+        )
         key = material_path.casefold()
         if key == "enginematerials.defaultparticle":
             require(
@@ -1008,6 +1501,7 @@ def build_occurrence_rows(
             continue
         require(key in recipe_by_path, f"active occurrence material is unresolved: {active_id}")
         recipe = recipe_by_path[key]
+        used_recipe_ids.add(str(recipe["recipeId"]))
         occurrences.append(
             {
                 "occurrenceId": active_id,
@@ -1030,7 +1524,18 @@ def build_occurrence_rows(
         len(occurrences) == EXPECTED_OCCURRENCE_COUNT,
         f"rendered material occurrence denominator changed: {len(occurrences)}",
     )
-    return sorted(occurrences, key=lambda row: row["occurrenceId"])
+    join_sha256 = canonical_sha256(
+        sorted(join_rows, key=lambda row: row["activeElementId"])
+    )
+    require(
+        join_sha256 == EXPECTED_OCCURRENCE_MATERIAL_JOIN_SHA256,
+        "active occurrence/material stable join changed",
+    )
+    require(
+        used_recipe_ids == {str(recipe["recipeId"]) for recipe in recipe_by_path.values()},
+        "not every Material recipe is used by an active occurrence",
+    )
+    return sorted(occurrences, key=lambda row: row["occurrenceId"]), join_sha256, used_recipe_ids
 
 
 def build_contract(
@@ -1042,10 +1547,17 @@ def build_contract(
 ) -> dict[str, Any]:
     rows = closure_rows(material_closure)
     validate_parent_cycles(rows)
-    render_bindings, render_exports = validate_render_receipt(
+    (
+        render_bindings,
+        render_exports,
+        graph_expressions,
+        texture_exports,
+    ) = validate_render_receipt(
         render_receipt, rows
     )
-    graph_families, family_by_recipe = build_graph_families(rows)
+    graph_families, family_by_recipe = build_graph_families(
+        rows, render_bindings, render_exports, graph_expressions
+    )
     recipes: list[dict[str, Any]] = []
 
     for row in rows:
@@ -1079,7 +1591,7 @@ def build_contract(
             "texture": texture_inputs,
         }
         parent_defaults, static_defaults = parent_default_rows(
-            row, instance_inputs, binding, render_exports
+            row, instance_inputs, binding, render_exports, graph_expressions
         )
         render_state = build_render_state(row, binding, render_exports)
         static_flag = source_export["fields"].get(
@@ -1098,6 +1610,11 @@ def build_contract(
             for field in REQUIRED_RENDER_FIELDS
         ):
             blockers.add("RENDER_STATE_DEFAULT_PROVENANCE_UNRESOLVED")
+        if any(
+            field.get("fidelity") != "SOURCE_EXACT_INPUT"
+            for field in parent_defaults + static_defaults
+        ):
+            blockers.add("PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED")
         recipe = {
             "recipeId": stable_id("material-recipe", material_path),
             "sourceMaterialPath": material_path,
@@ -1145,7 +1662,7 @@ def build_contract(
         recipes.append(recipe)
 
     recipes.sort(key=lambda row: row["recipeId"])
-    dds_assets = validate_dds_receipt(dds_receipt)
+    dds_assets = validate_dds_receipt(dds_receipt, texture_exports)
     exact_sampler_bindings = apply_exact_sampler_bindings(recipes, dds_assets)
     for recipe in recipes:
         unresolved_sampler_count = sum(
@@ -1170,7 +1687,9 @@ def build_contract(
             }
 
     recipe_by_path = {folded(row["sourceMaterialPath"]): row for row in recipes}
-    occurrences = build_occurrence_rows(active_inventory, recipe_by_path)
+    occurrences, occurrence_join_sha256, used_recipe_ids = build_occurrence_rows(
+        active_inventory, recipe_by_path
+    )
     scalar_count = sum(len(row["inputs"]["scalarOverrides"]) for row in recipes)
     vector_count = sum(len(row["inputs"]["vectorOverrides"]) for row in recipes)
     texture_count = sum(len(row["inputs"]["textureOverrides"]) for row in recipes)
@@ -1201,6 +1720,20 @@ def build_contract(
     require(parent_exact == 1, f"exact parent sampler denominator changed: {parent_exact}")
     aggregate_blockers = sorted(
         {blocker for recipe in recipes for blocker in recipe["blockers"]}
+    )
+    source_exact_input_recipe_count = sum(
+        all(
+            field.get("fidelity") == "SOURCE_EXACT_INPUT"
+            for collection in (
+                recipe["inputs"]["scalarOverrides"],
+                recipe["inputs"]["vectorOverrides"],
+                recipe["inputs"]["textureOverrides"],
+                recipe["inputs"]["parentDefaults"],
+                recipe["staticPermutation"]["parentDefaults"],
+            )
+            for field in collection
+        )
+        for recipe in recipes
     )
 
     contract: dict[str, Any] = {
@@ -1242,6 +1775,10 @@ def build_contract(
             "engineBuiltinMaterialOccurrenceCount": 1,
             "materialRecipeCount": len(recipes),
             "materialOccurrenceCount": len(occurrences),
+            "usedMaterialRecipeCount": len(used_recipe_ids),
+            "unusedMaterialRecipeCount": len(recipes) - len(used_recipe_ids),
+            "unexpectedOccurrenceMaterialCount": 0,
+            "occurrenceMaterialJoinSha256": occurrence_join_sha256,
             "scalarOverrideCount": scalar_count,
             "vectorOverrideCount": vector_count,
             "directTextureOverrideCount": texture_count,
@@ -1260,7 +1797,7 @@ def build_contract(
             ),
             "sourceExactGraphFamilyCount": 0,
             "reconstructedGraphFamilyCount": len(graph_families),
-            "sourceExactInputRecipeCount": len(recipes),
+            "sourceExactInputRecipeCount": source_exact_input_recipe_count,
             "sourceExactStaticPermutationRecipeCount": 0,
             "sourceExactFullRenderStateRecipeCount": 0,
             "sourceExactPartialCullRecipeCount": sum(
@@ -1323,6 +1860,68 @@ def validate_contract(
             in family.get("blockers", []),
             "graph family blocker set was weakened",
         )
+        cooked_evidence = family.get("cookedEvidence")
+        raw_evidence = family.get("rawEvidence")
+        require(
+            isinstance(cooked_evidence, dict)
+            and isinstance(raw_evidence, dict),
+            "graph family raw/cooked evidence is missing",
+        )
+        for name in (
+            "expressionEntryCount",
+            "nonNullExpressionCount",
+            "nullExpressionCount",
+            "unresolvedInputEdgeCount",
+        ):
+            require(
+                int(cooked_evidence.get(name, -1))
+                == int(raw_evidence.get(name, -2)),
+                f"graph family count was redistributed: {family.get('familyId')}.{name}",
+            )
+        require(
+            int(raw_evidence["expressionEntryCount"])
+            == int(raw_evidence["nonNullExpressionCount"])
+            + int(raw_evidence["nullExpressionCount"])
+            and bool(raw_evidence.get("baseMaterialEvidenceId"))
+            and bool(raw_evidence.get("expressionsRecordSha256"))
+            and bool(raw_evidence.get("expressionEvidenceSha256")),
+            f"graph family raw evidence is invalid: {family.get('familyId')}",
+        )
+        require_sha256(
+            raw_evidence.get("expressionsRecordSha256"),
+            f"{family.get('familyId')}.expressionsRecord",
+        )
+        require_sha256(
+            raw_evidence.get("expressionEvidenceSha256"),
+            f"{family.get('familyId')}.expressionEvidence",
+        )
+
+    require(
+        sum(int(row["rawEvidence"]["nullExpressionCount"]) for row in families)
+        == EXPECTED_NULL_EXPRESSION_COUNT
+        and sum(
+            int(row["rawEvidence"]["unresolvedInputEdgeCount"])
+            for row in families
+        )
+        == EXPECTED_UNRESOLVED_EDGE_COUNT,
+        "graph family raw aggregate changed",
+    )
+    require(
+        canonical_sha256(
+            sorted(
+                [
+                    {
+                        "familyId": row["familyId"],
+                        "rawEvidence": row["rawEvidence"],
+                    }
+                    for row in families
+                ],
+                key=lambda row: row["familyId"],
+            )
+        )
+        == EXPECTED_GRAPH_FAMILY_RAW_EVIDENCE_SHA256,
+        "graph family raw evidence fixture changed",
+    )
 
     for recipe in recipes:
         require(isinstance(recipe, dict), "contract recipe must be an object")
@@ -1355,6 +1954,30 @@ def validate_contract(
             and "STATIC_PERMUTATION_SELECTIONS_UNRESOLVED" in blockers,
             f"static permutation was laundered: {recipe_id}",
         )
+        for field in require_list(
+            static.get("parentDefaults"), f"{recipe_id}.staticParentDefaults"
+        ):
+            require(isinstance(field, dict), f"invalid static parent default: {recipe_id}")
+            provenance = field.get("provenance")
+            require(
+                isinstance(provenance, dict)
+                and bool(provenance.get("graphExpressionEvidenceId"))
+                and bool(provenance.get("graphExpressionSerialSha256")),
+                f"static parent default raw-expression join missing: {recipe_id}",
+            )
+            if field.get("fidelity") == "SOURCE_EXACT_INPUT":
+                require(
+                    bool(provenance.get("valuePropertyRecordSha256")),
+                    f"static parent default exact value proof missing: {recipe_id}",
+                )
+            else:
+                require(
+                    field.get("fidelity")
+                    == "UNRESOLVED_PARENT_DEFAULT_EVIDENCE"
+                    and field.get("blocker")
+                    == "PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED",
+                    f"static parent default fidelity invalid: {recipe_id}",
+                )
         render = recipe.get("renderState")
         require(
             isinstance(render, dict)
@@ -1363,6 +1986,30 @@ def validate_contract(
             and "FULL_CULL_MODE_UNRESOLVED" in blockers
             and "FULL_RENDER_STATE_UNRESOLVED" in blockers,
             f"partial render state was promoted to full exact: {recipe_id}",
+        )
+        render_fields = render.get("fields")
+        require(isinstance(render_fields, dict), f"render fields missing: {recipe_id}")
+        unresolved_render_default = any(
+            render_fields.get(field_name, {}).get("status") == "OMITTED_FROM_EXPORT"
+            for field_name in REQUIRED_RENDER_FIELDS
+        )
+        require(
+            ("RENDER_STATE_DEFAULT_PROVENANCE_UNRESOLVED" in blockers)
+            == unresolved_render_default,
+            f"render default blocker is not field-derived: {recipe_id}",
+        )
+        twosided = render_fields.get("twosided")
+        exact_partial_cull = (
+            isinstance(twosided, dict)
+            and twosided.get("status") == "SERIALIZED_EXPLICIT"
+            and twosided.get("fidelity") == "SOURCE_EXACT_PARTIAL_CULL"
+            and isinstance(twosided.get("value"), bool)
+            and bool(twosided.get("recordSha256"))
+            and bool(twosided.get("exportEvidenceId"))
+        )
+        require(
+            bool(render.get("partialCullExact")) == exact_partial_cull,
+            f"partial cull exactness is not raw-field-derived: {recipe_id}",
         )
         require(
             "COOKED_STRIPPED_ARITHMETIC_GRAPH" in blockers
@@ -1389,10 +2036,35 @@ def validate_contract(
                     f"duplicate global input field ID: {field_id}",
                 )
                 all_input_fields[field_id] = field
-                require(
-                    field.get("fidelity") == "SOURCE_EXACT_INPUT",
-                    f"input field lost exact-input fidelity: {field_id}",
-                )
+                if collection_name == "parentDefaults":
+                    provenance = field.get("provenance")
+                    require(
+                        isinstance(provenance, dict)
+                        and bool(provenance.get("graphExpressionEvidenceId"))
+                        and bool(provenance.get("graphExpressionSerialSha256")),
+                        f"parent default raw-expression join is incomplete: {field_id}",
+                    )
+                    if field.get("fidelity") == "SOURCE_EXACT_INPUT":
+                        require(
+                            bool(provenance.get("valuePropertyRecordSha256"))
+                            and field.get("blocker") is None,
+                            f"parent default exact value proof is incomplete: {field_id}",
+                        )
+                    else:
+                        require(
+                            field.get("fidelity")
+                            == "UNRESOLVED_PARENT_DEFAULT_EVIDENCE"
+                            and field.get("blocker")
+                            == "PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED"
+                            and "PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED"
+                            in blockers,
+                            f"unproven parent default was not blocked: {field_id}",
+                        )
+                else:
+                    require(
+                        field.get("fidelity") == "SOURCE_EXACT_INPUT",
+                        f"instance input lost exact-input fidelity: {field_id}",
+                    )
                 if field.get("bindingOrigin") == "PARENT_DEFAULT":
                     require(
                         field.get("closerOverridePresent") is False
@@ -1403,6 +2075,20 @@ def validate_contract(
                         ),
                         f"parent default proof is incomplete: {field_id}",
                     )
+        unresolved_parent_default = any(
+            field.get("fidelity") != "SOURCE_EXACT_INPUT"
+            for field in inputs["parentDefaults"]
+        ) or any(
+            field.get("fidelity") != "SOURCE_EXACT_INPUT"
+            for field in require_list(
+                static.get("parentDefaults"), f"{recipe_id}.staticParentDefaults"
+            )
+        )
+        require(
+            ("PARENT_DEFAULT_VALUE_EVIDENCE_UNRESOLVED" in blockers)
+            == unresolved_parent_default,
+            f"parent-default blocker is not evidence-derived: {recipe_id}",
+        )
         texture_fields = list(inputs["textureOverrides"]) + [
             field for field in inputs["parentDefaults"]
             if field.get("fieldKind") == "texture"
@@ -1411,9 +2097,20 @@ def validate_contract(
             sampler = field.get("sampler")
             require(isinstance(sampler, dict), f"texture sampler state missing: {field['fieldId']}")
             if sampler.get("fidelity") == "SOURCE_EXACT_SAMPLER":
+                provenance = sampler.get("provenance")
                 require(
                     bool(sampler.get("bindingId"))
-                    and isinstance(sampler.get("provenance"), dict),
+                    and isinstance(provenance, dict)
+                    and bool(provenance.get("rawTextureExportEvidenceId"))
+                    and folded(provenance.get("rawTextureClassName")) == "texture2d"
+                    and isinstance(provenance.get("rawTextureExportIndex"), int)
+                    and int(provenance.get("rawTexturePackageReference", -1))
+                    == int(provenance.get("rawTextureExportIndex", -2)) + 1
+                    and isinstance(provenance.get("rawTextureSerialOffset"), int)
+                    and int(provenance.get("rawTextureSerialOffset", -1)) >= 0
+                    and isinstance(provenance.get("rawTextureSerialSize"), int)
+                    and int(provenance.get("rawTextureSerialSize", 0)) > 0
+                    and bool(provenance.get("rawSamplerFields")),
                     f"exact sampler provenance is incomplete: {field['fieldId']}",
                 )
                 exact_sampler_field_ids.add(field["fieldId"])
@@ -1423,6 +2120,14 @@ def validate_contract(
                     and sampler.get("blocker") == "SAMPLER_EVIDENCE_MISSING",
                     f"unproven sampler gained values: {field['fieldId']}",
                 )
+        unresolved_sampler = any(
+            field.get("sampler", {}).get("fidelity") != "SOURCE_EXACT_SAMPLER"
+            for field in texture_fields
+        )
+        require(
+            ("SAMPLER_BINDINGS_INCOMPLETE" in blockers) == unresolved_sampler,
+            f"sampler blocker is not field-derived: {recipe_id}",
+        )
 
     sampler_field_ids: set[str] = set()
     for sampler in samplers:
@@ -1443,23 +2148,41 @@ def validate_contract(
         "exact sampler field set was laundered",
     )
 
+    occurrence_ids: set[str] = set()
+    used_recipe_ids: set[str] = set()
     for occurrence in occurrences:
         require(isinstance(occurrence, dict), "contract occurrence must be an object")
+        occurrence_id = str(occurrence.get("occurrenceId") or "")
+        require(
+            bool(occurrence_id) and occurrence_id not in occurrence_ids,
+            f"duplicate contract occurrence: {occurrence_id}",
+        )
+        occurrence_ids.add(occurrence_id)
         recipe_id = str(occurrence.get("materialRecipeId") or "")
         require(recipe_id in recipe_by_id, f"occurrence recipe is missing: {recipe_id}")
         recipe = recipe_by_id[recipe_id]
+        used_recipe_ids.add(recipe_id)
         require(
-            occurrence.get("blockers") == recipe["blockers"]
+            folded(occurrence.get("sourceMaterialPath"))
+            == folded(recipe.get("sourceMaterialPath"))
+            and occurrence.get("blockers") == recipe["blockers"]
             and int(occurrence.get("blockerCount", -1)) == recipe["blockerCount"]
             and occurrence.get("admission") == recipe["admission"],
             f"occurrence blocker set diverged: {occurrence.get('occurrenceId')}",
         )
+    require(
+        used_recipe_ids == set(recipe_by_id),
+        "contract occurrence set does not use every Material recipe",
+    )
 
     summary = contract.get("summary")
     require(isinstance(summary, dict), "contract summary missing")
     expected_summary = {
         "materialRecipeCount": EXPECTED_RECIPE_COUNT,
         "materialOccurrenceCount": EXPECTED_OCCURRENCE_COUNT,
+        "usedMaterialRecipeCount": EXPECTED_RECIPE_COUNT,
+        "unusedMaterialRecipeCount": 0,
+        "unexpectedOccurrenceMaterialCount": 0,
         "scalarOverrideCount": EXPECTED_SCALAR_OVERRIDE_COUNT,
         "vectorOverrideCount": EXPECTED_VECTOR_OVERRIDE_COUNT,
         "directTextureOverrideCount": EXPECTED_TEXTURE_OVERRIDE_COUNT,
@@ -1480,6 +2203,20 @@ def validate_contract(
     }
     for name, expected in expected_summary.items():
         require(int(summary.get(name, -1)) == expected, f"contract summary drift: {name}")
+    require(
+        summary.get("occurrenceMaterialJoinSha256")
+        == EXPECTED_OCCURRENCE_MATERIAL_JOIN_SHA256,
+        "contract occurrence/material join digest changed",
+    )
+    partial_cull_count = sum(
+        bool(recipe["renderState"]["partialCullExact"])
+        for recipe in recipes
+    )
+    require(
+        int(summary.get("sourceExactPartialCullRecipeCount", -1))
+        == partial_cull_count,
+        "partial-cull summary is not recipe-derived",
+    )
     sampler_origins = Counter(row.get("bindingOrigin") for row in samplers)
     require(
         sampler_origins == Counter({"INSTANCE_OVERRIDE": 3, "PARENT_DEFAULT": 1}),
@@ -1517,6 +2254,13 @@ def build_from_paths(
         == tracked_json_text_sha256(material_closure_path),
         "render-state receipt material-closure hash mismatch",
     )
+    dds_source = render_receipt.get("source", {}).get("exactDdsReceipt", {})
+    require(
+        dds_source.get("hashDomain") == "TRACKED_DERIVED_EOL_CANONICAL_TEXT"
+        and dds_source.get("canonicalTextSha256")
+        == tracked_json_text_sha256(dds_receipt_path),
+        "render-state receipt exact-DDS hash mismatch",
+    )
     for evidence_name, expected_path in (
         (
             "generator",
@@ -1528,6 +2272,17 @@ def build_from_paths(
             "rawPackageParser",
             REPO_ROOT
             / "Tools/LevelPlacementExtractor/extract_ue3_placements.py",
+        ),
+        (
+            "materialClosureParser",
+            REPO_ROOT
+            / "Tools/LevelPlacementExtractor/"
+            "extract_ue3_effect_material_closure.py",
+        ),
+        (
+            "materialGraphParser",
+            REPO_ROOT
+            / "Tools/LevelPlacementExtractor/extract_ue3_material_graph.py",
         ),
     ):
         tool = render_receipt.get("source", {}).get(evidence_name, {})
@@ -1590,12 +2345,31 @@ def unique_files_by_name(root: Path, pattern: str) -> dict[str, Path]:
 
 def verify_external_artifacts(
     dds_receipt: dict[str, Any],
+    render_receipt: dict[str, Any],
     source_package_root: Path,
     exact_dds_root: Path,
     source_pack_manifest: Path,
 ) -> None:
     packages = unique_files_by_name(source_package_root, "*.upk")
-    assets = validate_dds_receipt(dds_receipt)
+    require(
+        render_receipt.get("schema")
+        == "lostark.artist-31470-material-render-state-evidence-receipt"
+        and render_receipt.get("formatVersion") == 2,
+        "unsupported render-state evidence receipt for deep verification",
+    )
+    validate_self_digest(render_receipt, "receiptSha256", "render-state receipt")
+    texture_exports = {
+        folded(row.get("logicalObjectPath")): row
+        for row in require_list(
+            render_receipt.get("textureSamplerExports"),
+            "raw texture sampler exports",
+        )
+    }
+    require(
+        len(texture_exports) == 4,
+        "raw Texture2D evidence denominator changed",
+    )
+    assets = validate_dds_receipt(dds_receipt, texture_exports)
     for asset in assets:
         texture = asset["sourceTexture2D"]
         package_name = str(texture.get("physicalPackage") or "")
@@ -1651,6 +2425,7 @@ def main() -> int:
     if all(value is not None for value in deep_values):
         verify_external_artifacts(
             load_json(args.exact_dds_receipt),
+            load_json(args.render_state_receipt),
             args.source_package_root,
             args.exact_dds_root,
             args.source_pack_manifest,

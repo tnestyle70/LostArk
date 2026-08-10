@@ -9,18 +9,20 @@ full render/cull state는 unresolved다. 따라서 executable/Product admission�
 0이다.
 
 Client runtime, HLSL, `Effect_DocumentRenderer`, Effect Tool, source contract, distribution closure,
-geometry/WModel은 수정하지 않았다. 이미지 캡처와 육안 검증도 실행하지 않았다.
+geometry/WModel은 수정하지 않았다.
 
 ## 구현 파일
 
 - `Tools/LevelPlacementExtractor/extract_artist_31470_material_render_state.py`
-  - raw UPK 16개에서 source/base export 48개를 직접 해독한다.
+  - raw UPK 19개에서 source/base export 48개, graph expression export 925개, Texture2D export 4개를
+    직접 해독한다.
   - package raw SHA/size, export index/path/class, serial offset/size/SHA, tagged-property offset/type/value,
     encoded value SHA와 record SHA를 생성한다.
   - omitted field는 `OMITTED_FROM_EXPORT / UNRESOLVED_DEFAULT_PROVENANCE`로 남긴다.
   - tracked generator/parser는 EOL-canonical source SHA, UPK는 raw artifact SHA domain을 쓴다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
-  - 27 binding, 48 unique raw export, 16 raw package의 generated/self-digested receipt다.
+  - 27 binding, 48 unique raw source/base export, 925 graph expression, 4 Texture2D, 19 raw package의
+    generated/self-digested receipt다.
 - `Tools/LevelPlacementExtractor/build_artist_31470_material_evidence_contract.py`
   - active inventory, material closure, exact DDS receipt, raw render-state receipt를 pure builder로 join한다.
   - exact input/sampler/render/partial-cull과 reconstructed graph를 필드별로 분리한다.
@@ -28,7 +30,7 @@ geometry/WModel은 수정하지 않았다. 이미지 캡처와 육안 검증도 
 - `Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json`
   - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated contract다.
 - `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
-  - 실제 checked evidence를 기준으로 pure builder mutation 16개를 검증한다.
+  - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 24개를 검증한다.
 - `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`
   - shallow canonical/self check와 deep raw UPK/DDS/external manifest check를 제공한다.
 - `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
@@ -49,6 +51,8 @@ geometry/WModel은 수정하지 않았다. 이미지 캡처와 육안 검증도 
 | exact direct sampler / unproven direct sampler | 3 / 68 |
 | exact parent-default sampler | 1 |
 | exact sampler 전체 | 4 |
+| surviving parent default / static-switch parent default | 297 / 94 |
+| raw graph expression export | 925 |
 | unique arithmetic family | 23 |
 | cooked-stripped null expression slot | 1,803 |
 | unresolved graph edge | 502 |
@@ -86,13 +90,17 @@ Parent graph의 surviving switch default 94개도 `PARENT_DEFAULT_NOT_INSTANCE_S
 ## exact input과 parent default 경계
 
 - 342 scalar, 19 vector, 71 direct texture override는 exact source package/export와 raw parameter-array
-  record SHA에 연결한 `SOURCE_EXACT_INPUT`이다.
-- surviving parent default는 exact parent package/export, raw MIC inheritance edge, 같은 kind/name의
-  closer override 부재를 모두 증명한 경우에만 포함한다.
+  record SHA뿐 아니라 serialized element order/name/value/package reference까지 일치하는
+  `SOURCE_EXACT_INPUT`이다.
+- surviving parent default 297개와 static-switch parent default 94개는 exact parent package/export,
+  raw MIC inheritance edge, raw expression export/path/serial, default 또는 texture property record,
+  같은 kind/name의 closer override 부재를 모두 증명한 경우에만 exact다.
 - parent default는 항상 `bindingOrigin=PARENT_DEFAULT`를 유지한다. raw Material 자체의 default는
   `SELF_DEFAULT`로 분리한다.
 - exact DDS/sampler 4건은 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1`이다. 네 번째
   `fx_tex_01.fx_c_atypical_016 / dissolve_texture`를 direct override로 세지 않는다.
+- 4건 모두 raw Texture2D의 class/export/reference/serial offset·size·SHA와 tagged sampler field를
+  DDS receipt에 join한다. Parent-default 1건은 raw expression의 Texture reference도 함께 요구한다.
 - 나머지 direct texture override 68개에는 address/filter/color-space 값을 만들지 않고
   `SAMPLER_EVIDENCE_MISSING`을 유지한다.
 
@@ -102,6 +110,8 @@ Exact `(parent package SHA, Material path)` 기준 family는 23개다. 23/23 모
 `graphProvenance=RECONSTRUCTED_GRAPH`, `sourceExactGraph=false`다. Aggregate cooked evidence는 null
 expression slot 1,803개와 unresolved input edge 502개다. 각 family의 evaluator는 별도 stable ID,
 `RECONSTRUCTED_ARITHMETIC_FAMILY`, `sourceExact=false`, `implemented=false`를 가진다.
+두 aggregate는 closure summary의 복사가 아니라 23개 raw `Expressions` 배열과 925 expression input
+reference에서 family별로 다시 계산한다. family 사이에 count를 재분배해 aggregate만 유지하는 변조도 거부한다.
 
 Aggregate blocker는 다음 8개다.
 
@@ -126,6 +136,9 @@ Recipe blocker set은 occurrence에 lossless 상속된다. Recipe/occurrence adm
 - UPK, DDS, export serial, tagged-property record는 모두 raw bytes SHA를 사용한다.
 - duplicate JSON object key, duplicate/blank parameter, missing path/hash/export, parent cycle, invalid typed
   render value, stripped-edge 소실을 모두 거부한다.
+- 35개 active element의 `sourceMaterials`와 `materialParameterEvidence.sourceMaterialPath`를 같은 값으로
+  검증하고 stable join digest를 고정한다. 27 recipe는 34 typed occurrence에서 모두 사용되며 unused와
+  unexpected material은 각각 0이다.
 
 ## 검증 결과
 
@@ -136,7 +149,7 @@ cd Tools/LevelPlacementExtractor
 python -m unittest -q test_build_artist_31470_material_evidence_contract
 ```
 
-결과: `Ran 16 tests ... OK`.
+결과: shallow `Ran 24 tests ... OK (skipped=1)`, deep `Ran 24 tests ... OK`.
 
 공격 fixture는 static flag의 selected permutation 세탁, partial `TwoSided`의 full cull 승격, DDS hash와
 sampler origin 변경, parent-default shadowing, extra exact sampler 세탁, parent cycle, cooked stripped edge
@@ -164,7 +177,8 @@ PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 in
 PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 runtime=false product=false
 ```
 
-Deep audit에서 raw render receipt 27 binding/48 export/16 package가 `--check` 재생성 일치했고,
+Deep audit에서 raw render receipt 27 binding/48 source/base export/925 expression/4 Texture2D/19 package가
+`--check` 재생성 일치했고,
 4개 DDS와 source Texture2D UPK, external manifest의 raw size/SHA가 모두 일치했다.
 
 ### 전체 ProjectAudit
@@ -185,7 +199,7 @@ ErrorRecord로 전달되던 문제는 focused audit 내부에서 output을 captu
 - 나머지 direct texture 68개와 필요한 parent texture의 sampler evidence
 - 23 arithmetic family evaluator 구현과 cooked stripping을 넘는 numeric oracle
 - typed compiler/runtime/HLSL/renderer 소비와 27/27 recipe, 34/34 occurrence execution admission
-- Product publish, visual approval, 이미지 기반 비교
+- Product publish
 
 이 RESULT는 Material evidence contract 첫 slice만 완료로 기록한다. 위 항목이 닫히기 전에는 완전 복원이나
 Product material 완료로 판정하지 않는다.

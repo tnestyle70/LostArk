@@ -21,6 +21,8 @@ Material evidence contract로 고정한다. 이 단계는 원본 입력과 실�
 - exact `(parent package SHA, Material path)` 기준 arithmetic family는 23개다. 이 23개 graph의
   cooked-stripped null expression slot 합계는 1,803개, unresolved input edge 합계는 502개다.
   23/23 모두 `RECONSTRUCTED_GRAPH`이며 Source-exact graph admission은 금지한다.
+- 23개 raw `Expressions` 배열의 non-null expression export는 925개다. parent/default 값과 graph
+  count는 이 export 증거에서 다시 계산하며 closure summary만 신뢰하지 않는다.
 
 ## fidelity 경계
 
@@ -41,7 +43,9 @@ Material evidence contract로 고정한다. 이 단계는 원본 입력과 실�
 다시 읽는다. package byte count/raw SHA, export index/path/class, serial offset/size/SHA, tagged-property
 stream 범위, 각 선택 필드의 tag/value offset·type·value·raw record SHA를 기록한다. 누락 필드는
 `OMITTED_FROM_EXPORT`로 남긴다. tracked parser와 generator의 EOL-canonical source SHA 및 placeholder 기반 재현 command를
-receipt에 기록한다. 출력 self digest는 자기 필드를 제외한 canonical JSON SHA다.
+receipt에 기록한다. 925개 non-null graph expression의 export/path/property/default/texture/input reference와
+exact DDS 4건의 raw Texture2D class/export/reference/serial/sampler property도 같은 receipt에 기록한다.
+출력 self digest는 자기 필드를 제외한 canonical JSON SHA다.
 
 ### `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
 
@@ -60,18 +64,22 @@ builder는 다음을 수행한다.
 
 1. 27 recipe/34 occurrence를 case-insensitive stable key로 join한다.
 2. package/path/hash/export, parameter blank/duplicate, parent cycle을 거부한다.
-3. scalar/vector/texture override와 surviving parent default를 `SOURCE_EXACT_INPUT`으로 분리한다.
-   Parent default는 exact parent package/export, exact inheritance edge, 같은 이름의 closer override 부재를
-   모두 필드별로 증명하고 `bindingOrigin=PARENT_DEFAULT`를 보존할 때만 포함한다.
+3. scalar/vector/texture override는 raw array의 element order/name/value/package reference까지 closure와
+   일치해야 `SOURCE_EXACT_INPUT`이다. Surviving parent default는 exact parent package/export,
+   exact inheritance edge, raw expression export와 default/texture property record, 같은 이름의 closer
+   override 부재를 모두 필드별로 증명하고 `bindingOrigin=PARENT_DEFAULT`를 보존할 때만 exact다.
 4. exact sampler 4건을 `INSTANCE_OVERRIDE=3`, `PARENT_DEFAULT=1`로 검증하고 나머지 68 direct
    texture override에는 sampler 값을 만들지 않는다.
 5. parent static-switch default와 MIC selected permutation을 별도 배열에 둔다. 후자는 현재 비어 있고
    `bHasStaticPermutationResource`가 true여도 blocker를 유지한다.
 6. explicit render-state 필드와 omitted/default-unproven 필드를 분리한다. partial cull만 허용한다.
-7. cooked partial graph와 reconstructed evaluator ID를 분리한다. evaluator는 `implemented=false`다.
+7. cooked partial graph와 reconstructed evaluator ID를 분리한다. 각 family의 1,803 null slot과 502
+   unresolved edge는 raw expression reference/input에서 다시 계산한다. evaluator는 `implemented=false`다.
 8. recipe blocker union을 occurrence에 그대로 상속하고, blocker count가 0일 때만 executable/Product
    admission을 열 수 있게 검증한다. 이번 slice의 admission은 0/27, 0/34다.
-9. repo tracked JSON은 UTF-8 byte sequence의 EOL만 LF로 정규화한 exact canonical text hash/check를
+9. occurrence의 `sourceMaterials`와 `materialParameterEvidence.sourceMaterialPath`를 동일한 stable join으로
+   고정하고 27 recipe가 34 occurrence에서 모두 사용되는지 검사한다.
+10. repo tracked JSON은 UTF-8 byte sequence의 EOL만 LF로 정규화한 exact canonical text hash/check를
    사용한다. key order, 공백, 숫자 표기와 JSON type은 그대로 비교하여 `1`과 `1.0`, key reorder를
    동등 처리하지 않는다. self hash만 정렬 canonical serialization을 사용할 수 있다. 외부 JSON,
    UPK, DDS는 raw hash만 사용한다.
@@ -84,8 +92,9 @@ blocker, aggregate admission을 가진 generated contract다.
 ### `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
 
 실제 문서 baseline과 pure in-memory mutation을 함께 검증한다. missing/corrupt path/hash, duplicate/blank
-parameter, parent cycle, fake static selection, `TwoSided`의 full-cull 세탁, DDS/sampler hash와 origin,
-stripped edge blocker, reconstructed evaluator의 exact 승격, blocker-set loss, occurrence join loss,
+parameter, parent cycle, instance 값/순서 변조, parent expression 값 변조, fake static selection,
+`TwoSided`의 full-cull 세탁, Texture2D class/export/serial과 DDS/sampler hash/origin, family별 graph count
+재분배, reconstructed evaluator의 exact 승격, blocker-set loss, valid-path occurrence 재할당,
 tracked LF/CRLF equivalence와 raw artifact CRLF mutation 차단을 포함한다.
 
 ### `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`
