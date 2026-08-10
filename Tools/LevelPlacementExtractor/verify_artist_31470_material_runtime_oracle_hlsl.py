@@ -7,6 +7,7 @@ import argparse
 import ctypes
 import hashlib
 import json
+import math
 import struct
 from pathlib import Path
 from typing import Any, Iterable
@@ -38,6 +39,22 @@ D3D11_RESOURCE_MISC_BUFFER_STRUCTURED = 0x40
 D3D11_SRV_DIMENSION_BUFFER = 1
 D3D11_UAV_DIMENSION_BUFFER = 1
 D3D11_MAP_READ = 1
+D3D11_BLEND_ZERO = 1
+D3D11_BLEND_ONE = 2
+D3D11_BLEND_SRC_ALPHA = 5
+D3D11_BLEND_INV_SRC_ALPHA = 6
+D3D11_BLEND_OP_ADD = 1
+D3D11_COLOR_WRITE_ENABLE_ALL = 0x0F
+D3D11_DEPTH_WRITE_MASK_ZERO = 0
+D3D11_DEPTH_WRITE_MASK_ALL = 1
+D3D11_COMPARISON_LESS = 2
+D3D11_COMPARISON_NEVER = 1
+D3D11_FILL_SOLID = 3
+D3D11_CULL_NONE = 1
+D3D11_CULL_BACK = 3
+D3D11_FILTER_MIN_MAG_MIP_LINEAR = 0x15
+D3D11_TEXTURE_ADDRESS_WRAP = 1
+D3D11_TEXTURE_ADDRESS_CLAMP = 3
 
 
 def require(condition: bool, message: str) -> None:
@@ -57,7 +74,12 @@ def tracked_text_bytes(path: Path) -> bytes:
 
 
 def read_receipt(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8-sig"))
+    def reject_constant(token: str) -> None:
+        raise RuntimeError(f"non-finite JSON constant is forbidden: {token}")
+
+    value = json.loads(
+        path.read_text(encoding="utf-8-sig"), parse_constant=reject_constant
+    )
     require(isinstance(value, dict), "Material runtime oracle receipt is not an object")
     return value
 
@@ -105,6 +127,79 @@ class MappedSubresource(ctypes.Structure):
     ]
 
 
+class RenderTargetBlendDesc(ctypes.Structure):
+    _fields_ = [
+        ("BlendEnable", ctypes.c_int32),
+        ("SrcBlend", ctypes.c_uint32),
+        ("DestBlend", ctypes.c_uint32),
+        ("BlendOp", ctypes.c_uint32),
+        ("SrcBlendAlpha", ctypes.c_uint32),
+        ("DestBlendAlpha", ctypes.c_uint32),
+        ("BlendOpAlpha", ctypes.c_uint32),
+        ("RenderTargetWriteMask", ctypes.c_uint8),
+    ]
+
+
+class BlendDesc(ctypes.Structure):
+    _fields_ = [
+        ("AlphaToCoverageEnable", ctypes.c_int32),
+        ("IndependentBlendEnable", ctypes.c_int32),
+        ("RenderTarget", RenderTargetBlendDesc * 8),
+    ]
+
+
+class DepthStencilOpDesc(ctypes.Structure):
+    _fields_ = [
+        ("StencilFailOp", ctypes.c_uint32),
+        ("StencilDepthFailOp", ctypes.c_uint32),
+        ("StencilPassOp", ctypes.c_uint32),
+        ("StencilFunc", ctypes.c_uint32),
+    ]
+
+
+class DepthStencilDesc(ctypes.Structure):
+    _fields_ = [
+        ("DepthEnable", ctypes.c_int32),
+        ("DepthWriteMask", ctypes.c_uint32),
+        ("DepthFunc", ctypes.c_uint32),
+        ("StencilEnable", ctypes.c_int32),
+        ("StencilReadMask", ctypes.c_uint8),
+        ("StencilWriteMask", ctypes.c_uint8),
+        ("FrontFace", DepthStencilOpDesc),
+        ("BackFace", DepthStencilOpDesc),
+    ]
+
+
+class RasterizerDesc(ctypes.Structure):
+    _fields_ = [
+        ("FillMode", ctypes.c_uint32),
+        ("CullMode", ctypes.c_uint32),
+        ("FrontCounterClockwise", ctypes.c_int32),
+        ("DepthBias", ctypes.c_int32),
+        ("DepthBiasClamp", ctypes.c_float),
+        ("SlopeScaledDepthBias", ctypes.c_float),
+        ("DepthClipEnable", ctypes.c_int32),
+        ("ScissorEnable", ctypes.c_int32),
+        ("MultisampleEnable", ctypes.c_int32),
+        ("AntialiasedLineEnable", ctypes.c_int32),
+    ]
+
+
+class SamplerDesc(ctypes.Structure):
+    _fields_ = [
+        ("Filter", ctypes.c_uint32),
+        ("AddressU", ctypes.c_uint32),
+        ("AddressV", ctypes.c_uint32),
+        ("AddressW", ctypes.c_uint32),
+        ("MipLODBias", ctypes.c_float),
+        ("MaxAnisotropy", ctypes.c_uint32),
+        ("ComparisonFunc", ctypes.c_uint32),
+        ("BorderColor", ctypes.c_float * 4),
+        ("MinLOD", ctypes.c_float),
+        ("MaxLOD", ctypes.c_float),
+    ]
+
+
 def com_method(
     pointer: ctypes.c_void_p,
     index: int,
@@ -129,6 +224,293 @@ def blob_bytes(pointer: ctypes.c_void_p) -> bytes:
     get_pointer = com_method(pointer, 3, ctypes.c_void_p)
     get_size = com_method(pointer, 4, ctypes.c_size_t)
     return ctypes.string_at(get_pointer(pointer), get_size(pointer))
+
+
+def create_warp_device() -> tuple[ctypes.c_void_p, ctypes.c_void_p, int]:
+    d3d11 = ctypes.WinDLL("d3d11")
+    create_device = d3d11.D3D11CreateDevice
+    create_device.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_uint32),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    create_device.restype = ctypes.c_long
+    device = ctypes.c_void_p()
+    context = ctypes.c_void_p()
+    feature_level = ctypes.c_uint32()
+    result = create_device(
+        None,
+        D3D_DRIVER_TYPE_WARP,
+        None,
+        0,
+        None,
+        0,
+        D3D11_SDK_VERSION,
+        ctypes.byref(device),
+        ctypes.byref(feature_level),
+        ctypes.byref(context),
+    )
+    require(
+        result >= 0 and device.value and context.value,
+        f"D3D11 WARP creation failed: 0x{result & 0xFFFFFFFF:08x}",
+    )
+    return device, context, int(feature_level.value)
+
+
+def round_trip_state_desc(
+    device: ctypes.c_void_p,
+    create_method_index: int,
+    description: ctypes.Structure,
+) -> ctypes.Structure:
+    description_type = type(description)
+    state = ctypes.c_void_p()
+    try:
+        create_state = com_method(
+            device,
+            create_method_index,
+            ctypes.c_long,
+            ctypes.POINTER(description_type),
+            ctypes.POINTER(ctypes.c_void_p),
+        )
+        result = create_state(
+            device, ctypes.byref(description), ctypes.byref(state)
+        )
+        require(
+            result >= 0 and state.value,
+            f"D3D11 state creation failed: 0x{result & 0xFFFFFFFF:08x}",
+        )
+        actual = description_type()
+        get_desc = com_method(
+            state, 7, None, ctypes.POINTER(description_type)
+        )
+        get_desc(state, ctypes.byref(actual))
+        return actual
+    finally:
+        release(state)
+
+
+def blend_projection(value: BlendDesc) -> dict[str, Any]:
+    target = value.RenderTarget[0]
+    return {
+        "BlendEnable": bool(target.BlendEnable),
+        "SrcBlend": int(target.SrcBlend),
+        "DestBlend": int(target.DestBlend),
+        "BlendOp": int(target.BlendOp),
+        "SrcBlendAlpha": int(target.SrcBlendAlpha),
+        "DestBlendAlpha": int(target.DestBlendAlpha),
+        "BlendOpAlpha": int(target.BlendOpAlpha),
+        "RenderTargetWriteMask": int(target.RenderTargetWriteMask),
+    }
+
+
+def depth_projection(value: DepthStencilDesc) -> dict[str, Any]:
+    return {
+        "DepthEnable": bool(value.DepthEnable),
+        "DepthWriteMask": int(value.DepthWriteMask),
+        "DepthFunc": int(value.DepthFunc),
+        "StencilEnable": bool(value.StencilEnable),
+    }
+
+
+def rasterizer_projection(value: RasterizerDesc) -> dict[str, Any]:
+    return {
+        "FillMode": int(value.FillMode),
+        "CullMode": int(value.CullMode),
+        "FrontCounterClockwise": bool(value.FrontCounterClockwise),
+        "DepthClipEnable": bool(value.DepthClipEnable),
+    }
+
+
+def sampler_projection(value: SamplerDesc) -> dict[str, Any]:
+    return {
+        "Filter": int(value.Filter),
+        "AddressU": int(value.AddressU),
+        "AddressV": int(value.AddressV),
+        "AddressW": int(value.AddressW),
+        "MipLODBias": float(value.MipLODBias),
+        "MaxAnisotropy": int(value.MaxAnisotropy),
+        "ComparisonFunc": int(value.ComparisonFunc),
+        "MinLOD": float(value.MinLOD),
+        "MaxLOD": float(value.MaxLOD),
+    }
+
+
+def state_pilot(
+    pilot_id: str,
+    input_domain: list[Any],
+    expected: list[dict[str, Any]],
+    actual: list[dict[str, Any]],
+    mutated_fields: list[str],
+) -> dict[str, Any]:
+    require(
+        expected == actual,
+        f"D3D11 WARP state pilot mismatch: {pilot_id} "
+        f"expected={expected!r} actual={actual!r}",
+    )
+    require(
+        all(
+            math.isfinite(float(lane))
+            for row in actual
+            for lane in row.values()
+            if isinstance(lane, (int, float)) and not isinstance(lane, bool)
+        ),
+        f"D3D11 WARP state pilot is non-finite: {pilot_id}",
+    )
+    return {
+        "pilotId": pilot_id,
+        "inputDomain": input_domain,
+        "expectedStateOutputs": expected,
+        "actualStateOutputs": actual,
+        "mutatedOutputFields": mutated_fields,
+        "numericTolerance": 0.0,
+        "decision": "PASS",
+    }
+
+
+def run_warp_state_provider_oracle() -> dict[str, Any]:
+    device, context, feature_level = create_warp_device()
+    try:
+        blend_disabled = BlendDesc()
+        blend_disabled.RenderTarget[0].BlendEnable = 0
+        blend_disabled.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE
+        blend_disabled.RenderTarget[0].DestBlend = D3D11_BLEND_ZERO
+        blend_disabled.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD
+        blend_disabled.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE
+        blend_disabled.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO
+        blend_disabled.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD
+        blend_disabled.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL
+        blend_translucent = BlendDesc()
+        blend_translucent.RenderTarget[0].BlendEnable = 1
+        blend_translucent.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA
+        blend_translucent.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA
+        blend_translucent.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD
+        blend_translucent.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE
+        blend_translucent.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA
+        blend_translucent.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD
+        blend_translucent.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL
+
+        depth_enabled = DepthStencilDesc()
+        depth_enabled.DepthEnable = 1
+        depth_enabled.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL
+        depth_enabled.DepthFunc = D3D11_COMPARISON_LESS
+        depth_disabled = DepthStencilDesc()
+        depth_disabled.DepthEnable = 0
+        depth_disabled.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL
+        depth_disabled.DepthFunc = D3D11_COMPARISON_LESS
+
+        cull_back = RasterizerDesc()
+        cull_back.FillMode = D3D11_FILL_SOLID
+        cull_back.CullMode = D3D11_CULL_BACK
+        cull_back.DepthClipEnable = 1
+        cull_none = RasterizerDesc()
+        cull_none.FillMode = D3D11_FILL_SOLID
+        cull_none.CullMode = D3D11_CULL_NONE
+        cull_none.DepthClipEnable = 1
+
+        sampler_wrap = SamplerDesc()
+        sampler_wrap.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR
+        sampler_wrap.AddressU = D3D11_TEXTURE_ADDRESS_WRAP
+        sampler_wrap.AddressV = D3D11_TEXTURE_ADDRESS_WRAP
+        sampler_wrap.AddressW = D3D11_TEXTURE_ADDRESS_WRAP
+        sampler_wrap.MaxAnisotropy = 0
+        sampler_wrap.ComparisonFunc = D3D11_COMPARISON_NEVER
+        sampler_wrap.MaxLOD = ctypes.c_float(3.402823466e38).value
+        sampler_clamp = SamplerDesc()
+        sampler_clamp.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR
+        sampler_clamp.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP
+        sampler_clamp.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP
+        sampler_clamp.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP
+        sampler_clamp.MaxAnisotropy = 0
+        sampler_clamp.ComparisonFunc = D3D11_COMPARISON_NEVER
+        sampler_clamp.MaxLOD = ctypes.c_float(3.402823466e38).value
+
+        blend_expected = [
+            blend_projection(blend_disabled),
+            blend_projection(blend_translucent),
+        ]
+        blend_actual = [
+            blend_projection(round_trip_state_desc(device, 20, blend_disabled)),
+            blend_projection(round_trip_state_desc(device, 20, blend_translucent)),
+        ]
+        depth_expected = [
+            depth_projection(depth_enabled),
+            depth_projection(depth_disabled),
+        ]
+        depth_actual = [
+            depth_projection(round_trip_state_desc(device, 21, depth_enabled)),
+            depth_projection(round_trip_state_desc(device, 21, depth_disabled)),
+        ]
+        raster_expected = [
+            rasterizer_projection(cull_back),
+            rasterizer_projection(cull_none),
+        ]
+        raster_actual = [
+            rasterizer_projection(round_trip_state_desc(device, 22, cull_back)),
+            rasterizer_projection(round_trip_state_desc(device, 22, cull_none)),
+        ]
+        sampler_expected = [
+            sampler_projection(sampler_wrap),
+            sampler_projection(sampler_clamp),
+        ]
+        sampler_actual = [
+            sampler_projection(round_trip_state_desc(device, 23, sampler_wrap)),
+            sampler_projection(round_trip_state_desc(device, 23, sampler_clamp)),
+        ]
+        pilots = [
+            state_pilot(
+                "warp-blend-mode-toggle",
+                ["OPAQUE", "TRANSLUCENT"],
+                blend_expected,
+                blend_actual,
+                ["BlendEnable", "SrcBlend", "DestBlend"],
+            ),
+            state_pilot(
+                "warp-depth-disable-toggle",
+                [False, True],
+                depth_expected,
+                depth_actual,
+                ["DepthEnable"],
+            ),
+            state_pilot(
+                "warp-rasterizer-two-sided-toggle",
+                [False, True],
+                raster_expected,
+                raster_actual,
+                ["CullMode"],
+            ),
+            state_pilot(
+                "warp-sampler-address-toggle",
+                ["WRAP", "CLAMP"],
+                sampler_expected,
+                sampler_actual,
+                ["AddressU", "AddressV", "AddressW"],
+            ),
+        ]
+        projection = json.dumps(
+            pilots,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        return {
+            "verified": True,
+            "backend": "D3D11_WARP_STATE_OBJECTS",
+            "featureLevel": feature_level,
+            "pilotCount": len(pilots),
+            "pilots": pilots,
+            "pilotProjectionSha256": sha256(projection),
+        }
+    finally:
+        release(context)
+        release(device)
 
 
 def compile_hlsl(hlsl_path: Path, compiler_path: Path) -> tuple[bytes, dict[str, Any]]:
@@ -429,9 +811,23 @@ def run_hlsl_oracle(
     tolerance = float((receipt.get("evaluatorContract") or {}).get("numericTolerance") or 0.0)
     require(tolerance > 0.0, "Material HLSL tolerance is invalid")
     max_error = 0.0
-    for expected_row, actual_row in zip(expected, actual, strict=True):
-        for expected_value, actual_value in zip(expected_row, actual_row, strict=True):
-            max_error = max(max_error, abs(expected_value - actual_value))
+    for row_index, (expected_row, actual_row) in enumerate(
+        zip(expected, actual, strict=True)
+    ):
+        for lane_index, (expected_value, actual_value) in enumerate(
+            zip(expected_row, actual_row, strict=True)
+        ):
+            require(
+                math.isfinite(expected_value) and math.isfinite(actual_value),
+                "Material HLSL numeric oracle produced a non-finite lane: "
+                f"row={row_index} lane={lane_index}",
+            )
+            error = abs(expected_value - actual_value)
+            require(
+                math.isfinite(error),
+                "Material HLSL numeric oracle produced a non-finite error",
+            )
+            max_error = max(max_error, error)
     require(max_error <= tolerance, f"Material HLSL numeric oracle mismatch: {max_error} > {tolerance}")
     return {
         "verified": True,
@@ -461,22 +857,44 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     receipt = read_receipt(args.receipt)
     from build_artist_31470_material_runtime_oracle import (
+        DEFAULT_RENDER_RECEIPT,
+        DEFAULT_SHADER_RECEIPT,
         DEFAULT_MATERIAL_CONTRACT,
         read_json,
         validate_runtime_receipt,
         validate_runtime_receipt_source_bindings,
+        validate_runtime_receipt_tracked_sources,
     )
 
     validate_runtime_receipt(receipt)
     validate_runtime_receipt_source_bindings(
-        receipt, read_json(DEFAULT_MATERIAL_CONTRACT)
+        receipt,
+        read_json(DEFAULT_MATERIAL_CONTRACT),
+        read_json(DEFAULT_RENDER_RECEIPT),
+        read_json(DEFAULT_SHADER_RECEIPT),
+        material_contract_path=DEFAULT_MATERIAL_CONTRACT,
+        render_receipt_path=DEFAULT_RENDER_RECEIPT,
+    )
+    validate_runtime_receipt_tracked_sources(
+        receipt,
+        DEFAULT_MATERIAL_CONTRACT,
+        DEFAULT_RENDER_RECEIPT,
+        DEFAULT_SHADER_RECEIPT,
+        args.hlsl,
     )
     result = run_hlsl_oracle(receipt, args.hlsl, args.d3dcompiler)
     expected = receipt.get("hlslVerification") or {}
     require(expected == result, "stored Material HLSL verification is stale")
+    state_result = run_warp_state_provider_oracle()
+    state_expected = receipt.get("warpStateProviderVerification") or {}
+    require(
+        state_expected == state_result,
+        "stored Material WARP state provider verification is stale",
+    )
     print(
         "PASS: Artist F Material HLSL oracle "
-        f"samples={result['sampleCount']} maxError={result['maxAbsoluteError']:.9g}"
+        f"samples={result['sampleCount']} maxError={result['maxAbsoluteError']:.9g} "
+        f"statePilots={state_result['pilotCount']}"
     )
     return 0
 

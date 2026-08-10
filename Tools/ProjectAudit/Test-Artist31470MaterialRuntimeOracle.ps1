@@ -70,8 +70,10 @@ try {
     $summary = $receipt.summary
     $archive = $receipt.sourceRevisionShaderCacheAcquisition
     $hlsl = $receipt.hlslVerification
+    $stateProvider = $receipt.warpStateProviderVerification
+    $feasibility = $receipt.materialFeasibilityMatrices.summary
     if ($receipt.schema -cne 'lostark.artist-31470-material-runtime-oracle-receipt' -or
-        [int]$receipt.formatVersion -ne 1 -or
+        [int]$receipt.formatVersion -ne 2 -or
         [int]$summary.materialFamilyCount -ne 23 -or
         [int]$summary.implementedEvaluatorCount -ne 23 -or
         [int]$summary.cpuVerifiedEvaluatorCount -ne 23 -or
@@ -88,12 +90,30 @@ try {
         [int]$summary.familyNumericSampleCount -ne 92 -or
         [int]$summary.recipeNumericSampleCount -ne 108 -or
         [int]$summary.hlslSampleCount -ne 200 -or
+        [int]$summary.materialFeasibilityRowCount -ne 251 -or
+        [int]$summary.materialFeasibilityReadyCount -ne 0 -or
+        [int]$summary.materialFeasibilityBlockedCount -ne 251 -or
+        [int]$feasibility.renderStateRowCount -ne 89 -or
+        [int]$feasibility.renderStateReadinessCount -ne 0 -or
+        [int]$feasibility.staticPermutationRowCount -ne 94 -or
+        [int]$feasibility.staticPermutationReadinessCount -ne 0 -or
+        [int]$feasibility.directUnprovenSamplerRowCount -ne 68 -or
+        [int]$feasibility.directUnprovenSamplerReadinessCount -ne 0 -or
+        [int]$feasibility.ownerlessRowCount -ne 0 -or
+        [int]$feasibility.unknownDecisionRowCount -ne 0 -or
+        -not [bool]$feasibility.evidenceIntegrity -or
+        [bool]$feasibility.executionReadiness -or
         [int]$archive.fileCount -ne 1813 -or
         [int]$archive.uniquePackageContentCount -ne 624 -or
         [int]$archive.shaderCacheNameCandidateCount -ne 0 -or
         [string]$archive.decision -cne 'SOURCE_REVISION_SHADER_CACHE_NOT_PRESENT_IN_SCANNED_ARCHIVE' -or
         -not [bool]$hlsl.verified -or
         [int]$hlsl.sampleCount -ne 200 -or
+        -not [bool]$stateProvider.verified -or
+        [string]$stateProvider.backend -cne 'D3D11_WARP_STATE_OBJECTS' -or
+        [int]$stateProvider.pilotCount -ne 4 -or
+        -not [bool]$receipt.admission.evidenceIntegrityAdmission -or
+        [bool]$receipt.admission.executionReadinessAdmission -or
         [bool]$receipt.admission.materialRuntimeHandlerConsumptionAdmission -or
         [bool]$receipt.admission.rendererConsumptionAdmission -or
         [bool]$receipt.admission.productAdmission) {
@@ -101,7 +121,7 @@ try {
     }
 
     $mode = if ($DeepMaterialRuntimeAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material runtime mode=$mode family=23 recipe=27 occurrence=34 fields=729+94 render=73/162 oracle=92+108/200 sourceExact=0 shaderCache=0/624 product=false"
+    Write-Output "PASS: Artist F 31470 Material runtime mode=$mode family=23 recipe=27 occurrence=34 fields=729+94 render=73/162 feasibility=0/89+0/94+0/68 oracle=92+108/200 statePilots=4 sourceExact=0 shaderCache=0/624 readiness=false product=false"
 }
 finally {
     Pop-Location
