@@ -1,0 +1,318 @@
+{
+  "schema": "lostark.artist-31470-wmodel-decoded-semantic-golden",
+  "formatVersion": 1,
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "status": "IMMUTABLE_WRITER_INDEPENDENT_EXPECTED_SEMANTICS",
+  "productAdmission": false,
+  "assets": [
+    {
+      "sourceObject": "fx_sm_01.fm_v_wp_wsdm_base_01",
+      "sourceGltfSha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4",
+      "legacyWModelSha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764",
+      "candidateWModelSha256": "804a5bcfb2dd9abc445db1a514e249d1ca9916010937a013831e9d3a3cbbae18",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 111,
+        "evidenceFlags": 2047,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "a3da844b087a3544f60b5fdcec8cf928024d3fd068f07b05b9aa9aaa040a0eec",
+        "metadataIdentitySha256": "a1c3ab2973c279c3df61f48c6363398a35014ca702a7471003b512f081072b41",
+        "meshes": [
+          {
+            "name": "fm_v_wp_wsdm_base_0",
+            "materialIndex": 0,
+            "vertexCount": 11608,
+            "indexCount": 14544,
+            "positionSha256": "91f140fbc1637e6d8226836f2de55a7837687b3b6600a4d4383ab2ce7ffb9e2e",
+            "normalSha256": "4a9f873076995df815e45e851e522275cd2a94299374b7eb6564848ced1d8d0a",
+            "tangentXyzSha256": "0d3c5cf0db3ef61abce9338f70512e6bf0b26650ca610d0ce5f6caa751525117",
+            "uv0Sha256": "e9b324eaa40589f9a24649cd7fe1ffa6ccdd6aef58ff2fb19b24227f743ecd83",
+            "tangentWSha256": "6b90e89d78c50bbbd9893a23d805516d67ceba5094652559b7749372f416c4a7",
+            "hasColor0": true,
+            "color0Sha256": "58a0ce26469a43b15f056151453219c18bbcf0910342eaa77bd97ca88c0e1b33",
+            "indexU32Sha256": "0ff4729550a1bc437ac01f7156cb2270566d069d0270d4cc9052d6f514086235",
+            "boundsF32Hex": [
+              "c05334d7",
+              "c00446ff",
+              "c18db021",
+              "405334e2",
+              "4004636d",
+              "41c1607e",
+              "35b00000",
+              "3a637000",
+              "404ec174",
+              "41a78850"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_01.fm_m_trail_002",
+      "sourceGltfSha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be",
+      "legacyWModelSha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863",
+      "candidateWModelSha256": "db1c9412d588174ad5f6330b8daf403c0ab615251bf0448a1b2b37bf4a30683d",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 47,
+        "evidenceFlags": 2045,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "d6717b4fc0470f133594b21de52ddc06a464eaa1c2c7fffc62bc7814cda1b23a",
+        "metadataIdentitySha256": "38e269e776ab3200a38f0e1befd1ee73d599be1d3eea75467b3798f1c71f25c0",
+        "meshes": [
+          {
+            "name": "fm_m_trail_002",
+            "materialIndex": 0,
+            "vertexCount": 63,
+            "indexCount": 240,
+            "positionSha256": "e0c6350717dd0ddfe96dd79d8fb01dcea2032f697ed8e16e9a96dd73c2031b21",
+            "normalSha256": "d22f3d7921089b1e5527a3d8457f680d465facc56c145682d8d7c8f777443df2",
+            "tangentXyzSha256": "b226261f55e450004501fd483417111e779b61c83d09e5f37a68c990c2d8be74",
+            "uv0Sha256": "c600edc25f4cc0cbff865efbf39aae64bcdc2c9231cc038626b2dad8fb3b4255",
+            "tangentWSha256": "d7fc3014ceac260e12ad1c5a0dc2c59c065d78645bc5a18ad05df86cb29ea12f",
+            "hasColor0": false,
+            "color0Sha256": null,
+            "indexU32Sha256": "666a2b0c919181c9c979a8fe20b25e6609cc21d5facbb41ccc397c35153b0206",
+            "boundsF32Hex": [
+              "c22fe2a9",
+              "bfa09d05",
+              "c2310db7",
+              "422e4246",
+              "3fbd7b5a",
+              "422d5b60",
+              "be503180",
+              "3de6f2a8",
+              "beec95c0",
+              "42306bb1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_00.fm_h_swing_03",
+      "sourceGltfSha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7",
+      "legacyWModelSha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046",
+      "candidateWModelSha256": "e2b9f3337904fceca31c84650724788f20b1eaf68e0420615692c87028a7434c",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 111,
+        "evidenceFlags": 2047,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "fed0c184e9fe1b100e9aad82cb9ede5ef016987bb2dbf07b5d76e91e778b5f36",
+        "metadataIdentitySha256": "c75e2fc91e08b0a8120d6f5af8a4c1f659ffe0bebe721839f10614da8119ee8a",
+        "meshes": [
+          {
+            "name": "fm_h_swing_03",
+            "materialIndex": 0,
+            "vertexCount": 378,
+            "indexCount": 1722,
+            "positionSha256": "e3f623358d12991f8422f2d60b16779c7af048b16a7886f14e658953ce36839f",
+            "normalSha256": "d2c40a973b6976f6af4734625dd38b66ed0ae7fdeff8b9930083e57a8b4d8b20",
+            "tangentXyzSha256": "195f4811fe4d491c6cb3338b74b38cbb31bb14997322a610e48262a5f54dac98",
+            "uv0Sha256": "d8fbf28ec8394876b83c69e0c70ea9e2c2525a64d4a09f42cdc2d902300ffa0f",
+            "tangentWSha256": "0af2c442c26c3d4d9491db1ec72cd915c004f8ea76c41334ea9c1028f1db9f0f",
+            "hasColor0": true,
+            "color0Sha256": "a80bf8e0172c07ca51720d1330533373d5d452c06dee84c7be6241fb1fb50088",
+            "indexU32Sha256": "8ce85d8a1bb897610a102809033a3e696d3dac24c7289569e641b47ab830d1e6",
+            "boundsF32Hex": [
+              "c2b1cccd",
+              "c1a00001",
+              "c2b1cccd",
+              "42b1cccd",
+              "41a00001",
+              "42b1cccd",
+              "00000000",
+              "00000000",
+              "00000000",
+              "42b1cccd"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_00.fm_h_swing_05",
+      "sourceGltfSha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb",
+      "legacyWModelSha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8",
+      "candidateWModelSha256": "9586b5d299b5e9dc7e5973cf8b4b7f31058413c334dc3f7ff2d8410ab7b0a8fd",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 47,
+        "evidenceFlags": 2045,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "8b4118b8182b6dd0533f762ff04dfbe00a8f86d042412a23803c9b706b0313a5",
+        "metadataIdentitySha256": "ed427b30d5fad6e2f8f3137cfd0b1f411cae31b786cc2fc0a2fa3645981272cb",
+        "meshes": [
+          {
+            "name": "fm_h_swing_05",
+            "materialIndex": 0,
+            "vertexCount": 294,
+            "indexCount": 1476,
+            "positionSha256": "b1fdfa2969f2bd752eb879bc211449e7c559950bb6e641c606c6069d9e18c4db",
+            "normalSha256": "9d80358badaa4288de82be1348eea0e369b3e5302abf7012fc96d22c25d2fbe2",
+            "tangentXyzSha256": "a0012de5768cd8f30b3944f465e521a6d54e21860ed7833502fa11bf0ce6afec",
+            "uv0Sha256": "4820258daf7d8bc7b2983bc371568a5a2065525fd1fe8161217ea8aaff6faf34",
+            "tangentWSha256": "728e2df61a5d364dcbddb448b82f30628966b6fdca9befe76d333555adca12b0",
+            "hasColor0": false,
+            "color0Sha256": null,
+            "indexU32Sha256": "39c3b387e6a9e05339168e7d5c475ce0f2d711461679ff694e0d22f6f03e8a99",
+            "boundsF32Hex": [
+              "c2adf5e8",
+              "c1a00001",
+              "c2adf5ea",
+              "42adf5ea",
+              "41a00001",
+              "42adf5e8",
+              "37000000",
+              "00000000",
+              "b7000000",
+              "42adf5ea"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_00.fm_h_swing_01",
+      "sourceGltfSha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90",
+      "legacyWModelSha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22",
+      "candidateWModelSha256": "d30f3fdc0f6c365d7686b6bf442b65806d1ce2ddac7061fb74751e24e48b0ab4",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 47,
+        "evidenceFlags": 2045,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "6ff63e7bb53a208eafe1cfc6e583e0b5f6e4b9f7ed7389227d7c59c7280a11dd",
+        "metadataIdentitySha256": "c850ede52a9d00fcfbc052d722ba6745853d93c98f2d7aa25536780529003fea",
+        "meshes": [
+          {
+            "name": "fm_h_swing_01",
+            "materialIndex": 0,
+            "vertexCount": 166,
+            "indexCount": 246,
+            "positionSha256": "938bc3ac160d83745dcaffab75ad31ad42ec54e07e9d30748e583870b2c9e844",
+            "normalSha256": "0af1b5935c2f5aebcd95f8b98dfa18e3512477318718417efc34156534598dd3",
+            "tangentXyzSha256": "2b4ce47592d1e4f7a5b65027bf3a2e09bb9469802897a90bb8d2ec41f2d8e77a",
+            "uv0Sha256": "ba7991720ac9f450123fce1bfc4b4e37df65957f2b2e3f6a9d55d8a0fc3be22c",
+            "tangentWSha256": "f1b4c7c73ec02a9b5923806fd4dfc71f9dd0137609fb85340ea6f5bb81e2c8d8",
+            "hasColor0": false,
+            "color0Sha256": null,
+            "indexU32Sha256": "579786887b1f59bbf6789317a76dcedf5ad7d4da5ae85581e67d560e2bb87089",
+            "boundsF32Hex": [
+              "c28c0000",
+              "a79a6dce",
+              "c28c0000",
+              "428c0000",
+              "279a6dce",
+              "428c0000",
+              "00000000",
+              "00000000",
+              "00000000",
+              "428c0000"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_00.fm_o_swing_02",
+      "sourceGltfSha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2",
+      "legacyWModelSha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126",
+      "candidateWModelSha256": "18ee0bd0315c3464c7ef1b64e67d5b172eb187fbb7909ec7c619669aa7e5d78e",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 47,
+        "evidenceFlags": 2045,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "d4cd720bbd670592c76a00f9f8b2cd04d9f8d7c2212f4688c65d2a8f047c9c19",
+        "metadataIdentitySha256": "4a130c5ba61ad094e7efcf3e05882e41fefc761feef7464f7880caa2d5f3486e",
+        "meshes": [
+          {
+            "name": "fm_o_swing_02",
+            "materialIndex": 0,
+            "vertexCount": 145,
+            "indexCount": 672,
+            "positionSha256": "62320cdf1d8483d8920f008ca6a263bd8fd790513abf522bb3031987538e7881",
+            "normalSha256": "db98779b235d74f10292275a617fd07cc41bd95aaf980e13092f0a732b02d33e",
+            "tangentXyzSha256": "584536c59c365f788c93b8f817a3a91a9e95904fa106e6219b90f55ef8335c5e",
+            "uv0Sha256": "f1753a723577b741eb3eab31f5afcfcaad80d58f7d4afe534758a76ede07942e",
+            "tangentWSha256": "930f5df9fcdba4982cbfc3121a4521e679b72a81a399cb948ce9349b6d232002",
+            "hasColor0": false,
+            "color0Sha256": null,
+            "indexU32Sha256": "c71afc09ddccb3b8ab422a2a2d5e8adb8d93f0bb955fe3dbea69fb57bdadc375",
+            "boundsF32Hex": [
+              "c2873800",
+              "c14b49d1",
+              "c2873804",
+              "428737ff",
+              "414b49b9",
+              "424f2aca",
+              "b6800000",
+              "b7400000",
+              "c0fd14f8",
+              "4293afa5"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "sourceObject": "fx_sm_00.fm_a_stone_001",
+      "sourceGltfSha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b",
+      "legacyWModelSha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882",
+      "candidateWModelSha256": "eb08b11e4631938f93b896d9ebf9e7f25d22492094dcf69de443080d5c111c54",
+      "decodedSemantics": {
+        "schema": "lostark.wmodel-decoded-semantic-dump",
+        "formatVersion": 1,
+        "channelMask": 47,
+        "evidenceFlags": 2045,
+        "sourceToWModelScaleF32Hex": "42c80000",
+        "geometryPreScaleF32Hex": "3c23d70a",
+        "payloadSha256": "3db5634a75de4f67c18653364b76595f112e14bb57328e54668b17a0340fdd32",
+        "metadataIdentitySha256": "6de51f91e399448c31e4e701c3519fc53658f5f5eb683ab0713ffd52e81ea2d5",
+        "meshes": [
+          {
+            "name": "fm_a_stone_001",
+            "materialIndex": 0,
+            "vertexCount": 32,
+            "indexCount": 36,
+            "positionSha256": "85d84c75f612661ac3e3453b3bf7add9547f470257256c1c264b50cc989f9df9",
+            "normalSha256": "08db57f4226d234233f0864cf1906e34a6af531e8dca790dce720d4b63627ad7",
+            "tangentXyzSha256": "0ed93a19835c0fdea2263e6e3dee7df9d88f6933866bb2fe1d9a945d701560f5",
+            "uv0Sha256": "a0096c94acab67baaed7996404a17458d5f1a988ede2c88b8a4b253b292bb207",
+            "tangentWSha256": "be6984dee05878c1c978a072aa314235a881a476e3d2967ccd698eae000f1157",
+            "hasColor0": false,
+            "color0Sha256": null,
+            "indexU32Sha256": "f215a36a4cc9b950c4f830e2a3e78ca1e0a982785c5e6012e3e0a6f85e8794b5",
+            "boundsF32Hex": [
+              "c0a8a599",
+              "c052fc5f",
+              "c0a99118",
+              "40a889b8",
+              "402c3030",
+              "4095c254",
+              "badf0800",
+              "be9b30bc",
+              "be9e7620",
+              "40df7d09"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

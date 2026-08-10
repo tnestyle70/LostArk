@@ -21,6 +21,7 @@ from cook_wmodel_geometry_contract import (
     SECTION_DESC,
     STRIDE_STATIC,
     SUBMESH_DESC,
+    TANGENT_HANDEDNESS_ABS_TOLERANCE,
     VF_STATIC_BASE,
     GeometryProvenanceEvidence,
     cook_wmodel_geometry_contract,
@@ -31,6 +32,7 @@ from cook_wmodel_geometry_contract import (
     transform_source_vertex,
     verify_source_against_geometry_contract,
 )
+from verify_artist_31470_wmodel_geometry_contract import strict_json_equal
 
 
 SOURCE_VERTICES: tuple[dict[str, Any], ...] = (
@@ -429,6 +431,14 @@ def _resign_geometry(value: bytearray) -> None:
     ] = metadata_hash
 
 
+def _with_resigned_tangent_w(valid: bytes, tangent_w: float) -> bytes:
+    value = bytearray(valid)
+    layout = _mesh_layout(value)
+    struct.pack_into("<f", value, layout["vertices"] + 44, tangent_w)
+    _resign_geometry(value)
+    return bytes(value)
+
+
 def _corruptions(valid: bytes) -> dict[str, bytes]:
     result: dict[str, bytes] = {}
 
@@ -501,6 +511,13 @@ def _corruptions(valid: bytes) -> dict[str, bytes]:
     struct.pack_into("<f", value, layout["vertices"] + 44, 0.0)
     _resign_geometry(value)
     result["corrupt_tangent_w.wmodel"] = bytes(value)
+
+    result["corrupt_tangent_w_boundary_out.wmodel"] = _with_resigned_tangent_w(
+        valid, -1.000001072883606
+    )
+    result["corrupt_tangent_w_minus_1_000005.wmodel"] = _with_resigned_tangent_w(
+        valid, -1.000005
+    )
 
     value = bytearray(valid)
     layout = _mesh_layout(value)
@@ -632,6 +649,9 @@ def write_harness_suite(output_root: Path) -> None:
     _, valid_no_color, _ = _cook_fixture(output_root, "valid_no_color", False)
     (output_root / "valid_color.wmodel").write_bytes(valid_color.read_bytes())
     (output_root / "valid_no_color.wmodel").write_bytes(valid_no_color.read_bytes())
+    (output_root / "valid_tangent_w_boundary_in.wmodel").write_bytes(
+        _with_resigned_tangent_w(valid_color.read_bytes(), -1.0000009536743164)
+    )
     legacy = output_root / "valid_color" / "valid_color.legacy.wmodel"
     (output_root / "legacy_v10.wmodel").write_bytes(legacy.read_bytes())
     _build_legacy_static_multisubmesh(
@@ -660,6 +680,9 @@ def write_harness_suite(output_root: Path) -> None:
 
 class WModelGeometryContractTests(unittest.TestCase):
     def test_round_trip_preserves_channels_basis_bounds_and_blockers(self) -> None:
+        self.assertTrue(strict_json_equal({"b": 2, "a": 1}, {"a": 1, "b": 2}))
+        self.assertFalse(strict_json_equal({"value": True}, {"value": 1}))
+        self.assertFalse(strict_json_equal({"value": 1.0}, {"value": 1}))
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source, candidate, receipt = _cook_fixture(root, "valid_color", True)
@@ -717,6 +740,16 @@ class WModelGeometryContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source, candidate, _ = _cook_fixture(root, "valid_color", True)
+            boundary_inside = _with_resigned_tangent_w(
+                candidate.read_bytes(), -1.0000009536743164
+            )
+            self.assertLessEqual(
+                abs(abs(struct.unpack_from(
+                    "<f", boundary_inside, _mesh_layout(boundary_inside)["vertices"] + 44
+                )[0]) - 1.0),
+                TANGENT_HANDEDNESS_ABS_TOLERANCE,
+            )
+            parse_geometry_wmodel(boundary_inside)
             for name, payload in _corruptions(candidate.read_bytes()).items():
                 with self.subTest(name=name):
                     with self.assertRaises(ValueError):
@@ -900,45 +933,80 @@ class WModelGeometryContractTests(unittest.TestCase):
                 )
 
             manifest_path.write_bytes(canonical_manifest)
-            original_manifest = manifest_path.read_bytes()
-            original_export_receipt = export_receipt_path.read_bytes()
-            original_cook_receipt = cook_receipt_path.read_bytes()
-            invalid_receipts = (
-                (manifest_path, manifest, "formatVersion", 2, "source manifest"),
-                (
-                    export_receipt_path,
-                    export_receipt,
-                    "schema",
-                    "unsupported",
-                    "source export receipt",
-                ),
-                (
-                    cook_receipt_path,
-                    cook_receipt,
-                    "formatVersion",
-                    2,
-                    "legacy cook receipt",
-                ),
+
+            def write_resealed_receipt_chain(
+                manifest_value: dict[str, Any],
+                export_value: dict[str, Any],
+                cook_value: dict[str, Any],
+            ) -> None:
+                manifest_payload = _json_bytes(manifest_value)
+                manifest_path.write_bytes(manifest_payload)
+                resealed_export = dict(export_value)
+                resealed_export["sourceManifestSha256"] = hashlib.sha256(
+                    manifest_payload
+                ).hexdigest()
+                export_payload = _json_bytes(resealed_export)
+                export_receipt_path.write_bytes(export_payload)
+                resealed_cook = dict(cook_value)
+                resealed_cook["sourceExportReceiptSha256"] = hashlib.sha256(
+                    export_payload
+                ).hexdigest()
+                cook_receipt_path.write_bytes(_json_bytes(resealed_cook))
+
+            receipt_documents = (
+                ("source manifest", manifest),
+                ("source export receipt", export_receipt),
+                ("legacy cook receipt", cook_receipt),
             )
-            for invalid_path, source_value, field, invalid_value, label in invalid_receipts:
-                with self.subTest(invalid_receipt=label):
-                    invalid_document = dict(source_value)
-                    invalid_document[field] = invalid_value
-                    invalid_path.write_bytes(_json_bytes(invalid_document))
-                    with self.assertRaisesRegex(ValueError, "schema/version"):
-                        load_geometry_provenance_evidence(
-                            "fixture.mesh",
-                            source,
-                            legacy,
-                            manifest_path,
-                            export_receipt_path,
-                            cook_receipt_path,
-                            package,
-                            converter,
+            for label, document in receipt_documents:
+                for invalid_version in (True, 1.0, "1"):
+                    with self.subTest(
+                        strict_integer_format_version=label,
+                        invalid_value=repr(invalid_version),
+                    ):
+                        invalid_manifest = dict(manifest)
+                        invalid_export = dict(export_receipt)
+                        invalid_cook = dict(cook_receipt)
+                        target = {
+                            "source manifest": invalid_manifest,
+                            "source export receipt": invalid_export,
+                            "legacy cook receipt": invalid_cook,
+                        }[label]
+                        target["formatVersion"] = invalid_version
+                        write_resealed_receipt_chain(
+                            invalid_manifest, invalid_export, invalid_cook
                         )
-                    manifest_path.write_bytes(original_manifest)
-                    export_receipt_path.write_bytes(original_export_receipt)
-                    cook_receipt_path.write_bytes(original_cook_receipt)
+                        with self.assertRaisesRegex(ValueError, "schema/version"):
+                            load_geometry_provenance_evidence(
+                                "fixture.mesh",
+                                source,
+                                legacy,
+                                manifest_path,
+                                export_receipt_path,
+                                cook_receipt_path,
+                                package,
+                                converter,
+                            )
+
+            invalid_export_schema = dict(export_receipt)
+            invalid_export_schema["schema"] = "unsupported"
+            write_resealed_receipt_chain(
+                manifest, invalid_export_schema, cook_receipt
+            )
+            with self.subTest(invalid_receipt_schema="source export receipt"):
+                with self.assertRaisesRegex(ValueError, "schema/version"):
+                    load_geometry_provenance_evidence(
+                        "fixture.mesh",
+                        source,
+                        legacy,
+                        manifest_path,
+                        export_receipt_path,
+                        cook_receipt_path,
+                        package,
+                        converter,
+                    )
+
+            write_resealed_receipt_chain(manifest, export_receipt, cook_receipt)
 
             package.write_bytes(package.read_bytes() + b"-late-mutation")
             package_provenance, _, _ = load_geometry_provenance_evidence(

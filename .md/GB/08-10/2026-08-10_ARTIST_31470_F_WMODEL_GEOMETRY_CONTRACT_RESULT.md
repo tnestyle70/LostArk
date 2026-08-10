@@ -117,3 +117,20 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 - clean source export, exact UPK→glTF, pivot, UModel executable/command provenance가 미폐쇄다.
 
 이 blocker가 닫히기 전까지 geometry Product admission은 false다.
+
+## P2 review checkpoint (WIP)
+
+이 커밋은 외부 검토에서 요구된 P2 보강 작업을 공유하기 위한 중간 체크포인트다. strict JSON
+integer version 검사, Python/C++ tangent-W 허용 범위 통일, 7-carrier immutable semantic golden
+비교, 실제 legacy Resources C++ corpus sweep의 현재 구현을 보존하지만 최종 수용 완료를 선언하지
+않는다.
+
+- Product admission: false
+- runtime `geometryPreScale` consumer: 미연결
+- source fidelity/pivot/UPK→glTF provenance: 미폐쇄
+- golden과 corpus gate의 최종 독립 검토: 미완료
+- `Client/Bin/Resources` 및 Effect runtime: 변경하지 않음
+- downstream source candidate/receipt/registry/header 재생성: 여전히 필요
+
+따라서 이 체크포인트 이후에도 `GEOMETRY_RECEIPT_DOWNSTREAM_SOURCE_REGEN_REQUIRED`와 기존
+Product blocker를 모두 유지한다.

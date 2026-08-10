@@ -16,6 +16,8 @@ using namespace Engine::WintersFormat;
 
 namespace
 {
+	constexpr f32_t TANGENT_HANDEDNESS_ABSOLUTE_TOLERANCE = 1e-6f;
+
 	bool_t HasMagic(const void* pValue, const char* pMagic)
 	{
 		return 0 == memcmp(pValue, pMagic, 4);
@@ -120,6 +122,15 @@ namespace
 		if (!isfinite(difference) || !isfinite(scale) || !isfinite(relativeBound))
 			return false;
 		return difference <= (max)(absoluteTolerance, relativeBound);
+	}
+
+	bool_t IsValidTangentHandedness(f32_t value)
+	{
+		if (!isfinite(value))
+			return false;
+		const f32_t difference = fabsf(fabsf(value) - 1.f);
+		return isfinite(difference) &&
+			difference <= TANGENT_HANDEDNESS_ABSOLUTE_TOLERANCE;
 	}
 
 	bool_t ValidateGeometryMetadata(
@@ -325,7 +336,7 @@ namespace
 		if (!IsFinite3(outVertex.vPosition) || !IsFinite3(outVertex.vNormal) ||
 			!IsFinite3(outVertex.vTangent) || !isfinite(outVertex.vTexcoord.x) ||
 			!isfinite(outVertex.vTexcoord.y) || !isfinite(handedness) ||
-			(strictHandedness && !NearlyEqual(fabsf(handedness), 1.f, 1e-6f)))
+			(strictHandedness && !IsValidTangentHandedness(handedness)))
 			return false;
 		outTangentHandedness = handedness;
 		outColor0Rgba8 = {};

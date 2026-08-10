@@ -81,6 +81,10 @@ MGEF_KNOWN = (
     | MGEF_PRODUCT_PROVENANCE
 )
 
+TANGENT_HANDEDNESS_ABS_TOLERANCE = struct.unpack(
+    "<f", struct.pack("<f", 1e-6)
+)[0]
+
 COMPONENT_FORMATS: dict[int, tuple[str, int]] = {
     5120: ("b", 1),
     5121: ("B", 1),
@@ -100,6 +104,17 @@ TYPE_COMPONENT_COUNTS = {
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise ValueError(message)
+
+
+def is_exact_json_integer(value: Any, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
+def is_valid_tangent_handedness(value: float) -> bool:
+    return (
+        math.isfinite(value)
+        and abs(abs(value) - 1.0) <= TANGENT_HANDEDNESS_ABS_TOLERANCE
+    )
 
 
 def sha256_bytes(value: bytes) -> bytes:
@@ -195,17 +210,17 @@ def load_geometry_provenance_evidence(
     )
     require(
         manifest.get("schema") == "lostark.class-effect-resource-source-manifest"
-        and manifest.get("formatVersion") == 1,
+        and is_exact_json_integer(manifest.get("formatVersion"), 1),
         "source manifest schema/version is unsupported",
     )
     require(
         export_receipt.get("schema") == "lostark.effect-resource-export-receipt"
-        and export_receipt.get("formatVersion") == 1,
+        and is_exact_json_integer(export_receipt.get("formatVersion"), 1),
         "source export receipt schema/version is unsupported",
     )
     require(
         cook_receipt.get("schema") == "lostark.effect-runtime-resource-cook-receipt"
-        and cook_receipt.get("formatVersion") == 1,
+        and is_exact_json_integer(cook_receipt.get("formatVersion"), 1),
         "legacy cook receipt schema/version is unsupported",
     )
     manifest_hash_correlation = correlate_legacy_manifest_raw_hash(
@@ -664,7 +679,7 @@ def parse_source_gltf(path: Path) -> tuple[list[SourcePrimitive], bytes, bytes]:
                     and len(uv0) == 2
                     and len(tangent) == 4
                     and all(math.isfinite(value) for value in (*position, *normal, *uv0, *tangent))
-                    and math.isclose(abs(tangent[3]), 1.0, abs_tol=1e-6),
+                    and is_valid_tangent_handedness(tangent[3]),
                     "glTF contains an invalid vertex channel value",
                 )
                 require_nondegenerate_basis(normal, tangent[:3])
@@ -1088,7 +1103,7 @@ def parse_geometry_wmodel(data: bytes) -> dict[str, Any]:
             values = struct.unpack_from("<3f3f2f3ff", raw, 0)
             require(
                 all(math.isfinite(value) for value in values)
-                and math.isclose(abs(values[11]), 1.0, abs_tol=1e-6),
+                and is_valid_tangent_handedness(values[11]),
                 "WMSH 1.1 vertex channel or tangent W is invalid",
             )
             require_nondegenerate_basis(values[3:6], values[8:11])

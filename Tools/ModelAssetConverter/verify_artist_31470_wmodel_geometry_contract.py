@@ -34,6 +34,15 @@ def require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
+def strict_json_equal(left: Any, right: Any) -> bool:
+    """Compare parsed JSON without Python's bool/int or int/float coercion."""
+    return json.dumps(
+        left, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ) == json.dumps(
+        right, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+
+
 def verify_artist_31470(
     source_root: Path,
     runtime_mesh_root: Path,
@@ -43,6 +52,7 @@ def verify_artist_31470(
     source_package_root: Path,
     legacy_converter_path: Path,
     decoder_harness_path: Path,
+    expected_semantics_path: Path,
 ) -> dict[str, Any]:
     manifest, _ = load_json_object(source_manifest_path, "source manifest")
     manifest_assets = {
@@ -50,6 +60,30 @@ def verify_artist_31470(
         for row in manifest.get("assets") or []
         if isinstance(row, dict)
     }
+    expected_semantics, _ = load_json_object(
+        expected_semantics_path, "Artist geometry expected semantics"
+    )
+    require(
+        expected_semantics.get("schema")
+        == "lostark.artist-31470-wmodel-decoded-semantic-golden"
+        and type(expected_semantics.get("formatVersion")) is int
+        and expected_semantics.get("formatVersion") == 1,
+        "Artist geometry expected semantics schema/version is unsupported",
+    )
+    expected_rows = expected_semantics.get("assets") or []
+    require(
+        isinstance(expected_rows, list) and len(expected_rows) == len(ASSETS),
+        "Artist geometry expected semantics must contain seven assets",
+    )
+    expected_by_source = {
+        str(row.get("sourceObject")): row
+        for row in expected_rows
+        if isinstance(row, dict)
+    }
+    require(
+        len(expected_by_source) == len(ASSETS),
+        "Artist geometry expected semantics contains duplicate source objects",
+    )
     rows: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="artist-31470-wmodel-v11-") as directory:
         temporary_root = Path(directory)
@@ -84,16 +118,53 @@ def verify_artist_31470(
             candidate = temporary_root / f"{name}.wmodel"
             candidate.write_bytes(output)
             oracle = verify_source_against_geometry_contract(source_gltf, candidate)
-            decoder_gate = subprocess.run(
-                [str(decoder_harness_path.resolve()), "--candidate", str(candidate)],
+            decoder_dump = subprocess.run(
+                [
+                    str(decoder_harness_path.resolve()),
+                    "--dump-candidate",
+                    str(candidate),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
             )
             require(
-                decoder_gate.returncode == 0,
+                decoder_dump.returncode == 0,
                 f"C++ WModelDecoder rejected {name}: "
-                + (decoder_gate.stdout + decoder_gate.stderr).strip(),
+                + (decoder_dump.stdout + decoder_dump.stderr).strip(),
+            )
+            try:
+                decoded_semantics = json.loads(decoder_dump.stdout)
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"C++ WModelDecoder emitted invalid semantic JSON for {name}"
+                ) from error
+            expected_row = expected_by_source.get(source_object)
+            require(
+                expected_row is not None,
+                f"Artist geometry expected semantics misses {source_object}",
+            )
+            require(
+                expected_row.get("sourceGltfSha256") == expected_gltf.hex()
+                and expected_row.get("legacyWModelSha256")
+                == expected_wmodel.hex()
+                and expected_row.get("candidateWModelSha256")
+                == cook_receipt["outputSha256"],
+                f"Artist geometry immutable input/candidate identity differs for {name}",
+            )
+            require(
+                strict_json_equal(
+                    decoded_semantics, expected_row.get("decodedSemantics")
+                ),
+                f"C++ decoded semantic golden differs for {name}: "
+                + json.dumps(
+                    {
+                        "expected": expected_row.get("decodedSemantics"),
+                        "actual": decoded_semantics,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
             )
             require(
                 not cook_receipt["runtimeProductAdmission"]
@@ -113,7 +184,8 @@ def verify_artist_31470(
                     "candidateWModelSha256": cook_receipt["outputSha256"],
                     "hasColor0": cook_receipt["geometry"]["hasColor0"],
                     "productBlockers": cook_receipt["runtimeProductBlockers"],
-                    "cppDecoderGate": "SELF_CONSISTENT_UNAUTHENTICATED_PASS",
+                    "cppDecoderGate": "IMMUTABLE_SEMANTIC_GOLDEN_PASS",
+                    "decodedSemantics": decoded_semantics,
                     "oracle": oracle,
                 }
             )
@@ -173,6 +245,7 @@ def verify_artist_31470(
         "selfConsistencyVerifiedCount": len(rows),
         "externallyAuthenticatedPayloadIntegrityCount": 0,
         "cppDecoderCandidateGateCount": len(rows),
+        "immutableDecodedSemanticGoldenCount": len(rows),
         "sourceFidelityClosedCount": 0,
         "runtimeGeometryPreScaleConsumedCount": 0,
         "color0ShaderConsumedCount": 0,
@@ -219,6 +292,7 @@ def main() -> int:
     parser.add_argument("--source-package-root", required=True, type=Path)
     parser.add_argument("--legacy-converter", required=True, type=Path)
     parser.add_argument("--decoder-harness", required=True, type=Path)
+    parser.add_argument("--expected-semantics", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     receipt = verify_artist_31470(
@@ -230,6 +304,7 @@ def main() -> int:
         args.source_package_root,
         args.legacy_converter,
         args.decoder_harness,
+        args.expected_semantics,
     )
     content = json.dumps(receipt, ensure_ascii=False, indent=2) + "\n"
     if args.output is not None:

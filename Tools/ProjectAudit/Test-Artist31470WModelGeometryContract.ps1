@@ -51,6 +51,9 @@ try {
     if ($DeepGeometryAudit) {
         $decoderHarness = Join-Path $RepositoryRoot `
             "Tools\WModelGeometryContractHarness\Bin\$Configuration\WModelGeometryContractHarness.exe"
+        $expectedSemantics = Join-Path $RepositoryRoot `
+            'Tools\WModelGeometryContractHarness\Fixtures\artist_31470_v11_expected.json'
+        $legacyResourceRoot = [IO.Path]::GetFullPath((Join-Path $RuntimeMeshRoot '..\..\..'))
         $required = @(
             $SourceMeshRoot,
             $RuntimeMeshRoot,
@@ -58,13 +61,19 @@ try {
             $LegacyCookReceipt,
             $SourcePackageRoot,
             $LegacyConverter,
-            $decoderHarness
+            $decoderHarness,
+            $expectedSemantics,
+            $legacyResourceRoot
         )
         if (@($required | Where-Object {
             [string]::IsNullOrWhiteSpace($_) -or
             -not (Test-Path -LiteralPath $_)
         }).Count -ne 0) {
-            throw 'Deep geometry audit requires six explicit existing source paths.'
+            throw (
+                'Deep geometry audit requires six explicit existing source paths, ' +
+                'the built decoder harness, the immutable semantic golden, and the ' +
+                'derived legacy Resources root.'
+            )
         }
 
         $runtimeDirectories = @(
@@ -76,6 +85,10 @@ try {
         $previousPath = $env:PATH
         try {
             $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
+            & $decoderHarness '--legacy-corpus' $legacyResourceRoot
+            if ($LASTEXITCODE -ne 0) {
+                throw "Legacy WModel Resources corpus sweep failed: $LASTEXITCODE"
+            }
             & python -B `
                 'Tools\ModelAssetConverter\verify_artist_31470_wmodel_geometry_contract.py' `
                 '--source-root' $SourceMeshRoot `
@@ -86,7 +99,8 @@ try {
                 '--legacy-cook-receipt' $LegacyCookReceipt `
                 '--source-package-root' $SourcePackageRoot `
                 '--legacy-converter' $LegacyConverter `
-                '--decoder-harness' $decoderHarness
+                '--decoder-harness' $decoderHarness `
+                '--expected-semantics' $expectedSemantics
             if ($LASTEXITCODE -ne 0) {
                 throw "Artist 31470 seven-carrier geometry oracle failed: $LASTEXITCODE"
             }
