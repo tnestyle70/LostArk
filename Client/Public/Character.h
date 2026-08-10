@@ -159,6 +159,8 @@ private:
 	uint32_t m_iPrototypeLevelIndex = {};
 	f32_t m_fMoveSpeed = { 5.f };
 	bool_t m_isMoving = { false };
+	/* Negative when no delayed idle commit is pending. */
+	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
 
 #ifdef _DEBUG
@@ -202,6 +204,9 @@ private:
 	HRESULT Ready_Components();
 	HRESULT Ready_PartObjects();
 	void Set_Locomotion(bool_t isMoving);
+	/* Applies the state Set_Locomotion decided on. Idle arrives here only after
+	LOCOMOTION_IDLE_DELAY_SECONDS without a run in between. */
+	void Commit_Locomotion(bool_t isMoving);
 	/* IDLE and RUN can belong to the current stance instead of the class. Every
 	other state resolves straight off the spec. */
 	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;

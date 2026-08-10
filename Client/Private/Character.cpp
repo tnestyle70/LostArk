@@ -18,14 +18,20 @@
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	/* The move-goal dead zone makes a held right-click arrive, idle for one
+	resend interval, then run again at ~2Hz, so the server honestly reports
+	IDLE gaps shorter than the clip blend. Holding RUN through a gap shorter
+	than this swallows the flicker; a real stop lands this much later. See
+	.md/JS/08-10/2026-08-10_LOSTARK_WARLORD_BONE_CHAIN_RESULT.md section 7. */
+	constexpr f32_t LOCOMOTION_IDLE_DELAY_SECONDS = 0.15f;
 	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
 	quarter second, slow enough to swallow the per-cell steps of a grid path. */
 	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
-	/* Off until the spawn-frame crash the chains introduced is understood. The
-	solver, the Engine bone seam and the Warlord chain tuning all stay in place;
-	this is the switch that turns them back on. See
-	.md/JS/08-10/2026-08-10_LOSTARK_WARLORD_BONE_CHAIN_RESULT.md. */
-	constexpr bool_t BONE_CHAINS_ENABLED = false;
+	/* On since the 08-10 solver rewrite. The old off-by-default spawn-frame
+	crash never reproduced after the solve moved to Late_Update; if it returns,
+	WER LocalDumps for Client.exe writes to C:\Users\95jus\CrashDumps. See
+	.md/JS/08-10/2026-08-10_LOSTARK_CLOTH_SPRINGBONE_REWRITE_RESULT.md. */
+	constexpr bool_t BONE_CHAINS_ENABLED = true;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
@@ -1047,6 +1053,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 		Set_Locomotion(m_PathFollower.Has_Path());
 	}
 
+	if (m_fPendingIdleSeconds >= 0.f)
+	{
+		m_fPendingIdleSeconds -= fTimeDelta;
+		if (m_fPendingIdleSeconds < 0.f)
+			Commit_Locomotion(false);
+	}
+
 	//Set_Locomotion(m_PathFollower.Has_Path());
 
 	/* A running chain owns the clip until it ends, so it advances before the logic
@@ -1059,13 +1072,6 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
-	/* The parts have just advanced their animation, so the chains solve on this
-	frame's pose and finish before anything binds bone matrices. */
-	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
-		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
-	{
-		m_BoneChains.Update(m_pBodyModel, fTimeDelta);
-	}
 	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
 		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{
@@ -1080,6 +1086,19 @@ void CCharacter::Update(f32_t fTimeDelta)
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	__super::Late_Update(fTimeDelta);
+
+	/* The chains solve here and not in Update because snapshot application
+	runs in the level update, between the two: a skill seek replays the clip
+	and rebuilds every bone, which erased an Update-time solve on each
+	snapshot frame and strobed the cloth at 30Hz. After Late_Update nothing
+	re-poses the skeleton before the render pass binds it. */
+	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
+		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
+	{
+		m_BoneChains.Update(m_pBodyModel, fTimeDelta,
+			m_pTransformCom->Get_State(STATE::POSITION),
+			m_fPresentationYawDegrees);
+	}
 
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
@@ -1201,9 +1220,24 @@ HRESULT CCharacter::Ready_PartObjects()
 
 void CCharacter::Set_Locomotion(bool_t isMoving)
 {
+	if (isMoving)
+		m_fPendingIdleSeconds = -1.f;
+
 	if (m_isMoving == isMoving)
 		return;
 
+	if (!isMoving)
+	{
+		if (m_fPendingIdleSeconds < 0.f)
+			m_fPendingIdleSeconds = LOCOMOTION_IDLE_DELAY_SECONDS;
+		return;
+	}
+
+	Commit_Locomotion(isMoving);
+}
+
+void CCharacter::Commit_Locomotion(bool_t isMoving)
+{
 	m_isMoving = isMoving;
 	if (Is_PlayingSkill())
 		return;

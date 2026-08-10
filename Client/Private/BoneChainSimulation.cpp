@@ -9,6 +9,8 @@ namespace
 	/* The solver runs on its own fixed step so a frame spike cannot make the
 	chain explode, and drops the surplus rather than catching up unbounded. */
 	constexpr f32_t SIMULATION_STEP_SECONDS = 1.f / 60.f;
+	constexpr f32_t STEP_SECONDS_SQUARED =
+		SIMULATION_STEP_SECONDS * SIMULATION_STEP_SECONDS;
 	constexpr uint32_t MAX_STEPS_PER_FRAME = 4u;
 	constexpr f32_t MINIMUM_REST_LENGTH = 0.0001f;
 	/* Fraction of the displacement limit that stays linear. Past it the travel
@@ -18,8 +20,14 @@ namespace
 	Skinning cannot show less than this and the solver should not spend frames
 	chasing it. */
 	constexpr f32_t SETTLE_DISTANCE = 0.001f;
+	/* Above this speed a frame is a teleport, not travel, and feeding it to
+	the wind would slap the cloth across the map. */
+	constexpr f32_t TELEPORT_SPEED = 15.f;
+	/* Per-second blend rate of the wind's velocity filter; about a fifth of a
+	second to lean into a run and the same to ease home after a stop. */
+	constexpr f32_t VELOCITY_FILTER_RATE = 5.f;
 
-	bool_t Is_Finite(fmatrix_t Matrix)
+	bool_t Is_Finite(const matrix_t& Matrix)
 	{
 		float4x4_t Stored{};
 		XMStoreFloat4x4(&Stored, Matrix);
@@ -32,6 +40,42 @@ namespace
 		return true;
 	}
 
+	/* Bends a frame about its own origin so the direction toward vFromPoint
+	turns onto the direction toward vToPoint. The axis lives in model space,
+	which is the space the frame maps into, so composing on the right is the
+	correct side. Returns the frame unchanged when the rotation is degenerate
+	or not finite. */
+	matrix_t Aim_Frame(
+		const matrix_t& Frame,
+		fvector_t vFromPoint,
+		fvector_t vToPoint)
+	{
+		const vector_t vPivot = Frame.r[3];
+		vector_t vFrom = vFromPoint - vPivot;
+		vector_t vTo = vToPoint - vPivot;
+		if (XMVectorGetX(XMVector3LengthSq(vFrom)) < MINIMUM_REST_LENGTH ||
+			XMVectorGetX(XMVector3LengthSq(vTo)) < MINIMUM_REST_LENGTH)
+		{
+			return Frame;
+		}
+		vFrom = XMVector3Normalize(vFrom);
+		vTo = XMVector3Normalize(vTo);
+		const f32_t fDot = XMVectorGetX(XMVector3Dot(vFrom, vTo));
+		vector_t vAxis = XMVector3Cross(vFrom, vTo);
+		if (fDot > 0.99999f ||
+			XMVectorGetX(XMVector3LengthSq(vAxis)) < MINIMUM_REST_LENGTH)
+		{
+			return Frame;
+		}
+		const f32_t fAngle = std::acos(
+			fDot < -1.f ? -1.f : (fDot > 1.f ? 1.f : fDot));
+		matrix_t Result = Frame;
+		Result.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+		Result = Result * XMMatrixRotationNormal(
+			XMVector3Normalize(vAxis), fAngle);
+		Result.r[3] = vPivot;
+		return Is_Finite(Result) ? Result : Frame;
+	}
 }
 
 bool_t Client::CBoneChainSimulation::Initialize(
@@ -41,9 +85,10 @@ bool_t Client::CBoneChainSimulation::Initialize(
 {
 	m_Specs.clear();
 	m_Links.clear();
-	m_PreviousAnimatedPositions.clear();
 	m_fStepAccumulator = 0.f;
-	m_hasSettled = false;
+	m_isPrimed = false;
+	m_vFilteredWorldVelocity = {};
+	m_hasWorldSample = false;
 	if (nullptr == pModel || nullptr == pSpecs || 0u == iNumSpecs)
 		return false;
 
@@ -90,69 +135,83 @@ bool_t Client::CBoneChainSimulation::Initialize(
 
 void Client::CBoneChainSimulation::Reset()
 {
-	m_PreviousAnimatedPositions.clear();
 	m_fStepAccumulator = 0.f;
-	m_hasSettled = false;
+	m_isPrimed = false;
+	m_vFilteredWorldVelocity = {};
+	m_hasWorldSample = false;
 }
 
 void Client::CBoneChainSimulation::Update(
 	const shared_ptr<Engine::CModel>& pModel,
-	const f32_t fTimeDelta)
+	const f32_t fTimeDelta,
+	const fvector_t vWorldPosition,
+	const f32_t fYawDegrees)
 {
 	if (nullptr == pModel || m_Links.empty() ||
 		!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
 	{
 		return;
 	}
-	/* Everything solves in the character's own space, not the world's.
 
-	The world transform is replicated: position eases toward a 30Hz snapshot and
-	yaw turns at a fixed rate, so neither advances at a constant speed. Solving
-	in world space feeds all of that unevenness into the chain as acceleration,
-	and no amount of damping fixes an input that shakes. In character space the
-	chain answers only to the animation, which is smooth because it was authored
-	that way. The cost is that the cloth no longer trails the character's own
-	travel -- for plate armour that reads better anyway. */
-	std::vector<float3_t> AnimatedPositions(m_Links.size());
-	std::vector<matrix_t> AnimatedCombined(m_Links.size());
+	/* The wind is the character's own travel, low-pass filtered so the 30Hz
+	snapshot ease and the odd frame spike do not shake the cloth, and rotated
+	into model space so the solve itself never sees the world transform. */
+	if (m_hasWorldSample)
+	{
+		vector_t vVelocity = (vWorldPosition -
+			XMLoadFloat3(&m_vPreviousWorldPosition)) / fTimeDelta;
+		const f32_t fSpeed = XMVectorGetX(XMVector3Length(vVelocity));
+		if (!std::isfinite(fSpeed) || fSpeed > TELEPORT_SPEED)
+			vVelocity = XMLoadFloat3(&m_vFilteredWorldVelocity);
+		const f32_t fBlend = fTimeDelta * VELOCITY_FILTER_RATE > 1.f ?
+			1.f : fTimeDelta * VELOCITY_FILTER_RATE;
+		XMStoreFloat3(&m_vFilteredWorldVelocity,
+			XMVectorLerp(XMLoadFloat3(&m_vFilteredWorldVelocity),
+				vVelocity, fBlend));
+	}
+	XMStoreFloat3(&m_vPreviousWorldPosition, vWorldPosition);
+	m_hasWorldSample = true;
+	const vector_t vVelocityModel = XMVector3TransformNormal(
+		XMLoadFloat3(&m_vFilteredWorldVelocity),
+		XMMatrixRotationY(XMConvertToRadians(-fYawDegrees)));
+
+	/* The frame's inputs: every link's animated local matrix, and the animated
+	combined matrix of each chain root. Everything else is derived by walking
+	the chain, so a link's rest pose rides on the frames the links above it
+	already produced -- which is what lets sag and lag accumulate into an
+	actual drape instead of staying a per-link tremble. */
+	std::vector<matrix_t> Locals(m_Links.size());
+	std::vector<matrix_t> RootCombined(m_Links.size());
 	for (size_t i = 0; i < m_Links.size(); ++i)
 	{
-		matrix_t Combined{};
-		if (!pModel->Get_BoneCombinedMatrix(m_Links[i].iBoneIndex, Combined))
+		if (!pModel->Get_BoneLocalMatrix(m_Links[i].iBoneIndex, Locals[i]))
 			return;
-		AnimatedCombined[i] = Combined;
-		XMStoreFloat3(&AnimatedPositions[i], Combined.r[3]);
+		if (m_Links[i].iParentLinkIndex < 0 &&
+			!pModel->Get_BoneCombinedMatrix(
+				m_Links[i].iBoneIndex, RootCombined[i]))
+		{
+			return;
+		}
 	}
-	/* Rest length is read from this frame's pose, not frozen at startup. The
-	cook keys translation as well as rotation, so the distance between two
-	joints is not the same in every clip; holding one clip's length would make
-	the constraint pull against the spring forever, which never settles and
-	reads as a permanent tremble. */
-	for (size_t i = 0; i < m_Links.size(); ++i)
+
+	/* First update after a spawn or reset: place every link on the animated
+	chain and let motion build from there. */
+	if (!m_isPrimed)
 	{
-		const int32_t iParent = m_Links[i].iParentLinkIndex;
-		m_Links[i].fRestLength = iParent < 0 ? 0.f :
-			XMVectorGetX(XMVector3Length(
-				XMLoadFloat3(&AnimatedPositions[i]) -
-				XMLoadFloat3(&AnimatedPositions[iParent])));
-	}
-	if (!m_hasSettled ||
-		m_PreviousAnimatedPositions.size() != AnimatedPositions.size())
-	{
+		matrix_t Frame = XMMatrixIdentity();
 		for (size_t i = 0; i < m_Links.size(); ++i)
 		{
-			m_Links[i].vPosition = AnimatedPositions[i];
-			m_Links[i].vPreviousPosition = AnimatedPositions[i];
+			Frame = m_Links[i].iParentLinkIndex < 0 ?
+				RootCombined[i] : Locals[i] * Frame;
+			XMStoreFloat3(&m_Links[i].vPosition, Frame.r[3]);
+			m_Links[i].vPreviousPosition = m_Links[i].vPosition;
 		}
-		m_PreviousAnimatedPositions = AnimatedPositions;
-		m_hasSettled = true;
+		m_isPrimed = true;
 		return;
 	}
 
 	/* Leftover time carries to the next frame instead of being rounded up to a
-	whole step. Rounding up runs a full step every frame, so above 60fps the
-	chain was integrated faster than real time -- more travel per second than
-	the tuning asks for, and enough extra energy to ring. */
+	whole step; rounding up would integrate faster than real time above 60fps. */
 	m_fStepAccumulator += fTimeDelta;
 	uint32_t iSteps = static_cast<uint32_t>(
 		m_fStepAccumulator / SIMULATION_STEP_SECONDS);
@@ -166,66 +225,65 @@ void Client::CBoneChainSimulation::Update(
 		m_fStepAccumulator -=
 			static_cast<f32_t>(iSteps) * SIMULATION_STEP_SECONDS;
 	}
-	/* A frame with no whole step still writes the pose it already has. Falling
-	back to the animated pose for that one frame would flicker between the two
-	on any machine running faster than the step rate. */
+
+	/* Gravity plus the wind, per spec. These are the forces that shape the
+	chain; the spring only carries it along with the body. */
+	std::vector<vector_t> Accelerations(m_Specs.size());
+	for (size_t iSpec = 0; iSpec < m_Specs.size(); ++iSpec)
+	{
+		Accelerations[iSpec] =
+			XMVectorSet(0.f, -m_Specs[iSpec].fGravity, 0.f, 0.f) -
+			vVelocityModel * m_Specs[iSpec].fWindResponse;
+	}
 
 	for (uint32_t iStep = 0u; iStep < iSteps; ++iStep)
 	{
-		/* Walk the target from where the animation was to where it is, so each
-		substep of a frame gets its own share of the movement. Aiming every
-		substep at the frame's final pose kicks the chain once per step instead
-		of once per frame, which is a tremble that scales with how fast the
-		character is moving and vanishes when it stands still. */
-		const f32_t fAlpha =
-			static_cast<f32_t>(iStep + 1u) / static_cast<f32_t>(iSteps);
+		/* ParentFrame is the frame of the previous link with its animated
+		local rotation, hanging under everything the walk has already bent.
+		The bend a link causes in its parent is decided here too, so the next
+		link starts from it -- the compounding this solver is built around. */
+		matrix_t ParentFrame = XMMatrixIdentity();
 		for (size_t i = 0; i < m_Links.size(); ++i)
 		{
 			LINK& Link = m_Links[i];
-			const BONE_CHAIN_SPEC& Spec = m_Specs[Link.iSpecIndex];
-			const vector_t vAnimated = XMVectorLerp(
-				XMLoadFloat3(&m_PreviousAnimatedPositions[i]),
-				XMLoadFloat3(&AnimatedPositions[i]),
-				fAlpha);
-			if (!Link.isSimulated || Link.iParentLinkIndex < 0)
+			if (Link.iParentLinkIndex < 0)
 			{
-				XMStoreFloat3(&Link.vPosition, vAnimated);
-				Link.vPreviousPosition = Link.vPosition;
+				ParentFrame = RootCombined[i];
 				continue;
 			}
-
+			const BONE_CHAIN_SPEC& Spec = m_Specs[Link.iSpecIndex];
+			const matrix_t SelfFrame = Locals[i] * ParentFrame;
+			const vector_t vTarget = SelfFrame.r[3];
+			const vector_t vParentPosition = ParentFrame.r[3];
+			const f32_t fRestLength = XMVectorGetX(
+				XMVector3Length(vTarget - vParentPosition));
 			const vector_t vCurrent = XMLoadFloat3(&Link.vPosition);
-			const vector_t vPrevious = XMLoadFloat3(&Link.vPreviousPosition);
+			const vector_t vPrevious =
+				XMLoadFloat3(&Link.vPreviousPosition);
 
-			/* Verlet: the step carries its own velocity, so damping and the
-			pull toward the animated pose are the only things acting on it. */
+			/* Verlet: carried velocity, the pull toward the animated
+			direction, and the forces. */
 			vector_t vNext = vCurrent +
 				(vCurrent - vPrevious) * Spec.fDamping +
-				(vAnimated - vCurrent) * Spec.fStiffness;
-			vNext -= XMVectorSet(0.f, 1.f, 0.f, 0.f) * Spec.fGravity *
-				SIMULATION_STEP_SECONDS * SIMULATION_STEP_SECONDS;
+				(vTarget - vCurrent) * Spec.fStiffness +
+				Accelerations[Link.iSpecIndex] * STEP_SECONDS_SQUARED;
 
-			/* Length is what makes it a chain rather than a cloud of points. */
-			const vector_t vParent =
-				XMLoadFloat3(&m_Links[Link.iParentLinkIndex].vPosition);
-			vector_t vOffset = vNext - vParent;
+			/* Length is what makes it a chain rather than a cloud of
+			points. */
+			const vector_t vOffset = vNext - vParentPosition;
 			const f32_t fLength = XMVectorGetX(XMVector3Length(vOffset));
-			if (fLength > MINIMUM_REST_LENGTH && Link.fRestLength > 0.f)
+			if (fLength > MINIMUM_REST_LENGTH &&
+				fRestLength > MINIMUM_REST_LENGTH)
 			{
-				vOffset = XMVector3Normalize(vOffset) * Link.fRestLength;
-				vNext = vParent + vOffset;
+				vNext = vParentPosition +
+					XMVector3Normalize(vOffset) * fRestLength;
 			}
 
-			/* However far it lags, it never leaves the silhouette: a teleport or
-			a hard turn would otherwise stretch the chain across the map.
-
-			The limit compresses instead of cutting. Clipping the position dead
-			at the boundary is what reads as a taut rope hitting its end; easing
-			into it lets the last stretch of travel slow down and settle. The
-			curve saturates, so the limit is still never crossed. */
-			const vector_t vFromAnimated = vNext - vAnimated;
+			/* However far it lags, it never leaves the silhouette; the limit
+			compresses toward its bound instead of cutting at it. */
+			const vector_t vFromRest = vNext - vTarget;
 			const f32_t fDisplacement =
-				XMVectorGetX(XMVector3Length(vFromAnimated));
+				XMVectorGetX(XMVector3Length(vFromRest));
 			const f32_t fKnee = Spec.fMaxDisplacement * SOFT_LIMIT_KNEE;
 			if (fDisplacement > fKnee && fDisplacement > MINIMUM_REST_LENGTH)
 			{
@@ -233,133 +291,100 @@ void Client::CBoneChainSimulation::Update(
 				const f32_t fOver = fDisplacement - fKnee;
 				const f32_t fEased = fRange <= 0.f ? 0.f :
 					fRange * (fOver / (fOver + fRange));
-				vNext = vAnimated +
-					XMVector3Normalize(vFromAnimated) * (fKnee + fEased);
+				vNext = vTarget +
+					XMVector3Normalize(vFromRest) * (fKnee + fEased);
 			}
 
-			/* Once a link is this close to its animated pose and barely moving,
-			it is parked outright. Without it the spring and the length
-			constraint trade a fraction of a millimetre back and forth forever,
-			which on screen is a permanent shimmer rather than motion. */
+			/* Within a millimetre of home and barely moving, a link parks
+			outright; anything less shimmers forever. */
 			const f32_t fResidual = XMVectorGetX(
-				XMVector3Length(vNext - vAnimated));
+				XMVector3Length(vNext - vTarget));
 			const f32_t fTravel = XMVectorGetX(
 				XMVector3Length(vNext - vCurrent));
 			if (fResidual < SETTLE_DISTANCE && fTravel < SETTLE_DISTANCE)
 			{
-				XMStoreFloat3(&Link.vPosition, vAnimated);
+				XMStoreFloat3(&Link.vPosition, vTarget);
 				Link.vPreviousPosition = Link.vPosition;
-				continue;
 			}
-
-			/* One non-finite position would spread through the rest length,
-			the aim direction and finally the bone matrix. The link falls back
-			to its animated pose and the chain carries on from there. */
-			if (!XMVector3IsNaN(vNext) && !XMVector3IsInfinite(vNext))
+			else if (!XMVector3IsNaN(vNext) && !XMVector3IsInfinite(vNext))
 			{
 				Link.vPreviousPosition = Link.vPosition;
 				XMStoreFloat3(&Link.vPosition, vNext);
 			}
 			else
 			{
-				XMStoreFloat3(&Link.vPosition, vAnimated);
+				XMStoreFloat3(&Link.vPosition, vTarget);
 				Link.vPreviousPosition = Link.vPosition;
 			}
+
+			/* Bend the parent onto the solved position and hang this link's
+			own animated local under it for the next iteration. */
+			ParentFrame = Aim_Frame(
+				ParentFrame, vTarget, XMLoadFloat3(&Link.vPosition));
+			ParentFrame = Locals[i] * ParentFrame;
 		}
 	}
 
-	/* Write back as rotation only. A bone's translation is its rest offset from
-	its parent and moving it would tear the mesh, so each parent is turned to
-	aim at where its child ended up instead.
-
-	Turning a bone carries everything below it, so a chain has to be written from
-	its root down with the combined matrix rebuilt as it goes; reading the
-	animated pose for a deep link would aim it from a parent that has already
-	moved. */
-	m_PreviousAnimatedPositions = AnimatedPositions;
-
-	matrix_t AboveCombined = XMMatrixIdentity();
-	matrix_t ParentLocal = XMMatrixIdentity();
-	uint32_t iParentBone = 0u;
+	/* Write-back walk. The rotations are rebuilt from the solved positions,
+	blended between the last two steps by the leftover step time so the chain
+	advances at the frame rate rather than the step rate. Each parent's local
+	is recovered through the frame above it; no determinant threshold guards
+	the inverses, because the rig's 0.0001 preTransform puts every legitimate
+	combined determinant around 1e-12 -- a genuinely singular frame inverts to
+	infinities and the finiteness gate drops it instead. */
+	const f32_t fRenderAlpha = m_fStepAccumulator / SIMULATION_STEP_SECONDS;
+	matrix_t ParentFrame = XMMatrixIdentity();
+	matrix_t FrameAbove = XMMatrixIdentity();
+	bool_t isChainValid = false;
 	for (size_t i = 0; i < m_Links.size(); ++i)
 	{
 		const LINK& Link = m_Links[i];
 		if (Link.iParentLinkIndex < 0)
 		{
-			/* Chain root. Its position stays animated -- only its children move
-			-- but its rotation is what aims the first simulated link, so the
-			frame above it has to be recovered to rebuild it later. */
-			matrix_t RootLocal{};
-			if (!pModel->Get_BoneLocalMatrix(Link.iBoneIndex, RootLocal))
-				return;
-			/* Recovering the frame above the root needs the root's own matrix
-			inverted, and a rig bone with no scale is singular: the inverse comes
-			back as infinities and every bone below inherits them. */
-			vector_t vDeterminant = XMMatrixDeterminant(RootLocal);
-			if (std::fabs(XMVectorGetX(vDeterminant)) < MINIMUM_REST_LENGTH)
+			ParentFrame = RootCombined[i];
+			vector_t vDeterminant = XMMatrixDeterminant(Locals[i]);
+			const f32_t fDeterminant = XMVectorGetX(vDeterminant);
+			isChainValid = std::isfinite(fDeterminant) && 0.f != fDeterminant;
+			if (isChainValid)
 			{
-				ParentLocal = RootLocal;
-				iParentBone = Link.iBoneIndex;
-				AboveCombined = XMMatrixIdentity();
-				continue;
+				FrameAbove = XMMatrixInverse(&vDeterminant, Locals[i]) *
+					RootCombined[i];
 			}
-			AboveCombined = XMMatrixInverse(&vDeterminant, RootLocal) *
-				AnimatedCombined[i];
-			ParentLocal = RootLocal;
-			iParentBone = Link.iBoneIndex;
 			continue;
 		}
+		if (!isChainValid)
+			continue;
 
-		matrix_t ChildLocal{};
-		if (!pModel->Get_BoneLocalMatrix(Link.iBoneIndex, ChildLocal))
-			return;
-		const matrix_t ParentCombined = ParentLocal * AboveCombined;
-		const matrix_t ChildCombined = ChildLocal * ParentCombined;
+		const vector_t vTail = XMVectorLerp(
+			XMLoadFloat3(&Link.vPreviousPosition),
+			XMLoadFloat3(&Link.vPosition),
+			fRenderAlpha);
+		const matrix_t SelfFrame = Locals[i] * ParentFrame;
+		matrix_t ParentResult = Aim_Frame(
+			ParentFrame, SelfFrame.r[3], vTail);
 
-		const vector_t vParentPosition = ParentCombined.r[3];
-		const vector_t vChildCurrent = ChildCombined.r[3];
-		const vector_t vChildTarget = XMLoadFloat3(&Link.vPosition);
-
-		vector_t vFrom = vChildCurrent - vParentPosition;
-		vector_t vTo = vChildTarget - vParentPosition;
-		matrix_t ParentResult = ParentLocal;
-		if (XMVectorGetX(XMVector3LengthSq(vFrom)) >= MINIMUM_REST_LENGTH &&
-			XMVectorGetX(XMVector3LengthSq(vTo)) >= MINIMUM_REST_LENGTH)
+		const uint32_t iParentBone =
+			m_Links[Link.iParentLinkIndex].iBoneIndex;
+		vector_t vDeterminant = XMMatrixDeterminant(FrameAbove);
+		const f32_t fDeterminant = XMVectorGetX(vDeterminant);
+		bool_t isWritten = false;
+		if (std::isfinite(fDeterminant) && 0.f != fDeterminant)
 		{
-			vFrom = XMVector3Normalize(vFrom);
-			vTo = XMVector3Normalize(vTo);
-			const f32_t fDot = XMVectorGetX(XMVector3Dot(vFrom, vTo));
-			vector_t vAxis = XMVector3Cross(vFrom, vTo);
-			if (fDot <= 0.99999f &&
-				XMVectorGetX(XMVector3LengthSq(vAxis)) >= MINIMUM_REST_LENGTH)
+			const matrix_t NewLocal = ParentResult *
+				XMMatrixInverse(&vDeterminant, FrameAbove);
+			/* A single non-finite value would be skinned into every vertex
+			the bone touches; the bone keeps its animated pose instead. */
+			if (Is_Finite(NewLocal))
 			{
-				vAxis = XMVector3Normalize(vAxis);
-				const f32_t fAngle = std::acos(
-					fDot < -1.f ? -1.f : (fDot > 1.f ? 1.f : fDot));
-				const vector_t vTranslation = ParentResult.r[3];
-				ParentResult.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-				ParentResult = ParentResult *
-					XMMatrixRotationNormal(vAxis, fAngle);
-				ParentResult.r[3] = vTranslation;
-				/* A single non-finite value here would be skinned into every
-				vertex the bone touches and taken downstream as geometry. The
-				bone keeps its animated pose instead. */
-				if (!Is_Finite(ParentResult))
-				{
-					ParentResult = ParentLocal;
-				}
-				else
-				{
-					pModel->Set_BoneLocalMatrix(iParentBone, ParentResult);
-				}
+				pModel->Set_BoneLocalMatrix(iParentBone, NewLocal);
+				isWritten = true;
 			}
 		}
+		if (!isWritten)
+			ParentResult = ParentFrame;
 
-		/* Descend: this link becomes the parent of the next one, hanging from
-		the frame the correction just produced. */
-		AboveCombined = ParentResult * AboveCombined;
-		ParentLocal = ChildLocal;
-		iParentBone = Link.iBoneIndex;
+		FrameAbove = ParentResult;
+		ParentFrame = Locals[i] * ParentResult;
 	}
 	pModel->Refresh_BoneCombinedMatrices();
 }
