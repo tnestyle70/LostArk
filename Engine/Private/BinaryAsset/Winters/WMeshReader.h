@@ -14,9 +14,11 @@ struct W_MESH_BONE_DATA
 struct W_MESH_READ_RESULT
 {
 	bool_t skinned = { false };
+	uint16_t fileVersionMinor = {};
 	uint32_t materialCount = {};
 	vector<MODEL_MESH_DATA> meshes;
 	vector<W_MESH_BONE_DATA> bones;
+	MODEL_GEOMETRY_METADATA_DATA geometryMetadata;
 };
 
 class CWMeshReader final

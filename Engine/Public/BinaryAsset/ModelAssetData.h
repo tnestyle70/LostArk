@@ -2,6 +2,7 @@
 
 #include "Engine_Defines.h"
 
+#include <array>
 #include <filesystem>
 
 NS_BEGIN(Engine)
@@ -27,6 +28,56 @@ enum class MODEL_VERTEX_KIND : uint8_t
 	SKINNED,
 };
 
+enum MODEL_GEOMETRY_EVIDENCE_FLAG : uint32_t
+{
+	MODEL_GEOMETRY_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF = 1u << 0,
+	MODEL_GEOMETRY_COLOR0_PRESERVED_FROM_GLTF = 1u << 1,
+	MODEL_GEOMETRY_BOUNDS_WMODEL_SPACE = 1u << 2,
+	MODEL_GEOMETRY_SOURCE_GLTF_SHA256 = 1u << 3,
+	MODEL_GEOMETRY_SOURCE_BUFFER_SET_SHA256 = 1u << 4,
+	MODEL_GEOMETRY_SOURCE_PACKAGE_SHA256 = 1u << 5,
+	MODEL_GEOMETRY_SOURCE_OBJECT_SHA256 = 1u << 6,
+	MODEL_GEOMETRY_LEGACY_CONVERTER_SHA256 = 1u << 7,
+	MODEL_GEOMETRY_TOOL_SHA256 = 1u << 8,
+	MODEL_GEOMETRY_SOURCE_EXPORT_RECEIPT_SHA256 = 1u << 9,
+	MODEL_GEOMETRY_LEGACY_COOK_RECEIPT_SHA256 = 1u << 10,
+	MODEL_GEOMETRY_CLEAN_SOURCE_EXPORT = 1u << 11,
+	MODEL_GEOMETRY_UPK_TO_GLTF_EXACT = 1u << 12,
+	MODEL_GEOMETRY_PIVOT_EXACT = 1u << 13,
+};
+
+struct MODEL_MESH_BOUNDS_DATA
+{
+	bool_t present = { false };
+	float3_t minimum = {};
+	float3_t maximum = {};
+	float3_t center = {};
+	f32_t radius = {};
+};
+
+struct MODEL_GEOMETRY_METADATA_DATA
+{
+	bool_t present = { false };
+	uint16_t versionMajor = {};
+	uint16_t versionMinor = {};
+	uint32_t channelMask = {};
+	uint32_t evidenceFlags = {};
+	uint32_t payloadSize = {};
+	f32_t sourceToWModelScale = { 1.f };
+	f32_t geometryPreScale = { 1.f };
+	array<uint8_t, 32> payloadSha256 = {};
+	array<uint8_t, 32> sourceGltfSha256 = {};
+	array<uint8_t, 32> sourceBufferSetSha256 = {};
+	array<uint8_t, 32> sourcePackageSha256 = {};
+	array<uint8_t, 32> sourceObjectSha256 = {};
+	array<uint8_t, 32> legacyConverterSha256 = {};
+	array<uint8_t, 32> geometryToolSha256 = {};
+	array<uint8_t, 32> sourceExportReceiptSha256 = {};
+	array<uint8_t, 32> legacyCookReceiptSha256 = {};
+	array<uint8_t, 32> metadataSha256 = {};
+	array<uint8_t, 32> provenanceSha256 = {};
+};
+
 struct MODEL_MESH_DATA
 {
 	string name;
@@ -35,6 +86,8 @@ struct MODEL_MESH_DATA
 	vector<VTXMESH> vertices;
 	vector<VTXANIMMESH> skinnedVertices;
 	vector<uint32_t> indices;
+	bool_t hasColor0 = { false };
+	MODEL_MESH_BOUNDS_DATA embeddedBounds;
 };
 
 struct MODEL_BONE_DATA
@@ -108,6 +161,7 @@ struct MODEL_ASSET_DATA
 {
 	vector<MODEL_MESH_DATA> meshes;
 	vector<MODEL_MATERIAL_DATA> materials;
+	MODEL_GEOMETRY_METADATA_DATA geometryMetadata;
 	bool_t hasSkeleton = { false };
 	MODEL_SKELETON_DATA skeleton;
 	vector<MODEL_ANIMATION_DATA> animations;
@@ -138,6 +192,8 @@ struct MODEL_DECODE_REPORT
 	uint64_t vertexCount = {};
 	uint64_t indexCount = {};
 	uint64_t animationKeyCount = {};
+	bool_t hasGeometryMetadata = { false };
+	uint32_t geometryEvidenceFlags = {};
 };
 
 NS_END

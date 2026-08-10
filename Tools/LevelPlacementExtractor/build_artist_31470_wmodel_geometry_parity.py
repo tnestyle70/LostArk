@@ -28,14 +28,33 @@ ASSETS = (
 )
 
 
-def file_sha256(path: Path) -> str:
+def raw_artifact_sha256(path: Path) -> str:
+    """Hash byte-exact external/source/runtime artifacts."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def canonical_lf_tracked_json_sha256(path: Path) -> str:
+    """Hash UTF-8/no-BOM tracked JSON independent of checkout EOL only."""
+    text = path.read_bytes().decode("utf-8")
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def json_bytes(value: Any) -> bytes:
     return (
         json.dumps(value, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
     ).encode("utf-8")
+
+
+def generated_json_equal_after_eol_normalization(
+    payload: bytes, expected: bytes
+) -> bool:
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return normalized.encode("utf-8") == expected
 
 
 def canonical_sha256(value: Any) -> str:
@@ -109,7 +128,7 @@ def accessor_values(
         "decodedValueSha256": hashlib.sha256(value_payload).hexdigest(),
         "bufferLogicalPath": uri.replace("\\", "/"),
         "bufferBytes": len(payload),
-        "bufferSha256": file_sha256(buffer_path),
+        "bufferSha256": raw_artifact_sha256(buffer_path),
     }
 
 
@@ -260,7 +279,7 @@ def parse_gltf(path: Path) -> dict[str, Any]:
                 "logicalPath": uri.replace("\\", "/"),
                 "declaredBytes": int(buffer.get("byteLength", 0)),
                 "physicalBytes": buffer_path.stat().st_size,
-                "sha256": file_sha256(buffer_path),
+                "sha256": raw_artifact_sha256(buffer_path),
             }
         )
     return {
@@ -270,7 +289,7 @@ def parse_gltf(path: Path) -> dict[str, Any]:
         "accessors": dict(accessor_rows),
         "buffers": buffers,
         "meshNodeTransforms": node_transforms,
-        "gltfSha256": file_sha256(path),
+        "gltfSha256": raw_artifact_sha256(path),
         "gltfBytes": path.stat().st_size,
     }
 
@@ -390,7 +409,7 @@ def parse_wmodel(path: Path) -> dict[str, Any]:
         "indices": indices,
         "submeshes": submeshes,
         "sections": sections,
-        "fileSha256": file_sha256(path),
+        "fileSha256": raw_artifact_sha256(path),
         "fileBytes": len(payload),
         "outerVersion": [major, minor],
         "meshVersion": [mesh_outer[1], mesh_outer[2]],
@@ -960,7 +979,9 @@ def build_receipt(
         "runtimeAdmission": False,
         "inputs": {
             "activeInventoryAssetId": "Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json",
-            "activeInventorySha256": file_sha256(active_inventory_path),
+            "activeInventorySha256": canonical_lf_tracked_json_sha256(
+                active_inventory_path
+            ),
         },
         "upkToUmodelGltfProvenance": {
             "status": "UNRESOLVED_NOT_REPRODUCED_IN_THIS_SLICE",
@@ -975,9 +996,9 @@ def build_receipt(
         },
         "converterEvidence": {
             "toolAssetId": "Tools/ModelAssetConverter/Bin/ModelAssetConverter.exe",
-            "toolSha256": file_sha256(converter),
+            "toolSha256": raw_artifact_sha256(converter),
             "cookScriptAssetId": "Tools/LevelPlacementExtractor/cook_effect_runtime_resources.py",
-            "cookScriptSha256": file_sha256(cook_script),
+            "cookScriptSha256": raw_artifact_sha256(cook_script),
             "recipeArguments": ["--pretransform", "--scale", "100", "--no-auto-textures"],
             "actualHistoricalInvocationProven": False,
             "provenanceStatus": "RECIPE_PRESENT_AND_OUTPUT_NUMERIC_RELATION_PROVEN_HISTORICAL_INVOCATION_UNRESOLVED",
@@ -1074,7 +1095,10 @@ def main() -> int:
     content = json_bytes(receipt)
     if args.check:
         require(
-            args.output.is_file() and args.output.read_bytes() == content,
+            args.output.is_file()
+            and generated_json_equal_after_eol_normalization(
+                args.output.read_bytes(), content
+            ),
             f"generated output is stale: {args.output}",
         )
     else:

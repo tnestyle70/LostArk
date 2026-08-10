@@ -2,6 +2,8 @@
 
 #include "Component.h"
 
+#include <array>
+
 NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
@@ -49,6 +51,30 @@ public:
 	bool_t Has_LocalBounds() const { return m_bHasLocalBounds; }
 	const float3_t& Get_LocalBoundsMin() const { return m_vLocalBoundsMin; }
 	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
+	bool_t Has_IntegrityVerifiedGeometryPayload() const {
+		return m_bHasIntegrityVerifiedGeometryPayload;
+	}
+	uint16_t Get_GeometryFormatVersionMajor() const {
+		return m_iGeometryFormatVersionMajor;
+	}
+	uint16_t Get_GeometryFormatVersionMinor() const {
+		return m_iGeometryFormatVersionMinor;
+	}
+	uint32_t Get_GeometryChannelMask() const {
+		return m_iGeometryChannelMask;
+	}
+	uint32_t Get_GeometryEvidenceFlags() const {
+		return m_iGeometryEvidenceFlags;
+	}
+	f32_t Get_GeometryPreScale() const {
+		return m_fGeometryPreScale;
+	}
+	const array<uint8_t, 32>& Get_GeometryPayloadSha256() const {
+		return m_GeometryPayloadSha256;
+	}
+	const array<uint8_t, 32>& Get_GeometryProvenanceSha256() const {
+		return m_GeometryProvenanceSha256;
+	}
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
@@ -129,6 +155,14 @@ private:
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
+	bool_t									m_bHasIntegrityVerifiedGeometryPayload = { false };
+	uint16_t								m_iGeometryFormatVersionMajor = {};
+	uint16_t								m_iGeometryFormatVersionMinor = {};
+	uint32_t								m_iGeometryChannelMask = {};
+	uint32_t								m_iGeometryEvidenceFlags = {};
+	f32_t									m_fGeometryPreScale = { 1.f };
+	array<uint8_t, 32>						m_GeometryPayloadSha256 = {};
+	array<uint8_t, 32>						m_GeometryProvenanceSha256 = {};
 
 private:
 	void Begin_AnimBlend(f32_t fBlendSeconds);

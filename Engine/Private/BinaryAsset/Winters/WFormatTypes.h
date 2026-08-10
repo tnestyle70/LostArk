@@ -11,10 +11,24 @@ namespace Engine::WintersFormat
 	constexpr char WSKEL_MAGIC[4] = { 'W', 'S', 'K', 'L' };
 	constexpr char WANIM_MAGIC[4] = { 'W', 'A', 'N', 'M' };
 	constexpr char WMODEL_MAGIC[4] = { 'W', 'M', 'O', 'D' };
+	constexpr char WGEOMETRY_MAGIC[4] = { 'W', 'G', 'E', 'O' };
 
+	constexpr uint16_t WINT_VERSION_MAJOR = 1;
+	constexpr uint16_t WINT_LEGACY_VERSION_MINOR = 0;
+	constexpr uint16_t WINT_GEOMETRY_VERSION_MINOR = 1;
+	constexpr uint32_t VF_POSITION = 1u << 0;
+	constexpr uint32_t VF_NORMAL = 1u << 1;
+	constexpr uint32_t VF_TEXCOORD0 = 1u << 2;
+	constexpr uint32_t VF_TANGENT = 1u << 3;
 	constexpr uint32_t VF_BONE_WEIGHT = 1u << 4;
+	constexpr uint32_t VF_TANGENT_HANDEDNESS = 1u << 5;
+	constexpr uint32_t VF_COLOR0 = 1u << 6;
+	constexpr uint32_t VF_STATIC_BASE =
+		VF_POSITION | VF_NORMAL | VF_TEXCOORD0 | VF_TANGENT;
 	constexpr uint32_t STRIDE_STATIC = 48;
+	constexpr uint32_t STRIDE_STATIC_COLOR0 = 52;
 	constexpr uint32_t STRIDE_SKINNED = 76;
+	constexpr uint32_t SHA256_SIZE = 32;
 	constexpr uint32_t MAX_SUBMESHES = 2048;
 	constexpr uint32_t MAX_BONES = 512;
 	constexpr uint32_t MAX_SOCKETS = 256;
@@ -94,6 +108,74 @@ namespace Engine::WintersFormat
 		float offsetMatrix[16];
 		uint32_t channelFlag;
 		uint8_t reserved[16];
+	};
+
+	struct MESH_BOUNDS_V1
+	{
+		float minimum[3];
+		float maximum[3];
+		float center[3];
+		float radius;
+	};
+
+	enum MESH_GEOMETRY_EVIDENCE_FLAG : uint32_t
+	{
+		MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF = 1u << 0,
+		MGEF_COLOR0_PRESERVED_FROM_GLTF = 1u << 1,
+		MGEF_BOUNDS_WMODEL_SPACE = 1u << 2,
+		MGEF_SOURCE_GLTF_SHA256 = 1u << 3,
+		MGEF_SOURCE_BUFFER_SET_SHA256 = 1u << 4,
+		MGEF_SOURCE_PACKAGE_SHA256 = 1u << 5,
+		MGEF_SOURCE_OBJECT_SHA256 = 1u << 6,
+		MGEF_LEGACY_CONVERTER_SHA256 = 1u << 7,
+		MGEF_GEOMETRY_TOOL_SHA256 = 1u << 8,
+		MGEF_SOURCE_EXPORT_RECEIPT_SHA256 = 1u << 9,
+		MGEF_LEGACY_COOK_RECEIPT_SHA256 = 1u << 10,
+		MGEF_CLEAN_SOURCE_EXPORT = 1u << 11,
+		MGEF_UPK_TO_GLTF_EXACT = 1u << 12,
+		MGEF_PIVOT_EXACT = 1u << 13,
+	};
+
+	constexpr uint32_t MGEF_REQUIRED_PAYLOAD =
+		MGEF_TANGENT_HANDEDNESS_PRESERVED_FROM_GLTF |
+		MGEF_BOUNDS_WMODEL_SPACE |
+		MGEF_SOURCE_GLTF_SHA256 |
+		MGEF_SOURCE_BUFFER_SET_SHA256 |
+		MGEF_SOURCE_PACKAGE_SHA256 |
+		MGEF_SOURCE_OBJECT_SHA256 |
+		MGEF_LEGACY_CONVERTER_SHA256 |
+		MGEF_GEOMETRY_TOOL_SHA256 |
+		MGEF_SOURCE_EXPORT_RECEIPT_SHA256 |
+		MGEF_LEGACY_COOK_RECEIPT_SHA256;
+	constexpr uint32_t MGEF_PRODUCT_PROVENANCE =
+		MGEF_CLEAN_SOURCE_EXPORT |
+		MGEF_UPK_TO_GLTF_EXACT |
+		MGEF_PIVOT_EXACT;
+	constexpr uint32_t MGEF_KNOWN =
+		MGEF_REQUIRED_PAYLOAD |
+		MGEF_COLOR0_PRESERVED_FROM_GLTF |
+		MGEF_PRODUCT_PROVENANCE;
+
+	struct MESH_GEOMETRY_METADATA_V1
+	{
+		char magic[4];
+		uint16_t versionMajor;
+		uint16_t versionMinor;
+		uint32_t byteSize;
+		uint32_t evidenceFlags;
+		uint32_t payloadSize;
+		float sourceToWModelScale;
+		float geometryPreScale;
+		uint8_t payloadSha256[SHA256_SIZE];
+		uint8_t sourceGltfSha256[SHA256_SIZE];
+		uint8_t sourceBufferSetSha256[SHA256_SIZE];
+		uint8_t sourcePackageSha256[SHA256_SIZE];
+		uint8_t sourceObjectSha256[SHA256_SIZE];
+		uint8_t legacyConverterSha256[SHA256_SIZE];
+		uint8_t geometryToolSha256[SHA256_SIZE];
+		uint8_t sourceExportReceiptSha256[SHA256_SIZE];
+		uint8_t legacyCookReceiptSha256[SHA256_SIZE];
+		uint8_t metadataSha256[SHA256_SIZE];
 	};
 
 	struct MATERIAL_META_HEADER
@@ -226,6 +308,8 @@ namespace Engine::WintersFormat
 	static_assert(sizeof(MESH_META_HEADER) == 36);
 	static_assert(sizeof(SUBMESH_DESC) == 48);
 	static_assert(sizeof(MESH_BONE_ENTRY) == 128);
+	static_assert(sizeof(MESH_BOUNDS_V1) == 40);
+	static_assert(sizeof(MESH_GEOMETRY_METADATA_V1) == 348);
 	static_assert(sizeof(MATERIAL_ENTRY) == 596);
 	static_assert(sizeof(MATERIAL_ENTRY_V2) == 4756);
 	static_assert(sizeof(SKELETON_META_HEADER) == 32);

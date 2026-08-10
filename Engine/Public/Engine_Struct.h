@@ -129,6 +129,8 @@ namespace Engine
 		XMFLOAT3			vTangent;
 		XMFLOAT3			vBinormal;
 		XMFLOAT2			vTexcoord;
+		FLOAT				fTangentHandedness = { 1.f };
+		uint32_t			iColorRGBA8 = {};
 
 		static constexpr uint32_t		iNumElements = { 5 };
 		static constexpr D3D11_INPUT_ELEMENT_DESC		Elements[] = {
