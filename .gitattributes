@@ -37,4 +37,8 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
+# The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
+# identity. Keep this one generated candidate byte-exact on every checkout.
+/Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
+
 

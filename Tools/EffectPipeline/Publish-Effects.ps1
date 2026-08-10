@@ -42,6 +42,8 @@ $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored')
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
 $compiledRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Compiled'))
+$reconstructedProgramRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\Imported\Artist\Candidates'))
 $derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
@@ -74,12 +76,395 @@ $supportedSourceSubUVModes = @(
     'psuvim_linear_blend_random_flip_square'
 )
 
+if ($null -eq ('LostArk.EffectPipeline.StrictJsonObjectKeyScanner' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace LostArk.EffectPipeline
+{
+    public static class StrictJsonObjectKeyScanner
+    {
+        public static void Validate(string json, string label)
+        {
+            new Parser(json, label).ParseDocument();
+        }
+
+        private sealed class Parser
+        {
+            private const int MaxDepth = 512;
+            private readonly string _json;
+            private readonly string _label;
+            private int _offset;
+            private int _depth;
+
+            public Parser(string json, string label)
+            {
+                if (json == null)
+                {
+                    throw new ArgumentNullException("json");
+                }
+                _json = json;
+                _label = label ?? "JSON document";
+            }
+
+            public void ParseDocument()
+            {
+                SkipWhitespace();
+                ParseValue();
+                SkipWhitespace();
+                if (_offset != _json.Length)
+                {
+                    Fail("unexpected trailing token");
+                }
+            }
+
+            private void ParseValue()
+            {
+                if (_offset >= _json.Length)
+                {
+                    Fail("expected a JSON value");
+                }
+                char token = _json[_offset];
+                if (token == '{')
+                {
+                    ParseObject();
+                }
+                else if (token == '[')
+                {
+                    ParseArray();
+                }
+                else if (token == '"')
+                {
+                    ReadString(false);
+                }
+                else if (token == 't')
+                {
+                    ReadLiteral("true");
+                }
+                else if (token == 'f')
+                {
+                    ReadLiteral("false");
+                }
+                else if (token == 'n')
+                {
+                    ReadLiteral("null");
+                }
+                else if (token == '-' || IsDigit(token))
+                {
+                    ReadNumber();
+                }
+                else
+                {
+                    Fail("invalid JSON value token");
+                }
+            }
+
+            private void ParseObject()
+            {
+                EnterContainer();
+                try
+                {
+                    ++_offset;
+                    SkipWhitespace();
+                    if (Consume('}'))
+                    {
+                        return;
+                    }
+                    HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
+                    while (true)
+                    {
+                        if (_offset >= _json.Length || _json[_offset] != '"')
+                        {
+                            Fail("object member key must be a JSON string");
+                        }
+                        string key = ReadString(true);
+                        if (!keys.Add(key))
+                        {
+                            throw new FormatException(String.Format(
+                                "{0} contains duplicate JSON object key '{1}' at offset {2}.",
+                                _label,
+                                key,
+                                _offset));
+                        }
+                        SkipWhitespace();
+                        Expect(':');
+                        SkipWhitespace();
+                        ParseValue();
+                        SkipWhitespace();
+                        if (Consume('}'))
+                        {
+                            return;
+                        }
+                        Expect(',');
+                        SkipWhitespace();
+                    }
+                }
+                finally
+                {
+                    --_depth;
+                }
+            }
+
+            private void ParseArray()
+            {
+                EnterContainer();
+                try
+                {
+                    ++_offset;
+                    SkipWhitespace();
+                    if (Consume(']'))
+                    {
+                        return;
+                    }
+                    while (true)
+                    {
+                        ParseValue();
+                        SkipWhitespace();
+                        if (Consume(']'))
+                        {
+                            return;
+                        }
+                        Expect(',');
+                        SkipWhitespace();
+                    }
+                }
+                finally
+                {
+                    --_depth;
+                }
+            }
+
+            private string ReadString(bool capture)
+            {
+                Expect('"');
+                StringBuilder value = capture ? new StringBuilder() : null;
+                while (_offset < _json.Length)
+                {
+                    char current = _json[_offset++];
+                    if (current == '"')
+                    {
+                        return capture ? value.ToString() : null;
+                    }
+                    if (current < 0x20)
+                    {
+                        Fail("unescaped control character in JSON string");
+                    }
+                    if (current != '\\')
+                    {
+                        if (capture)
+                        {
+                            value.Append(current);
+                        }
+                        continue;
+                    }
+                    if (_offset >= _json.Length)
+                    {
+                        Fail("unterminated JSON escape sequence");
+                    }
+                    char escaped = _json[_offset++];
+                    char decoded;
+                    switch (escaped)
+                    {
+                        case '"': decoded = '"'; break;
+                        case '\\': decoded = '\\'; break;
+                        case '/': decoded = '/'; break;
+                        case 'b': decoded = '\b'; break;
+                        case 'f': decoded = '\f'; break;
+                        case 'n': decoded = '\n'; break;
+                        case 'r': decoded = '\r'; break;
+                        case 't': decoded = '\t'; break;
+                        case 'u': decoded = ReadUnicodeEscape(); break;
+                        default:
+                            Fail("invalid JSON escape sequence");
+                            return null;
+                    }
+                    if (capture)
+                    {
+                        value.Append(decoded);
+                    }
+                }
+                Fail("unterminated JSON string");
+                return null;
+            }
+
+            private char ReadUnicodeEscape()
+            {
+                if (_offset + 4 > _json.Length)
+                {
+                    Fail("truncated JSON unicode escape");
+                }
+                int value = 0;
+                for (int index = 0; index < 4; ++index)
+                {
+                    char digit = _json[_offset++];
+                    value <<= 4;
+                    if (digit >= '0' && digit <= '9')
+                    {
+                        value += digit - '0';
+                    }
+                    else if (digit >= 'a' && digit <= 'f')
+                    {
+                        value += digit - 'a' + 10;
+                    }
+                    else if (digit >= 'A' && digit <= 'F')
+                    {
+                        value += digit - 'A' + 10;
+                    }
+                    else
+                    {
+                        Fail("invalid JSON unicode escape");
+                    }
+                }
+                return (char)value;
+            }
+
+            private void ReadNumber()
+            {
+                Consume('-');
+                if (_offset >= _json.Length)
+                {
+                    Fail("truncated JSON number");
+                }
+                if (Consume('0'))
+                {
+                    if (_offset < _json.Length && IsDigit(_json[_offset]))
+                    {
+                        Fail("JSON number contains a leading zero");
+                    }
+                }
+                else
+                {
+                    if (_json[_offset] < '1' || _json[_offset] > '9')
+                    {
+                        Fail("invalid JSON integer token");
+                    }
+                    while (_offset < _json.Length && IsDigit(_json[_offset]))
+                    {
+                        ++_offset;
+                    }
+                }
+                if (Consume('.'))
+                {
+                    int start = _offset;
+                    while (_offset < _json.Length && IsDigit(_json[_offset]))
+                    {
+                        ++_offset;
+                    }
+                    if (_offset == start)
+                    {
+                        Fail("JSON fraction requires a digit");
+                    }
+                }
+                if (_offset < _json.Length &&
+                    (_json[_offset] == 'e' || _json[_offset] == 'E'))
+                {
+                    ++_offset;
+                    if (_offset < _json.Length &&
+                        (_json[_offset] == '+' || _json[_offset] == '-'))
+                    {
+                        ++_offset;
+                    }
+                    int start = _offset;
+                    while (_offset < _json.Length && IsDigit(_json[_offset]))
+                    {
+                        ++_offset;
+                    }
+                    if (_offset == start)
+                    {
+                        Fail("JSON exponent requires a digit");
+                    }
+                }
+            }
+
+            private void ReadLiteral(string expected)
+            {
+                if (_offset + expected.Length > _json.Length ||
+                    String.CompareOrdinal(_json, _offset, expected, 0, expected.Length) != 0)
+                {
+                    Fail("invalid JSON literal");
+                }
+                _offset += expected.Length;
+            }
+
+            private void EnterContainer()
+            {
+                ++_depth;
+                if (_depth > MaxDepth)
+                {
+                    Fail("JSON nesting exceeds the supported depth");
+                }
+            }
+
+            private void SkipWhitespace()
+            {
+                while (_offset < _json.Length)
+                {
+                    char current = _json[_offset];
+                    if (current != ' ' && current != '\t' &&
+                        current != '\r' && current != '\n')
+                    {
+                        return;
+                    }
+                    ++_offset;
+                }
+            }
+
+            private bool Consume(char expected)
+            {
+                if (_offset < _json.Length && _json[_offset] == expected)
+                {
+                    ++_offset;
+                    return true;
+                }
+                return false;
+            }
+
+            private void Expect(char expected)
+            {
+                if (!Consume(expected))
+                {
+                    Fail(String.Format("expected '{0}'", expected));
+                }
+            }
+
+            private static bool IsDigit(char value)
+            {
+                return value >= '0' && value <= '9';
+            }
+
+            private void Fail(string reason)
+            {
+                throw new FormatException(String.Format(
+                    "{0} is invalid JSON at offset {1}: {2}.",
+                    _label,
+                    _offset,
+                    reason));
+            }
+        }
+    }
+}
+'@
+}
+
 function Read-JsonDocument([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "Missing JSON document: $Path"
     }
-    return [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) |
-        ConvertFrom-Json
+    $payload = [IO.File]::ReadAllBytes($Path)
+    if ($payload.Length -ge 3 -and $payload[0] -eq 0xEF -and
+        $payload[1] -eq 0xBB -and $payload[2] -eq 0xBF) {
+        throw "JSON document must be UTF-8 without BOM: $Path"
+    }
+    try {
+        $text = [Text.UTF8Encoding]::new($false, $true).GetString($payload)
+    }
+    catch {
+        throw "JSON document must be valid UTF-8: $Path"
+    }
+    [LostArk.EffectPipeline.StrictJsonObjectKeyScanner]::Validate($text, $Path)
+    return $text | ConvertFrom-Json
 }
 
 function Resolve-SafeDataFile(
@@ -153,6 +538,46 @@ function Get-RequiredProperty(
         throw "Required property '$Name' has the wrong type: $actualType"
     }
     return $value
+}
+
+function Assert-ExactPropertyOrder(
+    [object]$Object,
+    [string[]]$Expected,
+    [string]$Label) {
+    $actual = @($Object.PSObject.Properties.Name)
+    if ($actual.Count -ne $Expected.Count) {
+        throw "$Label property count mismatch."
+    }
+    for ($index = 0; $index -lt $Expected.Count; ++$index) {
+        if ([string]$actual[$index] -cne [string]$Expected[$index]) {
+            throw "$Label property order mismatch at index $index."
+        }
+    }
+}
+
+function Get-CanonicalTrackedTextSha256([string]$Path) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and
+        $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        throw "Tracked JSON must be UTF-8 without BOM: $Path"
+    }
+    try {
+        $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+        $text = $strictUtf8.GetString($bytes)
+    }
+    catch {
+        throw "Tracked JSON must be valid UTF-8: $Path"
+    }
+    $canonical = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $canonicalBytes = [Text.UTF8Encoding]::new($false).GetBytes($canonical)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString(
+            $sha.ComputeHash($canonicalBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha.Dispose()
+    }
 }
 
 function Assert-StableId([string]$Value, [string]$Label) {
@@ -649,11 +1074,62 @@ try {
         [StringComparer]::Ordinal)
     foreach ($entry in @($effects)) {
         $effectAssetId = Get-RequiredProperty $entry 'effectAssetId' String
-        $authoringPath = Get-RequiredProperty $entry 'authoringPath' String
         Assert-StableId $effectAssetId 'EffectAssetId'
         if (-not $claimedIds.Add($effectAssetId)) {
             throw "Duplicate EffectAssetId: $effectAssetId"
         }
+        $payloadKindProperty = $entry.PSObject.Properties['payloadKind']
+        if ($effectAssetId -ceq 'effect.artist.skill.31470' -and
+            ($null -eq $payloadKindProperty -or
+                -not ($payloadKindProperty.Value -is [string]) -or
+                [string]$payloadKindProperty.Value -cne
+                    'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM')) {
+            throw 'Reserved Artist 31470 source entry must use the reconstructed payload kind.'
+        }
+        if ($null -ne $payloadKindProperty) {
+            $payloadKind = Get-RequiredProperty $entry 'payloadKind' String
+            if ($payloadKind -cne 'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM') {
+                throw "Unsupported source catalog payload kind: $payloadKind"
+            }
+            Assert-ExactPropertyOrder $entry @(
+                'effectAssetId',
+                'payloadKind',
+                'reconstructedRuntimeProgramPath') `
+                'Reconstructed source catalog entry'
+            if ($effectAssetId -cne 'effect.artist.skill.31470') {
+                throw "Reconstructed source catalog effectAssetId must be effect.artist.skill.31470: $effectAssetId"
+            }
+            $candidatePath = Get-RequiredProperty $entry `
+                'reconstructedRuntimeProgramPath' String
+            $candidateFile = Resolve-SafeDataFile $candidatePath `
+                'Effects/Imported/Artist/Candidates/' `
+                $reconstructedProgramRoot `
+                'skill.31470.reconstructed-runtime-program.candidate.json'
+            $preparedEntryPath = Join-Path ([IO.Path]::GetTempPath()) `
+                ('LostArkReconstructedEffect-' + `
+                    [Guid]::NewGuid().ToString('N') + '.json')
+            try {
+                Invoke-DerivedArtifactTool @(
+                    'prepare-reconstructed-runtime-entry',
+                    '--candidate', $candidateFile,
+                    '--output', $preparedEntryPath)
+                $preparedEntry = Read-JsonDocument $preparedEntryPath
+                $preparedEffectAssetId = Get-RequiredProperty $preparedEntry `
+                    'effectAssetId' String
+                if ($preparedEffectAssetId -cne $effectAssetId) {
+                    throw "Reconstructed prepared/source effectAssetId mismatch: $preparedEffectAssetId != $effectAssetId"
+                }
+                $runtimeEffects.Add($preparedEntry)
+                $hasDerivedRuntime = $true
+            }
+            finally {
+                if ([IO.File]::Exists($preparedEntryPath)) {
+                    Remove-Item -LiteralPath $preparedEntryPath -Force
+                }
+            }
+            continue
+        }
+        $authoringPath = Get-RequiredProperty $entry 'authoringPath' String
         if ([IO.Path]::IsPathRooted($authoringPath) -or
             $authoringPath.Contains('\') -or $authoringPath.Contains(':') -or
             -not $authoringPath.StartsWith('Effects/Authored/', [StringComparison]::Ordinal)) {
@@ -1125,8 +1601,7 @@ try {
                     'sourceAuthoringVersion' Number) -ne $documentVersion) {
                 throw "Effect Assembly authoring version mismatch: $effectAssetId"
             }
-            $authoringSha = (Get-FileHash -LiteralPath $authoringFile `
-                -Algorithm SHA256).Hash.ToLowerInvariant()
+            $authoringSha = Get-CanonicalTrackedTextSha256 $authoringFile
             if ((Get-RequiredProperty $assembly 'sourceDocumentFileSha256' String) -cne
                 $authoringSha) {
                 throw "Effect Assembly source file hash mismatch: $effectAssetId"
@@ -1198,7 +1673,9 @@ try {
     $sortedRuntimeEffects = @($runtimeEffects | Sort-Object effectAssetId)
     if ($hasDerivedRuntime) {
         $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
-            if ([string]$_.payloadKind -ceq 'IMMUTABLE_COMPILED_IR') {
+            if ([string]$_.payloadKind -cin @(
+                    'IMMUTABLE_COMPILED_IR',
+                    'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM')) {
                 $_
             }
             else {
@@ -1244,7 +1721,7 @@ try {
                 }
             }
         }
-        Write-Host "PASS: validated $($runtimeEffects.Count) admitted Effects."
+        Write-Host "PASS: validated $($runtimeEffects.Count) Effect catalog entries."
         return
     }
 
@@ -1278,8 +1755,31 @@ try {
             foreach ($entry in $roundEffects) {
                 $id = Get-RequiredProperty $entry 'effectAssetId' String
                 $expected = $expectedById[$id]
-                if ($null -eq $expected -or
-                    [int](Get-RequiredProperty $entry `
+                if ($null -eq $expected) {
+                    throw "Generated runtime catalog identity failed round-trip validation: $id"
+                }
+                if ([string]$expected.payloadKind -ceq `
+                        'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM') {
+                    if ((Get-RequiredProperty $entry 'payloadKind' String) -cne
+                            'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM' -or
+                        [int](Get-RequiredProperty $entry `
+                            'artifactRevision' Number) -ne 1 -or
+                        (Get-RequiredProperty $entry 'compilerRevision' String) -cne
+                            'artist31470.reconstructed-runtime-program-link-v1' -or
+                        [bool](Get-RequiredProperty $entry `
+                            'sourceExact' Boolean) -or
+                        [bool](Get-RequiredProperty $entry `
+                            'runtimeExecutionAdmission' Boolean) -or
+                        [bool](Get-RequiredProperty $entry `
+                            'productAdmission' Boolean) -or
+                        (Get-RequiredProperty $entry `
+                            'publishReceiptSha256' String) -cne
+                            [string]$expected.publishReceiptSha256) {
+                        throw "Reconstructed runtime catalog entry failed round-trip validation: $id"
+                    }
+                    continue
+                }
+                if ([int](Get-RequiredProperty $entry `
                         'authoringFormatVersion' Number) -ne
                         [int]$expected.authoringFormatVersion) {
                     throw "Generated runtime catalog identity failed round-trip validation: $id"
