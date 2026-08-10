@@ -439,6 +439,18 @@ namespace
 		return Result;
 	}
 
+	std::string Canonicalize_ExactSourceModuleClass(
+		const std::string_view Value)
+	{
+		std::string Result(Value);
+		std::transform(Result.begin(), Result.end(), Result.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char_t>(std::tolower(Character));
+			});
+		return Result;
+	}
+
 	bool_t Is_ParticleParameterDistribution(const std::string_view Value)
 	{
 		std::string Normalized(Value);
@@ -4024,7 +4036,10 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 					CoverageIterator->second->strExactSourceClass !=
 						Module.strClassName) ||
 				CoverageIterator->second->strNormalizedClass !=
-					Normalize_SourceModuleClass(Module.strClassName))
+					(CoverageIterator->second->strExactSourceClass.empty() ?
+						Normalize_SourceModuleClass(Module.strClassName) :
+						Canonicalize_ExactSourceModuleClass(
+							Module.strClassName)))
 			{
 				strOutError = "Source-contract module identity is invalid.";
 				return false;

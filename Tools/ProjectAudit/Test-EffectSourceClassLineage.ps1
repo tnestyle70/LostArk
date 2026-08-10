@@ -28,6 +28,8 @@ function Read-BoundDocument {
                 -NotePropertyValue ([string]$modules[$stableId].className) -Force
             $coverage | Add-Member -NotePropertyName aliasId `
                 -NotePropertyValue "" -Force
+            $coverage.normalizedClass =
+                ([string]$modules[$stableId].className).ToLowerInvariant()
         }
     }
     return $document
@@ -67,6 +69,52 @@ try {
     $bound = Read-BoundDocument
     Invoke-LoadAssertion -Path (Write-Document $bound "bound.json") `
         -Expected $true -Label "receipt-bound exact class with empty alias"
+
+    $exactClasses = @(
+        $bound.elements.sourceRecipe.moduleCoverage.exactSourceClass |
+            Where-Object {
+                $_ -like "efparticlemodule*" -or $_ -like "*_seeded"
+            })
+    if ($exactClasses.Count -ne 26) {
+        throw "Expected 26 exact custom/seeded module occurrences, got $($exactClasses.Count)."
+    }
+    $exactFamilies = @($exactClasses | Sort-Object -Unique)
+    if ($exactFamilies.Count -ne 13) {
+        throw "Expected 13 exact custom/seeded module families, got $($exactFamilies.Count)."
+    }
+    Write-Host "[PASS] exact custom/seeded lineage preserved: occurrences=26 families=13"
+
+    $legacyNormalizedCustom = Read-BoundDocument
+    $mutatedCustom = $false
+    foreach ($element in @($legacyNormalizedCustom.elements)) {
+        foreach ($coverage in @($element.sourceRecipe.moduleCoverage)) {
+            $exactClass = [string]$coverage.exactSourceClass
+            if ($exactClass -notlike "efparticlemodule*" -and
+                $exactClass -notlike "*_seeded") {
+                continue
+            }
+            $legacyClass = $exactClass.ToLowerInvariant()
+            if ($legacyClass.StartsWith("efparticlemodule")) {
+                $legacyClass = "particlemodule" +
+                    $legacyClass.Substring("efparticlemodule".Length)
+            }
+            if ($legacyClass.EndsWith("_seeded")) {
+                $legacyClass = $legacyClass.Substring(
+                    0, $legacyClass.Length - "_seeded".Length)
+            }
+            $coverage.normalizedClass = $legacyClass
+            $mutatedCustom = $true
+            break
+        }
+        if ($mutatedCustom) { break }
+    }
+    if (-not $mutatedCustom) {
+        throw "No exact custom/seeded module was available for normalization mutation."
+    }
+    Invoke-LoadAssertion -Path (
+        Write-Document $legacyNormalizedCustom "legacy-normalized-custom.json") `
+        -Expected $false `
+        -Label "receipt-bound custom class cannot use legacy normalization"
 
     $missingAlias = Read-BoundDocument
     $missingAlias.elements[0].sourceRecipe.moduleCoverage[0].PSObject.Properties.Remove(
