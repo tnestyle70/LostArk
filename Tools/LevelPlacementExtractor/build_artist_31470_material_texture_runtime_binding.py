@@ -203,6 +203,62 @@ def read_json(path: Path) -> dict[str, Any]:
     return strict_io_module.load_strict_json_object(path)
 
 
+def load_approved_external_authorities() -> dict[str, dict[str, Any]]:
+    approval = approval_module()
+    specifications = {
+        "runtimeCookReceipt": (
+            DEFAULT_RUNTIME_COOK,
+            approval.RUNTIME_COOK_BYTE_COUNT,
+            approval.RUNTIME_COOK_RAW_SHA256,
+            approval.RUNTIME_COOK_CANONICAL_SHA256,
+        ),
+        "resourceExportReceipt": (
+            DEFAULT_RESOURCE_EXPORT,
+            approval.RESOURCE_EXPORT_BYTE_COUNT,
+            approval.RESOURCE_EXPORT_RAW_SHA256,
+            approval.RESOURCE_EXPORT_CANONICAL_SHA256,
+        ),
+        "sourcePackManifest": (
+            DEFAULT_SOURCE_PACK,
+            approval.SOURCE_PACK_MANIFEST_BYTE_COUNT,
+            approval.SOURCE_PACK_MANIFEST_RAW_SHA256,
+            approval.SOURCE_PACK_MANIFEST_CANONICAL_SHA256,
+        ),
+    }
+    authorities: dict[str, dict[str, Any]] = {}
+    for evidence_id, (path, byte_count, raw_sha256, canonical_json_sha256) in (
+        specifications.items()
+    ):
+        require(path.is_file(), f"approved external evidence is missing: {evidence_id}")
+        payload = path.read_bytes()
+        require(
+            len(payload) == byte_count,
+            f"approved external evidence byte count changed: {evidence_id}",
+        )
+        actual_raw_sha256 = hashlib.sha256(payload).hexdigest()
+        require(
+            actual_raw_sha256 == raw_sha256,
+            f"approved external raw evidence changed: {evidence_id}",
+        )
+        document = read_json(path)
+        actual_canonical_sha256 = canonical_sha256(document)
+        require(
+            actual_canonical_sha256 == canonical_json_sha256,
+            f"approved external canonical identity changed: {evidence_id}",
+        )
+        require(
+            path.read_bytes() == payload,
+            f"approved external evidence changed while reading: {evidence_id}",
+        )
+        authorities[evidence_id] = {
+            "byteCount": len(payload),
+            "rawSha256": actual_raw_sha256,
+            "canonicalJsonSha256": actual_canonical_sha256,
+            "document": document,
+        }
+    return authorities
+
+
 def require_sha256(value: Any, label: str) -> str:
     require(
         isinstance(value, str)
@@ -554,6 +610,7 @@ def validate_tracked_source_evidence(
     resource_manifest_path: Path,
     exact_dds_path: Path,
     candidate_path: Path,
+    external_authorities: dict[str, dict[str, Any]],
 ) -> None:
     approval = approval_module()
     require_exact_keys(
@@ -587,16 +644,20 @@ def validate_tracked_source_evidence(
             expected_row["selfDigest"] = self_digest
         require(strict_equal(row, expected_row), f"tracked source evidence changed: {evidence_id}")
         require(tracked_text_sha256(path) == digest, f"tracked source bytes changed: {evidence_id}")
-    external = {
-        "runtimeCookReceipt": (approval.RUNTIME_COOK_BYTE_COUNT, approval.RUNTIME_COOK_RAW_SHA256),
-        "resourceExportReceipt": (approval.RESOURCE_EXPORT_BYTE_COUNT, approval.RESOURCE_EXPORT_RAW_SHA256),
-        "sourcePackManifest": (approval.SOURCE_PACK_MANIFEST_BYTE_COUNT, approval.SOURCE_PACK_MANIFEST_RAW_SHA256),
-    }
-    for evidence_id, (byte_count, digest) in external.items():
+    require(
+        set(external_authorities)
+        == {"runtimeCookReceipt", "resourceExportReceipt", "sourcePackManifest"},
+        "approved external authority set changed",
+    )
+    for evidence_id, authority in external_authorities.items():
         require(
             strict_equal(
                 evidence.get(evidence_id),
-                {"byteCount": byte_count, "rawSha256": digest, "hashRole": "EXTERNAL_RAW_BYTES"},
+                {
+                    "byteCount": authority["byteCount"],
+                    "rawSha256": authority["rawSha256"],
+                    "hashRole": "EXTERNAL_RAW_BYTES",
+                },
             ),
             f"external source evidence changed: {evidence_id}",
         )
@@ -1073,6 +1134,20 @@ def validate_receipt(
         runtime_oracle = read_json(DEFAULT_RUNTIME_ORACLE)
     if acquisition is None:
         acquisition = read_json(DEFAULT_ACQUISITION)
+    external_authorities = load_approved_external_authorities()
+    approved_runtime_cook = external_authorities["runtimeCookReceipt"]["document"]
+    approved_resource_export = external_authorities["resourceExportReceipt"]["document"]
+    approved_source_pack = external_authorities["sourcePackManifest"]["document"]
+    for label, supplied, approved in (
+        ("runtime cook", runtime_cook, approved_runtime_cook),
+        ("resource export", resource_export, approved_resource_export),
+        ("source pack", source_pack, approved_source_pack),
+    ):
+        if supplied is not None:
+            require(
+                strict_equal(supplied, approved),
+                f"supplied {label} object differs from approved external authority",
+            )
     exact_rows = validate_upstream_documents(policy, contract, runtime_oracle, acquisition, exact_dds)
     manifest_rows = validate_resource_manifest(resource_manifest)
     validate_candidate(candidate)
@@ -1085,6 +1160,7 @@ def validate_receipt(
         resource_manifest_path,
         exact_dds_path,
         candidate_path,
+        external_authorities,
     )
     require(
         strict_equal(
@@ -1230,32 +1306,19 @@ def validate_receipt(
                 f"unresolved fail-closed boundary changed: {logical}",
             )
     require(set(resource_by_logical) == {row["logicalTexturePath"] for row in policy["samplerPolicies"]}, "texture resource reverse coverage changed")
-    verify_external_rows = (
-        not require_approval
-        or runtime_cook is not None
-        or resource_export is not None
-        or source_pack is not None
+    expected_resources = build_texture_resources(
+        {row["logicalTexturePath"] for row in policy["samplerPolicies"]},
+        manifest_rows,
+        validate_source_pack(approved_source_pack),
+        validate_runtime_cook(approved_runtime_cook),
+        validate_resource_export(approved_resource_export),
+        exact_rows,
+        candidate,
     )
-    if verify_external_rows:
-        if runtime_cook is None:
-            runtime_cook = read_json(DEFAULT_RUNTIME_COOK)
-        if resource_export is None:
-            resource_export = read_json(DEFAULT_RESOURCE_EXPORT)
-        if source_pack is None:
-            source_pack = read_json(DEFAULT_SOURCE_PACK)
-        expected_resources = build_texture_resources(
-            {row["logicalTexturePath"] for row in policy["samplerPolicies"]},
-            manifest_rows,
-            validate_source_pack(source_pack),
-            validate_runtime_cook(runtime_cook),
-            validate_resource_export(resource_export),
-            exact_rows,
-            candidate,
-        )
-        require(
-            strict_equal(resources, expected_resources),
-            "texture resources are not pinned external-evidence-derived",
-        )
+    require(
+        strict_equal(resources, expected_resources),
+        "texture resources are not pinned external-evidence-derived",
+    )
     proposals = receipt["provisioningProposals"]
     expected_proposals = build_provisioning_proposals(resources)
     require(isinstance(proposals, list), "provisioning proposals must be a list")
