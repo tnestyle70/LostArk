@@ -76,7 +76,7 @@ try {
     $decision = $receipt.joinDecision
     $probe = $receipt.micTailShaderObjectIdProbe
     if ($receipt.schema -cne 'lostark.artist-31470-shader-cache-oracle-receipt' -or
-        [int]$receipt.formatVersion -ne 1 -or
+        [int]$receipt.formatVersion -ne 2 -or
         @($receipt.materialNativeKeys).Count -ne 23 -or
         @($receipt.recipeNativeKeys).Count -ne 27 -or
         @($receipt.materialTopologyCompleteness).Count -ne 23 -or
@@ -86,6 +86,9 @@ try {
         [int]$summary.primaryDxbcTotalSizeValidatedCount -ne 271 -or
         [int]$summary.primaryD3dDisassemblyValidatedCount -ne 271 -or
         [int]$summary.primaryUniqueDxbcCount -ne 240 -or
+        [int]$summary.primaryDecodedShaderObjectCount -ne 271 -or
+        [int]$summary.primaryDecodedMaterialShaderMapCount -ne 25 -or
+        [int]$summary.primaryDecodedShaderReferenceCount -ne 534 -or
         [int]$summary.materialInstanceRecipeCount -ne 25 -or
         [int]$summary.staticPermutationMicCount -ne 24 -or
         [int]$summary.boundedInventoryReportCount -ne 30 -or
@@ -97,13 +100,15 @@ try {
         [int]$probe.directShaderIdMatchCount -ne 0 -or
         [string]$probe.status -cne 'MIC_TAIL_CONTAINS_NO_DIRECT_SHADER_OBJECT_ID' -or
         [int]$decision.exactMaterialShaderMapJoinCount -ne 0 -or
+        [int]$decision.exactMicStaticParameterSetJoinCount -ne 0 -or
+        [int]$decision.reconstructedNumericallyVerifiedFamilyCount -ne 0 -or
         [bool]$receipt.admission.executionAdmission -or
         [bool]$receipt.admission.productAdmission) {
         throw 'Artist F ShaderCache denominator or fail-closed admission changed.'
     }
 
     $mode = if ($DeepShaderCacheAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 ShaderCache mode=$mode material=23 recipe=27 mic=25/24 windows=4816 cache=1596 dxbc=271/271/271 unique=240 join=0 product=false"
+    Write-Output "PASS: Artist F 31470 ShaderCache mode=$mode material=23 recipe=27 mic=25/24 windows=4816 cache=1596 objects/maps/refs=271/25/534 dxbc=271/271/271 unique=240 joins=0/23,0/24 product=false"
 }
 finally {
     Pop-Location
