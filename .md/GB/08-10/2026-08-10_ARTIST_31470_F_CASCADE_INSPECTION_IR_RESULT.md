@@ -113,3 +113,31 @@ Debug/Release Client build와 전체 회귀를 소유한다.
 
 따라서 이 checkpoint는 G04 generic non-executable compiler/inspection core로만 통합 가능하며 도화가 F
 복원 완료 또는 Product admission 근거가 아니다.
+
+## 최종 Gate 1 candidate 통합 보정
+
+최종 checked-in Source candidate를 G04 compiler와 같은 integration tree에서 직접 컴파일했다.
+candidate는 399개 module 모두 `exactSourceClass == normalizedClass`이고 alias는 비어 있다. 그중
+373개는 typed schema로, EF/custom/seeded 13 family의 26개는
+`UNKNOWN_EXACT_CLASS_QUARANTINE`으로 보존된다.
+
+통합 중 두 계약을 보정했다.
+
+1. 모든 property가 source-decoded여도 handler, selected-LOD default, native tail 또는 class handler가
+   미해결이면 module aggregate는 `UNRESOLVED`일 수 있다. 이 경우 canonical non-empty module blocker를
+   요구하고 property blocker/provenance는 각 property에서 독립 검증한다.
+2. alias가 비어 있을 때 `exactSourceClass`와 `normalizedClass`가 다르면 더 이상 quarantine으로
+   받아들이지 않고 거부한다. unknown custom class는 두 이름이 정확히 같은 경우에만 전용 quarantine
+   opcode로 들어간다. explicit alias가 있는 경우도 실행 승격 없이 evidence로만 보존한다.
+
+검증 결과:
+
+- final checked-in candidate Debug/Release `--effect-source-contract`: 각각 54/54 PASS
+- final candidate count: system 7 / emitter 35 / opcode 399 / distribution 629
+- typed known class 373 / exact custom quarantine 26 / unknown silent fallback 0
+- Debug/Release `Test-EffectCascadeCompiler.ps1`: PASS
+- Source semantic builder/check + independent oracle + Source unit: 91/91 PASS
+- 실행·Product·external authentication: 모두 false
+
+이 보정은 raw payload 실행이나 renderer를 열지 않는다. 최종 candidate와 compiler의 구조적 핸드셰이크만
+닫으며 G05-S/G06 이후 capability receipt가 오기 전까지 Product는 계속 `0/35`다.

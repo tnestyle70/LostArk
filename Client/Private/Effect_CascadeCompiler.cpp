@@ -448,7 +448,8 @@ namespace
 		if (nullptr == pSchema)
 		{
 			if (!Is_CanonicalClassKey(Out.strExactSourceClass) ||
-				!Out.strAliasId.empty())
+				!Out.strAliasId.empty() ||
+				Out.strExactSourceClass != Out.strReceiptNormalizedClass)
 			{
 				return false;
 			}
@@ -480,12 +481,7 @@ namespace
 			return true;
 		}
 		if (Out.strAliasId.empty())
-		{
-			Out.eClassLineageStatus =
-				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
-					EXACT_CLASS_HANDLER_QUARANTINED;
-			return true;
-		}
+			return false;
 		if (!Is_CanonicalAliasId(Out.strAliasId))
 			return false;
 
@@ -773,8 +769,12 @@ namespace
 		{
 			OutBlockerRequirement =
 				EFFECT_CASCADE_BLOCKER_REQUIREMENT::MODULE_BLOCKERS_REQUIRED;
-			return HasUnresolved && Is_CanonicalBlockerSet(
-				Coverage.Blockers, true);
+			// A module can remain unresolved because its handler, selected-LOD
+			// defaults, native tail, or class alias is blocked even when every
+			// serialized property has source evidence.  Property evidence is
+			// validated independently below; the module-level unresolved state is
+			// therefore established by its canonical non-empty blocker set.
+			return Is_CanonicalBlockerSet(Coverage.Blockers, true);
 		}
 		if (HasUnresolved)
 			return false;
@@ -1806,12 +1806,8 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 			}
 			const CLASS_SCHEMA* pReceiptSchema =
 				Find_ClassSchema(Coverage.strNormalizedClass);
-			const bool_t bUnaliasedExactClassDelta =
-				!Coverage.strExactSourceClass.empty() &&
-				Coverage.strExactSourceClass != Coverage.strNormalizedClass &&
-				Coverage.strAliasId.empty();
 			const bool_t bUnknownExactClassQuarantine =
-				nullptr == pReceiptSchema || bUnaliasedExactClassDelta;
+				nullptr == pReceiptSchema;
 			const CLASS_SCHEMA* pSchema = bUnknownExactClassQuarantine ?
 				nullptr : pReceiptSchema;
 			EFFECT_CASCADE_BLOCKER_REQUIREMENT AggregateBlockerRequirement =

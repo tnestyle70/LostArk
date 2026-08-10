@@ -3716,6 +3716,8 @@ namespace
 		bool_t rawDistributionsIsolated = inspectedTwice;
 		bool_t fidelityBlocked = inspectedTwice;
 		size_t geometryEvidenceCount = 0u;
+		size_t baselineExactClassCount = 0u;
+		size_t baselineQuarantinedClassCount = 0u;
 		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& system :
 			inspectedTwice ? inspectionA->Systems :
 			std::vector<EFFECT_CASCADE_INSPECTION_SYSTEM>{})
@@ -3746,6 +3748,16 @@ namespace
 				for (const EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
 					emitter.OrderedOpcodes)
 				{
+					const bool_t bQuarantinedExactClass =
+						opcode.eOpcode == EFFECT_CASCADE_OPCODE::
+							UNKNOWN_EXACT_CLASS_QUARANTINE;
+					const bool_t bExactKnownClass =
+						opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS;
+					if (bExactKnownClass)
+						++baselineExactClassCount;
+					if (bQuarantinedExactClass)
+						++baselineQuarantinedClassCount;
 					handlerReceiptsComplete = handlerReceiptsComplete &&
 						opcode.eOpcode != EFFECT_CASCADE_OPCODE::END &&
 						opcode.Reference.eRole != EFFECT_CASCADE_MODULE_ROLE::END &&
@@ -3760,19 +3772,24 @@ namespace
 						opcode.HandlerReceipt.eAggregateBlockerRequirement !=
 							EFFECT_CASCADE_BLOCKER_REQUIREMENT::END &&
 						!opcode.HandlerReceipt.strReceiptNormalizedClass.empty() &&
-						opcode.HandlerReceipt.strExactSourceClass.empty() &&
+						!opcode.HandlerReceipt.strExactSourceClass.empty() &&
 						opcode.HandlerReceipt.strAliasId.empty() &&
-						opcode.HandlerReceipt.eClassLineageStatus ==
+						opcode.HandlerReceipt.strExactSourceClass ==
+							opcode.HandlerReceipt.strReceiptNormalizedClass &&
+						(bExactKnownClass ||
+						 (bQuarantinedExactClass &&
+						  opcode.HandlerReceipt.eClassLineageStatus ==
 							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
-								RECEIPT_NORMALIZED_ONLY &&
+								EXACT_CLASS_HANDLER_QUARANTINED)) &&
 						!opcode.HandlerReceipt.strOpcodeSchemaId.empty() &&
-						!opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						opcode.HandlerReceipt.bExactClassLineagePreserved &&
 						!opcode.HandlerReceipt.bPayloadAccessAllowed &&
 						opcode.HandlerReceipt.PropertyConsumption.size() ==
 							opcode.Properties.size() &&
 						opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size() ==
 							opcode.Properties.size() &&
-						!opcode.HandlerReceipt.RequiredPropertyReferenceIds.empty();
+						(bQuarantinedExactClass ||
+						 !opcode.HandlerReceipt.RequiredPropertyReferenceIds.empty());
 					for (const EFFECT_CASCADE_PROPERTY_EVIDENCE& property :
 						opcode.Properties)
 					{
@@ -3791,8 +3808,11 @@ namespace
 								property.Property.strCanonicalReferenceId &&
 							receipt.eStorage == property.eStorage &&
 							receipt.eResult ==
-								EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
-									SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED &&
+								(bQuarantinedExactClass ?
+								 EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED :
+								 EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED) &&
 							!receipt.strHandlerFieldId.empty();
 						propertyBlockersBound = propertyBlockersBound &&
 							((property.eBlockerRequirement ==
@@ -3840,7 +3860,9 @@ namespace
 			inspectionA->Consumption.iOrderedOpcodeCount == 399u &&
 			inspectionA->Consumption.iDistributionEvidenceCount == 629u &&
 			inspectionA->Consumption.iUnknownClassCount == 0u &&
-			inspectionA->Consumption.iQuarantinedExactClassCount == 0u &&
+			inspectionA->Consumption.iQuarantinedExactClassCount == 26u &&
+			baselineExactClassCount == 373u &&
+			baselineQuarantinedClassCount == 26u &&
 			inspectionA->Consumption.iUnconsumedRequiredPropertyCount == 0u &&
 			inspectionA->Consumption.iHandlerPropertyReceiptCount ==
 				inspectionA->Consumption.iConsumedPropertyCount &&
@@ -4084,10 +4106,37 @@ namespace
 			"Inspection Rejects Forged Opcode Handler Field Consumption Receipt");
 
 		EFFECT_CASCADE_INSPECTION_IR strippedPropertyBlocker = *inspectionA;
-		strippedPropertyBlocker.Systems.front().Emitters.front().OrderedOpcodes.
-			front().Properties.front().Blockers.clear();
-		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
-			strippedPropertyBlocker, expectedIdentity),
+		EFFECT_CASCADE_PROPERTY_EVIDENCE* pBlockedInspectionProperty = nullptr;
+		for (EFFECT_CASCADE_INSPECTION_SYSTEM& system :
+			strippedPropertyBlocker.Systems)
+		{
+			for (EFFECT_CASCADE_INSPECTION_EMITTER& emitter : system.Emitters)
+			{
+				for (EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
+					emitter.OrderedOpcodes)
+				{
+					const auto blocked = std::find_if(opcode.Properties.begin(),
+						opcode.Properties.end(), [](const auto& property)
+						{
+							return !property.Blockers.empty();
+						});
+					if (blocked != opcode.Properties.end())
+					{
+						pBlockedInspectionProperty = &*blocked;
+						break;
+					}
+				}
+				if (nullptr != pBlockedInspectionProperty)
+					break;
+			}
+			if (nullptr != pBlockedInspectionProperty)
+				break;
+		}
+		if (nullptr != pBlockedInspectionProperty)
+			pBlockedInspectionProperty->Blockers.clear();
+		runner.Require(nullptr != pBlockedInspectionProperty &&
+			!CEffectCascadeCompiler::Matches_InputIdentity(
+				strippedPropertyBlocker, expectedIdentity),
 			"Inspection Rejects Stripped Property Fidelity Blocker");
 
 		EFFECT_DOCUMENT_DESC simultaneousUnknown = roundTrip;
@@ -4264,8 +4313,10 @@ namespace
 		EFFECT_DOCUMENT_DESC exactClassMismatch = roundTrip;
 		EFFECT_SOURCE_MODULE_COVERAGE_DESC& mismatchCoverage =
 			exactClassMismatch.Elements.front().SourceRecipe.ModuleCoverage.front();
-		mismatchCoverage.strExactSourceClass =
+		mismatchCoverage.strNormalizedClass =
 			"ef" + mismatchCoverage.strNormalizedClass;
+		mismatchCoverage.strExactSourceClass =
+			mismatchCoverage.strNormalizedClass;
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> mismatchInspection;
 		const bool_t mismatchInspected =
 			CEffectCascadeCompiler::Compile_SourceInspection(
@@ -4313,12 +4364,29 @@ namespace
 			"Cascade Inspection Rejects SOURCE_TAGGED To SOURCE_EXACT Provenance Promotion");
 
 		EFFECT_DOCUMENT_DESC strippedPropertyBlockerInput = roundTrip;
-		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& blockedProperty =
-			strippedPropertyBlockerInput.Elements.front().SourceRecipe.
-				ModuleCoverage.front().Properties.front();
-		const bool_t hadRequiredPropertyBlocker = !blockedProperty.Blockers.empty();
-		blockedProperty.Blockers.clear();
-		runner.Require(hadRequiredPropertyBlocker &&
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC* pRequiredBlockedProperty = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : strippedPropertyBlockerInput.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				const auto blocked = std::find_if(coverage.Properties.begin(),
+					coverage.Properties.end(), [](const auto& property)
+					{
+						return !property.Blockers.empty();
+					});
+				if (blocked != coverage.Properties.end())
+				{
+					pRequiredBlockedProperty = &*blocked;
+					break;
+				}
+			}
+			if (nullptr != pRequiredBlockedProperty)
+				break;
+		}
+		if (nullptr != pRequiredBlockedProperty)
+			pRequiredBlockedProperty->Blockers.clear();
+		runner.Require(nullptr != pRequiredBlockedProperty &&
 			!CompileMutation(strippedPropertyBlockerInput),
 			"Cascade Inspection Rejects Required Property Blocker Loss");
 
