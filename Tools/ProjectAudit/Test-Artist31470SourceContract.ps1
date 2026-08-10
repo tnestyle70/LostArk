@@ -109,12 +109,27 @@ try {
 
     Push-Location 'Tools/LevelPlacementExtractor'
     try {
-        & python -m unittest -q `
-            'test_build_artist_31470_source_contract' `
-            'test_build_artist_31470_local_reference_closure' `
-            'test_build_imported_effect_documents'
-        if ($LASTEXITCODE -ne 0) {
-            throw "Artist F source-contract unit tests failed: $LASTEXITCODE"
+        $unitTestRunner = @'
+import sys
+import unittest
+
+names = [
+    "test_build_artist_31470_source_contract",
+    "test_build_artist_31470_local_reference_closure",
+    "test_artist_31470_source_semantic_closure",
+    "test_build_imported_effect_documents",
+]
+suite = unittest.defaultTestLoader.loadTestsFromNames(names)
+result = unittest.TextTestRunner(stream=sys.stdout, verbosity=1).run(suite)
+raise SystemExit(0 if result.wasSuccessful() else 1)
+'@
+        $unitTestOutput = ($unitTestRunner | & python - | Out-String).Trim()
+        $unitTestExitCode = $LASTEXITCODE
+        if (-not [string]::IsNullOrWhiteSpace($unitTestOutput)) {
+            Write-Host $unitTestOutput
+        }
+        if ($unitTestExitCode -ne 0) {
+            throw "Artist F source-contract unit tests failed: $unitTestExitCode"
         }
     }
     finally {
