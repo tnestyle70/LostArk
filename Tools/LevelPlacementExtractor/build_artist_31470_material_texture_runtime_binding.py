@@ -95,17 +95,17 @@ PROVISIONING_POLICY = "RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V
 DEPLOYMENT_BASIS = "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
 DEPLOYMENT_COMPLETE_STATUS = "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT"
 R4_BLOCKER = "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
-EXPECTED_POLICY_ROWS = 72
-EXPECTED_UNIQUE_TEXTURES = 48
-EXPECTED_RESOLVED_ROWS = 72
+EXPECTED_POLICY_ROWS = 77
+EXPECTED_UNIQUE_TEXTURES = 52
+EXPECTED_RESOLVED_ROWS = 77
 EXPECTED_UNRESOLVED_ROWS = 0
-EXPECTED_COOK_BINDING_ROWS = 68
+EXPECTED_COOK_BINDING_ROWS = 73
 EXPECTED_DEPLOYMENT_BINDING_ROWS = 4
-EXPECTED_RESOLVED_TEXTURES = 48
+EXPECTED_RESOLVED_TEXTURES = 52
 EXPECTED_UNRESOLVED_TEXTURES = 0
-EXPECTED_COOK_TEXTURES = 44
+EXPECTED_COOK_TEXTURES = 48
 EXPECTED_DEPLOYMENT_TEXTURES = 4
-EXPECTED_OCCURRENCE_LINKS = 83
+EXPECTED_OCCURRENCE_LINKS = 94
 EXPECTED_MISSING_LOGICAL_PATHS = {
     "fx_tex_00.fx_a_decal_014",
     "fx_tex_00.fx_a_noise_011",
@@ -1940,7 +1940,7 @@ def validate_receipt(
         "unresolvedUniqueTextureCount": EXPECTED_UNRESOLVED_TEXTURES,
         "runtimeCookUniqueTextureCount": EXPECTED_COOK_TEXTURES,
         "deploymentUniqueTextureCount": EXPECTED_DEPLOYMENT_TEXTURES,
-        "sourcePackageBoundUniqueTextureCount": 45,
+        "sourcePackageBoundUniqueTextureCount": 49,
         "sourcePackageUnboundUniqueTextureCount": 3,
         "materialOccurrenceLinkCount": EXPECTED_OCCURRENCE_LINKS,
         "completedProvisioningProposalCount": EXPECTED_DEPLOYMENT_TEXTURES,
@@ -2096,7 +2096,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             runtime_oracle=runtime_oracle,
             acquisition=acquisition,
         )
-        print("PASS: Artist F Material texture runtime binding validate-only 72/72 resolved 48/48 unique deployment=4 product=false")
+        print("PASS: Artist F Material texture runtime binding validate-only 77/77 resolved 52/52 unique deployment=4 product=false")
         return 0
     runtime_cook = read_json(args.runtime_cook)
     resource_export = read_json(args.resource_export)
@@ -2154,7 +2154,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         mode += "+deep"
     print(
         f"PASS: Artist F Material texture runtime binding mode={mode} "
-        "rows=68cook+4deployment/72 unique=44cook+4deployment/48 "
+        "rows=73cook+4deployment/77 unique=48cook+4deployment/52 "
         "completedProposals=4 product=false"
     )
     return 0

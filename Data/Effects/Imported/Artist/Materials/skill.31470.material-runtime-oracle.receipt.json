@@ -11,16 +11,16 @@
     "renderReceiptTrackedTextSha256": "c6e5a1f82581628e185221a77d1f0a3b8593d3145514998e7f15f3061ab1e824",
     "shaderCacheReceiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
     "shaderCacheReceiptTrackedTextSha256": "f1c1b5cb7ffe05a6577327bace8cda48afb78a2e4d6801c81cf3a057b0803d0c",
-    "sourceValueAcquisitionReceiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
-    "sourceValueAcquisitionTrackedTextSha256": "cfbf89625b612aa623aa47c0f7c85c721037a2856088a652a886b37c261bb40f",
+    "sourceValueAcquisitionReceiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+    "sourceValueAcquisitionTrackedTextSha256": "aa94cc621f6031aa38f85a6447e7b2bf4000dbfbd90d46a61e8c1524eb2fa0bc",
     "hlslTrackedTextSha256": "66dcc266f68bb6d960214b8ca79472a4c65e5dcda1f5a21e78e2fb7da49d13c7",
-    "generatorTrackedTextSha256": "82fc449f17568d7e7c217bb48da05f14574ef9efbe16e1293f866a409464c0d2",
+    "generatorTrackedTextSha256": "166e325304648c9059986f277733d901c79268a54f79f22211884182979f45c4",
     "materialContractBuilderTrackedTextSha256": "d7882d9cc7af8d80183e96fdebffc7b1a633a1824e5dfe19cf9ab739acc13b8d",
     "shaderCacheOracleTrackedTextSha256": "1738307ff3cdc73b5665d0489d1d408affb8046c793c343d0500a541a5882a47",
     "ue3PackageParserTrackedTextSha256": "897d1899271450ee6fa0828ddd783737e26f9d9d000a9f6f86f6ff6b8a53edf1",
     "hlslVerifierTrackedTextSha256": "02562e758cb8e003136cfd0458804348eacd61f4ab632fbbaed17561203f0704",
-    "sourceValueAcquisitionGeneratorTrackedTextSha256": "a70cd68a0efa7c9d1b2a8b35f7233f961d9702afbc0a5523cbb5d70c9f470c7b",
-    "materialEvidenceApprovalTrackedTextSha256": "4539aee90713a07116ed291e66a23df232b03a5ec537254345cd3d1af94c4f7c"
+    "sourceValueAcquisitionGeneratorTrackedTextSha256": "4f3cb6886c670d8e6a653425101e4bbee1886512320e01a8c3b52fa6e540a35a",
+    "materialEvidenceApprovalTrackedTextSha256": "eb75dc25862a2c8cadef33d5b0735dcd21cb9db302caa8f5838ebaeb2c4454fc"
   },
   "sourceRevisionShaderCacheAcquisition": {
     "scope": "LOCAL_SOURCE_ARCHIVE_RAW_UPK_NAME_TABLE_INVENTORY",
@@ -46464,7 +46464,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46632,7 +46632,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46799,7 +46799,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46966,7 +46966,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47147,7 +47147,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -47315,7 +47315,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47482,7 +47482,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47649,7 +47649,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47816,7 +47816,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47983,7 +47983,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48150,7 +48150,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48317,7 +48317,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48484,7 +48484,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48651,7 +48651,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48818,7 +48818,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48999,7 +48999,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -49167,7 +49167,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49334,7 +49334,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49501,7 +49501,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49696,7 +49696,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -49866,7 +49866,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50033,7 +50033,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50200,7 +50200,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50367,7 +50367,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50534,7 +50534,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50729,7 +50729,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -50898,7 +50898,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51065,7 +51065,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51260,7 +51260,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51429,7 +51429,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51596,7 +51596,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51791,7 +51791,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51960,7 +51960,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52127,7 +52127,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52294,7 +52294,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52461,7 +52461,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52657,7 +52657,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -52827,7 +52827,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52994,7 +52994,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53161,7 +53161,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53328,7 +53328,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53495,7 +53495,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53662,7 +53662,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53830,7 +53830,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53998,7 +53998,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54180,7 +54180,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -54349,7 +54349,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54516,7 +54516,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54697,7 +54697,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54865,7 +54865,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -55032,7 +55032,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55199,7 +55199,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55366,7 +55366,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55561,11 +55561,867 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "addressx",
             "addressy",
+            "lodgroup"
+          ],
+          "partialCurrentOnlyFields": [],
+          "fullDescriptorSourceExact": false,
+          "sourceValueDecision": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+          "strictReauditDecision": "BLOCKED"
+        }
+      },
+      {
+        "matrixRowId": "material-feasibility-sampler-4ab045410cc30e1e",
+        "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+        "materialOccurrenceIds": [
+          "source-active-002",
+          "source-active-019",
+          "source-active-031"
+        ],
+        "fieldId": "material-input-281f2c37bdf51c10",
+        "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+        "bindingOriginAndOwner": {
+          "bindingOrigin": "SELF_DEFAULT",
+          "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+          "sourceSection": "parentDefaults",
+          "sourceSectionIndex": 1
+        },
+        "instanceRecordIdentity": {
+          "available": true,
+          "identity": {
+            "evidenceId": "render-export-7638c18f8f395859",
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "serialSha256": "a561b4e0fb6d6a776c635b4ca0f2b0bc3dbfa177ee39f5d813ecb071792ae161"
+          },
+          "textureObjectPath": "fx_tex_02.fx_d_noise_003",
+          "sourceLineageSha256": "d7bbb598fd92eeb46b9913d2192fa5ba22932d428215c050aece65a92e76195f",
+          "samplerOutcome": "SAMPLER_EVIDENCE_MISSING"
+        },
+        "parentIdentity": {
+          "available": true,
+          "identity": {
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "rawExportEvidenceId": "render-export-7638c18f8f395859"
+          },
+          "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+        },
+        "nestedDefaultIdentity": {
+          "available": false,
+          "outcome": "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+        },
+        "classCdoIdentity": {
+          "available": false,
+          "outcome": "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+        },
+        "shaderCacheIdentity": {
+          "available": false,
+          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "exactMaterialShaderMapJoinCount": 0,
+          "sourceBaseMaterialIdJoinCount": 0,
+          "sourceMicStaticParameterSetJoinCount": 0,
+          "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN"
+        },
+        "runtimeCaptureIdentity": {
+          "available": false,
+          "outcome": "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+        },
+        "sourceTextureEvidence": {
+          "logicalTexturePath": "fx_tex_02.fx_d_noise_003",
+          "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+          "physicalPackageByteCount": 17288410,
+          "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+          "packageVersion": 868,
+          "engineVersion": 12097,
+          "export": {
+            "exportIndex": 581,
+            "packageReference": 582,
+            "objectPath": "fx_d_noise_003",
+            "className": "texture2d",
+            "serialOffset": 7007541,
+            "serialSize": 5625,
+            "serialSha256": "3618a3ba8785ded1f90dae8fab32af59c0cc2976d7148911c18d027b3438b135"
+          },
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 358,
+          "fields": {
+            "addressx": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "addressy": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "srgb": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "filter": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "lodgroup": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "lodgroup",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 274,
+                "valueOffset": 306,
+                "recordEndOffset": 314,
+                "value": "texturegroup_effects",
+                "encodedValueHex": "3b03000000000000",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe",
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132"
+              }
+            }
+          },
+          "revisionFidelity": "SOURCE_ARCHIVE_EXACT_TEXTURE_EXPORT",
+          "admissibleAsSourceEra": true
+        },
+        "previouslyAdmittedExactSamplerReaudit": false,
+        "rendererConsumption": {
+          "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+          "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        },
+        "acquisitionPath": [
+          "TEXTURE_EXPORT_RECORD",
+          "PARENT_TEXTURE_DEFAULT",
+          "TEXTURE2D_CLASS_CDO",
+          "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+          "SOURCE_REVISION_SHADER_CACHE",
+          "CONTROLLED_RUNTIME_CAPTURE"
+        ],
+        "oracleProvider": {
+          "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+          "providerAvailable": true,
+          "sourceValueProviderAvailable": false
+        },
+        "pilotFixtureIds": [
+          "warp-sampler-address-toggle"
+        ],
+        "numericOracleInputDomain": [
+          "WRAP",
+          "CLAMP"
+        ],
+        "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+        "numericTolerance": 0.0,
+        "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
+        "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+        "executionDecision": "BLOCKED",
+        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+        "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+        "remainingBlockers": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "sourceValueAcquisitionEvidence": {
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
+          "partialSourceExactFields": [
+            "lodgroup"
+          ],
+          "partialCurrentOnlyFields": [],
+          "fullDescriptorSourceExact": false,
+          "sourceValueDecision": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+          "strictReauditDecision": "BLOCKED"
+        }
+      },
+      {
+        "matrixRowId": "material-feasibility-sampler-58cff8878f35d2a9",
+        "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+        "materialOccurrenceIds": [
+          "source-active-002",
+          "source-active-019",
+          "source-active-031"
+        ],
+        "fieldId": "material-input-2c489800fead4548",
+        "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+        "bindingOriginAndOwner": {
+          "bindingOrigin": "SELF_DEFAULT",
+          "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+          "sourceSection": "parentDefaults",
+          "sourceSectionIndex": 3
+        },
+        "instanceRecordIdentity": {
+          "available": true,
+          "identity": {
+            "evidenceId": "render-export-7638c18f8f395859",
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "serialSha256": "a561b4e0fb6d6a776c635b4ca0f2b0bc3dbfa177ee39f5d813ecb071792ae161"
+          },
+          "textureObjectPath": "fx_tex_02.fx_d_noise_003",
+          "sourceLineageSha256": "cd4c217c76509355767be3477d5173e1773cd4b5727967ab3f401d73014b3e14",
+          "samplerOutcome": "SAMPLER_EVIDENCE_MISSING"
+        },
+        "parentIdentity": {
+          "available": true,
+          "identity": {
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "rawExportEvidenceId": "render-export-7638c18f8f395859"
+          },
+          "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+        },
+        "nestedDefaultIdentity": {
+          "available": false,
+          "outcome": "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+        },
+        "classCdoIdentity": {
+          "available": false,
+          "outcome": "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+        },
+        "shaderCacheIdentity": {
+          "available": false,
+          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "exactMaterialShaderMapJoinCount": 0,
+          "sourceBaseMaterialIdJoinCount": 0,
+          "sourceMicStaticParameterSetJoinCount": 0,
+          "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN"
+        },
+        "runtimeCaptureIdentity": {
+          "available": false,
+          "outcome": "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+        },
+        "sourceTextureEvidence": {
+          "logicalTexturePath": "fx_tex_02.fx_d_noise_003",
+          "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+          "physicalPackageByteCount": 17288410,
+          "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+          "packageVersion": 868,
+          "engineVersion": 12097,
+          "export": {
+            "exportIndex": 581,
+            "packageReference": 582,
+            "objectPath": "fx_d_noise_003",
+            "className": "texture2d",
+            "serialOffset": 7007541,
+            "serialSize": 5625,
+            "serialSha256": "3618a3ba8785ded1f90dae8fab32af59c0cc2976d7148911c18d027b3438b135"
+          },
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 358,
+          "fields": {
+            "addressx": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "addressy": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "srgb": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "filter": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "lodgroup": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "lodgroup",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 274,
+                "valueOffset": 306,
+                "recordEndOffset": 314,
+                "value": "texturegroup_effects",
+                "encodedValueHex": "3b03000000000000",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe",
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132"
+              }
+            }
+          },
+          "revisionFidelity": "SOURCE_ARCHIVE_EXACT_TEXTURE_EXPORT",
+          "admissibleAsSourceEra": true
+        },
+        "previouslyAdmittedExactSamplerReaudit": false,
+        "rendererConsumption": {
+          "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+          "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        },
+        "acquisitionPath": [
+          "TEXTURE_EXPORT_RECORD",
+          "PARENT_TEXTURE_DEFAULT",
+          "TEXTURE2D_CLASS_CDO",
+          "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+          "SOURCE_REVISION_SHADER_CACHE",
+          "CONTROLLED_RUNTIME_CAPTURE"
+        ],
+        "oracleProvider": {
+          "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+          "providerAvailable": true,
+          "sourceValueProviderAvailable": false
+        },
+        "pilotFixtureIds": [
+          "warp-sampler-address-toggle"
+        ],
+        "numericOracleInputDomain": [
+          "WRAP",
+          "CLAMP"
+        ],
+        "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+        "numericTolerance": 0.0,
+        "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
+        "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+        "executionDecision": "BLOCKED",
+        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+        "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+        "remainingBlockers": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "sourceValueAcquisitionEvidence": {
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
+          "partialSourceExactFields": [
+            "lodgroup"
+          ],
+          "partialCurrentOnlyFields": [],
+          "fullDescriptorSourceExact": false,
+          "sourceValueDecision": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+          "strictReauditDecision": "BLOCKED"
+        }
+      },
+      {
+        "matrixRowId": "material-feasibility-sampler-59e3c0fb09f720f0",
+        "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+        "materialOccurrenceIds": [
+          "source-active-002",
+          "source-active-019",
+          "source-active-031"
+        ],
+        "fieldId": "material-input-30557ad00debea91",
+        "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+        "bindingOriginAndOwner": {
+          "bindingOrigin": "SELF_DEFAULT",
+          "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+          "sourceSection": "parentDefaults",
+          "sourceSectionIndex": 5
+        },
+        "instanceRecordIdentity": {
+          "available": true,
+          "identity": {
+            "evidenceId": "render-export-7638c18f8f395859",
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "serialSha256": "a561b4e0fb6d6a776c635b4ca0f2b0bc3dbfa177ee39f5d813ecb071792ae161"
+          },
+          "textureObjectPath": "fx_tex_01.fx_c_noise_002",
+          "sourceLineageSha256": "ef7a4b805f920dd3d11a657a744d17bc801aff3cd557633ef631a82865a23c32",
+          "samplerOutcome": "SAMPLER_EVIDENCE_MISSING"
+        },
+        "parentIdentity": {
+          "available": true,
+          "identity": {
+            "logicalPackage": "FX_M_MI_01",
+            "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+            "physicalPackageSha256": "404fe05a1de15e924795071ac56bd8ab2e5819b6e701363f0f26eed6a050c948",
+            "exportIndex": 60,
+            "objectPath": "fx_m.fx_f_pa_wind_05_tr",
+            "rawExportEvidenceId": "render-export-7638c18f8f395859"
+          },
+          "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+        },
+        "nestedDefaultIdentity": {
+          "available": false,
+          "outcome": "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+        },
+        "classCdoIdentity": {
+          "available": false,
+          "outcome": "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+        },
+        "shaderCacheIdentity": {
+          "available": false,
+          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "exactMaterialShaderMapJoinCount": 0,
+          "sourceBaseMaterialIdJoinCount": 0,
+          "sourceMicStaticParameterSetJoinCount": 0,
+          "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN"
+        },
+        "runtimeCaptureIdentity": {
+          "available": false,
+          "outcome": "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+        },
+        "sourceTextureEvidence": {
+          "logicalTexturePath": "fx_tex_01.fx_c_noise_002",
+          "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+          "physicalPackageByteCount": 3432777,
+          "physicalPackageSha256": "afc7d3cbb63907a353926c1a58649cc2145da23ada15d4509ae9691f6b80c793",
+          "packageVersion": 868,
+          "engineVersion": 12097,
+          "export": {
+            "exportIndex": 123,
+            "packageReference": 124,
+            "objectPath": "fx_c_noise_002",
+            "className": "texture2d",
+            "serialOffset": 1982742,
+            "serialSize": 6691,
+            "serialSha256": "dfc953c7eb85a87fef3b9e0e5258080b338e9e623b707d98dcca588da1641636"
+          },
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 297,
+          "fields": {
+            "addressx": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "addressy": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "srgb": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "filter": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "lodgroup": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "lodgroup",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "value": "texturegroup_effects",
+                "encodedValueHex": "d100000000000000",
+                "encodedValueSha256": "80aabcfd07dcbe96ec24cade9738b1834fbf9f90c62b44dbf8df3f1873a0bb51",
+                "recordSha256": "d884e783a505e6ead99d1a609394ef2218f257ac11fd3da4e3d45e9d56489455"
+              }
+            }
+          },
+          "revisionFidelity": "SOURCE_ARCHIVE_EXACT_TEXTURE_EXPORT",
+          "admissibleAsSourceEra": true
+        },
+        "previouslyAdmittedExactSamplerReaudit": false,
+        "rendererConsumption": {
+          "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+          "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        },
+        "acquisitionPath": [
+          "TEXTURE_EXPORT_RECORD",
+          "PARENT_TEXTURE_DEFAULT",
+          "TEXTURE2D_CLASS_CDO",
+          "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+          "SOURCE_REVISION_SHADER_CACHE",
+          "CONTROLLED_RUNTIME_CAPTURE"
+        ],
+        "oracleProvider": {
+          "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+          "providerAvailable": true,
+          "sourceValueProviderAvailable": false
+        },
+        "pilotFixtureIds": [
+          "warp-sampler-address-toggle"
+        ],
+        "numericOracleInputDomain": [
+          "WRAP",
+          "CLAMP"
+        ],
+        "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+        "numericTolerance": 0.0,
+        "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
+        "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+        "executionDecision": "BLOCKED",
+        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+        "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+        "remainingBlockers": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "sourceValueAcquisitionEvidence": {
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
+          "partialSourceExactFields": [
+            "lodgroup"
+          ],
+          "partialCurrentOnlyFields": [],
+          "fullDescriptorSourceExact": false,
+          "sourceValueDecision": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+          "strictReauditDecision": "BLOCKED"
+        }
+      },
+      {
+        "matrixRowId": "material-feasibility-sampler-b21259a40da22d5c",
+        "materialRecipeId": "material-recipe-b508403ea55fedbc",
+        "materialOccurrenceIds": [
+          "source-active-003"
+        ],
+        "fieldId": "material-input-2b161e06207b4a97",
+        "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+        "bindingOriginAndOwner": {
+          "bindingOrigin": "SELF_DEFAULT",
+          "evidenceOwnerRecipeId": "material-recipe-b508403ea55fedbc",
+          "sourceSection": "parentDefaults",
+          "sourceSectionIndex": 0
+        },
+        "instanceRecordIdentity": {
+          "available": true,
+          "identity": {
+            "evidenceId": "render-export-d1981145f21890f1",
+            "logicalPackage": "FX_M_MI_02",
+            "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+            "physicalPackageSha256": "ec3c387ab4223c18389ccf151fd0b07468b12ea2fff51f7bbc03396138900769",
+            "exportIndex": 19,
+            "objectPath": "fx_m.fx_j_maskedrib_01_tr",
+            "serialSha256": "5d626151a70dded6d37e89fe0e85df31918aff4c449c7166d0c8b713c30dc600"
+          },
+          "textureObjectPath": "fx_tex_04.fx_i_atypical_03_ycl",
+          "sourceLineageSha256": "a71661cd3eb911754b8af00c9e882ed951b52163f14860fc8fdde4ae111f8fbe",
+          "samplerOutcome": "SAMPLER_EVIDENCE_MISSING"
+        },
+        "parentIdentity": {
+          "available": true,
+          "identity": {
+            "logicalPackage": "FX_M_MI_02",
+            "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+            "physicalPackageSha256": "ec3c387ab4223c18389ccf151fd0b07468b12ea2fff51f7bbc03396138900769",
+            "exportIndex": 19,
+            "objectPath": "fx_m.fx_j_maskedrib_01_tr",
+            "rawExportEvidenceId": "render-export-d1981145f21890f1"
+          },
+          "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+        },
+        "nestedDefaultIdentity": {
+          "available": false,
+          "outcome": "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+        },
+        "classCdoIdentity": {
+          "available": false,
+          "outcome": "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+        },
+        "shaderCacheIdentity": {
+          "available": false,
+          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "exactMaterialShaderMapJoinCount": 0,
+          "sourceBaseMaterialIdJoinCount": 0,
+          "sourceMicStaticParameterSetJoinCount": 0,
+          "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN"
+        },
+        "runtimeCaptureIdentity": {
+          "available": false,
+          "outcome": "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+        },
+        "sourceTextureEvidence": {
+          "logicalTexturePath": "fx_tex_04.fx_i_atypical_03_ycl",
+          "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+          "physicalPackageByteCount": 9918333,
+          "physicalPackageSha256": "7af83c5dc7bf9dc228fddf200b3b7fcda6a75c3a378cbc682c647dc22b909ce9",
+          "packageVersion": 868,
+          "engineVersion": 12097,
+          "export": {
+            "exportIndex": 456,
+            "packageReference": 457,
+            "objectPath": "fx_i_atypical_03_ycl",
+            "className": "texture2d",
+            "serialOffset": 8197981,
+            "serialSize": 26230,
+            "serialSha256": "a79121e724dfd13bf6c29229b9f526956c4731f341a0ead1ce0eb2954092adb2"
+          },
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 473,
+          "fields": {
+            "addressx": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "addressy": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "addressy",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 188,
+                "valueOffset": 220,
+                "recordEndOffset": 228,
+                "value": "ta_clamp",
+                "encodedValueHex": "0702000000000000",
+                "encodedValueSha256": "28e903c85f433423ae60fbbb68c4017bb0b8ca952fa8b8308232868c347e2040",
+                "recordSha256": "f1d0cfb87406b26d6bacab2fc712d13b6a213caf9c421d54385755e620991e25"
+              }
+            },
+            "srgb": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "filter": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "lodgroup": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "lodgroup",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 389,
+                "valueOffset": 421,
+                "recordEndOffset": 429,
+                "value": "texturegroup_effects",
+                "encodedValueHex": "1102000000000000",
+                "encodedValueSha256": "a49b2363dd2ef66dd86c229b7c693a3720c334e1ae14ea1a6ae1f0a76d60d042",
+                "recordSha256": "02b80da26089a7e23984c1eb9c495990522cb72ab8e450a41691ea6f1e9721ad"
+              }
+            }
+          },
+          "revisionFidelity": "SOURCE_ARCHIVE_EXACT_TEXTURE_EXPORT",
+          "admissibleAsSourceEra": true
+        },
+        "previouslyAdmittedExactSamplerReaudit": false,
+        "rendererConsumption": {
+          "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+          "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        },
+        "acquisitionPath": [
+          "TEXTURE_EXPORT_RECORD",
+          "PARENT_TEXTURE_DEFAULT",
+          "TEXTURE2D_CLASS_CDO",
+          "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+          "SOURCE_REVISION_SHADER_CACHE",
+          "CONTROLLED_RUNTIME_CAPTURE"
+        ],
+        "oracleProvider": {
+          "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+          "providerAvailable": true,
+          "sourceValueProviderAvailable": false
+        },
+        "pilotFixtureIds": [
+          "warp-sampler-address-toggle"
+        ],
+        "numericOracleInputDomain": [
+          "WRAP",
+          "CLAMP"
+        ],
+        "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+        "numericTolerance": 0.0,
+        "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
+        "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+        "executionDecision": "BLOCKED",
+        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+        "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+        "remainingBlockers": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "sourceValueAcquisitionEvidence": {
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
+          "partialSourceExactFields": [
+            "addressy",
+            "lodgroup"
+          ],
+          "partialCurrentOnlyFields": [],
+          "fullDescriptorSourceExact": false,
+          "sourceValueDecision": "BLOCKED_FULL_SAMPLER_DESCRIPTOR_DEFAULT_PROVENANCE_UNRESOLVED",
+          "strictReauditDecision": "BLOCKED"
+        }
+      },
+      {
+        "matrixRowId": "material-feasibility-sampler-e7a488241030b53f",
+        "materialRecipeId": "material-recipe-b508403ea55fedbc",
+        "materialOccurrenceIds": [
+          "source-active-003"
+        ],
+        "fieldId": "material-input-88d1c7b61c5c81d7",
+        "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+        "bindingOriginAndOwner": {
+          "bindingOrigin": "SELF_DEFAULT",
+          "evidenceOwnerRecipeId": "material-recipe-b508403ea55fedbc",
+          "sourceSection": "parentDefaults",
+          "sourceSectionIndex": 10
+        },
+        "instanceRecordIdentity": {
+          "available": true,
+          "identity": {
+            "evidenceId": "render-export-d1981145f21890f1",
+            "logicalPackage": "FX_M_MI_02",
+            "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+            "physicalPackageSha256": "ec3c387ab4223c18389ccf151fd0b07468b12ea2fff51f7bbc03396138900769",
+            "exportIndex": 19,
+            "objectPath": "fx_m.fx_j_maskedrib_01_tr",
+            "serialSha256": "5d626151a70dded6d37e89fe0e85df31918aff4c449c7166d0c8b713c30dc600"
+          },
+          "textureObjectPath": "fx_tex_00.fx_b_atypical_004",
+          "sourceLineageSha256": "b6bc1d783454a7b27f02817e960b2aced6fce1811ef5fa9ad8d309504f8d0ee3",
+          "samplerOutcome": "SAMPLER_EVIDENCE_MISSING"
+        },
+        "parentIdentity": {
+          "available": true,
+          "identity": {
+            "logicalPackage": "FX_M_MI_02",
+            "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+            "physicalPackageSha256": "ec3c387ab4223c18389ccf151fd0b07468b12ea2fff51f7bbc03396138900769",
+            "exportIndex": 19,
+            "objectPath": "fx_m.fx_j_maskedrib_01_tr",
+            "rawExportEvidenceId": "render-export-d1981145f21890f1"
+          },
+          "samplerOutcome": "NO_MATCHED_TEXTURE_EXPORT_SAMPLER_RECORD"
+        },
+        "nestedDefaultIdentity": {
+          "available": false,
+          "outcome": "NO_SERIALIZED_TEXTURE_DEFAULT_SAMPLER_RECORD"
+        },
+        "classCdoIdentity": {
+          "available": false,
+          "outcome": "SOURCE_REVISION_TEXTURE2D_CDO_NOT_ACQUIRED"
+        },
+        "shaderCacheIdentity": {
+          "available": false,
+          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "exactMaterialShaderMapJoinCount": 0,
+          "sourceBaseMaterialIdJoinCount": 0,
+          "sourceMicStaticParameterSetJoinCount": 0,
+          "outcome": "NO_SOURCE_REVISION_MATERIAL_OR_MIC_SHADER_MAP_JOIN"
+        },
+        "runtimeCaptureIdentity": {
+          "available": false,
+          "outcome": "NO_SOURCE_REVISION_CONTROLLED_RUNTIME_CAPTURE_PROVIDER"
+        },
+        "sourceTextureEvidence": {
+          "logicalTexturePath": "fx_tex_00.fx_b_atypical_004",
+          "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+          "physicalPackageByteCount": 5889712,
+          "physicalPackageSha256": "c650b18b6998a4c26cb520aeed2a36f9d90f4f77228da218d0fe568b1ba9d1c5",
+          "packageVersion": 868,
+          "engineVersion": 12097,
+          "export": {
+            "exportIndex": 350,
+            "packageReference": 351,
+            "objectPath": "fx_b_atypical_004",
+            "className": "texture2d",
+            "serialOffset": 4005264,
+            "serialSize": 23066,
+            "serialSha256": "b660e0488726aa4bff3aef7a418bfee73eea99cbd2d2f4f3e17a524a7b5c4627"
+          },
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 297,
+          "fields": {
+            "addressx": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "addressy": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "srgb": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "filter": {
+              "status": "OMITTED_FROM_EXPORT",
+              "fidelity": "UNRESOLVED_DEFAULT_PROVENANCE"
+            },
+            "lodgroup": {
+              "status": "SERIALIZED_EXPLICIT",
+              "property": {
+                "propertyName": "lodgroup",
+                "arrayIndex": 0,
+                "propertyType": "byteproperty",
+                "structType": null,
+                "declaredDataSize": 8,
+                "serializedPayloadSize": 8,
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "value": "texturegroup_effects",
+                "encodedValueHex": "0402000000000000",
+                "encodedValueSha256": "2601f99b26e489dc84957df77886d72827d882f5d71704920a5d9a07faf8db6e",
+                "recordSha256": "8ab3d3864c74d0dd124800d3b75ccf6d2e824e5269466493b87725e1c3afbcb2"
+              }
+            }
+          },
+          "revisionFidelity": "SOURCE_ARCHIVE_EXACT_TEXTURE_EXPORT",
+          "admissibleAsSourceEra": true
+        },
+        "previouslyAdmittedExactSamplerReaudit": false,
+        "rendererConsumption": {
+          "consumer": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT",
+          "status": "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        },
+        "acquisitionPath": [
+          "TEXTURE_EXPORT_RECORD",
+          "PARENT_TEXTURE_DEFAULT",
+          "TEXTURE2D_CLASS_CDO",
+          "SOURCE_REVISION_TEXTURE_GROUP_FILTER_CONFIGURATION",
+          "SOURCE_REVISION_SHADER_CACHE",
+          "CONTROLLED_RUNTIME_CAPTURE"
+        ],
+        "oracleProvider": {
+          "providerId": "D3D11_WARP_SAMPLER_DESCRIPTOR_PILOT",
+          "providerAvailable": true,
+          "sourceValueProviderAvailable": false
+        },
+        "pilotFixtureIds": [
+          "warp-sampler-address-toggle"
+        ],
+        "numericOracleInputDomain": [
+          "WRAP",
+          "CLAMP"
+        ],
+        "numericOracleExpectedOutput": "EXACT_D3D11_SAMPLER_DESCRIPTOR_MUTATION",
+        "numericTolerance": 0.0,
+        "pilotDecision": "PROVIDER_PILOT_PASS_SOURCE_VALUE_UNAVAILABLE",
+        "fidelityDecision": "UNRESOLVED_SAMPLER_PROVENANCE",
+        "executionDecision": "BLOCKED",
+        "owner": "MATERIAL_CORRECTIVE_EVIDENCE_OWNER",
+        "finalRuntimeOwner": "G09_SAMPLER_BINDING_COMPILER",
+        "remainingBlockers": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "sourceValueAcquisitionEvidence": {
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
+          "partialSourceExactFields": [
             "lodgroup"
           ],
           "partialCurrentOnlyFields": [],
@@ -55730,7 +56586,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55897,7 +56753,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56092,7 +56948,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -56261,7 +57117,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56428,7 +57284,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56595,7 +57451,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56762,7 +57618,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56929,7 +57785,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57096,7 +57952,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57263,7 +58119,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57458,7 +58314,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -57627,7 +58483,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57794,7 +58650,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57961,7 +58817,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58128,7 +58984,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58295,7 +59151,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58491,7 +59347,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -58661,7 +59517,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
+          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58683,14 +59539,14 @@
       "staticNonoverrideSemanticsUnverifiedCount": 43,
       "staticNoExactGuidEntryCount": 28,
       "staticPermutationRowSetSha256": "59a8edb3eb91ac0f2f28ae4d23af8276c9035e4db069cb5dee85a1e532317b2e",
-      "strictSamplerRowCount": 72,
+      "strictSamplerRowCount": 77,
       "strictSamplerReadinessCount": 0,
       "strictSamplerRejectedLegacyExactRowCount": 4,
-      "strictSamplerSourceTextureEvidenceRowCount": 72,
-      "strictSamplerRowSetSha256": "b6fdb39cac86dd1d7b55a9619601bd9edb74210d525d79f46a0c9bfea48313ac",
-      "totalRowCount": 255,
+      "strictSamplerSourceTextureEvidenceRowCount": 77,
+      "strictSamplerRowSetSha256": "cc8d385c5d8a465c55aa7ca25b2f4ad3a7f17996859c92f5cff4049bd63d6abd",
+      "totalRowCount": 260,
       "executionReadinessCount": 0,
-      "blockedRowCount": 255,
+      "blockedRowCount": 260,
       "ownerlessRowCount": 0,
       "unknownDecisionRowCount": 0,
       "evidenceIntegrity": true,
@@ -58985,9 +59841,9 @@
     "runtimeHandlerConsumedOccurrenceCount": 0,
     "productRecipeCount": 0,
     "productOccurrenceCount": 0,
-    "materialFeasibilityRowCount": 255,
+    "materialFeasibilityRowCount": 260,
     "materialFeasibilityReadyCount": 0,
-    "materialFeasibilityBlockedCount": 255
+    "materialFeasibilityBlockedCount": 260
   },
-  "receiptSha256": "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6"
+  "receiptSha256": "8e96b8f725c708d87221fcd9e081122956da1208db09e4982d8483499cf719e1"
 }

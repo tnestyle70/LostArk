@@ -98,13 +98,13 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
         render = self.receipt["renderStatePolicies"]
         static = self.receipt["staticPermutationPolicies"]
         sampler = self.receipt["samplerPolicies"]
-        self.assertEqual((len(render), len(static), len(sampler)), (89, 94, 72))
+        self.assertEqual((len(render), len(static), len(sampler)), (89, 94, 77))
         rows = render + static + sampler
-        self.assertEqual([row["policyOrder"] for row in rows], list(range(255)))
+        self.assertEqual([row["policyOrder"] for row in rows], list(range(260)))
         self.assertTrue(all(row["sourceExact"] is False for row in rows))
         self.assertTrue(all(row["evidenceBlockers"]["sourceValueAcquisition"] for row in rows))
         self.assertTrue(all(row["evidenceBlockers"]["runtimeOracle"] for row in rows))
-        self.assertEqual(self.receipt["admission"]["policySelection"], {"ready": True, "rowCount": 255})
+        self.assertEqual(self.receipt["admission"]["policySelection"], {"ready": True, "rowCount": 260})
         self.assertEqual(self.receipt["admission"]["runtimeConsumer"], {"ready": False, "rowCount": 0})
         self.assertFalse(self.receipt["admission"]["product"])
 
@@ -132,9 +132,9 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
         )
 
         samplers = self.receipt["samplerPolicies"]
-        self.assertEqual(sum(row["selectedDescriptor"]["addressU"]["ue3"] == "ta_wrap" for row in samplers), 63)
+        self.assertEqual(sum(row["selectedDescriptor"]["addressU"]["ue3"] == "ta_wrap" for row in samplers), 68)
         self.assertEqual(sum(row["selectedDescriptor"]["addressU"]["ue3"] == "ta_clamp" for row in samplers), 9)
-        self.assertEqual(sum(row["selectedDescriptor"]["sRgb"] is True for row in samplers), 67)
+        self.assertEqual(sum(row["selectedDescriptor"]["sRgb"] is True for row in samplers), 72)
         self.assertEqual(sum(row["selectedDescriptor"]["sRgb"] is False for row in samplers), 5)
         self.assertTrue(all(row["selectedDescriptor"]["filter"]["ue3"] == "tf_linear" for row in samplers))
 
@@ -150,9 +150,9 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
             self.assertEqual(row["implementation"]["implementationVersion"], 1)
             self.assertEqual(row["numericOracle"]["numericTolerance"], 0.0)
             self.assertTrue(all(math.isfinite(value) for value in row["numericOracle"]["expectedFloat4"]))
-        self.assertEqual(self.receipt["hlslVerification"]["sampleCount"], 255)
-        self.assertEqual(self.receipt["warpDescriptorVerification"]["descriptorRowCount"], 107)
-        self.assertEqual(self.receipt["warpDescriptorVerification"]["srvColorSpaceRowCount"], 72)
+        self.assertEqual(self.receipt["hlslVerification"]["sampleCount"], 260)
+        self.assertEqual(self.receipt["warpDescriptorVerification"]["descriptorRowCount"], 112)
+        self.assertEqual(self.receipt["warpDescriptorVerification"]["srvColorSpaceRowCount"], 77)
 
     def test_row_reorder_and_ordinal_reseal_is_rejected(self) -> None:
         candidate = copy.deepcopy(self.receipt)
@@ -426,7 +426,7 @@ class ReconstructedMaterialPolicyTests(unittest.TestCase):
                 if target == "product":
                     candidate["admission"][target] = True
                 else:
-                    candidate["admission"][target] = {"ready": True, "rowCount": 255}
+                    candidate["admission"][target] = {"ready": True, "rowCount": 260}
                 reseal_receipt(candidate)
                 self.assert_rejected(candidate)
 
