@@ -261,6 +261,39 @@ age가 0이라 update delta가 0인 module도 consumed-handler 집합에서 빠�
 정상값으로 처리하거나 rendererRuntimeConfig를 presentation fallback으로 쓰지 않는다. 결과 frame은
 정확히 Mesh 1개와 Sprite 1개가 nonempty이고 같은 entry pointer를 가질 때만 commit한다.
 
+Mesh module 009의 선택 계약도 구현 전에 다음처럼 고정한다.
+
+```text
+module ID          <Mesh emitter ID>::module:009
+module row SHA     cd94729dd24af5799a9f97a48a1b27908df6e7f720dda2ea728554ed7c53b856
+handler registry   handler-a90067d9043e62f6e79a5cc4
+handler row SHA    4691180c80cda74a93ea57d68fe2d54d00842562c364a41192b4aeb0fe9f0a40
+implementation     source.module.exact.particlemodulelocationprimitivecylinder.v1
+implementation SHA dbbdcb1c7b4b28726062cc3846d89b38073fd15dd2cf2cf21869c109c757d5d7
+height axis        property/literal/default row가 없는 이 선택 행은 exact handler의 Z-axis default
+```
+
+`heightaxis`가 없는 행을 매번 class 문자열로 추측하지 않는다. production dispatch table이 위 handler
+registry/implementation identity와 module row를 모두 확인한 뒤 **absent exactly Z**를 적용한다. 다른
+handler, 같은 module의 새 `heightaxis`, 또는 X/Y/unknown 값은 이 M0 선택 계약이 아니므로 fail closed 한다.
+이는 기존 production cylinder handler의 empty-value Z 동작을 stable handler identity에 결합한 것이며,
+새 implicit-default 데이터 행을 발명하지 않는다.
+
+두 material evaluator의 production common-shader binding도 다음처럼 고정한다.
+
+| 선택 | evaluator/family identity | feature mask | texture lane / shader pass |
+|---|---|---:|---|
+| Mesh 026 | `reconstructed-evaluator-c3ac12f104b50f06`, family row `b95ca3e38af0bab700b1941c9f34e7c1819fd11eafb8e4ae22bcd0dd374ab43b` | 41 | decision 06의 texture0/1 -> `g_SourceTexture0/1`, Mesh pass 0 |
+| Sprite 027 | `reconstructed-evaluator-b64318cb50070e35`, family row `78577bca3d6ff10f53428196606c79548b3b1d52cc0594e469f701a5ced8c568` | 811 | decision 01의 texture0/1 -> `g_SourceTexture0/1`, Particle pass 1 |
+
+packet은 `g_ReconstructedMaterialEvaluatorEnabled`, exact feature mask, `g_ReconstructedUVScale`,
+`g_ReconstructedPanRotationAux`, `g_ReconstructedColor`, `g_ReconstructedParams0/1`에 해당하는 typed block을
+소유한다. HLSL은 이미 WARP oracle이 검증한
+`SECOND_TEXTURE_MULTIPLY -> UV_TRANSFORM_PHASE -> PANNER_PHASE -> COLOR_MULTIPLY -> DESATURATION ->
+SIGNED_POWER -> FRESNEL_GAIN -> DISTORTION_OFFSET -> DISSOLVE_ALPHA -> ALPHA_MULTIPLY` 순서만 production
+common path에 옮긴다. legacy `g_SourceMaterialProfile`이나 base/noise/mask fallback으로 두 family를 추측하지
+않고, evaluator/family/recipe/decision/lane identity가 하나라도 다르면 stage를 rollback한다.
+
 GPU stage는 기존 `CEffectDocumentRenderer`가 소유한다. model은 `CModel` 통합 경로로만 만들고 carrier
 preScale을 create/pretransform에서 한 번만 적용한다. Sprite particle은 production particle instance
 buffer와 shader를 사용한다. diagnostic placement root만 실제 camera 앞의 visible 위치를 제공하며 packet의
