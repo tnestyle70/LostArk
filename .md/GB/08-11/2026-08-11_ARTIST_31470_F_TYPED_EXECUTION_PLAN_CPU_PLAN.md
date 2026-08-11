@@ -189,3 +189,49 @@ After receiving the serial build lease:
 7. run XML parse, `git diff --check`, conflict-marker, process, and scope checks;
 8. leave all changes unstaged and uncommitted for independent review. Do not
    push or claim visual/Product completion.
+
+## Frozen compiled semantic projection authority corrective
+
+Branch: `codex/artist-f-execution-plan-projection-authority-v1`
+
+Exact integration base: `564799d5ef3f446dfe5c7c43ca1ed5c506e76af8`
+
+This corrective freezes the already-defined compiled-plan canonical projection
+without adding packet fields, execution behavior, runtime admission, renderer
+work, or a second authority path. An independent serializer reconstructed the
+existing C++ length-prefixed projection directly from the exact candidate. It
+first reproduced the existing distribution-target SHA-256
+`9f99d7a6...29b1` over 342,430 bytes and owner SHA-256
+`35b0977b...bd88` over 454,072 bytes with exact/bracket counts `509/120`.
+The unchanged 1,108,125-byte compiled-plan projection is therefore frozen as:
+
+```text
+e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df
+```
+
+`Client/Private/Effect_ReconstructedExecution.cpp` adds this private literal
+next to the existing program, candidate, target, and owner pins. After every
+typed join, handler selection, seeded tuple, timing role, distribution sample,
+and denominator has succeeded, `Compile_Program` computes the canonical
+projection and requires exact equality before assigning `OutData`. Failure
+returns the dedicated semantic-projection-authority status while the caller's
+old plan remains untouched. `EFFECT_RECONSTRUCTED_EXECUTION_PLAN_IDENTITY` and
+its existing const `Get_Identity()` already expose the immutable result, so no
+new public getter or header field is added.
+
+The Harness coordinates a source cue mutation across one Schedule and all four
+owning Emitters. This preserves the earlier Schedule/Emitter equality and all
+target, owner, handler, seeded, timing, and denominator gates, so rejection at
+the dedicated final projection gate proves the new boundary. The test requires
+the old plan pointer and exact frozen hash to remain unchanged and checks the
+exact error status. Canonical Catalog generations A and B must each equal the
+literal, rather than merely equal one another. The focused audit checks the
+five exact program/candidate/target/owner/semantic pins, verifies the equality
+check precedes `OutData` commit, and requires the compiled Harness to print the
+exact projection.
+
+Verification remains the existing serial matrix: focused static audit first,
+then Harness Debug/Release build and CPU mode, Client Debug/Release build,
+dynamic focused audit for both binaries, `git diff --check`, and an unstaged
+scope freeze. Product/runtime/submit/render stay false; raw semantics,
+resources, PlayerSkills, and animevents remain unchanged.

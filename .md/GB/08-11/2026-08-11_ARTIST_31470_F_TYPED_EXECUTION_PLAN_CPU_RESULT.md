@@ -140,3 +140,76 @@ All changes remain unstaged and uncommitted in the dedicated worktree. No
 commit or push has been performed. The full ProjectAudit's actual repository
 baseline result and both corrective verification rounds are recorded above;
 the worktree is refrozen for independent review.
+
+## Frozen compiled semantic projection authority corrective
+
+Branch: `codex/artist-f-execution-plan-projection-authority-v1`
+
+Exact integration base: `564799d5ef3f446dfe5c7c43ca1ed5c506e76af8`
+
+The previously runtime-computed-only compiled-plan projection is now pinned to
+`e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df`.
+Independent reconstruction produced 1,108,125 canonical bytes while also
+reproducing the pre-existing target and owner hashes and the `509/120` owner
+classification. The compiler requires the exact program, candidate, and final
+semantic hashes after all earlier target/owner/typed gates and before compiled
+data or plan commit.
+
+The focused Harness adds a coordinated Schedule source-cue plus four owning
+Emitter mutation that reaches only the final semantic projection gate. It
+requires the exact failure status and preservation of the old plan pointer and
+hash. Canonical Catalog A/B plans now each require the exact literal. The
+existing immutable identity getter is reused; no public header or execution
+packet was expanded.
+
+Current corrective verification:
+
+- clean dedicated worktree/branch and exact base/tree: PASS;
+- fresh exact LF candidate: 15,072,141 bytes, CR 0, raw SHA-256
+  `72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849`;
+- independent target/owner/semantic derivation: PASS;
+- focused static audit, project/filter XML parse, and `git diff --check`: PASS;
+- clean-worktree Engine Debug/Release and `UpdateLib.bat` prerequisites: PASS;
+- ClientFrontendHarness Debug/Release `/m:1 /nr:false` builds: PASS;
+- Debug/Release `--effect-reconstructed-execution-plan`: PASS in 95.2/11.2
+  seconds, both `failures : 0`, both printing the exact frozen semantic
+  projection, and both passing the coordinated Schedule plus four-Emitter
+  mutation with old-plan pointer/hash preservation;
+- Client Debug/Release `/m:1 /nr:false` builds: PASS;
+- Debug/Release dynamic focused audits with the canonical six-folder Resource
+  root: PASS in 95.6/10.5 seconds with exact `7/35/399/629`, projection
+  `e05c0954...bd8df`, RNG v1, 60 Hz, and `Product=false`;
+- Product/runtime/submit/render, PlayerSkills, animevents, raw semantic and
+  resource changes: false/none;
+- stage, commit, and push: not performed.
+
+This worktree is a verification checkpoint based on integration commit
+`564799d5...6af8`, not the final CPU authority. It must remain unstaged and
+uncommitted until an independent refreeze PASS, and it becomes an integrated
+authority only after its exact reviewed diff is committed and integrated.
+
+### Explicit future fail-closed boundaries
+
+The `e05c...bd8df` projection covers only the compiled schedules, emitters,
+modules, distributions, and seed policies. It does not discharge Material,
+DDS, geometry, Submit, Render, or Product proof. A future sidecar must keep an
+exact seam proof map with `admitted=false`, `requiredProofIds`, and owner
+denominators independently for Execute, Submit, Render, and Product. An
+unchanged CPU projection combined with any missing resource or render proof
+must keep the corresponding seam false.
+
+`CEffectObject::Submit_Presentation` currently pushes Lights before it has
+validated and pushed ScreenPosts. An overlapping Artist Light/Post frame can
+therefore partially commit global light state when post validation or manager
+capacity fails. Submit remains false until frame conversion is local and
+complete before commit, the managers accept one mixed atomic batch, rollback
+restores each previous manager size without disturbing other effects, and
+targeted mixed failure/capacity mutations prove that boundary.
+
+The Harness-only inspector and projection do not open `Admit_Execution`.
+Production Client remains plan-only, clears legacy state, and denies
+Update/Seek/Reset execution. Execution admission stays false until a
+production-compiled executor consumes the plan in Update/Seek/Reset, emits
+nonempty exact 7/35 occurrence packets, binds every blocker occurrence to a
+consumer probe plus implementation SHA, Client binary SHA, and probe receipt,
+and rejects a gate-true-but-empty-frame mutation.

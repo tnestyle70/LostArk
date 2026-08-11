@@ -33,6 +33,8 @@ namespace
 		"9f99d7a65d6e2a74bc241dd4268751fc876522c9deac387eacfb40be7cc429b1";
 	constexpr std::string_view FROZEN_DISTRIBUTION_OWNER_PROJECTION_SHA256 =
 		"35b0977b106c003b2542327959dd1ee11ea326dd17324c5dbc242153b086bd88";
+	constexpr std::string_view FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
+		"e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df";
 	constexpr std::string_view FROZEN_SEEDED_EMITTER_ID =
 		"fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01::"
 		"action-31470/stage-000/notify-028::FX_CM_01.distortion_onelayer."
@@ -1913,9 +1915,14 @@ namespace
 
 		Data.Identity.strSemanticProjectionSha256 =
 			Compute_SemanticProjection(Data);
-		if (Data.Identity.strSemanticProjectionSha256.size() != 64u)
+		if (Data.Identity.strProgramSha256 != ARTIST_PROGRAM_SHA256 ||
+			Data.Identity.strCandidateRawSha256 != ARTIST_CANDIDATE_SHA256 ||
+			Data.Identity.strSemanticProjectionSha256 !=
+				FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256)
+		{
 			return Reject(strOutError,
-				"Reconstructed execution semantic projection could not be sealed.");
+				"Reconstructed execution frozen semantic projection authority is invalid.");
+		}
 		OutData = std::move(Data);
 		strOutError.clear();
 		return true;

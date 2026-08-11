@@ -4220,6 +4220,10 @@ namespace
 		}
 	}
 
+	constexpr std::string_view
+		ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
+		"e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df";
+
 	void Test_Artist31470TypedExecutionPlan(
 		TEST_RUNNER& runner,
 		const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& CatalogIdentity,
@@ -4325,8 +4329,11 @@ namespace
 			Plan->Get_Identity().iCatalogRevision ==
 				CatalogIdentity.iCatalogRevision &&
 			Plan->Get_Identity().strProgramSha256 ==
-				CatalogIdentity.strProgramSha256 &&
-			Plan->Get_Identity().strSemanticProjectionSha256.size() == 64u &&
+				"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b" &&
+			Plan->Get_Identity().strCandidateRawSha256 ==
+				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849" &&
+			Plan->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
 			Summary->iScheduleCount == 7u && Summary->iEmitterCount == 35u &&
 			Summary->iModuleCount == 399u &&
 			Summary->iDistributionCount == 629u &&
@@ -4347,6 +4354,8 @@ namespace
 			"Artist 31470 Typed Plan Freezes 7/35/399/629 Schedule Lifetime Burst Cap And Distribution Denominators");
 		if (nullptr == Plan)
 			return;
+		std::cout << "[DETAIL] Artist 31470 typed execution plan semanticProjection=" <<
+			Plan->Get_Identity().strSemanticProjectionSha256 << '\n';
 
 		bool_t ExactReverseJoins = Plan->Get_EmitterOrder().size() == 35u &&
 			Plan->Get_ModuleOrder().size() == 399u &&
@@ -4611,6 +4620,49 @@ namespace
 			WrongJoinRejected && UnknownHandlerRejected && WrongSeedRejected &&
 			PreservedPlan.get() == Plan.get(),
 			"Artist 31470 Typed Plan Rejects A B Identity Unknown Variant And Broken Reverse Join Transactionally");
+
+		auto CoordinatedProjectionMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		bool_t ProjectionMutationFixtureComplete =
+			!CoordinatedProjectionMutation->ActionSchedules.empty();
+		uint32_t ProjectionMutationEmitterCount = 0u;
+		if (ProjectionMutationFixtureComplete)
+		{
+			auto& MutatedSchedule =
+				CoordinatedProjectionMutation->ActionSchedules.front();
+			const std::string OriginalCueId = MutatedSchedule.strSourceCueId;
+			const std::string MutatedCueId =
+				OriginalCueId + ".projection-authority-mutation";
+			for (auto& Emitter : CoordinatedProjectionMutation->Emitters)
+			{
+				if (Emitter.strScheduleId != MutatedSchedule.Row.strId)
+					continue;
+				ProjectionMutationFixtureComplete =
+					ProjectionMutationFixtureComplete &&
+					Emitter.strSourceCueId == OriginalCueId;
+				Emitter.strSourceCueId = MutatedCueId;
+				++ProjectionMutationEmitterCount;
+			}
+			MutatedSchedule.strSourceCueId = MutatedCueId;
+			ProjectionMutationFixtureComplete =
+				ProjectionMutationFixtureComplete &&
+				ProjectionMutationEmitterCount == ExpectedScheduleCounts.front();
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ProjectionMutationPlan = Plan;
+		std::string ProjectionMutationStatus;
+		const bool_t CoordinatedProjectionMutationRejected =
+			ProjectionMutationFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, CoordinatedProjectionMutation,
+				ProjectionMutationPlan, ProjectionMutationStatus);
+		runner.Require(CoordinatedProjectionMutationRejected &&
+			ProjectionMutationPlan.get() == Plan.get() &&
+			ProjectionMutationPlan->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			ProjectionMutationStatus ==
+				"Reconstructed execution frozen semantic projection authority is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Canonical Projection Mutation And Preserves Old Plan");
 
 		auto SwappedLifetimeAuthority =
 			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
@@ -5219,7 +5271,9 @@ namespace
 			ExecutionPlanA->Get_Identity().iCatalogRevision == RevisionA &&
 			ExecutionPlanB->Get_Identity().iCatalogRevision == RevisionB &&
 			ExecutionPlanA->Get_Identity().strSemanticProjectionSha256 ==
-				ExecutionPlanB->Get_Identity().strSemanticProjectionSha256 &&
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			ExecutionPlanB->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
 			!ExecutionPlanA->Get_Program()->Admission.bRuntimeExecution &&
 			!ExecutionPlanB->Get_Program()->Admission.bRuntimeExecution,
 			"Artist 31470 Typed Plan Reload Produces Independent A B Identity And Preserves Generation A");
