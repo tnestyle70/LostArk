@@ -38,6 +38,24 @@ std::string CNetworkManager::Resolve_ServerHost()
 	return configuredHost;
 }
 
+std::string CNetworkManager::Resolve_MapEditorServerHost()
+{
+	constexpr char MAP_EDITOR_HOST_ENVIRONMENT[] =
+		"LOSTARK_MAPEDITOR_SERVER_HOST";
+	char configuredHost[64]{};
+	const DWORD configuredLength = ::GetEnvironmentVariableA(
+		MAP_EDITOR_HOST_ENVIRONMENT,
+		configuredHost,
+		static_cast<DWORD>(std::size(configuredHost)));
+	if (0 == configuredLength ||
+		configuredLength >= std::size(configuredHost) ||
+		"0.0.0.0" == std::string_view{ configuredHost })
+	{
+		return Resolve_ServerHost();
+	}
+	return configuredHost;
+}
+
 bool CNetworkManager::Initialize()
 {
 	if (m_isWinSocketInitialized)

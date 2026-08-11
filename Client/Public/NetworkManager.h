@@ -34,6 +34,7 @@ public:
 	static CNetworkManager& Get();
 	static constexpr std::uint16_t DEFAULT_SERVER_PORT = 7777;
 	static std::string Resolve_ServerHost();
+	static std::string Resolve_MapEditorServerHost();
 
 	bool Initialize();
 	void Shutdown();
