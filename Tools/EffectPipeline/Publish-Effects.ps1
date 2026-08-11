@@ -1721,7 +1721,7 @@ try {
                 ("LostArkEffectCatalogV3-" + [Guid]::NewGuid().ToString('N') + '.json')
             try {
                 [IO.File]::WriteAllText(
-                    $validationPath, $json + [Environment]::NewLine, $utf8NoBom)
+                    $validationPath, $json + "`n", $utf8NoBom)
                 Invoke-DerivedArtifactTool @(
                     'validate-runtime-catalog', '--catalog', $validationPath)
             }
@@ -1742,7 +1742,7 @@ try {
     $backup = "$OutputPath.$transactionId.bak"
     try {
         [IO.File]::WriteAllText(
-            $temporary, $json + [Environment]::NewLine, $utf8NoBom)
+            $temporary, $json + "`n", $utf8NoBom)
         if ($hasDerivedRuntime) {
             Invoke-DerivedArtifactTool @(
                 'validate-runtime-catalog', '--catalog', $temporary)

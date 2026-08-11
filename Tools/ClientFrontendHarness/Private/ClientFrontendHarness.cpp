@@ -4943,10 +4943,10 @@ namespace
 		const DATA_JSON_VALUE* PublishedEffects = PublishedCatalogParsed ?
 			PublishedCatalogRoot.Find("effects") : nullptr;
 		const bool_t PublishedCatalogStructure =
-			PublishedCatalogText.size() == 26'255'931u &&
+			PublishedCatalogText.size() == 26'255'930u &&
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
 				PublishedCatalogText) ==
-				"bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29" &&
+				"b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f" &&
 			nullptr != PublishedSchema && PublishedSchema->Is_String() &&
 			PublishedSchema->Get_String() == "lostark.effect-runtime-catalog" &&
 			nullptr != PublishedVersion && PublishedVersion->Is_Number() &&
@@ -5550,9 +5550,9 @@ namespace
 		using namespace Client;
 		constexpr const char* EffectId = "effect.artist.skill.31470";
 		const std::string CatalogText = Read_Text(Exact13CatalogPath);
-		const bool_t ExactCatalog = CatalogText.size() == 27'065'828u &&
+		const bool_t ExactCatalog = CatalogText.size() == 27'065'827u &&
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CatalogText) ==
-				"1cc2c1b159d0ed87a177a91bb0b64cd141967c5d7570407ea473a8be8d20dac3";
+				"ea3afd4e6f2fb2b2a627a8ba565daf9db931e3306c10da7ee5523611bf481ab3";
 		runner.Require(ExactCatalog,
 			"Artist 31470 Exact13 Harness Input Has Frozen Catalog Identity");
 		if (!ExactCatalog)
@@ -5633,7 +5633,7 @@ namespace
 			Identity->strRenderResourceAuthorityLinkSha256 ==
 				"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e" &&
 			Identity->strRenderResourcePublishReceiptSha256 ==
-				"dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455" &&
+				"37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740" &&
 			Authority->Identity.strProgramId == Identity->strProgramId &&
 			Authority->Identity.strProgramSha256 == Identity->strProgramSha256 &&
 			Authority->TextureResourcesById.size() == 48u &&
@@ -5849,9 +5849,9 @@ namespace
 			const std::string HistoricalText = Read_Text(
 				HistoricalOld10CatalogPath);
 			const bool_t HistoricalInput =
-				HistoricalText.size() == 26'255'931u &&
+				HistoricalText.size() == 26'255'930u &&
 				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(HistoricalText) ==
-					"bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29";
+					"b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f";
 			const bool_t HistoricalLoaded = HistoricalInput &&
 				WriteCatalog(HistoricalText) && CEffectCatalog::Load(Status);
 			const auto HistoricalEntry =

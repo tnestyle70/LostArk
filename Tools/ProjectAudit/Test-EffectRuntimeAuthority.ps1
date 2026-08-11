@@ -166,11 +166,11 @@ foreach ($renderResourceBoundary in @(
 	'bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a',
 	'4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412',
 	'8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e',
-	'3a5ec8cd44173dde89addfb078303cf8d208be5e45bb28f557f0ca0028811687',
-	'dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455',
+	'815418a98fbf84a00ae172098a57470b25fac6b5ddfb9836d38dea25db3dafbd',
+	'37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740',
 	'74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef',
-	'148d13df44da8c2fbf3378648d92ee83651a1f97cd5b6827a4b411cce78cfb95',
-	'2858a8c8f34754435b7daafe61679c0d7b965744af67f34222c31b0dd4ab801d',
+	'508187b5b905ed714af7c1d18c572f07770a0011b07527e7e16fd61217797e6a',
+	'2a2e4bc7fd79164ebb578c7f8f531e7afae7c1f30e5f0d57d3e316bea2fd7922',
 	'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT',
 	'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT')) {
 	if ($catalogHeader -notmatch [regex]::Escape($renderResourceBoundary) -and
@@ -247,7 +247,7 @@ if ($catalogSource -match 'Data/Effects/Imported/Artist/Candidates' -or
 foreach ($actualCatalogBoundary in @(
 	'PublishedCatalogPath',
 	'PublishedCatalogStructure',
-	'bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29',
+	'b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f',
 	'PublishedComponents->Get_Array().size() == 555u',
 	'PublishedEffects->Get_Array().size() == 102u',
 	'WriteCatalog(PublishedCatalogText)',
@@ -258,8 +258,8 @@ foreach ($actualCatalogBoundary in @(
 }
 foreach ($renderResourceCatalogBoundary in @(
 	'--effect-reconstructed-render-resource-authority',
-	'CatalogText.size() == 27''065''828u',
-	'1cc2c1b159d0ed87a177a91bb0b64cd141967c5d7570407ea473a8be8d20dac3',
+	'CatalogText.size() == 27''065''827u',
+	'ea3afd4e6f2fb2b2a627a8ba565daf9db931e3306c10da7ee5523611bf481ab3',
 	'nullptr == EntryA->Get_RenderResourceAuthority()')) {
 	if ($harness -notmatch [regex]::Escape($renderResourceCatalogBoundary)) {
 		throw "Exact old10/new13 Catalog harness identity is missing: $renderResourceCatalogBoundary"

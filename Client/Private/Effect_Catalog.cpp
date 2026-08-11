@@ -2320,9 +2320,9 @@ namespace
 		constexpr std::string_view AUTHORITY_LINK_SHA256 =
 			"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e";
 		constexpr std::string_view RECEIPT_SELF_SHA256 =
-			"3a5ec8cd44173dde89addfb078303cf8d208be5e45bb28f557f0ca0028811687";
+			"815418a98fbf84a00ae172098a57470b25fac6b5ddfb9836d38dea25db3dafbd";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
-			"dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455";
+			"37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740";
 
 		const DATA_JSON_VALUE* Link = Required(
 			Value, "reconstructedRenderResourceAuthority", DATA_JSON_TYPE::OBJECT);
@@ -2487,8 +2487,8 @@ namespace
 			"Tools/EffectPipeline/Publish-Effects.ps1" };
 		constexpr std::array<std::string_view, 3u> TOOL_SHA256{
 			"74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef",
-			"148d13df44da8c2fbf3378648d92ee83651a1f97cd5b6827a4b411cce78cfb95",
-			"2858a8c8f34754435b7daafe61679c0d7b965744af67f34222c31b0dd4ab801d" };
+			"508187b5b905ed714af7c1d18c572f07770a0011b07527e7e16fd61217797e6a",
+			"2a2e4bc7fd79164ebb578c7f8f531e7afae7c1f30e5f0d57d3e316bea2fd7922" };
 		if (nullptr == Tools || Tools->Get_Array().size() != TOOL_ROLES.size())
 		{
 			strOutError =

@@ -49,4 +49,9 @@
 # byte identities and must remain byte-stable in core.autocrlf=true checkouts.
 /Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json text eol=lf
 
+# The generated Effect runtime Catalog is a raw-byte authority consumed by the
+# exact old10/new13 harness. Keep its one trailing newline byte-exact on every
+# checkout instead of allowing core.autocrlf to rewrite it.
+/Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json text eol=lf
+
 

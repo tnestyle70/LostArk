@@ -372,11 +372,13 @@ def _object_no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def load_json(path: Path) -> dict[str, Any]:
+def load_json(path: Path, *, require_lf: bool = False) -> dict[str, Any]:
     try:
         payload = path.read_bytes()
         if payload.startswith(b"\xef\xbb\xbf"):
             raise ContractError(f"JSON must be UTF-8 without BOM: {path}")
+        if require_lf and b"\r" in payload:
+            raise ContractError(f"JSON must use LF-only newlines: {path}")
         value = json.loads(
             payload.decode("utf-8"),
             object_pairs_hook=_object_no_duplicates,
@@ -2591,7 +2593,7 @@ def _command_prepare_reconstructed(args: argparse.Namespace) -> None:
 
 
 def _command_validate_catalog(args: argparse.Namespace) -> None:
-    validate_runtime_catalog(load_json(args.catalog))
+    validate_runtime_catalog(load_json(args.catalog, require_lf=True))
 
 
 def make_parser() -> argparse.ArgumentParser:

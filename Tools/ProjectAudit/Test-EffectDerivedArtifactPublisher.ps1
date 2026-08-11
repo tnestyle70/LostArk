@@ -89,6 +89,22 @@ if (-not [IO.File]::Exists($runtimePath) -or
     -not [IO.File]::Exists($sourcePath)) {
     throw 'Actual Effect source/runtime catalog is missing.'
 }
+$runtimeAttribute = (& git -C $RepositoryRoot check-attr text eol -- `
+    'Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json' |
+    Out-String).Trim()
+$publisherText = [IO.File]::ReadAllText($publisher)
+$builderText = [IO.File]::ReadAllText($builder)
+$explicitLfWriteCount = [regex]::Matches(
+    $publisherText, [regex]::Escape('$json + "`n"')).Count
+if ($LASTEXITCODE -ne 0 -or
+    $runtimeAttribute -notmatch '(?m): text: set\r?$' -or
+    $runtimeAttribute -notmatch '(?m): eol: lf\r?$' -or
+    $publisherText.Contains('[Environment]::NewLine') -or
+    $explicitLfWriteCount -ne 2 -or
+    $builderText -notmatch 'load_json\(args\.catalog, require_lf=True\)' -or
+    $builderText -notmatch 'JSON must use LF-only newlines') {
+    throw 'Effect runtime Catalog LF-only publisher/validator contract changed.'
+}
 & python -B $builder validate-runtime-catalog --catalog $runtimePath
 if ($LASTEXITCODE -ne 0) {
     throw 'Actual Effect runtime catalog failed strict Python validation.'
@@ -176,14 +192,27 @@ if ($sidecarBytes.Length -ne 746788 -or
     throw 'Embedded render-resource sidecar bytes changed.'
 }
 
+$runtimeBytes = [IO.File]::ReadAllBytes($runtimePath)
 $runtimeRaw = (Get-FileHash -LiteralPath $runtimePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$runtimeCrIndex = [Array]::IndexOf($runtimeBytes, [byte]13)
+if ($runtimeBytes.Length -ne 27065827 -or
+    $runtimeRaw -cne
+        'ea3afd4e6f2fb2b2a627a8ba565daf9db931e3306c10da7ee5523611bf481ab3' -or
+    $runtimeCrIndex -ne -1 -or
+    $runtimeBytes[$runtimeBytes.Length - 1] -ne 10) {
+    throw (
+        'Actual Effect runtime Catalog raw LF identity changed: ' +
+        "bytes=$($runtimeBytes.Length) raw=$runtimeRaw " +
+        "firstCR=$runtimeCrIndex"
+    )
+}
 Write-Output (
     'PASS: derived Effect artifact publisher schema tests=28 ' +
     'reserved-reconstructed-id=true current-tools=3 duplicate-json-keys=true ' +
     'duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true ' +
     'authenticated-blocker-union=true bridge=13/21/26/tool3 ' +
     'catalog=102/555 sourceExact=false runtime=false execute=false submit=false ' +
-    'render=false product=false rollback=true ' +
+    'render=false product=false rollback=true runtime-lf=true ' +
     "link=$($resourceReceipt.renderResourceAuthorityLinkSha256) " +
     "receipt=$($resourceReceipt.receiptSha256) " +
     "outer=$($runtimeEntry.renderResourcePublishReceiptSha256) runtimeRaw=$runtimeRaw"

@@ -98,6 +98,18 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
     New-Item -ItemType Directory -Path $isolatedRoot | Out-Null
     try {
         try {
+            $historicalRuntimeBlob = (& git rev-parse (
+                $historicalRevision +
+                ':Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json'
+            )).Trim()
+            if ($LASTEXITCODE -ne 0 -or
+                $historicalRuntimeBlob -cne
+                    'ca360e952dd110f0246a5e0f1374baf77b7ebc0c') {
+                throw (
+                    'Artist F frozen historical runtime blob changed: ' +
+                    $historicalRuntimeBlob
+                )
+            }
             $env:GIT_INDEX_FILE = $temporaryIndex
             & git read-tree $historicalRevision
             if ($LASTEXITCODE -ne 0) {
@@ -175,6 +187,46 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
                 "bytes=$($receiptBytes.Length) raw=$rawSha256 CR=$crCount BOM=$hasBom " +
                 "self=$($isolatedReceipt.receiptSha256) " +
                 "decision=$($isolatedReceipt.decisionProjectionSha256)"
+            )
+        }
+
+        # The current exact-path attribute deliberately checks out the frozen
+        # 7d3 catalog as LF.  Its immutable sidecar predates that transport
+        # rule and records the single trailing newline as CRLF, so prove both
+        # byte identities before recreating the historical generator input.
+        $isolatedRuntimePath = Join-Path $isolatedRoot `
+            'Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json'
+        $lfRuntimeBytes = [IO.File]::ReadAllBytes($isolatedRuntimePath)
+        $lfRuntimeSha = (Get-FileHash -LiteralPath $isolatedRuntimePath `
+            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $lfRuntimeCrIndex = [Array]::IndexOf($lfRuntimeBytes, [byte]13)
+        if ($lfRuntimeBytes.Length -ne 26255930 -or
+            $lfRuntimeSha -cne
+                'b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f' -or
+            $lfRuntimeCrIndex -ne -1 -or
+            $lfRuntimeBytes[$lfRuntimeBytes.Length - 1] -ne 10) {
+            throw (
+                'Artist F frozen runtime LF checkout identity changed: ' +
+                "bytes=$($lfRuntimeBytes.Length) raw=$lfRuntimeSha " +
+                "firstCR=$lfRuntimeCrIndex"
+            )
+        }
+        $historicalRuntimeBytes = [byte[]]::new($lfRuntimeBytes.Length + 1)
+        [Array]::Copy(
+            $lfRuntimeBytes, 0, $historicalRuntimeBytes, 0,
+            $lfRuntimeBytes.Length - 1)
+        $historicalRuntimeBytes[$historicalRuntimeBytes.Length - 2] = 13
+        $historicalRuntimeBytes[$historicalRuntimeBytes.Length - 1] = 10
+        [IO.File]::WriteAllBytes($isolatedRuntimePath, $historicalRuntimeBytes)
+        $historicalRuntimeSha = (Get-FileHash -LiteralPath $isolatedRuntimePath `
+            -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($historicalRuntimeBytes.Length -ne 26255931 -or
+            $historicalRuntimeSha -cne
+                'bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29') {
+            throw (
+                'Artist F historical runtime CRLF identity changed: ' +
+                "bytes=$($historicalRuntimeBytes.Length) " +
+                "raw=$historicalRuntimeSha"
             )
         }
 

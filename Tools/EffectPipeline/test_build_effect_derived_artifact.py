@@ -1240,6 +1240,27 @@ class DerivedArtifactContractTests(unittest.TestCase):
             derived.RECONSTRUCTED_PAYLOAD_KIND,
         )
         committed = output.read_bytes()
+        self.assertTrue(committed.endswith(b"\n"))
+        self.assertNotIn(b"\r", committed)
+        crlf_catalog = output.with_name("EffectCatalog.runtime.crlf.json")
+        crlf_catalog.write_bytes(committed.replace(b"\n", b"\r\n"))
+        crlf_validation = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                str(MODULE_PATH),
+                "validate-runtime-catalog",
+                "--catalog",
+                str(crlf_catalog),
+            ],
+            text=True,
+            capture_output=True,
+            cwd=REPO_ROOT,
+        )
+        self.assertNotEqual(crlf_validation.returncode, 0)
+        self.assertIn(
+            "LF-only", crlf_validation.stderr + crlf_validation.stdout
+        )
         for fault in ("AfterBackupMove", "AfterCommitMove"):
             faulted = self._run_publisher(
                 data_root, resources, output, fault=fault
