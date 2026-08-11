@@ -98,14 +98,25 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
 
     def test_baseline_denominators_and_product_gate(self) -> None:
         summary = self.contract["summary"]
+        self.assertEqual(self.contract["formatVersion"], 4)
         self.assertEqual(summary["materialRecipeCount"], 27)
         self.assertEqual(summary["materialOccurrenceCount"], 34)
         self.assertEqual(summary["scalarOverrideCount"], 342)
         self.assertEqual(summary["vectorOverrideCount"], 19)
         self.assertEqual(summary["directTextureOverrideCount"], 71)
-        self.assertEqual(summary["directTextureExactSamplerCount"], 3)
-        self.assertEqual(summary["directTextureUnprovenSamplerCount"], 68)
-        self.assertEqual(summary["parentDefaultExactSamplerCount"], 1)
+        self.assertEqual(summary["directTextureExactSamplerCount"], 0)
+        self.assertEqual(summary["directTextureUnprovenSamplerCount"], 71)
+        self.assertEqual(summary["parentDefaultExactSamplerCount"], 0)
+        self.assertEqual(summary["exactSamplerBindingCount"], 0)
+        self.assertEqual(summary["previouslyAdmittedExactSamplerBindingCount"], 4)
+        self.assertEqual(summary["rejectedSamplerBindingCount"], 4)
+        self.assertEqual(summary["strictSamplerExecutionRowCount"], 72)
+        self.assertEqual(
+            summary["rejectedSamplerBindingSetSha256"],
+            "dfc923cab4dd2155385c2c066f261cea689a863c8e8179b48d2677556a849d4c",
+        )
+        self.assertEqual(self.contract["exactSamplerBindings"], [])
+        self.assertEqual(len(self.contract["rejectedSamplerBindings"]), 4)
         self.assertEqual(summary["arithmeticFamilyCount"], 23)
         self.assertEqual(summary["cookedStrippedNullExpressionCount"], 1803)
         self.assertEqual(summary["unresolvedGraphEdgeCount"], 502)
@@ -366,7 +377,31 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
             "provenance": {"ddsSha256": "0" * 64},
         }
         with self.assertRaisesRegex(
-            ValueError, "sampler field set was laundered|exact sampler provenance"
+            ValueError,
+            "sampler field set was laundered|exact sampler provenance|"
+            "omitted sampler defaults were laundered",
+        ):
+            validate_contract(contract, verify_digest=False)
+
+        contract = copy.deepcopy(self.contract)
+        rejected = contract["rejectedSamplerBindings"][0]
+        field = next(
+            field
+            for recipe in contract["materialRecipes"]
+            for collection in (
+                recipe["inputs"]["textureOverrides"],
+                [
+                    field
+                    for field in recipe["inputs"]["parentDefaults"]
+                    if field["fieldKind"] == "texture"
+                ],
+            )
+            for field in collection
+            if field["fieldId"] == rejected["inputFieldId"]
+        )
+        field["sampler"]["fidelity"] = "SOURCE_EXACT_SAMPLER"
+        with self.assertRaisesRegex(
+            ValueError, "omitted sampler defaults were laundered"
         ):
             validate_contract(contract, verify_digest=False)
 
@@ -966,17 +1001,28 @@ class Artist31470MaterialEvidenceContractTests(unittest.TestCase):
         ):
             validate_contract(contract)
 
-    def test_exact_sampler_binding_cannot_claim_a_different_recipe(self) -> None:
+    def test_rejected_sampler_binding_cannot_claim_a_different_recipe(self) -> None:
         contract = copy.deepcopy(self.contract)
-        binding = contract["exactSamplerBindings"][0]
+        binding = contract["rejectedSamplerBindings"][0]
         binding["materialRecipeId"] = next(
             recipe["recipeId"]
             for recipe in contract["materialRecipes"]
             if recipe["recipeId"] != binding["materialRecipeId"]
         )
         seal_contract(contract)
-        with self.assertRaisesRegex(ValueError, "exact sampler binding join"):
+        with self.assertRaisesRegex(ValueError, "rejected sampler binding join"):
             validate_contract(contract)
+
+    def test_static_parent_expression_guid_cannot_be_resealed(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        field = next(
+            field
+            for recipe in contract["materialRecipes"]
+            for field in recipe["staticPermutation"]["parentDefaults"]
+        )
+        field["expressionGuidHex"] = "00" * 16
+        with self.assertRaisesRegex(ValueError, "static ExpressionGUID lineage"):
+            validate_contract(contract, verify_digest=False)
 
     def test_shallow_dds_manifest_provenance_cannot_be_resealed(self) -> None:
         dds = copy.deepcopy(self.dds)

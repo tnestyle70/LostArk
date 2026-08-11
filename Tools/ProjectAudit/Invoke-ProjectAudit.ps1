@@ -971,6 +971,86 @@ try {
 	Add-Check 'effect.artist-31470-material-evidence-contract' `
 		$artistMaterialContractPassed `
 		$artistMaterialContractDetail
+	$artistShaderCachePassed = $false
+	$artistShaderCacheDetail = ''
+	try {
+		$artistShaderCacheDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ShaderCacheOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistShaderCachePassed =
+			$artistShaderCacheDetail -match
+			'PASS: Artist F 31470 ShaderCache mode=shallow material=23 recipe=27 mic=25/24'
+	}
+	catch {
+		$artistShaderCacheDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-shader-cache-oracle' `
+		$artistShaderCachePassed `
+		$artistShaderCacheDetail
+	$artistMaterialRuntimePassed = $false
+	$artistMaterialRuntimeDetail = ''
+	try {
+		$artistMaterialRuntimeDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialRuntimeOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialRuntimePassed =
+			$artistMaterialRuntimeDetail -match
+			'PASS: Artist F 31470 Material runtime mode=shallow family=23 recipe=27 occurrence=34'
+	}
+	catch {
+		$artistMaterialRuntimeDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-runtime-oracle' `
+		$artistMaterialRuntimePassed `
+		$artistMaterialRuntimeDetail
+	$artistMaterialPolicyPassed = $false
+	$artistMaterialPolicyDetail = ''
+	try {
+		$artistMaterialPolicyDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialReconstructedPolicy.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialPolicyPassed =
+			$artistMaterialPolicyDetail -match
+			'PASS: Artist F 31470 Material reconstructed policy mode=shallow rows=89\+94\+72/255'
+	}
+	catch {
+		$artistMaterialPolicyDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-reconstructed-policy' `
+		$artistMaterialPolicyPassed `
+		$artistMaterialPolicyDetail
+	$artistMaterialTextureBindingPassed = $false
+	$artistMaterialTextureBindingDetail = ''
+	try {
+		$artistMaterialTextureBindingDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialTextureRuntimeBinding.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialTextureBindingPassed =
+			$artistMaterialTextureBindingDetail -match
+			'PASS: Artist F 31470 Material texture runtime binding mode=shallow rows=68\+4/72 unique=44\+4/48 proposals=4 product=false'
+	}
+	catch {
+		$artistMaterialTextureBindingDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-texture-runtime-binding' `
+		$artistMaterialTextureBindingPassed `
+		$artistMaterialTextureBindingDetail
+	$artistExactDdsDeploymentPassed = $false
+	$artistExactDdsDeploymentDetail = ''
+	try {
+		$artistExactDdsDeploymentDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ExactDdsRuntimeDeployment.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistExactDdsDeploymentPassed =
+			$artistExactDdsDeploymentDetail -match
+			'PASS: Artist F 31470 exact DDS runtime deployment mode=shallow assets=4/4 sourceExactMaterial=false r4=false product=false'
+	}
+	catch {
+		$artistExactDdsDeploymentDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-exact-dds-runtime-deployment' `
+		$artistExactDdsDeploymentPassed `
+		$artistExactDdsDeploymentDetail
 	$artistGeometryContractPassed = $false
 	$artistGeometryContractDetail = ''
 	try {
