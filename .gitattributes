@@ -41,4 +41,8 @@
 # identity. Keep this one generated candidate byte-exact on every checkout.
 /Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
 
+# The Artist 31470 Material render-resource approval is raw-byte frozen and
+# must survive core.autocrlf=true clean checkouts without CRLF conversion.
+/Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json text eol=lf
+
 

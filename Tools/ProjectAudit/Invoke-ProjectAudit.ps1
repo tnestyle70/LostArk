@@ -917,6 +917,22 @@ try {
 	Add-Check 'effect.artist-31470-material-texture-runtime-binding' `
 		$artistMaterialTextureBindingPassed `
 		$artistMaterialTextureBindingDetail
+	$artistMaterialRenderResourceApprovalPassed = $false
+	$artistMaterialRenderResourceApprovalDetail = ''
+	try {
+		$artistMaterialRenderResourceApprovalDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialRenderResourceBindingApproval.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialRenderResourceApprovalPassed =
+			$artistMaterialRenderResourceApprovalDetail -match
+			'PASS: Artist F 31470 Material render-resource approval recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 autocrlf=20/20\+check bytes=376183 CR=0 BOM=false'
+	}
+	catch {
+		$artistMaterialRenderResourceApprovalDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-render-resource-binding-approval' `
+		$artistMaterialRenderResourceApprovalPassed `
+		$artistMaterialRenderResourceApprovalDetail
 	$artistExactDdsDeploymentPassed = $false
 	$artistExactDdsDeploymentDetail = ''
 	try {
