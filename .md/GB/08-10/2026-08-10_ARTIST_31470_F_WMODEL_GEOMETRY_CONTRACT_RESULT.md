@@ -81,26 +81,41 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 
 ## 자동 검증
 
-- geometry cooker/provenance/corrupt Python tests: 4/4 PASS
+- geometry cooker/provenance/corrupt/frozen-golden Python tests: 6/6 PASS
 - parity EOL/raw role tests: 3/3 PASS
 - WModelGeometryContractHarness Debug/Release: PASS
+  - writer-independent frozen WModel v1.1 golden 850 bytes와 canonical manifest
+  - golden byte mutation과 semantic manifest mutation 거부
   - valid v1.1 COLOR/no-COLOR sidecar
   - legacy v1.0 static multi-submesh+hasBounds, skinned+WSKL+WANM
-  - corrupt WModel 27종 거부
-  - corrupt WMAT/WSKL/WANM에서 transactional empty output
+  - exact name/size/SHA의 corrupt WModel 29종 + WSKL 1종 + WANM 1종 거부
+  - 각 corrupt fixture의 valid baseline delta와 의도된 error category 일치
+  - WModel/WSKL/WANM 실패에서 transactional empty output
+  - missing/renamed/case-only renamed/empty required fixture는 각각 exact exit 1
+  - NTFS case-insensitive path resolution 전 actual directory entry 31개를 ordinal
+    case-sensitive exact manifest set과 비교
+  - manifest whole-file hash mutation과 semantic field mutation을 별도 거부
 - 7-carrier deep audit Debug/Release: PASS
   - carrier 7, COLOR 2, negative-W carrier 4
-  - actual C++ WModelDecoder candidate gate 7/7
+  - actual C++ WModelDecoder의 channel/index/submesh bounds/payload identity oracle 7/7
   - self-consistency 7, externally authenticated 0, source fidelity 0,
     preScale consumer 0, Product false
+- 실제 legacy WModel v1.0 C++ corpus sweep Debug/Release: PASS
+  - files 2,586, static 2,535, skinned 51
+  - hasBounds 2,586, multi-submesh 665, v1.1 metadata/sidecar absent 2,586
 - focused `effect.artist-31470-wmodel-geometry-contract` ProjectAudit 등록
 - Engine + WModelGeometryContractHarness x64 Debug/Release: build PASS
 - UpdateLib Debug/Release: PASS
 - Client x64 Debug/Release: compile/link PASS
-- full `Invoke-ProjectAudit.ps1`: expected exit 1, 11 unrelated/pre-existing checks FAIL
+  - corrective follow-up은 harness/test/docs만 바꾸므로 frozen `228429b`의 full
+    Engine/UpdateLib/Client 증거를 계승했다. WModel harness와 focused audit만 Debug/Release로
+    재실행했으며 독립 reviewer가 요구하면 integration에서 full build를 반복한다.
+- full `Invoke-ProjectAudit.ps1`: exit 1, 8 unrelated/pre-existing checks FAIL
   - geometry focused check는 PASS였고 failure 목록에서 제외됨
+  - project data visibility, G09 2개, Artist source/material, WFX assembly,
+    representative readiness, four-class rollout checks가 실패함
   - `effect.artist-31470-source-contract` stale candidate는 geometry 이후 Source Closure
-    재생성이 필요한 예상 handoff 상태
+    재생성이 필요한 예상 handoff 상태이며 이 G02 변경에서 수정하지 않음
 - `git diff --check`: 최종 corrective snapshot에서 확인
 
 이미지, 스크린샷, GPU 육안 검증은 수행하지 않았다.
@@ -118,19 +133,30 @@ identity/range 검증에서 실패했다. package/converter byte mutation은 can
 
 이 blocker가 닫히기 전까지 geometry Product admission은 false다.
 
-## P2 review checkpoint (WIP)
+## G02 evidence final 판정
 
-이 커밋은 외부 검토에서 요구된 P2 보강 작업을 공유하기 위한 중간 체크포인트다. strict JSON
-integer version 검사, Python/C++ tangent-W 허용 범위 통일, 7-carrier immutable semantic golden
-비교, 실제 legacy Resources C++ corpus sweep의 현재 구현을 보존하지만 최종 수용 완료를 선언하지
-않는다.
+이 변경 단위에서 초기 geometry evidence P2 세 항목과 후속 corrupt-fixture 증명 경계를
+자동 계약으로 닫았다.
 
-- Product admission: false
-- runtime `geometryPreScale` consumer: 미연결
-- source fidelity/pivot/UPK→glTF provenance: 미폐쇄
-- golden과 corpus gate의 최종 독립 검토: 미완료
-- `Client/Bin/Resources` 및 Effect runtime: 변경하지 않음
-- downstream source candidate/receipt/registry/header 재생성: 여전히 필요
+- provenance JSON `formatVersion`은 exact JSON integer만 허용하며 bool, float, string을 거부한다.
+- Python cooker/parser와 C++ decoder는 tangent-W에 동일한 `1e-6` absolute contract를 쓴다.
+- writer layout 함수로 만들지 않은 immutable hex golden과 expected manifest를 C++ decoder가 직접
+  검증하고, byte/semantic mutation을 모두 거부한다.
+- 실제 7 carrier는 Debug/Release C++ decoder에서 full semantic oracle을 통과했다.
+- 실제 Resources legacy v1.0 2,586개는 Debug/Release C++ corpus sweep을 통과했다.
+- 모든 decoder section은 local staged asset에만 기록되고 전체 성공 뒤 public output에 commit된다.
+- payload/metadata 내부 self-consistency와 외부 expected tuple authentication은 별도 상태다.
+- corrupt 증거는 exact 31-file manifest, valid baseline delta, decoder error category,
+  transactional rollback을 각각 독립 bit로 요구하며 missing-file 실패를 corruption PASS로 세지 않는다.
 
-따라서 이 체크포인트 이후에도 `GEOMETRY_RECEIPT_DOWNSTREAM_SOURCE_REGEN_REQUIRED`와 기존
-Product blocker를 모두 유지한다.
+이 판정은 WModel evidence/format/decoder/cooker gate 완료를 뜻한다. source fidelity, runtime
+`geometryPreScale` 소비, GeometryBinding 외부 authentication, Resources 배포 또는 Product 승인으로
+승격하지 않는다. `Client/Bin/Resources`와 Effect runtime은 변경하지 않았고 Product는 false다.
+
+## Delta-2 독립 검토 경계
+
+`8d806bbb` consolidated review는 P0 0, P2 0이고 NTFS case-only rename P1 한 건만 남겼다.
+Delta-2는 actual directory entry의 ordinal exact-set gate와
+`corrupt_header.wmodel -> corrupt_Header.wmodel` exact-exit-1 fixture를 추가했다. Debug/Release
+harness와 focused ProjectAudit은 통과했으며, 최종 독립 재감사는 이 case-only delta만 남아 있다.
+Product와 source-fidelity admission은 계속 false다.

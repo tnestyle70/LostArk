@@ -3,7 +3,9 @@ param(
     [string]$Mode = 'Validate',
     [string]$DataRoot,
     [string]$ResourceRoot,
-    [string]$OutputPath
+    [string]$OutputPath,
+    [ValidateSet('None', 'AfterBackupMove', 'AfterCommitMove')]
+    [string]$TestFaultInjection = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,10 +22,27 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 $DataRoot = [IO.Path]::GetFullPath($DataRoot)
 $ResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
+if ($TestFaultInjection -cne 'None') {
+    if ($Mode -cne 'Publish') {
+        throw 'Publisher fault injection is only valid in Publish mode.'
+    }
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    foreach ($testPath in @($DataRoot, $OutputPath)) {
+        $normalizedTestPath = [IO.Path]::GetFullPath($testPath)
+        if (-not $normalizedTestPath.StartsWith(
+                $temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Publisher fault injection is restricted to temporary test paths.'
+        }
+    }
+}
 $catalogPath = Join-Path $DataRoot 'Effects\EffectCatalog.json'
 $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored'))
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
+$compiledRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Compiled'))
+$derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.reconstructed-standard.v1',
@@ -61,6 +80,49 @@ function Read-JsonDocument([string]$Path) {
     }
     return [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) |
         ConvertFrom-Json
+}
+
+function Resolve-SafeDataFile(
+    [string]$RelativePath,
+    [string]$RequiredPrefix,
+    [string]$AllowedRoot,
+    [string]$ExpectedFileName) {
+    if ([string]::IsNullOrWhiteSpace($RelativePath) -or
+        [IO.Path]::IsPathRooted($RelativePath) -or
+        $RelativePath.Contains('\') -or $RelativePath.Contains(':') -or
+        -not $RelativePath.StartsWith($RequiredPrefix,
+            [StringComparison]::Ordinal)) {
+        throw "Unsafe derived Effect path: $RelativePath"
+    }
+    foreach ($segment in $RelativePath.Split('/')) {
+        if ([string]::IsNullOrWhiteSpace($segment) -or
+            $segment -eq '.' -or $segment -eq '..') {
+            throw "Unsafe derived Effect path segment: $RelativePath"
+        }
+    }
+    $resolved = [IO.Path]::GetFullPath((Join-Path $DataRoot $RelativePath))
+    $allowedPrefix = $AllowedRoot.TrimEnd('\') + '\'
+    if (-not $resolved.StartsWith($allowedPrefix,
+            [StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFileName($resolved) -cne $ExpectedFileName -or
+        -not [IO.File]::Exists($resolved)) {
+        throw "Derived Effect file identity mismatch: $RelativePath"
+    }
+    return $resolved
+}
+
+function Invoke-DerivedArtifactTool([string[]]$Arguments) {
+    if (-not [IO.File]::Exists($derivedArtifactTool)) {
+        throw "Missing derived Effect artifact validator: $derivedArtifactTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate derived Effect artifacts.'
+    }
+    & $python.Source -B $derivedArtifactTool @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Derived Effect artifact validation failed with exit code $LASTEXITCODE."
+    }
 }
 
 function Get-RequiredProperty(
@@ -546,6 +608,8 @@ function Compile-EffectAssembly(
 
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
     [StringComparer]::Ordinal)
+$assemblyPathById = [Collections.Generic.Dictionary[string,string]]::new(
+    [StringComparer]::Ordinal)
 foreach ($path in @(Get-ChildItem -LiteralPath $assemblyRoot -Recurse `
         -Filter '*.assembly.json' -File)) {
     $assembly = Read-JsonDocument $path.FullName
@@ -554,6 +618,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath $assemblyRoot -Recurse `
         throw "Duplicate Effect Assembly ID: $assemblyId"
     }
     $assemblyById.Add($assemblyId, $assembly)
+    $assemblyPathById.Add($assemblyId, $path.FullName)
 }
 $componentById = [Collections.Generic.Dictionary[string,object]]::new(
     [StringComparer]::Ordinal)
@@ -579,6 +644,7 @@ try {
     $claimedIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     $runtimeEffects = [Collections.Generic.List[object]]::new()
+    $hasDerivedRuntime = $false
     $runtimeComponentsById = [Collections.Generic.Dictionary[string,object]]::new(
         [StringComparer]::Ordinal)
     foreach ($entry in @($effects)) {
@@ -619,7 +685,7 @@ try {
             [void](Get-RequiredProperty $document 'displayName' String)
             $elements = Get-RequiredProperty $document 'elements' Array
             if ($schema -cne 'lostark.effect-authoring' -or
-                $documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12) -or
+                $documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 13) -or
                 $documentId -cne $effectAssetId) {
                 throw "Effect authoring header mismatch: $effectAssetId"
             }
@@ -628,6 +694,43 @@ try {
                 [string]::IsNullOrWhiteSpace($document.displayName) -or
                 @($elements).Count -gt 2048) {
                 throw "Effect authoring display name or Element budget is invalid: $effectAssetId"
+            }
+            if ($documentVersion -eq 13) {
+                $compiledArtifactPath = Get-RequiredProperty $entry `
+                    'compiledArtifactPath' String
+                $compiledReceiptPath = Get-RequiredProperty $entry `
+                    'compiledReceiptPath' String
+                $artifactFile = Resolve-SafeDataFile $compiledArtifactPath `
+                    'Effects/Compiled/' $compiledRoot `
+                    "$effectAssetId.compiled-effect.json"
+                $receiptFile = Resolve-SafeDataFile $compiledReceiptPath `
+                    'Effects/Compiled/' $compiledRoot `
+                    "$effectAssetId.compiled-effect.receipt.json"
+                $assemblyFile = $null
+                if (-not $assemblyPathById.TryGetValue(
+                        $effectAssetId, [ref]$assemblyFile)) {
+                    throw "Missing derived Effect Assembly: $effectAssetId"
+                }
+                $preparedEntryPath = Join-Path ([IO.Path]::GetTempPath()) `
+                    ("LostArkDerivedEffect-" + [Guid]::NewGuid().ToString('N') + '.json')
+                try {
+                    Invoke-DerivedArtifactTool @(
+                        'prepare-runtime-entry',
+                        '--authoring', $authoringFile,
+                        '--assembly', $assemblyFile,
+                        '--artifact', $artifactFile,
+                        '--receipt', $receiptFile,
+                        '--output', $preparedEntryPath)
+                    $preparedEntry = Read-JsonDocument $preparedEntryPath
+                    $runtimeEffects.Add($preparedEntry)
+                    $hasDerivedRuntime = $true
+                }
+                finally {
+                    if ([IO.File]::Exists($preparedEntryPath)) {
+                        Remove-Item -LiteralPath $preparedEntryPath -Force
+                    }
+                }
+                continue
             }
             $elementIds = [Collections.Generic.HashSet[string]]::new(
                 [StringComparer]::Ordinal)
@@ -1092,72 +1195,180 @@ try {
 
     $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
         Sort-Object Key | ForEach-Object { $_.Value })
-    $runtime = [ordered]@{
-        formatVersion = 2
-        components = $runtimeComponents
-        effects = @($runtimeEffects | Sort-Object effectAssetId)
+    $sortedRuntimeEffects = @($runtimeEffects | Sort-Object effectAssetId)
+    if ($hasDerivedRuntime) {
+        $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
+            if ([string]$_.payloadKind -ceq 'IMMUTABLE_COMPILED_IR') {
+                $_
+            }
+            else {
+                [ordered]@{
+                    payloadKind = 'LEGACY_ASSEMBLY_V1'
+                    effectAssetId = $_.effectAssetId
+                    authoringFormatVersion = $_.authoringFormatVersion
+                    contentSha256 = $_.contentSha256
+                    dependencies = $_.dependencies
+                    assembly = $_.assembly
+                }
+            }
+        })
+        $runtime = [ordered]@{
+            schema = 'lostark.effect-runtime-catalog'
+            formatVersion = 3
+            components = $runtimeComponents
+            effects = $runtimeOutputEffects
+        }
+    }
+    else {
+        $runtimeOutputEffects = $sortedRuntimeEffects
+        $runtime = [ordered]@{
+            formatVersion = 2
+            components = $runtimeComponents
+            effects = $runtimeOutputEffects
+        }
     }
     $json = $runtime | ConvertTo-Json -Depth 100 -Compress
     if ($Mode -eq 'Validate') {
+        if ($hasDerivedRuntime) {
+            $validationPath = Join-Path ([IO.Path]::GetTempPath()) `
+                ("LostArkEffectCatalogV3-" + [Guid]::NewGuid().ToString('N') + '.json')
+            try {
+                [IO.File]::WriteAllText(
+                    $validationPath, $json + [Environment]::NewLine, $utf8NoBom)
+                Invoke-DerivedArtifactTool @(
+                    'validate-runtime-catalog', '--catalog', $validationPath)
+            }
+            finally {
+                if ([IO.File]::Exists($validationPath)) {
+                    Remove-Item -LiteralPath $validationPath -Force
+                }
+            }
+        }
         Write-Host "PASS: validated $($runtimeEffects.Count) admitted Effects."
         return
     }
 
     $directory = Split-Path -Parent $OutputPath
     [IO.Directory]::CreateDirectory($directory) | Out-Null
-    $temporary = "$OutputPath.tmp"
-    $backup = "$OutputPath.bak"
-    [IO.File]::WriteAllText($temporary, $json + [Environment]::NewLine, $utf8NoBom)
-    $roundTrip = Read-JsonDocument $temporary
+    $transactionId = [Guid]::NewGuid().ToString('N')
+    $temporary = "$OutputPath.$transactionId.tmp"
+    $backup = "$OutputPath.$transactionId.bak"
     try {
-        $roundEffects = @(Get-RequiredProperty $roundTrip 'effects' Array)
-        $roundComponents = @(Get-RequiredProperty $roundTrip 'components' Array)
-        if ([int](Get-RequiredProperty $roundTrip 'formatVersion' Number) -ne 2 -or
-            $roundEffects.Count -ne $runtimeEffects.Count -or
-            $roundComponents.Count -ne $runtimeComponents.Count) {
-            throw 'Generated runtime catalog failed round-trip validation.'
+        [IO.File]::WriteAllText(
+            $temporary, $json + [Environment]::NewLine, $utf8NoBom)
+        if ($hasDerivedRuntime) {
+            Invoke-DerivedArtifactTool @(
+                'validate-runtime-catalog', '--catalog', $temporary)
         }
-        $expectedById = @{}
-        foreach ($expected in $runtimeEffects) {
-            $expectedById[[string]$expected.effectAssetId] = $expected
-        }
-        foreach ($entry in $roundEffects) {
-            $id = Get-RequiredProperty $entry 'effectAssetId' String
-            $expected = $expectedById[$id]
-            if ($null -eq $expected -or
-                [int](Get-RequiredProperty $entry 'authoringFormatVersion' Number) -ne
-                    [int]$expected.authoringFormatVersion -or
-                (Get-RequiredProperty $entry 'contentSha256' String) -cne
-                    [string]$expected.contentSha256 -or
-                @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
-                    @($expected.dependencies).Count -or
-                (Get-RequiredProperty $entry 'assembly' Object).effectAssetId -cne
-                    $id) {
-                throw "Generated runtime catalog entry failed round-trip validation: $id"
+        $roundTrip = Read-JsonDocument $temporary
+        try {
+            $roundEffects = @(Get-RequiredProperty $roundTrip 'effects' Array)
+            $roundComponents = @(Get-RequiredProperty $roundTrip 'components' Array)
+            $expectedFormat = if ($hasDerivedRuntime) { 3 } else { 2 }
+            if ([int](Get-RequiredProperty $roundTrip 'formatVersion' Number) -ne
+                    $expectedFormat -or
+                $roundEffects.Count -ne $runtimeEffects.Count -or
+                $roundComponents.Count -ne $runtimeComponents.Count) {
+                throw 'Generated runtime catalog failed round-trip validation.'
             }
+            $expectedById = @{}
+            foreach ($expected in $runtimeOutputEffects) {
+                $expectedById[[string]$expected.effectAssetId] = $expected
+            }
+            foreach ($entry in $roundEffects) {
+                $id = Get-RequiredProperty $entry 'effectAssetId' String
+                $expected = $expectedById[$id]
+                if ($null -eq $expected -or
+                    [int](Get-RequiredProperty $entry `
+                        'authoringFormatVersion' Number) -ne
+                        [int]$expected.authoringFormatVersion) {
+                    throw "Generated runtime catalog identity failed round-trip validation: $id"
+                }
+                if (-not $hasDerivedRuntime) {
+                    if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
+                            [string]$expected.contentSha256 -or
+                        @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
+                            @($expected.dependencies).Count -or
+                        (Get-RequiredProperty $entry 'assembly' Object).effectAssetId -cne
+                            $id) {
+                        throw "Legacy runtime catalog entry failed round-trip validation: $id"
+                    }
+                    continue
+                }
+                $payloadKind = Get-RequiredProperty $entry 'payloadKind' String
+                if ($payloadKind -cne [string]$expected.payloadKind) {
+                    throw "Generated runtime catalog payload kind failed round-trip validation: $id"
+                }
+                if ($payloadKind -ceq 'IMMUTABLE_COMPILED_IR') {
+                    if ((Get-RequiredProperty $entry `
+                            'compiledArtifactSha256' String) -cne
+                            [string]$expected.compiledArtifactSha256 -or
+                        (Get-RequiredProperty $entry `
+                            'compiledReceiptSha256' String) -cne
+                            [string]$expected.compiledReceiptSha256 -or
+                        [int](Get-RequiredProperty $entry `
+                            'artifactRevision' Number) -ne
+                            [int]$expected.artifactRevision -or
+                        (Get-RequiredProperty $entry 'compilerRevision' String) -cne
+                            [string]$expected.compilerRevision -or
+                        [bool](Get-RequiredProperty $entry `
+                            'productAdmission' Boolean)) {
+                        throw "Derived runtime catalog entry failed round-trip validation: $id"
+                    }
+                }
+                elseif ($payloadKind -ceq 'LEGACY_ASSEMBLY_V1') {
+                    if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
+                            [string]$expected.contentSha256 -or
+                        @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
+                            @($expected.dependencies).Count -or
+                        (Get-RequiredProperty $entry 'assembly' Object).effectAssetId -cne
+                            $id) {
+                        throw "Legacy runtime catalog entry failed round-trip validation: $id"
+                    }
+                }
+                else {
+                    throw "Generated runtime catalog payload kind is unsupported: $id"
+                }
+            }
+        }
+        finally {
+            $roundTrip = $null
+        }
+        $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
+        $destinationBackedUp = $false
+        $newDestinationCommitted = $false
+        try {
+            if ($hadDestination) {
+                Move-Item -LiteralPath $OutputPath -Destination $backup
+                $destinationBackedUp = $true
+            }
+            if ($TestFaultInjection -ceq 'AfterBackupMove') {
+                throw 'Injected Effect publisher failure after backup move.'
+            }
+            Move-Item -LiteralPath $temporary -Destination $OutputPath
+            $newDestinationCommitted = $true
+            if ($TestFaultInjection -ceq 'AfterCommitMove') {
+                throw 'Injected Effect publisher failure after commit move.'
+            }
+            if (Test-Path -LiteralPath $backup) {
+                Remove-Item -LiteralPath $backup -Force
+            }
+        }
+        catch {
+            if ($newDestinationCommitted -and
+                (Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
+                Remove-Item -LiteralPath $OutputPath -Force
+            }
+            if ($destinationBackedUp -and (Test-Path -LiteralPath $backup)) {
+                Move-Item -LiteralPath $backup -Destination $OutputPath
+            }
+            throw
         }
     }
     finally {
-        $roundTrip = $null
-    }
-    if (Test-Path -LiteralPath $backup) {
-        Remove-Item -LiteralPath $backup -Force
-    }
-    $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
-    if ($hadDestination) {
-        Move-Item -LiteralPath $OutputPath -Destination $backup
-    }
-    try {
-        Move-Item -LiteralPath $temporary -Destination $OutputPath
-    }
-    catch {
-        if ($hadDestination -and (Test-Path -LiteralPath $backup)) {
-            Move-Item -LiteralPath $backup -Destination $OutputPath
+        if (Test-Path -LiteralPath $temporary) {
+            Remove-Item -LiteralPath $temporary -Force
         }
-        throw
-    }
-    if (Test-Path -LiteralPath $backup) {
-        Remove-Item -LiteralPath $backup -Force
     }
     Write-Host "PASS: published $($runtimeEffects.Count) Effects and $($runtimeComponents.Count) Components to $OutputPath"
 }

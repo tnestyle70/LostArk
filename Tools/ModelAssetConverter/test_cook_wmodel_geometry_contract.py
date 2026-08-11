@@ -67,6 +67,39 @@ ANIMATION_HEADER = struct.Struct("<4sIffIIB7s")
 ANIMATION_CHANNEL = struct.Struct("<QIIIIIIiI")
 VECTOR_KEY = struct.Struct("<f3f")
 QUATERNION_KEY = struct.Struct("<f4f")
+EXPECTED_CORRUPT_FIXTURE_NAMES = (
+    "corrupt_animation.wanim",
+    "corrupt_bounds.wmodel",
+    "corrupt_bounds_float_intermediate.wmodel",
+    "corrupt_bounds_inverted.wmodel",
+    "corrupt_bounds_nonfinite.wmodel",
+    "corrupt_channel.wmodel",
+    "corrupt_evidence.wmodel",
+    "corrupt_header.wmodel",
+    "corrupt_material_container.wmodel",
+    "corrupt_material_index.wmodel",
+    "corrupt_mesh_version.wmodel",
+    "corrupt_metadata_hash.wmodel",
+    "corrupt_metadata_version.wmodel",
+    "corrupt_outer_metadata.wmodel",
+    "corrupt_outer_version.wmodel",
+    "corrupt_parallel_basis.wmodel",
+    "corrupt_payload_hash.wmodel",
+    "corrupt_provenance.wmodel",
+    "corrupt_scale_overflow_pair.wmodel",
+    "corrupt_scale_wrong_reciprocal.wmodel",
+    "corrupt_section_gap.wmodel",
+    "corrupt_skeleton.wskel",
+    "corrupt_stride.wmodel",
+    "corrupt_tangent_w.wmodel",
+    "corrupt_tangent_w_boundary_out.wmodel",
+    "corrupt_tangent_w_minus_1_000005.wmodel",
+    "corrupt_truncated.wmodel",
+    "corrupt_unknown_channel.wmodel",
+    "corrupt_unverified_source_fidelity.wmodel",
+    "corrupt_zero_normal.wmodel",
+    "corrupt_zero_tangent.wmodel",
+)
 
 
 def _json_bytes(value: Any) -> bytes:
@@ -679,6 +712,74 @@ def write_harness_suite(output_root: Path) -> None:
 
 
 class WModelGeometryContractTests(unittest.TestCase):
+    def test_harness_suite_has_exact_nonempty_corrupt_fixture_denominator(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            suite_root = Path(temporary) / "suite"
+            write_harness_suite(suite_root)
+            corrupt_paths = sorted(suite_root.glob("corrupt_*"))
+            self.assertEqual(
+                tuple(path.name for path in corrupt_paths),
+                EXPECTED_CORRUPT_FIXTURE_NAMES,
+            )
+            self.assertEqual(len(corrupt_paths), 31)
+            for path in corrupt_paths:
+                self.assertTrue(path.is_file(), path.name)
+                self.assertGreater(path.stat().st_size, 0, path.name)
+                self.assertEqual(len(hashlib.sha256(path.read_bytes()).hexdigest()), 64)
+                if path.suffix == ".wskel":
+                    baseline = suite_root / "legacy_skinned.wskel"
+                elif path.suffix == ".wanim":
+                    baseline = suite_root / "legacy_skinned.wanim"
+                else:
+                    baseline = suite_root / "valid_color.wmodel"
+                self.assertTrue(baseline.is_file(), baseline.name)
+                self.assertNotEqual(path.read_bytes(), baseline.read_bytes(), path.name)
+
+    def test_writer_independent_immutable_golden_identity(self) -> None:
+        fixture_root = (
+            Path(__file__).resolve().parents[1]
+            / "WModelGeometryContractHarness"
+            / "Fixtures"
+        )
+        hex_path = fixture_root / "wmodel_v11_writer_independent_golden.hex"
+        manifest_path = (
+            fixture_root
+            / "wmodel_v11_writer_independent_golden.expected.json"
+        )
+        encoded = hex_path.read_text(encoding="ascii")
+        compact = "".join(encoded.split())
+        self.assertEqual(compact, compact.lower())
+        self.assertTrue(compact)
+        self.assertTrue(all(value in "0123456789abcdef" for value in compact))
+        payload = bytes.fromhex(compact)
+        manifest_bytes = manifest_path.read_bytes()
+        canonical_manifest = manifest_bytes.replace(b"\r\n", b"\n").replace(
+            b"\r", b"\n"
+        )
+        self.assertFalse(canonical_manifest.startswith(b"\xef\xbb\xbf"))
+        manifest = json.loads(canonical_manifest.decode("utf-8"))
+        self.assertEqual(
+            manifest.get("schema"),
+            "lostark.wmodel-v11-writer-independent-golden",
+        )
+        self.assertIs(type(manifest.get("formatVersion")), int)
+        self.assertEqual(manifest.get("formatVersion"), 1)
+        self.assertEqual(len(payload), manifest.get("decodedByteCount"))
+        self.assertEqual(
+            hashlib.sha256(payload).hexdigest(), manifest.get("decodedSha256")
+        )
+        self.assertEqual(
+            hashlib.sha256(canonical_manifest).hexdigest(),
+            "73b1753200514f534baf622d1732623f70842afddc4c83da551faac5df19ccdd",
+        )
+        mutated_payload = bytes((payload[0] ^ 0x01,)) + payload[1:]
+        self.assertNotEqual(
+            hashlib.sha256(mutated_payload).hexdigest(),
+            manifest.get("decodedSha256"),
+        )
+
     def test_round_trip_preserves_channels_basis_bounds_and_blockers(self) -> None:
         self.assertTrue(strict_json_equal({"b": 2, "a": 1}, {"a": 1, "b": 2}))
         self.assertFalse(strict_json_equal({"value": True}, {"value": 1}))

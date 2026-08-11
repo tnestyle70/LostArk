@@ -108,9 +108,10 @@ Playback/renderer, Effect Tool, Catalog/Publisher 구현은 바꾸지 않는다.
 3. package identity receipt pin, pinned payload decode, 현재 exact physical source package를
    각각 별도 축으로 기록한다. identity가 없는 external closure record와 current/recovery
    package는 `SOURCE_EXACT`로 승격하지 않는다.
-4. semantic-blocked distribution은 executable payload를 `UNRESOLVED` variant로 scrub하고,
-   admission gate가 payload reader보다 먼저 실패하게 한다. raw decoded evidence와 current
-   default evidence는 closure에 별도로 남긴다.
+4. semantic-blocked distribution은 admission gate가 payload reader보다 먼저 실패하게 하고
+   transport를 `UNRESOLVED` variant로 유지한다. transport의 inert numeric shape를 source 값이나
+   evaluator oracle로 소비하지 않으며 raw decoded evidence와 current default evidence는 closure에
+   별도 fidelity로 남긴다.
 5. v14 SourceRecipe에는 distribution별 fidelity/admission과 18개 local-reference binding,
    property blocker를 typed public field로 둔다. v13 field smuggling은 Codec이 거부한다.
 6. blocker token은 occurrence/property/module/element/receipt/registry/Product로 집합 포함
@@ -123,3 +124,183 @@ Playback/renderer, Effect Tool, Catalog/Publisher 구현은 바꾸지 않는다.
 검증은 production pure resolver/binder mutation test, generated round-trip, v13 rejection,
 source shallow/deep audit, JSON parse와 `git diff --check`로 닫는다. 사진, 스크린샷,
 Client 실행은 하지 않는다.
+
+## 2026-08-10 G01/G05-S code-only semantic closure checkpoint
+
+최종 candidate/receipt/registry/header를 다시 생성하기 전에 다음 pure code 경계를 먼저 고정한다.
+
+1. `artist_31470_source_semantic_closure.py`는 frozen input 다섯 개의 canonical SHA를 검증하고
+   35 selected LOD, 399 ordered module, 1,434 top-level property, 1,572 primitive leaf,
+   629 distribution을 stable occurrence ID로 열거한다.
+2. 모든 행은 `sourceFidelity`, `artifactBindingIntegrity`, `executionAdmission`,
+   `productAdmission`과 네 blocker set을 독립적으로 가진다. handler receipt와 독립 numeric
+   oracle이 없는 구조 decode를 `EXECUTION_CONSUMED`로 표기하지 않는다.
+3. 612 inline distribution과 17 local-reference occurrence는 510 stable definition/reference ID와
+   629 stable occurrence ID를 가진다. lookup/target이 없는 137행은 class-default 값을 0으로
+   만들지 않고 `DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED`로 차단한다.
+4. operation reconstruction 409행, lookup chunk/count reconstruction 각 257행, explicit random
+   operation 82행을 source field와 분리한다. reconstruction fidelity는 `RECONSTRUCTED_GRAPH`이며
+   numeric execution evidence는 계속 `UNVERIFIED`다.
+5. external native-tail 248, seed 14, Required local-space default 8, Decal 3, Ribbon 1,
+   ScreenPost 1, Light 1, selected-LOD Level/Enabled 70 field와 PointLight exact/current field를
+   dedicated row로 두고 첫 property에 blocker를 몰아넣지 않는다. LOD와 PointLight field의
+   실행 blocker는 module aggregate, opt-in coverage, compiled/receipt/registry admission까지
+   집합 포함으로 전파한다.
+6. raw `Module.strClassName`은 `exactSourceClass`에 그대로 저장한다. 승인 alias table은 비어
+   있으며 `efparticlemodule` prefix와 `_seeded` suffix를 자동 alias로 만들지 않는다.
+   따라서 26 module occurrence는 exact class 전용 handler/alias 근거가 생길 때까지 실행을 막는다.
+7. `verify_artist_31470_source_semantic_closure.py`는 builder를 import하지 않고 raw tree에서
+   분모, ID, class lineage, fidelity, family별 blocker axis/admission/integrity,
+   native/default/seed/Light 결정을 다시 계산한다. self hash를 다시 봉인한 axis 이동이나
+   fallback evaluator/oracle mutation도 거부한다.
+8. 기존 Source generator는 `--source-semantic-closure` opt-in에서 이 oracle을 먼저 실행하고,
+   temp candidate의 399 module coverage에 `exactSourceClass`와 `aliasId`를 모두 기록한다.
+   module coverage blocker는 검증된 artifact/execution axis 합집합을 보존한다. opt-in이 없는
+   checked-in `--check` 결과는 바꾸지 않는다.
+
+이 checkpoint의 합격 주장은 pure resolver/binder/oracle과 temp-output mutation PASS까지만이다.
+399/1,434/1,572/629 실행 consumption과 G05-S numeric reconstruction 완료는 주장하지 않는다.
+Geometry/Material Gate dependency를 결합하고 class-lineage Codec conflict를 해결한 뒤 Source owner가
+최종 네 output을 한 번만 재생성한다.
+
+## 2026-08-10 G05-S source execution semantics adapter
+
+기존 semantic closure의 `UNRESOLVED` 행을 곧바로 runtime admission으로 바꾸지 않고, source
+evidence와 runtime compiler 사이에 pure typed adapter receipt를 하나 둔다.
+
+1. 입력은 checked-in semantic closure, v14 candidate/receipt, local-reference closure,
+   external-module closure, ActionCue recipe 여섯 개다. JSON 의미 hash와 generator/tool의
+   LF-canonical text hash를 receipt에 기록한다.
+2. 35 occurrence의 399 module, 1,434 top-level property, 1,572 primitive leaf, 629 distribution을
+   candidate typed literal/distribution payload와 stable ID로 1:1 결합한다. payload 이후 raw
+   source 문자열을 다시 검색하지 않도록 module/property/leaf별 handler capability ID를 낸다.
+3. selected LOD의 Level/Enabled 70 field는 `FIRST_LOD_ONLY` source identity가 adapter build에서
+   이미 선택되므로 `VERIFIED_IRRELEVANT`로 닫는다. `lodvalidity`와 editor-only
+   `b3ddrawmode`도 별도 irrelevance oracle을 사용한다.
+4. 612 inline distribution은 source tagged field와 reconstruction field를 분리하고, current UE3
+   raw-distribution default와 cooked lookup shape로 operation/chunk/count를 재계산한다. fixed
+   time/random vector 세 세트의 independent numeric oracle을 저장하되 reconstructed field를
+   `SOURCE_EXACT`로 승격하지 않는다.
+5. local distribution 17 occurrence는 instance -> archetype -> CDO -> evaluator default 순서를
+   보존한다. standard parameter/curve 14 occurrence는 ActionCue type/name을 결합해 direct,
+   normal, constant fallback 또는 curve 값을 계산한다. custom EF multiply 3 occurrence는 current
+   payload를 진단용으로 보존하되 exact evaluator oracle이 없어 계속 `BLOCKED`다.
+6. external module 248 occurrence는 installed current package의 178 unique export를 다시 decode해
+   `serialSize == propertyStreamEnd`를 검사한다. 결과는 native tail의 current-revision
+   irrelevance 증거이며 historical `SOURCE_EXACT` 증거가 아니다.
+7. seed 14 occurrence는 source array 또는 32-byte struct body에서 int32 seed를 보존한다. Engine/
+   EFGame current seeded CDO 8종을 직접 decode해 공통 seed selection policy를 검증한다. source-era
+   script identity는 pin되지 않았으므로 current reconstruction으로만 기록한다.
+8. Required local-space 8, Decal 3, Ribbon 1, Light 1은 current CDO/default chain을 typed value로
+   물질화한다. ScreenPost 1은 implicit source field가 없는 renderer projection이므로
+   `VERIFIED_IRRELEVANT`다. PointLight exact child와 current default field는 분리하며 GUID 두 개는
+   runtime irrelevance oracle로 닫는다.
+9. `efparticlemodule*` 및 `_seeded` exact class 26 occurrence/13 class family는 alias하지 않는다.
+   exact handler numeric oracle이 없으면 module blocker를 유지한다. custom distribution을 소유한
+   standard module 3개도 함께 차단한다.
+10. 생성기 `--check`, builder를 import하지 않는 독립 verifier, self-reseal mutation suite,
+    shallow/deep ProjectAudit를 통과해야 한다. Product admission은 항상 false이며 이미지,
+    스크린샷, 육안 판정을 완료 조건으로 사용하지 않는다.
+
+이 adapter의 합격 범위는 source-side typed input과 evaluator receipt다. runtime compiler가 capability를
+결합하고 custom handler/evaluator oracle을 제공하기 전에는 35/35 실행 또는 Product 복원 완료를
+주장하지 않는다.
+
+## 2026-08-10 G05-S2 exact seeded handler와 blocker owner closure — 독립 감사 BLOCK
+
+G05-S receipt의 29 blocked module을 이름 정규화로 줄이지 않고, 현재 설치 script/native binary와
+source payload를 결합한 별도 oracle receipt로 판정한다.
+
+아래 1차 계획은 commit `9b046d6171b5dcd73cec969f5ac3e346762db0d8`에서 실행됐지만,
+독립 감사에서 source-era handler identity가 없는 current wrapper 근거와 typed input digest parity를
+actual particle output oracle로 사용한 문제가 확인됐다. 따라서 아래 `381 READY / 18 BLOCKED` 승격은
+실행 합격이 아니며 후속 v2 corrective가 대체한다. 당시 조사 절차와 잘못된 가정은 감사 이력으로
+보존한다.
+
+1. 표준 Engine seeded class 7 family/11 occurrence는 `Engine.u`의 exact class→base superclass와
+   `RandomSeedInfo` 구조, `EFEngine.dll`의 exact seeded `Spawn` wrapper→base `SpawnEx(...,
+   FRandomStream*)` dispatch를 모두 확인한다. class 이름이나 `_seeded` suffix만으로 alias하지 않는다.
+2. source seed를 UE3 `FRandomStream` LCG에 넣고 fixed time `0/.25/1`, 연속 draw offset `0/4/8`의
+   random unit과 distribution 값을 계산한다. source seed array가 빈 한 occurrence만 명시적인 oracle
+   occurrence seed를 사용하며 source 값이라고 표기하지 않는다. exact seeded handler와 base handler가
+   받는 typed payload/stream 입력 SHA가 같아야 capability를 grant한다.
+3. grant public key는 `handlerCapabilityId`, `exactSourceClass`, `baseHandlerCapabilityId`,
+   `grant=EXACT_CLASS_HANDLER_ALIAS`, `requiredEvidenceDecision=NATIVE_EXACT_ALIAS_VERIFIED`다.
+   `normalizedStringAliasAllowed`는 항상 false다.
+4. EF custom module 6 family/15 occurrence와
+   `EFDistributionVectorMultiplyParticleParameter` 3 occurrence는 inspectable native dispatch 또는
+   controlled numeric evaluator가 없으므로 계속 차단한다. current script class metadata와 native export
+   부재는 blocker 근거이지 evaluator 동일성 근거가 아니다.
+5. 기존 blocked module 29개 모두에 `moduleBlockerOwnership`을 만들고, custom distribution 3개 모두에
+   `distributionBlockerOwnership`을 만든다. seeded 11개는 exact capability owner로 READY가 되고,
+   custom handler 15개와 custom distribution 소유 module 3개는 explicit owner/blocker를 유지한다.
+   ownerless blocker는 0이어야 한다.
+6. generator와 verifier는 source execution receipt self SHA, source module/record/payload/seed ID,
+   current Engine/EFGame script package identity, EFEngine/LOSTARK binary identity, native wrapper bytes,
+   capability/owner join을 검증한다. duplicate key, bool/float version, row reassignment, seed/random mutation,
+   blocker 제거, owner 제거/교체, Product 승격을 거부한다.
+7. shallow/deep focused audit와 deterministic `--check`를 통과한 뒤 한 commit으로 push한다. runtime,
+   material, geometry 파일은 수정하지 않으며 이미지·스크린샷·육안 판정은 수행하지 않는다.
+
+이 단계가 당시 산출한 projection은 source-side handler capability `381 READY / 18 BLOCKED`였지만,
+독립 감사 결과 실행-readiness는 BLOCK이며 아래 corrective 수치가 현재 정본이다.
+
+## 2026-08-10 G05-S2 v2 actual-output feasibility corrective
+
+1. standard seeded 7 family/11 occurrence의 `Engine.u` exact class child chain과 current
+   `EFEngine.dll` wrapper bytes를 다시 읽는다. `RandomSeedInfo` direct child 1개,
+   UFunction child 0개와 `RAX -> [rsp+0x20] -> SpawnEx` fifth-argument 인접 dispatch를 증명하되,
+   판정은 `CURRENT_REVISION_CROSS_REVISION_ALIAS_EVIDENCE`로 제한한다.
+2. fixed seed/time/draw 계산은 `diagnosticFixedSeedInputs`다. input SHA가 같다는 사실은 native
+   particle/component output oracle이 아니며 capability grant를 만들지 않는다.
+3. Source blocked module 29개를 family aggregate가 아닌 29개 독립 matrix row로 기록한다. 각 행은
+   exact occurrence/class/family, required runtime output, source/current/native identity, numeric input
+   domain, expected mutated output, independent oracle/provider, pilot fixture/output, tolerance,
+   fidelity/execution decision, final capability owner와 remaining blocker를 가진다.
+4. 실제 source-era handler/evaluator identity, provider, pilot, expected numeric output 또는 tolerance가
+   없는 행은 빈 값을 숨기지 않고 `BLOCKED`로 기록한다. standard seeded 11, EF custom handler 15,
+   custom distribution owner module 3 모두 execution-readiness를 얻지 않는다.
+5. custom distribution 3행도 source-era evaluator identity와 native GetValue output oracle가 없으므로
+   별도 distribution matrix에서 `BLOCKED`를 유지한다.
+6. 결과 수치는 module `370 READY_FOR_HANDLER / 29 BLOCKED`, distribution
+   `626 READY_FOR_HANDLER / 3 BLOCKED`, capability grant 0, actual-output oracle 0,
+   Product admission false다.
+7. evidence integrity는 frozen reviewer가 별도로 판정한다. 현재 receipt의
+   `executionReadinessDecision=BLOCKED`는 Source 29/29 actual-output pilot이 생기기 전까지 유지하며,
+   final materializer/Playback/Renderer 진입 근거로 사용하지 않는다.
+
+## 2026-08-10 R0-S3 source actual-output provider acquisition closure
+
+최종 계획 정본 `7ffb8a3bf123703ea451cbe53a178f449f102fbe`와 frozen Source corrective
+`c927e397811d4e5718efd27b187eb59775023685`를 입력으로 사용한다. 이 단계는 새 값을 복원하는
+구현이 아니라, 29개 blocker를 실제 출력까지 닫을 provider가 현재 접근 가능한 범위에 존재하는지
+판정하고 다음 단계 진입 여부를 동결하는 acquisition 단위다.
+
+1. c927의 29 occurrence를 exact class 15개와 native family cluster 7개로 다시 묶는다. 각 class/family는
+   required mutated particle/component output, occurrence ID, source-era provider, actual-output pilot,
+   tolerance, owner와 fidelity decision을 보존한다. aggregate가 29행을 숨기지 않도록 occurrence ID의
+   29/29 unique coverage를 함께 검증한다.
+2. 로컬 사용자/Program Files/ProgramData, 현재 설치 manifest/cache/LPK, Desktop backup과 ZIP,
+   SourcePackages, Recycle Bin, FileHistory, OneDrive, Windows.old, 접근 가능한 USN journal을 read-only로
+   조사한다. VSS는 비관리자 token에서 inventory 권한이 없으므로 `PERMISSION_UNCHECKED`로 분리하며
+   `EXHAUSTED`로 세탁하지 않는다. 복구, mount, 권한 상승과 쓰기는 수행하지 않는다.
+3. 모든 local/remote Git ref와 pre-purge bundle, GitHub Actions artifact/cache와 Release, user container
+   package, local LFS content store, unreachable object를 조사한다. candidate가 있으면 bytes/SHA/format/
+   export 성격을 기록하고 native/script output provider가 아니면 명시적으로 reject한다.
+4. current `EFEngine.dll` callable surface는 source-era fidelity와 분리한다. 표준 seeded 7 wrapper가
+   addressable하더라도 live `UObject + emitter + world + distribution graph` 없이 standalone actual-output
+   pilot이 되지 않으며, current-only capture나 wrapper/dataflow digest는 READY를 만들지 않는다.
+   exact EF custom entry와 custom distribution `GetValue` export가 없으면 0으로 기록한다.
+5. source exact package와 current installed package identity를 비교한다. package input이 남아 있어도
+   native implementation이 없으면 provider가 아니며, package revision mismatch를 source exact runtime
+   identity로 승격하지 않는다.
+6. provider를 얻지 못하면 `SOURCE_EXACT`는 29/29 BLOCK, actual-output oracle 0, blocker delta 0을 유지한다.
+   `RECONSTRUCTED_NUMERICALLY_VERIFIED` 최대 복원 분기는 별도로 정의하되 사용자 명시 승인 전에는
+   시작하거나 Product로 흘리지 않는다.
+7. 다음 획득 시 필요한 최소 artifact contract를 두 대안으로 고정한다. 하나는 동일 revision의
+   `EFEngine.dll + LOSTARK.exe + Engine.u + EFGame.u + target UPK` 묶음이고, 다른 하나는 같은 identity를
+   증명하는 source-era runtime pre/post numeric capture다. 둘 다 fixed seed/time/world/parameter input,
+   29 occurrence→15 class→7 family mapping, expected mutated output과 tolerance를 제공해야 한다.
+8. deterministic receipt, coordinated-reseal mutation test, shallow/deep focused audit와 ProjectAudit 항목을
+   추가한다. 성공 조건은 acquisition evidence의 정직한 동결이며 execution readiness, R2 진입과
+   Product admission은 계속 false다.

@@ -18,6 +18,7 @@ geometry/WModel은 수정하지 않았다.
     직접 해독한다.
   - package raw SHA/size, export index/path/class, serial offset/size/SHA, tagged-property offset/type/value,
     encoded value bytes/SHA와 record SHA를 생성한다.
+  - property stream 뒤 native tail은 byte count/SHA로 분리하고 opaque current evidence로만 보존한다.
   - omitted field는 `OMITTED_FROM_EXPORT / UNRESOLVED_DEFAULT_PROVENANCE`로 남긴다.
   - tracked generator/parser는 EOL-canonical source SHA, UPK는 raw artifact SHA domain을 쓴다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.material-render-state-evidence.receipt.json`
@@ -28,9 +29,17 @@ geometry/WModel은 수정하지 않았다.
   - exact input/sampler/render/partial-cull과 reconstructed graph를 필드별로 분리한다.
   - blocker set이 비어 있을 때만 admission을 열 수 있게 하고 이번 slice에서는 0을 유지한다.
 - `Data/Effects/Imported/Artist/Materials/skill.31470.typed-material-evidence-contract.json`
-  - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated format 2 contract다.
+  - 27 recipe, 34 occurrence, 23 arithmetic family, 4 exact sampler binding의 generated format 3 contract다.
 - `Tools/LevelPlacementExtractor/test_build_artist_31470_material_evidence_contract.py`
-  - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 28개를 검증한다.
+  - 실제 checked evidence를 기준으로 pure builder와 deep raw regeneration mutation 32개를 검증한다.
+- `Tools/LevelPlacementExtractor/build_artist_31470_material_oracle_acquisition.py`
+  - installed DKV Material leaf 23/23과 ShaderCache export 1,596개/선택 후보 11개를 raw package parser로
+    재계산하고, family별 surviving node/edge/default 및 최소 numeric oracle 요건을 고정한다.
+- `Data/Effects/Imported/Artist/Materials/skill.31470.material-oracle-acquisition.receipt.json`
+  - DKV export/serial/property end/native tail/state key, ShaderCache candidate serial, 0/23 direct-key search와
+    `SHADERCACHE_PRESENT_DECODER_PENDING` 상태를 가진 generated acquisition receipt다.
+- `Tools/LevelPlacementExtractor/test_build_artist_31470_material_oracle_acquisition.py`
+  - acquisition evidence와 oracle/evaluator/Product 경계 mutation 6개를 검증한다.
 - `Tools/ProjectAudit/Test-Artist31470MaterialEvidenceContract.ps1`
   - shallow canonical/self check와 deep raw UPK/DDS/external manifest check를 제공한다.
 - `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
@@ -56,6 +65,11 @@ geometry/WModel은 수정하지 않았다.
 | unique arithmetic family | 23 |
 | cooked-stripped null expression slot | 1,803 |
 | unresolved graph edge | 502 |
+| surviving resolved graph edge | 125 |
+| installed DKV Material leaf | 23 (Material 22 / DecalMaterial 1) |
+| installed ShaderCache export / selected context candidate | 1,596 / 11 |
+| direct 16-byte native-state-key → ShaderCache serial match | 0 / 23 |
+| independent numeric oracle / implemented evaluator | 0 / 0 |
 
 `LightParticle` occurrence 자체는 렌더된다. 다만 `enginematerials.defaultparticle`는 source Material
 recipe가 아닌 engine builtin이므로 27 recipe와 34 typed Material occurrence 분모에서만 분리했다.
@@ -144,6 +158,30 @@ Aggregate blocker는 다음 8개다.
 Recipe blocker set은 occurrence에 lossless 상속된다. Recipe/occurrence admission은 blocker count가 0일
 때만 true가 될 수 있고 현재 executable/Product는 각각 0/27, 0/34다.
 
+## installed oracle 후보 획득 경계
+
+파일명 검색만으로 ShaderCache가 없다고 판정했던 중간 결론은 폐기했다. 설치본
+`9XUFAXIP8BXBAP1NIEG66EF.upk`는 raw SHA
+`be77e8af4443c4cca5614bec0545c0c735ab04a8b68a3781fb9dfb5a5f2123ad`, 270,965,156 bytes,
+UE 868, logical 943,207,579 bytes이며 1,596 export 전부 class `shadercache`다. UModel v7 list와 raw
+package parser로 class-select/customizing/effect-lobby 이름 11개를 선택해 export index/path,
+serial offset/size/SHA를 pin했다.
+
+설치본 global Material package `DKV6KRSCXY3T6D9CJIK3G.upk`는 raw SHA
+`c0c3e35b48d8589d2e5014c99c64c0c32e05eace7ae02cfc8e6566f4eaf40150`, 141,154,941 bytes,
+UE 868, logical 602,422,069 bytes, export 1,323,421개다. Source family object path의 exact suffix와
+class를 함께 사용해 23/23을 유일하게 골랐고 Material 22개, DecalMaterial 1개다. 각 row에
+export/serial/propertyStreamEnd/native-tail SHA와 tail offset 16의 16-byte state key를 기록했다.
+이 key는 current revision 관찰값이며 의미 해석을 하지 않는다.
+
+23 state key를 1,596 ShaderCache serial 전체에 exact 16-byte subsequence로 검색한 결과는 0/23이다.
+따라서 direct GUID/state-key binding을 주장하지 않는다. Cache는 실제로 존재하지만 binary schema,
+material membership, static-parameter map key, numeric evaluation은 미해결이다. 모든 family의 상태는
+`SHADERCACHE_PRESENT_DECODER_PENDING`, blocker는 `MATERIAL_SHADER_MAP_KEY_UNRESOLVED`,
+evaluator/executable/Product는 false이며 후속 소유자는 G05-M이다.
+family별 acquisition matrix에는 surviving node type, resolved edge 125, unresolved edge 502, serialized
+default, missing static/render/cull/sampler 입력과 이미지 없는 최소 독립 numeric oracle 요건을 기록했다.
+
 ## hash domain과 fail-closed 검사
 
 - generated/repo tracked JSON은 UTF-8 text의 EOL만 LF로 정규화해 exact bytes를 비교한다.
@@ -163,16 +201,20 @@ Recipe blocker set은 occurrence에 lossless 상속된다. Recipe/occurrence adm
 
 ```powershell
 cd Tools/LevelPlacementExtractor
-python -m unittest -q test_build_artist_31470_material_evidence_contract
+python -B -m unittest -q `
+  test_build_artist_31470_material_evidence_contract `
+  test_build_artist_31470_material_oracle_acquisition
 ```
 
-결과: shallow `Ran 28 tests ... OK (skipped=1)`, deep `Ran 28 tests ... OK`.
+결과: shallow `Ran 38 tests ... OK (skipped=1)`, deep `Ran 38 tests ... OK`.
 
 공격 fixture는 static flag의 selected permutation 세탁, partial `TwoSided`의 full cull 승격, DDS hash와
 sampler origin 변경, parent-default shadowing, extra exact sampler 세탁, parent cycle, cooked stripped edge
 제거, reconstructed evaluator의 exact 승격, recipe/occurrence/aggregate blocker loss, occurrence join loss,
 canonical Material/parentGraph 실제-UPK swap, independent occurrence identity mutation, sealed occurrence/family
 swap, 원래 raw hash를 재사용한 render enum/bool substitution, tracked LF/CRLF와 external raw JSON 차이를 포함한다.
+Oracle fixture는 ShaderCache candidate/serial, DKV export/native-tail/state-key, 0/23 direct-key search,
+family/node/edge reassignment과 oracle/evaluator/Product 승격을 재봉인해도 거부한다.
 
 ### shallow audit
 
@@ -184,15 +226,16 @@ powershell -ExecutionPolicy Bypass -File `
 결과:
 
 ```text
-PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 runtime=false product=false
+PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
 ```
 
 ### deep raw audit
 
-로컬 source UPK root, fresh UModel DDS root, source-pack manifest를 세 개 모두 명시해 실행했다.
+로컬 source UPK root, fresh UModel DDS root, source-pack manifest, installed release root, UModel v7를
+모두 명시해 실행했다.
 
 ```text
-PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 runtime=false product=false
+PASS: Artist F 31470 Material evidence mode=deep recipes=27 occurrences=34 inputs=342/19/71 samplers=3+1 graphs=23 stripped=1803/502 shadercache=1596/11 oracle=0 runtime=false product=false
 ```
 
 Deep audit에서 raw render receipt 27 binding/48 source/base export/925 expression/4 Texture2D/19 package가
@@ -200,42 +243,44 @@ Deep audit에서 raw render receipt 27 binding/48 source/base export/925 express
 4개 DDS와 source Texture2D UPK, external manifest의 raw size/SHA가 모두 일치했다.
 같은 deep 실행에서 `fx_e_me_ht_03_4_ma`/`fx_e_pa_fd_18_2_tr` canonical row swap과 parentGraph-only
 swap을 실제 source UPK에 대해 재생성했으며 둘 다 fail-closed로 거부됐다.
+동일 deep audit가 두 installed package를 다시 decompress/parse해 DKV 23/23과 ShaderCache 1,596/11,
+state-key direct match 0/23 및 UModel/parser raw identity를 checked receipt와 대조했다.
 
-### 전체 ProjectAudit
+### ProjectAudit 경계
 
-`Tools/ProjectAudit/Invoke-ProjectAudit.ps1`도 실행했다. 새
-`effect.artist-31470-material-evidence-contract` check는 `passed=true`였고 위 shallow PASS detail을
-보존했다. 전체 audit 자체는 base `0a90a1d`에 이미 존재하는 독립 실패 11개 때문에 exit 1이었다.
-그중 현재 slice와 직접 겹치는 기존 실패는 stale Artist source-contract candidate이며, 그 밖에는 map
-runtime root, Character Select manifest/data visibility, 기존 Effect G09/runtime 문서, WFX/rollout 및 로컬
-runtime asset 부재가 포함된다. 첫 실행에서 Material unit-test stderr가 outer PowerShell capture에
-ErrorRecord로 전달되던 문제는 focused audit 내부에서 output을 capture하고 exit code로 판정하게 고쳤다.
-재실행 report에서 Material check가 통과하고 전체 실패 수가 12에서 기존 11로 돌아온 것을 확인했다.
+이 commit은 등록된 focused `effect.artist-31470-material-evidence-contract` check의 shallow/deep 경로를
+직접 실행했다. 저장소 전체 `Invoke-ProjectAudit.ps1`와 Client build/runtime regression은 중앙 integration
+lane이 검증한다. 이 RESULT에는 실행하지 않은 전체 audit나 이미지/육안 검증을 PASS로 기록하지 않는다.
 
 ## 미완료 경계
 
 - MIC native `FStaticParameterSet` selected values 해독과 source-era static permutation 증명
 - source-era Engine/EFGame default/archetype 근거를 포함한 omitted render-state closure
 - 나머지 direct texture 68개와 필요한 parent texture의 sampler evidence
-- 23 arithmetic family evaluator 구현과 cooked stripping을 넘는 numeric oracle
+- ShaderCache binary schema/material membership/static-parameter-map-key 해독과 독립 numeric oracle
+- 23 arithmetic family evaluator 구현 및 독립 oracle 대조
 - typed compiler/runtime/HLSL/renderer 소비와 27/27 recipe, 34/34 occurrence execution admission
 - Product publish
 
 이 RESULT는 Material evidence contract 첫 slice만 완료로 기록한다. 위 항목이 닫히기 전에는 완전 복원이나
 Product material 완료로 판정하지 않는다.
 
-## WIP checkpoint: exact-evidence lineage
+## exact-evidence lineage closure
 
-후속 integrity review에서 genuine-looking `recordSha256`/`serialSha256` 교환과 closure·receipt 공동
-재봉인, recipe input 전체 재배치가 shallow 경계에서 수용되는 반례가 확인됐다. 현재 WIP는 다음 기반만
-부분 구현한 중간 체크포인트다.
+후속 integrity review에서 확인된 재봉인 반례를 실제 builder/validator mutation으로 닫았다.
 
-- 외부 source-pack manifest의 raw byte fixture와 `(physicalPackage, SHA) -> logicalPackage` 정본
-- canonical Material path를 `objectPath` 또는 `logicalPackage.objectPath`로 제한하는 경계
-- raw export/expression evidence ID 재계산과 instance array decoded projection/lineage 초안
-- raw input/render/Texture2D fixture 확장을 위한 builder 구조
+- source-pack manifest의 raw `(physicalPackage, SHA) -> logicalPackage`와 canonical Material path를
+  `objectPath` 또는 `logicalPackage.objectPath` 두 형태로만 결합한다.
+- MIC Parent reference와 selected parent graph package/export/object identity를 결합한다.
+- 모든 exact input field ID를 owner recipe/path, kind, serialized order, name, origin, raw array/expression
+  record bytes와 decoded value에서 재도출한다.
+- exact sampler의 Texture2D export/serial/tagged sampler property/DDS와 owning input field를 결합한다.
+- recipe composition digest가 ordered inputs/static/render/family evidence를 포함하고 occurrence identity가
+  그 digest를 소비한다.
+- graph family ID와 recipe-family link를 exact raw identity에서 재도출한다.
+- formatVersion은 exact JSON integer, root identity는 `ARTIST/31470/F`로 강제한다.
+- coordinated closure+render reseal, canonical-prefix laundering, source row/parentGraph swap,
+  inputs/parentDefaults swap, forged DDS/export, enum/bool/value, EOL/raw hash mutation을 거부한다.
 
-아직 parent-default lineage, exact sampler owner, render lineage, recipe composition digest, occurrence 소비,
-formatVersion 3 생성물·audit·공격 fixture 연결이 끝나지 않았다. 따라서 이 체크포인트의 generator/unit/deep
-audit는 완료 검증으로 기록하지 않으며, 기존 checked contract의 Product admission 0도 열지 않는다. 현재
-검증 범위는 두 Python 파일의 `py_compile`과 `git diff --check`뿐이다.
+이 closure는 evidence integrity 완료다. ShaderCache decoder와 numeric evaluator가 완료됐다는 뜻은 아니며,
+그 경계가 열리기 전까지 `implemented=0`, executable/Product=false가 정본이다.

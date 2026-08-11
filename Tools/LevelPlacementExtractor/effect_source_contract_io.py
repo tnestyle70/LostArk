@@ -1,7 +1,37 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
+from typing import Any
+
+
+def _object_without_duplicate_keys(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def load_strict_json_object(path: Path) -> dict[str, Any]:
+    """Load one UTF-8 JSON object while rejecting duplicate keys at any depth."""
+    payload = path.read_bytes()
+    if payload.startswith(b"\xef\xbb\xbf"):
+        raise ValueError(f"JSON must be UTF-8 without BOM: {path}")
+    try:
+        value = json.loads(
+            payload.decode("utf-8"),
+            object_pairs_hook=_object_without_duplicate_keys,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot parse JSON {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"JSON root must be an object: {path}")
+    return value
 
 
 def normalize_utf8_eol(content: bytes) -> bytes:

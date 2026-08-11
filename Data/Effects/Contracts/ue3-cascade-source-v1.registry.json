@@ -15,7 +15,19 @@
       "CURRENT_REVISION_ARCHETYPE_EVIDENCE",
       "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
       "DECAL_CLASS_DEFAULT_REGISTRY_MISSING",
+      "DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+      "DISTRIBUTION_LOOKUP_CHUNK_RECONSTRUCTION_UNVERIFIED",
+      "DISTRIBUTION_LOOKUP_COUNT_RECONSTRUCTION_UNVERIFIED",
+      "DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+      "DISTRIBUTION_RANDOM_STREAM_SAMPLE_ORDER_UNVERIFIED",
+      "DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+      "DOWNSTREAM_LIGHT_HANDLER_RECEIPT_REQUIRED",
+      "DOWNSTREAM_MODULE_HANDLER_RECEIPT_REQUIRED",
+      "DOWNSTREAM_PROPERTY_HANDLER_RECEIPT_REQUIRED",
+      "EDITOR_ONLY_IRRELEVANCE_PROOF_REQUIRED",
       "EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN",
+      "INDEPENDENT_LIGHT_NUMERIC_OR_SEMANTIC_ORACLE_REQUIRED",
+      "INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
       "LIGHT_RENDERER_NOT_COMPILED",
       "MATERIAL_RECIPE_NOT_COMPILED",
       "OLD_SOURCE_ABSENT_BINDING_FALLBACK_UNRESOLVED",
@@ -24,7 +36,12 @@
       "PARAMETER_NAME_PROVENANCE_UNRESOLVED",
       "PARAMETER_RANGE_SOURCE_ERA_DEFAULT_PROVENANCE_UNRESOLVED",
       "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED",
+      "POINT_LIGHT_DEFAULT_FIELD_EXECUTION_UNRESOLVED",
+      "POINT_LIGHT_GUID_RUNTIME_SEMANTICS_OR_IRRELEVANCE_UNPROVEN",
+      "RANDOM_SEED_CLASS_DEFAULT_UNRESOLVED",
       "RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED",
+      "RANDOM_SEED_OPAQUE_PAYLOAD_UNRESOLVED",
+      "RANDOM_SEED_SELECTION_POLICY_UNRESOLVED",
       "RENDER_STATE_NOT_COMPILED",
       "RENDER_STATE_RECIPE_MISSING",
       "REQUIRED_BUSELOCALSPACE_CLASS_DEFAULT_UNRESOLVED",
@@ -32,6 +49,9 @@
       "RUNTIME_PARAMETER_SOURCE_CLOSURE_UNPROVEN",
       "SCREEN_POST_CLASS_DEFAULT_REGISTRY_MISSING",
       "SELECTED_LOD_CLASS_DEFAULTS_UNRESOLVED",
+      "SELECTED_LOD_ENABLED_CLASS_DEFAULT_UNRESOLVED",
+      "SELECTED_LOD_LEVEL_CLASS_DEFAULT_UNRESOLVED",
+      "SOURCE_CLASS_ALIAS_OR_CUSTOM_HANDLER_UNVERIFIED",
       "SOURCE_ERA_ENGINE_CDO_PROVENANCE_UNRESOLVED",
       "SOURCE_ERA_SCRIPT_PACKAGE_IDENTITY_NOT_PINNED",
       "SOURCE_ERA_TARGET_PACKAGE_IDENTITY_NOT_PINNED",
@@ -53,7 +73,19 @@
     "CURRENT_REVISION_ARCHETYPE_EVIDENCE",
     "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN",
     "DECAL_CLASS_DEFAULT_REGISTRY_MISSING",
+    "DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+    "DISTRIBUTION_LOOKUP_CHUNK_RECONSTRUCTION_UNVERIFIED",
+    "DISTRIBUTION_LOOKUP_COUNT_RECONSTRUCTION_UNVERIFIED",
+    "DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+    "DISTRIBUTION_RANDOM_STREAM_SAMPLE_ORDER_UNVERIFIED",
+    "DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+    "DOWNSTREAM_LIGHT_HANDLER_RECEIPT_REQUIRED",
+    "DOWNSTREAM_MODULE_HANDLER_RECEIPT_REQUIRED",
+    "DOWNSTREAM_PROPERTY_HANDLER_RECEIPT_REQUIRED",
+    "EDITOR_ONLY_IRRELEVANCE_PROOF_REQUIRED",
     "EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN",
+    "INDEPENDENT_LIGHT_NUMERIC_OR_SEMANTIC_ORACLE_REQUIRED",
+    "INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
     "LIGHT_RENDERER_NOT_COMPILED",
     "MATERIAL_RECIPE_NOT_COMPILED",
     "OLD_SOURCE_ABSENT_BINDING_FALLBACK_UNRESOLVED",
@@ -62,7 +94,12 @@
     "PARAMETER_NAME_PROVENANCE_UNRESOLVED",
     "PARAMETER_RANGE_SOURCE_ERA_DEFAULT_PROVENANCE_UNRESOLVED",
     "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED",
+    "POINT_LIGHT_DEFAULT_FIELD_EXECUTION_UNRESOLVED",
+    "POINT_LIGHT_GUID_RUNTIME_SEMANTICS_OR_IRRELEVANCE_UNPROVEN",
+    "RANDOM_SEED_CLASS_DEFAULT_UNRESOLVED",
     "RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED",
+    "RANDOM_SEED_OPAQUE_PAYLOAD_UNRESOLVED",
+    "RANDOM_SEED_SELECTION_POLICY_UNRESOLVED",
     "RENDER_STATE_NOT_COMPILED",
     "RENDER_STATE_RECIPE_MISSING",
     "REQUIRED_BUSELOCALSPACE_CLASS_DEFAULT_UNRESOLVED",
@@ -70,6 +107,9 @@
     "RUNTIME_PARAMETER_SOURCE_CLOSURE_UNPROVEN",
     "SCREEN_POST_CLASS_DEFAULT_REGISTRY_MISSING",
     "SELECTED_LOD_CLASS_DEFAULTS_UNRESOLVED",
+    "SELECTED_LOD_ENABLED_CLASS_DEFAULT_UNRESOLVED",
+    "SELECTED_LOD_LEVEL_CLASS_DEFAULT_UNRESOLVED",
+    "SOURCE_CLASS_ALIAS_OR_CUSTOM_HANDLER_UNVERIFIED",
     "SOURCE_ERA_ENGINE_CDO_PROVENANCE_UNRESOLVED",
     "SOURCE_ERA_SCRIPT_PACKAGE_IDENTITY_NOT_PINNED",
     "SOURCE_ERA_TARGET_PACKAGE_IDENTITY_NOT_PINNED",
@@ -82,8 +122,8 @@
     "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
   ],
   "blockerSummary": {
-    "uniqueBlockerCount": 35,
-    "occurrenceCount": 1162,
+    "uniqueBlockerCount": 55,
+    "occurrenceCount": 1351,
     "tokenCounts": {
       "CLASS_DEFAULT_ARCHETYPE_UNPROVEN": 2,
       "COMPILED_DISTRIBUTION_EXECUTION_NOT_IMPLEMENTED": 17,
@@ -93,7 +133,19 @@
       "CURRENT_REVISION_ARCHETYPE_EVIDENCE": 2,
       "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN": 3,
       "DECAL_CLASS_DEFAULT_REGISTRY_MISSING": 3,
-      "EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN": 248,
+      "DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED": 35,
+      "DISTRIBUTION_LOOKUP_CHUNK_RECONSTRUCTION_UNVERIFIED": 35,
+      "DISTRIBUTION_LOOKUP_COUNT_RECONSTRUCTION_UNVERIFIED": 35,
+      "DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED": 35,
+      "DISTRIBUTION_RANDOM_STREAM_SAMPLE_ORDER_UNVERIFIED": 18,
+      "DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED": 35,
+      "DOWNSTREAM_LIGHT_HANDLER_RECEIPT_REQUIRED": 1,
+      "DOWNSTREAM_MODULE_HANDLER_RECEIPT_REQUIRED": 35,
+      "DOWNSTREAM_PROPERTY_HANDLER_RECEIPT_REQUIRED": 35,
+      "EDITOR_ONLY_IRRELEVANCE_PROOF_REQUIRED": 3,
+      "EXTERNAL_MODULE_NATIVE_TAIL_NOT_PROVEN": 34,
+      "INDEPENDENT_LIGHT_NUMERIC_OR_SEMANTIC_ORACLE_REQUIRED": 1,
+      "INDEPENDENT_NUMERIC_ORACLE_REQUIRED": 35,
       "LIGHT_RENDERER_NOT_COMPILED": 1,
       "MATERIAL_RECIPE_NOT_COMPILED": 13,
       "OLD_SOURCE_ABSENT_BINDING_FALLBACK_UNRESOLVED": 2,
@@ -101,8 +153,13 @@
       "PARAMETER_MODE_SOURCE_ERA_DEFAULT_PROVENANCE_UNRESOLVED": 6,
       "PARAMETER_NAME_PROVENANCE_UNRESOLVED": 4,
       "PARAMETER_RANGE_SOURCE_ERA_DEFAULT_PROVENANCE_UNRESOLVED": 6,
-      "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED": 2,
-      "RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED": 14,
+      "POINT_LIGHT_CLASS_DEFAULTS_UNRESOLVED": 1,
+      "POINT_LIGHT_DEFAULT_FIELD_EXECUTION_UNRESOLVED": 1,
+      "POINT_LIGHT_GUID_RUNTIME_SEMANTICS_OR_IRRELEVANCE_UNPROVEN": 1,
+      "RANDOM_SEED_CLASS_DEFAULT_UNRESOLVED": 1,
+      "RANDOM_SEED_CONSUMPTION_SEMANTICS_UNRESOLVED": 11,
+      "RANDOM_SEED_OPAQUE_PAYLOAD_UNRESOLVED": 7,
+      "RANDOM_SEED_SELECTION_POLICY_UNRESOLVED": 5,
       "RENDER_STATE_NOT_COMPILED": 13,
       "RENDER_STATE_RECIPE_MISSING": 34,
       "REQUIRED_BUSELOCALSPACE_CLASS_DEFAULT_UNRESOLVED": 8,
@@ -110,6 +167,9 @@
       "RUNTIME_PARAMETER_SOURCE_CLOSURE_UNPROVEN": 3,
       "SCREEN_POST_CLASS_DEFAULT_REGISTRY_MISSING": 1,
       "SELECTED_LOD_CLASS_DEFAULTS_UNRESOLVED": 2,
+      "SELECTED_LOD_ENABLED_CLASS_DEFAULT_UNRESOLVED": 35,
+      "SELECTED_LOD_LEVEL_CLASS_DEFAULT_UNRESOLVED": 35,
+      "SOURCE_CLASS_ALIAS_OR_CUSTOM_HANDLER_UNVERIFIED": 19,
       "SOURCE_ERA_ENGINE_CDO_PROVENANCE_UNRESOLVED": 7,
       "SOURCE_ERA_SCRIPT_PACKAGE_IDENTITY_NOT_PINNED": 4,
       "SOURCE_ERA_TARGET_PACKAGE_IDENTITY_NOT_PINNED": 8,
@@ -138,6 +198,11 @@
       "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json",
       "fileSha256": "56abc24f1792161206ab5023940beb5af46c36802527b80b9141b215e4b2f8c7",
       "selfSha256": "cda3d2e3c3e6a896c20849066d9ab3490229b5ccacd5b47066de603d3c760c10"
+    },
+    "sourceSemanticClosure": {
+      "path": "Data/Effects/Imported/Artist/Candidates/skill.31470.source-semantic-closure.json",
+      "fileSha256": "73f2e93853c495d8489c1a234cb5dd02a1306f419614ff7fc6d4359ec1198b08",
+      "selfSha256": "75e1e584948951a6b288f9fedd1ab6abebec84ac2639b68ca7bedc1776fd256b"
     }
   },
   "coverageSeed": {
@@ -254,6 +319,352 @@
   },
   "moduleClasses": [
     {
+      "normalizedClass": "efparticlemodulelocationonground",
+      "sourceClasses": [
+        "efparticlemodulelocationonground"
+      ],
+      "rendererTypes": [
+        "MeshParticle",
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "skiplocation.distribution.objectpath",
+          "kinds": [
+            "string"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "adjustlocation",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "skiplocation",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": [
+            "distributionfloatparticleparameter"
+          ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "sourceClasses": [
+        "efparticlemodulelocationprimitivecylinderspin"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "badjustforworldspace",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "benabled",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "negative_x",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "positive_y",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "spinaxis",
+          "kinds": [
+            "string"
+          ]
+        },
+        {
+          "propertyPath": "surfaceonly",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "velocity",
+          "kinds": [
+            "boolean"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "spinangle",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startcylinderrot",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startheight",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startlocation",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startradius",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "velocityscale",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "sourceClasses": [
+        "efparticlemodulelocationprimitivecylinderspin_seeded"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "badjustforworldspace",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "negative_x",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "negative_y",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.hex",
+          "kinds": [
+            "string"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.size",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "surfaceonly",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "velocity",
+          "kinds": [
+            "boolean"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "spinangle",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startcylinderrot",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startheight",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startlocation",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startradius",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "velocityscale",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "efparticlemoduletypedatadecal",
+      "sourceClasses": [
+        "efparticlemoduletypedatadecal"
+      ],
+      "rendererTypes": [
+        "DecalParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "nearplane",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "efparticlemoduletypedatalight",
+      "sourceClasses": [
+        "efparticlemoduletypedatalight"
+      ],
+      "rendererTypes": [
+        "LightParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "b3ddrawmode",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "pointlightcomponent",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "pointlightcomponent.objectpath",
+          "kinds": [
+            "string"
+          ]
+        }
+      ],
+      "distributionProperties": [],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "efparticlemodulevelocityoverlifetime",
+      "sourceClasses": [
+        "efparticlemodulevelocityoverlifetime"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "veloverlife",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
       "normalizedClass": "particlemoduleacceleration",
       "sourceClasses": [
         "particlemoduleacceleration"
@@ -325,8 +736,7 @@
     {
       "normalizedClass": "particlemodulecolor",
       "sourceClasses": [
-        "particlemodulecolor",
-        "particlemodulecolor_seeded"
+        "particlemodulecolor"
       ],
       "rendererTypes": [
         "CascadeRibbon",
@@ -336,25 +746,7 @@
       ],
       "literalProperties": [
         {
-          "propertyPath": "brequiresloopingnotification",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
           "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.properties.randomseeds[0]",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.size",
           "kinds": [
             "number"
           ]
@@ -390,6 +782,58 @@
           "sourceClasses": [
             "distributionvectorparticleparameter"
           ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulecolor_seeded",
+      "sourceClasses": [
+        "particlemodulecolor_seeded"
+      ],
+      "rendererTypes": [
+        "MeshParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "brequiresloopingnotification",
+          "kinds": [
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.size",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "startalpha",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startcolor",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
@@ -493,8 +937,7 @@
     {
       "normalizedClass": "particlemodulelifetime",
       "sourceClasses": [
-        "particlemodulelifetime",
-        "particlemodulelifetime_seeded"
+        "particlemodulelifetime"
       ],
       "rendererTypes": [
         "CascadeRibbon",
@@ -511,6 +954,35 @@
             "string"
           ]
         },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "lifetime",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": [
+            "distributionfloatparticleparameter"
+          ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulelifetime_seeded",
+      "sourceClasses": [
+        "particlemodulelifetime_seeded"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
         {
           "propertyPath": "lodvalidity",
           "kinds": [
@@ -536,9 +1008,7 @@
           "componentCounts": [
             1
           ],
-          "sourceClasses": [
-            "distributionfloatparticleparameter"
-          ]
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
@@ -546,8 +1016,7 @@
     {
       "normalizedClass": "particlemodulelocation",
       "sourceClasses": [
-        "particlemodulelocation",
-        "particlemodulelocation_seeded"
+        "particlemodulelocation"
       ],
       "rendererTypes": [
         "DecalParticle",
@@ -570,18 +1039,6 @@
           ]
         },
         {
-          "propertyPath": "randomseedinfo.hex",
-          "kinds": [
-            "string"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.size",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
           "propertyPath": "startlocation.distribution.objectpath",
           "kinds": [
             "string"
@@ -597,6 +1054,45 @@
           "sourceClasses": [
             "distributionvectorparticleparameter"
           ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulelocation_seeded",
+      "sourceClasses": [
+        "particlemodulelocation_seeded"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.hex",
+          "kinds": [
+            "string"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.size",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "startlocation",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
@@ -656,15 +1152,20 @@
       "runtimeImplemented": false
     },
     {
-      "normalizedClass": "particlemodulelocationonground",
+      "normalizedClass": "particlemodulelocationprimitivecylinder",
       "sourceClasses": [
-        "efparticlemodulelocationonground"
+        "particlemodulelocationprimitivecylinder"
       ],
       "rendererTypes": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "literalProperties": [
+        {
+          "propertyPath": "badjustforworldspace",
+          "kinds": [
+            "boolean"
+          ]
+        },
         {
           "propertyPath": "lodvalidity",
           "kinds": [
@@ -672,40 +1173,56 @@
           ]
         },
         {
-          "propertyPath": "skiplocation.distribution.objectpath",
+          "propertyPath": "surfaceonly",
           "kinds": [
-            "string"
+            "boolean"
+          ]
+        },
+        {
+          "propertyPath": "velocity",
+          "kinds": [
+            "boolean"
           ]
         }
       ],
       "distributionProperties": [
         {
-          "propertyPath": "adjustlocation",
+          "propertyPath": "startheight",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startlocation",
           "componentCounts": [
             3
           ],
           "sourceClasses": []
         },
         {
-          "propertyPath": "skiplocation",
+          "propertyPath": "startradius",
           "componentCounts": [
             1
           ],
-          "sourceClasses": [
-            "distributionfloatparticleparameter"
-          ]
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "velocityscale",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
     },
     {
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "sourceClasses": [
-        "particlemodulelocationprimitivecylinder",
         "particlemodulelocationprimitivecylinder_seeded"
       ],
       "rendererTypes": [
-        "MeshParticle",
         "SpriteParticle"
       ],
       "literalProperties": [
@@ -815,135 +1332,6 @@
       "runtimeImplemented": false
     },
     {
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "sourceClasses": [
-        "efparticlemodulelocationprimitivecylinderspin",
-        "efparticlemodulelocationprimitivecylinderspin_seeded"
-      ],
-      "rendererTypes": [
-        "SpriteParticle"
-      ],
-      "literalProperties": [
-        {
-          "propertyPath": "badjustforworldspace",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "benabled",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "negative_x",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "negative_y",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "positive_y",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.hex",
-          "kinds": [
-            "string"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.properties.randomseeds[0]",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.size",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "spinaxis",
-          "kinds": [
-            "string"
-          ]
-        },
-        {
-          "propertyPath": "surfaceonly",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "velocity",
-          "kinds": [
-            "boolean"
-          ]
-        }
-      ],
-      "distributionProperties": [
-        {
-          "propertyPath": "spinangle",
-          "componentCounts": [
-            1
-          ],
-          "sourceClasses": []
-        },
-        {
-          "propertyPath": "startcylinderrot",
-          "componentCounts": [
-            1
-          ],
-          "sourceClasses": []
-        },
-        {
-          "propertyPath": "startheight",
-          "componentCounts": [
-            1
-          ],
-          "sourceClasses": []
-        },
-        {
-          "propertyPath": "startlocation",
-          "componentCounts": [
-            3
-          ],
-          "sourceClasses": []
-        },
-        {
-          "propertyPath": "startradius",
-          "componentCounts": [
-            1
-          ],
-          "sourceClasses": []
-        },
-        {
-          "propertyPath": "velocityscale",
-          "componentCounts": [
-            1
-          ],
-          "sourceClasses": []
-        }
-      ],
-      "runtimeImplemented": false
-    },
-    {
       "normalizedClass": "particlemodulelocationprimitivesphere",
       "sourceClasses": [
         "particlemodulelocationprimitivesphere"
@@ -1011,7 +1399,41 @@
     {
       "normalizedClass": "particlemodulemeshrotation",
       "sourceClasses": [
-        "particlemodulemeshrotation",
+        "particlemodulemeshrotation"
+      ],
+      "rendererTypes": [
+        "MeshParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "startrotation.distribution.objectpath",
+          "kinds": [
+            "string"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "startrotation",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": [
+            "efdistributionvectormultiplyparticleparameter"
+          ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulemeshrotation_seeded",
+      "sourceClasses": [
         "particlemodulemeshrotation_seeded"
       ],
       "rendererTypes": [
@@ -1035,12 +1457,6 @@
           "kinds": [
             "number"
           ]
-        },
-        {
-          "propertyPath": "startrotation.distribution.objectpath",
-          "kinds": [
-            "string"
-          ]
         }
       ],
       "distributionProperties": [
@@ -1049,9 +1465,7 @@
           "componentCounts": [
             3
           ],
-          "sourceClasses": [
-            "efdistributionvectormultiplyparticleparameter"
-          ]
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
@@ -1569,8 +1983,7 @@
     {
       "normalizedClass": "particlemodulesize",
       "sourceClasses": [
-        "particlemodulesize",
-        "particlemodulesize_seeded"
+        "particlemodulesize"
       ],
       "rendererTypes": [
         "CascadeRibbon",
@@ -1583,18 +1996,6 @@
       "literalProperties": [
         {
           "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.hex",
-          "kinds": [
-            "string"
-          ]
-        },
-        {
-          "propertyPath": "randomseedinfo.size",
           "kinds": [
             "number"
           ]
@@ -1615,6 +2016,45 @@
           "sourceClasses": [
             "distributionvectorparticleparameter"
           ]
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulesize_seeded",
+      "sourceClasses": [
+        "particlemodulesize_seeded"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.hex",
+          "kinds": [
+            "string"
+          ]
+        },
+        {
+          "propertyPath": "randomseedinfo.size",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "startsize",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
         }
       ],
       "runtimeImplemented": false
@@ -1779,68 +2219,6 @@
       "runtimeImplemented": false
     },
     {
-      "normalizedClass": "particlemoduletypedatadecal",
-      "sourceClasses": [
-        "efparticlemoduletypedatadecal"
-      ],
-      "rendererTypes": [
-        "DecalParticle"
-      ],
-      "literalProperties": [
-        {
-          "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "nearplane",
-          "kinds": [
-            "number"
-          ]
-        }
-      ],
-      "distributionProperties": [],
-      "runtimeImplemented": false
-    },
-    {
-      "normalizedClass": "particlemoduletypedatalight",
-      "sourceClasses": [
-        "efparticlemoduletypedatalight"
-      ],
-      "rendererTypes": [
-        "LightParticle"
-      ],
-      "literalProperties": [
-        {
-          "propertyPath": "b3ddrawmode",
-          "kinds": [
-            "boolean"
-          ]
-        },
-        {
-          "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "pointlightcomponent",
-          "kinds": [
-            "number"
-          ]
-        },
-        {
-          "propertyPath": "pointlightcomponent.objectpath",
-          "kinds": [
-            "string"
-          ]
-        }
-      ],
-      "distributionProperties": [],
-      "runtimeImplemented": false
-    },
-    {
       "normalizedClass": "particlemoduletypedatamesh",
       "sourceClasses": [
         "particlemoduletypedatamesh"
@@ -1923,8 +2301,7 @@
     {
       "normalizedClass": "particlemodulevelocity",
       "sourceClasses": [
-        "particlemodulevelocity",
-        "particlemodulevelocity_seeded"
+        "particlemodulevelocity"
       ],
       "rendererTypes": [
         "MeshParticle",
@@ -1938,6 +2315,40 @@
             "boolean"
           ]
         },
+        {
+          "propertyPath": "lodvalidity",
+          "kinds": [
+            "number"
+          ]
+        }
+      ],
+      "distributionProperties": [
+        {
+          "propertyPath": "startvelocity",
+          "componentCounts": [
+            3
+          ],
+          "sourceClasses": []
+        },
+        {
+          "propertyPath": "startvelocityradial",
+          "componentCounts": [
+            1
+          ],
+          "sourceClasses": []
+        }
+      ],
+      "runtimeImplemented": false
+    },
+    {
+      "normalizedClass": "particlemodulevelocity_seeded",
+      "sourceClasses": [
+        "particlemodulevelocity_seeded"
+      ],
+      "rendererTypes": [
+        "SpriteParticle"
+      ],
+      "literalProperties": [
         {
           "propertyPath": "lodvalidity",
           "kinds": [
@@ -1974,36 +2385,792 @@
         }
       ],
       "runtimeImplemented": false
-    },
-    {
-      "normalizedClass": "particlemodulevelocityoverlifetime",
-      "sourceClasses": [
-        "efparticlemodulevelocityoverlifetime"
-      ],
-      "rendererTypes": [
-        "SpriteParticle"
-      ],
-      "literalProperties": [
-        {
-          "propertyPath": "lodvalidity",
-          "kinds": [
-            "number"
-          ]
-        }
-      ],
-      "distributionProperties": [
-        {
-          "propertyPath": "veloverlife",
-          "componentCounts": [
-            3
-          ],
-          "sourceClasses": []
-        }
-      ],
-      "runtimeImplemented": false
     }
   ],
   "fieldRules": [
+    {
+      "ruleId": "field.efparticlemodulelocationonground.lodvalidity.literal",
+      "normalizedClass": "efparticlemodulelocationonground",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle",
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationonground.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationonground.skiplocation.distribution.objectpath.literal",
+      "normalizedClass": "efparticlemodulelocationonground",
+      "propertyPath": "skiplocation.distribution.objectpath",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle",
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationonground.skiplocation.distribution.objectpath",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationonground.adjustlocation.distribution",
+      "normalizedClass": "efparticlemodulelocationonground",
+      "propertyPath": "adjustlocation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "MeshParticle",
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationonground.adjustlocation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationonground.skiplocation.distribution",
+      "normalizedClass": "efparticlemodulelocationonground",
+      "propertyPath": "skiplocation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "MeshParticle",
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationonground.skiplocation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.badjustforworldspace.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "badjustforworldspace",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.badjustforworldspace",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.benabled.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "benabled",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.benabled",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.lodvalidity.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.negative.x.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "negative_x",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.negative.x",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.positive.y.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "positive_y",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.positive.y",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.spinaxis.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "spinaxis",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.spinaxis",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.surfaceonly.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "surfaceonly",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.surfaceonly",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.velocity.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "velocity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.velocity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.spinangle.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "spinangle",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.spinangle",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.startcylinderrot.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "startcylinderrot",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.startcylinderrot",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.startheight.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "startheight",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.startheight",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.startlocation.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "startlocation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.startlocation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.startradius.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "startradius",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.startradius",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin.velocityscale.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin",
+      "propertyPath": "velocityscale",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin.velocityscale",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.badjustforworldspace.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "badjustforworldspace",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.badjustforworldspace",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.lodvalidity.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.negative.x.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "negative_x",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.negative.x",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.negative.y.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "negative_y",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.negative.y",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "randomseedinfo.hex",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.hex",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.properties.randomseeds.0.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.properties.randomseeds.0",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.surfaceonly.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "surfaceonly",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.surfaceonly",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.velocity.literal",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "velocity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.velocity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.spinangle.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "spinangle",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.spinangle",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.startcylinderrot.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "startcylinderrot",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.startcylinderrot",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.startheight.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "startheight",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.startheight",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.startlocation.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "startlocation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.startlocation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.startradius.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "startradius",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.startradius",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulelocationprimitivecylinderspin_seeded.velocityscale.distribution",
+      "normalizedClass": "efparticlemodulelocationprimitivecylinderspin_seeded",
+      "propertyPath": "velocityscale",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.efparticlemodulelocationprimitivecylinderspin_seeded.velocityscale",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatadecal.lodvalidity.literal",
+      "normalizedClass": "efparticlemoduletypedatadecal",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "DecalParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatadecal.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatadecal.nearplane.literal",
+      "normalizedClass": "efparticlemoduletypedatadecal",
+      "propertyPath": "nearplane",
+      "storage": "literal",
+      "rendererApplicability": [
+        "DecalParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatadecal.nearplane",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatalight.b3ddrawmode.literal",
+      "normalizedClass": "efparticlemoduletypedatalight",
+      "propertyPath": "b3ddrawmode",
+      "storage": "literal",
+      "rendererApplicability": [
+        "LightParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatalight.b3ddrawmode",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatalight.lodvalidity.literal",
+      "normalizedClass": "efparticlemoduletypedatalight",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "LightParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatalight.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatalight.pointlightcomponent.literal",
+      "normalizedClass": "efparticlemoduletypedatalight",
+      "propertyPath": "pointlightcomponent",
+      "storage": "literal",
+      "rendererApplicability": [
+        "LightParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatalight.pointlightcomponent",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemoduletypedatalight.pointlightcomponent.objectpath.literal",
+      "normalizedClass": "efparticlemoduletypedatalight",
+      "propertyPath": "pointlightcomponent.objectpath",
+      "storage": "literal",
+      "rendererApplicability": [
+        "LightParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.efparticlemoduletypedatalight.pointlightcomponent.objectpath",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulevelocityoverlifetime.lodvalidity.literal",
+      "normalizedClass": "efparticlemodulevelocityoverlifetime",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "update",
+      "plannedHandlerId": "source.efparticlemodulevelocityoverlifetime.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.velocity_cm_per_s_to_client_m_per_s"
+      ],
+      "timeDomain": "particle_normalized_life",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.efparticlemodulevelocityoverlifetime.veloverlife.distribution",
+      "normalizedClass": "efparticlemodulevelocityoverlifetime",
+      "propertyPath": "veloverlife",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "update",
+      "plannedHandlerId": "source.efparticlemodulevelocityoverlifetime.veloverlife",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.velocity_cm_per_s_to_client_m_per_s"
+      ],
+      "timeDomain": "particle_normalized_life",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
     {
       "ruleId": "field.particlemoduleacceleration.balwaysinworldspace.literal",
       "normalizedClass": "particlemoduleacceleration",
@@ -2127,28 +3294,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulecolor.brequiresloopingnotification.literal",
-      "normalizedClass": "particlemodulecolor",
-      "propertyPath": "brequiresloopingnotification",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "LightParticle",
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulecolor.brequiresloopingnotification",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulecolor.lodvalidity.literal",
       "normalizedClass": "particlemodulecolor",
       "propertyPath": "lodvalidity",
@@ -2168,50 +3313,6 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulecolor.randomseedinfo.properties.randomseeds.0.literal",
-      "normalizedClass": "particlemodulecolor",
-      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "LightParticle",
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulecolor.randomseedinfo.properties.randomseeds.0",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulecolor.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulecolor",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "LightParticle",
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulecolor.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -2300,6 +3401,120 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.brequiresloopingnotification.literal",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "brequiresloopingnotification",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.brequiresloopingnotification",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.randomseedinfo.properties.randomseeds.0.literal",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.randomseedinfo.properties.randomseeds.0",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.startalpha.distribution",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "startalpha",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.startalpha",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulecolor_seeded.startcolor.distribution",
+      "normalizedClass": "particlemodulecolor_seeded",
+      "propertyPath": "startcolor",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulecolor_seeded.startcolor",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -2549,54 +3764,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelifetime.randomseedinfo.properties.randomseeds.0.literal",
-      "normalizedClass": "particlemodulelifetime",
-      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelifetime.randomseedinfo.properties.randomseeds.0",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelifetime.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulelifetime",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelifetime.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulelifetime.lifetime.distribution",
       "normalizedClass": "particlemodulelifetime",
       "propertyPath": "lifetime",
@@ -2618,6 +3785,82 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelifetime_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulelifetime_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelifetime_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelifetime_seeded.randomseedinfo.properties.randomseeds.0.literal",
+      "normalizedClass": "particlemodulelifetime_seeded",
+      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelifetime_seeded.randomseedinfo.properties.randomseeds.0",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelifetime_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulelifetime_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelifetime_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelifetime_seeded.lifetime.distribution",
+      "normalizedClass": "particlemodulelifetime_seeded",
+      "propertyPath": "lifetime",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelifetime_seeded.lifetime",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -2667,52 +3910,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocation.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulelocation",
-      "propertyPath": "randomseedinfo.hex",
-      "storage": "literal",
-      "rendererApplicability": [
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocation.randomseedinfo.hex",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocation.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulelocation",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocation.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulelocation.startlocation.distribution.objectpath.literal",
       "normalizedClass": "particlemodulelocation",
       "propertyPath": "startlocation.distribution.objectpath",
@@ -2756,6 +3953,82 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocation_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulelocation_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocation_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocation_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "particlemodulelocation_seeded",
+      "propertyPath": "randomseedinfo.hex",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocation_seeded.randomseedinfo.hex",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocation_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulelocation_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocation_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocation_seeded.startlocation.distribution",
+      "normalizedClass": "particlemodulelocation_seeded",
+      "propertyPath": "startlocation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocation_seeded.startlocation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -2873,136 +4146,15 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationonground.lodvalidity.literal",
-      "normalizedClass": "particlemodulelocationonground",
-      "propertyPath": "lodvalidity",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationonground.lodvalidity",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationonground.skiplocation.distribution.objectpath.literal",
-      "normalizedClass": "particlemodulelocationonground",
-      "propertyPath": "skiplocation.distribution.objectpath",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationonground.skiplocation.distribution.objectpath",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationonground.adjustlocation.distribution",
-      "normalizedClass": "particlemodulelocationonground",
-      "propertyPath": "adjustlocation",
-      "storage": "distribution",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationonground.adjustlocation",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationonground.skiplocation.distribution",
-      "normalizedClass": "particlemodulelocationonground",
-      "propertyPath": "skiplocation",
-      "storage": "distribution",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationonground.skiplocation",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.b3ddrawmode.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "b3ddrawmode",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.b3ddrawmode",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulelocationprimitivecylinder.badjustforworldspace.literal",
       "normalizedClass": "particlemodulelocationprimitivecylinder",
       "propertyPath": "badjustforworldspace",
       "storage": "literal",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.badjustforworldspace",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.heightaxis.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "heightaxis",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.heightaxis",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
@@ -3018,8 +4170,7 @@
       "propertyPath": "lodvalidity",
       "storage": "literal",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.lodvalidity",
@@ -3033,133 +4184,12 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.negative.x.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "negative_x",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.negative.x",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.negative.z.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "negative_z",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.negative.z",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.positive.x.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "positive_x",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.positive.x",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.positive.z.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "positive_z",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.positive.z",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "randomseedinfo.hex",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.randomseedinfo.hex",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinder.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinder",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulelocationprimitivecylinder.surfaceonly.literal",
       "normalizedClass": "particlemodulelocationprimitivecylinder",
       "propertyPath": "surfaceonly",
       "storage": "literal",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.surfaceonly",
@@ -3178,8 +4208,7 @@
       "propertyPath": "velocity",
       "storage": "literal",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.velocity",
@@ -3198,8 +4227,7 @@
       "propertyPath": "startheight",
       "storage": "distribution",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.startheight",
@@ -3218,8 +4246,7 @@
       "propertyPath": "startlocation",
       "storage": "distribution",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.startlocation",
@@ -3238,8 +4265,7 @@
       "propertyPath": "startradius",
       "storage": "distribution",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.startradius",
@@ -3258,8 +4284,7 @@
       "propertyPath": "velocityscale",
       "storage": "distribution",
       "rendererApplicability": [
-        "MeshParticle",
-        "SpriteParticle"
+        "MeshParticle"
       ],
       "plannedPhase": "spawn",
       "plannedHandlerId": "source.particlemodulelocationprimitivecylinder.velocityscale",
@@ -3273,129 +4298,167 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.badjustforworldspace.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.b3ddrawmode.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
+      "propertyPath": "b3ddrawmode",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.b3ddrawmode",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.badjustforworldspace.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "badjustforworldspace",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.badjustforworldspace",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.badjustforworldspace",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.benabled.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "benabled",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.heightaxis.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
+      "propertyPath": "heightaxis",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.benabled",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.heightaxis",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.lodvalidity.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "lodvalidity",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.lodvalidity",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.lodvalidity",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.negative.x.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.negative.x.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "negative_x",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.negative.x",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.negative.x",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.negative.y.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "negative_y",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.negative.z.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
+      "propertyPath": "negative_z",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.negative.y",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.negative.z",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.positive.y.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "positive_y",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.positive.x.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
+      "propertyPath": "positive_x",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.positive.y",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.positive.x",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.positive.z.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
+      "propertyPath": "positive_z",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.positive.z",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.position_cm_to_client_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "randomseedinfo.hex",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.randomseedinfo.hex",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.randomseedinfo.hex",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
@@ -3406,34 +4469,15 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.randomseedinfo.properties.randomseeds.0.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "randomseedinfo.properties.randomseeds[0]",
-      "storage": "literal",
-      "rendererApplicability": [
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.randomseedinfo.properties.randomseeds.0",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "randomseedinfo.size",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.randomseedinfo.size",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.randomseedinfo.size",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
@@ -3444,174 +4488,117 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.spinaxis.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "spinaxis",
-      "storage": "literal",
-      "rendererApplicability": [
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.spinaxis",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.surfaceonly.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.surfaceonly.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "surfaceonly",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.surfaceonly",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.surfaceonly",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.velocity.literal",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.velocity.literal",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "velocity",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.velocity",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.velocity",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.spinangle.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "spinangle",
-      "storage": "distribution",
-      "rendererApplicability": [
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.spinangle",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.startcylinderrot.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
-      "propertyPath": "startcylinderrot",
-      "storage": "distribution",
-      "rendererApplicability": [
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.startcylinderrot",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.position_cm_to_client_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.startheight.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.startheight.distribution",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "startheight",
       "storage": "distribution",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.startheight",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.startheight",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.startlocation.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.startlocation.distribution",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "startlocation",
       "storage": "distribution",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.startlocation",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.startlocation",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.startradius.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.startradius.distribution",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "startradius",
       "storage": "distribution",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.startradius",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.startradius",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulelocationprimitivecylinderspin.velocityscale.distribution",
-      "normalizedClass": "particlemodulelocationprimitivecylinderspin",
+      "ruleId": "field.particlemodulelocationprimitivecylinder_seeded.velocityscale.distribution",
+      "normalizedClass": "particlemodulelocationprimitivecylinder_seeded",
       "propertyPath": "velocityscale",
       "storage": "distribution",
       "rendererApplicability": [
         "SpriteParticle"
       ],
       "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulelocationprimitivecylinderspin.velocityscale",
+      "plannedHandlerId": "source.particlemodulelocationprimitivecylinder_seeded.velocityscale",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.position_cm_to_client_m"
       ],
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -3786,44 +4773,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulemeshrotation.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulemeshrotation",
-      "propertyPath": "randomseedinfo.hex",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulemeshrotation.randomseedinfo.hex",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.rotation_turns_axis_mapping_pending"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulemeshrotation.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulemeshrotation",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulemeshrotation.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.rotation_turns_axis_mapping_pending"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulemeshrotation.startrotation.distribution.objectpath.literal",
       "normalizedClass": "particlemodulemeshrotation",
       "propertyPath": "startrotation.distribution.objectpath",
@@ -3859,6 +4808,82 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulemeshrotation_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulemeshrotation_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulemeshrotation_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.rotation_turns_axis_mapping_pending"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulemeshrotation_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "particlemodulemeshrotation_seeded",
+      "propertyPath": "randomseedinfo.hex",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulemeshrotation_seeded.randomseedinfo.hex",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.rotation_turns_axis_mapping_pending"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulemeshrotation_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulemeshrotation_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulemeshrotation_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.rotation_turns_axis_mapping_pending"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulemeshrotation_seeded.startrotation.distribution",
+      "normalizedClass": "particlemodulemeshrotation_seeded",
+      "propertyPath": "startrotation",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulemeshrotation_seeded.startrotation",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.rotation_turns_axis_mapping_pending"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -5287,59 +6312,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulesize.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulesize",
-      "propertyPath": "randomseedinfo.hex",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulesize.randomseedinfo.hex",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulesize.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulesize",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "CascadeRibbon",
-        "DecalParticle",
-        "LightParticle",
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulesize.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "cascade_ribbon.width_cm_to_m_semantics_pending",
-        "decal_particle.size_cm_to_m",
-        "light_particle.size_parameter_semantics_unresolved",
-        "mesh_particle.dimensionless_axis_reorder",
-        "screen_post.size_semantics_unresolved",
-        "sprite_particle.size_cm_to_m"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulesize.startsize.distribution.objectpath.literal",
       "normalizedClass": "particlemodulesize",
       "propertyPath": "startsize.distribution.objectpath",
@@ -5395,6 +6367,82 @@
       "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
       "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulesize_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulesize_seeded",
+      "propertyPath": "lodvalidity",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulesize_seeded.lodvalidity",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulesize_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "particlemodulesize_seeded",
+      "propertyPath": "randomseedinfo.hex",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulesize_seeded.randomseedinfo.hex",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulesize_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulesize_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulesize_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "sprite_particle.size_cm_to_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulesize_seeded.startsize.distribution",
+      "normalizedClass": "particlemodulesize_seeded",
+      "propertyPath": "startsize",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulesize_seeded.startsize",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "sprite_particle.size_cm_to_m"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
@@ -5721,120 +6769,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemoduletypedatadecal.lodvalidity.literal",
-      "normalizedClass": "particlemoduletypedatadecal",
-      "propertyPath": "lodvalidity",
-      "storage": "literal",
-      "rendererApplicability": [
-        "DecalParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatadecal.lodvalidity",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemoduletypedatadecal.nearplane.literal",
-      "normalizedClass": "particlemoduletypedatadecal",
-      "propertyPath": "nearplane",
-      "storage": "literal",
-      "rendererApplicability": [
-        "DecalParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatadecal.nearplane",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemoduletypedatalight.b3ddrawmode.literal",
-      "normalizedClass": "particlemoduletypedatalight",
-      "propertyPath": "b3ddrawmode",
-      "storage": "literal",
-      "rendererApplicability": [
-        "LightParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatalight.b3ddrawmode",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemoduletypedatalight.lodvalidity.literal",
-      "normalizedClass": "particlemoduletypedatalight",
-      "propertyPath": "lodvalidity",
-      "storage": "literal",
-      "rendererApplicability": [
-        "LightParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatalight.lodvalidity",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemoduletypedatalight.pointlightcomponent.literal",
-      "normalizedClass": "particlemoduletypedatalight",
-      "propertyPath": "pointlightcomponent",
-      "storage": "literal",
-      "rendererApplicability": [
-        "LightParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatalight.pointlightcomponent",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemoduletypedatalight.pointlightcomponent.objectpath.literal",
-      "normalizedClass": "particlemoduletypedatalight",
-      "propertyPath": "pointlightcomponent.objectpath",
-      "storage": "literal",
-      "rendererApplicability": [
-        "LightParticle"
-      ],
-      "plannedPhase": "type_data",
-      "plannedHandlerId": "source.particlemoduletypedatalight.pointlightcomponent.objectpath",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "dimensionless_or_metadata"
-      ],
-      "timeDomain": "metadata",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemoduletypedatamesh.ballowmotionblur.literal",
       "normalizedClass": "particlemoduletypedatamesh",
       "propertyPath": "ballowmotionblur",
@@ -6048,48 +6982,6 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulevelocity.randomseedinfo.hex.literal",
-      "normalizedClass": "particlemodulevelocity",
-      "propertyPath": "randomseedinfo.hex",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulevelocity.randomseedinfo.hex",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.velocity_cm_per_s_to_client_m_per_s"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
-      "ruleId": "field.particlemodulevelocity.randomseedinfo.size.literal",
-      "normalizedClass": "particlemodulevelocity",
-      "propertyPath": "randomseedinfo.size",
-      "storage": "literal",
-      "rendererApplicability": [
-        "MeshParticle",
-        "ScreenPost",
-        "SpriteParticle"
-      ],
-      "plannedPhase": "spawn",
-      "plannedHandlerId": "source.particlemodulevelocity.randomseedinfo.size",
-      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
-      "unitRuleIds": [
-        "ue3.velocity_cm_per_s_to_client_m_per_s"
-      ],
-      "timeDomain": "emitter_or_spawn_time",
-      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "UNRESOLVED",
-      "runtimeImplemented": false
-    },
-    {
       "ruleId": "field.particlemodulevelocity.startvelocity.distribution",
       "normalizedClass": "particlemodulevelocity",
       "propertyPath": "startvelocity",
@@ -6132,43 +7024,100 @@
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulevelocityoverlifetime.lodvalidity.literal",
-      "normalizedClass": "particlemodulevelocityoverlifetime",
+      "ruleId": "field.particlemodulevelocity_seeded.lodvalidity.literal",
+      "normalizedClass": "particlemodulevelocity_seeded",
       "propertyPath": "lodvalidity",
       "storage": "literal",
       "rendererApplicability": [
         "SpriteParticle"
       ],
-      "plannedPhase": "update",
-      "plannedHandlerId": "source.particlemodulevelocityoverlifetime.lodvalidity",
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulevelocity_seeded.lodvalidity",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.velocity_cm_per_s_to_client_m_per_s"
       ],
-      "timeDomain": "particle_normalized_life",
+      "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     },
     {
-      "ruleId": "field.particlemodulevelocityoverlifetime.veloverlife.distribution",
-      "normalizedClass": "particlemodulevelocityoverlifetime",
-      "propertyPath": "veloverlife",
+      "ruleId": "field.particlemodulevelocity_seeded.randomseedinfo.hex.literal",
+      "normalizedClass": "particlemodulevelocity_seeded",
+      "propertyPath": "randomseedinfo.hex",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulevelocity_seeded.randomseedinfo.hex",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.velocity_cm_per_s_to_client_m_per_s"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulevelocity_seeded.randomseedinfo.size.literal",
+      "normalizedClass": "particlemodulevelocity_seeded",
+      "propertyPath": "randomseedinfo.size",
+      "storage": "literal",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulevelocity_seeded.randomseedinfo.size",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.velocity_cm_per_s_to_client_m_per_s"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulevelocity_seeded.startvelocity.distribution",
+      "normalizedClass": "particlemodulevelocity_seeded",
+      "propertyPath": "startvelocity",
       "storage": "distribution",
       "rendererApplicability": [
         "SpriteParticle"
       ],
-      "plannedPhase": "update",
-      "plannedHandlerId": "source.particlemodulevelocityoverlifetime.veloverlife",
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulevelocity_seeded.startvelocity",
       "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
       "unitRuleIds": [
         "ue3.velocity_cm_per_s_to_client_m_per_s"
       ],
-      "timeDomain": "particle_normalized_life",
+      "timeDomain": "emitter_or_spawn_time",
       "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
-      "seedConsumption": "NOT_APPLICABLE",
+      "seedConsumption": "UNRESOLVED",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemodulevelocity_seeded.startvelocityradial.distribution",
+      "normalizedClass": "particlemodulevelocity_seeded",
+      "propertyPath": "startvelocityradial",
+      "storage": "distribution",
+      "rendererApplicability": [
+        "SpriteParticle"
+      ],
+      "plannedPhase": "spawn",
+      "plannedHandlerId": "source.particlemodulevelocity_seeded.startvelocityradial",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "ue3.velocity_cm_per_s_to_client_m_per_s"
+      ],
+      "timeDomain": "emitter_or_spawn_time",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "UNRESOLVED",
       "runtimeImplemented": false
     }
   ],
-  "contractSha256": "698583c9d234f31b588c6a0d468106391d7affbd964e92d98ae5e7fc45041969"
+  "contractSha256": "201652eceeaa40258fec5574669b2e873b2305cbe33f859c0f17e58a15b2e553"
 }

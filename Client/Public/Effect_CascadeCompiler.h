@@ -13,7 +13,7 @@
 
 NS_BEGIN(Client)
 
-inline constexpr uint32_t EFFECT_CASCADE_INSPECTION_COMPILER_REVISION = 1u;
+inline constexpr uint32_t EFFECT_CASCADE_INSPECTION_COMPILER_REVISION = 3u;
 
 enum class EFFECT_CASCADE_OPCODE : uint8_t
 {
@@ -49,6 +49,7 @@ enum class EFFECT_CASCADE_OPCODE : uint8_t
 	TYPE_DATA_RIBBON,
 	VELOCITY,
 	VELOCITY_OVER_LIFE,
+	UNKNOWN_EXACT_CLASS_QUARANTINE,
 	END
 };
 
@@ -76,6 +77,10 @@ enum class EFFECT_CASCADE_PROPERTY_PROVENANCE : uint8_t
 	OPAQUE_HEX_METADATA_ONLY,
 	OBJECT_REFERENCE_TARGET_OR_CLASS_DEFAULT_UNRESOLVED,
 	SEED_ARRAY_SOURCE_DECODED_CONSUMPTION_UNRESOLVED,
+	MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED,
+	PINNED_SOURCE_RECORD_PHYSICAL_ABSENT,
+	RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED,
+	SOURCE_EXACT_PHYSICAL_PACKAGE,
 	END
 };
 
@@ -101,6 +106,7 @@ enum class EFFECT_CASCADE_BLOCKER_REQUIREMENT : uint8_t
 {
 	BLOCKERS_PROHIBITED,
 	MODULE_BLOCKERS_REQUIRED,
+	PROPERTY_BLOCKERS_REQUIRED,
 	END
 };
 
@@ -109,6 +115,35 @@ enum class EFFECT_CASCADE_CLASS_CLASSIFICATION : uint8_t
 	SUPPORTED_RECEIPT_OPCODE_SCHEMA,
 	KNOWN_LEGACY_MIGRATION_GAP,
 	UNKNOWN_REJECTED,
+	END
+};
+
+enum class EFFECT_CASCADE_CLASS_LINEAGE_STATUS : uint8_t
+{
+	RECEIPT_NORMALIZED_ONLY,
+	EXACT_SOURCE_CLASS,
+	EXACT_CLASS_HANDLER_QUARANTINED,
+	EXPLICIT_ALIAS_EXECUTION_UNAPPROVED,
+	END
+};
+
+enum class EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND : uint8_t
+{
+	SOURCE_RECEIPT_SHA256,
+	CANDIDATE_SHA256,
+	END
+};
+
+enum class EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS : uint8_t
+{
+	SELF_CONSISTENT_UNAUTHENTICATED,
+	END
+};
+
+enum class EFFECT_CASCADE_PROPERTY_HANDLER_RESULT : uint8_t
+{
+	SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED,
+	QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED,
 	END
 };
 
@@ -154,6 +189,7 @@ struct EFFECT_CASCADE_PROPERTY_EVIDENCE final
 	EFFECT_CASCADE_BLOCKER_REQUIREMENT eBlockerRequirement =
 		EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
 	std::string strReceiptProvenanceToken;
+	std::vector<std::string> Blockers;
 };
 
 struct EFFECT_CASCADE_DISTRIBUTION_EVIDENCE final
@@ -168,6 +204,25 @@ struct EFFECT_CASCADE_DISTRIBUTION_EVIDENCE final
 	std::vector<std::string> Blockers;
 };
 
+struct EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT final
+{
+	EFFECT_CASCADE_PROPERTY_KEY Property;
+	EFFECT_CASCADE_PROPERTY_STORAGE eStorage =
+		EFFECT_CASCADE_PROPERTY_STORAGE::END;
+	EFFECT_CASCADE_PROPERTY_HANDLER_RESULT eResult =
+		EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::END;
+	std::string strHandlerFieldId;
+	bool_t bRequired = false;
+};
+
+struct EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY final
+{
+	EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND eKind =
+		EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END;
+	std::string strExpectedCanonicalDocumentIdentity;
+	std::string strExpectedExternalIdentityToken;
+};
+
 struct EFFECT_CASCADE_HANDLER_RECEIPT final
 {
 	EFFECT_CASCADE_HANDLER_RESULT eResult = EFFECT_CASCADE_HANDLER_RESULT::END;
@@ -178,8 +233,13 @@ struct EFFECT_CASCADE_HANDLER_RECEIPT final
 	std::string strReceiptNormalizedClass;
 	std::string strExactSourceClass;
 	std::string strAliasId;
+	EFFECT_CASCADE_CLASS_LINEAGE_STATUS eClassLineageStatus =
+		EFFECT_CASCADE_CLASS_LINEAGE_STATUS::END;
 	std::string strOpcodeSchemaId;
 	bool_t bExactClassLineagePreserved = false;
+	bool_t bPayloadAccessAllowed = false;
+	std::vector<EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT>
+		PropertyConsumption;
 	std::vector<std::string> RequiredPropertyReferenceIds;
 	std::vector<std::string> ConsumedPropertyReferenceIds;
 	std::vector<std::string> Blockers;
@@ -203,6 +263,8 @@ struct EFFECT_CASCADE_SELECTED_LOD_EVIDENCE final
 	std::string strEmitterNodeId;
 	std::string strSelectedLodPath;
 	std::string strSelectedLodNodeId;
+	std::string strCanonicalLineageId;
+	uint64_t iStableReference = 0u;
 	EFFECT_CASCADE_LOD_FIELD_PROVENANCE eLevelProvenance =
 		EFFECT_CASCADE_LOD_FIELD_PROVENANCE::END;
 	EFFECT_CASCADE_LOD_FIELD_PROVENANCE eEnabledProvenance =
@@ -241,6 +303,7 @@ struct EFFECT_CASCADE_INSPECTION_EMITTER final
 	std::vector<EFFECT_CASCADE_INSPECTION_OPCODE> OrderedOpcodes;
 	std::vector<EFFECT_CASCADE_DISTRIBUTION_EVIDENCE> Distributions;
 	std::optional<EFFECT_CASCADE_GEOMETRY_EVIDENCE> Geometry;
+	bool_t bSourceRecipeEnabled = false;
 	bool_t bSourceExecutionAdmission = false;
 	std::vector<std::string> Blockers;
 };
@@ -264,13 +327,19 @@ struct EFFECT_CASCADE_CLASS_REPORT final
 struct EFFECT_CASCADE_CONSUMPTION_RECEIPT final
 {
 	uint32_t iSystemCount = 0u;
+	uint32_t iDeclaredSourceElementCount = 0u;
+	uint32_t iDisabledSourceRecipeCount = 0u;
 	uint32_t iEmitterCount = 0u;
 	uint32_t iOrderedOpcodeCount = 0u;
 	uint32_t iDistributionEvidenceCount = 0u;
 	uint32_t iRequiredPropertyCount = 0u;
 	uint32_t iConsumedPropertyCount = 0u;
 	uint32_t iUnknownClassCount = 0u;
+	uint32_t iQuarantinedExactClassCount = 0u;
 	uint32_t iUnconsumedRequiredPropertyCount = 0u;
+	uint32_t iHandlerPropertyReceiptCount = 0u;
+	uint32_t iRawPayloadReadCount = 0u;
+	uint32_t iExecutableOpcodeCount = 0u;
 	uint32_t iBlockerCount = 0u;
 	std::array<uint32_t,
 		static_cast<size_t>(EFFECT_RENDERER_TYPE::END)> RendererCounts{};
@@ -282,6 +351,12 @@ struct EFFECT_CASCADE_INSPECTION_IR final
 		EFFECT_CASCADE_INSPECTION_COMPILER_REVISION;
 	std::string strEffectAssetId;
 	std::string strCanonicalDocumentIdentity;
+	EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND eExternalIdentityKind =
+		EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::END;
+	EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS eExternalIdentityStatus =
+		EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::END;
+	std::string strExpectedExternalIdentityToken;
+	bool_t bExternalIdentityAuthenticated = false;
 	std::string strInspectionHash;
 	std::vector<EFFECT_CASCADE_INSPECTION_SYSTEM> Systems;
 	EFFECT_CASCADE_CONSUMPTION_RECEIPT Consumption;
@@ -302,14 +377,14 @@ class CEffectCascadeCompiler final
 public:
 	static bool_t Compile_SourceInspection(
 		const EFFECT_DOCUMENT_DESC& Document,
-		std::string_view ExpectedCanonicalDocumentIdentity,
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity,
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>& OutInspection,
 		std::string& strOutError);
 	static std::string Build_CanonicalDocumentIdentity(
 		const EFFECT_DOCUMENT_DESC& Document);
 	static bool_t Matches_InputIdentity(
 		const EFFECT_CASCADE_INSPECTION_IR& Inspection,
-		std::string_view ExpectedCanonicalDocumentIdentity);
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY& ExpectedIdentity);
 	static EFFECT_CASCADE_CLASS_REPORT Classify_ReceiptClass(
 		std::string_view ReceiptClassKey);
 	static EFFECT_CASCADE_INSPECTION_COMPILER_PROBE Get_Probe();

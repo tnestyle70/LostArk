@@ -5,13 +5,16 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <cwctype>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <process.h>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -28,6 +31,177 @@ namespace
 	constexpr uint32_t kColor0 = 1u << 6;
 	constexpr float kTangentHandednessAbsoluteTolerance = 1e-6f;
 	constexpr uint32_t kExpectedLegacyResourceCorpusCount = 2586u;
+	constexpr uint32_t kExpectedLegacyStaticCount = 2535u;
+	constexpr uint32_t kExpectedLegacySkinnedCount = 51u;
+	constexpr uint32_t kExpectedLegacyBoundsCount = 2586u;
+	constexpr uint32_t kExpectedLegacyMultiSubmeshCount = 665u;
+	constexpr size_t kWriterIndependentGoldenByteCount = 850u;
+	constexpr std::string_view kWriterIndependentGoldenSha256 =
+		"6bb409094185d9c41f6cb241d42bdc767b0a3868f7ed981d194e8fe1ccd23627";
+	constexpr std::string_view kWriterIndependentManifestSha256 =
+		"73b1753200514f534baf622d1732623f70842afddc4c83da551faac5df19ccdd";
+	constexpr std::string_view kWriterIndependentPayloadSha256 =
+		"c50feb075b6ef7509238f4cdabe0a247ad44036c31a0664b923d118f2c828dfe";
+	constexpr std::string_view kWriterIndependentMetadataIdentitySha256 =
+		"e99ee5ce041cc1f2d050f9737bb81e6acebe56c02370f7022418914144164f6a";
+	enum class CORRUPT_FIXTURE_KIND
+	{
+		MODEL,
+		SKELETON,
+		ANIMATION,
+	};
+	struct CORRUPT_FIXTURE_EXPECTATION
+	{
+		const wchar_t* fileName = nullptr;
+		uint64_t byteCount = 0;
+		std::string_view sha256{};
+		CORRUPT_FIXTURE_KIND kind = CORRUPT_FIXTURE_KIND::MODEL;
+		std::string_view expectedError{};
+	};
+	struct BASELINE_FIXTURE_EXPECTATION
+	{
+		const wchar_t* fileName = nullptr;
+		uint64_t byteCount = 0;
+		std::string_view sha256{};
+	};
+	constexpr std::array<BASELINE_FIXTURE_EXPECTATION, 3> kCorruptBaselineManifest = {{
+		{ L"valid_color.wmodel", 850u,
+			"6bb409094185d9c41f6cb241d42bdc767b0a3868f7ed981d194e8fe1ccd23627" },
+		{ L"legacy_skinned.wskel", 432u,
+			"3375287a42f781d54e50826c0de9fd1cb9fc46ae46a68fba0c12f92c068616e0" },
+		{ L"legacy_skinned.wanim", 148u,
+			"b0721a69086eae96eef0fd04208b4eb1d5b1425433d689301dfecfd39f57ed8f" },
+	}};
+	constexpr std::array<CORRUPT_FIXTURE_EXPECTATION, 31> kCorruptFixtureManifest = {{
+		{ L"corrupt_animation.wanim", 148u,
+			"bbbbb9019f278ee0c078f45c3ed1a05f78402135e4658dec091e17ab4fea265f",
+			CORRUPT_FIXTURE_KIND::ANIMATION,
+			"Invalid WANM metadata: corrupt_animation" },
+		{ L"corrupt_bounds.wmodel", 850u,
+			"9bd4b7f44edca83471e6986b8b5798a61777e3a5d381f29cc127fd8a4f21b5f0",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH contains invalid WModel-space bounds metadata." },
+		{ L"corrupt_bounds_float_intermediate.wmodel", 850u,
+			"8a9c8e1034e0a4cf416a00d08553ec1beac7a13691267262a26a989e30b75b8a",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH embedded and vertex-derived bounds do not match." },
+		{ L"corrupt_bounds_inverted.wmodel", 850u,
+			"3c74156504b8c6c36196c1b05a4a1e041f4d5cf4632b5e2e1cfaaa736f7ad9d6",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH contains invalid WModel-space bounds metadata." },
+		{ L"corrupt_bounds_nonfinite.wmodel", 850u,
+			"da8b56c50d55e8837ffb74bdf022f4968b4cdb62a03c60cd3a38fcdeae1ae4cd",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH contains invalid WModel-space bounds metadata." },
+		{ L"corrupt_channel.wmodel", 850u,
+			"61578034467430020cea905502564a99e0d28ec301e1e1bf115f620ce353be84",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WMSH version, flags, stride, or bone metadata." },
+		{ L"corrupt_evidence.wmodel", 850u,
+			"88aa61ea27bd9cc773e518a5fc328664b513e2cf3d0a49442789e9272bbe6e99",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata evidence flags do not match its channels." },
+		{ L"corrupt_header.wmodel", 850u,
+			"b6cf2472d2aa6dde78782f9e70192f2052867d829b76a3ff34c7b1d8c891adc9",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WINT WModel file header." },
+		{ L"corrupt_material_container.wmodel", 850u,
+			"bf79355981923cf48542d64c5eea4cf3920a02f93ea16b1e023f9ccc5c572ad1",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WMAT metadata." },
+		{ L"corrupt_material_index.wmodel", 850u,
+			"0a82aa4536aa4a89101cc5a6e3062a69e8c453905094930cf383c1e6c0a749d3",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A submesh material index exceeds the supported range." },
+		{ L"corrupt_mesh_version.wmodel", 850u,
+			"83cacb9581abcf86ac6e82e66c7b119d6a18360f71650e6ffd00dcf2d677c336",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WINT mesh file header." },
+		{ L"corrupt_metadata_hash.wmodel", 850u,
+			"1476ab40e74f84b64e7ef55b6a39f3c81974f034d90fa696ca043fc655670ae8",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata SHA-256 is invalid." },
+		{ L"corrupt_metadata_version.wmodel", 850u,
+			"4d8a288812a1550e442cfe71d9be9118a57fd113105274042c2b3a3a19a26bf5",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata version or payload size is invalid." },
+		{ L"corrupt_outer_metadata.wmodel", 850u,
+			"8fec665a966a04d8c246d1b208af1487efde2336970bab303bbe63a4b3e1cef5",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WModel 1.1 requires canonical static WMOD metadata." },
+		{ L"corrupt_outer_version.wmodel", 850u,
+			"b1f682537b61f41439b7b7e0ac8db35a820adff6bea9911c3452931c956bd035",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WINT WModel file header." },
+		{ L"corrupt_parallel_basis.wmodel", 850u,
+			"653ecf159ad99026b95b817f8c0315c06fc47977176f00284fa762ce34747a9b",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+		{ L"corrupt_payload_hash.wmodel", 850u,
+			"68bdaa85cca17b8829ab9ed8983acdafc1528d1d8852970738350a1410517184",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry payload SHA-256 does not match its metadata." },
+		{ L"corrupt_provenance.wmodel", 850u,
+			"df16480791aad5512d95350770906934b5c408249a380b947e051737fecbc1d6",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata contains an empty SHA-256 digest." },
+		{ L"corrupt_scale_overflow_pair.wmodel", 850u,
+			"0d7430637941e7c8b6bfe8e23da0648802e855e0cf0d80af606213126112bb54",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata scale contract is invalid." },
+		{ L"corrupt_scale_wrong_reciprocal.wmodel", 850u,
+			"671eb91e77d561448f6d35db47c29f33143c87413ef339bed44a9073d988a47c",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata scale contract is invalid." },
+		{ L"corrupt_section_gap.wmodel", 851u,
+			"eb6e9ec13adb552654b3dfdcd6b7339fd73097f287290477c7dd6ebdd2b39811",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WModel 1.1 sections must be non-empty and contiguous." },
+		{ L"corrupt_skeleton.wskel", 432u,
+			"ccf0f7a314a3b2880cfdcbd872618aa763ba7586b142acac2f186463dfd21019",
+			CORRUPT_FIXTURE_KIND::SKELETON,
+			"Invalid WSKL metadata or unsupported bone count." },
+		{ L"corrupt_stride.wmodel", 850u,
+			"25ab69da72d66bb9051eb767115c1c1a1a90c653d4ed841c562e43ed9cbf35e1",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WMSH version, flags, stride, or bone metadata." },
+		{ L"corrupt_tangent_w.wmodel", 850u,
+			"516402943fd686fd7a25451d14a3ade1e9298165b2ba3aacd20ac88320fc7e61",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+		{ L"corrupt_tangent_w_boundary_out.wmodel", 850u,
+			"ea214464093cf8f5a1b61c51fc475a795ede3be1b4ccdceac47baf38c3d17471",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+		{ L"corrupt_tangent_w_minus_1_000005.wmodel", 850u,
+			"db68b7c6804d40d238f40c8c772a63cd79c76c58690d1d4d6cf0f1f0738e3e5a",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+		{ L"corrupt_truncated.wmodel", 849u,
+			"a946854daa1b3af293157859f2b54729f9edfdfd6fc7065915fa6bf64da688be",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WINT WModel file header." },
+		{ L"corrupt_unknown_channel.wmodel", 850u,
+			"a21d103f9ad769146fb62217fea665f1a1ae4915a8c4ccb280cb153fd4c96f77",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"Invalid WMSH version, flags, stride, or bone metadata." },
+		{ L"corrupt_unverified_source_fidelity.wmodel", 850u,
+			"2e5cfec173eda702a7c303da76387e9c68e212fb4ed52bea197f9cd55a1e415b",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"WMSH geometry metadata evidence flags do not match its channels." },
+		{ L"corrupt_zero_normal.wmodel", 850u,
+			"89cc46a57cac7e11052cdf980366bb335ff7c4271b02ea2f62ac5d98a2f37f6c",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+		{ L"corrupt_zero_tangent.wmodel", 850u,
+			"8d4c403c17b9ae9b602b2f22a2fe8d3ca49bff75f7102d23b61857c77c37d5f4",
+			CORRUPT_FIXTURE_KIND::MODEL,
+			"A static vertex contains invalid geometry channel data." },
+	}};
+	static_assert(kCorruptFixtureManifest.size() == 31u);
+	constexpr size_t kExpectedCorruptModelFixtureCount = 29u;
+	constexpr size_t kExpectedCorruptSkeletonFixtureCount = 1u;
+	constexpr size_t kExpectedCorruptAnimationFixtureCount = 1u;
 	constexpr uint32_t kProductSourceFidelity =
 		MODEL_GEOMETRY_CLEAN_SOURCE_EXPORT |
 		MODEL_GEOMETRY_UPK_TO_GLTF_EXACT |
@@ -111,6 +285,231 @@ namespace
 		if (nullptr != algorithm)
 			BCryptCloseAlgorithmProvider(algorithm, 0);
 		return succeeded ? Hex_Digest(digest) : std::string{};
+	}
+
+	bool Read_File_Bytes(
+		const std::filesystem::path& path,
+		std::vector<uint8_t>& outBytes)
+	{
+		std::ifstream stream(path, std::ios::binary | std::ios::ate);
+		if (!stream)
+			return false;
+		const std::streamoff length = stream.tellg();
+		if (length < 0 || static_cast<uint64_t>(length) > SIZE_MAX)
+			return false;
+		outBytes.resize(static_cast<size_t>(length));
+		stream.seekg(0, std::ios::beg);
+		return outBytes.empty() ||
+			static_cast<bool>(stream.read(
+				reinterpret_cast<char*>(outBytes.data()), length));
+	}
+
+	bool Canonicalize_Utf8_Lf(
+		const std::vector<uint8_t>& source,
+		std::vector<uint8_t>& outBytes)
+	{
+		if (source.size() >= 3u && source[0] == 0xefu &&
+			source[1] == 0xbbu && source[2] == 0xbfu)
+		{
+			return false;
+		}
+		outBytes.clear();
+		outBytes.reserve(source.size());
+		for (size_t index = 0; index < source.size(); ++index)
+		{
+			if ('\r' == source[index])
+			{
+				if (index + 1u < source.size() && '\n' == source[index + 1u])
+					++index;
+				outBytes.push_back('\n');
+			}
+			else
+			{
+				outBytes.push_back(source[index]);
+			}
+		}
+		return true;
+	}
+
+	int Hex_Nibble(uint8_t value)
+	{
+		if (value >= '0' && value <= '9')
+			return value - '0';
+		if (value >= 'a' && value <= 'f')
+			return value - 'a' + 10;
+		return -1;
+	}
+
+	bool Decode_Lowercase_Hex_File(
+		const std::filesystem::path& path,
+		std::vector<uint8_t>& outBytes)
+	{
+		std::vector<uint8_t> encoded;
+		if (!Read_File_Bytes(path, encoded))
+			return false;
+		std::vector<uint8_t> nibbles;
+		nibbles.reserve(encoded.size());
+		for (const uint8_t value : encoded)
+		{
+			if (0 != std::isspace(static_cast<unsigned char>(value)))
+				continue;
+			if (Hex_Nibble(value) < 0)
+				return false;
+			nibbles.push_back(value);
+		}
+		if (nibbles.empty() || 0 != nibbles.size() % 2u)
+			return false;
+		outBytes.clear();
+		outBytes.reserve(nibbles.size() / 2u);
+		for (size_t index = 0; index < nibbles.size(); index += 2u)
+		{
+			outBytes.push_back(static_cast<uint8_t>(
+				(Hex_Nibble(nibbles[index]) << 4) |
+				Hex_Nibble(nibbles[index + 1u])));
+		}
+		return true;
+	}
+
+	bool Validate_Fixture_Identity(
+		const std::filesystem::path& root,
+		const wchar_t* fileName,
+		uint64_t expectedByteCount,
+		std::string_view expectedSha256)
+	{
+		if (nullptr == fileName || 0u == expectedByteCount ||
+			64u != expectedSha256.size())
+		{
+			return false;
+		}
+		const std::filesystem::path path = root / fileName;
+		std::error_code error;
+		const std::filesystem::file_status status =
+			std::filesystem::symlink_status(path, error);
+		if (error || !std::filesystem::is_regular_file(status))
+			return false;
+		const uintmax_t byteCount = std::filesystem::file_size(path, error);
+		if (error || 0u == byteCount || byteCount != expectedByteCount)
+			return false;
+		std::vector<uint8_t> bytes;
+		return Read_File_Bytes(path, bytes) &&
+			bytes.size() == expectedByteCount &&
+			Sha256_Hex(bytes) == expectedSha256;
+	}
+
+	const BASELINE_FIXTURE_EXPECTATION* Find_Corrupt_Baseline(
+		CORRUPT_FIXTURE_KIND kind)
+	{
+		switch (kind)
+		{
+		case CORRUPT_FIXTURE_KIND::MODEL:
+			return &kCorruptBaselineManifest[0];
+		case CORRUPT_FIXTURE_KIND::SKELETON:
+			return &kCorruptBaselineManifest[1];
+		case CORRUPT_FIXTURE_KIND::ANIMATION:
+			return &kCorruptBaselineManifest[2];
+		default:
+			return nullptr;
+		}
+	}
+
+	bool Validate_Corrupt_Baseline_Manifest(const std::filesystem::path& root)
+	{
+		return std::all_of(
+			kCorruptBaselineManifest.begin(),
+			kCorruptBaselineManifest.end(),
+			[&root](const BASELINE_FIXTURE_EXPECTATION& baseline)
+			{
+				return Validate_Fixture_Identity(
+					root, baseline.fileName, baseline.byteCount, baseline.sha256);
+			});
+	}
+
+	bool Validate_Corrupt_Fixture_Manifest(const std::filesystem::path& root)
+	{
+		for (size_t left = 0; left < kCorruptFixtureManifest.size(); ++left)
+		{
+			const CORRUPT_FIXTURE_EXPECTATION& expectation =
+				kCorruptFixtureManifest[left];
+			const BASELINE_FIXTURE_EXPECTATION* baseline =
+				Find_Corrupt_Baseline(expectation.kind);
+			if (nullptr == expectation.fileName ||
+				0u == expectation.byteCount ||
+				64u != expectation.sha256.size() ||
+				expectation.expectedError.empty() || nullptr == baseline ||
+				expectation.sha256 == baseline->sha256 ||
+				std::wstring_view(expectation.fileName) == baseline->fileName)
+			{
+				return false;
+			}
+			for (size_t right = left + 1u;
+				right < kCorruptFixtureManifest.size(); ++right)
+			{
+				if (std::wstring_view(kCorruptFixtureManifest[left].fileName) ==
+					std::wstring_view(kCorruptFixtureManifest[right].fileName))
+				{
+					return false;
+				}
+			}
+		}
+
+		std::error_code error;
+		std::filesystem::directory_iterator iterator(root, error);
+		if (error)
+			return false;
+		const std::filesystem::directory_iterator end;
+		std::vector<std::wstring> corruptNamedEntries;
+		for (; iterator != end; iterator.increment(error))
+		{
+			if (error)
+				return false;
+			const std::wstring fileName = iterator->path().filename().wstring();
+			if (std::wstring_view(fileName).starts_with(L"corrupt_"))
+				corruptNamedEntries.push_back(fileName);
+		}
+		if (error || corruptNamedEntries.size() != kCorruptFixtureManifest.size())
+			return false;
+		for (const CORRUPT_FIXTURE_EXPECTATION& expectation :
+			kCorruptFixtureManifest)
+		{
+			if (corruptNamedEntries.end() == std::find(
+					corruptNamedEntries.begin(),
+					corruptNamedEntries.end(),
+					std::wstring(expectation.fileName)))
+			{
+				return false;
+			}
+		}
+		const auto countKind = [](CORRUPT_FIXTURE_KIND kind)
+		{
+			return std::count_if(
+				kCorruptFixtureManifest.begin(),
+				kCorruptFixtureManifest.end(),
+				[kind](const CORRUPT_FIXTURE_EXPECTATION& expectation)
+				{
+					return expectation.kind == kind;
+				});
+		};
+		if (static_cast<size_t>(countKind(CORRUPT_FIXTURE_KIND::MODEL)) !=
+				kExpectedCorruptModelFixtureCount ||
+			static_cast<size_t>(countKind(CORRUPT_FIXTURE_KIND::SKELETON)) !=
+				kExpectedCorruptSkeletonFixtureCount ||
+			static_cast<size_t>(countKind(CORRUPT_FIXTURE_KIND::ANIMATION)) !=
+				kExpectedCorruptAnimationFixtureCount)
+		{
+			return false;
+		}
+
+		return std::all_of(
+			kCorruptFixtureManifest.begin(),
+			kCorruptFixtureManifest.end(),
+			[&root](const CORRUPT_FIXTURE_EXPECTATION& expectation)
+			{
+				return Validate_Fixture_Identity(
+					root,
+					expectation.fileName,
+					expectation.byteCount,
+					expectation.sha256);
+			});
 	}
 
 	std::string Json_Escape(const std::string& value)
@@ -375,16 +774,38 @@ namespace
 
 		const std::array<float, 3> expectedW = { -1.f, 1.f, -1.f };
 		const std::array<float, 3> expectedBinormalZ = { 1.f, -1.f, 1.f };
+		const std::array<float3_t, 3> expectedPosition = {
+			float3_t{ 100.f, 200.f, -300.f },
+			float3_t{ 400.f, 200.f, -300.f },
+			float3_t{ 100.f, 600.f, -800.f },
+		};
+		const std::array<float2_t, 3> expectedUv0 = {
+			float2_t{ 0.f, 0.f },
+			float2_t{ 1.f, 0.f },
+			float2_t{ 0.f, 1.f },
+		};
 		const std::array<uint32_t, 3> expectedColor = {
 			0x44332211u, 0x88776655u, 0xccbbaa99u
 		};
 		if (mesh.tangentHandedness.size() != mesh.vertices.size() ||
-			mesh.color0Rgba8.size() != mesh.vertices.size())
+			mesh.color0Rgba8.size() != mesh.vertices.size() ||
+			mesh.name != "fixture" || 0 != mesh.materialIndex)
 			return false;
 		for (size_t i = 0; i < mesh.vertices.size(); ++i)
 		{
 			const VTXMESH& vertex = mesh.vertices[i];
-			if (!Nearly_Equal(mesh.tangentHandedness[i], expectedW[i]) ||
+			if (!Nearly_Equal(vertex.vPosition.x, expectedPosition[i].x) ||
+				!Nearly_Equal(vertex.vPosition.y, expectedPosition[i].y) ||
+				!Nearly_Equal(vertex.vPosition.z, expectedPosition[i].z) ||
+				!Nearly_Equal(vertex.vNormal.x, 0.f) ||
+				!Nearly_Equal(vertex.vNormal.y, 1.f) ||
+				!Nearly_Equal(vertex.vNormal.z, 0.f) ||
+				!Nearly_Equal(vertex.vTangent.x, 1.f) ||
+				!Nearly_Equal(vertex.vTangent.y, 0.f) ||
+				!Nearly_Equal(vertex.vTangent.z, 0.f) ||
+				!Nearly_Equal(vertex.vTexcoord.x, expectedUv0[i].x) ||
+				!Nearly_Equal(vertex.vTexcoord.y, expectedUv0[i].y) ||
+				!Nearly_Equal(mesh.tangentHandedness[i], expectedW[i]) ||
 				!Nearly_Equal(vertex.vBinormal.z, expectedBinormalZ[i]) ||
 				mesh.color0Rgba8[i] != expectedColor[i])
 			{
@@ -392,6 +813,54 @@ namespace
 			}
 		}
 		return true;
+	}
+
+	bool Validate_Writer_Independent_Golden(
+		const std::filesystem::path& hexPath,
+		const std::filesystem::path& manifestPath)
+	{
+		std::vector<uint8_t> manifestBytes;
+		std::vector<uint8_t> canonicalManifestBytes;
+		std::vector<uint8_t> goldenBytes;
+		if (!Read_File_Bytes(manifestPath, manifestBytes) ||
+			!Canonicalize_Utf8_Lf(manifestBytes, canonicalManifestBytes) ||
+			Sha256_Hex(canonicalManifestBytes) != kWriterIndependentManifestSha256 ||
+			!Decode_Lowercase_Hex_File(hexPath, goldenBytes) ||
+			goldenBytes.size() != kWriterIndependentGoldenByteCount ||
+			Sha256_Hex(goldenBytes) != kWriterIndependentGoldenSha256)
+		{
+			return false;
+		}
+
+		std::error_code error;
+		const std::filesystem::path temporaryPath =
+			std::filesystem::temp_directory_path(error) /
+			(L"lostark-wmodel-v11-independent-" +
+				std::to_wstring(static_cast<uint32_t>(_getpid())) +
+				L".wmodel");
+		if (error)
+			return false;
+		{
+			std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
+			if (!stream || !stream.write(
+				reinterpret_cast<const char*>(goldenBytes.data()),
+				static_cast<std::streamsize>(goldenBytes.size())))
+			{
+				std::filesystem::remove(temporaryPath, error);
+				return false;
+			}
+		}
+
+		MODEL_ASSET_DATA asset{};
+		MODEL_DECODE_REPORT report{};
+		const bool valid = Validate_Color_V11(temporaryPath) &&
+			Decode(temporaryPath, asset, report) && report.succeeded &&
+			Hex_Digest(asset.geometryMetadata.payloadSha256) ==
+				kWriterIndependentPayloadSha256 &&
+			Hex_Digest(asset.geometryMetadata.metadataIdentitySha256) ==
+				kWriterIndependentMetadataIdentitySha256;
+		std::filesystem::remove(temporaryPath, error);
+		return valid && !error;
 	}
 
 	bool Validate_NoColor_V11(const std::filesystem::path& path)
@@ -474,21 +943,41 @@ namespace
 			asset.meshes.front().color0Rgba8.empty();
 	}
 
-	bool Reject_Corrupt_Dependency(
-		const std::filesystem::path& root,
-		bool corruptSkeleton)
+	struct CORRUPT_REJECTION_RESULT
 	{
+		bool decodeRejected = false;
+		bool transactionalRollback = false;
+		bool errorCategoryMatched = false;
+		std::string error{};
+	};
+
+	CORRUPT_REJECTION_RESULT Reject_Corrupt_Dependency(
+		const std::filesystem::path& root,
+		const CORRUPT_FIXTURE_EXPECTATION& expectation)
+	{
+		const bool corruptSkeleton =
+			CORRUPT_FIXTURE_KIND::SKELETON == expectation.kind;
+		if (!corruptSkeleton &&
+			CORRUPT_FIXTURE_KIND::ANIMATION != expectation.kind)
+		{
+			return {};
+		}
 		MODEL_ASSET_LOAD_DESC desc{};
 		desc.assetRoot = root;
 		desc.meshPath = root / L"legacy_skinned.wmesh";
 		desc.skeletonPath = root /
-			(corruptSkeleton ? L"corrupt_skeleton.wskel" : L"legacy_skinned.wskel");
+			(corruptSkeleton ? expectation.fileName : L"legacy_skinned.wskel");
 		if (!corruptSkeleton)
-			desc.animationPaths.push_back(root / L"corrupt_animation.wanim");
+			desc.animationPaths.push_back(root / expectation.fileName);
 		MODEL_ASSET_DATA asset{};
 		MODEL_DECODE_REPORT report{};
-		return !Decode_Desc(desc, asset, report) && !report.succeeded &&
-			!report.error.empty() && Is_Default_Asset(asset);
+		const bool decoded = Decode_Desc(desc, asset, report);
+		return {
+			!decoded && !report.succeeded && !report.error.empty(),
+			Is_Default_Asset(asset),
+			report.error == expectation.expectedError,
+			report.error,
+		};
 	}
 
 	bool Is_Valid_Artist_Candidate(
@@ -694,8 +1183,17 @@ namespace
 				{
 					return MODEL_VERTEX_KIND::STATIC == mesh.vertexKind;
 				});
+			const bool legacySidecarsAbsent = std::all_of(
+				asset.meshes.begin(), asset.meshes.end(),
+				[](const MODEL_MESH_DATA& mesh)
+				{
+					return !mesh.embeddedBounds.present && !mesh.hasColor0 &&
+						mesh.tangentHandedness.empty() && mesh.color0Rgba8.empty() &&
+						!mesh.indices.empty() &&
+						(!mesh.vertices.empty() || !mesh.skinnedVertices.empty());
+				});
 			if ((layout.skinned && !decodedSkinned) ||
-				(!layout.skinned && !decodedStatic))
+				(!layout.skinned && !decodedStatic) || !legacySidecarsAbsent)
 				return false;
 			if (layout.skinned)
 				++skinnedCount;
@@ -708,8 +1206,10 @@ namespace
 		}
 
 		const bool valid = files.size() == kExpectedLegacyResourceCorpusCount &&
-			staticCount > 0 && skinnedCount > 0 && hasBoundsCount > 0 &&
-			multiSubmeshCount > 0;
+			staticCount == kExpectedLegacyStaticCount &&
+			skinnedCount == kExpectedLegacySkinnedCount &&
+			hasBoundsCount == kExpectedLegacyBoundsCount &&
+			multiSubmeshCount == kExpectedLegacyMultiSubmeshCount;
 		std::cout << "Legacy WModel C++ corpus sweep: files=" << files.size()
 			<< " static=" << staticCount << " skinned=" << skinnedCount
 			<< " hasBounds=" << hasBoundsCount
@@ -719,12 +1219,19 @@ namespace
 		return valid;
 	}
 
-	bool Reject_Corrupt(const std::filesystem::path& path)
+	CORRUPT_REJECTION_RESULT Reject_Corrupt(
+		const std::filesystem::path& path,
+		std::string_view expectedError)
 	{
 		MODEL_ASSET_DATA asset{};
 		MODEL_DECODE_REPORT report{};
-		return !Decode(path, asset, report) && !report.succeeded &&
-			!report.error.empty() && Is_Default_Asset(asset);
+		const bool decoded = Decode(path, asset, report);
+		return {
+			!decoded && !report.succeeded && !report.error.empty(),
+			Is_Default_Asset(asset),
+			report.error == expectedError,
+			report.error,
+		};
 	}
 }
 
@@ -751,11 +1258,24 @@ int wmain(int argc, wchar_t** argv)
 			std::filesystem::absolute(argv[2]).lexically_normal();
 		return Sweep_Legacy_Resource_Corpus(resourceRoot) ? 0 : 1;
 	}
+	if (4 == argc &&
+		std::wstring_view(argv[1]) == L"--writer-independent-golden")
+	{
+		const bool valid = Validate_Writer_Independent_Golden(
+			std::filesystem::absolute(argv[2]).lexically_normal(),
+			std::filesystem::absolute(argv[3]).lexically_normal());
+		std::cout << "WModel writer-independent immutable golden: bytes="
+			<< kWriterIndependentGoldenByteCount << ' '
+			<< "decodedSemantic=" << valid
+			<< " externallyAuthenticated=0 product=false\n";
+		return valid ? 0 : 1;
+	}
 	if (2 != argc)
 	{
 		std::wcerr << L"usage: WModelGeometryContractHarness <suite-directory> "
 			L"| --candidate <wmodel> | --dump-candidate <wmodel> "
-			L"| --legacy-corpus <Resources>\n";
+			L"| --legacy-corpus <Resources> "
+			L"| --writer-independent-golden <hex> <expected-json>\n";
 		return 2;
 	}
 
@@ -769,42 +1289,48 @@ int wmain(int argc, wchar_t** argv)
 	const bool legacyStatic = Validate_Legacy_Static_Multisubmesh(
 		root / L"legacy_static_multisubmesh_bounds.wmesh");
 	const bool legacySkinned = Validate_Legacy_Skinned(root);
-	const bool corruptSkeletonTransactional = Reject_Corrupt_Dependency(root, true);
-	const bool corruptAnimationTransactional = Reject_Corrupt_Dependency(root, false);
-	const std::array<const wchar_t*, 29> corruptFiles = {
-		L"corrupt_truncated.wmodel",
-		L"corrupt_header.wmodel",
-		L"corrupt_outer_version.wmodel",
-		L"corrupt_outer_metadata.wmodel",
-		L"corrupt_section_gap.wmodel",
-		L"corrupt_mesh_version.wmodel",
-		L"corrupt_material_container.wmodel",
-		L"corrupt_stride.wmodel",
-		L"corrupt_material_index.wmodel",
-		L"corrupt_channel.wmodel",
-		L"corrupt_unknown_channel.wmodel",
-		L"corrupt_tangent_w.wmodel",
-		L"corrupt_tangent_w_boundary_out.wmodel",
-		L"corrupt_tangent_w_minus_1_000005.wmodel",
-		L"corrupt_zero_normal.wmodel",
-		L"corrupt_zero_tangent.wmodel",
-		L"corrupt_parallel_basis.wmodel",
-		L"corrupt_scale_overflow_pair.wmodel",
-		L"corrupt_scale_wrong_reciprocal.wmodel",
-		L"corrupt_payload_hash.wmodel",
-		L"corrupt_metadata_hash.wmodel",
-		L"corrupt_bounds.wmodel",
-		L"corrupt_bounds_nonfinite.wmodel",
-		L"corrupt_bounds_inverted.wmodel",
-		L"corrupt_bounds_float_intermediate.wmodel",
-		L"corrupt_metadata_version.wmodel",
-		L"corrupt_provenance.wmodel",
-		L"corrupt_evidence.wmodel",
-		L"corrupt_unverified_source_fidelity.wmodel",
-	};
-	bool corruptRejected = true;
-	for (const wchar_t* file : corruptFiles)
-		corruptRejected = Reject_Corrupt(root / file) && corruptRejected;
+	const bool corruptBaselineIdentity =
+		Validate_Corrupt_Baseline_Manifest(root);
+	const bool corruptFixtureManifest = Validate_Corrupt_Fixture_Manifest(root);
+	const bool corruptMutationIdentities =
+		corruptBaselineIdentity && corruptFixtureManifest;
+	CORRUPT_REJECTION_RESULT corruptSkeleton{};
+	CORRUPT_REJECTION_RESULT corruptAnimation{};
+	bool corruptModelBytesRejected = corruptMutationIdentities;
+	bool corruptModelTransactional = corruptMutationIdentities;
+	bool corruptModelErrorCategories = corruptMutationIdentities;
+	if (corruptMutationIdentities)
+	{
+		for (const CORRUPT_FIXTURE_EXPECTATION& expectation :
+			kCorruptFixtureManifest)
+		{
+			if (CORRUPT_FIXTURE_KIND::SKELETON == expectation.kind)
+			{
+				corruptSkeleton = Reject_Corrupt_Dependency(root, expectation);
+				continue;
+			}
+			if (CORRUPT_FIXTURE_KIND::ANIMATION == expectation.kind)
+			{
+				corruptAnimation = Reject_Corrupt_Dependency(root, expectation);
+				continue;
+			}
+			const CORRUPT_REJECTION_RESULT result =
+				Reject_Corrupt(root / expectation.fileName, expectation.expectedError);
+			corruptModelBytesRejected =
+				result.decodeRejected && corruptModelBytesRejected;
+			corruptModelTransactional =
+				result.transactionalRollback && corruptModelTransactional;
+			corruptModelErrorCategories =
+				result.errorCategoryMatched && corruptModelErrorCategories;
+			if (!result.errorCategoryMatched)
+			{
+				std::cout << "WModel corrupt error category mismatch: "
+					<< std::filesystem::path(expectation.fileName).string()
+					<< " expected=" << expectation.expectedError
+					<< " actual=" << result.error << '\n';
+			}
+		}
+	}
 
 	std::cout << "WModel geometry decoder contract: validColor=" << validColor
 		<< " validNoColor=" << validNoColor
@@ -812,13 +1338,27 @@ int wmain(int argc, wchar_t** argv)
 		<< " legacyMetadataAbsent=" << legacyAbsent
 		<< " legacyStaticMultiBounds=" << legacyStatic
 		<< " legacySkinned=" << legacySkinned
-		<< " corruptSkeletonTransactional=" << corruptSkeletonTransactional
-		<< " corruptAnimationTransactional=" << corruptAnimationTransactional
-		<< " corruptRejected=" << corruptRejected
+		<< " corruptBaselineIdentity=" << corruptBaselineIdentity
+		<< " corruptFixtureManifest=" << corruptFixtureManifest
+		<< " corruptMutationIdentities=" << corruptMutationIdentities
+		<< " corruptModelBytesRejected=" << corruptModelBytesRejected
+		<< " corruptModelTransactional=" << corruptModelTransactional
+		<< " corruptModelErrorCategories=" << corruptModelErrorCategories
+		<< " corruptSkeletonBytesRejected=" << corruptSkeleton.decodeRejected
+		<< " corruptSkeletonTransactional=" << corruptSkeleton.transactionalRollback
+		<< " corruptSkeletonErrorCategory=" << corruptSkeleton.errorCategoryMatched
+		<< " corruptAnimationBytesRejected=" << corruptAnimation.decodeRejected
+		<< " corruptAnimationTransactional=" << corruptAnimation.transactionalRollback
+		<< " corruptAnimationErrorCategory=" << corruptAnimation.errorCategoryMatched
 		<< " selfConsistentUnauthenticated=true externallyAuthenticated=0 "
 		<< "preScaleConsumed=false product=false\n";
 	return validColor && validNoColor && validTangentBoundary &&
 		legacyAbsent && legacyStatic &&
-		legacySkinned && corruptSkeletonTransactional &&
-		corruptAnimationTransactional && corruptRejected ? 0 : 1;
+		legacySkinned && corruptBaselineIdentity && corruptFixtureManifest &&
+		corruptMutationIdentities &&
+		corruptModelBytesRejected && corruptModelTransactional &&
+		corruptModelErrorCategories && corruptSkeleton.decodeRejected &&
+		corruptSkeleton.transactionalRollback && corruptSkeleton.errorCategoryMatched &&
+		corruptAnimation.decodeRejected && corruptAnimation.transactionalRollback &&
+		corruptAnimation.errorCategoryMatched ? 0 : 1;
 }

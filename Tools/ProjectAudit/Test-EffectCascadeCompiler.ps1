@@ -42,6 +42,12 @@ foreach ($requiredType in @(
     'EFFECT_CASCADE_MODULE_REFERENCE',
     'EFFECT_CASCADE_BLOCKER_REQUIREMENT',
     'EFFECT_CASCADE_PROPERTY_KEY',
+    'EFFECT_CASCADE_CLASS_LINEAGE_STATUS',
+	'EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND',
+	'EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS',
+	'EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY',
+    'EFFECT_CASCADE_PROPERTY_HANDLER_RESULT',
+    'EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT',
     'EFFECT_CASCADE_HANDLER_RECEIPT',
     'EFFECT_CASCADE_INSPECTION_OPCODE',
     'EFFECT_CASCADE_DISTRIBUTION_EVIDENCE',
@@ -62,7 +68,13 @@ foreach ($identityField in @(
     'strCanonicalPath',
     'strCanonicalReferenceId',
     'iStableReference',
+    'strCanonicalLineageId',
+    'strHandlerFieldId',
     'strCanonicalDocumentIdentity',
+	'strExpectedExternalIdentityToken',
+	'iDeclaredSourceElementCount',
+    'iDisabledSourceRecipeCount',
+	'iQuarantinedExactClassCount',
     'strInspectionHash')) {
     if ($compilerHeader -notmatch [regex]::Escape($identityField)) {
         throw "Cascade inspection identity field is missing: $identityField"
@@ -80,27 +92,52 @@ if ($compilerSource -match 'Effect_Distribution|Recipe\.Modules|SourceRecipe\.Mo
 }
 foreach ($requiredBoundary in @(
     'SOURCE_VALUE_PAYLOAD_NOT_MATERIALIZED',
+    'SOURCE_EXECUTION_ADMISSION_REJECTED_BEFORE_PAYLOAD',
     'SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING',
     'SOURCE_EXACT_CLASS_LINEAGE_ADAPTER_PENDING',
+	'EXACT_SOURCE_CLASS_HANDLER_UNAVAILABLE',
+	'UNKNOWN_EXACT_CLASS_OPCODE_QUARANTINED',
+	'UNKNOWN_EXACT_CLASS_QUARANTINE',
+	'QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED',
+	'SOURCE_RECIPE_DISABLED_QUARANTINED',
+	'SELF_CONSISTENT_UNAUTHENTICATED',
+	'SOURCE_EXTERNAL_IDENTITY_ADAPTER_PENDING',
     'CANONICAL_DOCUMENT_CHECKSUM_NOT_AUTHENTICATION',
     'PRODUCT_ADMISSION_DISABLED',
     'RAW_OPCODE_EXECUTOR_UNCHANGED',
+	'PROPERTY_BLOCKERS_REQUIRED',
+	'MODULE_DEFAULT_OR_NATIVE_TAIL_UNRESOLVED',
+	'PINNED_SOURCE_RECORD_PHYSICAL_ABSENT',
+	'RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED',
+	'SOURCE_EXACT_PHYSICAL_PACKAGE',
     'Staged->bExecutable = false',
     'Staged->bProductAdmission = false')) {
     if ($compilerSource -notmatch [regex]::Escape($requiredBoundary)) {
         throw "Cascade inspection non-executable boundary is missing: $requiredBoundary"
     }
 }
-if ($compilerSource -match 'strExactSourceClass\s*=' -or
-    $compilerSource -match 'strAliasId\s*=') {
-    throw 'Existing normalized class receipt must not be laundered into exact source class or alias lineage.'
+if ($compilerSource -notmatch 'Validate_ClassLineage' -or
+    $compilerSource -notmatch 'RECEIPT_NORMALIZED_ONLY' -or
+    $compilerSource -notmatch 'EXACT_SOURCE_CLASS' -or
+	$compilerSource -notmatch 'EXACT_CLASS_HANDLER_QUARANTINED' -or
+    $compilerSource -notmatch 'never becomes an executable alias in G04') {
+    throw 'Cascade class lineage must remain typed, explicit, and fail-closed.'
+}
+if ($compilerSource -notmatch 'Is_ExpectedSourceIdentity' -or
+	$compilerSource -notmatch 'Is_ExpectedExternalIdentityToken' -or
+	$compilerSource -notmatch 'OutInspection = std::move\(Staged\)' -or
+	$compilerSource -match 'OutInspection\.reset\(\)') {
+	throw 'Cascade external identity seam and staged output rollback boundary are missing.'
 }
 foreach ($mutationGate in @(
     'Validate_PropertyEvidenceMatrix',
     'Validate_ModuleEvidenceAggregate',
+    'Validate_InspectionStructure',
+	'Is_CanonicalBlockerSet',
     'Parse_ModuleRole',
     'Role_MatchesOpcode',
     'Is_EmitterNodeLodLineage',
+	'Is_SourceRendererIdentity',
     'Is_SafeGeometryAssetId',
     'unknown storage or duplicate property path',
     'unconsumed or storage-mutated opcode property',
@@ -116,8 +153,8 @@ foreach ($legacyGap in @(
     'particlemodulecollision',
     'particlemodulesizemultiplyvelocity',
     'particlemodulesubuvmovie',
-    'particlemodulesoundparameter',
-    'particlemodulevectorconstant')) {
+    'distributionfloatsoundparameter',
+    'distributionvectorconstant')) {
     if ($compilerSource -notmatch [regex]::Escape($legacyGap)) {
         throw "Cascade legacy migration report is missing: $legacyGap"
     }
@@ -142,26 +179,47 @@ foreach ($projectText in @($clientProject, $clientFilters,
 }
 foreach ($harnessEvidence in @(
     'iSystemCount == 7u',
+	'iDeclaredSourceElementCount == 35u',
+	'iDisabledSourceRecipeCount == 0u',
     'iEmitterCount == 35u',
     'iOrderedOpcodeCount == 399u',
     'iDistributionEvidenceCount == 629u',
     'Simultaneous Source And Coverage Unknown Property',
     'Rejects EF Class Mutation',
+    'Self Identical Exact Source Class Without Alias',
+	'Disabled Source Recipe Remains One Of 35 Declared Emitters',
+	'Fixed External Source Identity Rejects Coordinated Blocker Reseal',
+	'Fixed External Source Identity Rejects Coordinated Module ID Reseal',
+	'Fixed External Source Identity Rejects Coordinated Record SHA Reseal',
+	'Fixed External Source Identity Rejects Coordinated Provenance Reseal',
+	'Malformed External Source Identity Rejects Before Compile And Preserves Caller Commit',
+	'Gate1 Normalized Exact Classes Preserve 373 Typed And 26 Schema Independent Custom Quarantined',
+    'Free Form Alias As Non Executable Evidence',
+	'Exact Custom Class As Handler Quarantined Non Executable Evidence',
     'SOURCE_TAGGED To SOURCE_EXACT',
+    'Execution Admission Before Payload And Handler Closure',
     'ColorScale Module Property Aggregate Promotion',
     'Rejects Forged Selected LOD Path',
+    'Noncanonical Selected LOD Object Suffix',
+    'Emitter Node Reused As Selected LOD Node',
     'Emitter Node Package Mismatch',
     'Alias ID And Source Reference Lineage Drift',
     'Opcode Alias Schema Mismatch',
     'REQUIRED Opcode With Valid Looking MODULE Role',
-    'Rejects Duplicate Property Path And Reference',
+	'Rejects Late Duplicate Property Path And Preserves Caller Commit',
     'Rejects Unknown Property Storage',
     'Rejects Duplicate Module Reference Index',
     'Rejects Nonfinite Typed Evidence',
+	'Element And Renderer Identity Mismatch',
     'Geometry And Resource Binding Mismatch',
-    'Raw B Reusing A Canonical Identity',
+	'Mesh Renderer Geometry Binding Removal',
+	'Raw B Reusing A External Identity',
     'Fabricated Default Inspection',
     'Hash Binds Source Emitter Node And LOD Lineage',
+    'Forged Opcode Handler Field Consumption Receipt',
+	'Stripped Property Fidelity Blocker',
+	'Required Property Blocker Loss',
+	'Fabricated Property Fidelity Blocker',
     'Explicit Migration Gaps')) {
     if ($harnessSource -notmatch [regex]::Escape($harnessEvidence)) {
         throw "Cascade inspection harness evidence is missing: $harnessEvidence"
@@ -179,7 +237,7 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
     if ($LASTEXITCODE -ne 0 -or
         ($output -join "`n") -notmatch 'failures : 0' -or
         ($output -join "`n") -notmatch
-            'Inspection IR Preserves Fixture 7 Systems 35 Emitters 399 Opcodes 629 Isolated Distributions') {
+            'Inspection IR Preserves Fixture 7 Systems 35 Declared Emitters 399 Opcodes 629 Isolated Distributions') {
         throw "Cascade inspection compiler harness failed:`n$($output -join "`n")"
     }
 }

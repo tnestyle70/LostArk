@@ -439,6 +439,18 @@ namespace
 		return Result;
 	}
 
+	std::string Canonicalize_ExactSourceModuleClass(
+		const std::string_view Value)
+	{
+		std::string Result(Value);
+		std::transform(Result.begin(), Result.end(), Result.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char_t>(std::tolower(Character));
+			});
+		return Result;
+	}
+
 	bool_t Is_ParticleParameterDistribution(const std::string_view Value)
 	{
 		std::string Normalized(Value);
@@ -1583,10 +1595,20 @@ namespace
 				pCoverage->Get_Array())
 			{
 				if (!Validate_ExactFields(CoverageValue,
-					{ "moduleStableId", "normalizedClass", "status",
-						"blockers", "properties" }, "Effect source module coverage",
+					{ "moduleStableId", "exactSourceClass", "aliasId",
+						"normalizedClass", "status", "blockers", "properties" },
+					"Effect source module coverage",
 					strOutError))
 					return false;
+				const Client::DATA_JSON_VALUE* pExactSourceClass =
+					CoverageValue.Find("exactSourceClass");
+				const Client::DATA_JSON_VALUE* pAliasId =
+					CoverageValue.Find("aliasId");
+				if ((nullptr == pExactSourceClass) != (nullptr == pAliasId))
+				{
+					strOutError = "Effect source module class lineage is incomplete.";
+					return false;
+				}
 				const Client::DATA_JSON_VALUE* pStatus = Find_Field(
 					CoverageValue, "status", Client::DATA_JSON_TYPE::STRING,
 					strOutError);
@@ -1597,6 +1619,11 @@ namespace
 				if (nullptr == pStatus || nullptr == pProperties ||
 					!Read_String(CoverageValue, "moduleStableId",
 						Coverage.strModuleStableId, strOutError) ||
+					(nullptr != pExactSourceClass &&
+						(!Read_String(CoverageValue, "exactSourceClass",
+							Coverage.strExactSourceClass, strOutError) ||
+						 !Read_String(CoverageValue, "aliasId",
+							Coverage.strAliasId, strOutError))) ||
 					!Read_String(CoverageValue, "normalizedClass",
 						Coverage.strNormalizedClass, strOutError) ||
 					!Read_StringArray(CoverageValue, "blockers", Coverage.Blockers,
@@ -1606,6 +1633,12 @@ namespace
 						std::size(SOURCE_COVERAGE_STATUS_TOKENS),
 						Coverage.eStatus))
 					return false;
+				if (nullptr != pExactSourceClass &&
+					Coverage.strExactSourceClass.empty())
+				{
+					strOutError = "Effect source exact module class is empty.";
+					return false;
+				}
 				for (const Client::DATA_JSON_VALUE& PropertyValue :
 					pProperties->Get_Array())
 				{
@@ -2059,8 +2092,15 @@ namespace
 					Recipe.ModuleCoverage[iCoverage];
 				Output << (0u == iCoverage ? "\n" : ",\n")
 					<< "          { \"moduleStableId\": \""
-					<< Client::CDataJson::Escape(Coverage.strModuleStableId)
-					<< "\", \"normalizedClass\": \""
+					<< Client::CDataJson::Escape(Coverage.strModuleStableId);
+				if (!Coverage.strExactSourceClass.empty())
+				{
+					Output << "\", \"exactSourceClass\": \""
+						<< Client::CDataJson::Escape(Coverage.strExactSourceClass)
+						<< "\", \"aliasId\": \""
+						<< Client::CDataJson::Escape(Coverage.strAliasId);
+				}
+				Output << "\", \"normalizedClass\": \""
 					<< Client::CDataJson::Escape(Coverage.strNormalizedClass)
 					<< "\", \"status\": \""
 					<< SOURCE_COVERAGE_STATUS_TOKENS[
@@ -3958,6 +3998,14 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 			if (Coverage.strModuleStableId.empty() ||
 				Coverage.strModuleStableId.size() > 512u ||
 				!Has_VisibleCharacter(Coverage.strModuleStableId) ||
+				(!Coverage.strExactSourceClass.empty() &&
+					(Coverage.strExactSourceClass.size() > 256u ||
+					 !Has_VisibleCharacter(Coverage.strExactSourceClass))) ||
+				(Coverage.strExactSourceClass.empty() &&
+					!Coverage.strAliasId.empty()) ||
+				Coverage.strAliasId.size() > 256u ||
+				(!Coverage.strAliasId.empty() &&
+					!Has_VisibleCharacter(Coverage.strAliasId)) ||
 				Coverage.strNormalizedClass.empty() ||
 				Coverage.eStatus >= EFFECT_SOURCE_COVERAGE_STATUS::END ||
 				!bBlockersValid ||
@@ -3984,8 +4032,14 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 				!Has_VisibleCharacter(Module.strStableId) || Module.strClassName.empty() ||
 				Module.strObjectPath.empty() ||
 				CoverageIterator == CoverageById.end() ||
+				(!CoverageIterator->second->strExactSourceClass.empty() &&
+					CoverageIterator->second->strExactSourceClass !=
+						Module.strClassName) ||
 				CoverageIterator->second->strNormalizedClass !=
-					Normalize_SourceModuleClass(Module.strClassName))
+					(CoverageIterator->second->strExactSourceClass.empty() ?
+						Normalize_SourceModuleClass(Module.strClassName) :
+						Canonicalize_ExactSourceModuleClass(
+							Module.strClassName)))
 			{
 				strOutError = "Source-contract module identity is invalid.";
 				return false;

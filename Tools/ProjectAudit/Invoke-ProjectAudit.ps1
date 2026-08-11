@@ -891,6 +891,70 @@ try {
 	Add-Check 'effect.artist-31470-source-contract' `
 		$artistSourceContractPassed `
 		$artistSourceContractDetail
+	$artistSourceExecutionPassed = $false
+	$artistSourceExecutionDetail = ''
+	try {
+		$artistSourceExecutionDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistSourceExecutionPassed =
+			$artistSourceExecutionDetail -match
+			'PASS: Artist F 31470 Source execution mode=shallow modules=399 ready=370 blocked=29'
+	}
+	catch {
+		$artistSourceExecutionDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-execution-semantics' `
+		$artistSourceExecutionPassed `
+		$artistSourceExecutionDetail
+	$artistCustomHandlerOraclePassed = $false
+	$artistCustomHandlerOracleDetail = ''
+	try {
+		$artistCustomHandlerOracleDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistCustomHandlerOraclePassed =
+			$artistCustomHandlerOracleDetail -match
+			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=381 blocked=18 distributionBlocked=3 ownerless=0 product=false'
+	}
+	catch {
+		$artistCustomHandlerOracleDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-custom-handler-oracle' `
+		$artistCustomHandlerOraclePassed `
+		$artistCustomHandlerOracleDetail
+	$artistSourceOracleAcquisitionPassed = $false
+	$artistSourceOracleAcquisitionDetail = ''
+	try {
+		$artistSourceOracleAcquisitionDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470SourceOracleAcquisition.ps1' `
+			| Out-String).Trim()
+		$artistSourceOracleAcquisitionPassed =
+			$artistSourceOracleAcquisitionDetail -match
+			'PASS: Artist F 31470 Source oracle acquisition mode=shallow classes=15 families=7 blocked=29 providers=0 pilots=0 vss=permission-unchecked nextStage=NO-GO product=false'
+	}
+	catch {
+		$artistSourceOracleAcquisitionDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-oracle-acquisition' `
+		$artistSourceOracleAcquisitionPassed `
+		$artistSourceOracleAcquisitionDetail
+	$artistReconstructedSourceCapabilityPassed = $false
+	$artistReconstructedSourceCapabilityDetail = ''
+	try {
+		$artistReconstructedSourceCapabilityDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedSourceCapability.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedSourceCapabilityPassed =
+			$artistReconstructedSourceCapabilityDetail -match
+			'PASS: Artist F 31470 reconstructed Source capability mode=shallow families=7 occurrences=29 properties=148 distributions=65 samples=87 unknown=0 ownerless=0 genericFallback=0 sourceExact=0 execution=false product=false'
+	}
+	catch {
+		$artistReconstructedSourceCapabilityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-source-capability' `
+		$artistReconstructedSourceCapabilityPassed `
+		$artistReconstructedSourceCapabilityDetail
 	$artistMaterialContractPassed = $false
 	$artistMaterialContractDetail = ''
 	try {
@@ -942,6 +1006,22 @@ try {
 	Add-Check 'effect.typed-cascade-compiler' `
 		$effectCascadeCompilerPassed `
 		$effectCascadeCompilerDetail
+	$effectDerivedPublisherPassed = $false
+	$effectDerivedPublisherDetail = ''
+	try {
+		$effectDerivedPublisherDetail = (& `
+			'.\Tools\ProjectAudit\Test-EffectDerivedArtifactPublisher.ps1' `
+			2>&1 | Out-String).Trim()
+		$effectDerivedPublisherPassed =
+			$effectDerivedPublisherDetail -match
+			'PASS: derived Effect artifact publisher schema tests=14 authenticated-blocker-union=true rollback=true product=false'
+	}
+	catch {
+		$effectDerivedPublisherDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.derived-artifact-publisher' `
+		$effectDerivedPublisherPassed `
+		$effectDerivedPublisherDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'

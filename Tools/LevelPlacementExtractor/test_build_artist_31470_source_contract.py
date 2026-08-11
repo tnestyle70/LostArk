@@ -27,6 +27,10 @@ SOURCE_RECEIPT = ROOT / "Data/Effects/Imported/Artist/skill.31470.source-receipt
 SOURCE_EVIDENCE = ROOT / "Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json"
 LOCAL_REFERENCE_CLOSURE = ROOT / "Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json"
 GEOMETRY_PARITY = ROOT / "Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json"
+SOURCE_SEMANTIC_CLOSURE = ROOT / (
+    "Data/Effects/Imported/Artist/Candidates/"
+    "skill.31470.source-semantic-closure.json"
+)
 PUBLISHER = ROOT / "Tools/EffectPipeline/Publish-Effects.ps1"
 
 
@@ -401,6 +405,7 @@ class Artist31470SourceContractTests(unittest.TestCase):
         for reference_id in (
             "distribution-target-000",
             "distribution-target-001",
+            "distribution-target-007",
             "distribution-target-009",
             "distribution-target-014",
         ):
@@ -641,6 +646,8 @@ class Artist31470SourceContractTests(unittest.TestCase):
             str(LOCAL_REFERENCE_CLOSURE),
             "--geometry-parity",
             str(GEOMETRY_PARITY),
+            "--source-semantic-closure",
+            str(SOURCE_SEMANTIC_CLOSURE),
             "--output-candidate",
             str(CANDIDATE),
             "--output-receipt",

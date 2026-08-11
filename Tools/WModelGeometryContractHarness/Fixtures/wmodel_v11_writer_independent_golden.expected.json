@@ -1,0 +1,37 @@
+{
+  "schema": "lostark.wmodel-v11-writer-independent-golden",
+  "formatVersion": 1,
+  "payloadFile": "wmodel_v11_writer_independent_golden.hex",
+  "payloadEncoding": "LOWERCASE_HEX_WITH_ASCII_WHITESPACE_ONLY",
+  "decodedByteCount": 850,
+  "decodedSha256": "6bb409094185d9c41f6cb241d42bdc767b0a3868f7ed981d194e8fe1ccd23627",
+  "testConstruction": "FROZEN_BYTES_NO_RUNTIME_COOKER_IMPORT",
+  "expected": {
+    "outerVersion": "1.1",
+    "meshVersion": "1.1",
+    "meshName": "fixture",
+    "materialIndex": 0,
+    "vertexCount": 3,
+    "indexU32": [0, 2, 1],
+    "position": [
+      [100.0, 200.0, -300.0],
+      [400.0, 200.0, -300.0],
+      [100.0, 600.0, -800.0]
+    ],
+    "normal": [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+    "tangentXyz": [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+    "tangentW": [-1.0, 1.0, -1.0],
+    "uv0": [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+    "color0Rgba8": [1144201745, 2289526357, 3434850969],
+    "bounds": {
+      "minimum": [100.0, 200.0, -800.0],
+      "maximum": [400.0, 600.0, -300.0],
+      "center": [250.0, 400.0, -550.0]
+    },
+    "sourceToWModelScale": 100.0,
+    "geometryPreScale": 0.01,
+    "sourceFidelityFlags": 0,
+    "externalAuthentication": false,
+    "productAdmission": false
+  }
+}

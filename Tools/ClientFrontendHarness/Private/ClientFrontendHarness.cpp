@@ -3677,15 +3677,29 @@ namespace
 			CEffectDocumentCodec::Serialize(roundTrip) == serialized;
 		const std::string inputIdentity =
 			CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(roundTrip);
+		EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY expectedIdentity;
+		expectedIdentity.eKind =
+			EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::CANDIDATE_SHA256;
+		expectedIdentity.strExpectedCanonicalDocumentIdentity = inputIdentity;
+		expectedIdentity.strExpectedExternalIdentityToken =
+			"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+		const auto ExpectedIdentityFor = [&expectedIdentity](
+			const EFFECT_DOCUMENT_DESC& candidate)
+		{
+			EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY result = expectedIdentity;
+			result.strExpectedCanonicalDocumentIdentity =
+				CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(candidate);
+			return result;
+		};
 		const EFFECT_CASCADE_INSPECTION_COMPILER_PROBE probeBefore =
 			CEffectCascadeCompiler::Get_Probe();
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> inspectionA;
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> inspectionB;
 		const bool_t inspectedTwice = parsed &&
 			CEffectCascadeCompiler::Compile_SourceInspection(
-				roundTrip, inputIdentity, inspectionA, status) &&
+				roundTrip, expectedIdentity, inspectionA, status) &&
 			CEffectCascadeCompiler::Compile_SourceInspection(
-				roundTrip, inputIdentity, inspectionB, status);
+				roundTrip, expectedIdentity, inspectionB, status);
 		const EFFECT_CASCADE_INSPECTION_COMPILER_PROBE probeAfter =
 			CEffectCascadeCompiler::Get_Probe();
 		if (!inspectedTwice)
@@ -3698,9 +3712,12 @@ namespace
 		};
 		bool_t stableInspectionIdentity = inspectedTwice;
 		bool_t handlerReceiptsComplete = inspectedTwice;
+		bool_t propertyBlockersBound = inspectedTwice;
 		bool_t rawDistributionsIsolated = inspectedTwice;
 		bool_t fidelityBlocked = inspectedTwice;
 		size_t geometryEvidenceCount = 0u;
+		size_t baselineExactClassCount = 0u;
+		size_t baselineQuarantinedClassCount = 0u;
 		for (const EFFECT_CASCADE_INSPECTION_SYSTEM& system :
 			inspectedTwice ? inspectionA->Systems :
 			std::vector<EFFECT_CASCADE_INSPECTION_SYSTEM>{})
@@ -3717,6 +3734,8 @@ namespace
 				fidelityBlocked = fidelityBlocked &&
 					emitter.SelectedLOD.bIdentityPreserved &&
 					!emitter.SelectedLOD.bExecutionFidelityProven &&
+					!emitter.SelectedLOD.strCanonicalLineageId.empty() &&
+					emitter.SelectedLOD.iStableReference != 0u &&
 					!emitter.SelectedLOD.Blockers.empty();
 				if (emitter.Geometry.has_value())
 				{
@@ -3729,6 +3748,16 @@ namespace
 				for (const EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
 					emitter.OrderedOpcodes)
 				{
+					const bool_t bQuarantinedExactClass =
+						opcode.eOpcode == EFFECT_CASCADE_OPCODE::
+							UNKNOWN_EXACT_CLASS_QUARANTINE;
+					const bool_t bExactKnownClass =
+						opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS;
+					if (bExactKnownClass)
+						++baselineExactClassCount;
+					if (bQuarantinedExactClass)
+						++baselineQuarantinedClassCount;
 					handlerReceiptsComplete = handlerReceiptsComplete &&
 						opcode.eOpcode != EFFECT_CASCADE_OPCODE::END &&
 						opcode.Reference.eRole != EFFECT_CASCADE_MODULE_ROLE::END &&
@@ -3743,23 +3772,57 @@ namespace
 						opcode.HandlerReceipt.eAggregateBlockerRequirement !=
 							EFFECT_CASCADE_BLOCKER_REQUIREMENT::END &&
 						!opcode.HandlerReceipt.strReceiptNormalizedClass.empty() &&
-						opcode.HandlerReceipt.strExactSourceClass.empty() &&
+						!opcode.HandlerReceipt.strExactSourceClass.empty() &&
 						opcode.HandlerReceipt.strAliasId.empty() &&
+						opcode.HandlerReceipt.strExactSourceClass ==
+							opcode.HandlerReceipt.strReceiptNormalizedClass &&
+						(bExactKnownClass ||
+						 (bQuarantinedExactClass &&
+						  opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+								EXACT_CLASS_HANDLER_QUARANTINED)) &&
 						!opcode.HandlerReceipt.strOpcodeSchemaId.empty() &&
-						!opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						opcode.HandlerReceipt.bExactClassLineagePreserved &&
+						!opcode.HandlerReceipt.bPayloadAccessAllowed &&
+						opcode.HandlerReceipt.PropertyConsumption.size() ==
+							opcode.Properties.size() &&
 						opcode.HandlerReceipt.ConsumedPropertyReferenceIds.size() ==
 							opcode.Properties.size() &&
-						!opcode.HandlerReceipt.RequiredPropertyReferenceIds.empty();
+						(bQuarantinedExactClass ||
+						 !opcode.HandlerReceipt.RequiredPropertyReferenceIds.empty());
 					for (const EFFECT_CASCADE_PROPERTY_EVIDENCE& property :
 						opcode.Properties)
 					{
+						const size_t propertyIndex = static_cast<size_t>(
+							&property - opcode.Properties.data());
+						const EFFECT_CASCADE_PROPERTY_HANDLER_RECEIPT& receipt =
+							opcode.HandlerReceipt.PropertyConsumption[propertyIndex];
 						stableInspectionIdentity = stableInspectionIdentity &&
 							!property.Property.strCanonicalPath.empty() &&
 							!property.Property.strCanonicalReferenceId.empty() &&
 							property.Property.iStableSemantic != 0u &&
 							property.Property.iStableReference != 0u &&
 							property.eBlockerRequirement !=
-								EFFECT_CASCADE_BLOCKER_REQUIREMENT::END;
+								EFFECT_CASCADE_BLOCKER_REQUIREMENT::END &&
+							receipt.Property.strCanonicalReferenceId ==
+								property.Property.strCanonicalReferenceId &&
+							receipt.eStorage == property.eStorage &&
+							receipt.eResult ==
+								(bQuarantinedExactClass ?
+								 EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED :
+								 EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+									SCHEMA_FIELD_CONSUMED_EXECUTION_BLOCKED) &&
+							!receipt.strHandlerFieldId.empty();
+						propertyBlockersBound = propertyBlockersBound &&
+							((property.eBlockerRequirement ==
+								EFFECT_CASCADE_BLOCKER_REQUIREMENT::
+									PROPERTY_BLOCKERS_REQUIRED &&
+							  !property.Blockers.empty()) ||
+							 (property.eBlockerRequirement ==
+								EFFECT_CASCADE_BLOCKER_REQUIREMENT::
+									BLOCKERS_PROHIBITED &&
+							  property.Blockers.empty()));
 					}
 				}
 				for (const EFFECT_CASCADE_DISTRIBUTION_EVIDENCE& distribution :
@@ -3776,12 +3839,35 @@ namespace
 			inspectionA->iCompilerRevision ==
 				EFFECT_CASCADE_INSPECTION_COMPILER_REVISION &&
 			!inspectionA->bExecutable && !inspectionA->bProductAdmission &&
+			inspectionA->eExternalIdentityKind ==
+				EFFECT_CASCADE_EXTERNAL_SOURCE_IDENTITY_KIND::CANDIDATE_SHA256 &&
+			inspectionA->eExternalIdentityStatus ==
+				EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::
+					SELF_CONSISTENT_UNAUTHENTICATED &&
+			inspectionA->strExpectedExternalIdentityToken ==
+				expectedIdentity.strExpectedExternalIdentityToken &&
+			!inspectionA->bExternalIdentityAuthenticated &&
+			std::find(inspectionA->Blockers.begin(), inspectionA->Blockers.end(),
+				"SELF_CONSISTENT_UNAUTHENTICATED") !=
+					inspectionA->Blockers.end() &&
+			std::find(inspectionA->Blockers.begin(), inspectionA->Blockers.end(),
+				"SOURCE_EXTERNAL_IDENTITY_ADAPTER_PENDING") !=
+					inspectionA->Blockers.end() &&
 			inspectionA->Consumption.iSystemCount == 7u &&
+			inspectionA->Consumption.iDeclaredSourceElementCount == 35u &&
+			inspectionA->Consumption.iDisabledSourceRecipeCount == 0u &&
 			inspectionA->Consumption.iEmitterCount == 35u &&
 			inspectionA->Consumption.iOrderedOpcodeCount == 399u &&
 			inspectionA->Consumption.iDistributionEvidenceCount == 629u &&
 			inspectionA->Consumption.iUnknownClassCount == 0u &&
+			inspectionA->Consumption.iQuarantinedExactClassCount == 26u &&
+			baselineExactClassCount == 373u &&
+			baselineQuarantinedClassCount == 26u &&
 			inspectionA->Consumption.iUnconsumedRequiredPropertyCount == 0u &&
+			inspectionA->Consumption.iHandlerPropertyReceiptCount ==
+				inspectionA->Consumption.iConsumedPropertyCount &&
+			inspectionA->Consumption.iRawPayloadReadCount == 0u &&
+			inspectionA->Consumption.iExecutableOpcodeCount == 0u &&
 			inspectionA->Consumption.iConsumedPropertyCount >=
 				inspectionA->Consumption.iRequiredPropertyCount &&
 			RendererCount(EFFECT_RENDERER_TYPE::MESH_PARTICLE) == 13u &&
@@ -3791,14 +3877,15 @@ namespace
 			RendererCount(EFFECT_RENDERER_TYPE::LIGHT_PARTICLE) == 1u &&
 			RendererCount(EFFECT_RENDERER_TYPE::SCREEN_POST) == 1u &&
 			stableInspectionIdentity && handlerReceiptsComplete &&
+			propertyBlockersBound &&
 			rawDistributionsIsolated && fidelityBlocked &&
 			geometryEvidenceCount == 13u,
-			"Artist F Inspection IR Preserves Fixture 7 Systems 35 Emitters 399 Opcodes 629 Isolated Distributions And Renderer Denominator");
+			"Artist F Inspection IR Preserves Fixture 7 Systems 35 Declared Emitters 399 Opcodes 629 Isolated Distributions And Renderer Denominator");
 		runner.Require(inspectedTwice &&
 			inspectionA->strCanonicalDocumentIdentity == inputIdentity &&
 			inspectionA->strInspectionHash == inspectionB->strInspectionHash &&
 			CEffectCascadeCompiler::Matches_InputIdentity(
-				*inspectionA, inputIdentity) &&
+				*inspectionA, expectedIdentity) &&
 			probeAfter.iCompileAttemptCount ==
 				probeBefore.iCompileAttemptCount + 2u &&
 			probeAfter.iCompileSuccessCount ==
@@ -3808,51 +3895,249 @@ namespace
 		const auto CompileMutation = [&](const EFFECT_DOCUMENT_DESC& candidate)
 		{
 			std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> rejected;
-			const std::string candidateIdentity =
-				CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(candidate);
 			return CEffectCascadeCompiler::Compile_SourceInspection(
-				candidate, candidateIdentity, rejected, status);
+				candidate, ExpectedIdentityFor(candidate), rejected, status);
 		};
+		const auto FixedExpectedIdentityRejects = [&](
+			const EFFECT_DOCUMENT_DESC& candidate)
+		{
+			std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> fixedOutput =
+				inspectionA;
+			const auto* pCommitted = fixedOutput.get();
+			const bool_t fixedRejected =
+				!CEffectCascadeCompiler::Compile_SourceInspection(
+					candidate, expectedIdentity, fixedOutput, status) &&
+				fixedOutput.get() == pCommitted &&
+				fixedOutput->strInspectionHash == inspectionA->strInspectionHash;
+			const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY resealedExpected =
+				ExpectedIdentityFor(candidate);
+			std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>
+				selfConsistentInspection;
+			const bool_t selfConsistentOnly =
+				CEffectCascadeCompiler::Compile_SourceInspection(
+					candidate, resealedExpected, selfConsistentInspection, status) &&
+				nullptr != selfConsistentInspection &&
+				selfConsistentInspection->eExternalIdentityStatus ==
+					EFFECT_CASCADE_EXTERNAL_IDENTITY_STATUS::
+						SELF_CONSISTENT_UNAUTHENTICATED &&
+				!selfConsistentInspection->bExternalIdentityAuthenticated &&
+				!selfConsistentInspection->bExecutable &&
+				!selfConsistentInspection->bProductAdmission;
+			return fixedRejected && selfConsistentOnly;
+		};
+
+		EFFECT_DOCUMENT_DESC disabledRecipe = roundTrip;
+		const std::string disabledElementId =
+			disabledRecipe.Elements.front().strElementId;
+		disabledRecipe.Elements.front().SourceRecipe.bEnabled = false;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> disabledInspection;
+		const bool_t disabledInspected =
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				disabledRecipe, ExpectedIdentityFor(disabledRecipe),
+				disabledInspection, status);
+		const EFFECT_CASCADE_INSPECTION_EMITTER* pDisabledEmitter = nullptr;
+		if (disabledInspected && nullptr != disabledInspection)
+		{
+			for (const EFFECT_CASCADE_INSPECTION_SYSTEM& system :
+				disabledInspection->Systems)
+			{
+				const auto found = std::find_if(system.Emitters.begin(),
+					system.Emitters.end(), [&disabledElementId](const auto& emitter)
+					{
+						return emitter.Identity.strElementId == disabledElementId;
+					});
+				if (found != system.Emitters.end())
+				{
+					pDisabledEmitter = &*found;
+					break;
+				}
+			}
+		}
+		runner.Require(disabledInspected && nullptr != disabledInspection &&
+			disabledInspection->Consumption.iDeclaredSourceElementCount == 35u &&
+			disabledInspection->Consumption.iEmitterCount == 35u &&
+			disabledInspection->Consumption.iDisabledSourceRecipeCount == 1u &&
+			disabledInspection->Consumption.iOrderedOpcodeCount == 399u &&
+			nullptr != pDisabledEmitter && !pDisabledEmitter->bSourceRecipeEnabled &&
+			std::find(pDisabledEmitter->Blockers.begin(),
+				pDisabledEmitter->Blockers.end(),
+				"SOURCE_RECIPE_DISABLED_QUARANTINED") !=
+					pDisabledEmitter->Blockers.end() &&
+			!disabledInspection->bExecutable &&
+			!disabledInspection->bProductAdmission,
+			"Disabled Source Recipe Remains One Of 35 Declared Emitters As Explicit Quarantine");
+
+		EFFECT_DOCUMENT_DESC fixedBlockerAttack = roundTrip;
+		bool_t changedFixedBlocker = !fixedBlockerAttack.Elements.front().
+			SourceRecipe.CompiledExecutionAdmission.Blockers.empty();
+		if (changedFixedBlocker)
+		{
+			fixedBlockerAttack.Elements.front().SourceRecipe.
+				CompiledExecutionAdmission.Blockers.front() =
+					"FORGED_EXTERNAL_BLOCKER";
+		}
+		runner.Require(changedFixedBlocker &&
+			FixedExpectedIdentityRejects(fixedBlockerAttack),
+			"Fixed External Source Identity Rejects Coordinated Blocker Reseal");
+
+		EFFECT_DOCUMENT_DESC fixedModuleIdAttack = roundTrip;
+		auto& attackedReference = fixedModuleIdAttack.Elements.front().SourceRecipe.
+			CompilerEvidence.ModuleReferenceOrder.front();
+		auto& attackedCoverage = fixedModuleIdAttack.Elements.front().SourceRecipe.
+			ModuleCoverage.front();
+		attackedReference.strSourceObjectId = "FX_FIXED_ATTACK:export:999";
+		attackedCoverage.strModuleStableId =
+			attackedReference.strSourceObjectId + "@ref:" +
+			std::to_string(attackedReference.iSourceReferenceIndex);
+		runner.Require(FixedExpectedIdentityRejects(fixedModuleIdAttack),
+			"Fixed External Source Identity Rejects Coordinated Module ID Reseal");
+
+		EFFECT_DOCUMENT_DESC fixedRecordAttack = roundTrip;
+		fixedRecordAttack.Elements.front().SourceRecipe.CompilerEvidence.
+			ModuleReferenceOrder.front().strSourceRecordSha256 =
+				std::string(64u, 'b');
+		runner.Require(FixedExpectedIdentityRejects(fixedRecordAttack),
+			"Fixed External Source Identity Rejects Coordinated Record SHA Reseal");
+
+		EFFECT_DOCUMENT_DESC fixedProvenanceAttack = roundTrip;
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC* pMetadataProvenance = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : fixedProvenanceAttack.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				const auto found = std::find_if(coverage.Properties.begin(),
+					coverage.Properties.end(), [](const auto& property)
+					{
+						return property.eStatus ==
+							EFFECT_SOURCE_COVERAGE_STATUS::METADATA_ONLY &&
+							property.Blockers.empty() &&
+							(property.strProvenance ==
+								"DETERMINISTIC_REFERENCE_METADATA_JOIN" ||
+							 property.strProvenance ==
+								"OPAQUE_HEX_METADATA_ONLY");
+					});
+				if (found != coverage.Properties.end())
+				{
+					pMetadataProvenance = &*found;
+					break;
+				}
+			}
+			if (nullptr != pMetadataProvenance)
+				break;
+		}
+		if (nullptr != pMetadataProvenance)
+		{
+			pMetadataProvenance->strProvenance =
+				pMetadataProvenance->strProvenance ==
+					"DETERMINISTIC_REFERENCE_METADATA_JOIN" ?
+					"OPAQUE_HEX_METADATA_ONLY" :
+					"DETERMINISTIC_REFERENCE_METADATA_JOIN";
+		}
+		runner.Require(nullptr != pMetadataProvenance &&
+			FixedExpectedIdentityRejects(fixedProvenanceAttack),
+			"Fixed External Source Identity Rejects Coordinated Provenance Reseal");
 
 		EFFECT_DOCUMENT_DESC rawPayloadMutation = roundTrip;
 		rawPayloadMutation.Elements.front().SourceRecipe.Modules.front().strClassName =
 			"raw-payload-mutation-must-not-drive-inspection";
-		const std::string rawMutationIdentity =
-			CEffectCascadeCompiler::Build_CanonicalDocumentIdentity(
-				rawPayloadMutation);
+		const EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY rawMutationExpected =
+			ExpectedIdentityFor(rawPayloadMutation);
 		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> rawMutationInspection;
-		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> reusedIdentityInspection;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>
+			reusedIdentityInspection = inspectionA;
+		const auto* pCommittedBeforeFailure = reusedIdentityInspection.get();
+		const std::string committedHashBeforeFailure =
+			reusedIdentityInspection->strInspectionHash;
 		const bool_t reusedIdentityRejected =
 			!CEffectCascadeCompiler::Compile_SourceInspection(
-				rawPayloadMutation, inputIdentity,
+				rawPayloadMutation, expectedIdentity,
 				reusedIdentityInspection, status);
 		const bool_t rawPayloadNotMaterialized =
 			CEffectCascadeCompiler::Compile_SourceInspection(
-				rawPayloadMutation, rawMutationIdentity,
+				rawPayloadMutation, rawMutationExpected,
 				rawMutationInspection, status);
 		runner.Require(reusedIdentityRejected && rawPayloadNotMaterialized &&
 			nullptr != rawMutationInspection &&
+			reusedIdentityInspection.get() == pCommittedBeforeFailure &&
+			reusedIdentityInspection->strInspectionHash ==
+				committedHashBeforeFailure &&
 			!CEffectCascadeCompiler::Matches_InputIdentity(
-				*inspectionA, rawMutationIdentity) &&
+				*inspectionA, rawMutationExpected) &&
 			rawMutationInspection->strInspectionHash !=
 				inspectionA->strInspectionHash &&
 			rawMutationInspection->Consumption.iOrderedOpcodeCount ==
 				inspectionA->Consumption.iOrderedOpcodeCount,
-			"Raw B Reusing A Canonical Identity Is Rejected While Values Stay Unmaterialized");
+			"Raw B Reusing A External Identity Is Rejected And Preserves Committed Inspection While Values Stay Unmaterialized");
+
+		EFFECT_CASCADE_EXPECTED_SOURCE_IDENTITY malformedExpected =
+			expectedIdentity;
+		malformedExpected.strExpectedExternalIdentityToken = "sha256:broken";
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>
+			malformedIdentityOutput = inspectionA;
+		const auto* pMalformedCommitted = malformedIdentityOutput.get();
+		runner.Require(!CEffectCascadeCompiler::Compile_SourceInspection(
+			roundTrip, malformedExpected, malformedIdentityOutput, status) &&
+			malformedIdentityOutput.get() == pMalformedCommitted &&
+			malformedIdentityOutput->strInspectionHash ==
+				inspectionA->strInspectionHash,
+			"Malformed External Source Identity Rejects Before Compile And Preserves Caller Commit");
 
 		EFFECT_CASCADE_INSPECTION_IR fabricatedInspection;
 		fabricatedInspection.strCanonicalDocumentIdentity = inputIdentity;
 		fabricatedInspection.strInspectionHash = "fnv1a64:0123456789abcdef";
 		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
-			fabricatedInspection, inputIdentity),
+			fabricatedInspection, expectedIdentity),
 			"Fabricated Default Inspection Cannot Match A Valid Looking Identity And Hash");
 
 		EFFECT_CASCADE_INSPECTION_IR tamperedInspection = *inspectionA;
 		tamperedInspection.Systems.front().Emitters.front().SelectedLOD.strEmitterNodeId =
 			"FX_PC_SDM_07:export:99999";
 		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
-			tamperedInspection, inputIdentity),
+			tamperedInspection, expectedIdentity),
 			"Inspection Hash Binds Source Emitter Node And LOD Lineage");
+
+		EFFECT_CASCADE_INSPECTION_IR forgedHandlerReceipt = *inspectionA;
+		forgedHandlerReceipt.Systems.front().Emitters.front().OrderedOpcodes.
+			front().HandlerReceipt.PropertyConsumption.front().strHandlerFieldId =
+				"ue3.cascade.forged-handler-field.v1";
+		runner.Require(!CEffectCascadeCompiler::Matches_InputIdentity(
+			forgedHandlerReceipt, expectedIdentity),
+			"Inspection Rejects Forged Opcode Handler Field Consumption Receipt");
+
+		EFFECT_CASCADE_INSPECTION_IR strippedPropertyBlocker = *inspectionA;
+		EFFECT_CASCADE_PROPERTY_EVIDENCE* pBlockedInspectionProperty = nullptr;
+		for (EFFECT_CASCADE_INSPECTION_SYSTEM& system :
+			strippedPropertyBlocker.Systems)
+		{
+			for (EFFECT_CASCADE_INSPECTION_EMITTER& emitter : system.Emitters)
+			{
+				for (EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
+					emitter.OrderedOpcodes)
+				{
+					const auto blocked = std::find_if(opcode.Properties.begin(),
+						opcode.Properties.end(), [](const auto& property)
+						{
+							return !property.Blockers.empty();
+						});
+					if (blocked != opcode.Properties.end())
+					{
+						pBlockedInspectionProperty = &*blocked;
+						break;
+					}
+				}
+				if (nullptr != pBlockedInspectionProperty)
+					break;
+			}
+			if (nullptr != pBlockedInspectionProperty)
+				break;
+		}
+		if (nullptr != pBlockedInspectionProperty)
+			pBlockedInspectionProperty->Blockers.clear();
+		runner.Require(nullptr != pBlockedInspectionProperty &&
+			!CEffectCascadeCompiler::Matches_InputIdentity(
+				strippedPropertyBlocker, expectedIdentity),
+			"Inspection Rejects Stripped Property Fidelity Blocker");
 
 		EFFECT_DOCUMENT_DESC simultaneousUnknown = roundTrip;
 		EFFECT_SOURCE_LITERAL_DESC unknownRaw;
@@ -3876,11 +4161,270 @@ namespace
 		runner.Require(!CompileMutation(efClassMutation),
 			"Cascade Inspection Rejects EF Class Mutation Without Blanket Normalization");
 
+		EFFECT_DOCUMENT_DESC exactClassLineage = roundTrip;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC& exactCoverage =
+			exactClassLineage.Elements.front().SourceRecipe.ModuleCoverage.front();
+		exactCoverage.strExactSourceClass = exactCoverage.strNormalizedClass;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> exactInspection;
+		const bool_t exactClassAccepted =
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				exactClassLineage, ExpectedIdentityFor(exactClassLineage),
+				exactInspection, status);
+		const EFFECT_CASCADE_HANDLER_RECEIPT* pExactReceipt =
+			exactClassAccepted && nullptr != exactInspection ?
+				&exactInspection->Systems.front().Emitters.front().
+					OrderedOpcodes.front().HandlerReceipt : nullptr;
+		runner.Require(nullptr != pExactReceipt &&
+			pExactReceipt->eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS &&
+			pExactReceipt->bExactClassLineagePreserved &&
+			pExactReceipt->strExactSourceClass ==
+				pExactReceipt->strReceiptNormalizedClass &&
+			pExactReceipt->strAliasId.empty(),
+			"Cascade Inspection Accepts Only Self Identical Exact Source Class Without Alias");
+
+		EFFECT_DOCUMENT_DESC receiptBoundClasses = roundTrip;
+		for (EFFECT_ELEMENT_DESC& element : receiptBoundClasses.Elements)
+		{
+			std::map<std::string, std::string> sourceClassByStableId;
+			for (const EFFECT_SOURCE_MODULE_DESC& module :
+				element.SourceRecipe.Modules)
+			{
+				sourceClassByStableId.emplace(
+					module.strStableId, module.strClassName);
+			}
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				const auto sourceClass = sourceClassByStableId.find(
+					coverage.strModuleStableId);
+				if (sourceClass != sourceClassByStableId.end())
+				{
+					coverage.strNormalizedClass = sourceClass->second;
+					coverage.strExactSourceClass = sourceClass->second;
+				}
+				coverage.strAliasId.clear();
+			}
+		}
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>
+			receiptBoundInspection;
+		const bool_t receiptBoundInspected =
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				receiptBoundClasses, ExpectedIdentityFor(receiptBoundClasses),
+				receiptBoundInspection, status);
+		size_t exactClassCount = 0u;
+		size_t exactClassQuarantinedCount = 0u;
+		size_t inspectedClassCount = 0u;
+		bool_t quarantinedClassesPreserved = true;
+		if (receiptBoundInspected && nullptr != receiptBoundInspection)
+		{
+			for (const EFFECT_CASCADE_INSPECTION_SYSTEM& system :
+				receiptBoundInspection->Systems)
+			{
+				for (const EFFECT_CASCADE_INSPECTION_EMITTER& emitter :
+					system.Emitters)
+				{
+					for (const EFFECT_CASCADE_INSPECTION_OPCODE& opcode :
+						emitter.OrderedOpcodes)
+					{
+						++inspectedClassCount;
+						if (opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::EXACT_SOURCE_CLASS)
+						{
+							++exactClassCount;
+						}
+						else if (opcode.HandlerReceipt.eClassLineageStatus ==
+							EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+								EXACT_CLASS_HANDLER_QUARANTINED)
+						{
+							++exactClassQuarantinedCount;
+							quarantinedClassesPreserved =
+								quarantinedClassesPreserved &&
+								opcode.HandlerReceipt.bExactClassLineagePreserved &&
+								opcode.HandlerReceipt.strAliasId.empty() &&
+								opcode.HandlerReceipt.strExactSourceClass ==
+									opcode.HandlerReceipt.strReceiptNormalizedClass &&
+								opcode.eOpcode == EFFECT_CASCADE_OPCODE::
+									UNKNOWN_EXACT_CLASS_QUARANTINE &&
+								(opcode.HandlerReceipt.strExactSourceClass.
+									starts_with("ef") ||
+								 opcode.HandlerReceipt.strExactSourceClass.find(
+									"_seeded") != std::string::npos) &&
+								std::find(opcode.HandlerReceipt.Blockers.begin(),
+									opcode.HandlerReceipt.Blockers.end(),
+									"EXACT_SOURCE_CLASS_HANDLER_UNAVAILABLE") !=
+										opcode.HandlerReceipt.Blockers.end() &&
+								std::find(opcode.HandlerReceipt.Blockers.begin(),
+									opcode.HandlerReceipt.Blockers.end(),
+									"UNKNOWN_EXACT_CLASS_OPCODE_QUARANTINED") !=
+										opcode.HandlerReceipt.Blockers.end() &&
+								std::all_of(
+									opcode.HandlerReceipt.PropertyConsumption.begin(),
+									opcode.HandlerReceipt.PropertyConsumption.end(),
+									[](const auto& receipt)
+									{
+										return receipt.eResult ==
+											EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+												QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED &&
+											!receipt.bRequired;
+									});
+						}
+					}
+				}
+			}
+		}
+		runner.Require(receiptBoundInspected && nullptr != receiptBoundInspection &&
+			inspectedClassCount == 399u && exactClassCount == 373u &&
+			exactClassQuarantinedCount == 26u &&
+			quarantinedClassesPreserved &&
+			receiptBoundInspection->Consumption.iOrderedOpcodeCount == 399u &&
+			receiptBoundInspection->Consumption.iQuarantinedExactClassCount ==
+				26u &&
+			receiptBoundInspection->Consumption.iUnknownClassCount == 0u &&
+			!receiptBoundInspection->bExecutable &&
+			!receiptBoundInspection->bProductAdmission,
+			"Artist F Gate1 Normalized Exact Classes Preserve 373 Typed And 26 Schema Independent Custom Quarantined References");
+
+		EFFECT_DOCUMENT_DESC forgedAlias = roundTrip;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC& aliasCoverage =
+			forgedAlias.Elements.front().SourceRecipe.ModuleCoverage.front();
+		aliasCoverage.strExactSourceClass =
+			"ef" + aliasCoverage.strNormalizedClass;
+		aliasCoverage.strAliasId = "ue3.cascade.alias.forged.v1";
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> aliasInspection;
+		const bool_t aliasInspected = CEffectCascadeCompiler::Compile_SourceInspection(
+			forgedAlias, ExpectedIdentityFor(forgedAlias),
+			aliasInspection, status);
+		const EFFECT_CASCADE_HANDLER_RECEIPT* pAliasReceipt =
+			aliasInspected && nullptr != aliasInspection ?
+				&aliasInspection->Systems.front().Emitters.front().
+					OrderedOpcodes.front().HandlerReceipt : nullptr;
+		runner.Require(nullptr != pAliasReceipt &&
+			pAliasReceipt->eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					EXPLICIT_ALIAS_EXECUTION_UNAPPROVED &&
+			!aliasInspection->bExecutable &&
+			std::find(pAliasReceipt->Blockers.begin(),
+				pAliasReceipt->Blockers.end(),
+				"SOURCE_CLASS_ALIAS_UNAPPROVED") !=
+					pAliasReceipt->Blockers.end(),
+			"Cascade Inspection Preserves Free Form Alias As Non Executable Evidence");
+
+		EFFECT_DOCUMENT_DESC exactClassMismatch = roundTrip;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC& mismatchCoverage =
+			exactClassMismatch.Elements.front().SourceRecipe.ModuleCoverage.front();
+		mismatchCoverage.strNormalizedClass =
+			"ef" + mismatchCoverage.strNormalizedClass;
+		mismatchCoverage.strExactSourceClass =
+			mismatchCoverage.strNormalizedClass;
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR> mismatchInspection;
+		const bool_t mismatchInspected =
+			CEffectCascadeCompiler::Compile_SourceInspection(
+				exactClassMismatch, ExpectedIdentityFor(exactClassMismatch),
+				mismatchInspection, status);
+		const EFFECT_CASCADE_HANDLER_RECEIPT* pMismatchReceipt =
+			mismatchInspected && nullptr != mismatchInspection ?
+				&mismatchInspection->Systems.front().Emitters.front().
+					OrderedOpcodes.front().HandlerReceipt : nullptr;
+		const EFFECT_CASCADE_INSPECTION_OPCODE* pMismatchOpcode =
+			mismatchInspected && nullptr != mismatchInspection ?
+				&mismatchInspection->Systems.front().Emitters.front().
+					OrderedOpcodes.front() : nullptr;
+		runner.Require(nullptr != pMismatchReceipt &&
+			nullptr != pMismatchOpcode &&
+			pMismatchOpcode->eOpcode ==
+				EFFECT_CASCADE_OPCODE::UNKNOWN_EXACT_CLASS_QUARANTINE &&
+			pMismatchReceipt->eClassLineageStatus ==
+				EFFECT_CASCADE_CLASS_LINEAGE_STATUS::
+					EXACT_CLASS_HANDLER_QUARANTINED &&
+			pMismatchReceipt->bExactClassLineagePreserved &&
+			pMismatchReceipt->strAliasId.empty() &&
+			!mismatchInspection->bExecutable &&
+			std::find(pMismatchReceipt->Blockers.begin(),
+				pMismatchReceipt->Blockers.end(),
+				"EXACT_SOURCE_CLASS_HANDLER_UNAVAILABLE") !=
+					pMismatchReceipt->Blockers.end() &&
+			std::find(pMismatchReceipt->Blockers.begin(),
+				pMismatchReceipt->Blockers.end(),
+				"UNKNOWN_EXACT_CLASS_OPCODE_QUARANTINED") !=
+					pMismatchReceipt->Blockers.end() &&
+			std::all_of(pMismatchReceipt->PropertyConsumption.begin(),
+				pMismatchReceipt->PropertyConsumption.end(), [](const auto& receipt)
+				{
+					return receipt.eResult ==
+						EFFECT_CASCADE_PROPERTY_HANDLER_RESULT::
+							QUARANTINED_FIELD_PRESERVED_EXECUTION_BLOCKED;
+				}),
+			"Cascade Inspection Preserves Exact Custom Class As Handler Quarantined Non Executable Evidence");
+
 		EFFECT_DOCUMENT_DESC provenancePromotion = roundTrip;
 		provenancePromotion.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front().strProvenance =
 			"SOURCE_EXACT";
 		runner.Require(!CompileMutation(provenancePromotion),
 			"Cascade Inspection Rejects SOURCE_TAGGED To SOURCE_EXACT Provenance Promotion");
+
+		EFFECT_DOCUMENT_DESC strippedPropertyBlockerInput = roundTrip;
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC* pRequiredBlockedProperty = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : strippedPropertyBlockerInput.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				const auto blocked = std::find_if(coverage.Properties.begin(),
+					coverage.Properties.end(), [](const auto& property)
+					{
+						return !property.Blockers.empty();
+					});
+				if (blocked != coverage.Properties.end())
+				{
+					pRequiredBlockedProperty = &*blocked;
+					break;
+				}
+			}
+			if (nullptr != pRequiredBlockedProperty)
+				break;
+		}
+		if (nullptr != pRequiredBlockedProperty)
+			pRequiredBlockedProperty->Blockers.clear();
+		runner.Require(nullptr != pRequiredBlockedProperty &&
+			!CompileMutation(strippedPropertyBlockerInput),
+			"Cascade Inspection Rejects Required Property Blocker Loss");
+
+		EFFECT_DOCUMENT_DESC fabricatedPropertyBlockerInput = roundTrip;
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC* pUnblockedProperty = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : fabricatedPropertyBlockerInput.Elements)
+		{
+			for (EFFECT_SOURCE_MODULE_COVERAGE_DESC& coverage :
+				element.SourceRecipe.ModuleCoverage)
+			{
+				const auto unblocked = std::find_if(
+					coverage.Properties.begin(), coverage.Properties.end(),
+					[](const EFFECT_SOURCE_PROPERTY_COVERAGE_DESC& property)
+					{
+						return property.Blockers.empty();
+					});
+				if (unblocked != coverage.Properties.end())
+				{
+					pUnblockedProperty = &*unblocked;
+					break;
+				}
+			}
+			if (nullptr != pUnblockedProperty)
+				break;
+		}
+		if (nullptr != pUnblockedProperty)
+			pUnblockedProperty->Blockers.emplace_back("FORGED_PROPERTY_BLOCKER");
+		runner.Require(nullptr != pUnblockedProperty &&
+			!CompileMutation(fabricatedPropertyBlockerInput),
+			"Cascade Inspection Rejects Fabricated Property Fidelity Blocker");
+
+		EFFECT_DOCUMENT_DESC prematureAdmission = roundTrip;
+		prematureAdmission.Elements.front().SourceRecipe.
+			CompiledExecutionAdmission.bAllowed = true;
+		prematureAdmission.Elements.front().SourceRecipe.
+			CompiledExecutionAdmission.Blockers.clear();
+		runner.Require(!CompileMutation(prematureAdmission),
+			"Cascade Inspection Rejects Execution Admission Before Payload And Handler Closure");
 
 		EFFECT_DOCUMENT_DESC aggregatePromotion = roundTrip;
 		EFFECT_SOURCE_MODULE_COVERAGE_DESC* pPromotedModule = nullptr;
@@ -3932,6 +4476,20 @@ namespace
 		runner.Require(!CompileMutation(forgedLod),
 			"Cascade Inspection Rejects Forged Selected LOD Path");
 
+		EFFECT_DOCUMENT_DESC noncanonicalLodSuffix = roundTrip;
+		noncanonicalLodSuffix.Elements.front().SourceRecipe.CompilerEvidence.
+			strSelectedLodPath = noncanonicalLodSuffix.Elements.front().SourceRecipe.
+			CompilerEvidence.strSourceEmitterPath + ".particlelodlevel_01";
+		runner.Require(!CompileMutation(noncanonicalLodSuffix),
+			"Cascade Inspection Rejects Noncanonical Selected LOD Object Suffix");
+
+		EFFECT_DOCUMENT_DESC reusedLodNode = roundTrip;
+		reusedLodNode.Elements.front().SourceRecipe.CompilerEvidence.
+			strSelectedLodNodeId = reusedLodNode.Elements.front().SourceRecipe.
+			CompilerEvidence.strSourceEmitterNodeId;
+		runner.Require(!CompileMutation(reusedLodNode),
+			"Cascade Inspection Rejects Emitter Node Reused As Selected LOD Node");
+
 		EFFECT_DOCUMENT_DESC forgedEmitterNode = roundTrip;
 		forgedEmitterNode.Elements.front().SourceRecipe.CompilerEvidence.strSourceEmitterNodeId =
 			"FX_VALID_LOOKING_OTHER:export:1392";
@@ -3980,8 +4538,16 @@ namespace
 		EFFECT_DOCUMENT_DESC duplicateProperty = roundTrip;
 		duplicateProperty.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.push_back(
 			duplicateProperty.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front());
-		runner.Require(!CompileMutation(duplicateProperty),
-			"Cascade Inspection Rejects Duplicate Property Path And Reference");
+		std::shared_ptr<const EFFECT_CASCADE_INSPECTION_IR>
+			lateFailureRollback = inspectionA;
+		const auto* pLateFailureCommitted = lateFailureRollback.get();
+		runner.Require(!CEffectCascadeCompiler::Compile_SourceInspection(
+			duplicateProperty, ExpectedIdentityFor(duplicateProperty),
+			lateFailureRollback, status) &&
+			lateFailureRollback.get() == pLateFailureCommitted &&
+			lateFailureRollback->strInspectionHash ==
+				inspectionA->strInspectionHash,
+			"Cascade Inspection Rejects Late Duplicate Property Path And Preserves Caller Commit");
 
 		EFFECT_DOCUMENT_DESC unknownStorage = roundTrip;
 		unknownStorage.Elements.front().SourceRecipe.ModuleCoverage.front().Properties.front().strStorage =
@@ -3999,6 +4565,12 @@ namespace
 			duplicateReference.Elements.front().SourceRecipe.CompilerEvidence.ModuleReferenceOrder.size() > 1u &&
 			!CompileMutation(duplicateReference),
 			"Cascade Inspection Rejects Duplicate Module Reference Index");
+
+		EFFECT_DOCUMENT_DESC rendererIdentityMismatch = roundTrip;
+		rendererIdentityMismatch.Elements.front().eKind =
+			EFFECT_ELEMENT_KIND::SCREEN_POST;
+		runner.Require(!CompileMutation(rendererIdentityMismatch),
+			"Cascade Inspection Rejects Element And Renderer Identity Mismatch");
 
 		EFFECT_DOCUMENT_DESC nonfiniteGeometry = roundTrip;
 		EFFECT_SOURCE_GEOMETRY_BINDING_DESC* pGeometry = nullptr;
@@ -4035,12 +4607,27 @@ namespace
 			!CompileMutation(geometryAssetMismatch),
 			"Cascade Inspection Rejects Safe Looking Geometry And Resource Binding Mismatch");
 
+		EFFECT_DOCUMENT_DESC missingMeshGeometry = roundTrip;
+		bool_t removedMeshGeometry = false;
+		for (EFFECT_ELEMENT_DESC& element : missingMeshGeometry.Elements)
+		{
+			if (element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE &&
+				element.SourceRecipe.GeometryBinding.bEnabled)
+			{
+				element.SourceRecipe.GeometryBinding.bEnabled = false;
+				removedMeshGeometry = true;
+				break;
+			}
+		}
+		runner.Require(removedMeshGeometry && !CompileMutation(missingMeshGeometry),
+			"Cascade Inspection Rejects Mesh Renderer Geometry Binding Removal");
+
 		const std::array<std::string_view, 5u> legacyMigrationClasses = {
 			"particlemodulecollision",
 			"particlemodulesizemultiplyvelocity",
 			"particlemodulesubuvmovie",
-			"particlemodulesoundparameter",
-			"particlemodulevectorconstant"
+			"distributionfloatsoundparameter",
+			"distributionvectorconstant"
 		};
 		bool_t legacyGapsClassified = true;
 		for (const std::string_view sourceClass : legacyMigrationClasses)
@@ -4055,7 +4642,7 @@ namespace
 				!report.strReasonCode.empty();
 		}
 		runner.Require(legacyGapsClassified,
-			"Legacy Collision SizeMultiplyVelocity SubUVMovie SoundParameter VectorConstant Stay Explicit Migration Gaps");
+			"Legacy Collision SizeMultiplyVelocity SubUVMovie FloatSoundParameter VectorConstant Stay Explicit Migration Gaps");
 		const auto SameFloat3 = [](const float3_t& left, const float3_t& right)
 		{
 			return left.x == right.x && left.y == right.y && left.z == right.z;
