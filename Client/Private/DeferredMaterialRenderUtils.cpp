@@ -1,5 +1,6 @@
 #include "DeferredMaterialRenderUtils.h"
 
+#include "BinaryAsset/ModelAssetData.h"
 #include "Model.h"
 #include "Shader.h"
 
@@ -103,6 +104,32 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 			sizeof(fFullSurfaceEmissiveIntensity))) ||
 		(0u != iHasEmissive && FAILED(Model.Bind_Material(
 			pShader, "g_EmissiveTexture", iMeshIndex, aiTextureType_EMISSIVE, 0))))
+	{
+		return E_FAIL;
+	}
+
+	const Engine::MODEL_COLOR_TINT* pColorTint =
+		Model.Get_MaterialColorTint(iMeshIndex);
+	const uint32_t iHasDyeMask = nullptr != pColorTint &&
+		pColorTint->isEnabled &&
+		Model.Has_MaterialTexture(iMeshIndex, aiTextureType_BASE_COLOR) ?
+		1u : 0u;
+	/* Some shaders behind this utility never declare the dye contract; their
+	compiled default of 0 is already right, so a rejected name is not an
+	error. It still has to be attempted every mesh, or a dyed mesh would leave
+	the flag stuck on for the undyed mesh that follows. */
+	pShader->Bind_RawValue("g_HasDyeMask", &iHasDyeMask, sizeof(iHasDyeMask));
+	if (0u != iHasDyeMask &&
+		(FAILED(Model.Bind_Material(pShader, "g_DyeMaskTexture",
+			iMeshIndex, aiTextureType_BASE_COLOR, 0)) ||
+		FAILED(pShader->Bind_RawValue("g_DyeDiffuseColor",
+			&pColorTint->vDiffuse, sizeof(pColorTint->vDiffuse))) ||
+		FAILED(pShader->Bind_RawValue("g_DyeRegionA",
+			&pColorTint->vRegionA, sizeof(pColorTint->vRegionA))) ||
+		FAILED(pShader->Bind_RawValue("g_DyeRegionB",
+			&pColorTint->vRegionB, sizeof(pColorTint->vRegionB))) ||
+		FAILED(pShader->Bind_RawValue("g_DyeRegionC",
+			&pColorTint->vRegionC, sizeof(pColorTint->vRegionC)))))
 	{
 		return E_FAIL;
 	}

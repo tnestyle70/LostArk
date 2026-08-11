@@ -34,6 +34,9 @@ struct EQUIPMENT_PART_SPEC
 
 	/* Bit i hides submesh i of this piece, for content the body already draws. */
 	uint32_t iHiddenMeshMask;
+	/* Created but not rendered. For pieces the current outfit covers -- hair
+	under a helmet -- kept as a part so a later equip toggle can show it. */
+	bool_t isHidden;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how

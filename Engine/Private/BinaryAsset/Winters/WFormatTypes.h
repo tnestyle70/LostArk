@@ -8,6 +8,7 @@ namespace Engine::WintersFormat
 	constexpr char WMESH_MAGIC[4] = { 'W', 'M', 'S', 'H' };
 	constexpr char WMAT_MAGIC[4] = { 'W', 'M', 'A', 'T' };
 	constexpr char WMAT_V2_MAGIC[4] = { 'W', 'M', 'A', '2' };
+	constexpr char WMAT_V3_MAGIC[4] = { 'W', 'M', 'A', '3' };
 	constexpr char WSKEL_MAGIC[4] = { 'W', 'S', 'K', 'L' };
 	constexpr char WANIM_MAGIC[4] = { 'W', 'A', 'N', 'M' };
 	constexpr char WMODEL_MAGIC[4] = { 'W', 'M', 'O', 'D' };
@@ -208,6 +209,32 @@ namespace Engine::WintersFormat
 		wchar_t ambientOcclusionPath[260];
 	};
 
+	/* V2 plus the source game's colour-region contract: a _cm mask texture
+	whose channels select dye regions, three per-region tint colours and one
+	whole-material multiplier. Identity is all-ones tints with an empty mask
+	path; the diffuse textures of these assets are mostly achromatic and the
+	colour lives here. */
+	struct MATERIAL_ENTRY_V3
+	{
+		uint32_t materialIndex;
+		uint64_t materialHash;
+		char name[64];
+		wchar_t baseColorPath[260];
+		wchar_t normalPath[260];
+		wchar_t specularPath[260];
+		wchar_t emissivePath[260];
+		wchar_t opacityPath[260];
+		wchar_t ormPath[260];
+		wchar_t metallicPath[260];
+		wchar_t roughnessPath[260];
+		wchar_t ambientOcclusionPath[260];
+		wchar_t colorMaskPath[260];
+		float diffuseTint[4];
+		float regionTintA[4];
+		float regionTintB[4];
+		float regionTintC[4];
+	};
+
 	struct SKELETON_META_HEADER
 	{
 		char magic[4];
@@ -312,6 +339,7 @@ namespace Engine::WintersFormat
 	static_assert(sizeof(MESH_GEOMETRY_METADATA_V1) == 348);
 	static_assert(sizeof(MATERIAL_ENTRY) == 596);
 	static_assert(sizeof(MATERIAL_ENTRY_V2) == 4756);
+	static_assert(sizeof(MATERIAL_ENTRY_V3) == 5340);
 	static_assert(sizeof(SKELETON_META_HEADER) == 32);
 	static_assert(sizeof(SKELETON_BONE_NODE) == 256);
 	static_assert(sizeof(GLOBAL_ROOT_MATRIX) == 128);

@@ -24,7 +24,10 @@ namespace
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Warlord_Arm") },
-		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Warlord_Hair") },
+		/* Hidden while the helmet is worn: the loose hairstyle pokes through the
+		shell. The part stays created for a later helmet toggle. */
+		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Warlord_Hair"),
+		  0u, true },
 		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Warlord_Helmet") },
 		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Warlord_Lower") },
 		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Warlord_Shoulder") },
@@ -58,54 +61,66 @@ namespace
 	are those chains: the animation still swings the panel from the hip, and the
 	links below it trail.
 
-	Both pieces read as armour rather than fabric, so the motion is a hint of
-	weight rather than a swing.
+	The solver measures every link's rest direction inside its parent's already
+	simulated frame, so gravity and the travel wind sag the chain a little more
+	at every link and the tip carries the sum. Stiffness is only what carries
+	the chain along with the body -- the shape comes from the forces. Damping
+	is the fraction of velocity a link keeps per step; past half it starts to
+	ring like a spring.
 
-	Stiffness is what sets the amplitude, not the limit. Walking moves the root
-	about 0.047m per step, and a link settles roughly that far divided by the
-	stiffness behind the animated pose; at a soft pull it parks against the limit
-	for the whole walk cycle, which is the flapping. Pulling hard keeps the lag
-	near a centimetre and the limit goes back to being what it was for -- a stop
-	against a teleport, not something the walk leans on.
+	The skirt stays stiffer and drier than the cape: it has no leg collision
+	yet, and the further it strays from the animation the deeper it cuts into
+	the thighs. */
+	constexpr f32_t PLATE_STIFFNESS = 0.12f;
+	constexpr f32_t PLATE_DAMPING = 0.45f;
+	constexpr f32_t PLATE_GRAVITY = 12.f;
+	constexpr f32_t PLATE_MAX_DISPLACEMENT = 0.15f;
+	constexpr f32_t PLATE_WIND_RESPONSE = 2.f;
 
-	Damping is how much velocity a link keeps, and keeping most of it is what
-	made armour sway back and forth after it should have stopped. Plate settles
-	in one move; the cape is allowed one soft follow-through and no more. */
-	constexpr f32_t PLATE_STIFFNESS = 0.45f;
-	constexpr f32_t PLATE_DAMPING = 0.40f;
-	constexpr f32_t PLATE_GRAVITY = 1.5f;
-	constexpr f32_t PLATE_MAX_DISPLACEMENT = 0.012f;
+	constexpr f32_t CAPE_STIFFNESS = 0.06f;
+	constexpr f32_t CAPE_DAMPING = 0.55f;
+	constexpr f32_t CAPE_GRAVITY = 20.f;
+	constexpr f32_t CAPE_MAX_DISPLACEMENT = 0.35f;
+	constexpr f32_t CAPE_WIND_RESPONSE = 5.f;
 
-	constexpr f32_t CAPE_STIFFNESS = 0.38f;
-	constexpr f32_t CAPE_DAMPING = 0.50f;
-	constexpr f32_t CAPE_GRAVITY = 2.f;
-	constexpr f32_t CAPE_MAX_DISPLACEMENT = 0.018f;
+	/* The helmet plume. The helmet mesh skins to bip001-head plus its own
+	b_helmet_b chain -- not to the b_hair01_b chain, which only the hidden
+	loose hairstyle uses. It hangs off the fast-moving head, so it stays
+	stiffer and drier than the cape. */
+	constexpr f32_t PLUME_STIFFNESS = 0.12f;
+	constexpr f32_t PLUME_DAMPING = 0.5f;
+	constexpr f32_t PLUME_GRAVITY = 15.f;
+	constexpr f32_t PLUME_MAX_DISPLACEMENT = 0.25f;
+	constexpr f32_t PLUME_WIND_RESPONSE = 3.f;
 
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_fl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_fr_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_l_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_r_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_b_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_bl_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 		{ "b_skirt_br_01", 5u, PLATE_STIFFNESS, PLATE_DAMPING,
-		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT },
+		  PLATE_GRAVITY, PLATE_MAX_DISPLACEMENT, PLATE_WIND_RESPONSE },
 
 		{ "b_capatcloth_l_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
 		{ "b_capatcloth_b_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
 		{ "b_capatcloth_r_01", 5u, CAPE_STIFFNESS, CAPE_DAMPING,
-		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT },
+		  CAPE_GRAVITY, CAPE_MAX_DISPLACEMENT, CAPE_WIND_RESPONSE },
+
+		{ "b_helmet_b_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
+		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE },
 	};
 
 	unique_ptr<ICharacterLogic> Create_Logic()

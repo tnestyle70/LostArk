@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "Artist" 1030
+LOSTARK_ANIM_EVENTS 5 "Artist" 1030
 "sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
 "sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
 "sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
