@@ -95,6 +95,7 @@ PROVISIONING_POLICY = "RECONSTRUCTED_RUNTIME_DEPLOYMENT_FROM_EXACT_DDS_FIXTURE_V
 DEPLOYMENT_BASIS = "RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
 DEPLOYMENT_COMPLETE_STATUS = "COMPLETED_POST_VERIFIED_EXACT_DDS_DEPLOYMENT"
 R4_BLOCKER = "R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE"
+FROZEN_MATERIAL_POLICY_COMMIT = "acf6a9949be999952f9c2c6470e7d6d189ba3654"
 EXPECTED_POLICY_ROWS = 77
 EXPECTED_UNIQUE_TEXTURES = 52
 EXPECTED_RESOLVED_ROWS = 77
@@ -959,7 +960,7 @@ def source_evidence(
 ) -> dict[str, Any]:
     approval = approval_module()
     evidence: dict[str, Any] = {
-        "frozenMaterialPolicyCommit": "97597531215fa9c9873fe1be3ba8cd23db60031d",
+        "frozenMaterialPolicyCommit": FROZEN_MATERIAL_POLICY_COMMIT,
         "directImportClosure": direct_import_closure(),
         "exactDdsRuntimeDeploymentReceipt": {
             "relativePath": deployment_authority["relativePath"],
@@ -1034,7 +1035,7 @@ def validate_tracked_source_evidence(
         },
         "source evidence",
     )
-    require(evidence.get("frozenMaterialPolicyCommit") == "97597531215fa9c9873fe1be3ba8cd23db60031d", "frozen policy commit changed")
+    require(evidence.get("frozenMaterialPolicyCommit") == FROZEN_MATERIAL_POLICY_COMMIT, "frozen policy commit changed")
     validate_direct_import_closure(evidence.get("directImportClosure"))
     require(
         strict_equal(

@@ -87,15 +87,15 @@ try {
         $receipt.characterClass -cne 'ARTIST' -or
         [int]$receipt.skillId -ne 31470 -or
         $receipt.inputSlot -cne 'F' -or
-        $bindings.Count -ne 72 -or
-        $resources.Count -ne 48 -or
-        $resolvedBindings.Count -ne 68 -or
+        $bindings.Count -ne 77 -or
+        $resources.Count -ne 52 -or
+        $resolvedBindings.Count -ne 73 -or
         $deploymentBindings.Count -ne 4 -or
-        $resolvedResources.Count -ne 44 -or
+        $resolvedResources.Count -ne 48 -or
         $deploymentResources.Count -ne 4 -or
         $proposals.Count -ne 4 -or
-        [int]$receipt.summary.materialOccurrenceLinkCount -ne 83 -or
-        [int]$receipt.summary.sourcePackageBoundUniqueTextureCount -ne 45 -or
+        [int]$receipt.summary.materialOccurrenceLinkCount -ne 94 -or
+        [int]$receipt.summary.sourcePackageBoundUniqueTextureCount -ne 49 -or
         [int]$receipt.summary.sourcePackageUnboundUniqueTextureCount -ne 3 -or
         -not [bool]$receipt.admission.completeRuntimeBinding.ready -or
         [bool]$receipt.admission.rendererConsumer.ready -or
@@ -125,7 +125,7 @@ try {
     }
 
     $mode = if ($DeepMaterialTextureBindingAudit) { 'deep' } else { 'shallow' }
-    Write-Output "PASS: Artist F 31470 Material texture runtime binding mode=$mode rows=68cook+4deployment/72 unique=44cook+4deployment/48 completedProposals=4 product=false"
+    Write-Output "PASS: Artist F 31470 Material texture runtime binding mode=$mode rows=73cook+4deployment/77 unique=48cook+4deployment/52 completedProposals=4 product=false"
 }
 finally {
     Pop-Location

@@ -14,14 +14,14 @@
     "sourceExact": false
   },
   "sourceEvidence": {
-    "frozenMaterialPolicyCommit": "97597531215fa9c9873fe1be3ba8cd23db60031d",
+    "frozenMaterialPolicyCommit": "acf6a9949be999952f9c2c6470e7d6d189ba3654",
     "directImportClosure": {
       "dependencyCount": 6,
       "dependencies": [
         {
           "dependencyId": "TEXTURE_RUNTIME_BINDING_BUILDER",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_texture_runtime_binding.py",
-          "trackedTextSha256": "e874fd970d9b1d41b4dc708b3aca21d063e2f6aa3008db6ec8c3e305313312ab"
+          "trackedTextSha256": "e63827baeeb09da0c7a21974e6ff1bbbeb04280e8a03d079baa615dce02d2969"
         },
         {
           "dependencyId": "EXACT_DDS_RUNTIME_DEPLOYMENT_APPROVAL",
@@ -46,10 +46,10 @@
         {
           "dependencyId": "TEXTURE_RUNTIME_BINDING_APPROVAL",
           "relativePath": "Tools/LevelPlacementExtractor/artist_31470_material_texture_runtime_binding_approval.py",
-          "trackedTextSha256": "054e3eeed8bf309f8ffb1d8f28fdb409317b22614fe10a9b3aeefbb83f136397"
+          "trackedTextSha256": "1cdccf929c12aeeb1fc2978923c7461b7f13f7ee69edba839774396cf3b946cf"
         }
       ],
-      "projectionSha256": "9d264389d56f60fb1498d5a35e26b8052c399a7c7ad727a57529e683eef8c6ce"
+      "projectionSha256": "f14a592e6341d8d3ef9554419015146ad3ed11925068f1748482f76959767bfd"
     },
     "exactDdsRuntimeDeploymentReceipt": {
       "relativePath": "Data/Effects/Imported/Artist/Materials/skill.31470.exact-dds-runtime-deployment.receipt.json",
@@ -9071,5 +9071,5 @@
     "rendererReadyBindingRowCount": 0,
     "productReadyBindingRowCount": 0
   },
-  "receiptSha256": "aa30494475859a75c225dc880482e201ff0d44fa2830e64bd7077077fee22a24"
+  "receiptSha256": "170ba2d4c70a202e384ca8a577b09921d0a5d5b3e90504f5f10d8e8db8c16d5a"
 }

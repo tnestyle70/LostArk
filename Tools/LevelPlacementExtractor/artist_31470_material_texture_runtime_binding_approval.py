@@ -60,7 +60,7 @@ DEPLOYMENT_IMPLEMENTATION_PROJECTION_SHA256 = (
 # Frozen after the complete v2 receipt was rebuilt from the approved cook,
 # exact-DDS deployment, and four post-verified runtime files.
 APPROVED_RECEIPT_PROJECTION_SHA256 = (
-    "5e46ad5c11bcfc877a5c30d554c5abcc555743a1ac8827c029212561cd8a54c6"
+    "bdf0f68fd47ccf862bef2aa1534e9da995f8c5a76abe724b80e0fcb3db3d0891"
 )
 
 
