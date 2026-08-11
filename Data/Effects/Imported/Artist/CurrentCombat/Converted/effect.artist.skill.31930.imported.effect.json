@@ -196219,7 +196219,7 @@
             0.0,
             0.0
           ],
-          "falloffExponent": 0.0
+          "falloffExponent": 1.0
         },
         "screenPost": {
           "enabled": false,
@@ -197217,7 +197217,7 @@
             0.0,
             0.0
           ],
-          "falloffExponent": 0.0
+          "falloffExponent": 1.0
         },
         "screenPost": {
           "enabled": false,

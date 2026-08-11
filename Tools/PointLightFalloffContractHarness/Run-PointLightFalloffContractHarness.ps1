@@ -27,7 +27,7 @@ foreach ($directory in $runtimeDirectories) {
 $previousPath = $env:PATH
 try {
     $env:PATH = ($runtimeDirectories -join ';') + ';' + $previousPath
-    & $executable
+    & $executable $repoRoot
     if ($LASTEXITCODE -ne 0) {
         throw "PointLightFalloffContractHarness failed with exit code $LASTEXITCODE"
     }

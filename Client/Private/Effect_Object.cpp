@@ -1,6 +1,7 @@
 #include "Effect_Object.h"
 
 #include "Effect_DocumentRenderer.h"
+#include "Effect_LightPresentation.h"
 #include "GameInstance.h"
 #include "Presentation_Manager.h"
 
@@ -250,26 +251,11 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 	for (const EFFECT_EVALUATED_LIGHT& Evaluated : Frame.Lights)
 	{
 		LIGHT_DESC Light{};
-		Light.eType = LIGHT::POINT;
-		Light.vPosition = {
-			Evaluated.vWorldPosition.x,
-			Evaluated.vWorldPosition.y,
-			Evaluated.vWorldPosition.z,
-			1.f };
-		Light.fRange = Evaluated.fRange;
-		Light.vDiffuse = {
-			Evaluated.vColor.x * Evaluated.fIntensity,
-			Evaluated.vColor.y * Evaluated.fIntensity,
-			Evaluated.vColor.z * Evaluated.fIntensity,
-			Evaluated.vColor.w };
-		Light.vAmbient = {
-			Evaluated.vAmbient.x * Evaluated.fIntensity,
-			Evaluated.vAmbient.y * Evaluated.fIntensity,
-			Evaluated.vAmbient.z * Evaluated.fIntensity,
-			Evaluated.vAmbient.w };
-		Light.vSpecular = { 0.f, 0.f, 0.f, 0.f };
-		if (FAILED(CPresentation_Manager::Get().Add_TransientLight(Light)))
+		if (!Try_BuildEffectPointLightDesc(Evaluated, Light) ||
+			FAILED(CPresentation_Manager::Get().Add_TransientLight(Light)))
+		{
 			return E_FAIL;
+		}
 	}
 
 	for (const EFFECT_EVALUATED_SCREEN_POST& Evaluated : Frame.ScreenPosts)

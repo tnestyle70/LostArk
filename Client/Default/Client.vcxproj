@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -40,6 +40,7 @@
     <ClInclude Include="..\Public\EffectAuthoringTransfer.h" />
     <ClInclude Include="..\Public\Effect_DocumentCodec.h" />
     <ClInclude Include="..\Public\Effect_Playback.h" />
+    <ClInclude Include="..\Public\Effect_LightPresentation.h" />
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
     <ClInclude Include="..\Public\Effect_Object.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
@@ -146,6 +147,7 @@
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
     <ClCompile Include="..\Private\Effect_Distribution.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
+    <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
