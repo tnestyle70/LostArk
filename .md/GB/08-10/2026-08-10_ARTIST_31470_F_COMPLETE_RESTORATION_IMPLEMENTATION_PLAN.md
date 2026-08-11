@@ -279,6 +279,25 @@ handler, 같은 module의 새 `heightaxis`, 또는 X/Y/unknown 값은 이 M0 선
 이는 기존 production cylinder handler의 empty-value Z 동작을 stable handler identity에 결합한 것이며,
 새 implicit-default 데이터 행을 발명하지 않는다.
 
+selected evaluator의 distribution RNG는 `artist-f.selected-occurrence-xorshift32.v1`로 고정한다. timing
+core의 emitter stream과 lifetime stream은 그대로 두고, packet evaluator는 선택 occurrence의
+`iOccurrenceRandomValue`를 별도 local state seed로 복사한다. 각 draw 직전에 `x ^= x << 13`,
+`x ^= x >> 17`, `x ^= x << 5`, zero이면 1로 치환하고 `x / UINT32_MAX`를 random unit으로 사용한다.
+ordered module 순서, module의 `distributionIds` 순서, component 0..N-1 순서로 operation 2/3만 unit을
+소비하고 operation 1과 FLOAT_PARAMETER는 소비하지 않는다. random-lock axis는 필요한 component draw를
+모두 소비한 뒤 적용한다. cylinder handler는 radius, height, angle, surfaceOnly=false일 때만 radial,
+height offset, startLocation, velocityScale 순서다. 선택 Mesh는 surfaceOnly=true이므로 radial draw가 없다.
+이 순서와 RNG version은 packet projection에 들어가며 legacy UE LCG나 timing emitter stream을 재사용하지
+않는다. step 88 serial 0의 timing identity는 Mesh occurrence/lifetime RNG
+`2215704123/2215704123`, lifetime `2.257941908612368`; Sprite는
+`244989949/244989949`, lifetime `0.6228164894929623`로 고정한다.
+
+size basis는 source `[x,y,z]`를 client XZY `[x,z,y]`로 한 번만 바꾼다. Mesh packet은 이 값을
+dimensionless scale로 보존하고 `.01`을 곱하지 않는다. Sprite packet은 XZY에 `.01`을 한 번 곱한 signed
+world-size를 보존하며 production quad의 width/height는 packet X/Z, 즉 source X/Y를 사용한다. 음수 X는
+승인된 image flip을 보존하고 절댓값 fallback으로 지우지 않는다. sink는 이 값을 다시 reorder하거나
+centimeter 변환하지 않는다.
+
 두 material evaluator의 production common-shader binding도 다음처럼 고정한다.
 
 | 선택 | evaluator/family identity | feature mask | texture lane / shader pass |
