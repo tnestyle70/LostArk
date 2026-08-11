@@ -85,8 +85,11 @@ foreach ($boundary in @(
     'Reconstructed execution timing cannot use a deferred EF evaluator',
     'Reconstructed execution module handler identity or selection is invalid',
     'Reconstructed execution distribution enum is unknown',
+    '618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b',
+    '72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849',
     '9f99d7a65d6e2a74bc241dd4268751fc876522c9deac387eacfb40be7cc429b1',
     '35b0977b106c003b2542327959dd1ee11ea326dd17324c5dbc242153b086bd88',
+    'e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df',
     'Build_DistributionOwnerProjection',
     'FROZEN_SEEDED_MODULE_HANDLER_ID',
     'FROZEN_SEEDED_PROPERTY_HANDLER_ID',
@@ -94,12 +97,27 @@ foreach ($boundary in @(
     'Reconstructed execution frozen seeded lifetime authority tuple is invalid',
     'Reconstructed execution frozen distribution target projection is invalid',
     'Reconstructed execution frozen distribution owner projection is invalid',
+    'Reconstructed execution frozen semantic projection authority is invalid',
     'Reconstructed execution property distribution reverse membership or order is invalid',
     'Reconstructed CPU inspection refuses a non-positive lifetime fallback',
     'strSemanticProjectionSha256')) {
     if ($executionContract -notmatch [regex]::Escape($boundary)) {
         throw "Typed execution fail-closed boundary is missing: $boundary"
     }
+}
+
+$semanticComputeIndex = $source.IndexOf('Compute_SemanticProjection(Data)')
+$semanticAuthorityIndex = -1
+if ($semanticComputeIndex -ge 0) {
+    $semanticAuthorityIndex = $source.IndexOf(
+        'FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256',
+        $semanticComputeIndex)
+}
+$planDataCommitIndex = $source.IndexOf('OutData = std::move(Data)')
+if ($semanticComputeIndex -lt 0 -or
+    $semanticAuthorityIndex -le $semanticComputeIndex -or
+    $planDataCommitIndex -le $semanticAuthorityIndex) {
+    throw 'The exact semantic projection must be checked before compiled plan data commit.'
 }
 
 foreach ($forbiddenRawInput in @(
@@ -158,6 +176,7 @@ foreach ($test in @(
     'Artist 31470 CPU Inspection Completes Exact Loop And Lifetime Tails Without Fallback',
     'Artist 31470 CPU Inspection Invalid Sample Preserves Prior State And Frame',
     'Artist 31470 Typed Plan Rejects A B Identity Unknown Variant And Broken Reverse Join Transactionally',
+    'Artist 31470 Typed Plan Rejects Coordinated Canonical Projection Mutation And Preserves Old Plan',
     'Artist 31470 Typed Plan Rejects Coordinated Seeded Lifetime Full Object Authority Swap Transactionally',
     'Artist 31470 Typed Plan Rejects Bracket Qualified Dynamicparams Target Mutation Transactionally',
     'Artist 31470 Typed Plan Rejects Coordinated Dynamicparams Owner Classification Mutation Transactionally',
@@ -221,8 +240,11 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
         $output = & $resolvedHarness `
             '--effect-reconstructed-execution-plan' `
             $resolvedProgram $resolvedCatalog 2>&1
+        $outputText = $output -join "`n"
         if ($LASTEXITCODE -ne 0 -or
-            ($output -join "`n") -notmatch 'failures : 0') {
+            $outputText -notmatch 'failures : 0' -or
+            $outputText -notmatch
+                'semanticProjection=e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df') {
             throw "Artist 31470 typed execution harness failed:`n$($output -join "`n")"
         }
     }
@@ -236,4 +258,4 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
     }
 }
 
-Write-Output 'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 rng=v1 fixedHz=60 Product=false'
+Write-Output 'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 projection=e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df rng=v1 fixedHz=60 Product=false'
