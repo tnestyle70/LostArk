@@ -15,6 +15,7 @@ import hashlib
 import json
 import math
 import re
+import struct
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -127,6 +128,33 @@ FOUR_CLASS_GRAPH_ONLY_SOURCE_SYSTEM_COUNT = 18
 EXPECTED_CHECKPOINT_BLOCKER_PROJECTION_SHA256 = (
     "1c8ed35f509e16281c8214d6920881714bdffcbaac451c2ddb3b05c1acdf8a4d"
 )
+EXPECTED_CHECKPOINT_RAW_SHA256 = (
+    "42b437d59bf56c713aa5e53dcd73d7d2ad20fb510dfca73a4c2cacccabe16db5"
+)
+EXPECTED_CHECKPOINT_SELF_DIGEST = (
+    "8b90b1cfa917d4fc102d619468016d812fce6c73f21b0a1547eda504b31a07fb"
+)
+EXPECTED_CHECKPOINT_BYTE_SIZE = 21_107_545
+EXPECTED_EXTRACTION_RECEIPT_SHA256 = (
+    "cf58ad0b26b7f24e0d0cd91e713f14bf96a3c9c14d4284a60415512977980137"
+)
+EXPECTED_RAW_BLOCKER_PROJECTION_SHA256 = (
+    "c08c2f3db4204da5d453bb9050dcfa901477faf6a3bd0684028ea76c84b0694b"
+)
+EXPECTED_RAW_RESOURCE_PROJECTION_SHA256 = (
+    "c7d9b7d7a8fc9b82627accf34b5ce6b2f21e20eb76b6458b81ba31c67a800e4b"
+)
+EXTRACTION_RECEIPT_SCHEMA = "lostark.raw-resource-extraction-run-v1"
+FINAL_PHASE = "RAW_BYTES_INSPECTED"
+DEFAULT_EXPORT_CHUNK_SIZE = 32
+DDS_HEADER_SIZE = 124
+WMODEL_FILE_HEADER = struct.Struct("<4sHHII")
+WMODEL_MODEL_HEADER = struct.Struct("<4sIII4I")
+WMODEL_SECTION_DESC = struct.Struct("<IIQQ40s")
+WMODEL_MESH_HEADER = struct.Struct("<4sIIIIIIIB3s")
+WMODEL_SUBMESH_DESC = struct.Struct("<IIIIIQ20s")
+WMODEL_BOUNDS = struct.Struct("<10f")
+WMODEL_STATIC_VERTEX_STRIDE = 48
 GPU_SCHEMA_BOUNDARY = {
     "sampler": "UNFINALIZED_GPU_SCHEMA_PENDING",
     "rasterizerState": "UNFINALIZED_GPU_SCHEMA_PENDING",
@@ -2062,6 +2090,2140 @@ def validate_checkpoint(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _read_u32(data: bytes, offset: int, field: str) -> int:
+    if offset < 0 or offset + 4 > len(data):
+        raise InventoryError(f"{field} is outside the payload")
+    return struct.unpack_from("<I", data, offset)[0]
+
+
+def _dds_block_bytes(four_cc: str, dxgi_format: int | None) -> int | None:
+    if four_cc == "DX10":
+        if dxgi_format in (70, 71, 72, 79, 80, 81):
+            return 8
+        if dxgi_format in (
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            82,
+            83,
+            84,
+            94,
+            95,
+            96,
+            97,
+            98,
+            99,
+        ):
+            return 16
+        return None
+    if four_cc in ("DXT1", "ATI1", "BC4U", "BC4S"):
+        return 8
+    if four_cc in ("DXT2", "DXT3", "DXT4", "DXT5", "ATI2", "BC5U", "BC5S"):
+        return 16
+    return None
+
+
+def inspect_dds_bytes(data: bytes) -> dict[str, Any]:
+    """Return parser-neutral DDS header and mechanically derived payload facts."""
+
+    if len(data) < 128:
+        raise InventoryError("DDS payload is shorter than magic plus DDS_HEADER")
+    if data[:4] != b"DDS ":
+        raise InventoryError("DDS magic is invalid")
+    header_size = _read_u32(data, 4, "DDS header size")
+    pixel_format_size = _read_u32(data, 76, "DDS pixel format size")
+    if header_size != DDS_HEADER_SIZE or pixel_format_size != 32:
+        raise InventoryError(
+            f"DDS header sizes are invalid: {header_size}/{pixel_format_size}"
+        )
+    flags = _read_u32(data, 8, "DDS flags")
+    height = _read_u32(data, 12, "DDS height")
+    width = _read_u32(data, 16, "DDS width")
+    pitch_or_linear = _read_u32(data, 20, "DDS pitch or linear size")
+    depth = _read_u32(data, 24, "DDS depth")
+    declared_mips = _read_u32(data, 28, "DDS mip count")
+    pixel_format_flags = _read_u32(data, 80, "DDS pixel format flags")
+    four_cc_bytes = data[84:88]
+    four_cc = four_cc_bytes.decode("latin-1")
+    rgb_bit_count = _read_u32(data, 88, "DDS RGB bit count")
+    masks = [_read_u32(data, offset, "DDS channel mask") for offset in (92, 96, 100, 104)]
+    caps = _read_u32(data, 108, "DDS caps")
+    caps2 = _read_u32(data, 112, "DDS caps2")
+    caps3 = _read_u32(data, 116, "DDS caps3")
+    caps4 = _read_u32(data, 120, "DDS caps4")
+    reserved2 = _read_u32(data, 124, "DDS reserved2")
+    reserved1 = [
+        _read_u32(data, 32 + index * 4, "DDS reserved1") for index in range(11)
+    ]
+    if width <= 0 or height <= 0:
+        raise InventoryError("DDS dimensions must be positive")
+
+    data_offset = 128
+    dx10: dict[str, Any] | None = None
+    dxgi_format: int | None = None
+    if four_cc == "DX10":
+        if len(data) < 148:
+            raise InventoryError("DDS DX10 header is truncated")
+        dxgi_format, resource_dimension, misc_flag, array_size, misc_flags2 = (
+            struct.unpack_from("<5I", data, 128)
+        )
+        if array_size == 0:
+            raise InventoryError("DDS DX10 array size must be positive")
+        dx10 = {
+            "dxgiFormat": dxgi_format,
+            "resourceDimension": resource_dimension,
+            "miscFlag": misc_flag,
+            "arraySize": array_size,
+            "miscFlags2": misc_flags2,
+        }
+        if resource_dimension not in (2, 3, 4):
+            raise InventoryError("DDS DX10 resource dimension is invalid")
+        if resource_dimension == 2 and height != 1:
+            raise InventoryError("DDS DX10 1D resource must have height 1")
+        if resource_dimension == 4 and (array_size != 1 or depth <= 0):
+            raise InventoryError("DDS DX10 3D resource shape is invalid")
+        if misc_flag & 0x4 and resource_dimension != 3:
+            raise InventoryError("DDS DX10 cube must be a 2D resource")
+        data_offset = 148
+
+    block_bytes = _dds_block_bytes(four_cc, dxgi_format)
+    if block_bytes is not None:
+        if flags & 0x00081007 != 0x00081007:
+            raise InventoryError("DDS supported block payload lacks required header flags")
+        if not (caps & 0x1000):
+            raise InventoryError("DDS supported block payload lacks DDSCAPS_TEXTURE")
+        if dx10 and dx10["resourceDimension"] != 4 and depth not in (0, 1):
+            raise InventoryError("DDS non-3D DX10 resource has a depth value")
+    mip_count = max(1, declared_mips)
+    is_legacy_cube = bool(caps2 & 0x200)
+    legacy_face_bits = (0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000)
+    legacy_face_count = sum(bool(caps2 & bit) for bit in legacy_face_bits)
+    is_dx10_cube = bool(dx10 and dx10["miscFlag"] & 0x4)
+    if is_dx10_cube:
+        face_count = 6
+    elif is_legacy_cube:
+        face_count = legacy_face_count
+    else:
+        face_count = 1
+    array_size = int(dx10["arraySize"]) if dx10 else 1
+    if face_count <= 0:
+        raise InventoryError("DDS cube declares no faces")
+    is_volume = bool(caps2 & 0x200000) or bool(
+        dx10 and dx10["resourceDimension"] == 4
+    )
+    if is_volume and depth <= 0:
+        raise InventoryError("DDS volume resource must have positive depth")
+    base_depth = max(1, depth) if is_volume else 1
+    maximum_mips = int(math.floor(math.log2(max(width, height, base_depth)))) + 1
+    if mip_count > maximum_mips:
+        raise InventoryError(
+            f"DDS mip count {mip_count} exceeds dimension-derived maximum {maximum_mips}"
+        )
+    if block_bytes is not None and not (pixel_format_flags & 0x4):
+        raise InventoryError("DDS block-compressed FourCC lacks DDPF_FOURCC")
+    calculated_mips: list[dict[str, Any]] = []
+    expected_payload: int | None = 0 if block_bytes is not None else None
+    payload_cursor = data_offset
+    for level in range(mip_count):
+        mip_width = max(1, width >> level)
+        mip_height = max(1, height >> level)
+        mip_depth = max(1, base_depth >> level) if is_volume else 1
+        if block_bytes is None:
+            mip_bytes = None
+        else:
+            surface_bytes = (
+                max(1, (mip_width + 3) // 4)
+                * max(1, (mip_height + 3) // 4)
+                * block_bytes
+            )
+            mip_bytes = surface_bytes * mip_depth * face_count * array_size
+            expected_payload += mip_bytes
+        calculated_mips.append(
+            {
+                "level": level,
+                "width": mip_width,
+                "height": mip_height,
+                "depth": mip_depth,
+                "offset": (
+                    payload_cursor
+                    if mip_bytes is not None and face_count * array_size == 1
+                    else None
+                ),
+                "byteSize": mip_bytes,
+            }
+        )
+        if mip_bytes is not None:
+            payload_cursor += mip_bytes
+
+    actual_payload = len(data) - data_offset
+    top_level_bytes = calculated_mips[0]["byteSize"]
+    if top_level_bytes is not None:
+        top_level_bytes //= face_count * array_size
+    truncated = (
+        max(0, int(expected_payload) - actual_payload)
+        if expected_payload is not None
+        else None
+    )
+    trailing = (
+        max(0, actual_payload - int(expected_payload))
+        if expected_payload is not None
+        else None
+    )
+    linear_size_matches = (
+        pitch_or_linear == top_level_bytes if top_level_bytes is not None else None
+    )
+    status = (
+        "STRUCTURALLY_VALID"
+        if expected_payload is not None
+        and expected_payload == actual_payload
+        and linear_size_matches is True
+        else "UNSUPPORTED_FORMAT_FACTS_ONLY"
+        if expected_payload is None
+        else "TRUNCATED_PAYLOAD"
+        if actual_payload < expected_payload
+        else "TRAILING_PAYLOAD"
+        if actual_payload > expected_payload
+        else "TOP_LEVEL_LINEAR_SIZE_MISMATCH"
+    )
+    return {
+        "inspectionStatus": status,
+        "byteSize": len(data),
+        "header": {
+            "headerSize": header_size,
+            "flags": flags,
+            "width": width,
+            "height": height,
+            "depth": depth,
+            "declaredMipCount": declared_mips,
+            "effectiveMipCount": mip_count,
+            "pitchOrLinearSize": pitch_or_linear,
+            "pixelFormatSize": pixel_format_size,
+            "pixelFormatFlags": pixel_format_flags,
+            "fourCC": four_cc,
+            "fourCCBytesHex": four_cc_bytes.hex(),
+            "rgbBitCount": rgb_bit_count,
+            "channelMasks": masks,
+            "reserved1": reserved1,
+            "caps": caps,
+            "caps2": caps2,
+            "caps3": caps3,
+            "caps4": caps4,
+            "reserved2": reserved2,
+            "dx10": dx10,
+        },
+        "layoutFacts": {
+            "dataOffset": data_offset,
+            "blockByteSize": block_bytes,
+            "isCube": is_legacy_cube or is_dx10_cube,
+            "faceCount": face_count,
+            "isVolume": is_volume,
+            "arraySize": array_size,
+            "calculatedMips": calculated_mips,
+            "topLevelCalculatedByteSize": top_level_bytes,
+            "topLevelLinearSizeMatches": linear_size_matches,
+            "expectedPayloadByteSize": expected_payload,
+            "actualPayloadByteSize": actual_payload,
+            "truncatedByteCount": truncated,
+            "trailingByteCount": trailing,
+            "exactPayloadConsumption": expected_payload == actual_payload,
+        },
+    }
+
+
+def inspect_dds_file(path: Path) -> dict[str, Any]:
+    return inspect_dds_bytes(path.read_bytes())
+
+
+def _fixed_name(value: bytes) -> str:
+    return value.split(b"\0", 1)[0].decode("utf-8", errors="replace")
+
+
+def _float_close(left: float, right: float) -> bool:
+    return math.isclose(left, right, rel_tol=1e-5, abs_tol=1e-5)
+
+
+def _inspect_wmodel_mesh(payload: bytes) -> dict[str, Any]:
+    if len(payload) < WMODEL_FILE_HEADER.size + WMODEL_MESH_HEADER.size:
+        raise InventoryError("WModel mesh section is truncated")
+    outer = WMODEL_FILE_HEADER.unpack_from(payload, 0)
+    if outer[:4] != (b"WINT", 1, 0, 0) or outer[4] != len(payload) - WMODEL_FILE_HEADER.size:
+        raise InventoryError("WModel mesh WINT header is invalid")
+    header = WMODEL_MESH_HEADER.unpack_from(payload, WMODEL_FILE_HEADER.size)
+    (
+        mesh_magic,
+        submesh_count,
+        bone_count,
+        vertex_flags,
+        vertex_stride,
+        total_vertices,
+        total_indices,
+        index_stride,
+        has_bounds,
+        reserved,
+    ) = header
+    if mesh_magic != b"WMSH" or not (1 <= submesh_count <= 2048):
+        raise InventoryError("WModel mesh header is invalid")
+    if (
+        bone_count != 0
+        or vertex_flags != 0x0F
+        or vertex_stride != WMODEL_STATIC_VERTEX_STRIDE
+        or total_vertices <= 0
+        or total_vertices > 10_000_000
+        or total_indices <= 0
+        or index_stride not in (2, 4)
+        or has_bounds != 1
+        or reserved != b"\0\0\0"
+    ):
+        raise InventoryError("WModel mesh static layout contract is invalid")
+    descriptor_offset = WMODEL_FILE_HEADER.size + WMODEL_MESH_HEADER.size
+    descriptor_end = descriptor_offset + submesh_count * WMODEL_SUBMESH_DESC.size
+    if descriptor_end > len(payload):
+        raise InventoryError("WModel submesh descriptor table is truncated")
+    descriptors = [
+        WMODEL_SUBMESH_DESC.unpack_from(
+            payload, descriptor_offset + row * WMODEL_SUBMESH_DESC.size
+        )
+        for row in range(submesh_count)
+    ]
+    vertex_bytes = total_vertices * vertex_stride
+    index_bytes = total_indices * index_stride
+    bounds_bytes = submesh_count * WMODEL_BOUNDS.size
+    expected_end = descriptor_end + vertex_bytes + index_bytes + bounds_bytes
+    if expected_end > len(payload):
+        raise InventoryError("WModel vertex/index/bounds payload is truncated")
+    trailing_bytes = len(payload) - expected_end
+    vertex_blob = payload[descriptor_end : descriptor_end + vertex_bytes]
+    index_blob = payload[
+        descriptor_end + vertex_bytes : descriptor_end + vertex_bytes + index_bytes
+    ]
+    bounds_blob = payload[
+        descriptor_end + vertex_bytes + index_bytes : expected_end
+    ]
+    layout_supported = True
+    submeshes: list[dict[str, Any]] = []
+    derived_global_min = [math.inf, math.inf, math.inf]
+    derived_global_max = [-math.inf, -math.inf, -math.inf]
+    expected_vertex_offset = 0
+    expected_index_offset = 0
+    for row_index, descriptor in enumerate(descriptors):
+        (
+            vertex_offset,
+            vertex_count,
+            index_offset,
+            index_count,
+            material_index,
+            material_hash,
+            name_bytes,
+        ) = descriptor
+        vertex_end = vertex_offset + vertex_count * vertex_stride
+        index_end = index_offset + index_count * index_stride
+        if vertex_count <= 0 or index_count <= 0:
+            raise InventoryError("WModel submesh has an empty vertex or index range")
+        if vertex_offset != expected_vertex_offset or index_offset != expected_index_offset:
+            raise InventoryError("WModel submesh ranges are not contiguous")
+        if vertex_end > len(vertex_blob) or index_end > len(index_blob):
+            raise InventoryError("WModel submesh range is outside aggregate payload")
+        if index_count % 3:
+            raise InventoryError("WModel submesh index count is not triangle-aligned")
+        if material_index >= 4096:
+            raise InventoryError("WModel submesh material index exceeds structural limit")
+        positions: list[tuple[float, float, float]] = []
+        for vertex_index in range(vertex_count):
+            channels = struct.unpack_from(
+                "<12f", vertex_blob, vertex_offset + vertex_index * vertex_stride
+            )
+            if not all(math.isfinite(value) for value in channels):
+                raise InventoryError("WModel vertex channel is non-finite")
+            positions.append(channels[:3])
+        index_format = "<H" if index_stride == 2 else "<I"
+        indices = [
+            struct.unpack_from(
+                index_format, index_blob, index_offset + index * index_stride
+            )[0]
+            for index in range(index_count)
+        ]
+        if any(value >= vertex_count for value in indices):
+            raise InventoryError("WModel submesh index is outside its vertex range")
+        expected_vertex_offset = vertex_end
+        expected_index_offset = index_end
+        minimum = [min(value[axis] for value in positions) for axis in range(3)]
+        maximum = [max(value[axis] for value in positions) for axis in range(3)]
+        for axis in range(3):
+            derived_global_min[axis] = min(derived_global_min[axis], minimum[axis])
+            derived_global_max[axis] = max(derived_global_max[axis], maximum[axis])
+        embedded_bounds: list[float] | None = None
+        bounds_consistent: bool | None = None
+        if has_bounds:
+            bounds = WMODEL_BOUNDS.unpack_from(
+                bounds_blob, row_index * WMODEL_BOUNDS.size
+            )
+            if not all(math.isfinite(value) for value in bounds):
+                raise InventoryError("WModel embedded bounds are non-finite")
+            embedded_bounds = list(bounds)
+            center = [(minimum[axis] + maximum[axis]) * 0.5 for axis in range(3)]
+            radius = max(
+                math.sqrt(
+                    sum((position[axis] - center[axis]) ** 2 for axis in range(3))
+                )
+                for position in positions
+            )
+            bounds_consistent = (
+                all(_float_close(bounds[axis], minimum[axis]) for axis in range(3))
+                and all(
+                    _float_close(bounds[axis + 3], maximum[axis])
+                    for axis in range(3)
+                )
+                and all(
+                    _float_close(bounds[axis + 6], center[axis])
+                    for axis in range(3)
+                )
+                and bounds[9] >= 0.0
+                and _float_close(bounds[9], radius)
+            )
+            if not bounds_consistent:
+                raise InventoryError("WModel embedded bounds differ from derived bounds")
+        submeshes.append(
+            {
+                "submeshIndex": row_index,
+                "name": _fixed_name(name_bytes),
+                "materialIndexFact": material_index,
+                "materialHashFact": material_hash,
+                "vertexOffset": vertex_offset,
+                "vertexCount": vertex_count,
+                "indexOffset": index_offset,
+                "indexCount": index_count,
+                "minimum": minimum,
+                "maximum": maximum,
+                "embeddedBounds": embedded_bounds,
+                "embeddedBoundsConsistent": bounds_consistent,
+            }
+        )
+    if expected_vertex_offset != len(vertex_blob) or expected_index_offset != len(index_blob):
+        raise InventoryError("WModel aggregate vertex or index counts differ from submeshes")
+    return {
+        "outer": {
+            "magic": outer[0].decode("ascii"),
+            "majorVersion": outer[1],
+            "minorVersion": outer[2],
+            "flags": outer[3],
+            "declaredContentByteSize": outer[4],
+            "actualContentByteSize": len(payload) - WMODEL_FILE_HEADER.size,
+        },
+        "mesh": {
+            "magic": mesh_magic.decode("ascii"),
+            "submeshCount": submesh_count,
+            "boneCount": bone_count,
+            "vertexFlags": vertex_flags,
+            "vertexStride": vertex_stride,
+            "totalVertexCount": total_vertices,
+            "totalIndexCount": total_indices,
+            "indexStride": index_stride,
+            "hasEmbeddedBounds": bool(has_bounds),
+            "reservedHex": reserved.hex(),
+            "layoutPositionDecodable": layout_supported,
+            "maximumReferencedMaterialIndex": max(
+                row["materialIndexFact"] for row in submeshes
+            ),
+            "derivedMinimum": derived_global_min,
+            "derivedMaximum": derived_global_max,
+            "submeshes": submeshes,
+        },
+        "trailingByteCount": trailing_bytes,
+        "exactPayloadConsumption": trailing_bytes == 0,
+    }
+
+
+def _inspect_wmodel_material(payload: bytes, required_material_count: int) -> dict[str, Any]:
+    if len(payload) < WMODEL_FILE_HEADER.size + 8:
+        raise InventoryError("WModel material section is truncated")
+    outer = WMODEL_FILE_HEADER.unpack_from(payload, 0)
+    if outer[:4] != (b"WINT", 1, 0, 0) or outer[4] != len(payload) - WMODEL_FILE_HEADER.size:
+        raise InventoryError("WModel material WINT header is invalid")
+    magic, material_count = struct.unpack_from("<4sI", payload, WMODEL_FILE_HEADER.size)
+    entry_sizes = {b"WMAT": 596, b"WMA2": 4756}
+    if magic not in entry_sizes or material_count > 4096:
+        raise InventoryError("WModel material container header is invalid")
+    expected_size = WMODEL_FILE_HEADER.size + 8 + material_count * entry_sizes[magic]
+    if expected_size != len(payload):
+        raise InventoryError("WModel material container payload size is invalid")
+    if material_count < required_material_count:
+        raise InventoryError("WModel mesh references a missing material entry")
+    entry_size = entry_sizes[magic]
+    entries_offset = WMODEL_FILE_HEADER.size + 8
+    material_indices = [
+        struct.unpack_from("<I", payload, entries_offset + row * entry_size)[0]
+        for row in range(material_count)
+    ]
+    if any(value >= material_count for value in material_indices) or len(
+        set(material_indices)
+    ) != material_count:
+        raise InventoryError("WModel material indices are out of range or duplicated")
+    return {
+        "outer": {
+            "magic": outer[0].decode("ascii"),
+            "majorVersion": outer[1],
+            "minorVersion": outer[2],
+            "flags": outer[3],
+            "declaredContentByteSize": outer[4],
+            "actualContentByteSize": len(payload) - WMODEL_FILE_HEADER.size,
+        },
+        "containerMagic": magic.decode("ascii"),
+        "declaredMaterialCount": material_count,
+        "entryByteSize": entry_sizes[magic],
+        "materialIndices": material_indices,
+        "minimumRequiredMaterialCount": required_material_count,
+        "exactPayloadConsumption": True,
+    }
+
+
+def inspect_wmodel_bytes(data: bytes) -> dict[str, Any]:
+    """Inspect WModel structure without assigning runtime material or scale policy."""
+
+    if len(data) < WMODEL_FILE_HEADER.size + WMODEL_MODEL_HEADER.size:
+        raise InventoryError("WModel is truncated")
+    outer = WMODEL_FILE_HEADER.unpack_from(data, 0)
+    if outer[:4] != (b"WINT", 1, 0, 0) or outer[4] != len(data) - WMODEL_FILE_HEADER.size:
+        raise InventoryError("WModel outer WINT header is invalid")
+    model = WMODEL_MODEL_HEADER.unpack_from(data, WMODEL_FILE_HEADER.size)
+    if (
+        model[0] != b"WMOD"
+        or model[1] != 2
+        or model[2] != 0
+        or model[3] != 0
+        or any(model[4:])
+    ):
+        raise InventoryError("WModel model header is invalid")
+    section_count = model[1]
+    table_offset = WMODEL_FILE_HEADER.size + WMODEL_MODEL_HEADER.size
+    table_end = table_offset + section_count * WMODEL_SECTION_DESC.size
+    if table_end > len(data):
+        raise InventoryError("WModel section table is truncated")
+    content_size = outer[4]
+    minimum_content_offset = WMODEL_MODEL_HEADER.size + section_count * WMODEL_SECTION_DESC.size
+    sections: list[dict[str, Any]] = []
+    intervals: list[tuple[int, int, int]] = []
+    mesh_inspections: list[dict[str, Any]] = []
+    material_payloads: list[bytes] = []
+    for row in range(section_count):
+        type_id, index, offset, size, name_bytes = WMODEL_SECTION_DESC.unpack_from(
+            data, table_offset + row * WMODEL_SECTION_DESC.size
+        )
+        if index != 0:
+            raise InventoryError("WModel static section index must be zero")
+        if offset < minimum_content_offset or size <= 0 or offset + size > content_size:
+            raise InventoryError("WModel section range is invalid")
+        begin = WMODEL_FILE_HEADER.size + offset
+        end = begin + size
+        intervals.append((offset, offset + size, row))
+        section_payload = data[begin:end]
+        row_result: dict[str, Any] = {
+            "sectionRow": row,
+            "typeId": type_id,
+            "index": index,
+            "offset": offset,
+            "byteSize": size,
+            "name": _fixed_name(name_bytes),
+            "payloadMagicHex": section_payload[:4].hex(),
+        }
+        if type_id == 1:
+            mesh = _inspect_wmodel_mesh(section_payload)
+            row_result["meshInspectionIndex"] = len(mesh_inspections)
+            mesh_inspections.append(mesh)
+        elif type_id == 2:
+            row_result["materialInspectionIndex"] = len(material_payloads)
+            material_payloads.append(section_payload)
+        else:
+            raise InventoryError("WModel contains an unknown section type")
+        sections.append(row_result)
+    intervals.sort()
+    expected = minimum_content_offset
+    for begin, end, _ in intervals:
+        if begin != expected:
+            raise InventoryError("WModel sections overlap or contain gaps")
+        expected = end
+    if expected != content_size:
+        raise InventoryError("WModel contains trailing unowned section bytes")
+    if len(mesh_inspections) != 1 or len(material_payloads) != 1:
+        raise InventoryError("WModel must contain exactly one mesh and one material section")
+    mesh = mesh_inspections[0]
+    if not mesh["exactPayloadConsumption"]:
+        raise InventoryError("WModel mesh section contains trailing bytes")
+    material = _inspect_wmodel_material(
+        material_payloads[0],
+        mesh["mesh"]["maximumReferencedMaterialIndex"] + 1,
+    )
+    return {
+        "inspectionStatus": "STRUCTURALLY_VALID",
+        "byteSize": len(data),
+        "outer": {
+            "magic": outer[0].decode("ascii"),
+            "majorVersion": outer[1],
+            "minorVersion": outer[2],
+            "flags": outer[3],
+            "declaredContentByteSize": outer[4],
+            "actualContentByteSize": len(data) - WMODEL_FILE_HEADER.size,
+        },
+        "model": {
+            "magic": model[0].decode("ascii"),
+            "sectionCount": section_count,
+            "animationCount": model[2],
+            "flags": model[3],
+            "reserved": list(model[4:]),
+        },
+        "sections": sections,
+        "meshInspection": mesh,
+        "materialInspection": material,
+        "exactSectionConsumption": True,
+    }
+
+
+def inspect_wmodel_file(path: Path) -> dict[str, Any]:
+    return inspect_wmodel_bytes(path.read_bytes())
+
+
+def _is_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _require_fresh_external_stage(
+    staging_root: Path, repo_root: Path, checkpoint_sha256: str, run_id: str
+) -> Path:
+    if not SAFE_SEGMENT.fullmatch(run_id):
+        raise InventoryError(f"run ID contains a non-portable segment: {run_id}")
+    resolved = staging_root.resolve()
+    if resolved.exists():
+        raise InventoryError(f"fresh staging root already exists: {resolved}")
+    if _is_within(resolved, repo_root):
+        raise InventoryError("raw extraction staging must remain outside the repository")
+    marker = checkpoint_sha256[:16]
+    if marker not in resolved.name or run_id not in resolved.name:
+        raise InventoryError(
+            "staging basename must contain checkpoint SHA prefix and run ID"
+        )
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    resolved.mkdir(exist_ok=False)
+    return resolved
+
+
+def _stage_identity(path: Path, staging_root: Path, kind: str) -> dict[str, Any]:
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(staging_root.resolve()).as_posix()
+    except ValueError as error:
+        raise InventoryError(f"stage artifact escapes staging root: {path}") from error
+    validate_portable_strings({"relativePath": relative})
+    if not path.is_file():
+        raise InventoryError(f"stage artifact is not a regular file: {path}")
+    return {
+        "kind": kind,
+        "relativePath": relative,
+        "fileName": path.name,
+        "byteSize": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+
+
+def _portable_stage_error(error: BaseException, staging_root: Path) -> str:
+    value = str(error).replace(str(staging_root), "$STAGING")
+    value = value.replace(str(staging_root).replace("\\", "/"), "$STAGING")
+    return value.replace("\\", "/")
+
+
+def _portable_tool_identity(path: Path, locator: str, kind: str) -> dict[str, Any]:
+    if not path.is_file():
+        raise InventoryError(f"missing extraction tool {kind}: {path}")
+    return {
+        "locator": locator,
+        "kind": kind,
+        "fileName": path.name,
+        "byteSize": path.stat().st_size,
+        "sha256": sha256_file(path),
+    }
+
+
+def _converter_toolchain_identity(converter: Path) -> dict[str, Any]:
+    companions = [
+        _portable_tool_identity(
+            path,
+            f"external:Tools/ModelAssetConverter/{path.name}",
+            "MODEL_ASSET_CONVERTER_COMPANION",
+        )
+        for path in sorted(
+            converter.parent.glob("*.dll"), key=lambda value: value.name.casefold()
+        )
+        if path.is_file()
+    ]
+    return {
+        "executable": _portable_tool_identity(
+            converter,
+            "external:Tools/ModelAssetConverter/ModelAssetConverter.exe",
+            "MODEL_ASSET_CONVERTER",
+        ),
+        "companions": companions,
+    }
+
+
+def _write_process_log(
+    completed: subprocess.CompletedProcess[str], log_path: Path
+) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(
+        completed.stdout + "\n" + completed.stderr,
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def _run_process(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+        creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
+    )
+
+
+def _exact_case_file(root: Path, expected_name: str) -> tuple[Path | None, list[str]]:
+    matches = sorted(
+        (path for path in root.iterdir() if path.name.casefold() == expected_name.casefold()),
+        key=lambda value: value.name,
+    )
+    exact = [path for path in matches if path.name == expected_name and path.is_file()]
+    return (exact[0] if len(exact) == 1 else None, [path.name for path in matches])
+
+
+def _preflight_package_rows(
+    corpus: str,
+    package_inventory: dict[str, Any],
+    requested_logical_packages: set[str],
+    umodel: Path,
+    package_root: Path,
+    logs_root: Path,
+    staging_root: Path,
+    region: str,
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for package in package_inventory.get("packages", []):
+        logical_package = str(package["logicalPackage"])
+        expected_name = str(package["physicalPackageFileName"])
+        physical, case_matches = _exact_case_file(package_root, expected_name)
+        row: dict[str, Any] = {
+            "corpus": corpus,
+            "logicalPackage": logical_package,
+            "expectedPhysicalPackageFileName": expected_name,
+            "expectedByteSize": package.get("byteSize"),
+            "expectedSha256": package.get("sha256"),
+            "casefoldInstalledMatches": case_matches,
+            "requestedForRawExport": logical_package.casefold()
+            in requested_logical_packages,
+        }
+        if physical is None:
+            row["preflightStatus"] = "PHYSICAL_PACKAGE_EXACT_CASE_MISSING_OR_AMBIGUOUS"
+            results.append(row)
+            continue
+        row["observedByteSize"] = physical.stat().st_size
+        row["observedSha256"] = sha256_file(physical)
+        if (
+            row["observedByteSize"] != row["expectedByteSize"]
+            or row["observedSha256"] != row["expectedSha256"]
+        ):
+            row["preflightStatus"] = "PHYSICAL_PACKAGE_BYTES_DRIFTED"
+            results.append(row)
+            continue
+        if logical_package.casefold() not in requested_logical_packages:
+            row["preflightStatus"] = "PIN_MATCH_NOT_DIRECTLY_EXPORTED"
+            results.append(row)
+            continue
+        log_path = logs_root / "resolve" / f"{logical_package}.log"
+        command = [
+            str(umodel),
+            "-list",
+            "-game=lostark",
+            f"-{region}",
+            "-nameresolve",
+            f"-path={package_root}",
+            logical_package,
+        ]
+        completed = _run_process(command, umodel.parent)
+        _write_process_log(completed, log_path)
+        output = completed.stdout + "\n" + completed.stderr
+        match = re.search(r"Loading package:\s+([^\r\n]+?\.upk)\s+Ver:", output)
+        row["resolveExitCode"] = completed.returncode
+        row["resolveLog"] = _stage_identity(
+            log_path, staging_root, "UMODEL_RESOLVE_LOG"
+        )
+        if match is None:
+            row["preflightStatus"] = "UMODEL_PHYSICAL_RESOLUTION_MISSING"
+        else:
+            observed = Path(match.group(1).strip()).name
+            row["observedLoadedPhysicalPackageFileName"] = observed
+            row["preflightStatus"] = (
+                "PIN_AND_UMODEL_RESOLUTION_MATCH"
+                if completed.returncode == 0 and observed == expected_name
+                else "UMODEL_PHYSICAL_RESOLUTION_MISMATCH"
+            )
+        results.append(row)
+    return results
+
+
+def _chunked(rows: list[dict[str, Any]], size: int) -> Iterable[list[dict[str, Any]]]:
+    for index in range(0, len(rows), size):
+        yield rows[index : index + size]
+
+
+def _run_umodel_exports(
+    corpus: str,
+    requests: list[dict[str, Any]],
+    preflights: list[dict[str, Any]],
+    umodel: Path,
+    package_root: Path,
+    raw_root: Path,
+    logs_root: Path,
+    staging_root: Path,
+    region: str,
+    chunk_size: int,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    accepted = {
+        row["logicalPackage"].casefold(): row
+        for row in preflights
+        if row["preflightStatus"] == "PIN_AND_UMODEL_RESOLUTION_MATCH"
+    }
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for request in requests:
+        grouped[str(request["logicalPackage"])].append(request)
+    invocations: list[dict[str, Any]] = []
+    request_invocations: dict[str, dict[str, Any]] = {}
+    for logical_package in sorted(grouped, key=str.casefold):
+        rows = sorted(
+            grouped[logical_package],
+            key=lambda value: (
+                str(value["sourceAssetPath"]).casefold(),
+                str(value["sourceAssetPath"]),
+            ),
+        )
+        if logical_package.casefold() not in accepted:
+            for row in rows:
+                request_invocations[row["requestId"]] = {
+                    "status": "PACKAGE_PREFLIGHT_FAILED"
+                }
+            continue
+        for chunk_index, batch in enumerate(_chunked(rows, chunk_size), start=1):
+            invocation_id = f"{corpus}:{logical_package}:{chunk_index:03d}"
+            log_path = logs_root / "export" / f"{logical_package}.{chunk_index:03d}.log"
+            command = [
+                str(umodel),
+                "-export",
+                "-game=lostark",
+                f"-{region}",
+                "-nameresolve",
+                f"-path={package_root}",
+                f"-out={raw_root}",
+                "-dds",
+                "-gltf",
+                "-nooverwrite",
+            ]
+            command.extend(
+                f"-obj={str(row['sourceAssetPath']).rsplit('.', 1)[-1]}"
+                for row in batch
+            )
+            command.append(logical_package)
+            completed = _run_process(command, umodel.parent)
+            _write_process_log(completed, log_path)
+            invocation = {
+                "invocationId": invocation_id,
+                "corpus": corpus,
+                "logicalPackage": logical_package,
+                "chunkIndex": chunk_index,
+                "requestedObjectCount": len(batch),
+                "requestIds": [row["requestId"] for row in batch],
+                "exitCode": completed.returncode,
+                "options": [
+                    "export",
+                    "game=lostark",
+                    f"region={region}",
+                    "nameresolve",
+                    "dds",
+                    "gltf",
+                    "nooverwrite-fresh-root",
+                ],
+                "log": _stage_identity(log_path, staging_root, "UMODEL_EXPORT_LOG"),
+            }
+            invocations.append(invocation)
+            for row in batch:
+                request_invocations[row["requestId"]] = {
+                    "status": (
+                        "PROCESS_COMPLETED"
+                        if completed.returncode == 0
+                        else "PROCESS_FAILED"
+                    ),
+                    "invocationId": invocation_id,
+                    "exitCode": completed.returncode,
+                }
+    return invocations, request_invocations
+
+
+def _package_scoped_files(raw_root: Path, logical_package: str) -> tuple[list[Path], list[str]]:
+    if not raw_root.is_dir():
+        return [], []
+    directories = sorted(
+        (
+            path
+            for path in raw_root.iterdir()
+            if path.is_dir() and path.name.casefold() == logical_package.casefold()
+        ),
+        key=lambda value: value.name,
+    )
+    files = sorted(
+        (path for directory in directories for path in directory.rglob("*") if path.is_file()),
+        key=lambda value: (value.as_posix().casefold(), value.as_posix()),
+    )
+    return files, [path.name for path in directories]
+
+
+def _gltf_buffer_identities(
+    gltf_path: Path, staging_root: Path
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    document = load_json(gltf_path)
+    buffers = document.get("buffers")
+    if not isinstance(buffers, list) or not buffers:
+        raise InventoryError("glTF has no external buffer descriptors")
+    identities: list[dict[str, Any]] = []
+    for index, descriptor in enumerate(buffers):
+        if not isinstance(descriptor, dict) or not isinstance(descriptor.get("uri"), str):
+            raise InventoryError("glTF buffer descriptor is invalid")
+        uri = descriptor["uri"]
+        validate_portable_strings({"uri": uri})
+        if ":" in uri or uri.startswith("data:"):
+            raise InventoryError("glTF buffer URI is not a portable relative file")
+        path = (gltf_path.parent / Path(uri)).resolve()
+        if not _is_within(path, gltf_path.parent):
+            raise InventoryError("glTF buffer URI escapes the glTF directory")
+        identity = _stage_identity(path, staging_root, "GLTF_BUFFER")
+        expected_size = descriptor.get("byteLength")
+        identity["bufferIndex"] = index
+        identity["declaredByteLength"] = expected_size
+        identity["declaredByteLengthMatches"] = (
+            type(expected_size) is int and expected_size == identity["byteSize"]
+        )
+        if not identity["declaredByteLengthMatches"]:
+            raise InventoryError("glTF buffer byteLength differs from actual bytes")
+        identities.append(identity)
+    return identities, {
+        "assetVersion": document.get("asset", {}).get("version")
+        if isinstance(document.get("asset"), dict)
+        else None,
+        "sceneCount": len(document.get("scenes", []))
+        if isinstance(document.get("scenes"), list)
+        else None,
+        "meshCount": len(document.get("meshes", []))
+        if isinstance(document.get("meshes"), list)
+        else None,
+        "bufferCount": len(identities),
+    }
+
+
+def _mesh_destination(
+    wmodel_root: Path, source_asset_path: str
+) -> Path:
+    segments = source_asset_path.split(".")
+    if len(segments) < 2 or any(not SAFE_SEGMENT.fullmatch(value) for value in segments):
+        raise InventoryError(f"unsafe mesh source path: {source_asset_path}")
+    return wmodel_root.joinpath(*segments[:-1], segments[-1] + ".wmodel")
+
+
+def _associate_and_inspect_requests(
+    corpus: str,
+    requests: list[dict[str, Any]],
+    request_invocations: dict[str, dict[str, Any]],
+    raw_root: Path,
+    wmodel_root: Path,
+    logs_root: Path,
+    staging_root: Path,
+    converter: Path,
+) -> list[dict[str, Any]]:
+    package_cache: dict[str, tuple[list[Path], list[str]]] = {}
+    results: list[dict[str, Any]] = []
+    for request in sorted(requests, key=lambda value: value["requestId"]):
+        request_id = str(request["requestId"])
+        logical_package = str(request["logicalPackage"])
+        source_asset_path = str(request["sourceAssetPath"])
+        role = str(request["role"])
+        object_name = source_asset_path.rsplit(".", 1)[-1]
+        process = request_invocations.get(
+            request_id, {"status": "PACKAGE_PREFLIGHT_FAILED"}
+        )
+        result: dict[str, Any] = {
+            "requestId": request_id,
+            "corpus": corpus,
+            "role": role,
+            "sourceAssetPath": source_asset_path,
+            "logicalPackage": logical_package,
+            "expectedPhysicalPackageFileName": request[
+                "physicalPackageFileName"
+            ],
+            "resourcesRelativeCandidateId": request[
+                "resourcesRelativeCandidateId"
+            ],
+            "invocation": process,
+            "payloads": [],
+            "bindingStatus": "CANDIDATE_ONLY_GPU_SCHEMA_PENDING",
+        }
+        if process["status"] != "PROCESS_COMPLETED":
+            result["extractionStatus"] = process["status"]
+            results.append(result)
+            continue
+        if logical_package.casefold() not in package_cache:
+            package_cache[logical_package.casefold()] = _package_scoped_files(
+                raw_root, logical_package
+            )
+        package_files, directory_names = package_cache[logical_package.casefold()]
+        result["observedPackageDirectories"] = directory_names
+        if len(directory_names) != 1:
+            result["extractionStatus"] = "OUTPUT_PACKAGE_DIRECTORY_MISSING_OR_AMBIGUOUS"
+            results.append(result)
+            continue
+        result["observedPackageDirectoryCaseMatchesLogicalPackage"] = (
+            directory_names[0] == logical_package
+        )
+        suffixes = {".dds", ".tga"} if role == "texture" else {".gltf"}
+        casefold_matches = [
+            path
+            for path in package_files
+            if path.stem.casefold() == object_name.casefold()
+            and path.suffix.casefold() in suffixes
+        ]
+        exact_matches = [path for path in casefold_matches if path.stem == object_name]
+        if not exact_matches:
+            result["extractionStatus"] = (
+                "OUTPUT_OBJECT_CASE_MISMATCH"
+                if casefold_matches
+                else "MISSING_EXACT_PRIMARY_OUTPUT"
+            )
+            result["casefoldPrimaryCandidates"] = [
+                _stage_identity(path, staging_root, "CASEFOLD_PRIMARY_CANDIDATE")
+                for path in casefold_matches
+            ]
+            results.append(result)
+            continue
+        if len(exact_matches) != 1:
+            result["extractionStatus"] = "AMBIGUOUS_EXACT_PRIMARY_OUTPUT"
+            result["primaryCandidates"] = [
+                _stage_identity(path, staging_root, "AMBIGUOUS_PRIMARY")
+                for path in exact_matches
+            ]
+            results.append(result)
+            continue
+        primary = exact_matches[0]
+        if role == "texture":
+            kind = "DDS" if primary.suffix.casefold() == ".dds" else "TGA"
+            identity = _stage_identity(primary, staging_root, kind)
+            result["payloads"].append(identity)
+            if kind == "TGA":
+                result["extractionStatus"] = "UNSUPPORTED_NON_DDS_TEXTURE_PRIMARY"
+                results.append(result)
+                continue
+            try:
+                inspection = inspect_dds_file(primary)
+            except (OSError, InventoryError) as error:
+                result["extractionStatus"] = "INVALID_DDS_STRUCTURE"
+                result["inspectionError"] = _portable_stage_error(error, staging_root)
+            else:
+                result["ddsInspection"] = inspection
+                result["extractionStatus"] = (
+                    "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+                    if inspection["inspectionStatus"] == "STRUCTURALLY_VALID"
+                    else "DDS_PAYLOAD_OR_FORMAT_BLOCKER"
+                )
+            results.append(result)
+            continue
+
+        gltf_identity = _stage_identity(primary, staging_root, "GLTF")
+        result["payloads"].append(gltf_identity)
+        try:
+            buffers, gltf_facts = _gltf_buffer_identities(primary, staging_root)
+        except (OSError, InventoryError) as error:
+            result["extractionStatus"] = "INVALID_GLTF_OR_BUFFER_SET"
+            result["inspectionError"] = _portable_stage_error(error, staging_root)
+            results.append(result)
+            continue
+        result["payloads"].extend(buffers)
+        result["gltfInspection"] = gltf_facts
+        destination = _mesh_destination(wmodel_root, source_asset_path)
+        if destination.exists():
+            raise InventoryError(f"fresh WModel destination already exists: {destination}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        log_path = logs_root / "converter" / f"{request_id}.log"
+        completed = _run_process(
+            [
+                str(converter),
+                str(primary),
+                "-o",
+                str(destination),
+                "--pretransform",
+                "--scale",
+                "1",
+                "--no-auto-textures",
+            ],
+            converter.parent,
+        )
+        _write_process_log(completed, log_path)
+        result["offlineTransientCook"] = {
+            "classification": "OFFLINE_TRANSIENT_COOK",
+            "exitCode": completed.returncode,
+            "pretransform": True,
+            "conversionScale": 1.0,
+            "autoTextures": False,
+            "runtimeBindingGenerated": False,
+            "log": _stage_identity(
+                log_path, staging_root, "MODEL_ASSET_CONVERTER_LOG"
+            ),
+        }
+        if completed.returncode != 0 or not destination.is_file():
+            result["extractionStatus"] = "OFFLINE_WMODEL_CONVERSION_FAILED"
+            results.append(result)
+            continue
+        wmodel_identity = _stage_identity(destination, staging_root, "WMODEL")
+        result["payloads"].append(wmodel_identity)
+        try:
+            result["wmodelInspection"] = inspect_wmodel_file(destination)
+        except (OSError, InventoryError) as error:
+            result["extractionStatus"] = "INVALID_WMODEL_STRUCTURE"
+            result["inspectionError"] = _portable_stage_error(error, staging_root)
+        else:
+            result["extractionStatus"] = "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+        results.append(result)
+    return results
+
+
+def _all_stage_files(staging_root: Path) -> list[Path]:
+    return sorted(
+        (path for path in staging_root.rglob("*") if path.is_file()),
+        key=lambda value: (value.as_posix().casefold(), value.as_posix()),
+    )
+
+
+def build_extraction_run(
+    repo_root: Path,
+    checkpoint_path: Path,
+    package_root: Path,
+    umodel: Path,
+    converter: Path,
+    staging_root: Path,
+    run_id: str,
+    region: str,
+    chunk_size: int,
+) -> tuple[dict[str, Any], Path]:
+    if chunk_size <= 0 or chunk_size > 128:
+        raise InventoryError("export chunk size must be between 1 and 128")
+    checkpoint_raw_sha = sha256_file(checkpoint_path)
+    if checkpoint_raw_sha != EXPECTED_CHECKPOINT_RAW_SHA256:
+        raise InventoryError("extraction checkpoint raw SHA differs from frozen checkpoint")
+    checkpoint = load_json(checkpoint_path)
+    validate_checkpoint(checkpoint)
+    stage = _require_fresh_external_stage(
+        staging_root, repo_root, checkpoint_raw_sha, run_id
+    )
+    umodel_identity = _portable_tool_identity(
+        umodel,
+        "external:Tools/UEViewerLostArk/umodel_lostark_v7.exe",
+        "UMODEL_LOSTARK",
+    )
+    converter_identity = _converter_toolchain_identity(converter)
+    corpora: dict[str, Any] = {}
+    for corpus, checkpoint_key in (("FourClass", "fourClass"), ("Valtan", "valtan")):
+        source = checkpoint[checkpoint_key]
+        requests = source["assetRequests"]
+        requested_packages = {
+            str(row["logicalPackage"]).casefold() for row in requests
+        }
+        corpus_root = stage / corpus
+        raw_root = corpus_root / "raw"
+        wmodel_root = corpus_root / "wmodel"
+        logs_root = corpus_root / "logs"
+        raw_root.mkdir(parents=True, exist_ok=False)
+        wmodel_root.mkdir(parents=True, exist_ok=False)
+        logs_root.mkdir(parents=True, exist_ok=False)
+        preflights = _preflight_package_rows(
+            corpus,
+            source["packageInventory"],
+            requested_packages,
+            umodel,
+            package_root,
+            logs_root,
+            stage,
+            region,
+        )
+        invocations, request_invocations = _run_umodel_exports(
+            corpus,
+            requests,
+            preflights,
+            umodel,
+            package_root,
+            raw_root,
+            logs_root,
+            stage,
+            region,
+            chunk_size,
+        )
+        results = _associate_and_inspect_requests(
+            corpus,
+            requests,
+            request_invocations,
+            raw_root,
+            wmodel_root,
+            logs_root,
+            stage,
+            converter,
+        )
+        status_counts = Counter(row["extractionStatus"] for row in results)
+        corpora[corpus] = {
+            "packagePreflights": preflights,
+            "invocations": invocations,
+            "requests": results,
+            "summary": {
+                "requestCount": len(results),
+                "statusCounts": dict(sorted(status_counts.items())),
+                "packagePreflightCount": len(preflights),
+                "packagePreflightFailureCount": sum(
+                    row["preflightStatus"]
+                    not in (
+                        "PIN_AND_UMODEL_RESOLUTION_MATCH",
+                        "PIN_MATCH_NOT_DIRECTLY_EXPORTED",
+                    )
+                    for row in preflights
+                ),
+                "invocationCount": len(invocations),
+                "processFailureCount": sum(row["exitCode"] != 0 for row in invocations),
+            },
+        }
+    document: dict[str, Any] = {
+        "schema": EXTRACTION_RECEIPT_SCHEMA,
+        "formatVersion": 1,
+        "mode": "OFFLINE_INVENTORY_ONLY",
+        "sourceCommit": SOURCE_COMMIT,
+        "runId": run_id,
+        "stagingLocator": f"external:RawResourceInventory/Runs/{stage.name}",
+        "checkpoint": {
+            "locator": "Data/Effects/Imported/RawResourceInventory/"
+            "R8.raw-resource-denominator.checkpoint.json",
+            "fileName": checkpoint_path.name,
+            "byteSize": checkpoint_path.stat().st_size,
+            "sha256": checkpoint_raw_sha,
+        },
+        "tools": {
+            "umodel": umodel_identity,
+            "modelAssetConverter": converter_identity,
+        },
+        "conversionBoundary": {
+            "classification": "OFFLINE_TRANSIENT_COOK",
+            "pretransform": True,
+            "conversionScale": 1.0,
+            "autoTextures": False,
+            "runtimeBindingGenerated": False,
+            "gpuSchema": "UNFINALIZED_GPU_SCHEMA_PENDING",
+        },
+        "runtimeAuthority": False,
+        "rendererReady": False,
+        "admission": {
+            "Execute": False,
+            "Submit": False,
+            "Render": False,
+            "Product": False,
+        },
+        "corpora": corpora,
+    }
+    known_paths = {
+        payload["relativePath"]
+        for corpus in corpora.values()
+        for request in corpus["requests"]
+        for payload in request.get("payloads", [])
+    }
+    known_paths.update(
+        row["log"]["relativePath"]
+        for corpus in corpora.values()
+        for row in corpus["invocations"]
+    )
+    known_paths.update(
+        row["resolveLog"]["relativePath"]
+        for corpus in corpora.values()
+        for row in corpus["packagePreflights"]
+        if "resolveLog" in row
+    )
+    known_paths.update(
+        request["offlineTransientCook"]["log"]["relativePath"]
+        for corpus in corpora.values()
+        for request in corpus["requests"]
+        if "offlineTransientCook" in request
+    )
+    unassociated = []
+    for path in _all_stage_files(stage):
+        relative = path.relative_to(stage).as_posix()
+        if relative not in known_paths:
+            unassociated.append(
+                _stage_identity(path, stage, "UNASSOCIATED_FRESH_EXPORT_OUTPUT")
+            )
+    document["unassociatedFreshOutputs"] = unassociated
+    document["summary"] = {
+        "requestCount": sum(value["summary"]["requestCount"] for value in corpora.values()),
+        "successfulRequestCount": sum(
+            row["extractionStatus"] == "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+            for value in corpora.values()
+            for row in value["requests"]
+        ),
+        "unassociatedFreshOutputCount": len(unassociated),
+    }
+    document = add_self_digest(document)
+    validate_extraction_receipt(document)
+    receipt_path = stage / "raw-resource-extraction-run-v1.json"
+    write_json(receipt_path, document, replace=False)
+    return document, receipt_path
+
+
+def validate_extraction_receipt(document: dict[str, Any]) -> dict[str, Any]:
+    if document.get("schema") != EXTRACTION_RECEIPT_SCHEMA:
+        raise InventoryError("unexpected raw extraction receipt schema")
+    if document.get("formatVersion") != 1 or isinstance(document.get("formatVersion"), bool):
+        raise InventoryError("raw extraction receipt formatVersion must be exact integer 1")
+    if document.get("mode") != "OFFLINE_INVENTORY_ONLY":
+        raise InventoryError("raw extraction receipt is not offline-only")
+    if document.get("sourceCommit") != SOURCE_COMMIT:
+        raise InventoryError("raw extraction receipt source commit mismatch")
+    if document.get("runtimeAuthority") is not False or document.get("rendererReady") is not False:
+        raise InventoryError("raw extraction receipt runtime flags must be false")
+    if document.get("admission") != {
+        "Execute": False,
+        "Submit": False,
+        "Render": False,
+        "Product": False,
+    }:
+        raise InventoryError("raw extraction receipt admission flags must be false")
+    boundary = document.get("conversionBoundary", {})
+    if boundary != {
+        "classification": "OFFLINE_TRANSIENT_COOK",
+        "pretransform": True,
+        "conversionScale": 1.0,
+        "autoTextures": False,
+        "runtimeBindingGenerated": False,
+        "gpuSchema": "UNFINALIZED_GPU_SCHEMA_PENDING",
+    }:
+        raise InventoryError("offline transient conversion boundary changed")
+    if document.get("checkpoint", {}).get("sha256") != EXPECTED_CHECKPOINT_RAW_SHA256:
+        raise InventoryError("raw extraction receipt checkpoint SHA mismatch")
+    if document.get("selfDigest") != compute_self_digest(document):
+        raise InventoryError("raw extraction receipt self digest mismatch")
+    validate_portable_strings(document)
+    expected_counts = {"FourClass": 835, "Valtan": 377}
+    for corpus, expected in expected_counts.items():
+        rows = document.get("corpora", {}).get(corpus, {}).get("requests", [])
+        if len(rows) != expected:
+            raise InventoryError(f"{corpus} extraction request denominator changed")
+        request_ids = [row.get("requestId") for row in rows]
+        if len(request_ids) != len(set(request_ids)):
+            raise InventoryError(f"{corpus} extraction receipt has duplicate request IDs")
+    return {
+        "runId": document["runId"],
+        "requestCount": document["summary"]["requestCount"],
+        "successfulRequestCount": document["summary"]["successfulRequestCount"],
+        "selfDigest": document["selfDigest"],
+    }
+
+
+def _iter_stage_identities(value: Any) -> Iterable[dict[str, Any]]:
+    if isinstance(value, dict):
+        if {
+            "relativePath",
+            "byteSize",
+            "sha256",
+        }.issubset(value) and isinstance(value.get("relativePath"), str):
+            yield value
+        for child in value.values():
+            yield from _iter_stage_identities(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _iter_stage_identities(child)
+
+
+def _resolve_stage_relative(staging_root: Path, relative: str) -> Path:
+    validate_portable_strings({"relativePath": relative})
+    candidate = (staging_root / Path(relative)).resolve()
+    if not _is_within(candidate, staging_root):
+        raise InventoryError(f"stage-relative path escapes staging root: {relative}")
+    return candidate
+
+
+def verify_extraction_stage(
+    receipt: dict[str, Any], receipt_path: Path, staging_root: Path
+) -> dict[str, Any]:
+    validate_extraction_receipt(receipt)
+    if sha256_file(receipt_path) != EXPECTED_EXTRACTION_RECEIPT_SHA256:
+        raise InventoryError("extraction receipt raw SHA differs from frozen run")
+    expected_stage_name = str(receipt["stagingLocator"]).rsplit("/", 1)[-1]
+    if staging_root.name != expected_stage_name:
+        raise InventoryError("staging root basename differs from portable staging locator")
+    identities_by_path: dict[str, dict[str, Any]] = {}
+    for identity in _iter_stage_identities(receipt):
+        relative = identity["relativePath"]
+        prior = identities_by_path.get(relative)
+        projection = {
+            "byteSize": identity["byteSize"],
+            "sha256": identity["sha256"],
+        }
+        if prior is not None and prior != projection:
+            raise InventoryError(f"conflicting stage identity for {relative}")
+        identities_by_path[relative] = projection
+    for relative, expected in identities_by_path.items():
+        path = _resolve_stage_relative(staging_root, relative)
+        if not path.is_file():
+            raise InventoryError(f"missing frozen stage artifact: {relative}")
+        if path.stat().st_size != expected["byteSize"] or sha256_file(path) != expected["sha256"]:
+            raise InventoryError(f"frozen stage artifact bytes changed: {relative}")
+    actual_paths = {
+        path.relative_to(staging_root).as_posix()
+        for path in _all_stage_files(staging_root)
+        if path.resolve() != receipt_path.resolve()
+    }
+    expected_paths = set(identities_by_path)
+    if actual_paths != expected_paths:
+        missing = sorted(expected_paths - actual_paths)
+        unexpected = sorted(actual_paths - expected_paths)
+        raise InventoryError(
+            f"frozen stage file set changed: missing={missing[:5]} unexpected={unexpected[:5]}"
+        )
+    return {
+        "verifiedArtifactCount": len(expected_paths),
+        "verifiedArtifactByteSize": sum(
+            int(row["byteSize"]) for row in identities_by_path.values()
+        ),
+        "receiptRawSha256": sha256_file(receipt_path),
+    }
+
+
+def _reinspect_raw_request(
+    request: dict[str, Any], staging_root: Path
+) -> dict[str, Any]:
+    result = copy.deepcopy(request)
+    result.pop("ddsInspection", None)
+    result.pop("wmodelInspection", None)
+    result.pop("gltfInspection", None)
+    result.pop("inspectionError", None)
+    payloads = result.get("payloads", [])
+    by_kind: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for payload in payloads:
+        by_kind[str(payload["kind"])].append(payload)
+    if result["role"] == "texture":
+        if len(by_kind.get("DDS", [])) == 1:
+            path = _resolve_stage_relative(
+                staging_root, by_kind["DDS"][0]["relativePath"]
+            )
+            try:
+                inspection = inspect_dds_file(path)
+            except (OSError, InventoryError) as error:
+                result["extractionStatus"] = "INVALID_DDS_STRUCTURE_AT_FINALIZATION"
+                result["inspectionError"] = _portable_stage_error(error, staging_root)
+            else:
+                result["ddsInspection"] = inspection
+                result["extractionStatus"] = (
+                    "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+                    if inspection["inspectionStatus"] == "STRUCTURALLY_VALID"
+                    else "DDS_PAYLOAD_OR_FORMAT_BLOCKER"
+                )
+        elif len(by_kind.get("TGA", [])) == 1 and not by_kind.get("DDS"):
+            result["extractionStatus"] = "UNSUPPORTED_NON_DDS_TEXTURE_PRIMARY"
+        else:
+            result["extractionStatus"] = "MISSING_OR_AMBIGUOUS_TEXTURE_PAYLOAD"
+        return result
+
+    if (
+        len(by_kind.get("GLTF", [])) != 1
+        or not by_kind.get("GLTF_BUFFER")
+        or len(by_kind.get("WMODEL", [])) != 1
+    ):
+        result["extractionStatus"] = "MISSING_OR_AMBIGUOUS_MESH_PAYLOAD_SET"
+        return result
+    gltf_path = _resolve_stage_relative(
+        staging_root, by_kind["GLTF"][0]["relativePath"]
+    )
+    wmodel_path = _resolve_stage_relative(
+        staging_root, by_kind["WMODEL"][0]["relativePath"]
+    )
+    try:
+        observed_buffers, gltf_facts = _gltf_buffer_identities(
+            gltf_path, staging_root
+        )
+        expected_buffers = sorted(
+            (
+                {
+                    key: row[key]
+                    for key in (
+                        "kind",
+                        "relativePath",
+                        "fileName",
+                        "byteSize",
+                        "sha256",
+                        "bufferIndex",
+                        "declaredByteLength",
+                        "declaredByteLengthMatches",
+                    )
+                }
+                for row in by_kind["GLTF_BUFFER"]
+            ),
+            key=lambda value: value["bufferIndex"],
+        )
+        if canonical_bytes(observed_buffers) != canonical_bytes(expected_buffers):
+            raise InventoryError("glTF buffer identity set differs from extraction receipt")
+        wmodel_inspection = inspect_wmodel_file(wmodel_path)
+    except (OSError, InventoryError) as error:
+        result["extractionStatus"] = "INVALID_MESH_PAYLOAD_SET_AT_FINALIZATION"
+        result["inspectionError"] = _portable_stage_error(error, staging_root)
+    else:
+        result["gltfInspection"] = gltf_facts
+        result["wmodelInspection"] = wmodel_inspection
+        result["extractionStatus"] = "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+    return result
+
+
+def _primary_candidate_payload(raw_resource: dict[str, Any]) -> dict[str, Any] | None:
+    desired = "WMODEL" if raw_resource.get("role") == "mesh" else "DDS"
+    payloads = [
+        row for row in raw_resource.get("payloads", []) if row.get("kind") == desired
+    ]
+    if not payloads and raw_resource.get("role") == "texture":
+        payloads = [
+            row for row in raw_resource.get("payloads", []) if row.get("kind") == "TGA"
+        ]
+    return payloads[0] if len(payloads) == 1 else None
+
+
+def derive_raw_blocker_evidence(document: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for corpus_key, corpus_name in (("fourClass", "FourClass"), ("valtan", "Valtan")):
+        for request in document.get(corpus_key, {}).get("assetRequests", []):
+            raw = request.get("rawResource")
+            if not isinstance(raw, dict):
+                rows.append(
+                    {
+                        "code": "RAW_RESOURCE_RESULT_MISSING",
+                        "corpus": corpus_name,
+                        "requestId": request.get("requestId"),
+                        "role": request.get("role"),
+                        "sourceAssetPath": request.get("sourceAssetPath"),
+                        "resourcesRelativeCandidateId": request.get(
+                            "resourcesRelativeCandidateId"
+                        ),
+                        "payloads": [],
+                    }
+                )
+                continue
+            if raw.get("extractionStatus") == "EXPORTED_AND_STRUCTURALLY_INSPECTED":
+                continue
+            rows.append(
+                {
+                    "code": raw.get("extractionStatus"),
+                    "corpus": corpus_name,
+                    "requestId": request.get("requestId"),
+                    "role": request.get("role"),
+                    "sourceAssetPath": request.get("sourceAssetPath"),
+                    "resourcesRelativeCandidateId": request.get(
+                        "resourcesRelativeCandidateId"
+                    ),
+                    "payloads": [
+                        {
+                            key: payload[key]
+                            for key in (
+                                "kind",
+                                "relativePath",
+                                "byteSize",
+                                "sha256",
+                            )
+                        }
+                        for payload in raw.get("payloads", [])
+                    ],
+                }
+            )
+    return sorted(
+        rows,
+        key=lambda row: (
+            str(row["corpus"]).casefold(),
+            str(row["requestId"]),
+        ),
+    )
+
+
+def raw_blocker_evidence_sha256(rows: list[dict[str, Any]]) -> str:
+    return hashlib.sha256(canonical_bytes(rows)).hexdigest()
+
+
+def raw_resource_projection(document: dict[str, Any]) -> dict[str, Any]:
+    extraction = document.get("rawExtraction", {})
+    receipt = extraction.get("receipt", {})
+    return {
+        "runId": extraction.get("runId"),
+        "stagingLocator": extraction.get("stagingLocator"),
+        "receipt": {
+            key: receipt.get(key)
+            for key in ("locator", "fileName", "byteSize", "sha256", "selfDigest")
+        },
+        "tools": extraction.get("tools"),
+        "conversionBoundary": extraction.get("conversionBoundary"),
+        "stageVerification": extraction.get("stageVerification"),
+        "corpora": extraction.get("corpora"),
+        "unassociatedFreshOutputs": extraction.get("unassociatedFreshOutputs"),
+        "requests": [
+            {
+                "corpus": corpus_name,
+                "requestId": request.get("requestId"),
+                "rawResource": request.get("rawResource"),
+            }
+            for corpus_key, corpus_name in (
+                ("fourClass", "FourClass"),
+                ("valtan", "Valtan"),
+            )
+            for request in document.get(corpus_key, {}).get("assetRequests", [])
+        ],
+    }
+
+
+def raw_resource_projection_sha256(document: dict[str, Any]) -> str:
+    return hashlib.sha256(canonical_bytes(raw_resource_projection(document))).hexdigest()
+
+
+def reconstruct_checkpoint_projection(document: dict[str, Any]) -> dict[str, Any]:
+    """Remove final-only evidence and reconstruct the exact frozen checkpoint document."""
+
+    projection = copy.deepcopy(document)
+    for key in (
+        "checkpointProvenance",
+        "rawBlockerEvidence",
+        "rawBlockerEvidenceSha256",
+        "rawExtraction",
+        "rawResourceProjectionSha256",
+        "inventoryStatus",
+    ):
+        projection.pop(key, None)
+    projection["phase"] = "DENOMINATOR_CHECKPOINT"
+    projection["blockerCount"] = len(projection.get("blockerEvidence", []))
+    reports = projection.get("reports", {})
+    for key in (
+        "rawResourceBlockers",
+        "rawStructuralFailures",
+        "unsupportedNonDdsTextures",
+        "caseOnlyCandidateIdCollisions",
+        "candidateNameCollisions",
+        "basenameCollisions",
+    ):
+        reports.pop(key, None)
+    reports["rawExtractionMissing"] = []
+    reports["rawOutputAmbiguities"] = []
+    reports["sharedByteGroups"] = []
+    for corpus_key in ("fourClass", "valtan"):
+        for request in projection.get(corpus_key, {}).get("assetRequests", []):
+            request.pop("rawResource", None)
+    projection["selfDigest"] = EXPECTED_CHECKPOINT_SELF_DIGEST
+    return projection
+
+
+def _build_shared_byte_groups(document: dict[str, Any]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    byte_sizes: dict[str, set[int]] = defaultdict(set)
+    for corpus_key, corpus_name in (("fourClass", "FourClass"), ("valtan", "Valtan")):
+        for request in document[corpus_key]["assetRequests"]:
+            raw = request["rawResource"]
+            for payload in raw.get("payloads", []):
+                sha = str(payload["sha256"])
+                byte_sizes[sha].add(int(payload["byteSize"]))
+                grouped[sha].append(
+                    {
+                        "corpus": corpus_name,
+                        "requestId": request["requestId"],
+                        "role": request["role"],
+                        "sourceAssetPath": request["sourceAssetPath"],
+                        "kind": payload["kind"],
+                        "relativePath": payload["relativePath"],
+                    }
+                )
+    results = []
+    for sha, aliases in grouped.items():
+        request_ids = {row["requestId"] for row in aliases}
+        if len(request_ids) <= 1:
+            continue
+        if len(byte_sizes[sha]) != 1:
+            raise InventoryError("identical SHA has conflicting byte sizes")
+        aliases.sort(
+            key=lambda row: (
+                row["corpus"].casefold(),
+                row["requestId"],
+                row["kind"],
+                row["relativePath"].casefold(),
+            )
+        )
+        results.append(
+            {
+                "groupId": f"rawsha.{sha[:24]}",
+                "sha256": sha,
+                "byteSize": next(iter(byte_sizes[sha])),
+                "requestAliasCount": len(aliases),
+                "distinctRequestCount": len(request_ids),
+                "payloadKinds": sorted({row["kind"] for row in aliases}),
+                "aliases": aliases,
+            }
+        )
+    return sorted(results, key=lambda row: row["sha256"])
+
+
+def _build_candidate_collision_reports(document: dict[str, Any]) -> dict[str, Any]:
+    rows = []
+    for corpus_key, corpus_name in (("fourClass", "FourClass"), ("valtan", "Valtan")):
+        for request in document[corpus_key]["assetRequests"]:
+            primary = _primary_candidate_payload(request["rawResource"])
+            rows.append(
+                {
+                    "corpus": corpus_name,
+                    "requestId": request["requestId"],
+                    "role": request["role"],
+                    "sourceAssetPath": request["sourceAssetPath"],
+                    "resourcesRelativeCandidateId": request[
+                        "resourcesRelativeCandidateId"
+                    ],
+                    "primarySha256": primary["sha256"] if primary else None,
+                }
+            )
+    casefold_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    exact_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    basename_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        candidate = row["resourcesRelativeCandidateId"]
+        casefold_groups[candidate.casefold()].append(row)
+        exact_groups[candidate].append(row)
+        basename = row["sourceAssetPath"].rsplit(".", 1)[-1]
+        basename_groups[(row["corpus"], row["role"], basename.casefold())].append(row)
+    case_only = [
+        {
+            "casefoldCandidateId": key,
+            "rows": value,
+        }
+        for key, value in casefold_groups.items()
+        if len({row["resourcesRelativeCandidateId"] for row in value}) > 1
+    ]
+    name_collisions = [
+        {
+            "resourcesRelativeCandidateId": key,
+            "rows": value,
+        }
+        for key, value in exact_groups.items()
+        if len({row["primarySha256"] for row in value}) > 1
+    ]
+    basename = [
+        {
+            "corpus": key[0],
+            "role": key[1],
+            "basenameCasefold": key[2],
+            "resolutionStatus": "FULL_SOURCE_PATH_CANDIDATE_DISAMBIGUATES",
+            "rows": value,
+        }
+        for key, value in basename_groups.items()
+        if len({row["sourceAssetPath"].casefold() for row in value}) > 1
+    ]
+    return {
+        "caseOnlyCandidateIdCollisions": sorted(
+            case_only, key=lambda row: row["casefoldCandidateId"]
+        ),
+        "candidateNameCollisions": sorted(
+            name_collisions,
+            key=lambda row: row["resourcesRelativeCandidateId"].casefold(),
+        ),
+        "basenameCollisions": sorted(
+            basename,
+            key=lambda row: (
+                row["corpus"].casefold(),
+                row["role"],
+                row["basenameCasefold"],
+            ),
+        ),
+    }
+
+
+def build_final_inventory(
+    repo_root: Path,
+    checkpoint_path: Path,
+    receipt_path: Path,
+    staging_root: Path,
+) -> dict[str, Any]:
+    if sha256_file(checkpoint_path) != EXPECTED_CHECKPOINT_RAW_SHA256:
+        raise InventoryError("finalization checkpoint raw SHA changed")
+    checkpoint = load_json(checkpoint_path)
+    validate_checkpoint(checkpoint)
+    receipt = load_json(receipt_path)
+    validate_extraction_receipt(receipt)
+    stage_verification = verify_extraction_stage(receipt, receipt_path, staging_root)
+    document = copy.deepcopy(checkpoint)
+    document["phase"] = FINAL_PHASE
+    document["checkpointProvenance"] = {
+        "locator": "Data/Effects/Imported/RawResourceInventory/"
+        "R8.raw-resource-denominator.checkpoint.json",
+        "fileName": checkpoint_path.name,
+        "byteSize": checkpoint_path.stat().st_size,
+        "sha256": EXPECTED_CHECKPOINT_RAW_SHA256,
+        "selfDigest": checkpoint["selfDigest"],
+        "blockerEvidenceSha256": checkpoint["blockerEvidenceSha256"],
+    }
+    receipt_requests = {
+        row["requestId"]: row
+        for corpus in receipt["corpora"].values()
+        for row in corpus["requests"]
+    }
+    expected_request_ids = {
+        row["requestId"]
+        for key in ("fourClass", "valtan")
+        for row in document[key]["assetRequests"]
+    }
+    if set(receipt_requests) != expected_request_ids:
+        raise InventoryError("extraction receipt request IDs differ from checkpoint denominator")
+    for corpus_key in ("fourClass", "valtan"):
+        for request in document[corpus_key]["assetRequests"]:
+            raw = receipt_requests[request["requestId"]]
+            for key in (
+                "role",
+                "sourceAssetPath",
+                "logicalPackage",
+                "resourcesRelativeCandidateId",
+            ):
+                if raw.get(key) != request.get(key):
+                    raise InventoryError(
+                        f"raw extraction request field differs for {request['requestId']}: {key}"
+                    )
+            if raw.get("expectedPhysicalPackageFileName") != request.get(
+                "physicalPackageFileName"
+            ):
+                raise InventoryError("raw extraction physical package expectation changed")
+            request["rawResource"] = _reinspect_raw_request(raw, staging_root)
+    shared_groups = _build_shared_byte_groups(document)
+    collisions = _build_candidate_collision_reports(document)
+    raw_blockers = derive_raw_blocker_evidence(document)
+    raw_blocker_sha = raw_blocker_evidence_sha256(raw_blockers)
+    if (
+        EXPECTED_RAW_BLOCKER_PROJECTION_SHA256 is not None
+        and raw_blocker_sha != EXPECTED_RAW_BLOCKER_PROJECTION_SHA256
+    ):
+        raise InventoryError("raw blocker evidence differs from frozen extraction baseline")
+    reports = document["reports"]
+    reports["rawResourceBlockers"] = copy.deepcopy(raw_blockers)
+    reports["rawExtractionMissing"] = [
+        row
+        for row in raw_blockers
+        if any(token in str(row["code"]) for token in ("MISSING", "FAILED", "PREFLIGHT"))
+    ]
+    reports["rawOutputAmbiguities"] = [
+        row
+        for row in raw_blockers
+        if any(token in str(row["code"]) for token in ("AMBIGUOUS", "CASE_MISMATCH"))
+    ]
+    reports["rawStructuralFailures"] = [
+        row
+        for row in raw_blockers
+        if any(token in str(row["code"]) for token in ("INVALID", "PAYLOAD_OR_FORMAT"))
+    ]
+    reports["unsupportedNonDdsTextures"] = [
+        row
+        for row in raw_blockers
+        if row["code"] == "UNSUPPORTED_NON_DDS_TEXTURE_PRIMARY"
+    ]
+    reports["sharedByteGroups"] = shared_groups
+    reports.update(collisions)
+    document["rawBlockerEvidence"] = raw_blockers
+    document["rawBlockerEvidenceSha256"] = raw_blocker_sha
+    document["blockerCount"] = len(document["blockerEvidence"]) + len(raw_blockers)
+    document["inventoryStatus"] = (
+        "FROZEN_WITH_BLOCKERS" if document["blockerCount"] else "FROZEN_COMPLETE"
+    )
+    payload_kind_counts = Counter(
+        payload["kind"]
+        for key in ("fourClass", "valtan")
+        for request in document[key]["assetRequests"]
+        for payload in request["rawResource"].get("payloads", [])
+    )
+    payloads = [
+        payload
+        for key in ("fourClass", "valtan")
+        for request in document[key]["assetRequests"]
+        for payload in request["rawResource"].get("payloads", [])
+    ]
+    status_counts = Counter(
+        request["rawResource"]["extractionStatus"]
+        for key in ("fourClass", "valtan")
+        for request in document[key]["assetRequests"]
+    )
+    document["rawExtraction"] = {
+        "runId": receipt["runId"],
+        "stagingLocator": receipt["stagingLocator"],
+        "receipt": {
+            "locator": f"{receipt['stagingLocator']}/{receipt_path.name}",
+            "fileName": receipt_path.name,
+            "byteSize": receipt_path.stat().st_size,
+            "sha256": sha256_file(receipt_path),
+            "selfDigest": receipt["selfDigest"],
+        },
+        "tools": receipt["tools"],
+        "conversionBoundary": receipt["conversionBoundary"],
+        "stageVerification": stage_verification,
+        "corpora": {
+            key: {
+                "packagePreflights": value["packagePreflights"],
+                "invocations": value["invocations"],
+                "summary": value["summary"],
+            }
+            for key, value in receipt["corpora"].items()
+        },
+        "unassociatedFreshOutputs": receipt["unassociatedFreshOutputs"],
+        "summary": {
+            "requestCount": len(expected_request_ids),
+            "statusCounts": dict(sorted(status_counts.items())),
+            "successfulRequestCount": status_counts[
+                "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+            ],
+            "rawBlockerCount": len(raw_blockers),
+            "payloadCount": len(payloads),
+            "payloadKindCounts": dict(sorted(payload_kind_counts.items())),
+            "payloadByteSizeWithAliases": sum(int(row["byteSize"]) for row in payloads),
+            "uniquePayloadSha256Count": len({row["sha256"] for row in payloads}),
+            "sharedByteGroupCount": len(shared_groups),
+            "unassociatedFreshOutputCount": len(
+                receipt["unassociatedFreshOutputs"]
+            ),
+        },
+    }
+    document["rawResourceProjectionSha256"] = raw_resource_projection_sha256(
+        document
+    )
+    if (
+        EXPECTED_RAW_RESOURCE_PROJECTION_SHA256 is not None
+        and document["rawResourceProjectionSha256"]
+        != EXPECTED_RAW_RESOURCE_PROJECTION_SHA256
+    ):
+        raise InventoryError("raw resource projection differs from frozen extraction")
+    document = add_self_digest(document)
+    validate_final_inventory(document)
+    return document
+
+
+def validate_final_inventory(document: dict[str, Any]) -> dict[str, Any]:
+    if document.get("schema") != "lostark.raw-resource-inventory-v1":
+        raise InventoryError("unexpected final raw inventory schema")
+    if document.get("formatVersion") != 1 or isinstance(document.get("formatVersion"), bool):
+        raise InventoryError("final raw inventory formatVersion must be exact integer 1")
+    if document.get("phase") != FINAL_PHASE:
+        raise InventoryError("expected RAW_BYTES_INSPECTED final phase")
+    if document.get("mode") != "OFFLINE_INVENTORY_ONLY":
+        raise InventoryError("final raw inventory must remain offline-only")
+    if document.get("sourceCommit") != SOURCE_COMMIT:
+        raise InventoryError("final raw inventory source commit mismatch")
+    if document.get("runtimeAuthority") is not False or document.get("rendererReady") is not False:
+        raise InventoryError("final raw inventory runtime flags must be false")
+    if document.get("admission") != {
+        "Execute": False,
+        "Submit": False,
+        "Render": False,
+        "Product": False,
+    }:
+        raise InventoryError("final raw inventory admission flags must be false")
+    if document.get("gpuSchemaBoundary") != GPU_SCHEMA_BOUNDARY:
+        raise InventoryError("final raw inventory GPU schema boundary changed")
+    if document.get("selfDigest") != compute_self_digest(document):
+        raise InventoryError("final raw inventory self digest mismatch")
+    validate_portable_strings(document)
+    expected_checkpoint_provenance = {
+        "locator": "Data/Effects/Imported/RawResourceInventory/"
+        "R8.raw-resource-denominator.checkpoint.json",
+        "fileName": "R8.raw-resource-denominator.checkpoint.json",
+        "byteSize": EXPECTED_CHECKPOINT_BYTE_SIZE,
+        "sha256": EXPECTED_CHECKPOINT_RAW_SHA256,
+        "selfDigest": EXPECTED_CHECKPOINT_SELF_DIGEST,
+        "blockerEvidenceSha256": EXPECTED_CHECKPOINT_BLOCKER_PROJECTION_SHA256,
+    }
+    if document.get("checkpointProvenance") != expected_checkpoint_provenance:
+        raise InventoryError("final raw inventory checkpoint provenance changed")
+    checkpoint_projection = reconstruct_checkpoint_projection(document)
+    if compute_self_digest(checkpoint_projection) != EXPECTED_CHECKPOINT_SELF_DIGEST:
+        raise InventoryError("final embedded checkpoint corpus differs from frozen checkpoint")
+    extraction = document.get("rawExtraction", {})
+    expected_extraction_keys = {
+        "runId",
+        "stagingLocator",
+        "receipt",
+        "tools",
+        "conversionBoundary",
+        "stageVerification",
+        "corpora",
+        "unassociatedFreshOutputs",
+        "summary",
+    }
+    if set(extraction) != expected_extraction_keys:
+        raise InventoryError("final raw extraction field set changed")
+    expected_receipt_keys = {
+        "locator",
+        "fileName",
+        "byteSize",
+        "sha256",
+        "selfDigest",
+    }
+    if set(extraction.get("receipt", {})) != expected_receipt_keys:
+        raise InventoryError("final raw extraction receipt field set changed")
+    if extraction.get("receipt", {}).get("sha256") != EXPECTED_EXTRACTION_RECEIPT_SHA256:
+        raise InventoryError("final raw inventory extraction receipt changed")
+    raw_projection_sha = raw_resource_projection_sha256(document)
+    if document.get("rawResourceProjectionSha256") != raw_projection_sha:
+        raise InventoryError("final raw resource projection SHA mismatch")
+    if (
+        EXPECTED_RAW_RESOURCE_PROJECTION_SHA256 is not None
+        and raw_projection_sha != EXPECTED_RAW_RESOURCE_PROJECTION_SHA256
+    ):
+        raise InventoryError("final raw resource projection differs from frozen baseline")
+    for key, expected in FOUR_CLASS_EXPECTED.items():
+        if document.get("fourClass", {}).get("summary", {}).get(key) != expected:
+            raise InventoryError(f"final four-class summary mismatch for {key}")
+    for key, expected in VALTAN_EXPECTED.items():
+        if document.get("valtan", {}).get("summary", {}).get(key) != expected:
+            raise InventoryError(f"final Valtan summary mismatch for {key}")
+    checkpoint_blockers = derive_blocker_evidence(document)
+    if blocker_evidence_sha256(checkpoint_blockers) != EXPECTED_CHECKPOINT_BLOCKER_PROJECTION_SHA256:
+        raise InventoryError("final inventory checkpoint blocker evidence changed")
+    if canonical_bytes(document.get("blockerEvidence", [])) != canonical_bytes(
+        checkpoint_blockers
+    ):
+        raise InventoryError("final checkpoint blocker projection mismatch")
+    raw_blockers = derive_raw_blocker_evidence(document)
+    if canonical_bytes(document.get("rawBlockerEvidence", [])) != canonical_bytes(
+        raw_blockers
+    ):
+        raise InventoryError("final raw blocker projection mismatch")
+    raw_sha = raw_blocker_evidence_sha256(raw_blockers)
+    if document.get("rawBlockerEvidenceSha256") != raw_sha:
+        raise InventoryError("final raw blocker evidence SHA mismatch")
+    if (
+        EXPECTED_RAW_BLOCKER_PROJECTION_SHA256 is not None
+        and raw_sha != EXPECTED_RAW_BLOCKER_PROJECTION_SHA256
+    ):
+        raise InventoryError("final raw blocker evidence differs from frozen baseline")
+    expected_blockers = len(checkpoint_blockers) + len(raw_blockers)
+    if document.get("blockerCount") != expected_blockers:
+        raise InventoryError("final raw inventory blockerCount mismatch")
+    expected_status = "FROZEN_WITH_BLOCKERS" if expected_blockers else "FROZEN_COMPLETE"
+    if document.get("inventoryStatus") != expected_status:
+        raise InventoryError("final raw inventory status mismatch")
+    if canonical_bytes(document.get("reports", {}).get("rawResourceBlockers", [])) != canonical_bytes(
+        raw_blockers
+    ):
+        raise InventoryError("final raw blocker report differs from evidence")
+    expected_report_subsets = {
+        "rawExtractionMissing": [
+            row
+            for row in raw_blockers
+            if any(
+                token in str(row["code"])
+                for token in ("MISSING", "FAILED", "PREFLIGHT")
+            )
+        ],
+        "rawOutputAmbiguities": [
+            row
+            for row in raw_blockers
+            if any(
+                token in str(row["code"])
+                for token in ("AMBIGUOUS", "CASE_MISMATCH")
+            )
+        ],
+        "rawStructuralFailures": [
+            row
+            for row in raw_blockers
+            if any(
+                token in str(row["code"])
+                for token in ("INVALID", "PAYLOAD_OR_FORMAT")
+            )
+        ],
+        "unsupportedNonDdsTextures": [
+            row
+            for row in raw_blockers
+            if row["code"] == "UNSUPPORTED_NON_DDS_TEXTURE_PRIMARY"
+        ],
+    }
+    for key, expected in expected_report_subsets.items():
+        if canonical_bytes(document["reports"].get(key, [])) != canonical_bytes(expected):
+            raise InventoryError(f"final {key} report differs from evidence")
+    requests = [
+        request
+        for key in ("fourClass", "valtan")
+        for request in document[key]["assetRequests"]
+    ]
+    if len(requests) != 1212 or any(
+        request.get("rawResource", {}).get("requestId") != request.get("requestId")
+        for request in requests
+    ):
+        raise InventoryError("final raw request denominator or join changed")
+    candidates = [request["resourcesRelativeCandidateId"] for request in requests]
+    if len(candidates) != len(set(candidates)) or len(candidates) != len(
+        {value.casefold() for value in candidates}
+    ):
+        raise InventoryError("final raw candidate IDs collide")
+    collision_reports = _build_candidate_collision_reports(document)
+    for key, expected in collision_reports.items():
+        if canonical_bytes(document["reports"].get(key, [])) != canonical_bytes(expected):
+            raise InventoryError(f"final {key} report changed")
+    shared = _build_shared_byte_groups(document)
+    if canonical_bytes(document["reports"].get("sharedByteGroups", [])) != canonical_bytes(shared):
+        raise InventoryError("final shared-byte groups changed")
+    payloads = [
+        payload
+        for request in requests
+        for payload in request["rawResource"].get("payloads", [])
+    ]
+    status_counts = Counter(
+        request["rawResource"]["extractionStatus"] for request in requests
+    )
+    payload_kind_counts = Counter(payload["kind"] for payload in payloads)
+    expected_raw_summary = {
+        "requestCount": len(requests),
+        "statusCounts": dict(sorted(status_counts.items())),
+        "successfulRequestCount": status_counts[
+            "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+        ],
+        "rawBlockerCount": len(raw_blockers),
+        "payloadCount": len(payloads),
+        "payloadKindCounts": dict(sorted(payload_kind_counts.items())),
+        "payloadByteSizeWithAliases": sum(int(row["byteSize"]) for row in payloads),
+        "uniquePayloadSha256Count": len({row["sha256"] for row in payloads}),
+        "sharedByteGroupCount": len(shared),
+        "unassociatedFreshOutputCount": len(
+            document["rawExtraction"].get("unassociatedFreshOutputs", [])
+        ),
+    }
+    if canonical_bytes(document["rawExtraction"].get("summary", {})) != canonical_bytes(
+        expected_raw_summary
+    ):
+        raise InventoryError("final raw extraction summary differs from request evidence")
+    return {
+        "phase": document["phase"],
+        "inventoryStatus": document["inventoryStatus"],
+        "blockerCount": document["blockerCount"],
+        "rawBlockerCount": len(raw_blockers),
+        "requestCount": len(requests),
+        "successfulRequestCount": sum(
+            request["rawResource"]["extractionStatus"]
+            == "EXPORTED_AND_STRUCTURALLY_INSPECTED"
+            for request in requests
+        ),
+        "selfDigest": document["selfDigest"],
+    }
+
+
 def write_json(path: Path, document: dict[str, Any], replace: bool) -> None:
     if path.exists() and not replace:
         raise InventoryError(f"output already exists; pass --replace: {path}")
@@ -2089,6 +4251,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     checkpoint.add_argument("--replace", action="store_true")
     validate = subparsers.add_parser("validate")
     validate.add_argument("--manifest", required=True, type=Path)
+    extract = subparsers.add_parser("extract")
+    extract.add_argument("--repo-root", required=True, type=Path)
+    extract.add_argument("--checkpoint", required=True, type=Path)
+    extract.add_argument("--package-root", required=True, type=Path)
+    extract.add_argument("--umodel", required=True, type=Path)
+    extract.add_argument("--converter", required=True, type=Path)
+    extract.add_argument("--staging-root", required=True, type=Path)
+    extract.add_argument("--run-id", required=True)
+    extract.add_argument(
+        "--region", default="kr", choices=("kr", "na", "ru", "jp", "tw", "cn")
+    )
+    extract.add_argument("--chunk-size", type=int, default=DEFAULT_EXPORT_CHUNK_SIZE)
+    validate_extraction = subparsers.add_parser("validate-extraction")
+    validate_extraction.add_argument("--receipt", required=True, type=Path)
+    finalize = subparsers.add_parser("finalize")
+    finalize.add_argument("--repo-root", required=True, type=Path)
+    finalize.add_argument("--checkpoint", required=True, type=Path)
+    finalize.add_argument("--receipt", required=True, type=Path)
+    finalize.add_argument("--staging-root", required=True, type=Path)
+    finalize.add_argument("--output", required=True, type=Path)
+    finalize.add_argument("--replace", action="store_true")
+    validate_final = subparsers.add_parser("validate-final")
+    validate_final.add_argument("--manifest", required=True, type=Path)
+    verify_final_stage = subparsers.add_parser("verify-final-stage")
+    verify_final_stage.add_argument("--manifest", required=True, type=Path)
+    verify_final_stage.add_argument("--staging-root", required=True, type=Path)
     return parser.parse_args(argv)
 
 
@@ -2106,9 +4294,57 @@ def main(argv: list[str] | None = None) -> int:
             summary = validate_checkpoint(document)
             write_json(args.output.resolve(), document, args.replace)
             summary["rawFileSha256"] = sha256_file(args.output.resolve())
-        else:
+        elif args.command == "validate":
             document = load_json(args.manifest.resolve())
             summary = validate_checkpoint(document)
+            summary["rawFileSha256"] = sha256_file(args.manifest.resolve())
+        elif args.command == "extract":
+            document, receipt = build_extraction_run(
+                args.repo_root.resolve(),
+                args.checkpoint.resolve(),
+                args.package_root.resolve(),
+                args.umodel.resolve(),
+                args.converter.resolve(),
+                args.staging_root,
+                args.run_id,
+                args.region,
+                args.chunk_size,
+            )
+            summary = validate_extraction_receipt(document)
+            summary["receipt"] = receipt.name
+            summary["rawFileSha256"] = sha256_file(receipt)
+        elif args.command == "validate-extraction":
+            document = load_json(args.receipt.resolve())
+            summary = validate_extraction_receipt(document)
+            summary["rawFileSha256"] = sha256_file(args.receipt.resolve())
+        elif args.command == "finalize":
+            document = build_final_inventory(
+                args.repo_root.resolve(),
+                args.checkpoint.resolve(),
+                args.receipt.resolve(),
+                args.staging_root.resolve(),
+            )
+            summary = validate_final_inventory(document)
+            write_json(args.output.resolve(), document, args.replace)
+            summary["rawFileSha256"] = sha256_file(args.output.resolve())
+        elif args.command == "validate-final":
+            document = load_json(args.manifest.resolve())
+            summary = validate_final_inventory(document)
+            summary["rawFileSha256"] = sha256_file(args.manifest.resolve())
+        else:
+            document = load_json(args.manifest.resolve())
+            summary = validate_final_inventory(document)
+            staging_root = args.staging_root.resolve()
+            receipt_path = staging_root / document["rawExtraction"]["receipt"]["fileName"]
+            receipt = load_json(receipt_path)
+            summary.update(
+                {
+                    f"stage{key[0].upper()}{key[1:]}": value
+                    for key, value in verify_extraction_stage(
+                        receipt, receipt_path, staging_root
+                    ).items()
+                }
+            )
             summary["rawFileSha256"] = sha256_file(args.manifest.resolve())
         print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
         return 0
