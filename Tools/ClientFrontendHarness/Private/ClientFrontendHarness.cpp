@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -1421,6 +1422,10 @@ namespace
 		document.strDisplayName = "Typed Presentation Harness";
 
 		EFFECT_ELEMENT_DESC light;
+		runner.Require(
+			std::bit_cast<uint32_t>(light.Detail.Light.fFalloffExponent) ==
+			std::bit_cast<uint32_t>(1.f),
+			"Effect Light Detail Default Falloff Is Bit-Exact One");
 		light.strElementId = "light.point";
 		light.strDisplayName = "Point Light";
 		light.eKind = EFFECT_ELEMENT_KIND::LIGHT;
@@ -1497,11 +1502,29 @@ namespace
 				CEffectDocumentCodec::Serialize(document), roundTrip, status) &&
 			roundTrip.iFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
 			roundTrip.Elements.front().Detail.Light.bEnabled &&
+			std::bit_cast<uint32_t>(roundTrip.Elements.front().Detail.Light.fFalloffExponent) ==
+				std::bit_cast<uint32_t>(1.f) &&
 			roundTrip.Elements.front().SourcePresentation.Parameters.size() == 1u &&
 			roundTrip.Elements.front().SourcePresentation.Parameters.front().
 				fNumberValue == 10.0;
 		runner.Require(codecExact,
 			"Effect V12 Typed Presentation Codec Round Trips Losslessly");
+
+		EFFECT_DOCUMENT_DESC invalidExponent = document;
+		invalidExponent.Elements.front().Detail.Light.fFalloffExponent = 0.f;
+		runner.Require(!CEffectDocumentCodec::Validate(invalidExponent, status),
+			"Effect Typed Light Rejects Nonpositive Falloff Exponent");
+		EFFECT_DOCUMENT_DESC preservedAfterFailedParse = roundTrip;
+		const std::string preservedSerialization =
+			CEffectDocumentCodec::Serialize(preservedAfterFailedParse);
+		const bool_t bRejectedWithoutCommit =
+			!CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(invalidExponent),
+				preservedAfterFailedParse, status) &&
+			CEffectDocumentCodec::Serialize(preservedAfterFailedParse) ==
+				preservedSerialization;
+		runner.Require(bRejectedWithoutCommit,
+			"Effect Typed Light Invalid Parse Preserves Prior Document");
 
 		EFFECT_DOCUMENT_DESC invalidKind = document;
 		invalidKind.Elements.front().eKind = EFFECT_ELEMENT_KIND::SPRITE;

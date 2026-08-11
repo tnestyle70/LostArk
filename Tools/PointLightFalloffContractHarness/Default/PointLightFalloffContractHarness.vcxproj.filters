@@ -10,6 +10,9 @@
     <ClCompile Include="..\Private\PointLightFalloffContractHarness.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Engine\Private\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

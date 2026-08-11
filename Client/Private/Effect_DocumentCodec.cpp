@@ -3429,7 +3429,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					D.Light.fIntensity >= 0.f && Is_Finite(D.Light.vColor) &&
 					Is_Finite(D.Light.vAmbient) &&
 					std::isfinite(D.Light.fFalloffExponent) &&
-					D.Light.fFalloffExponent >= 0.f));
+					D.Light.fFalloffExponent > 0.f));
 		const bool_t bScreenPostValid =
 			(EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind ||
 				!D.ScreenPost.bEnabled) &&

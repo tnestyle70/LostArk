@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import copy
+import json
 import unittest
 
 from build_imported_effect_documents import (
@@ -843,6 +845,7 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         self.assertEqual(light["kind"], "light")
         self.assertTrue(light["detail"]["light"]["enabled"])
         self.assertEqual(light["detail"]["light"]["intensity"], 10.0)
+        self.assertEqual(light["detail"]["light"]["falloffExponent"], 1.0)
         self.assertEqual(
             light["detail"]["light"]["profileId"],
             "light.point.reconstructed.v1",
@@ -885,6 +888,149 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             row["className"] == "particlemodulecameraoffset"
             for row in sprite_conversion["unrepresentedModules"]
         ))
+
+        invalid_falloff_values = (
+            False,
+            True,
+            "2.0",
+            None,
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            0.0,
+            -1.0,
+        )
+        for invalid_falloff in invalid_falloff_values:
+            with self.subTest(invalid_falloff=repr(invalid_falloff)):
+                invalid_light_graph = copy.deepcopy(graph)
+                invalid_light_component = next(
+                    row for row in invalid_light_graph["nodes"]
+                    if row["className"] == "pointlightcomponent"
+                )
+                invalid_light_component["properties"]["falloffexponent"] = value(
+                    "floatproperty", invalid_falloff
+                )
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "enabled PointLight explicit falloffExponent must be "
+                    "(?:a finite number|positive)",
+                ):
+                    build_document(receipt, invalid_light_graph, closure)
+
+        falloff_property_spellings = (
+            "FalloffExponent",
+            "falloffExponent",
+            "FALLOFFEXPONENT",
+        )
+        for property_key in falloff_property_spellings:
+            with self.subTest(property_key=property_key, falloff=2.0):
+                valid_light_graph = copy.deepcopy(graph)
+                valid_light_component = next(
+                    row for row in valid_light_graph["nodes"]
+                    if row["className"] == "pointlightcomponent"
+                )
+                valid_light_component["properties"][property_key] = value(
+                    "floatproperty", 2.0
+                )
+                valid_document, _ = build_document(
+                    receipt, valid_light_graph, closure
+                )
+                valid_light = next(
+                    row for row in valid_document["elements"]
+                    if row["groupId"] == "light_system"
+                )
+                self.assertEqual(
+                    valid_light["detail"]["light"]["falloffExponent"],
+                    2.0,
+                )
+
+            with self.subTest(property_key=property_key, falloff=0.0):
+                invalid_zero_graph = copy.deepcopy(graph)
+                invalid_zero_component = next(
+                    row for row in invalid_zero_graph["nodes"]
+                    if row["className"] == "pointlightcomponent"
+                )
+                invalid_zero_component["properties"][property_key] = value(
+                    "floatproperty", 0.0
+                )
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "enabled PointLight explicit falloffExponent must be positive",
+                ):
+                    build_document(receipt, invalid_zero_graph, closure)
+
+        indexed_falloff_property_spellings = (
+            "falloffexponent[0]",
+            "falloffexponent[1]",
+            "FalloffExponent[0]",
+            "FALLOFFEXPONENT[1]",
+        )
+        for property_key in indexed_falloff_property_spellings:
+            with self.subTest(indexed_property_key=property_key):
+                indexed_light_graph = copy.deepcopy(graph)
+                indexed_light_component = next(
+                    row for row in indexed_light_graph["nodes"]
+                    if row["className"] == "pointlightcomponent"
+                )
+                indexed_light_component["properties"][property_key] = value(
+                    "floatproperty", 2.0
+                )
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "scalar falloffExponent must not use indexed property aliases",
+                ):
+                    build_document(receipt, indexed_light_graph, closure)
+
+        canonical_with_indexed_graph = copy.deepcopy(graph)
+        canonical_with_indexed_component = next(
+            row for row in canonical_with_indexed_graph["nodes"]
+            if row["className"] == "pointlightcomponent"
+        )
+        canonical_with_indexed_component["properties"][
+            "falloffexponent"
+        ] = value("floatproperty", 2.0)
+        canonical_with_indexed_component["properties"][
+            "FalloffExponent[0]"
+        ] = value("floatproperty", 0.0)
+        with self.assertRaisesRegex(
+            ValueError,
+            "scalar falloffExponent must not use indexed property aliases",
+        ):
+            build_document(receipt, canonical_with_indexed_graph, closure)
+
+        duplicate_alias_graph = copy.deepcopy(graph)
+        duplicate_alias_component = next(
+            row for row in duplicate_alias_graph["nodes"]
+            if row["className"] == "pointlightcomponent"
+        )
+        duplicate_alias_component["properties"]["falloffexponent"] = value(
+            "floatproperty", 2.0
+        )
+        duplicate_alias_component["properties"]["FalloffExponent"] = value(
+            "floatproperty", 2.0
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate case-insensitive property aliases",
+        ):
+            build_document(receipt, duplicate_alias_graph, closure)
+
+        escaped_alias_graph = copy.deepcopy(graph)
+        escaped_alias_component = next(
+            row for row in escaped_alias_graph["nodes"]
+            if row["className"] == "pointlightcomponent"
+        )
+        escaped_alias_component["properties"].update(json.loads(
+            r'{"Falloff\u0045xponent": '
+            r'{"type":"floatproperty","structType":null,"value":2.0},'
+            r'"falloff\u0065xponent": '
+            r'{"type":"floatproperty","structType":null,"value":2.0}}'
+        ))
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate case-insensitive property aliases",
+        ):
+            build_document(receipt, escaped_alias_graph, closure)
 
     def test_screen_post_preserves_dynamic_parameter_provenance(self) -> None:
         detail = default_detail()

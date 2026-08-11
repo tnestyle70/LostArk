@@ -517,7 +517,7 @@ struct EFFECT_LIGHT_DETAIL_DESC final
 	f32_t fIntensity = 1.f;
 	float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vAmbient = { 0.f, 0.f, 0.f, 1.f };
-	f32_t fFalloffExponent = 0.f;
+	f32_t fFalloffExponent = 1.f;
 };
 
 struct EFFECT_SCREEN_POST_DETAIL_DESC final
