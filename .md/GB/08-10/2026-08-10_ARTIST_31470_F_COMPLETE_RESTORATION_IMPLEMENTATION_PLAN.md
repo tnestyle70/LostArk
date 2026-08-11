@@ -88,9 +88,8 @@ exact10 또는 exact13일 때만 분기하며 optional-field 방식으로 받지
 ```text
 old outer exact10
   payloadKind, effectAssetId, artifactRevision, compilerRevision,
-  sourceExact, runtimeExecutionAdmission, publishReceiptSha256,
-  publishReceipt, reconstructedRuntimeProgramSha256,
-  reconstructedRuntimeProgram
+  sourceExact, runtimeExecutionAdmission, productAdmission,
+  publishReceiptSha256, publishReceipt, reconstructedRuntimeProgram
 
 new outer exact13
   old exact10 +
