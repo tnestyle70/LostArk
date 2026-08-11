@@ -45,4 +45,8 @@
 # must survive core.autocrlf=true clean checkouts without CRLF conversion.
 /Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json text eol=lf
 
+# The Artist 31470 reconstructed render-resource authority records exact DDS
+# byte identities and must remain byte-stable in core.autocrlf=true checkouts.
+/Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json text eol=lf
+
 

@@ -933,6 +933,22 @@ try {
 	Add-Check 'effect.artist-31470-material-render-resource-binding-approval' `
 		$artistMaterialRenderResourceApprovalPassed `
 		$artistMaterialRenderResourceApprovalDetail
+	$artistReconstructedRenderResourceAuthorityPassed = $false
+	$artistReconstructedRenderResourceAuthorityDetail = ''
+	try {
+		$artistReconstructedRenderResourceAuthorityDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedRenderResourceAuthority.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedRenderResourceAuthorityPassed =
+			$artistReconstructedRenderResourceAuthorityDetail -match
+			'PASS: Artist F 31470 reconstructed render-resource authority resources=48 bindings=72 formats=35\+8\+4\+1 srv=58\+9\+4\+1 colors=67\+5 recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 publisher=10/16/25/tool3 autocrlf=31/31\+check bytes=746788 CR=0 BOM=false'
+	}
+	catch {
+		$artistReconstructedRenderResourceAuthorityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-render-resource-authority' `
+		$artistReconstructedRenderResourceAuthorityPassed `
+		$artistReconstructedRenderResourceAuthorityDetail
 	$artistExactDdsDeploymentPassed = $false
 	$artistExactDdsDeploymentDetail = ''
 	try {
