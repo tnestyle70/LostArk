@@ -9,8 +9,11 @@
 #include <filesystem>
 #include <cstring>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 #include <iomanip>
 #include <iterator>
+#include <sstream>
 #include <unordered_set>
 
 namespace
@@ -127,6 +130,73 @@ namespace
 			segmentStart = segmentEnd + 1u;
 		}
 		return true;
+	}
+
+	/* Best-effort local safety net against the exact failure that lost days of authored HUD work
+	once already: this document is edited live in a running debug tool and can go a long time
+	between commits, so an unrelated git operation elsewhere in the working tree (checkout, reset,
+	a bad merge) can silently wipe it with no way back if nothing local remembers the previous
+	state. This keeps the last MAX_BACKUPS on-disk copies of whatever Save() is about to overwrite,
+	entirely outside git (each document's .backups folder is gitignored) -- it does not replace committing, but
+	it means a lost commit is a recoverable mistake instead of gone work. A backup failure must
+	never block the actual save it is protecting. */
+	void Backup_PreviousVersion(const filesystem::path& path)
+	{
+		error_code existsError;
+		if (!filesystem::exists(path, existsError) || existsError)
+			return;
+
+		const filesystem::path backupDirectory = path.parent_path() / L".backups";
+		error_code directoryError;
+		filesystem::create_directories(backupDirectory, directoryError);
+		if (directoryError)
+			return;
+
+		const auto now = chrono::system_clock::now();
+		const time_t nowTime = chrono::system_clock::to_time_t(now);
+		tm localTime{};
+		if (0 != localtime_s(&localTime, &nowTime))
+			return;
+
+		wostringstream stamp;
+		stamp << put_time(&localTime, L"%Y%m%d_%H%M%S");
+		const filesystem::path backupPath = backupDirectory /
+			(path.stem().wstring() + L"_" + stamp.str() + path.extension().wstring());
+
+		error_code copyError;
+		filesystem::copy_file(path, backupPath,
+			filesystem::copy_options::overwrite_existing, copyError);
+		if (copyError)
+			return;
+
+		/* Prune to the most recent MAX_BACKUPS for this document stem only -- a second document
+		(ScreenUI.json, ...) in the same .backups folder keeps its own independent history. */
+		constexpr size_t MAX_BACKUPS = 20u;
+		vector<filesystem::path> existing;
+		error_code iterateError;
+		/* A range-based for here would call directory_iterator's throwing operator++ on every
+		step after the first (the error_code overload only protects construction), so this steps
+		manually through the non-throwing increment(error_code&) instead. */
+		filesystem::directory_iterator directoryIt(backupDirectory, iterateError);
+		const filesystem::directory_iterator directoryEnd;
+		while (!iterateError && directoryEnd != directoryIt)
+		{
+			const filesystem::path& entryPath = directoryIt->path();
+			if (entryPath.extension() == path.extension() &&
+				entryPath.stem().wstring().starts_with(path.stem().wstring() + L"_"))
+			{
+				existing.push_back(entryPath);
+			}
+			directoryIt.increment(iterateError);
+		}
+		if (existing.size() <= MAX_BACKUPS)
+			return;
+		sort(existing.begin(), existing.end());
+		for (size_t index = 0; index + MAX_BACKUPS < existing.size(); ++index)
+		{
+			error_code removeError;
+			filesystem::remove(existing[index], removeError);
+		}
 	}
 
 	const DATA_JSON_VALUE* Find_Member(
@@ -1701,9 +1771,16 @@ bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 	file.flush();
 	const bool_t writeSucceeded = file.good();
 	file.close();
-	if (!writeSucceeded ||
-		!MoveFileExW(temporaryPath.c_str(), path.c_str(),
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	if (!writeSucceeded)
+	{
+		m_strDataStatus = "Save failed: atomic promote failed";
+		return false;
+	}
+
+	Backup_PreviousVersion(path);
+
+	if (!MoveFileExW(temporaryPath.c_str(), path.c_str(),
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
 		m_strDataStatus = "Save failed: atomic promote failed";
 		return false;

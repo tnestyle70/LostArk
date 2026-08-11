@@ -17,6 +17,7 @@
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "PartyWindowView.h"
+#include "PlayerSkillCatalog.h"
 #include "Profiler.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
@@ -352,7 +353,7 @@ HRESULT CMainApp::Render()
 		}
 	#endif
 		RenderCombatHUD();
-		RenderStanceSkillIcons();
+		RenderSkillIcons();
 		RenderSkillCooldowns();
 		if (nullptr != m_pChatWindowView)
 		{
@@ -560,14 +561,16 @@ void CMainApp::RenderSkillCooldowns()
 	}
 }
 
-void CMainApp::RenderStanceSkillIcons()
+void CMainApp::RenderSkillIcons()
 {
-	/* LanceMaster is the only class whose Q/W/E/R/A/S/D/F means a different skill depending on
-	stance, so HUD_Layout.json no longer carries a static Lance_Skill_Q..F icon at all (removed
-	-- it could only ever show one stance's set). This owns the whole icon for both stances
-	directly: the shared "Skill_Q".."Skill_F" slots (ownerClass null) still draw the plain
-	background/frame every class shares, and this draws only the icon in between, once, for
-	whichever stance is actually active -- not an overlay patched on top of a wrong icon. */
+	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
+	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
+	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
+	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
+	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json. This
+	replaces the LanceMaster-only stance special-case with one path for every class -- Find_BySlot
+	already resolves stance-gated skills correctly and ignores the stance argument for classes
+	whose skills have no requiredStance. */
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
@@ -578,34 +581,63 @@ void CMainApp::RenderStanceSkillIcons()
 	}
 
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid ||
-		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER != player.eCharacterClass)
-	{
+	if (!player.isValid)
 		return;
-	}
 
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
 		return;
 
-	const bool_t isShortSpear =
-		LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance;
-
-	struct LANCE_SLOT_ICON { const char* pInputSlot; const char* pLongSpearIcon; const char* pShortSpearIcon; };
-	constexpr LANCE_SLOT_ICON LANCE_SLOT_ICONS[] =
+	struct SKILL_ICON_ENTRY { LostArk::Shared::SKILL_ID iSkillId; const char* pIconPath; };
+	constexpr SKILL_ICON_ENTRY SKILL_ICON_TABLE[] =
 	{
-		{ "Q", "UI/Skill/LanceMaster/34040_DoubleStrike.png", "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
-		{ "W", "UI/Skill/LanceMaster/34090_ThornJab.png", "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
-		{ "E", "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png", "UI/Skill/LanceMaster/34560_ThrustOfDestruction.png" },
-		{ "R", "UI/Skill/LanceMaster/34160_SpearDive.png", "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
-		{ "A", "UI/Skill/LanceMaster/34140_SoulCutter.png", "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
-		{ "S", "UI/Skill/LanceMaster/34120_ChainSlash.png", "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
-		/* D/F have no short-spear skill in PlayerSkills.json -- left blank (no icon drawn,
-		just the shared empty-slot frame underneath) for a key that does nothing in that stance. */
-		{ "D", "UI/Skill/LanceMaster/34110_HalfMoonSlash.png", nullptr },
-		{ "F", "UI/Skill/LanceMaster/34150_RagingDragonSlash.png", nullptr },
+		/* LanceMaster -- Long Spear */
+		{ 34040, "UI/Skill/LanceMaster/34040_DoubleStrike.png" },
+		{ 34090, "UI/Skill/LanceMaster/34090_ThornJab.png" },
+		{ 34100, "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png" },
+		{ 34160, "UI/Skill/LanceMaster/34160_SpearDive.png" },
+		{ 34140, "UI/Skill/LanceMaster/34140_SoulCutter.png" },
+		{ 34120, "UI/Skill/LanceMaster/34120_ChainSlash.png" },
+		{ 34110, "UI/Skill/LanceMaster/34110_HalfMoonSlash.png" },
+		{ 34150, "UI/Skill/LanceMaster/34150_RagingDragonSlash.png" },
+		/* LanceMaster -- Short Spear (no D/F skill in that stance) */
+		{ 34540, "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
+		{ 34550, "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
+		{ 34560, "UI/Skill/LanceMaster/34560_ThrustOfDestruction.png" },
+		{ 34570, "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
+		{ 34580, "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
+		{ 34590, "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
+		/* Warlord */
+		{ 17030, "UI/Skill/Warlord/17030_날카로운창.png" },
+		{ 17060, "UI/Skill/Warlord/17060_파이어불릿.png" },
+		{ 17080, "UI/Skill/Warlord/17080_대쉬어퍼파이어.png" },
+		{ 17110, "UI/Skill/Warlord/17110_리프어택.png" },
+		{ 17090, "UI/Skill/Warlord/17090_갈고리사슬.png" },
+		{ 17040, "UI/Skill/Warlord/17040_배쉬.png" },
+		{ 17100, "UI/Skill/Warlord/17100_방패격동.png" },
+		{ 17140, "UI/Skill/Warlord/17140_가디언의낙뢰.png" },
+		/* Artist */
+		{ 31200, "UI/Skill/Artist/31200_먹물세례.png" },
+		{ 31430, "UI/Skill/Artist/31430_흩뿌리기.png" },
+		{ 31480, "UI/Skill/Artist/31480_두루미나래.png" },
+		{ 31210, "UI/Skill/Artist/31210_콩콩이.png" },
+		{ 31460, "UI/Skill/Artist/31460_호접몽.png" },
+		{ 31420, "UI/Skill/Artist/31420_난치기.png" },
+		{ 31490, "UI/Skill/Artist/31490_범가르기.png" },
+		{ 31470, "UI/Skill/Artist/31470_한획긋기.png" },
+		/* DimensionMaster */
+		{ 2050100, "UI/Skill/DimensionMaster/2050100_일침.png" },
+		{ 2050120, "UI/Skill/DimensionMaster/2050120_분절.png" },
+		{ 2050160, "UI/Skill/DimensionMaster/2050160_건너찌르기.png" },
+		{ 2050180, "UI/Skill/DimensionMaster/2050180_너머베기.png" },
+		{ 2050210, "UI/Skill/DimensionMaster/2050210_분광.png" },
+		{ 2050220, "UI/Skill/DimensionMaster/2050220_일점관통.png" },
+		{ 2050240, "UI/Skill/DimensionMaster/2050240_경계돌파.png" },
+		{ 2050230, "UI/Skill/DimensionMaster/2050230_시간분쇄.png" },
 	};
+
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
 
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
@@ -618,11 +650,11 @@ void CMainApp::RenderStanceSkillIcons()
 	ID3D11ShaderResourceView* pEmptySlotSRV =
 		m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/Empty Slot.png");
 
-	for (const LANCE_SLOT_ICON& Slot : LANCE_SLOT_ICONS)
+	for (const char* pInputSlot : INPUT_SLOTS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pHUDRuntimeView->Get_SlotRect(
-			string("Skill_") + Slot.pInputSlot, fX, fY, fWidth, fHeight))
+			string("Skill_") + pInputSlot, fX, fY, fWidth, fHeight))
 		{
 			continue;
 		}
@@ -634,10 +666,23 @@ void CMainApp::RenderStanceSkillIcons()
 			vTopLeft.x + fWidth * fScaleX,
 			vTopLeft.y + fHeight * fScaleY);
 
+		const char* pIconPath = nullptr;
+		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
+			player.eCharacterClass, pInputSlot, player.eStance))
+		{
+			for (const SKILL_ICON_ENTRY& Entry : SKILL_ICON_TABLE)
+			{
+				if (Entry.iSkillId == pSkill->iSkillId)
+				{
+					pIconPath = Entry.pIconPath;
+					break;
+				}
+			}
+		}
+
 		/* Icon first, then the shared frame's border/tab back on top -- the shared "Skill_Q"
 		slot already drew that same border underneath before this runs, so redrawing it here
 		is what keeps it above the icon instead of the icon covering it. */
-		const char* pIconPath = isShortSpear ? Slot.pShortSpearIcon : Slot.pLongSpearIcon;
 		if (nullptr != pIconPath)
 		{
 			if (ID3D11ShaderResourceView* pIconSRV = m_pHUDRuntimeView->Load_Texture(pIconPath))

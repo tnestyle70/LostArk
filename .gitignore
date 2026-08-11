@@ -62,6 +62,10 @@
 /Data/Effects/SourceCatalog/
 /Data/Effects/SourceExtracted/
 
+# CHUDLayoutTool::Save() local safety-net copies (Backup_PreviousVersion) -- not a second
+# authoring source, never restore from here as a substitute for committing.
+/Data/UI/**/.backups/
+
 # Engine output directory: preserve shader source, ignore built binaries.
 /Engine/Bin/*
 !/Engine/Bin/ShaderFiles/
