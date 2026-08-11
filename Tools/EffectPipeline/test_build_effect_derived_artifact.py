@@ -29,6 +29,10 @@ RECONSTRUCTED_CANDIDATE = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Candidates/"
     "skill.31470.reconstructed-runtime-program.candidate.json"
 )
+RECONSTRUCTED_SIDECAR = REPO_ROOT / (
+    "Data/Effects/Imported/Artist/Materials/"
+    "skill.31470.reconstructed-render-resource-authority.receipt.json"
+)
 
 
 def write_json(path: Path, value: object) -> None:
@@ -260,6 +264,12 @@ class DerivedArtifactContractTests(unittest.TestCase):
         )
         candidate.parent.mkdir(parents=True)
         shutil.copyfile(RECONSTRUCTED_CANDIDATE, candidate)
+        sidecar = data_root / (
+            "Effects/Imported/Artist/Materials/"
+            "skill.31470.reconstructed-render-resource-authority.receipt.json"
+        )
+        sidecar.parent.mkdir(parents=True)
+        shutil.copyfile(RECONSTRUCTED_SIDECAR, sidecar)
         resource_root.mkdir(parents=True)
         write_json(
             data_root / "Effects" / "EffectCatalog.json",
@@ -272,6 +282,10 @@ class DerivedArtifactContractTests(unittest.TestCase):
                         "reconstructedRuntimeProgramPath": (
                             "Effects/Imported/Artist/Candidates/"
                             "skill.31470.reconstructed-runtime-program.candidate.json"
+                        ),
+                        "reconstructedRenderResourceAuthorityPath": (
+                            "Effects/Imported/Artist/Materials/"
+                            "skill.31470.reconstructed-render-resource-authority.receipt.json"
                         ),
                     }
                 ],
@@ -335,15 +349,25 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 "publishReceiptSha256",
                 "publishReceipt",
                 "reconstructedRuntimeProgram",
+                "renderResourcePublishReceiptSha256",
+                "renderResourcePublishReceipt",
+                "reconstructedRenderResourceAuthority",
             ),
         )
         self.assertEqual(len(derived.RECONSTRUCTED_LINK_KEYS), 16)
         self.assertEqual(len(derived.RECONSTRUCTED_RECEIPT_KEYS), 25)
+        self.assertEqual(len(derived.RECONSTRUCTED_RENDER_RESOURCE_LINK_KEYS), 21)
         self.assertEqual(
-            [row[0] for row in derived.RECONSTRUCTED_TOOL_DEPENDENCIES],
+            len(derived.RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_KEYS), 26
+        )
+        self.assertEqual(
             [
-                "RECONSTRUCTED_RUNTIME_PROGRAM_CANDIDATE_BUILDER",
-                "RECONSTRUCTED_RUNTIME_PROGRAM_CATALOG_VALIDATOR",
+                row[0]
+                for row in derived.RECONSTRUCTED_RENDER_RESOURCE_TOOL_DEPENDENCIES
+            ],
+            [
+                "RECONSTRUCTED_RENDER_RESOURCE_INDEPENDENT_PINS",
+                "RECONSTRUCTED_RENDER_RESOURCE_CATALOG_VALIDATOR",
                 "EFFECT_PUBLISHER",
             ],
         )
@@ -731,7 +755,9 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 derived.validate_runtime_catalog(forged)
 
     def test_reconstructed_entry_is_exact_product_false_and_embedded(self) -> None:
-        entry = derived.prepare_reconstructed_runtime_entry(RECONSTRUCTED_CANDIDATE)
+        entry = derived.prepare_reconstructed_runtime_entry(
+            RECONSTRUCTED_CANDIDATE, RECONSTRUCTED_SIDECAR
+        )
         self.assertEqual(tuple(entry), derived.RECONSTRUCTED_ENTRY_KEYS)
         self.assertEqual(
             tuple(entry["reconstructedRuntimeProgram"]),
@@ -740,6 +766,21 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertEqual(
             tuple(entry["publishReceipt"]),
             derived.RECONSTRUCTED_RECEIPT_KEYS,
+        )
+        self.assertEqual(
+            tuple(entry["reconstructedRenderResourceAuthority"]),
+            derived.RECONSTRUCTED_RENDER_RESOURCE_LINK_KEYS,
+        )
+        self.assertEqual(
+            tuple(entry["renderResourcePublishReceipt"]),
+            derived.RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_KEYS,
+        )
+        base = {
+            key: entry[key] for key in derived.RECONSTRUCTED_BASE_ENTRY_KEYS
+        }
+        self.assertEqual(
+            hashlib.sha256(derived.canonical_json_bytes(base)).hexdigest(),
+            derived.RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256,
         )
         self.assertFalse(entry["sourceExact"])
         self.assertFalse(entry["runtimeExecutionAdmission"])
@@ -750,6 +791,20 @@ class DerivedArtifactContractTests(unittest.TestCase):
             ),
             RECONSTRUCTED_CANDIDATE.read_bytes(),
         )
+        resource_link = entry["reconstructedRenderResourceAuthority"]
+        self.assertEqual(
+            resource_link["sidecarUtf8Json"].encode("utf-8"),
+            RECONSTRUCTED_SIDECAR.read_bytes(),
+        )
+        for false_gate in (
+            "sourceExact",
+            "runtimeExecutionAdmission",
+            "executeAdmission",
+            "submitAdmission",
+            "renderAdmission",
+            "productAdmission",
+        ):
+            self.assertIs(resource_link[false_gate], False)
         catalog = {
             "schema": "lostark.effect-runtime-catalog",
             "formatVersion": 3,
@@ -774,10 +829,22 @@ class DerivedArtifactContractTests(unittest.TestCase):
         with self.assertRaises(derived.ContractError):
             derived.validate_runtime_catalog(wrong_integer)
 
-    def test_reconstructed_candidate_clean_checkout_is_frozen_lf(self) -> None:
-        relative = RECONSTRUCTED_CANDIDATE.relative_to(REPO_ROOT).as_posix()
+    def test_reconstructed_external_inputs_clean_checkout_are_frozen_lf(self) -> None:
+        inputs = (
+            (
+                RECONSTRUCTED_CANDIDATE,
+                derived.RECONSTRUCTED_CANDIDATE_BYTE_COUNT,
+                derived.RECONSTRUCTED_CANDIDATE_RAW_SHA256,
+            ),
+            (
+                RECONSTRUCTED_SIDECAR,
+                derived.RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT,
+                derived.RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+            ),
+        )
+        relatives = [path.relative_to(REPO_ROOT).as_posix() for path, _, _ in inputs]
         attributes = subprocess.run(
-            ["git", "check-attr", "text", "eol", "--", relative],
+            ["git", "check-attr", "text", "eol", "--", *relatives],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
@@ -785,15 +852,17 @@ class DerivedArtifactContractTests(unittest.TestCase):
         ).stdout.splitlines()
         self.assertEqual(
             attributes,
-            [
+            [line for relative in relatives for line in (
                 f"{relative}: text: set",
                 f"{relative}: eol: lf",
-            ],
+            )],
         )
 
         checkout_root = self.root / "CleanCheckout"
-        checkout_candidate = checkout_root / Path(*Path(relative).parts)
-        checkout_candidate.parent.mkdir(parents=True)
+        for relative in relatives:
+            (checkout_root / Path(*Path(relative).parts)).parent.mkdir(
+                parents=True, exist_ok=True
+            )
         subprocess.run(
             [
                 "git",
@@ -803,21 +872,23 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 "--force",
                 f"--prefix={checkout_root}{os.sep}",
                 "--",
-                relative,
+                *relatives,
             ],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
             text=True,
         )
-        payload = checkout_candidate.read_bytes()
-        self.assertEqual(len(payload), derived.RECONSTRUCTED_CANDIDATE_BYTE_COUNT)
-        self.assertEqual(
-            hashlib.sha256(payload).hexdigest(),
-            derived.RECONSTRUCTED_CANDIDATE_RAW_SHA256,
-        )
-        self.assertFalse(payload.startswith(b"\xef\xbb\xbf"))
-        self.assertNotIn(b"\r", payload)
+        for source, byte_count, digest in inputs:
+            with self.subTest(source=source.name):
+                relative = source.relative_to(REPO_ROOT).as_posix()
+                payload = (
+                    checkout_root / Path(*Path(relative).parts)
+                ).read_bytes()
+                self.assertEqual(len(payload), byte_count)
+                self.assertEqual(hashlib.sha256(payload).hexdigest(), digest)
+                self.assertFalse(payload.startswith(b"\xef\xbb\xbf"))
+                self.assertNotIn(b"\r", payload)
 
     def test_reconstructed_candidate_crlf_and_coordinated_reseals_are_rejected(self) -> None:
         candidate = self.root / "candidate.json"
@@ -825,9 +896,13 @@ class DerivedArtifactContractTests(unittest.TestCase):
             RECONSTRUCTED_CANDIDATE.read_bytes().replace(b"\n", b"\r\n")
         )
         with self.assertRaisesRegex(derived.ContractError, "byte count|LF-only"):
-            derived.prepare_reconstructed_runtime_entry(candidate)
+            derived.prepare_reconstructed_runtime_entry(
+                candidate, RECONSTRUCTED_SIDECAR
+            )
 
-        entry = derived.prepare_reconstructed_runtime_entry(RECONSTRUCTED_CANDIDATE)
+        entry = derived.prepare_reconstructed_runtime_entry(
+            RECONSTRUCTED_CANDIDATE, RECONSTRUCTED_SIDECAR
+        )
 
         def reseal(row: dict) -> None:
             link = row["reconstructedRuntimeProgram"]
@@ -908,16 +983,184 @@ class DerivedArtifactContractTests(unittest.TestCase):
             with self.assertRaises(derived.ContractError):
                 derived.validate_runtime_catalog(catalog)
 
+    def test_render_resource_sidecar_eol_object_and_coordinated_reseals_reject(
+        self,
+    ) -> None:
+        crlf_sidecar = self.root / "render-resource-sidecar.json"
+        crlf_sidecar.write_bytes(
+            RECONSTRUCTED_SIDECAR.read_bytes().replace(b"\n", b"\r\n")
+        )
+        with self.assertRaisesRegex(derived.ContractError, "byte count|LF-only"):
+            derived.prepare_reconstructed_runtime_entry(
+                RECONSTRUCTED_CANDIDATE, crlf_sidecar
+            )
+
+        entry = derived.prepare_reconstructed_runtime_entry(
+            RECONSTRUCTED_CANDIDATE, RECONSTRUCTED_SIDECAR
+        )
+
+        def reseal_bridge(row: dict) -> None:
+            resource_link = row["reconstructedRenderResourceAuthority"]
+            receipt = row["renderResourcePublishReceipt"]
+            receipt["effectAssetId"] = resource_link["effectAssetId"]
+            receipt["programId"] = resource_link["programId"]
+            receipt["programVersion"] = resource_link["programVersion"]
+            receipt["programSha256"] = resource_link["programSha256"]
+            receipt["sidecarRawSha256"] = resource_link["sidecarRawSha256"]
+            receipt["sidecarReceiptSha256"] = resource_link[
+                "sidecarReceiptSha256"
+            ]
+            receipt["sidecarDecisionProjectionSha256"] = resource_link[
+                "sidecarDecisionProjectionSha256"
+            ]
+            receipt["renderResourceAuthorityLinkSha256"] = hashlib.sha256(
+                derived.canonical_json_bytes(resource_link)
+            ).hexdigest()
+            unsigned = dict(receipt)
+            del unsigned["receiptSha256"]
+            receipt["receiptSha256"] = hashlib.sha256(
+                derived.canonical_json_bytes(unsigned)
+            ).hexdigest()
+            row["renderResourcePublishReceiptSha256"] = hashlib.sha256(
+                derived.canonical_json_bytes(receipt)
+            ).hexdigest()
+
+        coordinated_link = copy.deepcopy(entry)
+        resource_link = coordinated_link["reconstructedRenderResourceAuthority"]
+        resource_link["sidecarRawSha256"] = "3" * 64
+        reseal_bridge(coordinated_link)
+
+        coordinated_self = copy.deepcopy(entry)
+        coordinated_self["reconstructedRenderResourceAuthority"][
+            "sidecarReceiptSha256"
+        ] = "5" * 64
+        reseal_bridge(coordinated_self)
+
+        coordinated_decision = copy.deepcopy(entry)
+        coordinated_decision["reconstructedRenderResourceAuthority"][
+            "sidecarDecisionProjectionSha256"
+        ] = "6" * 64
+        reseal_bridge(coordinated_decision)
+
+        coordinated_object = copy.deepcopy(entry)
+        resource_link = coordinated_object["reconstructedRenderResourceAuthority"]
+        resource_link["sidecarUtf8Json"] = resource_link[
+            "sidecarUtf8Json"
+        ].replace('"inputSlot": "F"', '"inputSlot": "Q"', 1)
+        mutated_payload = resource_link["sidecarUtf8Json"].encode("utf-8")
+        resource_link["sidecarByteCount"] = len(mutated_payload)
+        resource_link["sidecarRawSha256"] = hashlib.sha256(
+            mutated_payload
+        ).hexdigest()
+        mutated_sidecar = json.loads(resource_link["sidecarUtf8Json"])
+        resource_link["sidecarReceiptSha256"] = mutated_sidecar["receiptSha256"]
+        resource_link["sidecarDecisionProjectionSha256"] = mutated_sidecar[
+            "decisionProjectionSha256"
+        ]
+        reseal_bridge(coordinated_object)
+
+        coordinated_receipt = copy.deepcopy(entry)
+        receipt = coordinated_receipt["renderResourcePublishReceipt"]
+        receipt["baseRuntimeEntryProjectionSha256"] = "4" * 64
+        unsigned = dict(receipt)
+        del unsigned["receiptSha256"]
+        receipt["receiptSha256"] = hashlib.sha256(
+            derived.canonical_json_bytes(unsigned)
+        ).hexdigest()
+        coordinated_receipt["renderResourcePublishReceiptSha256"] = (
+            hashlib.sha256(derived.canonical_json_bytes(receipt)).hexdigest()
+        )
+
+        for forged in (
+            coordinated_link,
+            coordinated_self,
+            coordinated_decision,
+            coordinated_object,
+            coordinated_receipt,
+        ):
+            with self.assertRaises(derived.ContractError):
+                derived.validate_reconstructed_runtime_entry(forged)
+
+    def test_render_resource_sidecar_is_read_once_and_same_buffer_is_embedded(
+        self,
+    ) -> None:
+        approved = RECONSTRUCTED_SIDECAR.read_bytes()
+        forged = approved.replace(b'"inputSlot": "F"', b'"inputSlot": "Q"', 1)
+
+        class SplitReadSidecar:
+            def __init__(self) -> None:
+                self.read_count = 0
+
+            def read_bytes(self) -> bytes:
+                self.read_count += 1
+                return approved if self.read_count == 1 else forged
+
+            def __str__(self) -> str:
+                return "split-read-sidecar"
+
+        split = SplitReadSidecar()
+        entry = derived.prepare_reconstructed_runtime_entry(
+            RECONSTRUCTED_CANDIDATE, split  # type: ignore[arg-type]
+        )
+        self.assertEqual(split.read_count, 1)
+        self.assertEqual(
+            entry["reconstructedRenderResourceAuthority"][
+                "sidecarUtf8Json"
+            ].encode("utf-8"),
+            approved,
+        )
+
+    def test_render_resource_bridge_rejects_missing_extra_reorder_and_types(
+        self,
+    ) -> None:
+        entry = derived.prepare_reconstructed_runtime_entry(
+            RECONSTRUCTED_CANDIDATE, RECONSTRUCTED_SIDECAR
+        )
+        extra_outer = copy.deepcopy(entry)
+        extra_outer["unknownAdmission"] = False
+
+        missing_link = copy.deepcopy(entry)
+        del missing_link["reconstructedRenderResourceAuthority"]["renderAdmission"]
+
+        reordered_link = copy.deepcopy(entry)
+        link = reordered_link["reconstructedRenderResourceAuthority"]
+        reordered_link["reconstructedRenderResourceAuthority"] = {
+            "effectAssetId": link["effectAssetId"],
+            **{key: value for key, value in link.items() if key != "effectAssetId"},
+        }
+
+        bool_version = copy.deepcopy(entry)
+        bool_version["reconstructedRenderResourceAuthority"]["formatVersion"] = True
+
+        integer_gate = copy.deepcopy(entry)
+        integer_gate["reconstructedRenderResourceAuthority"][
+            "executeAdmission"
+        ] = 0
+
+        extra_receipt = copy.deepcopy(entry)
+        extra_receipt["renderResourcePublishReceipt"]["catalogSha256"] = "0" * 64
+
+        for forged in (
+            extra_outer,
+            missing_link,
+            reordered_link,
+            bool_version,
+            integer_gate,
+            extra_receipt,
+        ):
+            with self.assertRaises(derived.ContractError):
+                derived.validate_reconstructed_runtime_entry(forged)
+
     def test_public_reconstructed_validators_reject_coordinated_tool_reseal(
         self,
     ) -> None:
         entry = derived.prepare_reconstructed_runtime_entry(
-            RECONSTRUCTED_CANDIDATE
+            RECONSTRUCTED_CANDIDATE, RECONSTRUCTED_SIDECAR
         )
         for dependency_index in range(3):
             with self.subTest(dependency_index=dependency_index):
                 forged = copy.deepcopy(entry)
-                receipt = forged["publishReceipt"]
+                receipt = forged["renderResourcePublishReceipt"]
                 receipt["toolDependencies"][dependency_index]["sha256"] = (
                     "2" * 64
                 )
@@ -926,15 +1169,21 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 receipt["receiptSha256"] = hashlib.sha256(
                     derived.canonical_json_bytes(unsigned)
                 ).hexdigest()
-                forged["publishReceiptSha256"] = hashlib.sha256(
+                forged["renderResourcePublishReceiptSha256"] = hashlib.sha256(
                     derived.canonical_json_bytes(receipt)
                 ).hexdigest()
+                base = {
+                    key: forged[key]
+                    for key in derived.RECONSTRUCTED_BASE_ENTRY_KEYS
+                }
 
                 with self.assertRaisesRegex(
                     derived.ContractError, "current source hash"
                 ):
-                    derived.validate_reconstructed_publish_receipt(
-                        receipt, forged["reconstructedRuntimeProgram"]
+                    derived.validate_reconstructed_render_resource_publish_receipt(
+                        receipt,
+                        base,
+                        forged["reconstructedRenderResourceAuthority"],
                     )
                 with self.assertRaisesRegex(
                     derived.ContractError, "current source hash"
@@ -1000,7 +1249,12 @@ class DerivedArtifactContractTests(unittest.TestCase):
             self.assertEqual(list(output.parent.glob("*.tmp")), [])
             self.assertEqual(list(output.parent.glob("*.bak")), [])
 
+        sidecar = data_root / (
+            "Effects/Imported/Artist/Materials/"
+            "skill.31470.reconstructed-render-resource-authority.receipt.json"
+        )
         candidate.unlink()
+        sidecar.unlink()
         derived.validate_runtime_catalog(runtime)
         rejected = self._run_publisher(data_root, resources, output)
         self.assertNotEqual(rejected.returncode, 0)
@@ -1033,6 +1287,46 @@ class DerivedArtifactContractTests(unittest.TestCase):
             rejected.stderr + rejected.stdout,
         )
         self.assertEqual(source_catalog_path.read_bytes(), substituted_source)
+        self.assertEqual(output.read_bytes(), committed_runtime)
+        self.assertEqual(list(output.parent.glob("*.tmp")), [])
+        self.assertEqual(list(output.parent.glob("*.bak")), [])
+
+    def test_reconstructed_publisher_rejects_sidecar_missing_and_escape_before_write(
+        self,
+    ) -> None:
+        data_root, resources, output, _ = (
+            self._build_reconstructed_publisher_fixture()
+        )
+        baseline = self._run_publisher(data_root, resources, output)
+        self.assertEqual(baseline.returncode, 0, baseline.stderr + baseline.stdout)
+        committed_runtime = output.read_bytes()
+        source_catalog_path = data_root / "Effects" / "EffectCatalog.json"
+        approved_source = source_catalog_path.read_bytes()
+        sidecar = data_root / (
+            "Effects/Imported/Artist/Materials/"
+            "skill.31470.reconstructed-render-resource-authority.receipt.json"
+        )
+
+        sidecar.unlink()
+        missing = self._run_publisher(data_root, resources, output)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertEqual(source_catalog_path.read_bytes(), approved_source)
+        self.assertEqual(output.read_bytes(), committed_runtime)
+        self.assertEqual(list(output.parent.glob("*.tmp")), [])
+        self.assertEqual(list(output.parent.glob("*.bak")), [])
+
+        shutil.copyfile(RECONSTRUCTED_SIDECAR, sidecar)
+        source = derived.load_json(source_catalog_path)
+        source["effects"][0]["reconstructedRenderResourceAuthorityPath"] = (
+            "Effects/Imported/Artist/Materials/../"
+            "skill.31470.reconstructed-render-resource-authority.receipt.json"
+        )
+        write_json(source_catalog_path, source)
+        escaped_source = source_catalog_path.read_bytes()
+        escaped = self._run_publisher(data_root, resources, output)
+        self.assertNotEqual(escaped.returncode, 0)
+        self.assertIn("Unsafe derived Effect path segment", escaped.stderr + escaped.stdout)
+        self.assertEqual(source_catalog_path.read_bytes(), escaped_source)
         self.assertEqual(output.read_bytes(), committed_runtime)
         self.assertEqual(list(output.parent.glob("*.tmp")), [])
         self.assertEqual(list(output.parent.glob("*.bak")), [])

@@ -941,7 +941,7 @@ try {
 			2>&1 | Out-String).Trim()
 		$artistReconstructedRenderResourceAuthorityPassed =
 			$artistReconstructedRenderResourceAuthorityDetail -match
-			'PASS: Artist F 31470 reconstructed render-resource authority resources=48 bindings=72 formats=35\+8\+4\+1 srv=58\+9\+4\+1 colors=67\+5 recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 publisher=10/16/25/tool3 autocrlf=31/31\+check bytes=746788 CR=0 BOM=false'
+			'PASS: Artist F 31470 reconstructed render-resource authority resources=48 bindings=72 formats=35\+8\+4\+1 srv=58\+9\+4\+1 colors=67\+5 recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 publisher=10/16/25/tool3 bridge=13/21/26/tool3 autocrlf=31/31\+check bytes=746788 CR=0 BOM=false'
 	}
 	catch {
 		$artistReconstructedRenderResourceAuthorityDetail = $_.Exception.Message
@@ -1024,7 +1024,7 @@ try {
 			2>&1 | Out-String).Trim()
 		$effectDerivedPublisherPassed =
 			$effectDerivedPublisherDetail -match
-			'PASS: derived Effect artifact publisher schema tests=24 reserved-reconstructed-id=true current-tools=true duplicate-json-keys=true duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true authenticated-blocker-union=true reconstructed-product=false rollback=true'
+			'PASS: derived Effect artifact publisher schema tests=28 reserved-reconstructed-id=true current-tools=3 duplicate-json-keys=true duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true authenticated-blocker-union=true bridge=13/21/26/tool3 catalog=102/555 sourceExact=false runtime=false execute=false submit=false render=false product=false rollback=true'
 	}
 	catch {
 		$effectDerivedPublisherDetail = $_.Exception.Message

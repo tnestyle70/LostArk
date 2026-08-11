@@ -4,6 +4,7 @@ param(
     [string]$HarnessPath = '',
     [string]$ReconstructedProgramPath = '',
     [string]$RuntimeCatalogPath = '',
+	[string]$RenderResourceRuntimeCatalogPath = '',
     [string]$ResourceRoot = ''
 )
 
@@ -147,6 +148,40 @@ foreach ($catalogBoundary in @(
         throw "Effect Catalog format3 boundary is missing: $catalogBoundary"
     }
 }
+foreach ($renderResourceBoundary in @(
+	'EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY',
+	'EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_IDENTITY',
+	'Get_RenderResourceAuthority',
+	'TextureResourcesById',
+	'TextureBindingsById',
+	'RecipeTextureBindingsById',
+	'RendererSlotBindingsById',
+	'RenderStateDescriptorsById',
+	'renderResourcePublishReceiptSha256',
+	'reconstructedRenderResourceAuthority',
+	'lostark.effect-reconstructed-render-resource-authority-link',
+	'lostark.effect-reconstructed-render-resource-publication-receipt',
+	'PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY',
+	'bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff',
+	'bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a',
+	'4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412',
+	'8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e',
+	'3a5ec8cd44173dde89addfb078303cf8d208be5e45bb28f557f0ca0028811687',
+	'dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455',
+	'74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef',
+	'148d13df44da8c2fbf3378648d92ee83651a1f97cd5b6827a4b411cce78cfb95',
+	'2858a8c8f34754435b7daafe61679c0d7b965744af67f34222c31b0dd4ab801d',
+	'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT',
+	'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT')) {
+	if ($catalogHeader -notmatch [regex]::Escape($renderResourceBoundary) -and
+		$catalogSource -notmatch [regex]::Escape($renderResourceBoundary)) {
+		throw "Effect Catalog render-resource boundary is missing: $renderResourceBoundary"
+	}
+}
+if ($catalogSource -notmatch
+	'(?s)SourceReceiptStatus != "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT".*SourceReceiptStatus !=\s*"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"') {
+	throw 'Render-resource source receipt status must use the exact closed two-value allowlist.'
+}
 if ($catalogSource -match 'ResourceDocument.*RuntimeAuthorit' -or
     $catalogSource -match 'Compile_Assembly\(.*RuntimeAuthorit') {
     throw 'Compiled runtime authority must not become a raw drawable document.'
@@ -221,6 +256,15 @@ foreach ($actualCatalogBoundary in @(
 		throw "Actual tracked reconstructed Catalog harness boundary is missing: $actualCatalogBoundary"
 	}
 }
+foreach ($renderResourceCatalogBoundary in @(
+	'--effect-reconstructed-render-resource-authority',
+	'CatalogText.size() == 27''065''828u',
+	'1cc2c1b159d0ed87a177a91bb0b64cd141967c5d7570407ea473a8be8d20dac3',
+	'nullptr == EntryA->Get_RenderResourceAuthority()')) {
+	if ($harness -notmatch [regex]::Escape($renderResourceCatalogBoundary)) {
+		throw "Exact old10/new13 Catalog harness identity is missing: $renderResourceCatalogBoundary"
+	}
+}
 $publishedLoadIndex = $harness.IndexOf(
 	'const bool_t LoadedA = PublishedCatalogStructure')
 $externalCandidateReadIndex = $harness.IndexOf(
@@ -278,6 +322,15 @@ foreach ($test in @(
 	'Artist 31470 Catalog Rejects Reordered Strict Payload Fields',
 	'Artist 31470 Reserved ID Rejects Legacy Fallback After Failed Reload',
 	'Artist 31470 Shared Gates Deny Execution Submit And Render',
+	'Artist 31470 Exact13 Harness Input Has Frozen Catalog Identity',
+	'Artist 31470 Exact13 Catalog Commits One Immutable Render Resource Authority',
+	'Artist 31470 Exact13 Typed Maps Retrieve Frozen Mesh And Sprite M0 Rows',
+	'Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer',
+	'Artist 31470 Exact13 Sidecar Mutation Rolls Back Entry And Authority Pointers',
+	'Artist 31470 Exact13 Link21 Mutation Rolls Back Entry And Authority Pointers',
+	'Artist 31470 Exact13 Receipt26 Mutation Rolls Back Entry And Authority Pointers',
+	'Artist 31470 Exact13 Outer13 Mutation Rolls Back Entry And Authority Pointers',
+	'Artist 31470 Exact Historical Old10 Loads With Null Render Resource Authority',
     'Artist 31470 Reconstructed Runtime Program Parses To Immutable Typed Rows',
 	'Artist 31470 Reconstructed Program Rejects Malformed And Raw Identity Attacks Transactionally',
 	'Artist 31470 Reconstructed Program Reaches Semantic Validation And Rejects Canonically Resealed Nested Ownership Identity And Admission Attacks Transactionally',
@@ -364,6 +417,22 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
 		if ($LASTEXITCODE -ne 0 -or
 			($programOutput -join "`n") -notmatch 'failures : 0') {
 			throw "Reconstructed runtime program harness failed:`n$($programOutput -join "`n")"
+		}
+
+		if (-not [string]::IsNullOrWhiteSpace(
+			$RenderResourceRuntimeCatalogPath)) {
+			$resolvedRenderResourceCatalog = [IO.Path]::GetFullPath(
+				$RenderResourceRuntimeCatalogPath)
+			if (-not (Test-Path -LiteralPath $resolvedRenderResourceCatalog -PathType Leaf)) {
+				throw "Exact13 Effect runtime Catalog is missing: $resolvedRenderResourceCatalog"
+			}
+			$renderResourceOutput = & $resolvedHarness `
+				'--effect-reconstructed-render-resource-authority' `
+				$resolvedRenderResourceCatalog $resolvedCatalog 2>&1
+			if ($LASTEXITCODE -ne 0 -or
+				($renderResourceOutput -join "`n") -notmatch 'failures : 0') {
+				throw "Exact13 render-resource Catalog harness failed:`n$($renderResourceOutput -join "`n")"
+			}
 		}
 	}
 	finally {

@@ -6,6 +6,8 @@
 #include "Effect_RuntimeAuthority.h"
 
 #include <cstdint>
+#include <array>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -32,6 +34,183 @@ struct EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY final
 	std::string strInputArtifactsOrderedSha256;
 	std::string strReconstructedRuntimeProgramSha256;
 	std::string strPublishReceiptSha256;
+	uint32_t iRenderResourceSidecarFormatVersion = 0u;
+	uint64_t iRenderResourceSidecarByteCount = 0u;
+	std::string strRenderResourceSidecarSchema;
+	std::string strRenderResourceAuthorityId;
+	std::string strRenderResourceSidecarDecisionProjectionSha256;
+	std::string strRenderResourceSidecarReceiptSha256;
+	std::string strRenderResourceSidecarRawSha256;
+	std::string strRenderResourceAuthorityLinkSha256;
+	std::string strRenderResourcePublishReceiptSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY final
+{
+	DXGI_FORMAT eFormat = DXGI_FORMAT_UNKNOWN;
+	D3D11_SRV_DIMENSION eViewDimension = D3D11_SRV_DIMENSION_UNKNOWN;
+	uint32_t iMostDetailedMip = 0u;
+	uint32_t iMipLevels = 0u;
+	std::string strFormatName;
+	std::string strViewDimensionName;
+	std::string strColorSpace;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE final
+{
+	uint32_t iOrder = 0u;
+	uint64_t iByteCount = 0u;
+	std::string strResourceAuthorityId;
+	std::string strRuntimeAssetId;
+	std::string strRawSha256;
+	std::string strRowSha256;
+	EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY ExpectedSrv;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING final
+{
+	uint32_t iOrder = 0u;
+	uint64_t iActualDdsByteCount = 0u;
+	std::string strBindingAuthorityId;
+	std::string strCandidateBindingId;
+	std::string strCandidateBindingRowSha256;
+	std::string strRecipeId;
+	std::string strMaterialInputFieldId;
+	std::string strSamplerPolicyRowId;
+	std::string strSamplerPolicyRowSha256;
+	std::vector<std::string> MaterialOccurrenceIds;
+	std::string strRuntimeAssetId;
+	std::string strResourceAuthorityId;
+	std::string strResourceAuthorityRowSha256;
+	D3D11_SAMPLER_DESC SamplerDescriptor{};
+	std::string strSamplerSrvColorSpace;
+	EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY ActualDdsSrv;
+	std::string strActualDdsRawSha256;
+	std::string strRowSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER final
+{
+	uint32_t iOrder = 0u;
+	std::string strNeutralProviderId;
+	std::array<float, 4u> RgbaF32{};
+	std::string strEvaluatorSemantic;
+	float fSecondaryMultiplyFactor = 0.f;
+	float fSignedDistortionOffset = 0.f;
+	std::string strRowSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER final
+{
+	std::string strProviderKind;
+	std::string strNeutralProviderId;
+	std::string strMaterialInputFieldId;
+	std::string strMaterialInputRowSha256;
+	std::string strTextureBindingId;
+	std::string strTextureBindingRowSha256;
+	std::string strSamplerPolicyRowId;
+	std::string strSamplerPolicyRowSha256;
+	std::string strRuntimeAssetId;
+	std::string strSelectionBasis;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_RECIPE_TEXTURE_BINDING final
+{
+	uint32_t iOrder = 0u;
+	uint32_t iFeatureMask = 0u;
+	bool_t bSecondTextureOperationEnabled = false;
+	bool_t bDistortionOperationEnabled = false;
+	float fDistortionStrength = 0.f;
+	std::string strRecipeTextureDecisionId;
+	std::string strRecipeId;
+	std::string strRecipeRowSha256;
+	std::string strFamilyId;
+	std::string strFamilyRowSha256;
+	EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER Texture0Provider;
+	EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER Texture1Provider;
+	std::string strRowSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDERER_SLOT_BINDING final
+{
+	uint32_t iOrder = 0u;
+	uint32_t iCandidateCount = 0u;
+	std::string strRendererBindingDecisionId;
+	std::string strTextureResourceId;
+	std::string strRendererResourceRowSha256;
+	std::string strMaterialOccurrenceId;
+	std::string strMaterialOccurrenceRowSha256;
+	std::string strRecipeId;
+	std::string strSlotId;
+	std::string strRuntimeAssetId;
+	std::string strSelectedMaterialInputFieldId;
+	std::string strSelectedMaterialInputRowSha256;
+	std::string strSelectedNormalizedParameterName;
+	std::string strSelectedTextureBindingId;
+	std::string strSelectedTextureBindingRowSha256;
+	std::string strSelectedSamplerPolicyRowId;
+	std::string strSelectedSamplerPolicyRowSha256;
+	std::string strDecisionBasis;
+	std::string strRowSha256;
+};
+
+enum class EFFECT_RECONSTRUCTED_RENDER_STATE_KIND : uint8_t
+{
+	BLEND,
+	RASTERIZER,
+	DEPTH_STENCIL,
+	END
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR final
+{
+	uint32_t iOrder = 0u;
+	EFFECT_RECONSTRUCTED_RENDER_STATE_KIND eKind =
+		EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::END;
+	std::string strRenderStateDecisionId;
+	std::string strRenderBindingId;
+	std::string strRenderBindingRowSha256;
+	std::string strRecipeId;
+	std::string strRecipeRowSha256;
+	std::string strFieldName;
+	std::string strImplementationStateName;
+	std::string strRowSha256;
+	D3D11_BLEND_DESC BlendDescriptor{};
+	D3D11_RASTERIZER_DESC RasterizerDescriptor{};
+	D3D11_DEPTH_STENCIL_DESC DepthStencilDescriptor{};
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_IDENTITY final
+{
+	uint32_t iFormatVersion = 0u;
+	uint32_t iProgramVersion = 0u;
+	uint64_t iSidecarByteCount = 0u;
+	std::string strSchema;
+	std::string strAuthorityId;
+	std::string strProgramId;
+	std::string strProgramSha256;
+	std::string strSidecarDecisionProjectionSha256;
+	std::string strSidecarReceiptSha256;
+	std::string strSidecarRawSha256;
+	std::string strAuthorityLinkSha256;
+	std::string strPublishReceiptSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY final
+{
+	EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_IDENTITY Identity;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE,
+		std::less<>> TextureResourcesById;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+		std::less<>> TextureBindingsById;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER,
+		std::less<>> NeutralProvidersById;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_RECIPE_TEXTURE_BINDING,
+		std::less<>> RecipeTextureBindingsById;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDERER_SLOT_BINDING,
+		std::less<>> RendererSlotBindingsById;
+	std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR,
+		std::less<>> RenderStateDescriptorsById;
 };
 
 class CEffectCatalog;
@@ -48,6 +227,11 @@ public:
 	{
 		return m_pProgram;
 	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		Get_RenderResourceAuthority() const
+	{
+		return m_pRenderResourceAuthority;
+	}
 
 private:
 	friend class CEffectCatalog;
@@ -57,14 +241,19 @@ private:
 		const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY&) = delete;
 	EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY(
 		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY Identity,
-		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram)
-		: m_Identity(std::move(Identity)), m_pProgram(std::move(pProgram))
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+			pRenderResourceAuthority)
+		: m_Identity(std::move(Identity)), m_pProgram(std::move(pProgram)),
+		  m_pRenderResourceAuthority(std::move(pRenderResourceAuthority))
 	{
 	}
 
 private:
 	EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY m_Identity;
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> m_pProgram;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		m_pRenderResourceAuthority;
 };
 
 struct EFFECT_RECONSTRUCTED_ANCHOR_BINDING final
@@ -86,6 +275,12 @@ public:
 	{
 		return nullptr == m_pCatalogEntry ? nullptr :
 			m_pCatalogEntry->Get_Program();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		Get_RenderResourceAuthority() const
+	{
+		return nullptr == m_pCatalogEntry ? nullptr :
+			m_pCatalogEntry->Get_RenderResourceAuthority();
 	}
 	const std::vector<EFFECT_RECONSTRUCTED_ANCHOR_BINDING>&
 		Get_AnchorRequests() const
@@ -157,6 +352,12 @@ public:
 	{
 		return nullptr == m_pPreparation ? nullptr :
 			m_pPreparation->Get_Program();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		Get_RenderResourceAuthority() const
+	{
+		return nullptr == m_pPreparation ? nullptr :
+			m_pPreparation->Get_RenderResourceAuthority();
 	}
 
 private:

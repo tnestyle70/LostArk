@@ -5031,6 +5031,7 @@ namespace
 			nullptr != EntryA && nullptr != ProgramA &&
 			nullptr == AuthorityA && nullptr != EntryIdentityA &&
 			EntryA->Get_Program().get() == ProgramA.get() &&
+			nullptr == EntryA->Get_RenderResourceAuthority() &&
 			EntryIdentityA->iCatalogRevision == RevisionA &&
 			EntryIdentityA->iArtifactRevision == 1u &&
 			EntryIdentityA->iProgramVersion == 1u &&
@@ -5538,6 +5539,338 @@ namespace
 			nullptr == CEffectCatalog::Find(EffectId),
 			"Artist 31470 Reserved ID Rejects Legacy Fallback After Failed Reload");
 
+		RestorePriorCatalogFile();
+	}
+
+	void Test_Artist31470CatalogRenderResourceAuthority(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& Exact13CatalogPath,
+		const std::filesystem::path& HistoricalOld10CatalogPath = {})
+	{
+		using namespace Client;
+		constexpr const char* EffectId = "effect.artist.skill.31470";
+		const std::string CatalogText = Read_Text(Exact13CatalogPath);
+		const bool_t ExactCatalog = CatalogText.size() == 27'065'828u &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CatalogText) ==
+				"1cc2c1b159d0ed87a177a91bb0b64cd141967c5d7570407ea473a8be8d20dac3";
+		runner.Require(ExactCatalog,
+			"Artist 31470 Exact13 Harness Input Has Frozen Catalog Identity");
+		if (!ExactCatalog)
+			return;
+
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		const std::filesystem::path ModuleDirectory =
+			0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(ModuleBuffer).parent_path();
+		const std::filesystem::path CatalogPath = ModuleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code FileError;
+		std::filesystem::create_directories(CatalogPath.parent_path(), FileError);
+		std::vector<char> PriorBytes;
+		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		if (HadPrior)
+		{
+			std::ifstream Prior(CatalogPath, std::ios::binary);
+			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		const auto WriteCatalog = [&CatalogPath](const std::string& Text)
+		{
+			std::ofstream Output(
+				CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
+			return Output.good();
+		};
+		const auto RestorePriorCatalogFile = [&]()
+		{
+			if (HadPrior)
+			{
+				std::ofstream Output(
+					CatalogPath, std::ios::binary | std::ios::trunc);
+				Output.write(PriorBytes.data(),
+					static_cast<std::streamsize>(PriorBytes.size()));
+			}
+			else
+			{
+				std::filesystem::remove(CatalogPath, FileError);
+			}
+		};
+
+		CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t Loaded = WriteCatalog(CatalogText) &&
+			CEffectCatalog::Load(Status);
+		if (!Loaded)
+			std::cout << "[INFO] Artist 31470 exact13 load status: " <<
+				Status << '\n';
+		const uint64_t Revision = CEffectCatalog::Get_RuntimeRevision();
+		const auto Entry = CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+		const auto Program = CEffectCatalog::Find_ReconstructedRuntimeProgram(
+			EffectId);
+		const auto Authority = nullptr == Entry ? nullptr :
+			Entry->Get_RenderResourceAuthority();
+		const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY* Identity =
+			nullptr == Entry ? nullptr : &Entry->Get_Identity();
+		const bool_t ExactIdentity = Loaded && nullptr != Entry &&
+			nullptr != Program && nullptr != Authority && nullptr != Identity &&
+			Entry->Get_Program().get() == Program.get() &&
+			Identity->iCatalogRevision == Revision &&
+			Identity->iRenderResourceSidecarFormatVersion == 1u &&
+			Identity->iRenderResourceSidecarByteCount == 746'788u &&
+			Identity->strRenderResourceSidecarSchema ==
+				"lostark.artist-31470-reconstructed-render-resource-authority-receipt" &&
+			Identity->strRenderResourceAuthorityId ==
+				"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1" &&
+			Identity->strRenderResourceSidecarDecisionProjectionSha256 ==
+				"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412" &&
+			Identity->strRenderResourceSidecarReceiptSha256 ==
+				"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a" &&
+			Identity->strRenderResourceSidecarRawSha256 ==
+				"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff" &&
+			Identity->strRenderResourceAuthorityLinkSha256 ==
+				"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e" &&
+			Identity->strRenderResourcePublishReceiptSha256 ==
+				"dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455" &&
+			Authority->Identity.strProgramId == Identity->strProgramId &&
+			Authority->Identity.strProgramSha256 == Identity->strProgramSha256 &&
+			Authority->TextureResourcesById.size() == 48u &&
+			Authority->TextureBindingsById.size() == 72u &&
+			Authority->NeutralProvidersById.size() == 4u &&
+			Authority->RecipeTextureBindingsById.size() == 27u &&
+			Authority->RendererSlotBindingsById.size() == 57u &&
+			Authority->RenderStateDescriptorsById.size() == 46u;
+		runner.Require(ExactIdentity,
+			"Artist 31470 Exact13 Catalog Commits One Immutable Render Resource Authority");
+		if (!ExactIdentity)
+		{
+			CEffectCatalog::Clear();
+			RestorePriorCatalogFile();
+			return;
+		}
+
+		const auto MeshRecipe = Authority->RecipeTextureBindingsById.find(
+			"recipe-texture-binding-06");
+		const auto SpriteRecipe = Authority->RecipeTextureBindingsById.find(
+			"recipe-texture-binding-01");
+		const auto MeshTexture0 = Authority->TextureBindingsById.find(
+			"render-binding-14");
+		const auto MeshTexture1 = Authority->TextureBindingsById.find(
+			"render-binding-15");
+		const auto SpriteTexture0 = Authority->TextureBindingsById.find(
+			"render-binding-03");
+		const auto SpriteTexture1 = Authority->TextureBindingsById.find(
+			"render-binding-02");
+		const auto MeshRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-048");
+		const auto SpriteMaskRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-049");
+		const auto SpriteBaseRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-050");
+		const auto MeshBlend = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-12");
+		const auto SpriteBlend = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-02");
+		const auto SpriteRaster = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-03");
+		const auto ExactSampler = [](const auto& Binding)
+		{
+			const D3D11_SAMPLER_DESC& Sampler = Binding.SamplerDescriptor;
+			return Sampler.Filter == D3D11_FILTER_MIN_MAG_MIP_LINEAR &&
+				Sampler.AddressU == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.AddressV == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.AddressW == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.MipLODBias == 0.f && Sampler.MaxAnisotropy == 0u &&
+				Sampler.ComparisonFunc == D3D11_COMPARISON_NEVER &&
+				Sampler.MinLOD == 0.f && Sampler.MaxLOD == FLT_MAX;
+		};
+		const bool_t SelectedRows =
+			MeshRecipe != Authority->RecipeTextureBindingsById.end() &&
+			SpriteRecipe != Authority->RecipeTextureBindingsById.end() &&
+			MeshTexture0 != Authority->TextureBindingsById.end() &&
+			MeshTexture1 != Authority->TextureBindingsById.end() &&
+			SpriteTexture0 != Authority->TextureBindingsById.end() &&
+			SpriteTexture1 != Authority->TextureBindingsById.end() &&
+			MeshRenderer != Authority->RendererSlotBindingsById.end() &&
+			SpriteMaskRenderer != Authority->RendererSlotBindingsById.end() &&
+			SpriteBaseRenderer != Authority->RendererSlotBindingsById.end() &&
+			MeshBlend != Authority->RenderStateDescriptorsById.end() &&
+			SpriteBlend != Authority->RenderStateDescriptorsById.end() &&
+			SpriteRaster != Authority->RenderStateDescriptorsById.end() &&
+			MeshRecipe->second.strRecipeId ==
+				"material-recipe-4b4c59364690a66d" &&
+			MeshRecipe->second.strRowSha256 ==
+				"b2604680e40023ff1ef5efcbaad9e2e6a193fed6b5a70c133c31eaa87f960393" &&
+			SpriteRecipe->second.strRecipeId ==
+				"material-recipe-2073fb45e643d1d5" &&
+			SpriteRecipe->second.strRowSha256 ==
+				"238f88b150d88389e897d27c946c63b38f512f7c91a24a81ea77c7786e72e1a3" &&
+			MeshTexture0->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_environ_002.dds" &&
+			MeshTexture0->second.strRowSha256 ==
+				"5507774c5a561098fa848c4d7cb37a216f1c247932e03898db08550e0abfbeb6" &&
+			MeshTexture0->second.strActualDdsRawSha256 ==
+				"cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962" &&
+			MeshTexture1->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_environ_002_n.dds" &&
+			MeshTexture1->second.strRowSha256 ==
+				"7d749c3da4418afaac5e639a2739fe5ec24baf8230a918bb86c8460e0d4a7304" &&
+			MeshTexture1->second.strActualDdsRawSha256 ==
+				"62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6" &&
+			SpriteTexture0->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_decal_013.dds" &&
+			SpriteTexture0->second.strRowSha256 ==
+				"36e94aa1077ce9bf07d7f2d819b9819499ae060594c913163c6f1001470c601c" &&
+			SpriteTexture0->second.strActualDdsRawSha256 ==
+				"c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e" &&
+			SpriteTexture1->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_e_fluid_021.dds" &&
+			SpriteTexture1->second.strRowSha256 ==
+				"b5c56bdc4d6ee9df110444975cf1fe1f6d15983a85febc3c829df4e72c26f901" &&
+			SpriteTexture1->second.strActualDdsRawSha256 ==
+				"1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75" &&
+			ExactSampler(MeshTexture0->second) &&
+			ExactSampler(MeshTexture1->second) &&
+			ExactSampler(SpriteTexture0->second) &&
+			ExactSampler(SpriteTexture1->second) &&
+			MeshRenderer->second.iCandidateCount == 1u &&
+			MeshRenderer->second.strRowSha256 ==
+				"753c35a340aa78d4abb641620e672de6906940bad6ed71f820ec5b053a7825db" &&
+			SpriteMaskRenderer->second.iCandidateCount == 1u &&
+			SpriteMaskRenderer->second.strRowSha256 ==
+				"8eacb5756a8db3d401df71b104a7fc0de80670bcac8533bdf080f754480720fc" &&
+			SpriteBaseRenderer->second.iCandidateCount == 1u &&
+			SpriteBaseRenderer->second.strRowSha256 ==
+				"36e0a37f13b2b1a0ff54065995a089f6142fcdf5dea4e93c2550974f732e2b5d" &&
+			MeshBlend->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
+			MeshBlend->second.strImplementationStateName == "BS_EffectOpaque" &&
+			MeshBlend->second.strRowSha256 ==
+				"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a" &&
+			SpriteBlend->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
+			SpriteBlend->second.strImplementationStateName == "BS_EffectAlpha" &&
+			SpriteBlend->second.strRowSha256 ==
+				"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa" &&
+			SpriteRaster->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER &&
+			SpriteRaster->second.strImplementationStateName == "RS_Cull_None" &&
+			SpriteRaster->second.strRowSha256 ==
+				"608896ca6411f016505353c28f6ba0d46bff15f8aecebc9080db2e3fa43743c9";
+		runner.Require(SelectedRows,
+			"Artist 31470 Exact13 Typed Maps Retrieve Frozen Mesh And Sprite M0 Rows");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			Preparation;
+		CEffectReconstructedRuntimeBoundary Boundary;
+		const bool_t OnePointer =
+			CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+				EffectId, Preparation, Status) && nullptr != Preparation &&
+			Preparation->Get_CatalogEntry().get() == Entry.get() &&
+			Preparation->Get_RenderResourceAuthority().get() == Authority.get() &&
+			Boundary.Stage(Preparation,
+				EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER, Status) &&
+			Boundary.Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(OnePointer,
+			"Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer");
+
+		const uint64_t BeforeRevision = CEffectCatalog::Get_RuntimeRevision();
+		const std::string BeforeStatus = CEffectCatalog::Get_Status();
+		std::string SidecarMutation = CatalogText;
+		const std::string SidecarMarker =
+			"\\\"bindingAuthorityId\\\": \\\"render-binding-14\\\"";
+		const size_t SidecarOffset = SidecarMutation.find(SidecarMarker);
+		if (SidecarOffset != std::string::npos)
+		{
+			SidecarMutation[SidecarOffset + SidecarMarker.size() - 2u] = '5';
+		}
+		const bool_t SidecarRejected = SidecarOffset != std::string::npos &&
+			WriteCatalog(SidecarMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(SidecarRejected,
+			"Artist 31470 Exact13 Sidecar Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string LinkMutation = CatalogText;
+		const std::string LinkMarker =
+			"\"sidecarAuthorityId\":"
+			"\"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1\"";
+		const size_t LinkOffset = LinkMutation.find(LinkMarker);
+		if (LinkOffset != std::string::npos)
+			LinkMutation[LinkOffset + LinkMarker.size() - 2u] = '2';
+		const bool_t LinkRejected = LinkOffset != std::string::npos &&
+			WriteCatalog(LinkMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(LinkRejected,
+			"Artist 31470 Exact13 Link21 Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string ReceiptMutation = CatalogText;
+		const std::string ReceiptMarker =
+			"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY";
+		const size_t ReceiptOffset = ReceiptMutation.find(ReceiptMarker);
+		if (ReceiptOffset != std::string::npos)
+			ReceiptMutation[ReceiptOffset + ReceiptMarker.size() - 1u] = 'X';
+		const bool_t ReceiptRejected = ReceiptOffset != std::string::npos &&
+			WriteCatalog(ReceiptMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(ReceiptRejected,
+			"Artist 31470 Exact13 Receipt26 Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string OuterMutation = CatalogText;
+		const std::string OuterField = "\"renderResourcePublishReceiptSha256\"";
+		const size_t OuterOffset = OuterMutation.find(OuterField);
+		if (OuterOffset != std::string::npos)
+			OuterMutation[OuterOffset + OuterField.size() - 2u] = 'x';
+		const bool_t OuterRejected = OuterOffset != std::string::npos &&
+			WriteCatalog(OuterMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(OuterRejected,
+			"Artist 31470 Exact13 Outer13 Mutation Rolls Back Entry And Authority Pointers");
+
+		if (!HistoricalOld10CatalogPath.empty())
+		{
+			const std::string HistoricalText = Read_Text(
+				HistoricalOld10CatalogPath);
+			const bool_t HistoricalInput =
+				HistoricalText.size() == 26'255'931u &&
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(HistoricalText) ==
+					"bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29";
+			const bool_t HistoricalLoaded = HistoricalInput &&
+				WriteCatalog(HistoricalText) && CEffectCatalog::Load(Status);
+			const auto HistoricalEntry =
+				CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+			const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY* HistoricalIdentity =
+				nullptr == HistoricalEntry ? nullptr :
+					&HistoricalEntry->Get_Identity();
+			runner.Require(HistoricalLoaded && nullptr != HistoricalEntry &&
+				nullptr != HistoricalIdentity &&
+				nullptr == HistoricalEntry->Get_RenderResourceAuthority() &&
+				HistoricalIdentity->iRenderResourceSidecarFormatVersion == 0u &&
+				HistoricalIdentity->iRenderResourceSidecarByteCount == 0u &&
+				HistoricalIdentity->strRenderResourceAuthorityId.empty() &&
+				HistoricalIdentity->strRenderResourceAuthorityLinkSha256.empty() &&
+				HistoricalIdentity->strRenderResourcePublishReceiptSha256.empty(),
+				"Artist 31470 Exact Historical Old10 Loads With Null Render Resource Authority");
+		}
+
+		CEffectCatalog::Clear();
 		RestorePriorCatalogFile();
 	}
 
@@ -8383,6 +8716,16 @@ int main(const int argc, char* argv[])
 		Test_Artist31470CatalogProgramAuthority(
 			runner, std::filesystem::path(argv[2]),
 			std::filesystem::path(argv[3]));
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-render-resource-authority" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470CatalogRenderResourceAuthority(
+			runner, std::filesystem::path(argv[2]),
+			argc > 3 && nullptr != argv[3] ? std::filesystem::path(argv[3]) :
+				std::filesystem::path{});
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

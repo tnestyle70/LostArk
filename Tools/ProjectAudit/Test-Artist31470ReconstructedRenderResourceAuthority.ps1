@@ -60,6 +60,7 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
     }
 
     $temporaryIndex = Join-Path $isolatedRoot 'temporary.index'
+    $historicalRevision = '7d3e957f4d93bfd1416fa6a05d5d7fa8f46c12a2'
     $overlayPaths = @(
         '.gitattributes',
         $receiptPath,
@@ -98,9 +99,9 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
     try {
         try {
             $env:GIT_INDEX_FILE = $temporaryIndex
-            & git read-tree HEAD
+            & git read-tree $historicalRevision
             if ($LASTEXITCODE -ne 0) {
-                throw 'Artist F authority temporary read-tree failed.'
+                throw 'Artist F authority frozen historical read-tree failed.'
             }
             & git -c core.autocrlf=false -c core.safecrlf=false add -- $overlayPaths
             if ($LASTEXITCODE -ne 0) {
@@ -215,17 +216,21 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
 
 Push-Location $RepositoryRoot
 try {
-    $null = Invoke-PythonUnit -TestPath $test
-
-    $checkOutput = (& python -B $generator '--output' $receiptPath '--check' `
-        2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or
-        $checkOutput -notmatch
-            'PASS Artist 31470 reconstructed render-resource authority resources=48 bindings=72 recipes=27 renderer=57') {
-        throw "Artist F authority deterministic check failed: $checkOutput"
-    }
-
+    # The immutable sidecar records the historical bf0807 catalog and its
+    # original current-tool tuple.  Re-run that exact contract only inside the
+    # frozen 7d3e957 historical checkout, then independently validate the current
+    # outer-13 bridge.  The final catalog identity never feeds back into the
+    # sidecar receipt projection.
     $autocrlfRegression = Invoke-AutocrlfIsolatedCheckoutRegression -Root $RepositoryRoot
+    $bridgeBuilder = Join-Path $RepositoryRoot `
+        'Tools\EffectPipeline\build_effect_derived_artifact.py'
+    $currentRuntimeCatalog = Join-Path $RepositoryRoot `
+        'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json'
+    $bridgeOutput = (& python -B $bridgeBuilder validate-runtime-catalog `
+        --catalog $currentRuntimeCatalog 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Current Artist F render-resource bridge validation failed: $bridgeOutput"
+    }
 
     $receiptBytes = [IO.File]::ReadAllBytes((Join-Path $RepositoryRoot $receiptPath))
     $receiptRawSha = (Get-FileHash -LiteralPath $receiptPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -321,10 +326,18 @@ try {
         '.gitattributes',
         'Tools/ProjectAudit/Invoke-ProjectAudit.ps1',
         'Tools/ProjectAudit/Test-Artist31470ReconstructedRenderResourceAuthority.ps1',
+        'Tools/ProjectAudit/Test-EffectDerivedArtifactPublisher.ps1',
+        'Tools/EffectPipeline/build_effect_derived_artifact.py',
+        'Tools/EffectPipeline/test_build_effect_derived_artifact.py',
+        'Tools/EffectPipeline/Publish-Effects.ps1',
+        'Data/Effects/EffectCatalog.json',
+        'Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json',
         $module,
         $generator,
         $test,
         $receiptPath,
+        '.md/GB/08-11/2026-08-11_ARTIST_31470_F_RENDER_RESOURCE_PUBLISHER_BRIDGE_PLAN.md',
+        '.md/GB/08-11/2026-08-11_ARTIST_31470_F_RENDER_RESOURCE_PUBLISHER_BRIDGE_RESULT.md',
         '.md/GB/08-11/2026-08-11_ARTIST_31470_F_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_PLAN.md',
         '.md/GB/08-11/2026-08-11_ARTIST_31470_F_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_RESULT.md'
     ) | ForEach-Object { $null = $allowedPaths.Add($_) }
@@ -358,7 +371,7 @@ try {
         'PASS: Artist F 31470 reconstructed render-resource authority ' +
         'resources=48 bindings=72 formats=35+8+4+1 srv=58+9+4+1 colors=67+5 ' +
         'recipes=27 renderer=57 ambiguous=3 descriptors=27+18+1/46 ' +
-        'publisher=10/16/25/tool3 ' +
+        'publisher=10/16/25/tool3 bridge=13/21/26/tool3 ' +
         "autocrlf=$($autocrlfRegression.UnitTestCount)/31+check " +
         "bytes=$($autocrlfRegression.ByteCount) " +
         "CR=$($autocrlfRegression.CarriageReturnCount) " +

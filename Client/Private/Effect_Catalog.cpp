@@ -150,7 +150,18 @@ namespace
 		Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY Identity;
 		std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
 			pProgram;
+		std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+			pRenderResourceAuthority;
 	};
+
+	bool Parse_ReconstructedRenderResourceExtension(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& InOutIdentity,
+		std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>&
+			OutAuthority,
+		std::string& strOutError);
 
 	bool Parse_ReconstructedRuntimeProgramEntry(
 		const Client::DATA_JSON_VALUE& Value,
@@ -181,11 +192,20 @@ namespace
 			"5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
 			"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94";
-		if (!Has_ExactOrderedKeys(Value, {
+		const bool bHistoricalOuter10 = Has_ExactOrderedKeys(Value, {
 			"payloadKind", "effectAssetId", "artifactRevision",
 			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
 			"productAdmission", "publishReceiptSha256", "publishReceipt",
-			"reconstructedRuntimeProgram" }))
+			"reconstructedRuntimeProgram" });
+		const bool bRenderResourceOuter13 = Has_ExactOrderedKeys(Value, {
+			"payloadKind", "effectAssetId", "artifactRevision",
+			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
+			"productAdmission", "publishReceiptSha256", "publishReceipt",
+			"reconstructedRuntimeProgram",
+			"renderResourcePublishReceiptSha256",
+			"renderResourcePublishReceipt",
+			"reconstructedRenderResourceAuthority" });
+		if (!bHistoricalOuter10 && !bRenderResourceOuter13)
 		{
 			strOutError =
 				"Reconstructed runtime entry fields or order are invalid.";
@@ -530,8 +550,2051 @@ namespace
 			ReconstructedLinkSha->Get_String();
 		Staged.Identity.strPublishReceiptSha256 =
 			PublishReceiptSha->Get_String();
+		if (bRenderResourceOuter13 &&
+			!Parse_ReconstructedRenderResourceExtension(
+				Value, Staged.Identity, Staged.pRenderResourceAuthority,
+				strOutError))
+		{
+			return false;
+		}
 		Staged.pProgram = std::move(Program);
 		OutEntry = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+
+	bool Read_U64Exact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, uint64_t& iOutValue)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::NUMBER);
+		if (nullptr == Value || Value->Was_FloatingPointToken() ||
+			!std::isfinite(Value->Get_Number()) ||
+			Value->Get_Number() != std::floor(Value->Get_Number()) ||
+			Value->Get_Number() < 0.0 ||
+			Value->Get_Number() > 9007199254740991.0)
+		{
+			return false;
+		}
+		iOutValue = static_cast<uint64_t>(Value->Get_Number());
+		return true;
+	}
+
+	bool Read_I32Exact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, int32_t& iOutValue)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::NUMBER);
+		if (nullptr == Value || Value->Was_FloatingPointToken() ||
+			!std::isfinite(Value->Get_Number()) ||
+			Value->Get_Number() != std::floor(Value->Get_Number()) ||
+			Value->Get_Number() < static_cast<double>(INT32_MIN) ||
+			Value->Get_Number() > static_cast<double>(INT32_MAX))
+		{
+			return false;
+		}
+		iOutValue = static_cast<int32_t>(Value->Get_Number());
+		return true;
+	}
+
+	bool Read_F32Exact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, float& fOutValue)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::NUMBER);
+		if (nullptr == Value || !Value->Was_FloatingPointToken() ||
+			!std::isfinite(Value->Get_Number()) ||
+			Value->Get_Number() < -static_cast<double>(FLT_MAX) ||
+			Value->Get_Number() > static_cast<double>(FLT_MAX))
+		{
+			return false;
+		}
+		fOutValue = static_cast<float>(Value->Get_Number());
+		return true;
+	}
+
+	bool Read_BooleanExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, const bool bExpected)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::BOOLEAN);
+		return nullptr != Value && Value->Get_Boolean() == bExpected;
+	}
+
+	bool Read_StringExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, std::string& strOutValue,
+		const bool bAllowEmpty = false, const size_t iMaximumLength = 4096u)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::STRING);
+		if (nullptr == Value || Value->Get_String().size() > iMaximumLength ||
+			(!bAllowEmpty && Value->Get_String().empty()))
+		{
+			return false;
+		}
+		strOutValue = Value->Get_String();
+		return true;
+	}
+
+	bool Read_ShaExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, std::string& strOutValue)
+	{
+		return Read_StringExact(Object, pName, strOutValue) &&
+			Is_LowerHexSha256(strOutValue);
+	}
+
+	bool Read_StringArrayExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, std::vector<std::string>& OutValues,
+		const bool bShaValues = false)
+	{
+		const Client::DATA_JSON_VALUE* Value = Required(
+			Object, pName, Client::DATA_JSON_TYPE::ARRAY);
+		if (nullptr == Value || Value->Get_Array().size() > 128u)
+			return false;
+		std::vector<std::string> Staged;
+		Staged.reserve(Value->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& Item : Value->Get_Array())
+		{
+			if (!Item.Is_String() || Item.Get_String().empty() ||
+				Item.Get_String().size() > 4096u ||
+				(bShaValues && !Is_LowerHexSha256(Item.Get_String())))
+			{
+				return false;
+			}
+			Staged.push_back(Item.Get_String());
+		}
+		OutValues = std::move(Staged);
+		return true;
+	}
+
+	bool Validate_FailClosedAuthorityRow(
+		const Client::DATA_JSON_VALUE& Value,
+		const bool bRequiresValidation = false)
+	{
+		return Read_BooleanExact(Value, "sourceExact", false) &&
+			Read_BooleanExact(Value, "runtimeExecutionAdmission", false) &&
+			Read_BooleanExact(Value, "product", false) &&
+			(!bRequiresValidation ||
+				(Read_BooleanExact(Value, "requiresAutomatedWARPProbe", true) &&
+				 Read_BooleanExact(Value, "requiresManualEyeValidation", true)));
+	}
+
+	bool Parse_DdsSrvIdentity(const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY& OutIdentity)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"Format", "FormatName", "ViewDimension", "ViewDimensionName",
+			"MostDetailedMip", "MipLevels", "srvColorSpace" }))
+		{
+			return false;
+		}
+		uint32_t iFormat = 0u;
+		uint32_t iViewDimension = 0u;
+		EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY Staged;
+		if (!Read_U32(Value, "Format", iFormat) ||
+			!Read_U32(Value, "ViewDimension", iViewDimension) ||
+			!Read_U32(Value, "MostDetailedMip", Staged.iMostDetailedMip) ||
+			!Read_U32(Value, "MipLevels", Staged.iMipLevels) ||
+			Staged.iMipLevels == 0u ||
+			iFormat > static_cast<uint32_t>(DXGI_FORMAT_V408) ||
+			iViewDimension != static_cast<uint32_t>(
+				D3D11_SRV_DIMENSION_TEXTURE2D) ||
+			!Read_StringExact(Value, "FormatName", Staged.strFormatName) ||
+			!Read_StringExact(Value, "ViewDimensionName",
+				Staged.strViewDimensionName) ||
+			!Read_StringExact(Value, "srvColorSpace", Staged.strColorSpace) ||
+			(Staged.strColorSpace != "LINEAR" &&
+			 Staged.strColorSpace != "SRGB"))
+		{
+			return false;
+		}
+		Staged.eFormat = static_cast<DXGI_FORMAT>(iFormat);
+		Staged.eViewDimension = static_cast<D3D11_SRV_DIMENSION>(iViewDimension);
+		OutIdentity = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_SamplerDescriptor(const Client::DATA_JSON_VALUE& Value,
+		D3D11_SAMPLER_DESC& OutDescriptor, std::string& strOutColorSpace)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"type", "filterUe3", "filterD3d11", "addressUUe3",
+			"addressUD3d11", "addressVUe3", "addressVD3d11",
+			"addressWUe3", "addressWD3d11", "mipLODBias",
+			"maxAnisotropy", "comparisonFuncName", "comparisonFuncD3d11",
+			"borderColor", "minLOD", "maxLOD", "sRgb", "srvColorSpace",
+			"lodGroup" }))
+		{
+			return false;
+		}
+		std::string Type;
+		std::string FilterUe3;
+		std::string AddressUe3;
+		std::string AddressVe3;
+		std::string AddressWe3;
+		std::string ComparisonName;
+		std::string LodGroup;
+		uint32_t iFilter = 0u;
+		uint32_t iAddressU = 0u;
+		uint32_t iAddressV = 0u;
+		uint32_t iAddressW = 0u;
+		uint32_t iMaxAnisotropy = 0u;
+		uint32_t iComparison = 0u;
+		D3D11_SAMPLER_DESC Staged{};
+		const DATA_JSON_VALUE* BorderColor = Required(
+			Value, "borderColor", DATA_JSON_TYPE::ARRAY);
+		if (!Read_StringExact(Value, "type", Type) ||
+			Type != "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE" ||
+			!Read_StringExact(Value, "filterUe3", FilterUe3) ||
+			!Read_U32(Value, "filterD3d11", iFilter) ||
+			!Read_StringExact(Value, "addressUUe3", AddressUe3) ||
+			!Read_U32(Value, "addressUD3d11", iAddressU) ||
+			!Read_StringExact(Value, "addressVUe3", AddressVe3) ||
+			!Read_U32(Value, "addressVD3d11", iAddressV) ||
+			!Read_StringExact(Value, "addressWUe3", AddressWe3) ||
+			!Read_U32(Value, "addressWD3d11", iAddressW) ||
+			!Read_F32Exact(Value, "mipLODBias", Staged.MipLODBias) ||
+			!Read_U32(Value, "maxAnisotropy", iMaxAnisotropy) ||
+			!Read_StringExact(Value, "comparisonFuncName", ComparisonName) ||
+			!Read_U32(Value, "comparisonFuncD3d11", iComparison) ||
+			nullptr == BorderColor || BorderColor->Get_Array().size() != 4u ||
+			!Read_F32Exact(Value, "minLOD", Staged.MinLOD) ||
+			!Read_F32Exact(Value, "maxLOD", Staged.MaxLOD) ||
+			!Read_StringExact(Value, "srvColorSpace", strOutColorSpace) ||
+			!Read_StringExact(Value, "lodGroup", LodGroup) ||
+			!Read_BooleanExact(Value, "sRgb", strOutColorSpace == "SRGB") ||
+			iFilter != static_cast<uint32_t>(
+				D3D11_FILTER_MIN_MAG_MIP_LINEAR) ||
+			iAddressU < static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_WRAP) ||
+			iAddressU > static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_MIRROR_ONCE) ||
+			iAddressV < static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_WRAP) ||
+			iAddressV > static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_MIRROR_ONCE) ||
+			iAddressW < static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_WRAP) ||
+			iAddressW > static_cast<uint32_t>(D3D11_TEXTURE_ADDRESS_MIRROR_ONCE) ||
+			iMaxAnisotropy != 0u ||
+			iComparison != static_cast<uint32_t>(D3D11_COMPARISON_NEVER) ||
+			ComparisonName != "D3D11_COMPARISON_NEVER" ||
+			Staged.MinLOD != 0.f || Staged.MaxLOD != FLT_MAX ||
+			(strOutColorSpace != "LINEAR" && strOutColorSpace != "SRGB"))
+		{
+			return false;
+		}
+		for (size_t Index = 0u; Index < 4u; ++Index)
+		{
+			const DATA_JSON_VALUE& Item = BorderColor->Get_Array()[Index];
+			if (!Item.Is_Number() || !Item.Was_FloatingPointToken() ||
+				!std::isfinite(Item.Get_Number()) ||
+				Item.Get_Number() < -static_cast<double>(FLT_MAX) ||
+				Item.Get_Number() > static_cast<double>(FLT_MAX))
+			{
+				return false;
+			}
+			Staged.BorderColor[Index] = static_cast<float>(Item.Get_Number());
+		}
+		Staged.Filter = static_cast<D3D11_FILTER>(iFilter);
+		Staged.AddressU = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(iAddressU);
+		Staged.AddressV = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(iAddressV);
+		Staged.AddressW = static_cast<D3D11_TEXTURE_ADDRESS_MODE>(iAddressW);
+		Staged.MaxAnisotropy = iMaxAnisotropy;
+		Staged.ComparisonFunc = static_cast<D3D11_COMPARISON_FUNC>(iComparison);
+		OutDescriptor = Staged;
+		return true;
+	}
+
+	bool Same_DdsSrvIdentity(
+		const Client::EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY& Left,
+		const Client::EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY& Right)
+	{
+		return Left.eFormat == Right.eFormat &&
+			Left.eViewDimension == Right.eViewDimension &&
+			Left.iMostDetailedMip == Right.iMostDetailedMip &&
+			Left.iMipLevels == Right.iMipLevels &&
+			Left.strFormatName == Right.strFormatName &&
+			Left.strViewDimensionName == Right.strViewDimensionName &&
+			Left.strColorSpace == Right.strColorSpace;
+	}
+
+	bool Validate_DdsHeader(const Client::DATA_JSON_VALUE& Value,
+		const uint64_t iExpectedByteCount)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"magic", "headerSize", "flags", "height", "width",
+			"pitchOrLinearSize", "depth", "rawMipMapCount",
+			"effectiveMipLevelCount", "reserved1", "pixelFormat", "caps",
+			"caps2", "caps3", "caps4", "reserved2", "dataOffset",
+			"payloadByteCount", "expectedCompressedPayloadByteCount",
+			"payloadByteCountExact", "compression" }))
+		{
+			return false;
+		}
+		std::string Magic;
+		uint32_t iHeaderSize = 0u;
+		uint32_t iWidth = 0u;
+		uint32_t iHeight = 0u;
+		uint32_t iMipCount = 0u;
+		uint64_t iDataOffset = 0u;
+		uint64_t iPayloadBytes = 0u;
+		uint64_t iExpectedPayloadBytes = 0u;
+		const DATA_JSON_VALUE* Reserved = Required(
+			Value, "reserved1", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* PixelFormat = Required(
+			Value, "pixelFormat", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Compression = Required(
+			Value, "compression", DATA_JSON_TYPE::OBJECT);
+		if (!Read_StringExact(Value, "magic", Magic) || Magic != "DDS " ||
+			!Read_U32(Value, "headerSize", iHeaderSize) || iHeaderSize != 124u ||
+			!Read_U32(Value, "width", iWidth) || iWidth == 0u ||
+			!Read_U32(Value, "height", iHeight) || iHeight == 0u ||
+			!Read_U32(Value, "effectiveMipLevelCount", iMipCount) ||
+			iMipCount == 0u || !Read_U64Exact(Value, "dataOffset", iDataOffset) ||
+			iDataOffset != 128u ||
+			!Read_U64Exact(Value, "payloadByteCount", iPayloadBytes) ||
+			!Read_U64Exact(Value, "expectedCompressedPayloadByteCount",
+				iExpectedPayloadBytes) ||
+			iPayloadBytes != iExpectedPayloadBytes ||
+			iExpectedByteCount != iDataOffset + iPayloadBytes ||
+			!Read_BooleanExact(Value, "payloadByteCountExact", true) ||
+			nullptr == Reserved || Reserved->Get_Array().size() != 11u ||
+			nullptr == PixelFormat || !Has_ExactOrderedKeys(*PixelFormat, {
+				"size", "flags", "fourCC", "rgbBitCount", "rBitMask",
+				"gBitMask", "bBitMask", "aBitMask" }) ||
+			nullptr == Compression || !Has_ExactOrderedKeys(*Compression, {
+				"family", "bytesPerFourByFourBlock", "linearDxgiFormat",
+				"linearDxgiFormatName", "srgbDxgiFormat",
+				"srgbDxgiFormatName" }))
+		{
+			return false;
+		}
+		uint32_t iPixelFormatSize = 0u;
+		std::string FourCc;
+		std::string CompressionFamily;
+		return Read_U32(*PixelFormat, "size", iPixelFormatSize) &&
+			iPixelFormatSize == 32u &&
+			Read_StringExact(*PixelFormat, "fourCC", FourCc) &&
+			Read_StringExact(*Compression, "family", CompressionFamily) &&
+			!CompressionFamily.empty();
+	}
+
+	bool Parse_RenderTextureResources(const Client::DATA_JSON_VALUE& Value,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE,
+			std::less<>>& OutResources, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 48u)
+		{
+			strOutError = "Render-resource textureResources denominator is invalid.";
+			return false;
+		}
+		std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"resourceAuthorityId", "order", "runtimeAssetId",
+				"candidateBindingIds", "candidateBindingRowSha256",
+				"candidateBindingCount", "byteCount", "rawSha256",
+				"ddsHeader", "actualCompressedFormatClassification",
+				"colorSpacePolicy", "actualExpectedSrvDescriptor",
+				"resourceIdentityBasis", "absolutePathRecorded",
+				"actionTimeIoAllowed", "sourceExact",
+				"runtimeExecutionAdmission", "product", "rowSha256" }))
+			{
+				strOutError = "Render-resource textureResources row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE Resource;
+			uint32_t iCandidateBindingCount = 0u;
+			std::vector<std::string> CandidateBindingIds;
+			std::vector<std::string> CandidateBindingRowHashes;
+			std::string Classification;
+			std::string ColorSpace;
+			std::string IdentityBasis;
+			const DATA_JSON_VALUE* DdsHeader = Required(
+				Row, "ddsHeader", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* Srv = Required(
+				Row, "actualExpectedSrvDescriptor", DATA_JSON_TYPE::OBJECT);
+			if (!Read_StringExact(Row, "resourceAuthorityId",
+					Resource.strResourceAuthorityId) ||
+				!Is_StableId(Resource.strResourceAuthorityId) ||
+				!Read_U32(Row, "order", Resource.iOrder) ||
+				Resource.iOrder != Index ||
+				!Read_StringExact(Row, "runtimeAssetId",
+					Resource.strRuntimeAssetId) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Resource.strRuntimeAssetId) ||
+				!Read_StringArrayExact(Row, "candidateBindingIds",
+					CandidateBindingIds) || CandidateBindingIds.empty() ||
+				!Read_StringArrayExact(Row, "candidateBindingRowSha256",
+					CandidateBindingRowHashes, true) ||
+				!Read_U32(Row, "candidateBindingCount", iCandidateBindingCount) ||
+				iCandidateBindingCount != CandidateBindingIds.size() ||
+				iCandidateBindingCount != CandidateBindingRowHashes.size() ||
+				!Read_U64Exact(Row, "byteCount", Resource.iByteCount) ||
+				Resource.iByteCount <= 128u ||
+				!Read_ShaExact(Row, "rawSha256", Resource.strRawSha256) ||
+				nullptr == DdsHeader ||
+				!Validate_DdsHeader(*DdsHeader, Resource.iByteCount) ||
+				!Read_StringExact(Row, "actualCompressedFormatClassification",
+					Classification) ||
+				!Read_StringExact(Row, "colorSpacePolicy", ColorSpace) ||
+				nullptr == Srv || !Parse_DdsSrvIdentity(*Srv, Resource.ExpectedSrv) ||
+				ColorSpace != Resource.ExpectedSrv.strColorSpace ||
+				!Read_StringExact(Row, "resourceIdentityBasis", IdentityBasis) ||
+				IdentityBasis != "CANONICAL_MAIN_RESOURCES_BYTE_EXACT_DDS" ||
+				!Read_BooleanExact(Row, "absolutePathRecorded", false) ||
+				!Read_BooleanExact(Row, "actionTimeIoAllowed", false) ||
+				!Validate_FailClosedAuthorityRow(Row) ||
+				!Read_ShaExact(Row, "rowSha256", Resource.strRowSha256) ||
+				!Staged.emplace(Resource.strResourceAuthorityId,
+					std::move(Resource)).second)
+			{
+				strOutError = "Render-resource textureResources row is invalid.";
+				return false;
+			}
+		}
+		OutResources = std::move(Staged);
+		return true;
+	}
+
+	bool Validate_PriorPolicyFixture(const Client::DATA_JSON_VALUE& Value,
+		const std::string_view strExpectedPolicyId)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"fixtureKind", "policyRowId", "expectedSrv", "actualSrv",
+			"numericTolerance", "decision" }))
+		{
+			return false;
+		}
+		std::string FixtureKind;
+		std::string PolicyId;
+		std::string Decision;
+		float fTolerance = 0.f;
+		const DATA_JSON_VALUE* Expected = Required(
+			Value, "expectedSrv", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Actual = Required(
+			Value, "actualSrv", DATA_JSON_TYPE::OBJECT);
+		return Read_StringExact(Value, "fixtureKind", FixtureKind) &&
+			FixtureKind ==
+				"MATERIAL_POLICY_1X1_RGBA8_SRV_ORACLE_NOT_ACTUAL_DDS_DESCRIPTOR" &&
+			Read_StringExact(Value, "policyRowId", PolicyId) &&
+			PolicyId == strExpectedPolicyId && nullptr != Expected &&
+			Has_ExactOrderedKeys(*Expected, { "Format", "ViewDimension",
+				"MostDetailedMip", "MipLevels", "srvColorSpace" }) &&
+			nullptr != Actual && Has_ExactOrderedKeys(*Actual, {
+				"Format", "ViewDimension", "MostDetailedMip", "MipLevels",
+				"srvColorSpace" }) &&
+			Read_F32Exact(Value, "numericTolerance", fTolerance) &&
+			fTolerance == 0.f && Read_StringExact(Value, "decision", Decision) &&
+			Decision == "PASS";
+	}
+
+	bool Parse_RenderTextureBindings(const Client::DATA_JSON_VALUE& Value,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_RESOURCE,
+			std::less<>>& Resources,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+			std::less<>>& OutBindings, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 72u)
+		{
+			strOutError = "Render-resource textureBindings denominator is invalid.";
+			return false;
+		}
+		std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"bindingAuthorityId", "order", "candidateBindingId",
+				"candidateBindingRowSha256", "recipeId", "materialInputFieldId",
+				"samplerPolicyRowId", "samplerPolicyRowSha256",
+				"materialOccurrenceIds", "sourceBindingId",
+				"sourceBindingRowSha256", "sourceTextureResourceId",
+				"sourceTextureResourceRowSha256", "sourceReceiptStatus",
+				"runtimeAssetId", "resourceAuthorityId",
+				"resourceAuthorityRowSha256", "samplerDescriptor",
+				"colorSpacePolicy", "priorPolicySrvFixture",
+				"actualDdsSrvDescriptor", "actualDdsByteCount",
+				"actualDdsRawSha256", "bindingIdentityBasis",
+				"actionTimeIoAllowed", "sourceExact",
+				"runtimeExecutionAdmission", "product", "rowSha256" }))
+			{
+				strOutError = "Render-resource textureBindings row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING Binding;
+			std::string ColorSpace;
+			std::string SourceBindingId;
+			std::string SourceBindingHash;
+			std::string SourceTextureId;
+			std::string SourceTextureHash;
+			std::string SourceReceiptStatus;
+			std::string IdentityBasis;
+			const DATA_JSON_VALUE* Sampler = Required(
+				Row, "samplerDescriptor", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* PriorFixture = Required(
+				Row, "priorPolicySrvFixture", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* ActualSrv = Required(
+				Row, "actualDdsSrvDescriptor", DATA_JSON_TYPE::OBJECT);
+			if (!Read_StringExact(Row, "bindingAuthorityId",
+					Binding.strBindingAuthorityId) ||
+				!Is_StableId(Binding.strBindingAuthorityId) ||
+				!Read_U32(Row, "order", Binding.iOrder) || Binding.iOrder != Index ||
+				!Read_StringExact(Row, "candidateBindingId",
+					Binding.strCandidateBindingId) ||
+				!Read_ShaExact(Row, "candidateBindingRowSha256",
+					Binding.strCandidateBindingRowSha256) ||
+				!Read_StringExact(Row, "recipeId", Binding.strRecipeId) ||
+				!Is_StableId(Binding.strRecipeId) ||
+				!Read_StringExact(Row, "materialInputFieldId",
+					Binding.strMaterialInputFieldId) ||
+				!Is_StableId(Binding.strMaterialInputFieldId) ||
+				!Read_StringExact(Row, "samplerPolicyRowId",
+					Binding.strSamplerPolicyRowId) ||
+				!Is_StableId(Binding.strSamplerPolicyRowId) ||
+				!Read_ShaExact(Row, "samplerPolicyRowSha256",
+					Binding.strSamplerPolicyRowSha256) ||
+				!Read_StringArrayExact(Row, "materialOccurrenceIds",
+					Binding.MaterialOccurrenceIds) ||
+				Binding.MaterialOccurrenceIds.empty() ||
+				!Read_StringExact(Row, "sourceBindingId", SourceBindingId) ||
+				!Read_ShaExact(Row, "sourceBindingRowSha256", SourceBindingHash) ||
+				!Read_StringExact(Row, "sourceTextureResourceId", SourceTextureId) ||
+				!Read_ShaExact(Row, "sourceTextureResourceRowSha256",
+					SourceTextureHash) ||
+				!Read_StringExact(Row, "sourceReceiptStatus", SourceReceiptStatus) ||
+				(SourceReceiptStatus != "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT" &&
+				 SourceReceiptStatus !=
+					"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT") ||
+				!Read_StringExact(Row, "runtimeAssetId",
+					Binding.strRuntimeAssetId) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Binding.strRuntimeAssetId) ||
+				!Read_StringExact(Row, "resourceAuthorityId",
+					Binding.strResourceAuthorityId) ||
+				!Read_ShaExact(Row, "resourceAuthorityRowSha256",
+					Binding.strResourceAuthorityRowSha256) ||
+				nullptr == Sampler || !Parse_SamplerDescriptor(*Sampler,
+					Binding.SamplerDescriptor, Binding.strSamplerSrvColorSpace) ||
+				!Read_StringExact(Row, "colorSpacePolicy", ColorSpace) ||
+				ColorSpace != Binding.strSamplerSrvColorSpace ||
+				nullptr == PriorFixture || !Validate_PriorPolicyFixture(
+					*PriorFixture, Binding.strSamplerPolicyRowId) ||
+				nullptr == ActualSrv ||
+				!Parse_DdsSrvIdentity(*ActualSrv, Binding.ActualDdsSrv) ||
+				Binding.ActualDdsSrv.strColorSpace != ColorSpace ||
+				!Read_U64Exact(Row, "actualDdsByteCount",
+					Binding.iActualDdsByteCount) ||
+				!Read_ShaExact(Row, "actualDdsRawSha256",
+					Binding.strActualDdsRawSha256) ||
+				!Read_StringExact(Row, "bindingIdentityBasis", IdentityBasis) ||
+				IdentityBasis !=
+					"FROZEN_MATERIAL_BINDING_ROW_AND_CANONICAL_MAIN_RESOURCES_BYTES" ||
+				!Read_BooleanExact(Row, "actionTimeIoAllowed", false) ||
+				!Validate_FailClosedAuthorityRow(Row) ||
+				!Read_ShaExact(Row, "rowSha256", Binding.strRowSha256))
+			{
+				strOutError = "Render-resource textureBindings row is invalid.";
+				return false;
+			}
+			const auto ResourceIt = Resources.find(Binding.strResourceAuthorityId);
+			if (Resources.end() == ResourceIt ||
+				ResourceIt->second.strRowSha256 !=
+					Binding.strResourceAuthorityRowSha256 ||
+				ResourceIt->second.strRuntimeAssetId != Binding.strRuntimeAssetId ||
+				ResourceIt->second.strRawSha256 != Binding.strActualDdsRawSha256 ||
+				ResourceIt->second.iByteCount != Binding.iActualDdsByteCount ||
+				!Same_DdsSrvIdentity(
+					ResourceIt->second.ExpectedSrv, Binding.ActualDdsSrv) ||
+				!Staged.emplace(Binding.strBindingAuthorityId,
+					std::move(Binding)).second)
+			{
+				strOutError =
+					"Render-resource texture binding/resource join is invalid.";
+				return false;
+			}
+		}
+		OutBindings = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_RenderNeutralProviders(const Client::DATA_JSON_VALUE& Value,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER,
+			std::less<>>& OutProviders, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 4u)
+		{
+			strOutError = "Render-resource neutralProviders denominator is invalid.";
+			return false;
+		}
+		std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"neutralProviderId", "order", "rgbaF32", "evaluatorSemantic",
+				"secondaryMultiplyFactor", "signedDistortionOffset", "rationale",
+				"sourceExact", "requiresAutomatedWARPProbe",
+				"requiresManualEyeValidation", "runtimeExecutionAdmission",
+				"product", "rowSha256" }))
+			{
+				strOutError = "Render-resource neutralProviders row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER Provider;
+			std::string Rationale;
+			const DATA_JSON_VALUE* Rgba = Required(
+				Row, "rgbaF32", DATA_JSON_TYPE::ARRAY);
+			if (!Read_StringExact(Row, "neutralProviderId",
+					Provider.strNeutralProviderId) ||
+				!Is_StableId(Provider.strNeutralProviderId) ||
+				!Read_U32(Row, "order", Provider.iOrder) || Provider.iOrder != Index ||
+				nullptr == Rgba || Rgba->Get_Array().size() != 4u ||
+				!Read_StringExact(Row, "evaluatorSemantic",
+					Provider.strEvaluatorSemantic) ||
+				!Read_F32Exact(Row, "secondaryMultiplyFactor",
+					Provider.fSecondaryMultiplyFactor) ||
+				!Read_F32Exact(Row, "signedDistortionOffset",
+					Provider.fSignedDistortionOffset) ||
+				!Read_StringExact(Row, "rationale", Rationale, false, 8192u) ||
+				!Validate_FailClosedAuthorityRow(Row, true) ||
+				!Read_ShaExact(Row, "rowSha256", Provider.strRowSha256))
+			{
+				strOutError = "Render-resource neutralProviders row is invalid.";
+				return false;
+			}
+			for (size_t Component = 0u; Component < 4u; ++Component)
+			{
+				const DATA_JSON_VALUE& Item = Rgba->Get_Array()[Component];
+				if (!Item.Is_Number() || !Item.Was_FloatingPointToken() ||
+					!std::isfinite(Item.Get_Number()) ||
+					Item.Get_Number() < -static_cast<double>(FLT_MAX) ||
+					Item.Get_Number() > static_cast<double>(FLT_MAX))
+				{
+					strOutError =
+						"Render-resource neutralProviders RGBA is invalid.";
+					return false;
+				}
+				Provider.RgbaF32[Component] =
+					static_cast<float>(Item.Get_Number());
+			}
+			if (!Staged.emplace(Provider.strNeutralProviderId,
+				std::move(Provider)).second)
+			{
+				strOutError = "Render-resource neutralProvider ID is duplicate.";
+				return false;
+			}
+		}
+		OutProviders = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_RenderTextureProvider(const Client::DATA_JSON_VALUE& Value,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+			std::less<>>& Bindings,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER,
+			std::less<>>& NeutralProviders,
+		Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER& OutProvider)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"providerKind", "neutralProviderId", "materialInputFieldId",
+			"materialInputRowSha256", "textureBindingId",
+			"textureBindingRowSha256", "samplerPolicyRowId",
+			"samplerPolicyRowSha256", "runtimeAssetId", "selectionBasis" }))
+		{
+			return false;
+		}
+		EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER Staged;
+		if (!Read_StringExact(Value, "providerKind", Staged.strProviderKind) ||
+			!Read_StringExact(Value, "neutralProviderId",
+				Staged.strNeutralProviderId, true) ||
+			!Read_StringExact(Value, "materialInputFieldId",
+				Staged.strMaterialInputFieldId, true) ||
+			!Read_StringExact(Value, "materialInputRowSha256",
+				Staged.strMaterialInputRowSha256, true) ||
+			!Read_StringExact(Value, "textureBindingId",
+				Staged.strTextureBindingId, true) ||
+			!Read_StringExact(Value, "textureBindingRowSha256",
+				Staged.strTextureBindingRowSha256, true) ||
+			!Read_StringExact(Value, "samplerPolicyRowId",
+				Staged.strSamplerPolicyRowId, true) ||
+			!Read_StringExact(Value, "samplerPolicyRowSha256",
+				Staged.strSamplerPolicyRowSha256, true) ||
+			!Read_StringExact(Value, "runtimeAssetId",
+				Staged.strRuntimeAssetId, true) ||
+			!Read_StringExact(Value, "selectionBasis", Staged.strSelectionBasis))
+		{
+			return false;
+		}
+		if (Staged.strProviderKind == "NEUTRAL_CONSTANT")
+		{
+			if (!NeutralProviders.contains(Staged.strNeutralProviderId) ||
+				!Staged.strMaterialInputFieldId.empty() ||
+				!Staged.strMaterialInputRowSha256.empty() ||
+				!Staged.strTextureBindingId.empty() ||
+				!Staged.strTextureBindingRowSha256.empty() ||
+				!Staged.strSamplerPolicyRowId.empty() ||
+				!Staged.strSamplerPolicyRowSha256.empty() ||
+				!Staged.strRuntimeAssetId.empty())
+			{
+				return false;
+			}
+		}
+		else if (Staged.strProviderKind == "MATERIAL_TEXTURE_BINDING")
+		{
+			if (!Staged.strNeutralProviderId.empty() ||
+				!Is_StableId(Staged.strMaterialInputFieldId) ||
+				!Is_LowerHexSha256(Staged.strMaterialInputRowSha256) ||
+				Staged.strTextureBindingId.empty() ||
+				!Is_LowerHexSha256(Staged.strTextureBindingRowSha256) ||
+				!Is_StableId(Staged.strSamplerPolicyRowId) ||
+				!Is_LowerHexSha256(Staged.strSamplerPolicyRowSha256) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Staged.strRuntimeAssetId))
+			{
+				return false;
+			}
+			const auto Match = std::find_if(Bindings.begin(), Bindings.end(),
+				[&Staged](const auto& Item)
+				{
+					const EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING& Binding =
+						Item.second;
+					return Binding.strCandidateBindingId ==
+							Staged.strTextureBindingId &&
+						Binding.strCandidateBindingRowSha256 ==
+							Staged.strTextureBindingRowSha256 &&
+						Binding.strMaterialInputFieldId ==
+							Staged.strMaterialInputFieldId &&
+						Binding.strSamplerPolicyRowId ==
+							Staged.strSamplerPolicyRowId &&
+						Binding.strSamplerPolicyRowSha256 ==
+							Staged.strSamplerPolicyRowSha256 &&
+						Binding.strRuntimeAssetId == Staged.strRuntimeAssetId;
+				});
+			if (Bindings.end() == Match)
+				return false;
+		}
+		else
+		{
+			return false;
+		}
+		OutProvider = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_RenderRecipeTextureBindings(const Client::DATA_JSON_VALUE& Value,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+			std::less<>>& Bindings,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_NEUTRAL_PROVIDER,
+			std::less<>>& NeutralProviders,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_RECIPE_TEXTURE_BINDING,
+			std::less<>>& OutRecipes, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 27u)
+		{
+			strOutError =
+				"Render-resource recipeTextureBindings denominator is invalid.";
+			return false;
+		}
+		std::map<std::string,
+			EFFECT_RECONSTRUCTED_RENDER_RECIPE_TEXTURE_BINDING,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"recipeTextureDecisionId", "order", "recipeId", "recipeRowSha256",
+				"familyId", "familyRowSha256", "featureMask",
+				"secondTextureOperationEnabled", "distortionOperationEnabled",
+				"distortionStrengthF32", "candidateTextureBindingIds",
+				"candidateTextureBindingRowSha256", "texture0Provider",
+				"texture1Provider", "neutralFallbackDecision", "decisionBasis",
+				"sourceExact", "requiresAutomatedWARPProbe",
+				"requiresManualEyeValidation", "runtimeExecutionAdmission",
+				"product", "rowSha256" }))
+			{
+				strOutError =
+					"Render-resource recipeTextureBindings row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDER_RECIPE_TEXTURE_BINDING Recipe;
+			std::vector<std::string> CandidateBindingIds;
+			std::vector<std::string> CandidateBindingHashes;
+			std::string DecisionBasis;
+			const DATA_JSON_VALUE* Texture0 = Required(
+				Row, "texture0Provider", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* Texture1 = Required(
+				Row, "texture1Provider", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* Fallback = Required(
+				Row, "neutralFallbackDecision", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* SecondTextureEnabled = Required(
+				Row, "secondTextureOperationEnabled", DATA_JSON_TYPE::BOOLEAN);
+			const DATA_JSON_VALUE* DistortionEnabled = Required(
+				Row, "distortionOperationEnabled", DATA_JSON_TYPE::BOOLEAN);
+			if (!Read_StringExact(Row, "recipeTextureDecisionId",
+					Recipe.strRecipeTextureDecisionId) ||
+				!Is_StableId(Recipe.strRecipeTextureDecisionId) ||
+				!Read_U32(Row, "order", Recipe.iOrder) || Recipe.iOrder != Index ||
+				!Read_StringExact(Row, "recipeId", Recipe.strRecipeId) ||
+				!Is_StableId(Recipe.strRecipeId) ||
+				!Read_ShaExact(Row, "recipeRowSha256", Recipe.strRecipeRowSha256) ||
+				!Read_StringExact(Row, "familyId", Recipe.strFamilyId) ||
+				!Is_StableId(Recipe.strFamilyId) ||
+				!Read_ShaExact(Row, "familyRowSha256", Recipe.strFamilyRowSha256) ||
+				!Read_U32(Row, "featureMask", Recipe.iFeatureMask) ||
+				nullptr == SecondTextureEnabled || nullptr == DistortionEnabled ||
+				!Read_F32Exact(Row, "distortionStrengthF32",
+					Recipe.fDistortionStrength) ||
+				!Read_StringArrayExact(Row, "candidateTextureBindingIds",
+					CandidateBindingIds) ||
+				!Read_StringArrayExact(Row, "candidateTextureBindingRowSha256",
+					CandidateBindingHashes, true) ||
+				CandidateBindingIds.size() != CandidateBindingHashes.size() ||
+				nullptr == Texture0 || !Parse_RenderTextureProvider(
+					*Texture0, Bindings, NeutralProviders, Recipe.Texture0Provider) ||
+				nullptr == Texture1 || !Parse_RenderTextureProvider(
+					*Texture1, Bindings, NeutralProviders, Recipe.Texture1Provider) ||
+				nullptr == Fallback || !Has_ExactOrderedKeys(*Fallback, {
+					"texture0NeutralProviderId", "texture1NeutralProviderId",
+					"neutralProviderApplicationPolicy",
+					"materialBindingFailurePolicy", "rationale" }) ||
+				!Read_StringExact(Row, "decisionBasis", DecisionBasis) ||
+				!Validate_FailClosedAuthorityRow(Row, true) ||
+				!Read_ShaExact(Row, "rowSha256", Recipe.strRowSha256))
+			{
+				strOutError = "Render-resource recipeTextureBindings row is invalid.";
+				return false;
+			}
+			Recipe.bSecondTextureOperationEnabled =
+				SecondTextureEnabled->Get_Boolean();
+			Recipe.bDistortionOperationEnabled =
+				DistortionEnabled->Get_Boolean();
+			std::string NeutralPolicy;
+			std::string FailurePolicy;
+			if (!Read_StringExact(*Fallback, "neutralProviderApplicationPolicy",
+					NeutralPolicy) || NeutralPolicy !=
+					"ONLY_WHEN_THIS_APPROVAL_EXPLICITLY_SELECTS_NEUTRAL" ||
+				!Read_StringExact(*Fallback, "materialBindingFailurePolicy",
+					FailurePolicy) ||
+				FailurePolicy != "FAIL_CLOSED_TRANSACTION_ROLLBACK" ||
+				!Staged.emplace(Recipe.strRecipeTextureDecisionId,
+					std::move(Recipe)).second)
+			{
+				strOutError =
+					"Render-resource recipe texture fallback or ID is invalid.";
+				return false;
+			}
+		}
+		OutRecipes = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_RendererSlotBindings(const Client::DATA_JSON_VALUE& Value,
+		const std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING,
+			std::less<>>& Bindings,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDERER_SLOT_BINDING,
+			std::less<>>& OutBindings, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 57u)
+		{
+			strOutError =
+				"Render-resource rendererSlotBindings denominator is invalid.";
+			return false;
+		}
+		std::map<std::string, EFFECT_RECONSTRUCTED_RENDERER_SLOT_BINDING,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"rendererBindingDecisionId", "order", "textureResourceId",
+				"rendererResourceRowSha256", "materialOccurrenceId",
+				"materialOccurrenceRowSha256", "recipeId", "slotId",
+				"runtimeAssetId", "candidateCount", "candidates",
+				"selectedMaterialInputFieldId", "selectedMaterialInputRowSha256",
+				"selectedNormalizedParameterName", "selectedTextureBindingId",
+				"selectedTextureBindingRowSha256", "selectedSamplerPolicyRowId",
+				"selectedSamplerPolicyRowSha256", "decisionBasis", "rationale",
+				"sourceExact", "requiresAutomatedWARPProbe",
+				"requiresManualEyeValidation", "runtimeExecutionAdmission",
+				"product", "rowSha256" }))
+			{
+				strOutError =
+					"Render-resource rendererSlotBindings row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDERER_SLOT_BINDING Binding;
+			std::string Rationale;
+			const DATA_JSON_VALUE* Candidates = Required(
+				Row, "candidates", DATA_JSON_TYPE::ARRAY);
+			if (!Read_StringExact(Row, "rendererBindingDecisionId",
+					Binding.strRendererBindingDecisionId) ||
+				!Is_StableId(Binding.strRendererBindingDecisionId) ||
+				!Read_U32(Row, "order", Binding.iOrder) || Binding.iOrder != Index ||
+				!Read_StringExact(Row, "textureResourceId",
+					Binding.strTextureResourceId, false, 4096u) ||
+				!Read_ShaExact(Row, "rendererResourceRowSha256",
+					Binding.strRendererResourceRowSha256) ||
+				!Read_StringExact(Row, "materialOccurrenceId",
+					Binding.strMaterialOccurrenceId) ||
+				!Is_StableId(Binding.strMaterialOccurrenceId) ||
+				!Read_ShaExact(Row, "materialOccurrenceRowSha256",
+					Binding.strMaterialOccurrenceRowSha256) ||
+				!Read_StringExact(Row, "recipeId", Binding.strRecipeId) ||
+				!Is_StableId(Binding.strRecipeId) ||
+				!Read_StringExact(Row, "slotId", Binding.strSlotId) ||
+				!Read_StringExact(Row, "runtimeAssetId",
+					Binding.strRuntimeAssetId) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Binding.strRuntimeAssetId) ||
+				!Read_U32(Row, "candidateCount", Binding.iCandidateCount) ||
+				Binding.iCandidateCount < 1u || Binding.iCandidateCount > 2u ||
+				nullptr == Candidates ||
+				Candidates->Get_Array().size() != Binding.iCandidateCount ||
+				!Read_StringExact(Row, "selectedMaterialInputFieldId",
+					Binding.strSelectedMaterialInputFieldId) ||
+				!Read_ShaExact(Row, "selectedMaterialInputRowSha256",
+					Binding.strSelectedMaterialInputRowSha256) ||
+				!Read_StringExact(Row, "selectedNormalizedParameterName",
+					Binding.strSelectedNormalizedParameterName) ||
+				!Read_StringExact(Row, "selectedTextureBindingId",
+					Binding.strSelectedTextureBindingId) ||
+				!Read_ShaExact(Row, "selectedTextureBindingRowSha256",
+					Binding.strSelectedTextureBindingRowSha256) ||
+				!Read_StringExact(Row, "selectedSamplerPolicyRowId",
+					Binding.strSelectedSamplerPolicyRowId) ||
+				!Read_ShaExact(Row, "selectedSamplerPolicyRowSha256",
+					Binding.strSelectedSamplerPolicyRowSha256) ||
+				!Read_StringExact(Row, "decisionBasis", Binding.strDecisionBasis) ||
+				!Read_StringExact(Row, "rationale", Rationale, false, 8192u) ||
+				!Validate_FailClosedAuthorityRow(Row, true) ||
+				!Read_ShaExact(Row, "rowSha256", Binding.strRowSha256))
+			{
+				strOutError = "Render-resource rendererSlotBindings row is invalid.";
+				return false;
+			}
+			bool bSelectedCandidatePresent = false;
+			for (const DATA_JSON_VALUE& Candidate : Candidates->Get_Array())
+			{
+				if (!Has_ExactOrderedKeys(Candidate, {
+					"materialInputFieldId", "materialInputRowSha256",
+					"textureBindingId", "textureBindingRowSha256",
+					"normalizedParameterName" }))
+				{
+					strOutError = "Render-resource renderer candidate schema is invalid.";
+					return false;
+				}
+				std::string MaterialInputId;
+				std::string MaterialInputHash;
+				std::string TextureBindingId;
+				std::string TextureBindingHash;
+				std::string ParameterName;
+				if (!Read_StringExact(Candidate, "materialInputFieldId",
+						MaterialInputId) ||
+					!Read_ShaExact(Candidate, "materialInputRowSha256",
+						MaterialInputHash) ||
+					!Read_StringExact(Candidate, "textureBindingId",
+						TextureBindingId) ||
+					!Read_ShaExact(Candidate, "textureBindingRowSha256",
+						TextureBindingHash) ||
+					!Read_StringExact(Candidate, "normalizedParameterName",
+						ParameterName))
+				{
+					strOutError = "Render-resource renderer candidate is invalid.";
+					return false;
+				}
+				bSelectedCandidatePresent = bSelectedCandidatePresent ||
+					(MaterialInputId == Binding.strSelectedMaterialInputFieldId &&
+					 MaterialInputHash == Binding.strSelectedMaterialInputRowSha256 &&
+					 TextureBindingId == Binding.strSelectedTextureBindingId &&
+					 TextureBindingHash ==
+						Binding.strSelectedTextureBindingRowSha256 &&
+					 ParameterName == Binding.strSelectedNormalizedParameterName);
+			}
+			const auto SelectedBinding = std::find_if(
+				Bindings.begin(), Bindings.end(), [&Binding](const auto& Item)
+				{
+					const EFFECT_RECONSTRUCTED_RENDER_TEXTURE_BINDING& Candidate =
+						Item.second;
+					return Candidate.strCandidateBindingId ==
+							Binding.strSelectedTextureBindingId &&
+						Candidate.strCandidateBindingRowSha256 ==
+							Binding.strSelectedTextureBindingRowSha256 &&
+						Candidate.strMaterialInputFieldId ==
+							Binding.strSelectedMaterialInputFieldId &&
+						Candidate.strSamplerPolicyRowId ==
+							Binding.strSelectedSamplerPolicyRowId &&
+						Candidate.strSamplerPolicyRowSha256 ==
+							Binding.strSelectedSamplerPolicyRowSha256 &&
+						Candidate.strRuntimeAssetId == Binding.strRuntimeAssetId;
+				});
+			if (!bSelectedCandidatePresent || Bindings.end() == SelectedBinding ||
+				!Staged.emplace(Binding.strRendererBindingDecisionId,
+					std::move(Binding)).second)
+			{
+				strOutError =
+					"Render-resource renderer selected binding join is invalid.";
+				return false;
+			}
+		}
+		OutBindings = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_BlendDescriptor(const Client::DATA_JSON_VALUE& Value,
+		D3D11_BLEND_DESC& OutDescriptor)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"AlphaToCoverageEnable", "IndependentBlendEnable", "RenderTarget" }))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* AlphaToCoverage = Required(
+			Value, "AlphaToCoverageEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* IndependentBlend = Required(
+			Value, "IndependentBlendEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* RenderTargets = Required(
+			Value, "RenderTarget", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == AlphaToCoverage || nullptr == IndependentBlend ||
+			nullptr == RenderTargets || RenderTargets->Get_Array().size() != 8u)
+		{
+			return false;
+		}
+		D3D11_BLEND_DESC Staged{};
+		Staged.AlphaToCoverageEnable = AlphaToCoverage->Get_Boolean();
+		Staged.IndependentBlendEnable = IndependentBlend->Get_Boolean();
+		for (size_t Index = 0u; Index < 8u; ++Index)
+		{
+			const DATA_JSON_VALUE& Row = RenderTargets->Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"BlendEnable", "SrcBlend", "DestBlend", "BlendOp",
+				"SrcBlendAlpha", "DestBlendAlpha", "BlendOpAlpha",
+				"RenderTargetWriteMask" }))
+			{
+				return false;
+			}
+			const DATA_JSON_VALUE* BlendEnabled = Required(
+				Row, "BlendEnable", DATA_JSON_TYPE::BOOLEAN);
+			uint32_t iSrcBlend = 0u;
+			uint32_t iDestBlend = 0u;
+			uint32_t iBlendOp = 0u;
+			uint32_t iSrcBlendAlpha = 0u;
+			uint32_t iDestBlendAlpha = 0u;
+			uint32_t iBlendOpAlpha = 0u;
+			uint32_t iWriteMask = 0u;
+			if (nullptr == BlendEnabled ||
+				!Read_U32(Row, "SrcBlend", iSrcBlend) ||
+				!Read_U32(Row, "DestBlend", iDestBlend) ||
+				!Read_U32(Row, "BlendOp", iBlendOp) ||
+				!Read_U32(Row, "SrcBlendAlpha", iSrcBlendAlpha) ||
+				!Read_U32(Row, "DestBlendAlpha", iDestBlendAlpha) ||
+				!Read_U32(Row, "BlendOpAlpha", iBlendOpAlpha) ||
+				!Read_U32(Row, "RenderTargetWriteMask", iWriteMask) ||
+				iSrcBlend < D3D11_BLEND_ZERO || iSrcBlend > D3D11_BLEND_INV_SRC1_ALPHA ||
+				iDestBlend < D3D11_BLEND_ZERO ||
+				iDestBlend > D3D11_BLEND_INV_SRC1_ALPHA ||
+				iBlendOp < D3D11_BLEND_OP_ADD || iBlendOp > D3D11_BLEND_OP_MAX ||
+				iSrcBlendAlpha < D3D11_BLEND_ZERO ||
+				iSrcBlendAlpha > D3D11_BLEND_INV_SRC1_ALPHA ||
+				iDestBlendAlpha < D3D11_BLEND_ZERO ||
+				iDestBlendAlpha > D3D11_BLEND_INV_SRC1_ALPHA ||
+				iBlendOpAlpha < D3D11_BLEND_OP_ADD ||
+				iBlendOpAlpha > D3D11_BLEND_OP_MAX || iWriteMask > 0x0fu)
+			{
+				return false;
+			}
+			D3D11_RENDER_TARGET_BLEND_DESC& Target = Staged.RenderTarget[Index];
+			Target.BlendEnable = BlendEnabled->Get_Boolean();
+			Target.SrcBlend = static_cast<D3D11_BLEND>(iSrcBlend);
+			Target.DestBlend = static_cast<D3D11_BLEND>(iDestBlend);
+			Target.BlendOp = static_cast<D3D11_BLEND_OP>(iBlendOp);
+			Target.SrcBlendAlpha = static_cast<D3D11_BLEND>(iSrcBlendAlpha);
+			Target.DestBlendAlpha = static_cast<D3D11_BLEND>(iDestBlendAlpha);
+			Target.BlendOpAlpha = static_cast<D3D11_BLEND_OP>(iBlendOpAlpha);
+			Target.RenderTargetWriteMask = static_cast<UINT8>(iWriteMask);
+		}
+		OutDescriptor = Staged;
+		return true;
+	}
+
+	bool Parse_RasterizerDescriptor(const Client::DATA_JSON_VALUE& Value,
+		D3D11_RASTERIZER_DESC& OutDescriptor)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"FillMode", "CullMode", "FrontCounterClockwise", "DepthBias",
+			"DepthBiasClamp", "SlopeScaledDepthBias", "DepthClipEnable",
+			"ScissorEnable", "MultisampleEnable", "AntialiasedLineEnable" }))
+		{
+			return false;
+		}
+		uint32_t iFillMode = 0u;
+		uint32_t iCullMode = 0u;
+		int32_t iDepthBias = 0;
+		float fDepthBiasClamp = 0.f;
+		float fSlopeScaledDepthBias = 0.f;
+		const DATA_JSON_VALUE* FrontCounterClockwise = Required(
+			Value, "FrontCounterClockwise", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* DepthClip = Required(
+			Value, "DepthClipEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* Scissor = Required(
+			Value, "ScissorEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* Multisample = Required(
+			Value, "MultisampleEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* AntialiasedLine = Required(
+			Value, "AntialiasedLineEnable", DATA_JSON_TYPE::BOOLEAN);
+		if (!Read_U32(Value, "FillMode", iFillMode) ||
+			!Read_U32(Value, "CullMode", iCullMode) ||
+			!Read_I32Exact(Value, "DepthBias", iDepthBias) ||
+			!Read_F32Exact(Value, "DepthBiasClamp", fDepthBiasClamp) ||
+			!Read_F32Exact(Value, "SlopeScaledDepthBias",
+				fSlopeScaledDepthBias) ||
+			nullptr == FrontCounterClockwise || nullptr == DepthClip ||
+			nullptr == Scissor || nullptr == Multisample ||
+			nullptr == AntialiasedLine ||
+			(iFillMode != D3D11_FILL_WIREFRAME && iFillMode != D3D11_FILL_SOLID) ||
+			iCullMode < D3D11_CULL_NONE || iCullMode > D3D11_CULL_BACK)
+		{
+			return false;
+		}
+		D3D11_RASTERIZER_DESC Staged{};
+		Staged.FillMode = static_cast<D3D11_FILL_MODE>(iFillMode);
+		Staged.CullMode = static_cast<D3D11_CULL_MODE>(iCullMode);
+		Staged.FrontCounterClockwise = FrontCounterClockwise->Get_Boolean();
+		Staged.DepthBias = iDepthBias;
+		Staged.DepthBiasClamp = fDepthBiasClamp;
+		Staged.SlopeScaledDepthBias = fSlopeScaledDepthBias;
+		Staged.DepthClipEnable = DepthClip->Get_Boolean();
+		Staged.ScissorEnable = Scissor->Get_Boolean();
+		Staged.MultisampleEnable = Multisample->Get_Boolean();
+		Staged.AntialiasedLineEnable = AntialiasedLine->Get_Boolean();
+		OutDescriptor = Staged;
+		return true;
+	}
+
+	bool Parse_DepthStencilFaceDescriptor(const Client::DATA_JSON_VALUE& Value,
+		D3D11_DEPTH_STENCILOP_DESC& OutDescriptor)
+	{
+		if (!Has_ExactOrderedKeys(Value, {
+			"StencilFailOp", "StencilDepthFailOp", "StencilPassOp",
+			"StencilFunc" }))
+		{
+			return false;
+		}
+		uint32_t iFail = 0u;
+		uint32_t iDepthFail = 0u;
+		uint32_t iPass = 0u;
+		uint32_t iFunc = 0u;
+		if (!Read_U32(Value, "StencilFailOp", iFail) ||
+			!Read_U32(Value, "StencilDepthFailOp", iDepthFail) ||
+			!Read_U32(Value, "StencilPassOp", iPass) ||
+			!Read_U32(Value, "StencilFunc", iFunc) ||
+			iFail < D3D11_STENCIL_OP_KEEP || iFail > D3D11_STENCIL_OP_DECR ||
+			iDepthFail < D3D11_STENCIL_OP_KEEP ||
+			iDepthFail > D3D11_STENCIL_OP_DECR ||
+			iPass < D3D11_STENCIL_OP_KEEP || iPass > D3D11_STENCIL_OP_DECR ||
+			iFunc < D3D11_COMPARISON_NEVER || iFunc > D3D11_COMPARISON_ALWAYS)
+		{
+			return false;
+		}
+		OutDescriptor.StencilFailOp = static_cast<D3D11_STENCIL_OP>(iFail);
+		OutDescriptor.StencilDepthFailOp =
+			static_cast<D3D11_STENCIL_OP>(iDepthFail);
+		OutDescriptor.StencilPassOp = static_cast<D3D11_STENCIL_OP>(iPass);
+		OutDescriptor.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(iFunc);
+		return true;
+	}
+
+	bool Parse_DepthStencilDescriptor(const Client::DATA_JSON_VALUE& Value,
+		D3D11_DEPTH_STENCIL_DESC& OutDescriptor)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"DepthEnable", "DepthWriteMask", "DepthFunc", "StencilEnable",
+			"StencilReadMask", "StencilWriteMask", "FrontFace", "BackFace" }))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* DepthEnable = Required(
+			Value, "DepthEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* StencilEnable = Required(
+			Value, "StencilEnable", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* Front = Required(
+			Value, "FrontFace", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Back = Required(
+			Value, "BackFace", DATA_JSON_TYPE::OBJECT);
+		uint32_t iWriteMask = 0u;
+		uint32_t iDepthFunc = 0u;
+		uint32_t iReadMask = 0u;
+		uint32_t iStencilWriteMask = 0u;
+		D3D11_DEPTH_STENCIL_DESC Staged{};
+		if (nullptr == DepthEnable || nullptr == StencilEnable ||
+			nullptr == Front || nullptr == Back ||
+			!Read_U32(Value, "DepthWriteMask", iWriteMask) ||
+			iWriteMask > D3D11_DEPTH_WRITE_MASK_ALL ||
+			!Read_U32(Value, "DepthFunc", iDepthFunc) ||
+			iDepthFunc < D3D11_COMPARISON_NEVER ||
+			iDepthFunc > D3D11_COMPARISON_ALWAYS ||
+			!Read_U32(Value, "StencilReadMask", iReadMask) || iReadMask > 0xffu ||
+			!Read_U32(Value, "StencilWriteMask", iStencilWriteMask) ||
+			iStencilWriteMask > 0xffu ||
+			!Parse_DepthStencilFaceDescriptor(*Front, Staged.FrontFace) ||
+			!Parse_DepthStencilFaceDescriptor(*Back, Staged.BackFace))
+		{
+			return false;
+		}
+		Staged.DepthEnable = DepthEnable->Get_Boolean();
+		Staged.DepthWriteMask = static_cast<D3D11_DEPTH_WRITE_MASK>(iWriteMask);
+		Staged.DepthFunc = static_cast<D3D11_COMPARISON_FUNC>(iDepthFunc);
+		Staged.StencilEnable = StencilEnable->Get_Boolean();
+		Staged.StencilReadMask = static_cast<UINT8>(iReadMask);
+		Staged.StencilWriteMask = static_cast<UINT8>(iStencilWriteMask);
+		OutDescriptor = Staged;
+		return true;
+	}
+
+	bool Parse_RenderStateDescriptors(const Client::DATA_JSON_VALUE& Value,
+		std::map<std::string,
+			Client::EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR,
+			std::less<>>& OutDescriptors, std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Value.Is_Array() || Value.Get_Array().size() != 46u)
+		{
+			strOutError =
+				"Render-resource renderStateDescriptors denominator is invalid.";
+			return false;
+		}
+		std::map<std::string, EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR,
+			std::less<>> Staged;
+		for (size_t Index = 0u; Index < Value.Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Row = Value.Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Row, {
+				"renderStateDecisionId", "order", "renderBindingId",
+				"renderBindingRowSha256", "recipeId", "recipeRowSha256",
+				"fieldName", "approvedFieldValue", "descriptorKind",
+				"standardMappingId", "implementationReferencePath",
+				"implementationReferenceTrackedTextSha256",
+				"implementationStateName", "expectedDescriptor", "decisionBasis",
+				"sourceExact", "requiresAutomatedWARPProbe",
+				"requiresManualEyeValidation", "runtimeExecutionAdmission",
+				"product", "rowSha256" }))
+			{
+				strOutError =
+					"Render-resource renderStateDescriptors row schema is invalid.";
+				return false;
+			}
+			EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR Descriptor;
+			std::string DescriptorKind;
+			std::string StandardMappingId;
+			std::string ReferencePath;
+			std::string ReferenceHash;
+			std::string DecisionBasis;
+			const DATA_JSON_VALUE* ApprovedValue = Row.Find("approvedFieldValue");
+			const DATA_JSON_VALUE* Expected = Required(
+				Row, "expectedDescriptor", DATA_JSON_TYPE::OBJECT);
+			if (!Read_StringExact(Row, "renderStateDecisionId",
+					Descriptor.strRenderStateDecisionId) ||
+				!Is_StableId(Descriptor.strRenderStateDecisionId) ||
+				!Read_U32(Row, "order", Descriptor.iOrder) ||
+				Descriptor.iOrder != Index ||
+				!Read_StringExact(Row, "renderBindingId",
+					Descriptor.strRenderBindingId) ||
+				!Read_ShaExact(Row, "renderBindingRowSha256",
+					Descriptor.strRenderBindingRowSha256) ||
+				!Read_StringExact(Row, "recipeId", Descriptor.strRecipeId) ||
+				!Is_StableId(Descriptor.strRecipeId) ||
+				!Read_ShaExact(Row, "recipeRowSha256",
+					Descriptor.strRecipeRowSha256) ||
+				!Read_StringExact(Row, "fieldName", Descriptor.strFieldName) ||
+				(nullptr == ApprovedValue ||
+				 (!ApprovedValue->Is_String() && !ApprovedValue->Is_Boolean())) ||
+				!Read_StringExact(Row, "descriptorKind", DescriptorKind) ||
+				!Read_StringExact(Row, "standardMappingId", StandardMappingId) ||
+				!Read_StringExact(Row, "implementationReferencePath",
+					ReferencePath) ||
+				!Read_ShaExact(Row, "implementationReferenceTrackedTextSha256",
+					ReferenceHash) ||
+				!Read_StringExact(Row, "implementationStateName",
+					Descriptor.strImplementationStateName) ||
+				nullptr == Expected ||
+				!Read_StringExact(Row, "decisionBasis", DecisionBasis) ||
+				!Validate_FailClosedAuthorityRow(Row, true) ||
+				!Read_ShaExact(Row, "rowSha256", Descriptor.strRowSha256))
+			{
+				strOutError = "Render-resource render state row is invalid.";
+				return false;
+			}
+			if (DescriptorKind == "D3D11_BLEND_DESC")
+			{
+				Descriptor.eKind = EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND;
+				if (!Parse_BlendDescriptor(*Expected, Descriptor.BlendDescriptor) ||
+					(Descriptor.strImplementationStateName != "BS_EffectAlpha" &&
+					 Descriptor.strImplementationStateName != "BS_EffectAdditive" &&
+					 Descriptor.strImplementationStateName != "BS_EffectOpaque"))
+				{
+					strOutError = "Render-resource blend descriptor is invalid.";
+					return false;
+				}
+			}
+			else if (DescriptorKind == "D3D11_RASTERIZER_DESC")
+			{
+				Descriptor.eKind =
+					EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER;
+				if (!Parse_RasterizerDescriptor(
+						*Expected, Descriptor.RasterizerDescriptor) ||
+					Descriptor.strImplementationStateName != "RS_Cull_None")
+				{
+					strOutError = "Render-resource rasterizer descriptor is invalid.";
+					return false;
+				}
+			}
+			else if (DescriptorKind == "D3D11_DEPTH_STENCIL_DESC")
+			{
+				Descriptor.eKind =
+					EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL;
+				if (!Parse_DepthStencilDescriptor(
+						*Expected, Descriptor.DepthStencilDescriptor) ||
+					Descriptor.strImplementationStateName != "DSS_ZNone")
+				{
+					strOutError = "Render-resource depth descriptor is invalid.";
+					return false;
+				}
+			}
+			else
+			{
+				strOutError = "Render-resource descriptor kind is unsupported.";
+				return false;
+			}
+			if (!Staged.emplace(Descriptor.strRenderStateDecisionId,
+				std::move(Descriptor)).second)
+			{
+				strOutError = "Render-resource state descriptor ID is duplicate.";
+				return false;
+			}
+		}
+		OutDescriptors = std::move(Staged);
+		return true;
+	}
+
+	bool Validate_RenderResourceSidecarAuthorityContract(
+		const Client::DATA_JSON_VALUE& Value)
+	{
+		if (!Has_ExactOrderedKeys(Value, {
+			"authorityKind", "resourceIdentityDomain", "materialDecisionDomain",
+			"priorPolicySrvFixtureIsActualDdsDescriptor",
+			"runtimeNameOrRoleHeuristicsAllowed",
+			"absoluteResourcePathsAllowedInReceipt", "actionTimeIoAllowed",
+			"transactionPolicy", "partialCommitAllowed", "sourceExact",
+			"requiresAutomatedWARPProbe", "requiresManualEyeValidation",
+			"runtimeExecutionAdmission", "product" }))
+		{
+			return false;
+		}
+		std::string AuthorityKind;
+		std::string ResourceDomain;
+		std::string MaterialDomain;
+		std::string TransactionPolicy;
+		return Read_StringExact(Value, "authorityKind", AuthorityKind) &&
+			AuthorityKind == "IMMUTABLE_RECONSTRUCTED_RENDER_RESOURCE_SIDECAR" &&
+			Read_StringExact(Value, "resourceIdentityDomain", ResourceDomain) &&
+			ResourceDomain == "CANONICAL_MAIN_RESOURCES_RELATIVE_DDS_BYTES" &&
+			Read_StringExact(Value, "materialDecisionDomain", MaterialDomain) &&
+			MaterialDomain == "INDEPENDENT_RECONSTRUCTED_POLICY_APPROVAL" &&
+			Read_BooleanExact(Value,
+				"priorPolicySrvFixtureIsActualDdsDescriptor", false) &&
+			Read_BooleanExact(Value, "runtimeNameOrRoleHeuristicsAllowed", false) &&
+			Read_BooleanExact(Value, "absoluteResourcePathsAllowedInReceipt", false) &&
+			Read_BooleanExact(Value, "actionTimeIoAllowed", false) &&
+			Read_StringExact(Value, "transactionPolicy", TransactionPolicy) &&
+			TransactionPolicy == "PARSE_VALIDATE_STAGE_COMMIT_OR_ROLLBACK" &&
+			Read_BooleanExact(Value, "partialCommitAllowed", false) &&
+			Validate_FailClosedAuthorityRow(Value, true);
+	}
+
+	bool Validate_RenderResourceSidecarSourceEvidence(
+		const Client::DATA_JSON_VALUE& Value)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"programAndParserTuple", "materialTextureBindingAuthority",
+			"materialRenderResourceApproval", "publisherRuntimeCatalogAuthority",
+			"generatorAndValidator", "canonicalResourceRootContract",
+			"sourceExact" }) ||
+			!Read_BooleanExact(Value, "sourceExact", false))
+		{
+			return false;
+		}
+		const DATA_JSON_VALUE* Program = Required(
+			Value, "programAndParserTuple", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Publisher = Required(
+			Value, "publisherRuntimeCatalogAuthority", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == Program || !Has_ExactOrderedKeys(*Program, {
+			"path", "candidateBuilderCommitId", "candidateBuilderTreeId",
+			"candidateBlobIdAtIntegration", "rawByteCount", "rawSha256",
+			"programId", "programVersion", "programSha256", "inputArtifactCount",
+			"inputArtifactsOrderedSha256", "parserIntegrationCommitId",
+			"parserIntegrationTreeId", "parserFiles", "sourceExact",
+			"runtimeExecutionAdmission", "product" }) ||
+			nullptr == Publisher || !Has_ExactOrderedKeys(*Publisher, {
+			"path", "publisherIntegrationCommitId", "publisherOriginalCommitId",
+			"publisherTreeId", "trackedBlobId", "currentCheckoutByteCount",
+			"currentCheckoutRawSha256", "currentCheckoutCarriageReturnCount",
+			"schema", "formatVersion", "componentCount", "effectCount",
+			"artist31470EffectIndex", "outerKeyCount", "outerKeyOrder",
+			"outerCanonicalSha256", "linkKeyCount", "linkKeyOrder",
+			"linkCanonicalSha256", "receiptKeyCount", "receiptKeyOrder",
+			"receiptSelfSha256", "outerPublishReceiptSha256",
+			"toolDependencyCount", "toolDependencies", "publicValidator",
+			"payloadKind", "effectAssetId", "artifactRevision",
+			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
+			"productAdmission" }))
+		{
+			return false;
+		}
+		uint64_t iRawBytes = 0u;
+		uint32_t iProgramVersion = 0u;
+		uint32_t iInputArtifactCount = 0u;
+		std::string RawSha;
+		std::string ProgramId;
+		std::string ProgramSha;
+		if (!Read_U64Exact(*Program, "rawByteCount", iRawBytes) ||
+			iRawBytes != 15'072'141u ||
+			!Read_ShaExact(*Program, "rawSha256", RawSha) || RawSha !=
+				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849" ||
+			!Read_StringExact(*Program, "programId", ProgramId) || ProgramId !=
+				"effect.artist.skill.31470.reconstructed-approved-v1" ||
+			!Read_U32(*Program, "programVersion", iProgramVersion) ||
+			iProgramVersion != 1u ||
+			!Read_ShaExact(*Program, "programSha256", ProgramSha) || ProgramSha !=
+				"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b" ||
+			!Read_U32(*Program, "inputArtifactCount", iInputArtifactCount) ||
+			iInputArtifactCount != 13u ||
+			!Validate_FailClosedAuthorityRow(*Program))
+		{
+			return false;
+		}
+		uint32_t iFormatVersion = 0u;
+		uint32_t iOuterKeyCount = 0u;
+		uint32_t iLinkKeyCount = 0u;
+		uint32_t iReceiptKeyCount = 0u;
+		uint32_t iToolCount = 0u;
+		std::string Schema;
+		std::string OuterSha;
+		std::string LinkSha;
+		std::string ReceiptSelfSha;
+		std::string OuterReceiptSha;
+		std::string PayloadKind;
+		std::string EffectId;
+		std::string CompilerRevision;
+		return Read_StringExact(*Publisher, "schema", Schema) &&
+			Schema == "lostark.effect-runtime-catalog" &&
+			Read_U32(*Publisher, "formatVersion", iFormatVersion) &&
+			iFormatVersion == 3u &&
+			Read_U32(*Publisher, "outerKeyCount", iOuterKeyCount) &&
+			iOuterKeyCount == 10u &&
+			Read_ShaExact(*Publisher, "outerCanonicalSha256", OuterSha) &&
+			OuterSha ==
+				"e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2" &&
+			Read_U32(*Publisher, "linkKeyCount", iLinkKeyCount) &&
+			iLinkKeyCount == 16u &&
+			Read_ShaExact(*Publisher, "linkCanonicalSha256", LinkSha) &&
+			LinkSha ==
+				"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2" &&
+			Read_U32(*Publisher, "receiptKeyCount", iReceiptKeyCount) &&
+			iReceiptKeyCount == 25u &&
+			Read_ShaExact(*Publisher, "receiptSelfSha256", ReceiptSelfSha) &&
+			ReceiptSelfSha ==
+				"5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3" &&
+			Read_ShaExact(*Publisher, "outerPublishReceiptSha256",
+				OuterReceiptSha) && OuterReceiptSha ==
+				"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94" &&
+			Read_U32(*Publisher, "toolDependencyCount", iToolCount) &&
+			iToolCount == 3u &&
+			Read_StringExact(*Publisher, "payloadKind", PayloadKind) &&
+			PayloadKind == "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM" &&
+			Read_StringExact(*Publisher, "effectAssetId", EffectId) &&
+			EffectId == "effect.artist.skill.31470" &&
+			Read_StringExact(*Publisher, "compilerRevision", CompilerRevision) &&
+			CompilerRevision ==
+				"artist31470.reconstructed-runtime-program-link-v1" &&
+			Read_BooleanExact(*Publisher, "sourceExact", false) &&
+			Read_BooleanExact(*Publisher, "runtimeExecutionAdmission", false) &&
+			Read_BooleanExact(*Publisher, "productAdmission", false);
+	}
+
+	bool Parse_ReconstructedRenderResourceSidecar(
+		const std::string& Text,
+		Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& OutAuthority,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr std::string_view SIDECAR_SCHEMA =
+			"lostark.artist-31470-reconstructed-render-resource-authority-receipt";
+		constexpr std::string_view AUTHORITY_ID =
+			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
+		constexpr std::string_view SIDECAR_RAW_SHA256 =
+			"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff";
+		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
+			"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a";
+		constexpr std::string_view SIDECAR_DECISION_SHA256 =
+			"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412";
+		if (Text.size() != 746'788u ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Text) !=
+				SIDECAR_RAW_SHA256)
+		{
+			strOutError = "Render-resource sidecar raw identity is invalid.";
+			return false;
+		}
+		DATA_JSON_VALUE Root;
+		DATA_JSON_PARSE_LIMITS Limits;
+		Limits.iMaximumBytes = 1024u * 1024u;
+		Limits.iMaximumDepth = 64u;
+		Limits.iMaximumValues = 250'000u;
+		std::string ParseError;
+		if (!CDataJson::Parse(Text, Root, ParseError, Limits) ||
+			!Has_ExactOrderedKeys(Root, {
+				"schema", "formatVersion", "authorityId", "characterClass",
+				"skillId", "inputSlot", "authorityContract", "sourceEvidence",
+				"textureResources", "textureBindings", "neutralProviders",
+				"recipeTextureBindings", "rendererSlotBindings",
+				"renderStateDescriptors", "blockerProjection", "admission",
+				"summary", "decisionProjectionSha256", "receiptSha256" }))
+		{
+			strOutError = "Render-resource sidecar JSON/root schema is invalid: " +
+				ParseError;
+			return false;
+		}
+		std::string Schema;
+		std::string AuthorityId;
+		std::string CharacterClass;
+		std::string InputSlot;
+		std::string DecisionSha;
+		std::string ReceiptSha;
+		uint32_t iFormatVersion = 0u;
+		uint32_t iSkillId = 0u;
+		const DATA_JSON_VALUE* AuthorityContract = Required(
+			Root, "authorityContract", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* SourceEvidence = Required(
+			Root, "sourceEvidence", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Blocker = Required(
+			Root, "blockerProjection", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Admission = Required(
+			Root, "admission", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* Summary = Required(
+			Root, "summary", DATA_JSON_TYPE::OBJECT);
+		if (!Read_StringExact(Root, "schema", Schema) || Schema != SIDECAR_SCHEMA ||
+			!Read_U32(Root, "formatVersion", iFormatVersion) ||
+			iFormatVersion != 1u ||
+			!Read_StringExact(Root, "authorityId", AuthorityId) ||
+			AuthorityId != AUTHORITY_ID ||
+			!Read_StringExact(Root, "characterClass", CharacterClass) ||
+			CharacterClass != "ARTIST" ||
+			!Read_U32(Root, "skillId", iSkillId) || iSkillId != 31470u ||
+			!Read_StringExact(Root, "inputSlot", InputSlot) || InputSlot != "F" ||
+			nullptr == AuthorityContract ||
+			!Validate_RenderResourceSidecarAuthorityContract(*AuthorityContract) ||
+			nullptr == SourceEvidence ||
+			!Validate_RenderResourceSidecarSourceEvidence(*SourceEvidence) ||
+			nullptr == Blocker || !Has_ExactOrderedKeys(*Blocker, {
+				"blockers", "canonicalResourceBytesVerifiedAtOfflineBuildAndValidation",
+				"actionTimeIoAllowed", "bindingFailureBehavior",
+				"partialCommitAllowed", "sourceExact",
+				"requiresAutomatedWARPProbe", "requiresManualEyeValidation",
+				"runtimeExecutionAdmission", "product" }) ||
+			!Read_BooleanExact(*Blocker,
+				"canonicalResourceBytesVerifiedAtOfflineBuildAndValidation", true) ||
+			!Read_BooleanExact(*Blocker, "actionTimeIoAllowed", false) ||
+			!Read_BooleanExact(*Blocker, "partialCommitAllowed", false) ||
+			!Validate_FailClosedAuthorityRow(*Blocker, true) ||
+			nullptr == Admission || !Has_ExactOrderedKeys(*Admission, {
+				"sourceExact", "requiresAutomatedWARPProbe",
+				"requiresManualEyeValidation", "runtimeExecutionAdmission",
+				"product" }) ||
+			!Validate_FailClosedAuthorityRow(*Admission, true) ||
+			nullptr == Summary || !Has_ExactOrderedKeys(*Summary, {
+				"textureResourceCount", "textureBindingCount", "resourceFormatCounts",
+				"bindingSrvDxgiFormatCounts", "bindingColorSpaceCounts",
+				"neutralProviderCount", "recipeTextureBindingCount",
+				"rendererSlotBindingCount", "ambiguousRendererDecisionCount",
+				"renderStateDescriptorCount", "blendDescriptorCount",
+				"twoSidedRasterDescriptorCount", "disableDepthDescriptorCount",
+				"actionTimeIoAllowed", "sourceExact", "runtimeExecutionAdmission",
+				"product" }) ||
+			!Read_BooleanExact(*Summary, "actionTimeIoAllowed", false) ||
+			!Validate_FailClosedAuthorityRow(*Summary) ||
+			!Read_ShaExact(Root, "decisionProjectionSha256", DecisionSha) ||
+			DecisionSha != SIDECAR_DECISION_SHA256 ||
+			!Read_ShaExact(Root, "receiptSha256", ReceiptSha) ||
+			ReceiptSha != SIDECAR_RECEIPT_SHA256)
+		{
+			strOutError = "Render-resource sidecar identity/admission is invalid.";
+			return false;
+		}
+
+		DATA_JSON_VALUE UnsignedReceipt;
+		if (!Build_ObjectProjection(Root, {
+			"schema", "formatVersion", "authorityId", "characterClass",
+			"skillId", "inputSlot", "authorityContract", "sourceEvidence",
+			"textureResources", "textureBindings", "neutralProviders",
+			"recipeTextureBindings", "rendererSlotBindings",
+			"renderStateDescriptors", "blockerProjection", "admission",
+			"summary", "decisionProjectionSha256" }, UnsignedReceipt) ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(UnsignedReceipt)) !=
+				SIDECAR_RECEIPT_SHA256)
+		{
+			strOutError = "Render-resource sidecar self digest is invalid.";
+			return false;
+		}
+		const DATA_JSON_VALUE* Publisher = SourceEvidence->Find(
+			"publisherRuntimeCatalogAuthority");
+		if (nullptr == Publisher)
+		{
+			strOutError = "Render-resource sidecar publisher projection is absent.";
+			return false;
+		}
+		DATA_JSON_VALUE::OBJECT DecisionFields;
+		DecisionFields.emplace("authorityId", *Root.Find("authorityId"));
+		DecisionFields.emplace("authorityContract", *AuthorityContract);
+		DecisionFields.emplace("publisherRuntimeCatalogAuthority", *Publisher);
+		DecisionFields.emplace("textureResources", *Root.Find("textureResources"));
+		DecisionFields.emplace("textureBindings", *Root.Find("textureBindings"));
+		DecisionFields.emplace("neutralProviders", *Root.Find("neutralProviders"));
+		DecisionFields.emplace("recipeTextureBindings",
+			*Root.Find("recipeTextureBindings"));
+		DecisionFields.emplace("rendererSlotBindings",
+			*Root.Find("rendererSlotBindings"));
+		DecisionFields.emplace("renderStateDescriptors",
+			*Root.Find("renderStateDescriptors"));
+		DecisionFields.emplace("blockerProjection", *Blocker);
+		DecisionFields.emplace("admission", *Admission);
+		const DATA_JSON_VALUE DecisionProjection = DATA_JSON_VALUE::Object(
+			std::move(DecisionFields));
+		if (CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+					DecisionProjection)) != SIDECAR_DECISION_SHA256)
+		{
+			strOutError = "Render-resource sidecar decision digest is invalid.";
+			return false;
+		}
+
+		uint32_t iTextureResourceCount = 0u;
+		uint32_t iTextureBindingCount = 0u;
+		uint32_t iNeutralProviderCount = 0u;
+		uint32_t iRecipeCount = 0u;
+		uint32_t iRendererCount = 0u;
+		uint32_t iAmbiguousCount = 0u;
+		uint32_t iStateCount = 0u;
+		uint32_t iBlendCount = 0u;
+		uint32_t iRasterCount = 0u;
+		uint32_t iDepthCount = 0u;
+		if (!Read_U32(*Summary, "textureResourceCount", iTextureResourceCount) ||
+			iTextureResourceCount != 48u ||
+			!Read_U32(*Summary, "textureBindingCount", iTextureBindingCount) ||
+			iTextureBindingCount != 72u ||
+			!Read_U32(*Summary, "neutralProviderCount", iNeutralProviderCount) ||
+			iNeutralProviderCount != 4u ||
+			!Read_U32(*Summary, "recipeTextureBindingCount", iRecipeCount) ||
+			iRecipeCount != 27u ||
+			!Read_U32(*Summary, "rendererSlotBindingCount", iRendererCount) ||
+			iRendererCount != 57u ||
+			!Read_U32(*Summary, "ambiguousRendererDecisionCount",
+				iAmbiguousCount) || iAmbiguousCount != 3u ||
+			!Read_U32(*Summary, "renderStateDescriptorCount", iStateCount) ||
+			iStateCount != 46u ||
+			!Read_U32(*Summary, "blendDescriptorCount", iBlendCount) ||
+			iBlendCount != 27u ||
+			!Read_U32(*Summary, "twoSidedRasterDescriptorCount", iRasterCount) ||
+			iRasterCount != 18u ||
+			!Read_U32(*Summary, "disableDepthDescriptorCount", iDepthCount) ||
+			iDepthCount != 1u)
+		{
+			strOutError = "Render-resource sidecar summary is invalid.";
+			return false;
+		}
+
+		EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY Staged;
+		Staged.Identity.iFormatVersion = iFormatVersion;
+		Staged.Identity.iProgramVersion = 1u;
+		Staged.Identity.iSidecarByteCount = Text.size();
+		Staged.Identity.strSchema = Schema;
+		Staged.Identity.strAuthorityId = AuthorityId;
+		Staged.Identity.strProgramId =
+			"effect.artist.skill.31470.reconstructed-approved-v1";
+		Staged.Identity.strProgramSha256 =
+			"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b";
+		Staged.Identity.strSidecarDecisionProjectionSha256 = DecisionSha;
+		Staged.Identity.strSidecarReceiptSha256 = ReceiptSha;
+		Staged.Identity.strSidecarRawSha256 = std::string(SIDECAR_RAW_SHA256);
+		const DATA_JSON_VALUE* TextureResources = Root.Find("textureResources");
+		const DATA_JSON_VALUE* TextureBindings = Root.Find("textureBindings");
+		const DATA_JSON_VALUE* NeutralProviders = Root.Find("neutralProviders");
+		const DATA_JSON_VALUE* RecipeBindings = Root.Find("recipeTextureBindings");
+		const DATA_JSON_VALUE* RendererBindings = Root.Find("rendererSlotBindings");
+		const DATA_JSON_VALUE* StateDescriptors = Root.Find("renderStateDescriptors");
+		if (nullptr == TextureResources || nullptr == TextureBindings ||
+			nullptr == NeutralProviders || nullptr == RecipeBindings ||
+			nullptr == RendererBindings || nullptr == StateDescriptors ||
+			!Parse_RenderTextureResources(*TextureResources,
+				Staged.TextureResourcesById, strOutError) ||
+			!Parse_RenderTextureBindings(*TextureBindings,
+				Staged.TextureResourcesById, Staged.TextureBindingsById,
+				strOutError) ||
+			!Parse_RenderNeutralProviders(*NeutralProviders,
+				Staged.NeutralProvidersById, strOutError) ||
+			!Parse_RenderRecipeTextureBindings(*RecipeBindings,
+				Staged.TextureBindingsById, Staged.NeutralProvidersById,
+				Staged.RecipeTextureBindingsById, strOutError) ||
+			!Parse_RendererSlotBindings(*RendererBindings,
+				Staged.TextureBindingsById, Staged.RendererSlotBindingsById,
+				strOutError) ||
+			!Parse_RenderStateDescriptors(*StateDescriptors,
+				Staged.RenderStateDescriptorsById, strOutError))
+		{
+			return false;
+		}
+		OutAuthority = std::move(Staged);
+		return true;
+	}
+
+	bool Parse_ReconstructedRenderResourceExtension(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& InOutIdentity,
+		std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>&
+			OutAuthority,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ASSET_ID =
+			"effect.artist.skill.31470";
+		constexpr std::string_view PAYLOAD_KIND =
+			"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM";
+		constexpr std::string_view COMPILER_REVISION =
+			"artist31470.reconstructed-runtime-program-link-v1";
+		constexpr std::string_view PROGRAM_ID =
+			"effect.artist.skill.31470.reconstructed-approved-v1";
+		constexpr std::string_view PROGRAM_SHA256 =
+			"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b";
+		constexpr std::string_view BASE_ENTRY_SHA256 =
+			"e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2";
+		constexpr std::string_view BASE_LINK_SHA256 =
+			"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2";
+		constexpr std::string_view BASE_RECEIPT_SHA256 =
+			"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94";
+		constexpr std::string_view SIDECAR_SCHEMA =
+			"lostark.artist-31470-reconstructed-render-resource-authority-receipt";
+		constexpr std::string_view SIDECAR_AUTHORITY_ID =
+			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
+		constexpr std::string_view SIDECAR_DECISION_SHA256 =
+			"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412";
+		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
+			"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a";
+		constexpr std::string_view SIDECAR_RAW_SHA256 =
+			"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff";
+		constexpr std::string_view AUTHORITY_LINK_SHA256 =
+			"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e";
+		constexpr std::string_view RECEIPT_SELF_SHA256 =
+			"3a5ec8cd44173dde89addfb078303cf8d208be5e45bb28f557f0ca0028811687";
+		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
+			"dc5682f98b359fe114fbeab6dfd04591769fb5a2607f2872fdef189f392d2455";
+
+		const DATA_JSON_VALUE* Link = Required(
+			Value, "reconstructedRenderResourceAuthority", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == Link || !Has_ExactOrderedKeys(*Link, {
+			"schema", "formatVersion", "encoding", "effectAssetId", "programId",
+			"programVersion", "programSha256", "sidecarSchema",
+			"sidecarFormatVersion", "sidecarAuthorityId",
+			"sidecarDecisionProjectionSha256", "sidecarReceiptSha256",
+			"sidecarRawSha256", "sidecarByteCount", "sourceExact",
+			"runtimeExecutionAdmission", "executeAdmission", "submitAdmission",
+			"renderAdmission", "productAdmission", "sidecarUtf8Json" }))
+		{
+			strOutError =
+				"Reconstructed render-resource link fields or order are invalid.";
+			return false;
+		}
+		const auto LinkStringEquals = [Link](
+			const char* pName, const std::string_view Expected)
+		{
+			const DATA_JSON_VALUE* Field = Required(
+				*Link, pName, DATA_JSON_TYPE::STRING);
+			return nullptr != Field && Field->Get_String() == Expected;
+		};
+		uint32_t iLinkFormatVersion = 0u;
+		uint32_t iLinkProgramVersion = 0u;
+		uint32_t iSidecarFormatVersion = 0u;
+		uint64_t iSidecarByteCount = 0u;
+		const DATA_JSON_VALUE* SidecarText = Required(
+			*Link, "sidecarUtf8Json", DATA_JSON_TYPE::STRING);
+		if (!LinkStringEquals("schema",
+				"lostark.effect-reconstructed-render-resource-authority-link") ||
+			!Read_U32(*Link, "formatVersion", iLinkFormatVersion) ||
+			Link->Find("formatVersion")->Was_FloatingPointToken() ||
+			iLinkFormatVersion != 1u ||
+			!LinkStringEquals("encoding", "UTF8_JSON_EXACT") ||
+			!LinkStringEquals("effectAssetId", EFFECT_ASSET_ID) ||
+			!LinkStringEquals("programId", PROGRAM_ID) ||
+			!Read_U32(*Link, "programVersion", iLinkProgramVersion) ||
+			Link->Find("programVersion")->Was_FloatingPointToken() ||
+			iLinkProgramVersion != 1u ||
+			!LinkStringEquals("programSha256", PROGRAM_SHA256) ||
+			!LinkStringEquals("sidecarSchema", SIDECAR_SCHEMA) ||
+			!Read_U32(*Link, "sidecarFormatVersion", iSidecarFormatVersion) ||
+			Link->Find("sidecarFormatVersion")->Was_FloatingPointToken() ||
+			iSidecarFormatVersion != 1u ||
+			!LinkStringEquals("sidecarAuthorityId", SIDECAR_AUTHORITY_ID) ||
+			!LinkStringEquals("sidecarDecisionProjectionSha256",
+				SIDECAR_DECISION_SHA256) ||
+			!LinkStringEquals("sidecarReceiptSha256", SIDECAR_RECEIPT_SHA256) ||
+			!LinkStringEquals("sidecarRawSha256", SIDECAR_RAW_SHA256) ||
+			!Read_U64Exact(*Link, "sidecarByteCount", iSidecarByteCount) ||
+			iSidecarByteCount != 746'788u ||
+			!Read_BooleanExact(*Link, "sourceExact", false) ||
+			!Read_BooleanExact(*Link, "runtimeExecutionAdmission", false) ||
+			!Read_BooleanExact(*Link, "executeAdmission", false) ||
+			!Read_BooleanExact(*Link, "submitAdmission", false) ||
+			!Read_BooleanExact(*Link, "renderAdmission", false) ||
+			!Read_BooleanExact(*Link, "productAdmission", false) ||
+			nullptr == SidecarText ||
+			SidecarText->Get_String().size() != iSidecarByteCount ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				SidecarText->Get_String()) != SIDECAR_RAW_SHA256)
+		{
+			strOutError =
+				"Reconstructed render-resource link identity/admission is invalid.";
+			return false;
+		}
+		const std::string ComputedLinkSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(*Link));
+		if (ComputedLinkSha != AUTHORITY_LINK_SHA256)
+		{
+			strOutError =
+				"Reconstructed render-resource link canonical digest is invalid.";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* Receipt = Required(
+			Value, "renderResourcePublishReceipt", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* OuterReceiptSha = Required(
+			Value, "renderResourcePublishReceiptSha256", DATA_JSON_TYPE::STRING);
+		if (nullptr == Receipt || !Has_ExactOrderedKeys(*Receipt, {
+			"schema", "formatVersion", "receiptRole", "payloadKind",
+			"effectAssetId", "artifactRevision", "compilerRevision",
+			"sourceExact", "runtimeExecutionAdmission", "executeAdmission",
+			"submitAdmission", "renderAdmission", "productAdmission", "programId",
+			"programVersion", "programSha256", "baseRuntimeEntryProjectionSha256",
+			"reconstructedRuntimeProgramSha256", "basePublishReceiptSha256",
+			"renderResourceAuthorityLinkSha256", "sidecarRawSha256",
+			"sidecarReceiptSha256", "sidecarDecisionProjectionSha256",
+			"toolDependencies", "receiptSha256Domain", "receiptSha256" }) ||
+			nullptr == OuterReceiptSha ||
+			OuterReceiptSha->Get_String() != PUBLISH_RECEIPT_SHA256)
+		{
+			strOutError =
+				"Reconstructed render-resource receipt fields or order are invalid.";
+			return false;
+		}
+		const auto ReceiptStringEquals = [Receipt](
+			const char* pName, const std::string_view Expected)
+		{
+			const DATA_JSON_VALUE* Field = Required(
+				*Receipt, pName, DATA_JSON_TYPE::STRING);
+			return nullptr != Field && Field->Get_String() == Expected;
+		};
+		uint32_t iReceiptFormatVersion = 0u;
+		uint32_t iReceiptArtifactRevision = 0u;
+		uint32_t iReceiptProgramVersion = 0u;
+		if (!ReceiptStringEquals("schema",
+				"lostark.effect-reconstructed-render-resource-publication-receipt") ||
+			!Read_U32(*Receipt, "formatVersion", iReceiptFormatVersion) ||
+			Receipt->Find("formatVersion")->Was_FloatingPointToken() ||
+			iReceiptFormatVersion != 1u ||
+			!ReceiptStringEquals("receiptRole",
+				"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY") ||
+			!ReceiptStringEquals("payloadKind", PAYLOAD_KIND) ||
+			!ReceiptStringEquals("effectAssetId", EFFECT_ASSET_ID) ||
+			!Read_U32(*Receipt, "artifactRevision", iReceiptArtifactRevision) ||
+			Receipt->Find("artifactRevision")->Was_FloatingPointToken() ||
+			iReceiptArtifactRevision != 1u ||
+			!ReceiptStringEquals("compilerRevision", COMPILER_REVISION) ||
+			!Read_BooleanExact(*Receipt, "sourceExact", false) ||
+			!Read_BooleanExact(*Receipt, "runtimeExecutionAdmission", false) ||
+			!Read_BooleanExact(*Receipt, "executeAdmission", false) ||
+			!Read_BooleanExact(*Receipt, "submitAdmission", false) ||
+			!Read_BooleanExact(*Receipt, "renderAdmission", false) ||
+			!Read_BooleanExact(*Receipt, "productAdmission", false) ||
+			!ReceiptStringEquals("programId", PROGRAM_ID) ||
+			!Read_U32(*Receipt, "programVersion", iReceiptProgramVersion) ||
+			Receipt->Find("programVersion")->Was_FloatingPointToken() ||
+			iReceiptProgramVersion != 1u ||
+			!ReceiptStringEquals("programSha256", PROGRAM_SHA256) ||
+			!ReceiptStringEquals("baseRuntimeEntryProjectionSha256",
+				BASE_ENTRY_SHA256) ||
+			!ReceiptStringEquals("reconstructedRuntimeProgramSha256",
+				BASE_LINK_SHA256) ||
+			!ReceiptStringEquals("basePublishReceiptSha256", BASE_RECEIPT_SHA256) ||
+			!ReceiptStringEquals("renderResourceAuthorityLinkSha256",
+				AUTHORITY_LINK_SHA256) ||
+			!ReceiptStringEquals("sidecarRawSha256", SIDECAR_RAW_SHA256) ||
+			!ReceiptStringEquals("sidecarReceiptSha256", SIDECAR_RECEIPT_SHA256) ||
+			!ReceiptStringEquals("sidecarDecisionProjectionSha256",
+				SIDECAR_DECISION_SHA256) ||
+			!ReceiptStringEquals("receiptSha256Domain",
+				"CANONICAL_JSON_EXCLUDING_RECEIPT_SHA256") ||
+			!ReceiptStringEquals("receiptSha256", RECEIPT_SELF_SHA256))
+		{
+			strOutError =
+				"Reconstructed render-resource receipt identity/admission is invalid.";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* Tools = Required(
+			*Receipt, "toolDependencies", DATA_JSON_TYPE::ARRAY);
+		constexpr std::array<std::string_view, 3u> TOOL_ROLES{
+			"RECONSTRUCTED_RENDER_RESOURCE_INDEPENDENT_PINS",
+			"RECONSTRUCTED_RENDER_RESOURCE_CATALOG_VALIDATOR",
+			"EFFECT_PUBLISHER" };
+		constexpr std::array<std::string_view, 3u> TOOL_PATHS{
+			"Tools/LevelPlacementExtractor/artist_31470_reconstructed_render_resource_authority.py",
+			"Tools/EffectPipeline/build_effect_derived_artifact.py",
+			"Tools/EffectPipeline/Publish-Effects.ps1" };
+		constexpr std::array<std::string_view, 3u> TOOL_SHA256{
+			"74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef",
+			"148d13df44da8c2fbf3378648d92ee83651a1f97cd5b6827a4b411cce78cfb95",
+			"2858a8c8f34754435b7daafe61679c0d7b965744af67f34222c31b0dd4ab801d" };
+		if (nullptr == Tools || Tools->Get_Array().size() != TOOL_ROLES.size())
+		{
+			strOutError =
+				"Reconstructed render-resource receipt tool set is invalid.";
+			return false;
+		}
+		for (size_t Index = 0u; Index < TOOL_ROLES.size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Tool = Tools->Get_Array()[Index];
+			if (!Has_ExactOrderedKeys(Tool,
+					{ "role", "path", "hashDomain", "sha256" }) ||
+				nullptr == Required(Tool, "role", DATA_JSON_TYPE::STRING) ||
+				Tool.Find("role")->Get_String() != TOOL_ROLES[Index] ||
+				nullptr == Required(Tool, "path", DATA_JSON_TYPE::STRING) ||
+				Tool.Find("path")->Get_String() != TOOL_PATHS[Index] ||
+				nullptr == Required(Tool, "hashDomain", DATA_JSON_TYPE::STRING) ||
+				Tool.Find("hashDomain")->Get_String() !=
+					"TRACKED_SOURCE_EOL_CANONICAL_TEXT" ||
+				nullptr == Required(Tool, "sha256", DATA_JSON_TYPE::STRING) ||
+				Tool.Find("sha256")->Get_String() != TOOL_SHA256[Index])
+			{
+				strOutError =
+					"Reconstructed render-resource receipt tool identity is invalid.";
+				return false;
+			}
+		}
+
+		DATA_JSON_VALUE BaseProjection;
+		DATA_JSON_VALUE UnsignedReceipt;
+		if (!Build_ObjectProjection(Value, {
+			"payloadKind", "effectAssetId", "artifactRevision",
+			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
+			"productAdmission", "publishReceiptSha256", "publishReceipt",
+			"reconstructedRuntimeProgram" }, BaseProjection) ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(BaseProjection)) !=
+				BASE_ENTRY_SHA256 ||
+			!Build_ObjectProjection(*Receipt, {
+				"schema", "formatVersion", "receiptRole", "payloadKind",
+				"effectAssetId", "artifactRevision", "compilerRevision",
+				"sourceExact", "runtimeExecutionAdmission", "executeAdmission",
+				"submitAdmission", "renderAdmission", "productAdmission", "programId",
+				"programVersion", "programSha256",
+				"baseRuntimeEntryProjectionSha256",
+				"reconstructedRuntimeProgramSha256", "basePublishReceiptSha256",
+				"renderResourceAuthorityLinkSha256", "sidecarRawSha256",
+				"sidecarReceiptSha256", "sidecarDecisionProjectionSha256",
+				"toolDependencies", "receiptSha256Domain" }, UnsignedReceipt) ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(UnsignedReceipt)) !=
+				RECEIPT_SELF_SHA256 ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(*Receipt)) !=
+				PUBLISH_RECEIPT_SHA256)
+		{
+			strOutError =
+				"Reconstructed render-resource publication digest binding is invalid.";
+			return false;
+		}
+
+		EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY StagedAuthority;
+		if (!Parse_ReconstructedRenderResourceSidecar(
+			SidecarText->Get_String(), StagedAuthority, strOutError))
+		{
+			return false;
+		}
+		if (InOutIdentity.strEffectAssetId != EFFECT_ASSET_ID ||
+			InOutIdentity.strProgramId != PROGRAM_ID ||
+			InOutIdentity.iProgramVersion != iLinkProgramVersion ||
+			InOutIdentity.strProgramSha256 != PROGRAM_SHA256 ||
+			StagedAuthority.Identity.strProgramId != InOutIdentity.strProgramId ||
+			StagedAuthority.Identity.iProgramVersion !=
+				InOutIdentity.iProgramVersion ||
+			StagedAuthority.Identity.strProgramSha256 !=
+				InOutIdentity.strProgramSha256)
+		{
+			strOutError =
+				"Reconstructed render-resource program join identity is invalid.";
+			return false;
+		}
+		StagedAuthority.Identity.strAuthorityLinkSha256 = ComputedLinkSha;
+		StagedAuthority.Identity.strPublishReceiptSha256 =
+			OuterReceiptSha->Get_String();
+		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY StagedIdentity = InOutIdentity;
+		StagedIdentity.iRenderResourceSidecarFormatVersion =
+			iSidecarFormatVersion;
+		StagedIdentity.iRenderResourceSidecarByteCount = iSidecarByteCount;
+		StagedIdentity.strRenderResourceSidecarSchema = std::string(SIDECAR_SCHEMA);
+		StagedIdentity.strRenderResourceAuthorityId =
+			std::string(SIDECAR_AUTHORITY_ID);
+		StagedIdentity.strRenderResourceSidecarDecisionProjectionSha256 =
+			std::string(SIDECAR_DECISION_SHA256);
+		StagedIdentity.strRenderResourceSidecarReceiptSha256 =
+			std::string(SIDECAR_RECEIPT_SHA256);
+		StagedIdentity.strRenderResourceSidecarRawSha256 =
+			std::string(SIDECAR_RAW_SHA256);
+		StagedIdentity.strRenderResourceAuthorityLinkSha256 = ComputedLinkSha;
+		StagedIdentity.strRenderResourcePublishReceiptSha256 =
+			OuterReceiptSha->Get_String();
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+			StagedPointer =
+				std::make_shared<const
+					EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>(
+						std::move(StagedAuthority));
+		InOutIdentity = std::move(StagedIdentity);
+		OutAuthority = std::move(StagedPointer);
 		strOutError.clear();
 		return true;
 	}
@@ -1089,7 +3152,8 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			}
 			std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
 				ProgramEntry(new EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY(
-					std::move(Parsed.Identity), std::move(Parsed.pProgram)));
+					std::move(Parsed.Identity), std::move(Parsed.pProgram),
+					std::move(Parsed.pRenderResourceAuthority)));
 			StagedRuntimeProgramEntries.emplace(
 				pAssetId->Get_String(), std::move(ProgramEntry));
 			continue;

@@ -90,7 +90,46 @@ RECONSTRUCTED_CANDIDATE_RAW_SHA256 = (
 )
 RECONSTRUCTED_CANDIDATE_BYTE_COUNT = 15_072_141
 
-RECONSTRUCTED_ENTRY_KEYS = (
+RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256 = (
+    "e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2"
+)
+RECONSTRUCTED_BASE_LINK_SHA256 = (
+    "74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2"
+)
+RECONSTRUCTED_BASE_RECEIPT_SELF_SHA256 = (
+    "5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3"
+)
+RECONSTRUCTED_BASE_RECEIPT_SHA256 = (
+    "92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94"
+)
+
+RECONSTRUCTED_RENDER_RESOURCE_LINK_SCHEMA = (
+    "lostark.effect-reconstructed-render-resource-authority-link"
+)
+RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_SCHEMA = (
+    "lostark.effect-reconstructed-render-resource-publication-receipt"
+)
+RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_ROLE = (
+    "PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY"
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_SCHEMA = (
+    "lostark.artist-31470-reconstructed-render-resource-authority-receipt"
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_AUTHORITY_ID = (
+    "ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1"
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT = 746_788
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256 = (
+    "bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff"
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256 = (
+    "bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a"
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256 = (
+    "4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412"
+)
+
+RECONSTRUCTED_BASE_ENTRY_KEYS = (
     "payloadKind",
     "effectAssetId",
     "artifactRevision",
@@ -101,6 +140,11 @@ RECONSTRUCTED_ENTRY_KEYS = (
     "publishReceiptSha256",
     "publishReceipt",
     "reconstructedRuntimeProgram",
+)
+RECONSTRUCTED_ENTRY_KEYS = RECONSTRUCTED_BASE_ENTRY_KEYS + (
+    "renderResourcePublishReceiptSha256",
+    "renderResourcePublishReceipt",
+    "reconstructedRenderResourceAuthority",
 )
 RECONSTRUCTED_LINK_KEYS = (
     "schema",
@@ -147,19 +191,109 @@ RECONSTRUCTED_RECEIPT_KEYS = (
     "receiptSha256Domain",
     "receiptSha256",
 )
-RECONSTRUCTED_TOOL_DEPENDENCIES = (
+RECONSTRUCTED_HISTORICAL_TOOL_DEPENDENCIES = (
     (
         "RECONSTRUCTED_RUNTIME_PROGRAM_CANDIDATE_BUILDER",
         "Tools/EffectPipeline/build_artist_31470_reconstructed_runtime_program.py",
+        "5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e",
     ),
     (
         "RECONSTRUCTED_RUNTIME_PROGRAM_CATALOG_VALIDATOR",
+        "Tools/EffectPipeline/build_effect_derived_artifact.py",
+        "5407c3d0983c3aaf4bf085904ef8d7b5f3e9119ae448703ff7e8f612a1c144fb",
+    ),
+    (
+        "EFFECT_PUBLISHER",
+        "Tools/EffectPipeline/Publish-Effects.ps1",
+        "ee4a12cf5cbd63bc9af6b0af18ca37da7631a4b0b6ed1465c95bf99fb9be8825",
+    ),
+)
+RECONSTRUCTED_RENDER_RESOURCE_LINK_KEYS = (
+    "schema",
+    "formatVersion",
+    "encoding",
+    "effectAssetId",
+    "programId",
+    "programVersion",
+    "programSha256",
+    "sidecarSchema",
+    "sidecarFormatVersion",
+    "sidecarAuthorityId",
+    "sidecarDecisionProjectionSha256",
+    "sidecarReceiptSha256",
+    "sidecarRawSha256",
+    "sidecarByteCount",
+    "sourceExact",
+    "runtimeExecutionAdmission",
+    "executeAdmission",
+    "submitAdmission",
+    "renderAdmission",
+    "productAdmission",
+    "sidecarUtf8Json",
+)
+RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_KEYS = (
+    "schema",
+    "formatVersion",
+    "receiptRole",
+    "payloadKind",
+    "effectAssetId",
+    "artifactRevision",
+    "compilerRevision",
+    "sourceExact",
+    "runtimeExecutionAdmission",
+    "executeAdmission",
+    "submitAdmission",
+    "renderAdmission",
+    "productAdmission",
+    "programId",
+    "programVersion",
+    "programSha256",
+    "baseRuntimeEntryProjectionSha256",
+    "reconstructedRuntimeProgramSha256",
+    "basePublishReceiptSha256",
+    "renderResourceAuthorityLinkSha256",
+    "sidecarRawSha256",
+    "sidecarReceiptSha256",
+    "sidecarDecisionProjectionSha256",
+    "toolDependencies",
+    "receiptSha256Domain",
+    "receiptSha256",
+)
+RECONSTRUCTED_RENDER_RESOURCE_TOOL_DEPENDENCIES = (
+    (
+        "RECONSTRUCTED_RENDER_RESOURCE_INDEPENDENT_PINS",
+        "Tools/LevelPlacementExtractor/"
+        "artist_31470_reconstructed_render_resource_authority.py",
+    ),
+    (
+        "RECONSTRUCTED_RENDER_RESOURCE_CATALOG_VALIDATOR",
         "Tools/EffectPipeline/build_effect_derived_artifact.py",
     ),
     (
         "EFFECT_PUBLISHER",
         "Tools/EffectPipeline/Publish-Effects.ps1",
     ),
+)
+RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_ROOT_KEYS = (
+    "schema",
+    "formatVersion",
+    "authorityId",
+    "characterClass",
+    "skillId",
+    "inputSlot",
+    "authorityContract",
+    "sourceEvidence",
+    "textureResources",
+    "textureBindings",
+    "neutralProviders",
+    "recipeTextureBindings",
+    "rendererSlotBindings",
+    "renderStateDescriptors",
+    "blockerProjection",
+    "admission",
+    "summary",
+    "decisionProjectionSha256",
+    "receiptSha256",
 )
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -1557,15 +1691,27 @@ def _validate_reconstructed_candidate_identity(
     return candidate
 
 
-def _current_reconstructed_tool_dependencies() -> list[dict[str, Any]]:
+def _historical_reconstructed_tool_dependencies() -> list[dict[str, Any]]:
+    return [
+        {
+            "role": role,
+            "path": relative,
+            "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
+            "sha256": digest,
+        }
+        for role, relative, digest in RECONSTRUCTED_HISTORICAL_TOOL_DEPENDENCIES
+    ]
+
+
+def _current_render_resource_tool_dependencies() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for role, relative in RECONSTRUCTED_TOOL_DEPENDENCIES:
+    for role, relative in RECONSTRUCTED_RENDER_RESOURCE_TOOL_DEPENDENCIES:
         path = REPOSITORY_ROOT / relative
         try:
             payload = path.read_bytes()
         except OSError as exc:
             raise ContractError(
-                f"cannot read reconstructed publisher dependency {relative}: {exc}"
+                f"cannot read render-resource publisher dependency {relative}: {exc}"
             ) from exc
         rows.append(
             {
@@ -1573,7 +1719,9 @@ def _current_reconstructed_tool_dependencies() -> list[dict[str, Any]]:
                 "path": relative,
                 "hashDomain": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
                 "sha256": sha256_bytes(
-                    canonical_text_bytes(payload, f"tool dependency {relative}")
+                    canonical_text_bytes(
+                        payload, f"render-resource tool dependency {relative}"
+                    )
                 ),
             }
         )
@@ -1632,23 +1780,23 @@ def _make_reconstructed_publish_receipt(link: dict[str, Any]) -> dict[str, Any]:
         "reconstructedRuntimeProgramSha256": sha256_bytes(
             canonical_json_bytes(link)
         ),
-        "toolDependencies": _current_reconstructed_tool_dependencies(),
+        "toolDependencies": _historical_reconstructed_tool_dependencies(),
         "receiptSha256Domain": RECONSTRUCTED_RECEIPT_DIGEST_DOMAIN,
     }
     receipt["receiptSha256"] = sha256_bytes(canonical_json_bytes(receipt))
     return receipt
 
 
-def _validate_reconstructed_tool_dependencies(value: Any) -> None:
+def _validate_historical_reconstructed_tool_dependencies(value: Any) -> None:
     if not isinstance(value, list) or len(value) != len(
-        RECONSTRUCTED_TOOL_DEPENDENCIES
+        RECONSTRUCTED_HISTORICAL_TOOL_DEPENDENCIES
     ):
-        raise ContractError("reconstructed receipt tool dependency count mismatch")
-    expected_current = _current_reconstructed_tool_dependencies()
-    for index, ((role, path), row) in enumerate(
-        zip(RECONSTRUCTED_TOOL_DEPENDENCIES, value, strict=True)
+        raise ContractError("historical reconstructed tool dependency count mismatch")
+    expected = _historical_reconstructed_tool_dependencies()
+    for index, ((role, path, digest), row) in enumerate(
+        zip(RECONSTRUCTED_HISTORICAL_TOOL_DEPENDENCIES, value, strict=True)
     ):
-        label = f"reconstructed receipt toolDependencies[{index}]"
+        label = f"historical reconstructed receipt toolDependencies[{index}]"
         if not isinstance(row, dict):
             raise ContractError(f"{label} must be an object")
         _require_exact_key_order(
@@ -1658,11 +1806,12 @@ def _validate_reconstructed_tool_dependencies(value: Any) -> None:
             row["role"] != role
             or row["path"] != path
             or row["hashDomain"] != "TRACKED_SOURCE_EOL_CANONICAL_TEXT"
+            or row["sha256"] != digest
         ):
             raise ContractError(f"{label} identity mismatch")
         _require_sha(row["sha256"], f"{label}.sha256")
-        if row != expected_current[index]:
-            raise ContractError(f"{label} current source hash mismatch")
+        if row != expected[index]:
+            raise ContractError(f"{label} frozen source hash mismatch")
 
 
 def validate_reconstructed_publish_receipt(
@@ -1711,7 +1860,9 @@ def validate_reconstructed_publish_receipt(
             _require_bool(actual, expected, f"reconstructed receipt {field}")
         elif actual != expected:
             raise ContractError(f"reconstructed receipt {field} mismatch")
-    _validate_reconstructed_tool_dependencies(receipt["toolDependencies"])
+    _validate_historical_reconstructed_tool_dependencies(
+        receipt["toolDependencies"]
+    )
     receipt_sha = _require_sha(
         receipt["receiptSha256"], "reconstructed receipt receiptSha256"
     )
@@ -1721,11 +1872,13 @@ def validate_reconstructed_publish_receipt(
         raise ContractError("reconstructed publish receipt self digest mismatch")
 
 
-def validate_reconstructed_runtime_entry(value: Any) -> None:
+def _validate_reconstructed_base_entry(value: Any) -> None:
     if not isinstance(value, dict):
-        raise ContractError("reconstructed runtime entry must be an object")
+        raise ContractError("historical reconstructed base entry must be an object")
     _require_exact_key_order(
-        value, RECONSTRUCTED_ENTRY_KEYS, "reconstructed runtime entry"
+        value,
+        RECONSTRUCTED_BASE_ENTRY_KEYS,
+        "historical reconstructed base entry",
     )
     if value["payloadKind"] != RECONSTRUCTED_PAYLOAD_KIND:
         raise ContractError("reconstructed runtime payloadKind mismatch")
@@ -1798,18 +1951,413 @@ def validate_reconstructed_runtime_entry(value: Any) -> None:
     )
     if outer_receipt_sha != sha256_bytes(canonical_json_bytes(receipt)):
         raise ContractError("reconstructed runtime publish receipt SHA mismatch")
+    if sha256_bytes(canonical_json_bytes(link)) != RECONSTRUCTED_BASE_LINK_SHA256:
+        raise ContractError("historical reconstructed link identity mismatch")
+    if receipt["receiptSha256"] != RECONSTRUCTED_BASE_RECEIPT_SELF_SHA256:
+        raise ContractError("historical reconstructed receipt self identity mismatch")
+    if outer_receipt_sha != RECONSTRUCTED_BASE_RECEIPT_SHA256:
+        raise ContractError("historical reconstructed receipt identity mismatch")
+    if sha256_bytes(canonical_json_bytes(value)) != (
+        RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256
+    ):
+        raise ContractError("historical reconstructed base projection mismatch")
 
 
-def prepare_reconstructed_runtime_entry(candidate_path: Path) -> dict[str, Any]:
+def _validate_render_resource_sidecar_identity(
+    payload: bytes,
+) -> dict[str, Any]:
+    if len(payload) != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT:
+        raise ContractError("render-resource sidecar byte count mismatch")
+    if sha256_bytes(payload) != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256:
+        raise ContractError("render-resource sidecar raw SHA mismatch")
+    sidecar = _parse_reconstructed_candidate(payload, "render-resource sidecar")
+    _require_exact_key_order(
+        sidecar,
+        RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_ROOT_KEYS,
+        "render-resource sidecar",
+    )
+    if sidecar["schema"] != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_SCHEMA:
+        raise ContractError("render-resource sidecar schema mismatch")
+    _require_exact_int(
+        sidecar["formatVersion"], 1, "render-resource sidecar formatVersion"
+    )
+    if (
+        sidecar["authorityId"]
+        != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_AUTHORITY_ID
+        or sidecar["characterClass"] != "ARTIST"
+        or sidecar["inputSlot"] != "F"
+    ):
+        raise ContractError("render-resource sidecar owner identity mismatch")
+    _require_exact_int(sidecar["skillId"], 31470, "render-resource sidecar skillId")
+
+    unsigned = dict(sidecar)
+    sidecar_receipt_sha = _require_sha(
+        unsigned.pop("receiptSha256"), "render-resource sidecar receiptSha256"
+    )
+    if (
+        sidecar_receipt_sha
+        != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256
+        or sidecar_receipt_sha != sha256_bytes(canonical_json_bytes(unsigned))
+    ):
+        raise ContractError("render-resource sidecar self digest mismatch")
+    if (
+        _require_sha(
+            sidecar["decisionProjectionSha256"],
+            "render-resource sidecar decisionProjectionSha256",
+        )
+        != RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256
+    ):
+        raise ContractError("render-resource sidecar decision identity mismatch")
+
+    pin_path = REPOSITORY_ROOT / (
+        "Tools/LevelPlacementExtractor/"
+        "artist_31470_reconstructed_render_resource_authority.py"
+    )
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "artist_31470_render_resource_bridge_pins", pin_path
+        )
+        if spec is None or spec.loader is None:
+            raise ContractError("cannot load render-resource independent pins")
+        pin_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pin_module)
+        pin_module.require_approved_receipt(sidecar)
+    except ContractError:
+        raise
+    except Exception as exc:
+        raise ContractError(
+            f"render-resource independent pins rejected sidecar: {exc}"
+        ) from exc
+
+    program = sidecar.get("sourceEvidence", {}).get("programAndParserTuple")
+    publisher = sidecar.get("sourceEvidence", {}).get(
+        "publisherRuntimeCatalogAuthority"
+    )
+    if not isinstance(program, dict) or not isinstance(publisher, dict):
+        raise ContractError("render-resource sidecar source evidence is invalid")
+    if (
+        program.get("programId") != RECONSTRUCTED_PROGRAM_ID
+        or program.get("programSha256") != RECONSTRUCTED_PROGRAM_SHA256
+        or program.get("rawSha256") != RECONSTRUCTED_CANDIDATE_RAW_SHA256
+    ):
+        raise ContractError("render-resource sidecar program identity mismatch")
+    _require_exact_int(
+        program.get("programVersion"),
+        RECONSTRUCTED_PROGRAM_VERSION,
+        "render-resource sidecar programVersion",
+    )
+    _require_exact_int(
+        program.get("rawByteCount"),
+        RECONSTRUCTED_CANDIDATE_BYTE_COUNT,
+        "render-resource sidecar candidate byte count",
+    )
+    if (
+        publisher.get("effectAssetId") != RECONSTRUCTED_EFFECT_ID
+        or publisher.get("outerCanonicalSha256")
+        != RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256
+        or publisher.get("linkCanonicalSha256")
+        != RECONSTRUCTED_BASE_LINK_SHA256
+        or publisher.get("receiptSelfSha256")
+        != RECONSTRUCTED_BASE_RECEIPT_SELF_SHA256
+        or publisher.get("outerPublishReceiptSha256")
+        != RECONSTRUCTED_BASE_RECEIPT_SHA256
+    ):
+        raise ContractError("render-resource sidecar historical base mismatch")
+
+    authority = sidecar.get("authorityContract")
+    admission = sidecar.get("admission")
+    blocker = sidecar.get("blockerProjection")
+    summary = sidecar.get("summary")
+    for label, value in (
+        ("authorityContract", authority),
+        ("admission", admission),
+        ("blockerProjection", blocker),
+        ("summary", summary),
+    ):
+        if not isinstance(value, dict):
+            raise ContractError(f"render-resource sidecar {label} must be an object")
+        _require_bool(value.get("sourceExact"), False, f"sidecar {label}.sourceExact")
+        _require_bool(
+            value.get("runtimeExecutionAdmission"),
+            False,
+            f"sidecar {label}.runtimeExecutionAdmission",
+        )
+        _require_bool(value.get("product"), False, f"sidecar {label}.product")
+    _require_bool(
+        authority.get("actionTimeIoAllowed"),
+        False,
+        "sidecar authorityContract.actionTimeIoAllowed",
+    )
+    _require_bool(
+        blocker.get("actionTimeIoAllowed"),
+        False,
+        "sidecar blockerProjection.actionTimeIoAllowed",
+    )
+    return sidecar
+
+
+def _make_render_resource_link(sidecar_payload: bytes) -> dict[str, Any]:
+    sidecar = _validate_render_resource_sidecar_identity(sidecar_payload)
+    return {
+        "schema": RECONSTRUCTED_RENDER_RESOURCE_LINK_SCHEMA,
+        "formatVersion": 1,
+        "encoding": RECONSTRUCTED_ENCODING,
+        "effectAssetId": RECONSTRUCTED_EFFECT_ID,
+        "programId": RECONSTRUCTED_PROGRAM_ID,
+        "programVersion": RECONSTRUCTED_PROGRAM_VERSION,
+        "programSha256": RECONSTRUCTED_PROGRAM_SHA256,
+        "sidecarSchema": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_SCHEMA,
+        "sidecarFormatVersion": 1,
+        "sidecarAuthorityId": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_AUTHORITY_ID,
+        "sidecarDecisionProjectionSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256
+        ),
+        "sidecarReceiptSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256
+        ),
+        "sidecarRawSha256": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+        "sidecarByteCount": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT,
+        "sourceExact": False,
+        "runtimeExecutionAdmission": False,
+        "executeAdmission": False,
+        "submitAdmission": False,
+        "renderAdmission": False,
+        "productAdmission": False,
+        "sidecarUtf8Json": sidecar_payload.decode("utf-8"),
+    }
+
+
+def _make_render_resource_publish_receipt(
+    base_entry: dict[str, Any],
+    resource_link: dict[str, Any],
+) -> dict[str, Any]:
+    receipt = {
+        "schema": RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_SCHEMA,
+        "formatVersion": 1,
+        "receiptRole": RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_ROLE,
+        "payloadKind": RECONSTRUCTED_PAYLOAD_KIND,
+        "effectAssetId": RECONSTRUCTED_EFFECT_ID,
+        "artifactRevision": RECONSTRUCTED_ARTIFACT_REVISION,
+        "compilerRevision": RECONSTRUCTED_COMPILER_REVISION,
+        "sourceExact": False,
+        "runtimeExecutionAdmission": False,
+        "executeAdmission": False,
+        "submitAdmission": False,
+        "renderAdmission": False,
+        "productAdmission": False,
+        "programId": RECONSTRUCTED_PROGRAM_ID,
+        "programVersion": RECONSTRUCTED_PROGRAM_VERSION,
+        "programSha256": RECONSTRUCTED_PROGRAM_SHA256,
+        "baseRuntimeEntryProjectionSha256": sha256_bytes(
+            canonical_json_bytes(base_entry)
+        ),
+        "reconstructedRuntimeProgramSha256": sha256_bytes(
+            canonical_json_bytes(base_entry["reconstructedRuntimeProgram"])
+        ),
+        "basePublishReceiptSha256": base_entry["publishReceiptSha256"],
+        "renderResourceAuthorityLinkSha256": sha256_bytes(
+            canonical_json_bytes(resource_link)
+        ),
+        "sidecarRawSha256": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+        "sidecarReceiptSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256
+        ),
+        "sidecarDecisionProjectionSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256
+        ),
+        "toolDependencies": _current_render_resource_tool_dependencies(),
+        "receiptSha256Domain": RECONSTRUCTED_RECEIPT_DIGEST_DOMAIN,
+    }
+    receipt["receiptSha256"] = sha256_bytes(canonical_json_bytes(receipt))
+    return receipt
+
+
+def _validate_current_render_resource_tool_dependencies(value: Any) -> None:
+    if not isinstance(value, list) or len(value) != len(
+        RECONSTRUCTED_RENDER_RESOURCE_TOOL_DEPENDENCIES
+    ):
+        raise ContractError("render-resource tool dependency count mismatch")
+    expected = _current_render_resource_tool_dependencies()
+    for index, ((role, path), row) in enumerate(
+        zip(RECONSTRUCTED_RENDER_RESOURCE_TOOL_DEPENDENCIES, value, strict=True)
+    ):
+        label = f"render-resource receipt toolDependencies[{index}]"
+        if not isinstance(row, dict):
+            raise ContractError(f"{label} must be an object")
+        _require_exact_key_order(
+            row, ("role", "path", "hashDomain", "sha256"), label
+        )
+        if (
+            row["role"] != role
+            or row["path"] != path
+            or row["hashDomain"] != "TRACKED_SOURCE_EOL_CANONICAL_TEXT"
+        ):
+            raise ContractError(f"{label} identity mismatch")
+        _require_sha(row["sha256"], f"{label}.sha256")
+        if row != expected[index]:
+            raise ContractError(f"{label} current source hash mismatch")
+
+
+def validate_reconstructed_render_resource_publish_receipt(
+    receipt: Any,
+    base_entry: dict[str, Any],
+    resource_link: dict[str, Any],
+) -> None:
+    if not isinstance(receipt, dict):
+        raise ContractError("render-resource publish receipt must be an object")
+    _require_exact_key_order(
+        receipt,
+        RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_KEYS,
+        "render-resource publish receipt",
+    )
+    expected_scalars = {
+        "schema": RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_SCHEMA,
+        "formatVersion": 1,
+        "receiptRole": RECONSTRUCTED_RENDER_RESOURCE_RECEIPT_ROLE,
+        "payloadKind": RECONSTRUCTED_PAYLOAD_KIND,
+        "effectAssetId": RECONSTRUCTED_EFFECT_ID,
+        "artifactRevision": RECONSTRUCTED_ARTIFACT_REVISION,
+        "compilerRevision": RECONSTRUCTED_COMPILER_REVISION,
+        "sourceExact": False,
+        "runtimeExecutionAdmission": False,
+        "executeAdmission": False,
+        "submitAdmission": False,
+        "renderAdmission": False,
+        "productAdmission": False,
+        "programId": RECONSTRUCTED_PROGRAM_ID,
+        "programVersion": RECONSTRUCTED_PROGRAM_VERSION,
+        "programSha256": RECONSTRUCTED_PROGRAM_SHA256,
+        "baseRuntimeEntryProjectionSha256": RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256,
+        "reconstructedRuntimeProgramSha256": RECONSTRUCTED_BASE_LINK_SHA256,
+        "basePublishReceiptSha256": RECONSTRUCTED_BASE_RECEIPT_SHA256,
+        "renderResourceAuthorityLinkSha256": sha256_bytes(
+            canonical_json_bytes(resource_link)
+        ),
+        "sidecarRawSha256": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+        "sidecarReceiptSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256
+        ),
+        "sidecarDecisionProjectionSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256
+        ),
+        "receiptSha256Domain": RECONSTRUCTED_RECEIPT_DIGEST_DOMAIN,
+    }
+    if sha256_bytes(canonical_json_bytes(base_entry)) != (
+        RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256
+    ):
+        raise ContractError("render-resource receipt base projection mismatch")
+    for field, expected in expected_scalars.items():
+        actual = receipt[field]
+        if type(expected) is int:
+            _require_exact_int(actual, expected, f"render-resource receipt {field}")
+        elif type(expected) is bool:
+            _require_bool(actual, expected, f"render-resource receipt {field}")
+        elif actual != expected:
+            raise ContractError(f"render-resource receipt {field} mismatch")
+    _validate_current_render_resource_tool_dependencies(
+        receipt["toolDependencies"]
+    )
+    receipt_sha = _require_sha(
+        receipt["receiptSha256"], "render-resource receipt receiptSha256"
+    )
+    unsigned = dict(receipt)
+    del unsigned["receiptSha256"]
+    if receipt_sha != sha256_bytes(canonical_json_bytes(unsigned)):
+        raise ContractError("render-resource publish receipt self digest mismatch")
+
+
+def validate_reconstructed_runtime_entry(value: Any) -> None:
+    if not isinstance(value, dict):
+        raise ContractError("reconstructed runtime entry must be an object")
+    _require_exact_key_order(
+        value, RECONSTRUCTED_ENTRY_KEYS, "reconstructed runtime entry"
+    )
+    base_entry = {key: value[key] for key in RECONSTRUCTED_BASE_ENTRY_KEYS}
+    _validate_reconstructed_base_entry(base_entry)
+
+    resource_link = value["reconstructedRenderResourceAuthority"]
+    if not isinstance(resource_link, dict):
+        raise ContractError("reconstructed render-resource link must be an object")
+    _require_exact_key_order(
+        resource_link,
+        RECONSTRUCTED_RENDER_RESOURCE_LINK_KEYS,
+        "reconstructed render-resource link",
+    )
+    expected_scalars = {
+        "schema": RECONSTRUCTED_RENDER_RESOURCE_LINK_SCHEMA,
+        "formatVersion": 1,
+        "encoding": RECONSTRUCTED_ENCODING,
+        "effectAssetId": RECONSTRUCTED_EFFECT_ID,
+        "programId": RECONSTRUCTED_PROGRAM_ID,
+        "programVersion": RECONSTRUCTED_PROGRAM_VERSION,
+        "programSha256": RECONSTRUCTED_PROGRAM_SHA256,
+        "sidecarSchema": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_SCHEMA,
+        "sidecarFormatVersion": 1,
+        "sidecarAuthorityId": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_AUTHORITY_ID,
+        "sidecarDecisionProjectionSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256
+        ),
+        "sidecarReceiptSha256": (
+            RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256
+        ),
+        "sidecarRawSha256": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+        "sidecarByteCount": RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT,
+        "sourceExact": False,
+        "runtimeExecutionAdmission": False,
+        "executeAdmission": False,
+        "submitAdmission": False,
+        "renderAdmission": False,
+        "productAdmission": False,
+    }
+    for field, expected in expected_scalars.items():
+        actual = resource_link[field]
+        if type(expected) is int:
+            _require_exact_int(actual, expected, f"render-resource link {field}")
+        elif type(expected) is bool:
+            _require_bool(actual, expected, f"render-resource link {field}")
+        elif actual != expected:
+            raise ContractError(f"render-resource link {field} mismatch")
+    sidecar_text = resource_link["sidecarUtf8Json"]
+    if not isinstance(sidecar_text, str):
+        raise ContractError("render-resource sidecarUtf8Json must be a string")
+    try:
+        sidecar_payload = sidecar_text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ContractError("render-resource sidecarUtf8Json is not UTF-8") from exc
+    _validate_render_resource_sidecar_identity(sidecar_payload)
+
+    receipt = value["renderResourcePublishReceipt"]
+    validate_reconstructed_render_resource_publish_receipt(
+        receipt, base_entry, resource_link
+    )
+    outer_receipt_sha = _require_sha(
+        value["renderResourcePublishReceiptSha256"],
+        "render-resource outer publish receipt SHA",
+    )
+    if outer_receipt_sha != sha256_bytes(canonical_json_bytes(receipt)):
+        raise ContractError("render-resource outer publish receipt SHA mismatch")
+
+
+def prepare_reconstructed_runtime_entry(
+    candidate_path: Path,
+    render_resource_authority_path: Path,
+) -> dict[str, Any]:
     try:
         candidate_payload = candidate_path.read_bytes()
     except OSError as exc:
         raise ContractError(
             f"cannot read reconstructed runtime candidate {candidate_path}: {exc}"
         ) from exc
+    try:
+        sidecar_payload = render_resource_authority_path.read_bytes()
+    except OSError as exc:
+        raise ContractError(
+            "cannot read reconstructed render-resource authority "
+            f"{render_resource_authority_path}: {exc}"
+        ) from exc
     link = _make_reconstructed_link(candidate_payload)
     receipt = _make_reconstructed_publish_receipt(link)
-    entry = {
+    base_entry = {
         "payloadKind": RECONSTRUCTED_PAYLOAD_KIND,
         "effectAssetId": RECONSTRUCTED_EFFECT_ID,
         "artifactRevision": RECONSTRUCTED_ARTIFACT_REVISION,
@@ -1820,6 +2368,19 @@ def prepare_reconstructed_runtime_entry(candidate_path: Path) -> dict[str, Any]:
         "publishReceiptSha256": sha256_bytes(canonical_json_bytes(receipt)),
         "publishReceipt": receipt,
         "reconstructedRuntimeProgram": link,
+    }
+    _validate_reconstructed_base_entry(base_entry)
+    resource_link = _make_render_resource_link(sidecar_payload)
+    resource_receipt = _make_render_resource_publish_receipt(
+        base_entry, resource_link
+    )
+    entry = {
+        **base_entry,
+        "renderResourcePublishReceiptSha256": sha256_bytes(
+            canonical_json_bytes(resource_receipt)
+        ),
+        "renderResourcePublishReceipt": resource_receipt,
+        "reconstructedRenderResourceAuthority": resource_link,
     }
     validate_reconstructed_runtime_entry(entry)
     return entry
@@ -2023,7 +2584,9 @@ def _command_prepare(args: argparse.Namespace) -> None:
 
 
 def _command_prepare_reconstructed(args: argparse.Namespace) -> None:
-    entry = prepare_reconstructed_runtime_entry(args.candidate)
+    entry = prepare_reconstructed_runtime_entry(
+        args.candidate, args.render_resource_authority
+    )
     _write_single_json(args.output, entry)
 
 
@@ -2058,6 +2621,9 @@ def make_parser() -> argparse.ArgumentParser:
         help="authenticate and embed the frozen Product-false runtime program",
     )
     prepare_reconstructed.add_argument("--candidate", type=Path, required=True)
+    prepare_reconstructed.add_argument(
+        "--render-resource-authority", type=Path, required=True
+    )
     prepare_reconstructed.add_argument("--output", type=Path, required=True)
     prepare_reconstructed.set_defaults(func=_command_prepare_reconstructed)
 

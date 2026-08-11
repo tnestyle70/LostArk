@@ -44,6 +44,8 @@ $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components
 $compiledRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Compiled'))
 $reconstructedProgramRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\Imported\Artist\Candidates'))
+$reconstructedRenderResourceRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\Imported\Artist\Materials'))
 $derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
@@ -1094,7 +1096,8 @@ try {
             Assert-ExactPropertyOrder $entry @(
                 'effectAssetId',
                 'payloadKind',
-                'reconstructedRuntimeProgramPath') `
+                'reconstructedRuntimeProgramPath',
+                'reconstructedRenderResourceAuthorityPath') `
                 'Reconstructed source catalog entry'
             if ($effectAssetId -cne 'effect.artist.skill.31470') {
                 throw "Reconstructed source catalog effectAssetId must be effect.artist.skill.31470: $effectAssetId"
@@ -1105,6 +1108,12 @@ try {
                 'Effects/Imported/Artist/Candidates/' `
                 $reconstructedProgramRoot `
                 'skill.31470.reconstructed-runtime-program.candidate.json'
+            $renderResourcePath = Get-RequiredProperty $entry `
+                'reconstructedRenderResourceAuthorityPath' String
+            $renderResourceFile = Resolve-SafeDataFile $renderResourcePath `
+                'Effects/Imported/Artist/Materials/' `
+                $reconstructedRenderResourceRoot `
+                'skill.31470.reconstructed-render-resource-authority.receipt.json'
             $preparedEntryPath = Join-Path ([IO.Path]::GetTempPath()) `
                 ('LostArkReconstructedEffect-' + `
                     [Guid]::NewGuid().ToString('N') + '.json')
@@ -1112,6 +1121,7 @@ try {
                 Invoke-DerivedArtifactTool @(
                     'prepare-reconstructed-runtime-entry',
                     '--candidate', $candidateFile,
+                    '--render-resource-authority', $renderResourceFile,
                     '--output', $preparedEntryPath)
                 $preparedEntry = Read-JsonDocument $preparedEntryPath
                 $preparedEffectAssetId = Get-RequiredProperty $preparedEntry `
@@ -1774,8 +1784,25 @@ try {
                             'productAdmission' Boolean) -or
                         (Get-RequiredProperty $entry `
                             'publishReceiptSha256' String) -cne
-                            [string]$expected.publishReceiptSha256) {
+                            [string]$expected.publishReceiptSha256 -or
+                        (Get-RequiredProperty $entry `
+                            'renderResourcePublishReceiptSha256' String) -cne
+                            [string]$expected.renderResourcePublishReceiptSha256) {
                         throw "Reconstructed runtime catalog entry failed round-trip validation: $id"
+                    }
+                    $resourceLink = Get-RequiredProperty $entry `
+                        'reconstructedRenderResourceAuthority' Object
+                    foreach ($falseGate in @(
+                            'sourceExact',
+                            'runtimeExecutionAdmission',
+                            'executeAdmission',
+                            'submitAdmission',
+                            'renderAdmission',
+                            'productAdmission')) {
+                        if ([bool](Get-RequiredProperty $resourceLink `
+                                $falseGate Boolean)) {
+                            throw "Reconstructed render-resource admission changed: $id/$falseGate"
+                        }
                     }
                     continue
                 }
