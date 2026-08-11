@@ -299,6 +299,47 @@ namespace
 		}
 	}
 
+	/* Two co-located Deploy walls that share every authored simulation value are
+	   one wall to the author. They stay two document elements because an element
+	   owns exactly one source placement, but the outliner, the authoring panel and
+	   the Solo scope treat them as a single emitter. Profiles whose emitters were
+	   tuned apart (the 3705102 wall ring) stay split, so a linked Apply can never
+	   overwrite a direction the author set per wall. */
+	bool_t HasSharedEmitterAuthoring(
+		const Client::DESTRUCTION_SIMULATION_ELEMENT& left,
+		const Client::DESTRUCTION_SIMULATION_ELEMENT& right)
+	{
+		return left.vSpawnOffset.x == right.vSpawnOffset.x &&
+			left.vSpawnOffset.y == right.vSpawnOffset.y &&
+			left.vSpawnOffset.z == right.vSpawnOffset.z &&
+			left.vDirection.x == right.vDirection.x &&
+			left.vDirection.y == right.vDirection.y &&
+			left.vDirection.z == right.vDirection.z &&
+			left.fSpeedMetersPerSecond == right.fSpeedMetersPerSecond &&
+			left.fGravityScale == right.fGravityScale &&
+			left.fLifetimeSeconds == right.fLifetimeSeconds &&
+			left.Trigger.eKind == right.Trigger.eKind &&
+			left.Trigger.fTimeSeconds == right.Trigger.fTimeSeconds &&
+			left.Trigger.receiverCollisionId ==
+				right.Trigger.receiverCollisionId;
+	}
+
+	bool_t AreEmittersAuthoredAsOneWall(
+		const Client::DESTRUCTION_SIMULATION_PROFILE& profile)
+	{
+		if (2u > profile.Elements.size())
+			return false;
+		for (size_t index = 1u; index < profile.Elements.size(); ++index)
+		{
+			if (!HasSharedEmitterAuthoring(
+				profile.Elements[0], profile.Elements[index]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	const char_t* SimulationScopeLabel(
 		const DESTRUCTION_SIMULATION_SCOPE scope)
 	{
@@ -4563,9 +4604,20 @@ void Client::CMapTool::Select_DestructionSimulationElement(
 		if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == scope ||
 			DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == scope)
 		{
-			m_pDestructionSimulationController->Request_SetScope(
-				DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
-				element->elementId);
+			const DESTRUCTION_SIMULATION_PROFILE* selectedProfile =
+				Get_SelectedDestructionSimulationProfile();
+			if (nullptr != selectedProfile &&
+				AreEmittersAuthoredAsOneWall(*selectedProfile))
+			{
+				m_pDestructionSimulationController->Request_SetScope(
+					DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+			}
+			else
+			{
+				m_pDestructionSimulationController->Request_SetScope(
+					DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+					element->elementId);
+			}
 		}
 	}
 }
@@ -6950,9 +7002,17 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 	ImGui::BeginDisabled(!canSoloEmitter);
 	if (ImGui::RadioButton("Solo Emitter", soloEmitter))
 	{
-		m_pDestructionSimulationController->Request_SetScope(
-			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
-			m_SelectedDestructionSimulationElementId);
+		if (hasProfile && AreEmittersAuthoredAsOneWall(*profile))
+		{
+			m_pDestructionSimulationController->Request_SetScope(
+				DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+		}
+		else
+		{
+			m_pDestructionSimulationController->Request_SetScope(
+				DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+				m_SelectedDestructionSimulationElementId);
+		}
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -7095,8 +7155,12 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 			ImGui::TextDisabled("group %s | %.2f s | %zu mesh emitters",
 				profile.groupId.c_str(), profile.fDurationSeconds,
 				profile.Elements.size());
+			const bool_t linkedEmitters = AreEmittersAuthoredAsOneWall(profile);
 			for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
 			{
+				/* Linked walls render once, under the first element's identity. */
+				if (linkedEmitters && &element != &profile.Elements.front())
+					continue;
 				const DESTRUCTION_SIMULATION_ELEMENT_FRAME* runtimeElement = nullptr;
 				if (nullptr != frame && frame->profileId == profile.profileId)
 				{
@@ -7129,11 +7193,33 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 				ImGui::PushID(element.elementId.c_str());
 				const bool_t elementSelected = profileSelected &&
 					element.elementId == m_SelectedDestructionSimulationElementId;
+				size_t linkedFragmentCount = 0u;
+				if (linkedEmitters && nullptr != frame &&
+					frame->profileId == profile.profileId)
+				{
+					for (const DESTRUCTION_SIMULATION_ELEMENT_FRAME& linkedFrame :
+						frame->Elements)
+					{
+						linkedFragmentCount += linkedFrame.Fragments.size();
+					}
+				}
 				std::ostringstream emitterLabel;
-				emitterLabel << element.elementId << " (Emitter";
-				if (nullptr != runtimeElement)
-					emitterLabel << ": " << runtimeElement->Fragments.size();
-				emitterLabel << ")##emitter";
+				if (linkedEmitters)
+				{
+					emitterLabel << "Wall Emitters ("
+						<< profile.Elements.size() << " walls";
+					if (0u != linkedFragmentCount)
+						emitterLabel << ": " << linkedFragmentCount;
+					emitterLabel << ")";
+				}
+				else
+				{
+					emitterLabel << element.elementId << " (Emitter";
+					if (nullptr != runtimeElement)
+						emitterLabel << ": " << runtimeElement->Fragments.size();
+					emitterLabel << ")";
+				}
+				emitterLabel << "##emitter";
 				ImGuiTreeNodeFlags emitterFlags =
 					ImGuiTreeNodeFlags_OpenOnArrow |
 					ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -7152,14 +7238,26 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 				}
 				if (ImGui::IsItemHovered())
 				{
-					ImGui::SetTooltip(
-						"Deploy %llu\nvelocity = direction x %.3f m/s",
-						static_cast<unsigned long long>(
-							element.sourceRuntimePlacementId),
-						element.fSpeedMetersPerSecond);
+					if (linkedEmitters)
+					{
+						ImGui::SetTooltip(
+							"%zu linked walls authored as one\n"
+							"velocity = direction x %.3f m/s",
+							profile.Elements.size(),
+							element.fSpeedMetersPerSecond);
+					}
+					else
+					{
+						ImGui::SetTooltip(
+							"Deploy %llu\nvelocity = direction x %.3f m/s",
+							static_cast<unsigned long long>(
+								element.sourceRuntimePlacementId),
+							element.fSpeedMetersPerSecond);
+					}
 				}
 				ImGui::SameLine();
-				if (ImGui::SmallButton("Solo Emitter + Play"))
+				if (ImGui::SmallButton(linkedEmitters ?
+					"Play Linked Walls" : "Solo Emitter + Play"))
 				{
 					if (!profileSelected)
 						Select_DestructionSimulationProfile(profile.profileId);
@@ -7176,14 +7274,23 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 						if (alreadyStaged || Request_StageDestructionSimulation(
 							*selected, false, true))
 						{
-							m_pDestructionSimulationController->Request_SetScope(
-								DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
-								element.elementId);
+							if (linkedEmitters)
+							{
+								m_pDestructionSimulationController->Request_SetScope(
+									DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+							}
+							else
+							{
+								m_pDestructionSimulationController->Request_SetScope(
+									DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+									element.elementId);
+							}
 							m_pDestructionSimulationController->Request_Reset();
 							m_pDestructionSimulationController->Request_Play();
-							m_DestructionSimulationStatus =
+							m_DestructionSimulationStatus = linkedEmitters ?
+								"Linked wall audition requested: " + profile.profileId :
 								"Solo mesh emitter audition requested: " +
-								element.elementId;
+									element.elementId;
 						}
 					}
 				}
@@ -7197,14 +7304,32 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 					}
 					else
 					{
+						std::vector<const DESTRUCTION_SIMULATION_ELEMENT_FRAME*>
+							ownerFrames;
+						if (linkedEmitters)
+						{
+							ownerFrames.reserve(frame->Elements.size());
+							for (const DESTRUCTION_SIMULATION_ELEMENT_FRAME& linkedFrame :
+								frame->Elements)
+							{
+								ownerFrames.push_back(&linkedFrame);
+							}
+						}
+						else
+						{
+							ownerFrames.push_back(runtimeElement);
+						}
+						for (const DESTRUCTION_SIMULATION_ELEMENT_FRAME* ownerFrame :
+							ownerFrames)
+						{
 						ImGui::TextDisabled(
 							"Deploy %llu | %s | life %.2f",
 							static_cast<unsigned long long>(
-								runtimeElement->sourceRuntimePlacementId),
-							SimulationElementStateLabel(runtimeElement->eState),
-							runtimeElement->fNormalizedLife);
+								ownerFrame->sourceRuntimePlacementId),
+							SimulationElementStateLabel(ownerFrame->eState),
+							ownerFrame->fNormalizedLife);
 						for (const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& fragment :
-							runtimeElement->Fragments)
+							ownerFrame->Fragments)
 						{
 							if (!filter.empty() &&
 								!MatchesFilter(fragment.fragmentId, filter.c_str()) &&
@@ -7228,7 +7353,7 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 								fragmentSelected, 0, ImVec2(rowWidth, 0.f)))
 							{
 								Select_DestructionSimulationFragment(
-									element.elementId, fragment.fragmentId);
+									ownerFrame->elementId, fragment.fragmentId);
 							}
 							if (ImGui::IsItemHovered())
 							{
@@ -7240,7 +7365,7 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 							if (ImGui::SmallButton("Solo + Play"))
 							{
 								Select_DestructionSimulationFragment(
-									element.elementId, fragment.fragmentId);
+									ownerFrame->elementId, fragment.fragmentId);
 								if (m_SelectedDestructionSimulationFragmentId ==
 									fragment.fragmentId)
 								{
@@ -7255,6 +7380,7 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 								}
 							}
 							ImGui::PopID();
+						}
 						}
 					}
 					ImGui::TreePop();
@@ -7363,10 +7489,29 @@ void Client::CMapTool::Render_DestructionSimulationDetail()
 		}
 	}
 
-	ImGui::SeparatorText("Emitter Authoring (applies to all 12 fragments)");
-	ImGui::TextWrapped("%s", draft.elementId.c_str());
-	ImGui::Text("Source Deploy placement: %llu",
-		static_cast<unsigned long long>(draft.sourceRuntimePlacementId));
+	const bool_t linkedEmitters = AreEmittersAuthoredAsOneWall(*profile);
+	if (linkedEmitters)
+	{
+		ImGui::SeparatorText(
+			"Emitter Authoring (applies to every linked wall)");
+		ImGui::TextWrapped("%zu walls authored as one emitter",
+			profile->Elements.size());
+		for (const DESTRUCTION_SIMULATION_ELEMENT& linked : profile->Elements)
+		{
+			ImGui::BulletText("%s | Deploy %llu",
+				linked.elementId.c_str(),
+				static_cast<unsigned long long>(
+					linked.sourceRuntimePlacementId));
+		}
+	}
+	else
+	{
+		ImGui::SeparatorText(
+			"Emitter Authoring (applies to all 12 fragments)");
+		ImGui::TextWrapped("%s", draft.elementId.c_str());
+		ImGui::Text("Source Deploy placement: %llu",
+			static_cast<unsigned long long>(draft.sourceRuntimePlacementId));
+	}
 	ImGui::TextDisabled(
 		"These are authored simulation semantics. PhysX receives the derived velocity and gravity policy.");
 
@@ -7488,8 +7633,38 @@ void Client::CMapTool::Render_DestructionSimulationDetail()
 		const bool_t wasPlaying =
 			DESTRUCTION_SIMULATION_PLAYBACK_STATE::PLAYING ==
 				m_pDestructionSimulationController->Get_Snapshot().eState;
-		if (m_DestructionSimulationDocument.Update_Element(
-			m_SelectedDestructionSimulationProfileId, draft, status))
+		/* Copy the identities first: Update_Element mutates the document that
+		   `profile` points into. Each linked wall keeps its own elementId,
+		   source placement and suppression aliases; only the authored
+		   simulation values are shared. */
+		bool_t committed = false;
+		if (linkedEmitters)
+		{
+			std::vector<DESTRUCTION_SIMULATION_ELEMENT> linkedElements =
+				profile->Elements;
+			committed = true;
+			for (DESTRUCTION_SIMULATION_ELEMENT& linked : linkedElements)
+			{
+				linked.vSpawnOffset = draft.vSpawnOffset;
+				linked.vDirection = draft.vDirection;
+				linked.fSpeedMetersPerSecond = draft.fSpeedMetersPerSecond;
+				linked.fGravityScale = draft.fGravityScale;
+				linked.fLifetimeSeconds = draft.fLifetimeSeconds;
+				linked.Trigger = draft.Trigger;
+				if (!m_DestructionSimulationDocument.Update_Element(
+					m_SelectedDestructionSimulationProfileId, linked, status))
+				{
+					committed = false;
+					break;
+				}
+			}
+		}
+		else
+		{
+			committed = m_DestructionSimulationDocument.Update_Element(
+				m_SelectedDestructionSimulationProfileId, draft, status);
+		}
+		if (committed)
 		{
 			m_bDestructionSimulationElementDraftDirty = false;
 			m_DestructionSimulationStatus = status + "; Save required";
@@ -7524,16 +7699,25 @@ void Client::CMapTool::Render_DestructionSimulationDetail()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	if (ImGui::Button("Solo Emitter + Play"))
+	if (ImGui::Button(linkedEmitters ?
+		"Play Linked Walls" : "Solo Emitter + Play"))
 	{
 		const bool_t staged = m_bDestructionSimulationElementDraftDirty ?
 			Stage_DestructionElementDraftPreview() :
 			Request_StageDestructionSimulation(*profile, false, true);
 		if (staged)
 		{
-			m_pDestructionSimulationController->Request_SetScope(
-				DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
-				draft.elementId);
+			if (linkedEmitters)
+			{
+				m_pDestructionSimulationController->Request_SetScope(
+					DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+			}
+			else
+			{
+				m_pDestructionSimulationController->Request_SetScope(
+					DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+					draft.elementId);
+			}
 			m_pDestructionSimulationController->Request_Reset();
 			m_pDestructionSimulationController->Request_Play();
 		}

@@ -81,7 +81,114 @@
           "sourceRuntimePlacementId": "17150846598057876717",
           "suppressionAliasPlacementIds": ["10426387515393336411"],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.6543957, 0.12, -0.7461532],
+          "direction": [-0.027661, 0.12, -0.9923885],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.9863801195242004116",
+          "sourceRuntimePlacementId": "9863801195242004116",
+          "suppressionAliasPlacementIds": ["12598937882346321836"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.027661, 0.12, -0.9923885],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.11190594702002930167.preview",
+      "groupId": "destroyable.group.valtan.deploy.11190594702002930167",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.11190594702002930167",
+          "sourceRuntimePlacementId": "11190594702002930167",
+          "suppressionAliasPlacementIds": ["12150087330863237518"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9926594, 0.12, 0.0150767],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13195423984589183291",
+          "sourceRuntimePlacementId": "13195423984589183291",
+          "suppressionAliasPlacementIds": ["16879630230908101275"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9926594, 0.12, 0.0150767],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.9522135662464469029.preview",
+      "groupId": "destroyable.group.valtan.deploy.9522135662464469029",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.9522135662464469029",
+          "sourceRuntimePlacementId": "9522135662464469029",
+          "suppressionAliasPlacementIds": ["9606721395667492840"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.0133771, 0.12, 0.9926838],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.11909088500311713272",
+          "sourceRuntimePlacementId": "11909088500311713272",
+          "suppressionAliasPlacementIds": ["15375899663358889626"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.0133771, 0.12, 0.9926838],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.15675921917269125843.preview",
+      "groupId": "destroyable.group.valtan.deploy.15675921917269125843",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.15675921917269125843",
+          "sourceRuntimePlacementId": "15675921917269125843",
+          "suppressionAliasPlacementIds": ["15212127038612238715"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9927583, 0.12, -0.0055636],
+          "speedMetersPerSecond": 10.5,
+          "gravityScale": 1.25,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13221745590928612509",
+          "sourceRuntimePlacementId": "13221745590928612509",
+          "suppressionAliasPlacementIds": ["10358956607506909163"],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9927583, 0.12, -0.0055636],
           "speedMetersPerSecond": 10.5,
           "gravityScale": 1.25,
           "lifetimeSeconds": 4,

@@ -14,7 +14,28 @@
     },
     {
       "groupId": "destroyable.group.valtan.deploy.17150846598057876717",
-      "memberPlacementIds": ["17150846598057876717", "10426387515393336411"],
+      "memberPlacementIds": ["17150846598057876717", "10426387515393336411", "9863801195242004116", "12598937882346321836"],
+      "navigationRegionIds": [],
+      "navPolarity": "BLOCK_WHILE_INTACT",
+      "initialState": "INTACT"
+    },
+    {
+      "groupId": "destroyable.group.valtan.deploy.11190594702002930167",
+      "memberPlacementIds": ["11190594702002930167", "12150087330863237518", "13195423984589183291", "16879630230908101275"],
+      "navigationRegionIds": [],
+      "navPolarity": "BLOCK_WHILE_INTACT",
+      "initialState": "INTACT"
+    },
+    {
+      "groupId": "destroyable.group.valtan.deploy.9522135662464469029",
+      "memberPlacementIds": ["9522135662464469029", "9606721395667492840", "11909088500311713272", "15375899663358889626"],
+      "navigationRegionIds": [],
+      "navPolarity": "BLOCK_WHILE_INTACT",
+      "initialState": "INTACT"
+    },
+    {
+      "groupId": "destroyable.group.valtan.deploy.15675921917269125843",
+      "memberPlacementIds": ["15675921917269125843", "15212127038612238715", "13221745590928612509", "10358956607506909163"],
       "navigationRegionIds": [],
       "navPolarity": "BLOCK_WHILE_INTACT",
       "initialState": "INTACT"
@@ -22,7 +43,10 @@
   ],
   "mutations": [
     { "mutationId": "mutation.valtan.wall.3705102.break", "groupId": "destroyable.group.valtan.wall.3705102", "targetState": "FRACTURED", "breakingDurationMs": 250 },
-    { "mutationId": "mutation.valtan.group.dae1310b110ed26d.fracture", "groupId": "destroyable.group.valtan.deploy.17150846598057876717", "targetState": "FRACTURED", "breakingDurationMs": 250 }
+    { "mutationId": "mutation.valtan.group.dae1310b110ed26d.fracture", "groupId": "destroyable.group.valtan.deploy.17150846598057876717", "targetState": "FRACTURED", "breakingDurationMs": 250 },
+    { "mutationId": "mutation.valtan.group.11190594702002930167.fracture", "groupId": "destroyable.group.valtan.deploy.11190594702002930167", "targetState": "FRACTURED", "breakingDurationMs": 250 },
+    { "mutationId": "mutation.valtan.group.9522135662464469029.fracture", "groupId": "destroyable.group.valtan.deploy.9522135662464469029", "targetState": "FRACTURED", "breakingDurationMs": 250 },
+    { "mutationId": "mutation.valtan.group.15675921917269125843.fracture", "groupId": "destroyable.group.valtan.deploy.15675921917269125843", "targetState": "FRACTURED", "breakingDurationMs": 250 }
   ],
   "bindings": [
     {
@@ -38,6 +62,36 @@
     {
       "bindingId": "binding.valtan.group.dae1310b110ed26d.1cb1b2d6a7cdf5e7",
       "mutationId": "mutation.valtan.group.dae1310b110ed26d.fracture",
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "stageId": "WALL_CHARGE",
+      "triggerKind": "STAGE_TIME",
+      "offsetMs": 0,
+      "receiverCollisionId": "",
+      "enabled": false
+    },
+    {
+      "bindingId": "binding.valtan.group.11190594702002930167.preview",
+      "mutationId": "mutation.valtan.group.11190594702002930167.fracture",
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "stageId": "WALL_CHARGE",
+      "triggerKind": "STAGE_TIME",
+      "offsetMs": 0,
+      "receiverCollisionId": "",
+      "enabled": false
+    },
+    {
+      "bindingId": "binding.valtan.group.9522135662464469029.preview",
+      "mutationId": "mutation.valtan.group.9522135662464469029.fracture",
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "stageId": "WALL_CHARGE",
+      "triggerKind": "STAGE_TIME",
+      "offsetMs": 0,
+      "receiverCollisionId": "",
+      "enabled": false
+    },
+    {
+      "bindingId": "binding.valtan.group.15675921917269125843.preview",
+      "mutationId": "mutation.valtan.group.15675921917269125843.fracture",
       "patternId": "VALTAN_ARMOR_BREAK_OPENING",
       "stageId": "WALL_CHARGE",
       "triggerKind": "STAGE_TIME",

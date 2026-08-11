@@ -22,9 +22,12 @@ Destruction Profile
 
 - `destroyable.group.valtan.wall.3705102.preview`: `DEPLOY_ITR_02306` 다섯 emitter가 generic stone을
   사용하므로 All Fragments에서 최대 `5 * 12 = 60`개의 presentation-only actor를 만든다.
-- `destroyable.group.valtan.deploy.17150846598057876717.preview`: `DEPLOY_ITR_02316` source
-  `17150846598057876717` 하나가 12개 exact-geometry macro-shard를 방출한다. 거의 같은 위치의
-  `10426387515393336411`은 suppress-only alias라 actor를 추가하지 않는다.
+- `destroyable.group.valtan.deploy.17150846598057876717.preview`: 인접한 `DEPLOY_ITR_02316` 벽
+  두 칸이 각각 12개 exact-geometry macro-shard를 방출해 All Fragments에서 24개가 된다. source는
+  `17150846598057876717`과 `9863801195242004116`이고, 각 source와 0.000137m만 떨어진
+  `10426387515393336411`, `12598937882346321836`은 suppress-only alias라 actor를 추가하지 않는다.
+  네 ID 모두 같은 WorldEvents group member이며 exact recipe는 placement가 아니라
+  `sourceDeployAssetId`로 조회되므로 두 벽이 같은 12-piece recipe를 공유한다.
 
 두 번째 lane의 12조각은 원본 fractured mesh의 17,731 triangle을 빠짐없이 보존하지만, 원본 rigid-body
 graph가 없어서 프로젝트가 4x3으로 분할한 `PROJECT_AUTHORED` 물리 표현이다. source-exact physics라고
@@ -193,10 +196,16 @@ fragmentId <elementId>.fragment.00 ... fragment.11
 
 ```text
 profileId  destroyable.group.valtan.deploy.17150846598057876717.preview
-elementId  debris.17150846598057876717
+
+element 1  debris.17150846598057876717
 source     17150846598057876717
 alias      10426387515393336411
 fragments  debris.17150846598057876717.fragment.00 ... fragment.11
+
+element 2  debris.9863801195242004116
+source     9863801195242004116
+alias      12598937882346321836
+fragments  debris.9863801195242004116.fragment.00 ... fragment.11
 ```
 
 fragment ID와 12-piece recipe는 runtime이 stable element ID와 ordinal로 결정한다. fragment를 JSON의
