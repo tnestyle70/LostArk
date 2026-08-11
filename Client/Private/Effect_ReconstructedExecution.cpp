@@ -13,6 +13,54 @@
 #include <string_view>
 #include <utility>
 
+struct Client::EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA final
+{
+	enum class MODULE_OPCODE : uint8_t
+	{
+		REQUIRED_TIMING,
+		LIFETIME_TIMING,
+		SIZE,
+		VELOCITY,
+		COLOR_OVER_LIFE,
+		ROTATION,
+		ACCELERATION,
+		ROTATION_RATE,
+		SIZE_MULTIPLY_LIFE,
+		CYLINDER_Z,
+		LOCATION,
+		GROUND,
+		TYPE_DATA_MESH,
+		DYNAMIC_PARAMETER,
+		SPAWN_TIMING,
+		END
+	};
+
+	struct MODULE_OPERATION final
+	{
+		const EFFECT_RECONSTRUCTED_EXECUTION_MODULE* pPlanModule = nullptr;
+		const EFFECT_RUNTIME_PROGRAM_MODULE* pProgramModule = nullptr;
+		const EFFECT_RUNTIME_PROGRAM_HANDLER* pHandler = nullptr;
+		MODULE_OPCODE eOpcode = MODULE_OPCODE::END;
+		std::array<const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION*, 4u>
+			Distributions{};
+		uint32_t iDistributionCount = 0u;
+	};
+
+	struct EMITTER_OPERATION final
+	{
+		uint32_t iSelectionIndex = 0u;
+		const EFFECT_RECONSTRUCTED_EXECUTION_SCHEDULE* pPlanSchedule = nullptr;
+		const EFFECT_RECONSTRUCTED_EXECUTION_EMITTER* pPlanEmitter = nullptr;
+		const EFFECT_RUNTIME_PROGRAM_ACTION_SCHEDULE* pProgramSchedule = nullptr;
+		const EFFECT_RUNTIME_PROGRAM_EMITTER* pProgramEmitter = nullptr;
+		std::vector<MODULE_OPERATION> Modules;
+		bool_t bCylinderSurfaceOnly = false;
+		bool_t bCylinderVelocity = false;
+	};
+
+	std::vector<EMITTER_OPERATION> Emitters;
+};
+
 namespace
 {
 	using namespace Client;
@@ -1928,7 +1976,6 @@ namespace
 		return true;
 	}
 
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	uint32_t Next_Random(uint32_t& iInOutState)
 	{
 		uint32_t Value = iInOutState;
@@ -1939,7 +1986,7 @@ namespace
 		return iInOutState;
 	}
 
-	struct SIMULATED_PARTICLE final
+	struct TIMING_PARTICLE final
 	{
 		std::string strOccurrenceId;
 		uint32_t iLoopIndex = 0u;
@@ -1956,10 +2003,10 @@ namespace
 		EFFECT_RECONSTRUCTED_CPU_EMITTER_STATE Public;
 		double fSpawnAccumulator = 0.0;
 		size_t iNextBurst = 0u;
-		std::vector<SIMULATED_PARTICLE> Particles;
+		std::vector<TIMING_PARTICLE> Particles;
 	};
 
-	bool_t Spawn_InspectionParticles(
+	bool_t Spawn_TimingParticles(
 		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
 		const EFFECT_RECONSTRUCTED_EXECUTION_EMITTER& Emitter,
 		MUTABLE_EMITTER_STATE& State,
@@ -1979,7 +2026,7 @@ namespace
 			Plan.Get_Distributions().at(Emitter.strLifetimeDistributionId);
 		if (!LifetimeDistribution.bCpuTimingExecutable)
 			return Reject(strOutError,
-				"Reconstructed CPU inspection lifetime evaluator is not executable.");
+				"Reconstructed fixed-step lifetime evaluator is not executable.");
 		for (uint32_t Index = 0u; Index < SpawnCount; ++Index)
 		{
 			const uint32_t OccurrenceRandomValue =
@@ -1995,8 +2042,8 @@ namespace
 				LifetimeDistribution, fEmitterTime, RandomUnits)[0u];
 			if (!Is_Finite(Lifetime) || Lifetime <= 0.0)
 				return Reject(strOutError,
-					"Reconstructed CPU inspection refuses a non-positive lifetime fallback.");
-			SIMULATED_PARTICLE Particle;
+					"Reconstructed fixed-step refuses a non-positive lifetime fallback.");
+			TIMING_PARTICLE Particle;
 			Particle.iLoopIndex = iLoopIndex;
 			Particle.iSpawnSerial = State.Public.iNextSpawnSerial++;
 			Particle.strOccurrenceId = Build_OccurrenceId(
@@ -2011,6 +2058,1768 @@ namespace
 		}
 		return true;
 	}
+
+	template <size_t Count>
+	bool_t Is_Finite(const std::array<double, Count>& Values)
+	{
+		return std::all_of(Values.begin(), Values.end(),
+			[](const double Value) { return Is_Finite(Value); });
+	}
+
+	struct FIXED_STEP_SIMULATION final
+	{
+		uint64_t iFixedStepIndex = 0u;
+		double fSampleTimeSeconds = 0.0;
+		std::map<std::string, MUTABLE_EMITTER_STATE, std::less<>> States;
+	};
+
+	bool_t Simulate_FixedSteps(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const uint64_t iTargetSteps,
+		FIXED_STEP_SIMULATION& OutSimulation,
+		std::string& strOutError)
+	{
+		if (iTargetSteps >
+			static_cast<uint64_t>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ) * 60u)
+		{
+			return Reject(strOutError,
+				"Reconstructed fixed-step target exceeds the bounded window.");
+		}
+		FIXED_STEP_SIMULATION Staged;
+		Staged.iFixedStepIndex = iTargetSteps;
+		Staged.fSampleTimeSeconds = static_cast<double>(iTargetSteps) /
+			static_cast<double>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ);
+		for (const std::string& EmitterId : Plan.Get_EmitterOrder())
+		{
+			const auto EmitterIt = Plan.Get_Emitters().find(EmitterId);
+			if (EmitterIt == Plan.Get_Emitters().end())
+				return Reject(strOutError,
+					"Reconstructed fixed-step emitter order is invalid.");
+			const auto& Emitter = EmitterIt->second;
+			MUTABLE_EMITTER_STATE State;
+			State.Public.strEmitterId = EmitterId;
+			State.Public.strScheduleId = Emitter.strScheduleId;
+			State.Public.iRandomState = Emitter.iEmitterRandomSeed;
+			if (Emitter.strLifetimeSeedPolicyId.has_value())
+			{
+				const auto SeedIt = Plan.Get_SeedPolicies().find(
+					*Emitter.strLifetimeSeedPolicyId);
+				if (SeedIt == Plan.Get_SeedPolicies().end() ||
+					SeedIt->second.RandomSeeds.empty())
+				{
+					return Reject(strOutError,
+						"Reconstructed fixed-step lifetime seed is invalid.");
+				}
+				State.Public.iLifetimeRandomState = static_cast<uint32_t>(
+					SeedIt->second.RandomSeeds.front());
+				if (0u == State.Public.iLifetimeRandomState)
+					State.Public.iLifetimeRandomState = 1u;
+			}
+			Staged.States.emplace(EmitterId, std::move(State));
+		}
+
+		constexpr double FixedStep =
+			1.0 / static_cast<double>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ);
+		constexpr double StepEpsilon = 1.0e-9;
+		for (uint64_t Step = 1u; Step <= iTargetSteps; ++Step)
+		{
+			const double Time = static_cast<double>(Step) * FixedStep;
+			for (const std::string& ScheduleId : Plan.Get_ScheduleOrder())
+			{
+				const auto ScheduleIt = Plan.Get_Schedules().find(ScheduleId);
+				if (ScheduleIt == Plan.Get_Schedules().end())
+					return Reject(strOutError,
+						"Reconstructed fixed-step schedule order is invalid.");
+				const auto& Schedule = ScheduleIt->second;
+				for (const std::string& EmitterId : Schedule.EmitterIds)
+				{
+					const auto EmitterIt = Plan.Get_Emitters().find(EmitterId);
+					const auto StateIt = Staged.States.find(EmitterId);
+					if (EmitterIt == Plan.Get_Emitters().end() ||
+						StateIt == Staged.States.end())
+					{
+						return Reject(strOutError,
+							"Reconstructed fixed-step schedule emitter is invalid.");
+					}
+					const auto& Emitter = EmitterIt->second;
+					auto& State = StateIt->second;
+					std::erase_if(State.Particles,
+						[Time, StepEpsilon](const TIMING_PARTICLE& Particle)
+						{
+							return Time - Particle.fSpawnTimeSeconds + StepEpsilon >=
+								Particle.fLifetimeSeconds;
+						});
+					State.Public.iActiveCount =
+						static_cast<uint32_t>(State.Particles.size());
+					const double ScheduleElapsed =
+						Time - Schedule.fGlobalTimeSeconds;
+					if (ScheduleElapsed < 0.0)
+					{
+						State.Public.ePhase =
+							EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_SCHEDULE;
+						continue;
+					}
+					const double EmitterElapsed =
+						ScheduleElapsed - Emitter.fEmitterDelaySeconds;
+					if (EmitterElapsed < 0.0)
+					{
+						State.Public.ePhase =
+							EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_DELAY;
+						continue;
+					}
+					const uint32_t LoopIndex = static_cast<uint32_t>(std::floor(
+						EmitterElapsed / Emitter.fEmitterDurationSeconds));
+					const bool_t LoopAllowed = Emitter.iEmitterLoopCount == 0u ||
+						LoopIndex < Emitter.iEmitterLoopCount;
+					if (!LoopAllowed)
+					{
+						State.Public.ePhase =
+							EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::COMPLETE;
+					}
+					else
+					{
+						State.Public.ePhase =
+							EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::EMITTING;
+						if (LoopIndex != State.Public.iLoopIndex)
+						{
+							State.Public.iLoopIndex = LoopIndex;
+							State.iNextBurst = 0u;
+							State.fSpawnAccumulator = 0.0;
+							if (Emitter.strLifetimeSeedPolicyId.has_value())
+							{
+								const auto& Seed = Plan.Get_SeedPolicies().at(
+									*Emitter.strLifetimeSeedPolicyId);
+								if (Seed.bResetSeedOnEmitterLooping)
+								{
+									State.Public.iLifetimeRandomState =
+										static_cast<uint32_t>(Seed.RandomSeeds.front());
+									if (0u == State.Public.iLifetimeRandomState)
+										State.Public.iLifetimeRandomState = 1u;
+								}
+							}
+						}
+						const double EmitterTime = EmitterElapsed -
+							static_cast<double>(LoopIndex) *
+								Emitter.fEmitterDurationSeconds;
+						while (State.iNextBurst < Emitter.Bursts.size() &&
+							Emitter.Bursts[State.iNextBurst].fTimeSeconds <=
+								EmitterTime + 0.5 * FixedStep)
+						{
+							const auto& Burst = Emitter.Bursts[State.iNextBurst++];
+							uint32_t Count = Burst.iCountMinimum;
+							if (Burst.iCountMaximum > Burst.iCountMinimum)
+							{
+								const uint64_t Span =
+									static_cast<uint64_t>(Burst.iCountMaximum) -
+									Burst.iCountMinimum + 1u;
+								Count += static_cast<uint32_t>(
+									Next_Random(State.Public.iRandomState) % Span);
+							}
+							if (!Spawn_TimingParticles(Plan, Emitter, State,
+								LoopIndex, Count, Step, Time, EmitterTime,
+								strOutError))
+							{
+								return false;
+							}
+						}
+						const auto& RateDistribution = Plan.Get_Distributions().at(
+							Emitter.strSpawnRateDistributionId);
+						const auto& RateScaleDistribution =
+							Plan.Get_Distributions().at(
+								Emitter.strSpawnRateScaleDistributionId);
+						if (!RateDistribution.bCpuTimingExecutable ||
+							!RateScaleDistribution.bCpuTimingExecutable)
+						{
+							return Reject(strOutError,
+								"Reconstructed fixed-step spawn evaluator is not executable.");
+						}
+						std::array<double, 4u> RandomUnits{};
+						RandomUnits[0u] = static_cast<double>(
+							Next_Random(State.Public.iRandomState)) /
+							static_cast<double>((std::numeric_limits<uint32_t>::max)());
+						const double Rate = Evaluate_Distribution(
+							RateDistribution, EmitterTime, RandomUnits)[0u];
+						RandomUnits[0u] = static_cast<double>(
+							Next_Random(State.Public.iRandomState)) /
+							static_cast<double>((std::numeric_limits<uint32_t>::max)());
+						const double RateScale = Evaluate_Distribution(
+							RateScaleDistribution, EmitterTime, RandomUnits)[0u];
+						if (!Is_Finite(Rate) || !Is_Finite(RateScale) ||
+							Rate < 0.0 || RateScale < 0.0)
+						{
+							return Reject(strOutError,
+								"Reconstructed fixed-step spawn rate is invalid.");
+						}
+						State.fSpawnAccumulator += Rate * RateScale * FixedStep;
+						if (!Is_Finite(State.fSpawnAccumulator) ||
+							State.fSpawnAccumulator > static_cast<double>(
+								(std::numeric_limits<uint32_t>::max)()))
+						{
+							return Reject(strOutError,
+								"Reconstructed fixed-step spawn accumulator overflowed.");
+						}
+						const uint32_t SpawnCount = static_cast<uint32_t>(
+							std::floor(State.fSpawnAccumulator));
+						State.fSpawnAccumulator -= static_cast<double>(SpawnCount);
+						if (!Spawn_TimingParticles(Plan, Emitter, State,
+							LoopIndex, SpawnCount, Step, Time, EmitterTime,
+							strOutError))
+						{
+							return false;
+						}
+					}
+					State.Public.iActiveCount =
+						static_cast<uint32_t>(State.Particles.size());
+					if (State.Public.iActiveCount >
+						Emitter.iOperationalMaxParticles)
+					{
+						return Reject(strOutError,
+							"Reconstructed fixed-step exceeded the operational cap.");
+					}
+				}
+			}
+		}
+		OutSimulation = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Is_ValidRowIdentity(
+		const EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY& Identity)
+	{
+		return !Identity.strId.empty() && Identity.strRowSha256.size() == 64u;
+	}
+
+	template <typename T>
+	const T* Find_ProgramRow(
+		const std::vector<T>& Rows,
+		const EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY& Identity)
+	{
+		if (!Is_ValidRowIdentity(Identity))
+			return nullptr;
+		const auto It = std::find_if(Rows.begin(), Rows.end(),
+			[&Identity](const T& Row)
+			{
+				return Row.Row.strId == Identity.strId &&
+					Row.Row.strRowSha256 == Identity.strRowSha256;
+			});
+		return It == Rows.end() ? nullptr : &*It;
+	}
+
+	template <typename T>
+	const T* Find_SidecarRow(
+		const std::map<std::string, T, std::less<>>& Rows,
+		const EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY& Identity)
+	{
+		if (!Is_ValidRowIdentity(Identity))
+			return nullptr;
+		const auto It = Rows.find(Identity.strId);
+		return It == Rows.end() || It->second.strRowSha256 !=
+			Identity.strRowSha256 ? nullptr : &It->second;
+	}
+
+	struct SELECTED_MODULE_HANDLER_ROUTE final
+	{
+		std::string_view strHandlerRegistryId;
+		std::string_view strImplementationId;
+		uint32_t iImplementationVersion = 0u;
+		std::string_view strImplementationSha256;
+		std::string_view strExpectedSourceClass;
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE
+			eOpcode = EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+				MODULE_OPCODE::END;
+		EFFECT_RUNTIME_HANDLER_KIND eExpectedHandlerKind =
+			EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE;
+	};
+
+	constexpr std::array<SELECTED_MODULE_HANDLER_ROUTE, 15u>
+		SELECTED_MODULE_HANDLER_ROUTES{{
+		{ "handler-7197a80cf011dc858e402a52",
+		  "source.module.exact.particlemodulerequired.v1", 1u,
+		  "7549956b393dd6f0090bbab8d5ec9ec0905e74228243a97269d7f318dada3cc8",
+		  "particlemodulerequired",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  REQUIRED_TIMING, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-13a7ed7163d5dfa1114b6b96",
+		  "source.module.exact.particlemodulelifetime.v1", 1u,
+		  "f23219bf0bade914e82f83b87fd90599ff20dec52db133779567ef9b4c60934e",
+		  "particlemodulelifetime",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  LIFETIME_TIMING, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-9c42e464cd66e4181b042c28",
+		  "source.module.exact.particlemodulesize.v1", 1u,
+		  "48802cd578656989f265b3a9bb60ee29a601972bbe458f8f1f674708289f14da",
+		  "particlemodulesize",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  SIZE, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-15647a506337532af1ba133f",
+		  "source.module.exact.particlemodulevelocity.v1", 1u,
+		  "367119b4649154273f580ab6e30cb62f0026e2044b8e669a2e7b701e14ac9acc",
+		  "particlemodulevelocity",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  VELOCITY, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-338e3d2723b94eb720b5d716",
+		  "source.module.exact.particlemodulecoloroverlife.v1", 1u,
+		  "8806f7df8822465e84b118e75d45b271d8cb4e6f7dcf2d6c88b81f45e5a4e82c",
+		  "particlemodulecoloroverlife",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  COLOR_OVER_LIFE, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-ef557e2b5df085f811e910d3",
+		  "source.module.exact.particlemodulerotation.v1", 1u,
+		  "77d0020b5a71b18474918077f33251cb44a956d5ee6f1adb03b3071df699c3f3",
+		  "particlemodulerotation",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  ROTATION, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-a397c8c0eef3abd7aa07e4cb",
+		  "source.module.exact.particlemoduleacceleration.v1", 1u,
+		  "353c1bae53522ede173f93da8f2c936ddc2a298667b843380a673c7b4616e0d7",
+		  "particlemoduleacceleration",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  ACCELERATION, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-c41530ddbfc5f10ed7f3c94d",
+		  "source.module.exact.particlemodulerotationrate.v1", 1u,
+		  "dda09b31d4e3b7f08d1f912eec57f9f359afc45eedca7b238a71480f6e5800d8",
+		  "particlemodulerotationrate",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  ROTATION_RATE, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-8a15dbe6075b17c979aa066a",
+		  "source.module.exact.particlemodulesizemultiplylife.v1", 1u,
+		  "2892e1d0b0163a0ff74314e6d6c92ee0c0ce4002854efd0f3c96baa3f24f4689",
+		  "particlemodulesizemultiplylife",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  SIZE_MULTIPLY_LIFE, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-a90067d9043e62f6e79a5cc4",
+		  "source.module.exact.particlemodulelocationprimitivecylinder.v1", 1u,
+		  "dbbdcb1c7b4b28726062cc3846d89b38073fd15dd2cf2cf21869c109c757d5d7",
+		  "particlemodulelocationprimitivecylinder",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  CYLINDER_Z, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-3639750c28df3302e9effd03",
+		  "source.module.exact.particlemodulelocation.v1", 1u,
+		  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933",
+		  "particlemodulelocation",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  LOCATION, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-9864f03184e2a68652252fec",
+		  "source.reconstructed.ground.v1.implementation", 1u,
+		  "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f",
+		  "efparticlemodulelocationonground",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  GROUND, EFFECT_RUNTIME_HANDLER_KIND::RECONSTRUCTED_MODULE },
+		{ "handler-77746fd3dbe01b88dab89368",
+		  "source.module.exact.particlemoduletypedatamesh.v1", 1u,
+		  "61d6b904015b25c4cd76f036adbac9cfd5c27fcc4d2742aba83cd4674be8ec63",
+		  "particlemoduletypedatamesh",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  TYPE_DATA_MESH, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-738a4e4b7b8c22539ffd2458",
+		  "source.module.exact.particlemoduleparameterdynamic.v1", 1u,
+		  "ec6543bd649774bddbd004cb91315d3657edf41d30c15e7a69c0dfd930f96ae3",
+		  "particlemoduleparameterdynamic",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  DYNAMIC_PARAMETER, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE },
+		{ "handler-fd2ce97f699c5a373f2529cb",
+		  "source.module.exact.particlemodulespawn.v1", 1u,
+		  "902e8b11ccd6ae323cc7c0fae93e8cc0daf25a143cf4c8aea3e3f6d5f0385392",
+		  "particlemodulespawn",
+		  EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE::
+			  SPAWN_TIMING, EFFECT_RUNTIME_HANDLER_KIND::SOURCE_MODULE }
+	}};
+
+	const SELECTED_MODULE_HANDLER_ROUTE* Find_ModuleHandlerRoute(
+		const std::string_view strHandlerRegistryId,
+		const std::string_view strImplementationId,
+		const uint32_t iImplementationVersion,
+		const std::string_view strImplementationSha256)
+	{
+		const auto Route = std::find_if(SELECTED_MODULE_HANDLER_ROUTES.begin(),
+			SELECTED_MODULE_HANDLER_ROUTES.end(), [&](const auto& Candidate)
+			{
+				return strHandlerRegistryId == Candidate.strHandlerRegistryId &&
+					strImplementationId == Candidate.strImplementationId &&
+					iImplementationVersion == Candidate.iImplementationVersion &&
+					strImplementationSha256 == Candidate.strImplementationSha256;
+			});
+		return Route == SELECTED_MODULE_HANDLER_ROUTES.end() ? nullptr : &*Route;
+	}
+
+	std::optional<
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE>
+		Resolve_ModuleOpcode(
+			const EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY& Selection)
+	{
+		const auto* Route = Find_ModuleHandlerRoute(Selection.Handler.strId,
+			Selection.strImplementationId, Selection.iImplementationVersion,
+			Selection.strImplementationSha256);
+		if (nullptr == Route ||
+			Selection.strExactSourceClass != Route->strExpectedSourceClass)
+		{
+			return std::nullopt;
+		}
+		return Route->eOpcode;
+	}
+
+	bool_t Has_ModuleHandlerRoute(
+		const EFFECT_RUNTIME_PROGRAM_HANDLER& Handler,
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			MODULE_OPCODE eExpectedOpcode)
+	{
+		const auto* Route = Find_ModuleHandlerRoute(Handler.Row.strId,
+			Handler.strImplementationId, Handler.iImplementationVersion,
+			Handler.strImplementationSha256);
+		return nullptr != Route && Route->eOpcode == eExpectedOpcode &&
+			Handler.eKind == Route->eExpectedHandlerKind &&
+			Handler.strExactSourceClass == Route->strExpectedSourceClass;
+	}
+
+	bool_t Same4(
+		const std::array<double, 4u>& A,
+		const std::array<double, 4u>& B)
+	{
+		return A == B && Is_Finite(A) && Is_Finite(B);
+	}
+
+	bool_t Validate_MaterialConstants(
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_RECIPE& Recipe,
+		const EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_CONSTANTS& Constants)
+	{
+		if (Recipe.NumericBindingSamples.empty())
+			return false;
+		const auto& Sample = Recipe.NumericBindingSamples.front();
+		return Sample.iOrder == 0u && Sample.fTime == 0.0 &&
+			Sample.vUvScale == Constants.vUvScale &&
+			Same4(Sample.vPanRotationAux, Constants.vPanRotationAux) &&
+			Same4(Sample.vColor, Constants.vColor) &&
+			Same4(Sample.vParams0, Constants.vParams0) &&
+			Same4(Sample.vParams1, Constants.vParams1) &&
+			Is_Finite(Constants.vUvScale);
+	}
+
+	bool_t Validate_TextureLane(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_OCCURRENCE& Occurrence,
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_RECIPE& Recipe,
+		const EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER& Provider,
+		const EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE& Selection,
+		std::string& strOutError)
+	{
+		const auto* Input = Find_ProgramRow(
+			Program.MaterialInputs, Selection.MaterialInput);
+		const auto* Binding = Find_ProgramRow(
+			Program.MaterialTextureBindings, Selection.MaterialTextureBinding);
+		const auto* Policy = Find_ProgramRow(
+			Program.MaterialPolicies, Selection.MaterialPolicy);
+		const auto* SidecarBinding = Find_SidecarRow(
+			Authority.TextureBindingsById, Selection.SidecarTextureBinding);
+		const auto* SidecarResource = Find_SidecarRow(
+			Authority.TextureResourcesById, Selection.SidecarTextureResource);
+		if (nullptr == Input || nullptr == Binding || nullptr == Policy ||
+			nullptr == SidecarBinding || nullptr == SidecarResource ||
+			Selection.strShaderVariableName.empty() ||
+			Selection.strRuntimeAssetId.empty() ||
+			Selection.strRawSha256.size() != 64u)
+		{
+			return Reject(strOutError,
+				"Selected evaluator texture lane identity is invalid.");
+		}
+		if (Input->strRecipeId != Recipe.Row.strId ||
+			Binding->strRecipeId != Recipe.Row.strId ||
+			Binding->strMaterialInputFieldId != Input->Row.strId ||
+			Binding->strSamplerPolicyRowId != Policy->Row.strId ||
+			!Binding->strRuntimeAssetId.has_value() ||
+			*Binding->strRuntimeAssetId != Selection.strRuntimeAssetId ||
+			Binding->eResolutionStatus !=
+				EFFECT_RUNTIME_TEXTURE_RESOLUTION_STATUS::RESOLVED_EXACT_RUNTIME_ASSET ||
+			Policy->eDomain !=
+				EFFECT_RUNTIME_MATERIAL_POLICY_DOMAIN::SAMPLER_DESCRIPTOR ||
+			!Policy->SamplerDescriptor.has_value() ||
+			SidecarBinding->strCandidateBindingId != Binding->Row.strId ||
+			SidecarBinding->strCandidateBindingRowSha256 !=
+				Binding->Row.strRowSha256 ||
+			SidecarBinding->strRecipeId != Recipe.Row.strId ||
+			SidecarBinding->strMaterialInputFieldId != Input->Row.strId ||
+			SidecarBinding->strSamplerPolicyRowId != Policy->Row.strId ||
+			SidecarBinding->strSamplerPolicyRowSha256 !=
+				Policy->Row.strRowSha256 ||
+			SidecarBinding->strRuntimeAssetId != Selection.strRuntimeAssetId ||
+			SidecarBinding->strResourceAuthorityId !=
+				Selection.SidecarTextureResource.strId ||
+			SidecarBinding->strResourceAuthorityRowSha256 !=
+				Selection.SidecarTextureResource.strRowSha256 ||
+			SidecarBinding->strActualDdsRawSha256 != Selection.strRawSha256 ||
+			SidecarResource->strRuntimeAssetId != Selection.strRuntimeAssetId ||
+			SidecarResource->strRawSha256 != Selection.strRawSha256 ||
+			Provider.strMaterialInputFieldId != Input->Row.strId ||
+			Provider.strMaterialInputRowSha256 != Input->Row.strRowSha256 ||
+			Provider.strTextureBindingId != Binding->Row.strId ||
+			Provider.strTextureBindingRowSha256 != Binding->Row.strRowSha256 ||
+			Provider.strSamplerPolicyRowId != Policy->Row.strId ||
+			Provider.strSamplerPolicyRowSha256 != Policy->Row.strRowSha256 ||
+			Provider.strRuntimeAssetId != Selection.strRuntimeAssetId)
+		{
+			return Reject(strOutError,
+				"Selected evaluator texture lane join is invalid.");
+		}
+
+		if (Selection.RendererTextureResource.has_value() !=
+			Selection.SidecarRendererSlotDecision.has_value())
+		{
+			return Reject(strOutError,
+				"Selected evaluator renderer texture presence is invalid.");
+		}
+		if (Selection.RendererTextureResource.has_value())
+		{
+			const auto* Renderer = Find_ProgramRow(
+				Program.RendererTextureResources,
+				*Selection.RendererTextureResource);
+			const auto* Decision = Find_SidecarRow(
+				Authority.RendererSlotBindingsById,
+				*Selection.SidecarRendererSlotDecision);
+			if (nullptr == Renderer || nullptr == Decision ||
+				Renderer->strEmitterId != Emitter.Row.strId ||
+				Renderer->strMaterialOccurrenceId != Occurrence.Row.strId ||
+				Renderer->strAssetId != Selection.strRuntimeAssetId ||
+				Decision->strRendererResourceRowSha256 !=
+					Renderer->Row.strRowSha256 ||
+				Decision->strMaterialOccurrenceId != Occurrence.Row.strId ||
+				Decision->strMaterialOccurrenceRowSha256 !=
+					Occurrence.Row.strRowSha256 ||
+				Decision->strRecipeId != Recipe.Row.strId ||
+				Decision->strRuntimeAssetId != Selection.strRuntimeAssetId ||
+				Decision->strSelectedMaterialInputFieldId != Input->Row.strId ||
+				Decision->strSelectedMaterialInputRowSha256 !=
+					Input->Row.strRowSha256 ||
+				Decision->strSelectedTextureBindingId != Binding->Row.strId ||
+				Decision->strSelectedTextureBindingRowSha256 !=
+					Binding->Row.strRowSha256 ||
+				Decision->strSelectedSamplerPolicyRowId != Policy->Row.strId ||
+				Decision->strSelectedSamplerPolicyRowSha256 !=
+					Policy->Row.strRowSha256)
+			{
+				return Reject(strOutError,
+					"Selected evaluator renderer texture join is invalid.");
+			}
+		}
+		else
+		{
+			const bool_t HasUnexpectedRenderer = std::any_of(
+				Program.RendererTextureResources.begin(),
+				Program.RendererTextureResources.end(),
+				[&](const EFFECT_RUNTIME_PROGRAM_RENDERER_TEXTURE& Row)
+				{
+					return Row.strEmitterId == Emitter.Row.strId &&
+						Row.strAssetId == Selection.strRuntimeAssetId;
+				});
+			if (HasUnexpectedRenderer)
+				return Reject(strOutError,
+					"Selected evaluator expected an absent renderer texture row.");
+		}
+		return true;
+	}
+
+	bool_t Validate_StateBinding(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_RECIPE& Recipe,
+		const EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING& Selection,
+		const EFFECT_RECONSTRUCTED_RENDER_STATE_KIND eExpectedKind,
+		std::string& strOutError)
+	{
+		const auto* Binding = Find_ProgramRow(
+			Program.MaterialRenderBindings, Selection.ProgramBinding);
+		const std::string_view ExpectedField =
+			eExpectedKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND ?
+				"blendmode" :
+			eExpectedKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER ?
+				"twosided" :
+			eExpectedKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL ?
+				"bdisabledepthtest" : "";
+		if (nullptr == Binding || Binding->strRecipeId != Recipe.Row.strId ||
+			ExpectedField.empty() || Binding->strFieldName != ExpectedField)
+			return Reject(strOutError,
+				"Selected evaluator render binding is invalid.");
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_POLICY* Policy = nullptr;
+		if (Selection.ProgramPolicy.has_value())
+		{
+			Policy = Find_ProgramRow(
+				Program.MaterialPolicies, *Selection.ProgramPolicy);
+			if (nullptr == Policy ||
+				Policy->eDomain !=
+					EFFECT_RUNTIME_MATERIAL_POLICY_DOMAIN::RENDER_STATE ||
+				Policy->strRecipeId != Recipe.Row.strId ||
+				Binding->strPolicyRowId != Policy->Row.strId ||
+				Policy->strFieldId != Recipe.Row.strId + ":" +
+					std::string(ExpectedField) ||
+				Policy->strFieldKind != "RENDER_STATE_DEFAULT" ||
+				!Policy->D3dDescriptorOracle.has_value() ||
+				(eExpectedKind ==
+						EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER &&
+				 Policy->D3dDescriptorOracle->eKind !=
+						EFFECT_RUNTIME_D3D_DESCRIPTOR_KIND::RASTERIZER) ||
+				(eExpectedKind ==
+						EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL &&
+				 Policy->D3dDescriptorOracle->eKind !=
+						EFFECT_RUNTIME_D3D_DESCRIPTOR_KIND::DEPTH_STENCIL) ||
+				eExpectedKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND)
+			{
+				return Reject(strOutError,
+					"Selected evaluator render policy is invalid.");
+			}
+		}
+		else if (!Binding->strPolicyRowId.empty())
+		{
+			return Reject(strOutError,
+				"Selected evaluator omitted a bound render policy.");
+		}
+		if (Selection.SidecarDecision.has_value())
+		{
+			const auto* Sidecar = Find_SidecarRow(
+				Authority.RenderStateDescriptorsById,
+				*Selection.SidecarDecision);
+			if (nullptr == Sidecar ||
+				Sidecar->eKind != eExpectedKind ||
+				Sidecar->strRenderBindingId != Binding->Row.strId ||
+				Sidecar->strRenderBindingRowSha256 !=
+					Binding->Row.strRowSha256 ||
+				Sidecar->strRecipeId != Recipe.Row.strId ||
+				Sidecar->strRecipeRowSha256 != Recipe.Row.strRowSha256)
+			{
+				return Reject(strOutError,
+					"Selected evaluator sidecar state join is invalid.");
+			}
+		}
+		else
+		{
+			const bool_t HasUnexpectedDecision = std::any_of(
+				Authority.RenderStateDescriptorsById.begin(),
+				Authority.RenderStateDescriptorsById.end(),
+				[Binding](const auto& Pair)
+				{
+					return Pair.second.strRenderBindingId == Binding->Row.strId;
+				});
+			if (HasUnexpectedDecision)
+				return Reject(strOutError,
+					"Selected evaluator expected an absent sidecar state row.");
+		}
+		return true;
+	}
+
+	bool_t Validate_MaterialBinding(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING& Selection,
+		std::string& strOutError)
+	{
+		const auto* Occurrence = Find_ProgramRow(
+			Program.MaterialOccurrences, Selection.Occurrence);
+		const auto* Recipe = Find_ProgramRow(
+			Program.MaterialRecipes, Selection.Recipe);
+		const auto* Family = Find_ProgramRow(
+			Program.MaterialFamilies, Selection.Family);
+		const auto* TextureDecision = Find_SidecarRow(
+			Authority.RecipeTextureBindingsById,
+			Selection.RecipeTextureDecision);
+		if (nullptr == Occurrence || nullptr == Recipe || nullptr == Family ||
+			nullptr == TextureDecision ||
+			Occurrence->strEmitterId != Emitter.Row.strId ||
+			Occurrence->strRecipeId != Recipe->Row.strId ||
+			Occurrence->strFamilyId != Family->Row.strId ||
+			Recipe->strFamilyId != Family->Row.strId ||
+			Emitter.strMaterialOccurrenceId != Occurrence->Row.strId ||
+			Family->strEvaluatorId != Selection.strEvaluatorId ||
+			Family->iEvaluatorVersion != Selection.iEvaluatorVersion ||
+			Family->strEvaluatorSha256 != Selection.strEvaluatorSha256 ||
+			Family->iFeatureMask != Selection.iFeatureMask ||
+			TextureDecision->strRecipeId != Recipe->Row.strId ||
+			TextureDecision->strRecipeRowSha256 != Recipe->Row.strRowSha256 ||
+			TextureDecision->strFamilyId != Family->Row.strId ||
+			TextureDecision->strFamilyRowSha256 != Family->Row.strRowSha256 ||
+			TextureDecision->iFeatureMask != Family->iFeatureMask)
+		{
+			return Reject(strOutError,
+				"Selected evaluator material authority is invalid.");
+		}
+		if (Selection.TextureLanes[0u].strShaderVariableName !=
+				"g_SourceTexture0" ||
+			Selection.TextureLanes[1u].strShaderVariableName !=
+				"g_SourceTexture1")
+		{
+			return Reject(strOutError,
+				"Selected evaluator shader texture lane names are invalid.");
+		}
+		if (!Validate_TextureLane(Program, Authority, Emitter, *Occurrence,
+			*Recipe, TextureDecision->Texture0Provider,
+			Selection.TextureLanes[0u], strOutError) ||
+			!Validate_TextureLane(Program, Authority, Emitter, *Occurrence,
+				*Recipe, TextureDecision->Texture1Provider,
+				Selection.TextureLanes[1u], strOutError) ||
+			!Validate_StateBinding(Program, Authority, *Recipe,
+				Selection.BlendState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND, strOutError) ||
+			!Validate_StateBinding(Program, Authority, *Recipe,
+				Selection.RasterizerState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER,
+				strOutError) ||
+			!Validate_StateBinding(Program, Authority, *Recipe,
+				Selection.DepthStencilState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL,
+				strOutError))
+		{
+			return false;
+		}
+		const auto& Shader = Selection.Shader;
+		const bool_t IsMeshShader = Emitter.eRenderer ==
+			EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE &&
+			Shader.strShaderAssetId == "Shader_VtxEffectMeshPreview.hlsl" &&
+			Shader.iPassIndex == 0u &&
+			Shader.strPassName == "OpaqueBackDepthWrite";
+		const bool_t IsSpriteShader = Emitter.eRenderer ==
+			EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE &&
+			Shader.strShaderAssetId == "Shader_VtxEffectParticle.hlsl" &&
+			Shader.iPassIndex == 1u &&
+			Shader.strPassName == "AlphaTwoSidedDepthRead";
+		if (!Validate_MaterialConstants(*Recipe, Selection.Constants) ||
+			(!IsMeshShader && !IsSpriteShader) ||
+			Shader.strTechniqueName != "DefaultTechnique" ||
+			Shader.strEvaluatorEnabledVariable !=
+				"g_ReconstructedMaterialEvaluatorEnabled" ||
+			Shader.strFeatureMaskVariable !=
+				"g_ReconstructedMaterialFeatureMask" ||
+			Shader.strUvScaleVariable != "g_ReconstructedUVScale" ||
+			Shader.strPanRotationAuxVariable !=
+				"g_ReconstructedPanRotationAux" ||
+			Shader.strColorVariable != "g_ReconstructedColor" ||
+			Shader.strParams0Variable != "g_ReconstructedParams0" ||
+			Shader.strParams1Variable != "g_ReconstructedParams1")
+		{
+			return Reject(strOutError,
+				"Selected evaluator material constants or shader binding is invalid.");
+		}
+		return true;
+	}
+
+	bool_t Validate_GeometryBinding(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING& Selection,
+		std::string& strOutError)
+	{
+		const auto* Use = Find_ProgramRow(Program.GeometryUses,
+			Selection.GeometryUse);
+		const auto* Carrier = Find_ProgramRow(Program.GeometryCarriers,
+			Selection.GeometryCarrier);
+		if (nullptr == Use || nullptr == Carrier ||
+			!Emitter.strGeometryUseId.has_value() ||
+			*Emitter.strGeometryUseId != Use->Row.strId ||
+			Use->strEmitterId != Emitter.Row.strId ||
+			Use->strCarrierId != Carrier->Row.strId ||
+			Use->strAssetId != Selection.strRuntimeAssetId ||
+			Carrier->strAssetId != Selection.strRuntimeAssetId ||
+			Carrier->iCandidateResourceByteSize !=
+				Selection.iCandidateResourceByteSize ||
+			Carrier->strCandidateResourceSha256 !=
+				Selection.strCandidateResourceSha256 ||
+			Carrier->strPayloadSha256 != Selection.strPayloadSha256 ||
+			Carrier->strMetadataIdentitySha256 !=
+				Selection.strMetadataIdentitySha256 ||
+			Carrier->strCacheIdentitySha256 != Selection.strCacheIdentitySha256 ||
+			Carrier->strExpectedTupleSha256 != Selection.strExpectedTupleSha256 ||
+			Carrier->strApprovalGeometryRowSha256 !=
+				Selection.strApprovalGeometryRowSha256 ||
+			Carrier->strPreparedCacheIdentitySha256 !=
+				Selection.strPreparedCacheIdentitySha256 ||
+			Carrier->fGeometryPreScale != Selection.fGeometryPreScale ||
+			Use->strPreScaleApplication !=
+				"VERTEX_AND_BOUNDS_EXACTLY_ONCE_REQUIRED" ||
+			Use->bPreScaleConsumed || Carrier->bPreScaleConsumed ||
+			!Is_Finite(Selection.fGeometryPreScale) ||
+			Selection.fGeometryPreScale <= 0.0 ||
+			Carrier->Submeshes.size() != Selection.iSubmeshCount)
+		{
+			return Reject(strOutError,
+				"Selected evaluator geometry binding is invalid.");
+		}
+		uint64_t VertexCount = 0u;
+		uint64_t IndexCount = 0u;
+		for (const auto& Submesh : Carrier->Submeshes)
+		{
+			VertexCount += Submesh.iVertexCount;
+			IndexCount += Submesh.iIndexCount;
+		}
+		if (VertexCount != Selection.iVertexCount ||
+			IndexCount != Selection.iIndexCount)
+		{
+			return Reject(strOutError,
+				"Selected evaluator geometry counts are invalid.");
+		}
+		return true;
+	}
+
+	bool_t Validate_SpriteSink(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK& Selection,
+		std::string& strOutError)
+	{
+		const auto* Module = Find_ProgramRow(
+			Program.Modules, Selection.RequiredModule);
+		const auto* AlignmentProperty = Find_ProgramRow(
+			Program.Properties, Selection.ScreenAlignmentProperty);
+		const auto* AlignmentLiteral = Find_ProgramRow(
+			Program.Literals, Selection.ScreenAlignmentLiteral);
+		const auto* FlipProperty = Find_ProgramRow(
+			Program.Properties, Selection.AllowImageFlippingProperty);
+		const auto* FlipLiteral = Find_ProgramRow(
+			Program.Literals, Selection.AllowImageFlippingLiteral);
+		const auto* OffsetProperty = Find_ProgramRow(
+			Program.Properties, Selection.OffsetCenterEnabledProperty);
+		const auto* OffsetLiteral = Find_ProgramRow(
+			Program.Literals, Selection.OffsetCenterEnabledLiteral);
+		const auto* OffsetXProperty = Find_ProgramRow(
+			Program.Properties, Selection.OffsetCenterXProperty);
+		const auto* OffsetXLiteral = Find_ProgramRow(
+			Program.Literals, Selection.OffsetCenterXLiteral);
+		const auto* OffsetYProperty = Find_ProgramRow(
+			Program.Properties, Selection.OffsetCenterYProperty);
+		const auto* OffsetYLiteral = Find_ProgramRow(
+			Program.Literals, Selection.OffsetCenterYLiteral);
+		if (nullptr == Module || nullptr == AlignmentProperty ||
+			nullptr == AlignmentLiteral || nullptr == FlipProperty ||
+			nullptr == FlipLiteral || nullptr == OffsetProperty ||
+			nullptr == OffsetLiteral || nullptr == OffsetXProperty ||
+			nullptr == OffsetXLiteral || nullptr == OffsetYProperty ||
+			nullptr == OffsetYLiteral ||
+			Module->strEmitterId != Emitter.Row.strId ||
+			Module->Row.strId != Emitter.Timing.strRequiredModuleId)
+		{
+			return Reject(strOutError,
+				"Selected evaluator Sprite sink rows are invalid.");
+		}
+		const auto SameModule = [Module](const auto* Row)
+		{
+			return Row->strModuleId == Module->Row.strId;
+		};
+		if (!SameModule(AlignmentProperty) || !SameModule(AlignmentLiteral) ||
+			!SameModule(FlipProperty) || !SameModule(FlipLiteral) ||
+			!SameModule(OffsetProperty) || !SameModule(OffsetLiteral) ||
+			!SameModule(OffsetXProperty) || !SameModule(OffsetXLiteral) ||
+			!SameModule(OffsetYProperty) || !SameModule(OffsetYLiteral) ||
+			AlignmentProperty->strPropertyPath != "screenalignment" ||
+			AlignmentLiteral->strPropertyPath != "screenalignment" ||
+			AlignmentLiteral->eVariant !=
+				EFFECT_RUNTIME_LITERAL_VARIANT::ENUM_STRING ||
+			AlignmentLiteral->strEnumValue != "psa_velocity" ||
+			Selection.eAlignment !=
+				EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT::VELOCITY ||
+			Selection.eOrientation !=
+				EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION::
+					CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT ||
+			FlipProperty->strPropertyPath != "ballowimageflipping" ||
+			FlipLiteral->strPropertyPath != "ballowimageflipping" ||
+			FlipLiteral->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::BOOLEAN ||
+			!FlipLiteral->bValue.has_value() ||
+			*FlipLiteral->bValue != Selection.bAllowImageFlipping ||
+			OffsetProperty->strPropertyPath != "boffsetcenter" ||
+			OffsetLiteral->strPropertyPath != "boffsetcenter" ||
+			OffsetLiteral->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::BOOLEAN ||
+			!OffsetLiteral->bValue.has_value() ||
+			*OffsetLiteral->bValue != Selection.bOffsetCenter ||
+			OffsetXProperty->strPropertyPath != "offsetcenterx" ||
+			OffsetXLiteral->strPropertyPath != "offsetcenterx" ||
+			OffsetXLiteral->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::F64 ||
+			!OffsetXLiteral->fValue.has_value() ||
+			*OffsetXLiteral->fValue != Selection.vPivotCenter[0u] ||
+			OffsetYProperty->strPropertyPath != "offsetcentery" ||
+			OffsetYLiteral->strPropertyPath != "offsetcentery" ||
+			OffsetYLiteral->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::F64 ||
+			!OffsetYLiteral->fValue.has_value() ||
+			*OffsetYLiteral->fValue != Selection.vPivotCenter[1u] ||
+			!Is_Finite(Selection.vPivotCenter) || !Selection.bBillboard ||
+			Selection.fBillboardRollDegrees != 0.0 ||
+			!Is_Finite(Selection.fBillboardRollDegrees))
+		{
+			return Reject(strOutError,
+				"Selected evaluator Sprite sink values are invalid.");
+		}
+		return true;
+	}
+
+	bool_t Validate_CylinderPolicy(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY& Selection,
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION& Staged,
+		std::string& strOutError)
+	{
+		const auto* Module = Find_ProgramRow(Program.Modules, Selection.Module);
+		const auto* SurfaceOnly = Find_ProgramRow(
+			Program.Literals, Selection.SurfaceOnlyLiteral);
+		const auto* Velocity = Find_ProgramRow(
+			Program.Literals, Selection.VelocityLiteral);
+		const auto SelectedCylinder = std::find_if(
+			Staged.Modules.begin(), Staged.Modules.end(), [](const auto& Operation)
+			{
+				return Operation.eOpcode ==
+					EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+						MODULE_OPCODE::CYLINDER_Z;
+			});
+		if (nullptr == Module || nullptr == SurfaceOnly || nullptr == Velocity ||
+			SelectedCylinder == Staged.Modules.end() ||
+			SelectedCylinder->pProgramModule != Module ||
+			nullptr == SelectedCylinder->pHandler ||
+			!Has_ModuleHandlerRoute(*SelectedCylinder->pHandler,
+				EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+					MODULE_OPCODE::CYLINDER_Z) ||
+			Module->strExactSourceClass !=
+				"particlemodulelocationprimitivecylinder" ||
+			SurfaceOnly->strModuleId != Module->Row.strId ||
+			Velocity->strModuleId != Module->Row.strId ||
+			SurfaceOnly->strPropertyPath != "surfaceonly" ||
+			Velocity->strPropertyPath != "velocity" ||
+			SurfaceOnly->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::BOOLEAN ||
+			Velocity->eVariant != EFFECT_RUNTIME_LITERAL_VARIANT::BOOLEAN ||
+			!SurfaceOnly->bValue.has_value() || !Velocity->bValue.has_value() ||
+			Selection.strAbsentHeightAxisDefault != "Z")
+		{
+			return Reject(strOutError,
+				"Selected evaluator cylinder policy is invalid.");
+		}
+		const bool_t HasHeightAxisProperty = std::any_of(
+			Program.Properties.begin(), Program.Properties.end(),
+			[Module](const EFFECT_RUNTIME_PROGRAM_PROPERTY& Row)
+			{
+				return Row.strModuleId == Module->Row.strId &&
+					Row.strPropertyPath == "heightaxis";
+			});
+		const bool_t HasHeightAxisLiteral = std::any_of(
+			Program.Literals.begin(), Program.Literals.end(),
+			[Module](const EFFECT_RUNTIME_PROGRAM_LITERAL& Row)
+			{
+				return Row.strModuleId == Module->Row.strId &&
+					Row.strPropertyPath == "heightaxis";
+			});
+		const bool_t HasHeightAxisDefault = std::any_of(
+			Program.ImplicitDefaults.begin(), Program.ImplicitDefaults.end(),
+			[Module](const EFFECT_RUNTIME_PROGRAM_IMPLICIT_DEFAULT& Row)
+			{
+				return Row.strModuleId == Module->Row.strId &&
+					Row.strFieldPath == "heightaxis";
+			});
+		if (HasHeightAxisProperty || HasHeightAxisLiteral ||
+			HasHeightAxisDefault)
+		{
+			return Reject(strOutError,
+				"Selected evaluator cylinder expected an absent Z-axis row.");
+		}
+		Staged.bCylinderSurfaceOnly = *SurfaceOnly->bValue;
+		Staged.bCylinderVelocity = *Velocity->bValue;
+		if (!Staged.bCylinderSurfaceOnly || !Staged.bCylinderVelocity)
+			return Reject(strOutError,
+				"Selected evaluator cylinder flags are outside the closed policy.");
+		return true;
+	}
+
+	bool_t Bind_ModuleDistributions(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			MODULE_OPERATION& Operation,
+		std::string& strOutError);
+
+	bool_t Validate_EmitterSelection(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection,
+		const uint32_t iSelectionIndex,
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION& OutOperation,
+		std::string& strOutError)
+	{
+		const auto PlanEmitterIt = Plan.Get_Emitters().find(
+			Selection.Emitter.strId);
+		const auto PlanScheduleIt = Plan.Get_Schedules().find(
+			Selection.Schedule.strId);
+		const auto* ProgramEmitter = Find_ProgramRow(
+			Program.Emitters, Selection.Emitter);
+		const auto* ProgramSchedule = Find_ProgramRow(
+			Program.ActionSchedules, Selection.Schedule);
+		if (PlanEmitterIt == Plan.Get_Emitters().end() ||
+			PlanScheduleIt == Plan.Get_Schedules().end() ||
+			nullptr == ProgramEmitter || nullptr == ProgramSchedule)
+		{
+			return Reject(strOutError,
+				"Selected evaluator emitter or schedule row is invalid.");
+		}
+		const auto& PlanEmitter = PlanEmitterIt->second;
+		const auto& PlanSchedule = PlanScheduleIt->second;
+		const bool_t IsMesh = Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH;
+		const bool_t IsSprite = Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE;
+		if ((!IsMesh && !IsSprite) ||
+			(IsMesh && Selection.eRenderer !=
+				EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE) ||
+			(IsSprite && Selection.eRenderer !=
+				EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE) ||
+			ProgramEmitter->eRenderer != Selection.eRenderer ||
+			PlanEmitter.eRenderer != Selection.eRenderer ||
+			ProgramEmitter->Row.iOrder != Selection.iEmitterOrder ||
+			PlanEmitter.iOrder != Selection.iEmitterOrder ||
+			ProgramEmitter->strScheduleId != Selection.Schedule.strId ||
+			PlanEmitter.strScheduleId != Selection.Schedule.strId ||
+			ProgramSchedule->Row.strId != PlanSchedule.strScheduleId ||
+			ProgramEmitter->bLocalSpace != Selection.bLocalSpace ||
+			ProgramEmitter->strSizeUnitPolicy != Selection.strSizeUnitPolicy ||
+			Selection.iExpectedVisualRandomDrawCount == 0u ||
+			Selection.iExpectedFinalRandomState == 0u ||
+			Selection.iExpectedOccurrenceRandomValue == 0u ||
+			Selection.iExpectedLifetimeRandomValue == 0u ||
+			!Is_Finite(Selection.fExpectedLifetimeSeconds) ||
+			Selection.fExpectedLifetimeSeconds <= 0.0 ||
+			!ProgramEmitter->bVisible || !PlanEmitter.bVisible ||
+			Selection.Handlers.size() != ProgramEmitter->ModuleIds.size() ||
+			Selection.Handlers.size() != PlanEmitter.ModuleIds.size() ||
+			Selection.Handlers.empty())
+		{
+			return Reject(strOutError,
+				"Selected evaluator emitter shape is invalid.");
+		}
+
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION Staged;
+		Staged.iSelectionIndex = iSelectionIndex;
+		Staged.pPlanSchedule = &PlanSchedule;
+		Staged.pPlanEmitter = &PlanEmitter;
+		Staged.pProgramSchedule = ProgramSchedule;
+		Staged.pProgramEmitter = ProgramEmitter;
+		for (size_t Index = 0u; Index < Selection.Handlers.size(); ++Index)
+		{
+			const auto& HandlerSelection = Selection.Handlers[Index];
+			const auto* Module = Find_ProgramRow(
+				Program.Modules, HandlerSelection.Module);
+			const auto* Handler = Find_ProgramRow(
+				Program.Handlers, HandlerSelection.Handler);
+			const auto PlanModuleIt = Plan.Get_Modules().find(
+				HandlerSelection.Module.strId);
+			if (nullptr == Module || nullptr == Handler ||
+				PlanModuleIt == Plan.Get_Modules().end())
+			{
+				return Reject(strOutError,
+					"Selected evaluator handler authority is invalid.");
+			}
+			const auto Opcode = Resolve_ModuleOpcode(HandlerSelection);
+			if (!Opcode.has_value())
+			{
+				return Reject(strOutError,
+					"Selected evaluator handler dispatch is unsupported.");
+			}
+			if (
+				!Has_ModuleHandlerRoute(*Handler, *Opcode) ||
+				ProgramEmitter->ModuleIds[Index] != Module->Row.strId ||
+				PlanEmitter.ModuleIds[Index] != Module->Row.strId ||
+				Module->Row.iOrder != Index ||
+				Module->strEmitterId != ProgramEmitter->Row.strId ||
+				Module->strExactSourceClass !=
+					HandlerSelection.strExactSourceClass ||
+				Handler->Row.strId != Module->strHandlerRegistryId ||
+				Handler->strExactSourceClass !=
+					HandlerSelection.strExactSourceClass ||
+				Handler->strImplementationId !=
+					HandlerSelection.strImplementationId ||
+				Handler->iImplementationVersion !=
+					HandlerSelection.iImplementationVersion ||
+				Handler->strImplementationSha256 !=
+					HandlerSelection.strImplementationSha256 ||
+				PlanModuleIt->second.strHandlerRegistryId != Handler->Row.strId ||
+				PlanModuleIt->second.strHandlerImplementationId !=
+					Handler->strImplementationId ||
+				PlanModuleIt->second.iHandlerImplementationVersion !=
+					Handler->iImplementationVersion ||
+				PlanModuleIt->second.strHandlerImplementationSha256 !=
+					Handler->strImplementationSha256 ||
+				PlanModuleIt->second.DistributionIds != Module->DistributionIds ||
+				HandlerSelection.ImplicitDefaults.size() !=
+					Module->ImplicitDefaultIds.size())
+			{
+				return Reject(strOutError,
+					"Selected evaluator handler authority is invalid.");
+			}
+			for (size_t DefaultIndex = 0u;
+				DefaultIndex < HandlerSelection.ImplicitDefaults.size();
+				++DefaultIndex)
+			{
+				const auto* Default = Find_ProgramRow(Program.ImplicitDefaults,
+					HandlerSelection.ImplicitDefaults[DefaultIndex]);
+				if (nullptr == Default ||
+					Default->Row.strId != Module->ImplicitDefaultIds[DefaultIndex] ||
+					Default->strModuleId != Module->Row.strId)
+				{
+					return Reject(strOutError,
+						"Selected evaluator implicit default is invalid.");
+				}
+			}
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+				MODULE_OPERATION ModuleOperation;
+			ModuleOperation.pPlanModule = &PlanModuleIt->second;
+			ModuleOperation.pProgramModule = Module;
+			ModuleOperation.pHandler = Handler;
+			ModuleOperation.eOpcode = *Opcode;
+			if (!Bind_ModuleDistributions(Plan, ModuleOperation, strOutError))
+				return false;
+			Staged.Modules.push_back(std::move(ModuleOperation));
+		}
+
+		const size_t CylinderCount = static_cast<size_t>(std::count_if(
+			Staged.Modules.begin(), Staged.Modules.end(), [](const auto& Module)
+			{
+				return Module.eOpcode ==
+					EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+						MODULE_OPCODE::CYLINDER_Z;
+			}));
+		if (CylinderCount != (Selection.Cylinder.has_value() ? 1u : 0u) ||
+			(Selection.Cylinder.has_value() &&
+			 !Validate_CylinderPolicy(Program, *Selection.Cylinder, Staged,
+				 strOutError)))
+		{
+			if (strOutError.empty())
+				Reject(strOutError,
+					"Selected evaluator cylinder selection is inconsistent.");
+			return false;
+		}
+		if ((IsMesh && (!Selection.Geometry.has_value() ||
+				 Selection.SpriteSink.has_value())) ||
+			(IsSprite && (Selection.Geometry.has_value() ||
+				 !Selection.SpriteSink.has_value())))
+		{
+			return Reject(strOutError,
+				"Selected evaluator renderer payload shape is invalid.");
+		}
+		if (IsMesh && !Validate_GeometryBinding(
+			Program, *ProgramEmitter, *Selection.Geometry, strOutError))
+		{
+			return false;
+		}
+		if (IsSprite && !Validate_SpriteSink(
+			Program, *ProgramEmitter, *Selection.SpriteSink, strOutError))
+		{
+			return false;
+		}
+		if (!Validate_MaterialBinding(Program, Authority, *ProgramEmitter,
+			Selection.Material, strOutError))
+		{
+			return false;
+		}
+		OutOperation = std::move(Staged);
+		return true;
+	}
+
+	const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION*
+		Find_ModuleDistribution(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const EFFECT_RECONSTRUCTED_EXECUTION_MODULE& Module,
+		const std::string_view strPropertyPath)
+	{
+		const std::string Suffix = "::distribution:" +
+			std::string(strPropertyPath);
+		const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION* Found = nullptr;
+		for (const std::string& DistributionId : Module.DistributionIds)
+		{
+			if (!DistributionId.ends_with(Suffix))
+				continue;
+			const auto It = Plan.Get_Distributions().find(DistributionId);
+			if (It == Plan.Get_Distributions().end() || nullptr != Found)
+				return nullptr;
+			Found = &It->second;
+		}
+		return Found;
+	}
+
+	bool_t Bind_ModuleDistributions(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			MODULE_OPERATION& Operation,
+		std::string& strOutError)
+	{
+		using OPCODE =
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE;
+		if (nullptr == Operation.pPlanModule)
+			return Reject(strOutError,
+				"Selected evaluator distribution module is invalid.");
+		const auto Bind = [&](const std::initializer_list<std::string_view> Paths)
+		{
+			if (Paths.size() > Operation.Distributions.size())
+				return false;
+			uint32_t Index = 0u;
+			for (const std::string_view Path : Paths)
+			{
+				const auto* Distribution = Find_ModuleDistribution(
+					Plan, *Operation.pPlanModule, Path);
+				if (nullptr == Distribution)
+					return false;
+				Operation.Distributions[Index++] = Distribution;
+			}
+			Operation.iDistributionCount = Index;
+			return true;
+		};
+		bool_t Bound = false;
+		switch (Operation.eOpcode)
+		{
+		case OPCODE::REQUIRED_TIMING: Bound = Bind({ "spawnrate" }); break;
+		case OPCODE::LIFETIME_TIMING: Bound = Bind({ "lifetime" }); break;
+		case OPCODE::SIZE: Bound = Bind({ "startsize" }); break;
+		case OPCODE::VELOCITY:
+			Bound = Bind({ "startvelocity", "startvelocityradial" });
+			break;
+		case OPCODE::COLOR_OVER_LIFE:
+			Bound = Bind({ "coloroverlife", "alphaoverlife" });
+			break;
+		case OPCODE::ROTATION: Bound = Bind({ "startrotation" }); break;
+		case OPCODE::ACCELERATION: Bound = Bind({ "acceleration" }); break;
+		case OPCODE::ROTATION_RATE:
+			Bound = Bind({ "startrotationrate" });
+			break;
+		case OPCODE::SIZE_MULTIPLY_LIFE:
+			Bound = Bind({ "lifemultiplier" });
+			break;
+		case OPCODE::CYLINDER_Z:
+			Bound = Bind({ "startradius", "startheight", "velocityscale",
+				"startlocation" });
+			break;
+		case OPCODE::LOCATION: Bound = Bind({ "startlocation" }); break;
+		case OPCODE::GROUND:
+			Bound = Bind({ "adjustlocation", "skiplocation" });
+			break;
+		case OPCODE::TYPE_DATA_MESH:
+			Bound = Operation.pPlanModule->DistributionIds.empty();
+			break;
+		case OPCODE::DYNAMIC_PARAMETER:
+			if (Operation.pPlanModule->DistributionIds.size() == 4u)
+			{
+				Bound = true;
+				for (uint32_t Index = 0u; Index < 4u; ++Index)
+				{
+					const std::string ExpectedSuffix = "::distribution:dynamicparams[" +
+						std::to_string(Index) + "].paramvalue";
+					const std::string& DistributionId =
+						Operation.pPlanModule->DistributionIds[Index];
+					const auto It = Plan.Get_Distributions().find(DistributionId);
+					if (!DistributionId.ends_with(ExpectedSuffix) ||
+						It == Plan.Get_Distributions().end())
+					{
+						Bound = false;
+						break;
+					}
+					Operation.Distributions[Index] = &It->second;
+				}
+				Operation.iDistributionCount = Bound ? 4u : 0u;
+			}
+			break;
+		case OPCODE::SPAWN_TIMING:
+			Bound = Bind({ "rate", "ratescale" });
+			break;
+		default: break;
+		}
+		if (!Bound || Operation.iDistributionCount !=
+			Operation.pPlanModule->DistributionIds.size())
+		{
+			return Reject(strOutError,
+				"Selected evaluator distribution binding is not closed.");
+		}
+		return true;
+	}
+
+	bool_t Evaluate_VisualDistribution(
+		const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Distribution,
+		const double fTime,
+		uint32_t& iInOutRandomState,
+		uint32_t& iInOutDrawCount,
+		std::array<double, 4u>& OutValue,
+		std::string& strOutError)
+	{
+		std::array<double, 4u> RandomUnits{};
+		if (Distribution.eVariant ==
+				EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_PARAMETER ||
+			Distribution.eVariant ==
+				EFFECT_RUNTIME_DISTRIBUTION_VARIANT::VECTOR_PARAMETER)
+		{
+			OutValue = Evaluate_Distribution(Distribution, fTime, RandomUnits);
+		}
+		else
+		{
+			if ((Distribution.eVariant !=
+					 EFFECT_RUNTIME_DISTRIBUTION_VARIANT::INLINE &&
+				 Distribution.eVariant !=
+					 EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_CURVE) ||
+				!Distribution.iOperation.has_value() ||
+				!Distribution.iRandomLockAxes.has_value() ||
+				*Distribution.iRandomLockAxes != 0u ||
+				Distribution.iComponentCount == 0u ||
+				Distribution.iComponentCount > 4u)
+			{
+				return Reject(strOutError,
+					"Selected evaluator distribution contract is unsupported.");
+			}
+			if (*Distribution.iOperation == 2u)
+			{
+				for (uint32_t Index = 0u;
+					Index < Distribution.iComponentCount; ++Index)
+				{
+					RandomUnits[Index] = static_cast<double>(
+						Next_Random(iInOutRandomState)) /
+						static_cast<double>(
+							(std::numeric_limits<uint32_t>::max)());
+					++iInOutDrawCount;
+				}
+			}
+			else if (*Distribution.iOperation == 3u)
+			{
+				RandomUnits[0u] = static_cast<double>(
+					Next_Random(iInOutRandomState)) /
+					static_cast<double>((std::numeric_limits<uint32_t>::max)());
+				++iInOutDrawCount;
+			}
+			else if (*Distribution.iOperation != 1u)
+			{
+				return Reject(strOutError,
+					"Selected evaluator distribution operation is unsupported.");
+			}
+			OutValue = Evaluate_Distribution(Distribution, fTime, RandomUnits);
+		}
+		if (!Is_Finite(OutValue))
+			return Reject(strOutError,
+				"Selected evaluator distribution produced a nonfinite value.");
+		return true;
+	}
+
+	bool_t Evaluate_PreparedDistribution(
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			MODULE_OPERATION& Operation,
+		const uint32_t iDistributionIndex,
+		const double fTime,
+		uint32_t& iInOutRandomState,
+		uint32_t& iInOutDrawCount,
+		std::array<double, 4u>& OutValue,
+		std::string& strOutError)
+	{
+		if (iDistributionIndex >= Operation.iDistributionCount ||
+			nullptr == Operation.Distributions[iDistributionIndex])
+			return Reject(strOutError,
+				"Selected evaluator prepared distribution is invalid.");
+		return Evaluate_VisualDistribution(
+			*Operation.Distributions[iDistributionIndex], fTime,
+			iInOutRandomState, iInOutDrawCount, OutValue, strOutError);
+	}
+
+	struct SELECTED_VISUAL_RESULT final
+	{
+		EFFECT_RECONSTRUCTED_SELECTED_PARTICLE_VALUES Values;
+		uint32_t iFinalRandomState = 0u;
+		uint32_t iRandomDrawCount = 0u;
+	};
+
+	std::array<double, 3u> Source_ToClientVector(
+		const std::array<double, 3u>& Source,
+		const double Scale)
+	{
+		std::array<double, 3u> Result{ Source[0u] * Scale,
+			Source[2u] * Scale, -Source[1u] * Scale };
+		for (double& Value : Result)
+		{
+			if (Value == 0.0)
+				Value = 0.0;
+		}
+		return Result;
+	}
+
+	bool_t Evaluate_SelectedVisual(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION& Operation,
+		const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection,
+		const EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET& Timing,
+		const double fSampleTimeSeconds,
+		SELECTED_VISUAL_RESULT& OutResult,
+		std::string& strOutError)
+	{
+		using OPCODE =
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE;
+		if (nullptr == Operation.pPlanSchedule ||
+			nullptr == Operation.pPlanEmitter || Timing.fAgeSeconds != 0.0 ||
+			Timing.iOccurrenceRandomValue !=
+				Selection.iExpectedOccurrenceRandomValue ||
+			Timing.iLifetimeRandomValue !=
+				Selection.iExpectedLifetimeRandomValue ||
+			Timing.fLifetimeSeconds != Selection.fExpectedLifetimeSeconds)
+		{
+			return Reject(strOutError,
+				"Selected evaluator timing packet identity is invalid.");
+		}
+		const double EmitterElapsed = fSampleTimeSeconds -
+			Operation.pPlanSchedule->fGlobalTimeSeconds -
+			Operation.pPlanEmitter->fEmitterDelaySeconds;
+		const double EmitterTime = EmitterElapsed -
+			static_cast<double>(Timing.iLoopIndex) *
+				Operation.pPlanEmitter->fEmitterDurationSeconds;
+		const double RelativeAge = Timing.fLifetimeSeconds <= 0.0 ?
+			std::numeric_limits<double>::quiet_NaN() :
+			Timing.fAgeSeconds / Timing.fLifetimeSeconds;
+		if (!Is_Finite(EmitterTime) || EmitterTime < 0.0 ||
+			!Is_Finite(RelativeAge) || RelativeAge != 0.0)
+		{
+			return Reject(strOutError,
+				"Selected evaluator occurrence time is invalid.");
+		}
+
+		std::array<double, 3u> SourceScale{ 1.0, 1.0, 1.0 };
+		std::array<double, 3u> SourcePosition{};
+		std::array<double, 3u> SourceVelocity{};
+		std::array<double, 3u> SourceAcceleration{};
+		std::array<double, 4u> Color{};
+		std::array<double, 4u> Dynamic{};
+		double RotationDegrees = 0.0;
+		double RotationRateDegrees = 0.0;
+		uint32_t RandomState = Timing.iOccurrenceRandomValue;
+		uint32_t DrawCount = 0u;
+		for (const auto& ModuleOperation : Operation.Modules)
+		{
+			if (nullptr == ModuleOperation.pPlanModule ||
+				ModuleOperation.eOpcode == OPCODE::END)
+			{
+				return Reject(strOutError,
+					"Selected evaluator prepared opcode is invalid.");
+			}
+			const auto& Module = *ModuleOperation.pPlanModule;
+			std::array<double, 4u> A{};
+			std::array<double, 4u> B{};
+			switch (ModuleOperation.eOpcode)
+			{
+			case OPCODE::REQUIRED_TIMING:
+			case OPCODE::LIFETIME_TIMING:
+			case OPCODE::TYPE_DATA_MESH:
+			case OPCODE::SPAWN_TIMING:
+				break;
+			case OPCODE::SIZE:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				std::copy_n(A.begin(), 3u, SourceScale.begin());
+				break;
+			case OPCODE::VELOCITY:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError) ||
+					!Evaluate_PreparedDistribution(ModuleOperation, 1u, EmitterTime,
+						RandomState,
+						DrawCount, B, strOutError))
+					return false;
+				if (B[0u] != 0.0)
+					return Reject(strOutError,
+						"Selected evaluator radial velocity is unsupported.");
+				for (size_t Index = 0u; Index < SourceVelocity.size(); ++Index)
+					SourceVelocity[Index] += A[Index];
+				break;
+			case OPCODE::COLOR_OVER_LIFE:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					RelativeAge, RandomState, DrawCount, A, strOutError) ||
+					!Evaluate_PreparedDistribution(ModuleOperation, 1u, RelativeAge,
+						RandomState, DrawCount, B, strOutError))
+					return false;
+				Color = { A[0u], A[1u], A[2u], B[0u] };
+				if (const auto* Alpha = ModuleOperation.Distributions[1u];
+					nullptr != Alpha && Alpha->LookupTable.empty() &&
+					Alpha->CurveKeys.empty())
+				{
+					const bool_t ExactImplicitIdentity =
+						Alpha->iComponentCount == 1u &&
+						Alpha->iOperation == 1u &&
+						Alpha->DefaultMinimum ==
+							std::vector<double>(4u, 0.0) &&
+						Alpha->DefaultMaximum ==
+							std::vector<double>(4u, 0.0);
+					if (!ExactImplicitIdentity)
+						return Reject(strOutError,
+							"Selected evaluator implicit alpha identity is invalid.");
+					Color[3u] = 1.0;
+				}
+				break;
+			case OPCODE::ROTATION:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				RotationDegrees = A[0u] * 360.0;
+				break;
+			case OPCODE::ACCELERATION:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				std::copy_n(A.begin(), 3u, SourceAcceleration.begin());
+				break;
+			case OPCODE::ROTATION_RATE:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount,
+					A, strOutError))
+					return false;
+				RotationRateDegrees = A[0u] * 360.0;
+				break;
+			case OPCODE::SIZE_MULTIPLY_LIFE:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					RelativeAge, RandomState, DrawCount, A, strOutError))
+					return false;
+				for (size_t Index = 0u; Index < SourceScale.size(); ++Index)
+					SourceScale[Index] *= A[Index];
+				break;
+			case OPCODE::CYLINDER_Z:
+			{
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				const double Radius = A[0u];
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 1u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				const double Height = A[0u];
+				const double AngleUnit = static_cast<double>(
+					Next_Random(RandomState)) / static_cast<double>(
+						(std::numeric_limits<uint32_t>::max)());
+				++DrawCount;
+				const double Angle = AngleUnit *
+					6.283185307179586476925286766559;
+				const double HeightUnit = static_cast<double>(
+					Next_Random(RandomState)) / static_cast<double>(
+						(std::numeric_limits<uint32_t>::max)());
+				++DrawCount;
+				const std::array<double, 3u> Offset{
+					std::cos(Angle) * Radius,
+					std::sin(Angle) * Radius,
+					(HeightUnit - 0.5) * Height };
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 3u,
+					EmitterTime, RandomState, DrawCount, B, strOutError) ||
+					!Evaluate_PreparedDistribution(ModuleOperation, 2u, EmitterTime,
+						RandomState, DrawCount, A, strOutError))
+					return false;
+				for (size_t Index = 0u; Index < Offset.size(); ++Index)
+				{
+					SourcePosition[Index] += Offset[Index] + B[Index];
+					SourceVelocity[Index] += Offset[Index] * A[0u];
+				}
+				break;
+			}
+			case OPCODE::LOCATION:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					EmitterTime, RandomState, DrawCount, A, strOutError))
+					return false;
+				for (size_t Index = 0u; Index < SourcePosition.size(); ++Index)
+					SourcePosition[Index] += A[Index];
+				break;
+			case OPCODE::GROUND:
+				if (!Evaluate_PreparedDistribution(ModuleOperation, 0u,
+					RelativeAge, RandomState, DrawCount, A, strOutError) ||
+					!Evaluate_PreparedDistribution(ModuleOperation, 1u, RelativeAge,
+						RandomState, DrawCount, B, strOutError))
+					return false;
+				if (B[0u] < 0.5)
+				{
+					for (size_t Index = 0u; Index < SourcePosition.size(); ++Index)
+						SourcePosition[Index] += A[Index];
+				}
+				break;
+			case OPCODE::DYNAMIC_PARAMETER:
+				if (ModuleOperation.iDistributionCount != Dynamic.size())
+					return Reject(strOutError,
+						"Selected evaluator dynamic parameter count is invalid.");
+				for (size_t Index = 0u; Index < Dynamic.size(); ++Index)
+				{
+					if (!Evaluate_PreparedDistribution(ModuleOperation,
+						static_cast<uint32_t>(Index), RelativeAge, RandomState,
+						DrawCount, A, strOutError))
+						return false;
+					Dynamic[Index] = A[0u];
+				}
+				break;
+			default:
+				return Reject(strOutError,
+					"Selected evaluator encountered an unknown prepared opcode.");
+			}
+		}
+
+		SELECTED_VISUAL_RESULT Staged;
+		Staged.iFinalRandomState = RandomState;
+		Staged.iRandomDrawCount = DrawCount;
+		if (Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH)
+		{
+			Staged.Values.vMeshDimensionlessScaleXzy =
+				std::array<double, 3u>{ SourceScale[0u], SourceScale[2u],
+					SourceScale[1u] };
+		}
+		else if (Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE)
+		{
+			Staged.Values.vSpriteSignedWorldSizeXzy =
+				std::array<double, 3u>{ SourceScale[0u] * 0.01,
+					SourceScale[2u] * 0.01, SourceScale[1u] * 0.01 };
+		}
+		else
+		{
+			return Reject(strOutError,
+				"Selected evaluator renderer kind is invalid.");
+		}
+		Staged.Values.vLocalPosition = Source_ToClientVector(SourcePosition, 0.01);
+		Staged.Values.vVelocityPerSecond =
+			Source_ToClientVector(SourceVelocity, 0.01);
+		Staged.Values.vAccelerationPerSecondSquared =
+			Source_ToClientVector(SourceAcceleration, 0.01);
+		Staged.Values.vColor = Color;
+		Staged.Values.vDynamicParameter = Dynamic;
+		Staged.Values.fRotationDegrees = RotationDegrees;
+		Staged.Values.fRotationRateDegreesPerSecond = RotationRateDegrees;
+		if (Staged.iRandomDrawCount !=
+				Selection.iExpectedVisualRandomDrawCount ||
+			Staged.iFinalRandomState != Selection.iExpectedFinalRandomState ||
+			!Is_Finite(Staged.Values.vLocalPosition) ||
+			!Is_Finite(Staged.Values.vVelocityPerSecond) ||
+			!Is_Finite(Staged.Values.vAccelerationPerSecondSquared) ||
+			!Is_Finite(Staged.Values.vColor) ||
+			!Is_Finite(Staged.Values.vDynamicParameter) ||
+			!Is_Finite(Staged.Values.fRotationDegrees) ||
+			!Is_Finite(Staged.Values.fRotationRateDegreesPerSecond) ||
+			(Staged.Values.vMeshDimensionlessScaleXzy.has_value() &&
+			 !Is_Finite(*Staged.Values.vMeshDimensionlessScaleXzy)) ||
+			(Staged.Values.vSpriteSignedWorldSizeXzy.has_value() &&
+			 !Is_Finite(*Staged.Values.vSpriteSignedWorldSizeXzy)))
+		{
+			return Reject(strOutError,
+				"Selected evaluator visual result failed its closed contract.");
+		}
+		OutResult = std::move(Staged);
+		return true;
+	}
+
+	void Append_SelectedRow(
+		std::string& Projection,
+		const EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY& Row)
+	{
+		Append_Projection(Projection, Row.strId);
+		Append_Projection(Projection, Row.strRowSha256);
+	}
+
+	void Append_SelectedOptionalRow(
+		std::string& Projection,
+		const std::optional<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY>& Row)
+	{
+		Append_Integer(Projection, Row.has_value() ? 1u : 0u);
+		if (Row.has_value())
+			Append_SelectedRow(Projection, *Row);
+	}
+
+	std::string Compute_SelectedFrameProjection(
+		const EFFECT_RECONSTRUCTED_SELECTED_FRAME& Frame)
+	{
+		const auto Preparation = Frame.Get_Preparation();
+		const auto Entry = nullptr == Preparation ? nullptr :
+			Preparation->Get_CatalogEntry();
+		if (nullptr == Preparation || nullptr == Entry)
+			return {};
+		const auto& Identity = Entry->Get_Identity();
+		std::string Projection;
+		Append_Integer(Projection, Identity.iCatalogRevision);
+		Append_Projection(Projection, Identity.strEffectAssetId);
+		Append_Projection(Projection, Identity.strProgramId);
+		Append_Projection(Projection, Identity.strProgramSha256);
+		Append_Projection(Projection, Identity.strCandidateRawSha256);
+		Append_Projection(Projection,
+			Identity.strRenderResourceSidecarRawSha256);
+		Append_Projection(Projection,
+			Identity.strRenderResourceSidecarDecisionProjectionSha256);
+		Append_Projection(Projection,
+			Identity.strRenderResourceSidecarReceiptSha256);
+		Append_Projection(Projection, Frame.Get_OccurrenceRngContract());
+		Append_Integer(Projection, Frame.Get_OccurrenceRngVersion());
+		Append_Integer(Projection, Frame.Get_FixedStepIndex());
+		Append_F64(Projection, Frame.Get_SampleTimeSeconds());
+		Append_Integer(Projection, Frame.Get_ConsumedHandlerCount());
+		for (const auto& Packet : Frame.Get_Packets())
+		{
+			const auto& Selection = Preparation->Get_Request().Emitters.at(
+				Packet.Get_SelectionIndex());
+			Append_Integer(Projection, Packet.Get_SelectionIndex());
+			Append_Integer(Projection, static_cast<uint32_t>(Packet.Get_Kind()));
+			Append_SelectedRow(Projection, Selection.Schedule);
+			Append_SelectedRow(Projection, Selection.Emitter);
+			Append_Projection(Projection, Packet.Get_Timing().strOccurrenceId);
+			Append_Integer(Projection, Packet.Get_Timing().iSpawnSerial);
+			Append_Integer(Projection, Packet.Get_Timing().iSpawnStep);
+			Append_Integer(Projection, Packet.Get_Timing().iOccurrenceRandomValue);
+			Append_Integer(Projection, Packet.Get_Timing().iLifetimeRandomValue);
+			Append_F64(Projection, Packet.Get_Timing().fLifetimeSeconds);
+			Append_Integer(Projection, Packet.Get_FinalRandomState());
+			Append_Integer(Projection, Packet.Get_RandomDrawCount());
+			for (const auto& Handler : Packet.Get_ConsumedHandlers())
+			{
+				Append_SelectedRow(Projection, Handler.Module);
+				Append_SelectedRow(Projection, Handler.Handler);
+				Append_Projection(Projection, Handler.strImplementationId);
+				Append_Integer(Projection, Handler.iImplementationVersion);
+				Append_Projection(Projection, Handler.strImplementationSha256);
+			}
+			Append_SelectedRow(Projection, Selection.Material.Occurrence);
+			Append_SelectedRow(Projection, Selection.Material.Recipe);
+			Append_SelectedRow(Projection, Selection.Material.Family);
+			Append_SelectedRow(Projection,
+				Selection.Material.RecipeTextureDecision);
+			for (const auto& Lane : Selection.Material.TextureLanes)
+			{
+				Append_SelectedOptionalRow(Projection, Lane.RendererTextureResource);
+				Append_SelectedRow(Projection, Lane.MaterialInput);
+				Append_SelectedRow(Projection, Lane.MaterialTextureBinding);
+				Append_SelectedRow(Projection, Lane.MaterialPolicy);
+				Append_SelectedOptionalRow(Projection,
+					Lane.SidecarRendererSlotDecision);
+				Append_SelectedRow(Projection, Lane.SidecarTextureBinding);
+				Append_SelectedRow(Projection, Lane.SidecarTextureResource);
+				Append_Projection(Projection, Lane.strRuntimeAssetId);
+				Append_Projection(Projection, Lane.strRawSha256);
+			}
+			if (Selection.Geometry.has_value())
+			{
+				Append_SelectedRow(Projection, Selection.Geometry->GeometryUse);
+				Append_SelectedRow(Projection, Selection.Geometry->GeometryCarrier);
+				Append_Projection(Projection,
+					Selection.Geometry->strCandidateResourceSha256);
+				Append_Projection(Projection, Selection.Geometry->strPayloadSha256);
+				Append_Projection(Projection,
+					Selection.Geometry->strMetadataIdentitySha256);
+			}
+			const auto& Values = Packet.Get_Values();
+			Append_Integer(Projection,
+				Values.vMeshDimensionlessScaleXzy.has_value() ? 1u : 0u);
+			if (Values.vMeshDimensionlessScaleXzy.has_value())
+				for (double Value : *Values.vMeshDimensionlessScaleXzy)
+					Append_F64(Projection, Value);
+			Append_Integer(Projection,
+				Values.vSpriteSignedWorldSizeXzy.has_value() ? 1u : 0u);
+			if (Values.vSpriteSignedWorldSizeXzy.has_value())
+				for (double Value : *Values.vSpriteSignedWorldSizeXzy)
+					Append_F64(Projection, Value);
+			for (double Value : Values.vLocalPosition)
+				Append_F64(Projection, Value);
+			for (double Value : Values.vVelocityPerSecond)
+				Append_F64(Projection, Value);
+			for (double Value : Values.vAccelerationPerSecondSquared)
+				Append_F64(Projection, Value);
+			for (double Value : Values.vColor)
+				Append_F64(Projection, Value);
+			for (double Value : Values.vDynamicParameter)
+				Append_F64(Projection, Value);
+			Append_F64(Projection, Values.fRotationDegrees);
+			Append_F64(Projection, Values.fRotationRateDegreesPerSecond);
+		}
+		return CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Projection);
+	}
+
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 
 	std::string Compute_StateProjection(
 		const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE& State)
@@ -2105,6 +3914,304 @@ bool_t Client::CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
 	return true;
 }
 
+bool_t Client::CEffectReconstructedSelectedEvaluator::Prepare(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> pPlan,
+	const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST& Request,
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>&
+		InOutPreparation,
+	std::string& strOutError)
+{
+	const auto RuntimePreparation = nullptr == pPlan ? nullptr :
+		pPlan->Get_Preparation();
+	const auto CatalogEntry = nullptr == RuntimePreparation ? nullptr :
+		RuntimePreparation->Get_CatalogEntry();
+	const auto Program = nullptr == RuntimePreparation ? nullptr :
+		RuntimePreparation->Get_Program();
+	const auto Authority = nullptr == RuntimePreparation ? nullptr :
+		RuntimePreparation->Get_RenderResourceAuthority();
+	if (nullptr == pPlan || nullptr == RuntimePreparation ||
+		nullptr == CatalogEntry || nullptr == Program || nullptr == Authority ||
+		pPlan->Get_Program().get() != Program.get() ||
+		CatalogEntry->Get_Program().get() != Program.get() ||
+		CatalogEntry->Get_RenderResourceAuthority().get() != Authority.get() ||
+		Request.iEvaluatorVersion !=
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION ||
+		Request.strOccurrenceRngContract !=
+			EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT ||
+		Request.iOccurrenceRngVersion !=
+			EFFECT_RECONSTRUCTED_OCCURRENCE_RNG_VERSION ||
+		Request.iOccurrenceRngVersion !=
+			pPlan->Get_Identity().iOccurrenceRngVersion ||
+		Request.iRequiredFixedStepIndex == 0u ||
+		Request.iRequiredFixedStepIndex >
+			static_cast<uint64_t>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ) * 60u ||
+		Request.iRequiredSpawnSerial != 0u || Request.Emitters.size() != 2u ||
+		pPlan->Get_Identity().iPlanVersion !=
+			EFFECT_RECONSTRUCTED_EXECUTION_PLAN_VERSION ||
+		pPlan->Get_Identity().iFixedStepHz !=
+			EFFECT_RECONSTRUCTED_FIXED_STEP_HZ ||
+		pPlan->Get_Identity().iCatalogRevision !=
+			CatalogEntry->Get_Identity().iCatalogRevision ||
+		pPlan->Get_Identity().strEffectAssetId !=
+			CatalogEntry->Get_Identity().strEffectAssetId ||
+		pPlan->Get_Identity().strProgramId != Program->Identity.strProgramId ||
+		pPlan->Get_Identity().strProgramSha256 !=
+			Program->Identity.strProgramSha256 ||
+		pPlan->Get_Identity().strCandidateRawSha256 !=
+			Program->Identity.strCandidateRawSha256 ||
+		Authority->Identity.strProgramId != Program->Identity.strProgramId ||
+		Authority->Identity.strProgramSha256 !=
+			Program->Identity.strProgramSha256 ||
+		Authority->Identity.strAuthorityId !=
+			CatalogEntry->Get_Identity().strRenderResourceAuthorityId ||
+		Authority->Identity.strSidecarRawSha256 !=
+			CatalogEntry->Get_Identity().strRenderResourceSidecarRawSha256 ||
+		Authority->Identity.strSidecarDecisionProjectionSha256 !=
+			CatalogEntry->Get_Identity().
+				strRenderResourceSidecarDecisionProjectionSha256 ||
+		Authority->Identity.strSidecarReceiptSha256 !=
+			CatalogEntry->Get_Identity().strRenderResourceSidecarReceiptSha256 ||
+		Authority->Identity.iFormatVersion !=
+			CatalogEntry->Get_Identity().iRenderResourceSidecarFormatVersion ||
+		Authority->Identity.iSidecarByteCount !=
+			CatalogEntry->Get_Identity().iRenderResourceSidecarByteCount ||
+		Authority->Identity.strSchema !=
+			CatalogEntry->Get_Identity().strRenderResourceSidecarSchema ||
+		Authority->Identity.strAuthorityLinkSha256 !=
+			CatalogEntry->Get_Identity().strRenderResourceAuthorityLinkSha256 ||
+		Authority->Identity.strPublishReceiptSha256 !=
+			CatalogEntry->Get_Identity().strRenderResourcePublishReceiptSha256 ||
+		Program->Admission.bRuntimeExecution || Program->Admission.bProduct)
+	{
+		return Reject(strOutError,
+			"Selected evaluator requires one immutable nonProduct Catalog graph.");
+	}
+
+	std::shared_ptr<EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA>
+		PreparedData = std::make_shared<
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA>();
+	std::set<std::string, std::less<>> EmitterIds;
+	if (Request.Emitters[0u].Schedule.strId !=
+			Request.Emitters[1u].Schedule.strId ||
+		Request.Emitters[0u].Schedule.strRowSha256 !=
+			Request.Emitters[1u].Schedule.strRowSha256)
+	{
+		return Reject(strOutError,
+			"Selected evaluator requires one shared exact schedule row.");
+	}
+	uint32_t MeshCount = 0u;
+	uint32_t SpriteCount = 0u;
+	uint32_t HandlerCount = 0u;
+	for (uint32_t Index = 0u; Index < Request.Emitters.size(); ++Index)
+	{
+		const auto& Selection = Request.Emitters[Index];
+		MeshCount += Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH ? 1u : 0u;
+		SpriteCount += Selection.eKind ==
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE ? 1u : 0u;
+		HandlerCount += static_cast<uint32_t>(Selection.Handlers.size());
+		if (!EmitterIds.emplace(Selection.Emitter.strId).second)
+			return Reject(strOutError,
+				"Selected evaluator emitter selection is duplicated.");
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION Operation;
+		if (!Validate_EmitterSelection(*pPlan, *Program, *Authority, Selection,
+			Index, Operation, strOutError))
+		{
+			return false;
+		}
+		PreparedData->Emitters.push_back(std::move(Operation));
+	}
+	if (MeshCount != 1u || SpriteCount != 1u ||
+		HandlerCount == 0u ||
+		HandlerCount != Request.iExpectedConsumedHandlerCount)
+		return Reject(strOutError,
+			"Selected evaluator requires exactly one Mesh and one Sprite.");
+
+	std::shared_ptr<EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		Staged(new EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION());
+	Staged->m_pPlan = std::move(pPlan);
+	Staged->m_pRuntimePreparation = RuntimePreparation;
+	Staged->m_pCatalogEntry = CatalogEntry;
+	Staged->m_pProgram = Program;
+	Staged->m_pRenderResourceAuthority = Authority;
+	Staged->m_Request = Request;
+	Staged->m_pPreparedData = std::move(PreparedData);
+	InOutPreparation = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectReconstructedSelectedEvaluator::Evaluate(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		pPreparation,
+	const uint64_t iFixedStepIndex,
+	const uint64_t iSpawnSerial,
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME>& InOutFrame,
+	std::string& strOutError)
+{
+	const auto Plan = nullptr == pPreparation ? nullptr :
+		pPreparation->Get_Plan();
+	const auto RuntimePreparation = nullptr == pPreparation ? nullptr :
+		pPreparation->Get_RuntimePreparation();
+	const auto CatalogEntry = nullptr == pPreparation ? nullptr :
+		pPreparation->Get_CatalogEntry();
+	const auto Program = nullptr == pPreparation ? nullptr :
+		pPreparation->Get_Program();
+	const auto Authority = nullptr == pPreparation ? nullptr :
+		pPreparation->Get_RenderResourceAuthority();
+	const auto PreparedData = nullptr == pPreparation ? nullptr :
+		pPreparation->m_pPreparedData;
+	if (nullptr == pPreparation || nullptr == Plan ||
+		nullptr == RuntimePreparation || nullptr == CatalogEntry ||
+		nullptr == Program || nullptr == Authority || nullptr == PreparedData ||
+		Plan->Get_Preparation().get() != RuntimePreparation.get() ||
+		Plan->Get_Program().get() != Program.get() ||
+		RuntimePreparation->Get_CatalogEntry().get() != CatalogEntry.get() ||
+		RuntimePreparation->Get_Program().get() != Program.get() ||
+		RuntimePreparation->Get_RenderResourceAuthority().get() !=
+			Authority.get() ||
+		CatalogEntry->Get_Program().get() != Program.get() ||
+		CatalogEntry->Get_RenderResourceAuthority().get() != Authority.get() ||
+		iFixedStepIndex !=
+			pPreparation->Get_Request().iRequiredFixedStepIndex ||
+		iSpawnSerial != pPreparation->Get_Request().iRequiredSpawnSerial ||
+		PreparedData->Emitters.size() !=
+			pPreparation->Get_Request().Emitters.size() ||
+		Program->Admission.bRuntimeExecution || Program->Admission.bProduct)
+	{
+		return Reject(strOutError,
+			"Selected evaluator preparation, step, or serial is invalid.");
+	}
+
+	FIXED_STEP_SIMULATION Simulation;
+	if (!Simulate_FixedSteps(*Plan, iFixedStepIndex, Simulation, strOutError))
+		return false;
+	std::shared_ptr<EFFECT_RECONSTRUCTED_SELECTED_FRAME> Staged(
+		new EFFECT_RECONSTRUCTED_SELECTED_FRAME());
+	Staged->m_pPreparation = pPreparation;
+	Staged->m_iFixedStepIndex = iFixedStepIndex;
+	Staged->m_fSampleTimeSeconds = Simulation.fSampleTimeSeconds;
+	Staged->m_strOccurrenceRngContract =
+		pPreparation->Get_Request().strOccurrenceRngContract;
+	Staged->m_iOccurrenceRngVersion =
+		pPreparation->Get_Request().iOccurrenceRngVersion;
+	for (const auto& Operation : PreparedData->Emitters)
+	{
+		if (Operation.iSelectionIndex >=
+				pPreparation->Get_Request().Emitters.size() ||
+			nullptr == Operation.pPlanEmitter ||
+			nullptr == Operation.pPlanSchedule)
+		{
+			return Reject(strOutError,
+				"Selected evaluator prepared emitter is invalid.");
+		}
+		const auto& Selection = pPreparation->Get_Request().Emitters[
+			Operation.iSelectionIndex];
+		const auto StateIt = Simulation.States.find(
+			Operation.pPlanEmitter->strEmitterId);
+		if (StateIt == Simulation.States.end())
+			return Reject(strOutError,
+				"Selected evaluator timing emitter is absent.");
+		const auto ParticleIt = std::find_if(StateIt->second.Particles.begin(),
+			StateIt->second.Particles.end(), [iSpawnSerial](const auto& Particle)
+			{
+				return Particle.iSpawnSerial == iSpawnSerial;
+			});
+		if (ParticleIt == StateIt->second.Particles.end() ||
+			std::count_if(StateIt->second.Particles.begin(),
+				StateIt->second.Particles.end(), [iSpawnSerial](const auto& Particle)
+				{
+					return Particle.iSpawnSerial == iSpawnSerial;
+				}) != 1u)
+		{
+			return Reject(strOutError,
+				"Selected evaluator exact active occurrence is absent or duplicated.");
+		}
+		EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET Timing;
+		Timing.strOccurrenceId = ParticleIt->strOccurrenceId;
+		Timing.strScheduleId = Operation.pPlanSchedule->strScheduleId;
+		Timing.strEmitterId = Operation.pPlanEmitter->strEmitterId;
+		Timing.eRenderer = Operation.pPlanEmitter->eRenderer;
+		Timing.iLoopIndex = ParticleIt->iLoopIndex;
+		Timing.iSpawnSerial = ParticleIt->iSpawnSerial;
+		Timing.iSpawnStep = ParticleIt->iSpawnStep;
+		Timing.iOccurrenceRandomValue =
+			ParticleIt->iOccurrenceRandomValue;
+		Timing.iLifetimeRandomValue = ParticleIt->iLifetimeRandomValue;
+		Timing.fAgeSeconds = (std::max)(0.0,
+			Simulation.fSampleTimeSeconds - ParticleIt->fSpawnTimeSeconds);
+		Timing.fLifetimeSeconds = ParticleIt->fLifetimeSeconds;
+		if (Timing.strScheduleId != Selection.Schedule.strId ||
+			Timing.strEmitterId != Selection.Emitter.strId ||
+			Timing.eRenderer != Selection.eRenderer ||
+			Timing.iSpawnSerial != iSpawnSerial ||
+			Timing.iSpawnStep != iFixedStepIndex ||
+			Timing.fAgeSeconds != 0.0)
+		{
+			return Reject(strOutError,
+				"Selected evaluator exact timing packet is invalid.");
+		}
+		SELECTED_VISUAL_RESULT Visual;
+		if (!Evaluate_SelectedVisual(*Plan, Operation, Selection, Timing,
+			Simulation.fSampleTimeSeconds, Visual, strOutError))
+		{
+			return false;
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_PACKET Packet;
+		Packet.m_pPreparation = pPreparation;
+		Packet.m_iSelectionIndex = Operation.iSelectionIndex;
+		Packet.m_eKind = Selection.eKind;
+		Packet.m_Timing = std::move(Timing);
+		Packet.m_iFinalRandomState = Visual.iFinalRandomState;
+		Packet.m_iRandomDrawCount = Visual.iRandomDrawCount;
+		Packet.m_Values = std::move(Visual.Values);
+		Packet.m_SpriteSink = Selection.SpriteSink;
+		for (const auto& Handler : Selection.Handlers)
+		{
+			EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION Consumption;
+			Consumption.Module = Handler.Module;
+			Consumption.Handler = Handler.Handler;
+			Consumption.strImplementationId = Handler.strImplementationId;
+			Consumption.iImplementationVersion =
+				Handler.iImplementationVersion;
+			Consumption.strImplementationSha256 =
+				Handler.strImplementationSha256;
+			Packet.m_ConsumedHandlers.push_back(std::move(Consumption));
+		}
+		Staged->m_iConsumedHandlerCount += static_cast<uint32_t>(
+			Packet.m_ConsumedHandlers.size());
+		Staged->m_Packets.push_back(std::move(Packet));
+	}
+	const uint32_t MeshCount = static_cast<uint32_t>(std::count_if(
+		Staged->m_Packets.begin(), Staged->m_Packets.end(), [](const auto& Packet)
+		{
+			return Packet.Get_Kind() ==
+				EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH;
+		}));
+	const uint32_t SpriteCount = static_cast<uint32_t>(std::count_if(
+		Staged->m_Packets.begin(), Staged->m_Packets.end(), [](const auto& Packet)
+		{
+			return Packet.Get_Kind() ==
+				EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE;
+		}));
+	if (Staged->m_Packets.size() != 2u || MeshCount != 1u ||
+		SpriteCount != 1u || Staged->m_iConsumedHandlerCount == 0u ||
+		Staged->m_iConsumedHandlerCount !=
+			pPreparation->Get_Request().iExpectedConsumedHandlerCount)
+	{
+		return Reject(strOutError,
+			"Selected evaluator frame is empty or incomplete.");
+	}
+	Staged->m_strProjectionSha256 = Compute_SelectedFrameProjection(*Staged);
+	if (Staged->m_strProjectionSha256.size() != 64u)
+		return Reject(strOutError,
+			"Selected evaluator frame could not be sealed.");
+	InOutFrame = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 bool_t Client::CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
 	const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& CatalogIdentity,
@@ -2161,169 +4268,15 @@ bool_t Client::CEffectReconstructedCpuInspector::Simulate(
 			"Reconstructed CPU inspection input or Plan identity is invalid.");
 	}
 
-	std::map<std::string, MUTABLE_EMITTER_STATE, std::less<>> States;
-	for (const std::string& EmitterId : pPlan->Get_EmitterOrder())
-	{
-		const auto& Emitter = pPlan->Get_Emitters().at(EmitterId);
-		MUTABLE_EMITTER_STATE State;
-		State.Public.strEmitterId = EmitterId;
-		State.Public.strScheduleId = Emitter.strScheduleId;
-		State.Public.iRandomState = Emitter.iEmitterRandomSeed;
-		if (Emitter.strLifetimeSeedPolicyId.has_value())
-		{
-			const auto& Seed = pPlan->Get_SeedPolicies().at(
-				*Emitter.strLifetimeSeedPolicyId);
-			State.Public.iLifetimeRandomState = static_cast<uint32_t>(
-				Seed.RandomSeeds.front());
-			if (0u == State.Public.iLifetimeRandomState)
-				State.Public.iLifetimeRandomState = 1u;
-		}
-		States.emplace(EmitterId, std::move(State));
-	}
-
 	constexpr double FixedStep =
 		1.0 / static_cast<double>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ);
 	constexpr double StepEpsilon = 1.0e-9;
 	const uint64_t TargetSteps = static_cast<uint64_t>(std::floor(
 		fSampleTimeSeconds / FixedStep + StepEpsilon));
-	for (uint64_t Step = 1u; Step <= TargetSteps; ++Step)
-	{
-		const double Time = static_cast<double>(Step) * FixedStep;
-		for (const std::string& ScheduleId : pPlan->Get_ScheduleOrder())
-		{
-			const auto& Schedule = pPlan->Get_Schedules().at(ScheduleId);
-			for (const std::string& EmitterId : Schedule.EmitterIds)
-			{
-				const auto& Emitter = pPlan->Get_Emitters().at(EmitterId);
-				auto& State = States.at(EmitterId);
-				std::erase_if(State.Particles,
-					[Time, StepEpsilon](const SIMULATED_PARTICLE& Particle)
-					{
-						return Time - Particle.fSpawnTimeSeconds + StepEpsilon >=
-							Particle.fLifetimeSeconds;
-					});
-				State.Public.iActiveCount =
-					static_cast<uint32_t>(State.Particles.size());
-				const double ScheduleElapsed = Time - Schedule.fGlobalTimeSeconds;
-				if (ScheduleElapsed < 0.0)
-				{
-					State.Public.ePhase =
-						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_SCHEDULE;
-					continue;
-				}
-				const double EmitterElapsed =
-					ScheduleElapsed - Emitter.fEmitterDelaySeconds;
-				if (EmitterElapsed < 0.0)
-				{
-					State.Public.ePhase =
-						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_DELAY;
-					continue;
-				}
-				const uint32_t LoopIndex = static_cast<uint32_t>(std::floor(
-					EmitterElapsed / Emitter.fEmitterDurationSeconds));
-				const bool_t LoopAllowed = Emitter.iEmitterLoopCount == 0u ||
-					LoopIndex < Emitter.iEmitterLoopCount;
-				if (!LoopAllowed)
-				{
-					State.Public.ePhase =
-						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::COMPLETE;
-				}
-				else
-				{
-					State.Public.ePhase =
-						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::EMITTING;
-					if (LoopIndex != State.Public.iLoopIndex)
-					{
-						State.Public.iLoopIndex = LoopIndex;
-						State.iNextBurst = 0u;
-						State.fSpawnAccumulator = 0.0;
-						if (Emitter.strLifetimeSeedPolicyId.has_value())
-						{
-							const auto& Seed = pPlan->Get_SeedPolicies().at(
-								*Emitter.strLifetimeSeedPolicyId);
-							if (Seed.bResetSeedOnEmitterLooping)
-							{
-								State.Public.iLifetimeRandomState =
-									static_cast<uint32_t>(Seed.RandomSeeds.front());
-								if (0u == State.Public.iLifetimeRandomState)
-									State.Public.iLifetimeRandomState = 1u;
-							}
-						}
-					}
-					const double EmitterTime = EmitterElapsed -
-						static_cast<double>(LoopIndex) *
-							Emitter.fEmitterDurationSeconds;
-					while (State.iNextBurst < Emitter.Bursts.size() &&
-						Emitter.Bursts[State.iNextBurst].fTimeSeconds <=
-							EmitterTime + 0.5 * FixedStep)
-					{
-						const auto& Burst = Emitter.Bursts[State.iNextBurst++];
-						uint32_t Count = Burst.iCountMinimum;
-						if (Burst.iCountMaximum > Burst.iCountMinimum)
-						{
-							const uint64_t Span =
-								static_cast<uint64_t>(Burst.iCountMaximum) -
-								Burst.iCountMinimum + 1u;
-							Count += static_cast<uint32_t>(
-								Next_Random(State.Public.iRandomState) % Span);
-						}
-						if (!Spawn_InspectionParticles(*pPlan, Emitter, State,
-							LoopIndex, Count, Step, Time, EmitterTime, strOutError))
-						{
-							return false;
-						}
-					}
-					const auto& RateDistribution = pPlan->Get_Distributions().at(
-						Emitter.strSpawnRateDistributionId);
-					const auto& RateScaleDistribution =
-						pPlan->Get_Distributions().at(
-							Emitter.strSpawnRateScaleDistributionId);
-					if (!RateDistribution.bCpuTimingExecutable ||
-						!RateScaleDistribution.bCpuTimingExecutable)
-					{
-						return Reject(strOutError,
-							"Reconstructed CPU inspection spawn evaluator is not executable.");
-					}
-					std::array<double, 4u> RandomUnits{};
-					RandomUnits[0u] = static_cast<double>(
-						Next_Random(State.Public.iRandomState)) /
-						static_cast<double>((std::numeric_limits<uint32_t>::max)());
-					const double Rate = Evaluate_Distribution(
-						RateDistribution, EmitterTime, RandomUnits)[0u];
-					RandomUnits[0u] = static_cast<double>(
-						Next_Random(State.Public.iRandomState)) /
-						static_cast<double>((std::numeric_limits<uint32_t>::max)());
-					const double RateScale = Evaluate_Distribution(
-						RateScaleDistribution, EmitterTime, RandomUnits)[0u];
-					if (!Is_Finite(Rate) || !Is_Finite(RateScale) ||
-						Rate < 0.0 || RateScale < 0.0)
-						return Reject(strOutError,
-							"Reconstructed CPU inspection spawn rate is invalid.");
-					State.fSpawnAccumulator += Rate * RateScale * FixedStep;
-					if (!Is_Finite(State.fSpawnAccumulator) ||
-						State.fSpawnAccumulator >
-							static_cast<double>((std::numeric_limits<uint32_t>::max)()))
-					{
-						return Reject(strOutError,
-							"Reconstructed CPU inspection spawn accumulator overflowed.");
-					}
-					const uint32_t SpawnCount = static_cast<uint32_t>(
-						std::floor(State.fSpawnAccumulator));
-					State.fSpawnAccumulator -= static_cast<double>(SpawnCount);
-					if (!Spawn_InspectionParticles(*pPlan, Emitter, State,
-						LoopIndex, SpawnCount, Step, Time, EmitterTime, strOutError))
-					{
-						return false;
-					}
-				}
-				State.Public.iActiveCount =
-					static_cast<uint32_t>(State.Particles.size());
-				if (State.Public.iActiveCount > Emitter.iOperationalMaxParticles)
-					return Reject(strOutError,
-						"Reconstructed CPU inspection exceeded the operational cap.");
-			}
-		}
-	}
+	FIXED_STEP_SIMULATION Simulation;
+	if (!Simulate_FixedSteps(*pPlan, TargetSteps, Simulation, strOutError))
+		return false;
+	const auto& States = Simulation.States;
 
 	std::shared_ptr<EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE> State(
 		new EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE());
@@ -2345,7 +4298,7 @@ bool_t Client::CEffectReconstructedCpuInspector::Simulate(
 		for (const std::string& EmitterId : Schedule.EmitterIds)
 		{
 			const auto& Emitter = pPlan->Get_Emitters().at(EmitterId);
-			for (const SIMULATED_PARTICLE& Particle : States.at(EmitterId).Particles)
+			for (const TIMING_PARTICLE& Particle : States.at(EmitterId).Particles)
 			{
 				EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET Packet;
 				Packet.strOccurrenceId = Particle.strOccurrenceId;

@@ -28,6 +28,10 @@ $header = Read-RequiredSource 'Client\Public\Effect_RuntimeAuthority.h'
 $source = Read-RequiredSource 'Client\Private\Effect_RuntimeAuthority.cpp'
 $catalogHeader = Read-RequiredSource 'Client\Public\Effect_Catalog.h'
 $catalogSource = Read-RequiredSource 'Client\Private\Effect_Catalog.cpp'
+$executionHeader = Read-RequiredSource `
+	'Client\Public\Effect_ReconstructedExecution.h'
+$executionSource = Read-RequiredSource `
+	'Client\Private\Effect_ReconstructedExecution.cpp'
 $presentationHeader = Read-RequiredSource `
 	'Client\Public\Effect_PresentationService.h'
 $presentationSource = Read-RequiredSource `
@@ -182,6 +186,360 @@ if ($catalogSource -notmatch
 	'(?s)SourceReceiptStatus != "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT".*SourceReceiptStatus !=\s*"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"') {
 	throw 'Render-resource source receipt status must use the exact closed two-value allowlist.'
 }
+foreach ($selectedEvaluatorBoundary in @(
+	'EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION',
+	'artist-f.selected-occurrence-xorshift32.v1',
+	'EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST',
+	'EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION',
+	'EFFECT_RECONSTRUCTED_SELECTED_PACKET',
+	'EFFECT_RECONSTRUCTED_SELECTED_FRAME',
+	'CEffectReconstructedSelectedEvaluator',
+	'Get_RandomDrawCount',
+	'vMeshDimensionlessScaleXzy',
+	'vSpriteSignedWorldSizeXzy',
+	'CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT',
+	'RendererTextureResource',
+	'SidecarRendererSlotDecision',
+	'strPayloadSha256',
+	'strMetadataIdentitySha256')) {
+	if ($executionHeader -notmatch [regex]::Escape($selectedEvaluatorBoundary)) {
+		throw "Selected production evaluator public boundary is missing: $selectedEvaluatorBoundary"
+	}
+}
+function Test-SelectedPublicTokensOutsideTestGuard(
+	[string]$Text,
+	[string[]]$Tokens) {
+	$found = @{}
+	foreach ($token in $Tokens) {
+		$found[$token] = $false
+	}
+	$testGuardDepth = 0
+	foreach ($line in [regex]::Split($Text, "`r?`n")) {
+		$trimmed = $line.TrimStart()
+		if ($trimmed -match '^#\s*(if|ifdef|ifndef)\b') {
+			if ($testGuardDepth -gt 0) {
+				$testGuardDepth++
+			}
+			elseif ($trimmed -match
+				'LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS') {
+				$testGuardDepth = 1
+			}
+		}
+		foreach ($token in $Tokens) {
+			if ($line.IndexOf($token, [StringComparison]::Ordinal) -lt 0) {
+				continue
+			}
+			$found[$token] = $true
+			if ($testGuardDepth -gt 0) {
+				return $false
+			}
+		}
+		if ($trimmed -match '^#\s*endif\b' -and $testGuardDepth -gt 0) {
+			$testGuardDepth--
+		}
+	}
+	foreach ($token in $Tokens) {
+		if (-not $found[$token]) {
+			return $false
+		}
+	}
+	return $true
+}
+$selectedPublicTypeTokens = @(
+	'enum class EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND',
+	'enum class EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT',
+	'enum class EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_CONSTANTS',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_SHADER_BINDING',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_PARTICLE_VALUES',
+	'struct EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA;',
+	'class EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION final',
+	'class EFFECT_RECONSTRUCTED_SELECTED_PACKET final',
+	'class EFFECT_RECONSTRUCTED_SELECTED_FRAME final',
+	'class CEffectReconstructedSelectedEvaluator final')
+if (-not (Test-SelectedPublicTokensOutsideTestGuard `
+	$executionHeader $selectedPublicTypeTokens)) {
+	throw 'Selected evaluator API and immutable packet types must remain outside the inspector test macro.'
+}
+$selectedPublicStartIndex = $executionHeader.IndexOf(
+	'enum class EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND')
+$selectedPublicEndIndex = $executionHeader.IndexOf(
+	'class CEffectReconstructedCpuInspector;', $selectedPublicStartIndex)
+if ($selectedPublicStartIndex -lt 0 -or $selectedPublicEndIndex -lt 0) {
+	throw 'Selected evaluator public block bounds are missing.'
+}
+$guardedHeaderScratch = $executionHeader.Insert(
+	$selectedPublicEndIndex, "#endif`r`n").Insert(
+	$selectedPublicStartIndex,
+	"#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)`r`n")
+if (Test-SelectedPublicTokensOutsideTestGuard `
+	$guardedHeaderScratch $selectedPublicTypeTokens) {
+	throw 'Selected evaluator public macro-guard scratch mutation escaped the guard-depth audit.'
+}
+foreach ($selectedEvaluatorImplementation in @(
+	'EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA',
+	'SELECTED_MODULE_HANDLER_ROUTES',
+	'Find_ModuleHandlerRoute',
+	'Resolve_ModuleOpcode',
+	'Has_ModuleHandlerRoute',
+	'Spawn_TimingParticles',
+	'Simulate_FixedSteps',
+	'Bind_ModuleDistributions',
+	'Evaluate_PreparedDistribution',
+	'Selected evaluator handler dispatch is unsupported.',
+	'CEffectReconstructedSelectedEvaluator::Prepare',
+	'CEffectReconstructedSelectedEvaluator::Evaluate',
+	'Selected evaluator requires one shared exact schedule row.',
+	'Selected evaluator expected an absent renderer texture row.',
+	'Selected evaluator expected an absent sidecar state row.',
+	'Selected evaluator visual result failed its closed contract.',
+	'Shader_VtxEffectMeshPreview.hlsl',
+	'OpaqueBackDepthWrite',
+	'Shader_VtxEffectParticle.hlsl',
+	'AlphaTwoSidedDepthRead',
+	'g_SourceTexture0',
+	'g_SourceTexture1')) {
+	if ($executionSource -notmatch [regex]::Escape(
+		$selectedEvaluatorImplementation)) {
+		throw "Selected production evaluator implementation is missing: $selectedEvaluatorImplementation"
+	}
+}
+if ($executionSource -match 'Spawn_InspectionParticles') {
+	throw 'The production fixed-step core must not retain an inspector-named execution seam.'
+}
+$selectedHandlerRouteStartIndex = $executionSource.IndexOf(
+	'const SELECTED_MODULE_HANDLER_ROUTE* Find_ModuleHandlerRoute(')
+$selectedHandlerResolveIndex = $executionSource.IndexOf(
+	'Resolve_ModuleOpcode(', $selectedHandlerRouteStartIndex)
+$selectedHandlerRouteEndIndex = $executionSource.IndexOf(
+	'bool_t Same4(', $selectedHandlerResolveIndex)
+if ($selectedHandlerRouteStartIndex -lt 0 -or
+	$selectedHandlerResolveIndex -lt 0 -or
+	$selectedHandlerRouteEndIndex -lt 0 -or
+	$selectedHandlerRouteStartIndex -ge $selectedHandlerResolveIndex -or
+	$selectedHandlerResolveIndex -ge $selectedHandlerRouteEndIndex) {
+	throw 'Selected evaluator closed handler-route bounds are missing.'
+}
+$selectedHandlerLookupBody = $executionSource.Substring(
+	$selectedHandlerRouteStartIndex,
+	$selectedHandlerResolveIndex - $selectedHandlerRouteStartIndex)
+$selectedHandlerRouteBody = $executionSource.Substring(
+	$selectedHandlerRouteStartIndex,
+	$selectedHandlerRouteEndIndex - $selectedHandlerRouteStartIndex)
+foreach ($handlerRouteToken in @(
+	'Selection.Handler.strId',
+	'Selection.strImplementationId',
+	'Selection.iImplementationVersion',
+	'Selection.strImplementationSha256',
+	'Handler.eKind == Route->eExpectedHandlerKind')) {
+	if ($selectedHandlerRouteBody -notmatch [regex]::Escape($handlerRouteToken)) {
+		throw "Selected evaluator handler dispatch key is incomplete: $handlerRouteToken"
+	}
+}
+if ($selectedHandlerLookupBody -match 'strExpectedSourceClass|strExactSourceClass') {
+	throw 'Selected evaluator handler dispatch must not use source class as lookup authority.'
+}
+$selectedPrepareIndex = $executionSource.IndexOf(
+	'bool_t Client::CEffectReconstructedSelectedEvaluator::Prepare(')
+$selectedEvaluateIndex = $executionSource.IndexOf(
+	'bool_t Client::CEffectReconstructedSelectedEvaluator::Evaluate(')
+$selectedEvaluateEndIndex = $executionSource.IndexOf(
+	'#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)',
+	$selectedEvaluateIndex)
+$inspectorImplementationIndex = $executionSource.IndexOf(
+	'bool_t Client::CEffectReconstructedCpuInspector::Simulate(')
+if ($selectedPrepareIndex -lt 0 -or $selectedEvaluateIndex -lt 0 -or
+	$selectedEvaluateEndIndex -lt 0 -or
+	$inspectorImplementationIndex -lt 0 -or
+	$selectedPrepareIndex -ge $selectedEvaluateIndex -or
+	$selectedEvaluateIndex -ge $selectedEvaluateEndIndex -or
+	$selectedEvaluateIndex -ge $inspectorImplementationIndex) {
+	throw 'Selected evaluator production methods must precede and remain independent of the inspector wrapper.'
+}
+$selectedPrepareBody = $executionSource.Substring(
+	$selectedPrepareIndex, $selectedEvaluateIndex - $selectedPrepareIndex)
+$selectedEvaluateBody = $executionSource.Substring(
+	$selectedEvaluateIndex, $selectedEvaluateEndIndex - $selectedEvaluateIndex)
+if ($selectedPrepareBody -match 'RendererRuntimeConfig') {
+	throw 'Selected evaluator Prepare must not consume rendererRuntimeConfig fallback data.'
+}
+$selectedDistributionCoreStartIndex = $executionSource.IndexOf(
+	'std::array<double, 4u> Select_Range(')
+$selectedDistributionEvaluateIndex = $executionSource.IndexOf(
+	'std::array<double, 4u> Evaluate_Distribution(',
+	$selectedDistributionCoreStartIndex)
+$selectedDistributionCoreEndIndex = $executionSource.IndexOf(
+	'bool_t Numeric_Close(', $selectedDistributionEvaluateIndex)
+if ($selectedDistributionCoreStartIndex -lt 0 -or
+	$selectedDistributionEvaluateIndex -lt 0 -or
+	$selectedDistributionCoreEndIndex -lt 0 -or
+	$selectedDistributionCoreStartIndex -ge $selectedDistributionEvaluateIndex -or
+	$selectedDistributionEvaluateIndex -ge $selectedDistributionCoreEndIndex) {
+	throw 'Selected evaluator production distribution-core bounds are missing.'
+}
+$selectedDistributionCoreRegion = $executionSource.Substring(
+	$selectedDistributionCoreStartIndex,
+	$selectedDistributionCoreEndIndex - $selectedDistributionCoreStartIndex)
+$selectedHelperStartIndex = $executionSource.IndexOf(
+	'uint32_t Next_Random(uint32_t& iInOutState)')
+$selectedVisualHelperStartIndex = $executionSource.IndexOf(
+	'bool_t Evaluate_VisualDistribution(', $selectedHelperStartIndex)
+$selectedHelperEndIndex = $executionSource.IndexOf(
+	'#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)',
+	$selectedVisualHelperStartIndex)
+if ($selectedHelperStartIndex -lt 0 -or
+	$selectedVisualHelperStartIndex -lt 0 -or
+	$selectedHelperEndIndex -lt 0 -or
+	$selectedHelperStartIndex -ge $selectedVisualHelperStartIndex -or
+	$selectedVisualHelperStartIndex -ge $selectedHelperEndIndex) {
+	throw 'Selected evaluator reachable production helper bounds are missing.'
+}
+$selectedProductionHelperRegion = $executionSource.Substring(
+	$selectedHelperStartIndex, $selectedHelperEndIndex - $selectedHelperStartIndex)
+$selectedVisualHelperRegion = $executionSource.Substring(
+	$selectedVisualHelperStartIndex,
+	$selectedHelperEndIndex - $selectedVisualHelperStartIndex)
+if ($selectedProductionHelperRegion -notmatch
+	'(?s)case OPCODE::CYLINDER_Z:.*?Bind\(\{ "startradius", "startheight", "velocityscale",\s*"startlocation" \}\)' -or
+	$selectedProductionHelperRegion -notmatch
+	'(?s)case OPCODE::GROUND:.*?Bind\(\{ "adjustlocation", "skiplocation" \}\)') {
+	throw 'Selected evaluator prepared cylinder/ground distribution slot contracts are missing.'
+}
+$selectedCylinderEvaluateStart = $selectedVisualHelperRegion.IndexOf(
+	'case OPCODE::CYLINDER_Z:')
+$selectedCylinderEvaluateEnd = $selectedVisualHelperRegion.IndexOf(
+	'case OPCODE::LOCATION:', $selectedCylinderEvaluateStart)
+$selectedGroundEvaluateStart = $selectedVisualHelperRegion.IndexOf(
+	'case OPCODE::GROUND:', $selectedCylinderEvaluateEnd)
+$selectedGroundEvaluateEnd = $selectedVisualHelperRegion.IndexOf(
+	'case OPCODE::DYNAMIC_PARAMETER:', $selectedGroundEvaluateStart)
+if ($selectedCylinderEvaluateStart -lt 0 -or
+	$selectedCylinderEvaluateEnd -lt 0 -or
+	$selectedGroundEvaluateStart -lt 0 -or
+	$selectedGroundEvaluateEnd -lt 0) {
+	throw 'Selected evaluator cylinder/ground action-time blocks are missing.'
+}
+$selectedCylinderEvaluateBody = $selectedVisualHelperRegion.Substring(
+	$selectedCylinderEvaluateStart,
+	$selectedCylinderEvaluateEnd - $selectedCylinderEvaluateStart)
+$selectedGroundEvaluateBody = $selectedVisualHelperRegion.Substring(
+	$selectedGroundEvaluateStart,
+	$selectedGroundEvaluateEnd - $selectedGroundEvaluateStart)
+if ($selectedCylinderEvaluateBody -notmatch
+	'(?s)ModuleOperation, 3u,.*?DrawCount, B, strOutError\).*?ModuleOperation, 2u,.*?DrawCount, A, strOutError\).*?SourcePosition\[Index\] \+= Offset\[Index\] \+ B\[Index\].*?SourceVelocity\[Index\] \+= Offset\[Index\] \* A\[0u\]' -or
+	$selectedGroundEvaluateBody -notmatch
+	'(?s)ModuleOperation, 0u,.*?DrawCount, A, strOutError\).*?ModuleOperation, 1u,.*?DrawCount, B, strOutError\).*?if \(B\[0u\] < 0\.5\).*?SourcePosition\[Index\] \+= A\[Index\]') {
+	throw 'Selected evaluator cylinder/ground distribution consumption order is not the frozen production order.'
+}
+function Find-SelectedForbiddenToken(
+	[string]$Text,
+	[string[]]$Tokens) {
+	foreach ($token in $Tokens) {
+		if ($Text.IndexOf($token, [StringComparison]::Ordinal) -ge 0) {
+			return $token
+		}
+	}
+	return ''
+}
+$forbiddenProductionIoTokens = @(
+	'CEffectReconstructedCpuInspector::',
+	'Spawn_InspectionParticles',
+	'CEffectCatalog',
+	'CDataJson',
+	'std::ifstream',
+	'std::ofstream',
+	'std::fstream',
+	'std::cin',
+	'std::cout',
+	'std::cerr',
+	'std::filesystem',
+	'FILE*',
+	'fopen(',
+	'_wfopen(',
+	'printf(',
+	'scanf(',
+	'CreateFile',
+	'ReadFile',
+	'WriteFile',
+	'GetFileAttributes',
+	'GetModuleFileName',
+	'CreateProcess',
+	'ShellExecute',
+	'GetEnvironmentVariable',
+	'SetCurrentDirectory',
+	'LoadLibrary')
+$selectedProductionReachable = $selectedDistributionCoreRegion +
+	$selectedProductionHelperRegion +
+	$selectedPrepareBody + $selectedEvaluateBody
+$productionIoViolation = Find-SelectedForbiddenToken `
+	$selectedProductionReachable $forbiddenProductionIoTokens
+if (-not [string]::IsNullOrEmpty($productionIoViolation)) {
+	throw "Selected evaluator reachable production path uses forbidden inspector/direct-I-O token: $productionIoViolation"
+}
+$forbiddenPreparedVisualTokens = @(
+	'Find_ModuleDistribution',
+	'Get_Distributions',
+	'RendererRuntimeConfig',
+	'strExactSourceClass',
+	'SourceRecipe')
+$preparedVisualViolation = Find-SelectedForbiddenToken `
+	($selectedVisualHelperRegion + $selectedEvaluateBody) `
+	$forbiddenPreparedVisualTokens
+if (-not [string]::IsNullOrEmpty($preparedVisualViolation)) {
+	throw "Selected evaluator action-time visual path uses a forbidden raw lookup/dispatch token: $preparedVisualViolation"
+}
+$simulateHelperIndex = $selectedProductionHelperRegion.IndexOf(
+	'bool_t Simulate_FixedSteps(')
+if ($simulateHelperIndex -lt 0) {
+	throw 'Selected evaluator fixed-step helper scratch mutation point is missing.'
+}
+$ioMutationScratch = $selectedProductionHelperRegion.Insert(
+	$simulateHelperIndex, "std::ifstream forbiddenActionTimeRead;`r`n")
+$ioMutationDetected = Find-SelectedForbiddenToken `
+	$ioMutationScratch $forbiddenProductionIoTokens
+if ($ioMutationDetected -ne 'std::ifstream') {
+	throw 'Selected evaluator helper I-O scratch mutation escaped the reachable-path audit.'
+}
+$distributionMutationStart = $selectedDistributionCoreRegion.IndexOf(
+	'std::array<double, 4u> Evaluate_Distribution(')
+$distributionMutationBody = $selectedDistributionCoreRegion.IndexOf(
+	'{', $distributionMutationStart)
+if ($distributionMutationStart -lt 0 -or $distributionMutationBody -lt 0) {
+	throw 'Selected evaluator distribution-core scratch mutation point is missing.'
+}
+$distributionIoMutationScratch = $selectedDistributionCoreRegion.Insert(
+	$distributionMutationBody + 1,
+	"`r`nstd::ifstream forbiddenDistributionRead;")
+$distributionIoMutationDetected = Find-SelectedForbiddenToken `
+	$distributionIoMutationScratch $forbiddenProductionIoTokens
+if ($distributionIoMutationDetected -ne 'std::ifstream') {
+	throw 'Selected evaluator distribution I-O scratch mutation escaped the reachable-path audit.'
+}
+$visualMutationStart = $selectedVisualHelperRegion.IndexOf(
+	'bool_t Evaluate_SelectedVisual(')
+$visualMutationBody = $selectedVisualHelperRegion.IndexOf(
+	'{', $visualMutationStart)
+if ($visualMutationStart -lt 0 -or $visualMutationBody -lt 0) {
+	throw 'Selected evaluator visual scratch mutation point is missing.'
+}
+$rawVisualMutationScratch = $selectedVisualHelperRegion.Insert(
+	$visualMutationBody + 1, "`r`nGet_Distributions();")
+$rawVisualMutationDetected = Find-SelectedForbiddenToken `
+	$rawVisualMutationScratch $forbiddenPreparedVisualTokens
+if ($rawVisualMutationDetected -ne 'Get_Distributions') {
+	throw 'Selected evaluator visual raw-lookup scratch mutation escaped the action-time audit.'
+}
 if ($catalogSource -match 'ResourceDocument.*RuntimeAuthorit' -or
     $catalogSource -match 'Compile_Assembly\(.*RuntimeAuthorit') {
     throw 'Compiled runtime authority must not become a raw drawable document.'
@@ -326,6 +684,17 @@ foreach ($test in @(
 	'Artist 31470 Exact13 Catalog Commits One Immutable Render Resource Authority',
 	'Artist 31470 Exact13 Typed Maps Retrieve Frozen Mesh And Sprite M0 Rows',
 	'Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer',
+	'Artist 31470 nonProduct Debug M0 Production Prepare Binds One Immutable Catalog Plan Sidecar And 24 Exact Handlers',
+	'Artist 31470 nonProduct Debug M0 Production Evaluate Emits Exact Step88 Mesh Sprite 2/2 And Consumes 15 Plus 9 Handlers',
+	'Artist 31470 nonProduct Debug M0 Production Packet Freezes Mesh14 Sprite7 Values Signed Size And Sink Ready Orientation',
+	'Artist 31470 nonProduct Debug M0 Production Packet Projection Is Deterministic',
+	'Artist 31470 nonProduct Debug M0 Prepare Rejects RNG Schedule Emitter Renderer Handler Default Empty And Nonfinite Mutations Transactionally',
+	'Artist 31470 nonProduct Debug M0 Prepare Rejects Mesh Raster Depth And Sprite Blend Raster Role Swaps Transactionally',
+	'Artist 31470 nonProduct Debug M0 Prepare Rejects Recognized Class Nonallowlisted Handler Triplet Transactionally',
+	'Artist 31470 nonProduct Debug M0 Evaluate Rejects Step Serial And Empty Preparation While Preserving Prior Frame',
+	'Artist 31470 nonProduct Debug M0 Evaluate Rejects Internal RNG Draw Occurrence And Lifetime Contract Mismatch While Preserving Prior Frame',
+	'Artist 31470 nonProduct Debug M0 Evaluate Rejects Nonzero Empty Alpha Default Without Promoting It To Identity',
+	'Artist 31470 nonProduct Debug M0 Prepare And Evaluate Ignore Cleared Or Poisoned RendererRuntimeConfig Fallback',
 	'Artist 31470 Exact13 Sidecar Mutation Rolls Back Entry And Authority Pointers',
 	'Artist 31470 Exact13 Link21 Mutation Rolls Back Entry And Authority Pointers',
 	'Artist 31470 Exact13 Receipt26 Mutation Rolls Back Entry And Authority Pointers',

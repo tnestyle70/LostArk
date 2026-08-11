@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -16,6 +17,10 @@ NS_BEGIN(Client)
 inline constexpr uint32_t EFFECT_RECONSTRUCTED_EXECUTION_PLAN_VERSION = 1u;
 inline constexpr uint32_t EFFECT_RECONSTRUCTED_OCCURRENCE_RNG_VERSION = 1u;
 inline constexpr uint32_t EFFECT_RECONSTRUCTED_FIXED_STEP_HZ = 60u;
+inline constexpr uint32_t EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION = 1u;
+inline constexpr std::string_view
+	EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT =
+		"artist-f.selected-occurrence-xorshift32.v1";
 
 enum class EFFECT_RECONSTRUCTED_EXECUTION_MODULE_ROLE : uint8_t
 {
@@ -368,6 +373,371 @@ struct EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET final
 	uint32_t iLifetimeRandomValue = 0u;
 	double fAgeSeconds = 0.0;
 	double fLifetimeSeconds = 0.0;
+};
+
+enum class EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND : uint8_t
+{
+	MESH,
+	SPRITE,
+	END
+};
+
+enum class EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT : uint8_t
+{
+	VELOCITY,
+	END
+};
+
+enum class EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION : uint8_t
+{
+	CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT,
+	END
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY final
+{
+	std::string strId;
+	std::string strRowSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Module;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Handler;
+	std::string strExactSourceClass;
+	std::string strImplementationId;
+	uint32_t iImplementationVersion = 0u;
+	std::string strImplementationSha256;
+	std::vector<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY> ImplicitDefaults;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Module;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY SurfaceOnlyLiteral;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY VelocityLiteral;
+	std::string strAbsentHeightAxisDefault;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE final
+{
+	std::string strShaderVariableName;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY>
+		RendererTextureResource;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY MaterialInput;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY MaterialTextureBinding;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY MaterialPolicy;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY>
+		SidecarRendererSlotDecision;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY SidecarTextureBinding;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY SidecarTextureResource;
+	std::string strRuntimeAssetId;
+	std::string strRawSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY ProgramBinding;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY> ProgramPolicy;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY> SidecarDecision;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY GeometryUse;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY GeometryCarrier;
+	std::string strRuntimeAssetId;
+	uint32_t iCandidateResourceByteSize = 0u;
+	std::string strCandidateResourceSha256;
+	std::string strPayloadSha256;
+	std::string strMetadataIdentitySha256;
+	std::string strCacheIdentitySha256;
+	std::string strExpectedTupleSha256;
+	std::string strApprovalGeometryRowSha256;
+	std::string strPreparedCacheIdentitySha256;
+	double fGeometryPreScale = 0.0;
+	uint32_t iSubmeshCount = 0u;
+	uint32_t iVertexCount = 0u;
+	uint32_t iIndexCount = 0u;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY RequiredModule;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY ScreenAlignmentProperty;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY ScreenAlignmentLiteral;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY AllowImageFlippingProperty;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY AllowImageFlippingLiteral;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterEnabledProperty;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterEnabledLiteral;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterXProperty;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterXLiteral;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterYProperty;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY OffsetCenterYLiteral;
+	EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT eAlignment =
+		EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT::END;
+	EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION eOrientation =
+		EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION::END;
+	bool_t bAllowImageFlipping = false;
+	bool_t bOffsetCenter = false;
+	std::array<double, 2u> vPivotCenter{};
+	bool_t bBillboard = false;
+	double fBillboardRollDegrees = 0.0;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_CONSTANTS final
+{
+	std::array<double, 2u> vUvScale{};
+	std::array<double, 4u> vPanRotationAux{};
+	std::array<double, 4u> vColor{};
+	std::array<double, 4u> vParams0{};
+	std::array<double, 4u> vParams1{};
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_SHADER_BINDING final
+{
+	std::string strShaderAssetId;
+	std::string strTechniqueName;
+	std::string strPassName;
+	uint32_t iPassIndex = 0u;
+	std::string strEvaluatorEnabledVariable;
+	std::string strFeatureMaskVariable;
+	std::string strUvScaleVariable;
+	std::string strPanRotationAuxVariable;
+	std::string strColorVariable;
+	std::string strParams0Variable;
+	std::string strParams1Variable;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Occurrence;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Recipe;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Family;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY RecipeTextureDecision;
+	std::string strEvaluatorId;
+	uint32_t iEvaluatorVersion = 0u;
+	std::string strEvaluatorSha256;
+	uint32_t iFeatureMask = 0u;
+	std::array<EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE, 2u> TextureLanes;
+	EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING BlendState;
+	EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING RasterizerState;
+	EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING DepthStencilState;
+	EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_CONSTANTS Constants;
+	EFFECT_RECONSTRUCTED_SELECTED_SHADER_BINDING Shader;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND eKind =
+		EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::END;
+	EFFECT_RUNTIME_RENDERER_KIND eRenderer =
+		EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Schedule;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Emitter;
+	uint32_t iEmitterOrder = 0u;
+	bool_t bLocalSpace = false;
+	std::string strSizeUnitPolicy;
+	uint32_t iExpectedVisualRandomDrawCount = 0u;
+	uint32_t iExpectedFinalRandomState = 0u;
+	uint32_t iExpectedOccurrenceRandomValue = 0u;
+	uint32_t iExpectedLifetimeRandomValue = 0u;
+	double fExpectedLifetimeSeconds = 0.0;
+	std::vector<EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY> Handlers;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY> Cylinder;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING> Geometry;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK> SpriteSink;
+	EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING Material;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST final
+{
+	uint32_t iEvaluatorVersion = 0u;
+	std::string strOccurrenceRngContract;
+	uint32_t iOccurrenceRngVersion = 0u;
+	uint64_t iRequiredFixedStepIndex = 0u;
+	uint64_t iRequiredSpawnSerial = 0u;
+	uint32_t iExpectedConsumedHandlerCount = 0u;
+	std::vector<EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION> Emitters;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION final
+{
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Module;
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Handler;
+	std::string strImplementationId;
+	uint32_t iImplementationVersion = 0u;
+	std::string strImplementationSha256;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_PARTICLE_VALUES final
+{
+	std::optional<std::array<double, 3u>> vMeshDimensionlessScaleXzy;
+	std::optional<std::array<double, 3u>> vSpriteSignedWorldSizeXzy;
+	std::array<double, 3u> vLocalPosition{};
+	std::array<double, 3u> vVelocityPerSecond{};
+	std::array<double, 3u> vAccelerationPerSecondSquared{};
+	std::array<double, 4u> vColor{};
+	std::array<double, 4u> vDynamicParameter{};
+	double fRotationDegrees = 0.0;
+	double fRotationRateDegreesPerSecond = 0.0;
+};
+
+struct EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA;
+class CEffectReconstructedSelectedEvaluator;
+
+class EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION final
+{
+public:
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Get_Plan() const
+	{
+		return m_pPlan;
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		Get_RuntimePreparation() const
+	{
+		return m_pRuntimePreparation;
+	}
+	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+		Get_CatalogEntry() const
+	{
+		return m_pCatalogEntry;
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Get_Program() const
+	{
+		return m_pProgram;
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		Get_RenderResourceAuthority() const
+	{
+		return m_pRenderResourceAuthority;
+	}
+	const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST& Get_Request() const
+	{
+		return m_Request;
+	}
+
+private:
+	friend class CEffectReconstructedSelectedEvaluator;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> m_pPlan;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		m_pRuntimePreparation;
+	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY> m_pCatalogEntry;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> m_pProgram;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		m_pRenderResourceAuthority;
+	EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST m_Request;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA>
+		m_pPreparedData;
+};
+
+class EFFECT_RECONSTRUCTED_SELECTED_PACKET final
+{
+public:
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		Get_Preparation() const
+	{
+		return m_pPreparation;
+	}
+	uint32_t Get_SelectionIndex() const { return m_iSelectionIndex; }
+	EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND Get_Kind() const { return m_eKind; }
+	const EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET& Get_Timing() const
+	{
+		return m_Timing;
+	}
+	uint32_t Get_FinalRandomState() const { return m_iFinalRandomState; }
+	uint32_t Get_RandomDrawCount() const { return m_iRandomDrawCount; }
+	const EFFECT_RECONSTRUCTED_SELECTED_PARTICLE_VALUES& Get_Values() const
+	{
+		return m_Values;
+	}
+	const std::vector<EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION>&
+		Get_ConsumedHandlers() const
+	{
+		return m_ConsumedHandlers;
+	}
+	const std::optional<EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK>&
+		Get_SpriteSink() const
+	{
+		return m_SpriteSink;
+	}
+
+private:
+	friend class CEffectReconstructedSelectedEvaluator;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		m_pPreparation;
+	uint32_t m_iSelectionIndex = 0u;
+	EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND m_eKind =
+		EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::END;
+	EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET m_Timing;
+	uint32_t m_iFinalRandomState = 0u;
+	uint32_t m_iRandomDrawCount = 0u;
+	EFFECT_RECONSTRUCTED_SELECTED_PARTICLE_VALUES m_Values;
+	std::optional<EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK> m_SpriteSink;
+	std::vector<EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION>
+		m_ConsumedHandlers;
+};
+
+class EFFECT_RECONSTRUCTED_SELECTED_FRAME final
+{
+public:
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		Get_Preparation() const
+	{
+		return m_pPreparation;
+	}
+	uint64_t Get_FixedStepIndex() const { return m_iFixedStepIndex; }
+	double Get_SampleTimeSeconds() const { return m_fSampleTimeSeconds; }
+	const std::string& Get_OccurrenceRngContract() const
+	{
+		return m_strOccurrenceRngContract;
+	}
+	uint32_t Get_OccurrenceRngVersion() const
+	{
+		return m_iOccurrenceRngVersion;
+	}
+	const std::vector<EFFECT_RECONSTRUCTED_SELECTED_PACKET>& Get_Packets() const
+	{
+		return m_Packets;
+	}
+	uint32_t Get_ConsumedHandlerCount() const
+	{
+		return m_iConsumedHandlerCount;
+	}
+	const std::string& Get_ProjectionSha256() const
+	{
+		return m_strProjectionSha256;
+	}
+
+private:
+	friend class CEffectReconstructedSelectedEvaluator;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		m_pPreparation;
+	uint64_t m_iFixedStepIndex = 0u;
+	double m_fSampleTimeSeconds = 0.0;
+	std::string m_strOccurrenceRngContract;
+	uint32_t m_iOccurrenceRngVersion = 0u;
+	uint32_t m_iConsumedHandlerCount = 0u;
+	std::vector<EFFECT_RECONSTRUCTED_SELECTED_PACKET> m_Packets;
+	std::string m_strProjectionSha256;
+};
+
+class CEffectReconstructedSelectedEvaluator final
+{
+public:
+	static bool_t Prepare(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> pPlan,
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST& Request,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>&
+			InOutPreparation,
+		std::string& strOutError);
+	static bool_t Evaluate(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			pPreparation,
+		uint64_t iFixedStepIndex,
+		uint64_t iSpawnSerial,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME>& InOutFrame,
+		std::string& strOutError);
 };
 
 class CEffectReconstructedCpuInspector;

@@ -5542,6 +5542,1003 @@ namespace
 		RestorePriorCatalogFile();
 	}
 
+	struct ARTIST_31470_SELECTED_HANDLER_FIXTURE final
+	{
+		const char* pModuleRowSha256 = nullptr;
+		const char* pSourceClass = nullptr;
+		const char* pHandlerId = nullptr;
+		const char* pHandlerRowSha256 = nullptr;
+		const char* pImplementationId = nullptr;
+		const char* pImplementationSha256 = nullptr;
+		const char* pImplicitDefaultRowSha256 = nullptr;
+	};
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY
+		Artist31470_SelectedRow(
+			std::string strId,
+			const std::string_view strRowSha256)
+	{
+		Client::EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Row;
+		Row.strId = std::move(strId);
+		Row.strRowSha256 = strRowSha256;
+		return Row;
+	}
+
+	std::string Artist31470_SelectedModuleId(
+		const std::string_view strEmitterId,
+		const uint32_t iModuleOrder)
+	{
+		std::ostringstream Suffix;
+		Suffix << "::module:" << std::setfill('0') << std::setw(3) <<
+			iModuleOrder;
+		return std::string(strEmitterId) + Suffix.str();
+	}
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY
+		Artist31470_SelectedHandler(
+			const std::string_view strEmitterId,
+			const uint32_t iModuleOrder,
+			const ARTIST_31470_SELECTED_HANDLER_FIXTURE& Fixture)
+	{
+		using namespace Client;
+		EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY Handler;
+		const std::string ModuleId = Artist31470_SelectedModuleId(
+			strEmitterId, iModuleOrder);
+		Handler.Module = Artist31470_SelectedRow(
+			ModuleId, Fixture.pModuleRowSha256);
+		Handler.Handler = Artist31470_SelectedRow(
+			Fixture.pHandlerId, Fixture.pHandlerRowSha256);
+		Handler.strExactSourceClass = Fixture.pSourceClass;
+		Handler.strImplementationId = Fixture.pImplementationId;
+		Handler.iImplementationVersion = 1u;
+		Handler.strImplementationSha256 = Fixture.pImplementationSha256;
+		if (nullptr != Fixture.pImplicitDefaultRowSha256)
+		{
+			Handler.ImplicitDefaults.push_back(Artist31470_SelectedRow(
+				ModuleId + "::default:buselocalspace",
+				Fixture.pImplicitDefaultRowSha256));
+		}
+		return Handler;
+	}
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST
+		Build_Artist31470SelectedEvaluatorRequest()
+	{
+		using namespace Client;
+		constexpr std::string_view ScheduleId =
+			"action-schedule-daa8fc7a3723b850ca9579f2";
+		constexpr std::string_view ScheduleRowSha256 =
+			"9d716d70a77a810f5c72e05084e3b6b9bfa0e0f5a823463ecc8af9a46352ea9f";
+		constexpr std::string_view MeshEmitterId =
+			"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+			"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+			"particlespriteemitter_17";
+		constexpr std::string_view SpriteEmitterId =
+			"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+			"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+			"particlespriteemitter_0";
+
+		constexpr std::array<ARTIST_31470_SELECTED_HANDLER_FIXTURE, 15u>
+			MeshHandlers{{
+			{ "7269f65b683922bb0efa691d37da1f7e21f38793a753fdf5bd2a747fbe7d197f",
+			  "particlemodulerequired", "handler-7197a80cf011dc858e402a52",
+			  "50b519203d66637e129bb235a1175aecbba9d168005d2054f822e9f2132ffb0e",
+			  "source.module.exact.particlemodulerequired.v1",
+			  "7549956b393dd6f0090bbab8d5ec9ec0905e74228243a97269d7f318dada3cc8",
+			  "fbb53670a8b3f3de1c1d58a9844d67ea4ce6321c4f57505d7c32ccf9c8e40f91" },
+			{ "1791e5293bc7317c7f300284a1f1c06dd5db0f03017ad864996ebc0340b61f74",
+			  "particlemodulelifetime", "handler-13a7ed7163d5dfa1114b6b96",
+			  "0d1a6bd6c9a5dc81065d530bc03cb079e6c8f01f37bba928b846e2a65f46a428",
+			  "source.module.exact.particlemodulelifetime.v1",
+			  "f23219bf0bade914e82f83b87fd90599ff20dec52db133779567ef9b4c60934e" },
+			{ "52b04a07f1082306ab2e8b8351052d54c1dd30e41d12f34d7d90a8511e8dc0b6",
+			  "particlemodulesize", "handler-9c42e464cd66e4181b042c28",
+			  "e6ab25366270c8c684104cb867eb036867b48bad0a93d3f57bee8160303bf18d",
+			  "source.module.exact.particlemodulesize.v1",
+			  "48802cd578656989f265b3a9bb60ee29a601972bbe458f8f1f674708289f14da" },
+			{ "6908ba7eecbba25d809b6c1afcbfa8c6c6a37d919ad5cb401a4c1e1f01744a47",
+			  "particlemodulevelocity", "handler-15647a506337532af1ba133f",
+			  "6cc0dd6faf757441bd5c6981bf859260ba6696e15fd845fd3b61f13083bbadb9",
+			  "source.module.exact.particlemodulevelocity.v1",
+			  "367119b4649154273f580ab6e30cb62f0026e2044b8e669a2e7b701e14ac9acc" },
+			{ "1961f250b965278f2110f93f15544c7c3b1a591e1d081604e6f45b1e424002c8",
+			  "particlemodulecoloroverlife", "handler-338e3d2723b94eb720b5d716",
+			  "7bd05c01ec04acb12f036fa20ac5798fef99599c172449cb2cb4beb9755ae261",
+			  "source.module.exact.particlemodulecoloroverlife.v1",
+			  "8806f7df8822465e84b118e75d45b271d8cb4e6f7dcf2d6c88b81f45e5a4e82c" },
+			{ "0f5f372cc7ebaa829a08e0048105866fe902f1cd8110bdab111f6dc1f5a63eee",
+			  "particlemodulerotation", "handler-ef557e2b5df085f811e910d3",
+			  "d7f1b89398a4e64ee3f094cddb51673512290df5cf8e3a03e6f65d03cca95cca",
+			  "source.module.exact.particlemodulerotation.v1",
+			  "77d0020b5a71b18474918077f33251cb44a956d5ee6f1adb03b3071df699c3f3" },
+			{ "c0d0d0bad3826bd1424523ce7238289125c0aaccd905c11174636b523783a1e2",
+			  "particlemoduleacceleration", "handler-a397c8c0eef3abd7aa07e4cb",
+			  "2398d14aa122d52dd81587285910dfa47477f87146dcb04f7b2b8404d6b1b2f1",
+			  "source.module.exact.particlemoduleacceleration.v1",
+			  "353c1bae53522ede173f93da8f2c936ddc2a298667b843380a673c7b4616e0d7" },
+			{ "23698a570844bdbd80a2731175856b400af4d50389ccf801bc5160fcf318d822",
+			  "particlemodulerotationrate", "handler-c41530ddbfc5f10ed7f3c94d",
+			  "148e84cb278c4f1c99e4647501412d5cbb3a9b98c58a45780d9c512225806469",
+			  "source.module.exact.particlemodulerotationrate.v1",
+			  "dda09b31d4e3b7f08d1f912eec57f9f359afc45eedca7b238a71480f6e5800d8" },
+			{ "0a90c44679da01df6daa261a76c43e11d987fc6dcf3d85cf21b8d1e137f18325",
+			  "particlemodulesizemultiplylife", "handler-8a15dbe6075b17c979aa066a",
+			  "451e33b44dfa582bde0ba42c0c3d2afe2a62bd7928b422eddc08a3997c32b19a",
+			  "source.module.exact.particlemodulesizemultiplylife.v1",
+			  "2892e1d0b0163a0ff74314e6d6c92ee0c0ce4002854efd0f3c96baa3f24f4689" },
+			{ "cd94729dd24af5799a9f97a48a1b27908df6e7f720dda2ea728554ed7c53b856",
+			  "particlemodulelocationprimitivecylinder", "handler-a90067d9043e62f6e79a5cc4",
+			  "4691180c80cda74a93ea57d68fe2d54d00842562c364a41192b4aeb0fe9f0a40",
+			  "source.module.exact.particlemodulelocationprimitivecylinder.v1",
+			  "dbbdcb1c7b4b28726062cc3846d89b38073fd15dd2cf2cf21869c109c757d5d7" },
+			{ "d907b84f25defb36e008045232b0500c0a362bac387c7c0b048fd3ef7aeeda6b",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "9d0caa35c3e244b9a95e21deb8c36226317fbc239f1db4a7363678a911dba386",
+			  "efparticlemodulelocationonground", "handler-9864f03184e2a68652252fec",
+			  "6f698eef3835d5f92556afef93f0b75133cbe0191e0b9a070c528fa6fe4b9b22",
+			  "source.reconstructed.ground.v1.implementation",
+			  "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f" },
+			{ "3795ac3d5311a153a0b231006e1c2bd4bb580ac9224ab3dd9b68c4022b627b0d",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "57f7a9538b8c2f9a7c014bcf5826364f412363c51cf167d2326a5f19bffca2cd",
+			  "particlemoduletypedatamesh", "handler-77746fd3dbe01b88dab89368",
+			  "726b5dd5002daf78d197009a993b98c0031a63ae78950c00f35bc168a24fbf86",
+			  "source.module.exact.particlemoduletypedatamesh.v1",
+			  "61d6b904015b25c4cd76f036adbac9cfd5c27fcc4d2742aba83cd4674be8ec63" },
+			{ "64b973f067fc58d0d88a76ece3e0b3553bb9252557935cdee3b3f74651acc088",
+			  "particlemodulespawn", "handler-fd2ce97f699c5a373f2529cb",
+			  "ac276fbb6dd0f1e04316c826a64ff3ac11a25ce147c095fb79f1dfdeabb52d6b",
+			  "source.module.exact.particlemodulespawn.v1",
+			  "902e8b11ccd6ae323cc7c0fae93e8cc0daf25a143cf4c8aea3e3f6d5f0385392" }
+		}};
+
+		constexpr std::array<ARTIST_31470_SELECTED_HANDLER_FIXTURE, 9u>
+			SpriteHandlers{{
+			{ "c3f5c61039496bcf9d2cb49c4fc5d80cadd3cb267769303ba9a4b29859ab792e",
+			  "particlemodulerequired", "handler-7197a80cf011dc858e402a52",
+			  "50b519203d66637e129bb235a1175aecbba9d168005d2054f822e9f2132ffb0e",
+			  "source.module.exact.particlemodulerequired.v1",
+			  "7549956b393dd6f0090bbab8d5ec9ec0905e74228243a97269d7f318dada3cc8" },
+			{ "88b613388336acf7224a668bfd72d3f3c6a07709ffc1f19f4bb1baa4c259a059",
+			  "particlemodulelifetime", "handler-13a7ed7163d5dfa1114b6b96",
+			  "0d1a6bd6c9a5dc81065d530bc03cb079e6c8f01f37bba928b846e2a65f46a428",
+			  "source.module.exact.particlemodulelifetime.v1",
+			  "f23219bf0bade914e82f83b87fd90599ff20dec52db133779567ef9b4c60934e" },
+			{ "4a374a782f323081cd073a2c0f3d6ed30f06429fa8f5292602b9b8124ceb146e",
+			  "particlemodulesize", "handler-9c42e464cd66e4181b042c28",
+			  "e6ab25366270c8c684104cb867eb036867b48bad0a93d3f57bee8160303bf18d",
+			  "source.module.exact.particlemodulesize.v1",
+			  "48802cd578656989f265b3a9bb60ee29a601972bbe458f8f1f674708289f14da" },
+			{ "d6eb891202d9706fd0d657015c5c81a329c1f1dd5d669ea3c16dcbf38e43fa35",
+			  "particlemodulecoloroverlife", "handler-338e3d2723b94eb720b5d716",
+			  "7bd05c01ec04acb12f036fa20ac5798fef99599c172449cb2cb4beb9755ae261",
+			  "source.module.exact.particlemodulecoloroverlife.v1",
+			  "8806f7df8822465e84b118e75d45b271d8cb4e6f7dcf2d6c88b81f45e5a4e82c" },
+			{ "2f03c680b7f5fe89cefe52eb184691977195998f3043c6ce6ddeca91f519faa4",
+			  "particlemodulevelocity", "handler-15647a506337532af1ba133f",
+			  "6cc0dd6faf757441bd5c6981bf859260ba6696e15fd845fd3b61f13083bbadb9",
+			  "source.module.exact.particlemodulevelocity.v1",
+			  "367119b4649154273f580ab6e30cb62f0026e2044b8e669a2e7b701e14ac9acc" },
+			{ "2c397a0c71047814207c5473795e792b51aa1a4e7f4aaf94115fdd7aab9f1132",
+			  "particlemodulesizemultiplylife", "handler-8a15dbe6075b17c979aa066a",
+			  "451e33b44dfa582bde0ba42c0c3d2afe2a62bd7928b422eddc08a3997c32b19a",
+			  "source.module.exact.particlemodulesizemultiplylife.v1",
+			  "2892e1d0b0163a0ff74314e6d6c92ee0c0ce4002854efd0f3c96baa3f24f4689" },
+			{ "74f8f9b2b8d72b02847e6e2d41b8e77ddcf54d259f6c61dfff709f7fd7edd25e",
+			  "particlemoduleparameterdynamic", "handler-738a4e4b7b8c22539ffd2458",
+			  "be3c7775d607970c62ed576d5aa8187f2dc6be7c3bfea86ee97efb3766f96d33",
+			  "source.module.exact.particlemoduleparameterdynamic.v1",
+			  "ec6543bd649774bddbd004cb91315d3657edf41d30c15e7a69c0dfd930f96ae3" },
+			{ "b6959fd3ce692d428cca4e87b1bbe8d51421a84d375ea7eb3d16b5d97070396c",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "ad872e503e49e548e2d04c67ddb9f54e9cbb7cc29270e27d55c7897d8cb1c508",
+			  "particlemodulespawn", "handler-fd2ce97f699c5a373f2529cb",
+			  "ac276fbb6dd0f1e04316c826a64ff3ac11a25ce147c095fb79f1dfdeabb52d6b",
+			  "source.module.exact.particlemodulespawn.v1",
+			  "902e8b11ccd6ae323cc7c0fae93e8cc0daf25a143cf4c8aea3e3f6d5f0385392" }
+		}};
+
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Request;
+		Request.iEvaluatorVersion =
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION;
+		Request.strOccurrenceRngContract =
+			EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT;
+		Request.iOccurrenceRngVersion = EFFECT_RECONSTRUCTED_OCCURRENCE_RNG_VERSION;
+		Request.iRequiredFixedStepIndex = 88u;
+		Request.iRequiredSpawnSerial = 0u;
+		Request.iExpectedConsumedHandlerCount = 24u;
+		Request.Emitters.resize(2u);
+
+		auto& Mesh = Request.Emitters[0u];
+		Mesh.eKind = EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH;
+		Mesh.eRenderer = EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE;
+		Mesh.Schedule = Artist31470_SelectedRow(
+			std::string(ScheduleId), ScheduleRowSha256);
+		Mesh.Emitter = Artist31470_SelectedRow(std::string(MeshEmitterId),
+			"23a6519e750f5fcdd22bd5e3f8ebd5ea63427f47440c3f2f74d60213d9977ddb");
+		Mesh.iEmitterOrder = 26u;
+		Mesh.bLocalSpace = false;
+		Mesh.strSizeUnitPolicy = "DIMENSIONLESS_AXIS_REORDER_ONLY";
+		Mesh.iExpectedVisualRandomDrawCount = 14u;
+		Mesh.iExpectedFinalRandomState = 2'355'157'980u;
+		Mesh.iExpectedOccurrenceRandomValue = 2'215'704'123u;
+		Mesh.iExpectedLifetimeRandomValue = 2'215'704'123u;
+		Mesh.fExpectedLifetimeSeconds = 2.257941908612368;
+		for (uint32_t Index = 0u; Index < MeshHandlers.size(); ++Index)
+		{
+			Mesh.Handlers.push_back(Artist31470_SelectedHandler(
+				MeshEmitterId, Index, MeshHandlers[Index]));
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY Cylinder;
+		Cylinder.Module = Mesh.Handlers[9u].Module;
+		const std::string CylinderModuleId = Cylinder.Module.strId;
+		Cylinder.SurfaceOnlyLiteral = Artist31470_SelectedRow(
+			CylinderModuleId + "::literal:002",
+			"52637459c505e924fb713e7e214301c6d4c574bc0833de7829a150b3a56b3e04");
+		Cylinder.VelocityLiteral = Artist31470_SelectedRow(
+			CylinderModuleId + "::literal:003",
+			"d840d85977be1e12007ade0482d676d908d797926eeed98abf2afc29902933e4");
+		Cylinder.strAbsentHeightAxisDefault = "Z";
+		Mesh.Cylinder = std::move(Cylinder);
+
+		EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING Geometry;
+		Geometry.GeometryUse = Artist31470_SelectedRow(
+			std::string(MeshEmitterId) + "::geometry-use",
+			"ecdec710c4ca2ded8253b771936a8c1b123f694613316ad4ae705a81dddd5b71");
+		Geometry.GeometryCarrier = Artist31470_SelectedRow(
+			"geometry-carrier-d98b591aa386ac0dd11f",
+			"5b800463ed5278e9afca3b4867a661281630a131ead6987a0dd0c0baafad8744");
+		Geometry.strRuntimeAssetId =
+			"Effect/Artist/Meshes/fm_a_stone_001.wmodel";
+		Geometry.iCandidateResourceByteSize = 11'808u;
+		Geometry.strCandidateResourceSha256 =
+			"eb08b11e4631938f93b896d9ebf9e7f25d22492094dcf69de443080d5c111c54";
+		Geometry.strPayloadSha256 =
+			"3db5634a75de4f67c18653364b76595f112e14bb57328e54668b17a0340fdd32";
+		Geometry.strMetadataIdentitySha256 =
+			"6de51f91e399448c31e4e701c3519fc53658f5f5eb683ab0713ffd52e81ea2d5";
+		Geometry.strCacheIdentitySha256 =
+			"b35dd9aa89526e8262a963950c750ce44cb688a9f1afe0dd41ba564d0ce95516";
+		Geometry.strExpectedTupleSha256 =
+			"03073ebb0188fc039148b2b79a3c5b01c1bc6e0384b3b3e80e0df20e512974ca";
+		Geometry.strApprovalGeometryRowSha256 =
+			"87497f06ede0631bd4620afe175fb495314e4a5b340c48cbe86af511d9a99f2c";
+		Geometry.strPreparedCacheIdentitySha256 =
+			"afffe9179bf539ded316e1728daf7bfda610a1c42d543e19bd358d73e5b42d1b";
+		Geometry.fGeometryPreScale = 0.01;
+		Geometry.iSubmeshCount = 1u;
+		Geometry.iVertexCount = 32u;
+		Geometry.iIndexCount = 36u;
+		Mesh.Geometry = std::move(Geometry);
+
+		Mesh.Material.Occurrence = Artist31470_SelectedRow("source-active-026",
+			"abbd647d1068f2b17a321214c4608fe9ceb56c78aa26170299cdf13ac90190cc");
+		Mesh.Material.Recipe = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d",
+			"ef66bad94bd48c14d421ea5ae32e0fbb0dfe8cf84a4efe9aca8eeb28ac670fbf");
+		Mesh.Material.Family = Artist31470_SelectedRow(
+			"material-family-5fc89efe09353236",
+			"b95ca3e38af0bab700b1941c9f34e7c1819fd11eafb8e4ae22bcd0dd374ab43b");
+		Mesh.Material.RecipeTextureDecision = Artist31470_SelectedRow(
+			"recipe-texture-binding-06",
+			"b2604680e40023ff1ef5efcbaad9e2e6a193fed6b5a70c133c31eaa87f960393");
+		Mesh.Material.strEvaluatorId =
+			"reconstructed-evaluator-c3ac12f104b50f06";
+		Mesh.Material.iEvaluatorVersion = 1u;
+		Mesh.Material.strEvaluatorSha256 =
+			"b65415dc122884ec2b955ed7a332ae9911478c5debc1369d6e6958a3f757e4b7";
+		Mesh.Material.iFeatureMask = 41u;
+		auto& MeshTexture0 = Mesh.Material.TextureLanes[0u];
+		MeshTexture0.strShaderVariableName = "g_SourceTexture0";
+		MeshTexture0.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(MeshEmitterId) + "::renderer-texture:base",
+			"c62c6ac89b1c7a27d5950decae115ffdf0ed546028149b7e27ed3af17913f14a");
+		MeshTexture0.MaterialInput = Artist31470_SelectedRow(
+			"material-input-4881555679832b06",
+			"3b61391309178f444abcd4ca13605fa3dd3b1631d7f3f1e9dfb972cb488b127c");
+		MeshTexture0.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-4881555679832b06::runtime-texture-binding",
+			"6265c461a15878a63ebe2e0b9f0aacd7366e776ad21fd70f14e8641baf29c8f3");
+		MeshTexture0.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-515a17c3340198bdcf21",
+			"a60faedacbd389056466a0e7597862050ff9f7e08713a53e9834904cc266961a");
+		MeshTexture0.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-048",
+			"753c35a340aa78d4abb641620e672de6906940bad6ed71f820ec5b053a7825db");
+		MeshTexture0.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-14",
+			"5507774c5a561098fa848c4d7cb37a216f1c247932e03898db08550e0abfbeb6");
+		MeshTexture0.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-755564821f704bf74696",
+			"b074a435426a0386505be78b981f1fcf7bc1a564a0e53b471dab1c1ec2c21dde");
+		MeshTexture0.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_environ_002.dds";
+		MeshTexture0.strRawSha256 =
+			"cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962";
+		auto& MeshTexture1 = Mesh.Material.TextureLanes[1u];
+		MeshTexture1.strShaderVariableName = "g_SourceTexture1";
+		MeshTexture1.MaterialInput = Artist31470_SelectedRow(
+			"material-input-66baf039d113a534",
+			"170975a5b0a0ec3b9d2f81b00201c27fbf90e2111062fdab16135b2b5adf9d50");
+		MeshTexture1.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-66baf039d113a534::runtime-texture-binding",
+			"ac6abf586eefdd305916092469d8a656f8c44b81151abf48c7e91ae8f56dc859");
+		MeshTexture1.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-ae06d5776b669f2578ec",
+			"a0d3d13f4102c8d2605879120758e65e75f3c57c78339ec570f5798d5c7c55b9");
+		MeshTexture1.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-15",
+			"7d749c3da4418afaac5e639a2739fe5ec24baf8230a918bb86c8460e0d4a7304");
+		MeshTexture1.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-d7510503612c3c3be923",
+			"4ea737a62d08084547b58e1fbc158857b54aabfd8be226cdbb91f4352c8c37b4");
+		MeshTexture1.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_environ_002_n.dds";
+		MeshTexture1.strRawSha256 =
+			"62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6";
+		Mesh.Material.BlendState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:blendmode",
+			"16b0a093820dd7eee442dfd646c242fa11f5040e94d7f3b970fc47e211f4d731");
+		Mesh.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-12",
+			"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a");
+		Mesh.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:twosided",
+			"f46fa0717f2eaa0df3e7387763191fe2f59cf1dd876f4a7fc01ff91aa7c55d87");
+		Mesh.Material.RasterizerState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-4ce70dabfda6cdc8633f",
+			"a558be9298c9758257b93fe66b3d2720023b29c1bfe9fc50c599ed07b9d15eda");
+		Mesh.Material.DepthStencilState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:bdisabledepthtest",
+			"b8e24bb59177052d2c815eec2e55893ccc2bf691efe169da4bcccf4ad5c25017");
+		Mesh.Material.DepthStencilState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-5c910249033a5d8fcd03",
+			"5d8882ba33ae2dc240ad27d816d23324a7e9e261a68c6ccfdd99d985af3c497d");
+		Mesh.Material.Constants.vUvScale = { 1.0, 1.0 };
+		Mesh.Material.Constants.vPanRotationAux = { 0.0, 0.0, 0.0, 0.0 };
+		Mesh.Material.Constants.vColor = {
+			1.100000023841858, 1.100000023841858, 1.100000023841858, 1.0 };
+		Mesh.Material.Constants.vParams0 = { 1.0, 1.0, 1.0, 1.0 };
+		Mesh.Material.Constants.vParams1 = { 0.5, 0.5, 0.0, 0.0 };
+		Mesh.Material.Shader = {
+			"Shader_VtxEffectMeshPreview.hlsl", "DefaultTechnique",
+			"OpaqueBackDepthWrite", 0u,
+			"g_ReconstructedMaterialEvaluatorEnabled",
+			"g_ReconstructedMaterialFeatureMask", "g_ReconstructedUVScale",
+			"g_ReconstructedPanRotationAux", "g_ReconstructedColor",
+			"g_ReconstructedParams0", "g_ReconstructedParams1" };
+
+		auto& Sprite = Request.Emitters[1u];
+		Sprite.eKind = EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE;
+		Sprite.eRenderer = EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE;
+		Sprite.Schedule = Mesh.Schedule;
+		Sprite.Emitter = Artist31470_SelectedRow(std::string(SpriteEmitterId),
+			"57228087ab6d3ffb84fe634eab1b5406666536bd140400963be873ba56e8249b");
+		Sprite.iEmitterOrder = 27u;
+		Sprite.bLocalSpace = true;
+		Sprite.strSizeUnitPolicy = "UE3_LENGTH_XZY_0P01";
+		Sprite.iExpectedVisualRandomDrawCount = 7u;
+		Sprite.iExpectedFinalRandomState = 953'103'844u;
+		Sprite.iExpectedOccurrenceRandomValue = 244'989'949u;
+		Sprite.iExpectedLifetimeRandomValue = 244'989'949u;
+		Sprite.fExpectedLifetimeSeconds = 0.6228164894929623;
+		for (uint32_t Index = 0u; Index < SpriteHandlers.size(); ++Index)
+		{
+			Sprite.Handlers.push_back(Artist31470_SelectedHandler(
+				SpriteEmitterId, Index, SpriteHandlers[Index]));
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK SpriteSink;
+		const std::string RequiredModuleId = Sprite.Handlers.front().Module.strId;
+		SpriteSink.RequiredModule = Sprite.Handlers.front().Module;
+		SpriteSink.ScreenAlignmentProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:screenalignment",
+			"d8d634eb6ac51a11e18eda36c704042e968f23e4ee9048494e394ad18048da06");
+		SpriteSink.ScreenAlignmentLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:011",
+			"1864822cde75383fc54e9459a10ad6231056d1dfc09a7d5c3cb1696acd397282");
+		SpriteSink.AllowImageFlippingProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:ballowimageflipping",
+			"fcf808864599a50b355c1e2e8835eed5d0654cbe3af967a5b87b5aae4d089987");
+		SpriteSink.AllowImageFlippingLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:000",
+			"f4487140b7025d55c880fb642f7f6dabf95d2d448e8b279633ccf530f77a27a6");
+		SpriteSink.OffsetCenterEnabledProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:boffsetcenter",
+			"b27f0d2a3cc369bf3d8f9d61b64a009518352fb1ea4ac0bdfea02c71cc59d115");
+		SpriteSink.OffsetCenterEnabledLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:001",
+			"37189f803604f2b1c1e90b6943384236b8c066dc04b3c15f6ee042ccb7f3f606");
+		SpriteSink.OffsetCenterXProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:offsetcenterx",
+			"cebc007face2410ce2dda645e1d60d8a409afae729d97341272a46e9e7a587c3");
+		SpriteSink.OffsetCenterXLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:008",
+			"e646e50a0c779f9a0a5f19d363cd26f156231597262c738128e0ff83495ab9be");
+		SpriteSink.OffsetCenterYProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:offsetcentery",
+			"cf6e3ca0cf268e34867db25b80aaf001b2271d1651a42297133be485bc0b7ff5");
+		SpriteSink.OffsetCenterYLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:009",
+			"b65fd50a6db79fcb438f132ab2abce89c6e7bcfb19657da67d77bb4a256b1ce3");
+		SpriteSink.eAlignment = EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT::VELOCITY;
+		SpriteSink.eOrientation = EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION::
+			CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT;
+		SpriteSink.bAllowImageFlipping = true;
+		SpriteSink.bOffsetCenter = true;
+		SpriteSink.vPivotCenter = {
+			0.6000000238418579, 0.800000011920929 };
+		SpriteSink.bBillboard = true;
+		SpriteSink.fBillboardRollDegrees = 0.0;
+		Sprite.SpriteSink = std::move(SpriteSink);
+
+		Sprite.Material.Occurrence = Artist31470_SelectedRow("source-active-027",
+			"6eac180a4d907b9bd4510161d4e200f2c9bc81280ca618f086321fcaa461fe92");
+		Sprite.Material.Recipe = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5",
+			"f210da08033a522e3ab3e581a5535df5629a15411a6c46f5052b6c73d03202a1");
+		Sprite.Material.Family = Artist31470_SelectedRow(
+			"material-family-ee42f716afdf6145",
+			"78577bca3d6ff10f53428196606c79548b3b1d52cc0594e469f701a5ced8c568");
+		Sprite.Material.RecipeTextureDecision = Artist31470_SelectedRow(
+			"recipe-texture-binding-01",
+			"238f88b150d88389e897d27c946c63b38f512f7c91a24a81ea77c7786e72e1a3");
+		Sprite.Material.strEvaluatorId =
+			"reconstructed-evaluator-b64318cb50070e35";
+		Sprite.Material.iEvaluatorVersion = 1u;
+		Sprite.Material.strEvaluatorSha256 =
+			"15b89e56b711bc5a9627b03db91230b5d0000b3852a38ece158c8a68f4a34bf7";
+		Sprite.Material.iFeatureMask = 811u;
+		auto& SpriteTexture0 = Sprite.Material.TextureLanes[0u];
+		SpriteTexture0.strShaderVariableName = "g_SourceTexture0";
+		SpriteTexture0.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(SpriteEmitterId) + "::renderer-texture:base",
+			"b293c0498cd29a31dc83f508c21b402d2e5cbba588f1e200a24f2f06aba0dfd2");
+		SpriteTexture0.MaterialInput = Artist31470_SelectedRow(
+			"material-input-fb27adb50913c489",
+			"b1383c558093e1e8b74f014b394d0a7b4371ec1e020eb7b8ada58151a2afa68b");
+		SpriteTexture0.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-fb27adb50913c489::runtime-texture-binding",
+			"900198e6a215de62bd0af83d89fce600b08db7e56317180e4459f1bf4430317c");
+		SpriteTexture0.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-478283291730ec2c2599",
+			"b3be04f1ed957ecc6361909e69759ff855c9e6eddaeccaf81e6323a0cecec3e5");
+		SpriteTexture0.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-050",
+			"36e0a37f13b2b1a0ff54065995a089f6142fcdf5dea4e93c2550974f732e2b5d");
+		SpriteTexture0.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-03",
+			"36e94aa1077ce9bf07d7f2d819b9819499ae060594c913163c6f1001470c601c");
+		SpriteTexture0.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-44dbbc55fb38252e8814",
+			"3f9bd7e7f48f17cf7e527625954be924245ab8d12a751b8715c33a2c237fdf47");
+		SpriteTexture0.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_decal_013.dds";
+		SpriteTexture0.strRawSha256 =
+			"c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e";
+		auto& SpriteTexture1 = Sprite.Material.TextureLanes[1u];
+		SpriteTexture1.strShaderVariableName = "g_SourceTexture1";
+		SpriteTexture1.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(SpriteEmitterId) + "::renderer-texture:mask",
+			"bf37b0d2c97f875bbc746f98d22c42f7868d0082c38d08f888022885a27cf4cb");
+		SpriteTexture1.MaterialInput = Artist31470_SelectedRow(
+			"material-input-72b9eeafb6f8eba5",
+			"c2b9f2c9b6906ae325b67affe7607836576f5b8e48b8fa0bf5c9a164ae429815");
+		SpriteTexture1.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-72b9eeafb6f8eba5::runtime-texture-binding",
+			"f8c8b05128246eba9c053d35706fff23b65a2b39b8b5252f0692ad51cbc10fa6");
+		SpriteTexture1.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-300f64f5c91f35575f26",
+			"572b7efee2ef60c5ed5b0ea4da2cd26724f9d5369417637ae08054811e532e9c");
+		SpriteTexture1.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-049",
+			"8eacb5756a8db3d401df71b104a7fc0de80670bcac8533bdf080f754480720fc");
+		SpriteTexture1.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-02",
+			"b5c56bdc4d6ee9df110444975cf1fe1f6d15983a85febc3c829df4e72c26f901");
+		SpriteTexture1.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-7697a1b0f1e399fdec57",
+			"3545fb8e71630b5fb84703a06e6d0a1408f1504390c866f674560431ccc87f1f");
+		SpriteTexture1.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_e_fluid_021.dds";
+		SpriteTexture1.strRawSha256 =
+			"1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75";
+		Sprite.Material.BlendState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:blendmode",
+			"547922292a185d873c7622ef48e539bfd3d7a90b764a21555a86f6e68dd1bd0c");
+		Sprite.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-02",
+			"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa");
+		Sprite.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:twosided",
+			"73d582c643b6cfbe899bc649cb391ac6f2aaa6e4ff4862401d10e9368d854d01");
+		Sprite.Material.RasterizerState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-03",
+			"608896ca6411f016505353c28f6ba0d46bff15f8aecebc9080db2e3fa43743c9");
+		Sprite.Material.DepthStencilState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:bdisabledepthtest",
+			"8649773878c4cae3c4701881a3c98046d65e652e790b8b3e61ddd41e21357381");
+		Sprite.Material.DepthStencilState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-df3fe697a1b8a34572cc",
+			"1782f3208d4cef312b678f21eb3a3a0de9462ca09c0ee67ecd362dba7248c249");
+		Sprite.Material.Constants.vUvScale = { 1.0, 1.0 };
+		Sprite.Material.Constants.vPanRotationAux = { 0.0, 0.0, 0.0, 0.0 };
+		Sprite.Material.Constants.vColor = {
+			15.0, 0.10000000149011612, 0.0, 1.0 };
+		Sprite.Material.Constants.vParams0 = { 1.0, 1.0, 0.0, 5.0 };
+		Sprite.Material.Constants.vParams1 = { 0.5, 0.5, 0.5, 0.0 };
+		Sprite.Material.Shader = {
+			"Shader_VtxEffectParticle.hlsl", "DefaultTechnique",
+			"AlphaTwoSidedDepthRead", 1u,
+			"g_ReconstructedMaterialEvaluatorEnabled",
+			"g_ReconstructedMaterialFeatureMask", "g_ReconstructedUVScale",
+			"g_ReconstructedPanRotationAux", "g_ReconstructedColor",
+			"g_ReconstructedParams0", "g_ReconstructedParams1" };
+		return Request;
+	}
+
+	void Test_Artist31470SelectedProductionEvaluator(
+		TEST_RUNNER& runner,
+		const std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>&
+			Entry,
+		const std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>&
+			Program,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>& Authority,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& RuntimePreparation)
+	{
+		using namespace Client;
+		std::string Status;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Plan;
+		const bool_t PlanCompiled =
+			CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+				RuntimePreparation, Plan, Status);
+		if (!PlanCompiled)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator plan: " <<
+				Status << '\n';
+		}
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Request =
+			Build_Artist31470SelectedEvaluatorRequest();
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			SelectedPreparation;
+		const bool_t Prepared = PlanCompiled &&
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, Request, SelectedPreparation, Status);
+		if (PlanCompiled && !Prepared)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator prepare: " <<
+				Status << '\n';
+		}
+		runner.Require(Prepared && nullptr != Plan &&
+			nullptr != SelectedPreparation &&
+			SelectedPreparation->Get_Plan().get() == Plan.get() &&
+			SelectedPreparation->Get_RuntimePreparation().get() ==
+				RuntimePreparation.get() &&
+			SelectedPreparation->Get_CatalogEntry().get() == Entry.get() &&
+			SelectedPreparation->Get_Program().get() == Program.get() &&
+			SelectedPreparation->Get_RenderResourceAuthority().get() ==
+				Authority.get() &&
+			SelectedPreparation->Get_Request().Emitters.size() == 2u &&
+			SelectedPreparation->Get_Request().iExpectedConsumedHandlerCount ==
+				24u &&
+			SelectedPreparation->Get_Request().Emitters[0u].Handlers.size() == 15u &&
+			SelectedPreparation->Get_Request().Emitters[1u].Handlers.size() == 9u &&
+			SelectedPreparation->Get_Request().Emitters[0u].Geometry.has_value() &&
+			SelectedPreparation->Get_Request().Emitters[1u].SpriteSink.has_value(),
+			"Artist 31470 nonProduct Debug M0 Production Prepare Binds One Immutable Catalog Plan Sidecar And 24 Exact Handlers");
+		if (!Prepared || nullptr == SelectedPreparation)
+			return;
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> FrameA;
+		const bool_t EvaluatedA = CEffectReconstructedSelectedEvaluator::Evaluate(
+			SelectedPreparation, 88u, 0u, FrameA, Status);
+		if (!EvaluatedA)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator evaluate: " <<
+				Status << '\n';
+		}
+		const EFFECT_RECONSTRUCTED_SELECTED_PACKET* MeshPacket = nullptr;
+		const EFFECT_RECONSTRUCTED_SELECTED_PACKET* SpritePacket = nullptr;
+		if (nullptr != FrameA)
+		{
+			for (const auto& Packet : FrameA->Get_Packets())
+			{
+				if (Packet.Get_Kind() ==
+					EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH)
+					MeshPacket = &Packet;
+				else if (Packet.Get_Kind() ==
+					EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE)
+					SpritePacket = &Packet;
+			}
+		}
+		const auto Near = [](const double Actual, const double Expected)
+		{
+			return std::isfinite(Actual) &&
+				std::abs(Actual - Expected) <= 1.0e-12;
+		};
+		const auto Near3 = [&Near](const std::array<double, 3u>& Actual,
+			const std::array<double, 3u>& Expected)
+		{
+			return Near(Actual[0u], Expected[0u]) &&
+				Near(Actual[1u], Expected[1u]) &&
+				Near(Actual[2u], Expected[2u]);
+		};
+		const auto Near4 = [&Near](const std::array<double, 4u>& Actual,
+			const std::array<double, 4u>& Expected)
+		{
+			return Near(Actual[0u], Expected[0u]) &&
+				Near(Actual[1u], Expected[1u]) &&
+				Near(Actual[2u], Expected[2u]) &&
+				Near(Actual[3u], Expected[3u]);
+		};
+		bool_t ExactHandlerProjection = nullptr != MeshPacket &&
+			nullptr != SpritePacket;
+		for (size_t PacketIndex = 0u;
+			ExactHandlerProjection && PacketIndex < 2u; ++PacketIndex)
+		{
+			const auto* Packet = PacketIndex == 0u ? MeshPacket : SpritePacket;
+			const auto& Selection = Request.Emitters[PacketIndex];
+			ExactHandlerProjection = Packet->Get_SelectionIndex() == PacketIndex &&
+				Packet->Get_ConsumedHandlers().size() ==
+					Selection.Handlers.size();
+			for (size_t HandlerIndex = 0u;
+				ExactHandlerProjection &&
+				HandlerIndex < Selection.Handlers.size(); ++HandlerIndex)
+			{
+				const auto& Consumed =
+					Packet->Get_ConsumedHandlers()[HandlerIndex];
+				const auto& Frozen = Selection.Handlers[HandlerIndex];
+				ExactHandlerProjection = Consumed.Module.strId ==
+					Frozen.Module.strId &&
+					Consumed.Module.strRowSha256 ==
+						Frozen.Module.strRowSha256 &&
+					Consumed.Handler.strId == Frozen.Handler.strId &&
+					Consumed.Handler.strRowSha256 ==
+						Frozen.Handler.strRowSha256 &&
+					Consumed.strImplementationId ==
+						Frozen.strImplementationId &&
+					Consumed.iImplementationVersion ==
+						Frozen.iImplementationVersion &&
+					Consumed.strImplementationSha256 ==
+						Frozen.strImplementationSha256;
+			}
+		}
+		const bool_t ExactFrameIdentity = EvaluatedA && nullptr != FrameA &&
+			nullptr != MeshPacket && nullptr != SpritePacket &&
+			FrameA->Get_Preparation().get() == SelectedPreparation.get() &&
+			FrameA->Get_FixedStepIndex() == 88u &&
+			Near(FrameA->Get_SampleTimeSeconds(), 88.0 / 60.0) &&
+			FrameA->Get_OccurrenceRngContract() ==
+				EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT &&
+			FrameA->Get_OccurrenceRngVersion() == 1u &&
+			FrameA->Get_Packets().size() == 2u &&
+			FrameA->Get_ConsumedHandlerCount() == 24u &&
+			FrameA->Get_ProjectionSha256().size() == 64u &&
+			MeshPacket->Get_Preparation().get() == SelectedPreparation.get() &&
+			SpritePacket->Get_Preparation().get() == SelectedPreparation.get() &&
+			MeshPacket->Get_Timing().iSpawnStep == 88u &&
+			SpritePacket->Get_Timing().iSpawnStep == 88u &&
+			MeshPacket->Get_Timing().iSpawnSerial == 0u &&
+			SpritePacket->Get_Timing().iSpawnSerial == 0u &&
+			Near(MeshPacket->Get_Timing().fAgeSeconds, 0.0) &&
+			Near(SpritePacket->Get_Timing().fAgeSeconds, 0.0) &&
+			MeshPacket->Get_Timing().iOccurrenceRandomValue == 2'215'704'123u &&
+			MeshPacket->Get_Timing().iLifetimeRandomValue == 2'215'704'123u &&
+			Near(MeshPacket->Get_Timing().fLifetimeSeconds,
+				2.257941908612368) &&
+			SpritePacket->Get_Timing().iOccurrenceRandomValue == 244'989'949u &&
+			SpritePacket->Get_Timing().iLifetimeRandomValue == 244'989'949u &&
+			Near(SpritePacket->Get_Timing().fLifetimeSeconds,
+				0.6228164894929623) && ExactHandlerProjection;
+		runner.Require(ExactFrameIdentity,
+			"Artist 31470 nonProduct Debug M0 Production Evaluate Emits Exact Step88 Mesh Sprite 2/2 And Consumes 15 Plus 9 Handlers");
+
+		bool_t ExactValues = nullptr != MeshPacket && nullptr != SpritePacket;
+		if (ExactValues)
+		{
+			const auto& MeshValues = MeshPacket->Get_Values();
+			const auto& SpriteValues = SpritePacket->Get_Values();
+			ExactValues = MeshPacket->Get_RandomDrawCount() == 14u &&
+				MeshPacket->Get_FinalRandomState() == 2'355'157'980u &&
+				SpritePacket->Get_RandomDrawCount() == 7u &&
+				SpritePacket->Get_FinalRandomState() == 953'103'844u &&
+				MeshValues.vMeshDimensionlessScaleXzy.has_value() &&
+				!MeshValues.vSpriteSignedWorldSizeXzy.has_value() &&
+				!SpriteValues.vMeshDimensionlessScaleXzy.has_value() &&
+				SpriteValues.vSpriteSignedWorldSizeXzy.has_value() &&
+				Near3(*MeshValues.vMeshDimensionlessScaleXzy,
+					{ 1.6260229333131626, 1.5702383313491564,
+					  1.3838000477719588 }) &&
+				Near3(MeshValues.vLocalPosition,
+					{ 1.0635928511667767, 0.6978068300971776,
+					 -0.28824338214256146 }) &&
+				Near3(MeshValues.vVelocityPerSecond,
+					{ 0.18857087353033217, 2.231900362239327,
+					 -0.653603293505097 }) &&
+				Near3(MeshValues.vAccelerationPerSecondSquared,
+					{ 0.0, -11.308244941595067, 0.0 }) &&
+				Near4(MeshValues.vColor, { 0.0, 0.0, 0.0, 1.0 }) &&
+				Near4(MeshValues.vDynamicParameter, { 0.0, 0.0, 0.0, 0.0 }) &&
+				Near(MeshValues.fRotationDegrees, -360.0) &&
+				Near(MeshValues.fRotationRateDegreesPerSecond,
+					79.33641699127304) &&
+				Near3(*SpriteValues.vSpriteSignedWorldSizeXzy,
+					{ -0.5, 0.0, 0.4 }) &&
+				Near3(SpriteValues.vLocalPosition,
+					{ 3.5165814746908333, 0.1,
+					 -0.10724364281800661 }) &&
+				Near3(SpriteValues.vVelocityPerSecond,
+					{ 0.8100967958593035, 0.28666618887490275, 0.0 }) &&
+				Near3(SpriteValues.vAccelerationPerSecondSquared,
+					{ 0.0, 0.0, 0.0 }) &&
+				Near4(SpriteValues.vColor,
+					{ 0.009999999776482582, 0.10000000149011612,
+					  0.20000000298023224, 1.5 }) &&
+				Near4(SpriteValues.vDynamicParameter,
+					{ 1.0, 0.5, 1.0, 1.0 }) &&
+				Near(SpriteValues.fRotationDegrees, 0.0) &&
+				Near(SpriteValues.fRotationRateDegreesPerSecond, 0.0) &&
+				SpritePacket->Get_SpriteSink().has_value() &&
+				SpritePacket->Get_SpriteSink()->bAllowImageFlipping &&
+				SpritePacket->Get_SpriteSink()->bOffsetCenter &&
+				SpritePacket->Get_SpriteSink()->bBillboard &&
+				Near(SpritePacket->Get_SpriteSink()->vPivotCenter[0u],
+					0.6000000238418579) &&
+				Near(SpritePacket->Get_SpriteSink()->vPivotCenter[1u],
+					0.800000011920929);
+		}
+		runner.Require(ExactValues,
+			"Artist 31470 nonProduct Debug M0 Production Packet Freezes Mesh14 Sprite7 Values Signed Size And Sink Ready Orientation");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> FrameB;
+		const bool_t EvaluatedB = CEffectReconstructedSelectedEvaluator::Evaluate(
+			SelectedPreparation, 88u, 0u, FrameB, Status);
+		runner.Require(EvaluatedB && nullptr != FrameA && nullptr != FrameB &&
+			FrameA.get() != FrameB.get() &&
+			FrameA->Get_ProjectionSha256() == FrameB->Get_ProjectionSha256(),
+			"Artist 31470 nonProduct Debug M0 Production Packet Projection Is Deterministic");
+
+		const auto PreservedPreparation = SelectedPreparation;
+		const auto RejectsPreparation = [&](auto Mutate)
+		{
+			auto Invalid = Request;
+			Mutate(Invalid);
+			Status.clear();
+			const bool_t Rejected =
+				!CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Invalid, SelectedPreparation, Status);
+			return Rejected && !Status.empty() &&
+				SelectedPreparation.get() == PreservedPreparation.get();
+		};
+		const bool_t IdentityRollback =
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.strOccurrenceRngContract += ".wrong"; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Schedule.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Emitter.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].eRenderer =
+					EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Handlers[6u].Handler.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Handlers[0u].ImplicitDefaults[0u].
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Geometry->GeometryCarrier.
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Material.TextureLanes[1u].
+					SidecarTextureBinding.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].SpriteSink->ScreenAlignmentLiteral.
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].fExpectedLifetimeSeconds =
+					(std::numeric_limits<double>::quiet_NaN)(); }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Handlers.clear(); });
+		runner.Require(IdentityRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects RNG Schedule Emitter Renderer Handler Default Empty And Nonfinite Mutations Transactionally");
+
+		const bool_t StateRoleRollback =
+			RejectsPreparation([](auto& Invalid)
+				{
+					std::swap(Invalid.Emitters[0u].Material.RasterizerState,
+						Invalid.Emitters[0u].Material.DepthStencilState);
+				}) &&
+			RejectsPreparation([](auto& Invalid)
+				{
+					std::swap(Invalid.Emitters[1u].Material.BlendState,
+						Invalid.Emitters[1u].Material.RasterizerState);
+				});
+		runner.Require(StateRoleRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects Mesh Raster Depth And Sprite Blend Raster Role Swaps Transactionally");
+
+		auto UnsupportedHandlerRequest = Request;
+		UnsupportedHandlerRequest.Emitters[0u].Handlers[6u].
+			strImplementationSha256 = std::string(64u, 'f');
+		auto CandidatePreparation = PreservedPreparation;
+		const auto CandidateFrame = FrameA;
+		Status.clear();
+		const bool_t ClosedHandlerRouteRollback =
+			!CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, UnsupportedHandlerRequest, CandidatePreparation, Status) &&
+			Status == "Selected evaluator handler dispatch is unsupported." &&
+			CandidatePreparation.get() == PreservedPreparation.get() &&
+			FrameA.get() == CandidateFrame.get();
+		runner.Require(ClosedHandlerRouteRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects Recognized Class Nonallowlisted Handler Triplet Transactionally");
+
+		const auto PreservedFrame = FrameA;
+		Status.clear();
+		const bool_t WrongStepRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				SelectedPreparation, 87u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		Status.clear();
+		const bool_t WrongSerialRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				SelectedPreparation, 88u, 1u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		Status.clear();
+		const bool_t EmptyPreparationRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				nullptr, 88u, 0u, FrameA, Status) && !Status.empty() &&
+			FrameA.get() == PreservedFrame.get();
+		runner.Require(WrongStepRejected && WrongSerialRejected &&
+			EmptyPreparationRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Step Serial And Empty Preparation While Preserving Prior Frame");
+
+		auto WrongRandomRequest = Request;
+		WrongRandomRequest.Emitters[0u].iExpectedFinalRandomState ^= 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongRandomPreparation;
+		const bool_t WrongRandomPrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongRandomRequest, WrongRandomPreparation, Status);
+		Status.clear();
+		const bool_t WrongRandomRejected = WrongRandomPrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongRandomPreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongDrawRequest = Request;
+		WrongDrawRequest.Emitters[1u].iExpectedVisualRandomDrawCount += 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongDrawPreparation;
+		const bool_t WrongDrawPrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongDrawRequest, WrongDrawPreparation, Status);
+		Status.clear();
+		const bool_t WrongDrawRejected = WrongDrawPrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongDrawPreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongOccurrenceRequest = Request;
+		WrongOccurrenceRequest.Emitters[0u].iExpectedOccurrenceRandomValue += 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongOccurrencePreparation;
+		const bool_t WrongOccurrencePrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongOccurrenceRequest, WrongOccurrencePreparation, Status);
+		Status.clear();
+		const bool_t WrongOccurrenceRejected = WrongOccurrencePrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongOccurrencePreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongLifetimeRequest = Request;
+		WrongLifetimeRequest.Emitters[1u].fExpectedLifetimeSeconds += 0.125;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongLifetimePreparation;
+		const bool_t WrongLifetimePrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongLifetimeRequest, WrongLifetimePreparation, Status);
+		Status.clear();
+		const bool_t WrongLifetimeRejected = WrongLifetimePrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongLifetimePreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		runner.Require(WrongRandomRejected && WrongDrawRejected &&
+			WrongOccurrenceRejected && WrongLifetimeRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Internal RNG Draw Occurrence And Lifetime Contract Mismatch While Preserving Prior Frame");
+
+		const std::string MeshAlphaDistributionId =
+			Request.Emitters[0u].Handlers[4u].Module.strId +
+			"::distribution:alphaoverlife";
+		const auto AlphaDistribution = Plan->Get_Distributions().find(
+			MeshAlphaDistributionId);
+		bool_t NonzeroEmptyAlphaRejected =
+			AlphaDistribution != Plan->Get_Distributions().end();
+		if (NonzeroEmptyAlphaRejected)
+		{
+			auto& MutableAlpha = const_cast<
+				EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION&>(
+					AlphaDistribution->second);
+			const auto SavedAlpha = MutableAlpha;
+			MutableAlpha.DefaultMinimum[0u] = 1.0;
+			Status.clear();
+			NonzeroEmptyAlphaRejected =
+				!CEffectReconstructedSelectedEvaluator::Evaluate(
+					SelectedPreparation, 88u, 0u, FrameA, Status) &&
+				!Status.empty() && FrameA.get() == PreservedFrame.get();
+			MutableAlpha = SavedAlpha;
+		}
+		runner.Require(NonzeroEmptyAlphaRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Nonzero Empty Alpha Default Without Promoting It To Identity");
+
+		auto& MutableProgram =
+			const_cast<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM&>(*Program);
+		auto MeshEmitter = std::find_if(MutableProgram.Emitters.begin(),
+			MutableProgram.Emitters.end(), [&Request](const auto& Row)
+			{ return Row.Row.strId == Request.Emitters[0u].Emitter.strId; });
+		auto SpriteEmitter = std::find_if(MutableProgram.Emitters.begin(),
+			MutableProgram.Emitters.end(), [&Request](const auto& Row)
+			{ return Row.Row.strId == Request.Emitters[1u].Emitter.strId; });
+		bool_t RendererConfigIndependent =
+			MeshEmitter != MutableProgram.Emitters.end() &&
+			SpriteEmitter != MutableProgram.Emitters.end();
+		if (RendererConfigIndependent)
+		{
+			const auto SavedMeshConfig = MeshEmitter->RendererRuntimeConfig;
+			const auto SavedSpriteConfig = SpriteEmitter->RendererRuntimeConfig;
+			MeshEmitter->RendererRuntimeConfig = {};
+			SpriteEmitter->RendererRuntimeConfig = {};
+			std::shared_ptr<const
+				EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION> ClearPreparation;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> ClearFrame;
+			const bool_t ClearPrepared =
+				CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Request, ClearPreparation, Status);
+			const bool_t ClearEvaluated = ClearPrepared &&
+				CEffectReconstructedSelectedEvaluator::Evaluate(
+					ClearPreparation, 88u, 0u, ClearFrame, Status);
+			MeshEmitter->RendererRuntimeConfig.strSourceProjectionSha256 =
+				std::string(64u, 'f');
+			SpriteEmitter->RendererRuntimeConfig.strSourceProjectionSha256 =
+				std::string(64u, 'e');
+			MeshEmitter->RendererRuntimeConfig.Color.emplace().vMultiply = {
+				999999.0, -999999.0, 123456.0,
+				(std::numeric_limits<double>::quiet_NaN)() };
+			SpriteEmitter->RendererRuntimeConfig.Sprite.emplace().bBillboard = false;
+			SpriteEmitter->RendererRuntimeConfig.Sprite->fBillboardRollDegrees =
+				(std::numeric_limits<double>::quiet_NaN)();
+			std::shared_ptr<const
+				EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION> PoisonPreparation;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> PoisonFrame;
+			const bool_t PoisonPrepared =
+				CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Request, PoisonPreparation, Status);
+			const bool_t PoisonEvaluated = PoisonPrepared &&
+				CEffectReconstructedSelectedEvaluator::Evaluate(
+					PoisonPreparation, 88u, 0u, PoisonFrame, Status);
+			MeshEmitter->RendererRuntimeConfig = SavedMeshConfig;
+			SpriteEmitter->RendererRuntimeConfig = SavedSpriteConfig;
+			RendererConfigIndependent = ClearPrepared && ClearEvaluated &&
+				PoisonPrepared && PoisonEvaluated && nullptr != ClearPreparation &&
+				nullptr != PoisonPreparation && nullptr != ClearFrame &&
+				nullptr != PoisonFrame &&
+				ClearPreparation->Get_CatalogEntry().get() == Entry.get() &&
+				PoisonPreparation->Get_CatalogEntry().get() == Entry.get() &&
+				ClearFrame->Get_ProjectionSha256() ==
+					PreservedFrame->Get_ProjectionSha256() &&
+				PoisonFrame->Get_ProjectionSha256() ==
+					PreservedFrame->Get_ProjectionSha256();
+		}
+		runner.Require(RendererConfigIndependent,
+			"Artist 31470 nonProduct Debug M0 Prepare And Evaluate Ignore Cleared Or Poisoned RendererRuntimeConfig Fallback");
+	}
+
 	void Test_Artist31470CatalogRenderResourceAuthority(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& Exact13CatalogPath,
@@ -5775,6 +6772,11 @@ namespace
 			Boundary.Get_RenderResourceAuthority().get() == Authority.get();
 		runner.Require(OnePointer,
 			"Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer");
+		if (OnePointer)
+		{
+			Test_Artist31470SelectedProductionEvaluator(
+				runner, Entry, Program, Authority, Preparation);
+		}
 
 		const uint64_t BeforeRevision = CEffectCatalog::Get_RuntimeRevision();
 		const std::string BeforeStatus = CEffectCatalog::Get_Status();
