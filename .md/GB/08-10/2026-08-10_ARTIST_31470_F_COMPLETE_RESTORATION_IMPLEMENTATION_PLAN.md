@@ -283,9 +283,11 @@ selected evaluator의 distribution RNG는 `artist-f.selected-occurrence-xorshift
 core의 emitter stream과 lifetime stream은 그대로 두고, packet evaluator는 선택 occurrence의
 `iOccurrenceRandomValue`를 별도 local state seed로 복사한다. 각 draw 직전에 `x ^= x << 13`,
 `x ^= x >> 17`, `x ^= x << 5`, zero이면 1로 치환하고 `x / UINT32_MAX`를 random unit으로 사용한다.
-ordered module 순서, module의 `distributionIds` 순서, component 0..N-1 순서로 operation 2/3만 unit을
-소비하고 operation 1과 FLOAT_PARAMETER는 소비하지 않는다. random-lock axis는 필요한 component draw를
-모두 소비한 뒤 적용한다. cylinder handler는 radius, height, angle, surfaceOnly=false일 때만 radial,
+ordered module 순서와 module의 `distributionIds` 순서를 따른다. operation 2는 component 0..N-1마다
+정확히 한 unit을 소비해 component별 lerp를 수행하고, operation 3은 `RandomUnits[0]`용 unit 하나만 소비해
+전체 minimum 또는 maximum vector를 선택한다. operation 1과 FLOAT_PARAMETER는 unit을 소비하지 않는다.
+operation 2의 random-lock axis는 필요한 component draw를 모두 소비한 뒤 적용한다. cylinder handler는
+radius, height, angle, surfaceOnly=false일 때만 radial,
 height offset, startLocation, velocityScale 순서다. 선택 Mesh는 surfaceOnly=true이므로 radial draw가 없다.
 이 순서와 RNG version은 packet projection에 들어가며 legacy UE LCG나 timing emitter stream을 재사용하지
 않는다. step 88 serial 0의 timing identity는 Mesh occurrence/lifetime RNG
