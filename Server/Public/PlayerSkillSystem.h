@@ -32,6 +32,19 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t serverTick);
 
+		/* True while the player stands in a stance the identity gauge is paying
+		for, which is any stance other than the class default on a class that has
+		a gauge. Movement and the drain both key off this one answer. */
+		[[nodiscard]] static bool Is_HoldingGaugedStance(
+			const SERVER_PLAYER& player,
+			const PLAYER_RUNTIME_PROFILE& profile);
+
+		/* Runs every tick regardless of what the player is doing: the gauge is
+		spent by standing, not by acting. */
+		static void Update_Identity(
+			SERVER_PLAYER& player,
+			const PLAYER_RUNTIME_PROFILE& profile);
+
 		/* outDamageEvents collects every hit this call resolves so the room can
 		ship the amounts in the same tick's snapshot. The room owns the vector's
 		lifetime; a combo emits once per stage that lands. */

@@ -467,3 +467,145 @@ integration 증거를 구분한다.
 6. publisher/Server/Shared/제품 Client를 한 수직 슬라이스로 닫은 뒤에만 destroyable gate를 연다.
 
 상세 호출 지점과 금지 경계는 `.md/TEAM/MAP_DESTRUCTION_PHYSX_HANDOFF.md`를 따른다.
+
+## 9. 2026-08-10 simulation profile selection regression fix
+
+### 9.1 재현과 원인
+
+- Easy Wall Editor에서 새 벽 그룹을 저장한 뒤 `Reload Simulations`를 누르면 simulation 문서의 첫 번째
+  기존 profile이 자동 선택되면서 `m_SelectedDestructionGroupId`도 그 profile의 group으로 바뀌었다.
+- 그 상태에서 `Create Default for Selected Group`를 누르면 새 그룹이 아니라 기존 group의 deterministic
+  profile ID를 다시 생성해 `Duplicate destruction simulation profile` 오류가 발생했다.
+- 새 WorldEvents group과 binding은 정상 저장되어 있었으며, 중복 생성 시도도 기존 simulation 문서를
+  손상시키지 않았다.
+
+### 9.2 수정
+
+- simulation reload와 WorldEvents reload가 이전 선택 group을 우선 복원한다.
+- 선택 group에 profile이 없으면 다른 group의 첫 profile로 강제 전환하지 않고 profile-less 상태를 유지해
+  해당 group에 `Create Default`를 실행할 수 있게 했다.
+- 선택 group에 이미 profile이 있으면 중복 추가 대신 그 profile을 선택하고 상태를 보고한다.
+- 통합 `Reload Authoring Data`도 선택 placement를 기준으로 owner group과 기존 simulation profile을
+  다시 연결한다. 화면에는 같은 벽이 선택되어 있지만 Stage가 group 불일치로 거부되던 경로를 막았다.
+- profile이 없는 group 또는 아직 group에 속하지 않은 벽을 선택하면 이전 simulation
+  profile/element/fragment draft를 명시적으로 비운다. 적용하지 않은 Detail draft가 있으면 wall 선택과
+  authoring reload를 거부해 튜닝값을 조용히 버리지 않는다.
+
+### 9.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| Client x64 Debug build/link | PASS |
+| Client x64 Release build/link | PASS |
+| MapTool.cpp CP949 + CRLF 유지 | PASS |
+| WorldEvents/simulation JSON parse | PASS |
+| `git diff --check` | PASS |
+| ProjectAudit | FAIL: 현재 별도 Effect/Artist, rendering Python 및 data-source visibility 10건; 이번 MapTool/destruction 경로의 신규 audit 4건은 PASS |
+| 실제 GUI: 새 group 선택 → Reload → Create Default → Save/Reload | 사용자 재실행 확인 대기 |
+
+## 10. 2026-08-10 DEPLOY_ITR_02316 exact-geometry debris preview
+
+### 10.1 대상과 사실 경계
+
+- 대상은 Easy Wall Editor에서 선택한 `DEPLOY_ITR_02316`, runtime placement
+  `17150846598057876717` 한 개다.
+- 원본 `DEPLOY_ITR_02316_FRACTURED.wmodel`은 파괴 후 형상을 가진 단일 static mesh이며 원본 chunk
+  pivot, rigid-body graph, 파편별 속도는 없다.
+- 따라서 이번 결과는 원본 fractured 형상의 모든 17,731 triangles와 material을 유지하면서 4x3 공간
+  partition으로 12개 macro-shard를 만든 `PROJECT_AUTHORED` presentation이다. 원본 파편 물리라고
+  주장하지 않는다.
+
+### 10.2 구현
+
+- `Tools/ModelAssetConverter/build_deploy_wall_debris.py`가 source WModel을 결정론적으로 분할하고 각
+  shard를 derived pivot 중심으로 recenter한 별도 static WModel과 atomic receipt를 만든다.
+- receipt 정본은
+  `Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316.debrisrecipe.json`이며 source/piece
+  SHA-256, pivot, bounds, triangle/vertex/index count를 기록한다.
+- runtime payload는
+  `Client/Bin/Resources/Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/`
+  아래 `DEPLOY_ITR_02316_CHUNK_00.wmodel`부터 `_11.wmodel`까지다.
+- MapTool prototype admission은 generic 4개를 required batch, 02316 exact 12개를 optional atomic batch로
+  분리한다. exact batch가 불완전하면 tool 전체 load를 막지 않고 generic preview로 명시 fallback한다.
+- exact recipe는 source placement의 scale/rotation과 derived pivot을 적용해 원래 벽 위치에 조립한다.
+  trigger가 발화하면 source wall을 숨기고 12개 PhysX dynamic box를 authored 방향/속도로 날린다.
+- assembled AABB끼리 시작 프레임에 폭발하지 않도록 debris-debris collision은 끄고 preview ground와만
+  충돌한다. Reset/Clear는 source visibility와 원래 Deploy state를 복원한다.
+
+### 10.3 선택 벽 authoring 값
+
+| 필드 | 값 |
+|---|---|
+| profile | `destroyable.group.valtan.deploy.17150846598057876717.preview` |
+| element | `debris.17150846598057876717` |
+| direction | `[0.6543957, 0.12, -0.7461532]` |
+| speed | `10.5 m/s` |
+| gravity | `1.25` |
+| lifetime | `4 s` |
+| preview trigger | `TIMELINE_TIME 0 s` |
+| WorldEvents binding | `WALL_CHARGE / STAGE_TIME 0 ms / enabled=false` |
+
+제품 Server destruction gate가 닫혀 있으므로 binding은 계속 disabled이며 nav blocker/receiver도 연결하지
+않는다. 이 값은 MapTool에서 눈으로 조정·저장하는 authoring preview 값이다.
+
+### 10.4 자동 검증
+
+| 검증 | 결과 |
+|---|---|
+| Client x64 Debug build/link | PASS |
+| Client x64 Release build/link | PASS |
+| debris cooker deterministic rebuild | PASS: 12 pieces, 17,731 triangles |
+| ModelAssetConverter `info` | PASS: 12/12 |
+| receipt resource SHA-256 | PASS: 12/12 |
+| WorldGameplay publisher Validate | PASS |
+| Server Navigation publisher Validate | PASS |
+| JSON/XML/Python parse | PASS |
+| ProjectAudit 신규 simulation/recipe/runtime/alias lifecycle | PASS: 4/4 |
+| 전체 ProjectAudit | 기존 별도 10건으로 FAIL; 신규 destruction/debris failure 0 |
+| `git diff --check` | PASS |
+| 실제 GUI Stage → Restart + Play | PASS: 사용자가 12개 exact macro-shard 비행을 육안 확인 |
+
+### 10.5 제품 경계와 리소스 인계
+
+- 이번 변경은 선택 벽의 MapTool PhysX audition을 완성한다. 발탄 제품 레이드의 Server collision impact,
+  persistent `INTACT -> BREAKING -> FRACTURED`, dynamic navigation, Shared late join, dust Effect는 아직
+  구현 완료가 아니다.
+- `Client/Bin/Resources`는 Git 관리 대상이 아니므로 팀원에게는 위 `fractured` 폴더의 신규
+  `DEPLOY_ITR_02316_CHUNK_00.wmodel`~`_11.wmodel` 12개를 별도 전달해야 한다. 기존 texture 파일은
+  그대로 재사용한다.
+
+## 11. 2026-08-10 co-located Deploy suppression alias
+
+### 11.1 재현과 원인
+
+- 선택 placement `17150846598057876717`과 별도 placement `10426387515393336411`은 모두
+  `DEPLOY_ITR_02316`이며 위치 차이가 `0.000137 m`뿐이고 회전·스케일도 같다.
+- loader는 두 stable placement를 모두 생성한다. 기존 preview는 emitter source 한 개만 숨겼으므로
+  겹친 두 번째 placement가 남아 파편이 날아간 뒤에도 원래 벽이 보였다.
+- 두 placement는 원본 문서의 서로 다른 actor/source ID이므로 근거 없이 삭제하거나 병합하지 않았다.
+
+### 11.2 수정
+
+- destruction simulation schema를 format version 2로 올리고 element에
+  `suppressionAliasPlacementIds`를 추가했다.
+- WorldEvents group은 두 placement를 모두 소유하지만 simulation은
+  `17150846598057876717` 하나만 emitter로 유지한다. `10426387515393336411`은 suppress-only alias라
+  추가 파편을 만들지 않는다.
+- 활성화 경계에서 alias의 이전 Deploy state를 저장하고 `DESPAWNED`로 전환한다. 파편 수명이 끝난 뒤에도
+  숨김을 유지하며 Reset/Clear에서 정확히 복원한다. 중간 실패 시 source, alias, PhysX actor를 함께
+  rollback한다.
+- exact recipe가 준비되지 않아 generic debris로 fallback해도 emitter source를 숨기도록 통일했다.
+- group cross-validation은 emitter와 alias의 합집합이 모든 member를 정확히 한 번 투영하도록 검사한다.
+
+### 11.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| simulation JSON format/version/alias parse | PASS: v2, emitter 1, alias 1, group members 2 |
+| PhysicsContractHarness x64 Debug/Release build/run | PASS |
+| Client x64 Debug build/link | PASS |
+| Client x64 Release build/link | PASS |
+| ProjectAudit suppression alias lifecycle | PASS: restoreCalls=3, sourcePredicates=3 |
+| `git diff --check` | PASS |
+| 실제 GUI: Restart + Play 후 두 원본 숨김, 12조각만 방출 | PASS: 사용자 육안 확인 |
+| 실제 GUI: Reset 후 source/alias 복원 | 코드·PhysicsContractHarness PASS, 별도 수동 확인 기록 없음 |

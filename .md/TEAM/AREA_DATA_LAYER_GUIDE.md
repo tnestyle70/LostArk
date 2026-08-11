@@ -109,13 +109,16 @@ box는 판정 권위가 아니다. `activateSpawnGroup`은 Area spawn group stab
 
 Valtan MapTool의 파괴 물리 audition은 제품 publisher 입력과 분리된 Debug authoring 계약이다.
 `Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json`이
-파괴 그룹별 debris element의 spawn offset, world direction, speed, gravity scale, lifetime과
-`IMMEDIATE`/`TIMELINE_TIME`/`COLLISION_IMPACT` 조건을 저장한다. `Destruction Model View`는 실제
+파괴 그룹별 debris element의 spawn offset, world direction, speed, gravity scale, lifetime,
+`IMMEDIATE`/`TIMELINE_TIME`/`COLLISION_IMPACT` 조건과 suppress-only alias placement ID를 저장한다.
+`Destruction Model View`는 실제
 Development world의 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` 인스턴스에 PhysX actor를
 연결한다. Profile 아래 source placement를 Wall Mesh Emitter로, 각 Emitter 아래 runtime-generated
 `fragment.00`~`fragment.11`을 표시하고 All Fragments/Solo Emitter/Solo Fragment,
 play/pause/restart, 1/60 step과 reset 후 고정-step seek를 제공한다. fragment는 runtime sample이며
-format v1 JSON에는 emitter 공통 값만 저장한다.
+format v2 JSON은 source emitter와 `suppressionAliasPlacementIds`의 합집합이 WorldEvents group member와
+정확히 일치해야 한다. alias는 source와 함께 숨길 뿐 debris actor를 추가 생성하지 않는다. format v1은
+자동 추측 이관 없이 fail-closed하므로 MapTool에서 v2로 다시 authoring해야 한다.
 이 문서는 `Publish-WorldGameplay.ps1`의 입력이 아니므로 tool audition 자체는 위 destroyable admission에
 거부되지 않는다. 반대로 이 preview가 Server 파괴 상태, 동적 collision/navigation, Shared replication이나
 제품 Valtan presentation을 활성화했다는 뜻은 아니며, 그 제품 gate는 계속 fail-closed다.
@@ -132,14 +135,28 @@ Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel
 Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel
 ```
 
-source placement 하나는 fractured 상태로 원래 위치에 남고 proxy stone 12개만 각각 PhysX actor로
-날아간다. fragment ID는 `<elementId>.fragment.00`~`.11`이고 model/state/life/pose/velocity를
+source placement 하나에서 proxy stone 12개만 각각 PhysX actor로 날아간다. activation부터 fragment
+lifetime 만료 뒤까지 source와 suppress-only alias는 숨김을 유지하고 Reset/Clear에서 이전 상태로
+복원한다. fragment ID는 `<elementId>.fragment.00`~`.11`이고 model/state/life/pose/velocity를
 read-only로 확인할 수 있다. prototype의 0.01 pretransform 뒤 preview scale 3.5와 deterministic
-0.8~1.2 piece scale을 적용한다. proxy admission은 원자적이며 누락·손상 시 파편 preview만
+0.8~1.2 piece scale을 적용한다. generic proxy admission은 원자적이며 누락·손상 시 파편 preview만
 unavailable 상태로 격리한다.
+
+`DEPLOY_ITR_02316`에는 source fractured mesh의 17,731 triangle/material을 정확히 한 번 보존해 4x3으로
+분할한 12개 `PROJECT_AUTHORED` exact-geometry macro-shard lane이 추가되어 있다. 원본 chunk/physics graph를
+복구한 것은 아니다. 저작 receipt는
+`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316.debrisrecipe.json`, Git 제외 runtime 입력은
+`Client/Bin/Resources/Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_00.wmodel`
+부터 `_11.wmodel`까지다. 12개 exact prototype은 optional atomic batch이며 하나라도 준비되지 않으면
+부분 exact 등록 대신 위 generic stone 12-instance 표현으로 fallback한다.
+
+선택 source placement `17150846598057876717`과 거의 같은 위치의 별도 placement
+`10426387515393336411`은 WorldEvents group에는 함께 들어가지만 simulation에서는 source emitter 1개와
+`suppressionAliasPlacementIds` 1개로 나눈다. alias를 두 번째 emitter로 만들면 24조각이 되므로 금지한다.
 optional proxy 누락 때문에 Valtan Area, DeployProp 편집, World Destruction 문서 편집 전체를 막아서는
 안 된다. Map 담당자에게는 위 네 asset ID와 물리 `Client/Bin/Resources/Effect/Valtan/Meshes/FX_SM_00`
-폴더를 함께 인계한다.
+폴더, 그리고 02316 CHUNK 12개가 있는 `Client/Bin/Resources/Deploy/.../fractured` 물리 폴더를 함께
+인계한다.
 
 맵 담당자의 실행 순서, 세 trigger 층의 차이, Effect cue와 제품 Server를 붙이는 호출 지점은
 `MAP_DESTRUCTION_PHYSX_HANDOFF.md`가 정본이다. `Stage Selected (Paused)`는 actor tree를 stage할 뿐

@@ -334,6 +334,10 @@ bool LostArk::Server::CGameRoom::Join(
 	player.iCurrentResource = playerProfile->iMaximumResource;
 	player.iMaximumResource = playerProfile->iMaximumResource;
 	player.fMoveSpeed = playerProfile->fMoveSpeed;
+	// A gauge starts full: the stance it pays for is available on entry, and a
+	// class without one keeps both at 0 so nothing ever drains.
+	player.iMaximumIdentity = playerProfile->iMaximumIdentity;
+	player.iCurrentIdentity = playerProfile->iMaximumIdentity;
 	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
 	if (m_ServerNavigation.Is_Loaded())
 	{
@@ -585,6 +589,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
+	player.iCurrentIdentity = player.iMaximumIdentity;
+	player.iIdentityAccumulator = 0u;
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
@@ -1078,6 +1084,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumHp = player.iMaximumHp;
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
+		snapshot.iCurrentIdentity = player.iCurrentIdentity;
+		snapshot.iMaximumIdentity = player.iMaximumIdentity;
 		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.iComboStage = player.iComboStage;
 		/* Collect, sort, then truncate: cutting during unordered_map iteration
@@ -1419,6 +1427,19 @@ std::uint32_t LostArk::Server::CGameRoom::Count_SpawnGroupEntities(
 		}));
 }
 
+float LostArk::Server::CGameRoom::Resolve_StanceMoveSpeedScale(
+	const SERVER_PLAYER& player) const
+{
+	const PLAYER_RUNTIME_PROFILE* profile =
+		m_GameplayCatalog.Find_Player(player.eCharacterClass);
+	if (nullptr == profile ||
+		!CPlayerSkillSystem::Is_HoldingGaugedStance(player, *profile))
+	{
+		return 1.f;
+	}
+	return profile->fDefenseStanceMoveSpeedScale;
+}
+
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 {
 	const std::uint32_t updateTick =
@@ -1467,7 +1488,9 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.fYawDegrees =
 				std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 			const float moveDistance = (std::min)(
-				player.fMoveSpeed * fixedDeltaSeconds, distance);
+				player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player) *
+					fixedDeltaSeconds,
+				distance);
 			const float moveRatio = moveDistance / distance;
 			proposedX = player.fPositionX + deltaX * moveRatio;
 			proposedY = player.fPositionY +

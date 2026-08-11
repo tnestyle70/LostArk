@@ -79,7 +79,7 @@ try {
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
-        & cmd /c "UpdateLib.bat $Configuration"
+        & cmd /c ".\UpdateLib.bat $Configuration"
         if ($LASTEXITCODE -ne 0) {
             throw 'UpdateLib.bat failed.'
         }

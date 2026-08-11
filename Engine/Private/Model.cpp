@@ -148,6 +148,66 @@ bool_t CModel::Has_Bone(const char_t* pBoneName)
         });
 }
 
+int32_t CModel::Find_BoneIndex(const char_t* pBoneName) const
+{
+    if (nullptr == pBoneName || '\0' == pBoneName[0])
+        return -1;
+
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+    {
+        if (nullptr != m_Bones[i] && m_Bones[i]->Compare_Name(pBoneName))
+            return static_cast<int32_t>(i);
+    }
+    return -1;
+}
+
+int32_t CModel::Get_BoneParentIndex(const uint32_t iBoneIndex) const
+{
+    if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
+        return -1;
+
+    return m_Bones[iBoneIndex]->Get_ParentBoneIndex();
+}
+
+bool_t CModel::Get_BoneLocalMatrix(
+    const uint32_t iBoneIndex, matrix_t& outMatrix) const
+{
+    if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
+        return false;
+
+    outMatrix = m_Bones[iBoneIndex]->Get_TransformationMatrix();
+    return true;
+}
+
+bool_t CModel::Get_BoneCombinedMatrix(
+    const uint32_t iBoneIndex, matrix_t& outMatrix) const
+{
+    if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
+        return false;
+
+    outMatrix = m_Bones[iBoneIndex]->Get_CombinedTransformationMatrix();
+    return true;
+}
+
+bool_t CModel::Set_BoneLocalMatrix(
+    const uint32_t iBoneIndex, fmatrix_t Matrix)
+{
+    if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
+        return false;
+
+    m_Bones[iBoneIndex]->Update_TransformationMatrix(Matrix);
+    return true;
+}
+
+void CModel::Refresh_BoneCombinedMatrices()
+{
+    for (auto& pBone : m_Bones)
+    {
+        pBone->Update_CombinedTransformationMatrix(
+            m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+    }
+}
+
 bool_t CModel::Enable_RootMotionSuppression(
     const char_t* pBoneName, const int32_t iVerticalAxis)
 {
@@ -398,6 +458,19 @@ bool_t CModel::Has_MaterialTexture(uint32_t iMeshIndex,
     const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
     return materialIndex < m_Materials.size() &&
         m_Materials[materialIndex]->Has_Texture(eType, iTextureIndex);
+}
+
+const MODEL_COLOR_TINT* CModel::Get_MaterialColorTint(
+    uint32_t iMeshIndex) const
+{
+    if (iMeshIndex >= m_Meshes.size())
+        return nullptr;
+
+    const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+    if (materialIndex >= m_Materials.size())
+        return nullptr;
+
+    return &m_Materials[materialIndex]->Get_ColorTint();
 }
 
 const string& CModel::Get_MaterialName(uint32_t iMeshIndex) const

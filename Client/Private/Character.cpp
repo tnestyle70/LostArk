@@ -18,6 +18,20 @@
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	/* The move-goal dead zone makes a held right-click arrive, idle for one
+	resend interval, then run again at ~2Hz, so the server honestly reports
+	IDLE gaps shorter than the clip blend. Holding RUN through a gap shorter
+	than this swallows the flicker; a real stop lands this much later. See
+	.md/JS/08-10/2026-08-10_LOSTARK_WARLORD_BONE_CHAIN_RESULT.md section 7. */
+	constexpr f32_t LOCOMOTION_IDLE_DELAY_SECONDS = 0.15f;
+	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
+	quarter second, slow enough to swallow the per-cell steps of a grid path. */
+	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	/* On since the 08-10 solver rewrite. The old off-by-default spawn-frame
+	crash never reproduced after the solve moved to Late_Update; if it returns,
+	WER LocalDumps for Client.exe writes to C:\Users\95jus\CrashDumps. See
+	.md/JS/08-10/2026-08-10_LOSTARK_CLOTH_SPRINGBONE_REWRITE_RESULT.md. */
+	constexpr bool_t BONE_CHAINS_ENABLED = true;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
@@ -92,6 +106,10 @@ HRESULT CCharacter::Initialize(void* pArg)
 	unavailable. */
 	Load_ClipChains();
 	Load_EffectCues();
+	/* Secondary motion is optional per class: a spec with no chains simply never
+	activates the solver. */
+	m_BoneChains.Initialize(
+		m_pBodyModel, m_pSpec->pBoneChains, m_pSpec->iNumBoneChains);
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -691,10 +709,25 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 		STATE::POSITION,
 		XMVectorSetW(next, 1.f));
 
-	//G3에서는 위치만 보간하고, Yaw는 서버 최신값을 즉시 반영
+	/* The server recomputes yaw per path segment, and a grid path changes
+	direction at every cell, so copying the latest value straight in reads as a
+	series of snaps. Turning toward it at a fixed rate keeps the server's yaw
+	authoritative and only spreads the change over a few frames. */
+	f32_t difference = m_fNetworkTargetYawDegrees - m_fPresentationYawDegrees;
+	while (difference > 180.f)
+		difference -= 360.f;
+	while (difference < -180.f)
+		difference += 360.f;
+
+	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	if (fabsf(difference) <= step)
+		m_fPresentationYawDegrees = m_fNetworkTargetYawDegrees;
+	else
+		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
+
 	m_pTransformCom->Rotation(
 		0.f,
-		m_fNetworkTargetYawDegrees,
+		m_fPresentationYawDegrees,
 		0.f);
 }
 
@@ -723,6 +756,12 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 		return false;
 	}
 	//network state apply!
+	/* The first snapshot is where the character is, not somewhere it turned to,
+	so it takes the yaw outright; spawning would otherwise spin into place. */
+	if (!m_hasNetworkState)
+		m_fPresentationYawDegrees = yawDegrees;
+	if (!m_hasNetworkState)
+		m_BoneChains.Reset();
 	m_hasNetworkState = true;
 	m_vNetworkTargetPosition = position;
 	m_fNetworkTargetYawDegrees = yawDegrees;
@@ -904,7 +943,17 @@ void CCharacter::Update_ActionEmissiveOverride(
 
 void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
 {
+	const bool_t hasChanged = m_eStance != stance;
 	m_eStance = stance;
+	/* A stance that owns its own idle and run has to take over the pose the
+	character is already holding; Set_Locomotion only fires on a move edge. A
+	skill keeps its clip and picks the new stance up when it ends. */
+	if (hasChanged && !Is_PlayingSkill())
+	{
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+	}
 	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
@@ -923,11 +972,29 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 		pPart->Set_Visible(isVisible);
 }
 
+const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) const
+{
+	const char_t* pClipName = m_pSpec->AnimationClips[ETOUI(eAnim)];
+	if (CHARACTER_ANIM::IDLE != eAnim && CHARACTER_ANIM::RUN != eAnim)
+		return pClipName;
+	for (uint32_t i = 0; i < m_pSpec->iNumStanceLocomotion; ++i)
+	{
+		const STANCE_LOCOMOTION_SPEC& stance = m_pSpec->pStanceLocomotion[i];
+		if (stance.eStance != m_eStance)
+			continue;
+		const char_t* pOverride = CHARACTER_ANIM::IDLE == eAnim ?
+			stance.pIdleClip : stance.pRunClip;
+		if (nullptr != pOverride)
+			return pOverride;
+	}
+	return pClipName;
+}
+
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
 		return false;
-	return Set_Animation(m_pSpec->AnimationClips[ETOUI(eAnim)], isLoop);
+	return Set_Animation(Resolve_LocomotionClip(eAnim), isLoop);
 }
 
 bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
@@ -986,6 +1053,13 @@ void CCharacter::Update(f32_t fTimeDelta)
 		Set_Locomotion(m_PathFollower.Has_Path());
 	}
 
+	if (m_fPendingIdleSeconds >= 0.f)
+	{
+		m_fPendingIdleSeconds -= fTimeDelta;
+		if (m_fPendingIdleSeconds < 0.f)
+			Commit_Locomotion(false);
+	}
+
 	//Set_Locomotion(m_PathFollower.Has_Path());
 
 	/* A running chain owns the clip until it ends, so it advances before the logic
@@ -1012,6 +1086,19 @@ void CCharacter::Update(f32_t fTimeDelta)
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	__super::Late_Update(fTimeDelta);
+
+	/* The chains solve here and not in Update because snapshot application
+	runs in the level update, between the two: a skill seek replays the clip
+	and rebuilds every bone, which erased an Update-time solve on each
+	snapshot frame and strobed the cloth at 30Hz. After Late_Update nothing
+	re-poses the skeleton before the render pass binds it. */
+	if (BONE_CHAINS_ENABLED && m_BoneChains.Is_Active() &&
+		nullptr != m_pTransformCom && nullptr != m_pBodyModel)
+	{
+		m_BoneChains.Update(m_pBodyModel, fTimeDelta,
+			m_pTransformCom->Get_State(STATE::POSITION),
+			m_fPresentationYawDegrees);
+	}
 
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
@@ -1104,6 +1191,8 @@ HRESULT CCharacter::Ready_PartObjects()
 			m_pSpec->pEquipment[i].pPartTag,
 			&equipmentDesc)))
 			return E_FAIL;
+		if (m_pSpec->pEquipment[i].isHidden)
+			Set_PartVisible(m_pSpec->pEquipment[i].pPartTag, false);
 	}
 
 	/* The weapon is the same part class in socket mode. It gets its own class once
@@ -1133,9 +1222,24 @@ HRESULT CCharacter::Ready_PartObjects()
 
 void CCharacter::Set_Locomotion(bool_t isMoving)
 {
+	if (isMoving)
+		m_fPendingIdleSeconds = -1.f;
+
 	if (m_isMoving == isMoving)
 		return;
 
+	if (!isMoving)
+	{
+		if (m_fPendingIdleSeconds < 0.f)
+			m_fPendingIdleSeconds = LOCOMOTION_IDLE_DELAY_SECONDS;
+		return;
+	}
+
+	Commit_Locomotion(isMoving);
+}
+
+void CCharacter::Commit_Locomotion(bool_t isMoving)
+{
 	m_isMoving = isMoving;
 	if (Is_PlayingSkill())
 		return;

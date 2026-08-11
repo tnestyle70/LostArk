@@ -37,6 +37,27 @@ function Read-Json {
 	return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
+function Test-JsonNumber {
+	param([object]$Value)
+	if ($null -eq $Value -or $Value -is [bool] -or
+		$Value -isnot [byte] -and $Value -isnot [sbyte] -and
+		$Value -isnot [int16] -and $Value -isnot [uint16] -and
+		$Value -isnot [int32] -and $Value -isnot [uint32] -and
+		$Value -isnot [int64] -and $Value -isnot [uint64] -and
+		$Value -isnot [single] -and $Value -isnot [double] -and
+		$Value -isnot [decimal]) { return $false }
+	$number = [double]$Value
+	return -not [double]::IsNaN($number) -and -not [double]::IsInfinity($number)
+}
+
+function Test-Uint64String {
+	param([object]$Value)
+	$parsed = [uint64]0
+	return $Value -is [string] -and $Value -match '^[0-9]{1,20}$' -and
+		[uint64]::TryParse($Value, [Globalization.NumberStyles]::None,
+			[Globalization.CultureInfo]::InvariantCulture, [ref]$parsed) -and $parsed -ne 0
+}
+
 function Get-ProjectItems {
     param([string]$ProjectPath)
 
@@ -236,6 +257,7 @@ try {
 	$gameInstanceSource = Get-Content 'Engine\Private\GameInstance.cpp' -Raw
 	$destructionRuntimeSource = Get-Content 'Client\Private\DestructionSimulationRuntime.cpp' -Raw
 	$destructionControllerSource = Get-Content 'Client\Private\DestructionSimulationController.cpp' -Raw
+	$deployPropObjectSource = Get-Content 'Client\Private\DeployPropObject.cpp' -Raw
 	$physicsContractValid =
 		$physicsManagerHeader -match 'PHYSICS_ACTOR_HANDLE' -and
 		$physicsManagerHeader -match 'Simulate_DebugSteps\(uint32_t' -and
@@ -257,47 +279,161 @@ try {
 	$worldEventsPath = 'Data\Encounters\Valtan\ValtanWorldEvents.json'
 	$simulation = Read-Json $simulationPath
 	$worldEvents = Read-Json $worldEventsPath
-	$profile = @($simulation.profiles)[0]
-	$group = @($worldEvents.groups | Where-Object {
-		$_.groupId -eq $profile.groupId
-	})[0]
-	$simulationElementIds = @($profile.elements | ForEach-Object {
-		[string]$_.elementId
-	})
-	$simulationPlacementIds = @($profile.elements | ForEach-Object {
-		[string]$_.sourceRuntimePlacementId
-	})
-	$simulationVectorsValid = $true
-	foreach ($element in @($profile.elements)) {
-		$direction = @($element.direction)
-		$lengthSquared = if ($direction.Count -eq 3) {
-			[double]$direction[0] * [double]$direction[0] +
-			[double]$direction[1] * [double]$direction[1] +
-			[double]$direction[2] * [double]$direction[2]
-		} else { 0.0 }
-		$simulationVectorsValid = $simulationVectorsValid -and
-			[math]::Abs([math]::Sqrt($lengthSquared) - 1.0) -le 0.001 -and
-			[double]$element.speedMetersPerSecond -ge 0.0 -and
-			[double]$element.gravityScale -ge 0.0 -and
-			[double]$element.lifetimeSeconds -gt 0.0
+	$profiles = @($simulation.profiles)
+	$simulationErrors = [Collections.Generic.List[string]]::new()
+	$profileIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	foreach ($profile in $profiles) {
+		$elements = @($profile.elements)
+		if ($profile.profileId -isnot [string] -or -not $profileIds.Add($profile.profileId) -or
+			$profile.groupId -isnot [string] -or $profile.previewGroundEnabled -isnot [bool] -or
+			-not (Test-JsonNumber $profile.durationSeconds) -or $elements.Count -lt 1 -or $elements.Count -gt 256) {
+			$simulationErrors.Add("profile:$($profile.profileId)")
+			continue
+		}
+		$projectedPlacementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		foreach ($element in $elements) {
+			$elementFields = @('elementId', 'sourceRuntimePlacementId', 'suppressionAliasPlacementIds',
+				'spawnOffset', 'direction', 'speedMetersPerSecond', 'gravityScale', 'lifetimeSeconds', 'trigger')
+			$hasExactElementFields = @($element.PSObject.Properties).Count -eq $elementFields.Count -and
+				@($elementFields | Where-Object { $element.PSObject.Properties.Name -cnotcontains $_ }).Count -eq 0
+			$aliases = @($element.suppressionAliasPlacementIds)
+			$aliasesAreArray = $element.suppressionAliasPlacementIds -is [System.Array]
+			$direction = @($element.direction)
+			$lengthSquared = if ($direction.Count -eq 3 -and @($direction | Where-Object { -not (Test-JsonNumber $_) }).Count -eq 0) {
+				[double]$direction[0] * [double]$direction[0] + [double]$direction[1] * [double]$direction[1] + [double]$direction[2] * [double]$direction[2]
+			} else { 0.0 }
+			if (-not $hasExactElementFields -or -not $aliasesAreArray -or
+				$element.elementId -isnot [string] -or -not (Test-Uint64String $element.sourceRuntimePlacementId) -or
+				-not $projectedPlacementIds.Add($element.sourceRuntimePlacementId) -or
+				[math]::Abs([math]::Sqrt($lengthSquared) - 1.0) -gt 0.001 -or
+				-not (Test-JsonNumber $element.speedMetersPerSecond) -or
+				[double]$element.speedMetersPerSecond -lt 0.0 -or [double]$element.speedMetersPerSecond -gt 250.0 -or
+				-not (Test-JsonNumber $element.gravityScale) -or
+				[double]$element.gravityScale -lt 0.0 -or [double]$element.gravityScale -gt 10.0 -or
+				-not (Test-JsonNumber $element.lifetimeSeconds) -or
+				[double]$element.lifetimeSeconds -le 0.0 -or [double]$element.lifetimeSeconds -gt 60.0) {
+				$simulationErrors.Add("element:$($element.elementId)")
+			}
+			foreach ($aliasPlacementId in $aliases) {
+				if (-not (Test-Uint64String $aliasPlacementId) -or
+					-not $projectedPlacementIds.Add([string]$aliasPlacementId)) {
+					$simulationErrors.Add("alias:$($element.elementId):$aliasPlacementId")
+				}
+			}
+		}
+		$groups = @($worldEvents.groups | Where-Object { $_.groupId -ceq $profile.groupId })
+		$members = if ($groups.Count -eq 1) { @($groups[0].memberPlacementIds | ForEach-Object { [string]$_ }) } else { @() }
+		if ($groups.Count -ne 1 -or $members.Count -ne $projectedPlacementIds.Count -or
+			@(Compare-Object @($projectedPlacementIds | ForEach-Object { $_ }) $members -CaseSensitive).Count -ne 0) {
+			$simulationErrors.Add("group:$($profile.groupId)")
+		}
 	}
+	$selectedPlacementId = '17150846598057876717'
+	$selectedSuppressionAliasId = '10426387515393336411'
+	$selectedProfile = @($profiles | Where-Object {
+		$_.profileId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId.preview" -and
+		$_.groupId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId"
+	})
+	$selectedDeployRow = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements' |
+		Where-Object { $_ -match ("^" + $selectedPlacementId + '\s+\d+\s+\d+\s+"[^"]+"\s+"DEPLOY_ITR_02316"\s') })
+	$selectedAliasDeployRow = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements' |
+		Where-Object { $_ -match ("^" + $selectedSuppressionAliasId + '\s+\d+\s+\d+\s+"[^"]+"\s+"DEPLOY_ITR_02316"\s') })
+	$selectedGroup = @($worldEvents.groups | Where-Object {
+		$_.groupId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId"
+	})
 	$simulationAuthoringValid =
-		$simulation.schema -eq 'lostark.destruction-simulation' -and
-		[int]$simulation.formatVersion -eq 1 -and
-		$simulation.areaId -eq 'LV_LUT_HEARTRB_ED' -and
-		@($simulation.profiles).Count -eq 1 -and
-		$null -ne $group -and
-		$simulationElementIds.Count -eq 5 -and
-		@($simulationElementIds | Select-Object -Unique).Count -eq 5 -and
-		@($simulationPlacementIds | Select-Object -Unique).Count -eq 5 -and
-		@($simulationPlacementIds | Where-Object {
-			$_ -notin @($group.memberPlacementIds | ForEach-Object { [string]$_ })
-		}).Count -eq 0 -and
-		$simulationVectorsValid -and
-		@($worldEvents.bindings | Where-Object enabled).Count -eq 0
+		$simulation.schema -ceq 'lostark.destruction-simulation' -and (Test-JsonNumber $simulation.formatVersion) -and
+		[double]$simulation.formatVersion -eq 2.0 -and $simulation.areaId -ceq 'LV_LUT_HEARTRB_ED' -and
+		$profiles.Count -ge 1 -and $profiles.Count -le 128 -and $simulationErrors.Count -eq 0 -and
+		@($worldEvents.bindings | Where-Object { $_.enabled -isnot [bool] -or $_.enabled }).Count -eq 0 -and
+		$selectedProfile.Count -eq 1 -and @($selectedProfile[0].elements).Count -eq 1 -and
+		$selectedProfile[0].elements[0].sourceRuntimePlacementId -ceq $selectedPlacementId -and
+		@($selectedProfile[0].elements[0].suppressionAliasPlacementIds).Count -eq 1 -and
+		$selectedProfile[0].elements[0].suppressionAliasPlacementIds[0] -ceq $selectedSuppressionAliasId -and
+		$selectedGroup.Count -eq 1 -and @($selectedGroup[0].memberPlacementIds).Count -eq 2 -and
+		@($selectedGroup[0].memberPlacementIds | Where-Object {
+			$_ -ceq $selectedPlacementId -or $_ -ceq $selectedSuppressionAliasId
+		}).Count -eq 2 -and $selectedDeployRow.Count -eq 1 -and $selectedAliasDeployRow.Count -eq 1
 	Add-Check 'maps.valtan-destruction-simulation-authoring' `
 		$simulationAuthoringValid `
-		"profiles=$(@($simulation.profiles).Count) elements=$($simulationElementIds.Count) bindingsEnabled=$(@($worldEvents.bindings | Where-Object enabled).Count)"
+		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) selectedDeployRows=$($selectedDeployRow.Count) aliasDeployRows=$($selectedAliasDeployRow.Count)"
+
+	$recipe = Read-Json 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json'
+	$pieces = @($recipe.pieces)
+	$recipeValid = $recipe.schema -ceq 'lostark.deploy-wall-debris-recipe' -and
+		(Test-JsonNumber $recipe.formatVersion) -and [double]$recipe.formatVersion -eq 1.0 -and
+		$recipe.provenance -ceq 'PROJECT_AUTHORED' -and $recipe.sourceAssetId -ceq 'DEPLOY_ITR_02316' -and
+		$recipe.partition.sourceTriangleCount -eq 17731 -and
+		$recipe.partition.coverage -ceq 'EVERY_SOURCE_TRIANGLE_EXACTLY_ONCE' -and $pieces.Count -eq 12
+	$sourceModelPath = Join-Path $repoRoot ([string]$recipe.sourceFracturedWModel)
+	$recipeValid = $recipeValid -and (Test-Path -LiteralPath $sourceModelPath) -and
+		(Get-FileHash -LiteralPath $sourceModelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $recipe.sourceSha256
+	$triangleTotal = 0L
+	for ($pieceIndex = 0; $recipeValid -and $pieceIndex -lt 12; ++$pieceIndex) {
+		$piece = $pieces[$pieceIndex]
+		$suffix = $pieceIndex.ToString('00', [Globalization.CultureInfo]::InvariantCulture)
+		$piecePath = Join-Path $resourceRoot ([string]$piece.assetId)
+		$units = @($piece.pivotWModelUnits)
+		$meters = @($piece.pivotMetersAtScale1)
+		$recipeValid = $piece.pieceId -ceq "piece.$suffix" -and
+			$piece.assetId -ceq "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_$suffix.wmodel" -and
+			$piece.sha256 -is [string] -and $piece.sha256 -match '^[0-9a-f]{64}$' -and
+			(Test-Path -LiteralPath $piecePath) -and
+			(Get-FileHash -LiteralPath $piecePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $piece.sha256 -and
+			(Test-JsonNumber $piece.triangleCount) -and (Test-JsonNumber $piece.vertexCount) -and
+			(Test-JsonNumber $piece.indexCount) -and [long]$piece.indexCount -eq 3L * [long]$piece.triangleCount -and
+			$units.Count -eq 3 -and $meters.Count -eq 3
+		for ($axis = 0; $recipeValid -and $axis -lt 3; ++$axis) {
+			$recipeValid = (Test-JsonNumber $units[$axis]) -and (Test-JsonNumber $meters[$axis]) -and
+				[math]::Abs([double]$meters[$axis] - [double]$units[$axis] * 0.01) -le 0.00000001
+		}
+		$triangleTotal += [long]$piece.triangleCount
+	}
+	$recipeValid = $recipeValid -and $triangleTotal -eq 17731
+	Add-Check 'maps.valtan-deploy-wall-debris-recipe' $recipeValid "pieces=$($pieces.Count) triangles=$triangleTotal"
+
+	$runtimeCode = [regex]::Replace($destructionRuntimeSource, '(?s)/\*.*?\*/', '')
+	$runtimeCode = [regex]::Replace($runtimeCode, '(?m)//.*$', '')
+	$specFunction = [regex]::Match($runtimeCode, '(?s)Get_ProjectAuthoredDebrisModelSpecs\(\)\s*\{.*?specs\s*=\s*\{(?<Body>.*?)\};\s*return\s+specs\s*;')
+	$numberPattern = '[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?'
+	$specPattern = '\{\s*L"(?<Tag>[^"]+)"\s*,\s*"(?<Asset>[^"]+)"\s*,\s*(?<Scale>' + $numberPattern +
+		')[fF]?\s*,\s*"(?<Source>[^"]+)"\s*,\s*\{\s*(?<X>' + $numberPattern + ')[fF]?\s*,\s*(?<Y>' +
+		$numberPattern + ')[fF]?\s*,\s*(?<Z>' + $numberPattern + ')[fF]?\s*\}\s*\}'
+	$runtimeSpecs = if ($specFunction.Success) { @([regex]::Matches($specFunction.Groups['Body'].Value, $specPattern)) } else { @() }
+	$runtimeValid = $runtimeSpecs.Count -eq 12 -and
+		$runtimeCode -match 'const\s+auto&\s+modelSpecs\s*=\s*Get_ProjectAuthoredDebrisModelSpecs\(\)\s*;' -and
+		$runtimeCode -match 'spec\.sourceDeployAssetId\s*==\s*runtime\.sourceDeployAssetId'
+	for ($specIndex = 0; $runtimeValid -and $specIndex -lt 12; ++$specIndex) {
+		$suffix = $specIndex.ToString('00', [Globalization.CultureInfo]::InvariantCulture)
+		$spec = $runtimeSpecs[$specIndex]
+		$piece = $pieces[$specIndex]
+		$runtimeValid = $spec.Groups['Tag'].Value -ceq "Prototype_Component_Model_DestructionWall_02316_Chunk$suffix" -and
+			$spec.Groups['Asset'].Value -ceq $piece.assetId -and $spec.Groups['Source'].Value -ceq 'DEPLOY_ITR_02316' -and
+			[single][double]$spec.Groups['Scale'].Value -eq [single]1.0
+		$axes = @('X', 'Y', 'Z')
+		for ($axis = 0; $runtimeValid -and $axis -lt 3; ++$axis) {
+			$runtimeValid = [single][double]$spec.Groups[$axes[$axis]].Value -eq [single][double]$piece.pivotMetersAtScale1[$axis]
+		}
+	}
+	Add-Check 'maps.valtan-deploy-wall-debris-runtime-registration' $runtimeValid "activeSpecs=$($runtimeSpecs.Count)"
+
+	$aliasRestoreCalls = @([regex]::Matches(
+		$runtimeCode, 'Restore_SuppressionAliases\(runtime')).Count
+	$sourceSuppressionPredicates = @([regex]::Matches(
+		$deployPropObjectSource,
+		'm_bPhysicsPreviewActive\s*&&\s*m_bDebrisPreviewActive\s*&&\s*m_bDebrisSuppressSource')).Count
+	$aliasLifecycleValid =
+		$runtimeCode -match 'aliasObject->Is_StaticDeployModel\(\)' -and
+		$runtimeCode -match 'alias\.ePreviousState\s*=\s*alias\.pObject->Get_State\(\)' -and
+		$runtimeCode -match 'alias\.pObject->Set_State\(DEPLOY_PROP_STATE::DESPAWNED\)' -and
+		$runtimeCode -match 'alias->pObject->Set_State\(alias->ePreviousState\)' -and
+		$runtimeCode -match 'if\s*\(!Destroy_Actors\(&restoreStatus\)\)' -and
+		$runtimeCode -match 'if\s*\(!Destroy_Actors\(&outStatus\)\)' -and
+		$runtimeCode -match 'runtime\.eState\s*=\s*DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED' -and
+		$aliasRestoreCalls -ge 3 -and $sourceSuppressionPredicates -eq 3
+	Add-Check 'maps.valtan-destruction-suppression-alias-lifecycle' `
+		$aliasLifecycleValid `
+		"restoreCalls=$aliasRestoreCalls sourcePredicates=$sourceSuppressionPredicates"
 
 	$worldPublisherSource = Get-Content 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
 	$destroyableProductGateClosed =
@@ -1428,7 +1564,7 @@ try {
 		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
 		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
-		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 14' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 15' -and
 		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
 		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
 		$gameRoomSource -match 'Apply_CharacterClassChange' -and

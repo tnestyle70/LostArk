@@ -744,13 +744,18 @@ audition만 소비하는 sidecar다. 제품 World publisher 입력이 아니다.
 WorldEvents groupId
   -> simulation profile.groupId
   -> element.sourceRuntimePlacementId
+     + element.suppressionAliasPlacementIds (suppress-only)
   -> runtime-generated <elementId>.fragment.NN
 ```
 
-WorldEvents member 집합과 simulation element placement 집합은 정확히 일치해야 한다. fragment ID는
-vector index나 Prototype tag가 아니며 element stable ID와 고정 ordinal에서 결정한다. 현재 v1은 emitter
-공통 direction/speed/gravity/lifetime/trigger만 저장하고 fragment model/state/pose/velocity는 runtime
-projection이다. 이 sidecar가 존재해도 Server destroyable admission이 열린 것은 아니다.
+WorldEvents member 집합과 simulation의
+`sourceRuntimePlacementId + suppressionAliasPlacementIds` 합집합은 정확히 일치해야 한다. source만
+debris emitter이고 alias는 중복 벽을 함께 숨기는 stable placement ID라 actor를 추가 생성하지 않는다.
+fragment ID는 vector index나 Prototype tag가 아니며 element stable ID와 고정 ordinal에서 결정한다.
+현재 v2는 emitter 공통 direction/speed/gravity/lifetime/trigger와 suppression alias를 저장하고 fragment
+model/state/pose/velocity는 runtime projection이다. activation부터 fragment lifetime 만료 뒤까지 source와
+alias를 숨기며 Reset/Clear에서 이전 상태를 복원한다. v1은 자동 추측 이관 없이 fail-closed하고 v2로
+다시 authoring해야 한다. 이 sidecar가 존재해도 Server destroyable admission이 열린 것은 아니다.
 
 ### 14.4 Monster와 wave 확장
 

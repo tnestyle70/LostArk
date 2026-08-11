@@ -8,6 +8,7 @@ NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
 struct MODEL_ASSET_LOAD_DESC;
+struct MODEL_COLOR_TINT;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -78,6 +79,18 @@ public:
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
+
+	/* Secondary-motion seam. A caller that drives bones itself resolves indices
+	once, reads what the animation produced this frame, writes its own local
+	matrices back, and refreshes the combined matrices before skinning reads
+	them. Indices are stable for the model's lifetime and every bone's parent
+	comes before it, so one forward pass rebuilds the whole hierarchy. */
+	int32_t Find_BoneIndex(const char_t* pBoneName) const;
+	int32_t Get_BoneParentIndex(uint32_t iBoneIndex) const;
+	bool_t Get_BoneLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	bool_t Get_BoneCombinedMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
+	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
@@ -122,6 +135,9 @@ public:
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
+	/* Null when the mesh or its material is out of range; identity tint (its
+	isEnabled false) when the material simply has no colour mask. */
+	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
 	const string& Get_MaterialName(uint32_t iMeshIndex) const;
 	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
 

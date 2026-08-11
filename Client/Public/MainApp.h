@@ -19,6 +19,8 @@ class CHUDRuntimeView;
 class CBalanceTool;
 class CCharacterPreviewPanel;
 class CSkillWindowView;
+class CChatWindowView;
+class CPartyWindowView;
 
 
 class CMainApp final
@@ -59,6 +61,7 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	void RenderStanceSkillIcons();
 	void RenderSkillCooldowns();
 	void RenderCombatHUDText();
 
@@ -85,6 +88,13 @@ private:
 	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
 	bool_t m_bKDown = false;
+	/* Not _DEBUG-gated: Enter opens the chat input during real gameplay, in Release too. */
+	unique_ptr<CChatWindowView> m_pChatWindowView = { nullptr };
+	bool_t m_bEnterDown = false;
+	bool_t m_bEscapeDown = false;
+	/* Not _DEBUG-gated: the party roster overlay draws in Release too, same as the rest of the
+	combat HUD. UI-only placeholder roster until a party Shared protocol exists. */
+	unique_ptr<CPartyWindowView> m_pPartyWindowView = { nullptr };
 
 #ifdef _DEBUG
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };

@@ -32,13 +32,16 @@ struct DESTRUCTION_SIMULATION_TRIGGER final
 };
 
 /* One visible DeployProp participating in a tool-only physics audition.
-   Direction is world-space and unit length; the runtime converts
-   direction * speed to PhysX linear velocity. gravityScale is an authoring
-   multiplier implemented by the physics facade, not a Server gameplay value. */
+   suppressionAliasPlacementIds are stable, suppress-only source placements:
+   they disappear with this emitter but never create duplicate debris bodies.
+   Direction is world-space and unit length; the runtime converts direction *
+   speed to PhysX linear velocity. gravityScale is an authoring multiplier
+   implemented by the physics facade, not a Server gameplay value. */
 struct DESTRUCTION_SIMULATION_ELEMENT final
 {
 	std::string elementId;
 	uint64_t sourceRuntimePlacementId = 0u;
+	std::vector<uint64_t> suppressionAliasPlacementIds;
 	float3_t vSpawnOffset{};
 	float3_t vDirection = { 0.f, 1.f, 0.f };
 	f32_t fSpeedMetersPerSecond = 8.f;
@@ -133,14 +136,15 @@ public:
 		const CDeployPropRuntime& deployRuntime,
 		DESTRUCTION_SIMULATION_PROFILE& outProfile,
 		std::string& outStatus);
-	/* Preserves tuned elements, removes stale members, and appends defaults for
-	   newly added group members as one document transaction. */
+	/* Preserves tuned elements and suppress-only aliases, removes stale members,
+	   and appends defaults only for members not projected by either source or
+	   alias as one document transaction. */
 	bool_t Synchronize_Group(
 		const DESTRUCTION_GROUP& group,
 		const CDeployPropRuntime& deployRuntime,
 		std::string& outStatus);
-	/* Every complete profile must project exactly one element for every member
-	   of its referenced destruction group. */
+	/* Every complete profile must project each referenced group member exactly
+	   once, either as an emitting source or as a suppress-only alias. */
 	bool_t Validate_GroupReferences(
 		const CWorldDestructionDocument& destructionDocument,
 		std::string& outStatus) const;

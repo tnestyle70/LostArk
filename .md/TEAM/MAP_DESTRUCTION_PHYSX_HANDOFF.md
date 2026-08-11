@@ -18,8 +18,17 @@ Destruction Profile
    └─ fragment.11 -> CModel proxy 1개 -> CRigidBody 1개
 ```
 
-현재 Valtan 검증 profile은 `DEPLOY_ITR_02306` 다섯 placement다. 따라서 All Fragments 재생 시 최대
-`5 emitters * 12 fragments = 60`개의 presentation-only dynamic actor가 생성된다.
+현재 Valtan 정본에는 두 preview lane이 있다.
+
+- `destroyable.group.valtan.wall.3705102.preview`: `DEPLOY_ITR_02306` 다섯 emitter가 generic stone을
+  사용하므로 All Fragments에서 최대 `5 * 12 = 60`개의 presentation-only actor를 만든다.
+- `destroyable.group.valtan.deploy.17150846598057876717.preview`: `DEPLOY_ITR_02316` source
+  `17150846598057876717` 하나가 12개 exact-geometry macro-shard를 방출한다. 거의 같은 위치의
+  `10426387515393336411`은 suppress-only alias라 actor를 추가하지 않는다.
+
+두 번째 lane의 12조각은 원본 fractured mesh의 17,731 triangle을 빠짐없이 보존하지만, 원본 rigid-body
+graph가 없어서 프로젝트가 4x3으로 분할한 `PROJECT_AUTHORED` 물리 표현이다. source-exact physics라고
+부르지 않는다.
 
 완료된 기능:
 
@@ -32,6 +41,8 @@ Destruction Profile
 - direction, speed, spawn offset, gravity scale, lifetime, trigger local draft와 Apply/Revert
 - trigger `IMMEDIATE`, `TIMELINE_TIME`, `COLLISION_IMPACT`의 MapTool audition
 - tool close, mode/Area switch, stage 실패에서 actor와 source presentation 원상 복원
+- `DEPLOY_ITR_02316` exact 12-piece optional atomic admission과 generic fallback
+- co-located source/alias를 한 번에 숨기고 Reset/Clear 또는 실패 rollback에서 이전 상태 복원
 
 제품에서 아직 완료되지 않은 기능:
 
@@ -46,7 +57,9 @@ Destruction Profile
 ## 2. 처음 5분 실행 절차
 
 Client 시작 Level은 항상 Lobby고 `Test`의 Debug Map Editor 진입도 최초 Server 승인이 필요하다.
-같은 PC에서는 Server를 `127.0.0.1:7777`로 먼저 실행한다.
+2026-08-20까지는 먼저 `powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1`을
+실행하고 출력이 `server-host`면 `Server + Client`, `client`면 Client만 시작한다. 이 기간의 접속 정본은
+`192.168.200.103:7777`이며 임의로 `127.0.0.1`로 바꾸지 않는다.
 
 ```text
 Lobby -> Test -> LEVEL::DEVELOPMENT
@@ -59,7 +72,7 @@ Destruction Model View
 패널에서 다음 순서로 확인한다.
 
 ```text
-1. profile destroyable.group.valtan.wall.3705102.preview 선택
+1. profile destroyable.group.valtan.deploy.17150846598057876717.preview 선택
 2. Play All Fragments
 3. Profile -> Wall Mesh Emitter 트리 확장
 4. fragment.00~fragment.11의 WAITING -> ACTIVE -> EXPIRED 확인
@@ -69,8 +82,8 @@ Destruction Model View
 ```
 
 `Stage Selected (Paused)`는 의도적으로 0초에서 멈춘다. 재생 확인은 `Play All Fragments`를 누르거나
-Stage 뒤 `Play`를 누른다. 기본 `TIMELINE_TIME`은 0.25초이므로 첫 15 fixed step 동안 `WAITING`인 것이
-정상이다.
+Stage 뒤 `Play`를 누른다. 선택 `DEPLOY_ITR_02316` profile은 `TIMELINE_TIME=0`이라 첫 step에 발화하고,
+기존 `3705102` generic profile은 0.25초 뒤 발화한다.
 
 ## 3. 자산을 잘못 이해하면 안 되는 이유
 
@@ -111,6 +124,27 @@ commit하지 않는다. asset pretransform 0.01 뒤 preview recipe scale 3.5를 
 확인 가능한 크기로 만든다. 누락·손상 시 Valtan Area 전체가 아니라 debris audition만 unavailable로
 격리된다.
 
+### 3.4 `DEPLOY_ITR_02316` exact-geometry macro-shard
+
+`DEPLOY_ITR_02316_FRACTURED.wmodel`도 chunk pivot이나 rigid-body graph가 없는 하나의 static WModel이다.
+`Tools/ModelAssetConverter/build_deploy_wall_debris.py`는 이 source의 17,731 triangle/material을 정확히 한
+번씩 보존하면서 area-weighted principal axis 기준 4x3 grid로 12개 macro-shard를 만들고 각 piece를 derived
+pivot 중심으로 recenter한다.
+
+```text
+receipt
+  Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316.debrisrecipe.json
+
+runtime payload (Git 제외, 팀 리소스 배포 필요)
+  Client/Bin/Resources/Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/
+    DEPLOY_ITR_02316_CHUNK_00.wmodel ... DEPLOY_ITR_02316_CHUNK_11.wmodel
+```
+
+recipe는 provenance/hash/pivot 감사 정본이며 runtime이 JSON을 직접 읽지는 않는다.
+`CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()`의 12 asset/pivot 등록을
+`ProjectAudit`이 recipe와 1:1 대조한다. exact 12개는 optional atomic batch라 하나라도 없거나 손상되면
+부분 등록하지 않고 generic 12-instance fallback을 사용하며, fallback에서도 source는 숨긴다.
+
 ## 4. 데이터와 stable ID
 
 ### 4.1 World event graph
@@ -145,17 +179,31 @@ Data/Maps/Authoring/LV_LUT_HEARTRB_ED/
   LV_LUT_HEARTRB_ED.destructionsimulation.json
 ```
 
-format v1에서 element 하나는 source Deploy placement 하나다. 저장 ID는 다음과 같다.
+format v2에서 element 하나는 debris를 생성하는 source Deploy placement 하나와 0개 이상의 suppress-only
+alias placement를 가진다. 저장 ID는 다음과 같다.
 
 ```text
 profileId  destroyable.group.valtan.wall.3705102.preview
 elementId  debris.<decimal sourceRuntimePlacementId>
+suppressionAliasPlacementIds [<decimal runtimePlacementId>, ...]
 fragmentId <elementId>.fragment.00 ... fragment.11
 ```
 
+현재 exact lane은 다음 stable 관계를 사용한다.
+
+```text
+profileId  destroyable.group.valtan.deploy.17150846598057876717.preview
+elementId  debris.17150846598057876717
+source     17150846598057876717
+alias      10426387515393336411
+fragments  debris.17150846598057876717.fragment.00 ... fragment.11
+```
+
 fragment ID와 12-piece recipe는 runtime이 stable element ID와 ordinal로 결정한다. fragment를 JSON의
-중복 placement element로 저장하지 않는다. 이 규칙 덕분에 WorldEvents group member 집합과 simulation
-element placement 집합은 계속 1:1로 cross-validate된다.
+중복 placement element로 저장하지 않는다. alias는 source와 함께 숨길 stable placement ID일 뿐 actor나
+fragment를 추가 생성하지 않는다. WorldEvents group member 집합은 각 profile의
+`sourceRuntimePlacementId + suppressionAliasPlacementIds` 합집합과 정확히 일치해야 하며 중복 ID는
+fail-closed한다. format v1은 자동 이관하지 않고 로드를 거부하므로 MapTool에서 v2로 다시 authoring한다.
 
 WorldEvents와 simulation은 pair transaction으로 저장한다. 두 번째 canonical 교체에 실패하면 첫 파일도
 byte-exact 원본으로 rollback하고 sidecar를 정리한다.
@@ -169,7 +217,7 @@ ImGui button
   -> CDestructionSimulationController::Consume_Commands
   -> CDestructionSimulationRuntime::Stage_Profile / Advance_Timeline
   -> CDeployPropObject::Begin_PhysicsPreview(FRACTURED)
-  -> CDeployPropObject::Begin_DebrisPreview(12 proxy CModel)
+  -> CDeployPropObject::Begin_DebrisPreview(12 admitted CModel)
   -> CRigidBody::Create_Runtime(12 dynamic box actors)
   -> direction * speed + deterministic spread/up/angular velocity
   -> CPhysics_Manager::Simulate_DebugSteps(1)
@@ -181,10 +229,11 @@ ImGui button
 ImGui Render 중 actor를 만들거나 world state를 바꾸지 않는다. controller가 debug-paused PhysX scene의
 유일한 preview clock이며 Play, single step, seek가 모두 1/60초 `Step_Once()`를 통과한다.
 
-activation은 all-or-nothing이다. 12 proxy clone 또는 12 actor 중 하나라도 실패하면 생성한 actor를 모두
-제거하고 debris preview를 끝낸다. 성공하면 source는 제자리의 FRACTURED presentation으로 남고 proxy만
-각 actor pose를 따라 날아간다. lifetime 뒤 proxy actor/visual만 만료되고 Reset/Clear에서 source state,
-transform, animation track을 정확히 복원한다.
+activation은 all-or-nothing이다. 12 model clone 또는 12 actor 생성, source preview, alias suppression 중
+하나라도 실패하면 생성한 actor를 모두 제거하고 이미 바꾼 source와 alias를 이전 상태로 rollback한다.
+성공하면 source와 suppress-only alias를 숨기고 fragment만 각 actor pose를 따라 날아간다. lifetime 뒤에는
+fragment actor/visual만 만료하고 source와 alias suppression은 유지한다. Reset/Clear에서 source와 alias의
+이전 state, transform, animation track을 정확히 복원한다.
 
 ## 6. All/Solo 의미
 
@@ -268,12 +317,13 @@ Server는 effect asset path를 보내지 않고 stable cue/profile ID와 impact 
 
 ## 9. 다른 mesh debris로 확장하는 순서
 
-현재 네 proxy model과 12-piece count는 project-authored Valtan recipe다. 다른 자산까지 넓힐 때 hardcode를
-계속 복사하지 않는다.
+현재 generic 네 stone model과 `DEPLOY_ITR_02316` exact-geometry 12-piece recipe가 함께 있다. 다른 자산까지
+넓힐 때 hardcode를 계속 복사하지 않는다.
 
 1. source Deploy asset별로 실제 fractured/piece/effect 근거를 먼저 조사한다.
-2. exact fragment asset이 있으면 stable fragment asset ID와 pivot/bounds를 admit한다.
-3. 없으면 `PROJECT_AUTHORED`임을 표시한 recipe/profile을 만든다.
+2. exact fragment graph가 있으면 stable fragment asset ID와 pivot/bounds를 admit한다.
+3. 없으면 02316처럼 source geometry를 deterministic offline split하거나 generic rubble을 만들고 반드시
+   `PROJECT_AUTHORED`임을 표시한 receipt/recipe/profile을 만든다.
 4. schema v2 또는 별도 presentation catalog에 `recipeId`, piece model IDs/count, scale, spread/up/angular
    정책을 저장한다.
 5. element는 계속 source placement identity를 소유하고 runtime이 recipe의 fragment를 파생한다.
@@ -299,6 +349,9 @@ collision truth로 쓰거나 작은 dust particle마다 rigid actor를 만들지
 | `Client/Private/MapTool.cpp` | prototype batch admission, Emitter tree, Timeline/Detail UI |
 | `Data/Encounters/Valtan/ValtanWorldEvents.json` | group/mutation/binding stable 관계 |
 | `Data/Maps/Authoring/...destructionsimulation.json` | MapTool physics tuning source |
+| `Data/Maps/Authoring/.../DEPLOY_ITR_02316.debrisrecipe.json` | source/piece SHA, pivot, bounds, triangle coverage receipt |
+| `Tools/ModelAssetConverter/build_deploy_wall_debris.py` | static fractured WModel의 deterministic 12-piece cooker |
+| `Client/Bin/Resources/Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_00.wmodel` ~ `DEPLOY_ITR_02316_CHUNK_11.wmodel` | Git 제외 exact runtime payload; 별도 팀 배포 |
 
 ## 11. 흔한 실패와 확인 순서
 
@@ -332,13 +385,14 @@ collision truth로 쓰거나 작은 dust particle마다 rigid actor를 만들지
 
 ```text
 [ ] 최신 main을 기능 branch에 병합하고 conflict/unmerged path 0 확인
-[ ] 네 proxy Resources-relative asset 실제 존재 확인
+[ ] generic 네 stone asset과 02316 CHUNK_00~11 Resources payload 존재 확인
 [ ] Lobby -> Test -> Valtan Area 진입
-[ ] Play All Fragments에서 fragment 60개 admission/활성 상태 확인
+[ ] 3705102 generic profile은 60개, 02316 exact profile은 12개 admission/활성 상태 확인
 [ ] 한 Wall Emitter Solo에서 12 actor 확인
 [ ] 한 Fragment Solo에서 actor 1개, 나머지 FILTERED 확인
 [ ] Restart/Seek 결과가 같은 pose/velocity seed를 재현하는지 확인
 [ ] tool close/Area switch에서 source와 actor가 원상 복원되는지 확인
+[ ] 02316 재생 중 source+alias가 모두 숨고 lifetime 뒤에도 유지되며 Reset에서 둘 다 복원되는지 확인
 [ ] Collision trigger manual fire 확인
 [ ] Save/Reload와 pair rollback 확인
 [ ] PhysicsContractHarness, Server contract test, Client build, ProjectAudit 실행
