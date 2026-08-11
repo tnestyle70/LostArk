@@ -61,7 +61,7 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
-	void RenderStanceSkillIcons();
+	void RenderSkillIcons();
 	void RenderSkillCooldowns();
 	void RenderCombatHUDText();
 

@@ -2,7 +2,7 @@
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
   "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default", "Artist", "Slayer", "Gunslinger", "LanceMaster", "DimensionMaster"],
+  "classes": ["Default", "Artist", "Slayer", "Gunslinger", "LanceMaster", "DimensionMaster", "Warlord"],
   "slots": [
     {
       "id": "HealthBar_BG",
@@ -1119,451 +1119,157 @@
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Lance_Skill_Q",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34040_DoubleStrike.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_W",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34090_ThornJab.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_E",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_R",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34160_SpearDive.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_A",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34140_SoulCutter.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_S",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34120_ChainSlash.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_D",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34110_HalfMoonSlash.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Lance_Skill_F",
-      "ownerClass": "LanceMaster",
-      "type": 7,
-      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/LanceMaster/34150_RagingDragonSlash.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    }
-,
-
-    {
-      "id": "Warlord_Skill_Q",
+      "id": "WarL_id_1",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 626.668751, "y": 600.022995, "width": 90.75, "height": 119.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17030_날카로운창.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_W",
+      "id": "WarL_id_2",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 640.919501, "y": 645.130245, "width": 24, "height": 49.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17060_파이어불릿.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_E",
+      "id": "WarL_id_3",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 676.276001, "y": 647.272995, "width": 24, "height": 49.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17080_대쉬어퍼파이어.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_R",
+      "id": "WarL_id_4",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 625.918751, "y": 621.558495, "width": 49.5, "height": 95.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17110_리프어택.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id 4.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_A",
+      "id": "WarL_id_5",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 674.132501, "y": 621.558495, "width": 49.5, "height": 95.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17090_갈고리사슬.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id 5.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_S",
+      "id": "Shield_Edge_1",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 602.347001, "y": 631.201245, "width": 42, "height": 46.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17040_배쉬.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/Shield Edge 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": { "texture": null, "additive": false },
+      "shine": { "texture": "UI/HUD/WarLord/Shield Purple Edge.png", "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_D",
+      "id": "Shield_Edge_1_2",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
+      "type": 5,
+      "rect": { "x": 701.990501, "y": 631.201245, "width": 42, "height": 46.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17100_방패격동.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/Shield Edge 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": { "texture": null, "additive": false },
+      "shine": { "texture": "UI/HUD/WarLord/Shield Purple Edge.png", "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Warlord_Skill_F",
+      "id": "Shield_Wing_Dark",
       "ownerClass": "Warlord",
-      "type": 7,
-      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
+      "type": 6,
+      "rect": { "x": 609.472001, "y": 639.826245, "width": 27.75, "height": 29.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Warlord/17140_가디언의낙뢰.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/Shield Wing Dark.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/WarLord/Shield Wing Bright.png", "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Shield_Shield_Dark",
+      "ownerClass": "Warlord",
+      "type": 6,
+      "rect": { "x": 709.115501, "y": 639.826245, "width": 27.75, "height": 29.25 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/WarLord/Shield Shield Dark.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/WarLord/Shield Shield Bright.png", "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "WarL_id_Gauge_Bg",
+      "ownerClass": "Warlord",
+      "type": 6,
+      "rect": { "x": 633.847001, "y": 630.130245, "width": 74.25, "height": 84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/WarLord/WarL id Gauge Bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Yi_Skill_Q",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "id": "WarL_id_Gauge_L",
+      "ownerClass": "Warlord",
+      "type": 6,
+      "rect": { "x": 637.061501, "y": 631.951995, "width": 32.25, "height": 82.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Artist/31200_먹물세례.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id Gauge L.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Yi_Skill_W",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
+      "id": "WarL_id_Gauge_R",
+      "ownerClass": "Warlord",
+      "type": 6,
+      "rect": { "x": 677.347001, "y": 633.022995, "width": 32.25, "height": 82.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Skill/Artist/31430_흩뿌리기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_E",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31480_두루미나래.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_R",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31210_콩콩이.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_A",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31460_호접몽.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_S",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31420_난치기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_D",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31490_범가르기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Yi_Skill_F",
-      "ownerClass": "Artist",
-      "type": 7,
-      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/Artist/31470_한획긋기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_Q",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050100_일침.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_W",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050120_분절.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_E",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050160_건너찌르기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_R",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050180_너머베기.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_A",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050210_분광.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_S",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050220_일점관통.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_D",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050240_경계돌파.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Dimen_Skill_F",
-      "ownerClass": "DimensionMaster",
-      "type": 7,
-      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/Skill/DimensionMaster/2050230_시간분쇄.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
-        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/WarLord/WarL id Gauge R.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
