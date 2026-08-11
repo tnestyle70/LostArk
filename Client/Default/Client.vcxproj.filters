@@ -1215,6 +1215,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>

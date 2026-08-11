@@ -561,6 +561,15 @@ struct EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST final
 	std::vector<EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION> Emitters;
 };
 
+struct EFFECT_RECONSTRUCTED_SELECTED_DIAGNOSTIC_SELECTOR final
+{
+	std::string strScheduleId;
+	std::string strMeshEmitterId;
+	std::string strSpriteEmitterId;
+	uint64_t iFixedStepIndex = 0u;
+	uint64_t iSpawnSerial = 0u;
+};
+
 struct EFFECT_RECONSTRUCTED_SELECTED_HANDLER_CONSUMPTION final
 {
 	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Module;
@@ -737,6 +746,18 @@ public:
 		uint64_t iFixedStepIndex,
 		uint64_t iSpawnSerial,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME>& InOutFrame,
+		std::string& strOutError);
+};
+
+class CEffectReconstructedSelectedDiagnosticFactory final
+{
+public:
+	static bool_t Prepare(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pRuntimePreparation,
+		const EFFECT_RECONSTRUCTED_SELECTED_DIAGNOSTIC_SELECTOR& Selector,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>&
+			InOutPreparation,
 		std::string& strOutError);
 };
 

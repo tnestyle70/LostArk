@@ -25,6 +25,7 @@ NS_BEGIN(Client)
 
 class CEffectObject;
 class CEffectThumbnailCache;
+enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t;
 
 enum class EFFECT_PREVIEW_PIVOT_KIND : uint8_t
 {
@@ -236,6 +237,9 @@ private:
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
+	bool_t Try_StartArtist31470Diagnostic(
+		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	void Update_ReconstructedDiagnosticRoot();
     bool_t Stage_WorldPreview();
     bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
@@ -375,6 +379,7 @@ private:
     bool_t m_bPreviewLoop = true;
 	bool_t m_bPreviewVisibleRequested = false;
 	bool_t m_bPreviewScreenPostEnabled = true;
+	bool_t m_bReconstructedDiagnosticActive = false;
     bool_t m_bDocumentDirty = false;
     bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;

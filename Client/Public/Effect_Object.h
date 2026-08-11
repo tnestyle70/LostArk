@@ -57,6 +57,16 @@ public:
 	bool_t Stage_ReconstructedRuntimeProgram(
 		const EFFECT_OBJECT_DESC& Desc,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedDiagnostic(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
+		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo,
+		std::string& strOutError);
+	void Set_ReconstructedDiagnosticSolo(
+		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Is_ReconstructedDiagnosticActive() const
+	{
+		return m_bReconstructedDiagnosticActive;
+	}
 	void Set_RootWorld(const float4x4_t& RootWorld);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
@@ -112,7 +122,12 @@ private:
 	unique_ptr<CEffectDocumentRenderer> m_pRenderer;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	CEffectPlayback m_Playback;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME>
+		m_pReconstructedDiagnosticFrame;
 	float4x4_t m_RootWorld{};
+	RECONSTRUCTED_DIAGNOSTIC_SOLO m_eReconstructedDiagnosticSolo =
+		RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	bool_t m_bReconstructedDiagnosticActive = false;
 	bool_t m_bPlaying = true;
 	bool_t m_bVisible = true;
 	f32_t m_fPlaybackRate = 1.f;

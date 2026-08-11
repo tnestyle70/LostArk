@@ -376,6 +376,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
