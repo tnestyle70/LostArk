@@ -1032,6 +1032,24 @@ try {
 	Add-Check 'effect.derived-artifact-publisher' `
 		$effectDerivedPublisherPassed `
 		$effectDerivedPublisherDetail
+	$legacyProductProjectionPassed = $false
+	$legacyProductProjectionDetail = ''
+	try {
+		$legacyProductProjectionDetail = (& python -B `
+			'.\Tools\EffectPipeline\verify_legacy_product_cue_projection.py' `
+			2>&1 | Out-String).Trim()
+		$legacyProductProjectionExitCode = $LASTEXITCODE
+		$legacyProductProjectionPassed =
+			$legacyProductProjectionExitCode -eq 0 -and
+			$legacyProductProjectionDetail -match
+			'PASS: source=18d2b48920b2a327ac59b572960325d352e77a6f cues=101/101 effects=101/101 components=555/555 old101Delta=0 nonTargetDelta=0'
+	}
+	catch {
+		$legacyProductProjectionDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.legacy-product-cue-projection' `
+		$legacyProductProjectionPassed `
+		$legacyProductProjectionDetail
 	$effectRuntimeAuthorityPassed = $false
 	$effectRuntimeAuthorityDetail = ''
 	try {
