@@ -25,6 +25,13 @@ NS_END
 
 NS_BEGIN(Client)
 
+enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t
+{
+	MESH,
+	SPRITE,
+	END
+};
+
 struct EFFECT_RENDER_PREWARM_PROBE final
 {
 	uint64_t iCoreBuildCount = 0u;
@@ -115,7 +122,13 @@ public:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedDiagnostic(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
+		std::string& strOutError);
 	HRESULT Render(const EFFECT_EVALUATED_FRAME& Frame);
+	HRESULT Render_ReconstructedDiagnostic(
+		const float4x4_t& RootWorld,
+		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
 	void Clear();
 	const std::string& Get_Status() const { return m_strStatus; }
 	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
@@ -136,6 +149,7 @@ public:
 
 private:
 	struct PREWARM_ASSET_CACHE;
+	struct RECONSTRUCTED_DIAGNOSTIC_COMPOSITE;
 
 	HRESULT Stage_ElementResource(
 		const EFFECT_ELEMENT_DESC& Element,
@@ -225,6 +239,8 @@ private:
 	ComPtr<ID3D11DeviceContext> m_pContext;
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_DOCUMENT> m_pPreparedDocument;
+	std::unique_ptr<RECONSTRUCTED_DIAGNOSTIC_COMPOSITE>
+		m_pReconstructedDiagnostic;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
 	shared_ptr<Engine::CShader> m_pMeshShader;

@@ -1215,6 +1215,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
@@ -1280,6 +1283,9 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Warlord">
       <UniqueIdentifier>{bb588be6-d583-511f-9165-acd331894a0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Baselines">
+      <UniqueIdentifier>{724a9947-3833-5346-8bb6-3652861e98b6}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Components">
       <UniqueIdentifier>{e019d382-fc72-59f9-877d-a7f22ac00d68}</UniqueIdentifier>
@@ -1635,6 +1641,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Drafts">
       <UniqueIdentifier>{7af8d9d0-3c29-5a4d-a9df-64f00c30f9c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Geometry">
+      <UniqueIdentifier>{e89c42de-bd94-5e5c-a0c4-850eadd4b499}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Graphs">
       <UniqueIdentifier>{85e72a31-f89a-51e5-ad5a-ac9accef3442}</UniqueIdentifier>
     </Filter>
@@ -1718,6 +1727,12 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Warlord\Modules">
       <UniqueIdentifier>{db5dd7dc-de2e-5e3d-96f8-c8b46af3fbbc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Policies">
+      <UniqueIdentifier>{96261560-2769-5840-ba4d-aead402703fe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Policies\Artist">
+      <UniqueIdentifier>{c0863692-1c95-52ae-81b2-0a91a9b58e95}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\ResourceIndex">
       <UniqueIdentifier>{8540aebb-45e6-53b5-9a48-891bc0bc3edb}</UniqueIdentifier>
@@ -2777,6 +2792,9 @@
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\representative-four.authored-materialization-set.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Baselines\legacy-product-cue-projection-v1.json">
+      <Filter>96.DataFiles\Effects\Baselines</Filter>
     </None>
     <None Include="..\..\Data\Effects\Components\Artist\skill.31000.ba1\Artist_skill_31000_ba1_00.visual.wfx.json">
       <Filter>96.DataFiles\Effects\Components\Artist\skill.31000.ba1</Filter>
@@ -4464,7 +4482,25 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Candidates\effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.custom-handler-oracle.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.native-v14.source-contract-candidate.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.reconstructed-runtime-program.candidate.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.reconstructed-source-capability.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.source-execution-semantics.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.source-oracle-acquisition.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.source-semantic-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Converted\effect.artist.skill.31000.imported.effect.json">
@@ -4656,6 +4692,18 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.geometry-binding.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.geometry-resource-binding.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.wmodel-geometry-parity.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.local-reference-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Graphs</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Graphs</Filter>
     </None>
@@ -4668,7 +4716,40 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-recovery.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-runtime-deployment.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-oracle-acquisition.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-parent-resolution.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-reconstructed-approved-v1.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-render-resource-binding-approved-v1.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-render-state-evidence.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-runtime-oracle.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-source-value-acquisition.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-texture-runtime-binding.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json">
@@ -4699,6 +4780,9 @@
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-active-effect-inventory.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-evidence-envelope.json">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-receipt.json">
@@ -5852,6 +5936,12 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Warlord\skill.17000.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">
+      <Filter>96.DataFiles\Effects\Policies\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json">
+      <Filter>96.DataFiles\Effects\Policies\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json">
       <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\A</Filter>

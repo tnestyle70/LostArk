@@ -44,6 +44,19 @@
 namespace
 {
     constexpr const wchar_t* PREVIEW_LAYER = L"Layer_EffectPreview";
+	constexpr std::string_view ARTIST_F_DIAGNOSTIC_EFFECT_ID =
+		"effect.artist.skill.31470";
+	constexpr uint32_t ARTIST_F_DIAGNOSTIC_SKILL_ID = 31470u;
+	constexpr std::string_view ARTIST_F_DIAGNOSTIC_SCHEDULE_ID =
+		"action-schedule-daa8fc7a3723b850ca9579f2";
+	constexpr std::string_view ARTIST_F_DIAGNOSTIC_MESH_EMITTER_ID =
+		"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+		"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+		"particlespriteemitter_17";
+	constexpr std::string_view ARTIST_F_DIAGNOSTIC_SPRITE_EMITTER_ID =
+		"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+		"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+		"particlespriteemitter_0";
 
     bool Run_OwnedToolProcess(
         std::wstring Command,
@@ -1120,6 +1133,11 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
     {
         Release_WorldPreview(false);
     }
+	if (m_bReconstructedDiagnosticActive)
+	{
+		Update_ReconstructedDiagnosticRoot();
+		return;
+	}
     Update_SynchronizedAnimationSequence();
     if (!m_ActiveDocument.has_value())
         return;
@@ -1986,6 +2004,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         return;
     }
     m_pCharacterPreviewPanel->Render_Selector(false, {}, false);
+
     const shared_ptr<Engine::CModel> pModel =
         CAnimationTargetService::Resolve_Model();
     Render_AnimationControls(pModel);
@@ -4400,7 +4419,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
     bool_t bActiveAppearsInTree = false;
     for (const EFFECT_SKILL_TREE_ENTRY& Entry : m_AllEffects)
     {
-        const bool_t bProductMatchesSearch = std::any_of(
+		const bool_t bProductMatchesSearch = std::any_of(
             Entry.ProductCues.begin(), Entry.ProductCues.end(),
             [&Search](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue)
             {
@@ -4409,14 +4428,74 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     Contains_NoCase(ProductCue.Cue.strClipName, Search) ||
                     Contains_NoCase(ProductCue.Cue.strAnchorSlotId, Search);
             });
-        if (Entry.Skill.eCharacterClass != m_eAllEffectsClass ||
-            (!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
-             !Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
-             !Contains_NoCase(Entry.Skill.strEffectId, Search) &&
-             !bProductMatchesSearch))
-            continue;
+		const bool_t bArtistFRestore =
+			Entry.Skill.eCharacterClass ==
+				LostArk::Shared::CHARACTER_CLASS_ID::ARTIST &&
+			Entry.Skill.iSkillId == ARTIST_F_DIAGNOSTIC_SKILL_ID;
+		const bool_t bRestoreMatchesSearch = bArtistFRestore &&
+			Contains_NoCase("Restore Original Mesh Sprite", Search);
+		if (Entry.Skill.eCharacterClass != m_eAllEffectsClass ||
+			(!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
+			 !Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
+			 !Contains_NoCase(Entry.Skill.strEffectId, Search) &&
+			 !bProductMatchesSearch && !bRestoreMatchesSearch))
+			continue;
 
-        const bool_t bSelectedProductSkill = m_ProductPreview.has_value() &&
+		if (bArtistFRestore)
+		{
+			ImGui::PushID("artist-f-original-restore");
+			const ImGuiTreeNodeFlags RestoreFlags =
+				ImGuiTreeNodeFlags_OpenOnArrow |
+				(m_bReconstructedDiagnosticActive ?
+					ImGuiTreeNodeFlags_Selected : 0);
+			const bool_t bRestoreOpen = ImGui::TreeNodeEx(
+				"Skill | F | Restore | Original Mesh 1 + Sprite 1",
+				RestoreFlags);
+			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+			{
+				Try_StartArtist31470Diagnostic(
+					RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH);
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Original-data GPU diagnostic. Product remains OFF.\n"
+					"Open this row and verify Mesh Solo, then Sprite Solo.");
+			}
+			if (bRestoreOpen)
+			{
+				ImGui::TextDisabled(
+					"Restore diagnostic: exact WModel/DDS, Material and render state.");
+				if (ImGui::Button("Mesh 1 Solo##artist-f-restore"))
+				{
+					Try_StartArtist31470Diagnostic(
+						RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Sprite 1 Solo##artist-f-restore"))
+				{
+					Try_StartArtist31470Diagnostic(
+						RECONSTRUCTED_DIAGNOSTIC_SOLO::SPRITE);
+				}
+				if (const shared_ptr<CEffectObject> pDiagnostic =
+					m_pWorldPreviewObject.lock();
+					m_bReconstructedDiagnosticActive && nullptr != pDiagnostic)
+				{
+					ImGui::TextWrapped(
+						"GPU: %s", pDiagnostic->Get_Status().c_str());
+				}
+				else
+				{
+					ImGui::TextWrapped("GPU: %s",
+						m_strPreviewStatus.empty() ?
+							"not staged" : m_strPreviewStatus.c_str());
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+
+		const bool_t bSelectedProductSkill = m_ProductPreview.has_value() &&
             m_ProductPreview->eCharacterClass ==
                 Entry.Skill.eCharacterClass &&
             m_ProductPreview->iSkillId == Entry.Skill.iSkillId;
@@ -7702,6 +7781,104 @@ bool_t Client::CEffect_Tool::Ensure_WorldPreviewObject()
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_StartArtist31470Diagnostic(
+	const RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo)
+{
+	if (eSolo != RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH &&
+		eSolo != RECONSTRUCTED_DIAGNOSTIC_SOLO::SPRITE)
+	{
+		m_strPreviewStatus = "Artist F diagnostic Solo kind is invalid.";
+		return false;
+	}
+	if (!Ensure_WorldPreviewObject())
+		return false;
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject)
+	{
+		m_strPreviewStatus = "Artist F diagnostic EffectObject is unavailable.";
+		return false;
+	}
+	if (pObject->Is_ReconstructedDiagnosticActive())
+	{
+		pObject->Set_ReconstructedDiagnosticSolo(eSolo);
+		pObject->Set_Visible(true);
+		m_bReconstructedDiagnosticActive = true;
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = true;
+		Update_ReconstructedDiagnosticRoot();
+		m_strPreviewStatus = eSolo == RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH ?
+			"Artist F original Mesh Solo selected; Product remains OFF." :
+			"Artist F original Sprite Solo selected; Product remains OFF.";
+		return true;
+	}
+
+	std::string Error;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		RuntimePreparation;
+	if (!CEffectCatalog::Prepare_ReconstructedRuntimeProgram(
+		std::string(ARTIST_F_DIAGNOSTIC_EFFECT_ID), RuntimePreparation, Error))
+	{
+		m_strPreviewStatus =
+			"Artist F exact runtime Program preparation failed: " + Error;
+		return false;
+	}
+	EFFECT_RECONSTRUCTED_SELECTED_DIAGNOSTIC_SELECTOR Selector;
+	Selector.strScheduleId = ARTIST_F_DIAGNOSTIC_SCHEDULE_ID;
+	Selector.strMeshEmitterId = ARTIST_F_DIAGNOSTIC_MESH_EMITTER_ID;
+	Selector.strSpriteEmitterId = ARTIST_F_DIAGNOSTIC_SPRITE_EMITTER_ID;
+	Selector.iFixedStepIndex = 88u;
+	Selector.iSpawnSerial = 0u;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		SelectedPreparation;
+	if (!CEffectReconstructedSelectedDiagnosticFactory::Prepare(
+		RuntimePreparation, Selector, SelectedPreparation, Error))
+	{
+		m_strPreviewStatus =
+			"Artist F selected evaluator preparation failed: " + Error;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> Frame;
+	if (!CEffectReconstructedSelectedEvaluator::Evaluate(
+		SelectedPreparation, Selector.iFixedStepIndex,
+		Selector.iSpawnSerial, Frame, Error))
+	{
+		m_strPreviewStatus =
+			"Artist F original-data evaluation failed: " + Error;
+		return false;
+	}
+	if (!pObject->Stage_ReconstructedDiagnostic(Frame, eSolo, Error))
+	{
+		m_strPreviewStatus =
+			"Artist F GPU diagnostic stage failed: " + Error;
+		return false;
+	}
+	m_bReconstructedDiagnosticActive = true;
+	m_bPreviewPlaying = false;
+	m_bPreviewVisibleRequested = true;
+	Update_ReconstructedDiagnosticRoot();
+	m_strPreviewStatus = eSolo == RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH ?
+		"Artist F original Mesh Solo staged; Product remains OFF." :
+		"Artist F original Sprite Solo staged; Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Update_ReconstructedDiagnosticRoot()
+{
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject || !pObject->Is_ReconstructedDiagnosticActive())
+	{
+		m_bReconstructedDiagnosticActive = false;
+		return;
+	}
+	matrix_t CameraWorld = XMLoadFloat4x4(
+		CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW));
+	float4x4_t DiagnosticRoot{};
+	XMStoreFloat4x4(&DiagnosticRoot,
+		XMMatrixTranslation(-2.25f, -0.4f, 4.5f) * CameraWorld);
+	pObject->Set_RootWorld(DiagnosticRoot);
+	pObject->Set_Visible(true);
+}
+
 bool_t Client::CEffect_Tool::Stage_WorldPreview()
 {
     return m_ActiveDocument.has_value() ?
@@ -7723,6 +7900,7 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
         return false;
     }
+	m_bReconstructedDiagnosticActive = false;
     pObject->Set_Playing(false);
     pObject->Set_SampleTime(
         Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
@@ -8573,6 +8751,7 @@ void Client::CEffect_Tool::Release_WorldPreview(
     }
     m_pWorldPreviewObject.reset();
     m_iWorldPreviewLevel = UINT32_MAX;
+	m_bReconstructedDiagnosticActive = false;
 }
 
 void Client::CEffect_Tool::Discard_ActiveDocument()

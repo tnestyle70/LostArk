@@ -1,57 +1,257 @@
-# 2026-08-10 Artist 31470 F Complete Restoration Implementation Plan
+# 2026-08-11 Artist 31470 F High-Ceiling Restoration Final Implementation Plan
 
-기준일: 2026-08-10
-
-최종 통합 시작 commit: `38ebe7cf7dceb5054bde93812907173cc0f98c67`
+기준일: 2026-08-11
 
 참고 materializer checkpoint: `4ffe1102ed9cf3e21f669da292fac1f143e18d8f` — BLOCK, 재사용하지 않고 final Source/Material schema 위에서 다시 작성
 
-계획 갱신 branch: `codex/artist-f-restoration-final-plan`
+계획 갱신 branch: `codex/artist-f-high-ceiling-final-plan-v2`
 
 최종 통합 branch: `codex/artist-f-reconstructed-integration-v1`
 
 최종 통합 시작 commit: `38ebe7cf7dceb5054bde93812907173cc0f98c67`
 
+현재 구현 기준 commit: `18d2b48920b2a327ac59b572960325d352e77a6f`
+
 2026-08-10 사용자 승인: source-era 동일성을 주장하지 않는 `RECONSTRUCTED_APPROVED_V1` 실행 경로를
 진행한다. 이 승인은 Source 29행과 Material 255행의 historical evidence blocker를 삭제하거나
 `SOURCE_EXACT`로 승격하는 허가가 아니다. 각 행을 stable policy/capability ID, explicit typed value,
 fixed-input/output oracle, finite tolerance와 implementation identity에 결합한 뒤 execution blocker만
-별도로 해소하는 허가다. R2 통합과 schema/policy 구현은 `IN_PROGRESS`이며, policy receipt와 corrected
-typed materializer의 독립 PASS 전에는 R3 Playback과 Product admission을 열지 않는다.
+별도로 해소하는 허가다. R2 immutable candidate/parser/catalog transport는 완료됐고, 선택 Mesh/Sprite
+production evaluator checkpoint `18d2b489`는 독립 review 중이다. GPU sink, actual Artist F, Product admission은
+아직 열리지 않았으며 `Execute=false, Submit=false, Render=false, Product=false`를 유지한다.
 
 문서 역할: 이 파일은 전체 범위와 G 순서, worktree 소유권, admission predicate를 소유하는 최종
 구현 계획서다. 각 mutation lane은 기존 Source/Geometry/Material/Compiler PLAN을 갱신하거나 해당 G의
 전용 구현 PLAN을 먼저 만들고, public H/CPP의 세부 선언·전체 코드는 그 lane 문서에서만 소유한다.
 같은 코드를 이 master 문서에 복제하지 않는다.
 
+## 2026-08-11 고점 복원 최종 결정 정본
+
+이 절은 현재 구현 상태, Effect Tool 정책, 세션 운영과 M0~M3 순서의 최상위 정본이다. 아래 historical
+R0~G11 기록과 기존 M0 문구가 이 절과 충돌하면 이 절을 우선한다. 기존 evidence와 frozen SHA는 삭제하지
+않되, 과거 상태 문구인 `R2 IN_PROGRESS`, `exact10 only`, `production evaluator NOT IMPLEMENTED`,
+`R3-R8 GATED`, 상시 3세션 병렬 구현은 현재 판정으로 사용하지 않는다.
+
+### 바뀌지 않는 최종 목표
+
+- 수동 근사치로 적당히 보이게 만드는 데서 멈추지 않고, 동일 generic pipeline으로 도화가 F 35/35를
+  실제 Client에서 실행하고 occurrence별로 눈 검증·수치 환류한 뒤 4개 class와 Valtan까지 확장한다.
+- historical source-era 동일성은 주장하지 않는다. 결과는 끝까지 versioned reconstructed restoration이며
+  `sourceExactAdmission=false`를 보존한다.
+- 사람이 보는 결과는 필수 종료 증거지만 유일한 admission 근거는 아니다. 자동 numeric/structural gate를
+  먼저 통과하고, 수동 관찰을 stable occurrence fixture와 tuning overlay로 환류한 뒤 다시 자동 gate를
+  통과해야 한다.
+- 첫 픽셀, 35/35 nonProduct, 실제 F Debug, Product D/R을 서로 다른 milestone로 판정한다. 앞 단계 화면이
+  보였다는 이유로 뒤 단계 admission을 열지 않는다.
+
+### 현재 exact 기준선
+
+| 영역 | exact 상태 | 현재 판정 |
+|---|---|---|
+| integration | `18d2b48920b2a327ac59b572960325d352e77a6f`, clean/pushed | 이 계획과 fresh 구현 세션의 기준 |
+| LF exact13 producer/parser/catalog | `ab559784a7fa0c5d19ccedf600d08f8a9ee50a25` | PASS. fresh-LF exact13 `27,065,827 / ea3afd4e...`, old10 `26,255,930 / b5086d14...` |
+| immutable runtime program | 7 schedule / 35 emitter / 399 module / 629 distribution | candidate/parser/catalog/CPU plan compile 완료, 모든 admission false |
+| selected evaluator | `18d2b489`, Mesh 1 + Sprite 1 / module-handler consumption24 / unique route15 | 코드와 public API는 존재하나 독립 review 미종료, production caller 0이므로 admission 0 |
+| offline resource evidence | WModel 7/7, DDS 48/48, binding 72/72 | bytes와 offline authority만 PASS. immutable GPU composite와 renderer readiness는 0 |
+| renderer sinks | Mesh/Sprite/Decal/Ribbon/Light/Post | production typed sink 0/6, first pixel 0/1 |
+| Effect Tool typed path | exact CatalogEntry -> evaluator -> GPU composite | 미연결. 기존 legacy Product mode만 존재 |
+| actual Artist F | `PlayerSkills 31470 effectId=""`, original animevent refs | Debug diagnostic와 Product 모두 미연결, 0/35 |
+| admissions | Execute / Submit / Render / Product | 모두 false. 현재 상태에서 하나라도 일반 경로를 열면 empty/no-pixel success가 될 수 있으므로 금지 |
+| expansion raw inventory | `9b7ac2dc571cc456fa6095f8f69b2df0ea54bd53` | extraction/inspection 완료, Artist F GPU schema 동결 전 runtime binding으로 승격 금지 |
+
+`18d2b489`의 최대 인정 범위는 evaluator review가 PASS한 뒤에도 Mesh/Sprite packet 2/35와
+module-handler consumption 24/399, unique route 15다.
+GPU draw, Tool caller, actual F, Product 완료를 뜻하지 않는다. 현재 main worktree의 Manual Restoration
+Workbench dirty WIP도 별도 보존 대상이며 이 integration 기준선이나 runtime authority가 아니다.
+
+### Effect Tool과 기존 effect 정책
+
+Effect Tool은 새 도구를 만들지 않고 기존 `CEffect_Tool` 하나를 두 mode로 확장한다.
+
+| mode | 입력 권위 | 허용 작업 | 금지 |
+|---|---|---|---|
+| Legacy Product | 기존 v13 Authored/Assembly와 legacy prepared document | 기존 effect의 inspect/play/edit 흐름 유지 | typed Artist F로 자동 변환, 기존 cue 일괄 교체 |
+| Typed Restoration | 같은 immutable CatalogEntry pointer의 compiled program/resource authority | complete/family/occurrence solo, seek, read-only Source/IR inspection, tuning overlay 편집, validation 실행 | Source/IR Save·Apply, disk reread, 두 번째 renderer/runtime, legacy fallback |
+
+기존 effect는 Artist F 개발 때문에 바꾸거나 재publish하지 않는다. 101은 4-class corpus의 기존 Product
+cue 분모이며 전체 Catalog effect 수와 같은 뜻이 아니다. typed migration은 Artist F가 M3를 통과한
+뒤 `Artist 9-skill canary -> DimensionMaster -> Warlord -> LanceMaster` 순서로 cue 하나씩 atomic하게 수행한다.
+한 cue의 typed stage/prewarm/validation이 실패하면 그 cue의 legacy Product를 그대로 보존한다. 101 cue를
+한 번에 변환하지 않는다.
+
+fresh 구현 세션의 step 0에서 어떤 M0 코드도 수정하기 전에 plan parent `18d2b489`의 exact runtime
+Catalog로 `legacy-product-cue-projection-v1`을 만들고 독립 review로 동결한다. 이후 새 tree에서 projection을
+다시 만들어 baseline을 바꾸지 않는다. 4-class 기존 Product cue
+101개 각각의 cue ID, effect asset ID, payload kind, canonical Catalog entry SHA, Authored/Assembly identity,
+prepared mode를 기록하고 전체 non-target Catalog entry set도 canonical projection으로 고정한다. Artist F
+publication 전후 old101은 ID set과 row SHA가 101/101 exact-equal이어야 하고, 그 밖의 non-target entry도
+set/row projection delta 0이어야 한다. M0~M3의 각 frozen checkpoint에서 이 baseline과 delta를 검사한다.
+Debug/Release에서 Legacy mode의 101/101 load/prepare와 대표 actual
+playback, Legacy↔Typed mode 전환 실패 rollback을 검증한다. 새 Artist F entry의 stage 또는 mode switch가
+실패하면 기존 Catalog snapshot, legacy prepared pointer와 Tool selection을 모두 보존한다.
+
+Source Contract와 immutable IR은 read-only다. 사람이 조정할 수 있는 것은 stable occurrence ID를 key로 한
+별도 versioned tuning overlay뿐이다. overlay는 숫자/curve/visibility timing 같은 승인된 조정 field만
+소유하고 asset ID, resource SHA, renderer family, handler/opcode, owner, source identity를 바꾸지 못한다.
+main worktree의 미커밋 Workbench는 삭제하지 않되 M0 first pixel 뒤 UI/queue 구현으로만 재감사하며,
+runtime authority나 Artist F 구현 branch에 그대로 cherry-pick하지 않는다.
+
+overlay authoring path는
+`Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31470.tuning-overlay.json` 하나다. 저장 계약은
+`lostark.effect-restoration-tuning-overlay` formatVersion 1로 동결한다. root는 정확히
+`schema, formatVersion, effectAssetId, baseProgramId, baseProgramVersion, baseProgramSha256, entries,
+canonicalProjectionSha256, overlaySha256`를 가지며, entry는 exact stable occurrence ID, approved parameter ID,
+typed finite value/curve, rationale와 user decision만 가진다. unknown key, bool-as-number, nonfinite, duplicate
+occurrence/parameter, base Program mismatch를 거부한다.
+
+Tool의 Save는 active runtime을 직접 바꾸지 않는다. temp overlay를 `parse -> validate -> canonical seal ->
+offline compile -> new Program/receipt -> Catalog stage -> resource prewarm -> equivalence -> atomic commit`한 뒤에만
+새 revision을 선택한다. 실패하면 기존 overlay file, compiled Program, Catalog revision, prepared pointer와
+GPU composite를 모두 보존한다. overlay SHA는 compiler input receipt와 compiled Program canonical projection에
+들어가며 exact13이 pin한 Program SHA를 통해 publisher/runtime identity에 결합한다. action-time/per-frame
+overlay file read, runtime patch, Program SHA를 유지한 in-place tuning은 0이어야 한다.
+
+### 사람 눈 검증과 occurrence 튜닝 계약
+
+사용자가 최종 visual reviewer다. 외부 reference root는
+`C:/Users/user/Desktop/로스트아크이펙트이미지`이며 차원술사 기준 PNG는
+`C:/Users/user/Desktop/로스트아크이펙트이미지/차원술사`에 있다. 현재 이 폴더의 PNG는 68개이며,
+`차원술사_복원`의 기존 비교 자료와 함께 사람이 형태·타이밍·색·밀도·궤적을 판단하는 참고 자료로만
+사용한다. Git 정본, source-exact 증거, 자동 screenshot oracle로 승격하지 않는다.
+
+수동 관찰 한 건은 최소 다음 key로 기록한다.
+
+```text
+catalogRevision / compiledProgramSha256
+skillId / cueId / occurrenceId / rendererFamily
+fixed sample time 또는 seek time / camera·attachment 조건
+referenceImagePath 또는 사용자의 known-form 설명
+defect category: transform, scale, timing, spawn, color, alpha, UV, material, trail,
+                 decal, light, post, missing, extra 중 하나
+expected observation / actual observation / approved tuning field
+numeric or structural fixture added / Debug recheck / Release recheck
+userDecision: APPROVED, RETUNE, BLOCKED
+```
+
+35 occurrence는 각각 사용자가 `APPROVED`해야 한다. 전역 scale·brightness·speed로 여러 occurrence를
+한꺼번에 덮지 않고 complete -> family -> occurrence solo와 seek로 원인을 좁힌다. 조정 뒤에는 해당
+occurrence fixture와 전체 35/399/629 회귀를 모두 다시 실행한다.
+
+### fresh 세션 운영 결정
+
+Artist F M0부터 M3까지 shared C++ 구현은 **fresh 구현 세션 하나**가 직렬 소유한다. Catalog, evaluator,
+Object, Renderer, Shader, Effect Tool, Presentation을 여러 구현 세션에 나누지 않는다. 별도 reviewer는
+구현 중 live dirty diff를 따라가지 않고 commit/push된 frozen SHA가 생겼을 때만 read-only로 P0/P1을
+판정한다. raw corpus specialist는 Artist F interface가 M3에서 동결된 뒤 R8에서만 다시 병렬화한다.
+
+세션 간 협업은 main-local ignored 규칙
+`C:/Users/user/Desktop/LostArk/.md/GB/gotchas.local.md`를 따른다. 이 파일은 새 worktree에 자동 checkout되지
+않으므로 fresh task prompt에도 동일 규칙을 전문이 아닌 실행 가능한 요약으로 반드시 넣는다. 다른 task에 메시지를 보내기 전에
+대상 task의 최신 exact SHA, dirty ownership, 현재 단계와 blocker를 먼저 읽고 `ADD`, `CORRECT`, `STOP`,
+`REVIEW_EXACT_SHA` 중 하나로 분류한다. 상대 진행을 읽지 않은 일반 조언, live WIP 재구현, reviewer의
+직접 수정은 금지한다.
+
+fresh 구현 세션의 규칙:
+
+1. 이 plan-only commit을 parent로 clean worktree를 만들고, 코드 수정 전에 `18d2b489` old101/non-target
+   Catalog projection을 생성·독립 동결한다.
+2. 한 번에 milestone의 검증 가능한 한 checkpoint만 구현하고 commit/push한다.
+3. 보고는 `base SHA / exact commit / owned files / actual tests / blocker delta / next entry`만 보낸다.
+4. reviewer PASS 전 다음 admission을 열지 않는다. P1은 같은 branch의 corrective commit으로 닫고 새 SHA를 재감사한다.
+5. acceptance와 직접 연결되지 않은 새 receipt, wrapper, audit framework를 추가하지 않는다.
+6. 모든 fresh checkout에서 candidate/catalog LF byte identity를 재검증한다. 오래된 CRLF-smudged worktree는
+   증거로 사용하지 않는다.
+7. dirty main worktree의 source/data/build output은 읽지 않는다. 유일한 예외는 AGENTS 계약상 팀장이 직접
+   관리하는 physical runtime input `C:/Users/user/Desktop/LostArk/Client/Bin/Resources`다. 이 root는 M0~M3에서
+   read-only로만 사용하고 selected asset의 Resources-relative path/size/SHA를 compiled authority와 대조한다.
+   배포·교체·정리는 별도 explicit transaction 없이는 금지한다.
+
+### 최종 milestone과 순서
+
+| milestone | 구현·검증 범위 | 종료 상태 |
+|---|---|---|
+| M0-A | `18d2b489` evaluator 독립 판정과 필요 corrective, harness-only request 482줄을 Program/sidecar-derived generic production diagnostic factory로 factor | same CatalogEntry, Mesh/Sprite packet 2/2, module-handler consumption24/unique route15, empty/failure rollback PASS; 일반 admission false |
+| M0-B | 1 WModel/preScale, 4 DDS same-byte load, 2 material packet, exact sampler Set/Apply/readback/Undo, Mesh/Sprite typed sink | actual GPU draw 2/2, pipeline stats nonzero, D3D ERROR/CORRUPTION 0, sink 2/6; 일반 admission false |
+| M0-C | 기존 Effect Tool의 Typed Restoration diagnostic/solo에서 actual Debug Client first pixel | 사용자가 실제 HWND를 확인하고 occurrence 026/027 결과를 기록; Product false |
+| M1 | production evaluator를 7/35/399/629로 일반화, Geometry 7/7, Material 23 family/27 recipe/34 occurrence, DDS48/sampler72/state-input46 exhaustive disposition, output visual-composite33, six sink, provider-local Light+Post atomic submit | full 35 nonProduct standalone, sink 6/6, state46/46·visual33/33, unknown/silent fallback 0; Execute/Submit/Render seam은 각 proof만 별도 개방, Product false |
+| M2 | actual Server command -> snapshot -> Artist 31470 animation action의 Debug-only nonProduct typed route, 같은 CatalogEntry pointer, Tool complete/family/occurrence solo·seek, 관찰→overlay/fixture→재compile 반복 | 실제 F Debug에서 35 occurrence 모두 사용자 `APPROVED`; `RETUNE/BLOCKED`가 하나라도 있으면 M2 안에서 반복. Product Spawn과 Release Product route는 false |
+| M3 | M2 approved overlay/program을 변경 없이 Debug/Release full regression하고 Product cue/effectId/animevent/format3 publication과 rollback을 한 transaction으로 commit | Source 35/399/629, Geometry 7/7, Material 27/34, renderer 13/16/3/1/1/1, old101/non-target delta0, Product 35/35, 실제 F D/R eye smoke. 새 visual defect는 M2로 되돌림 |
+| R8 | frozen generic interface에 4-class와 Valtan corpus 적용 | class/count production 분기 0, 새 의미가 나오면 근사하지 않고 shared capability gate로 복귀 |
+
+진행률은 코드 줄 수가 아니라 아래 exact denominator로만 계산한다.
+
+| 시점 | occurrence/module | material/geometry/resource | renderer/visual |
+|---|---|---|---|
+| 현재 `18d2` | admitted 0; review 후보 packet2/35·module-handler consumption24/399·unique route15 | recipe2/27·material occurrence2/34·carrier1/7·DDS4/48 후보 | sink0/6, first pixel0 |
+| M0 PASS 뒤 잔여 | occurrence33·module375. distribution/property는 slice 차감 근거가 없어 629/1,434/1,572 전체 gate 유지 | recipe25·material occurrence32·carrier6·DDS44·sampler68 | Mesh12·Sprite15·Decal3·Ribbon1·Light1·Post1, sink4 |
+| M1 PASS | 35/399/629와 property/leaf 전체 consumed 또는 verified-irrelevant | Material27/34·Geometry7·DDS48·sampler72·state input46/46 exhaustive disposition | sink6/6·visual occurrence composite33/33 |
+| M3 PASS | actual cue7/7·occurrence35/35 | 같은 frozen tree에서 resource/overlay/publish identity 일치 | renderer13/16/3/1/1/1·Product35/35 |
+
+현재 evaluator 뒤 M0~M3는 “몇 함수만 연결”하는 규모가 아니다. 중복을 제외해도 약 36개의
+production/data/pipeline path, harness/audit/project/result를 포함하면 현실적으로 40~46 tracked file이
+영향받을 수 있다. 이 수치는 scope를 늘리는 목표가 아니라 작은 검증 단위로 나눌 현실적 하한이며,
+milestone denominator가 닫히지 않으면 파일 수나 경과 시간으로 완료를 주장하지 않는다.
+
+M2의 actual F는 Debug-only nonProduct diagnostic route다. 현재 Product `Spawn`을 거짓으로 열지 않고 실제
+Server/animation timing을 사용하되 Release에는 포함하지 않는다. `PlayerSkills.effectId`와 generated Product
+`effectref=asset`의 최종 commit은 M3 atomic publication에서만 수행한다.
+
+M2는 한 번 재생하고 종료하는 단계가 아니다. `RETUNE`이면 승인된 overlay field만 수정해 새 Program SHA를
+만들고 자동 gate와 실제 F Debug를 다시 실행한다. 35개가 모두 `APPROVED`가 될 때까지 M2를 벗어나지
+않는다. M3는 approved Program의 Release/Product 재현 단계이며 M3에서 값이나 overlay를 즉석 수정하지
+않는다. 새 차이가 나오면 publication을 rollback하고 M2로 되돌아간다.
+
+Light/Post atomicity는 한 Artist provider가 만든 mixed batch 내부에서만 보장한다. 전체
+`Presentation_Manager::Submit_FrameProviders`의 다른 provider까지 rollback하는 global Option-B 변경은 이
+작업 범위가 아니다. provider failure 시 whole-frame을 비울지 다른 provider를 보존할지는 별도 Engine
+계약으로 남기며 Artist F completion claim에 섞지 않는다.
+
+sampler/state는 이름 기반으로 기존 FX11 backing을 신뢰하지 않는다. offline policy의
+`W=WRAP, MaxAnisotropy=0, MinLOD=0`과 현재 Effects11 backing의
+`W=CLAMP, MaxAnisotropy=16, MinLOD=-FLT_MAX` 불일치를 보존한다. M0/M1은 approved D3D sampler를
+`SetSampler -> Apply -> effect/PS readback -> draw -> UndoSetSampler`로 scope하고 모든 실패 경로에서
+원상복구한다. `single mip`을 full descriptor equality로 사용하지 않는다. render state는
+`family + blend + two-sided + disable-depth + pass`의 visual occurrence composite로 결정하며 ScreenPost를
+material D3D state denominator에 섞지 않는다.
+
+### R8 raw corpus 재사용 계약
+
+raw extraction은 다시 하지 않는다. latest frozen inventory `9b7ac2dc571cc456fa6095f8f69b2df0ea54bd53`의
+4-class `51 skill / 74 stage / 113 clip / 5,232 occurrence`, Valtan typed target `8,753`, combined unique raw
+request `1,212`를 재사용한다. inspected `1,208`, TGA blocker 4와 provenance/corpus blocker 18의 합계 22를
+R8 진입 전에 독립 review하고 닫는다. Artist F의 sampler/state/material/geometry schema가 M3에서 동결된 뒤
+한 번만 binding/materializer를 재생성한다. R8 순서는 `Artist 9-skill -> DimensionMaster -> Warlord ->
+LanceMaster`, 이어서 `Valtan Particle -> Decal -> Trail -> Material -> Camera`다. 공통 handler가 없으면
+값을 근사하거나 class switch를 넣지 않고 해당 capability를 generic pipeline에 추가한 뒤 다시 진행한다.
+
 ## 2026-08-11 Integration/M0 Captain 재개 계약
 
 이번 재개는 최종 통합 branch `codex/artist-f-reconstructed-integration-v1`의 exact frozen HEAD
-`7d3e957f4d93bfd1416fa6a05d5d7fa8f46c12a2`에서 시작한다. 아래 M0는 기존 R2~R8 전체 복원
+`18d2b48920b2a327ac59b572960325d352e77a6f`에서 시작한다. 아래 M0는 기존 R2~R8 전체 복원
 계획을 대체하거나 Product admission을 앞당기는 단계가 아니다. 같은 immutable CatalogEntry에서
-선택한 Mesh 1행과 Sprite 1행만 production evaluator와 기존 production renderer sink에 연결해
+선택한 Mesh 1행과 Sprite 1행만 production evaluator와 새 typed Mesh/Sprite sink에 연결해
 실제 Debug 창의 첫 픽셀을 확인하는 좁은 nonProduct checkpoint다.
 
 ### 재개 기준선
 
 | 항목 | frozen 상태 |
 |---|---|
-| R2 fresh-LF candidate/parser | PASS 범위만 재사용 |
-| Catalog | strict exact10, immutable CatalogEntry pointer/revision PASS |
+| R2 fresh-LF candidate/parser | PASS. candidate 7/35/399/629와 LF identity 재사용 |
+| Catalog | strict historical old10/current exact13, immutable CatalogEntry Program/sidecar pointer/revision PASS |
 | CPU | typed execution Plan compile/semantic projection PASS |
-| production evaluator | **NOT IMPLEMENTED** |
+| production evaluator | `18d2b489` 선택 Mesh/Sprite 구현, 독립 review 중, production caller 0 |
 | GPU sink | 0/6 |
 | actual Artist F action | NOT REACHABLE |
 | 일반 admission | Execute=false, Submit=false, Render=false, Product=false |
 
 ### M0/M1/M2/M3
 
-| milestone | 범위 | 종료 조건 | 현재 task |
+| milestone | 범위 | 종료 조건 | fresh captain sequence |
 |---|---|---|---|
-| M0 | exact CatalogEntry의 선택 Mesh/Sprite 2행, production packet, production GPU sink, Debug diagnostic/solo first pixel | 아래 M0 acceptance와 자동 gate 및 사람의 실제 창 확인 | **IN SCOPE** |
-| M1 | Mesh/Sprite 외 Decal/Ribbon/Light/ScreenPost를 포함한 production evaluator와 GPU sink 6/6, sampler 72행/visual state 전체 closure | 여섯 family packet/sink와 전체 sampler/state rollback | OUT OF SCOPE |
-| M2 | 7 cue/35 occurrence actual Artist F presentation, PlayerSkills/animevent reachability, Presentation global Option-B atomic batch | actual F 35/35 transactional presentation | OUT OF SCOPE |
-| M3 | R6/R7 Debug/Release eye smoke, full regression, Product Catalog/admission | 기존 최종 `35/35, atomic cue publish` 조건 | OUT OF SCOPE |
+| M0 | exact CatalogEntry의 선택 Mesh/Sprite 2행, production packet, production GPU sink, Debug diagnostic/solo first pixel | 아래 M0 acceptance와 자동 gate 및 사람의 실제 창 확인 | **CURRENT** |
+| M1 | Mesh/Sprite 외 Decal/Ribbon/Light/ScreenPost를 포함한 production evaluator와 GPU sink 6/6, sampler72/state46/visual33 closure | 여섯 family packet/sink와 전체 sampler/state rollback | NEXT, same captain |
+| M2 | 7 cue/35 occurrence actual Artist F Debug-only nonProduct route, provider-local Light/Post atomic batch와 사용자 튜닝 반복 | actual F Debug 35/35, 같은 CatalogEntry, occurrence별 user APPROVED | NEXT, same captain |
+| M3 | approved Program의 Debug/Release eye smoke, full regression, Product Catalog/admission | 기존 최종 `35/35, atomic cue publish`, old101/non-target delta0 | FINAL, same captain |
 
 M0에서 일반 Execute/Submit/Render/Product admission은 계속 false다. M0의 완료 문구는 다음 한 줄만
 사용하며 이보다 넓은 복원, renderer, actual F 또는 Product 완료를 주장하지 않는다.
@@ -62,14 +262,18 @@ Artist 31470 nonProduct Debug M0 selected Mesh/Sprite 2/2 production packet and 
 
 ### M0 acceptance 동결
 
-1. publisher source exact4와 runtime exact13 생산자, C++ Catalog old10/new13 strict consumer를
-   **한 검증/통합 commit**으로 닫는다. exact13 catalog를 consumer보다 먼저 publish하지 않는다.
+1. publisher source exact4와 runtime exact13 생산자, C++ Catalog old10/new13 strict consumer는
+   `ab559784`에서 PASS했다. fresh 구현 세션은 이 identity를 재생성하지 않고 fresh-LF checkout에서
+   raw byte/hash와 Debug/Release focused harness를 재검증한다.
 2. new13 CatalogEntry는 기존 Program과 새 render-resource sidecar를 같은 immutable entry가 강하게
    소유한다. Preparation, Plan, Object, Renderer가 이 entry pointer 하나를 공유하며 두 번째 catalog,
    loader, runtime을 만들지 않는다.
-3. production evaluator는 `LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS`와
-   `CEffectReconstructedCpuInspector`를 호출하지 않는다. synthetic legacy Document/packet과 action-time
-   candidate/sidecar reread도 금지한다.
+3. `18d2b489` production evaluator는 `LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS`와
+   `CEffectReconstructedCpuInspector` 밖에 구현됐다. 독립 review를 먼저 끝내고, harness에만 있는 exact
+   selected request factory를 Program/sidecar-derived generic production diagnostic authority로 factor한다.
+   production C++에 Artist/31470/emitter hash/row SHA/count를 복제하지 않고 stable selector는 typed
+   diagnostic input으로만 받는다. synthetic legacy
+   Document/packet과 action-time candidate/sidecar reread는 계속 금지한다.
 4. Debug F1 Effect Tool의 기존 world-preview Object가 diagnostic/solo orchestrator가 된다. 이 좁은
    M0 경로만 production evaluator와 production Mesh/Sprite sink를 명시적으로 호출한다. Object,
    Playback, Renderer의 일반 admission 함수와 일반 action 경로는 계속 false다.
@@ -244,10 +448,13 @@ translucent production pass 1을 Apply한 뒤 `OMGetDepthStencilState/GetDesc`�
 검증한다. 세 candidateCount=2 renderer decision
 `renderer-material-input-binding-025/044/051`은 M0에서 전부 거부한다.
 
-선택한 네 texture의 sampler policy ID는 서로 달라도 D3D11 sampler-state descriptor는 모두 정확히
+선택한 네 texture의 approved policy descriptor는 모두
 `MIN_MAG_MIP_LINEAR(21), WRAP U/V/W(1), bias 0, anisotropy 0, NEVER, minLOD 0,
-maxLOD FLT_MAX`로 같다. 따라서 현재 common shader의 단일 `LinearSampler`에 안전하다. SRGB/LINEAR은
-sampler 추측이 아니라 각 DDS SRV descriptor로 별도 검증한다. clamp/wrap이 섞인 행은 M0에 넣지 않는다.
+maxLOD FLT_MAX`다. 그러나 현재 Effects11 `LinearSampler` backing은 실제 reflection에서
+`W=CLAMP, MaxAnisotropy=16, MinLOD=-FLT_MAX`이므로 이름이 같다는 이유로 안전하다고 보지 않는다.
+approved state를 별도 생성해 exact sampler variable에 scope한 뒤 `GetSampler/GetDesc`와
+`PSGetSamplers`를 모두 확인하고 draw 뒤 `UndoSetSampler`한다. SRGB/LINEAR은 sampler 추측이 아니라
+각 DDS SRV descriptor로 별도 검증한다. clamp/wrap이 섞인 행은 M0에 넣지 않는다.
 
 ### production evaluator와 sink 구현 경계
 
@@ -369,7 +576,10 @@ source local transform을 대신 만들지 않는다.
 각 DDS는 안전한 Resources-relative path에서 immutable byte vector로 한 번 읽는다. **그 같은 vector**를
 SHA-256 검사와 `CreateDDSTextureFromMemoryEx`에 넘기고 SRV format/dimension/mips를 검사한다. stage 뒤에는
 DDS, WModel, candidate, sidecar를 reread하지 않는다. M0 smoke는
-`LOSTARK_RESOURCE_ROOT=C:\Users\user\Desktop\LostArk\Client\Bin\Resources`를 사용한다.
+`LOSTARK_RESOURCE_ROOT=C:\Users\user\Desktop\LostArk\Client\Bin\Resources`를 사용한다. 이 경로는
+AGENTS가 팀장 관리 physical runtime input으로 지정한 유일한 dirty-main read-only 예외다. source/code/Data는
+이 root에서 읽지 않으며 selected 1 WModel과 4 DDS 이외를 M0 authority로 세지 않는다. M0는 이 root를
+수정하지 않는다.
 
 Engine `CShader`에는 exact sampler variable `LinearSampler`의 최소 Set/Undo wrapper만 추가한다.
 
@@ -388,13 +598,15 @@ Undo 실패면 M0 draw 성공으로 기록하지 않고 composite를 deactivate�
 
 ### 검증과 checkpoint 순서
 
-1. 이 M0 acceptance/selection을 먼저 commit/push하고 reviewer에게 exact SHA와 `PLAN only` scope를 보낸다.
-2. producer source/test와 C++ exact10/new13 parser/pointer/harness를 한 commit으로 구현한다. temporary
-   exact13 output으로 Debug/Release consumer를 먼저 통과한 다음 tracked source exact4/runtime exact13을
-   publish한다. commit/push 뒤 exact SHA와 declared scope만 reviewer에게 보낸다.
-3. production selected evaluator와 packet rollback을 구현하고 macro 없는 actual-catalog harness에서
-   step 88 Mesh/Sprite 2/2, 24 selected module handler consumption, determinism, empty/failure preservation을
-   통과시킨다. commit/push 뒤 exact SHA/scope만 보낸다.
+1. 이 final plan-only commit을 push하고 reviewer에게 exact SHA와 `PLAN only` scope를 보낸다.
+2. exact13 producer/consumer는 `ab559784` PASS를 fresh-LF worktree에서 재검증한다. schema/hash를 바꾸는
+   corrective가 필요하지 않으면 새 구현 checkpoint로 다시 만들지 않는다.
+3. `18d2b489` selected evaluator를 독립 판정하고, PASS 뒤 harness-only request builder를 하나의 production
+   Program/sidecar-derived generic diagnostic factory로 factor한다. M0 selector data는 Tool input일 수 있지만
+   production factory의 class/count/hash authority가 될 수 없으며 M1 전에 Artist-specific C++ fixture가 0인지
+   audit한다. macro 없는 actual-catalog harness에서 step 88 Mesh/Sprite 2/2,
+   module-handler consumption24/unique route15, determinism, empty/failure preservation을 통과시키고 frozen SHA를
+   재감사한다.
 4. existing renderer/Object/Effect Tool에 selected composite, production Mesh/Sprite sink, sampler scope,
    draw statistics와 D3D debug gate를 연결한다. catalog revision/device mismatch와 GPU stage/Undo failure에서
    이전 composite 보존을 검증한다. commit/push 뒤 exact SHA/scope만 보낸다.
@@ -406,39 +618,24 @@ Undo 실패면 M0 draw 성공으로 기록하지 않고 composite를 deactivate�
    자동 gate가 모두 PASS한 뒤 사람이 실제 Client 창의 픽셀을 눈으로 확인해 수동 결과를 기록한다.
 
 M0에 직접 필요하지 않은 새 provenance/audit framework는 만들지 않고 M1~M3 backlog에만 기록한다.
-Presentation global Option-B, Light/Post, Decal/Ribbon, sampler72 전체, visual33 전체,
+Presentation provider-local mixed batch, Light/Post, Decal/Ribbon, sampler72 전체, visual33 전체,
 PlayerSkills/animevent actual F, Product, R6/R7, 타 class/Valtan은 M0 구현 파일과 결과에 포함하지 않는다.
 
 ## 이번 재개판의 핵심 판단
 
-고정된 세 개의 구현 세션을 계속 동시에 돌리는 방식은 채택하지 않는다. 이 작업은 Source evidence,
-Material evidence, Geometry resource처럼 파일과 판정 근거가 분리되는 구간에서는 병렬화 효과가 크지만,
-Playback, Renderer, Catalog, Presentation, Effect Tool처럼 같은 immutable identity와 같은 C++ 파일을
-연속으로 연결하는 구간에서는 병렬 구현이 merge와 재검증 비용을 더 크게 만든다.
+Artist F M0~M3는 fresh 구현 세션 하나가 shared runtime을 끝까지 직렬 소유한다. 사용자가 여러 작업의
+진행률을 해석하거나 서로 다른 implementation branch의 결합 순서를 관리하지 않게 한다. 별도 agent/task는
+frozen SHA의 독립 review만 수행하고 코드를 수정하지 않는다.
 
-따라서 사용자에게 보이는 작업은 최대 세 세션으로 유지하되, dependency wave마다 실제 활성 세션 수와
-역할을 바꾼다.
+Source/Material evidence 때 유효했던 상시 specialist 병렬 모델은 여기서 종료한다. Catalog, evaluator,
+Object, Renderer, Shader, Effect Tool, Presentation은 같은 immutable pointer와 admission graph를 공유하므로
+둘 이상의 writer가 나누면 interface drift와 반복 build가 더 커진다. M3 동결 뒤 R8 raw corpus 적용만
+data-only lane으로 병렬화할 수 있으며, generic C++ 변경이 필요하면 즉시 단일 writer로 되돌아간다.
 
-| 세션 | 기본 역할 | mutation 경계 |
-|---|---|---|
-| 세션 1 | Source/evidence 또는 interface 동결 뒤 분리 가능한 family/corpus lane | 한 wave에서 배정받은 evidence/data/family 파일만 수정 |
-| 세션 2 | Pipeline Implementation/Integration | Material corrective, typed runtime, shared C++ foundation, 결합과 전체 build 소유 |
-| 세션 3 | Independent Review | frozen commit/tree read-only 재현, PASS/BLOCK만 판정, 파일 수정 금지 |
-
-운영 원칙은 다음과 같다.
-
-1. evidence처럼 독립된 입력은 세션 1과 2가 병렬로 닫는다.
-2. 같은 Runtime Authority, Playback, Renderer, Catalog 파일을 잇는 구간은 세션 2 한 명만 쓴다.
-3. 세션 3은 live dirty diff를 따라가지 않고 frozen SHA가 생길 때만 활성화한다.
-4. 공통 renderer interface가 frozen된 뒤에만 세션 1과 2가 서로 다른 family 파일을 병렬 구현한다.
-5. Artist F 35/35 뒤에는 세션 1이 4-class corpus, 세션 2가 Valtan corpus를 병렬 적용하고,
-   공통 compiler/renderer 변경이 필요해지면 확장을 멈추고 통합 gate로 되돌아온다.
-
-즉 단일 세션만으로도 구현은 가능하지만 이 프로젝트에서는 권장하지 않는다. 실제로 자체 test가 PASS한
-Source `9b046d6`과 Material `e54a5a2`에서 independent review가 source-era 승격, coordinated reseal,
-operand ownership과 NaN oracle 문제를 재현했다. 반대로 세 세션을 항상 동시에 구현에 투입하면 공유
-C++ ownership과 hash regeneration이 병목이 된다. 최적 구조는 **한 명의 shared-runtime writer,
-독립 가능한 한 명의 specialist, frozen checkpoint reviewer 한 명**을 wave별로 켜고 끄는 방식이다.
+이 결정은 independent review를 줄이는 것이 아니다. reviewer는 각 frozen checkpoint에서 과거처럼
+coordinated reseal, identity laundering, rollback, nonfinite/bool, empty-frame/no-pixel success를 공격하되,
+live WIP를 계속 따라가거나 구현자의 파일을 고치지 않는다. 구현자는 reviewer의 재현을 같은 branch의
+corrective commit으로 닫고 새 exact SHA를 다시 제출한다.
 
 ## 목표와 종료 증거
 
@@ -465,25 +662,31 @@ Failed transaction leak   0
 Product admission         35/35, atomic cue publish
 ```
 
-이미지 캡처, 스크린샷, 육안 비교, 이미지 기반 자동 판정은 종료 증거로 사용하지 않는다.
-fixed seed, fixed timestep, 명시적인 ActionCue 입력과 sample time, numeric tolerance를 가진
-numeric/structural oracle와 컴파일·링크·실행 오류 검증만 사용한다.
+이미지 기반 자동 판정은 종료 증거로 사용하지 않는다. 대신 자동 numeric/structural gate 뒤 사용자의
+실제 Client 육안 확인과 occurrence별 `APPROVED`는 필수 종료 증거다. fixed seed, fixed timestep,
+명시적인 ActionCue 입력과 sample time, numeric tolerance를 가진 oracle와 컴파일·링크·실행 오류 검증이
+수동 판단보다 먼저 PASS해야 하며, 육안에서 발견된 차이는 overlay와 fixture로 환류해 재검증한다.
 
 ## 현재 실제 기준점
 
-R0 matrix와 접근 가능한 범위의 R1 acquisition은 끝났지만 source-era actual-output/state provider를
-확보하지 못했다. 따라서 final typed materializer, Playback, 여섯 renderer는 시작하지 않았고 Product
-admission은 `0/35`다. `4ffe1102`는 구현 출발점이 아니라 폐기한 BLOCK checkpoint다.
+R0/R1 evidence acquisition 뒤 사용자는 reconstructed high-ceiling 경로를 승인했고, R2 immutable
+candidate/parser/catalog와 CPU plan compile은 완료됐다. source-era actual-output/state provider는 여전히
+없으므로 historical blocker와 `sourceExactAdmission=false`를 보존한다. `4ffe1102`는 폐기했으며 현재
+runtime program은 그 checkpoint를 재사용한 것이 아니다. 선택 production evaluator는 구현됐지만 독립
+review 중이고 production caller가 없으므로 GPU/Tool/actual F/Product admission은 모두 0이다.
 
 | 영역 | frozen checkpoint | 독립 판정과 현재 사용 정책 |
 |---|---|---|
 | Geometry evidence/resource | `0aca792819fdda3f541bb7cec7451c5ed93c6467` | PASS. 7 WModel v1.1 physical deploy와 7/7 decode를 재사용하되 runtime preScale consumer는 아직 0/7 |
 | Material evidence/runtime corrective | `cde8f3bddea2f9415f682b387d2705fd25794075` | `627ddc76`, `ab76b7ec`, `d39097c3`의 admission/semantic validation gap을 supersede. evidence integrity PASS, source value는 render 0/89·static 23/94·sampler 0/72, execution readiness 0/255 BLOCK. exact sampler 0, rejected legacy 4, Product false |
 | Generic compiler | `c4b00f14b32d27604ac677e9a9ea81b01ecaa551` | non-executable inspection core 범위 PASS, Product false |
-| Runtime Authority foundation | `38ebe7cf7dceb5054bde93812907173cc0f98c67` | PASS. immutable authority foundation만 승인, typed executor는 미연결 |
+| Runtime candidate/parser/catalog | `ab559784a7fa0c5d19ccedf600d08f8a9ee50a25` | fresh-LF exact13 PASS. immutable Program/sidecar pointer와 rollback을 재사용하며 admission false |
+| CPU typed plan | `7d3e957f4d93bfd1416fa6a05d5d7fa8f46c12a2` ancestry | 7/35/399/629 compile와 exact semantic projection PASS. production evaluation proof는 아님 |
+| selected production evaluator | `18d2b48920b2a327ac59b572960325d352e77a6f` | Mesh/Sprite 2행, module-handler consumption24/unique route15 구현, 독립 review 중, production caller/GPU sink 없음 |
+| offline render-resource authority | integration ancestry의 audited sidecar | DDS48/binding72와 recipe/state evidence만 재사용. current FX11 sampler 불일치 때문에 render authority로 자동 승격 금지 |
 | Source execution corrective | `c927e397811d4e5718efd27b187eb59775023685` | evidence integrity PASS, module 370 ready/29 blocked. current-only evidence를 source exact로 승격하지 않음 |
 | Source provider acquisition | `7da937aeaa34c088c694e8eb4f53ff1f7f848ef3` | accessible-scope evidence PASS, execution readiness 0/29 BLOCK. 29 occurrence→15 class→7 native family, provider/pilot 0, VSS `PERMISSION_UNCHECKED`, Product false |
-| Source runtime materializer | `4ffe1102ed9cf3e21f669da292fac1f143e18d8f` | BLOCK. deterministic Productfalse projection scaffold만 인정. typed evaluator/PointLight/seed/default 손실, evidence registry 미결합, C++ generic bag 수용과 EOL/order 문제 교정 필요 |
+| Source runtime materializer | `4ffe1102ed9cf3e21f669da292fac1f143e18d8f` | 폐기한 BLOCK checkpoint. current candidate의 parent나 runtime authority로 사용하지 않음 |
 
 현재 frozen R1 검증의 사실은 다음과 같다.
 
@@ -497,14 +700,19 @@ Material runtime mutation                  23/23 PASS
 Material WARP oracle plumbing              numeric 200 / state pilot 4 PASS
 Material source value                      render 0/89, static 23/94, sampler 0/72
 Material execution readiness               0/255 BLOCK
+Selected evaluator admitted                0 until frozen review PASS
+Production evaluator caller                0
+GPU typed sink                             0/6
+Actual Artist F                            0/35
 Runtime execution admission                false
 Product admission                          0/35
 ```
 
 위 WARP PASS는 evaluator/state consumer plumbing의 재현성만 증명하며 source-era 값을 제공하지 않는다.
 Source full audit의 lane 외 14건과 Material acquisition 이전 full audit의 lane 외 12건도 전체 green으로
-세탁하지 않는다. 현재 병목은 renderer 코드 양이나 typed schema 전달이 아니라 source-era actual-output/
-state provider 부재다. 이를 current default나 runtime fallback으로 덮고 Playback부터 진행하는 것을 금지한다.
+세탁하지 않는다. 현재 병목은 더 이상 artifact 조사만이 아니라 production caller, immutable GPU composite,
+typed sink 6개와 actual action 연결이다. source-era provider 부재를 current default/fallback으로 덮는 것도,
+구현되지 않은 seam을 receipt boolean만으로 여는 것도 금지한다.
 
 ## 고정 fidelity와 admission 계약
 
@@ -561,34 +769,23 @@ G00에서 고정하고 G11은 같은 predicate를 평가만 한다. 서로 다�
 
 ## 세션과 worktree 구조
 
-세 세션은 동시에 계속 일하는 고정 worker가 아니라 dependency wave별 역할이다.
+M0~M3의 active implementation writer는 하나다. 이 plan-only SHA에서 fresh worktree를 만들고
+`18d2b489` evaluator 판정/교정 -> production request factory -> immutable GPU composite -> M0 first pixel ->
+full 35 evaluator/resource/sink -> actual F Debug -> Product D/R 순서로 같은 branch를 전진시킨다.
 
-| wave | 세션 1 | 세션 2 | 세션 3 | 실제 병렬도 |
-|---|---|---|---|---:|
-| R1 evidence acquisition | Source `7da937ae`: accessible scope PASS, readiness 0/29 BLOCK | Material `cde8f3bd`: evidence PASS, readiness 0/255 BLOCK | frozen SHA 독립 review | acquisition 종료, evidence 정본 동결 |
-| R2 integration/schema freeze | Source 29-row reconstructed capability 지원 | PASS checkpoint 결합, approval/compiler/program schema freeze | combined tree review | shared writer 1, IN_PROGRESS |
-| R3 runtime consumer | custom/source oracle 조사 또는 idle | Playback -> Geometry -> Material shared runtime를 직렬 구현 | 각 frozen checkpoint review | 구현 1 + review |
-| R4 renderer family | core 변경 없이 분리 가능한 family lane | renderer foundation과 다른 family lane, 최종 결합 | family frozen review | interface freeze 뒤 구현 2 |
-| R5 Tool/Product | regression/fixture 지원 | Catalog -> Presentation -> Effect Tool transaction과 35/35 | final tree review | shared writer 1 |
-| R6 runtime eye smoke | occurrence/fixture 회귀 지원 | exact published Artist F Debug/Release 실행 | smoke 결과와 numeric 재현 review | shared writer 1 |
-| R7 Artist F freeze | source/material final hash 확인 | smoke 재현을 numeric gate에 환류하고 pipeline 동결 | final frozen tree review | shared writer 1 |
-| R8 corpus expansion | 4-class corpus 적용 | Valtan corpus 적용과 integration | partition/final review | 구현 2 + review 순차 |
+reviewer는 frozen commit이 push된 뒤에만 exact tree를 새 worktree에서 읽는다. 구현 세션은 reviewer가
+끝날 때까지 다음 admission을 열지 않지만, unrelated 문서/추가 framework를 만들며 시간을 보내지 않는다.
+reviewer는 PASS/BLOCK과 재현 입력만 보내고 파일을 수정하지 않는다.
 
-한 wave 안에서는 파일 소유권을 바꾸지 않는다. 세션 1이 Source corrective를 끝낸 직후 같은 dirty
-worktree에서 renderer를 시작하지 않고, PASS commit을 종료한 뒤 새 exact integration parent에서 새
-worktree를 만든다. 세션 3은 구현 코드를 쓰지 않고 frozen tree만 읽는다.
+R8에서는 4-class raw/data 적용과 Valtan raw/data 적용을 서로 다른 worktree에서 병렬화할 수 있다.
+단 shared compiler/evaluator/renderer/header 수정은 implementation captain 한 명에게 반환한다.
 
-세션 간 통신은 다음만 허용한다.
+세션 간 메시지는 target task의 최신 상태를 먼저 읽은 뒤 다음 네 종류만 사용한다.
 
-1. 최소 public schema/typed field와 stable ID 요청
-2. frozen commit SHA, parent SHA, owned file, 실제 검증과 remaining blocker
-3. 재현 가능한 PASS/BLOCK의 입력 mutation, 기대, 실제
-4. 실제 integration conflict 또는 전역 build lease 요청
-
-진행률 메시지, live dirty diff 중계, 다른 lane 내부 구현 설명은 보내지 않는다. 이 규칙이 지켜지면
-독립 session은 병목이 아니라 잘못된 fidelity 승격과 coordinated reseal을 merge 전에 차단하는 gate다.
-반대로 reviewer가 live patch를 계속 따라가거나 두 mutation session이 같은 shared C++를 수정하면
-review와 merge가 병목이 되므로 해당 wave를 즉시 직렬화한다.
+1. `ADD`: 현재 plan/checkpoint에 새로 필요한 입력이나 증거
+2. `CORRECT`: exact SHA에서 재현한 P0/P1과 최소 교정 범위
+3. `STOP`: admission 또는 destructive action을 즉시 막아야 하는 조건
+4. `REVIEW_EXACT_SHA`: parent/SHA/owned files/tests/declared scope가 완결된 frozen review 요청
 
 Checkpoint 보고는 다음 필드를 모두 가진다.
 
@@ -604,6 +801,11 @@ integration order
 ```
 
 ## 파일과 단일 소유자
+
+아래 표의 과거 absolute worktree prefix는 기록용이며 실행 경로가 아니다. fresh 구현 세션은 자기 clean
+repository root를 `$ARTIST_F_WORKTREE`로 두고 표의 repository-relative suffix만 사용한다. 다른 task의
+worktree나 main dirty worktree에서 파일을 읽어 build/PASS를 만들지 않는다. 단 앞에서 명시한 team-managed
+physical `Client/Bin/Resources` read-only 예외는 허용한다.
 
 | 구분 | 절대 경로 | 단일 소유자와 역할 |
 |---|---|---|
@@ -760,7 +962,8 @@ static은 exact override value 23/94, sampler full descriptor는 0/72다. static
 standalone runtime/UCC/commandlet/debug capture 경로가 없으며 injection/hooking/anti-cheat 우회는 시도하거나
 허용하지 않는다. current capture는 가능해져도 `CURRENT_REVISION_OBSERVED`일 뿐 source-era fidelity를 닫지 못한다.
 
-현재 판정:
+아래 표는 reconstructed approval 직후의 historical R1 판정이다. 현재 구현 상태는 앞의
+`2026-08-11 고점 복원 최종 결정 정본` 표를 사용한다.
 
 ```text
 Source acquisition evidence                PASS_ACCESSIBLE_SCOPE_EXHAUSTED
@@ -769,11 +972,11 @@ Material evidence integrity                PASS
 Material source value                      23/255
 Material execution readiness               0/255 BLOCK
 ownerless/unknown row                       0
-typed materializer                         BLOCK, not started
+typed materializer                         historical BLOCK at R1
 reconstructed branch                       RECONSTRUCTED_APPROVED_V1 / POLICY_CONSTRUCTION
 Product admission                          false / 0/35
-R2                                          IN_PROGRESS
-R3-R8                                       GATED
+R2                                          historical IN_PROGRESS, now transport PASS
+R3-R8                                       current milestones M0-M3/R8로 superseded
 ```
 
 source-era exact 경로의 R2 진입 predicate는 Source 29/29, Material render 89/89·static 94/94·sampler
@@ -794,13 +997,17 @@ expected output과 tolerance를 가진 인증된 source-era capture다.
 최대 reconstruction 분기는 사용자 승인으로 시작한다. 행별 explicit project policy와 independent
 same-input output/state oracle을 통과한 값만 versioned `RECONSTRUCTED_APPROVED_*` 또는
 `RECONSTRUCTED_NUMERICALLY_VERIFIED`로 표시하며, evidence blocker, `sourceExactAdmission=false`,
-Product false를 보존한다. 이미지 비교는 numeric admission 입력이 아니며 R6 수동 smoke에서 발견한
-차이를 occurrence별 fixture로 환류하는 용도로만 사용한다.
+Product false를 보존한다. 이미지 비교는 단독 numeric admission 입력이 아니지만 사람 눈 검증은 필수다.
+수동 smoke에서 발견한 차이는 occurrence별 tuning overlay와 numeric/structural fixture로 환류한다.
 
-이하 R2~R8은 reconstructed approval receipt와 각 gate의 execution predicate를 순서대로 충족할 때만
-진행한다. 현재 R2만 열려 있고 R3~R8은 앞 단계 PASS 전까지 `GATED`다.
+이하 historical R2~R8의 denominator와 failure predicate는 유지하되 실제 진행 순서는 앞의 M0~M3/R8을
+정본으로 사용한다. R2 transport는 완료됐고 M0 selected evaluator가 독립 review 중이다.
 
-### R2. 승인 checkpoint 통합과 final typed schema 동결
+### R2. 승인 checkpoint 통합과 final typed schema 동결 — transport PASS
+
+아래 1~7은 historical construction 기록이다. 현재 fresh-LF candidate/parser/exact13 Catalog transport는
+PASS했으며 current implementation parent는 `18d2b489`다. 이 절을 다시 cherry-pick하는 실행 목록으로
+사용하지 않는다.
 
 1. clean final-integration worktree를 PASS된 Runtime foundation `38ebe7cf`에서 만든다.
 2. Geometry는 조상에 이미 포함된 evidence commit을 재적용하지 않고 `git cherry-pick -x 669acf07`,
@@ -828,9 +1035,9 @@ Assembly/artifact -> Catalog/prewarm 순서로 정확히 한 번 수행한다.
 R2 종료 조건은 corrected materializer independent PASS, field loss 0, stale output 0, unknown capability 0,
 ownerless blocker 0이며 Product false다.
 
-### R3. Actual typed executor와 resource consumer
+### R3. Actual typed executor와 resource consumer — M0/M1 remaining
 
-이 구간은 shared C++ dependency가 촘촘하므로 세션 2 한 명이 다음 순서로 직렬 구현한다.
+이 구간은 shared C++ dependency가 촘촘하므로 fresh implementation captain 한 명이 다음 순서로 직렬 구현한다.
 
 1. Playback이 immutable compiled program pointer만 소비하게 하고 raw SourceRecipe/module 문자열 scan을 0으로 만든다.
 2. standard distribution, fixed seed/time, ActionCue, spawn/lifetime/location/velocity/size/color/SubUV와
@@ -843,10 +1050,11 @@ ownerless blocker 0이며 Product false다.
 R3 종료 조건은 399 opcode/629 distribution consumption, Geometry 7/7, Material 34/34, deterministic
 fixed seed/time, fallback 0, Debug/Release PASS다. Product는 아직 false다.
 
-### R4. 여섯 renderer family
+### R4. 여섯 renderer family — typed sink 0/6 remaining
 
-공통 render packet, vertex layout, MaterialBinding slot, family dispatch interface를 세션 2가 먼저 동결한다.
-그 뒤에만 서로 다른 파일을 소유하는 두 family lane을 병렬화한다.
+공통 render packet, vertex layout, MaterialBinding slot, family dispatch interface를 fresh captain이 먼저
+동결하고 같은 captain이 여섯 family를 직렬 연결한다. Artist F M0~M3에서는 family implementation을
+병렬화하지 않는다.
 
 1. Mesh + Sprite: 13 + 16
 2. Decal + Ribbon: 3 + 1
@@ -855,20 +1063,22 @@ fixed seed/time, fallback 0, Debug/Release PASS다. Product는 아직 false다.
 각 family는 같은 compiled IR pointer를 소비하고 size/rotation/local-space/timing/material/render-state
 numeric packet을 검증한다. raw `eKind`, raw SourceRecipe, legacy heuristic dispatch는 Product path에서 0이다.
 
-### R5. Effect Tool, Catalog와 Artist F 35/35
+### R5. Effect Tool dual mode, actual Artist F와 35/35
 
-1. v14 Source Contract는 Effect Tool에서 read-only inspection만 제공한다.
-2. Product Play는 Authored disk reload가 아니라 exact catalog prepared revision을 attach한다.
-3. publish -> catalog load -> prewarm -> equivalence -> target commit을 하나의 transaction으로 묶는다.
-4. 35 occurrence 각각에 source/compiled identity, opcode, distribution, geometry, material, renderer,
+1. 기존 `CEffect_Tool` 하나에 Legacy Product와 Typed Restoration 두 mode를 둔다.
+2. v14 Source Contract와 compiled IR은 read-only이고 조정은 occurrence-keyed overlay에만 저장한다.
+3. Typed Play는 Authored disk reload가 아니라 exact catalog prepared revision을 attach한다.
+4. publish -> catalog load -> prewarm -> equivalence -> target commit을 하나의 transaction으로 묶는다.
+5. 35 occurrence 각각에 source/compiled identity, opcode, distribution, geometry, material, renderer,
    fixed sample expected/actual/tolerance를 기록한다.
-5. `35/35`, Geometry `7/7`, Material `34/34`, fallback/blocker `0`일 때만 cue 전체 Product를 atomic publish한다.
+6. `35/35`, Geometry `7/7`, Material `34/34`, fallback/blocker `0`일 때만 cue 전체 Product를 atomic publish한다.
 
 ### R6. Runtime 실행과 눈으로 확인
 
-자동 admission이 끝난 뒤 Client를 `Client/Default` working directory에서 Debug와 Release로 실행한다.
-도화가 F를 exact published revision으로 재생하고 complete/family/occurrence filter가 같은 IR pointer를
-사용하는지, 이펙트가 실제 world/camera에서 누락·폭주·잘못된 scale 없이 재생되는지 수동 smoke한다.
+M2에서는 Client를 `Client/Default` working directory에서 Debug로 실행해 actual Server/animation F action을
+Debug-only nonProduct typed route로 확인한다. M3 자동 admission과 atomic Product publication 뒤 같은 tree의
+Debug와 Release에서 exact published revision을 재생한다. complete/family/occurrence filter가 같은 IR
+pointer를 사용하는지, 이펙트가 실제 world/camera에서 누락·폭주·잘못된 scale 없이 재생되는지 수동 smoke한다.
 
 정식 build는 저장소 root에서 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug`와 Release를
 직렬 실행한다. 실제 실행은 `Framework.slnLaunch`의 `Server + Client` profile을 사용한다. Lobby에서
@@ -877,9 +1087,10 @@ Server 승인을 받아 Character Select로 진입한 뒤 Artist thumbnail을 �
 event -> exact catalog prepared spawn의 실제 F 경로만 확인한다. `Lobby -> Test`는 캐릭터/네트워크 없는
 Map Editor이므로 이 smoke에 사용하지 않는다.
 
-R6 전에 `effect.artist.skill.31470`의 v13 identity carrier, Assembly, compiled artifact/receipt, format-3
+M3 전에 `effect.artist.skill.31470`의 v13 identity carrier, Assembly, compiled artifact/receipt, format-3
 Catalog entry, `PlayerSkills.json.effectId`, `sdm_sk_onestroke`의 generated `effectref=asset`이 같은 prepared
-identity를 가져야 한다. 현재 이 Product chain은 존재하지 않으므로 R5가 생성한다. Geometry WModel 7개와
+identity를 가져야 한다. M2 Debug-only route는 이 Product field를 거짓으로 열지 않는다. 현재 Product chain은
+존재하지 않으므로 M3가 atomic하게 생성한다. Geometry WModel 7개와
 compiled MaterialBinding에서 재도출한 DDS 전부를 hash-bind하며, exact recovery 4개
 `fx_a_noise_011`, `fx_e_ring_001_cl`, `fx_a_decal_014`, `fx_c_atypical_016`도 canonical Resources에
 publish됐는지 확인한다.
@@ -889,24 +1100,33 @@ ZoomBlur 1, 1452 ms Distortion 1, 1453 ms Light 1이다. 총 action 2.833초 안
 scale/pivot/basis, Sprite billboard/SubUV, Decal projection/depth, Ribbon continuity/tail, Light radius/lifetime,
 Post lifetime, Material fallback/depth/cull/sampler, attachment/world-space를 family와 occurrence filter로 확인한다.
 
-이 단계는 numeric/structural admission을 대체하지 않는다. 스크린샷 캡처와 이미지 기반 자동 비교는
-하지 않는다. 수동 관찰에서 이상이 보이면 해당 occurrence ID와 compiled revision을 기록하고 R3~R5의
-numeric oracle에 재현을 추가한 뒤 다시 admission한다.
+이 단계는 numeric/structural admission을 대체하지 않는다. 외부 reference PNG는 사용자의 눈 검증에
+사용하되 이미지 기반 자동 oracle로 만들지 않는다. 수동 관찰에서 이상이 보이면 해당 occurrence ID,
+compiled revision, sample/seek time, reference path와 defect category를 기록하고 tuning overlay와 R3~R5의
+numeric/structural fixture에 재현을 추가한 뒤 다시 admission한다. 35 occurrence 각각의 사용자
+`APPROVED`가 없으면 M3 Product를 열지 않는다.
 
 ### R7. Artist F 최종 동결과 회귀
 
-R6 수동 smoke에서 발견된 모든 이상을 occurrence ID와 compiled revision으로 numeric/structural fixture에
-환류한다. Debug/Release, focused/deep ProjectAudit, publish/prewarm rollback, no-I/O prepared attach를 다시
-통과하고 Source `35/399/629`, Geometry `7/7`, Material `27/34`, renderer `13/16/3/1/1/1`, Product
+M2 수동 smoke에서 발견된 모든 이상을 occurrence ID와 compiled revision으로 overlay와 numeric/structural
+fixture에 환류하고 35개 user APPROVED를 먼저 닫는다. M3/R7에서 새 이상이 나오면 Product publication을
+rollback하고 M2로 되돌아가 새 Program SHA를 만든다. approved Program을 변경하지 않은 채 Debug/Release,
+focused/deep ProjectAudit, publish/prewarm rollback, no-I/O prepared attach를 다시 통과하고 Source
+`35/399/629`, Geometry `7/7`, Material `27/34`, renderer `13/16/3/1/1/1`, Product
 `35/35`가 동일 frozen tree에서 유지될 때 Artist F compiler/runtime/renderer interface를 동결한다.
 수동으로만 맞춘 값이나 Product path 전용 class/count 분기는 0이어야 한다.
 
 ### R8. 4-class와 Valtan 확장
 
-Artist F runtime/compiler/renderer를 동결한 뒤 세션 1은 4-class corpus, 세션 2는 Valtan
-Particle/Decal/Trail/Material/Camera corpus를 병렬 적용한다. production code에 class/count switch를
-추가하지 않고 fixture denominator만 확장한다. 공통 handler가 부족하면 corpus 값을 근사하지 않고
-확장을 멈춘 뒤 shared pipeline gate로 되돌아간다.
+Artist F runtime/compiler/renderer를 M3에서 동결한 뒤 raw/data-only worktree는 4-class corpus와 Valtan
+Particle/Decal/Trail/Material/Camera corpus를 병렬 적용할 수 있다. shared C++ writer는 계속 한 명이다.
+production code에 class/count switch를 추가하지 않고 fixture denominator만 확장한다. 공통 handler가
+부족하면 corpus 값을 근사하지 않고 확장을 멈춘 뒤 shared pipeline gate로 되돌아간다.
+
+latest raw inventory는 `9b7ac2dc571cc456fa6095f8f69b2df0ea54bd53`다. 4-class unique request 835와
+Valtan unique request 377, 합계 1,212 중 1,208은 structural inspection을 끝냈다. TGA 4와
+provenance/corpus 18, 총 blocker 22를 독립 review한 뒤 사용한다. extraction은 반복하지 않고 M3 GPU
+schema 위에서 binding/materializer를 한 번만 재생성한다.
 
 4-class source corpus는 Artist F 35개를 포함하지 않는 별도 분모다.
 
@@ -927,10 +1147,10 @@ Valtan의 정본 분모는 action 170, stage 2,464, clip 2,378, notify 21,931이
 606, Camera 1,022다. generic `Effect` 3,787은 typed target으로 승격하지 않고 격리한다. 세 Action LOA를
 raw SHA로 pin한 뒤 Particle -> Decal -> Trail -> Material -> Camera 순으로 적용한다.
 
-R1 acquisition audit는 끝났지만 execution gate가 BLOCK이므로 R2~R8은 아직 개방되지 않았다. provider가
-들어와 R1 readiness를 통과한 뒤에도 R3 typed consumer와 R4 renderer가 큰 구현 구간으로 남으며, R6
-Server+Client runtime smoke와 R7 final regression 전에는 화면에 보이는 legacy effect를 복원 완료로
-판정하지 않는다.
+R1 historical exact provider는 없지만 사용자가 reconstructed high-ceiling 정책을 승인해 R2 transport와
+M0 구현이 진행됐다. evidence blocker는 보존하며 explicit policy/capability와 실제 consumer proof로만
+execution blocker를 해소한다. typed consumer, renderer, actual Client smoke와 final regression 전에는
+화면에 보이는 legacy effect나 harness packet을 복원 완료로 판정하지 않는다.
 
 ## 기존 G 상세 계약
 
@@ -1308,10 +1528,10 @@ G03/G05-M의 27 recipe를 G06 extension point가 소비할 immutable MaterialBin
 - reconstructed graph를 `SOURCE_EXACT`로 승격한 행 0
 - Product false
 
-## G10. Renderer family와 Effect Tool 병렬 — remaining
+## G10. Renderer family와 Effect Tool — historical detail, current single captain
 
-G07-G09 통합·독립 감사 뒤 G06의 중앙 Runtime Authority/Foundation API를 다시 동결하고 family lane을
-생성한다.
+G07-G09 통합·독립 감사 뒤 G06의 중앙 Runtime Authority/Foundation API를 다시 동결한다. 아래 옛
+family lane 분할은 파일 경계 참고용이며 현재 M0~M3에서는 fresh captain 한 명이 순서대로 구현한다.
 
 G06 Foundation이 이미 소유하고 family가 변경하지 않는 계약:
 
@@ -1322,10 +1542,9 @@ G06 Foundation이 이미 소유하고 family가 변경하지 않는 계약:
 - central dispatcher와 common shader binding slot
 - family 구현의 별도 파일/project/filter 경계
 
-중앙 header, dispatcher, common shader는 동결한다. family lane은 자기 파일과 자기
-shader만 수정한다.
+중앙 header, dispatcher, common shader는 동결한다. family 구현은 지정된 파일과 shader 경계를 지킨다.
 
-병렬 family:
+family 검증 순서:
 
 | lane | 분모 | numeric/structural 종료 증거 |
 |---|---:|---|
@@ -1338,13 +1557,15 @@ Effect Tool 계약:
 
 - v14 `SOURCE_CONTRACT`는 read-only이며 Save, Apply, resource replace, execute를 비활성화한다.
 - Source tree는 7 System -> 35 Emitter -> 35 selected LOD -> 399 ordered module -> 629 distribution 순서다.
-- authored reconstruction만 Draft Preview와 Save를 사용한다.
+- Legacy mode는 기존 Authored Draft Preview/Save를 유지하고 Typed Restoration mode는 versioned tuning
+  overlay만 Save한다.
 - Product Play는 Authored 파일을 disk에서 다시 load하지 않고 exact catalog prepared revision을 attach한다.
 - Complete/family/occurrence solo는 같은 IR pointer의 transient mask이며 compile/model/texture I/O가 0이다.
 - Tool 전용 두 번째 renderer나 Catalog 우회를 만들지 않는다.
 
-각 family frozen commit은 독립 감사를 받은 뒤 Integration이 `cherry-pick -x`한다. family merge 뒤 Tool은
-exact prepared attach/no-I/O test만 작은 후속 commit으로 재검증한다.
+fresh captain은 family별 frozen checkpoint를 같은 branch에 순서대로 commit/push하고 독립 감사를 받은 뒤
+다음 family로 전진한다. 별도 family branch를 cherry-pick하지 않는다. six-family 완료 뒤 Tool의 exact
+prepared attach/no-I/O와 Legacy↔Typed rollback을 작은 후속 checkpoint로 재검증한다.
 
 G10 통합 종료 조건에는 Renderer와 Presentation의 raw `eKind`, raw SourceRecipe/module/default scan 0을
 포함한다. compiled family enum과 typed render packet 이외의 dispatch는 v14 Product path에서 거부한다.
@@ -1390,6 +1611,7 @@ native numeric oracle에서 온다.
 - artifact binding integrity
 - execution admission과 evaluator ID/version
 - source/compiled document identity
+- tuning overlay SHA와 해당 occurrence user decision
 - geometry/material binding과 hash
 - selected LOD와 ordered opcode coverage
 - renderer family
@@ -1418,7 +1640,9 @@ Geometry actual 7-carrier Debug/Release C++ oracle and legacy corpus
 Material 27/34 shallow/deep raw UPK/DDS/manifest oracle
 Compiler/Executor Debug/Release actual candidate oracle
 Six renderer family 35-occurrence numeric packet/state oracle
-Effect Tool read-only/Draft/Product revision and no-I/O transaction oracle
+Effect Tool Legacy/Typed mode, read-only IR, overlay seal/recompile, revision and no-I/O transaction oracle
+legacy Product cue projection 101/101 and all non-target Catalog entry delta 0
+Legacy <-> Typed mode switch failure rollback preserves prior selection/prepared pointer
 Engine Debug/Release
 UpdateLib Debug/Release
 ClientFrontendHarness Debug/Release

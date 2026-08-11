@@ -1,4 +1,5 @@
 #include "Shader_EffectCommon.hlsli"
+#include "Shader_Artist31470Diagnostic.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
@@ -46,6 +47,12 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_ReconstructedMaterialEvaluatorEnabled)
+    {
+        return Shade_ReconstructedMaterial(
+            input.uv, float3(1.f, 1.f, 1.f),
+            float4(1.f, 1.f, 1.f, 1.f));
+    }
     if (9 == g_SourceMaterialProfile)
     {
         return Shade_LocalCrackMesh(

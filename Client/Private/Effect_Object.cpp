@@ -28,8 +28,10 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 {
 	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
+	if (FAILED(m_pRenderer->Initialize()))
+		return E_FAIL;
 	if (nullptr == pArg)
-		return m_pRenderer->Initialize();
+		return S_OK;
 	const EFFECT_OBJECT_DESC& Desc =
 		*static_cast<EFFECT_OBJECT_DESC*>(pArg);
 	if (!std::isfinite(Desc.fPlaybackRate) ||
@@ -48,8 +50,6 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 		}
 		return S_OK;
 	}
-	if (FAILED(m_pRenderer->Initialize()))
-		return E_FAIL;
 	if (nullptr != Desc.pDocument && nullptr != Desc.pPreparedResources &&
 		!Stage_PreparedDocument(*Desc.pDocument,
 			Desc.pPreparedResources, m_strStatus))
@@ -78,6 +78,9 @@ bool_t Client::CEffectObject::Stage_Document(
 		return false;
 	m_Playback = std::move(StagedPlayback);
 	m_ReconstructedRuntimeBoundary.Clear();
+	m_pReconstructedDiagnosticFrame.reset();
+	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	m_bReconstructedDiagnosticActive = false;
 	m_Playback.Seek(0.f, m_RootWorld);
 	m_strStatus = "Effect Document staged.";
 	strOutError.clear();
@@ -104,6 +107,9 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 	}
 	m_Playback = std::move(StagedPlayback);
 	m_ReconstructedRuntimeBoundary.Clear();
+	m_pReconstructedDiagnosticFrame.reset();
+	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	m_bReconstructedDiagnosticActive = false;
 	m_strStatus = "Prepared Effect Document staged.";
 	strOutError.clear();
 	return true;
@@ -155,6 +161,9 @@ bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
 	}
 	m_Playback = std::move(StagedPlayback);
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedDiagnosticFrame.reset();
+	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	m_bReconstructedDiagnosticActive = false;
 	m_bPlaying = false;
 	m_bVisible = false;
 	m_strStatus =
@@ -163,10 +172,101 @@ bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
 	return true;
 }
 
+bool_t Client::CEffectObject::Stage_ReconstructedDiagnostic(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
+	const RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo,
+	std::string& strOutError)
+{
+	if (nullptr == pFrame ||
+		(RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH != eSolo &&
+		 RECONSTRUCTED_DIAGNOSTIC_SOLO::SPRITE != eSolo))
+	{
+		strOutError =
+			"Reconstructed diagnostic requires a frame and one valid solo kind.";
+		return false;
+	}
+
+	const std::shared_ptr<const
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+		pSelectedPreparation = pFrame->Get_Preparation();
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		pRuntimePreparation = nullptr == pSelectedPreparation ? nullptr :
+			pSelectedPreparation->Get_RuntimePreparation();
+	if (nullptr == pSelectedPreparation || nullptr == pRuntimePreparation ||
+		pSelectedPreparation->Get_CatalogEntry().get() !=
+			pRuntimePreparation->Get_CatalogEntry().get() ||
+		pSelectedPreparation->Get_Program().get() !=
+			pRuntimePreparation->Get_Program().get() ||
+		pSelectedPreparation->Get_RenderResourceAuthority().get() !=
+			pRuntimePreparation->Get_RenderResourceAuthority().get())
+	{
+		strOutError =
+			"Reconstructed diagnostic frame/runtime preparation identity mismatch.";
+		return false;
+	}
+
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(pRuntimePreparation,
+		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT, strOutError))
+	{
+		return false;
+	}
+	CEffectPlayback StagedPlayback;
+	if (!StagedPlayback.Stage_ReconstructedRuntimeProgram(
+		pRuntimePreparation, strOutError))
+	{
+		return false;
+	}
+	if (StagedPlayback.Get_ReconstructedRuntimePreparation().get() !=
+		pRuntimePreparation.get())
+	{
+		strOutError =
+			"Reconstructed diagnostic playback preparation identity mismatch.";
+		return false;
+	}
+	if (!m_pRenderer->Stage_ReconstructedDiagnostic(pFrame, strOutError))
+		return false;
+	if (m_pRenderer->Get_ReconstructedRuntimePreparation().get() !=
+		pRuntimePreparation.get())
+	{
+		strOutError =
+			"Reconstructed diagnostic renderer preparation identity mismatch.";
+		return false;
+	}
+
+	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedDiagnosticFrame = std::move(pFrame);
+	m_eReconstructedDiagnosticSolo = eSolo;
+	m_bReconstructedDiagnosticActive = true;
+	m_bPlaying = false;
+	m_bVisible = true;
+	m_strStatus =
+		"Reconstructed selected diagnostic staged; Product execution remains blocked.";
+	strOutError.clear();
+	return true;
+}
+
+void Client::CEffectObject::Set_ReconstructedDiagnosticSolo(
+	const RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo)
+{
+	if (!m_bReconstructedDiagnosticActive ||
+		(RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH != eSolo &&
+		 RECONSTRUCTED_DIAGNOSTIC_SOLO::SPRITE != eSolo))
+	{
+		return;
+	}
+	m_eReconstructedDiagnosticSolo = eSolo;
+	m_strStatus = RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH == eSolo ?
+		"Reconstructed Mesh diagnostic solo active; Product execution remains blocked." :
+		"Reconstructed Sprite diagnostic solo active; Product execution remains blocked.";
+}
+
 void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
 {
 	m_RootWorld = RootWorld;
-	m_Playback.Update(0.f, m_RootWorld);
+	if (!m_bReconstructedDiagnosticActive)
+		m_Playback.Update(0.f, m_RootWorld);
 }
 
 void Client::CEffectObject::Set_SourceAnchorWorlds(
@@ -177,12 +277,16 @@ void Client::CEffectObject::Set_SourceAnchorWorlds(
 
 void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
 {
+	if (m_bReconstructedDiagnosticActive)
+		return;
 	m_bPlaying = false;
 	m_Playback.Seek(fSampleTimeSeconds, m_RootWorld);
 }
 
 void Client::CEffectObject::Advance_Preview(const f32_t fTimeDelta)
 {
+	if (m_bReconstructedDiagnosticActive)
+		return;
 	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
 }
 
@@ -191,16 +295,22 @@ void Client::CEffectObject::Advance_Preview(
 	const float4x4_t& RootWorld)
 {
 	m_RootWorld = RootWorld;
+	if (m_bReconstructedDiagnosticActive)
+		return;
 	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
 }
 
 void Client::CEffectObject::Reset()
 {
+	if (m_bReconstructedDiagnosticActive)
+		return;
 	m_Playback.Seek(0.f, m_RootWorld);
 }
 
 void Client::CEffectObject::Update(const f32_t fTimeDelta)
 {
+	if (m_bReconstructedDiagnosticActive)
+		return;
 	std::string GateStatus;
 	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
@@ -214,6 +324,17 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
+	if (m_bReconstructedDiagnosticActive)
+	{
+		if (!m_bVisible)
+			return;
+		const shared_ptr<CEffectObject> Self =
+			static_pointer_cast<CEffectObject>(shared_from_this());
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::BLEND,
+			static_pointer_cast<CGameObject>(Self));
+		return;
+	}
 	std::string GateStatus;
 	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
@@ -239,6 +360,8 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 
 HRESULT Client::CEffectObject::Submit_Presentation()
 {
+	if (m_bReconstructedDiagnosticActive)
+		return S_OK;
 	std::string GateStatus;
 	if (!m_ReconstructedRuntimeBoundary.Admit_Submit(GateStatus))
 	{
@@ -293,6 +416,15 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 
 HRESULT Client::CEffectObject::Render()
 {
+	if (m_bReconstructedDiagnosticActive)
+	{
+		if (!m_bVisible)
+			return S_FALSE;
+		const HRESULT Result = m_pRenderer->Render_ReconstructedDiagnostic(
+			m_RootWorld, m_eReconstructedDiagnosticSolo);
+		m_strStatus = m_pRenderer->Get_Status();
+		return Result;
+	}
 	std::string GateStatus;
 	if (!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
 	{

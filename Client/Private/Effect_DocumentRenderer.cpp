@@ -5,6 +5,7 @@
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_RuntimeAuthority.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -13,9 +14,12 @@
 #include "VIBuffer_ParticleRect.h"
 #include "VIBuffer_Rect.h"
 
+#include <d3d11sdklayers.h>
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <span>
@@ -865,6 +869,33 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 		ModelCuePrototypes;
 };
 
+struct Client::CEffectDocumentRenderer::RECONSTRUCTED_DIAGNOSTIC_COMPOSITE final
+{
+	struct GPU_RESOURCE final
+	{
+		std::shared_ptr<Engine::CModel> pModel;
+		std::array<ComPtr<ID3D11ShaderResourceView>, 2u> Textures;
+		std::array<ComPtr<ID3D11SamplerState>, 2u> Samplers;
+		ComPtr<ID3D11BlendState> pBlendState;
+		ComPtr<ID3D11RasterizerState> pRasterizerState;
+		ComPtr<ID3D11DepthStencilState> pDepthStencilState;
+		D3D11_BLEND_DESC BlendDescriptor{};
+		D3D11_RASTERIZER_DESC RasterizerDescriptor{};
+		D3D11_DEPTH_STENCIL_DESC DepthStencilDescriptor{};
+		std::array<D3D11_SAMPLER_DESC, 2u> SamplerDescriptors{};
+		bool_t bHasBlendDescriptor = false;
+		bool_t bHasRasterizerDescriptor = false;
+		bool_t bHasDepthStencilDescriptor = false;
+		ComPtr<ID3D11Query> pPipelineStatisticsQuery;
+		bool_t bPipelineStatisticsPending = false;
+		uint64_t iDrawCount = 0u;
+		D3D11_QUERY_DATA_PIPELINE_STATISTICS PipelineStatistics{};
+	};
+
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame;
+	std::array<GPU_RESOURCE, 2u> Resources;
+};
+
 namespace
 {
 	struct EFFECT_RENDERER_CORE final
@@ -904,6 +935,193 @@ namespace
 	ID3D11Device* g_pPreparedDevice = nullptr;
 	uint64_t g_iPreparedCatalogRevision = 0u;
 	Client::EFFECT_RENDER_PREWARM_PROBE g_EffectRenderPrewarmProbe;
+
+	bool_t Read_ReconstructedAssetBytes(
+		const std::string& strAssetId,
+		const uint64_t iExpectedByteCount,
+		const std::string& strExpectedSha256,
+		std::filesystem::path& OutPath,
+		std::vector<uint8_t>& OutBytes,
+		std::string& strOutError)
+	{
+		const std::filesystem::path Path =
+			Client::CRuntimeAssetRoot::Resolve(std::filesystem::path(strAssetId));
+		if (Path.empty() || !std::filesystem::is_regular_file(Path))
+		{
+			strOutError = "Reconstructed diagnostic asset is missing: " +
+				strAssetId;
+			return false;
+		}
+		std::ifstream Input(Path, std::ios::binary | std::ios::ate);
+		if (!Input)
+		{
+			strOutError = "Reconstructed diagnostic asset could not be opened: " +
+				strAssetId;
+			return false;
+		}
+		const std::streamoff Size = Input.tellg();
+		if (Size < 0 || static_cast<uint64_t>(Size) != iExpectedByteCount)
+		{
+			strOutError = "Reconstructed diagnostic asset byte count changed: " +
+				strAssetId;
+			return false;
+		}
+		std::vector<uint8_t> Bytes(static_cast<size_t>(Size));
+		Input.seekg(0, std::ios::beg);
+		if (!Bytes.empty() && !Input.read(
+			reinterpret_cast<char*>(Bytes.data()), Size))
+		{
+			strOutError = "Reconstructed diagnostic asset read failed: " +
+				strAssetId;
+			return false;
+		}
+		const std::string_view ByteView(
+			reinterpret_cast<const char*>(Bytes.data()), Bytes.size());
+		if (Client::CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(ByteView) !=
+			strExpectedSha256)
+		{
+			strOutError = "Reconstructed diagnostic asset SHA-256 changed: " +
+				strAssetId;
+			return false;
+		}
+		OutPath = Path;
+		OutBytes = std::move(Bytes);
+		return true;
+	}
+
+	std::string Sha256Hex(const std::array<uint8_t, 32u>& Bytes)
+	{
+		static constexpr char Hex[] = "0123456789abcdef";
+		std::string Result(Bytes.size() * 2u, '0');
+		for (size_t Index = 0u; Index < Bytes.size(); ++Index)
+		{
+			Result[Index * 2u] = Hex[Bytes[Index] >> 4u];
+			Result[Index * 2u + 1u] = Hex[Bytes[Index] & 0x0fu];
+		}
+		return Result;
+	}
+
+	bool_t Same_SamplerDescriptor(
+		const D3D11_SAMPLER_DESC& Left,
+		const D3D11_SAMPLER_DESC& Right)
+	{
+		return Left.Filter == Right.Filter &&
+			Left.AddressU == Right.AddressU &&
+			Left.AddressV == Right.AddressV &&
+			Left.AddressW == Right.AddressW &&
+			Left.MipLODBias == Right.MipLODBias &&
+			Left.MaxAnisotropy == Right.MaxAnisotropy &&
+			Left.ComparisonFunc == Right.ComparisonFunc &&
+			std::equal(std::begin(Left.BorderColor), std::end(Left.BorderColor),
+				std::begin(Right.BorderColor)) &&
+			Left.MinLOD == Right.MinLOD && Left.MaxLOD == Right.MaxLOD;
+	}
+
+	bool_t Same_BlendDescriptor(
+		const D3D11_BLEND_DESC& Left,
+		const D3D11_BLEND_DESC& Right)
+	{
+		if (Left.AlphaToCoverageEnable != Right.AlphaToCoverageEnable ||
+			Left.IndependentBlendEnable != Right.IndependentBlendEnable)
+			return false;
+		for (size_t Index = 0u; Index < 8u; ++Index)
+		{
+			const D3D11_RENDER_TARGET_BLEND_DESC& A = Left.RenderTarget[Index];
+			const D3D11_RENDER_TARGET_BLEND_DESC& B = Right.RenderTarget[Index];
+			if (A.BlendEnable != B.BlendEnable || A.SrcBlend != B.SrcBlend ||
+				A.DestBlend != B.DestBlend || A.BlendOp != B.BlendOp ||
+				A.SrcBlendAlpha != B.SrcBlendAlpha ||
+				A.DestBlendAlpha != B.DestBlendAlpha ||
+				A.BlendOpAlpha != B.BlendOpAlpha ||
+				A.RenderTargetWriteMask != B.RenderTargetWriteMask)
+				return false;
+		}
+		return true;
+	}
+
+	bool_t Same_RasterizerDescriptor(
+		const D3D11_RASTERIZER_DESC& Left,
+		const D3D11_RASTERIZER_DESC& Right)
+	{
+		return Left.FillMode == Right.FillMode &&
+			Left.CullMode == Right.CullMode &&
+			Left.FrontCounterClockwise == Right.FrontCounterClockwise &&
+			Left.DepthBias == Right.DepthBias &&
+			Left.DepthBiasClamp == Right.DepthBiasClamp &&
+			Left.SlopeScaledDepthBias == Right.SlopeScaledDepthBias &&
+			Left.DepthClipEnable == Right.DepthClipEnable &&
+			Left.ScissorEnable == Right.ScissorEnable &&
+			Left.MultisampleEnable == Right.MultisampleEnable &&
+			Left.AntialiasedLineEnable == Right.AntialiasedLineEnable;
+	}
+
+	bool_t Same_DepthStencilOperation(
+		const D3D11_DEPTH_STENCILOP_DESC& Left,
+		const D3D11_DEPTH_STENCILOP_DESC& Right)
+	{
+		return Left.StencilFailOp == Right.StencilFailOp &&
+			Left.StencilDepthFailOp == Right.StencilDepthFailOp &&
+			Left.StencilPassOp == Right.StencilPassOp &&
+			Left.StencilFunc == Right.StencilFunc;
+	}
+
+	bool_t Same_DepthStencilDescriptor(
+		const D3D11_DEPTH_STENCIL_DESC& Left,
+		const D3D11_DEPTH_STENCIL_DESC& Right)
+	{
+		return Left.DepthEnable == Right.DepthEnable &&
+			Left.DepthWriteMask == Right.DepthWriteMask &&
+			Left.DepthFunc == Right.DepthFunc &&
+			Left.StencilEnable == Right.StencilEnable &&
+			Left.StencilReadMask == Right.StencilReadMask &&
+			Left.StencilWriteMask == Right.StencilWriteMask &&
+			Same_DepthStencilOperation(Left.FrontFace, Right.FrontFace) &&
+			Same_DepthStencilOperation(Left.BackFace, Right.BackFace);
+	}
+
+	class CReconstructedPipelineStateGuard final
+	{
+	public:
+		explicit CReconstructedPipelineStateGuard(ID3D11DeviceContext* pContext)
+			: m_pContext(pContext)
+		{
+			ID3D11SamplerState* pSampler = nullptr;
+			ID3D11BlendState* pBlend = nullptr;
+			ID3D11RasterizerState* pRasterizer = nullptr;
+			ID3D11DepthStencilState* pDepthStencil = nullptr;
+			m_pContext->PSGetSamplers(0u, 1u, &pSampler);
+			m_pContext->OMGetBlendState(
+				&pBlend, m_BlendFactor.data(), &m_iSampleMask);
+			m_pContext->RSGetState(&pRasterizer);
+			m_pContext->OMGetDepthStencilState(
+				&pDepthStencil, &m_iStencilReference);
+			m_pSampler.Attach(pSampler);
+			m_pBlendState.Attach(pBlend);
+			m_pRasterizerState.Attach(pRasterizer);
+			m_pDepthStencilState.Attach(pDepthStencil);
+		}
+
+		~CReconstructedPipelineStateGuard()
+		{
+			ID3D11SamplerState* pSampler = m_pSampler.Get();
+			m_pContext->PSSetSamplers(0u, 1u, &pSampler);
+			m_pContext->OMSetBlendState(m_pBlendState.Get(),
+				m_BlendFactor.data(), m_iSampleMask);
+			m_pContext->RSSetState(m_pRasterizerState.Get());
+			m_pContext->OMSetDepthStencilState(
+				m_pDepthStencilState.Get(), m_iStencilReference);
+		}
+
+	private:
+		ID3D11DeviceContext* m_pContext = nullptr;
+		ComPtr<ID3D11SamplerState> m_pSampler;
+		ComPtr<ID3D11BlendState> m_pBlendState;
+		ComPtr<ID3D11RasterizerState> m_pRasterizerState;
+		ComPtr<ID3D11DepthStencilState> m_pDepthStencilState;
+		std::array<float, 4u> m_BlendFactor{};
+		uint32_t m_iSampleMask = 0xffffffffu;
+		uint32_t m_iStencilReference = 0u;
+	};
 
 	uint64_t Build_ResourceSignature(
 		const Client::EFFECT_DOCUMENT_DESC& Document)
@@ -1709,6 +1927,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 	}
 	m_Document = Document;
 	m_pPreparedDocument = std::move(pPrepared);
+	m_pReconstructedDiagnostic.reset();
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_ModelCueResources = std::move(StagedModelCueResources);
 	m_strStatus = "Prepared Effect Document resources attached.";
@@ -1734,6 +1953,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		Resource_SignatureMatches(m_Document, Document))
 	{
 		m_Document = Document;
+		m_pReconstructedDiagnostic.reset();
 		m_ReconstructedRuntimeBoundary.Clear();
 		m_strStatus = "Effect Document values committed; GPU resources reused.";
 		strOutError.clear();
@@ -1759,6 +1979,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
 		return false;
 	m_Document = {};
 	m_pPreparedDocument.reset();
+	m_pReconstructedDiagnostic.reset();
 	m_ModelCueResources.clear();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_strStatus =
@@ -1767,10 +1988,457 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
 	return true;
 }
 
+bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedDiagnostic(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
+	std::string& strOutError)
+{
+	if (nullptr == pFrame || nullptr == pFrame->Get_Preparation() ||
+		nullptr == pFrame->Get_Preparation()->Get_RuntimePreparation() ||
+		nullptr == pFrame->Get_Preparation()->Get_Program() ||
+		nullptr == pFrame->Get_Preparation()->Get_RenderResourceAuthority() ||
+		pFrame->Get_Packets().size() != 2u)
+	{
+		strOutError =
+			"Reconstructed diagnostic frame is incomplete or not exact-two.";
+		return false;
+	}
+	if (nullptr == m_pMeshShader || nullptr == m_pParticleShader ||
+		nullptr == m_pRect)
+	{
+		if (FAILED(Initialize()))
+		{
+			strOutError = "Reconstructed diagnostic renderer core is unavailable.";
+			return false;
+		}
+	}
+
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(
+		pFrame->Get_Preparation()->Get_RuntimePreparation(),
+		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER, strOutError))
+	{
+		return false;
+	}
+
+	auto Staged = std::make_unique<RECONSTRUCTED_DIAGNOSTIC_COMPOSITE>();
+	Staged->pFrame = pFrame;
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Program =
+		pFrame->Get_Preparation()->Get_Program();
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
+		Authority = pFrame->Get_Preparation()->Get_RenderResourceAuthority();
+	std::array<bool_t, 2u> SelectionSeen{};
+
+	const auto StageState = [this, &Program, &Authority, &strOutError](
+		const EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING& Binding,
+		const EFFECT_RECONSTRUCTED_RENDER_STATE_KIND eKind,
+		RECONSTRUCTED_DIAGNOSTIC_COMPOSITE::GPU_RESOURCE& Resource) -> bool_t
+	{
+		if (!Binding.SidecarDecision.has_value())
+		{
+			if (!Binding.ProgramPolicy.has_value())
+			{
+				strOutError =
+					"Reconstructed diagnostic render state has no authority.";
+				return false;
+			}
+			const auto BindingIterator = std::find_if(
+				Program->MaterialRenderBindings.begin(),
+				Program->MaterialRenderBindings.end(),
+				[&Binding](const auto& Row)
+				{
+					return Row.Row.strId == Binding.ProgramBinding.strId &&
+						Row.Row.strRowSha256 ==
+							Binding.ProgramBinding.strRowSha256;
+				});
+			const auto PolicyIterator = std::find_if(
+				Program->MaterialPolicies.begin(),
+				Program->MaterialPolicies.end(),
+				[&Binding](const auto& Row)
+				{
+					return Row.Row.strId == Binding.ProgramPolicy->strId &&
+						Row.Row.strRowSha256 ==
+							Binding.ProgramPolicy->strRowSha256;
+				});
+			if (BindingIterator == Program->MaterialRenderBindings.end() ||
+				PolicyIterator == Program->MaterialPolicies.end() ||
+				BindingIterator->strPolicyRowId != PolicyIterator->Row.strId ||
+				PolicyIterator->eDomain !=
+					EFFECT_RUNTIME_MATERIAL_POLICY_DOMAIN::RENDER_STATE ||
+				!PolicyIterator->D3dDescriptorOracle.has_value() ||
+				PolicyIterator->D3dDescriptorOracle->strPolicyRowId !=
+					PolicyIterator->Row.strId ||
+				PolicyIterator->D3dDescriptorOracle->strDecision != "PASS")
+			{
+				strOutError =
+					"Reconstructed diagnostic render policy changed.";
+				return false;
+			}
+			const EFFECT_RUNTIME_PROGRAM_D3D_DESCRIPTOR& Descriptor =
+				PolicyIterator->D3dDescriptorOracle->Actual;
+			if (eKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER &&
+				PolicyIterator->D3dDescriptorOracle->eKind ==
+					EFFECT_RUNTIME_D3D_DESCRIPTOR_KIND::RASTERIZER &&
+				Descriptor.Rasterizer.has_value())
+			{
+				const EFFECT_RUNTIME_PROGRAM_D3D_RASTERIZER& Source =
+					*Descriptor.Rasterizer;
+				D3D11_RASTERIZER_DESC StagedDescriptor{};
+				StagedDescriptor.FillMode =
+					static_cast<D3D11_FILL_MODE>(Source.iFillMode);
+				StagedDescriptor.CullMode =
+					static_cast<D3D11_CULL_MODE>(Source.iCullMode);
+				StagedDescriptor.FrontCounterClockwise =
+					Source.bFrontCounterClockwise;
+				StagedDescriptor.DepthBias = Source.iDepthBias;
+				StagedDescriptor.DepthBiasClamp =
+					static_cast<f32_t>(Source.fDepthBiasClamp);
+				StagedDescriptor.SlopeScaledDepthBias =
+					static_cast<f32_t>(Source.fSlopeScaledDepthBias);
+				StagedDescriptor.DepthClipEnable = Source.bDepthClipEnable;
+				StagedDescriptor.ScissorEnable = Source.bScissorEnable;
+				StagedDescriptor.MultisampleEnable = Source.bMultisampleEnable;
+				StagedDescriptor.AntialiasedLineEnable =
+					Source.bAntialiasedLineEnable;
+				if (FAILED(m_pDevice->CreateRasterizerState(
+					&StagedDescriptor, &Resource.pRasterizerState)))
+				{
+					strOutError =
+						"Reconstructed diagnostic policy rasterizer-state creation failed.";
+					return false;
+				}
+				Resource.RasterizerDescriptor = StagedDescriptor;
+				Resource.bHasRasterizerDescriptor = true;
+				return true;
+			}
+			if (eKind == EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL &&
+				PolicyIterator->D3dDescriptorOracle->eKind ==
+					EFFECT_RUNTIME_D3D_DESCRIPTOR_KIND::DEPTH_STENCIL &&
+				Descriptor.DepthStencil.has_value())
+			{
+				const auto ConvertFace = [](const
+					EFFECT_RUNTIME_PROGRAM_D3D_STENCIL_FACE& Source)
+				{
+					D3D11_DEPTH_STENCILOP_DESC Result{};
+					Result.StencilFailOp = static_cast<D3D11_STENCIL_OP>(
+						Source.iStencilFailOp);
+					Result.StencilDepthFailOp = static_cast<D3D11_STENCIL_OP>(
+						Source.iStencilDepthFailOp);
+					Result.StencilPassOp = static_cast<D3D11_STENCIL_OP>(
+						Source.iStencilPassOp);
+					Result.StencilFunc = static_cast<D3D11_COMPARISON_FUNC>(
+						Source.iStencilFunc);
+					return Result;
+				};
+				const EFFECT_RUNTIME_PROGRAM_D3D_DEPTH_STENCIL& Source =
+					*Descriptor.DepthStencil;
+				D3D11_DEPTH_STENCIL_DESC StagedDescriptor{};
+				StagedDescriptor.DepthEnable = Source.bDepthEnable;
+				StagedDescriptor.DepthWriteMask =
+					static_cast<D3D11_DEPTH_WRITE_MASK>(Source.iDepthWriteMask);
+				StagedDescriptor.DepthFunc =
+					static_cast<D3D11_COMPARISON_FUNC>(Source.iDepthFunc);
+				StagedDescriptor.StencilEnable = Source.bStencilEnable;
+				StagedDescriptor.StencilReadMask =
+					static_cast<uint8_t>(Source.iStencilReadMask);
+				StagedDescriptor.StencilWriteMask =
+					static_cast<uint8_t>(Source.iStencilWriteMask);
+				StagedDescriptor.FrontFace = ConvertFace(Source.FrontFace);
+				StagedDescriptor.BackFace = ConvertFace(Source.BackFace);
+				if (FAILED(m_pDevice->CreateDepthStencilState(
+					&StagedDescriptor, &Resource.pDepthStencilState)))
+				{
+					strOutError =
+						"Reconstructed diagnostic policy depth-state creation failed.";
+					return false;
+				}
+				Resource.DepthStencilDescriptor = StagedDescriptor;
+				Resource.bHasDepthStencilDescriptor = true;
+				return true;
+			}
+			strOutError =
+				"Reconstructed diagnostic render policy kind changed.";
+			return false;
+		}
+		const auto Iterator = Authority->RenderStateDescriptorsById.find(
+			Binding.SidecarDecision->strId);
+		if (Iterator == Authority->RenderStateDescriptorsById.end() ||
+			Iterator->second.strRowSha256 !=
+				Binding.SidecarDecision->strRowSha256 ||
+			Iterator->second.eKind != eKind ||
+			Iterator->second.strRenderBindingId !=
+				Binding.ProgramBinding.strId ||
+			Iterator->second.strRenderBindingRowSha256 !=
+				Binding.ProgramBinding.strRowSha256)
+		{
+			strOutError =
+				"Reconstructed diagnostic render-state authority changed.";
+			return false;
+		}
+		const EFFECT_RECONSTRUCTED_RENDER_STATE_DESCRIPTOR& Descriptor =
+			Iterator->second;
+		switch (eKind)
+		{
+		case EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND:
+			if (FAILED(m_pDevice->CreateBlendState(
+				&Descriptor.BlendDescriptor, &Resource.pBlendState)))
+			{
+				strOutError =
+					"Reconstructed diagnostic blend-state creation failed.";
+				return false;
+			}
+			Resource.BlendDescriptor = Descriptor.BlendDescriptor;
+			Resource.bHasBlendDescriptor = true;
+			return true;
+		case EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER:
+			if (FAILED(m_pDevice->CreateRasterizerState(
+				&Descriptor.RasterizerDescriptor,
+				&Resource.pRasterizerState)))
+			{
+				strOutError =
+					"Reconstructed diagnostic rasterizer-state creation failed.";
+				return false;
+			}
+			Resource.RasterizerDescriptor = Descriptor.RasterizerDescriptor;
+			Resource.bHasRasterizerDescriptor = true;
+			return true;
+		case EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL:
+			if (FAILED(m_pDevice->CreateDepthStencilState(
+				&Descriptor.DepthStencilDescriptor,
+				&Resource.pDepthStencilState)))
+			{
+				strOutError =
+					"Reconstructed diagnostic depth-state creation failed.";
+				return false;
+			}
+			Resource.DepthStencilDescriptor = Descriptor.DepthStencilDescriptor;
+			Resource.bHasDepthStencilDescriptor = true;
+			return true;
+		case EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::END:
+		default:
+			strOutError = "Reconstructed diagnostic render-state kind is invalid.";
+			return false;
+		}
+	};
+
+	for (const EFFECT_RECONSTRUCTED_SELECTED_PACKET& Packet :
+		pFrame->Get_Packets())
+	{
+		const uint32_t iSelection = Packet.Get_SelectionIndex();
+		if (iSelection >= SelectionSeen.size() || SelectionSeen[iSelection])
+		{
+			strOutError =
+				"Reconstructed diagnostic packet selection is duplicated.";
+			return false;
+		}
+		SelectionSeen[iSelection] = true;
+		const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection =
+			pFrame->Get_Preparation()->Get_Request().Emitters[iSelection];
+		if (Selection.eKind != Packet.Get_Kind())
+		{
+			strOutError = "Reconstructed diagnostic packet kind changed.";
+			return false;
+		}
+		RECONSTRUCTED_DIAGNOSTIC_COMPOSITE::GPU_RESOURCE& Resource =
+			Staged->Resources[iSelection];
+
+		for (size_t iLane = 0u; iLane < Selection.Material.TextureLanes.size();
+			++iLane)
+		{
+			const EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE& Lane =
+				Selection.Material.TextureLanes[iLane];
+			const auto BindingIterator = Authority->TextureBindingsById.find(
+				Lane.SidecarTextureBinding.strId);
+			const auto TextureIterator = Authority->TextureResourcesById.find(
+				Lane.SidecarTextureResource.strId);
+			if (BindingIterator == Authority->TextureBindingsById.end() ||
+				TextureIterator == Authority->TextureResourcesById.end() ||
+				BindingIterator->second.strRowSha256 !=
+					Lane.SidecarTextureBinding.strRowSha256 ||
+				TextureIterator->second.strRowSha256 !=
+					Lane.SidecarTextureResource.strRowSha256 ||
+				BindingIterator->second.strResourceAuthorityId !=
+					Lane.SidecarTextureResource.strId ||
+				BindingIterator->second.strRuntimeAssetId != Lane.strRuntimeAssetId ||
+				TextureIterator->second.strRuntimeAssetId != Lane.strRuntimeAssetId ||
+				BindingIterator->second.strActualDdsRawSha256 != Lane.strRawSha256 ||
+				TextureIterator->second.strRawSha256 != Lane.strRawSha256)
+			{
+				strOutError =
+					"Reconstructed diagnostic texture authority changed.";
+				return false;
+			}
+
+			std::filesystem::path TexturePath;
+			std::vector<uint8_t> TextureBytes;
+			if (!Read_ReconstructedAssetBytes(Lane.strRuntimeAssetId,
+				BindingIterator->second.iActualDdsByteCount,
+				Lane.strRawSha256, TexturePath, TextureBytes, strOutError))
+			{
+				return false;
+			}
+			const DirectX::DDS_LOADER_FLAGS Flags =
+				BindingIterator->second.ActualDdsSrv.strColorSpace == "SRGB" ?
+					DirectX::DDS_LOADER_FORCE_SRGB :
+					DirectX::DDS_LOADER_IGNORE_SRGB;
+			ComPtr<ID3D11ShaderResourceView> Texture;
+			if (FAILED(DirectX::CreateDDSTextureFromMemoryEx(
+				m_pDevice.Get(), TextureBytes.data(), TextureBytes.size(), 0u,
+				D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
+				Flags, nullptr, &Texture)))
+			{
+				strOutError = "Reconstructed diagnostic DDS upload failed: " +
+					Lane.strRuntimeAssetId;
+				return false;
+			}
+			D3D11_SHADER_RESOURCE_VIEW_DESC SrvDescriptor{};
+			Texture->GetDesc(&SrvDescriptor);
+			const EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY& ExpectedSrv =
+				BindingIterator->second.ActualDdsSrv;
+			if (SrvDescriptor.Format != ExpectedSrv.eFormat ||
+				SrvDescriptor.ViewDimension != ExpectedSrv.eViewDimension ||
+				SrvDescriptor.Texture2D.MostDetailedMip !=
+					ExpectedSrv.iMostDetailedMip ||
+				SrvDescriptor.Texture2D.MipLevels != ExpectedSrv.iMipLevels)
+			{
+				strOutError =
+					"Reconstructed diagnostic DDS SRV descriptor changed.";
+				return false;
+			}
+			ComPtr<ID3D11SamplerState> Sampler;
+			if (FAILED(m_pDevice->CreateSamplerState(
+				&BindingIterator->second.SamplerDescriptor, &Sampler)))
+			{
+				strOutError =
+					"Reconstructed diagnostic sampler-state creation failed.";
+				return false;
+			}
+			D3D11_SAMPLER_DESC SamplerDescriptor{};
+			Sampler->GetDesc(&SamplerDescriptor);
+			if (!Same_SamplerDescriptor(SamplerDescriptor,
+				BindingIterator->second.SamplerDescriptor))
+			{
+				strOutError =
+					"Reconstructed diagnostic sampler descriptor changed.";
+				return false;
+			}
+			Resource.Textures[iLane] = std::move(Texture);
+			Resource.Samplers[iLane] = std::move(Sampler);
+			Resource.SamplerDescriptors[iLane] = SamplerDescriptor;
+		}
+		if (!Same_SamplerDescriptor(Resource.SamplerDescriptors[0u],
+			Resource.SamplerDescriptors[1u]))
+		{
+			strOutError =
+				"Reconstructed diagnostic texture lanes require different samplers.";
+			return false;
+		}
+
+		if (!StageState(Selection.Material.BlendState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND, Resource) ||
+			!StageState(Selection.Material.RasterizerState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER, Resource) ||
+			!StageState(Selection.Material.DepthStencilState,
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::DEPTH_STENCIL, Resource))
+		{
+			return false;
+		}
+
+		if (EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH ==
+			Selection.eKind)
+		{
+			if (!Selection.Geometry.has_value() ||
+				!Packet.Get_Values().vMeshDimensionlessScaleXzy.has_value())
+			{
+				strOutError =
+					"Reconstructed diagnostic Mesh geometry is unavailable.";
+				return false;
+			}
+			const EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING& Geometry =
+				*Selection.Geometry;
+			std::filesystem::path ModelPath;
+			std::vector<uint8_t> ModelBytes;
+			if (!Read_ReconstructedAssetBytes(Geometry.strRuntimeAssetId,
+				Geometry.iCandidateResourceByteSize,
+				Geometry.strCandidateResourceSha256,
+				ModelPath, ModelBytes, strOutError))
+			{
+				return false;
+			}
+			const f32_t fPreScale = static_cast<f32_t>(Geometry.fGeometryPreScale);
+			const std::string ModelPathString = ModelPath.string();
+			unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
+				m_pDevice, m_pContext, MODEL::NONANIM, ModelPathString.c_str(),
+				XMMatrixScaling(fPreScale, fPreScale, fPreScale));
+			if (nullptr == Model || Model->Get_NumMeshes() != Geometry.iSubmeshCount ||
+				Sha256Hex(Model->Get_GeometryPayloadSha256()) !=
+					Geometry.strPayloadSha256 ||
+				Sha256Hex(Model->Get_GeometryMetadataIdentitySha256()) !=
+					Geometry.strMetadataIdentitySha256)
+			{
+				strOutError =
+					"Reconstructed diagnostic CModel identity changed.";
+				return false;
+			}
+			Resource.pModel = std::move(Model);
+		}
+		else if (EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE ==
+			Selection.eKind)
+		{
+			if (!Selection.SpriteSink.has_value() ||
+				!Packet.Get_Values().vSpriteSignedWorldSizeXzy.has_value())
+			{
+				strOutError =
+					"Reconstructed diagnostic Sprite sink is unavailable.";
+				return false;
+			}
+		}
+		else
+		{
+			strOutError = "Reconstructed diagnostic packet kind is unsupported.";
+			return false;
+		}
+
+		D3D11_QUERY_DESC QueryDescriptor{};
+		QueryDescriptor.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+		if (FAILED(m_pDevice->CreateQuery(
+			&QueryDescriptor, &Resource.pPipelineStatisticsQuery)))
+		{
+			strOutError =
+				"Reconstructed diagnostic pipeline-statistics query failed.";
+			return false;
+		}
+	}
+
+	unique_ptr<Engine::CVIBuffer_ParticleRect> StagedParticleBuffer;
+	if (nullptr == m_pParticleBuffer)
+	{
+		StagedParticleBuffer = Engine::CVIBuffer_ParticleRect::Create(
+			m_pDevice, m_pContext, 1u);
+		if (nullptr == StagedParticleBuffer)
+		{
+			strOutError =
+				"Reconstructed diagnostic particle instance buffer failed.";
+			return false;
+		}
+	}
+	if (nullptr != StagedParticleBuffer)
+		m_pParticleBuffer = std::move(StagedParticleBuffer);
+	m_Document = {};
+	m_pPreparedDocument.reset();
+	m_ModelCueResources.clear();
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedDiagnostic = std::move(Staged);
+	m_strStatus =
+		"Reconstructed diagnostic GPU resources committed; waiting for draw.";
+	strOutError.clear();
+	return true;
+}
+
 void Client::CEffectDocumentRenderer::Clear()
 {
 	m_Document = {};
 	m_pPreparedDocument.reset();
+	m_pReconstructedDiagnostic.reset();
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_ModelCueResources.clear();
 	m_strStatus = "No Effect Document staged.";
@@ -1846,6 +2514,14 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 {
 	if (nullptr == pShader)
 		return E_INVALIDARG;
+	const uint32_t iReconstructedMaterialEvaluatorDisabled = 0u;
+	if (FAILED(pShader->Bind_RawValue(
+		"g_ReconstructedMaterialEvaluatorEnabled",
+		&iReconstructedMaterialEvaluatorDisabled,
+		sizeof(iReconstructedMaterialEvaluatorDisabled))))
+	{
+		return E_FAIL;
+	}
 	const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
 		Element.Material.SourceMaterial;
 	const bool_t bSourceSubUV = Element.SourceRecipe.bEnabled &&
@@ -2425,6 +3101,387 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			}
 		}
 	}
+	return S_OK;
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_ReconstructedDiagnostic(
+	const float4x4_t& RootWorld,
+	const RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo)
+{
+	if (nullptr == m_pReconstructedDiagnostic ||
+		nullptr == m_pReconstructedDiagnostic->pFrame ||
+		eSolo >= RECONSTRUCTED_DIAGNOSTIC_SOLO::END)
+	{
+		m_strStatus = "Reconstructed diagnostic draw was not staged.";
+		return E_FAIL;
+	}
+	const EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND eRequiredKind =
+		eSolo == RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH ?
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH :
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE;
+	const auto& Packets = m_pReconstructedDiagnostic->pFrame->Get_Packets();
+	const auto PacketIterator = std::find_if(Packets.begin(), Packets.end(),
+		[eRequiredKind](const EFFECT_RECONSTRUCTED_SELECTED_PACKET& Packet)
+		{
+			return Packet.Get_Kind() == eRequiredKind;
+		});
+	if (PacketIterator == Packets.end() ||
+		PacketIterator->Get_SelectionIndex() >=
+			m_pReconstructedDiagnostic->Resources.size())
+	{
+		m_strStatus = "Reconstructed diagnostic Solo packet is unavailable.";
+		return E_FAIL;
+	}
+	const EFFECT_RECONSTRUCTED_SELECTED_PACKET& Packet = *PacketIterator;
+	const uint32_t iSelection = Packet.Get_SelectionIndex();
+	const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection =
+		Packet.Get_Preparation()->Get_Request().Emitters[iSelection];
+	RECONSTRUCTED_DIAGNOSTIC_COMPOSITE::GPU_RESOURCE& Resource =
+		m_pReconstructedDiagnostic->Resources[iSelection];
+	const shared_ptr<Engine::CShader> Shader =
+		eRequiredKind == EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH ?
+			m_pMeshShader : m_pParticleShader;
+	if (nullptr == Shader || nullptr == Resource.Textures[0u] ||
+		nullptr == Resource.Textures[1u] || nullptr == Resource.Samplers[0u])
+	{
+		m_strStatus = "Reconstructed diagnostic GPU composite is incomplete.";
+		return E_FAIL;
+	}
+
+	if (Resource.bPipelineStatisticsPending)
+	{
+		D3D11_QUERY_DATA_PIPELINE_STATISTICS Statistics{};
+		const HRESULT StatisticsResult = m_pContext->GetData(
+			Resource.pPipelineStatisticsQuery.Get(), &Statistics,
+			sizeof(Statistics), D3D11_ASYNC_GETDATA_DONOTFLUSH);
+		if (S_OK == StatisticsResult)
+		{
+			Resource.bPipelineStatisticsPending = false;
+			Resource.PipelineStatistics = Statistics;
+			if (0u == Statistics.VSInvocations || 0u == Statistics.PSInvocations)
+			{
+				m_strStatus =
+					"Reconstructed diagnostic draw produced no shader invocations.";
+				return E_FAIL;
+			}
+		}
+		else if (FAILED(StatisticsResult))
+		{
+			m_strStatus =
+				"Reconstructed diagnostic pipeline-statistics readback failed.";
+			return E_FAIL;
+		}
+	}
+
+	const auto ToFloat4 = [](const std::array<double, 4u>& Value)
+	{
+		return float4_t(static_cast<f32_t>(Value[0u]),
+			static_cast<f32_t>(Value[1u]), static_cast<f32_t>(Value[2u]),
+			static_cast<f32_t>(Value[3u]));
+	};
+	const EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING& Material =
+		Selection.Material;
+	const float2_t UvScale{
+		static_cast<f32_t>(Material.Constants.vUvScale[0u]),
+		static_cast<f32_t>(Material.Constants.vUvScale[1u]) };
+	const float4_t PanRotationAux = ToFloat4(
+		Material.Constants.vPanRotationAux);
+	const float4_t MaterialColor = ToFloat4(Material.Constants.vColor);
+	const float4_t Params0 = ToFloat4(Material.Constants.vParams0);
+	const float4_t Params1 = ToFloat4(Material.Constants.vParams1);
+	const float2_t LegacyUvScale{ 1.f, 1.f };
+	const float2_t LegacyUvOffset{};
+	const f32_t fSampleTime = static_cast<f32_t>(
+		m_pReconstructedDiagnostic->pFrame->Get_SampleTimeSeconds());
+	const uint32_t iEnabled = 1u;
+	const uint32_t iDisabled = 0u;
+	const uint32_t iSourceMaterialProfile = 0u;
+	const uint32_t iSourceTextureClampMask = 0u;
+	const uint32_t iUseBaseOverride = 1u;
+
+	HRESULT DrawResult = S_OK;
+	if (FAILED(Shader->Bind_Matrix("g_ViewMatrix",
+			CGameInstance::Get().Get_Transform(D3DTS::VIEW))) ||
+		FAILED(Shader->Bind_Matrix("g_ProjMatrix",
+			CGameInstance::Get().Get_Transform(D3DTS::PROJ))) ||
+		FAILED(Shader->Bind_RawValue("g_UVScale", &LegacyUvScale,
+			sizeof(LegacyUvScale))) ||
+		FAILED(Shader->Bind_RawValue("g_UVOffset", &LegacyUvOffset,
+			sizeof(LegacyUvOffset))) ||
+		FAILED(Shader->Bind_RawValue("g_EffectLocalTime", &fSampleTime,
+			sizeof(fSampleTime))) ||
+		FAILED(Shader->Bind_RawValue("g_SourceMaterialProfile",
+			&iSourceMaterialProfile, sizeof(iSourceMaterialProfile))) ||
+		FAILED(Shader->Bind_RawValue("g_SourceTextureClampUMask",
+			&iSourceTextureClampMask, sizeof(iSourceTextureClampMask))) ||
+		FAILED(Shader->Bind_RawValue("g_SourceTextureClampVMask",
+			&iSourceTextureClampMask, sizeof(iSourceTextureClampMask))) ||
+		FAILED(Shader->Bind_RawValue(
+			Material.Shader.strFeatureMaskVariable.c_str(),
+			&Material.iFeatureMask, sizeof(Material.iFeatureMask))) ||
+		FAILED(Shader->Bind_RawValue(Material.Shader.strUvScaleVariable.c_str(),
+			&UvScale, sizeof(UvScale))) ||
+		FAILED(Shader->Bind_RawValue(
+			Material.Shader.strPanRotationAuxVariable.c_str(),
+			&PanRotationAux, sizeof(PanRotationAux))) ||
+		FAILED(Shader->Bind_RawValue(Material.Shader.strColorVariable.c_str(),
+			&MaterialColor, sizeof(MaterialColor))) ||
+		FAILED(Shader->Bind_RawValue(Material.Shader.strParams0Variable.c_str(),
+			&Params0, sizeof(Params0))) ||
+		FAILED(Shader->Bind_RawValue(Material.Shader.strParams1Variable.c_str(),
+			&Params1, sizeof(Params1))) ||
+		FAILED(Shader->Bind_Texture(
+			Material.TextureLanes[0u].strShaderVariableName.c_str(),
+			Resource.Textures[0u])) ||
+		FAILED(Shader->Bind_Texture(
+			Material.TextureLanes[1u].strShaderVariableName.c_str(),
+			Resource.Textures[1u])) ||
+		FAILED(Shader->Bind_RawValue(
+			Material.Shader.strEvaluatorEnabledVariable.c_str(),
+			&iEnabled, sizeof(iEnabled))))
+	{
+		DrawResult = E_FAIL;
+	}
+	if (SUCCEEDED(DrawResult) &&
+		eRequiredKind == EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH)
+	{
+		const auto& Scale =
+			*Packet.Get_Values().vMeshDimensionlessScaleXzy;
+		const auto& Position = Packet.Get_Values().vLocalPosition;
+		float4x4_t World{};
+		XMStoreFloat4x4(&World,
+			XMMatrixScaling(static_cast<f32_t>(Scale[0u]),
+				static_cast<f32_t>(Scale[1u]),
+				static_cast<f32_t>(Scale[2u])) *
+			XMMatrixRotationY(XMConvertToRadians(static_cast<f32_t>(
+				Packet.Get_Values().fRotationDegrees))) *
+			XMMatrixTranslation(static_cast<f32_t>(Position[0u]),
+				static_cast<f32_t>(Position[1u]),
+				static_cast<f32_t>(Position[2u])) *
+			XMLoadFloat4x4(&RootWorld));
+		const float4_t CameraPosition =
+			*CGameInstance::Get().Get_CamPosition();
+		const float4_t Dynamic = ToFloat4(
+			Packet.Get_Values().vDynamicParameter);
+		if (nullptr == Resource.pModel ||
+			FAILED(Shader->Bind_Matrix("g_WorldMatrix", &World)) ||
+			FAILED(Shader->Bind_RawValue("g_CameraPosition",
+				&CameraPosition, sizeof(CameraPosition))) ||
+			FAILED(Shader->Bind_RawValue("g_EffectDynamicParameter",
+				&Dynamic, sizeof(Dynamic))) ||
+			FAILED(Shader->Bind_RawValue("g_UseBaseOverride",
+				&iUseBaseOverride, sizeof(iUseBaseOverride))))
+		{
+			DrawResult = E_FAIL;
+		}
+	}
+
+	ComPtr<ID3D11InfoQueue> InfoQueue;
+	const bool_t bHasInfoQueue = SUCCEEDED(m_pDevice.As(&InfoQueue));
+	const uint64_t iMessageBegin = bHasInfoQueue ?
+		InfoQueue->GetNumStoredMessagesAllowedByRetrievalFilter() : 0u;
+	bool_t bQueryBegun = false;
+	{
+		CReconstructedPipelineStateGuard StateGuard(m_pContext.Get());
+		if (SUCCEEDED(DrawResult) &&
+			FAILED(Shader->Begin(Material.Shader.iPassIndex)))
+		{
+			DrawResult = E_FAIL;
+		}
+		if (SUCCEEDED(DrawResult))
+		{
+			ID3D11SamplerState* pSampler = Resource.Samplers[0u].Get();
+			m_pContext->PSSetSamplers(0u, 1u, &pSampler);
+			if (Resource.bHasBlendDescriptor)
+			{
+				const float BlendFactor[4u]{};
+				m_pContext->OMSetBlendState(
+					Resource.pBlendState.Get(), BlendFactor, 0xffffffffu);
+			}
+			if (Resource.bHasRasterizerDescriptor)
+				m_pContext->RSSetState(Resource.pRasterizerState.Get());
+			if (Resource.bHasDepthStencilDescriptor)
+				m_pContext->OMSetDepthStencilState(
+					Resource.pDepthStencilState.Get(), 0u);
+
+			ComPtr<ID3D11SamplerState> ActualSampler;
+			m_pContext->PSGetSamplers(0u, 1u, &ActualSampler);
+			D3D11_SAMPLER_DESC ActualSamplerDescriptor{};
+			if (nullptr == ActualSampler)
+				DrawResult = E_FAIL;
+			else
+				ActualSampler->GetDesc(&ActualSamplerDescriptor);
+			if (SUCCEEDED(DrawResult) && !Same_SamplerDescriptor(
+				ActualSamplerDescriptor, Resource.SamplerDescriptors[0u]))
+			{
+				DrawResult = E_FAIL;
+			}
+			if (SUCCEEDED(DrawResult) && Resource.bHasBlendDescriptor)
+			{
+				ComPtr<ID3D11BlendState> Actual;
+				float Factor[4u]{};
+				uint32_t iMask = 0u;
+				m_pContext->OMGetBlendState(&Actual, Factor, &iMask);
+				D3D11_BLEND_DESC Descriptor{};
+				if (nullptr != Actual)
+					Actual->GetDesc(&Descriptor);
+				if (nullptr == Actual || iMask != 0xffffffffu ||
+					!Same_BlendDescriptor(
+						Descriptor, Resource.BlendDescriptor))
+					DrawResult = E_FAIL;
+			}
+			if (SUCCEEDED(DrawResult) && Resource.bHasRasterizerDescriptor)
+			{
+				ComPtr<ID3D11RasterizerState> Actual;
+				m_pContext->RSGetState(&Actual);
+				D3D11_RASTERIZER_DESC Descriptor{};
+				if (nullptr != Actual)
+					Actual->GetDesc(&Descriptor);
+				if (nullptr == Actual || !Same_RasterizerDescriptor(
+					Descriptor, Resource.RasterizerDescriptor))
+					DrawResult = E_FAIL;
+			}
+			if (SUCCEEDED(DrawResult) && Resource.bHasDepthStencilDescriptor)
+			{
+				ComPtr<ID3D11DepthStencilState> Actual;
+				uint32_t iStencilReference = 0u;
+				m_pContext->OMGetDepthStencilState(
+					&Actual, &iStencilReference);
+				D3D11_DEPTH_STENCIL_DESC Descriptor{};
+				if (nullptr != Actual)
+					Actual->GetDesc(&Descriptor);
+				if (nullptr == Actual || 0u != iStencilReference ||
+					!Same_DepthStencilDescriptor(
+						Descriptor, Resource.DepthStencilDescriptor))
+					DrawResult = E_FAIL;
+			}
+		}
+
+		if (SUCCEEDED(DrawResult) &&
+			!Resource.bPipelineStatisticsPending)
+		{
+			m_pContext->Begin(Resource.pPipelineStatisticsQuery.Get());
+			bQueryBegun = true;
+		}
+		if (SUCCEEDED(DrawResult) &&
+			eRequiredKind == EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH)
+		{
+			for (uint32_t iMesh = 0u;
+				SUCCEEDED(DrawResult) && iMesh < Resource.pModel->Get_NumMeshes();
+				++iMesh)
+			{
+				if (FAILED(Resource.pModel->Render(iMesh)))
+					DrawResult = E_FAIL;
+			}
+		}
+		else if (SUCCEEDED(DrawResult))
+		{
+			const auto& Size =
+				*Packet.Get_Values().vSpriteSignedWorldSizeXzy;
+			const auto& Position = Packet.Get_Values().vLocalPosition;
+			const auto& Velocity = Packet.Get_Values().vVelocityPerSecond;
+			const EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK& Sink =
+				*Packet.Get_SpriteSink();
+			const matrix_t Root = XMLoadFloat4x4(&RootWorld);
+			const vector_t WorldPosition = XMVector3TransformCoord(
+				XMVectorSet(static_cast<f32_t>(Position[0u]),
+					static_cast<f32_t>(Position[1u]),
+					static_cast<f32_t>(Position[2u]), 1.f), Root);
+			const vector_t WorldVelocity = XMVector3TransformNormal(
+				XMVectorSet(static_cast<f32_t>(Velocity[0u]),
+					static_cast<f32_t>(Velocity[1u]),
+					static_cast<f32_t>(Velocity[2u]), 0.f), Root);
+			matrix_t CameraWorld = XMLoadFloat4x4(
+				CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW));
+			CameraWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			const f32_t fRight = XMVectorGetX(XMVector3Dot(
+				WorldVelocity, CameraWorld.r[0u]));
+			const f32_t fUp = XMVectorGetX(XMVector3Dot(
+				WorldVelocity, CameraWorld.r[1u]));
+			const f32_t fVelocityRoll =
+				std::abs(fRight) + std::abs(fUp) > 1.e-6f ?
+					std::atan2(fUp, fRight) : 0.f;
+			const f32_t fRoll = fVelocityRoll + XMConvertToRadians(
+				static_cast<f32_t>(Packet.Get_Values().fRotationDegrees +
+					Sink.fBillboardRollDegrees));
+			const matrix_t Pivot = XMMatrixTranslation(
+				0.5f - static_cast<f32_t>(Sink.vPivotCenter[0u]),
+				static_cast<f32_t>(Sink.vPivotCenter[1u]) - 0.5f, 0.f);
+			float4x4_t World{};
+			XMStoreFloat4x4(&World,
+				Pivot * XMMatrixScaling(static_cast<f32_t>(Size[0u]),
+					static_cast<f32_t>(Size[2u]), 1.f) *
+				XMMatrixRotationZ(fRoll) * CameraWorld *
+				XMMatrixTranslationFromVector(WorldPosition));
+			const float4_t Color = ToFloat4(Packet.Get_Values().vColor);
+			const float4_t Dynamic = ToFloat4(
+				Packet.Get_Values().vDynamicParameter);
+			const f32_t fNormalizedLife = static_cast<f32_t>(std::clamp(
+				Packet.Get_Timing().fAgeSeconds /
+					Packet.Get_Timing().fLifetimeSeconds, 0.0, 1.0));
+			const Engine::VTXEFFECT_PARTICLE Instance{
+				World, Color, Dynamic,
+				{ 1.f, 1.f, 0.f, 0.f }, { 1.f, 1.f, 0.f, 0.f },
+				{ fNormalizedLife, 0.f } };
+			if (nullptr == m_pParticleBuffer ||
+				FAILED(m_pParticleBuffer->Update_Instances(
+					std::span<const Engine::VTXEFFECT_PARTICLE>(&Instance, 1u))) ||
+				FAILED(m_pParticleBuffer->Render()))
+			{
+				DrawResult = E_FAIL;
+			}
+		}
+		if (bQueryBegun)
+		{
+			m_pContext->End(Resource.pPipelineStatisticsQuery.Get());
+			Resource.bPipelineStatisticsPending = true;
+		}
+	}
+
+	if (FAILED(Shader->Bind_RawValue(
+		Material.Shader.strEvaluatorEnabledVariable.c_str(),
+		&iDisabled, sizeof(iDisabled))))
+	{
+		DrawResult = E_FAIL;
+	}
+	if (SUCCEEDED(DrawResult) && bHasInfoQueue)
+	{
+		const uint64_t iMessageEnd =
+			InfoQueue->GetNumStoredMessagesAllowedByRetrievalFilter();
+		for (uint64_t iMessage = iMessageBegin; iMessage < iMessageEnd;
+			++iMessage)
+		{
+			size_t iMessageSize = 0u;
+			if (FAILED(InfoQueue->GetMessage(iMessage, nullptr, &iMessageSize)) ||
+				0u == iMessageSize)
+				continue;
+			std::vector<uint8_t> MessageBytes(iMessageSize);
+			D3D11_MESSAGE* pMessage =
+				reinterpret_cast<D3D11_MESSAGE*>(MessageBytes.data());
+			if (SUCCEEDED(InfoQueue->GetMessage(
+				iMessage, pMessage, &iMessageSize)) &&
+				(pMessage->Severity == D3D11_MESSAGE_SEVERITY_ERROR ||
+				 pMessage->Severity == D3D11_MESSAGE_SEVERITY_CORRUPTION))
+			{
+				DrawResult = E_FAIL;
+				break;
+			}
+		}
+	}
+	if (FAILED(DrawResult))
+	{
+		m_strStatus =
+			"Reconstructed diagnostic GPU draw or state readback failed.";
+		return E_FAIL;
+	}
+	++Resource.iDrawCount;
+	const char* pKind =
+		eSolo == RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH ? "Mesh" : "Sprite";
+	m_strStatus = std::string("Reconstructed ") + pKind +
+		" Solo draw submitted; draw count " +
+		std::to_string(Resource.iDrawCount) + ", VS/PS invocations " +
+		std::to_string(Resource.PipelineStatistics.VSInvocations) + "/" +
+		std::to_string(Resource.PipelineStatistics.PSInvocations) + ".";
 	return S_OK;
 }
 

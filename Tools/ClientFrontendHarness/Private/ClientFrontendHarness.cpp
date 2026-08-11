@@ -2810,8 +2810,11 @@ namespace
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
 		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
 			CProjectDataRoot::Get().parent_path() /
-			L"Client" / L"Bin" / L"Resources";
+				L"Client" / L"Bin" / L"Resources";
 		resourceRootEnvironment.Set(resourceRoot.c_str());
 		std::string status;
 		std::vector<uint32_t> skillIds;
@@ -2965,8 +2968,11 @@ namespace
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
 		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
 			CProjectDataRoot::Get().parent_path() /
-			L"Client" / L"Bin" / L"Resources";
+				L"Client" / L"Bin" / L"Resources";
 		resourceRootEnvironment.Set(resourceRoot.c_str());
 		std::string status;
 		bool_t valid = CPlayerSkillCatalog::Load(status);
@@ -3004,8 +3010,11 @@ namespace
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
 		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
 			CProjectDataRoot::Get().parent_path() /
-			L"Client" / L"Bin" / L"Resources";
+				L"Client" / L"Bin" / L"Resources";
 		resourceRootEnvironment.Set(resourceRoot.c_str());
 		EFFECT_DOCUMENT_DESC document;
 		document.strEffectAssetId = "effect.draft.harness";
@@ -3675,10 +3684,13 @@ namespace
 			std::string invalid{
 				std::istreambuf_iterator<char>(input),
 				std::istreambuf_iterator<char>() };
-			const std::string marker = "\"formatVersion\":2";
+			const std::string marker = "\"formatVersion\":";
 			const size_t markerIndex = invalid.find(marker);
-			if (std::string::npos != markerIndex)
-				invalid[markerIndex + marker.size() - 1u] = '9';
+			if (std::string::npos != markerIndex &&
+				markerIndex + marker.size() < invalid.size())
+			{
+				invalid[markerIndex + marker.size()] = '9';
+			}
 			std::ofstream output(stagedCatalog,
 				std::ios::binary | std::ios::trunc);
 			output.write(invalid.data(), static_cast<std::streamsize>(invalid.size()));

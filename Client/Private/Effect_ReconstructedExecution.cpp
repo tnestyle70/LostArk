@@ -3034,6 +3034,7 @@ namespace
 		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
 		const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection,
 		const uint32_t iSelectionIndex,
+		const bool_t bValidateExpectedResult,
 		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
 			EMITTER_OPERATION& OutOperation,
 		std::string& strOutError)
@@ -3073,12 +3074,13 @@ namespace
 			ProgramSchedule->Row.strId != PlanSchedule.strScheduleId ||
 			ProgramEmitter->bLocalSpace != Selection.bLocalSpace ||
 			ProgramEmitter->strSizeUnitPolicy != Selection.strSizeUnitPolicy ||
-			Selection.iExpectedVisualRandomDrawCount == 0u ||
-			Selection.iExpectedFinalRandomState == 0u ||
-			Selection.iExpectedOccurrenceRandomValue == 0u ||
-			Selection.iExpectedLifetimeRandomValue == 0u ||
-			!Is_Finite(Selection.fExpectedLifetimeSeconds) ||
-			Selection.fExpectedLifetimeSeconds <= 0.0 ||
+			(bValidateExpectedResult &&
+				(Selection.iExpectedVisualRandomDrawCount == 0u ||
+				 Selection.iExpectedFinalRandomState == 0u ||
+				 Selection.iExpectedOccurrenceRandomValue == 0u ||
+				 Selection.iExpectedLifetimeRandomValue == 0u ||
+				 !Is_Finite(Selection.fExpectedLifetimeSeconds) ||
+				 Selection.fExpectedLifetimeSeconds <= 0.0)) ||
 			!ProgramEmitter->bVisible || !PlanEmitter.bVisible ||
 			Selection.Handlers.size() != ProgramEmitter->ModuleIds.size() ||
 			Selection.Handlers.size() != PlanEmitter.ModuleIds.size() ||
@@ -3441,6 +3443,7 @@ namespace
 		const EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& Selection,
 		const EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET& Timing,
 		const double fSampleTimeSeconds,
+		const bool_t bValidateExpectedResult,
 		SELECTED_VISUAL_RESULT& OutResult,
 		std::string& strOutError)
 	{
@@ -3448,11 +3451,12 @@ namespace
 			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::MODULE_OPCODE;
 		if (nullptr == Operation.pPlanSchedule ||
 			nullptr == Operation.pPlanEmitter || Timing.fAgeSeconds != 0.0 ||
-			Timing.iOccurrenceRandomValue !=
-				Selection.iExpectedOccurrenceRandomValue ||
-			Timing.iLifetimeRandomValue !=
-				Selection.iExpectedLifetimeRandomValue ||
-			Timing.fLifetimeSeconds != Selection.fExpectedLifetimeSeconds)
+			(bValidateExpectedResult &&
+			 (Timing.iOccurrenceRandomValue !=
+				 Selection.iExpectedOccurrenceRandomValue ||
+			  Timing.iLifetimeRandomValue !=
+				 Selection.iExpectedLifetimeRandomValue ||
+			  Timing.fLifetimeSeconds != Selection.fExpectedLifetimeSeconds)))
 		{
 			return Reject(strOutError,
 				"Selected evaluator timing packet identity is invalid.");
@@ -3675,9 +3679,10 @@ namespace
 		Staged.Values.vDynamicParameter = Dynamic;
 		Staged.Values.fRotationDegrees = RotationDegrees;
 		Staged.Values.fRotationRateDegreesPerSecond = RotationRateDegrees;
-		if (Staged.iRandomDrawCount !=
-				Selection.iExpectedVisualRandomDrawCount ||
-			Staged.iFinalRandomState != Selection.iExpectedFinalRandomState ||
+		if ((bValidateExpectedResult &&
+			 (Staged.iRandomDrawCount !=
+				  Selection.iExpectedVisualRandomDrawCount ||
+			  Staged.iFinalRandomState != Selection.iExpectedFinalRandomState)) ||
 			!Is_Finite(Staged.Values.vLocalPosition) ||
 			!Is_Finite(Staged.Values.vVelocityPerSecond) ||
 			!Is_Finite(Staged.Values.vAccelerationPerSecondSquared) ||
@@ -3694,6 +3699,725 @@ namespace
 				"Selected evaluator visual result failed its closed contract.");
 		}
 		OutResult = std::move(Staged);
+		return true;
+	}
+
+	template <typename T>
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Program_RowIdentity(
+		const T& Row)
+	{
+		return { Row.Row.strId, Row.Row.strRowSha256 };
+	}
+
+	EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Sidecar_RowIdentity(
+		const std::string& strId,
+		const std::string& strRowSha256)
+	{
+		return { strId, strRowSha256 };
+	}
+
+	template <typename T, typename Predicate>
+	const T* Find_UniqueProgramRow(
+		const std::vector<T>& Rows,
+		Predicate&& Matches)
+	{
+		const T* Found = nullptr;
+		for (const T& Row : Rows)
+		{
+			if (!Matches(Row))
+				continue;
+			if (nullptr != Found)
+				return nullptr;
+			Found = &Row;
+		}
+		return Found;
+	}
+
+	template <typename T>
+	const T* Find_UniqueProgramRowById(
+		const std::vector<T>& Rows,
+		const std::string_view strId)
+	{
+		return Find_UniqueProgramRow(Rows, [strId](const T& Row)
+		{
+			return Row.Row.strId == strId;
+		});
+	}
+
+	template <typename T, typename Predicate>
+	const std::pair<const std::string, T>* Find_UniqueSidecarRow(
+		const std::map<std::string, T, std::less<>>& Rows,
+		Predicate&& Matches)
+	{
+		const std::pair<const std::string, T>* Found = nullptr;
+		for (const auto& Row : Rows)
+		{
+			if (!Matches(Row.second))
+				continue;
+			if (nullptr != Found)
+				return nullptr;
+			Found = &Row;
+		}
+		return Found;
+	}
+
+	const EFFECT_RUNTIME_PROGRAM_PROPERTY* Find_OwnedProperty(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const std::string_view strModuleId,
+		const std::string_view strPropertyPath)
+	{
+		return Find_UniqueProgramRow(Program.Properties,
+			[strModuleId, strPropertyPath](const auto& Row)
+			{
+				return Row.strModuleId == strModuleId &&
+					Row.strPropertyPath == strPropertyPath;
+			});
+	}
+
+	const EFFECT_RUNTIME_PROGRAM_LITERAL* Find_OwnedLiteral(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const std::string_view strModuleId,
+		const std::string_view strPropertyPath)
+	{
+		return Find_UniqueProgramRow(Program.Literals,
+			[strModuleId, strPropertyPath](const auto& Row)
+			{
+				return Row.strModuleId == strModuleId &&
+					Row.strPropertyPath == strPropertyPath;
+			});
+	}
+
+	bool_t Build_DiagnosticHandlers(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		std::vector<EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY> Staged;
+		Staged.reserve(Emitter.ModuleIds.size());
+		for (const std::string& ModuleId : Emitter.ModuleIds)
+		{
+			const auto* Module = Find_UniqueProgramRowById(
+				Program.Modules, ModuleId);
+			const auto* Handler = nullptr == Module ? nullptr :
+				Find_UniqueProgramRowById(
+					Program.Handlers, Module->strHandlerRegistryId);
+			if (nullptr == Module || nullptr == Handler ||
+				Module->strEmitterId != Emitter.Row.strId ||
+				Handler->strExactSourceClass != Module->strExactSourceClass)
+			{
+				return Reject(strOutError,
+					"Diagnostic selector module/handler authority is ambiguous.");
+			}
+			EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY Selection;
+			Selection.Module = Program_RowIdentity(*Module);
+			Selection.Handler = Program_RowIdentity(*Handler);
+			Selection.strExactSourceClass = Module->strExactSourceClass;
+			Selection.strImplementationId = Handler->strImplementationId;
+			Selection.iImplementationVersion = Handler->iImplementationVersion;
+			Selection.strImplementationSha256 =
+				Handler->strImplementationSha256;
+			for (const std::string& DefaultId : Module->ImplicitDefaultIds)
+			{
+				const auto* Default = Find_UniqueProgramRowById(
+					Program.ImplicitDefaults, DefaultId);
+				if (nullptr == Default || Default->strModuleId != ModuleId)
+				{
+					return Reject(strOutError,
+						"Diagnostic selector implicit default join is ambiguous.");
+				}
+				Selection.ImplicitDefaults.push_back(
+					Program_RowIdentity(*Default));
+			}
+			Staged.push_back(std::move(Selection));
+		}
+		if (Staged.empty())
+			return Reject(strOutError,
+				"Diagnostic selector emitter has no handler route.");
+		OutSelection.Handlers = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticCylinder(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		const EFFECT_RUNTIME_PROGRAM_MODULE* Cylinder = nullptr;
+		for (const std::string& ModuleId : Emitter.ModuleIds)
+		{
+			const auto* Module = Find_UniqueProgramRowById(
+				Program.Modules, ModuleId);
+			if (nullptr == Module)
+				return Reject(strOutError,
+					"Diagnostic selector cylinder module is absent.");
+			if (Module->strExactSourceClass !=
+				"particlemodulelocationprimitivecylinder")
+				continue;
+			if (nullptr != Cylinder)
+				return Reject(strOutError,
+					"Diagnostic selector cylinder module is duplicated.");
+			Cylinder = Module;
+		}
+		if (nullptr == Cylinder)
+			return true;
+		const auto* SurfaceOnly = Find_OwnedLiteral(
+			Program, Cylinder->Row.strId, "surfaceonly");
+		const auto* Velocity = Find_OwnedLiteral(
+			Program, Cylinder->Row.strId, "velocity");
+		if (nullptr == SurfaceOnly || nullptr == Velocity)
+			return Reject(strOutError,
+				"Diagnostic selector cylinder literals are ambiguous.");
+		EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY Staged;
+		Staged.Module = Program_RowIdentity(*Cylinder);
+		Staged.SurfaceOnlyLiteral = Program_RowIdentity(*SurfaceOnly);
+		Staged.VelocityLiteral = Program_RowIdentity(*Velocity);
+		Staged.strAbsentHeightAxisDefault = "Z";
+		OutSelection.Cylinder = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticGeometry(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		if (!Emitter.strGeometryUseId.has_value())
+			return Reject(strOutError,
+				"Diagnostic Mesh selector has no geometry use.");
+		const auto* Use = Find_UniqueProgramRowById(
+			Program.GeometryUses, *Emitter.strGeometryUseId);
+		const auto* Carrier = nullptr == Use ? nullptr :
+			Find_UniqueProgramRowById(Program.GeometryCarriers, Use->strCarrierId);
+		if (nullptr == Use || nullptr == Carrier ||
+			Use->strEmitterId != Emitter.Row.strId)
+		{
+			return Reject(strOutError,
+				"Diagnostic Mesh geometry join is ambiguous.");
+		}
+		uint64_t VertexCount = 0u;
+		uint64_t IndexCount = 0u;
+		for (const auto& Submesh : Carrier->Submeshes)
+		{
+			VertexCount += Submesh.iVertexCount;
+			IndexCount += Submesh.iIndexCount;
+		}
+		if (VertexCount > (std::numeric_limits<uint32_t>::max)() ||
+			IndexCount > (std::numeric_limits<uint32_t>::max)())
+		{
+			return Reject(strOutError,
+				"Diagnostic Mesh geometry count overflowed.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING Staged;
+		Staged.GeometryUse = Program_RowIdentity(*Use);
+		Staged.GeometryCarrier = Program_RowIdentity(*Carrier);
+		Staged.strRuntimeAssetId = Carrier->strAssetId;
+		Staged.iCandidateResourceByteSize = Carrier->iCandidateResourceByteSize;
+		Staged.strCandidateResourceSha256 = Carrier->strCandidateResourceSha256;
+		Staged.strPayloadSha256 = Carrier->strPayloadSha256;
+		Staged.strMetadataIdentitySha256 = Carrier->strMetadataIdentitySha256;
+		Staged.strCacheIdentitySha256 = Carrier->strCacheIdentitySha256;
+		Staged.strExpectedTupleSha256 = Carrier->strExpectedTupleSha256;
+		Staged.strApprovalGeometryRowSha256 =
+			Carrier->strApprovalGeometryRowSha256;
+		Staged.strPreparedCacheIdentitySha256 =
+			Carrier->strPreparedCacheIdentitySha256;
+		Staged.fGeometryPreScale = Carrier->fGeometryPreScale;
+		Staged.iSubmeshCount = static_cast<uint32_t>(Carrier->Submeshes.size());
+		Staged.iVertexCount = static_cast<uint32_t>(VertexCount);
+		Staged.iIndexCount = static_cast<uint32_t>(IndexCount);
+		OutSelection.Geometry = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticSpriteSink(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		const auto* Required = Find_UniqueProgramRowById(
+			Program.Modules, Emitter.Timing.strRequiredModuleId);
+		const auto* AlignmentProperty = nullptr == Required ? nullptr :
+			Find_OwnedProperty(Program, Required->Row.strId, "screenalignment");
+		const auto* AlignmentLiteral = nullptr == Required ? nullptr :
+			Find_OwnedLiteral(Program, Required->Row.strId, "screenalignment");
+		const auto* FlipProperty = nullptr == Required ? nullptr :
+			Find_OwnedProperty(Program, Required->Row.strId,
+				"ballowimageflipping");
+		const auto* FlipLiteral = nullptr == Required ? nullptr :
+			Find_OwnedLiteral(Program, Required->Row.strId,
+				"ballowimageflipping");
+		const auto* OffsetProperty = nullptr == Required ? nullptr :
+			Find_OwnedProperty(Program, Required->Row.strId, "boffsetcenter");
+		const auto* OffsetLiteral = nullptr == Required ? nullptr :
+			Find_OwnedLiteral(Program, Required->Row.strId, "boffsetcenter");
+		const auto* OffsetXProperty = nullptr == Required ? nullptr :
+			Find_OwnedProperty(Program, Required->Row.strId, "offsetcenterx");
+		const auto* OffsetXLiteral = nullptr == Required ? nullptr :
+			Find_OwnedLiteral(Program, Required->Row.strId, "offsetcenterx");
+		const auto* OffsetYProperty = nullptr == Required ? nullptr :
+			Find_OwnedProperty(Program, Required->Row.strId, "offsetcentery");
+		const auto* OffsetYLiteral = nullptr == Required ? nullptr :
+			Find_OwnedLiteral(Program, Required->Row.strId, "offsetcentery");
+		if (nullptr == Required || nullptr == AlignmentProperty ||
+			nullptr == AlignmentLiteral || nullptr == FlipProperty ||
+			nullptr == FlipLiteral || nullptr == OffsetProperty ||
+			nullptr == OffsetLiteral || nullptr == OffsetXProperty ||
+			nullptr == OffsetXLiteral || nullptr == OffsetYProperty ||
+			nullptr == OffsetYLiteral ||
+			AlignmentLiteral->strEnumValue != "psa_velocity" ||
+			!FlipLiteral->bValue.has_value() ||
+			!OffsetLiteral->bValue.has_value() ||
+			!OffsetXLiteral->fValue.has_value() ||
+			!OffsetYLiteral->fValue.has_value() ||
+			!Emitter.RendererRuntimeConfig.Sprite.has_value())
+		{
+			return Reject(strOutError,
+				"Diagnostic Sprite sink authority is incomplete.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK Staged;
+		Staged.RequiredModule = Program_RowIdentity(*Required);
+		Staged.ScreenAlignmentProperty = Program_RowIdentity(*AlignmentProperty);
+		Staged.ScreenAlignmentLiteral = Program_RowIdentity(*AlignmentLiteral);
+		Staged.AllowImageFlippingProperty = Program_RowIdentity(*FlipProperty);
+		Staged.AllowImageFlippingLiteral = Program_RowIdentity(*FlipLiteral);
+		Staged.OffsetCenterEnabledProperty = Program_RowIdentity(*OffsetProperty);
+		Staged.OffsetCenterEnabledLiteral = Program_RowIdentity(*OffsetLiteral);
+		Staged.OffsetCenterXProperty = Program_RowIdentity(*OffsetXProperty);
+		Staged.OffsetCenterXLiteral = Program_RowIdentity(*OffsetXLiteral);
+		Staged.OffsetCenterYProperty = Program_RowIdentity(*OffsetYProperty);
+		Staged.OffsetCenterYLiteral = Program_RowIdentity(*OffsetYLiteral);
+		Staged.eAlignment = EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT::VELOCITY;
+		Staged.eOrientation = EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION::
+			CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT;
+		Staged.bAllowImageFlipping = *FlipLiteral->bValue;
+		Staged.bOffsetCenter = *OffsetLiteral->bValue;
+		Staged.vPivotCenter = {
+			*OffsetXLiteral->fValue, *OffsetYLiteral->fValue };
+		Staged.bBillboard = Emitter.RendererRuntimeConfig.Sprite->bBillboard;
+		Staged.fBillboardRollDegrees =
+			Emitter.RendererRuntimeConfig.Sprite->fBillboardRollDegrees;
+		OutSelection.SpriteSink = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticTextureLane(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_OCCURRENCE& Occurrence,
+		const EFFECT_RECONSTRUCTED_RENDER_TEXTURE_PROVIDER& Provider,
+		const std::string_view strShaderVariable,
+		EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE& OutLane,
+		std::string& strOutError)
+	{
+		if (Provider.strProviderKind != "MATERIAL_TEXTURE_BINDING")
+			return Reject(strOutError,
+				"Diagnostic material lane is not texture-backed.");
+		const auto* Input = Find_UniqueProgramRowById(
+			Program.MaterialInputs, Provider.strMaterialInputFieldId);
+		const auto* Binding = Find_UniqueProgramRowById(
+			Program.MaterialTextureBindings, Provider.strTextureBindingId);
+		const auto* Policy = Find_UniqueProgramRowById(
+			Program.MaterialPolicies, Provider.strSamplerPolicyRowId);
+		const auto* SidecarBinding = nullptr == Binding ? nullptr :
+			Find_UniqueSidecarRow(Authority.TextureBindingsById,
+				[Binding](const auto& Row)
+				{
+					return Row.strCandidateBindingId == Binding->Row.strId &&
+						Row.strCandidateBindingRowSha256 ==
+							Binding->Row.strRowSha256;
+				});
+		const auto ResourceIt = nullptr == SidecarBinding ?
+			Authority.TextureResourcesById.end() :
+			Authority.TextureResourcesById.find(
+				SidecarBinding->second.strResourceAuthorityId);
+		if (nullptr == Input || nullptr == Binding || nullptr == Policy ||
+			nullptr == SidecarBinding ||
+			ResourceIt == Authority.TextureResourcesById.end())
+		{
+			return Reject(strOutError,
+				"Diagnostic material texture lane join is ambiguous.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_TEXTURE_LANE Staged;
+		Staged.strShaderVariableName = std::string(strShaderVariable);
+		Staged.MaterialInput = Program_RowIdentity(*Input);
+		Staged.MaterialTextureBinding = Program_RowIdentity(*Binding);
+		Staged.MaterialPolicy = Program_RowIdentity(*Policy);
+		Staged.SidecarTextureBinding = Sidecar_RowIdentity(
+			SidecarBinding->first, SidecarBinding->second.strRowSha256);
+		Staged.SidecarTextureResource = Sidecar_RowIdentity(
+			ResourceIt->first, ResourceIt->second.strRowSha256);
+		Staged.strRuntimeAssetId = ResourceIt->second.strRuntimeAssetId;
+		Staged.strRawSha256 = ResourceIt->second.strRawSha256;
+
+		const auto* Renderer = Find_UniqueProgramRow(
+			Program.RendererTextureResources, [&](const auto& Row)
+			{
+				return Row.strEmitterId == Emitter.Row.strId &&
+					Row.strMaterialOccurrenceId == Occurrence.Row.strId &&
+					Row.strAssetId == Staged.strRuntimeAssetId;
+			});
+		if (nullptr != Renderer)
+		{
+			const auto* Decision = Find_UniqueSidecarRow(
+				Authority.RendererSlotBindingsById, [&](const auto& Row)
+				{
+					return Row.strTextureResourceId == Renderer->Row.strId &&
+						Row.strRendererResourceRowSha256 ==
+							Renderer->Row.strRowSha256 &&
+						Row.strMaterialOccurrenceId == Occurrence.Row.strId;
+				});
+			if (nullptr == Decision)
+				return Reject(strOutError,
+					"Diagnostic renderer texture decision is ambiguous.");
+			Staged.RendererTextureResource = Program_RowIdentity(*Renderer);
+			Staged.SidecarRendererSlotDecision = Sidecar_RowIdentity(
+				Decision->first, Decision->second.strRowSha256);
+		}
+		OutLane = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticStateBinding(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_MATERIAL_RECIPE& Recipe,
+		const std::string_view strFieldName,
+		EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING& OutBinding,
+		std::string& strOutError)
+	{
+		const auto* Binding = Find_UniqueProgramRow(
+			Program.MaterialRenderBindings, [&](const auto& Row)
+			{
+				return Row.strRecipeId == Recipe.Row.strId &&
+					Row.strFieldName == strFieldName;
+			});
+		if (nullptr == Binding ||
+			std::find(Recipe.RenderBindingIds.begin(),
+				Recipe.RenderBindingIds.end(), Binding->Row.strId) ==
+				Recipe.RenderBindingIds.end())
+		{
+			return Reject(strOutError,
+				"Diagnostic render-state binding is ambiguous.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_STATE_BINDING Staged;
+		Staged.ProgramBinding = Program_RowIdentity(*Binding);
+		if (!Binding->strPolicyRowId.empty())
+		{
+			const auto* Policy = Find_UniqueProgramRowById(
+				Program.MaterialPolicies, Binding->strPolicyRowId);
+			if (nullptr == Policy)
+				return Reject(strOutError,
+					"Diagnostic render-state policy is ambiguous.");
+			Staged.ProgramPolicy = Program_RowIdentity(*Policy);
+		}
+		const auto* Decision = Find_UniqueSidecarRow(
+			Authority.RenderStateDescriptorsById, [Binding](const auto& Row)
+			{
+				return Row.strRenderBindingId == Binding->Row.strId &&
+					Row.strRenderBindingRowSha256 == Binding->Row.strRowSha256;
+			});
+		if (nullptr != Decision)
+		{
+			Staged.SidecarDecision = Sidecar_RowIdentity(
+				Decision->first, Decision->second.strRowSha256);
+		}
+		OutBinding = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticMaterial(
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		if (!Emitter.strMaterialOccurrenceId.has_value())
+			return Reject(strOutError,
+				"Diagnostic selector has no material occurrence.");
+		const auto* Occurrence = Find_UniqueProgramRowById(
+			Program.MaterialOccurrences, *Emitter.strMaterialOccurrenceId);
+		const auto* Recipe = nullptr == Occurrence ? nullptr :
+			Find_UniqueProgramRowById(
+				Program.MaterialRecipes, Occurrence->strRecipeId);
+		const auto* Family = nullptr == Occurrence ? nullptr :
+			Find_UniqueProgramRowById(
+				Program.MaterialFamilies, Occurrence->strFamilyId);
+		const auto* TextureDecision = nullptr == Recipe || nullptr == Family ?
+			nullptr : Find_UniqueSidecarRow(
+				Authority.RecipeTextureBindingsById, [&](const auto& Row)
+				{
+					return Row.strRecipeId == Recipe->Row.strId &&
+						Row.strRecipeRowSha256 == Recipe->Row.strRowSha256 &&
+						Row.strFamilyId == Family->Row.strId &&
+						Row.strFamilyRowSha256 == Family->Row.strRowSha256;
+				});
+		if (nullptr == Occurrence || nullptr == Recipe || nullptr == Family ||
+			nullptr == TextureDecision || Recipe->NumericBindingSamples.empty())
+		{
+			return Reject(strOutError,
+				"Diagnostic material authority is incomplete.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_MATERIAL_BINDING Staged;
+		Staged.Occurrence = Program_RowIdentity(*Occurrence);
+		Staged.Recipe = Program_RowIdentity(*Recipe);
+		Staged.Family = Program_RowIdentity(*Family);
+		Staged.RecipeTextureDecision = Sidecar_RowIdentity(
+			TextureDecision->first, TextureDecision->second.strRowSha256);
+		Staged.strEvaluatorId = Family->strEvaluatorId;
+		Staged.iEvaluatorVersion = Family->iEvaluatorVersion;
+		Staged.strEvaluatorSha256 = Family->strEvaluatorSha256;
+		Staged.iFeatureMask = Family->iFeatureMask;
+		if (!Build_DiagnosticTextureLane(Program, Authority, Emitter,
+			*Occurrence, TextureDecision->second.Texture0Provider,
+			"g_SourceTexture0", Staged.TextureLanes[0u], strOutError) ||
+			!Build_DiagnosticTextureLane(Program, Authority, Emitter,
+				*Occurrence, TextureDecision->second.Texture1Provider,
+				"g_SourceTexture1", Staged.TextureLanes[1u], strOutError) ||
+			!Build_DiagnosticStateBinding(Program, Authority, *Recipe,
+				"blendmode", Staged.BlendState, strOutError) ||
+			!Build_DiagnosticStateBinding(Program, Authority, *Recipe,
+				"twosided", Staged.RasterizerState, strOutError) ||
+			!Build_DiagnosticStateBinding(Program, Authority, *Recipe,
+				"bdisabledepthtest", Staged.DepthStencilState, strOutError))
+		{
+			return false;
+		}
+		const auto& Sample = Recipe->NumericBindingSamples.front();
+		Staged.Constants.vUvScale = Sample.vUvScale;
+		Staged.Constants.vPanRotationAux = Sample.vPanRotationAux;
+		Staged.Constants.vColor = Sample.vColor;
+		Staged.Constants.vParams0 = Sample.vParams0;
+		Staged.Constants.vParams1 = Sample.vParams1;
+		Staged.Shader.strTechniqueName = "DefaultTechnique";
+		Staged.Shader.strEvaluatorEnabledVariable =
+			"g_ReconstructedMaterialEvaluatorEnabled";
+		Staged.Shader.strFeatureMaskVariable =
+			"g_ReconstructedMaterialFeatureMask";
+		Staged.Shader.strUvScaleVariable = "g_ReconstructedUVScale";
+		Staged.Shader.strPanRotationAuxVariable =
+			"g_ReconstructedPanRotationAux";
+		Staged.Shader.strColorVariable = "g_ReconstructedColor";
+		Staged.Shader.strParams0Variable = "g_ReconstructedParams0";
+		Staged.Shader.strParams1Variable = "g_ReconstructedParams1";
+		if (Emitter.eRenderer == EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE)
+		{
+			Staged.Shader.strShaderAssetId =
+				"Shader_VtxEffectMeshPreview.hlsl";
+			Staged.Shader.strPassName = "OpaqueBackDepthWrite";
+			Staged.Shader.iPassIndex = 0u;
+		}
+		else if (Emitter.eRenderer ==
+			EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE)
+		{
+			Staged.Shader.strShaderAssetId = "Shader_VtxEffectParticle.hlsl";
+			Staged.Shader.strPassName = "AlphaTwoSidedDepthRead";
+			Staged.Shader.iPassIndex = 1u;
+		}
+		else
+		{
+			return Reject(strOutError,
+				"Diagnostic selector renderer has no Mesh/Sprite shader route.");
+		}
+		OutSelection.Material = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticTiming(
+		const FIXED_STEP_SIMULATION& Simulation,
+		const EFFECT_RECONSTRUCTED_EXECUTION_EMITTER& PlanEmitter,
+		const uint64_t iSpawnSerial,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET& OutTiming,
+		std::string& strOutError)
+	{
+		const auto StateIt = Simulation.States.find(PlanEmitter.strEmitterId);
+		if (StateIt == Simulation.States.end())
+			return Reject(strOutError,
+				"Diagnostic selector timing emitter is absent.");
+		const auto Matches = [iSpawnSerial](const TIMING_PARTICLE& Particle)
+		{
+			return Particle.iSpawnSerial == iSpawnSerial;
+		};
+		const auto ParticleIt = std::find_if(StateIt->second.Particles.begin(),
+			StateIt->second.Particles.end(), Matches);
+		if (ParticleIt == StateIt->second.Particles.end() ||
+			std::count_if(StateIt->second.Particles.begin(),
+				StateIt->second.Particles.end(), Matches) != 1u)
+		{
+			return Reject(strOutError,
+				"Diagnostic selector occurrence is absent or duplicated.");
+		}
+		EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET Timing;
+		Timing.strOccurrenceId = ParticleIt->strOccurrenceId;
+		Timing.strScheduleId = PlanEmitter.strScheduleId;
+		Timing.strEmitterId = PlanEmitter.strEmitterId;
+		Timing.eRenderer = PlanEmitter.eRenderer;
+		Timing.iLoopIndex = ParticleIt->iLoopIndex;
+		Timing.iSpawnSerial = ParticleIt->iSpawnSerial;
+		Timing.iSpawnStep = ParticleIt->iSpawnStep;
+		Timing.iOccurrenceRandomValue = ParticleIt->iOccurrenceRandomValue;
+		Timing.iLifetimeRandomValue = ParticleIt->iLifetimeRandomValue;
+		Timing.fAgeSeconds = (std::max)(0.0,
+			Simulation.fSampleTimeSeconds - ParticleIt->fSpawnTimeSeconds);
+		Timing.fLifetimeSeconds = ParticleIt->fLifetimeSeconds;
+		if (Timing.iSpawnStep != Simulation.iFixedStepIndex ||
+			Timing.fAgeSeconds != 0.0)
+		{
+			return Reject(strOutError,
+				"Diagnostic selector must address a just-spawned occurrence.");
+		}
+		OutSelection.iExpectedOccurrenceRandomValue =
+			Timing.iOccurrenceRandomValue;
+		OutSelection.iExpectedLifetimeRandomValue = Timing.iLifetimeRandomValue;
+		OutSelection.fExpectedLifetimeSeconds = Timing.fLifetimeSeconds;
+		OutTiming = std::move(Timing);
+		return true;
+	}
+
+	bool_t Build_DiagnosticSelection(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const FIXED_STEP_SIMULATION& Simulation,
+		const std::string_view strScheduleId,
+		const std::string_view strEmitterId,
+		const uint64_t iSpawnSerial,
+		const EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND eKind,
+		const uint32_t iSelectionIndex,
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION& OutSelection,
+		std::string& strOutError)
+	{
+		const auto* ProgramSchedule = Find_UniqueProgramRowById(
+			Program.ActionSchedules, strScheduleId);
+		const auto* ProgramEmitter = Find_UniqueProgramRowById(
+			Program.Emitters, strEmitterId);
+		const auto PlanEmitterIt = Plan.Get_Emitters().find(strEmitterId);
+		if (nullptr == ProgramSchedule || nullptr == ProgramEmitter ||
+			PlanEmitterIt == Plan.Get_Emitters().end() ||
+			ProgramEmitter->strScheduleId != strScheduleId ||
+			PlanEmitterIt->second.strScheduleId != strScheduleId)
+		{
+			return Reject(strOutError,
+				"Diagnostic selector schedule/emitter join is ambiguous.");
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_EMITTER_SELECTION Staged;
+		Staged.eKind = eKind;
+		Staged.eRenderer = ProgramEmitter->eRenderer;
+		Staged.Schedule = Program_RowIdentity(*ProgramSchedule);
+		Staged.Emitter = Program_RowIdentity(*ProgramEmitter);
+		Staged.iEmitterOrder = ProgramEmitter->Row.iOrder;
+		Staged.bLocalSpace = ProgramEmitter->bLocalSpace;
+		Staged.strSizeUnitPolicy = ProgramEmitter->strSizeUnitPolicy;
+		if (!Build_DiagnosticHandlers(Program, *ProgramEmitter, Staged,
+			strOutError) ||
+			!Build_DiagnosticCylinder(Program, *ProgramEmitter, Staged,
+				strOutError) ||
+			(eKind == EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH &&
+			 !Build_DiagnosticGeometry(Program, *ProgramEmitter, Staged,
+				 strOutError)) ||
+			(eKind == EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE &&
+			 !Build_DiagnosticSpriteSink(Program, *ProgramEmitter, Staged,
+				 strOutError)) ||
+			!Build_DiagnosticMaterial(Program, Authority, *ProgramEmitter, Staged,
+				strOutError))
+		{
+			return false;
+		}
+		EFFECT_RECONSTRUCTED_CPU_OCCURRENCE_PACKET Timing;
+		if (!Build_DiagnosticTiming(Simulation, PlanEmitterIt->second,
+			iSpawnSerial, Staged, Timing, strOutError))
+		{
+			return false;
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
+			EMITTER_OPERATION Operation;
+		if (!Validate_EmitterSelection(Plan, Program, Authority, Staged,
+			iSelectionIndex, false, Operation, strOutError))
+		{
+			return false;
+		}
+		SELECTED_VISUAL_RESULT Visual;
+		if (!Evaluate_SelectedVisual(Plan, Operation, Staged, Timing,
+			Simulation.fSampleTimeSeconds, false, Visual, strOutError) ||
+			0u == Visual.iRandomDrawCount || 0u == Visual.iFinalRandomState)
+		{
+			if (strOutError.empty())
+				Reject(strOutError,
+					"Diagnostic selector visual expectation is empty.");
+			return false;
+		}
+		Staged.iExpectedVisualRandomDrawCount = Visual.iRandomDrawCount;
+		Staged.iExpectedFinalRandomState = Visual.iFinalRandomState;
+		OutSelection = std::move(Staged);
+		return true;
+	}
+
+	bool_t Build_DiagnosticRequest(
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& Program,
+		const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY& Authority,
+		const EFFECT_RECONSTRUCTED_SELECTED_DIAGNOSTIC_SELECTOR& Selector,
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST& OutRequest,
+		std::string& strOutError)
+	{
+		if (Selector.strScheduleId.empty() ||
+			Selector.strMeshEmitterId.empty() ||
+			Selector.strSpriteEmitterId.empty() ||
+			Selector.strMeshEmitterId == Selector.strSpriteEmitterId ||
+			0u == Selector.iFixedStepIndex ||
+			Selector.iFixedStepIndex >
+				static_cast<uint64_t>(EFFECT_RECONSTRUCTED_FIXED_STEP_HZ) * 60u)
+		{
+			return Reject(strOutError,
+				"Diagnostic Mesh/Sprite selector is invalid.");
+		}
+		FIXED_STEP_SIMULATION Simulation;
+		if (!Simulate_FixedSteps(
+			Plan, Selector.iFixedStepIndex, Simulation, strOutError))
+		{
+			return false;
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Staged;
+		Staged.iEvaluatorVersion =
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION;
+		Staged.strOccurrenceRngContract =
+			EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT;
+		Staged.iOccurrenceRngVersion =
+			EFFECT_RECONSTRUCTED_OCCURRENCE_RNG_VERSION;
+		Staged.iRequiredFixedStepIndex = Selector.iFixedStepIndex;
+		Staged.iRequiredSpawnSerial = Selector.iSpawnSerial;
+		Staged.Emitters.resize(2u);
+		if (!Build_DiagnosticSelection(Plan, Program, Authority, Simulation,
+			Selector.strScheduleId, Selector.strMeshEmitterId,
+			Selector.iSpawnSerial,
+			EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH, 0u,
+			Staged.Emitters[0u], strOutError) ||
+			!Build_DiagnosticSelection(Plan, Program, Authority, Simulation,
+				Selector.strScheduleId, Selector.strSpriteEmitterId,
+				Selector.iSpawnSerial,
+				EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE, 1u,
+				Staged.Emitters[1u], strOutError))
+		{
+			return false;
+		}
+		const uint64_t HandlerCount =
+			static_cast<uint64_t>(Staged.Emitters[0u].Handlers.size()) +
+			static_cast<uint64_t>(Staged.Emitters[1u].Handlers.size());
+		if (0u == HandlerCount ||
+			HandlerCount > (std::numeric_limits<uint32_t>::max)())
+		{
+			return Reject(strOutError,
+				"Diagnostic selector handler count overflowed.");
+		}
+		Staged.iExpectedConsumedHandlerCount =
+			static_cast<uint32_t>(HandlerCount);
+		OutRequest = std::move(Staged);
 		return true;
 	}
 
@@ -3914,6 +4638,40 @@ bool_t Client::CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
 	return true;
 }
 
+bool_t Client::CEffectReconstructedSelectedDiagnosticFactory::Prepare(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		pRuntimePreparation,
+	const EFFECT_RECONSTRUCTED_SELECTED_DIAGNOSTIC_SELECTOR& Selector,
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>&
+		InOutPreparation,
+	std::string& strOutError)
+{
+	const auto Program = nullptr == pRuntimePreparation ? nullptr :
+		pRuntimePreparation->Get_Program();
+	const auto Authority = nullptr == pRuntimePreparation ? nullptr :
+		pRuntimePreparation->Get_RenderResourceAuthority();
+	if (nullptr == Program || nullptr == Authority ||
+		Program->Admission.bRuntimeExecution || Program->Admission.bProduct)
+	{
+		return Reject(strOutError,
+			"Diagnostic factory requires one immutable nonProduct preparation.");
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Plan;
+	if (!CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+		pRuntimePreparation, Plan, strOutError))
+	{
+		return false;
+	}
+	EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Request;
+	if (!Build_DiagnosticRequest(
+		*Plan, *Program, *Authority, Selector, Request, strOutError))
+	{
+		return false;
+	}
+	return CEffectReconstructedSelectedEvaluator::Prepare(
+		std::move(Plan), Request, InOutPreparation, strOutError);
+}
+
 bool_t Client::CEffectReconstructedSelectedEvaluator::Prepare(
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> pPlan,
 	const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST& Request,
@@ -4016,7 +4774,7 @@ bool_t Client::CEffectReconstructedSelectedEvaluator::Prepare(
 		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA::
 			EMITTER_OPERATION Operation;
 		if (!Validate_EmitterSelection(*pPlan, *Program, *Authority, Selection,
-			Index, Operation, strOutError))
+			Index, true, Operation, strOutError))
 		{
 			return false;
 		}
@@ -4154,7 +4912,7 @@ bool_t Client::CEffectReconstructedSelectedEvaluator::Evaluate(
 		}
 		SELECTED_VISUAL_RESULT Visual;
 		if (!Evaluate_SelectedVisual(*Plan, Operation, Selection, Timing,
-			Simulation.fSampleTimeSeconds, Visual, strOutError))
+			Simulation.fSampleTimeSeconds, true, Visual, strOutError))
 		{
 			return false;
 		}

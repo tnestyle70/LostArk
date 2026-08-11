@@ -1,4 +1,5 @@
 #include "Shader_EffectCommon.hlsli"
+#include "Shader_Artist31470Diagnostic.hlsli"
 
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
@@ -52,6 +53,11 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_ReconstructedMaterialEvaluatorEnabled)
+    {
+        return Shade_ReconstructedMaterial(
+            input.uv, float3(1.f, 1.f, 1.f), input.color);
+    }
     EFFECT_PS_OUT current = Shade_EffectParticleUV(
         input.uv, input.localUV, float3(1.f, 1.f, 1.f), input.color,
         input.dynamicParameter);
