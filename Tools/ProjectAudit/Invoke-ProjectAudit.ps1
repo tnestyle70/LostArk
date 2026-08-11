@@ -330,67 +330,103 @@ try {
 	}
 	$selectedPlacementId = '17150846598057876717'
 	$selectedSuppressionAliasId = '10426387515393336411'
+	# Each co-located DEPLOY_ITR_02316 wall contributes exactly one debris emitter
+	# plus one suppress-only alias. Adding a wall adds a pair here, never a lone alias.
+	$selectedEmitterPairs = @(
+		@{ Source = $selectedPlacementId; Alias = $selectedSuppressionAliasId },
+		@{ Source = '9863801195242004116'; Alias = '12598937882346321836' })
 	$selectedProfile = @($profiles | Where-Object {
 		$_.profileId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId.preview" -and
 		$_.groupId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId"
 	})
-	$selectedDeployRow = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements' |
-		Where-Object { $_ -match ("^" + $selectedPlacementId + '\s+\d+\s+\d+\s+"[^"]+"\s+"DEPLOY_ITR_02316"\s') })
-	$selectedAliasDeployRow = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements' |
-		Where-Object { $_ -match ("^" + $selectedSuppressionAliasId + '\s+\d+\s+\d+\s+"[^"]+"\s+"DEPLOY_ITR_02316"\s') })
+	$deployPlacementLines = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements')
+	$expectedGroupMembers = [System.Collections.Generic.List[string]]::new()
+	$matchedDeployRows = 0
+	foreach ($emitterPair in $selectedEmitterPairs) {
+		foreach ($pairPlacementId in @($emitterPair.Source, $emitterPair.Alias)) {
+			$expectedGroupMembers.Add($pairPlacementId)
+			$matchedDeployRows += @($deployPlacementLines | Where-Object {
+				$_ -match ("^" + $pairPlacementId + '\s+\d+\s+\d+\s+"[^"]+"\s+"DEPLOY_ITR_02316"\s')
+			}).Count
+		}
+	}
+	$selectedElements = if ($selectedProfile.Count -eq 1) { @($selectedProfile[0].elements) } else { @() }
+	$selectedEmittersValid = $selectedElements.Count -eq $selectedEmitterPairs.Count
+	for ($pairIndex = 0; $selectedEmittersValid -and $pairIndex -lt $selectedEmitterPairs.Count; $pairIndex++) {
+		$pairElement = $selectedElements[$pairIndex]
+		$pairExpected = $selectedEmitterPairs[$pairIndex]
+		if ($pairElement.sourceRuntimePlacementId -cne $pairExpected.Source -or
+			@($pairElement.suppressionAliasPlacementIds).Count -ne 1 -or
+			$pairElement.suppressionAliasPlacementIds[0] -cne $pairExpected.Alias) {
+			$selectedEmittersValid = $false
+		}
+	}
 	$selectedGroup = @($worldEvents.groups | Where-Object {
 		$_.groupId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId"
 	})
+	$selectedGroupMembers = if ($selectedGroup.Count -eq 1) {
+		@($selectedGroup[0].memberPlacementIds | ForEach-Object { [string]$_ })
+	} else { @() }
 	$simulationAuthoringValid =
 		$simulation.schema -ceq 'lostark.destruction-simulation' -and (Test-JsonNumber $simulation.formatVersion) -and
 		[double]$simulation.formatVersion -eq 2.0 -and $simulation.areaId -ceq 'LV_LUT_HEARTRB_ED' -and
 		$profiles.Count -ge 1 -and $profiles.Count -le 128 -and $simulationErrors.Count -eq 0 -and
 		@($worldEvents.bindings | Where-Object { $_.enabled -isnot [bool] -or $_.enabled }).Count -eq 0 -and
-		$selectedProfile.Count -eq 1 -and @($selectedProfile[0].elements).Count -eq 1 -and
-		$selectedProfile[0].elements[0].sourceRuntimePlacementId -ceq $selectedPlacementId -and
-		@($selectedProfile[0].elements[0].suppressionAliasPlacementIds).Count -eq 1 -and
-		$selectedProfile[0].elements[0].suppressionAliasPlacementIds[0] -ceq $selectedSuppressionAliasId -and
-		$selectedGroup.Count -eq 1 -and @($selectedGroup[0].memberPlacementIds).Count -eq 2 -and
-		@($selectedGroup[0].memberPlacementIds | Where-Object {
-			$_ -ceq $selectedPlacementId -or $_ -ceq $selectedSuppressionAliasId
-		}).Count -eq 2 -and $selectedDeployRow.Count -eq 1 -and $selectedAliasDeployRow.Count -eq 1
+		$selectedProfile.Count -eq 1 -and $selectedEmittersValid -and
+		$selectedGroup.Count -eq 1 -and
+		$selectedGroupMembers.Count -eq $expectedGroupMembers.Count -and
+		@(Compare-Object @($expectedGroupMembers) $selectedGroupMembers -CaseSensitive).Count -eq 0 -and
+		$matchedDeployRows -eq $expectedGroupMembers.Count
 	Add-Check 'maps.valtan-destruction-simulation-authoring' `
 		$simulationAuthoringValid `
-		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) selectedDeployRows=$($selectedDeployRow.Count) aliasDeployRows=$($selectedAliasDeployRow.Count)"
+		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) emitters=$($selectedElements.Count) groupMembers=$($selectedGroupMembers.Count) deployRows=$matchedDeployRows"
 
-	$recipe = Read-Json 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json'
-	$pieces = @($recipe.pieces)
-	$recipeValid = $recipe.schema -ceq 'lostark.deploy-wall-debris-recipe' -and
-		(Test-JsonNumber $recipe.formatVersion) -and [double]$recipe.formatVersion -eq 1.0 -and
-		$recipe.provenance -ceq 'PROJECT_AUTHORED' -and $recipe.sourceAssetId -ceq 'DEPLOY_ITR_02316' -and
-		$recipe.partition.sourceTriangleCount -eq 17731 -and
-		$recipe.partition.coverage -ceq 'EVERY_SOURCE_TRIANGLE_EXACTLY_ONCE' -and $pieces.Count -eq 12
-	$sourceModelPath = Join-Path $repoRoot ([string]$recipe.sourceFracturedWModel)
-	$recipeValid = $recipeValid -and (Test-Path -LiteralPath $sourceModelPath) -and
-		(Get-FileHash -LiteralPath $sourceModelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $recipe.sourceSha256
+	# One exact 12-shard recipe per source Deploy wall asset. Runtime admission keys
+	# on sourceDeployAssetId, so every cooked asset must stay 1:1 with its receipt.
+	$debrisRecipes = @(
+		@{ Asset = 'DEPLOY_ITR_02316'; Triangles = 17731L },
+		@{ Asset = 'DEPLOY_ITR_02315'; Triangles = 8867L })
+	$recipeValid = $true
+	$recipePieces = [System.Collections.Generic.List[object]]::new()
 	$triangleTotal = 0L
-	for ($pieceIndex = 0; $recipeValid -and $pieceIndex -lt 12; ++$pieceIndex) {
-		$piece = $pieces[$pieceIndex]
-		$suffix = $pieceIndex.ToString('00', [Globalization.CultureInfo]::InvariantCulture)
-		$piecePath = Join-Path $resourceRoot ([string]$piece.assetId)
-		$units = @($piece.pivotWModelUnits)
-		$meters = @($piece.pivotMetersAtScale1)
-		$recipeValid = $piece.pieceId -ceq "piece.$suffix" -and
-			$piece.assetId -ceq "Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_$suffix.wmodel" -and
-			$piece.sha256 -is [string] -and $piece.sha256 -match '^[0-9a-f]{64}$' -and
-			(Test-Path -LiteralPath $piecePath) -and
-			(Get-FileHash -LiteralPath $piecePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $piece.sha256 -and
-			(Test-JsonNumber $piece.triangleCount) -and (Test-JsonNumber $piece.vertexCount) -and
-			(Test-JsonNumber $piece.indexCount) -and [long]$piece.indexCount -eq 3L * [long]$piece.triangleCount -and
-			$units.Count -eq 3 -and $meters.Count -eq 3
-		for ($axis = 0; $recipeValid -and $axis -lt 3; ++$axis) {
-			$recipeValid = (Test-JsonNumber $units[$axis]) -and (Test-JsonNumber $meters[$axis]) -and
-				[math]::Abs([double]$meters[$axis] - [double]$units[$axis] * 0.01) -le 0.00000001
+	foreach ($recipeEntry in $debrisRecipes) {
+		$recipe = Read-Json "Data\Maps\Authoring\LV_LUT_HEARTRB_ED\$($recipeEntry.Asset).debrisrecipe.json"
+		$pieces = @($recipe.pieces)
+		$recipeValid = $recipeValid -and $recipe.schema -ceq 'lostark.deploy-wall-debris-recipe' -and
+			(Test-JsonNumber $recipe.formatVersion) -and [double]$recipe.formatVersion -eq 1.0 -and
+			$recipe.provenance -ceq 'PROJECT_AUTHORED' -and $recipe.sourceAssetId -ceq $recipeEntry.Asset -and
+			[long]$recipe.partition.sourceTriangleCount -eq $recipeEntry.Triangles -and
+			$recipe.partition.coverage -ceq 'EVERY_SOURCE_TRIANGLE_EXACTLY_ONCE' -and $pieces.Count -eq 12
+		$sourceModelPath = Join-Path $repoRoot ([string]$recipe.sourceFracturedWModel)
+		$recipeValid = $recipeValid -and (Test-Path -LiteralPath $sourceModelPath) -and
+			(Get-FileHash -LiteralPath $sourceModelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $recipe.sourceSha256
+		$assetTriangles = 0L
+		for ($pieceIndex = 0; $recipeValid -and $pieceIndex -lt 12; ++$pieceIndex) {
+			$piece = $pieces[$pieceIndex]
+			$suffix = $pieceIndex.ToString('00', [Globalization.CultureInfo]::InvariantCulture)
+			$piecePath = Join-Path $resourceRoot ([string]$piece.assetId)
+			$units = @($piece.pivotWModelUnits)
+			$meters = @($piece.pivotMetersAtScale1)
+			$recipeValid = $piece.pieceId -ceq "piece.$suffix" -and
+				$piece.assetId -ceq "Deploy/LV_LUT_HEARTRB_ED/$($recipeEntry.Asset)/fractured/$($recipeEntry.Asset)_CHUNK_$suffix.wmodel" -and
+				$piece.sha256 -is [string] -and $piece.sha256 -match '^[0-9a-f]{64}$' -and
+				(Test-Path -LiteralPath $piecePath) -and
+				(Get-FileHash -LiteralPath $piecePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $piece.sha256 -and
+				(Test-JsonNumber $piece.triangleCount) -and (Test-JsonNumber $piece.vertexCount) -and
+				(Test-JsonNumber $piece.indexCount) -and [long]$piece.indexCount -eq 3L * [long]$piece.triangleCount -and
+				$units.Count -eq 3 -and $meters.Count -eq 3
+			for ($axis = 0; $recipeValid -and $axis -lt 3; ++$axis) {
+				$recipeValid = (Test-JsonNumber $units[$axis]) -and (Test-JsonNumber $meters[$axis]) -and
+					[math]::Abs([double]$meters[$axis] - [double]$units[$axis] * 0.01) -le 0.00000001
+			}
+			$assetTriangles += [long]$piece.triangleCount
+			$recipePieces.Add(@{ Piece = $piece; Asset = $recipeEntry.Asset })
 		}
-		$triangleTotal += [long]$piece.triangleCount
+		$recipeValid = $recipeValid -and $assetTriangles -eq $recipeEntry.Triangles
+		$triangleTotal += $assetTriangles
 	}
-	$recipeValid = $recipeValid -and $triangleTotal -eq 17731
-	Add-Check 'maps.valtan-deploy-wall-debris-recipe' $recipeValid "pieces=$($pieces.Count) triangles=$triangleTotal"
+	Add-Check 'maps.valtan-deploy-wall-debris-recipe' $recipeValid `
+		"recipes=$($debrisRecipes.Count) pieces=$($recipePieces.Count) triangles=$triangleTotal"
 
 	$runtimeCode = [regex]::Replace($destructionRuntimeSource, '(?s)/\*.*?\*/', '')
 	$runtimeCode = [regex]::Replace($runtimeCode, '(?m)//.*$', '')
@@ -400,15 +436,17 @@ try {
 		')[fF]?\s*,\s*"(?<Source>[^"]+)"\s*,\s*\{\s*(?<X>' + $numberPattern + ')[fF]?\s*,\s*(?<Y>' +
 		$numberPattern + ')[fF]?\s*,\s*(?<Z>' + $numberPattern + ')[fF]?\s*\}\s*\}'
 	$runtimeSpecs = if ($specFunction.Success) { @([regex]::Matches($specFunction.Groups['Body'].Value, $specPattern)) } else { @() }
-	$runtimeValid = $runtimeSpecs.Count -eq 12 -and
+	$runtimeValid = $runtimeSpecs.Count -eq $recipePieces.Count -and
 		$runtimeCode -match 'const\s+auto&\s+modelSpecs\s*=\s*Get_ProjectAuthoredDebrisModelSpecs\(\)\s*;' -and
 		$runtimeCode -match 'spec\.sourceDeployAssetId\s*==\s*runtime\.sourceDeployAssetId'
-	for ($specIndex = 0; $runtimeValid -and $specIndex -lt 12; ++$specIndex) {
-		$suffix = $specIndex.ToString('00', [Globalization.CultureInfo]::InvariantCulture)
+	for ($specIndex = 0; $runtimeValid -and $specIndex -lt $recipePieces.Count; ++$specIndex) {
+		$suffix = ($specIndex % 12).ToString('00', [Globalization.CultureInfo]::InvariantCulture)
 		$spec = $runtimeSpecs[$specIndex]
-		$piece = $pieces[$specIndex]
-		$runtimeValid = $spec.Groups['Tag'].Value -ceq "Prototype_Component_Model_DestructionWall_02316_Chunk$suffix" -and
-			$spec.Groups['Asset'].Value -ceq $piece.assetId -and $spec.Groups['Source'].Value -ceq 'DEPLOY_ITR_02316' -and
+		$expected = $recipePieces[$specIndex]
+		$piece = $expected.Piece
+		$assetTag = ([string]$expected.Asset).Substring(([string]$expected.Asset).Length - 5)
+		$runtimeValid = $spec.Groups['Tag'].Value -ceq "Prototype_Component_Model_DestructionWall_${assetTag}_Chunk$suffix" -and
+			$spec.Groups['Asset'].Value -ceq $piece.assetId -and $spec.Groups['Source'].Value -ceq $expected.Asset -and
 			[single][double]$spec.Groups['Scale'].Value -eq [single]1.0
 		$axes = @('X', 'Y', 'Z')
 		for ($axis = 0; $runtimeValid -and $axis -lt 3; ++$axis) {

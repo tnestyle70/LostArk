@@ -150,9 +150,19 @@ unavailable 상태로 격리한다.
 부터 `_11.wmodel`까지다. 12개 exact prototype은 optional atomic batch이며 하나라도 준비되지 않으면
 부분 exact 등록 대신 위 generic stone 12-instance 표현으로 fallback한다.
 
-선택 source placement `17150846598057876717`과 거의 같은 위치의 별도 placement
-`10426387515393336411`은 WorldEvents group에는 함께 들어가지만 simulation에서는 source emitter 1개와
-`suppressionAliasPlacementIds` 1개로 나눈다. alias를 두 번째 emitter로 만들면 24조각이 되므로 금지한다.
+이 group은 인접한 `DEPLOY_ITR_02316` 벽 두 칸을 함께 날린다. 각 벽은 자기 source emitter 1개와
+`suppressionAliasPlacementIds` 1개로 나뉘며, 네 placement ID가 모두 같은 WorldEvents group member다.
+
+```text
+벽 1  source 17150846598057876717  alias 10426387515393336411  (156.480996, 23.04, -127.7017)
+벽 2  source 9863801195242004116   alias 12598937882346321836  (155.489756, 23.04, -127.5063)
+```
+
+각 쌍의 alias는 source와 Z로 0.000137m만 떨어진 co-located sibling이라 **절대 두 번째 emitter로
+만들지 않는다.** 그러면 같은 벽 하나에서 24조각이 나온다. 반면 1.01m 떨어진 별개의 벽은 자기
+emitter를 갖는 것이 정상이며, 그래서 이 profile의 All Fragments는 `2 * 12 = 24`개다. exact recipe는
+placement가 아니라 `sourceDeployAssetId`로 조회되므로 두 벽이 같은 12-piece recipe를 재사용하고
+새 cook이나 C++ 등록은 필요하지 않다.
 optional proxy 누락 때문에 Valtan Area, DeployProp 편집, World Destruction 문서 편집 전체를 막아서는
 안 된다. Map 담당자에게는 위 네 asset ID와 물리 `Client/Bin/Resources/Effect/Valtan/Meshes/FX_SM_00`
 폴더, 그리고 02316 CHUNK 12개가 있는 `Client/Bin/Resources/Deploy/.../fractured` 물리 폴더를 함께

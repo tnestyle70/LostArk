@@ -22,6 +22,14 @@ namespace
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT);
 	}
 
+#ifdef _DEBUG
+	string Describe_MapEditorServerEndpoint()
+	{
+		return CNetworkManager::Resolve_MapEditorServerHost() + ":" +
+			to_string(CNetworkManager::DEFAULT_SERVER_PORT);
+	}
+#endif
+
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
 	{
@@ -174,7 +182,10 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 
 	CNetworkManager& networkManager = CNetworkManager::Get();
 	networkManager.Close_ServerConnection();
-	const string serverHost = CNetworkManager::Resolve_ServerHost();
+	const string serverHost =
+		LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose ?
+		CNetworkManager::Resolve_MapEditorServerHost() :
+		CNetworkManager::Resolve_ServerHost();
 	if (!networkManager.Connect_To_Server(
 		serverHost,
 		CNetworkManager::DEFAULT_SERVER_PORT))
@@ -349,6 +360,14 @@ void CLevel_Lobby::Render_StagePanel()
 		hasExplicitSelection ? "" : " (default)");
 	const string serverEndpoint = Describe_ServerEndpoint();
 	ImGui::TextDisabled("Server: %s", serverEndpoint.c_str());
+#ifdef _DEBUG
+	const string mapEditorEndpoint = Describe_MapEditorServerEndpoint();
+	if (mapEditorEndpoint != serverEndpoint)
+	{
+		ImGui::TextDisabled(
+			"Test (Map Editor): %s", mapEditorEndpoint.c_str());
+	}
+#endif
 	ImGui::Separator();
 
 	const bool_t isBusy = ENTRY_STATE::IDLE != m_eEntryState ||

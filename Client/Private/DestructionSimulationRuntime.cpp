@@ -272,6 +272,66 @@ Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
 			L"Prototype_Component_Model_DestructionWall_02316_Chunk11",
 			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_11.wmodel",
 			1.f, "DEPLOY_ITR_02316", { 0.057664415f, 2.775639976f, -0.103123999f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.033496052f, 0.204034559f, -1.096159982f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.016332751f, 0.202313194f, 0.146141227f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02315", { 0.022437251f, 0.207860004f, 1.311927325f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.076481746f, 0.642837210f, -1.014285155f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.044129217f, 0.670340510f, 0.160370814f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02315", { 0.005046527f, 0.635590525f, 1.241675034f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.063802826f, 0.850468018f, -0.897982432f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.087943051f, 0.846026086f, 0.124011051f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.043536248f, 0.844825906f, 1.066360374f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.119356901f, 1.221537122f, -0.805073882f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.121444100f, 1.117028897f, 0.113987303f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02315_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02315", { -0.021922151f, 1.126421284f, 0.996424876f }
 		}
 	};
 	return specs;
