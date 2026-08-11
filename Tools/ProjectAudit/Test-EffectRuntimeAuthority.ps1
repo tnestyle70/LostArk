@@ -2,7 +2,9 @@
 param(
     [string]$RepositoryRoot = '',
     [string]$HarnessPath = '',
-    [string]$ReconstructedProgramPath = ''
+    [string]$ReconstructedProgramPath = '',
+    [string]$RuntimeCatalogPath = '',
+    [string]$ResourceRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,6 +27,16 @@ $header = Read-RequiredSource 'Client\Public\Effect_RuntimeAuthority.h'
 $source = Read-RequiredSource 'Client\Private\Effect_RuntimeAuthority.cpp'
 $catalogHeader = Read-RequiredSource 'Client\Public\Effect_Catalog.h'
 $catalogSource = Read-RequiredSource 'Client\Private\Effect_Catalog.cpp'
+$presentationHeader = Read-RequiredSource `
+	'Client\Public\Effect_PresentationService.h'
+$presentationSource = Read-RequiredSource `
+	'Client\Private\Effect_PresentationService.cpp'
+$objectHeader = Read-RequiredSource 'Client\Public\Effect_Object.h'
+$objectSource = Read-RequiredSource 'Client\Private\Effect_Object.cpp'
+$playbackHeader = Read-RequiredSource 'Client\Public\Effect_Playback.h'
+$playbackSource = Read-RequiredSource 'Client\Private\Effect_Playback.cpp'
+$rendererHeader = Read-RequiredSource 'Client\Public\Effect_DocumentRenderer.h'
+$rendererSource = Read-RequiredSource 'Client\Private\Effect_DocumentRenderer.cpp'
 $jsonHeader = Read-RequiredSource 'Client\Public\DataJson.h'
 $jsonSource = Read-RequiredSource 'Client\Private\DataJson.cpp'
 $harness = Read-RequiredSource `
@@ -105,11 +117,31 @@ if ($harnessProject -notmatch 'LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS')
 }
 foreach ($catalogBoundary in @(
     'g_RuntimeAuthorities',
+	'g_RuntimeProgramEntries',
     'Find_RuntimeAuthority',
+	'Find_RuntimeProgramEntry',
+	'Find_ReconstructedRuntimeProgram',
     'Contains_RuntimeAuthority',
+	'Contains_ReconstructedRuntimeProgram',
     'Get_RuntimeAuthorityAssetIds',
+	'Get_ReconstructedRuntimeProgramAssetIds',
+	'Is_ReconstructedRuntimeProgramAssetId',
     'legacy formatVersion 2 or typed formatVersion 3',
-    'Parse_DerivedEntry')) {
+	'Parse_DerivedEntry',
+	'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM',
+	'reconstructedRuntimeProgram',
+	'publishReceiptSha256',
+	'PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY',
+	'CANONICAL_JSON_EXCLUDING_RECEIPT_SHA256',
+	'74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2',
+	'5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3',
+	'92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94',
+	'5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e',
+	'5407c3d0983c3aaf4bf085904ef8d7b5f3e9119ae448703ff7e8f612a1c144fb',
+	'ee4a12cf5cbd63bc9af6b0af18ca37da7631a4b0b6ed1465c95bf99fb9be8825',
+	'candidateUtf8Json',
+	'UTF8_JSON_EXACT',
+	'df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c')) {
     if ($catalogHeader -notmatch [regex]::Escape($catalogBoundary) -and
         $catalogSource -notmatch [regex]::Escape($catalogBoundary)) {
         throw "Effect Catalog format3 boundary is missing: $catalogBoundary"
@@ -118,6 +150,84 @@ foreach ($catalogBoundary in @(
 if ($catalogSource -match 'ResourceDocument.*RuntimeAuthorit' -or
     $catalogSource -match 'Compile_Assembly\(.*RuntimeAuthorit') {
     throw 'Compiled runtime authority must not become a raw drawable document.'
+}
+foreach ($transportBoundary in @(
+	'EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY',
+	'EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION',
+	'pReconstructedRuntimePreparation',
+	'Get_ReconstructedRuntimeEntry',
+	'Get_ReconstructedRuntimePreparation',
+	'CEffectReconstructedRuntimeBoundary',
+	'EFFECT_RECONSTRUCTED_ANCHOR_BINDING',
+	'strOwnerEmitterId')) {
+	if ($catalogHeader -notmatch [regex]::Escape($transportBoundary) -and
+		$presentationHeader -notmatch [regex]::Escape($transportBoundary) -and
+		$presentationSource -notmatch [regex]::Escape($transportBoundary) -and
+		$objectHeader -notmatch [regex]::Escape($transportBoundary) -and
+		$playbackHeader -notmatch [regex]::Escape($transportBoundary) -and
+		$rendererHeader -notmatch [regex]::Escape($transportBoundary)) {
+		throw "Reconstructed Catalog entry transport boundary is missing: $transportBoundary"
+	}
+}
+foreach ($sharedGate in @(
+	'Prepare_Presentation',
+	'Admit_ProductSpawn',
+	'Admit_Execution',
+	'Admit_Submit',
+	'Admit_Render')) {
+	if ($catalogHeader -notmatch [regex]::Escape($sharedGate) -or
+		$catalogSource -notmatch [regex]::Escape($sharedGate) -or
+		$harness -notmatch [regex]::Escape($sharedGate)) {
+		throw "Reconstructed shared production gate is not executable in harness: $sharedGate"
+	}
+}
+foreach ($callsite in @(
+	@{ Source = $presentationSource; Token = 'CEffectReconstructedRuntimeBoundary::Prepare_Presentation' },
+	@{ Source = $presentationSource; Token = 'CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn' },
+	@{ Source = $objectSource; Token = 'EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT' },
+	@{ Source = $objectSource; Token = 'm_ReconstructedRuntimeBoundary.Admit_Execution' },
+	@{ Source = $objectSource; Token = 'm_ReconstructedRuntimeBoundary.Admit_Submit' },
+	@{ Source = $objectSource; Token = 'm_ReconstructedRuntimeBoundary.Admit_Render' },
+	@{ Source = $playbackSource; Token = 'EFFECT_RECONSTRUCTED_RUNTIME_SEAM::PLAYBACK' },
+	@{ Source = $playbackSource; Token = 'm_ReconstructedRuntimeBoundary.Admit_Execution' },
+	@{ Source = $rendererSource; Token = 'EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER' },
+	@{ Source = $rendererSource; Token = 'm_ReconstructedRuntimeBoundary.Admit_Render' })) {
+	if ($callsite.Source -notmatch [regex]::Escape($callsite.Token)) {
+		throw "Real Effect callsite does not delegate to shared reconstructed gate: $($callsite.Token)"
+	}
+}
+if ($catalogSource -notmatch 'EXPECTED_OWNER_EMITTER_IDS' -or
+	$catalogSource -notmatch 'AnchorRequest count is not frozen at 5') {
+	throw 'Reconstructed AnchorRequests must preserve exact five owner emitter tuples.'
+}
+if (($objectHeader + $playbackHeader + $rendererHeader) -match
+	'Stage_ReconstructedRuntimeProgram\s*\([^\)]*EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM') {
+	throw 'Raw reconstructed program staging must not bypass the Catalog-owned entry handle.'
+}
+if ($catalogSource -match 'Data/Effects/Imported/Artist/Candidates' -or
+	$catalogSource -match 'reconstructed-runtime-program\.candidate\.json' -or
+	$catalogSource -match 'Replace\([^\)]*\\r\\n[^\)]*\\n') {
+	throw 'Production Catalog must consume exact embedded candidate bytes without path I/O or EOL normalization.'
+}
+foreach ($actualCatalogBoundary in @(
+	'PublishedCatalogPath',
+	'PublishedCatalogStructure',
+	'bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29',
+	'PublishedComponents->Get_Array().size() == 555u',
+	'PublishedEffects->Get_Array().size() == 102u',
+	'WriteCatalog(PublishedCatalogText)',
+	'argc <= 3')) {
+	if ($harness -notmatch [regex]::Escape($actualCatalogBoundary)) {
+		throw "Actual tracked reconstructed Catalog harness boundary is missing: $actualCatalogBoundary"
+	}
+}
+$publishedLoadIndex = $harness.IndexOf(
+	'const bool_t LoadedA = PublishedCatalogStructure')
+$externalCandidateReadIndex = $harness.IndexOf(
+	'const bool_t ExactFixture = Read_FrozenReconstructedProgramFixture')
+if ($publishedLoadIndex -lt 0 -or $externalCandidateReadIndex -lt 0 -or
+	$publishedLoadIndex -ge $externalCandidateReadIndex) {
+	throw 'The tracked runtime Catalog must load before the external candidate is read for synthetic attacks.'
 }
 if ($jsonHeader -notmatch 'Was_FloatingPointToken' -or
     $jsonSource -notmatch 'bFloatingPointToken') {
@@ -132,11 +242,42 @@ foreach ($registration in @(
 foreach ($test in @(
     'Runtime Authority Canonical JSON Preserves Integer And Float Token Domains',
     'Format3 Compiled Authority Parses As Immutable Non-Executable Runtime Input',
+	'Format3 Generic17 Rejects Reconstructed Extension Field Transactionally',
     'Format3 Product Promotion Rejects Before Replacing Parsed Authority',
     'Format3 Cross-Layer Compiled IR Hash Mutation Rejects Transactionally',
     'Format3 Catalog Commits Compiled Authority Without Raw Drawable Document',
     'Format3 Floating Point Version Rejects And Preserves Prior Catalog',
     'Format3 Catalog Failed Reload Preserves Prior Revision And Pointer',
+	'Artist 31470 Synthetic Attack Fixture Uses Exact Frozen LF Candidate Bytes',
+	'Artist 31470 Actual Tracked Catalog Commits Exact Immutable Program Identity And Six Renderer Families',
+	'Artist 31470 Reconstructed Catalog Has Zero Raw Document Fallback',
+	'Artist 31470 Catalog Presentation Object Playback Renderer Preserve One Opaque Handle',
+	'Artist 31470 Shared Object Stage Rejects Invalid Restage Transactionally',
+	'Artist 31470 Reconstructed Product Spawn Remains Fail Closed',
+	'Artist 31470 Catalog Reload Keeps Generation A Alive And Queries Generation B',
+	'Artist 31470 Catalog Snapshot Restore And Clear Preserve External Program Lifetimes',
+	'Artist 31470 Catalog Malformed Reload Preserves Revision And Program Pointer',
+	'Artist 31470 Catalog Candidate Identity Mutation Preserves Revision And Program Pointer',
+	'Artist 31470 Catalog Section SHA Mutation Preserves Revision And Program Pointer',
+	'Artist 31470 Catalog Program SHA Mutation Preserves Revision And Program Pointer',
+	'Artist 31470 Catalog Rejects Embedded CRLF Candidate Without Production Normalization',
+	'Artist 31470 Catalog Rejects Missing Outer10 Field',
+	'Artist 31470 Catalog Rejects Extra Outer10 Field',
+	'Artist 31470 Catalog Rejects Wrong Outer10 Field Type',
+	'Artist 31470 Catalog Rejects Missing Link16 Field',
+	'Artist 31470 Catalog Rejects Extra Link16 Field',
+	'Artist 31470 Catalog Rejects Wrong Link16 Field Type',
+	'Artist 31470 Catalog Rejects Reordered Link16 Fields',
+	'Artist 31470 Catalog Rejects Missing Receipt25 Field',
+	'Artist 31470 Catalog Rejects Extra Receipt25 Field',
+	'Artist 31470 Catalog Rejects Wrong Receipt25 Field Type',
+	'Artist 31470 Catalog Rejects Reordered Receipt25 Fields',
+	'Artist 31470 Catalog Rejects Coordinated Tool Identity And Receipt Reseal',
+	'Artist 31470 Catalog Rejects Unsealed Tool Identity Mutation',
+	'Artist 31470 Catalog Rejects Generic Payload Authority Laundering',
+	'Artist 31470 Catalog Rejects Reordered Strict Payload Fields',
+	'Artist 31470 Reserved ID Rejects Legacy Fallback After Failed Reload',
+	'Artist 31470 Shared Gates Deny Execution Submit And Render',
     'Artist 31470 Reconstructed Runtime Program Parses To Immutable Typed Rows',
 	'Artist 31470 Reconstructed Program Rejects Malformed And Raw Identity Attacks Transactionally',
 	'Artist 31470 Reconstructed Program Reaches Semantic Validation And Rejects Canonically Resealed Nested Ownership Identity And Admission Attacks Transactionally',
@@ -173,25 +314,67 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
     if (-not (Test-Path -LiteralPath $resolvedHarness -PathType Leaf)) {
         throw "Effect runtime authority harness executable is missing: $resolvedHarness"
     }
-    $output = & $resolvedHarness '--effect-runtime-authority' 2>&1
-    if ($LASTEXITCODE -ne 0 -or
-        ($output -join "`n") -notmatch 'failures : 0') {
-        throw "Effect runtime authority harness failed:`n$($output -join "`n")"
-    }
+	if ([string]::IsNullOrWhiteSpace($ReconstructedProgramPath)) {
+		$ReconstructedProgramPath = Join-Path $RepositoryRoot `
+			'Data\Effects\Imported\Artist\Candidates\skill.31470.reconstructed-runtime-program.candidate.json'
+	}
+	$resolvedProgram = [IO.Path]::GetFullPath($ReconstructedProgramPath)
+	if (-not (Test-Path -LiteralPath $resolvedProgram -PathType Leaf)) {
+		throw "Reconstructed runtime program candidate is missing: $resolvedProgram"
+	}
+	if ([string]::IsNullOrWhiteSpace($RuntimeCatalogPath)) {
+		$RuntimeCatalogPath = Join-Path $RepositoryRoot `
+			'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json'
+	}
+	$resolvedCatalog = [IO.Path]::GetFullPath($RuntimeCatalogPath)
+	if (-not (Test-Path -LiteralPath $resolvedCatalog -PathType Leaf)) {
+		throw "Tracked Effect runtime catalog is missing: $resolvedCatalog"
+	}
+	if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
+		if (-not [string]::IsNullOrWhiteSpace($env:LOSTARK_RESOURCE_ROOT)) {
+			$ResourceRoot = $env:LOSTARK_RESOURCE_ROOT
+		}
+		else {
+			$ResourceRoot = Join-Path $RepositoryRoot 'Client\Bin\Resources'
+		}
+	}
+	$resolvedResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
+	if (-not (Test-Path -LiteralPath $resolvedResourceRoot -PathType Container)) {
+		throw "Effect runtime Resource root is missing: $resolvedResourceRoot"
+	}
+	$requiredCatalogTexture = Join-Path $resolvedResourceRoot `
+		'Effect\DimensionMaster\Textures\FX_TEX_05\fx_m_noise_001.dds'
+	if (-not (Test-Path -LiteralPath $requiredCatalogTexture -PathType Leaf)) {
+		throw "Actual tracked Catalog Resource resolution is missing: $requiredCatalogTexture"
+	}
+	$runtimeAuthorityArguments = @(
+		'--effect-runtime-authority', $resolvedProgram, $resolvedCatalog)
+	$hadResourceRoot = Test-Path Env:LOSTARK_RESOURCE_ROOT
+	$priorResourceRoot = $env:LOSTARK_RESOURCE_ROOT
+	try {
+		$env:LOSTARK_RESOURCE_ROOT = $resolvedResourceRoot
+		$output = & $resolvedHarness $runtimeAuthorityArguments 2>&1
+		if ($LASTEXITCODE -ne 0 -or
+			($output -join "`n") -notmatch 'failures : 0') {
+			throw "Effect runtime authority harness failed:`n$($output -join "`n")"
+		}
 
-    if (-not [string]::IsNullOrWhiteSpace($ReconstructedProgramPath)) {
-        $resolvedProgram = [IO.Path]::GetFullPath($ReconstructedProgramPath)
-        if (-not (Test-Path -LiteralPath $resolvedProgram -PathType Leaf)) {
-            throw "Reconstructed runtime program candidate is missing: $resolvedProgram"
-        }
-        $programOutput = & $resolvedHarness `
-            '--effect-reconstructed-runtime-program' $resolvedProgram 2>&1
-        if ($LASTEXITCODE -ne 0 -or
-            ($programOutput -join "`n") -notmatch 'failures : 0') {
-            throw "Reconstructed runtime program harness failed:`n$($programOutput -join "`n")"
-        }
-    }
+		$programOutput = & $resolvedHarness `
+			'--effect-reconstructed-runtime-program' $resolvedProgram 2>&1
+		if ($LASTEXITCODE -ne 0 -or
+			($programOutput -join "`n") -notmatch 'failures : 0') {
+			throw "Reconstructed runtime program harness failed:`n$($programOutput -join "`n")"
+		}
+	}
+	finally {
+		if ($hadResourceRoot) {
+			$env:LOSTARK_RESOURCE_ROOT = $priorResourceRoot
+		}
+		else {
+			Remove-Item Env:LOSTARK_RESOURCE_ROOT -ErrorAction SilentlyContinue
+		}
+	}
 }
 
 Write-Output `
-    'PASS: format3 immutable compiled authority is identity-bound, transactionally staged, and runtime/Product blocked'
+	'PASS: format3 immutable compiled authority and distinct reconstructed program are identity-bound, transactionally staged, and runtime/Product blocked'

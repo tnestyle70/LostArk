@@ -1709,6 +1709,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 	}
 	m_Document = Document;
 	m_pPreparedDocument = std::move(pPrepared);
+	m_ReconstructedRuntimeBoundary.Clear();
 	m_ModelCueResources = std::move(StagedModelCueResources);
 	m_strStatus = "Prepared Effect Document resources attached.";
 	{
@@ -1733,6 +1734,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		Resource_SignatureMatches(m_Document, Document))
 	{
 		m_Document = Document;
+		m_ReconstructedRuntimeBoundary.Clear();
 		m_strStatus = "Effect Document values committed; GPU resources reused.";
 		strOutError.clear();
 		return true;
@@ -1747,10 +1749,29 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 	return Stage_Prepared(Document, std::move(Prepared), strOutError);
 }
 
+bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> pPreparation,
+	std::string& strOutError)
+{
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(std::move(pPreparation),
+		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER, strOutError))
+		return false;
+	m_Document = {};
+	m_pPreparedDocument.reset();
+	m_ModelCueResources.clear();
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_strStatus =
+		"Reconstructed Effect program prepared; renderer execution remains blocked.";
+	strOutError.clear();
+	return true;
+}
+
 void Client::CEffectDocumentRenderer::Clear()
 {
 	m_Document = {};
 	m_pPreparedDocument.reset();
+	m_ReconstructedRuntimeBoundary.Clear();
 	m_ModelCueResources.clear();
 	m_strStatus = "No Effect Document staged.";
 }
@@ -2410,6 +2431,12 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 HRESULT Client::CEffectDocumentRenderer::Render(
 	const EFFECT_EVALUATED_FRAME& Frame)
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return E_FAIL;
+	}
 	if (FAILED(Render_ModelCues(Frame)))
 		return E_FAIL;
 	size_t iElement = 0u;

@@ -25,13 +25,10 @@ HRESULT Client::CEffectObject::Initialize_Prototype()
 
 HRESULT Client::CEffectObject::Initialize(void* pArg)
 {
-	if (FAILED(__super::Initialize(pArg)) ||
-		FAILED(m_pRenderer->Initialize()))
-	{
+	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
-	}
 	if (nullptr == pArg)
-		return S_OK;
+		return m_pRenderer->Initialize();
 	const EFFECT_OBJECT_DESC& Desc =
 		*static_cast<EFFECT_OBJECT_DESC*>(pArg);
 	if (!std::isfinite(Desc.fPlaybackRate) ||
@@ -42,6 +39,16 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
 	m_fPlaybackRate = Desc.fPlaybackRate;
+	if (nullptr != Desc.pReconstructedRuntimePreparation)
+	{
+		if (!Stage_ReconstructedRuntimeProgram(Desc, m_strStatus))
+		{
+			return E_FAIL;
+		}
+		return S_OK;
+	}
+	if (FAILED(m_pRenderer->Initialize()))
+		return E_FAIL;
 	if (nullptr != Desc.pDocument && nullptr != Desc.pPreparedResources &&
 		!Stage_PreparedDocument(*Desc.pDocument,
 			Desc.pPreparedResources, m_strStatus))
@@ -69,6 +76,7 @@ bool_t Client::CEffectObject::Stage_Document(
 	if (!m_pRenderer->Stage_Document(Document, strOutError))
 		return false;
 	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary.Clear();
 	m_Playback.Seek(0.f, m_RootWorld);
 	m_strStatus = "Effect Document staged.";
 	strOutError.clear();
@@ -94,7 +102,62 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 		return false;
 	}
 	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary.Clear();
 	m_strStatus = "Prepared Effect Document staged.";
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectObject::Stage_ReconstructedRuntimeProgram(
+	const EFFECT_OBJECT_DESC& Desc,
+	std::string& strOutError)
+{
+	if (nullptr == Desc.pReconstructedRuntimePreparation ||
+		nullptr != Desc.pDocument || nullptr != Desc.pPreparedResources ||
+		!std::isfinite(Desc.fPlaybackRate) ||
+		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f)
+	{
+		strOutError =
+			"Reconstructed Effect inspection descriptor is not exclusive.";
+		return false;
+	}
+	if (!Stage_ReconstructedRuntimeEntry(
+		Desc.pReconstructedRuntimePreparation, strOutError))
+	{
+		return false;
+	}
+	m_RootWorld = Desc.RootWorld;
+	m_fPlaybackRate = Desc.fPlaybackRate;
+	return true;
+}
+
+bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> pPreparation,
+	std::string& strOutError)
+{
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(pPreparation,
+		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT, strOutError))
+	{
+		return false;
+	}
+	CEffectPlayback StagedPlayback;
+	if (!StagedPlayback.Stage_ReconstructedRuntimeProgram(
+		pPreparation, strOutError))
+	{
+		return false;
+	}
+	if (!m_pRenderer->Stage_ReconstructedRuntimeProgram(
+		pPreparation, strOutError))
+	{
+		return false;
+	}
+	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_bPlaying = false;
+	m_bVisible = false;
+	m_strStatus =
+		"Reconstructed Effect program prepared; Product execution remains blocked.";
 	strOutError.clear();
 	return true;
 }
@@ -137,6 +200,12 @@ void Client::CEffectObject::Reset()
 
 void Client::CEffectObject::Update(const f32_t fTimeDelta)
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return;
+	}
 	if (m_bPlaying)
 		m_Playback.Update(fTimeDelta * m_fPlaybackRate, m_RootWorld);
 }
@@ -144,6 +213,12 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return;
+	}
 	if (!m_bVisible)
 		return;
 	const shared_ptr<CEffectObject> Self =
@@ -163,6 +238,12 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 
 HRESULT Client::CEffectObject::Submit_Presentation()
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Submit(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return E_FAIL;
+	}
 	if (!m_bVisible)
 		return S_OK;
 	const EFFECT_EVALUATED_FRAME& Frame = m_Playback.Get_Frame();
@@ -226,6 +307,12 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 
 HRESULT Client::CEffectObject::Render()
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return E_FAIL;
+	}
 	if (!m_bVisible)
 		return S_FALSE;
 	const HRESULT Result = m_pRenderer->Render(m_Playback.Get_Frame());

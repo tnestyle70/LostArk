@@ -111,9 +111,28 @@ public:
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedRuntimeProgram(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
 	HRESULT Render(const EFFECT_EVALUATED_FRAME& Frame);
 	void Clear();
 	const std::string& Get_Status() const { return m_strStatus; }
+	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+		Get_ReconstructedRuntimeEntry() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_CatalogEntry();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		Get_ReconstructedRuntimePreparation() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Preparation();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+		Get_ReconstructedRuntimeProgram() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Program();
+	}
 
 private:
 	struct PREWARM_ASSET_CACHE;
@@ -206,6 +225,7 @@ private:
 	ComPtr<ID3D11DeviceContext> m_pContext;
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_DOCUMENT> m_pPreparedDocument;
+	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
 	shared_ptr<Engine::CShader> m_pMeshShader;
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
