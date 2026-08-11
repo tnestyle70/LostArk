@@ -48,9 +48,1257 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  31,
-                     "fieldEntryCount":  2457
+                     "fieldEntryCount":  2559
                  },
     "entries":  [
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "identity",
+                        "resultValue":  1
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "identityCyclic",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34040",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34090",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34100",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34120",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34110",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34150",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34650",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34610",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34630",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34020",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38020",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38050",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45050",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45060",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34010",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38120",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38200",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38140",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38180",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38210",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38260",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38290",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38250",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38320",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:38000",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45620",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45210",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45300",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45070",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45190",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45600",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45810",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45820",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:45000",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34000",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34500",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34510",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34520",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34540",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34550",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34560",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34570",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34590",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17000",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17020",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17030",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17040",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17060",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17080",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17090",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17100",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17110",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17140",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17170",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17240",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17250",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17800",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17810",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17820",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31000",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31200",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31430",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31480",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31210",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31460",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31420",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31490",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31470",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31950",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31910",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31930",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31110",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  33,
+                        "transform":  "identity",
+                        "resultValue":  33
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31050",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  66,
+                        "transform":  "identity",
+                        "resultValue":  66
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31020",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050010",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050100",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050120",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050160",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050180",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050210",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050220",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050230",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050240",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050500",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050520",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050540",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050020",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
                     {
                         "targetDocument":  "Data/Balance/BossProfiles.json",
                         "targetId":  "boss:BOSS_VALTAN",
@@ -3474,7 +4722,7 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:ARTIST",
-                        "targetField":  "identityRegenPerSecond",
+                        "targetField":  "identityStanceSwitchCost",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -3487,15 +4735,28 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:ARTIST",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  4,
+                        "transform":  "identity",
+                        "resultValue":  4
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
                         "targetField":  "maximumIdentity",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  100,
                         "transform":  "identity",
-                        "resultValue":  0
+                        "resultValue":  100
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3650,7 +4911,7 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:DIMENSIONMASTER",
-                        "targetField":  "identityRegenPerSecond",
+                        "targetField":  "identityStanceSwitchCost",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -3663,15 +4924,28 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  4,
+                        "transform":  "identity",
+                        "resultValue":  4
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
                         "targetField":  "maximumIdentity",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  100,
                         "transform":  "identity",
-                        "resultValue":  0
+                        "resultValue":  100
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3814,6 +5088,19 @@
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:GUNSLINGER",
                         "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
+                        "targetField":  "identityStanceSwitchCost",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -4002,15 +5289,28 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "identityStanceSwitchCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  33,
+                        "transform":  "identity",
+                        "resultValue":  33
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
                         "targetField":  "identityRegenPerSecond",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  4,
                         "transform":  "identity",
-                        "resultValue":  0
+                        "resultValue":  4
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4021,9 +5321,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  0,
+                        "sourceValue":  100,
                         "transform":  "identity",
-                        "resultValue":  0
+                        "resultValue":  100
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4166,6 +5466,19 @@
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:SLAYER",
                         "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
+                        "targetField":  "identityStanceSwitchCost",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -4342,9 +5655,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  120,
+                        "sourceValue":  12,
                         "transform":  "identity",
-                        "resultValue":  120
+                        "resultValue":  12
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4355,9 +5668,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  40,
+                        "sourceValue":  4,
                         "transform":  "identity",
-                        "resultValue":  40
+                        "resultValue":  4
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4368,9 +5681,22 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-identity-gauge-v1"
                                    },
-                        "sourceValue":  1000,
+                        "sourceValue":  100,
                         "transform":  "identity",
-                        "resultValue":  1000
+                        "resultValue":  100
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "identityStanceSwitchCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -7370,9 +8696,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  3100,
+                        "sourceValue":  3000,
                         "transform":  "identity",
-                        "resultValue":  3100
+                        "resultValue":  3000
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -7474,9 +8800,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1000,
+                        "sourceValue":  900,
                         "transform":  "identity",
-                        "resultValue":  1000
+                        "resultValue":  900
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

@@ -9,6 +9,7 @@
 #include <fstream>
 #include <limits>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -347,7 +348,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
 			PLAYER_SKILL_DEFINITION skill{};
-			if (15u != fields.size() ||
+			if (16u != fields.size() ||
 				!ParseNumber(fields[1], skill.iSkillId) ||
 				LostArk::Shared::INVALID_SKILL_ID == skill.iSkillId ||
 				!ParseCharacterClass(fields[2], skill.eCharacterClass) ||
@@ -356,12 +357,13 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[6], skill.iActionDurationMs) ||
 				!ParseNumber(fields[7], skill.iHitTimeMs) ||
 				!ParseNumber(fields[8], skill.iResourceCost) ||
-				!ParseNumber(fields[9], skill.fMovementDistance) ||
-				!ParseNumber(fields[10], skill.fMaximumRange) ||
-				(!fields[11].empty() && !IsStableId(fields[11])) ||
-				!ParseSkillKind(fields[12], skill.eSkillKind) ||
-				!ParseStance(fields[13], skill.eRequiredStance) ||
-				!ParseStance(fields[14], skill.eSetsStance) ||
+				!ParseNumber(fields[9], skill.iIdentityCost) ||
+				!ParseNumber(fields[10], skill.fMovementDistance) ||
+				!ParseNumber(fields[11], skill.fMaximumRange) ||
+				(!fields[12].empty() && !IsStableId(fields[12])) ||
+				!ParseSkillKind(fields[13], skill.eSkillKind) ||
+				!ParseStance(fields[14], skill.eRequiredStance) ||
+				!ParseStance(fields[15], skill.eSetsStance) ||
 				(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == skill.eSkillKind &&
 					0u == skill.iCooldownMs) ||
 				0u == skill.iActionDurationMs ||
@@ -373,7 +375,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!std::isfinite(skill.fMovementDistance) ||
 				!std::isfinite(skill.fMaximumRange) ||
 				skill.fMovementDistance < 0.f ||
-				(fields[11].empty() ?
+				(fields[12].empty() ?
 					(skill.fMaximumRange != 0.f || 0u != skill.iHitTimeMs) :
 					skill.fMaximumRange <= 0.f))
 			{
@@ -382,7 +384,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 			skill.strInputSlot = fields[3];
 			skill.strActionId = fields[4];
-			skill.strDamageProfileId = fields[11];
+			skill.strDamageProfileId = fields[12];
 			if (!m_Skills.emplace(skill.iSkillId, std::move(skill)).second)
 			{
 				m_strStatus = "Duplicate player skill ID";
@@ -616,7 +618,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (13u != fields.size() ||
+			if (15u != fields.size() ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -628,7 +630,9 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[9], player.iMaximumIdentity) ||
 				!ParseNumber(fields[10], player.iIdentityRegenPerSecond) ||
 				!ParseNumber(fields[11], player.iIdentityDrainPerSecond) ||
-				!ParseStance(fields[12], player.eDefaultStance) ||
+				!ParseNumber(fields[12], player.iIdentityStanceSwitchCost) ||
+				!ParseNumber(fields[13], player.iIdentityCyclic) ||
+				!ParseStance(fields[14], player.eDefaultStance) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||
@@ -637,11 +641,24 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!std::isfinite(player.fDefenseStanceMoveSpeedScale) ||
 				player.fDefenseStanceMoveSpeedScale <= 0.f ||
 				player.fDefenseStanceMoveSpeedScale > 1.f ||
+				player.iIdentityCyclic > 1u ||
 				(0u == player.iMaximumIdentity &&
 					(0u != player.iIdentityRegenPerSecond ||
-						0u != player.iIdentityDrainPerSecond)) ||
-				(0u != player.iMaximumIdentity &&
-					0u == player.iIdentityDrainPerSecond) ||
+						0u != player.iIdentityDrainPerSecond ||
+						0u != player.iIdentityStanceSwitchCost ||
+						0u != player.iIdentityCyclic)) ||
+				/* A cyclic gauge spends itself by wrapping, so it cannot also
+				drain or charge a switch -- there would be no single answer for
+				what "isHolding" means. A class can also spend identity through a
+				skill's own iIdentityCost (Artist's moon/sun orbs), which is not
+				known until every SKILL row is read -- checked in the post-load
+				pass below, alongside the identity-pool bound on iIdentityCost
+				itself. */
+				(0u != player.iIdentityCyclic &&
+					(0u != player.iIdentityDrainPerSecond ||
+						0u != player.iIdentityStanceSwitchCost ||
+						0u == player.iIdentityRegenPerSecond)) ||
+				player.iIdentityStanceSwitchCost > player.iMaximumIdentity ||
 				!m_Players.emplace(player.eCharacterClass, player).second)
 			{
 				m_strStatus = "Player profile row is invalid";
@@ -666,11 +683,14 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	the skill row is being parsed. The largest pool any class has is the only bound
 	that makes a cost payable by somebody. */
 	std::uint32_t largestResourcePool = 0;
+	std::uint32_t largestIdentityPool = 0;
 	for (const auto& [characterClass, player] : m_Players)
 	{
 		(void)characterClass;
 		largestResourcePool =
 			(std::max)(largestResourcePool, player.iMaximumResource);
+		largestIdentityPool =
+			(std::max)(largestIdentityPool, player.iMaximumIdentity);
 	}
 	for (const auto& [skillId, skill] : m_Skills)
 	{
@@ -681,9 +701,29 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			m_strStatus = "Player skill references missing damage profile";
 			return false;
 		}
-		if (skill.iResourceCost > largestResourcePool)
+		if (skill.iResourceCost > largestResourcePool ||
+			skill.iIdentityCost > largestIdentityPool)
 		{
 			m_strStatus = "Player skill costs more than any class can hold";
+			return false;
+		}
+	}
+	std::unordered_set<LostArk::Shared::CHARACTER_CLASS_ID> classesWithIdentitySkillCost;
+	for (const auto& [skillId, skill] : m_Skills)
+	{
+		(void)skillId;
+		if (0u != skill.iIdentityCost)
+			classesWithIdentitySkillCost.insert(skill.eCharacterClass);
+	}
+	for (const auto& [characterClass, player] : m_Players)
+	{
+		if (0u != player.iMaximumIdentity &&
+			0u == player.iIdentityDrainPerSecond &&
+			0u == player.iIdentityStanceSwitchCost &&
+			0u == player.iIdentityCyclic &&
+			!classesWithIdentitySkillCost.contains(characterClass))
+		{
+			m_strStatus = "Player identity gauge never spends";
 			return false;
 		}
 	}

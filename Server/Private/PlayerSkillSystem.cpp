@@ -152,7 +152,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	idiom as IsNewerSequence above. */
 	if ((cooldown != player.CooldownEndTickBySkillId.end() &&
 		static_cast<std::int32_t>(cooldown->second - actionStartTick) > 0) ||
-		player.iCurrentResource < skill->iResourceCost)
+		player.iCurrentResource < skill->iResourceCost ||
+		player.iCurrentIdentity < skill->iIdentityCost)
 	{
 		return false;
 	}
@@ -170,6 +171,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.fSkillAimDirectionZ = directionZ;
 	player.hasAppliedSkillDamage = false;
 	player.iCurrentResource -= skill->iResourceCost;
+	player.iCurrentIdentity -= skill->iIdentityCost;
 	player.CooldownEndTickBySkillId.insert_or_assign(
 		command.iSkillId,
 		player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs));
@@ -188,13 +190,19 @@ bool LostArk::Server::CPlayerSkillSystem::Is_HoldingGaugedStance(
 	const SERVER_PLAYER& player,
 	const PLAYER_RUNTIME_PROFILE& profile)
 {
-	return 0u != profile.iMaximumIdentity &&
+	/* A class with iIdentityStanceSwitchCost instead of a drain rate pays once
+	at the moment it switches (see Update, the eSetsStance branch), not for
+	however long it stays switched, so it never holds a gauged stance here. */
+	return 0u != profile.iIdentityDrainPerSecond &&
 		player.eStance != profile.eDefaultStance;
 }
 
 /* The gauge fills whenever the stance it pays for is not held, and empties while
 it is. Reaching empty is what drops the stance, so the player never has to press
-the toggle to be let out. */
+the toggle to be let out. A class that spends by iIdentityStanceSwitchCost
+instead never holds here, so this only ever regenerates it. A cyclic class
+(DimensionMaster) never holds either, and never caps at full: reaching the
+maximum wraps it back to 0 and the fill keeps going, like a clock hand. */
 void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 	SERVER_PLAYER& player,
 	const PLAYER_RUNTIME_PROFILE& profile)
@@ -202,10 +210,11 @@ void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 	if (0u == profile.iMaximumIdentity)
 		return;
 	const bool isHolding = Is_HoldingGaugedStance(player, profile);
+	const bool isCyclic = 0u != profile.iIdentityCyclic;
 	const std::uint32_t rate = isHolding ?
 		profile.iIdentityDrainPerSecond : profile.iIdentityRegenPerSecond;
 	if (0u == rate ||
-		(!isHolding && player.iCurrentIdentity >= player.iMaximumIdentity))
+		(!isHolding && !isCyclic && player.iCurrentIdentity >= player.iMaximumIdentity))
 	{
 		player.iIdentityAccumulator = 0u;
 	}
@@ -220,6 +229,12 @@ void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 				if (0u == player.iCurrentIdentity)
 					break;
 				--player.iCurrentIdentity;
+			}
+			else if (isCyclic)
+			{
+				++player.iCurrentIdentity;
+				if (player.iCurrentIdentity >= player.iMaximumIdentity)
+					player.iCurrentIdentity = 0u;
 			}
 			else
 			{
@@ -495,7 +510,27 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		else
 		{
 			if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
+			{
+				/* A class that spends identity per switch (LanceMaster's spear
+				swap) pays here, once, only if enough is already banked. A short
+				fall still lets the swap through for free -- see
+				Is_HoldingGaugedStance for why this never also drains. */
+				if (skill->eSetsStance != player.eStance)
+				{
+					if (const PLAYER_RUNTIME_PROFILE* stanceProfile =
+						catalog.Find_Player(player.eCharacterClass))
+					{
+						if (0u != stanceProfile->iIdentityStanceSwitchCost &&
+							player.iCurrentIdentity >=
+								stanceProfile->iIdentityStanceSwitchCost)
+						{
+							player.iCurrentIdentity -=
+								stanceProfile->iIdentityStanceSwitchCost;
+						}
+					}
+				}
 				player.eStance = skill->eSetsStance;
+			}
 			player.eAction = PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = INVALID_SKILL_ID;
 			player.iActionStartTick = 0;

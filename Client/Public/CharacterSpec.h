@@ -27,6 +27,19 @@ public:
 		f32_t fTimeDelta) = 0;
 };
 
+/* DEFAULT_HELMET is the base head piece an AVATAR_HEAD slot covers; every
+other base armour piece is plain DEFAULT and only an AVATAR_ARMOR slot covers
+those. CCharacter derives visibility from which kinds are present -- see
+Ready_PartObjects -- so a class only has to declare its parts, not their
+show/hide rule. */
+enum class EQUIPMENT_SLOT_KIND
+{
+	DEFAULT,
+	DEFAULT_HELMET,
+	AVATAR_HEAD,
+	AVATAR_ARMOR,
+};
+
 struct EQUIPMENT_PART_SPEC
 {
 	const tchar_t* pPartTag;      /* sorts after "Part_Body", see CCharacter */
@@ -37,6 +50,8 @@ struct EQUIPMENT_PART_SPEC
 	/* Created but not rendered. For pieces the current outfit covers -- hair
 	under a helmet -- kept as a part so a later equip toggle can show it. */
 	bool_t isHidden;
+
+	EQUIPMENT_SLOT_KIND eSlotKind = EQUIPMENT_SLOT_KIND::DEFAULT;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how

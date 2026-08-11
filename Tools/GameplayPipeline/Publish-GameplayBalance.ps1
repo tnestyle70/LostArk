@@ -334,7 +334,7 @@ foreach ($player in @($playerDocument.players)) {
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',
 		'attackPower','defense','moveSpeed','defenseStanceMoveSpeedScale',
 		'maximumIdentity','identityRegenPerSecond','identityDrainPerSecond',
-		'defaultStance') 'player profile'
+		'identityStanceSwitchCost','identityCyclic','defaultStance') 'player profile'
 	Assert-JsonString $player.defaultStance 'player defaultStance'
 	if ($player.defaultStance -notin $knownStances) {
 		throw "Player defaultStance is unknown: $($player.characterClass) $($player.defaultStance)"
@@ -347,21 +347,43 @@ foreach ($player in @($playerDocument.players)) {
 	Assert-JsonInteger $player.defense 'player defense' 1 ([uint32]::MaxValue)
 	Assert-JsonNumber $player.moveSpeed 'player moveSpeed'
 	Assert-JsonNumber $player.defenseStanceMoveSpeedScale 'player defenseStanceMoveSpeedScale'
-	# Identity is opt-in: a class without the resource stores 0 across all three
-	# and the server never gives it a gauge.
+	# Identity is opt-in: a class without the resource stores 0 across all five
+	# and the server never gives it a gauge. A class that has one spends it one
+	# of four ways: identityDrainPerSecond bleeds it continuously while an
+	# alternate stance is held (Warlord), identityStanceSwitchCost charges a
+	# flat amount at the moment a stance-setting skill lands (LanceMaster's
+	# long/short spear swap), a skill of that class carries its own
+	# identityCost charged once on cast (Artist's moon/sun orbs), or
+	# identityCyclic wraps the fill back to 0 at the maximum instead of holding
+	# there, so the wrap itself is the spend (DimensionMaster's clock). The
+	# skill-cost path needs the skill document, so it is checked after skills
+	# load below.
 	Assert-JsonInteger $player.maximumIdentity 'player maximumIdentity' 0 ([uint32]::MaxValue)
 	Assert-JsonInteger $player.identityRegenPerSecond 'player identityRegenPerSecond' 0 ([uint32]::MaxValue)
 	Assert-JsonInteger $player.identityDrainPerSecond 'player identityDrainPerSecond' 0 ([uint32]::MaxValue)
+	Assert-JsonInteger $player.identityStanceSwitchCost 'player identityStanceSwitchCost' 0 ([uint32]::MaxValue)
+	Assert-JsonInteger $player.identityCyclic 'player identityCyclic' 0 1
 	if ([uint32]$player.maximumIdentity -eq 0) {
 		if ([uint32]$player.identityRegenPerSecond -ne 0 -or
-			[uint32]$player.identityDrainPerSecond -ne 0) {
+			[uint32]$player.identityDrainPerSecond -ne 0 -or
+			[uint32]$player.identityStanceSwitchCost -ne 0 -or
+			[uint32]$player.identityCyclic -ne 0) {
 			throw "Player identity rates need a gauge to fill: $($player.characterClass)"
 		}
 	}
-	elseif ([uint32]$player.identityDrainPerSecond -eq 0) {
-		# A gauge that never drains would hold a stance open forever, which is the
-		# one thing the drain exists to stop.
-		throw "Player identity gauge never drains: $($player.characterClass)"
+	else {
+		if ([uint32]$player.identityStanceSwitchCost -gt [uint32]$player.maximumIdentity) {
+			throw "Player identityStanceSwitchCost exceeds maximumIdentity: $($player.characterClass)"
+		}
+		if ([uint32]$player.identityCyclic -ne 0 -and
+			([uint32]$player.identityDrainPerSecond -ne 0 -or
+				[uint32]$player.identityStanceSwitchCost -ne 0 -or
+				[uint32]$player.identityRegenPerSecond -eq 0)) {
+			# A cyclic gauge spends itself by wrapping, so it cannot also drain
+			# or charge a switch, and it needs a nonzero regen or it would never
+			# reach the lap it wraps on.
+			throw "Player identityCyclic conflicts with drain, switch cost, or has no regen: $($player.characterClass)"
+		}
 	}
 	if ([double]$player.defenseStanceMoveSpeedScale -le 0.0 -or
 		[double]$player.defenseStanceMoveSpeedScale -gt 1.0) {
@@ -386,7 +408,8 @@ foreach ($player in @($playerDocument.players)) {
 		(Format-InvariantFloat $player.moveSpeed 'player moveSpeed'),
 		(Format-InvariantFloat $player.defenseStanceMoveSpeedScale 'player defenseStanceMoveSpeedScale'),
 		[uint32]$player.maximumIdentity, [uint32]$player.identityRegenPerSecond,
-		[uint32]$player.identityDrainPerSecond,
+		[uint32]$player.identityDrainPerSecond, [uint32]$player.identityStanceSwitchCost,
+		[uint32]$player.identityCyclic,
 		$player.defaultStance) -join "`t"))
 }
 if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
@@ -397,6 +420,10 @@ if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
 # bounded by the largest pool any class actually has rather than by a literal.
 $maximumPlayerResource = (@($playerDocument.players) |
 	ForEach-Object { [uint32]$_.maximumResource } | Measure-Object -Maximum).Maximum
+# Same bound, for the identity gauge a skill can charge per cast (Artist's
+# moon/sun orbs) instead of per second.
+$maximumPlayerIdentity = (@($playerDocument.players) |
+	ForEach-Object { [uint32]$_.maximumIdentity } | Measure-Object -Maximum).Maximum
 # Quick-slot names a loadout may bind. Modifier combinations use an underscore
 # (ALT_V), and the two mouse buttons are spelled out so the set stays a stable ID.
 $playerSkillSlots = @(
@@ -408,7 +435,8 @@ foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
 		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','requiredStance','setsStance',
 		'cooldownMs','actionDurationMs',
-        'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId','effectId','comboStages') 'player skill'
+        'hitTimeMs','resourceCost','identityCost','movementDistance','maximumRange','serverDamageProfileId',
+		'effectId','comboStages') 'player skill'
 	Assert-JsonInteger $skill.skillId 'skillId' 1 ([uint32]::MaxValue)
 	foreach ($stringField in @('characterClass','inputSlot','displayName','actionId','skillKind','serverDamageProfileId',
 		'effectId','requiredStance','setsStance')) {
@@ -417,7 +445,7 @@ foreach ($skill in @($skillDocument.skills)) {
 	if ($skill.requiredStance -notin $knownStances -or $skill.setsStance -notin $knownStances) {
 		throw "Skill stance is unknown: $($skill.skillId)"
 	}
-	foreach ($integerField in @('cooldownMs','actionDurationMs','hitTimeMs','resourceCost')) {
+	foreach ($integerField in @('cooldownMs','actionDurationMs','hitTimeMs','resourceCost','identityCost')) {
 		Assert-JsonInteger $skill.$integerField "skill $($skill.skillId) $integerField" 0 ([uint32]::MaxValue)
 	}
 	Assert-JsonNumber $skill.movementDistance "skill $($skill.skillId) movementDistance"
@@ -460,6 +488,7 @@ foreach ($skill in @($skillDocument.skills)) {
         [uint32]$skill.actionDurationMs -eq 0 -or
         [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
         [uint32]$skill.resourceCost -gt $maximumPlayerResource -or
+		[uint32]$skill.identityCost -gt $maximumPlayerIdentity -or
 		($dealsDamage -and ([double]$skill.maximumRange -le 0.0 -or
 			-not $damageIds.Contains($damageProfileId))) -or
 		(-not $dealsDamage -and ([double]$skill.maximumRange -ne 0.0 -or
@@ -572,7 +601,7 @@ foreach ($skill in @($skillDocument.skills)) {
     $skillRows.Add((@(
         'SKILL', $id, $skill.characterClass, $skill.inputSlot, $skill.actionId,
         [uint32]$skill.cooldownMs, [uint32]$skill.actionDurationMs, [uint32]$skill.hitTimeMs,
-        [uint32]$skill.resourceCost,
+        [uint32]$skill.resourceCost, [uint32]$skill.identityCost,
         (Format-InvariantFloat $skill.movementDistance "skill $id movementDistance"),
         (Format-InvariantFloat $skill.maximumRange "skill $id maximumRange"),
         $skill.serverDamageProfileId,
@@ -586,6 +615,25 @@ foreach ($skill in @($skillDocument.skills)) {
 			[uint32]$stage.actionDurationMs, [uint32]$stage.hitTimeMs,
 			[uint32]$stage.inputOpenMs, [uint32]$stage.inputCloseMs) -join "`t"))
 	}
+}
+
+$classesWithIdentitySkillCost = [Collections.Generic.HashSet[string]]::new()
+foreach ($skill in @($skillDocument.skills)) {
+    if ([uint32]$skill.identityCost -gt 0) {
+        [void]$classesWithIdentitySkillCost.Add([string]$skill.characterClass)
+    }
+}
+foreach ($player in @($playerDocument.players)) {
+    if ([uint32]$player.maximumIdentity -gt 0 -and
+        [uint32]$player.identityDrainPerSecond -eq 0 -and
+        [uint32]$player.identityStanceSwitchCost -eq 0 -and
+        [uint32]$player.identityCyclic -eq 0 -and
+        -not $classesWithIdentitySkillCost.Contains([string]$player.characterClass)) {
+        # A gauge that never drains, never charges a switch, never wraps, and
+        # backs no skill's identityCost would just sit there once full, which
+        # is the one thing spending it exists to stop.
+        throw "Player identity gauge never spends: $($player.characterClass)"
+    }
 }
 
 $bossDocument = Read-JsonDocument 'Data/Balance/BossProfiles.json'

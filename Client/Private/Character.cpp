@@ -174,13 +174,18 @@ bool_t CCharacter::Load_ClipChains()
 		{
 			CLIP_STAGE stagedStage{};
 			stagedStage.clips.reserve(stage.Clips.size());
-			for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
+			for (std::size_t clipIndex = 0; clipIndex < stage.Clips.size(); ++clipIndex)
 			{
-				/* The hold loop is the middle stage's only clip: stage two runs
-				until the release the Server confirms. */
+				const ANIMATION_SKILL_CLIP& clip = stage.Clips[clipIndex];
+				/* The hold loop is the middle stage's last clip: stage two runs
+				until the release the Server confirms. Earlier clips in the same
+				stage are a charge-up chain -- each plays once and hands off at
+				its playMs, same as any other multi-clip stage -- so only the
+				clip actually held on may loop. */
 				const bool_t isHoldLoop =
 					isHold && 1u == chain.stages.size() &&
-					3u == binding.Stages.size();
+					3u == binding.Stages.size() &&
+					clipIndex + 1u == stage.Clips.size();
 				stagedStage.clips.push_back(
 					{ clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop });
 			}
@@ -1173,6 +1178,21 @@ HRESULT CCharacter::Ready_PartObjects()
 	m_pBodyModel->Enable_RootMotionSuppression(
 		ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
 
+	/* An AVATAR_HEAD slot covers the class's DEFAULT_HELMET piece. An
+	AVATAR_ARMOR slot covers every plain DEFAULT piece but not the helmet --
+	that stays governed by AVATAR_HEAD alone, so armor and head toggle
+	independently. A class declares its parts; this is the only place that
+	derives who hides whom. */
+	bool_t hasAvatarHead = false;
+	bool_t hasAvatarArmor = false;
+	for (uint32_t i = 0; i < m_pSpec->iNumEquipment; ++i)
+	{
+		if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD == m_pSpec->pEquipment[i].eSlotKind)
+			hasAvatarHead = true;
+		else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR == m_pSpec->pEquipment[i].eSlotKind)
+			hasAvatarArmor = true;
+	}
+
 	/* Skinned equipment: no socket, it borrows the body's bone palette. */
 	for (uint32_t i = 0; i < m_pSpec->iNumEquipment; ++i)
 	{
@@ -1191,7 +1211,14 @@ HRESULT CCharacter::Ready_PartObjects()
 			m_pSpec->pEquipment[i].pPartTag,
 			&equipmentDesc)))
 			return E_FAIL;
-		if (m_pSpec->pEquipment[i].isHidden)
+
+		const EQUIPMENT_SLOT_KIND eKind = m_pSpec->pEquipment[i].eSlotKind;
+		bool_t isHidden = m_pSpec->pEquipment[i].isHidden;
+		if (EQUIPMENT_SLOT_KIND::DEFAULT_HELMET == eKind && hasAvatarHead)
+			isHidden = true;
+		else if (EQUIPMENT_SLOT_KIND::DEFAULT == eKind && hasAvatarArmor)
+			isHidden = true;
+		if (isHidden)
 			Set_PartVisible(m_pSpec->pEquipment[i].pPartTag, false);
 	}
 
