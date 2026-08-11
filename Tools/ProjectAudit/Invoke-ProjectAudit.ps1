@@ -1016,6 +1016,22 @@ try {
 	Add-Check 'effect.runtime-compiled-authority' `
 		$effectRuntimeAuthorityPassed `
 		$effectRuntimeAuthorityDetail
+	$artistTypedExecutionPlanPassed = $false
+	$artistTypedExecutionPlanDetail = ''
+	try {
+		$artistTypedExecutionPlanDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470TypedExecutionPlan.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistTypedExecutionPlanPassed =
+			$artistTypedExecutionPlanDetail -match
+			'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 rng=v1 fixedHz=60 Product=false'
+	}
+	catch {
+		$artistTypedExecutionPlanDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-typed-execution-plan' `
+		$artistTypedExecutionPlanPassed `
+		$artistTypedExecutionPlanDetail
 	$artistReconstructedPolicyPassed = $false
 	$artistReconstructedPolicyDetail = ''
 	try {
