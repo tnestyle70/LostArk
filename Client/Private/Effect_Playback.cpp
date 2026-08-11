@@ -645,10 +645,35 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 
 	m_Document = std::move(StagedDocument);
 	m_pPreparedResources = std::move(pPreparedResources);
+	m_ReconstructedRuntimeBoundary.Clear();
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
 	Reset();
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> pPreparation,
+	std::string& strOutError)
+{
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(std::move(pPreparation),
+		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::PLAYBACK, strOutError))
+		return false;
+	m_Document = {};
+	m_pPreparedResources.reset();
+	m_States.clear();
+	m_TransformMasterIndices.clear();
+	m_SourceAnchorWorlds.clear();
+	m_PendingSourceEvents.clear();
+	m_Frame = {};
+	m_fSampleTimeSeconds = 0.f;
+	m_fAccumulatorSeconds = 0.0;
+	m_fDurationSeconds = 0.f;
+	m_iSimulationStep = 0u;
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	strOutError.clear();
 	return true;
 }
@@ -695,6 +720,12 @@ Client::CEffectPlayback::Resolve_SourceSubUVFrame(
 
 void Client::CEffectPlayback::Reset()
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	{
+		m_Frame = {};
+		return;
+	}
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_iSimulationStep = 0u;
@@ -720,6 +751,12 @@ void Client::CEffectPlayback::Update(
 	const f32_t fTimeDelta,
 	const float4x4_t& RootWorld)
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	{
+		m_Frame = {};
+		return;
+	}
 	if (!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
 	{
 		Rebuild_Frame(RootWorld);
@@ -744,6 +781,12 @@ void Client::CEffectPlayback::Seek(
 	const f32_t fSampleTimeSeconds,
 	const float4x4_t& RootWorld)
 {
+	std::string GateStatus;
+	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	{
+		m_Frame = {};
+		return;
+	}
 	const f32_t fTarget = std::clamp(
 		std::isfinite(fSampleTimeSeconds) ? fSampleTimeSeconds : 0.f,
 		0.f,

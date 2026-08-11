@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_Catalog.h"
 
 #include <string>
 #include <string_view>
@@ -223,6 +224,10 @@ public:
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedRuntimeProgram(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
 	void Reset();
 	void Update(f32_t fTimeDelta, const float4x4_t& RootWorld);
 	void Seek(f32_t fSampleTimeSeconds, const float4x4_t& RootWorld);
@@ -243,6 +248,21 @@ public:
 		f32_t fDistributionRandom,
 		bool_t bLinearBlend);
 	static uint64_t Get_VectorFieldDiskLoadCount();
+	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+		Get_ReconstructedRuntimeEntry() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_CatalogEntry();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		Get_ReconstructedRuntimePreparation() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Preparation();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+		Get_ReconstructedRuntimeProgram() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Program();
+	}
 
 private:
 	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
@@ -340,6 +360,7 @@ private:
 private:
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_RESOURCES> m_pPreparedResources;
+	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;

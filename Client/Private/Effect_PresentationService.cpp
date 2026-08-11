@@ -305,10 +305,33 @@ bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
     return true;
 }
 
+bool_t Client::CEffectPresentationService::Prepare_ReconstructedRuntimeProgram(
+	const std::string& strEffectAssetId,
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+		OutPreparation,
+	std::string& strOutStatus)
+{
+	if (!CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+		strEffectAssetId, OutPreparation, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	strOutStatus = "Prepared reconstructed Effect program for inspection.";
+	g_strStatus = strOutStatus;
+	return true;
+}
+
 bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
+	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
+		Desc.strEffectAssetId, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
     const std::shared_ptr<CCharacter> pOwner = Desc.pOwner.lock();
     const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
         CEffectCatalog::Find(Desc.strEffectAssetId);
