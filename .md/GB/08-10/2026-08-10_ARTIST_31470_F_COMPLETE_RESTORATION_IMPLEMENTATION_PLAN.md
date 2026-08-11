@@ -24,6 +24,292 @@ typed materializer의 독립 PASS 전에는 R3 Playback과 Product admission을 
 전용 구현 PLAN을 먼저 만들고, public H/CPP의 세부 선언·전체 코드는 그 lane 문서에서만 소유한다.
 같은 코드를 이 master 문서에 복제하지 않는다.
 
+## 2026-08-11 Integration/M0 Captain 재개 계약
+
+이번 재개는 최종 통합 branch `codex/artist-f-reconstructed-integration-v1`의 exact frozen HEAD
+`7d3e957f4d93bfd1416fa6a05d5d7fa8f46c12a2`에서 시작한다. 아래 M0는 기존 R2~R8 전체 복원
+계획을 대체하거나 Product admission을 앞당기는 단계가 아니다. 같은 immutable CatalogEntry에서
+선택한 Mesh 1행과 Sprite 1행만 production evaluator와 기존 production renderer sink에 연결해
+실제 Debug 창의 첫 픽셀을 확인하는 좁은 nonProduct checkpoint다.
+
+### 재개 기준선
+
+| 항목 | frozen 상태 |
+|---|---|
+| R2 fresh-LF candidate/parser | PASS 범위만 재사용 |
+| Catalog | strict exact10, immutable CatalogEntry pointer/revision PASS |
+| CPU | typed execution Plan compile/semantic projection PASS |
+| production evaluator | **NOT IMPLEMENTED** |
+| GPU sink | 0/6 |
+| actual Artist F action | NOT REACHABLE |
+| 일반 admission | Execute=false, Submit=false, Render=false, Product=false |
+
+### M0/M1/M2/M3
+
+| milestone | 범위 | 종료 조건 | 현재 task |
+|---|---|---|---|
+| M0 | exact CatalogEntry의 선택 Mesh/Sprite 2행, production packet, production GPU sink, Debug diagnostic/solo first pixel | 아래 M0 acceptance와 자동 gate 및 사람의 실제 창 확인 | **IN SCOPE** |
+| M1 | Mesh/Sprite 외 Decal/Ribbon/Light/ScreenPost를 포함한 production evaluator와 GPU sink 6/6, sampler 72행/visual state 전체 closure | 여섯 family packet/sink와 전체 sampler/state rollback | OUT OF SCOPE |
+| M2 | 7 cue/35 occurrence actual Artist F presentation, PlayerSkills/animevent reachability, Presentation global Option-B atomic batch | actual F 35/35 transactional presentation | OUT OF SCOPE |
+| M3 | R6/R7 Debug/Release eye smoke, full regression, Product Catalog/admission | 기존 최종 `35/35, atomic cue publish` 조건 | OUT OF SCOPE |
+
+M0에서 일반 Execute/Submit/Render/Product admission은 계속 false다. M0의 완료 문구는 다음 한 줄만
+사용하며 이보다 넓은 복원, renderer, actual F 또는 Product 완료를 주장하지 않는다.
+
+```text
+Artist 31470 nonProduct Debug M0 selected Mesh/Sprite 2/2 production packet and manual first-pixel PASS
+```
+
+### M0 acceptance 동결
+
+1. publisher source exact4와 runtime exact13 생산자, C++ Catalog old10/new13 strict consumer를
+   **한 검증/통합 commit**으로 닫는다. exact13 catalog를 consumer보다 먼저 publish하지 않는다.
+2. new13 CatalogEntry는 기존 Program과 새 render-resource sidecar를 같은 immutable entry가 강하게
+   소유한다. Preparation, Plan, Object, Renderer가 이 entry pointer 하나를 공유하며 두 번째 catalog,
+   loader, runtime을 만들지 않는다.
+3. production evaluator는 `LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS`와
+   `CEffectReconstructedCpuInspector`를 호출하지 않는다. synthetic legacy Document/packet과 action-time
+   candidate/sidecar reread도 금지한다.
+4. Debug F1 Effect Tool의 기존 world-preview Object가 diagnostic/solo orchestrator가 된다. 이 좁은
+   M0 경로만 production evaluator와 production Mesh/Sprite sink를 명시적으로 호출한다. Object,
+   Playback, Renderer의 일반 admission 함수와 일반 action 경로는 계속 false다.
+5. 자동 판정은 nonempty packet 2/2, 실제 draw/pipeline statistics, D3D11 debug
+   ERROR/CORRUPTION 0, 지정 rollback만 사용한다. 이미지 비교, 자동 이미지 oracle, screenshot oracle은
+   사용하지 않는다. 마지막 판정은 사람이 x64 Debug Client의 실제 HWND를 눈으로 확인해 기록한다.
+6. M0 rollback은 Catalog load, evaluator empty/failure, GPU composite stage, revision/device mismatch,
+   sampler Undo에만 추가한다. 전역 Presentation transaction, 타 family rollback은 M1/M2로 남긴다.
+
+### exact10/new13 Catalog 계약
+
+source Artist 행은 기존 세 필드 뒤에
+`reconstructedRenderResourceAuthorityPath`를 추가한 exact4다. runtime consumer는 outer 전체 key 순서가
+exact10 또는 exact13일 때만 분기하며 optional-field 방식으로 받지 않는다.
+
+```text
+old outer exact10
+  payloadKind, effectAssetId, artifactRevision, compilerRevision,
+  sourceExact, runtimeExecutionAdmission, publishReceiptSha256,
+  publishReceipt, reconstructedRuntimeProgramSha256,
+  reconstructedRuntimeProgram
+
+new outer exact13
+  old exact10 +
+  renderResourcePublishReceiptSha256,
+  renderResourcePublishReceipt,
+  reconstructedRenderResourceAuthority
+
+new link exact21
+  schema, formatVersion, encoding, effectAssetId, programId, programVersion,
+  programSha256, sidecarSchema, sidecarFormatVersion, sidecarAuthorityId,
+  sidecarDecisionProjectionSha256, sidecarReceiptSha256, sidecarRawSha256,
+  sidecarByteCount, sourceExact, runtimeExecutionAdmission, executeAdmission,
+  submitAdmission, renderAdmission, productAdmission, sidecarUtf8Json
+
+new receipt exact26
+  schema, formatVersion, receiptRole, payloadKind, effectAssetId,
+  artifactRevision, compilerRevision, sourceExact, runtimeExecutionAdmission,
+  executeAdmission, submitAdmission, renderAdmission, productAdmission,
+  programId, programVersion, programSha256, baseRuntimeEntryProjectionSha256,
+  reconstructedRuntimeProgramSha256, basePublishReceiptSha256,
+  renderResourceAuthorityLinkSha256, sidecarRawSha256, sidecarReceiptSha256,
+  sidecarDecisionProjectionSha256, toolDependencies,
+  receiptSha256Domain, receiptSha256
+
+tool row exact4
+  role, path, hashDomain, sha256
+```
+
+old10 첫 열 필드는 그대로 canonical projection해 기존 identity를 다시 검증한다.
+
+```text
+old outer10 canonical  e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2
+old link16             74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2
+old receipt self       5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3
+old receipt full       92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94
+```
+
+embedded sidecar는 `sidecarUtf8Json` bytes를 한 번만 parse한다. exact root19, owner
+`ARTIST/31470/F`, program/publisher tuple, 모든 false admission, `actionTimeIoAllowed=false`, 전체 self
+projection과 decision projection을 검증한다.
+
+```text
+sidecar authority      ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1
+sidecar bytes          746788
+sidecar raw SHA        bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff
+sidecar self SHA       bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a
+sidecar decision SHA   4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412
+program SHA            618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b
+candidate raw SHA      72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849
+```
+
+old10 entry는 sidecar pointer가 null인 inspection-only entry로 계속 load된다. new13만 non-null typed
+sidecar를 가진다. 실제 tracked exact13 publish는 producer source/test와 C++ Debug/Release harness가
+temporary exact13 output을 함께 통과한 뒤 마지막에 atomic replace한다. 중간 실패는 기존 snapshot의
+revision/status/all maps/entry/Program/sidecar pointer를 모두 보존한다.
+
+### M0 immutable composite identity
+
+M0 GPU composite는 다음을 하나의 staged object에 결합하고 전부 맞을 때만 atomic commit한다.
+
+```text
+shared_ptr<const CatalogEntry> exact pointer
+Catalog revision
+Program ID/version/SHA and candidate raw SHA
+sidecar authority/raw/self/decision SHA
+selected schedule/emitter/occurrence/recipe/texture/geometry/state row ID + row SHA
+shader tracked identity and pass ID
+exact ID3D11Device COM identity and diagnostic adapter LUID
+production evaluated packet and all staged GPU resources
+```
+
+draw 직전 현재 Catalog lookup의 entry pointer/revision/hash와 composite의 값, renderer의 D3D device를
+다시 비교한다. 하나라도 다르면 draw하지 않고 기존 composite를 보존한다. device context pointer는
+저장 identity로 사용하지 않는다.
+
+### M0 stable selection과 sample 동결
+
+선택은 같은 action schedule과 같은 CatalogEntry를 사용한다.
+
+```text
+schedule ID       action-schedule-daa8fc7a3723b850ca9579f2
+schedule row SHA  9d716d70a77a810f5c72e05084e3b6b9bfa0e0f5a823463ecc8af9a46352ea9f
+source cue        skill-31470/clip-000/notify-022
+global time       1.4506419897079468
+fixed clock       60 Hz
+sample step       88
+sample time       1.4666666666666666
+local time        0.016024676958719786
+spawn serial      0
+occurrence suffix ::occurrence:0000000000000000
+```
+
+Mesh는 emitter order 26이다.
+
+```text
+emitter ID        fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17
+emitter row SHA   23a6519e750f5fcdd22bd5e3f8ebd5ea63427f47440c3f2f74d60213d9977ddb
+occurrence ID     source-active-026
+occurrence SHA    abbd647d1068f2b17a321214c4608fe9ceb56c78aa26170299cdf13ac90190cc
+recipe ID         material-recipe-4b4c59364690a66d
+recipe row SHA    ef66bad94bd48c14d421ea5ae32e0fbb0dfe8cf84a4efe9aca8eeb28ac670fbf
+family/evaluator  material-family-5fc89efe09353236 /
+                  reconstructed-evaluator-c3ac12f104b50f06 v1
+geometry use      <emitter ID>::geometry-use
+geometry use SHA  ecdec710c4ca2ded8253b771936a8c1b123f694613316ad4ae705a81dddd5b71
+carrier ID        geometry-carrier-d98b591aa386ac0dd11f
+carrier row SHA   5b800463ed5278e9afca3b4867a661281630a131ead6987a0dd0c0baafad8744
+model asset       Effect/Artist/Meshes/fm_a_stone_001.wmodel
+model raw SHA     eb08b11e4631938f93b896d9ebf9e7f25d22492094dcf69de443080d5c111c54
+geometryPreScale 0.01, vertex와 local bounds에 exactly once
+```
+
+Mesh texture/state 선택은 다음과 같다.
+
+| 역할 | stable 선택 | asset / raw SHA |
+|---|---|---|
+| recipe texture decision | `recipe-texture-binding-06` | row `b2604680e40023ff1ef5efcbaad9e2e6a193fed6b5a70c133c31eaa87f960393` |
+| texture0/base | `renderer-material-input-binding-048`, `render-binding-14`, sampler `material-reconstructed-policy-515a17c3340198bdcf21` | `Effect/Artist/Textures/fx_a_environ_002.dds` / `cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962` |
+| texture1/normal | recipe가 명시 선택한 `render-binding-15`, sampler `material-reconstructed-policy-ae06d5776b669f2578ec` | `Effect/Artist/Textures/fx_a_environ_002_n.dds` / `62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6` |
+| blend | `render-state-descriptor-12` | `BS_EffectOpaque` |
+| raster | `material-reconstructed-policy-4ce70dabfda6cdc8633f` | `RS_Default` |
+| depth | `material-reconstructed-policy-5c910249033a5d8fcd03` | `DSS_Default` |
+| shader/pass | `Shader_VtxEffectMeshPreview.hlsl` | pass 0 `OpaqueBackDepthWrite` |
+
+Sprite는 emitter order 27이다.
+
+```text
+emitter ID        fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0
+emitter row SHA   57228087ab6d3ffb84fe634eab1b5406666536bd140400963be873ba56e8249b
+occurrence ID     source-active-027
+occurrence SHA    6eac180a4d907b9bd4510161d4e200f2c9bc81280ca618f086321fcaa461fe92
+recipe ID         material-recipe-2073fb45e643d1d5
+recipe row SHA    f210da08033a522e3ab3e581a5535df5629a15411a6c46f5052b6c73d03202a1
+family/evaluator  material-family-ee42f716afdf6145 /
+                  reconstructed-evaluator-b64318cb50070e35 v1
+size policy       UE3_LENGTH_XZY_0P01, world-size에 exactly once
+```
+
+Sprite texture/state 선택은 다음과 같다.
+
+| 역할 | stable 선택 | asset / raw SHA |
+|---|---|---|
+| recipe texture decision | `recipe-texture-binding-01` | row `238f88b150d88389e897d27c946c63b38f512f7c91a24a81ea77c7786e72e1a3` |
+| texture0/base | `renderer-material-input-binding-050`, `render-binding-03`, sampler `material-reconstructed-policy-478283291730ec2c2599` | `Effect/Artist/Textures/fx_a_decal_013.dds` / `c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e` |
+| texture1/mask | `renderer-material-input-binding-049`, `render-binding-02`, sampler `material-reconstructed-policy-300f64f5c91f35575f26` | `Effect/Artist/Textures/fx_e_fluid_021.dds` / `1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75` |
+| blend | `render-state-descriptor-02` | `BS_EffectAlpha` |
+| raster | `render-state-descriptor-03` | `RS_Cull_None` |
+| shader/pass | `Shader_VtxEffectParticle.hlsl` | pass 1 `AlphaTwoSidedDepthRead`, 실제 `DSS_ReadOnly` context descriptor 검증 |
+
+Sprite의 standalone `bdisabledepthtest=false` policy oracle를 `DSS_ReadOnly`와 같다고 주장하지 않는다.
+translucent production pass 1을 Apply한 뒤 `OMGetDepthStencilState/GetDesc`로 실제 read-only state를
+검증한다. 세 candidateCount=2 renderer decision
+`renderer-material-input-binding-025/044/051`은 M0에서 전부 거부한다.
+
+선택한 네 texture의 sampler policy ID는 서로 달라도 D3D11 sampler-state descriptor는 모두 정확히
+`MIN_MAG_MIP_LINEAR(21), WRAP U/V/W(1), bias 0, anisotropy 0, NEVER, minLOD 0,
+maxLOD FLT_MAX`로 같다. 따라서 현재 common shader의 단일 `LinearSampler`에 안전하다. SRGB/LINEAR은
+sampler 추측이 아니라 각 DDS SRV descriptor로 별도 검증한다. clamp/wrap이 섞인 행은 M0에 넣지 않는다.
+
+### production evaluator와 sink 구현 경계
+
+`Effect_ReconstructedExecution.h/.cpp`의 macro 밖에 generic selected evaluator와 immutable evaluated
+frame/packet을 둔다. 입력은 Plan과 stable-ID selection이며 Artist ID는 evaluator 내부에 하드코딩하지
+않는다. 기존 production `Evaluate_Distribution`과 refactor한 occurrence RNG/fixed-step core를 사용한다.
+packet은 raw `EFFECT_ELEMENT_DESC*`를 갖지 않고 Plan/Preparation/CatalogEntry를 강하게 보존한다.
+
+Mesh의 ordered module 000~014와 Sprite의 000~008은 모두 stable module/handler ID로 소비한다. step 88에서
+age가 0이라 update delta가 0인 module도 consumed-handler 집합에서 빠지면 실패한다. 알 수 없는 class를
+정상값으로 처리하거나 rendererRuntimeConfig를 presentation fallback으로 쓰지 않는다. 결과 frame은
+정확히 Mesh 1개와 Sprite 1개가 nonempty이고 같은 entry pointer를 가질 때만 commit한다.
+
+GPU stage는 기존 `CEffectDocumentRenderer`가 소유한다. model은 `CModel` 통합 경로로만 만들고 carrier
+preScale을 create/pretransform에서 한 번만 적용한다. Sprite particle은 production particle instance
+buffer와 shader를 사용한다. diagnostic placement root만 실제 camera 앞의 visible 위치를 제공하며 packet의
+source local transform을 대신 만들지 않는다.
+
+각 DDS는 안전한 Resources-relative path에서 immutable byte vector로 한 번 읽는다. **그 같은 vector**를
+SHA-256 검사와 `CreateDDSTextureFromMemoryEx`에 넘기고 SRV format/dimension/mips를 검사한다. stage 뒤에는
+DDS, WModel, candidate, sidecar를 reread하지 않는다. M0 smoke는
+`LOSTARK_RESOURCE_ROOT=C:\Users\user\Desktop\LostArk\Client\Bin\Resources`를 사용한다.
+
+Engine `CShader`에는 exact sampler variable `LinearSampler`의 최소 Set/Undo wrapper만 추가한다.
+
+```text
+SetSampler(0, approved state)
+-> Begin(exact pass) / FX Apply
+-> approved state GetDesc + PSGetSamplers actual COM/descriptor
+-> OMGetBlendState + RSGetState + OMGetDepthStencilState actual descriptor
+-> production draw
+-> UndoSetSampler(0)
+-> prior PS sampler restore 또는 original pass re-Apply
+```
+
+Set/Apply 뒤, draw 전, draw 실패를 포함한 모든 경로에서 Undo와 이전 context sampler 복원을 수행한다.
+Undo 실패면 M0 draw 성공으로 기록하지 않고 composite를 deactivate하며 이전 composite를 보존한다.
+
+### 검증과 checkpoint 순서
+
+1. 이 M0 acceptance/selection을 먼저 commit/push하고 reviewer에게 exact SHA와 `PLAN only` scope를 보낸다.
+2. producer source/test와 C++ exact10/new13 parser/pointer/harness를 한 commit으로 구현한다. temporary
+   exact13 output으로 Debug/Release consumer를 먼저 통과한 다음 tracked source exact4/runtime exact13을
+   publish한다. commit/push 뒤 exact SHA와 declared scope만 reviewer에게 보낸다.
+3. production selected evaluator와 packet rollback을 구현하고 macro 없는 actual-catalog harness에서
+   step 88 Mesh/Sprite 2/2, 24 selected module handler consumption, determinism, empty/failure preservation을
+   통과시킨다. commit/push 뒤 exact SHA/scope만 보낸다.
+4. existing renderer/Object/Effect Tool에 selected composite, production Mesh/Sprite sink, sampler scope,
+   draw statistics와 D3D debug gate를 연결한다. catalog revision/device mismatch와 GPU stage/Undo failure에서
+   이전 composite 보존을 검증한다. commit/push 뒤 exact SHA/scope만 보낸다.
+5. `git diff --check`, JSON/XML parse, focused Python/PowerShell audit, ClientFrontendHarness Debug/Release,
+   Engine Debug/Release -> UpdateLib Debug/Release -> Client x64 Debug build, ProjectAudit를 실행한다.
+6. `Client/Default` cwd와 위 Resources root에서 x64 Debug Client를 실행하고 F1 Effect Tool의
+   nonProduct M0 diagnostic/solo를 사용한다. pipeline query는 두 production draw의 IA vertex/primitive,
+   VS/PS invocation이 모두 nonzero인지 확인하고, ID3D11InfoQueue의 새 ERROR/CORRUPTION이 0인지 확인한다.
+   자동 gate가 모두 PASS한 뒤 사람이 실제 Client 창의 픽셀을 눈으로 확인해 수동 결과를 기록한다.
+
+M0에 직접 필요하지 않은 새 provenance/audit framework는 만들지 않고 M1~M3 backlog에만 기록한다.
+Presentation global Option-B, Light/Post, Decal/Ribbon, sampler72 전체, visual33 전체,
+PlayerSkills/animevent actual F, Product, R6/R7, 타 class/Valtan은 M0 구현 파일과 결과에 포함하지 않는다.
+
 ## 이번 재개판의 핵심 판단
 
 고정된 세 개의 구현 세션을 계속 동시에 돌리는 방식은 채택하지 않는다. 이 작업은 Source evidence,
