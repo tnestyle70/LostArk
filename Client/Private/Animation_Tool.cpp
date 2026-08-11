@@ -558,6 +558,7 @@ void Client::CAnimation_Tool::Render()
 	Render_ClipChain(pModel);
 	Render_SkillBindings(pModel, Resolve_Character());
 	Render_HitEvents(pModel);
+	Render_HitAreaWires(pModel, Resolve_Character());
 	Render_SkillReference(pModel);
 
 	ImGui::SeparatorText("Clips");
@@ -1335,6 +1336,8 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 
 	ImGui::SameLine();
 	ImGui::TextDisabled("%.0f fps", fRate);
+	ImGui::SameLine();
+	ImGui::Checkbox("show areas", &m_bShowHitAreas);
 
 	/* Original notifies for this clip, lifted from the game's Action table. */
 	const auto itNotify = m_ClipNotify.find(pCurrentName);
@@ -1724,6 +1727,163 @@ void Client::CAnimation_Tool::Render_HitDetail(ANIM_EVENT& evt)
 		}
 
 		ImGui::TreePop();
+	}
+}
+
+void Client::CAnimation_Tool::Render_HitAreaWires(
+	const shared_ptr<Engine::CModel>& pModel,
+	const shared_ptr<CCharacter>& pCharacter) const
+{
+	/* The reference rows keep the game's own centimetre-ish units; our world is
+	metres. 100 units to the metre lines skill 34040's ar=250 up with its
+	balance maximumRange of 3.0. */
+	constexpr f32_t UNITS_TO_METERS = 0.01f;
+
+	if (!m_bShowHitAreas || nullptr == pModel || nullptr == pCharacter)
+		return;
+	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* pCurrentName = pModel->Get_AnimationName(iCurrentIndex);
+	if (nullptr == pCurrentName)
+		return;
+	/* The container overload wants a part tag; the character's own transform
+	sits on the base object. */
+	const auto pTransform = dynamic_pointer_cast<Engine::CTransform>(
+		pCharacter->Engine::CGameObject::Get_Component(TEXT("Com_Transform")));
+	if (nullptr == pTransform)
+		return;
+
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const bool_t bHasTrack = pModel->Get_AnimationProgress(
+		iCurrentIndex, fPosition, fDuration) && fDuration > 0.f;
+	const f32_t fRate = Get_ClipTickRate(pModel, pCurrentName);
+	const int32_t iNowMs = Frame_To_Ms(static_cast<int32_t>(fPosition), fRate);
+
+	auto& GameInstance = CGameInstance::Get();
+	const matrix_t View =
+		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::VIEW));
+	const matrix_t Proj =
+		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::PROJ));
+	/* ImGui screen coordinates carry the viewport origin, so NDC maps through
+	the viewport rect and not a (0,0)-based one -- the same convention the
+	Character Select overlay uses. Background list: the wires belong to the
+	scene, so tool windows keep drawing over them. */
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	ImDrawList* pDrawList = ImGui::GetBackgroundDrawList(pViewport);
+
+	const vector_t vPosition = pTransform->Get_State(STATE::POSITION);
+	const vector_t vLook = XMVector3Normalize(
+		XMVectorSetY(pTransform->Get_State(STATE::LOOK), 0.f));
+	const vector_t vRight = XMVector3Normalize(XMVector3Cross(
+		XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
+	const f32_t fGroundY = XMVectorGetY(vPosition) + 0.03f;
+
+	auto Project = [&](fvector_t vWorld, ImVec2& vOut) -> bool_t
+	{
+		const vector_t vView = XMVector3TransformCoord(vWorld, View);
+		if (XMVectorGetZ(vView) < 0.1f)
+			return false;
+		const vector_t vClip = XMVector3TransformCoord(vView, Proj);
+		vOut.x = pViewport->Pos.x +
+			(XMVectorGetX(vClip) * 0.5f + 0.5f) * pViewport->Size.x;
+		vOut.y = pViewport->Pos.y +
+			(0.5f - XMVectorGetY(vClip) * 0.5f) * pViewport->Size.y;
+		return true;
+	};
+	auto Draw_Segment = [&](fvector_t vFrom, fvector_t vTo, ImU32 iColor)
+	{
+		ImVec2 vA{}, vB{};
+		if (Project(vFrom, vA) && Project(vTo, vB))
+			pDrawList->AddLine(vA, vB, iColor, 2.f);
+	};
+	/* Ground point at a polar offset around the area centre: fForward metres
+	along the facing plus a swing of fDegrees to the right of it. */
+	auto At = [&](f32_t fCenterForward, f32_t fRadius, f32_t fDegrees)
+	{
+		const f32_t fRadians = XMConvertToRadians(fDegrees);
+		return XMVectorSetY(
+			vPosition + vLook * (fCenterForward + fRadius * cosf(fRadians)) +
+			vRight * (fRadius * sinf(fRadians)),
+			fGroundY);
+	};
+	auto Draw_Arc = [&](f32_t fCenterForward, f32_t fRadius,
+		f32_t fFromDeg, f32_t fToDeg, ImU32 iColor)
+	{
+		constexpr int32_t SEGMENTS = 48;
+		for (int32_t s = 0; s < SEGMENTS; ++s)
+		{
+			const f32_t fA = fFromDeg + (fToDeg - fFromDeg) * s / SEGMENTS;
+			const f32_t fB = fFromDeg + (fToDeg - fFromDeg) * (s + 1) / SEGMENTS;
+			Draw_Segment(At(fCenterForward, fRadius, fA),
+				At(fCenterForward, fRadius, fB), iColor);
+		}
+	};
+
+	for (int32_t i = 0; i < static_cast<int32_t>(m_Events.size()); ++i)
+	{
+		const ANIM_EVENT& evt = m_Events[i];
+		if (evt.clipName != pCurrentName || EVENT_KIND::HIT != evt.eKind ||
+			evt.hit.iAreaType <= 0)
+			continue;
+		const bool_t bActive = bHasTrack && Get_ActiveTick(evt, iNowMs) >= 0;
+		const bool_t bSelected = i == m_iSelectedEvent;
+		if (!bActive && !bSelected)
+			continue;
+		const ImU32 iColor = bActive ?
+			IM_COL32(255, 70, 60, 255) : IM_COL32(255, 210, 90, 170);
+
+		const HIT_PARAMS& p = evt.hit;
+		const f32_t fOffset = p.iAreaOffsetX * UNITS_TO_METERS;
+		const f32_t fRange = p.iAreaRange * UNITS_TO_METERS;
+		switch (p.iAreaType)
+		{
+		case 1:
+		{
+			/* Forward strike box: ar is the length, ah the full width --
+			the 12m x 3m spear thrusts read no other way. */
+			const f32_t fHalfWidth = p.iAreaHeight * UNITS_TO_METERS * 0.5f;
+			const vector_t vNearL = XMVectorSetY(
+				vPosition + vLook * fOffset - vRight * fHalfWidth, fGroundY);
+			const vector_t vNearR = XMVectorSetY(
+				vPosition + vLook * fOffset + vRight * fHalfWidth, fGroundY);
+			const vector_t vFarL = XMVectorSetY(
+				vPosition + vLook * (fOffset + fRange) - vRight * fHalfWidth,
+				fGroundY);
+			const vector_t vFarR = XMVectorSetY(
+				vPosition + vLook * (fOffset + fRange) + vRight * fHalfWidth,
+				fGroundY);
+			Draw_Segment(vNearL, vNearR, iColor);
+			Draw_Segment(vNearR, vFarR, iColor);
+			Draw_Segment(vFarR, vFarL, iColor);
+			Draw_Segment(vFarL, vNearL, iColor);
+			break;
+		}
+		case 2:
+		case 3:
+		{
+			/* Fan, circle, ring, and the angle-limited ring sector all share
+			the arc path; what differs is the hole and the sweep. */
+			const bool_t bFullSweep =
+				p.iAreaAngle <= 0 || p.iAreaAngle >= 360;
+			const f32_t fHalfSweep =
+				bFullSweep ? 180.f : p.iAreaAngle * 0.5f;
+			const f32_t fInner = 3 == p.iAreaType ?
+				p.iAreaInner * UNITS_TO_METERS : 0.f;
+			Draw_Arc(fOffset, fRange, -fHalfSweep, fHalfSweep, iColor);
+			if (fInner > 0.f)
+				Draw_Arc(fOffset, fInner, -fHalfSweep, fHalfSweep, iColor);
+			if (!bFullSweep)
+			{
+				Draw_Segment(At(fOffset, fInner, -fHalfSweep),
+					At(fOffset, fRange, -fHalfSweep), iColor);
+				Draw_Segment(At(fOffset, fInner, fHalfSweep),
+					At(fOffset, fRange, fHalfSweep), iColor);
+			}
+			break;
+		}
+		default:
+			break;
+		}
 	}
 }
 

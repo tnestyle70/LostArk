@@ -616,7 +616,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (9u != fields.size() ||
+			if (13u != fields.size() ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -624,12 +624,24 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[5], player.iAttackPower) ||
 				!ParseNumber(fields[6], player.iDefense) ||
 				!ParseNumber(fields[7], player.fMoveSpeed) ||
-				!ParseStance(fields[8], player.eDefaultStance) ||
+				!ParseNumber(fields[8], player.fDefenseStanceMoveSpeedScale) ||
+				!ParseNumber(fields[9], player.iMaximumIdentity) ||
+				!ParseNumber(fields[10], player.iIdentityRegenPerSecond) ||
+				!ParseNumber(fields[11], player.iIdentityDrainPerSecond) ||
+				!ParseStance(fields[12], player.eDefaultStance) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||
 				0u == player.iAttackPower || 0u == player.iDefense ||
 				!std::isfinite(player.fMoveSpeed) || player.fMoveSpeed <= 0.f ||
+				!std::isfinite(player.fDefenseStanceMoveSpeedScale) ||
+				player.fDefenseStanceMoveSpeedScale <= 0.f ||
+				player.fDefenseStanceMoveSpeedScale > 1.f ||
+				(0u == player.iMaximumIdentity &&
+					(0u != player.iIdentityRegenPerSecond ||
+						0u != player.iIdentityDrainPerSecond)) ||
+				(0u != player.iMaximumIdentity &&
+					0u == player.iIdentityDrainPerSecond) ||
 				!m_Players.emplace(player.eCharacterClass, player).second)
 			{
 				m_strStatus = "Player profile row is invalid";

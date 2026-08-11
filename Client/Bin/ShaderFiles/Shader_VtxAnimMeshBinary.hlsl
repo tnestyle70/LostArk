@@ -15,6 +15,14 @@ float g_EmissiveIntensity = 1.f;
 uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
+/* The source game's dye contract: the mask's channels select colour regions
+of a mostly achromatic diffuse and each region multiplies its tint in. */
+Texture2D g_DyeMaskTexture;
+uint g_HasDyeMask = 0;
+float4 g_DyeDiffuseColor = 1.f;
+float4 g_DyeRegionA = 1.f;
+float4 g_DyeRegionB = 1.f;
+float4 g_DyeRegionC = 1.f;
 matrix g_BoneMatrices[512];
 
 struct VS_IN
@@ -82,6 +90,15 @@ PS_OUT PS_MAIN(VS_OUT input)
     float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
     if (diffuse.a < 0.3f)
         discard;
+    if (0 != g_HasDyeMask)
+    {
+        float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        float3 tint = g_DyeDiffuseColor.rgb;
+        tint *= lerp(1.f.xxx, g_DyeRegionA.rgb, mask.r);
+        tint *= lerp(1.f.xxx, g_DyeRegionB.rgb, mask.g);
+        tint *= lerp(1.f.xxx, g_DyeRegionC.rgb, mask.b);
+        diffuse.rgb *= tint;
+    }
 
     float3 normal = normalize(input.vNormal.xyz);
     if (0 != g_HasNormalTexture)

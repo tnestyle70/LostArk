@@ -42,6 +42,13 @@ struct DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC final
 	std::wstring prototypeTag;
 	std::string assetId;
 	f32_t fUniformScale = 1.f;
+	/* Empty keeps the generic fallback lane. A non-empty value binds this
+	   model to the exact Deploy asset whose fractured geometry was partitioned
+	   offline into PROJECT_AUTHORED rigid macro shards. */
+	std::string sourceDeployAssetId;
+	/* Derived pivot relative to the source Deploy root after the standard
+	   WModel 0.01 import scale, before placement uniform scale/rotation. */
+	float3_t vSourceLocalPivotMeters{};
 };
 
 struct DESTRUCTION_SIMULATION_ELEMENT_FRAME final
@@ -154,7 +161,10 @@ private:
 		ELEMENT_RUNTIME& runtime,
 		std::string& outStatus);
 	void Expire_Element(ELEMENT_RUNTIME& runtime);
-	void Destroy_Actors();
+	bool_t Restore_SuppressionAliases(
+		ELEMENT_RUNTIME& runtime,
+		std::string* outStatus = nullptr);
+	bool_t Destroy_Actors(std::string* outStatus = nullptr);
 	void Release_DebrisPreviews();
 	void Rebuild_Frame();
 	bool_t Is_ElementInScope(const std::string& elementId) const;

@@ -59,6 +59,10 @@ public:
 	uint64_t Get_RuntimePlacementId() const { return m_Placement.runtimePlacementId; }
 	uint32_t Get_DeployActorId() const { return m_Placement.deployActorId; }
 	bool_t Is_Destructible() const { return m_Placement.destructible; }
+	bool_t Is_StaticDeployModel() const
+	{
+		return DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind;
+	}
 	bool_t Is_AnimBindPoseOnly() const;
 	/* World axis-aligned bounds of the model this prop currently renders.
 	   Authoring tools use it to hit-test and outline a prop instead of

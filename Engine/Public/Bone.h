@@ -25,6 +25,9 @@ public:
 	matrix_t Get_TransformationMatrix() const {
 		return XMLoadFloat4x4(&m_TransformationMatrix);
 	}
+	int32_t Get_ParentBoneIndex() const {
+		return m_iParentBoneIndex;
+	}
 public:
 	HRESULT Initialize(const aiNode* pAINode, int32_t iParentBoneIndex);
 	HRESULT Initialize(const MODEL_BONE_DATA& bone);

@@ -39,8 +39,8 @@
     {
       "skillId": 17080,
       "clips": [
-        "wgl_sk_dashupperfire_01",
-        "wgl_sk_dashupperfire_02"
+        [ "wgl_sk_dashupperfire_01" ],
+        [ "wgl_sk_dashupperfire_02" ]
       ]
     },
     {
@@ -109,12 +109,7 @@
       "clips": [
         "wgl_sk_shieldofbattlefield_01",
         "wgl_sk_shieldofbattlefield_02",
-        "wgl_sk_shieldofbattlefield_03_re",
-        "wgl_sk_shieldofbattlefield_04_re",
-        "wgl_sk_shieldofbattlefield_03",
-        "wgl_sk_shieldofbattlefield_04_1",
-        "wgl_sk_shieldofbattlefield_04_2",
-        "wgl_sk_shieldofbattlefield_04_3"
+        "wgl_sk_shieldofbattlefield_03"
       ]
     }
   ]

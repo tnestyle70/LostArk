@@ -180,6 +180,13 @@ private:
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitEvents(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitDetail(ANIM_EVENT& evt);
+	/* Wire overlay of the selected and playhead-active HIT areas, drawn on the
+	scene character so an authored box/fan/circle can be judged against the
+	pose. Reads the same ANIM_EVENT rows the list edits; nothing new is
+	stored. */
+	void Render_HitAreaWires(
+		const shared_ptr<Engine::CModel>& pModel,
+		const shared_ptr<CCharacter>& pCharacter) const;
 	void Render_AnimationList(const shared_ptr<Engine::CModel>& pModel);
 	void Consume_EffectTransfer(const shared_ptr<Engine::CModel>& pModel);
 	void Render_SkillReference(const shared_ptr<Engine::CModel>& pModel);
@@ -263,6 +270,7 @@ private:
 private:
 	char m_Filter[128]{};
 	bool_t m_bLoop = true;
+	bool_t m_bShowHitAreas = true;
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;

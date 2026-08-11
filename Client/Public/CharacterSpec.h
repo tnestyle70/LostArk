@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "BoneChainSimulation.h"
 #include "Network/PacketMessages.h"
 
 NS_BEGIN(Client)
@@ -33,6 +34,9 @@ struct EQUIPMENT_PART_SPEC
 
 	/* Bit i hides submesh i of this piece, for content the body already draws. */
 	uint32_t iHiddenMeshMask;
+	/* Created but not rendered. For pieces the current outfit covers -- hair
+	under a helmet -- kept as a part so a later equip toggle can show it. */
+	bool_t isHidden;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how
@@ -57,6 +61,17 @@ struct SKILL_SURFACE_EMISSIVE_SPEC
 	LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	float4_t vColor = float4_t(1.f, 1.f, 1.f, 1.f);
 	f32_t fIntensity = 0.f;
+};
+
+/* A stance the class stands and runs differently in. Only the stances a class
+lists here replace the shared IDLE and RUN clips; every other stance keeps them,
+so a class that merely swaps weapons needs no entry. */
+struct STANCE_LOCOMOTION_SPEC
+{
+	LostArk::Shared::PLAYER_STANCE_ID eStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
+	const char_t* pIdleClip = nullptr;
+	const char_t* pRunClip = nullptr;
 };
 
 /* Everything that makes one class different, as data. Held as a constant next to
@@ -93,6 +108,14 @@ struct CHARACTER_SPEC
 
 	const SKILL_SURFACE_EMISSIVE_SPEC* pSkillSurfaceEmissives = nullptr;
 	uint32_t iNumSkillSurfaceEmissives = 0u;
+
+	const STANCE_LOCOMOTION_SPEC* pStanceLocomotion = nullptr;
+	uint32_t iNumStanceLocomotion = 0u;
+
+	/* Hair and cloth chains this class solves after the animation. Empty leaves
+	every bone exactly where the clip put it. */
+	const BONE_CHAIN_SPEC* pBoneChains = nullptr;
+	uint32_t iNumBoneChains = 0u;
 };
 
 NS_END

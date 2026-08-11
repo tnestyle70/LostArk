@@ -24,7 +24,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.destruction-simulation";
-	constexpr uint32_t FORMAT_VERSION = 1u;
+	constexpr uint32_t FORMAT_VERSION = 2u;
 	constexpr f32_t DIRECTION_LENGTH_TOLERANCE = 0.001f;
 
 	bool_t Read_TextFile(
@@ -403,9 +403,10 @@ bool_t Client::CDestructionSimulationDocument::Load(
 		for (const DATA_JSON_VALUE& elementValue : elements->Get_Array())
 		{
 			if (!Is_ExactObject(elementValue, {
-				"elementId", "sourceRuntimePlacementId", "spawnOffset",
-				"direction", "speedMetersPerSecond", "gravityScale",
-				"lifetimeSeconds", "trigger" }))
+				"elementId", "sourceRuntimePlacementId",
+				"suppressionAliasPlacementIds", "spawnOffset", "direction",
+				"speedMetersPerSecond", "gravityScale", "lifetimeSeconds",
+				"trigger" }))
 			{
 				outStatus = "Destruction simulation element has unexpected properties";
 				return false;
@@ -427,6 +428,32 @@ bool_t Client::CDestructionSimulationDocument::Load(
 			{
 				outStatus = "Destruction simulation element field is invalid";
 				return false;
+			}
+
+			const DATA_JSON_VALUE* suppressionAliases =
+				elementValue.Find("suppressionAliasPlacementIds");
+			if (nullptr == suppressionAliases || !suppressionAliases->Is_Array() ||
+				suppressionAliases->Get_Array().size() > MAX_ELEMENT_COUNT)
+			{
+				outStatus = "Destruction simulation suppression aliases are "
+					"invalid or over limit";
+				return false;
+			}
+			element.suppressionAliasPlacementIds.reserve(
+				suppressionAliases->Get_Array().size());
+			for (const DATA_JSON_VALUE& aliasValue :
+				suppressionAliases->Get_Array())
+			{
+				uint64_t aliasPlacementId = 0u;
+				if (!aliasValue.Is_String() ||
+					!Parse_Uint64(aliasValue.Get_String(), aliasPlacementId) ||
+					0u == aliasPlacementId)
+				{
+					outStatus = "Destruction simulation suppression alias is invalid";
+					return false;
+				}
+				element.suppressionAliasPlacementIds.push_back(
+					aliasPlacementId);
 			}
 
 			const DATA_JSON_VALUE* trigger = elementValue.Find("trigger");
@@ -532,6 +559,15 @@ bool_t Client::CDestructionSimulationDocument::Save(
 				<< CDataJson::Escape(element.elementId) << "\",\n"
 				<< "          \"sourceRuntimePlacementId\": \""
 				<< element.sourceRuntimePlacementId << "\",\n"
+				<< "          \"suppressionAliasPlacementIds\": [";
+			for (size_t aliasIndex = 0u;
+				aliasIndex < element.suppressionAliasPlacementIds.size();
+				++aliasIndex)
+			{
+				output << (0u == aliasIndex ? "" : ", ") << '"'
+					<< element.suppressionAliasPlacementIds[aliasIndex] << '"';
+			}
+			output << "],\n"
 				<< "          \"spawnOffset\": ["
 				<< element.vSpawnOffset.x << ", " << element.vSpawnOffset.y
 				<< ", " << element.vSpawnOffset.z << "],\n"
@@ -772,16 +808,40 @@ bool_t Client::CDestructionSimulationDocument::Validate_Profile(
 	}
 
 	std::unordered_set<std::string> elementIds;
-	std::unordered_set<uint64_t> placementIds;
+	std::unordered_set<uint64_t> projectedPlacementIds;
 	for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
 	{
 		if (!Is_StableId(element.elementId) ||
 			!elementIds.insert(element.elementId).second ||
 			0u == element.sourceRuntimePlacementId ||
-			!placementIds.insert(element.sourceRuntimePlacementId).second)
+			!projectedPlacementIds.insert(
+				element.sourceRuntimePlacementId).second)
 		{
 			outStatus = "Destruction simulation element has a duplicate or invalid "
 				"identity: " + element.elementId;
+			return false;
+		}
+		if (element.suppressionAliasPlacementIds.size() > MAX_ELEMENT_COUNT)
+		{
+			outStatus = "Destruction simulation suppression alias count is over "
+				"limit: " + element.elementId;
+			return false;
+		}
+		for (const uint64_t aliasPlacementId :
+			element.suppressionAliasPlacementIds)
+		{
+			if (0u == aliasPlacementId ||
+				!projectedPlacementIds.insert(aliasPlacementId).second)
+			{
+				outStatus = "Destruction simulation suppression alias has a "
+					"duplicate or invalid identity: " + element.elementId;
+				return false;
+			}
+		}
+		if (projectedPlacementIds.size() > MAX_ELEMENT_COUNT)
+		{
+			outStatus = "Destruction simulation projected member count is over "
+				"limit: " + profile.profileId;
 			return false;
 		}
 		if (!Is_FiniteFloat3(element.vSpawnOffset) ||
@@ -1256,17 +1316,40 @@ bool_t Client::CDestructionSimulationDocument::Synchronize_Group(
 			changed = true;
 		}
 
+		for (DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
+		{
+			const auto staleAliasBegin = std::remove_if(
+				element.suppressionAliasPlacementIds.begin(),
+				element.suppressionAliasPlacementIds.end(),
+				[&group](const uint64_t placementId)
+				{
+					return group.memberPlacementIds.end() == std::find(
+						group.memberPlacementIds.begin(),
+						group.memberPlacementIds.end(), placementId);
+				});
+			if (staleAliasBegin != element.suppressionAliasPlacementIds.end())
+			{
+				element.suppressionAliasPlacementIds.erase(
+					staleAliasBegin,
+					element.suppressionAliasPlacementIds.end());
+				changed = true;
+			}
+		}
+
+		std::unordered_set<uint64_t> projectedPlacementIds;
+		for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
+		{
+			projectedPlacementIds.insert(element.sourceRuntimePlacementId);
+			projectedPlacementIds.insert(
+				element.suppressionAliasPlacementIds.begin(),
+				element.suppressionAliasPlacementIds.end());
+		}
+
 		for (const DESTRUCTION_SIMULATION_ELEMENT& defaultElement :
 			defaults.Elements)
 		{
-			const bool_t exists = std::any_of(
-				profile.Elements.begin(), profile.Elements.end(),
-				[&defaultElement](const DESTRUCTION_SIMULATION_ELEMENT& element)
-				{
-					return element.sourceRuntimePlacementId ==
-						defaultElement.sourceRuntimePlacementId;
-				});
-			if (exists)
+			if (projectedPlacementIds.end() != projectedPlacementIds.find(
+				defaultElement.sourceRuntimePlacementId))
 				continue;
 
 			DESTRUCTION_SIMULATION_ELEMENT appended = defaultElement;
@@ -1278,6 +1361,8 @@ bool_t Client::CDestructionSimulationDocument::Synchronize_Group(
 				appended.fLifetimeSeconds,
 				profile.fDurationSeconds - appended.Trigger.fTimeSeconds);
 			profile.Elements.push_back(std::move(appended));
+			projectedPlacementIds.insert(
+				defaultElement.sourceRuntimePlacementId);
 			changed = true;
 		}
 
@@ -1319,7 +1404,15 @@ bool_t Client::CDestructionSimulationDocument::Validate_GroupReferences(
 				profile.groupId;
 			return false;
 		}
-		if (profile.Elements.size() != group->memberPlacementIds.size())
+		std::unordered_set<uint64_t> projectedPlacementIds;
+		for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
+		{
+			projectedPlacementIds.insert(element.sourceRuntimePlacementId);
+			projectedPlacementIds.insert(
+				element.suppressionAliasPlacementIds.begin(),
+				element.suppressionAliasPlacementIds.end());
+		}
+		if (projectedPlacementIds.size() != group->memberPlacementIds.size())
 		{
 			outStatus = "Simulation profile/member count mismatch: " +
 				profile.profileId;
@@ -1327,13 +1420,8 @@ bool_t Client::CDestructionSimulationDocument::Validate_GroupReferences(
 		}
 		for (const uint64_t placementId : group->memberPlacementIds)
 		{
-			const bool_t projected = std::any_of(
-				profile.Elements.begin(), profile.Elements.end(),
-				[placementId](const DESTRUCTION_SIMULATION_ELEMENT& element)
-				{
-					return element.sourceRuntimePlacementId == placementId;
-				});
-			if (!projected)
+			if (projectedPlacementIds.end() ==
+				projectedPlacementIds.find(placementId))
 			{
 				outStatus = "Simulation profile is missing group member " +
 					std::to_string(placementId) + ": " + profile.profileId;

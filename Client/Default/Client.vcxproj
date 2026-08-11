@@ -23,6 +23,7 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+    <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
@@ -65,6 +66,8 @@
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\SkillWindowView.h" />
+    <ClInclude Include="..\Public\ChatWindowView.h" />
+    <ClInclude Include="..\Public\PartyWindowView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
@@ -136,6 +139,7 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
@@ -165,6 +169,8 @@
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\SkillWindowView.cpp" />
+    <ClCompile Include="..\Private\ChatWindowView.cpp" />
+    <ClCompile Include="..\Private\PartyWindowView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
@@ -297,6 +303,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />

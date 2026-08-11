@@ -139,6 +139,16 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		float fMoveSpeed = 0.f;
+		/* Multiplies fMoveSpeed while the player holds a defensive stance. 1
+		leaves the class unchanged, which is what every class without one uses. */
+		float fDefenseStanceMoveSpeedScale = 1.f;
+		/* The class identity gauge. 0 means the class has none, and then the
+		rates are 0 too and no gauge is ever tracked. */
+		std::uint32_t iMaximumIdentity = 0;
+		std::uint32_t iIdentityRegenPerSecond = 0;
+		/* Spent per second while a stance the gauge pays for is held. Emptying
+		the gauge drops the stance. */
+		std::uint32_t iIdentityDrainPerSecond = 0;
 		LostArk::Shared::PLAYER_STANCE_ID eDefaultStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	};

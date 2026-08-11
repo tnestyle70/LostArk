@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "Warlord" 1723
+LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
 "wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig

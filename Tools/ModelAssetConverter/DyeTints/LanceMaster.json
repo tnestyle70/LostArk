@@ -1,0 +1,83 @@
+{
+  "pc_flm_00_upper_mi": {
+    "colorMask": "textures/pc_flm_00_upper_cm_loc_int.tga",
+    "diffusecolor": [
+      0.962724,
+      0.861884,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.342529,
+      0.0681374,
+      0.137469,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.751354,
+      0.150715,
+      0.414711,
+      1.0
+    ]
+  },
+  "pc_flm_00_lower_mi": {
+    "colorMask": "textures/pc_flm_00_lower_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      0.170168,
+      0.160064,
+      0.209937,
+      1.0
+    ],
+    "diffusecolor_b": [
+      0.74453,
+      0.147998,
+      0.409826,
+      1.0
+    ]
+  },
+  "pc_flm_00_arm_mi": {
+    "colorMask": "textures/pc_flm_00_arm_cm.tga",
+    "diffusecolor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_flm_00_helmet_mi": {
+    "colorMask": "textures/pc_flm_00_helmet_cm.tga",
+    "diffusecolor_a": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "diffusecolor_b": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "pc_flm_00_shoulder_mi": {
+    "colorMask": "textures/pc_flm_00_shoulder_cm.tga"
+  }
+}

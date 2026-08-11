@@ -23,6 +23,8 @@ namespace
 	constexpr f32_t DEBRIS_MAX_ANGULAR_SPEED_RADIANS_PER_SECOND = 11.f;
 	constexpr f32_t DEBRIS_MIN_VISUAL_SCALE = 0.8f;
 	constexpr f32_t DEBRIS_MAX_VISUAL_SCALE = 1.2f;
+	constexpr uint32_t PREVIEW_GROUND_COLLISION_GROUP = 1u << 0u;
+	constexpr uint32_t PREVIEW_DEBRIS_COLLISION_GROUP = 1u << 1u;
 	std::string Build_FragmentId(
 		const std::string& elementId,
 		const uint32_t pieceIndex)
@@ -210,6 +212,66 @@ Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
 			L"Prototype_Component_Model_DestructionProxy_ValtanStone010",
 			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
 			3.5f
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.299745076f, 0.074321074f, -0.651884384f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.106431940f, 0.070914871f, -0.242190697f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02316", { 0.140550723f, 0.125839876f, 0.348527786f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.304660486f, 0.672847632f, -0.626061295f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.085336233f, 0.779443420f, -0.253681080f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02316", { 0.117441025f, 0.693299927f, 0.100609192f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.214777685f, 1.639257667f, -0.575360006f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.066782238f, 1.632209446f, -0.270373189f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.030778841f, 1.591320606f, 0.024464214f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.304499721f, 2.687915050f, -0.565307807f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02316", { -0.101834067f, 2.797022654f, -0.245301745f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02316_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316/fractured/DEPLOY_ITR_02316_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02316", { 0.057664415f, 2.775639976f, -0.103123999f }
 		}
 	};
 	return specs;
@@ -301,6 +363,11 @@ public:
 		desc.isGravityEnabled = gravityScale > 0.f;
 		desc.fGravityScale = gravityScale;
 		desc.isActive = true;
+		/* Macro-shard AABBs touch in their assembled pose. Let them collide
+		   with the preview ground/world but not explode from self-overlap before
+		   the authored launch velocity has separated them. */
+		desc.iCollisionGroup = PREVIEW_DEBRIS_COLLISION_GROUP;
+		desc.iCollisionMask = PREVIEW_GROUND_COLLISION_GROUP;
 
 		shared_ptr<Engine::CRigidBody> staged =
 			Engine::CRigidBody::Create_Runtime(desc);
@@ -342,6 +409,8 @@ public:
 		desc.isGravityEnabled = false;
 		desc.fGravityScale = 0.f;
 		desc.isActive = true;
+		desc.iCollisionGroup = PREVIEW_GROUND_COLLISION_GROUP;
+		desc.iCollisionMask = PREVIEW_DEBRIS_COLLISION_GROUP;
 		m_pGround = Engine::CRigidBody::Create_Runtime(desc);
 		if (nullptr == m_pGround)
 		{
@@ -367,6 +436,14 @@ private:
 
 struct Client::CDestructionSimulationRuntime::ELEMENT_RUNTIME final
 {
+	struct SUPPRESSION_ALIAS_RUNTIME final
+	{
+		uint64_t runtimePlacementId = 0u;
+		shared_ptr<CDeployPropObject> pObject;
+		DEPLOY_PROP_STATE ePreviousState = DEPLOY_PROP_STATE::INTACT;
+		bool_t isSuppressed = false;
+	};
+
 	struct DEBRIS_PIECE_RUNTIME final
 	{
 		std::string fragmentId;
@@ -396,6 +473,9 @@ struct Client::CDestructionSimulationRuntime::ELEMENT_RUNTIME final
 	float3_t vCurrentPosition{};
 	float4_t vCurrentRotation = { 0.f, 0.f, 0.f, 1.f };
 	float3_t vLinearVelocity{};
+	std::string sourceDeployAssetId;
+	f32_t fPlacementUniformScale = 1.f;
+	std::vector<SUPPRESSION_ALIAS_RUNTIME> SuppressionAliases;
 	std::vector<DEBRIS_PIECE_RUNTIME> DebrisPieces;
 	f32_t fActivatedAtSeconds = 0.f;
 	DESTRUCTION_SIMULATION_ELEMENT_STATE eState =
@@ -433,11 +513,8 @@ bool_t Client::CDestructionSimulationRuntime::Validate_Stage(
 		outStatus = "Selected destruction group is missing or empty";
 		return false;
 	}
-	if (profile.Elements.size() != group->memberPlacementIds.size())
-	{
-		outStatus = "Simulation profile must include every selected group member";
-		return false;
-	}
+	std::vector<uint64_t> projectedPlacementIds;
+	projectedPlacementIds.reserve(group->memberPlacementIds.size());
 	for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
 	{
 		if (group->memberPlacementIds.end() == std::find(
@@ -448,6 +525,15 @@ bool_t Client::CDestructionSimulationRuntime::Validate_Stage(
 				element.elementId;
 			return false;
 		}
+		if (projectedPlacementIds.end() != std::find(
+			projectedPlacementIds.begin(), projectedPlacementIds.end(),
+			element.sourceRuntimePlacementId))
+		{
+			outStatus = "Simulation source placement is projected more than once: " +
+				element.elementId;
+			return false;
+		}
+		projectedPlacementIds.push_back(element.sourceRuntimePlacementId);
 		const shared_ptr<CDeployPropObject> object = deployRuntime.Find(
 			element.sourceRuntimePlacementId);
 		float3_t localCentre{};
@@ -460,6 +546,51 @@ bool_t Client::CDestructionSimulationRuntime::Validate_Stage(
 				element.elementId;
 			return false;
 		}
+		for (const uint64_t aliasPlacementId :
+			element.suppressionAliasPlacementIds)
+		{
+			if (group->memberPlacementIds.end() == std::find(
+				group->memberPlacementIds.begin(),
+				group->memberPlacementIds.end(), aliasPlacementId))
+			{
+				outStatus = "Simulation suppression alias is outside the selected group: " +
+					element.elementId;
+				return false;
+			}
+			if (projectedPlacementIds.end() != std::find(
+				projectedPlacementIds.begin(), projectedPlacementIds.end(),
+				aliasPlacementId))
+			{
+				outStatus = "Simulation placement is projected more than once: " +
+					std::to_string(aliasPlacementId);
+				return false;
+			}
+			const shared_ptr<CDeployPropObject> aliasObject =
+				deployRuntime.Find(aliasPlacementId);
+			if (nullptr == aliasObject || !aliasObject->Is_Destructible() ||
+				!aliasObject->Is_StaticDeployModel())
+			{
+				outStatus =
+					"Simulation suppression alias must be a loaded static destructible: " +
+					std::to_string(aliasPlacementId);
+				return false;
+			}
+			projectedPlacementIds.push_back(aliasPlacementId);
+		}
+	}
+	if (projectedPlacementIds.size() != group->memberPlacementIds.size() ||
+		std::any_of(group->memberPlacementIds.begin(),
+			group->memberPlacementIds.end(),
+			[&projectedPlacementIds](const uint64_t placementId)
+			{
+				return projectedPlacementIds.end() == std::find(
+					projectedPlacementIds.begin(),
+					projectedPlacementIds.end(), placementId);
+			}))
+	{
+		outStatus =
+			"Simulation elements and suppression aliases must project every selected group member";
+		return false;
 	}
 	return true;
 }
@@ -520,6 +651,28 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 			element.vDirection.y * element.fSpeedMetersPerSecond,
 			element.vDirection.z * element.fSpeedMetersPerSecond
 		};
+		runtime.sourceDeployAssetId = entry->placement.assetId;
+		runtime.fPlacementUniformScale = entry->placement.uniformScale;
+		runtime.SuppressionAliases.reserve(
+			element.suppressionAliasPlacementIds.size());
+		for (const uint64_t aliasPlacementId :
+			element.suppressionAliasPlacementIds)
+		{
+			const DEPLOY_RUNTIME_ENTRY* aliasEntry = Find_Entry(
+				deployRuntime, aliasPlacementId);
+			if (nullptr == aliasEntry || nullptr == aliasEntry->object ||
+				!aliasEntry->object->Is_Destructible() ||
+				!aliasEntry->object->Is_StaticDeployModel())
+			{
+				outStatus =
+					"DeployProp suppression alias admission changed during simulation staging";
+				return false;
+			}
+			ELEMENT_RUNTIME::SUPPRESSION_ALIAS_RUNTIME alias;
+			alias.runtimePlacementId = aliasPlacementId;
+			alias.pObject = aliasEntry->object;
+			runtime.SuppressionAliases.push_back(std::move(alias));
+		}
 		groupCentre.x += entry->placement.position.x;
 		groupCentre.y += entry->placement.position.y;
 		groupCentre.z += entry->placement.position.z;
@@ -568,56 +721,115 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 			}
 		}
 	};
+	bool_t usedGenericFallback = false;
 	for (ELEMENT_RUNTIME& runtime : stagedElements)
 	{
-		CDeployPropObject::DEBRIS_PREVIEW_DESC previewDesc;
-		previewDesc.suppressSource = false;
-		previewDesc.instances.reserve(
-			PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
-		std::vector<uint64_t> randomStates;
-		randomStates.reserve(PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
-		for (uint32_t pieceIndex = 0u;
-			pieceIndex < PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT;
-			++pieceIndex)
+		std::vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*>
+			exactModelSpecs;
+		std::vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*>
+			genericModelSpecs;
+		for (const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& spec : modelSpecs)
 		{
-			uint64_t randomState = Build_DebrisSeed(
-				profile.profileId, runtime.Desc.elementId, pieceIndex);
-			const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& modelSpec =
-				modelSpecs[pieceIndex % modelSpecs.size()];
-			CDeployPropObject::DEBRIS_PREVIEW_INSTANCE_DESC instanceDesc;
-			instanceDesc.modelPrototypeTag = modelSpec.prototypeTag;
-			instanceDesc.uniformScale = DEBRIS_MIN_VISUAL_SCALE +
-					(DEBRIS_MAX_VISUAL_SCALE - DEBRIS_MIN_VISUAL_SCALE) *
-					Random_Unit(randomState);
-			previewDesc.instances.push_back(std::move(instanceDesc));
-			randomStates.push_back(randomState);
+			if (!spec.sourceDeployAssetId.empty() &&
+				spec.sourceDeployAssetId == runtime.sourceDeployAssetId)
+			{
+				exactModelSpecs.push_back(&spec);
+			}
+			else if (spec.sourceDeployAssetId.empty())
+			{
+				genericModelSpecs.push_back(&spec);
+			}
 		}
+		std::vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*>
+			selectedModelSpecs = exactModelSpecs.empty() ?
+			genericModelSpecs : exactModelSpecs;
+		bool_t usesSourceWallGeometry = !exactModelSpecs.empty();
+		if (selectedModelSpecs.empty())
+		{
+			releaseStagedDebris();
+			stagedPhysics->Clear_Ground();
+			stagedPhysics->End_ExclusiveClock();
+			outStatus = "No admitted debris recipe matches Deploy asset " +
+				runtime.sourceDeployAssetId;
+			return false;
+		}
+		uint32_t pieceCount = 0u;
+		CDeployPropObject::DEBRIS_PREVIEW_DESC previewDesc;
+		std::vector<uint64_t> randomStates;
+		auto beginSelectedRecipe = [&](std::string& outRecipeError)
+		{
+			pieceCount = usesSourceWallGeometry ?
+				static_cast<uint32_t>(selectedModelSpecs.size()) :
+				PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT;
+			previewDesc = CDeployPropObject::DEBRIS_PREVIEW_DESC{};
+			/* Both the exact macro-shard recipe and the generic fallback replace
+			   the primary Deploy presentation while their rigid debris is active. */
+			previewDesc.suppressSource = true;
+			previewDesc.instances.reserve(pieceCount);
+			randomStates.clear();
+			randomStates.reserve(pieceCount);
+			for (uint32_t pieceIndex = 0u;
+				pieceIndex < pieceCount;
+				++pieceIndex)
+			{
+				uint64_t randomState = Build_DebrisSeed(
+					profile.profileId, runtime.Desc.elementId, pieceIndex);
+				const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& modelSpec =
+					*selectedModelSpecs[pieceIndex % selectedModelSpecs.size()];
+				CDeployPropObject::DEBRIS_PREVIEW_INSTANCE_DESC instanceDesc;
+				instanceDesc.modelPrototypeTag = modelSpec.prototypeTag;
+				instanceDesc.uniformScale = usesSourceWallGeometry ?
+					runtime.fPlacementUniformScale : DEBRIS_MIN_VISUAL_SCALE +
+						(DEBRIS_MAX_VISUAL_SCALE - DEBRIS_MIN_VISUAL_SCALE) *
+						Random_Unit(randomState);
+				previewDesc.instances.push_back(std::move(instanceDesc));
+				randomStates.push_back(randomState);
+			}
+			return runtime.pObject->Begin_DebrisPreview(
+				previewDesc, outRecipeError) &&
+				runtime.pObject->Get_DebrisPreviewInstanceCount() == pieceCount;
+		};
 
-		std::string debrisError;
-		if (!runtime.pObject->Begin_DebrisPreview(previewDesc, debrisError) ||
-			runtime.pObject->Get_DebrisPreviewInstanceCount() !=
-				PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT)
+		std::string recipeError;
+		bool_t recipeReady = beginSelectedRecipe(recipeError);
+		if (!recipeReady &&
+			usesSourceWallGeometry && !genericModelSpecs.empty())
+		{
+			const std::string exactRecipeError = recipeError;
+			selectedModelSpecs = genericModelSpecs;
+			usesSourceWallGeometry = false;
+			usedGenericFallback = true;
+			std::string genericRecipeError;
+			recipeReady = beginSelectedRecipe(genericRecipeError);
+			if (!recipeReady)
+			{
+				recipeError = exactRecipeError +
+					"; generic fallback failed: " + genericRecipeError;
+			}
+			else
+				recipeError.clear();
+		}
+		if (!recipeReady)
 		{
 			releaseStagedDebris();
 			stagedPhysics->Clear_Ground();
 			stagedPhysics->End_ExclusiveClock();
 			outStatus = "Project-authored debris prototypes are unavailable";
-			if (!debrisError.empty())
-				outStatus += ": " + debrisError;
+			if (!recipeError.empty())
+				outStatus += ": " + recipeError;
 			return false;
 		}
 
-		runtime.DebrisPieces.reserve(
-			PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
+		runtime.DebrisPieces.reserve(pieceCount);
 		const float3_t localImpactDirection = InverseRotate_Vector(
 			runtime.Desc.vDirection, runtime.vInitialRotation);
 		for (uint32_t pieceIndex = 0u;
-			pieceIndex < PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT;
+			pieceIndex < pieceCount;
 			++pieceIndex)
 		{
 			ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME piece;
 			const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& modelSpec =
-				modelSpecs[pieceIndex % modelSpecs.size()];
+				*selectedModelSpecs[pieceIndex % selectedModelSpecs.size()];
 			piece.fragmentId = Build_FragmentId(
 				runtime.Desc.elementId, pieceIndex);
 			piece.modelAssetId = modelSpec.assetId;
@@ -633,7 +845,14 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 			}
 
 			uint64_t randomState = randomStates[pieceIndex];
-			float3_t localSpawn = {
+			float3_t localSpawn = usesSourceWallGeometry ? float3_t{
+				modelSpec.vSourceLocalPivotMeters.x *
+					runtime.fPlacementUniformScale,
+				modelSpec.vSourceLocalPivotMeters.y *
+					runtime.fPlacementUniformScale,
+				modelSpec.vSourceLocalPivotMeters.z *
+					runtime.fPlacementUniformScale
+			} : float3_t{
 				runtime.vShapeLocalCentre.x + runtime.vHalfExtents.x *
 					Random_Signed(randomState) * 0.75f,
 				runtime.vShapeLocalCentre.y + runtime.vHalfExtents.y *
@@ -649,19 +868,19 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 			const f32_t absX = std::abs(localImpactDirection.x);
 			const f32_t absY = std::abs(localImpactDirection.y);
 			const f32_t absZ = std::abs(localImpactDirection.z);
-			if (absX >= absY && absX >= absZ)
+			if (!usesSourceWallGeometry && absX >= absY && absX >= absZ)
 			{
 				localSpawn.x = runtime.vShapeLocalCentre.x +
 					(localImpactDirection.x < 0.f ? -1.f : 1.f) *
 					runtime.vHalfExtents.x * surfaceFactor;
 			}
-			else if (absY >= absZ)
+			else if (!usesSourceWallGeometry && absY >= absZ)
 			{
 				localSpawn.y = runtime.vShapeLocalCentre.y +
 					(localImpactDirection.y < 0.f ? -1.f : 1.f) *
 					runtime.vHalfExtents.y * surfaceFactor;
 			}
-			else
+			else if (!usesSourceWallGeometry)
 			{
 				localSpawn.z = runtime.vShapeLocalCentre.z +
 					(localImpactDirection.z < 0.f ? -1.f : 1.f) *
@@ -674,7 +893,8 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 				runtime.vInitialPosition.y + worldSpawnOffset.y,
 				runtime.vInitialPosition.z + worldSpawnOffset.z
 			};
-			piece.vInitialRotation = Build_RandomRotation(randomState);
+			piece.vInitialRotation = usesSourceWallGeometry ?
+				runtime.vInitialRotation : Build_RandomRotation(randomState);
 			const float3_t spreadDirection = Build_SpreadDirection(
 				runtime.Desc.vDirection, randomState);
 			const f32_t speedScale = DEBRIS_MIN_SPEED_SCALE +
@@ -708,18 +928,24 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 	m_isStaged = true;
 	m_isPhysicsPaused = true;
 	m_Status = "Staged destruction simulation: " + profile.profileId;
+	if (usedGenericFallback)
+		m_Status += " (source wall recipe unavailable; generic fallback)";
 	if (!Reset(outStatus))
 	{
 		Clear();
 		return false;
 	}
 	m_Status = "Staged destruction simulation: " + profile.profileId;
+	if (usedGenericFallback)
+		m_Status += " (source wall recipe unavailable; generic fallback)";
 	outStatus = m_Status;
 	return true;
 }
 
-void Client::CDestructionSimulationRuntime::Destroy_Actors()
+bool_t Client::CDestructionSimulationRuntime::Destroy_Actors(
+	std::string* outStatus)
 {
+	bool_t restoredAllAliases = true;
 	for (ELEMENT_RUNTIME& runtime : m_Elements)
 	{
 		for (ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece :
@@ -743,7 +969,15 @@ void Client::CDestructionSimulationRuntime::Destroy_Actors()
 		{
 			runtime.pObject->End_PhysicsPreview();
 		}
+		std::string restoreStatus;
+		if (!Restore_SuppressionAliases(runtime, &restoreStatus))
+		{
+			if (nullptr != outStatus && restoredAllAliases)
+				*outStatus = std::move(restoreStatus);
+			restoredAllAliases = false;
+		}
 	}
+	return restoredAllAliases;
 }
 
 void Client::CDestructionSimulationRuntime::Release_DebrisPreviews()
@@ -760,7 +994,16 @@ void Client::CDestructionSimulationRuntime::Release_DebrisPreviews()
 
 void Client::CDestructionSimulationRuntime::Clear()
 {
-	Destroy_Actors();
+	std::string restoreStatus;
+	if (!Destroy_Actors(&restoreStatus))
+	{
+		/* Keep the staged alias records so a later Clear/Reset can retry. Static
+		   alias admission makes this path exceptional, but never erase the only
+		   saved pre-suppression state after a failed restore. */
+		m_Status = restoreStatus.empty() ?
+			"Failed to restore a destruction suppression alias" : restoreStatus;
+		return;
+	}
 	Release_DebrisPreviews();
 	if (nullptr != m_pPhysics)
 	{
@@ -791,7 +1034,11 @@ bool_t Client::CDestructionSimulationRuntime::Reset(
 		outStatus = "Destruction simulation reset requires a staged profile";
 		return false;
 	}
-	Destroy_Actors();
+	if (!Destroy_Actors(&outStatus))
+	{
+		m_Status = outStatus;
+		return false;
+	}
 	m_fSampleTimeSeconds = 0.f;
 	for (ELEMENT_RUNTIME& runtime : m_Elements)
 	{
@@ -1054,6 +1301,63 @@ bool_t Client::CDestructionSimulationRuntime::Activate_Element(
 		piece.vCurrentRotation = piece.vInitialRotation;
 		piece.vCurrentLinearVelocity = piece.vInitialLinearVelocity;
 	}
+
+	/* Suppress-only aliases cover source Deploy rows that occupy the same
+	   authored wall but must not produce a second debris emitter. Capture each
+	   persistent state at the activation boundary and commit all aliases as one
+	   transaction. Expiry intentionally leaves them hidden; Reset/Clear owns
+	   restoration. */
+	for (ELEMENT_RUNTIME::SUPPRESSION_ALIAS_RUNTIME& alias :
+		runtime.SuppressionAliases)
+	{
+		if (nullptr == alias.pObject || alias.isSuppressed)
+		{
+			std::string restoreStatus;
+			const bool_t restoredAliases =
+				Restore_SuppressionAliases(runtime, &restoreStatus);
+			for (const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& hiddenPiece :
+				runtime.DebrisPieces)
+			{
+				runtime.pObject->Apply_DebrisPreviewPose(
+					hiddenPiece.iVisualIndex,
+					hiddenPiece.vInitialPosition,
+					hiddenPiece.vInitialRotation,
+					false);
+			}
+			for (auto& staged : stagedBodies)
+				staged.second->Destroy_Actor();
+			runtime.pObject->End_PhysicsPreview();
+			outStatus = "Destruction suppression alias state is invalid";
+			if (!restoredAliases && !restoreStatus.empty())
+				outStatus += "; rollback failed: " + restoreStatus;
+			return false;
+		}
+		alias.ePreviousState = alias.pObject->Get_State();
+		if (!alias.pObject->Set_State(DEPLOY_PROP_STATE::DESPAWNED))
+		{
+			std::string restoreStatus;
+			const bool_t restoredAliases =
+				Restore_SuppressionAliases(runtime, &restoreStatus);
+			for (const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& hiddenPiece :
+				runtime.DebrisPieces)
+			{
+				runtime.pObject->Apply_DebrisPreviewPose(
+					hiddenPiece.iVisualIndex,
+					hiddenPiece.vInitialPosition,
+					hiddenPiece.vInitialRotation,
+					false);
+			}
+			for (auto& staged : stagedBodies)
+				staged.second->Destroy_Actor();
+			runtime.pObject->End_PhysicsPreview();
+			outStatus = "DeployProp rejected a suppression alias preview state: " +
+				std::to_string(alias.runtimePlacementId);
+			if (!restoredAliases && !restoreStatus.empty())
+				outStatus += "; rollback failed: " + restoreStatus;
+			return false;
+		}
+		alias.isSuppressed = true;
+	}
 	runtime.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE;
 	runtime.fActivatedAtSeconds =
 		DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME ==
@@ -1068,6 +1372,41 @@ bool_t Client::CDestructionSimulationRuntime::Activate_Element(
 		piece.fActivatedAtSeconds = runtime.fActivatedAtSeconds;
 	}
 	return true;
+}
+
+bool_t Client::CDestructionSimulationRuntime::Restore_SuppressionAliases(
+	ELEMENT_RUNTIME& runtime,
+	std::string* outStatus)
+{
+	bool_t restoredAll = true;
+	for (auto alias = runtime.SuppressionAliases.rbegin();
+		alias != runtime.SuppressionAliases.rend(); ++alias)
+	{
+		if (!alias->isSuppressed)
+			continue;
+		if (nullptr == alias->pObject)
+		{
+			restoredAll = false;
+			if (nullptr != outStatus && outStatus->empty())
+			{
+				*outStatus = "Suppression alias object is no longer available: " +
+					std::to_string(alias->runtimePlacementId);
+			}
+			continue;
+		}
+		if (alias->pObject->Set_State(alias->ePreviousState))
+		{
+			alias->isSuppressed = false;
+			continue;
+		}
+		restoredAll = false;
+		if (nullptr != outStatus && outStatus->empty())
+		{
+			*outStatus = "Failed to restore suppression alias state: " +
+				std::to_string(alias->runtimePlacementId);
+		}
+	}
+	return restoredAll;
 }
 
 void Client::CDestructionSimulationRuntime::Expire_Element(
@@ -1092,9 +1431,9 @@ void Client::CDestructionSimulationRuntime::Expire_Element(
 		}
 		piece.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED;
 	}
-	/* The proxy stones are transient, but the source wall remains in its
-	   fractured preview state until Reset/Clear restores the exact authored
-	   state and animation cursor. */
+	/* The debris pieces are transient. Any source suppression selected by the
+	   recipe remains active until Reset/Clear restores the exact authored state
+	   and animation cursor. */
 	runtime.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED;
 }
 

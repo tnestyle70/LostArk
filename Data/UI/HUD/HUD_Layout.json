@@ -8,7 +8,7 @@
       "id": "HealthBar_BG",
       "ownerClass": null,
       "type": 3,
-      "rect": { "x": 313.628998, "y": 604.286011, "width": 270, "height": 20 },
+      "rect": { "x": 403.640499, "y": 627.987503, "width": 202.5, "height": 15 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -21,7 +21,7 @@
       "id": "Skill_Q",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 402.772003, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -35,7 +35,7 @@
       "id": "Skill_W",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 448.200989, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -49,7 +49,7 @@
       "id": "Skill_E",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 493.628998, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -63,7 +63,7 @@
       "id": "Skill_A",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 425.058014, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -77,7 +77,7 @@
       "id": "Skill_S",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 470.772003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -91,7 +91,7 @@
       "id": "Skill_D",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 516.486023, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -105,7 +105,7 @@
       "id": "ManaBar_BG",
       "ownerClass": null,
       "type": 4,
-      "rect": { "x": 760.291992, "y": 604.286011, "width": 258, "height": 20 },
+      "rect": { "x": 738.637745, "y": 627.987503, "width": 193.5, "height": 15 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -118,7 +118,7 @@
       "id": "SpecialSkill_2",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 807.721008, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 774.209507, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -132,7 +132,7 @@
       "id": "SpecialSkill_3",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 853.435974, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 808.495731, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -146,7 +146,7 @@
       "id": "SpecialSkill_4",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 897.721008, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 841.709507, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -160,7 +160,7 @@
       "id": "SpecialSkill_5",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 942.007019, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 874.924015, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -174,7 +174,7 @@
       "id": "SpecialSkill_6",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 987.721008, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 909.209507, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -188,7 +188,7 @@
       "id": "Item_2",
       "ownerClass": null,
       "type": 8,
-      "rect": { "x": 786.291992, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 758.137745, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -202,7 +202,7 @@
       "id": "Item_3",
       "ownerClass": null,
       "type": 8,
-      "rect": { "x": 832.007019, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 792.424015, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -216,7 +216,7 @@
       "id": "Item_4",
       "ownerClass": null,
       "type": 8,
-      "rect": { "x": 877.721008, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 826.709507, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -230,7 +230,7 @@
       "id": "SpecialSkill_1",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 762.007019, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 739.924015, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -244,7 +244,7 @@
       "id": "Yi_id_paint_1",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 581.448975, "y": 583.231018, "width": 76, "height": 107 },
+      "rect": { "x": 604.505482, "y": 612.196259, "width": 57, "height": 80.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -257,7 +257,7 @@
       "id": "Yi_id_paint_2",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 698.237, "y": 599.487, "width": 71, "height": 84 },
+      "rect": { "x": 692.096501, "y": 624.388245, "width": 53.25, "height": 63 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -270,7 +270,7 @@
       "id": "Yi_id_emblem",
       "ownerClass": "Artist",
       "type": 5,
-      "rect": { "x": 597.754028, "y": 568.226013, "width": 161, "height": 157 },
+      "rect": { "x": 616.734272, "y": 600.942505, "width": 120.75, "height": 117.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -283,7 +283,7 @@
       "id": "Yi_id_brush",
       "ownerClass": "Artist",
       "type": 5,
-      "rect": { "x": 649.018982, "y": 555.176025, "width": 68, "height": 165 },
+      "rect": { "x": 655.182987, "y": 591.155014, "width": 51, "height": 123.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -296,7 +296,7 @@
       "id": "Skill_R",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 539.057007, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -310,7 +310,7 @@
       "id": "Yi_id_gauge",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 609.830994, "y": 668.80603, "width": 134, "height": 53 },
+      "rect": { "x": 625.791996, "y": 676.377518, "width": 100.5, "height": 39.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -323,7 +323,7 @@
       "id": "Yin_Skill_Z",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 612.273987, "y": 621.15802, "width": 30, "height": 30 },
+      "rect": { "x": 627.624241, "y": 640.64151, "width": 22.5, "height": 22.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -336,7 +336,7 @@
       "id": "Yin_Skill_X",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 707.520996, "y": 622.586975, "width": 30, "height": 30 },
+      "rect": { "x": 699.059498, "y": 641.713226, "width": 22.5, "height": 22.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -349,7 +349,7 @@
       "id": "ManaBar",
       "ownerClass": null,
       "type": 4,
-      "rect": { "x": 759.767212, "y": 604.597534, "width": 258, "height": 20 },
+      "rect": { "x": 738.24416, "y": 628.221146, "width": 193.5, "height": 15 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -362,7 +362,7 @@
       "id": "Yin_Skill_X_BG",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 697.046997, "y": 609.734985, "width": 51, "height": 54 },
+      "rect": { "x": 691.203999, "y": 632.074234, "width": 38.25, "height": 40.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -375,7 +375,7 @@
       "id": "Yin_Skill_Z_BG",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 601.802002, "y": 608.30603, "width": 51, "height": 54 },
+      "rect": { "x": 619.770252, "y": 631.002518, "width": 38.25, "height": 40.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -388,7 +388,7 @@
       "id": "Yi_id_orb_1_1",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 608.953979, "y": 672.455994, "width": 48, "height": 44 },
+      "rect": { "x": 625.134235, "y": 679.114991, "width": 36, "height": 33 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -401,7 +401,7 @@
       "id": "Yi_id_orb_1_1_1",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 650.742004, "y": 676.81897, "width": 48, "height": 44 },
+      "rect": { "x": 656.475254, "y": 682.387223, "width": 36, "height": 33 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -414,7 +414,7 @@
       "id": "Yi_id_orb_1_1_1_1",
       "ownerClass": "Artist",
       "type": 6,
-      "rect": { "x": 695.596008, "y": 672.125977, "width": 48, "height": 44 },
+      "rect": { "x": 690.115757, "y": 678.867478, "width": 36, "height": 33 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -427,7 +427,7 @@
       "id": "HealthBar",
       "ownerClass": null,
       "type": 3,
-      "rect": { "x": 313.628998, "y": 604.286011, "width": 270, "height": 20 },
+      "rect": { "x": 403.640499, "y": 627.987503, "width": 202.5, "height": 15 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -440,7 +440,7 @@
       "id": "Slayer_Emblem",
       "ownerClass": "Slayer",
       "type": 5,
-      "rect": { "x": 577.801025, "y": 598.995972, "width": 196, "height": 121 },
+      "rect": { "x": 601.76952, "y": 624.019974, "width": 147, "height": 90.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -453,7 +453,7 @@
       "id": "Slayer_Wing_1",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 635.648987, "y": 607.445984, "width": 43, "height": 89 },
+      "rect": { "x": 645.155491, "y": 630.357483, "width": 32.25, "height": 66.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -466,7 +466,7 @@
       "id": "Slayer_Wing_2",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 672.161987, "y": 607.52301, "width": 41, "height": 88 },
+      "rect": { "x": 672.540241, "y": 630.415253, "width": 30.75, "height": 66 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -479,7 +479,7 @@
       "id": "Slayer_Emblem_3",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 572.643005, "y": 633.736023, "width": 69, "height": 90 },
+      "rect": { "x": 597.901005, "y": 650.075012, "width": 51.75, "height": 67.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -492,7 +492,7 @@
       "id": "Skill_F",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 562.200989, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -506,7 +506,7 @@
       "id": "Slayer_Emblem_4",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 708.268982, "y": 635.349976, "width": 64, "height": 88 },
+      "rect": { "x": 699.620487, "y": 651.285477, "width": 48, "height": 66 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -519,7 +519,7 @@
       "id": "Slayer_Emblem_2",
       "ownerClass": "Slayer",
       "type": 5,
-      "rect": { "x": 592.421021, "y": 580.13501, "width": 162, "height": 73 },
+      "rect": { "x": 612.734516, "y": 609.874253, "width": 121.5, "height": 54.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -532,7 +532,7 @@
       "id": "Slayer_Gauge_BG",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 631.177979, "y": 655.20697, "width": 88, "height": 65 },
+      "rect": { "x": 641.802235, "y": 666.178223, "width": 66, "height": 48.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -545,7 +545,7 @@
       "id": "Slayer_Gauge",
       "ownerClass": "Slayer",
       "type": 6,
-      "rect": { "x": 629.801025, "y": 652.963013, "width": 92, "height": 67 },
+      "rect": { "x": 640.76952, "y": 664.495255, "width": 69, "height": 50.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -558,7 +558,7 @@
       "id": "Gun_Emblem",
       "ownerClass": "Gunslinger",
       "type": 5,
-      "rect": { "x": 573.520996, "y": 567.09198, "width": 197, "height": 180 },
+      "rect": { "x": 598.559498, "y": 600.09198, "width": 147.75, "height": 135 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -571,7 +571,7 @@
       "id": "Gun_Emblem_2",
       "ownerClass": "Gunslinger",
       "type": 5,
-      "rect": { "x": 566.232971, "y": 598.440002, "width": 205, "height": 43 },
+      "rect": { "x": 593.093479, "y": 623.602997, "width": 153.75, "height": 32.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -584,7 +584,7 @@
       "id": "Gun_Slot_L",
       "ownerClass": "Gunslinger",
       "type": 6,
-      "rect": { "x": 579.38501, "y": 607.906982, "width": 68, "height": 70 },
+      "rect": { "x": 602.957508, "y": 630.703232, "width": 51, "height": 52.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -598,7 +598,7 @@
       "id": "Gun_Slot_C",
       "ownerClass": "Gunslinger",
       "type": 6,
-      "rect": { "x": 697.218018, "y": 608.187988, "width": 68, "height": 70 },
+      "rect": { "x": 691.332264, "y": 630.913986, "width": 51, "height": 52.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -612,7 +612,7 @@
       "id": "Gun_Slot_R",
       "ownerClass": "Gunslinger",
       "type": 6,
-      "rect": { "x": 638.007996, "y": 575.567993, "width": 68, "height": 70 },
+      "rect": { "x": 646.924748, "y": 606.44899, "width": 51, "height": 52.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -626,7 +626,7 @@
       "id": "Gun_Pistol",
       "ownerClass": "Gunslinger",
       "type": 5,
-      "rect": { "x": 591.38501, "y": 620.906982, "width": 44, "height": 44 },
+      "rect": { "x": 611.957508, "y": 640.453232, "width": 33, "height": 33 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -639,7 +639,7 @@
       "id": "Gun_Shotgun",
       "ownerClass": "Gunslinger",
       "type": 5,
-      "rect": { "x": 709.315002, "y": 627.380981, "width": 46, "height": 36 },
+      "rect": { "x": 700.405002, "y": 645.308731, "width": 34.5, "height": 27 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -652,7 +652,7 @@
       "id": "Gun_Rifle",
       "ownerClass": "Gunslinger",
       "type": 5,
-      "rect": { "x": 644.507996, "y": 592.567993, "width": 55, "height": 36 },
+      "rect": { "x": 651.799748, "y": 619.19899, "width": 41.25, "height": 27 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -665,7 +665,7 @@
       "id": "Gun_Arrow_L",
       "ownerClass": "Gunslinger",
       "type": 6,
-      "rect": { "x": 575.965027, "y": 594.815002, "width": 40, "height": 30 },
+      "rect": { "x": 600.392521, "y": 620.884247, "width": 30, "height": 22.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -678,7 +678,7 @@
       "id": "Gun_Arrow_R",
       "ownerClass": "Gunslinger",
       "type": 6,
-      "rect": { "x": 728.077026, "y": 594.815002, "width": 40, "height": 30 },
+      "rect": { "x": 714.47652, "y": 620.884247, "width": 30, "height": 22.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -691,7 +691,7 @@
       "id": "Item_1",
       "ownerClass": null,
       "type": 8,
-      "rect": { "x": 740.578003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 723.852253, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -705,7 +705,7 @@
       "id": "Lance_Id_Spear_1",
       "ownerClass": "LanceMaster",
       "type": 5,
-      "rect": { "x": 655.643005, "y": 574.715027, "width": 43, "height": 162 },
+      "rect": { "x": 660.151005, "y": 605.809265, "width": 32.25, "height": 121.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -718,7 +718,7 @@
       "id": "Lance_Id_1",
       "ownerClass": "LanceMaster",
       "type": 5,
-      "rect": { "x": 569.643005, "y": 591.357971, "width": 205, "height": 141 },
+      "rect": { "x": 595.651005, "y": 618.291473, "width": 153.75, "height": 105.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -732,7 +732,7 @@
       "id": "Lance_Id_black_1",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 623.284973, "y": 627.189514, "width": 24, "height": 63 },
+      "rect": { "x": 635.882481, "y": 645.165131, "width": 18, "height": 47.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -745,7 +745,7 @@
       "id": "Lance_Id_black_2",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 639.572021, "y": 678.333496, "width": 69, "height": 21 },
+      "rect": { "x": 648.097766, "y": 683.523117, "width": 51.75, "height": 15.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -758,7 +758,7 @@
       "id": "Lance_Id_black_3",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 701.215027, "y": 629.690491, "width": 21, "height": 60 },
+      "rect": { "x": 694.330021, "y": 647.040863, "width": 15.75, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -771,7 +771,7 @@
       "id": "Dimen_Handle_1",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 720.603149, "y": 615.397034, "width": 60, "height": 75 },
+      "rect": { "x": 708.871113, "y": 636.320771, "width": 45, "height": 56.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -784,7 +784,7 @@
       "id": "Dimen_Curve",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 723.987549, "y": 598.577942, "width": 52, "height": 102 },
+      "rect": { "x": 711.409412, "y": 623.706452, "width": 39, "height": 76.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -797,7 +797,7 @@
       "id": "Dimen_Wing_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 683.861328, "y": 545.378113, "width": 85, "height": 84 },
+      "rect": { "x": 681.314747, "y": 583.80658, "width": 63.75, "height": 63 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -810,7 +810,7 @@
       "id": "Dimen_Emblem_Piece_1",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 581.328918, "y": 605.181946, "width": 56, "height": 92 },
+      "rect": { "x": 604.415439, "y": 628.659455, "width": 42, "height": 69 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -823,7 +823,7 @@
       "id": "Dimen_Circle",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 690.815125, "y": 695.157776, "width": 33, "height": 25 },
+      "rect": { "x": 686.530094, "y": 696.141327, "width": 24.75, "height": 18.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -836,20 +836,20 @@
       "id": "Lance_Id_white_1",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 623.286011, "y": 627.190491, "width": 24, "height": 63 },
+      "rect": { "x": 635.883259, "y": 645.165863, "width": 18, "height": 47.25 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
         { "path": "UI/HUD/LanceMaster/Lance Id white 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": "UI/HUD/LanceMaster/Id shine left.png", "additive": false },
-      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire left 1.png", "UI/HUD/LanceMaster/Id fire left 2.png", "UI/HUD/LanceMaster/Id fire left 3.png"] }
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -1.5 }, "frames": ["UI/HUD/LanceMaster/Id fire left 1.png", "UI/HUD/LanceMaster/Id fire left 2.png", "UI/HUD/LanceMaster/Id fire left 3.png"] }
     },
     {
       "id": "Dimen_Handle_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 568.737854, "y": 577.430664, "width": 58, "height": 63 },
+      "rect": { "x": 594.972141, "y": 607.845993, "width": 43.5, "height": 47.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -862,20 +862,20 @@
       "id": "Lance_Id_white_3",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 699.708984, "y": 629.652466, "width": 21, "height": 60 },
+      "rect": { "x": 693.200489, "y": 647.012345, "width": 15.75, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
         { "path": "UI/HUD/LanceMaster/Lance Id white 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": "UI/HUD/LanceMaster/Id shine right.png", "additive": false },
-      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire right 1.png", "UI/HUD/LanceMaster/Id fire right 2.png", "UI/HUD/LanceMaster/Id fire right 3.png"] }
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -1.5 }, "frames": ["UI/HUD/LanceMaster/Id fire right 1.png", "UI/HUD/LanceMaster/Id fire right 2.png", "UI/HUD/LanceMaster/Id fire right 3.png"] }
     },
     {
       "id": "Dimen_Gear_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 711.232727, "y": 679.755859, "width": 32, "height": 36 },
+      "rect": { "x": 701.843296, "y": 684.589889, "width": 24, "height": 27 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -888,20 +888,20 @@
       "id": "Lance_Id_white_2",
       "ownerClass": "LanceMaster",
       "type": 6,
-      "rect": { "x": 639.570984, "y": 681.191467, "width": 69, "height": 21 },
+      "rect": { "x": 648.096989, "y": 685.666595, "width": 51.75, "height": 15.75 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
         { "path": "UI/HUD/LanceMaster/Lance Id white 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": "UI/HUD/LanceMaster/Id shine bottom.png", "additive": false },
-      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire bottom 1.png", "UI/HUD/LanceMaster/Id fire bottom 2.png", "UI/HUD/LanceMaster/Id fire bottom 3.png"] }
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -1.5 }, "frames": ["UI/HUD/LanceMaster/Id fire bottom 1.png", "UI/HUD/LanceMaster/Id fire bottom 2.png", "UI/HUD/LanceMaster/Id fire bottom 3.png"] }
     },
     {
       "id": "Dimen_Gear_Edge",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 704.525024, "y": 679.985291, "width": 44, "height": 44 },
+      "rect": { "x": 696.812519, "y": 684.761963, "width": 33, "height": 33 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -914,7 +914,7 @@
       "id": "Dimen_Wing_1",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 594.067749, "y": 656.866211, "width": 86, "height": 83 },
+      "rect": { "x": 613.969563, "y": 667.422653, "width": 64.5, "height": 62.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -927,7 +927,7 @@
       "id": "Dimen_Emblem_Basic",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rect": { "x": 616.229359, "y": 599.625931, "width": 119.25, "height": 113.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -940,7 +940,7 @@
       "id": "Dimen_Emblem_Blue",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rect": { "x": 616.229359, "y": 599.625931, "width": 119.25, "height": 113.25 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
@@ -953,7 +953,7 @@
       "id": "Dimen_Emblem_Shine",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rect": { "x": 616.229359, "y": 599.625931, "width": 119.25, "height": 113.25 },
       "rotation": 0,
       "stages": { "baseFrom": 2, "shineFrom": 2 },
       "layers": [
@@ -966,7 +966,7 @@
       "id": "Dimen_Edge_Shine",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 591.657349, "y": 562.854736, "width": 160, "height": 166 },
+      "rect": { "x": 612.161762, "y": 596.914047, "width": 120, "height": 124.5 },
       "rotation": 0,
       "stages": { "baseFrom": 2, "shineFrom": 2 },
       "layers": [
@@ -979,7 +979,7 @@
       "id": "Dimen_Word_Shine",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 618.173035, "y": 576.112732, "width": 116, "height": 125 },
+      "rect": { "x": 632.048527, "y": 606.857544, "width": 87, "height": 93.75 },
       "rotation": 0,
       "stages": { "baseFrom": 2, "shineFrom": 2 },
       "layers": [
@@ -992,7 +992,7 @@
       "id": "Dimen_Arrow_Short",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 661.544434, "y": 607.562866, "width": 28, "height": 57 },
+      "rect": { "x": 664.577076, "y": 630.445145, "width": 21, "height": 42.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1005,7 +1005,7 @@
       "id": "Dimen_Marker_1",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 605.275818, "y": 663.45752, "width": 28, "height": 29 },
+      "rect": { "x": 622.375614, "y": 672.366135, "width": 21, "height": 21.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1018,7 +1018,7 @@
       "id": "Dimen_Marker_Blue_1",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 605.275818, "y": 663.45752, "width": 28, "height": 29 },
+      "rect": { "x": 622.375614, "y": 672.366135, "width": 21, "height": 21.75 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
@@ -1031,7 +1031,7 @@
       "id": "Dimen_Marker_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 717.475403, "y": 663.45752, "width": 28, "height": 29 },
+      "rect": { "x": 706.525303, "y": 672.366135, "width": 21, "height": 21.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1044,7 +1044,7 @@
       "id": "Dimen_Marker_Blue_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 717.475403, "y": 663.45752, "width": 28, "height": 29 },
+      "rect": { "x": 706.525303, "y": 672.366135, "width": 21, "height": 21.75 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
@@ -1057,7 +1057,7 @@
       "id": "Dimen_Arrow",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rect": { "x": 661.412876, "y": 615.077744, "width": 25.5, "height": 63 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1070,7 +1070,7 @@
       "id": "Dimen_Arrow_Gold",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rect": { "x": 661.412876, "y": 615.077744, "width": 25.5, "height": 63 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
@@ -1083,7 +1083,7 @@
       "id": "Dimen_Arrow_Shine",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rect": { "x": 661.412876, "y": 615.077744, "width": 25.5, "height": 63 },
       "rotation": 0,
       "stages": { "baseFrom": 2, "shineFrom": 2 },
       "layers": [
@@ -1096,7 +1096,7 @@
       "id": "Dimen_Marker_3",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 661.580811, "y": 562.933716, "width": 30, "height": 31 },
+      "rect": { "x": 664.604359, "y": 596.973282, "width": 22.5, "height": 23.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1109,7 +1109,7 @@
       "id": "Dimen_Marker_Blue_3",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 661.580811, "y": 562.933716, "width": 30, "height": 31 },
+      "rect": { "x": 664.604359, "y": 596.973282, "width": 22.5, "height": 23.25 },
       "rotation": 0,
       "stages": { "baseFrom": 1, "shineFrom": 1 },
       "layers": [
@@ -1122,7 +1122,7 @@
       "id": "Lance_Skill_Q",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 402.772003, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1136,7 +1136,7 @@
       "id": "Lance_Skill_W",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 448.200989, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1150,7 +1150,7 @@
       "id": "Lance_Skill_E",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 493.628998, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1164,7 +1164,7 @@
       "id": "Lance_Skill_R",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 539.057007, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1178,7 +1178,7 @@
       "id": "Lance_Skill_A",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 425.058014, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1192,7 +1192,7 @@
       "id": "Lance_Skill_S",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 470.772003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1206,7 +1206,7 @@
       "id": "Lance_Skill_D",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 516.486023, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1220,7 +1220,7 @@
       "id": "Lance_Skill_F",
       "ownerClass": "LanceMaster",
       "type": 7,
-      "rect": { "x": 562.200989, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1236,7 +1236,7 @@
       "id": "Warlord_Skill_Q",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 402.772003, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1250,7 +1250,7 @@
       "id": "Warlord_Skill_W",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 448.200989, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1264,7 +1264,7 @@
       "id": "Warlord_Skill_E",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 493.628998, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1278,7 +1278,7 @@
       "id": "Warlord_Skill_R",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 539.057007, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1292,7 +1292,7 @@
       "id": "Warlord_Skill_A",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 425.058014, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1306,7 +1306,7 @@
       "id": "Warlord_Skill_S",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 470.772003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1320,7 +1320,7 @@
       "id": "Warlord_Skill_D",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 516.486023, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1334,7 +1334,7 @@
       "id": "Warlord_Skill_F",
       "ownerClass": "Warlord",
       "type": 7,
-      "rect": { "x": 562.200989, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1348,7 +1348,7 @@
       "id": "Yi_Skill_Q",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 402.772003, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1362,7 +1362,7 @@
       "id": "Yi_Skill_W",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 448.200989, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1376,7 +1376,7 @@
       "id": "Yi_Skill_E",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 493.628998, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1390,7 +1390,7 @@
       "id": "Yi_Skill_R",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 539.057007, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1404,7 +1404,7 @@
       "id": "Yi_Skill_A",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 425.058014, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1418,7 +1418,7 @@
       "id": "Yi_Skill_S",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 470.772003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1432,7 +1432,7 @@
       "id": "Yi_Skill_D",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 516.486023, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1446,7 +1446,7 @@
       "id": "Yi_Skill_F",
       "ownerClass": "Artist",
       "type": 7,
-      "rect": { "x": 562.200989, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1460,7 +1460,7 @@
       "id": "Dimen_Skill_Q",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 402.772003, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 470.497753, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1474,7 +1474,7 @@
       "id": "Dimen_Skill_W",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 448.200989, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 504.569492, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1488,7 +1488,7 @@
       "id": "Dimen_Skill_E",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 493.628998, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 538.640499, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1502,7 +1502,7 @@
       "id": "Dimen_Skill_R",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 539.057007, "y": 626.572021, "width": 46, "height": 46 },
+      "rect": { "x": 572.711506, "y": 644.702011, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1516,7 +1516,7 @@
       "id": "Dimen_Skill_A",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 425.058014, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 487.212261, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1530,7 +1530,7 @@
       "id": "Dimen_Skill_S",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 470.772003, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 521.497753, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1544,7 +1544,7 @@
       "id": "Dimen_Skill_D",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 516.486023, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 555.783268, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1558,7 +1558,7 @@
       "id": "Dimen_Skill_F",
       "ownerClass": "DimensionMaster",
       "type": 7,
-      "rect": { "x": 562.200989, "y": 673.429016, "width": 46, "height": 46 },
+      "rect": { "x": 590.069493, "y": 679.844757, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [

@@ -44,6 +44,63 @@ namespace
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 4) | (1u << 5) | (1u << 6) | (1u << 7);
 
+	/* Chains picked by parsing what the shipped meshes actually skin, not by
+	what the rig offers: the capatcloth chains and the long b_hair chains have
+	no weights on any product mesh and stay unlisted. The Upper coat hangs
+	eight b_skirt panels and one b_add_tail tassel off the pelvis, the
+	Shoulder piece is almost entirely the two b_armwing sleeve wings, and the
+	hat's b_hair_b_11 tassel rides the head. */
+	constexpr f32_t ROBE_STIFFNESS = 0.05f;
+	constexpr f32_t ROBE_DAMPING = 0.6f;
+	constexpr f32_t ROBE_GRAVITY = 16.f;
+	constexpr f32_t ROBE_MAX_DISPLACEMENT = 0.3f;
+	constexpr f32_t ROBE_WIND_RESPONSE = 4.5f;
+
+	/* The wings hang from the upper arms, which move faster than the hips, so
+	they run stiffer to keep them from wrapping around the arm mid-swing. */
+	constexpr f32_t WING_STIFFNESS = 0.08f;
+	constexpr f32_t WING_DAMPING = 0.55f;
+	constexpr f32_t WING_GRAVITY = 12.f;
+	constexpr f32_t WING_MAX_DISPLACEMENT = 0.25f;
+	constexpr f32_t WING_WIND_RESPONSE = 3.f;
+
+	constexpr f32_t TASSEL_STIFFNESS = 0.12f;
+	constexpr f32_t TASSEL_DAMPING = 0.5f;
+	constexpr f32_t TASSEL_GRAVITY = 12.f;
+	constexpr f32_t TASSEL_MAX_DISPLACEMENT = 0.15f;
+	constexpr f32_t TASSEL_WIND_RESPONSE = 2.f;
+
+	constexpr BONE_CHAIN_SPEC BoneChains[] =
+	{
+		{ "b_skirt_f_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_fl_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_fr_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_l_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_r_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_b_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_bl_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+		{ "b_skirt_br_01", 4u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+
+		{ "b_add_tail_1_01", 3u, ROBE_STIFFNESS, ROBE_DAMPING,
+		  ROBE_GRAVITY, ROBE_MAX_DISPLACEMENT, ROBE_WIND_RESPONSE },
+
+		{ "b_armwing_l_01", 5u, WING_STIFFNESS, WING_DAMPING,
+		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE },
+		{ "b_armwing_r_01", 5u, WING_STIFFNESS, WING_DAMPING,
+		  WING_GRAVITY, WING_MAX_DISPLACEMENT, WING_WIND_RESPONSE },
+
+		{ "b_hair_b_11", 4u, TASSEL_STIFFNESS, TASSEL_DAMPING,
+		  TASSEL_GRAVITY, TASSEL_MAX_DISPLACEMENT, TASSEL_WIND_RESPONSE },
+	};
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Artist>();
@@ -90,6 +147,15 @@ const CHARACTER_SPEC Spec_Artist =
 	},
 
 	&Create_Logic,
+
+	nullptr,
+	0u,
+
+	nullptr,
+	0u,
+
+	BoneChains,
+	static_cast<uint32_t>(size(BoneChains)),
 };
 
 NS_END
