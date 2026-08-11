@@ -42,6 +42,12 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31460.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31470",
+      "payloadKind": "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM",
+      "reconstructedRuntimeProgramPath": "Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json",
+      "reconstructedRenderResourceAuthorityPath": "Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31480.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31480.authored-baseline.effect.json"
     },

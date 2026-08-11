@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_Catalog.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_Playback.h"
 #include "GameObject.h"
@@ -21,6 +22,8 @@ public:
 		const EFFECT_DOCUMENT_DESC* pDocument = nullptr;
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPreparedResources;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pReconstructedRuntimePreparation;
 		float4x4_t RootWorld{};
 		bool_t bAutoPlay = true;
 		bool_t bRequirePreparedResources = false;
@@ -51,6 +54,9 @@ public:
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPreparedResources,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedRuntimeProgram(
+		const EFFECT_OBJECT_DESC& Desc,
+		std::string& strOutError);
 	void Set_RootWorld(const float4x4_t& RootWorld);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
@@ -70,9 +76,41 @@ public:
 		return m_Playback.Query_ParticleRuntimeProbe(strElementId, OutProbe);
 	}
 	const std::string& Get_Status() const { return m_strStatus; }
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		Get_ReconstructedRuntimePreparation() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Preparation();
+	}
+	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+		Get_ReconstructedRuntimeEntry() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_CatalogEntry();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+		Get_ReconstructedRuntimeProgram() const
+	{
+		return m_ReconstructedRuntimeBoundary.Get_Program();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+		Get_PlaybackReconstructedRuntimeProgram() const
+	{
+		return m_Playback.Get_ReconstructedRuntimeProgram();
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+		Get_RendererReconstructedRuntimeProgram() const
+	{
+		return m_pRenderer->Get_ReconstructedRuntimeProgram();
+	}
+
+private:
+	bool_t Stage_ReconstructedRuntimeEntry(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
 
 private:
 	unique_ptr<CEffectDocumentRenderer> m_pRenderer;
+	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	CEffectPlayback m_Playback;
 	float4x4_t m_RootWorld{};
 	bool_t m_bPlaying = true;

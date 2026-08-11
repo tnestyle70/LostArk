@@ -2,6 +2,7 @@
 
 #include "AnimationEffectCueDocument.h"
 #include "Client_Defines.h"
+#include "Effect_Catalog.h"
 
 #include <cstdint>
 #include <memory>
@@ -44,6 +45,11 @@ public:
     static bool_t Spawn(
         const EFFECT_SPAWN_DESC& Desc,
         std::string& strOutStatus);
+	static bool_t Prepare_ReconstructedRuntimeProgram(
+		const std::string& strEffectAssetId,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			OutPreparation,
+		std::string& strOutStatus);
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);

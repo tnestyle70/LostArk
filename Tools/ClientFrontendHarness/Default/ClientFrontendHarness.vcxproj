@@ -51,7 +51,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS;LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
 		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -69,7 +69,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS;LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
 		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -102,6 +102,12 @@
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp">
 	  <Link>Client\Effect_CascadeCompiler.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp">
+	  <Link>Client\Effect_RuntimeAuthority.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp">
+	  <Link>Client\Effect_ReconstructedExecution.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp">
 	  <Link>Client\Effect_Distribution.cpp</Link>

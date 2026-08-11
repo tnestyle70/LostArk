@@ -1,0 +1,978 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/effect-reconstruction-approval-policy-v1.json",
+  "title": "LostArk immutable reconstructed Effect approval policy",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\:])[A-Za-z0-9_.\\-/]+$"
+    },
+    "stableIdArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/stableId"
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "characterClass",
+        "skillId",
+        "inputSlot",
+        "effectAssetId"
+      ],
+      "properties": {
+        "characterClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "skillId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "inputSlot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        }
+      }
+    },
+    "approvalDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "scope",
+        "sourceFidelityPromotionAllowed",
+        "runtimeExecutionGranted",
+        "productAdmissionGranted"
+      ],
+      "properties": {
+        "classification": {
+          "const": "RECONSTRUCTED_APPROVED_V1"
+        },
+        "scope": {
+          "const": "IMPLEMENTATION_AND_VALIDATION_ROUTE_ONLY"
+        },
+        "sourceFidelityPromotionAllowed": {
+          "const": false
+        },
+        "runtimeExecutionGranted": {
+          "const": false
+        },
+        "productAdmissionGranted": {
+          "const": false
+        }
+      }
+    },
+    "trackedJsonIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "canonicalJsonSha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "canonicalJsonSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "receiptArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "gitBlobId",
+        "rawByteCount",
+        "rawSha256",
+        "canonicalJsonSha256",
+        "schema",
+        "formatVersion",
+        "receiptSha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "gitBlobId": {
+          "$ref": "#/$defs/gitId"
+        },
+        "rawByteCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rawSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "canonicalJsonSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "formatVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "receiptSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "gitBlobId",
+        "rawByteCount",
+        "rawSha256",
+        "trackedTextSha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "gitBlobId": {
+          "$ref": "#/$defs/gitId"
+        },
+        "rawByteCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rawSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "trackedTextSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "frozenInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "laneId",
+        "commitId",
+        "treeId",
+        "identityRole",
+        "receiptArtifacts",
+        "requiredSourceArtifacts"
+      ],
+      "properties": {
+        "laneId": {
+          "enum": [
+            "SOURCE",
+            "MATERIAL",
+            "GEOMETRY",
+            "RUNTIME_FOUNDATION"
+          ]
+        },
+        "commitId": {
+          "$ref": "#/$defs/gitId"
+        },
+        "treeId": {
+          "$ref": "#/$defs/gitId"
+        },
+        "identityRole": {
+          "const": "REVIEWED_FROZEN_GIT_TREE"
+        },
+        "receiptArtifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/receiptArtifact"
+          }
+        },
+        "requiredSourceArtifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourceArtifact"
+          }
+        }
+      }
+    },
+    "denominators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceExecutionRowCount",
+        "materialRenderStateRowCount",
+        "materialStaticPermutationRowCount",
+        "materialSamplerRowCount",
+        "materialExecutionRowCount",
+        "materialArithmeticFamilyCount",
+        "geometryCarrierCount",
+        "effectOccurrenceCount"
+      ],
+      "properties": {
+        "sourceExecutionRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialRenderStateRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialStaticPermutationRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialSamplerRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialExecutionRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialArithmeticFamilyCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "geometryCarrierCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "effectOccurrenceCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "sourceFamily": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "upstreamClusterId",
+        "upstreamNativeFamily",
+        "policyFamilyId",
+        "closureBasis",
+        "moduleOccurrenceCount",
+        "requiredMutatedOutputs",
+        "requiredOracleIds",
+        "sourceExact",
+        "executionAdmission"
+      ],
+      "properties": {
+        "upstreamClusterId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamNativeFamily": {
+          "$ref": "#/$defs/stableId"
+        },
+        "policyFamilyId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "closureBasis": {
+          "$ref": "#/$defs/stableId"
+        },
+        "moduleOccurrenceCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requiredMutatedOutputs": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "requiredOracleIds": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "sourceExact": {
+          "const": false
+        },
+        "executionAdmission": {
+          "const": false
+        }
+      }
+    },
+    "sourceRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyRowId",
+        "upstreamIdentitySha256",
+        "policyBindingSha256",
+        "exactSourceClass",
+        "moduleOccurrenceId",
+        "upstreamClusterId",
+        "requiredMutatedOutput",
+        "upstreamDecision",
+        "policyFamilyId",
+        "evidenceFidelity",
+        "executionFidelity",
+        "sourceExact",
+        "preservedEvidenceBlockers",
+        "policyFidelityGuards",
+        "requiredOracleIds",
+        "executionBlockers",
+        "executionAdmission",
+        "productAdmission"
+      ],
+      "properties": {
+        "policyRowId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamIdentitySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "policyBindingSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "exactSourceClass": {
+          "$ref": "#/$defs/stableId"
+        },
+        "moduleOccurrenceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "upstreamClusterId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "requiredMutatedOutput": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamDecision": {
+          "$ref": "#/$defs/stableId"
+        },
+        "policyFamilyId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "evidenceFidelity": {
+          "$ref": "#/$defs/stableId"
+        },
+        "executionFidelity": {
+          "const": "RECONSTRUCTED_APPROVED_V1_NOT_IMPLEMENTED"
+        },
+        "sourceExact": {
+          "const": false
+        },
+        "preservedEvidenceBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "policyFidelityGuards": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "requiredOracleIds": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionAdmission": {
+          "const": false
+        },
+        "productAdmission": {
+          "const": false
+        }
+      }
+    },
+    "materialFamily": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyFamilyId",
+        "closureBasis",
+        "requiredOracleIds"
+      ],
+      "properties": {
+        "policyFamilyId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "closureBasis": {
+          "$ref": "#/$defs/stableId"
+        },
+        "requiredOracleIds": {
+          "$ref": "#/$defs/stableIdArray"
+        }
+      }
+    },
+    "materialRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyRowId",
+        "upstreamIdentitySha256",
+        "policyBindingSha256",
+        "domain",
+        "upstreamMatrixRowId",
+        "materialRecipeId",
+        "materialOccurrenceIds",
+        "fieldId",
+        "fieldKind",
+        "bindingOrigin",
+        "upstreamDecision",
+        "policyFamilyId",
+        "evidenceFidelity",
+        "executionFidelity",
+        "sourceValueAcquired",
+        "partialSourceExactFields",
+        "previousSamplerAdmission",
+        "fullDescriptorSourceExact",
+        "sourceExact",
+        "preservedEvidenceBlockers",
+        "policyFidelityGuards",
+        "requiredOracleIds",
+        "executionBlockers",
+        "executionAdmission",
+        "productAdmission"
+      ],
+      "properties": {
+        "policyRowId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamIdentitySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "policyBindingSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "domain": {
+          "enum": [
+            "RENDER_STATE",
+            "STATIC_PERMUTATION",
+            "SAMPLER"
+          ]
+        },
+        "upstreamMatrixRowId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "materialRecipeId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "materialOccurrenceIds": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "fieldId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "fieldKind": {
+          "$ref": "#/$defs/stableId"
+        },
+        "bindingOrigin": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamDecision": {
+          "$ref": "#/$defs/stableId"
+        },
+        "policyFamilyId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "evidenceFidelity": {
+          "$ref": "#/$defs/stableId"
+        },
+        "executionFidelity": {
+          "const": "RECONSTRUCTED_APPROVED_V1_NOT_MATERIALIZED"
+        },
+        "sourceValueAcquired": {
+          "type": "boolean"
+        },
+        "partialSourceExactFields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "previousSamplerAdmission": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fullDescriptorSourceExact": {
+          "const": false
+        },
+        "sourceExact": {
+          "const": false
+        },
+        "preservedEvidenceBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "policyFidelityGuards": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "requiredOracleIds": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionAdmission": {
+          "const": false
+        },
+        "productAdmission": {
+          "const": false
+        }
+      }
+    },
+    "arithmeticRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyRowId",
+        "upstreamFamilyId",
+        "familyIdentitySha256",
+        "evaluatorId",
+        "evaluatorVersion",
+        "evaluatorSha256",
+        "policyFamilyId",
+        "evidenceFidelity",
+        "sourceExact",
+        "cpuNumericOracleVerified",
+        "hlslNumericOracleVerified",
+        "preservedEvidenceBlockers",
+        "requiredOracleIds",
+        "executionBlockers",
+        "executionAdmission",
+        "productAdmission"
+      ],
+      "properties": {
+        "policyRowId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "upstreamFamilyId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "familyIdentitySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evaluatorId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "evaluatorVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evaluatorSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "policyFamilyId": {
+          "const": "RECONSTRUCTED_APPROVED_ARITHMETIC_V1"
+        },
+        "evidenceFidelity": {
+          "const": "RECONSTRUCTED_NUMERICALLY_VERIFIED_GRAPH_NOT_SOURCE_EXACT"
+        },
+        "sourceExact": {
+          "const": false
+        },
+        "cpuNumericOracleVerified": {
+          "const": true
+        },
+        "hlslNumericOracleVerified": {
+          "const": true
+        },
+        "preservedEvidenceBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "requiredOracleIds": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionAdmission": {
+          "const": false
+        },
+        "productAdmission": {
+          "const": false
+        }
+      }
+    },
+    "geometryRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "sourceObject",
+        "candidateResourceSha256",
+        "payloadSha256",
+        "metadataIdentitySha256",
+        "geometryPreScale",
+        "artifactBindingIntegrity",
+        "sourceFidelity",
+        "sourceExact",
+        "executionBlockers",
+        "executionAdmission",
+        "productAdmission"
+      ],
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceObject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidateResourceSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "payloadSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "metadataIdentitySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "geometryPreScale": {
+          "type": "number",
+          "const": 0.01
+        },
+        "artifactBindingIntegrity": {
+          "const": "EXPECTED_G02_TUPLE_MATCHES_STAGED_BYTES"
+        },
+        "sourceFidelity": {
+          "const": "GEOMETRY_ARTIFACT_BINDING_NOT_SOURCE_EXACT"
+        },
+        "sourceExact": {
+          "const": false
+        },
+        "executionBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionAdmission": {
+          "const": false
+        },
+        "productAdmission": {
+          "const": false
+        }
+      }
+    },
+    "fidelityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceExactAdmission",
+        "sourceExactUpgradeAllowed",
+        "reconstructionApprovalRemovesEvidenceBlockers",
+        "executionFidelityLabel",
+        "forbiddenClaims"
+      ],
+      "properties": {
+        "sourceExactAdmission": {
+          "const": false
+        },
+        "sourceExactUpgradeAllowed": {
+          "const": false
+        },
+        "reconstructionApprovalRemovesEvidenceBlockers": {
+          "const": false
+        },
+        "executionFidelityLabel": {
+          "const": "RECONSTRUCTED_APPROVED_V1"
+        },
+        "forbiddenClaims": {
+          "$ref": "#/$defs/stableIdArray"
+        }
+      }
+    },
+    "admissionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyRouteApproved",
+        "evidenceJoinIntegrity",
+        "sourceExactAdmission",
+        "executionAdmission",
+        "productAdmission",
+        "requiredGlobalGates",
+        "executionBlockers",
+        "productBlockers"
+      ],
+      "properties": {
+        "policyRouteApproved": {
+          "const": true
+        },
+        "evidenceJoinIntegrity": {
+          "const": true
+        },
+        "sourceExactAdmission": {
+          "const": false
+        },
+        "executionAdmission": {
+          "const": false
+        },
+        "productAdmission": {
+          "const": false
+        },
+        "requiredGlobalGates": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "executionBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        },
+        "productBlockers": {
+          "$ref": "#/$defs/stableIdArray"
+        }
+      }
+    },
+    "manualValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "requiredOccurrenceCount",
+        "completedOccurrenceCount",
+        "automatedScreenshotOrImageOracleAllowed",
+        "captureArtifactRequired",
+        "status"
+      ],
+      "properties": {
+        "mode": {
+          "const": "HUMAN_EYE_RUNTIME_OCCURRENCE_CHECKLIST"
+        },
+        "requiredOccurrenceCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "completedOccurrenceCount": {
+          "const": 0
+        },
+        "automatedScreenshotOrImageOracleAllowed": {
+          "const": false
+        },
+        "captureArtifactRequired": {
+          "const": false
+        },
+        "status": {
+          "const": "NOT_STARTED"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceExecutionRowCount",
+        "sourceExecutionFamilyCount",
+        "materialRenderStateRowCount",
+        "materialStaticPermutationRowCount",
+        "materialSamplerRowCount",
+        "materialExecutionRowCount",
+        "materialArithmeticFamilyCount",
+        "formerExactSamplerReauditCount",
+        "formerExactSamplerPartialTagsCount",
+        "formerExactSamplerDefaultUnprovenCount",
+        "samplerFullSourceExactCount",
+        "forbiddenFullFidelityLabelCount",
+        "geometryCarrierCount",
+        "manualValidationCount",
+        "sourceExactCount",
+        "executionAdmissionCount",
+        "productAdmissionCount"
+      ],
+      "properties": {
+        "sourceExecutionRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceExecutionFamilyCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialRenderStateRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialStaticPermutationRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialSamplerRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialExecutionRowCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "materialArithmeticFamilyCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "formerExactSamplerReauditCount": {
+          "const": 4
+        },
+        "formerExactSamplerPartialTagsCount": {
+          "const": 1
+        },
+        "formerExactSamplerDefaultUnprovenCount": {
+          "const": 3
+        },
+        "samplerFullSourceExactCount": {
+          "const": 0
+        },
+        "forbiddenFullFidelityLabelCount": {
+          "const": 0
+        },
+        "geometryCarrierCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "manualValidationCount": {
+          "const": 0
+        },
+        "sourceExactCount": {
+          "const": 0
+        },
+        "executionAdmissionCount": {
+          "const": 0
+        },
+        "productAdmissionCount": {
+          "const": 0
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "policyId",
+    "policyVersion",
+    "target",
+    "policyRole",
+    "approvalDecision",
+    "policySourceIdentity",
+    "policySchemaIdentity",
+    "frozenInputs",
+    "denominators",
+    "sourceExecutionFamilies",
+    "sourceRows",
+    "materialExecutionFamilies",
+    "materialRows",
+    "materialArithmeticRows",
+    "geometryRows",
+    "fidelityPolicy",
+    "admissionPolicy",
+    "manualValidation",
+    "rollbackConditions",
+    "summary",
+    "receiptSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.effect-reconstruction-approval-policy"
+    },
+    "formatVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "policyId": {
+      "$ref": "#/$defs/stableId"
+    },
+    "policyVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "policyRole": {
+      "const": "IMMUTABLE_RECONSTRUCTION_ROUTE_NOT_RUNTIME_AUTHORITY"
+    },
+    "approvalDecision": {
+      "$ref": "#/$defs/approvalDecision"
+    },
+    "policySourceIdentity": {
+      "$ref": "#/$defs/trackedJsonIdentity"
+    },
+    "policySchemaIdentity": {
+      "$ref": "#/$defs/trackedJsonIdentity"
+    },
+    "frozenInputs": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/frozenInput"
+      }
+    },
+    "denominators": {
+      "$ref": "#/$defs/denominators"
+    },
+    "sourceExecutionFamilies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sourceFamily"
+      }
+    },
+    "sourceRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sourceRow"
+      }
+    },
+    "materialExecutionFamilies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/materialFamily"
+      }
+    },
+    "materialRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/materialRow"
+      }
+    },
+    "materialArithmeticRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/arithmeticRow"
+      }
+    },
+    "geometryRows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/geometryRow"
+      }
+    },
+    "fidelityPolicy": {
+      "$ref": "#/$defs/fidelityPolicy"
+    },
+    "admissionPolicy": {
+      "$ref": "#/$defs/admissionPolicy"
+    },
+    "manualValidation": {
+      "$ref": "#/$defs/manualValidation"
+    },
+    "rollbackConditions": {
+      "$ref": "#/$defs/stableIdArray"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "receiptSha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  }
+}

@@ -152,6 +152,7 @@ namespace
 		{
 			++m_Position;
 			DATA_JSON_VALUE::OBJECT values;
+			vector<string> insertionOrder;
 			SkipWhitespace();
 			if (Consume('}'))
 			{
@@ -171,6 +172,7 @@ namespace
 				DATA_JSON_VALUE value;
 				if (!ReadValue(depth + 1u, value))
 					return false;
+				insertionOrder.push_back(key);
 				if (!values.emplace(move(key), move(value)).second)
 					return SetError("Duplicate object key");
 
@@ -184,7 +186,8 @@ namespace
 					return SetError("Trailing comma in object");
 			}
 
-			outValue = DATA_JSON_VALUE::Object(move(values));
+			outValue = DATA_JSON_VALUE::Object(
+				move(values), move(insertionOrder));
 			return true;
 		}
 
@@ -325,7 +328,10 @@ namespace
 			{
 				return SetError("Invalid or non-finite number");
 			}
-			outValue = DATA_JSON_VALUE::Number(number);
+			const string_view token = m_Text.substr(start, m_Position - start);
+			const bool_t bFloatingPointToken =
+				token.find_first_of(".eE") != string_view::npos;
+			outValue = DATA_JSON_VALUE::Number(number, bFloatingPointToken);
 			return true;
 		}
 
@@ -410,11 +416,13 @@ DATA_JSON_VALUE DATA_JSON_VALUE::Boolean(const bool_t value)
 	return result;
 }
 
-DATA_JSON_VALUE DATA_JSON_VALUE::Number(const double value)
+DATA_JSON_VALUE DATA_JSON_VALUE::Number(
+	const double value, const bool_t bFloatingPointToken)
 {
 	DATA_JSON_VALUE result;
 	result.m_eType = DATA_JSON_TYPE::NUMBER;
 	result.m_Number = value;
+	result.m_bFloatingPointToken = bFloatingPointToken;
 	return result;
 }
 
@@ -434,11 +442,20 @@ DATA_JSON_VALUE DATA_JSON_VALUE::Array(ARRAY value)
 	return result;
 }
 
-DATA_JSON_VALUE DATA_JSON_VALUE::Object(OBJECT value)
+DATA_JSON_VALUE DATA_JSON_VALUE::Object(
+	OBJECT value, vector<string> insertionOrder)
 {
 	DATA_JSON_VALUE result;
 	result.m_eType = DATA_JSON_TYPE::OBJECT;
 	result.m_Object = move(value);
+	if (insertionOrder.size() == result.m_Object.size())
+		result.m_ObjectInsertionOrder = move(insertionOrder);
+	else
+	{
+		result.m_ObjectInsertionOrder.reserve(result.m_Object.size());
+		for (const auto& [key, child] : result.m_Object)
+			result.m_ObjectInsertionOrder.push_back(key);
+	}
 	return result;
 }
 

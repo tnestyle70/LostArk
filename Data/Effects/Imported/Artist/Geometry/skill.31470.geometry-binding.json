@@ -1,0 +1,426 @@
+{
+  "schema": "lostark.effect-geometry-binding",
+  "formatVersion": 1,
+  "assetId": "effect.artist.skill.31470",
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "resourceRootRole": "CLIENT_RESOURCES_RELATIVE",
+  "numericTypePolicy": {
+    "geometryPreScale": "JSON_FLOAT_ONLY",
+    "channelMask": "JSON_INTEGER_ONLY",
+    "evidenceFlags": "JSON_INTEGER_ONLY"
+  },
+  "bindings": [
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+      "sourceObject": "fx_sm_01.fm_v_wp_wsdm_base_01",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "a3da844b087a3544f60b5fdcec8cf928024d3fd068f07b05b9aa9aaa040a0eec",
+      "provenanceSha256": "a1c3ab2973c279c3df61f48c6363398a35014ca702a7471003b512f081072b41",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 111,
+      "evidenceFlags": 2047,
+      "submeshes": [
+        {
+          "name": "fm_v_wp_wsdm_base_0",
+          "materialIndex": 0,
+          "vertexCount": 11608,
+          "indexCount": 14544,
+          "channelCounts": {
+            "position": 11608,
+            "normal": 11608,
+            "tangentXyz": 11608,
+            "tangentW": 11608,
+            "uv0": 11608,
+            "color0": 11608
+          },
+          "channelSha256": {
+            "position": "91f140fbc1637e6d8226836f2de55a7837687b3b6600a4d4383ab2ce7ffb9e2e",
+            "normal": "4a9f873076995df815e45e851e522275cd2a94299374b7eb6564848ced1d8d0a",
+            "tangentXyz": "0d3c5cf0db3ef61abce9338f70512e6bf0b26650ca610d0ce5f6caa751525117",
+            "tangentW": "6b90e89d78c50bbbd9893a23d805516d67ceba5094652559b7749372f416c4a7",
+            "uv0": "e9b324eaa40589f9a24649cd7fe1ffa6ccdd6aef58ff2fb19b24227f743ecd83",
+            "color0": "58a0ce26469a43b15f056151453219c18bbcf0910342eaa77bd97ca88c0e1b33",
+            "indicesU32": "0ff4729550a1bc437ac01f7156cb2270566d069d0270d4cc9052d6f514086235"
+          },
+          "boundsF32Hex": [
+            "c05334d7",
+            "c00446ff",
+            "c18db021",
+            "405334e2",
+            "4004636d",
+            "41c1607e",
+            "35b00000",
+            "3a637000",
+            "404ec174",
+            "41a78850"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "72698e9892d9adfbbd49befb32de3a8626882eed342163a978f65f7e8ba3ae7f",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+      "sourceObject": "fx_sm_01.fm_m_trail_002",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "d6717b4fc0470f133594b21de52ddc06a464eaa1c2c7fffc62bc7814cda1b23a",
+      "provenanceSha256": "38e269e776ab3200a38f0e1befd1ee73d599be1d3eea75467b3798f1c71f25c0",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 47,
+      "evidenceFlags": 2045,
+      "submeshes": [
+        {
+          "name": "fm_m_trail_002",
+          "materialIndex": 0,
+          "vertexCount": 63,
+          "indexCount": 240,
+          "channelCounts": {
+            "position": 63,
+            "normal": 63,
+            "tangentXyz": 63,
+            "tangentW": 63,
+            "uv0": 63,
+            "color0": 0
+          },
+          "channelSha256": {
+            "position": "e0c6350717dd0ddfe96dd79d8fb01dcea2032f697ed8e16e9a96dd73c2031b21",
+            "normal": "d22f3d7921089b1e5527a3d8457f680d465facc56c145682d8d7c8f777443df2",
+            "tangentXyz": "b226261f55e450004501fd483417111e779b61c83d09e5f37a68c990c2d8be74",
+            "tangentW": "d7fc3014ceac260e12ad1c5a0dc2c59c065d78645bc5a18ad05df86cb29ea12f",
+            "uv0": "c600edc25f4cc0cbff865efbf39aae64bcdc2c9231cc038626b2dad8fb3b4255",
+            "color0": null,
+            "indicesU32": "666a2b0c919181c9c979a8fe20b25e6609cc21d5facbb41ccc397c35153b0206"
+          },
+          "boundsF32Hex": [
+            "c22fe2a9",
+            "bfa09d05",
+            "c2310db7",
+            "422e4246",
+            "3fbd7b5a",
+            "422d5b60",
+            "be503180",
+            "3de6f2a8",
+            "beec95c0",
+            "42306bb1"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "44e98c5252a698c723edc5bac25c59dca1d973e63f2def506ccbdf3a2f7bc81a",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "sourceObject": "fx_sm_00.fm_h_swing_03",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "fed0c184e9fe1b100e9aad82cb9ede5ef016987bb2dbf07b5d76e91e778b5f36",
+      "provenanceSha256": "c75e2fc91e08b0a8120d6f5af8a4c1f659ffe0bebe721839f10614da8119ee8a",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 111,
+      "evidenceFlags": 2047,
+      "submeshes": [
+        {
+          "name": "fm_h_swing_03",
+          "materialIndex": 0,
+          "vertexCount": 378,
+          "indexCount": 1722,
+          "channelCounts": {
+            "position": 378,
+            "normal": 378,
+            "tangentXyz": 378,
+            "tangentW": 378,
+            "uv0": 378,
+            "color0": 378
+          },
+          "channelSha256": {
+            "position": "e3f623358d12991f8422f2d60b16779c7af048b16a7886f14e658953ce36839f",
+            "normal": "d2c40a973b6976f6af4734625dd38b66ed0ae7fdeff8b9930083e57a8b4d8b20",
+            "tangentXyz": "195f4811fe4d491c6cb3338b74b38cbb31bb14997322a610e48262a5f54dac98",
+            "tangentW": "0af2c442c26c3d4d9491db1ec72cd915c004f8ea76c41334ea9c1028f1db9f0f",
+            "uv0": "d8fbf28ec8394876b83c69e0c70ea9e2c2525a64d4a09f42cdc2d902300ffa0f",
+            "color0": "a80bf8e0172c07ca51720d1330533373d5d452c06dee84c7be6241fb1fb50088",
+            "indicesU32": "8ce85d8a1bb897610a102809033a3e696d3dac24c7289569e641b47ab830d1e6"
+          },
+          "boundsF32Hex": [
+            "c2b1cccd",
+            "c1a00001",
+            "c2b1cccd",
+            "42b1cccd",
+            "41a00001",
+            "42b1cccd",
+            "00000000",
+            "00000000",
+            "00000000",
+            "42b1cccd"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "216e57a91cce0d1a9c54064f196c9cddad3ce2aa4f25ea46ae9a7976e1cd51ea",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "sourceObject": "fx_sm_00.fm_h_swing_05",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "8b4118b8182b6dd0533f762ff04dfbe00a8f86d042412a23803c9b706b0313a5",
+      "provenanceSha256": "ed427b30d5fad6e2f8f3137cfd0b1f411cae31b786cc2fc0a2fa3645981272cb",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 47,
+      "evidenceFlags": 2045,
+      "submeshes": [
+        {
+          "name": "fm_h_swing_05",
+          "materialIndex": 0,
+          "vertexCount": 294,
+          "indexCount": 1476,
+          "channelCounts": {
+            "position": 294,
+            "normal": 294,
+            "tangentXyz": 294,
+            "tangentW": 294,
+            "uv0": 294,
+            "color0": 0
+          },
+          "channelSha256": {
+            "position": "b1fdfa2969f2bd752eb879bc211449e7c559950bb6e641c606c6069d9e18c4db",
+            "normal": "9d80358badaa4288de82be1348eea0e369b3e5302abf7012fc96d22c25d2fbe2",
+            "tangentXyz": "a0012de5768cd8f30b3944f465e521a6d54e21860ed7833502fa11bf0ce6afec",
+            "tangentW": "728e2df61a5d364dcbddb448b82f30628966b6fdca9befe76d333555adca12b0",
+            "uv0": "4820258daf7d8bc7b2983bc371568a5a2065525fd1fe8161217ea8aaff6faf34",
+            "color0": null,
+            "indicesU32": "39c3b387e6a9e05339168e7d5c475ce0f2d711461679ff694e0d22f6f03e8a99"
+          },
+          "boundsF32Hex": [
+            "c2adf5e8",
+            "c1a00001",
+            "c2adf5ea",
+            "42adf5ea",
+            "41a00001",
+            "42adf5e8",
+            "37000000",
+            "00000000",
+            "b7000000",
+            "42adf5ea"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "2b68ec463ae0693fe88d175e2c611256f5a15d7d4203e0340c8bdbab4478ed98",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+      "sourceObject": "fx_sm_00.fm_h_swing_01",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "6ff63e7bb53a208eafe1cfc6e583e0b5f6e4b9f7ed7389227d7c59c7280a11dd",
+      "provenanceSha256": "c850ede52a9d00fcfbc052d722ba6745853d93c98f2d7aa25536780529003fea",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 47,
+      "evidenceFlags": 2045,
+      "submeshes": [
+        {
+          "name": "fm_h_swing_01",
+          "materialIndex": 0,
+          "vertexCount": 166,
+          "indexCount": 246,
+          "channelCounts": {
+            "position": 166,
+            "normal": 166,
+            "tangentXyz": 166,
+            "tangentW": 166,
+            "uv0": 166,
+            "color0": 0
+          },
+          "channelSha256": {
+            "position": "938bc3ac160d83745dcaffab75ad31ad42ec54e07e9d30748e583870b2c9e844",
+            "normal": "0af1b5935c2f5aebcd95f8b98dfa18e3512477318718417efc34156534598dd3",
+            "tangentXyz": "2b4ce47592d1e4f7a5b65027bf3a2e09bb9469802897a90bb8d2ec41f2d8e77a",
+            "tangentW": "f1b4c7c73ec02a9b5923806fd4dfc71f9dd0137609fb85340ea6f5bb81e2c8d8",
+            "uv0": "ba7991720ac9f450123fce1bfc4b4e37df65957f2b2e3f6a9d55d8a0fc3be22c",
+            "color0": null,
+            "indicesU32": "579786887b1f59bbf6789317a76dcedf5ad7d4da5ae85581e67d560e2bb87089"
+          },
+          "boundsF32Hex": [
+            "c28c0000",
+            "a79a6dce",
+            "c28c0000",
+            "428c0000",
+            "279a6dce",
+            "428c0000",
+            "00000000",
+            "00000000",
+            "00000000",
+            "428c0000"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "2de65b82c5328019f7264d735659f5a07d04d3560c60c616ca6eb557364a8a77",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+      "sourceObject": "fx_sm_00.fm_o_swing_02",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "d4cd720bbd670592c76a00f9f8b2cd04d9f8d7c2212f4688c65d2a8f047c9c19",
+      "provenanceSha256": "4a130c5ba61ad094e7efcf3e05882e41fefc761feef7464f7880caa2d5f3486e",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 47,
+      "evidenceFlags": 2045,
+      "submeshes": [
+        {
+          "name": "fm_o_swing_02",
+          "materialIndex": 0,
+          "vertexCount": 145,
+          "indexCount": 672,
+          "channelCounts": {
+            "position": 145,
+            "normal": 145,
+            "tangentXyz": 145,
+            "tangentW": 145,
+            "uv0": 145,
+            "color0": 0
+          },
+          "channelSha256": {
+            "position": "62320cdf1d8483d8920f008ca6a263bd8fd790513abf522bb3031987538e7881",
+            "normal": "db98779b235d74f10292275a617fd07cc41bd95aaf980e13092f0a732b02d33e",
+            "tangentXyz": "584536c59c365f788c93b8f817a3a91a9e95904fa106e6219b90f55ef8335c5e",
+            "tangentW": "930f5df9fcdba4982cbfc3121a4521e679b72a81a399cb948ce9349b6d232002",
+            "uv0": "f1753a723577b741eb3eab31f5afcfcaad80d58f7d4afe534758a76ede07942e",
+            "color0": null,
+            "indicesU32": "c71afc09ddccb3b8ab422a2a2d5e8adb8d93f0bb955fe3dbea69fb57bdadc375"
+          },
+          "boundsF32Hex": [
+            "c2873800",
+            "c14b49d1",
+            "c2873804",
+            "428737ff",
+            "414b49b9",
+            "424f2aca",
+            "b6800000",
+            "b7400000",
+            "c0fd14f8",
+            "4293afa5"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "2caddc6e11e6afe85c5338fe0be08b185209971d8538fba9a61ab27c561e6341",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    },
+    {
+      "bindingId": "artist.31470:Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+      "sourceObject": "fx_sm_00.fm_a_stone_001",
+      "carrierAssetId": "Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+      "formatVersion": "1.1",
+      "payloadSha256": "3db5634a75de4f67c18653364b76595f112e14bb57328e54668b17a0340fdd32",
+      "provenanceSha256": "6de51f91e399448c31e4e701c3519fc53658f5f5eb683ab0713ffd52e81ea2d5",
+      "provenanceRole": "WMODEL_METADATA_IDENTITY_SHA256",
+      "geometryPreScale": 0.01,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "channelMask": 47,
+      "evidenceFlags": 2045,
+      "submeshes": [
+        {
+          "name": "fm_a_stone_001",
+          "materialIndex": 0,
+          "vertexCount": 32,
+          "indexCount": 36,
+          "channelCounts": {
+            "position": 32,
+            "normal": 32,
+            "tangentXyz": 32,
+            "tangentW": 32,
+            "uv0": 32,
+            "color0": 0
+          },
+          "channelSha256": {
+            "position": "85d84c75f612661ac3e3453b3bf7add9547f470257256c1c264b50cc989f9df9",
+            "normal": "08db57f4226d234233f0864cf1906e34a6af531e8dca790dce720d4b63627ad7",
+            "tangentXyz": "0ed93a19835c0fdea2263e6e3dee7df9d88f6933866bb2fe1d9a945d701560f5",
+            "tangentW": "be6984dee05878c1c978a072aa314235a881a476e3d2967ccd698eae000f1157",
+            "uv0": "a0096c94acab67baaed7996404a17458d5f1a988ede2c88b8a4b253b292bb207",
+            "color0": null,
+            "indicesU32": "f215a36a4cc9b950c4f830e2a3e78ca1e0a982785c5e6012e3e0a6f85e8794b5"
+          },
+          "boundsF32Hex": [
+            "c0a8a599",
+            "c052fc5f",
+            "c0a99118",
+            "40a889b8",
+            "402c3030",
+            "4095c254",
+            "badf0800",
+            "be9b30bc",
+            "be9e7620",
+            "40df7d09"
+          ]
+        }
+      ],
+      "cacheIdentitySha256": "b35dd9aa89526e8262a963950c750ce44cb688a9f1afe0dd41ba564d0ce95516",
+      "runtimeGeometryPreScaleConsumed": false,
+      "productAdmission": false,
+      "productBlockers": [
+        "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+        "PRODUCT_ADMISSION_NOT_OPEN"
+      ]
+    }
+  ],
+  "summary": {
+    "carrierCount": 7,
+    "submeshCount": 7,
+    "runtimeGeometryPreScaleConsumedCount": 0,
+    "productAdmissionCount": 0
+  },
+  "productAdmission": false,
+  "productBlockers": [
+    "RUNTIME_GEOMETRY_PRESCALE_NOT_CONSUMED",
+    "PRODUCT_ADMISSION_NOT_OPEN"
+  ],
+  "bindingSha256": "1dff0059706bdff9ed1433654035220da8cc8916fe94c0d4bc24b5330f57a004"
+}

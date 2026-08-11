@@ -1749,9 +1749,64 @@ def point_light_presentation(
         ))
         return value
 
+    def explicit_falloff_exponent() -> float | None:
+        property_name = "falloffexponent"
+        runtime_name = "falloffExponent"
+        falloff_property_keys = [
+            key for key in component.properties
+            if base_property_name(str(key)) == property_name
+        ]
+        if len(falloff_property_keys) == 0:
+            parameters.append(source_parameter(
+                runtime_name,
+                "number",
+                "unresolved_class_default",
+                f"{component.object_path}.{property_name}",
+                None,
+            ))
+            return None
+
+        indexed_falloff_property_keys = [
+            key for key in falloff_property_keys
+            if "[" in str(key)
+        ]
+        if indexed_falloff_property_keys:
+            raise ValueError(
+                "enabled PointLight scalar falloffExponent must not use "
+                "indexed property aliases"
+            )
+
+        if len(falloff_property_keys) > 1:
+            raise ValueError(
+                "enabled PointLight falloffExponent has duplicate "
+                "case-insensitive property aliases"
+            )
+
+        source_property_key = falloff_property_keys[0]
+        value = finite_number(unwrap(
+            component.properties[source_property_key]
+        ))
+        if value is None:
+            raise ValueError(
+                "enabled PointLight explicit falloffExponent must be "
+                "a finite number"
+            )
+        if value <= 0.0:
+            raise ValueError(
+                "enabled PointLight explicit falloffExponent must be positive"
+            )
+        parameters.append(source_parameter(
+            runtime_name,
+            "number",
+            "source_explicit",
+            f"{component.object_path}.{source_property_key}",
+            value,
+        ))
+        return value
+
     brightness = explicit_number("brightness", "brightness")
     radius_ue = explicit_number("radius", "radiusUeUnits")
-    falloff = explicit_number("falloffexponent", "falloffExponent")
+    falloff = explicit_falloff_exponent()
     light_color_item = component.properties.get("lightcolor")
     light_color = unwrap(light_color_item) if light_color_item else None
     explicit_color: list[float] | None = None
@@ -1793,7 +1848,7 @@ def point_light_presentation(
         "intensity": max(0.0, brightness or 0.0),
         "color": explicit_color or source_color,
         "ambient": [0.0, 0.0, 0.0, 0.0],
-        "falloffExponent": max(0.0, falloff or 0.0),
+        "falloffExponent": falloff if falloff is not None else 1.0,
     })
     required_exact = (
         brightness is not None

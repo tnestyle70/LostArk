@@ -19,10 +19,19 @@ $receiptPath = Join-Path $RepositoryRoot `
 
 Push-Location $RepositoryRoot
 try {
-    & python -B `
-        'Tools/LevelPlacementExtractor/test_build_artist_31470_custom_handler_oracle.py'
-    if ($LASTEXITCODE -ne 0) {
-        throw "Artist F custom handler oracle tests failed: $LASTEXITCODE"
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $unitOutput = (& python -B `
+            'Tools/LevelPlacementExtractor/test_build_artist_31470_custom_handler_oracle.py' `
+            2>&1 | Out-String).Trim()
+        $unitExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    if ($unitExitCode -ne 0) {
+        throw "Artist F custom handler oracle tests failed: $unitExitCode $unitOutput"
     }
 
     $verifyArguments = @(

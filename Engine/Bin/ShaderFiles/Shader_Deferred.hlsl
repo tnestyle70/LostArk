@@ -75,6 +75,7 @@ vector      g_vCamPosition;
 vector      g_vLightDir;
 vector      g_vLightPos;
 float       g_fLightRange;
+float       g_fLightFalloffExponent;
 vector      g_vLightDiffuse;
 vector      g_vLightAmbient;
 vector      g_vLightSpecular;
@@ -257,6 +258,20 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     return Out;
 }
 
+float Resolve_PointLightAttenuation(float fDistance)
+{
+    float fAttenuation = 0.f;
+    if (isfinite(g_fLightRange) && g_fLightRange > 0.f)
+    {
+        fAttenuation = saturate(
+            (g_fLightRange - fDistance) / g_fLightRange);
+        if (1.f != g_fLightFalloffExponent)
+            fAttenuation = pow(
+                fAttenuation, g_fLightFalloffExponent);
+    }
+    return fAttenuation;
+}
+
 PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
 {
     PS_OUT_LIGHT Out;
@@ -290,7 +305,7 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
     
     vector vLightDir = vWorldPos - g_vLightPos;
     
-    float fAtt = saturate((g_fLightRange - length(vLightDir)) / g_fLightRange);
+    float fAtt = Resolve_PointLightAttenuation(length(vLightDir));
     
     float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))

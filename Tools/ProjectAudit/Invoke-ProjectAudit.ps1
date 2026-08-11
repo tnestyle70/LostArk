@@ -894,10 +894,19 @@ try {
 	$artistSourceExecutionPassed = $false
 	$artistSourceExecutionDetail = ''
 	try {
-		$artistSourceExecutionDetail = (& `
-			'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
-			2>&1 | Out-String).Trim()
+		$savedErrorActionPreference = $ErrorActionPreference
+		try {
+			$ErrorActionPreference = 'Continue'
+			$artistSourceExecutionDetail = (& `
+				'.\Tools\ProjectAudit\Test-Artist31470SourceExecutionSemantics.ps1' `
+				*>&1 | Out-String -Width 4096).Trim()
+			$artistSourceExecutionInvocationPassed = $?
+		}
+		finally {
+			$ErrorActionPreference = $savedErrorActionPreference
+		}
 		$artistSourceExecutionPassed =
+			$artistSourceExecutionInvocationPassed -and
 			$artistSourceExecutionDetail -match
 			'PASS: Artist F 31470 Source execution mode=shallow modules=399 ready=370 blocked=29'
 	}
@@ -910,12 +919,21 @@ try {
 	$artistCustomHandlerOraclePassed = $false
 	$artistCustomHandlerOracleDetail = ''
 	try {
-		$artistCustomHandlerOracleDetail = (& `
-			'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
-			2>&1 | Out-String).Trim()
+		$savedErrorActionPreference = $ErrorActionPreference
+		try {
+			$ErrorActionPreference = 'Continue'
+			$artistCustomHandlerOracleDetail = (& `
+				'.\Tools\ProjectAudit\Test-Artist31470CustomHandlerOracle.ps1' `
+				*>&1 | Out-String -Width 4096).Trim()
+			$artistCustomHandlerOracleInvocationPassed = $?
+		}
+		finally {
+			$ErrorActionPreference = $savedErrorActionPreference
+		}
 		$artistCustomHandlerOraclePassed =
+			$artistCustomHandlerOracleInvocationPassed -and
 			$artistCustomHandlerOracleDetail -match
-			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=381 blocked=18 distributionBlocked=3 ownerless=0 product=false'
+			'PASS: Artist F 31470 custom handler oracle mode=shallow ready=370 blocked=29 distributionReady=626 distributionBlocked=3 outputOracles=0 ownerless=0 product=false'
 	}
 	catch {
 		$artistCustomHandlerOracleDetail = $_.Exception.Message
@@ -1035,6 +1053,38 @@ try {
 	Add-Check 'effect.artist-31470-material-texture-runtime-binding' `
 		$artistMaterialTextureBindingPassed `
 		$artistMaterialTextureBindingDetail
+	$artistMaterialRenderResourceApprovalPassed = $false
+	$artistMaterialRenderResourceApprovalDetail = ''
+	try {
+		$artistMaterialRenderResourceApprovalDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialRenderResourceBindingApproval.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialRenderResourceApprovalPassed =
+			$artistMaterialRenderResourceApprovalDetail -match
+			'PASS: Artist F 31470 Material render-resource approval recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 autocrlf=20/20\+check bytes=376183 CR=0 BOM=false'
+	}
+	catch {
+		$artistMaterialRenderResourceApprovalDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-render-resource-binding-approval' `
+		$artistMaterialRenderResourceApprovalPassed `
+		$artistMaterialRenderResourceApprovalDetail
+	$artistReconstructedRenderResourceAuthorityPassed = $false
+	$artistReconstructedRenderResourceAuthorityDetail = ''
+	try {
+		$artistReconstructedRenderResourceAuthorityDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedRenderResourceAuthority.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedRenderResourceAuthorityPassed =
+			$artistReconstructedRenderResourceAuthorityDetail -match
+			'PASS: Artist F 31470 reconstructed render-resource authority resources=48 bindings=72 formats=35\+8\+4\+1 srv=58\+9\+4\+1 colors=67\+5 recipes=27 renderer=57 ambiguous=3 descriptors=27\+18\+1/46 publisher=10/16/25/tool3 bridge=13/21/26/tool3 autocrlf=31/31\+check bytes=746788 CR=0 BOM=false'
+	}
+	catch {
+		$artistReconstructedRenderResourceAuthorityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-render-resource-authority' `
+		$artistReconstructedRenderResourceAuthorityPassed `
+		$artistReconstructedRenderResourceAuthorityDetail
 	$artistExactDdsDeploymentPassed = $false
 	$artistExactDdsDeploymentDetail = ''
 	try {
@@ -1070,6 +1120,22 @@ try {
 	Add-Check 'effect.artist-31470-wmodel-geometry-contract' `
 		$artistGeometryContractPassed `
 		$artistGeometryContractDetail
+	$artistGeometryBindingPassed = $false
+	$artistGeometryBindingDetail = ''
+	try {
+		$artistGeometryBindingDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470GeometryResourceBinding.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistGeometryBindingPassed =
+			$artistGeometryBindingDetail -match
+			'PASS: Artist F 31470 GeometryBinding mode=shallow carriers=7'
+	}
+	catch {
+		$artistGeometryBindingDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-geometry-resource-binding' `
+		$artistGeometryBindingPassed `
+		$artistGeometryBindingDetail
 	$effectCascadeCompilerPassed = $false
 	$effectCascadeCompilerDetail = ''
 	try {
@@ -1094,7 +1160,7 @@ try {
 			2>&1 | Out-String).Trim()
 		$effectDerivedPublisherPassed =
 			$effectDerivedPublisherDetail -match
-			'PASS: derived Effect artifact publisher schema tests=14 authenticated-blocker-union=true rollback=true product=false'
+			'PASS: derived Effect artifact publisher schema tests=28 reserved-reconstructed-id=true current-tools=3 duplicate-json-keys=true duplicate-json-walk=true clean-checkout-lf=true reconstructed-source-id=true authenticated-blocker-union=true bridge=13/21/26/tool3 catalog=102/555 sourceExact=false runtime=false execute=false submit=false render=false product=false rollback=true'
 	}
 	catch {
 		$effectDerivedPublisherDetail = $_.Exception.Message
@@ -1102,6 +1168,70 @@ try {
 	Add-Check 'effect.derived-artifact-publisher' `
 		$effectDerivedPublisherPassed `
 		$effectDerivedPublisherDetail
+	$effectRuntimeAuthorityPassed = $false
+	$effectRuntimeAuthorityDetail = ''
+	try {
+		$effectRuntimeAuthorityDetail = (& `
+			'.\Tools\ProjectAudit\Test-EffectRuntimeAuthority.ps1' `
+			2>&1 | Out-String).Trim()
+		$effectRuntimeAuthorityPassed =
+			$effectRuntimeAuthorityDetail -match
+			'PASS: format3 immutable compiled authority'
+	}
+	catch {
+		$effectRuntimeAuthorityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.runtime-compiled-authority' `
+		$effectRuntimeAuthorityPassed `
+		$effectRuntimeAuthorityDetail
+	$artistTypedExecutionPlanPassed = $false
+	$artistTypedExecutionPlanDetail = ''
+	try {
+		$artistTypedExecutionPlanDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470TypedExecutionPlan.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistTypedExecutionPlanPassed =
+			$artistTypedExecutionPlanDetail -match
+			'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 rng=v1 fixedHz=60 Product=false'
+	}
+	catch {
+		$artistTypedExecutionPlanDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-typed-execution-plan' `
+		$artistTypedExecutionPlanPassed `
+		$artistTypedExecutionPlanDetail
+	$artistReconstructedPolicyPassed = $false
+	$artistReconstructedPolicyDetail = ''
+	try {
+		$artistReconstructedPolicyDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedApprovalPolicy.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedPolicyPassed =
+			$artistReconstructedPolicyDetail -match
+			'PASS: Artist F 31470 reconstructed approval policy tests=41 source=29 material=255 sampler=72 arithmetic=23 geometry=7 sourceExact=false execution=false product=false'
+	}
+	catch {
+		$artistReconstructedPolicyDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-approval-policy' `
+		$artistReconstructedPolicyPassed `
+		$artistReconstructedPolicyDetail
+	$artistReconstructedRuntimeProgramPassed = $false
+	$artistReconstructedRuntimeProgramDetail = ''
+	try {
+		$artistReconstructedRuntimeProgramDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470ReconstructedRuntimeProgram.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistReconstructedRuntimeProgramPassed =
+			$artistReconstructedRuntimeProgramDetail -match
+			'PASS: Artist F 31470 reconstructed runtime program tests=12 emitters=35 schedules=7 modules=399 properties=1434 leaves=1572 distributions=629 material=23/27/34/255 textures=68/72\+57 geometry=7/13 sourceExact=0 runtime=false product=false'
+	}
+	catch {
+		$artistReconstructedRuntimeProgramDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-reconstructed-runtime-program' `
+		$artistReconstructedRuntimeProgramPassed `
+		$artistReconstructedRuntimeProgramDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
@@ -1487,6 +1617,23 @@ try {
 	}
 	Add-Check 'rendering.quality-workbench-contract' `
 		$renderQualityAuditPassed $renderQualityAuditDetail
+	$pointLightFalloffAuditPassed = $false
+	$pointLightFalloffAuditDetail = ''
+	try {
+		$pointLightFalloffAuditDetail = (& .\Tools\ProjectAudit\Test-PointLightFalloff.ps1 `
+			-RepoRoot (Get-Location).Path 2>&1) -join ' '
+		$pointLightFalloffAuditPassed = $true
+	}
+	catch {
+		$pointLightFalloffAuditDetail = $_.Exception.Message
+	}
+	if ([string]::IsNullOrWhiteSpace($pointLightFalloffAuditDetail)) {
+		$pointLightFalloffAuditPassed = $false
+		$pointLightFalloffAuditDetail =
+			'Focused PointLight falloff audit returned no evidence detail.'
+	}
+	Add-Check 'rendering.point-light-falloff-contract' `
+		$pointLightFalloffAuditPassed $pointLightFalloffAuditDetail
 	Add-Check 'levels.loading-progress-overlay' (
 		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
 		$loadingSource -match '"Loading progress"' -and

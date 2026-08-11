@@ -37,4 +37,21 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
+# The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
+# identity. Keep this one generated candidate byte-exact on every checkout.
+/Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
+
+# The Artist 31470 Material render-resource approval is raw-byte frozen and
+# must survive core.autocrlf=true clean checkouts without CRLF conversion.
+/Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json text eol=lf
+
+# The Artist 31470 reconstructed render-resource authority records exact DDS
+# byte identities and must remain byte-stable in core.autocrlf=true checkouts.
+/Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json text eol=lf
+
+# The generated Effect runtime Catalog is a raw-byte authority consumed by the
+# exact old10/new13 harness. Keep its one trailing newline byte-exact on every
+# checkout instead of allowing core.autocrlf to rewrite it.
+/Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json text eol=lf
+
 

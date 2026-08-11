@@ -619,9 +619,12 @@ class Artist31470SourceContractTests(unittest.TestCase):
     def test_existing_publisher_does_not_admit_v14(self) -> None:
         source = PUBLISHER.read_text(encoding="utf-8")
         self.assertIn(
-            "$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12)", source
+            "$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 13)", source
         )
-        self.assertNotIn("$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 14)", source)
+        self.assertNotIn(
+            "$documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12, 13, 14)",
+            source,
+        )
         self.assertNotIn("source-contract-candidate", source)
 
     def test_checked_in_outputs_are_byte_exact(self) -> None:

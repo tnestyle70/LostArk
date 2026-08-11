@@ -18,10 +18,19 @@ $receiptPath = Join-Path $RepositoryRoot `
 
 Push-Location $RepositoryRoot
 try {
-    & python -B `
-        'Tools/LevelPlacementExtractor/test_build_artist_31470_source_execution_semantics.py'
-    if ($LASTEXITCODE -ne 0) {
-        throw "Artist F source execution tests failed: $LASTEXITCODE"
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $unitOutput = (& python -B `
+            'Tools/LevelPlacementExtractor/test_build_artist_31470_source_execution_semantics.py' `
+            2>&1 | Out-String).Trim()
+        $unitExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    if ($unitExitCode -ne 0) {
+        throw "Artist F source execution tests failed: $unitExitCode $unitOutput"
     }
 
     $verifyArguments = @(

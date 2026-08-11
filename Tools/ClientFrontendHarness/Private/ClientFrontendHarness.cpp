@@ -10,13 +10,18 @@
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_Object.h"
 #include "Effect_Playback.h"
+#include "Effect_PresentationService.h"
+#include "Effect_ReconstructedExecution.h"
+#include "Effect_RuntimeAuthority.h"
 #include "PlayerSkillCatalog.h"
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +31,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
@@ -33,6 +39,16 @@
 #include <utility>
 #include <vector>
 #include <Windows.h>
+
+#if defined(LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS)
+namespace Client
+{
+	bool_t Validate_ReconstructedRuntimeProgramForHarness(
+		std::string_view Utf8Json,
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& ExpectedIdentity,
+		std::string& strOutError);
+}
+#endif
 
 namespace
 {
@@ -1408,6 +1424,10 @@ namespace
 		document.strDisplayName = "Typed Presentation Harness";
 
 		EFFECT_ELEMENT_DESC light;
+		runner.Require(
+			std::bit_cast<uint32_t>(light.Detail.Light.fFalloffExponent) ==
+			std::bit_cast<uint32_t>(1.f),
+			"Effect Light Detail Default Falloff Is Bit-Exact One");
 		light.strElementId = "light.point";
 		light.strDisplayName = "Point Light";
 		light.eKind = EFFECT_ELEMENT_KIND::LIGHT;
@@ -1484,11 +1504,29 @@ namespace
 				CEffectDocumentCodec::Serialize(document), roundTrip, status) &&
 			roundTrip.iFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
 			roundTrip.Elements.front().Detail.Light.bEnabled &&
+			std::bit_cast<uint32_t>(roundTrip.Elements.front().Detail.Light.fFalloffExponent) ==
+				std::bit_cast<uint32_t>(1.f) &&
 			roundTrip.Elements.front().SourcePresentation.Parameters.size() == 1u &&
 			roundTrip.Elements.front().SourcePresentation.Parameters.front().
 				fNumberValue == 10.0;
 		runner.Require(codecExact,
 			"Effect V12 Typed Presentation Codec Round Trips Losslessly");
+
+		EFFECT_DOCUMENT_DESC invalidExponent = document;
+		invalidExponent.Elements.front().Detail.Light.fFalloffExponent = 0.f;
+		runner.Require(!CEffectDocumentCodec::Validate(invalidExponent, status),
+			"Effect Typed Light Rejects Nonpositive Falloff Exponent");
+		EFFECT_DOCUMENT_DESC preservedAfterFailedParse = roundTrip;
+		const std::string preservedSerialization =
+			CEffectDocumentCodec::Serialize(preservedAfterFailedParse);
+		const bool_t bRejectedWithoutCommit =
+			!CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(invalidExponent),
+				preservedAfterFailedParse, status) &&
+			CEffectDocumentCodec::Serialize(preservedAfterFailedParse) ==
+				preservedSerialization;
+		runner.Require(bRejectedWithoutCommit,
+			"Effect Typed Light Invalid Parse Preserves Prior Document");
 
 		EFFECT_DOCUMENT_DESC invalidKind = document;
 		invalidKind.Elements.front().eKind = EFFECT_ELEMENT_KIND::SPRITE;
@@ -3659,6 +3697,4205 @@ namespace
 		resourceRootEnvironment.Restore();
 	}
 
+	std::string Build_RuntimeAuthorityFixtureEntry(
+		std::string EffectAssetId = "effect.fixture.runtime.authority",
+		std::string ResourceBindingHash = std::string(64u, 'e'),
+		std::string ReconstructedRuntimeProgram = {},
+		std::string* pOutCompiledIrSha = nullptr)
+	{
+		using namespace Client;
+		const std::string HashA(64u, 'a');
+		const std::string HashB(64u, 'b');
+		const std::string HashC(64u, 'c');
+		const std::string HashD(64u, 'd');
+		const std::string HashF(64u, 'f');
+		const std::string Hash1(64u, '1');
+		const std::string Hash2(64u, '2');
+		const std::string Hash3(64u, '3');
+		const std::string Hash4(64u, '4');
+		const std::string Hash5(64u, '5');
+		const std::string Hash6(64u, '6');
+		const std::string Hash9(64u, '9');
+		const std::string Identity =
+			"{\"schema\":\"lostark.effect-derived-identity\","
+			"\"formatVersion\":1,\"sourceContractHash\":\"" + HashA +
+			"\",\"sourceSemanticClosureHash\":\"" + HashB +
+			"\",\"geometryContractHash\":\"" + HashC +
+			"\",\"materialContractHash\":\"" + HashD +
+			"\",\"resourceBindingHash\":\"" + ResourceBindingHash +
+			"\",\"compilerInputHash\":\"" + HashF + "\"}";
+		const std::string Contract =
+			"{\"artifactBindingBlockerSet\":[],"
+			"\"artifactBindingBlockerCount\":0,"
+			"\"executionBlockerSet\":[],\"executionBlockerCount\":0,"
+			"\"executionAdmission\":true}";
+		const std::string Ir =
+			"{\"schema\":\"lostark.effect-compiled-ir\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"" + EffectAssetId + "\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"executionContract\":" + Contract +
+			",\"program\":{\"opcodes\":[],\"resourceBindings\":[],"
+			"\"handlerReceipts\":[]}}";
+		DATA_JSON_VALUE IrValue;
+		std::string Error;
+		if (!CDataJson::Parse(Ir, IrValue, Error))
+			return {};
+		const std::string IrSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(IrValue));
+		if (nullptr != pOutCompiledIrSha)
+			*pOutCompiledIrSha = IrSha;
+		const std::string Artifact =
+			"{\"schema\":\"lostark.effect-compiled-artifact\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"" + EffectAssetId + "\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"compiledIr\":" + Ir +
+			",\"executionAdmission\":true,\"productAdmission\":false}";
+		DATA_JSON_VALUE ArtifactValue;
+		if (!CDataJson::Parse(Artifact, ArtifactValue, Error))
+			return {};
+		const std::string ArtifactSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(ArtifactValue));
+		const std::string ToolDependencies =
+			"[{\"role\":\"DERIVED_ARTIFACT_GENERATOR\","
+			"\"path\":\"Tools/EffectPipeline/build_effect_derived_artifact.py\","
+			"\"rawSha256\":\"" + Hash1 +
+			"\",\"canonicalSha256\":\"" + Hash2 +
+			"\",\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"},"
+			"{\"role\":\"DERIVED_ARTIFACT_SCHEMA\","
+			"\"path\":\"Tools/EffectPipeline/Schemas/contract.json\","
+			"\"rawSha256\":\"" + Hash2 +
+			"\",\"canonicalSha256\":\"" + Hash3 +
+			"\",\"hashDomain\":\"CANONICAL_JSON\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"},"
+			"{\"role\":\"EFFECT_PUBLISHER\","
+			"\"path\":\"Tools/EffectPipeline/Publish-Effects.ps1\","
+			"\"rawSha256\":\"" + Hash3 +
+			"\",\"canonicalSha256\":\"" + Hash4 +
+			"\",\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"verificationRole\":\"CANONICAL_REQUIRED_RAW_OBSERVED\"}]";
+		const std::string Receipt =
+			"{\"schema\":\"lostark.effect-compiled-artifact-receipt\","
+			"\"formatVersion\":1,"
+			"\"effectAssetId\":\"" + EffectAssetId + "\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"sourceContractVersion\":14,"
+			"\"authoringCarrierSha256\":\"" + Hash4 +
+			"\",\"assemblySha256\":\"" + Hash5 +
+			"\",\"compiledArtifactSha256\":\"" + ArtifactSha +
+			"\",\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptRawSha256\":\"" + Hash5 +
+			"\",\"compilerReceiptCanonicalSha256\":\"" + Hash6 +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"toolDependencies\":" + ToolDependencies +
+			",\"artifactBindingBlockerSet\":[],"
+			"\"artifactBindingBlockerCount\":0,\"executionBlockerSet\":[],"
+			"\"executionBlockerCount\":0,\"executionAdmission\":true,"
+			"\"productAdmission\":false,"
+			"\"publicationState\":\"CODE_ONLY_NOT_ADMITTED\"}";
+		DATA_JSON_VALUE ReceiptValue;
+		if (!CDataJson::Parse(Receipt, ReceiptValue, Error))
+			return {};
+		const std::string ReceiptSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(ReceiptValue));
+		std::string Entry =
+			"{\"payloadKind\":\"IMMUTABLE_COMPILED_IR\","
+			"\"effectAssetId\":\"" + EffectAssetId + "\","
+			"\"authoringFormatVersion\":13,"
+			"\"runtimeSemanticAuthority\":\"IMMUTABLE_COMPILED_IR\","
+			"\"derivedIdentity\":" + Identity +
+			",\"authoringCarrierSha256\":\"" + Hash4 +
+			"\",\"assemblySha256\":\"" + Hash5 +
+			"\",\"compiledArtifactSha256\":\"" + ArtifactSha +
+			"\",\"compiledReceiptSha256\":\"" + ReceiptSha +
+			"\",\"artifactRevision\":1,"
+			"\"compilerRevision\":\"cascade.runtime.fixture.v1\","
+			"\"compiledIrSha256\":\"" + IrSha +
+			"\",\"compilerReceiptTokenSha256\":\"" + Hash9 +
+			"\",\"executionAdmission\":true,\"productAdmission\":false,"
+			"\"compiledArtifact\":" + Artifact +
+			",\"compiledReceipt\":" + Receipt;
+		if (!ReconstructedRuntimeProgram.empty())
+		{
+			Entry += ",\"reconstructedRuntimeProgram\":" +
+				ReconstructedRuntimeProgram;
+		}
+		Entry += "}";
+		return Entry;
+	}
+
+	bool_t Read_FrozenReconstructedProgramFixture(
+		const std::filesystem::path& Path,
+		std::string& OutText,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input)
+		{
+			strOutError = "Reconstructed runtime program fixture is missing.";
+			return false;
+		}
+		const std::string Raw{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Frozen =
+			CEffectRuntimeAuthorityCodec::Get_FrozenArtist31470FProgramIdentity();
+		if (CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Raw) ==
+			Frozen.strCandidateRawSha256)
+		{
+			OutText = Raw;
+			strOutError.clear();
+			return true;
+		}
+		std::string Lf;
+		Lf.reserve(Raw.size());
+		for (size_t Index = 0u; Index < Raw.size(); ++Index)
+		{
+			if ('\r' != Raw[Index])
+			{
+				Lf.push_back(Raw[Index]);
+				continue;
+			}
+			if (Index + 1u >= Raw.size() || '\n' != Raw[Index + 1u])
+			{
+				strOutError =
+					"Reconstructed runtime program fixture has a bare CR byte.";
+				return false;
+			}
+			Lf.push_back('\n');
+			++Index;
+		}
+		if (CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Lf) !=
+			Frozen.strCandidateRawSha256)
+		{
+			strOutError =
+				"LF-canonical fixture bytes do not match the frozen raw SHA.";
+			return false;
+		}
+		OutText = std::move(Lf);
+		strOutError.clear();
+		return true;
+	}
+
+	std::string Encode_JsonString(const std::string_view Value)
+	{
+		constexpr char Hex[] = "0123456789abcdef";
+		std::string Result;
+		Result.reserve(Value.size() + Value.size() / 16u + 2u);
+		Result.push_back('"');
+		for (const unsigned char Character : Value)
+		{
+			switch (Character)
+			{
+			case '"': Result += "\\\""; break;
+			case '\\': Result += "\\\\"; break;
+			case '\b': Result += "\\b"; break;
+			case '\f': Result += "\\f"; break;
+			case '\n': Result += "\\n"; break;
+			case '\r': Result += "\\r"; break;
+			case '\t': Result += "\\t"; break;
+			default:
+				if (Character < 0x20u)
+				{
+					Result += "\\u00";
+					Result.push_back(Hex[(Character >> 4u) & 0xfu]);
+					Result.push_back(Hex[Character & 0xfu]);
+				}
+				else
+				{
+					Result.push_back(static_cast<char>(Character));
+				}
+				break;
+			}
+		}
+		Result.push_back('"');
+		return Result;
+	}
+
+	std::string Compute_CanonicalJsonSha(const std::string& Json)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE Value;
+		std::string Error;
+		if (!CDataJson::Parse(Json, Value, Error))
+			return {};
+		return CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Value));
+	}
+
+	std::string Build_Artist31470ReconstructedProgramLink(
+		const std::string& Candidate)
+	{
+		using namespace Client;
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Frozen =
+			CEffectRuntimeAuthorityCodec::Get_FrozenArtist31470FProgramIdentity();
+		return
+			"{\"schema\":\"lostark.effect-reconstructed-runtime-program-link\","
+			"\"formatVersion\":1,\"encoding\":\"UTF8_JSON_EXACT\","
+			"\"effectAssetId\":\"effect.artist.skill.31470\","
+			"\"candidateBuilderCommitId\":"
+			"\"a85b8b41afb2f2a51bceafa55d06bf0937b1a245\","
+			"\"candidateBuilderTreeId\":"
+			"\"384ed35ca808ab9a71a4edb703ca4d9121b48c18\","
+			"\"candidateBlobId\":"
+			"\"345ab15bbb76648a650eaa854f18c4cd63cb1556\","
+			"\"resourceBindingHash\":"
+			"\"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c\","
+			"\"inputArtifactCount\":13,\"inputArtifactsOrderedSha256\":"
+			"\"938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa\","
+			"\"programId\":\"" + Frozen.strProgramId +
+			"\",\"programVersion\":1,\"programSha256\":\"" +
+			Frozen.strProgramSha256 + "\",\"candidateRawSha256\":\"" +
+			Frozen.strCandidateRawSha256 +
+			"\",\"candidateByteCount\":15072141,\"candidateUtf8Json\":" +
+			Encode_JsonString(Candidate) + "}";
+	}
+
+	std::string Build_Artist31470ReconstructedCatalog(
+		const std::string& Candidate,
+		const std::string& CandidateBuilderToolSha =
+			"5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e")
+	{
+		const std::string Link =
+			Build_Artist31470ReconstructedProgramLink(Candidate);
+		const std::string LinkSha = Compute_CanonicalJsonSha(Link);
+		if (Link.empty() || LinkSha.empty())
+			return {};
+		const std::string ToolDependencies =
+			"[{\"role\":\"RECONSTRUCTED_RUNTIME_PROGRAM_CANDIDATE_BUILDER\","
+			"\"path\":\"Tools/EffectPipeline/build_artist_31470_reconstructed_runtime_program.py\","
+			"\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"sha256\":\"" + CandidateBuilderToolSha + "\"},"
+			"{\"role\":\"RECONSTRUCTED_RUNTIME_PROGRAM_CATALOG_VALIDATOR\","
+			"\"path\":\"Tools/EffectPipeline/build_effect_derived_artifact.py\","
+			"\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"sha256\":\"5407c3d0983c3aaf4bf085904ef8d7b5f3e9119ae448703ff7e8f612a1c144fb\"},"
+			"{\"role\":\"EFFECT_PUBLISHER\","
+			"\"path\":\"Tools/EffectPipeline/Publish-Effects.ps1\","
+			"\"hashDomain\":\"TRACKED_SOURCE_EOL_CANONICAL_TEXT\","
+			"\"sha256\":\"ee4a12cf5cbd63bc9af6b0af18ca37da7631a4b0b6ed1465c95bf99fb9be8825\"}]";
+		const std::string ReceiptUnsigned =
+			"{\"schema\":\"lostark.effect-reconstructed-runtime-program-publish-receipt\","
+			"\"formatVersion\":1,"
+			"\"receiptRole\":\"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY\","
+			"\"payloadKind\":\"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM\","
+			"\"effectAssetId\":\"effect.artist.skill.31470\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"artist31470.reconstructed-runtime-program-link-v1\","
+			"\"sourceExact\":false,\"runtimeExecutionAdmission\":false,"
+			"\"productAdmission\":false,"
+			"\"candidateBuilderCommitId\":\"a85b8b41afb2f2a51bceafa55d06bf0937b1a245\","
+			"\"candidateBuilderTreeId\":\"384ed35ca808ab9a71a4edb703ca4d9121b48c18\","
+			"\"candidateBlobId\":\"345ab15bbb76648a650eaa854f18c4cd63cb1556\","
+			"\"resourceBindingHash\":"
+			"\"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c\","
+			"\"inputArtifactCount\":13,"
+			"\"inputArtifactsOrderedSha256\":"
+			"\"938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa\","
+			"\"programId\":\"effect.artist.skill.31470.reconstructed-approved-v1\","
+			"\"programVersion\":1,"
+			"\"programSha256\":\"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b\","
+			"\"candidateRawSha256\":"
+			"\"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849\","
+			"\"candidateByteCount\":15072141,"
+			"\"reconstructedRuntimeProgramSha256\":\"" + LinkSha + "\","
+			"\"toolDependencies\":" + ToolDependencies + ","
+			"\"receiptSha256Domain\":\"CANONICAL_JSON_EXCLUDING_RECEIPT_SHA256\"}";
+		const std::string ReceiptSelfSha = Compute_CanonicalJsonSha(ReceiptUnsigned);
+		if (ReceiptSelfSha.empty())
+			return {};
+		const std::string Receipt = ReceiptUnsigned.substr(
+			0u, ReceiptUnsigned.size() - 1u) +
+			",\"receiptSha256\":\"" + ReceiptSelfSha + "\"}";
+		const std::string PublishReceiptSha = Compute_CanonicalJsonSha(Receipt);
+		if (PublishReceiptSha.empty())
+			return {};
+		const std::string Entry =
+			"{\"payloadKind\":\"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM\","
+			"\"effectAssetId\":\"effect.artist.skill.31470\","
+			"\"artifactRevision\":1,"
+			"\"compilerRevision\":\"artist31470.reconstructed-runtime-program-link-v1\","
+			"\"sourceExact\":false,\"runtimeExecutionAdmission\":false,"
+			"\"productAdmission\":false,\"publishReceiptSha256\":\"" +
+			PublishReceiptSha + "\",\"publishReceipt\":" + Receipt +
+			",\"reconstructedRuntimeProgram\":" + Link + "}";
+		return
+			"{\"schema\":\"lostark.effect-runtime-catalog\","
+			"\"formatVersion\":3,\"components\":[],\"effects\":[" +
+			Entry + "]}";
+	}
+
+	void Test_EffectRuntimeAuthorityCatalog(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE NumberTokens;
+		std::string NumberStatus;
+		const bool_t CanonicalNumberTokens = CDataJson::Parse(
+			"{\"d\":1e0,\"c\":-0.0,\"b\":1,\"a\":1.0}",
+			NumberTokens, NumberStatus) &&
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(NumberTokens) ==
+				"{\"a\":1.0,\"b\":1,\"c\":-0.0,\"d\":1.0}";
+		runner.Require(CanonicalNumberTokens,
+			"Runtime Authority Canonical JSON Preserves Integer And Float Token Domains");
+		const std::string EntryText = Build_RuntimeAuthorityFixtureEntry();
+		DATA_JSON_VALUE Entry;
+		std::string Status;
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> Parsed;
+		const bool_t ParsedFixture = !EntryText.empty() &&
+			CDataJson::Parse(EntryText, Entry, Status) &&
+			CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				Entry, Parsed, Status);
+		runner.Require(ParsedFixture && nullptr != Parsed &&
+			Parsed->Identity.strEffectAssetId ==
+				"effect.fixture.runtime.authority" &&
+			Parsed->Identity.iArtifactRevision == 1u &&
+			Parsed->bArtifactBindingSelfConsistent &&
+			!Parsed->bExternalIdentityAuthenticated &&
+			Parsed->bArtifactExecutionAdmission &&
+			!Parsed->bTypedProgramMaterialized &&
+			!Parsed->bRuntimeExecutionAdmission &&
+			!Parsed->bProductAdmission && Parsed->iOpcodeCount == 0u &&
+			Parsed->iResourceBindingCount == 0u &&
+			Parsed->RuntimeBlockers == std::vector<std::string>{
+				"COMPILED_AUTHORITY_EXTERNAL_AUTHENTICATION_PENDING",
+				"TYPED_RUNTIME_PROGRAM_ADAPTER_PENDING" },
+			"Format3 Compiled Authority Parses As Immutable Non-Executable Runtime Input");
+		const std::string GenericWithReconstructedField =
+			Build_RuntimeAuthorityFixtureEntry(
+				"effect.fixture.runtime.authority", std::string(64u, 'e'), "{}");
+		DATA_JSON_VALUE GenericWithExtraValue;
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>
+			GenericWithExtraParsed = Parsed;
+		const bool_t GenericExtraRejected =
+			CDataJson::Parse(GenericWithReconstructedField,
+				GenericWithExtraValue, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				GenericWithExtraValue, GenericWithExtraParsed, Status) &&
+			GenericWithExtraParsed == Parsed;
+		runner.Require(GenericExtraRejected,
+			"Format3 Generic17 Rejects Reconstructed Extension Field Transactionally");
+
+		std::string ProductMutation = EntryText;
+		const std::string ProductField = "\"productAdmission\":false";
+		const size_t ProductOffset = ProductMutation.find(ProductField);
+		if (ProductOffset != std::string::npos)
+			ProductMutation.replace(
+				ProductOffset, ProductField.size(), "\"productAdmission\":true");
+		DATA_JSON_VALUE MutatedEntry;
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> Preserved = Parsed;
+		const bool_t ProductRejected =
+			std::string::npos != ProductOffset &&
+			CDataJson::Parse(ProductMutation, MutatedEntry, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				MutatedEntry, Preserved, Status) && Preserved == Parsed;
+		runner.Require(ProductRejected,
+			"Format3 Product Promotion Rejects Before Replacing Parsed Authority");
+
+		std::string HashMutation = EntryText;
+		const std::string IrHashField = "\"compiledIrSha256\":\"" +
+			Parsed->Identity.strCompiledIrSha256 + "\"";
+		const size_t HashOffset = HashMutation.find(IrHashField);
+		if (HashOffset != std::string::npos)
+			HashMutation[HashOffset + IrHashField.size() - 2u] =
+				HashMutation[HashOffset + IrHashField.size() - 2u] == '0' ? '1' : '0';
+		const bool_t HashRejected = std::string::npos != HashOffset &&
+			CDataJson::Parse(HashMutation, MutatedEntry, Status) &&
+			!CEffectRuntimeAuthorityCodec::Parse_DerivedEntry(
+				MutatedEntry, Preserved, Status) && Preserved == Parsed;
+		runner.Require(HashRejected,
+			"Format3 Cross-Layer Compiled IR Hash Mutation Rejects Transactionally");
+
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		const std::filesystem::path ModuleDirectory =
+			0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(ModuleBuffer).parent_path();
+		const std::filesystem::path CatalogPath = ModuleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code Error;
+		std::filesystem::create_directories(CatalogPath.parent_path(), Error);
+		std::vector<char> PriorBytes;
+		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		if (HadPrior)
+		{
+			std::ifstream Prior(CatalogPath, std::ios::binary);
+			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		const std::string CatalogText =
+			"{\"schema\":\"lostark.effect-runtime-catalog\","
+			"\"formatVersion\":3,\"components\":[],\"effects\":[" +
+			EntryText + "]}";
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(CatalogText.data(),
+				static_cast<std::streamsize>(CatalogText.size()));
+		}
+		CEffectCatalog::Clear();
+		const bool_t CatalogLoaded = CEffectCatalog::Load(Status);
+		const uint64_t Revision = CEffectCatalog::Get_RuntimeRevision();
+		const std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>
+			CatalogAuthority = CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority");
+		runner.Require(CatalogLoaded && Revision != 0u &&
+			nullptr != CatalogAuthority &&
+			CatalogAuthority->Identity.strCompiledIrSha256 ==
+				Parsed->Identity.strCompiledIrSha256 &&
+			CEffectCatalog::Contains_RuntimeAuthority(
+				"effect.fixture.runtime.authority") &&
+			!CEffectCatalog::Contains("effect.fixture.runtime.authority") &&
+			nullptr == CEffectCatalog::Find("effect.fixture.runtime.authority") &&
+			CEffectCatalog::Get_RuntimeAuthorityAssetIds() ==
+				std::vector<std::string>{ "effect.fixture.runtime.authority" },
+			"Format3 Catalog Commits Compiled Authority Without Raw Drawable Document");
+
+		std::string FloatingVersionCatalog = CatalogText;
+		const std::string CatalogVersion = "\"formatVersion\":3";
+		const size_t CatalogVersionOffset =
+			FloatingVersionCatalog.find(CatalogVersion);
+		if (CatalogVersionOffset != std::string::npos)
+		{
+			FloatingVersionCatalog.replace(CatalogVersionOffset,
+				CatalogVersion.size(), "\"formatVersion\":3.0");
+		}
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(FloatingVersionCatalog.data(),
+				static_cast<std::streamsize>(FloatingVersionCatalog.size()));
+		}
+		const bool_t FloatingVersionRejected =
+			!CEffectCatalog::Load(Status);
+		runner.Require(std::string::npos != CatalogVersionOffset &&
+			FloatingVersionRejected &&
+			CEffectCatalog::Get_RuntimeRevision() == Revision &&
+			CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority") == CatalogAuthority,
+			"Format3 Floating Point Version Rejects And Preserves Prior Catalog");
+
+		const std::string InvalidCatalog =
+			"{\"schema\":\"lostark.effect-runtime-catalog\","
+			"\"formatVersion\":3,\"components\":[],\"effects\":[" +
+			ProductMutation + "]}";
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(InvalidCatalog.data(),
+				static_cast<std::streamsize>(InvalidCatalog.size()));
+		}
+		const bool_t ReloadRejected = !CEffectCatalog::Load(Status);
+		runner.Require(ReloadRejected &&
+			CEffectCatalog::Get_RuntimeRevision() == Revision &&
+			CEffectCatalog::Find_RuntimeAuthority(
+				"effect.fixture.runtime.authority") == CatalogAuthority,
+			"Format3 Catalog Failed Reload Preserves Prior Revision And Pointer");
+
+		CEffectCatalog::Clear();
+		if (HadPrior)
+		{
+			std::ofstream Output(CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(PriorBytes.data(),
+				static_cast<std::streamsize>(PriorBytes.size()));
+		}
+		else
+		{
+			std::filesystem::remove(CatalogPath, Error);
+		}
+	}
+
+	constexpr std::string_view
+		ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
+		"e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df";
+
+	void Test_Artist31470TypedExecutionPlan(
+		TEST_RUNNER& runner,
+		const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& CatalogIdentity,
+		const std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>&
+			Program,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& Preparation,
+		Client::CEffectPlayback& Playback)
+	{
+		using namespace Client;
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Plan =
+			Playback.Get_ReconstructedExecutionPlan();
+		std::array<uint32_t, 7u> ScheduleEmitterCounts{};
+		bool_t ExactScheduleOrder = nullptr != Plan &&
+			Plan->Get_ScheduleOrder().size() == ScheduleEmitterCounts.size();
+		for (size_t Index = 0u;
+			ExactScheduleOrder && Index < ScheduleEmitterCounts.size(); ++Index)
+		{
+			const std::string& ScheduleId = Plan->Get_ScheduleOrder()[Index];
+			const auto Iterator = Plan->Get_Schedules().find(ScheduleId);
+			ExactScheduleOrder = Iterator != Plan->Get_Schedules().end() &&
+				Iterator->second.iOrder == Index;
+			if (ExactScheduleOrder)
+			{
+				ScheduleEmitterCounts[Index] = static_cast<uint32_t>(
+					Iterator->second.EmitterIds.size());
+			}
+		}
+		const std::array<uint32_t, 7u> ExpectedScheduleCounts{
+			4u, 1u, 15u, 12u, 1u, 1u, 1u };
+		const std::array<uint32_t, 5u> ExpectedDistributionCounts{
+			612u, 8u, 5u, 1u, 3u };
+		constexpr std::string_view FrozenSeededEmitterId =
+			"fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01::"
+			"action-31470/stage-000/notify-028::FX_CM_01.distortion_onelayer."
+			"par_convatedisol_fsm_pushinghit_01.particlespriteemitter_21";
+		const std::string FrozenSeededModuleId =
+			std::string(FrozenSeededEmitterId) + "::module:001";
+		const std::string FrozenSeededPropertyId =
+			FrozenSeededModuleId + "::property:lifetime";
+		const std::string FrozenSeededDistributionId =
+			FrozenSeededModuleId + "::distribution:lifetime";
+		const std::string FrozenSeededPolicyId =
+			FrozenSeededModuleId + "::seed-policy";
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN_SUMMARY* Summary =
+			nullptr == Plan ? nullptr : &Plan->Get_Summary();
+		std::array<uint32_t, 5u> ModuleRoleCounts{};
+		uint32_t CpuTimingDistributionCount = 0u;
+		uint32_t DeferredEfDistributionCount = 0u;
+		bool_t FrozenSeededAuthority = false;
+		if (nullptr != Plan)
+		{
+			for (const auto& [ModuleId, Module] : Plan->Get_Modules())
+			{
+				UNREFERENCED_PARAMETER(ModuleId);
+				++ModuleRoleCounts[static_cast<size_t>(Module.eRole)];
+			}
+			for (const auto& [DistributionId, Distribution] :
+				Plan->Get_Distributions())
+			{
+				UNREFERENCED_PARAMETER(DistributionId);
+				CpuTimingDistributionCount += Distribution.bCpuTimingExecutable;
+				DeferredEfDistributionCount +=
+					Distribution.eVariant ==
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::EF_MULTIPLY &&
+						!Distribution.bCpuTimingExecutable;
+			}
+			const auto& Seeded = Plan->Get_SeededLifetimeAuthority();
+			FrozenSeededAuthority =
+				Seeded.strEmitterId == FrozenSeededEmitterId &&
+				Seeded.strModuleId == FrozenSeededModuleId &&
+				Seeded.strPropertyId == FrozenSeededPropertyId &&
+				Seeded.strDistributionId == FrozenSeededDistributionId &&
+				Seeded.strSeedPolicyId == FrozenSeededPolicyId &&
+				Seeded.strModuleHandlerRegistryId ==
+					"handler-e2090fa9d17f0261c4dd44af" &&
+				Seeded.strPropertyHandlerRegistryId ==
+					"handler-bd8a985dfc08db23f1e06bd1" &&
+				Seeded.strEvaluatorRegistryId ==
+					"handler-3dbd1f0b4bdedf14ab3e9df0" &&
+				Seeded.strCapabilityPolicyFamilyId ==
+					"source.reconstructed.seeded.v1" &&
+				Seeded.strCapabilityImplementationId ==
+					"source.reconstructed.seeded.v1.implementation" &&
+				Seeded.iCapabilityImplementationVersion == 1u &&
+				Seeded.strCapabilityImplementationSha256 ==
+					"ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01" &&
+				Seeded.strModuleRowSha256 ==
+					"5fba6a5d4df33c509efe4ae08f30db0644bd78aa245e434c4fad33c3a082bc3f" &&
+				Seeded.strPropertyRowSha256 ==
+					"bd9b6e05cf6f055016dcaf4bdc16728f33ffda94d245897383e7b0802b46a21d" &&
+				Seeded.strDistributionRowSha256 ==
+					"62e3dfc92a0f943bbabee82a1d148a0a8e08a7a04756c00f3cad706c825c5de9" &&
+				Seeded.strSeedPolicyRowSha256 ==
+					"1d43e93331e50168277ffbc0ddb7709bdec0bf528541557362feb705cb39ee3a";
+		}
+		runner.Require(nullptr != Plan && nullptr != Summary &&
+			Plan->Get_Preparation().get() == Preparation.get() &&
+			Plan->Get_Program().get() == Program.get() &&
+			Plan->Get_Identity().iPlanVersion == 1u &&
+			Plan->Get_Identity().iOccurrenceRngVersion == 1u &&
+			Plan->Get_Identity().iFixedStepHz == 60u &&
+			Plan->Get_Identity().iCatalogRevision ==
+				CatalogIdentity.iCatalogRevision &&
+			Plan->Get_Identity().strProgramSha256 ==
+				"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b" &&
+			Plan->Get_Identity().strCandidateRawSha256 ==
+				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849" &&
+			Plan->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			Summary->iScheduleCount == 7u && Summary->iEmitterCount == 35u &&
+			Summary->iModuleCount == 399u &&
+			Summary->iDistributionCount == 629u &&
+			Summary->iBurstCount == 31u &&
+			Summary->iLifetimeModuleCount == 34u &&
+			Summary->iSeededLifetimeModuleCount == 1u &&
+			Summary->iOperationalCapSum == 1291u &&
+			Summary->iOperationalCapMaximum == 594u &&
+			Summary->iRibbonOperationalMaxPoints == 500u &&
+			Summary->DistributionVariantCounts == ExpectedDistributionCounts &&
+			Plan->Get_SeedPolicies().size() == 14u &&
+			ModuleRoleCounts == std::array<uint32_t, 5u>{
+				35u, 35u, 34u, 1u, 294u } &&
+			CpuTimingDistributionCount == 105u &&
+			DeferredEfDistributionCount == 3u &&
+			ScheduleEmitterCounts == ExpectedScheduleCounts &&
+			FrozenSeededAuthority,
+			"Artist 31470 Typed Plan Freezes 7/35/399/629 Schedule Lifetime Burst Cap And Distribution Denominators");
+		if (nullptr == Plan)
+			return;
+		std::cout << "[DETAIL] Artist 31470 typed execution plan semanticProjection=" <<
+			Plan->Get_Identity().strSemanticProjectionSha256 << '\n';
+
+		bool_t ExactReverseJoins = Plan->Get_EmitterOrder().size() == 35u &&
+			Plan->Get_ModuleOrder().size() == 399u &&
+			Plan->Get_DistributionOrder().size() == 629u;
+		std::set<std::string, std::less<>> StableIds;
+		for (const std::string& EmitterId : Plan->Get_EmitterOrder())
+		{
+			const auto Emitter = Plan->Get_Emitters().find(EmitterId);
+			if (Emitter == Plan->Get_Emitters().end())
+			{
+				ExactReverseJoins = false;
+				continue;
+			}
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(EmitterId).second &&
+				Plan->Get_Schedules().contains(Emitter->second.strScheduleId);
+			for (const std::string& ModuleId : Emitter->second.ModuleIds)
+			{
+				const auto Module = Plan->Get_Modules().find(ModuleId);
+				if (Module == Plan->Get_Modules().end())
+				{
+					ExactReverseJoins = false;
+					continue;
+				}
+				ExactReverseJoins = ExactReverseJoins &&
+					Module->second.strEmitterId == EmitterId;
+			}
+		}
+		for (const std::string& ModuleId : Plan->Get_ModuleOrder())
+		{
+			const auto Module = Plan->Get_Modules().find(ModuleId);
+			if (Module == Plan->Get_Modules().end())
+			{
+				ExactReverseJoins = false;
+				continue;
+			}
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(ModuleId).second;
+			for (const std::string& DistributionId : Module->second.DistributionIds)
+			{
+				const auto Distribution =
+					Plan->Get_Distributions().find(DistributionId);
+				ExactReverseJoins = ExactReverseJoins &&
+					Distribution != Plan->Get_Distributions().end() &&
+					Distribution->second.strModuleId == ModuleId;
+			}
+		}
+		for (const std::string& DistributionId : Plan->Get_DistributionOrder())
+		{
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(DistributionId).second &&
+				Plan->Get_Distributions().contains(DistributionId);
+		}
+		runner.Require(ExactReverseJoins,
+			"Artist 31470 Typed Plan Uses Exact Stable IDs And Complete Reverse Joins Without Vector Index Identity");
+
+		std::string Status;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			EarlyState;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			EarlyFrame;
+		const bool_t EarlySimulated = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 0.1, EarlyState, EarlyFrame, Status);
+		uint32_t WaitingSchedule = 0u;
+		uint32_t WaitingDelay = 0u;
+		uint32_t Emitting = 0u;
+		if (nullptr != EarlyState)
+		{
+			for (const auto& Emitter : EarlyState->Get_Emitters())
+			{
+				WaitingSchedule += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_SCHEDULE;
+				WaitingDelay += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_DELAY;
+				Emitting += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::EMITTING;
+			}
+		}
+		runner.Require(EarlySimulated && nullptr != EarlyState &&
+			nullptr != EarlyFrame && EarlyState->Get_FixedStepIndex() == 6u &&
+			EarlyState->Get_Emitters().size() == 35u && WaitingSchedule == 31u &&
+			WaitingDelay >= 1u && Emitting >= 1u,
+			"Artist 31470 CPU Inspection Uses 60Hz Schedule And Emitter Delay Gates");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			StateA;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			FrameA;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			StateB;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			FrameB;
+		const bool_t SimulatedA = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 1.75, StateA, FrameA, Status);
+		const bool_t SimulatedB = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 1.75, StateB, FrameB, Status);
+		bool_t ExactEmitterOrder = nullptr != StateA &&
+			StateA->Get_Emitters().size() == Plan->Get_EmitterOrder().size();
+		bool_t CapsHeld = ExactEmitterOrder;
+		for (size_t Index = 0u;
+			ExactEmitterOrder && Index < Plan->Get_EmitterOrder().size(); ++Index)
+		{
+			const auto& State = StateA->Get_Emitters()[Index];
+			const auto& Emitter = Plan->Get_Emitters().at(
+				Plan->Get_EmitterOrder()[Index]);
+			ExactEmitterOrder = State.strEmitterId ==
+				Plan->Get_EmitterOrder()[Index];
+			CapsHeld = CapsHeld &&
+				State.iActiveCount <= Emitter.iOperationalMaxParticles;
+		}
+		bool_t UniqueOccurrenceIds = nullptr != FrameA;
+		bool_t StablePacketOrder = nullptr != FrameA;
+		std::set<std::string, std::less<>> OccurrenceIds;
+		std::map<std::string, uint32_t, std::less<>> PacketEmitterOrder;
+		uint32_t NextPacketEmitterOrder = 0u;
+		for (const std::string& ScheduleId : Plan->Get_ScheduleOrder())
+		{
+			for (const std::string& EmitterId :
+				Plan->Get_Schedules().at(ScheduleId).EmitterIds)
+			{
+				PacketEmitterOrder.emplace(EmitterId, NextPacketEmitterOrder++);
+			}
+		}
+		uint32_t PriorEmitterOrder = 0u;
+		uint64_t PriorSpawnSerial = 0u;
+		bool_t FirstPacket = true;
+		if (nullptr != FrameA)
+		{
+			for (const auto& Packet : FrameA->Get_ActiveOccurrences())
+			{
+				const auto Order = PacketEmitterOrder.find(Packet.strEmitterId);
+				UniqueOccurrenceIds = UniqueOccurrenceIds &&
+					!Packet.strOccurrenceId.empty() &&
+					OccurrenceIds.insert(Packet.strOccurrenceId).second &&
+					Plan->Get_Emitters().contains(Packet.strEmitterId) &&
+					Packet.fAgeSeconds >= 0.0 &&
+					Packet.fAgeSeconds < Packet.fLifetimeSeconds;
+				StablePacketOrder = StablePacketOrder &&
+					Order != PacketEmitterOrder.end() &&
+					(FirstPacket || Order->second > PriorEmitterOrder ||
+						(Order->second == PriorEmitterOrder &&
+						 Packet.iSpawnSerial > PriorSpawnSerial));
+				if (Order != PacketEmitterOrder.end())
+				{
+					PriorEmitterOrder = Order->second;
+					PriorSpawnSerial = Packet.iSpawnSerial;
+				}
+				FirstPacket = false;
+			}
+		}
+		uint32_t SeededEmitterCount = 0u;
+		bool_t SeededStateCovered = false;
+		bool_t SeededPacketCovered = false;
+		for (const std::string& EmitterId : Plan->Get_EmitterOrder())
+		{
+			const auto& Emitter = Plan->Get_Emitters().at(EmitterId);
+			if (!Emitter.strLifetimeSeedPolicyId.has_value())
+				continue;
+			++SeededEmitterCount;
+			if (nullptr != StateA)
+			{
+				const auto State = std::find_if(StateA->Get_Emitters().begin(),
+					StateA->Get_Emitters().end(), [&EmitterId](const auto& Row)
+					{ return Row.strEmitterId == EmitterId; });
+				SeededStateCovered = State != StateA->Get_Emitters().end() &&
+					State->iLifetimeRandomState != 0u;
+			}
+			if (nullptr != FrameA)
+			{
+				SeededPacketCovered = std::any_of(
+					FrameA->Get_ActiveOccurrences().begin(),
+					FrameA->Get_ActiveOccurrences().end(),
+					[&EmitterId](const auto& Packet)
+					{
+						return Packet.strEmitterId == EmitterId &&
+							Packet.iLifetimeRandomValue != 0u &&
+							Packet.iOccurrenceRandomValue != 0u;
+					});
+			}
+		}
+		runner.Require(SimulatedA && SimulatedB && nullptr != StateA &&
+			nullptr != FrameA && nullptr != StateB && nullptr != FrameB &&
+			StateA->Get_ProjectionSha256() == StateB->Get_ProjectionSha256() &&
+			FrameA->Get_ProjectionSha256() == FrameB->Get_ProjectionSha256() &&
+			!FrameA->Get_ActiveOccurrences().empty() && ExactEmitterOrder &&
+			CapsHeld && UniqueOccurrenceIds && StablePacketOrder &&
+			SeededEmitterCount == 1u && SeededStateCovered && SeededPacketCovered,
+			"Artist 31470 CPU Inspection RNG Packet Order Lifetime And Caps Are Deterministic");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			CompletedState;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			CompletedFrame;
+		const bool_t CompletedSimulation =
+			CEffectReconstructedCpuInspector::Simulate(
+				Plan, 60.0, CompletedState, CompletedFrame, Status);
+		const bool_t AllLoopsComplete = nullptr != CompletedState &&
+			std::all_of(CompletedState->Get_Emitters().begin(),
+				CompletedState->Get_Emitters().end(), [](const auto& Emitter)
+				{
+					return Emitter.ePhase ==
+						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::COMPLETE &&
+						Emitter.iActiveCount == 0u;
+				});
+		runner.Require(CompletedSimulation && AllLoopsComplete &&
+			nullptr != CompletedFrame &&
+			CompletedFrame->Get_ActiveOccurrences().empty(),
+			"Artist 31470 CPU Inspection Completes Exact Loop And Lifetime Tails Without Fallback");
+
+		const auto PreservedState = StateA;
+		const auto PreservedFrame = FrameA;
+		const bool_t InvalidSimulationRejected =
+			!CEffectReconstructedCpuInspector::Simulate(
+				Plan, -1.0, StateA, FrameA, Status);
+		runner.Require(InvalidSimulationRejected &&
+			StateA.get() == PreservedState.get() &&
+			FrameA.get() == PreservedFrame.get(),
+			"Artist 31470 CPU Inspection Invalid Sample Preserves Prior State And Frame");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			PreservedPlan = Plan;
+		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY WrongIdentity = CatalogIdentity;
+		WrongIdentity.strProgramSha256 = std::string(64u, '0');
+		const bool_t WrongIdentityRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				WrongIdentity, Program, PreservedPlan, Status);
+		auto UnknownVariant =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		UnknownVariant->Distributions.front().eVariant =
+			static_cast<EFFECT_RUNTIME_DISTRIBUTION_VARIANT>(255u);
+		const bool_t UnknownVariantRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, UnknownVariant, PreservedPlan, Status);
+		auto WrongJoin =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		WrongJoin->Emitters.front().strScheduleId = "unknown.schedule";
+		const bool_t WrongJoinRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, WrongJoin, PreservedPlan, Status);
+		auto UnknownHandler =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		UnknownHandler->Modules.front().strHandlerRegistryId = "unknown.handler";
+		const bool_t UnknownHandlerRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, UnknownHandler, PreservedPlan, Status);
+		auto WrongSeed =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		for (const auto& Module : WrongSeed->Modules)
+		{
+			if (Module.strExactSourceClass != "particlemodulelifetime_seeded")
+				continue;
+			for (auto& Seed : WrongSeed->SeedPolicies)
+			{
+				if (Seed.Row.strId == Module.strSeedPolicyId)
+					Seed.RandomSeeds = { 4 };
+			}
+		}
+		const bool_t WrongSeedRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, WrongSeed, PreservedPlan, Status);
+		runner.Require(WrongIdentityRejected && UnknownVariantRejected &&
+			WrongJoinRejected && UnknownHandlerRejected && WrongSeedRejected &&
+			PreservedPlan.get() == Plan.get(),
+			"Artist 31470 Typed Plan Rejects A B Identity Unknown Variant And Broken Reverse Join Transactionally");
+
+		auto CoordinatedProjectionMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		bool_t ProjectionMutationFixtureComplete =
+			!CoordinatedProjectionMutation->ActionSchedules.empty();
+		uint32_t ProjectionMutationEmitterCount = 0u;
+		if (ProjectionMutationFixtureComplete)
+		{
+			auto& MutatedSchedule =
+				CoordinatedProjectionMutation->ActionSchedules.front();
+			const std::string OriginalCueId = MutatedSchedule.strSourceCueId;
+			const std::string MutatedCueId =
+				OriginalCueId + ".projection-authority-mutation";
+			for (auto& Emitter : CoordinatedProjectionMutation->Emitters)
+			{
+				if (Emitter.strScheduleId != MutatedSchedule.Row.strId)
+					continue;
+				ProjectionMutationFixtureComplete =
+					ProjectionMutationFixtureComplete &&
+					Emitter.strSourceCueId == OriginalCueId;
+				Emitter.strSourceCueId = MutatedCueId;
+				++ProjectionMutationEmitterCount;
+			}
+			MutatedSchedule.strSourceCueId = MutatedCueId;
+			ProjectionMutationFixtureComplete =
+				ProjectionMutationFixtureComplete &&
+				ProjectionMutationEmitterCount == ExpectedScheduleCounts.front();
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ProjectionMutationPlan = Plan;
+		std::string ProjectionMutationStatus;
+		const bool_t CoordinatedProjectionMutationRejected =
+			ProjectionMutationFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, CoordinatedProjectionMutation,
+				ProjectionMutationPlan, ProjectionMutationStatus);
+		runner.Require(CoordinatedProjectionMutationRejected &&
+			ProjectionMutationPlan.get() == Plan.get() &&
+			ProjectionMutationPlan->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			ProjectionMutationStatus ==
+				"Reconstructed execution frozen semantic projection authority is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Canonical Projection Mutation And Preserves Old Plan");
+
+		auto SwappedLifetimeAuthority =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto SeededModule = std::find_if(
+			SwappedLifetimeAuthority->Modules.begin(),
+			SwappedLifetimeAuthority->Modules.end(),
+			[&FrozenSeededModuleId](const auto& Row)
+			{ return Row.Row.strId == FrozenSeededModuleId; });
+		auto OrdinaryLifetimeModule = std::find_if(
+			SwappedLifetimeAuthority->Modules.begin(),
+			SwappedLifetimeAuthority->Modules.end(), [](const auto& Row)
+			{ return Row.strExactSourceClass == "particlemodulelifetime"; });
+		const bool_t SwapFixtureComplete =
+			SeededModule != SwappedLifetimeAuthority->Modules.end() &&
+			OrdinaryLifetimeModule != SwappedLifetimeAuthority->Modules.end();
+		if (SwapFixtureComplete)
+		{
+			const auto SeededRow = SeededModule->Row;
+			const auto SeededEmitterId = SeededModule->strEmitterId;
+			const auto SeededPropertyIds = SeededModule->PropertyIds;
+			const auto SeededPrimitiveLeafIds = SeededModule->PrimitiveLeafIds;
+			const auto SeededLiteralIds = SeededModule->LiteralIds;
+			const auto SeededDistributionIds = SeededModule->DistributionIds;
+			const auto SeededImplicitDefaultIds = SeededModule->ImplicitDefaultIds;
+			const auto OrdinaryRow = OrdinaryLifetimeModule->Row;
+			const auto OrdinaryEmitterId = OrdinaryLifetimeModule->strEmitterId;
+			const auto OrdinaryPropertyIds = OrdinaryLifetimeModule->PropertyIds;
+			const auto OrdinaryPrimitiveLeafIds =
+				OrdinaryLifetimeModule->PrimitiveLeafIds;
+			const auto OrdinaryLiteralIds = OrdinaryLifetimeModule->LiteralIds;
+			const auto OrdinaryDistributionIds =
+				OrdinaryLifetimeModule->DistributionIds;
+			const auto OrdinaryImplicitDefaultIds =
+				OrdinaryLifetimeModule->ImplicitDefaultIds;
+			std::swap(*SeededModule, *OrdinaryLifetimeModule);
+			SeededModule->Row = SeededRow;
+			SeededModule->strEmitterId = SeededEmitterId;
+			SeededModule->PropertyIds = SeededPropertyIds;
+			SeededModule->PrimitiveLeafIds = SeededPrimitiveLeafIds;
+			SeededModule->LiteralIds = SeededLiteralIds;
+			SeededModule->DistributionIds = SeededDistributionIds;
+			SeededModule->ImplicitDefaultIds = SeededImplicitDefaultIds;
+			OrdinaryLifetimeModule->Row = OrdinaryRow;
+			OrdinaryLifetimeModule->strEmitterId = OrdinaryEmitterId;
+			OrdinaryLifetimeModule->PropertyIds = OrdinaryPropertyIds;
+			OrdinaryLifetimeModule->PrimitiveLeafIds = OrdinaryPrimitiveLeafIds;
+			OrdinaryLifetimeModule->LiteralIds = OrdinaryLiteralIds;
+			OrdinaryLifetimeModule->DistributionIds = OrdinaryDistributionIds;
+			OrdinaryLifetimeModule->ImplicitDefaultIds = OrdinaryImplicitDefaultIds;
+			for (auto& Seed : SwappedLifetimeAuthority->SeedPolicies)
+			{
+				if (Seed.Row.strId == FrozenSeededPolicyId)
+					Seed.strModuleId = OrdinaryLifetimeModule->Row.strId;
+			}
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> SwapPlan = Plan;
+		std::string SwapStatus;
+		const bool_t CoordinatedSwapRejected = SwapFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, SwappedLifetimeAuthority, SwapPlan, SwapStatus);
+		runner.Require(CoordinatedSwapRejected && SwapPlan.get() == Plan.get() &&
+			SwapStatus ==
+				"Reconstructed execution frozen seeded lifetime authority tuple is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Seeded Lifetime Full Object Authority Swap Transactionally");
+
+		auto DynamicTargetMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto DynamicTarget = std::find_if(
+			DynamicTargetMutation->Distributions.begin(),
+			DynamicTargetMutation->Distributions.end(), [](const auto& Row)
+			{ return Row.strPropertyPath == "dynamicparams[0].paramvalue"; });
+		const bool_t DynamicTargetFixtureComplete =
+			DynamicTarget != DynamicTargetMutation->Distributions.end();
+		if (DynamicTargetFixtureComplete)
+		{
+			DynamicTarget->strPropertyPath =
+				"dynamicparams[0].paramvalue_mutated";
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DynamicTargetPlan = Plan;
+		std::string DynamicTargetStatus;
+		const bool_t DynamicTargetRejected = DynamicTargetFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DynamicTargetMutation, DynamicTargetPlan,
+				DynamicTargetStatus);
+		runner.Require(DynamicTargetRejected &&
+			DynamicTargetPlan.get() == Plan.get() &&
+			DynamicTargetStatus ==
+				"Reconstructed execution frozen distribution target projection is invalid.",
+			"Artist 31470 Typed Plan Rejects Bracket Qualified Dynamicparams Target Mutation Transactionally");
+
+		const auto FindDynamicParamsOwner = [](
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& MutatedProgram) ->
+				EFFECT_RUNTIME_PROGRAM_PROPERTY*
+		{
+			const auto Distribution = std::find_if(
+				MutatedProgram.Distributions.begin(),
+				MutatedProgram.Distributions.end(), [](const auto& Row)
+				{ return Row.strPropertyPath == "dynamicparams[0].paramvalue"; });
+			if (Distribution == MutatedProgram.Distributions.end())
+				return nullptr;
+			const auto Property = std::find_if(MutatedProgram.Properties.begin(),
+				MutatedProgram.Properties.end(), [&Distribution](const auto& Row)
+				{ return Row.Row.strId == Distribution->strPropertyId; });
+			if (Property == MutatedProgram.Properties.end() ||
+				Property->strPropertyPath != "dynamicparams")
+			{
+				return nullptr;
+			}
+			return &*Property;
+		};
+
+		auto DynamicOwnerMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* DynamicOwner = FindDynamicParamsOwner(*DynamicOwnerMutation);
+		const bool_t DynamicOwnerFixtureComplete = nullptr != DynamicOwner;
+		if (DynamicOwnerFixtureComplete)
+			DynamicOwner->strPropertyPath = "dynamicparams[0].paramvalue";
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DynamicOwnerPlan = Plan;
+		std::string DynamicOwnerStatus;
+		const bool_t DynamicOwnerRejected = DynamicOwnerFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DynamicOwnerMutation, DynamicOwnerPlan,
+				DynamicOwnerStatus);
+		runner.Require(DynamicOwnerRejected &&
+			DynamicOwnerPlan.get() == Plan.get() &&
+			DynamicOwnerStatus ==
+				"Reconstructed execution frozen distribution owner projection is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Dynamicparams Owner Classification Mutation Transactionally");
+
+		auto ExtraSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* ExtraOwner = FindDynamicParamsOwner(*ExtraSemanticReverse);
+		std::string ExtraDistributionId;
+		if (nullptr != ExtraOwner)
+		{
+			const auto ExtraDistribution = std::find_if(
+				ExtraSemanticReverse->Distributions.begin(),
+				ExtraSemanticReverse->Distributions.end(),
+				[ExtraOwner](const auto& Row)
+				{ return Row.strPropertyId != ExtraOwner->Row.strId; });
+			if (ExtraDistribution != ExtraSemanticReverse->Distributions.end())
+				ExtraDistributionId = ExtraDistribution->Row.strId;
+		}
+		const bool_t ExtraSemanticFixtureComplete = nullptr != ExtraOwner &&
+			!ExtraDistributionId.empty() &&
+			std::find(ExtraOwner->SemanticDistributionIds.begin(),
+				ExtraOwner->SemanticDistributionIds.end(), ExtraDistributionId) ==
+				ExtraOwner->SemanticDistributionIds.end();
+		if (ExtraSemanticFixtureComplete)
+			ExtraOwner->SemanticDistributionIds.push_back(ExtraDistributionId);
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ExtraSemanticPlan = Plan;
+		std::string ExtraSemanticStatus;
+		const bool_t ExtraSemanticRejected = ExtraSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, ExtraSemanticReverse, ExtraSemanticPlan,
+				ExtraSemanticStatus);
+		runner.Require(ExtraSemanticRejected &&
+			ExtraSemanticPlan.get() == Plan.get() &&
+			ExtraSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Extra Property Distribution Reverse Membership Transactionally");
+
+		auto DuplicateSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* DuplicateOwner = FindDynamicParamsOwner(*DuplicateSemanticReverse);
+		const bool_t DuplicateSemanticFixtureComplete = nullptr != DuplicateOwner &&
+			!DuplicateOwner->SemanticDistributionIds.empty();
+		if (DuplicateSemanticFixtureComplete)
+		{
+			DuplicateOwner->SemanticDistributionIds.push_back(
+				DuplicateOwner->SemanticDistributionIds.front());
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DuplicateSemanticPlan = Plan;
+		std::string DuplicateSemanticStatus;
+		const bool_t DuplicateSemanticRejected =
+			DuplicateSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DuplicateSemanticReverse, DuplicateSemanticPlan,
+				DuplicateSemanticStatus);
+		runner.Require(DuplicateSemanticRejected &&
+			DuplicateSemanticPlan.get() == Plan.get() &&
+			DuplicateSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Duplicate Property Distribution Reverse Membership Transactionally");
+
+		auto ReorderedSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* ReorderedOwner = FindDynamicParamsOwner(*ReorderedSemanticReverse);
+		const bool_t ReorderedSemanticFixtureComplete = nullptr != ReorderedOwner &&
+			ReorderedOwner->SemanticDistributionIds.size() >= 2u;
+		if (ReorderedSemanticFixtureComplete)
+		{
+			std::swap(ReorderedOwner->SemanticDistributionIds[0u],
+				ReorderedOwner->SemanticDistributionIds[1u]);
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ReorderedSemanticPlan = Plan;
+		std::string ReorderedSemanticStatus;
+		const bool_t ReorderedSemanticRejected =
+			ReorderedSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, ReorderedSemanticReverse, ReorderedSemanticPlan,
+				ReorderedSemanticStatus);
+		runner.Require(ReorderedSemanticRejected &&
+			ReorderedSemanticPlan.get() == Plan.get() &&
+			ReorderedSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Reordered Property Distribution Reverse Membership Transactionally");
+
+		auto RawPoison =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		for (auto& Emitter : RawPoison->Emitters)
+		{
+			Emitter.bSourceRecipeEnabled = !Emitter.bSourceRecipeEnabled;
+			Emitter.RendererRuntimeConfig = {};
+			Emitter.DetailTransform.strProjectionSha256 = std::string(64u, 'f');
+			Emitter.CueLocalTransform.vPosition = {
+				999999.0, -999999.0, 123456.0 };
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> PoisonPlan;
+		const bool_t PoisonCompiled =
+			CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, RawPoison, PoisonPlan, Status);
+		runner.Require(PoisonCompiled && nullptr != PoisonPlan &&
+			PoisonPlan->Get_Identity().strSemanticProjectionSha256 ==
+				Plan->Get_Identity().strSemanticProjectionSha256 &&
+			PoisonPlan->Get_Summary().iEmitterCount == 35u &&
+			PoisonPlan->Get_Summary().iDistributionCount == 629u,
+			"Artist 31470 Typed Plan Is Invariant To Raw SourceRecipe Detail And Renderer Config Poison");
+
+		const auto BeforeInvalidPlaybackStage =
+			Playback.Get_ReconstructedExecutionPlan();
+		const auto BeforeInvalidPreparation =
+			Playback.Get_ReconstructedRuntimePreparation();
+		const bool_t InvalidPlaybackStageRejected =
+			!Playback.Stage_ReconstructedRuntimeProgram(nullptr, Status);
+		runner.Require(InvalidPlaybackStageRejected &&
+			Playback.Get_ReconstructedExecutionPlan().get() ==
+				BeforeInvalidPlaybackStage.get() &&
+			Playback.Get_ReconstructedRuntimePreparation().get() ==
+				BeforeInvalidPreparation.get(),
+			"Artist 31470 Playback Invalid Plan Restage Preserves Plan And Preparation Pointers");
+	}
+
+	void Test_Artist31470CatalogProgramAuthority(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& ProgramPath,
+		const std::filesystem::path& PublishedCatalogPath)
+	{
+		using namespace Client;
+		constexpr const char* EffectId = "effect.artist.skill.31470";
+		std::string Status;
+		const bool_t PublishedCatalogExists =
+			std::filesystem::is_regular_file(PublishedCatalogPath);
+		const std::string PublishedCatalogText = PublishedCatalogExists ?
+			Read_Text(PublishedCatalogPath) : std::string{};
+		DATA_JSON_VALUE PublishedCatalogRoot;
+		std::string PublishedCatalogParseError;
+		DATA_JSON_PARSE_LIMITS PublishedCatalogLimits;
+		PublishedCatalogLimits.iMaximumBytes = 64u * 1024u * 1024u;
+		PublishedCatalogLimits.iMaximumDepth = 64u;
+		PublishedCatalogLimits.iMaximumValues = 3'000'000u;
+		const bool_t PublishedCatalogParsed = PublishedCatalogExists &&
+			!PublishedCatalogText.empty() && CDataJson::Parse(
+				PublishedCatalogText, PublishedCatalogRoot,
+				PublishedCatalogParseError, PublishedCatalogLimits) &&
+			PublishedCatalogRoot.Is_Object();
+		const DATA_JSON_VALUE* PublishedSchema = PublishedCatalogParsed ?
+			PublishedCatalogRoot.Find("schema") : nullptr;
+		const DATA_JSON_VALUE* PublishedVersion = PublishedCatalogParsed ?
+			PublishedCatalogRoot.Find("formatVersion") : nullptr;
+		const DATA_JSON_VALUE* PublishedComponents = PublishedCatalogParsed ?
+			PublishedCatalogRoot.Find("components") : nullptr;
+		const DATA_JSON_VALUE* PublishedEffects = PublishedCatalogParsed ?
+			PublishedCatalogRoot.Find("effects") : nullptr;
+		const bool_t PublishedCatalogStructure =
+			PublishedCatalogText.size() == 26'255'930u &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				PublishedCatalogText) ==
+				"b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f" &&
+			nullptr != PublishedSchema && PublishedSchema->Is_String() &&
+			PublishedSchema->Get_String() == "lostark.effect-runtime-catalog" &&
+			nullptr != PublishedVersion && PublishedVersion->Is_Number() &&
+			!PublishedVersion->Was_FloatingPointToken() &&
+			PublishedVersion->Get_Number() == 3.0 &&
+			nullptr != PublishedComponents && PublishedComponents->Is_Array() &&
+			PublishedComponents->Get_Array().size() == 555u &&
+			nullptr != PublishedEffects && PublishedEffects->Is_Array() &&
+			PublishedEffects->Get_Array().size() == 102u;
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		const std::filesystem::path ModuleDirectory =
+			0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(ModuleBuffer).parent_path();
+		const std::filesystem::path CatalogPath = ModuleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code Error;
+		std::filesystem::create_directories(CatalogPath.parent_path(), Error);
+		std::vector<char> PriorBytes;
+		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		if (HadPrior)
+		{
+			std::ifstream Prior(CatalogPath, std::ios::binary);
+			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		const auto WriteCatalog = [&CatalogPath](const std::string& Text)
+		{
+			std::ofstream Output(
+				CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
+			return Output.good();
+		};
+		const auto RestorePriorCatalogFile = [&]()
+		{
+			if (HadPrior)
+			{
+				std::ofstream Output(
+					CatalogPath, std::ios::binary | std::ios::trunc);
+				Output.write(PriorBytes.data(),
+					static_cast<std::streamsize>(PriorBytes.size()));
+			}
+			else
+			{
+				std::filesystem::remove(CatalogPath, Error);
+			}
+		};
+
+		CEffectCatalog::Clear();
+		const bool_t LoadedA = PublishedCatalogStructure &&
+			WriteCatalog(PublishedCatalogText) && CEffectCatalog::Load(Status);
+		const uint64_t RevisionA = CEffectCatalog::Get_RuntimeRevision();
+		const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY> EntryA =
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> ProgramA =
+			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId);
+		const std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT> AuthorityA =
+			CEffectCatalog::Find_RuntimeAuthority(EffectId);
+		const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY* EntryIdentityA =
+			nullptr == EntryA ? nullptr : &EntryA->Get_Identity();
+		std::array<size_t, 6u> FamilyCounts{};
+		if (nullptr != ProgramA)
+		{
+			for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter : ProgramA->Emitters)
+				++FamilyCounts[static_cast<size_t>(Emitter.eRenderer)];
+		}
+		if (!LoadedA || nullptr == EntryA || nullptr == ProgramA)
+		{
+			std::cout << "[INFO] Artist 31470 actual catalog load status: "
+				<< Status << '\n';
+		}
+		runner.Require(LoadedA && PublishedCatalogStructure &&
+			CEffectCatalog::Get_ComponentAssetIds().size() == 555u &&
+			CEffectCatalog::Get_EffectAssetIds().size() +
+				CEffectCatalog::Get_RuntimeAuthorityAssetIds().size() +
+				CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds().size() ==
+				102u &&
+			CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds() ==
+				std::vector<std::string>{ EffectId } &&
+			nullptr != EntryA && nullptr != ProgramA &&
+			nullptr == AuthorityA && nullptr != EntryIdentityA &&
+			EntryA->Get_Program().get() == ProgramA.get() &&
+			nullptr == EntryA->Get_RenderResourceAuthority() &&
+			EntryIdentityA->iCatalogRevision == RevisionA &&
+			EntryIdentityA->iArtifactRevision == 1u &&
+			EntryIdentityA->iProgramVersion == 1u &&
+			EntryIdentityA->iInputArtifactCount == 13u &&
+			EntryIdentityA->iCandidateByteCount == 15'072'141u &&
+			EntryIdentityA->strEffectAssetId == EffectId &&
+			EntryIdentityA->strCompilerRevision ==
+				"artist31470.reconstructed-runtime-program-link-v1" &&
+			EntryIdentityA->strCandidateBuilderCommitId ==
+				"a85b8b41afb2f2a51bceafa55d06bf0937b1a245" &&
+			EntryIdentityA->strCandidateBuilderTreeId ==
+				"384ed35ca808ab9a71a4edb703ca4d9121b48c18" &&
+			EntryIdentityA->strCandidateBlobId ==
+				"345ab15bbb76648a650eaa854f18c4cd63cb1556" &&
+			EntryIdentityA->strProgramId ==
+				"effect.artist.skill.31470.reconstructed-approved-v1" &&
+			EntryIdentityA->strProgramSha256 ==
+				"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b" &&
+			EntryIdentityA->strCandidateRawSha256 ==
+				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849" &&
+			EntryIdentityA->strResourceBindingHash ==
+				"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c" &&
+			EntryIdentityA->strInputArtifactsOrderedSha256 ==
+				"938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa" &&
+			EntryIdentityA->strReconstructedRuntimeProgramSha256 ==
+				"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2" &&
+			EntryIdentityA->strPublishReceiptSha256 ==
+				"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94" &&
+			ProgramA->Emitters.size() == 35u &&
+			ProgramA->ActionSchedules.size() == 7u &&
+			ProgramA->Modules.size() == 399u &&
+			ProgramA->Distributions.size() == 629u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE)] == 13u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE)] == 16u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE)] == 3u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON)] == 1u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE)] == 1u &&
+			FamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST)] == 1u &&
+			!ProgramA->Admission.bRuntimeExecution &&
+			!ProgramA->Admission.bProduct,
+			"Artist 31470 Actual Tracked Catalog Commits Exact Immutable Program Identity And Six Renderer Families");
+		if (!LoadedA || nullptr == EntryA || nullptr == ProgramA ||
+			nullptr != AuthorityA || nullptr == EntryIdentityA)
+		{
+			CEffectCatalog::Clear();
+			RestorePriorCatalogFile();
+			return;
+		}
+
+		std::string Candidate;
+		const bool_t ExactFixture = Read_FrozenReconstructedProgramFixture(
+			ProgramPath, Candidate, Status);
+		runner.Require(ExactFixture && Candidate.size() == 15'072'141u &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Candidate) ==
+				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849",
+			"Artist 31470 Synthetic Attack Fixture Uses Exact Frozen LF Candidate Bytes");
+		if (!ExactFixture)
+		{
+			CEffectCatalog::Clear();
+			RestorePriorCatalogFile();
+			return;
+		}
+		const std::string CatalogText =
+			Build_Artist31470ReconstructedCatalog(Candidate);
+
+		const std::vector<std::string> RawEffectAssetIdsA =
+			CEffectCatalog::Get_EffectAssetIds();
+		const std::vector<std::string> RawAuthorityAssetIdsA =
+			CEffectCatalog::Get_RuntimeAuthorityAssetIds();
+		const bool_t NoLegacyFallback =
+			CEffectCatalog::Contains_ReconstructedRuntimeProgram(EffectId) &&
+			!CEffectCatalog::Contains(EffectId) && nullptr ==
+				CEffectCatalog::Find(EffectId) &&
+			!CEffectCatalog::Contains_RuntimeAuthority(EffectId) && nullptr ==
+				CEffectCatalog::Find_RuntimeAuthority(EffectId) &&
+			std::find(RawEffectAssetIdsA.begin(), RawEffectAssetIdsA.end(),
+				EffectId) == RawEffectAssetIdsA.end() &&
+			std::find(RawAuthorityAssetIdsA.begin(), RawAuthorityAssetIdsA.end(),
+				EffectId) == RawAuthorityAssetIdsA.end() &&
+			CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds() ==
+				std::vector<std::string>{ EffectId };
+		runner.Require(NoLegacyFallback,
+			"Artist 31470 Reconstructed Catalog Has Zero Raw Document Fallback");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			Preparation;
+		const bool_t PresentationPrepared =
+			CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+				EffectId, Preparation, Status);
+		CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
+		ObjectDesc.pReconstructedRuntimePreparation = Preparation;
+		CEffectReconstructedRuntimeBoundary ObjectBoundary;
+		CEffectReconstructedRuntimeBoundary PlaybackBoundary;
+		CEffectReconstructedRuntimeBoundary RendererBoundary;
+		const bool_t ObjectBoundaryPrepared = ObjectBoundary.Stage(
+			ObjectDesc.pReconstructedRuntimePreparation,
+			EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT, Status);
+		const bool_t PlaybackBoundaryPrepared = PlaybackBoundary.Stage(
+			ObjectDesc.pReconstructedRuntimePreparation,
+			EFFECT_RECONSTRUCTED_RUNTIME_SEAM::PLAYBACK, Status);
+		const bool_t RendererBoundaryPrepared = RendererBoundary.Stage(
+			ObjectDesc.pReconstructedRuntimePreparation,
+			EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER, Status);
+		CEffectPlayback PreparedPlayback;
+		const bool_t PlaybackPrepared =
+			PreparedPlayback.Stage_ReconstructedRuntimeProgram(
+				ObjectDesc.pReconstructedRuntimePreparation, Status);
+		if (!PlaybackPrepared)
+		{
+			std::cerr << "[DIAGNOSTIC] Artist 31470 typed execution plan stage: "
+				<< Status << std::endl;
+		}
+		constexpr std::array<std::string_view, 5u> ExpectedAnchorOwners{
+			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_21",
+			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
+			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_6",
+			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_0",
+			"fx_pc_sdm_07.par_v_smd_onestroke_weapon_01::action-31470/stage-000/notify-014::FX_PC_SDM_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6" };
+		const std::vector<EFFECT_RECONSTRUCTED_ANCHOR_BINDING>* AnchorRequests =
+			nullptr == Preparation ? nullptr :
+				&Preparation->Get_AnchorRequests();
+		bool_t ExactAnchorOwners = nullptr != AnchorRequests &&
+			AnchorRequests->size() == ExpectedAnchorOwners.size();
+		for (size_t Index = 0u;
+			ExactAnchorOwners && Index < ExpectedAnchorOwners.size(); ++Index)
+		{
+			const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding =
+				(*AnchorRequests)[Index];
+			ExactAnchorOwners =
+				Binding.strOwnerEmitterId == ExpectedAnchorOwners[Index] &&
+				Binding.Request.strAnchorRequestId ==
+					Binding.strOwnerEmitterId + "::anchor:action-cue";
+		}
+		runner.Require(PresentationPrepared && ObjectBoundaryPrepared &&
+			PlaybackBoundaryPrepared && RendererBoundaryPrepared &&
+			PlaybackPrepared &&
+			Preparation->Get_CatalogEntry().get() == EntryA.get() &&
+			Preparation->Get_Program().get() == ProgramA.get() &&
+			ObjectDesc.pReconstructedRuntimePreparation.get() ==
+				Preparation.get() &&
+			ObjectBoundary.Get_Preparation().get() == Preparation.get() &&
+			PlaybackBoundary.Get_Preparation().get() == Preparation.get() &&
+			RendererBoundary.Get_Preparation().get() == Preparation.get() &&
+			ObjectBoundary.Get_CatalogEntry().get() == EntryA.get() &&
+			PlaybackBoundary.Get_CatalogEntry().get() == EntryA.get() &&
+			RendererBoundary.Get_CatalogEntry().get() == EntryA.get() &&
+			ObjectBoundary.Get_Program().get() == ProgramA.get() &&
+			PlaybackBoundary.Get_Program().get() == ProgramA.get() &&
+			RendererBoundary.Get_Program().get() == ProgramA.get() &&
+			ExactAnchorOwners &&
+			PreparedPlayback.Get_ReconstructedRuntimePreparation().get() ==
+				Preparation.get() &&
+			PreparedPlayback.Get_ReconstructedRuntimeEntry().get() == EntryA.get() &&
+			PreparedPlayback.Get_ReconstructedRuntimeProgram().get() ==
+				ProgramA.get(),
+			"Artist 31470 Catalog Presentation Object Playback Renderer Preserve One Opaque Handle");
+		const auto ExecutionPlanA =
+			PreparedPlayback.Get_ReconstructedExecutionPlan();
+		Test_Artist31470TypedExecutionPlan(runner, *EntryIdentityA, ProgramA,
+			Preparation, PreparedPlayback);
+		const auto PreservedBoundaryPreparation =
+			ObjectBoundary.Get_Preparation();
+		const bool_t InvalidRestageRejected = !ObjectBoundary.Stage(
+			nullptr, EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT, Status);
+		runner.Require(InvalidRestageRejected && !Status.empty() &&
+			ObjectBoundary.Get_Preparation().get() ==
+				PreservedBoundaryPreparation.get(),
+			"Artist 31470 Shared Object Stage Rejects Invalid Restage Transactionally");
+		float4x4_t PlaybackRoot{};
+		XMStoreFloat4x4(&PlaybackRoot, XMMatrixIdentity());
+		PreparedPlayback.Update(1.f / 60.f, PlaybackRoot);
+		PreparedPlayback.Seek(1.f, PlaybackRoot);
+		const EFFECT_EVALUATED_FRAME& BlockedFrame = PreparedPlayback.Get_Frame();
+		std::string ExecutionGateStatus;
+		std::string SubmitGateStatus;
+		std::string RenderGateStatus;
+		const bool_t ExecutionDenied = !ObjectBoundary.Admit_Execution(
+			ExecutionGateStatus);
+		const bool_t SubmitDenied = !ObjectBoundary.Admit_Submit(
+			SubmitGateStatus);
+		const bool_t RenderDenied = !RendererBoundary.Admit_Render(
+			RenderGateStatus);
+		runner.Require(ExecutionDenied && SubmitDenied && RenderDenied &&
+			!ExecutionGateStatus.empty() && !SubmitGateStatus.empty() &&
+			!RenderGateStatus.empty() &&
+			PreparedPlayback.Get_ReconstructedRuntimePreparation().get() ==
+				Preparation.get() && BlockedFrame.Elements.empty() &&
+			BlockedFrame.Particles.empty() && BlockedFrame.Trails.empty() &&
+			BlockedFrame.AfterImages.empty() && BlockedFrame.Lights.empty() &&
+			BlockedFrame.ScreenPosts.empty(),
+			"Artist 31470 Shared Gates Deny Execution Submit And Render");
+
+		std::string ProductGateStatus;
+		const bool_t ProductSpawnRejected =
+			!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
+				EffectId, ProductGateStatus) && !ProductGateStatus.empty() &&
+			nullptr != ProgramA && !ProgramA->Admission.bRuntimeExecution &&
+			!ProgramA->Admission.bProduct;
+		runner.Require(ProductSpawnRejected,
+			"Artist 31470 Reconstructed Product Spawn Remains Fail Closed");
+
+		const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT> SnapshotA =
+			CEffectCatalog::Capture_Runtime();
+		const bool_t LoadedB = WriteCatalog(CatalogText) &&
+			CEffectCatalog::Load(Status);
+		const uint64_t RevisionB = CEffectCatalog::Get_RuntimeRevision();
+		const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY> EntryB =
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> ProgramB =
+			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId);
+		runner.Require(LoadedB && RevisionB == RevisionA + 1u &&
+			nullptr != EntryB && nullptr != ProgramB && EntryB.get() != EntryA.get() &&
+			ProgramB.get() != ProgramA.get() && ProgramA->Emitters.size() == 35u &&
+			EntryB->Get_Identity().iCatalogRevision == RevisionB,
+			"Artist 31470 Catalog Reload Keeps Generation A Alive And Queries Generation B");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			PreparationB;
+		CEffectPlayback PreparedPlaybackB;
+		const bool_t ExecutionPlanBPrepared = LoadedB && nullptr != EntryB &&
+			nullptr != ProgramB &&
+			CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+				EffectId, PreparationB, Status) &&
+			PreparedPlaybackB.Stage_ReconstructedRuntimeProgram(
+				PreparationB, Status);
+		const auto ExecutionPlanB =
+			PreparedPlaybackB.Get_ReconstructedExecutionPlan();
+		runner.Require(ExecutionPlanBPrepared && nullptr != ExecutionPlanA &&
+			nullptr != ExecutionPlanB && ExecutionPlanA.get() != ExecutionPlanB.get() &&
+			ExecutionPlanA->Get_Program().get() == ProgramA.get() &&
+			ExecutionPlanB->Get_Program().get() == ProgramB.get() &&
+			ExecutionPlanA->Get_Identity().iCatalogRevision == RevisionA &&
+			ExecutionPlanB->Get_Identity().iCatalogRevision == RevisionB &&
+			ExecutionPlanA->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			ExecutionPlanB->Get_Identity().strSemanticProjectionSha256 ==
+				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
+			!ExecutionPlanA->Get_Program()->Admission.bRuntimeExecution &&
+			!ExecutionPlanB->Get_Program()->Admission.bRuntimeExecution,
+			"Artist 31470 Typed Plan Reload Produces Independent A B Identity And Preserves Generation A");
+
+		const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT> SnapshotB =
+			CEffectCatalog::Capture_Runtime();
+		CEffectCatalog::Clear();
+		const bool_t ClearLifetime = nullptr ==
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId) &&
+			nullptr == CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId) &&
+			ProgramA->Emitters.size() == 35u && ProgramB->Emitters.size() == 35u;
+		const bool_t RestoredB = CEffectCatalog::Restore_Runtime(
+			SnapshotB, Status) && CEffectCatalog::Get_RuntimeRevision() == RevisionB &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == EntryB.get() &&
+			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId).get() ==
+				ProgramB.get();
+		const bool_t RestoredAForAttacks = RestoredB &&
+			CEffectCatalog::Restore_Runtime(SnapshotA, Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == RevisionA &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == EntryA.get() &&
+			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId).get() ==
+				ProgramA.get() &&
+			CEffectCatalog::Get_ComponentAssetIds().size() == 555u;
+		runner.Require(ClearLifetime && RestoredB && RestoredAForAttacks,
+			"Artist 31470 Catalog Snapshot Restore And Clear Preserve External Program Lifetimes");
+
+		const auto RejectsAndPreserves = [&](const std::string& MutatedCatalog,
+			const char* pEvidence,
+			const std::string_view ExpectedFailureStage = {})
+		{
+			const uint64_t BeforeRevision = CEffectCatalog::Get_RuntimeRevision();
+			const std::string BeforeCatalogStatus = CEffectCatalog::Get_Status();
+			const std::vector<std::string> BeforeEffectIds =
+				CEffectCatalog::Get_EffectAssetIds();
+			const std::vector<std::string> BeforeComponentIds =
+				CEffectCatalog::Get_ComponentAssetIds();
+			const std::vector<std::string> BeforeAuthorityIds =
+				CEffectCatalog::Get_RuntimeAuthorityAssetIds();
+			const std::vector<std::string> BeforeProgramIds =
+				CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds();
+			const auto BeforeEntry = CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+			const auto BeforeProgram =
+				CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId);
+			const bool_t Rejected = WriteCatalog(MutatedCatalog) &&
+				!CEffectCatalog::Load(Status);
+			runner.Require(Rejected &&
+				(ExpectedFailureStage.empty() ||
+					Status.find(ExpectedFailureStage) != std::string::npos) &&
+				CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+				CEffectCatalog::Get_Status() == BeforeCatalogStatus &&
+				CEffectCatalog::Get_EffectAssetIds() == BeforeEffectIds &&
+				CEffectCatalog::Get_ComponentAssetIds() == BeforeComponentIds &&
+				CEffectCatalog::Get_RuntimeAuthorityAssetIds() ==
+					BeforeAuthorityIds &&
+				CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds() ==
+					BeforeProgramIds &&
+				CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() ==
+					BeforeEntry.get() &&
+				CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId).get() ==
+					BeforeProgram.get(), pEvidence);
+		};
+
+		RejectsAndPreserves(CatalogText.substr(0u, CatalogText.size() / 2u),
+			"Artist 31470 Catalog Malformed Reload Preserves Revision And Program Pointer",
+			"JSON parse failed");
+		std::string IdentityMutation = CatalogText;
+		const std::string RawIdentity =
+			"\"candidateRawSha256\":\"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849\"";
+		const size_t IdentityOffset = IdentityMutation.rfind(RawIdentity);
+		if (IdentityOffset != std::string::npos)
+			IdentityMutation[IdentityOffset + RawIdentity.size() - 2u] = '0';
+		RejectsAndPreserves(IdentityMutation,
+			"Artist 31470 Catalog Candidate Identity Mutation Preserves Revision And Program Pointer",
+			"program link identity");
+
+		std::string SectionCandidate = Candidate;
+		const size_t SectionName = SectionCandidate.find(
+			"\"sectionName\": \"emitters\"");
+		const size_t SectionHash = std::string::npos == SectionName ?
+			std::string::npos : SectionCandidate.find(
+				"\"orderedSha256\": \"", SectionName);
+		if (SectionHash != std::string::npos)
+		{
+			const size_t HashCharacter = SectionHash +
+				std::string("\"orderedSha256\": \"").size();
+			SectionCandidate[HashCharacter] =
+				SectionCandidate[HashCharacter] == '0' ? '1' : '0';
+		}
+		RejectsAndPreserves(
+			Build_Artist31470ReconstructedCatalog(SectionCandidate),
+			"Artist 31470 Catalog Section SHA Mutation Preserves Revision And Program Pointer",
+			"outer identity or admission");
+
+		std::string ProgramShaMutation = CatalogText;
+		const std::string ProgramShaField =
+			"\"programSha256\":\"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b\"";
+		const size_t ProgramShaOffset = ProgramShaMutation.rfind(ProgramShaField);
+		if (ProgramShaOffset != std::string::npos)
+			ProgramShaMutation[ProgramShaOffset + ProgramShaField.size() - 2u] = '0';
+		RejectsAndPreserves(ProgramShaMutation,
+			"Artist 31470 Catalog Program SHA Mutation Preserves Revision And Program Pointer",
+			"program link identity");
+
+		std::string CrlfCandidate;
+		CrlfCandidate.reserve(Candidate.size() + 300'000u);
+		for (const char Character : Candidate)
+		{
+			if ('\n' == Character)
+				CrlfCandidate.push_back('\r');
+			CrlfCandidate.push_back(Character);
+		}
+		RejectsAndPreserves(
+			Build_Artist31470ReconstructedCatalog(CrlfCandidate),
+			"Artist 31470 Catalog Rejects Embedded CRLF Candidate Without Production Normalization",
+			"outer identity or admission");
+
+		const auto RemoveOnce = [](std::string Text,
+			const std::string_view Marker, const bool_t bLast = false)
+		{
+			const size_t Offset = bLast ? Text.rfind(Marker) : Text.find(Marker);
+			if (Offset != std::string::npos)
+				Text.erase(Offset, Marker.size());
+			return Text;
+		};
+		const auto ReplaceOnce = [](std::string Text,
+			const std::string_view Marker, const std::string_view Replacement,
+			const bool_t bLast = false)
+		{
+			const size_t Offset = bLast ? Text.rfind(Marker) : Text.find(Marker);
+			if (Offset != std::string::npos)
+				Text.replace(Offset, Marker.size(), Replacement);
+			return Text;
+		};
+
+		RejectsAndPreserves(RemoveOnce(
+			CatalogText, "\"sourceExact\":false,"),
+			"Artist 31470 Catalog Rejects Missing Outer10 Field",
+			"entry fields or order");
+		RejectsAndPreserves(ReplaceOnce(CatalogText,
+			"\"sourceExact\":false,",
+			"\"sourceExact\":false,\"unexpectedOuter\":0,"),
+			"Artist 31470 Catalog Rejects Extra Outer10 Field",
+			"entry fields or order");
+		RejectsAndPreserves(ReplaceOnce(CatalogText,
+			"\"sourceExact\":false,", "\"sourceExact\":\"false\","),
+			"Artist 31470 Catalog Rejects Wrong Outer10 Field Type",
+			"outer identity or admission");
+
+		RejectsAndPreserves(RemoveOnce(
+			CatalogText, "\"encoding\":\"UTF8_JSON_EXACT\","),
+			"Artist 31470 Catalog Rejects Missing Link16 Field",
+			"program link fields or order");
+		RejectsAndPreserves(ReplaceOnce(CatalogText,
+			"\"encoding\":\"UTF8_JSON_EXACT\",",
+			"\"encoding\":\"UTF8_JSON_EXACT\",\"unexpectedLink\":0,"),
+			"Artist 31470 Catalog Rejects Extra Link16 Field",
+			"program link fields or order");
+		RejectsAndPreserves(ReplaceOnce(CatalogText,
+			"\"inputArtifactCount\":13,",
+			"\"inputArtifactCount\":\"13\",", true),
+			"Artist 31470 Catalog Rejects Wrong Link16 Field Type",
+			"program link identity");
+		const std::string LinkPrefix =
+			"{\"schema\":\"lostark.effect-reconstructed-runtime-program-link\","
+			"\"formatVersion\":1";
+		RejectsAndPreserves(ReplaceOnce(CatalogText, LinkPrefix,
+			"{\"formatVersion\":1,"
+			"\"schema\":\"lostark.effect-reconstructed-runtime-program-link\""),
+			"Artist 31470 Catalog Rejects Reordered Link16 Fields",
+			"program link fields or order");
+
+		RejectsAndPreserves(RemoveOnce(CatalogText,
+			"\"receiptRole\":\"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY\","),
+			"Artist 31470 Catalog Rejects Missing Receipt25 Field",
+			"publish receipt fields or order");
+		RejectsAndPreserves(ReplaceOnce(CatalogText,
+			"\"receiptRole\":\"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY\",",
+			"\"receiptRole\":\"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY\","
+			"\"unexpectedReceipt\":0,"),
+			"Artist 31470 Catalog Rejects Extra Receipt25 Field",
+			"publish receipt fields or order");
+		const size_t ReceiptBegin = CatalogText.find(
+			"\"publishReceipt\":{\"schema\":");
+		std::string ReceiptTypeMutation = CatalogText;
+		const size_t ReceiptSourceExact = std::string::npos == ReceiptBegin ?
+			std::string::npos : ReceiptTypeMutation.find(
+				"\"sourceExact\":false,", ReceiptBegin);
+		if (ReceiptSourceExact != std::string::npos)
+		{
+			ReceiptTypeMutation.replace(ReceiptSourceExact,
+				std::string("\"sourceExact\":false,").size(),
+				"\"sourceExact\":\"false\",");
+		}
+		RejectsAndPreserves(ReceiptTypeMutation,
+			"Artist 31470 Catalog Rejects Wrong Receipt25 Field Type",
+			"publish receipt identity");
+		const std::string ReceiptPrefix =
+			"{\"schema\":\"lostark.effect-reconstructed-runtime-program-publish-receipt\","
+			"\"formatVersion\":1";
+		RejectsAndPreserves(ReplaceOnce(CatalogText, ReceiptPrefix,
+			"{\"formatVersion\":1,"
+			"\"schema\":\"lostark.effect-reconstructed-runtime-program-publish-receipt\""),
+			"Artist 31470 Catalog Rejects Reordered Receipt25 Fields",
+			"publish receipt fields or order");
+
+		RejectsAndPreserves(Build_Artist31470ReconstructedCatalog(
+			Candidate, std::string(64u, '0')),
+			"Artist 31470 Catalog Rejects Coordinated Tool Identity And Receipt Reseal",
+			"outer identity or admission");
+		std::string UnsealedToolMutation = CatalogText;
+		const std::string BuilderToolSha =
+			"5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e";
+		const size_t BuilderToolShaOffset =
+			UnsealedToolMutation.find(BuilderToolSha);
+		if (BuilderToolShaOffset != std::string::npos)
+		{
+			UnsealedToolMutation[BuilderToolShaOffset] =
+				UnsealedToolMutation[BuilderToolShaOffset] == '0' ? '1' : '0';
+		}
+		RejectsAndPreserves(UnsealedToolMutation,
+			"Artist 31470 Catalog Rejects Unsealed Tool Identity Mutation",
+			"tool identity");
+
+		std::string GenericKindMutation = CatalogText;
+		const std::string ReconstructedKind =
+			"\"payloadKind\":\"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM\"";
+		const size_t KindOffset = GenericKindMutation.find(ReconstructedKind);
+		if (KindOffset != std::string::npos)
+		{
+			GenericKindMutation.replace(KindOffset, ReconstructedKind.size(),
+				"\"payloadKind\":\"IMMUTABLE_COMPILED_IR\"");
+		}
+		RejectsAndPreserves(GenericKindMutation,
+			"Artist 31470 Catalog Rejects Generic Payload Authority Laundering",
+			"cannot use a legacy or generic payload");
+
+		std::string OrderMutation = CatalogText;
+		const std::string OrderedEntryPrefix =
+			"{\"payloadKind\":\"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM\","
+			"\"effectAssetId\":\"effect.artist.skill.31470\"";
+		const size_t OrderOffset = OrderMutation.find(OrderedEntryPrefix);
+		if (OrderOffset != std::string::npos)
+		{
+			OrderMutation.replace(OrderOffset, OrderedEntryPrefix.size(),
+				"{\"effectAssetId\":\"effect.artist.skill.31470\","
+				"\"payloadKind\":\"IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM\"");
+		}
+		RejectsAndPreserves(OrderMutation,
+			"Artist 31470 Catalog Rejects Reordered Strict Payload Fields",
+			"entry fields or order");
+
+		CEffectCatalog::Clear();
+		const bool_t FailedReservedReload = WriteCatalog(GenericKindMutation) &&
+			!CEffectCatalog::Load(Status);
+		const bool_t ReservedSpawnRejected =
+			!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
+				EffectId, ProductGateStatus) &&
+			!CEffectCatalog::Contains(EffectId) &&
+			nullptr == CEffectCatalog::Find(EffectId);
+		runner.Require(FailedReservedReload && ReservedSpawnRejected &&
+			!CEffectCatalog::Contains(EffectId) &&
+			nullptr == CEffectCatalog::Find(EffectId),
+			"Artist 31470 Reserved ID Rejects Legacy Fallback After Failed Reload");
+
+		RestorePriorCatalogFile();
+	}
+
+	struct ARTIST_31470_SELECTED_HANDLER_FIXTURE final
+	{
+		const char* pModuleRowSha256 = nullptr;
+		const char* pSourceClass = nullptr;
+		const char* pHandlerId = nullptr;
+		const char* pHandlerRowSha256 = nullptr;
+		const char* pImplementationId = nullptr;
+		const char* pImplementationSha256 = nullptr;
+		const char* pImplicitDefaultRowSha256 = nullptr;
+	};
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY
+		Artist31470_SelectedRow(
+			std::string strId,
+			const std::string_view strRowSha256)
+	{
+		Client::EFFECT_RECONSTRUCTED_SELECTED_ROW_IDENTITY Row;
+		Row.strId = std::move(strId);
+		Row.strRowSha256 = strRowSha256;
+		return Row;
+	}
+
+	std::string Artist31470_SelectedModuleId(
+		const std::string_view strEmitterId,
+		const uint32_t iModuleOrder)
+	{
+		std::ostringstream Suffix;
+		Suffix << "::module:" << std::setfill('0') << std::setw(3) <<
+			iModuleOrder;
+		return std::string(strEmitterId) + Suffix.str();
+	}
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY
+		Artist31470_SelectedHandler(
+			const std::string_view strEmitterId,
+			const uint32_t iModuleOrder,
+			const ARTIST_31470_SELECTED_HANDLER_FIXTURE& Fixture)
+	{
+		using namespace Client;
+		EFFECT_RECONSTRUCTED_SELECTED_HANDLER_IDENTITY Handler;
+		const std::string ModuleId = Artist31470_SelectedModuleId(
+			strEmitterId, iModuleOrder);
+		Handler.Module = Artist31470_SelectedRow(
+			ModuleId, Fixture.pModuleRowSha256);
+		Handler.Handler = Artist31470_SelectedRow(
+			Fixture.pHandlerId, Fixture.pHandlerRowSha256);
+		Handler.strExactSourceClass = Fixture.pSourceClass;
+		Handler.strImplementationId = Fixture.pImplementationId;
+		Handler.iImplementationVersion = 1u;
+		Handler.strImplementationSha256 = Fixture.pImplementationSha256;
+		if (nullptr != Fixture.pImplicitDefaultRowSha256)
+		{
+			Handler.ImplicitDefaults.push_back(Artist31470_SelectedRow(
+				ModuleId + "::default:buselocalspace",
+				Fixture.pImplicitDefaultRowSha256));
+		}
+		return Handler;
+	}
+
+	Client::EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST
+		Build_Artist31470SelectedEvaluatorRequest()
+	{
+		using namespace Client;
+		constexpr std::string_view ScheduleId =
+			"action-schedule-daa8fc7a3723b850ca9579f2";
+		constexpr std::string_view ScheduleRowSha256 =
+			"9d716d70a77a810f5c72e05084e3b6b9bfa0e0f5a823463ecc8af9a46352ea9f";
+		constexpr std::string_view MeshEmitterId =
+			"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+			"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+			"particlespriteemitter_17";
+		constexpr std::string_view SpriteEmitterId =
+			"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01::action-31470/"
+			"stage-000/notify-022::FX_PC_SDM_07.par_v_sdm_onestroke_hit_01."
+			"particlespriteemitter_0";
+
+		constexpr std::array<ARTIST_31470_SELECTED_HANDLER_FIXTURE, 15u>
+			MeshHandlers{{
+			{ "7269f65b683922bb0efa691d37da1f7e21f38793a753fdf5bd2a747fbe7d197f",
+			  "particlemodulerequired", "handler-7197a80cf011dc858e402a52",
+			  "50b519203d66637e129bb235a1175aecbba9d168005d2054f822e9f2132ffb0e",
+			  "source.module.exact.particlemodulerequired.v1",
+			  "7549956b393dd6f0090bbab8d5ec9ec0905e74228243a97269d7f318dada3cc8",
+			  "fbb53670a8b3f3de1c1d58a9844d67ea4ce6321c4f57505d7c32ccf9c8e40f91" },
+			{ "1791e5293bc7317c7f300284a1f1c06dd5db0f03017ad864996ebc0340b61f74",
+			  "particlemodulelifetime", "handler-13a7ed7163d5dfa1114b6b96",
+			  "0d1a6bd6c9a5dc81065d530bc03cb079e6c8f01f37bba928b846e2a65f46a428",
+			  "source.module.exact.particlemodulelifetime.v1",
+			  "f23219bf0bade914e82f83b87fd90599ff20dec52db133779567ef9b4c60934e" },
+			{ "52b04a07f1082306ab2e8b8351052d54c1dd30e41d12f34d7d90a8511e8dc0b6",
+			  "particlemodulesize", "handler-9c42e464cd66e4181b042c28",
+			  "e6ab25366270c8c684104cb867eb036867b48bad0a93d3f57bee8160303bf18d",
+			  "source.module.exact.particlemodulesize.v1",
+			  "48802cd578656989f265b3a9bb60ee29a601972bbe458f8f1f674708289f14da" },
+			{ "6908ba7eecbba25d809b6c1afcbfa8c6c6a37d919ad5cb401a4c1e1f01744a47",
+			  "particlemodulevelocity", "handler-15647a506337532af1ba133f",
+			  "6cc0dd6faf757441bd5c6981bf859260ba6696e15fd845fd3b61f13083bbadb9",
+			  "source.module.exact.particlemodulevelocity.v1",
+			  "367119b4649154273f580ab6e30cb62f0026e2044b8e669a2e7b701e14ac9acc" },
+			{ "1961f250b965278f2110f93f15544c7c3b1a591e1d081604e6f45b1e424002c8",
+			  "particlemodulecoloroverlife", "handler-338e3d2723b94eb720b5d716",
+			  "7bd05c01ec04acb12f036fa20ac5798fef99599c172449cb2cb4beb9755ae261",
+			  "source.module.exact.particlemodulecoloroverlife.v1",
+			  "8806f7df8822465e84b118e75d45b271d8cb4e6f7dcf2d6c88b81f45e5a4e82c" },
+			{ "0f5f372cc7ebaa829a08e0048105866fe902f1cd8110bdab111f6dc1f5a63eee",
+			  "particlemodulerotation", "handler-ef557e2b5df085f811e910d3",
+			  "d7f1b89398a4e64ee3f094cddb51673512290df5cf8e3a03e6f65d03cca95cca",
+			  "source.module.exact.particlemodulerotation.v1",
+			  "77d0020b5a71b18474918077f33251cb44a956d5ee6f1adb03b3071df699c3f3" },
+			{ "c0d0d0bad3826bd1424523ce7238289125c0aaccd905c11174636b523783a1e2",
+			  "particlemoduleacceleration", "handler-a397c8c0eef3abd7aa07e4cb",
+			  "2398d14aa122d52dd81587285910dfa47477f87146dcb04f7b2b8404d6b1b2f1",
+			  "source.module.exact.particlemoduleacceleration.v1",
+			  "353c1bae53522ede173f93da8f2c936ddc2a298667b843380a673c7b4616e0d7" },
+			{ "23698a570844bdbd80a2731175856b400af4d50389ccf801bc5160fcf318d822",
+			  "particlemodulerotationrate", "handler-c41530ddbfc5f10ed7f3c94d",
+			  "148e84cb278c4f1c99e4647501412d5cbb3a9b98c58a45780d9c512225806469",
+			  "source.module.exact.particlemodulerotationrate.v1",
+			  "dda09b31d4e3b7f08d1f912eec57f9f359afc45eedca7b238a71480f6e5800d8" },
+			{ "0a90c44679da01df6daa261a76c43e11d987fc6dcf3d85cf21b8d1e137f18325",
+			  "particlemodulesizemultiplylife", "handler-8a15dbe6075b17c979aa066a",
+			  "451e33b44dfa582bde0ba42c0c3d2afe2a62bd7928b422eddc08a3997c32b19a",
+			  "source.module.exact.particlemodulesizemultiplylife.v1",
+			  "2892e1d0b0163a0ff74314e6d6c92ee0c0ce4002854efd0f3c96baa3f24f4689" },
+			{ "cd94729dd24af5799a9f97a48a1b27908df6e7f720dda2ea728554ed7c53b856",
+			  "particlemodulelocationprimitivecylinder", "handler-a90067d9043e62f6e79a5cc4",
+			  "4691180c80cda74a93ea57d68fe2d54d00842562c364a41192b4aeb0fe9f0a40",
+			  "source.module.exact.particlemodulelocationprimitivecylinder.v1",
+			  "dbbdcb1c7b4b28726062cc3846d89b38073fd15dd2cf2cf21869c109c757d5d7" },
+			{ "d907b84f25defb36e008045232b0500c0a362bac387c7c0b048fd3ef7aeeda6b",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "9d0caa35c3e244b9a95e21deb8c36226317fbc239f1db4a7363678a911dba386",
+			  "efparticlemodulelocationonground", "handler-9864f03184e2a68652252fec",
+			  "6f698eef3835d5f92556afef93f0b75133cbe0191e0b9a070c528fa6fe4b9b22",
+			  "source.reconstructed.ground.v1.implementation",
+			  "ef488d559203aaef84091e7caf53e5ce9880de37da592f133991687ce2a2164f" },
+			{ "3795ac3d5311a153a0b231006e1c2bd4bb580ac9224ab3dd9b68c4022b627b0d",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "57f7a9538b8c2f9a7c014bcf5826364f412363c51cf167d2326a5f19bffca2cd",
+			  "particlemoduletypedatamesh", "handler-77746fd3dbe01b88dab89368",
+			  "726b5dd5002daf78d197009a993b98c0031a63ae78950c00f35bc168a24fbf86",
+			  "source.module.exact.particlemoduletypedatamesh.v1",
+			  "61d6b904015b25c4cd76f036adbac9cfd5c27fcc4d2742aba83cd4674be8ec63" },
+			{ "64b973f067fc58d0d88a76ece3e0b3553bb9252557935cdee3b3f74651acc088",
+			  "particlemodulespawn", "handler-fd2ce97f699c5a373f2529cb",
+			  "ac276fbb6dd0f1e04316c826a64ff3ac11a25ce147c095fb79f1dfdeabb52d6b",
+			  "source.module.exact.particlemodulespawn.v1",
+			  "902e8b11ccd6ae323cc7c0fae93e8cc0daf25a143cf4c8aea3e3f6d5f0385392" }
+		}};
+
+		constexpr std::array<ARTIST_31470_SELECTED_HANDLER_FIXTURE, 9u>
+			SpriteHandlers{{
+			{ "c3f5c61039496bcf9d2cb49c4fc5d80cadd3cb267769303ba9a4b29859ab792e",
+			  "particlemodulerequired", "handler-7197a80cf011dc858e402a52",
+			  "50b519203d66637e129bb235a1175aecbba9d168005d2054f822e9f2132ffb0e",
+			  "source.module.exact.particlemodulerequired.v1",
+			  "7549956b393dd6f0090bbab8d5ec9ec0905e74228243a97269d7f318dada3cc8" },
+			{ "88b613388336acf7224a668bfd72d3f3c6a07709ffc1f19f4bb1baa4c259a059",
+			  "particlemodulelifetime", "handler-13a7ed7163d5dfa1114b6b96",
+			  "0d1a6bd6c9a5dc81065d530bc03cb079e6c8f01f37bba928b846e2a65f46a428",
+			  "source.module.exact.particlemodulelifetime.v1",
+			  "f23219bf0bade914e82f83b87fd90599ff20dec52db133779567ef9b4c60934e" },
+			{ "4a374a782f323081cd073a2c0f3d6ed30f06429fa8f5292602b9b8124ceb146e",
+			  "particlemodulesize", "handler-9c42e464cd66e4181b042c28",
+			  "e6ab25366270c8c684104cb867eb036867b48bad0a93d3f57bee8160303bf18d",
+			  "source.module.exact.particlemodulesize.v1",
+			  "48802cd578656989f265b3a9bb60ee29a601972bbe458f8f1f674708289f14da" },
+			{ "d6eb891202d9706fd0d657015c5c81a329c1f1dd5d669ea3c16dcbf38e43fa35",
+			  "particlemodulecoloroverlife", "handler-338e3d2723b94eb720b5d716",
+			  "7bd05c01ec04acb12f036fa20ac5798fef99599c172449cb2cb4beb9755ae261",
+			  "source.module.exact.particlemodulecoloroverlife.v1",
+			  "8806f7df8822465e84b118e75d45b271d8cb4e6f7dcf2d6c88b81f45e5a4e82c" },
+			{ "2f03c680b7f5fe89cefe52eb184691977195998f3043c6ce6ddeca91f519faa4",
+			  "particlemodulevelocity", "handler-15647a506337532af1ba133f",
+			  "6cc0dd6faf757441bd5c6981bf859260ba6696e15fd845fd3b61f13083bbadb9",
+			  "source.module.exact.particlemodulevelocity.v1",
+			  "367119b4649154273f580ab6e30cb62f0026e2044b8e669a2e7b701e14ac9acc" },
+			{ "2c397a0c71047814207c5473795e792b51aa1a4e7f4aaf94115fdd7aab9f1132",
+			  "particlemodulesizemultiplylife", "handler-8a15dbe6075b17c979aa066a",
+			  "451e33b44dfa582bde0ba42c0c3d2afe2a62bd7928b422eddc08a3997c32b19a",
+			  "source.module.exact.particlemodulesizemultiplylife.v1",
+			  "2892e1d0b0163a0ff74314e6d6c92ee0c0ce4002854efd0f3c96baa3f24f4689" },
+			{ "74f8f9b2b8d72b02847e6e2d41b8e77ddcf54d259f6c61dfff709f7fd7edd25e",
+			  "particlemoduleparameterdynamic", "handler-738a4e4b7b8c22539ffd2458",
+			  "be3c7775d607970c62ed576d5aa8187f2dc6be7c3bfea86ee97efb3766f96d33",
+			  "source.module.exact.particlemoduleparameterdynamic.v1",
+			  "ec6543bd649774bddbd004cb91315d3657edf41d30c15e7a69c0dfd930f96ae3" },
+			{ "b6959fd3ce692d428cca4e87b1bbe8d51421a84d375ea7eb3d16b5d97070396c",
+			  "particlemodulelocation", "handler-3639750c28df3302e9effd03",
+			  "6628853a43f6371494ac3305adbb96ac74c71879a989dff0c2cd7080c0c53581",
+			  "source.module.exact.particlemodulelocation.v1",
+			  "42e7911080f41f96edf084d1ce2adbc12ed7246a6c632b051b3a650204aca933" },
+			{ "ad872e503e49e548e2d04c67ddb9f54e9cbb7cc29270e27d55c7897d8cb1c508",
+			  "particlemodulespawn", "handler-fd2ce97f699c5a373f2529cb",
+			  "ac276fbb6dd0f1e04316c826a64ff3ac11a25ce147c095fb79f1dfdeabb52d6b",
+			  "source.module.exact.particlemodulespawn.v1",
+			  "902e8b11ccd6ae323cc7c0fae93e8cc0daf25a143cf4c8aea3e3f6d5f0385392" }
+		}};
+
+		EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Request;
+		Request.iEvaluatorVersion =
+			EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_VERSION;
+		Request.strOccurrenceRngContract =
+			EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT;
+		Request.iOccurrenceRngVersion = EFFECT_RECONSTRUCTED_OCCURRENCE_RNG_VERSION;
+		Request.iRequiredFixedStepIndex = 88u;
+		Request.iRequiredSpawnSerial = 0u;
+		Request.iExpectedConsumedHandlerCount = 24u;
+		Request.Emitters.resize(2u);
+
+		auto& Mesh = Request.Emitters[0u];
+		Mesh.eKind = EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH;
+		Mesh.eRenderer = EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE;
+		Mesh.Schedule = Artist31470_SelectedRow(
+			std::string(ScheduleId), ScheduleRowSha256);
+		Mesh.Emitter = Artist31470_SelectedRow(std::string(MeshEmitterId),
+			"23a6519e750f5fcdd22bd5e3f8ebd5ea63427f47440c3f2f74d60213d9977ddb");
+		Mesh.iEmitterOrder = 26u;
+		Mesh.bLocalSpace = false;
+		Mesh.strSizeUnitPolicy = "DIMENSIONLESS_AXIS_REORDER_ONLY";
+		Mesh.iExpectedVisualRandomDrawCount = 14u;
+		Mesh.iExpectedFinalRandomState = 2'355'157'980u;
+		Mesh.iExpectedOccurrenceRandomValue = 2'215'704'123u;
+		Mesh.iExpectedLifetimeRandomValue = 2'215'704'123u;
+		Mesh.fExpectedLifetimeSeconds = 2.257941908612368;
+		for (uint32_t Index = 0u; Index < MeshHandlers.size(); ++Index)
+		{
+			Mesh.Handlers.push_back(Artist31470_SelectedHandler(
+				MeshEmitterId, Index, MeshHandlers[Index]));
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_CYLINDER_POLICY Cylinder;
+		Cylinder.Module = Mesh.Handlers[9u].Module;
+		const std::string CylinderModuleId = Cylinder.Module.strId;
+		Cylinder.SurfaceOnlyLiteral = Artist31470_SelectedRow(
+			CylinderModuleId + "::literal:002",
+			"52637459c505e924fb713e7e214301c6d4c574bc0833de7829a150b3a56b3e04");
+		Cylinder.VelocityLiteral = Artist31470_SelectedRow(
+			CylinderModuleId + "::literal:003",
+			"d840d85977be1e12007ade0482d676d908d797926eeed98abf2afc29902933e4");
+		Cylinder.strAbsentHeightAxisDefault = "Z";
+		Mesh.Cylinder = std::move(Cylinder);
+
+		EFFECT_RECONSTRUCTED_SELECTED_GEOMETRY_BINDING Geometry;
+		Geometry.GeometryUse = Artist31470_SelectedRow(
+			std::string(MeshEmitterId) + "::geometry-use",
+			"ecdec710c4ca2ded8253b771936a8c1b123f694613316ad4ae705a81dddd5b71");
+		Geometry.GeometryCarrier = Artist31470_SelectedRow(
+			"geometry-carrier-d98b591aa386ac0dd11f",
+			"5b800463ed5278e9afca3b4867a661281630a131ead6987a0dd0c0baafad8744");
+		Geometry.strRuntimeAssetId =
+			"Effect/Artist/Meshes/fm_a_stone_001.wmodel";
+		Geometry.iCandidateResourceByteSize = 11'808u;
+		Geometry.strCandidateResourceSha256 =
+			"eb08b11e4631938f93b896d9ebf9e7f25d22492094dcf69de443080d5c111c54";
+		Geometry.strPayloadSha256 =
+			"3db5634a75de4f67c18653364b76595f112e14bb57328e54668b17a0340fdd32";
+		Geometry.strMetadataIdentitySha256 =
+			"6de51f91e399448c31e4e701c3519fc53658f5f5eb683ab0713ffd52e81ea2d5";
+		Geometry.strCacheIdentitySha256 =
+			"b35dd9aa89526e8262a963950c750ce44cb688a9f1afe0dd41ba564d0ce95516";
+		Geometry.strExpectedTupleSha256 =
+			"03073ebb0188fc039148b2b79a3c5b01c1bc6e0384b3b3e80e0df20e512974ca";
+		Geometry.strApprovalGeometryRowSha256 =
+			"87497f06ede0631bd4620afe175fb495314e4a5b340c48cbe86af511d9a99f2c";
+		Geometry.strPreparedCacheIdentitySha256 =
+			"afffe9179bf539ded316e1728daf7bfda610a1c42d543e19bd358d73e5b42d1b";
+		Geometry.fGeometryPreScale = 0.01;
+		Geometry.iSubmeshCount = 1u;
+		Geometry.iVertexCount = 32u;
+		Geometry.iIndexCount = 36u;
+		Mesh.Geometry = std::move(Geometry);
+
+		Mesh.Material.Occurrence = Artist31470_SelectedRow("source-active-026",
+			"abbd647d1068f2b17a321214c4608fe9ceb56c78aa26170299cdf13ac90190cc");
+		Mesh.Material.Recipe = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d",
+			"ef66bad94bd48c14d421ea5ae32e0fbb0dfe8cf84a4efe9aca8eeb28ac670fbf");
+		Mesh.Material.Family = Artist31470_SelectedRow(
+			"material-family-5fc89efe09353236",
+			"b95ca3e38af0bab700b1941c9f34e7c1819fd11eafb8e4ae22bcd0dd374ab43b");
+		Mesh.Material.RecipeTextureDecision = Artist31470_SelectedRow(
+			"recipe-texture-binding-06",
+			"b2604680e40023ff1ef5efcbaad9e2e6a193fed6b5a70c133c31eaa87f960393");
+		Mesh.Material.strEvaluatorId =
+			"reconstructed-evaluator-c3ac12f104b50f06";
+		Mesh.Material.iEvaluatorVersion = 1u;
+		Mesh.Material.strEvaluatorSha256 =
+			"b65415dc122884ec2b955ed7a332ae9911478c5debc1369d6e6958a3f757e4b7";
+		Mesh.Material.iFeatureMask = 41u;
+		auto& MeshTexture0 = Mesh.Material.TextureLanes[0u];
+		MeshTexture0.strShaderVariableName = "g_SourceTexture0";
+		MeshTexture0.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(MeshEmitterId) + "::renderer-texture:base",
+			"c62c6ac89b1c7a27d5950decae115ffdf0ed546028149b7e27ed3af17913f14a");
+		MeshTexture0.MaterialInput = Artist31470_SelectedRow(
+			"material-input-4881555679832b06",
+			"3b61391309178f444abcd4ca13605fa3dd3b1631d7f3f1e9dfb972cb488b127c");
+		MeshTexture0.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-4881555679832b06::runtime-texture-binding",
+			"6265c461a15878a63ebe2e0b9f0aacd7366e776ad21fd70f14e8641baf29c8f3");
+		MeshTexture0.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-515a17c3340198bdcf21",
+			"a60faedacbd389056466a0e7597862050ff9f7e08713a53e9834904cc266961a");
+		MeshTexture0.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-048",
+			"753c35a340aa78d4abb641620e672de6906940bad6ed71f820ec5b053a7825db");
+		MeshTexture0.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-14",
+			"5507774c5a561098fa848c4d7cb37a216f1c247932e03898db08550e0abfbeb6");
+		MeshTexture0.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-755564821f704bf74696",
+			"b074a435426a0386505be78b981f1fcf7bc1a564a0e53b471dab1c1ec2c21dde");
+		MeshTexture0.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_environ_002.dds";
+		MeshTexture0.strRawSha256 =
+			"cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962";
+		auto& MeshTexture1 = Mesh.Material.TextureLanes[1u];
+		MeshTexture1.strShaderVariableName = "g_SourceTexture1";
+		MeshTexture1.MaterialInput = Artist31470_SelectedRow(
+			"material-input-66baf039d113a534",
+			"170975a5b0a0ec3b9d2f81b00201c27fbf90e2111062fdab16135b2b5adf9d50");
+		MeshTexture1.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-66baf039d113a534::runtime-texture-binding",
+			"ac6abf586eefdd305916092469d8a656f8c44b81151abf48c7e91ae8f56dc859");
+		MeshTexture1.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-ae06d5776b669f2578ec",
+			"a0d3d13f4102c8d2605879120758e65e75f3c57c78339ec570f5798d5c7c55b9");
+		MeshTexture1.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-15",
+			"7d749c3da4418afaac5e639a2739fe5ec24baf8230a918bb86c8460e0d4a7304");
+		MeshTexture1.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-d7510503612c3c3be923",
+			"4ea737a62d08084547b58e1fbc158857b54aabfd8be226cdbb91f4352c8c37b4");
+		MeshTexture1.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_environ_002_n.dds";
+		MeshTexture1.strRawSha256 =
+			"62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6";
+		Mesh.Material.BlendState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:blendmode",
+			"16b0a093820dd7eee442dfd646c242fa11f5040e94d7f3b970fc47e211f4d731");
+		Mesh.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-12",
+			"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a");
+		Mesh.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:twosided",
+			"f46fa0717f2eaa0df3e7387763191fe2f59cf1dd876f4a7fc01ff91aa7c55d87");
+		Mesh.Material.RasterizerState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-4ce70dabfda6cdc8633f",
+			"a558be9298c9758257b93fe66b3d2720023b29c1bfe9fc50c599ed07b9d15eda");
+		Mesh.Material.DepthStencilState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-4b4c59364690a66d::render:bdisabledepthtest",
+			"b8e24bb59177052d2c815eec2e55893ccc2bf691efe169da4bcccf4ad5c25017");
+		Mesh.Material.DepthStencilState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-5c910249033a5d8fcd03",
+			"5d8882ba33ae2dc240ad27d816d23324a7e9e261a68c6ccfdd99d985af3c497d");
+		Mesh.Material.Constants.vUvScale = { 1.0, 1.0 };
+		Mesh.Material.Constants.vPanRotationAux = { 0.0, 0.0, 0.0, 0.0 };
+		Mesh.Material.Constants.vColor = {
+			1.100000023841858, 1.100000023841858, 1.100000023841858, 1.0 };
+		Mesh.Material.Constants.vParams0 = { 1.0, 1.0, 1.0, 1.0 };
+		Mesh.Material.Constants.vParams1 = { 0.5, 0.5, 0.0, 0.0 };
+		Mesh.Material.Shader = {
+			"Shader_VtxEffectMeshPreview.hlsl", "DefaultTechnique",
+			"OpaqueBackDepthWrite", 0u,
+			"g_ReconstructedMaterialEvaluatorEnabled",
+			"g_ReconstructedMaterialFeatureMask", "g_ReconstructedUVScale",
+			"g_ReconstructedPanRotationAux", "g_ReconstructedColor",
+			"g_ReconstructedParams0", "g_ReconstructedParams1" };
+
+		auto& Sprite = Request.Emitters[1u];
+		Sprite.eKind = EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE;
+		Sprite.eRenderer = EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE;
+		Sprite.Schedule = Mesh.Schedule;
+		Sprite.Emitter = Artist31470_SelectedRow(std::string(SpriteEmitterId),
+			"57228087ab6d3ffb84fe634eab1b5406666536bd140400963be873ba56e8249b");
+		Sprite.iEmitterOrder = 27u;
+		Sprite.bLocalSpace = true;
+		Sprite.strSizeUnitPolicy = "UE3_LENGTH_XZY_0P01";
+		Sprite.iExpectedVisualRandomDrawCount = 7u;
+		Sprite.iExpectedFinalRandomState = 953'103'844u;
+		Sprite.iExpectedOccurrenceRandomValue = 244'989'949u;
+		Sprite.iExpectedLifetimeRandomValue = 244'989'949u;
+		Sprite.fExpectedLifetimeSeconds = 0.6228164894929623;
+		for (uint32_t Index = 0u; Index < SpriteHandlers.size(); ++Index)
+		{
+			Sprite.Handlers.push_back(Artist31470_SelectedHandler(
+				SpriteEmitterId, Index, SpriteHandlers[Index]));
+		}
+		EFFECT_RECONSTRUCTED_SELECTED_SPRITE_SINK SpriteSink;
+		const std::string RequiredModuleId = Sprite.Handlers.front().Module.strId;
+		SpriteSink.RequiredModule = Sprite.Handlers.front().Module;
+		SpriteSink.ScreenAlignmentProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:screenalignment",
+			"d8d634eb6ac51a11e18eda36c704042e968f23e4ee9048494e394ad18048da06");
+		SpriteSink.ScreenAlignmentLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:011",
+			"1864822cde75383fc54e9459a10ad6231056d1dfc09a7d5c3cb1696acd397282");
+		SpriteSink.AllowImageFlippingProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:ballowimageflipping",
+			"fcf808864599a50b355c1e2e8835eed5d0654cbe3af967a5b87b5aae4d089987");
+		SpriteSink.AllowImageFlippingLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:000",
+			"f4487140b7025d55c880fb642f7f6dabf95d2d448e8b279633ccf530f77a27a6");
+		SpriteSink.OffsetCenterEnabledProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:boffsetcenter",
+			"b27f0d2a3cc369bf3d8f9d61b64a009518352fb1ea4ac0bdfea02c71cc59d115");
+		SpriteSink.OffsetCenterEnabledLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:001",
+			"37189f803604f2b1c1e90b6943384236b8c066dc04b3c15f6ee042ccb7f3f606");
+		SpriteSink.OffsetCenterXProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:offsetcenterx",
+			"cebc007face2410ce2dda645e1d60d8a409afae729d97341272a46e9e7a587c3");
+		SpriteSink.OffsetCenterXLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:008",
+			"e646e50a0c779f9a0a5f19d363cd26f156231597262c738128e0ff83495ab9be");
+		SpriteSink.OffsetCenterYProperty = Artist31470_SelectedRow(
+			RequiredModuleId + "::property:offsetcentery",
+			"cf6e3ca0cf268e34867db25b80aaf001b2271d1651a42297133be485bc0b7ff5");
+		SpriteSink.OffsetCenterYLiteral = Artist31470_SelectedRow(
+			RequiredModuleId + "::literal:009",
+			"b65fd50a6db79fcb438f132ab2abce89c6e7bcfb19657da67d77bb4a256b1ce3");
+		SpriteSink.eAlignment = EFFECT_RECONSTRUCTED_SPRITE_ALIGNMENT::VELOCITY;
+		SpriteSink.eOrientation = EFFECT_RECONSTRUCTED_SPRITE_ORIENTATION::
+			CAMERA_BILLBOARD_WITH_VELOCITY_ALIGNMENT;
+		SpriteSink.bAllowImageFlipping = true;
+		SpriteSink.bOffsetCenter = true;
+		SpriteSink.vPivotCenter = {
+			0.6000000238418579, 0.800000011920929 };
+		SpriteSink.bBillboard = true;
+		SpriteSink.fBillboardRollDegrees = 0.0;
+		Sprite.SpriteSink = std::move(SpriteSink);
+
+		Sprite.Material.Occurrence = Artist31470_SelectedRow("source-active-027",
+			"6eac180a4d907b9bd4510161d4e200f2c9bc81280ca618f086321fcaa461fe92");
+		Sprite.Material.Recipe = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5",
+			"f210da08033a522e3ab3e581a5535df5629a15411a6c46f5052b6c73d03202a1");
+		Sprite.Material.Family = Artist31470_SelectedRow(
+			"material-family-ee42f716afdf6145",
+			"78577bca3d6ff10f53428196606c79548b3b1d52cc0594e469f701a5ced8c568");
+		Sprite.Material.RecipeTextureDecision = Artist31470_SelectedRow(
+			"recipe-texture-binding-01",
+			"238f88b150d88389e897d27c946c63b38f512f7c91a24a81ea77c7786e72e1a3");
+		Sprite.Material.strEvaluatorId =
+			"reconstructed-evaluator-b64318cb50070e35";
+		Sprite.Material.iEvaluatorVersion = 1u;
+		Sprite.Material.strEvaluatorSha256 =
+			"15b89e56b711bc5a9627b03db91230b5d0000b3852a38ece158c8a68f4a34bf7";
+		Sprite.Material.iFeatureMask = 811u;
+		auto& SpriteTexture0 = Sprite.Material.TextureLanes[0u];
+		SpriteTexture0.strShaderVariableName = "g_SourceTexture0";
+		SpriteTexture0.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(SpriteEmitterId) + "::renderer-texture:base",
+			"b293c0498cd29a31dc83f508c21b402d2e5cbba588f1e200a24f2f06aba0dfd2");
+		SpriteTexture0.MaterialInput = Artist31470_SelectedRow(
+			"material-input-fb27adb50913c489",
+			"b1383c558093e1e8b74f014b394d0a7b4371ec1e020eb7b8ada58151a2afa68b");
+		SpriteTexture0.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-fb27adb50913c489::runtime-texture-binding",
+			"900198e6a215de62bd0af83d89fce600b08db7e56317180e4459f1bf4430317c");
+		SpriteTexture0.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-478283291730ec2c2599",
+			"b3be04f1ed957ecc6361909e69759ff855c9e6eddaeccaf81e6323a0cecec3e5");
+		SpriteTexture0.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-050",
+			"36e0a37f13b2b1a0ff54065995a089f6142fcdf5dea4e93c2550974f732e2b5d");
+		SpriteTexture0.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-03",
+			"36e94aa1077ce9bf07d7f2d819b9819499ae060594c913163c6f1001470c601c");
+		SpriteTexture0.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-44dbbc55fb38252e8814",
+			"3f9bd7e7f48f17cf7e527625954be924245ab8d12a751b8715c33a2c237fdf47");
+		SpriteTexture0.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_a_decal_013.dds";
+		SpriteTexture0.strRawSha256 =
+			"c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e";
+		auto& SpriteTexture1 = Sprite.Material.TextureLanes[1u];
+		SpriteTexture1.strShaderVariableName = "g_SourceTexture1";
+		SpriteTexture1.RendererTextureResource = Artist31470_SelectedRow(
+			std::string(SpriteEmitterId) + "::renderer-texture:mask",
+			"bf37b0d2c97f875bbc746f98d22c42f7868d0082c38d08f888022885a27cf4cb");
+		SpriteTexture1.MaterialInput = Artist31470_SelectedRow(
+			"material-input-72b9eeafb6f8eba5",
+			"c2b9f2c9b6906ae325b67affe7607836576f5b8e48b8fa0bf5c9a164ae429815");
+		SpriteTexture1.MaterialTextureBinding = Artist31470_SelectedRow(
+			"material-input-72b9eeafb6f8eba5::runtime-texture-binding",
+			"f8c8b05128246eba9c053d35706fff23b65a2b39b8b5252f0692ad51cbc10fa6");
+		SpriteTexture1.MaterialPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-300f64f5c91f35575f26",
+			"572b7efee2ef60c5ed5b0ea4da2cd26724f9d5369417637ae08054811e532e9c");
+		SpriteTexture1.SidecarRendererSlotDecision = Artist31470_SelectedRow(
+			"renderer-material-input-binding-049",
+			"8eacb5756a8db3d401df71b104a7fc0de80670bcac8533bdf080f754480720fc");
+		SpriteTexture1.SidecarTextureBinding = Artist31470_SelectedRow(
+			"render-binding-02",
+			"b5c56bdc4d6ee9df110444975cf1fe1f6d15983a85febc3c829df4e72c26f901");
+		SpriteTexture1.SidecarTextureResource = Artist31470_SelectedRow(
+			"render-resource-7697a1b0f1e399fdec57",
+			"3545fb8e71630b5fb84703a06e6d0a1408f1504390c866f674560431ccc87f1f");
+		SpriteTexture1.strRuntimeAssetId =
+			"Effect/Artist/Textures/fx_e_fluid_021.dds";
+		SpriteTexture1.strRawSha256 =
+			"1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75";
+		Sprite.Material.BlendState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:blendmode",
+			"547922292a185d873c7622ef48e539bfd3d7a90b764a21555a86f6e68dd1bd0c");
+		Sprite.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-02",
+			"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa");
+		Sprite.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:twosided",
+			"73d582c643b6cfbe899bc649cb391ac6f2aaa6e4ff4862401d10e9368d854d01");
+		Sprite.Material.RasterizerState.SidecarDecision = Artist31470_SelectedRow(
+			"render-state-descriptor-03",
+			"608896ca6411f016505353c28f6ba0d46bff15f8aecebc9080db2e3fa43743c9");
+		Sprite.Material.DepthStencilState.ProgramBinding = Artist31470_SelectedRow(
+			"material-recipe-2073fb45e643d1d5::render:bdisabledepthtest",
+			"8649773878c4cae3c4701881a3c98046d65e652e790b8b3e61ddd41e21357381");
+		Sprite.Material.DepthStencilState.ProgramPolicy = Artist31470_SelectedRow(
+			"material-reconstructed-policy-df3fe697a1b8a34572cc",
+			"1782f3208d4cef312b678f21eb3a3a0de9462ca09c0ee67ecd362dba7248c249");
+		Sprite.Material.Constants.vUvScale = { 1.0, 1.0 };
+		Sprite.Material.Constants.vPanRotationAux = { 0.0, 0.0, 0.0, 0.0 };
+		Sprite.Material.Constants.vColor = {
+			15.0, 0.10000000149011612, 0.0, 1.0 };
+		Sprite.Material.Constants.vParams0 = { 1.0, 1.0, 0.0, 5.0 };
+		Sprite.Material.Constants.vParams1 = { 0.5, 0.5, 0.5, 0.0 };
+		Sprite.Material.Shader = {
+			"Shader_VtxEffectParticle.hlsl", "DefaultTechnique",
+			"AlphaTwoSidedDepthRead", 1u,
+			"g_ReconstructedMaterialEvaluatorEnabled",
+			"g_ReconstructedMaterialFeatureMask", "g_ReconstructedUVScale",
+			"g_ReconstructedPanRotationAux", "g_ReconstructedColor",
+			"g_ReconstructedParams0", "g_ReconstructedParams1" };
+		return Request;
+	}
+
+	void Test_Artist31470SelectedProductionEvaluator(
+		TEST_RUNNER& runner,
+		const std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>&
+			Entry,
+		const std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>&
+			Program,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>& Authority,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& RuntimePreparation)
+	{
+		using namespace Client;
+		std::string Status;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Plan;
+		const bool_t PlanCompiled =
+			CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+				RuntimePreparation, Plan, Status);
+		if (!PlanCompiled)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator plan: " <<
+				Status << '\n';
+		}
+		const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_REQUEST Request =
+			Build_Artist31470SelectedEvaluatorRequest();
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			SelectedPreparation;
+		const bool_t Prepared = PlanCompiled &&
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, Request, SelectedPreparation, Status);
+		if (PlanCompiled && !Prepared)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator prepare: " <<
+				Status << '\n';
+		}
+		runner.Require(Prepared && nullptr != Plan &&
+			nullptr != SelectedPreparation &&
+			SelectedPreparation->Get_Plan().get() == Plan.get() &&
+			SelectedPreparation->Get_RuntimePreparation().get() ==
+				RuntimePreparation.get() &&
+			SelectedPreparation->Get_CatalogEntry().get() == Entry.get() &&
+			SelectedPreparation->Get_Program().get() == Program.get() &&
+			SelectedPreparation->Get_RenderResourceAuthority().get() ==
+				Authority.get() &&
+			SelectedPreparation->Get_Request().Emitters.size() == 2u &&
+			SelectedPreparation->Get_Request().iExpectedConsumedHandlerCount ==
+				24u &&
+			SelectedPreparation->Get_Request().Emitters[0u].Handlers.size() == 15u &&
+			SelectedPreparation->Get_Request().Emitters[1u].Handlers.size() == 9u &&
+			SelectedPreparation->Get_Request().Emitters[0u].Geometry.has_value() &&
+			SelectedPreparation->Get_Request().Emitters[1u].SpriteSink.has_value(),
+			"Artist 31470 nonProduct Debug M0 Production Prepare Binds One Immutable Catalog Plan Sidecar And 24 Exact Handlers");
+		if (!Prepared || nullptr == SelectedPreparation)
+			return;
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> FrameA;
+		const bool_t EvaluatedA = CEffectReconstructedSelectedEvaluator::Evaluate(
+			SelectedPreparation, 88u, 0u, FrameA, Status);
+		if (!EvaluatedA)
+		{
+			std::cout << "[INFO] Artist 31470 selected evaluator evaluate: " <<
+				Status << '\n';
+		}
+		const EFFECT_RECONSTRUCTED_SELECTED_PACKET* MeshPacket = nullptr;
+		const EFFECT_RECONSTRUCTED_SELECTED_PACKET* SpritePacket = nullptr;
+		if (nullptr != FrameA)
+		{
+			for (const auto& Packet : FrameA->Get_Packets())
+			{
+				if (Packet.Get_Kind() ==
+					EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::MESH)
+					MeshPacket = &Packet;
+				else if (Packet.Get_Kind() ==
+					EFFECT_RECONSTRUCTED_SELECTED_PACKET_KIND::SPRITE)
+					SpritePacket = &Packet;
+			}
+		}
+		const auto Near = [](const double Actual, const double Expected)
+		{
+			return std::isfinite(Actual) &&
+				std::abs(Actual - Expected) <= 1.0e-12;
+		};
+		const auto Near3 = [&Near](const std::array<double, 3u>& Actual,
+			const std::array<double, 3u>& Expected)
+		{
+			return Near(Actual[0u], Expected[0u]) &&
+				Near(Actual[1u], Expected[1u]) &&
+				Near(Actual[2u], Expected[2u]);
+		};
+		const auto Near4 = [&Near](const std::array<double, 4u>& Actual,
+			const std::array<double, 4u>& Expected)
+		{
+			return Near(Actual[0u], Expected[0u]) &&
+				Near(Actual[1u], Expected[1u]) &&
+				Near(Actual[2u], Expected[2u]) &&
+				Near(Actual[3u], Expected[3u]);
+		};
+		bool_t ExactHandlerProjection = nullptr != MeshPacket &&
+			nullptr != SpritePacket;
+		for (size_t PacketIndex = 0u;
+			ExactHandlerProjection && PacketIndex < 2u; ++PacketIndex)
+		{
+			const auto* Packet = PacketIndex == 0u ? MeshPacket : SpritePacket;
+			const auto& Selection = Request.Emitters[PacketIndex];
+			ExactHandlerProjection = Packet->Get_SelectionIndex() == PacketIndex &&
+				Packet->Get_ConsumedHandlers().size() ==
+					Selection.Handlers.size();
+			for (size_t HandlerIndex = 0u;
+				ExactHandlerProjection &&
+				HandlerIndex < Selection.Handlers.size(); ++HandlerIndex)
+			{
+				const auto& Consumed =
+					Packet->Get_ConsumedHandlers()[HandlerIndex];
+				const auto& Frozen = Selection.Handlers[HandlerIndex];
+				ExactHandlerProjection = Consumed.Module.strId ==
+					Frozen.Module.strId &&
+					Consumed.Module.strRowSha256 ==
+						Frozen.Module.strRowSha256 &&
+					Consumed.Handler.strId == Frozen.Handler.strId &&
+					Consumed.Handler.strRowSha256 ==
+						Frozen.Handler.strRowSha256 &&
+					Consumed.strImplementationId ==
+						Frozen.strImplementationId &&
+					Consumed.iImplementationVersion ==
+						Frozen.iImplementationVersion &&
+					Consumed.strImplementationSha256 ==
+						Frozen.strImplementationSha256;
+			}
+		}
+		const bool_t ExactFrameIdentity = EvaluatedA && nullptr != FrameA &&
+			nullptr != MeshPacket && nullptr != SpritePacket &&
+			FrameA->Get_Preparation().get() == SelectedPreparation.get() &&
+			FrameA->Get_FixedStepIndex() == 88u &&
+			Near(FrameA->Get_SampleTimeSeconds(), 88.0 / 60.0) &&
+			FrameA->Get_OccurrenceRngContract() ==
+				EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT &&
+			FrameA->Get_OccurrenceRngVersion() == 1u &&
+			FrameA->Get_Packets().size() == 2u &&
+			FrameA->Get_ConsumedHandlerCount() == 24u &&
+			FrameA->Get_ProjectionSha256().size() == 64u &&
+			MeshPacket->Get_Preparation().get() == SelectedPreparation.get() &&
+			SpritePacket->Get_Preparation().get() == SelectedPreparation.get() &&
+			MeshPacket->Get_Timing().iSpawnStep == 88u &&
+			SpritePacket->Get_Timing().iSpawnStep == 88u &&
+			MeshPacket->Get_Timing().iSpawnSerial == 0u &&
+			SpritePacket->Get_Timing().iSpawnSerial == 0u &&
+			Near(MeshPacket->Get_Timing().fAgeSeconds, 0.0) &&
+			Near(SpritePacket->Get_Timing().fAgeSeconds, 0.0) &&
+			MeshPacket->Get_Timing().iOccurrenceRandomValue == 2'215'704'123u &&
+			MeshPacket->Get_Timing().iLifetimeRandomValue == 2'215'704'123u &&
+			Near(MeshPacket->Get_Timing().fLifetimeSeconds,
+				2.257941908612368) &&
+			SpritePacket->Get_Timing().iOccurrenceRandomValue == 244'989'949u &&
+			SpritePacket->Get_Timing().iLifetimeRandomValue == 244'989'949u &&
+			Near(SpritePacket->Get_Timing().fLifetimeSeconds,
+				0.6228164894929623) && ExactHandlerProjection;
+		runner.Require(ExactFrameIdentity,
+			"Artist 31470 nonProduct Debug M0 Production Evaluate Emits Exact Step88 Mesh Sprite 2/2 And Consumes 15 Plus 9 Handlers");
+
+		bool_t ExactValues = nullptr != MeshPacket && nullptr != SpritePacket;
+		if (ExactValues)
+		{
+			const auto& MeshValues = MeshPacket->Get_Values();
+			const auto& SpriteValues = SpritePacket->Get_Values();
+			ExactValues = MeshPacket->Get_RandomDrawCount() == 14u &&
+				MeshPacket->Get_FinalRandomState() == 2'355'157'980u &&
+				SpritePacket->Get_RandomDrawCount() == 7u &&
+				SpritePacket->Get_FinalRandomState() == 953'103'844u &&
+				MeshValues.vMeshDimensionlessScaleXzy.has_value() &&
+				!MeshValues.vSpriteSignedWorldSizeXzy.has_value() &&
+				!SpriteValues.vMeshDimensionlessScaleXzy.has_value() &&
+				SpriteValues.vSpriteSignedWorldSizeXzy.has_value() &&
+				Near3(*MeshValues.vMeshDimensionlessScaleXzy,
+					{ 1.6260229333131626, 1.5702383313491564,
+					  1.3838000477719588 }) &&
+				Near3(MeshValues.vLocalPosition,
+					{ 1.0635928511667767, 0.6978068300971776,
+					 -0.28824338214256146 }) &&
+				Near3(MeshValues.vVelocityPerSecond,
+					{ 0.18857087353033217, 2.231900362239327,
+					 -0.653603293505097 }) &&
+				Near3(MeshValues.vAccelerationPerSecondSquared,
+					{ 0.0, -11.308244941595067, 0.0 }) &&
+				Near4(MeshValues.vColor, { 0.0, 0.0, 0.0, 1.0 }) &&
+				Near4(MeshValues.vDynamicParameter, { 0.0, 0.0, 0.0, 0.0 }) &&
+				Near(MeshValues.fRotationDegrees, -360.0) &&
+				Near(MeshValues.fRotationRateDegreesPerSecond,
+					79.33641699127304) &&
+				Near3(*SpriteValues.vSpriteSignedWorldSizeXzy,
+					{ -0.5, 0.0, 0.4 }) &&
+				Near3(SpriteValues.vLocalPosition,
+					{ 3.5165814746908333, 0.1,
+					 -0.10724364281800661 }) &&
+				Near3(SpriteValues.vVelocityPerSecond,
+					{ 0.8100967958593035, 0.28666618887490275, 0.0 }) &&
+				Near3(SpriteValues.vAccelerationPerSecondSquared,
+					{ 0.0, 0.0, 0.0 }) &&
+				Near4(SpriteValues.vColor,
+					{ 0.009999999776482582, 0.10000000149011612,
+					  0.20000000298023224, 1.5 }) &&
+				Near4(SpriteValues.vDynamicParameter,
+					{ 1.0, 0.5, 1.0, 1.0 }) &&
+				Near(SpriteValues.fRotationDegrees, 0.0) &&
+				Near(SpriteValues.fRotationRateDegreesPerSecond, 0.0) &&
+				SpritePacket->Get_SpriteSink().has_value() &&
+				SpritePacket->Get_SpriteSink()->bAllowImageFlipping &&
+				SpritePacket->Get_SpriteSink()->bOffsetCenter &&
+				SpritePacket->Get_SpriteSink()->bBillboard &&
+				Near(SpritePacket->Get_SpriteSink()->vPivotCenter[0u],
+					0.6000000238418579) &&
+				Near(SpritePacket->Get_SpriteSink()->vPivotCenter[1u],
+					0.800000011920929);
+		}
+		runner.Require(ExactValues,
+			"Artist 31470 nonProduct Debug M0 Production Packet Freezes Mesh14 Sprite7 Values Signed Size And Sink Ready Orientation");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> FrameB;
+		const bool_t EvaluatedB = CEffectReconstructedSelectedEvaluator::Evaluate(
+			SelectedPreparation, 88u, 0u, FrameB, Status);
+		runner.Require(EvaluatedB && nullptr != FrameA && nullptr != FrameB &&
+			FrameA.get() != FrameB.get() &&
+			FrameA->Get_ProjectionSha256() == FrameB->Get_ProjectionSha256(),
+			"Artist 31470 nonProduct Debug M0 Production Packet Projection Is Deterministic");
+
+		const auto PreservedPreparation = SelectedPreparation;
+		const auto RejectsPreparation = [&](auto Mutate)
+		{
+			auto Invalid = Request;
+			Mutate(Invalid);
+			Status.clear();
+			const bool_t Rejected =
+				!CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Invalid, SelectedPreparation, Status);
+			return Rejected && !Status.empty() &&
+				SelectedPreparation.get() == PreservedPreparation.get();
+		};
+		const bool_t IdentityRollback =
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.strOccurrenceRngContract += ".wrong"; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Schedule.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Emitter.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].eRenderer =
+					EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Handlers[6u].Handler.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Handlers[0u].ImplicitDefaults[0u].
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Geometry->GeometryCarrier.
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].Material.TextureLanes[1u].
+					SidecarTextureBinding.strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].SpriteSink->ScreenAlignmentLiteral.
+					strRowSha256[0u] = '0'; }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[0u].fExpectedLifetimeSeconds =
+					(std::numeric_limits<double>::quiet_NaN)(); }) &&
+			RejectsPreparation([](auto& Invalid)
+				{ Invalid.Emitters[1u].Handlers.clear(); });
+		runner.Require(IdentityRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects RNG Schedule Emitter Renderer Handler Default Empty And Nonfinite Mutations Transactionally");
+
+		const bool_t StateRoleRollback =
+			RejectsPreparation([](auto& Invalid)
+				{
+					std::swap(Invalid.Emitters[0u].Material.RasterizerState,
+						Invalid.Emitters[0u].Material.DepthStencilState);
+				}) &&
+			RejectsPreparation([](auto& Invalid)
+				{
+					std::swap(Invalid.Emitters[1u].Material.BlendState,
+						Invalid.Emitters[1u].Material.RasterizerState);
+				});
+		runner.Require(StateRoleRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects Mesh Raster Depth And Sprite Blend Raster Role Swaps Transactionally");
+
+		auto UnsupportedHandlerRequest = Request;
+		UnsupportedHandlerRequest.Emitters[0u].Handlers[6u].
+			strImplementationSha256 = std::string(64u, 'f');
+		auto CandidatePreparation = PreservedPreparation;
+		const auto CandidateFrame = FrameA;
+		Status.clear();
+		const bool_t ClosedHandlerRouteRollback =
+			!CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, UnsupportedHandlerRequest, CandidatePreparation, Status) &&
+			Status == "Selected evaluator handler dispatch is unsupported." &&
+			CandidatePreparation.get() == PreservedPreparation.get() &&
+			FrameA.get() == CandidateFrame.get();
+		runner.Require(ClosedHandlerRouteRollback,
+			"Artist 31470 nonProduct Debug M0 Prepare Rejects Recognized Class Nonallowlisted Handler Triplet Transactionally");
+
+		const auto PreservedFrame = FrameA;
+		Status.clear();
+		const bool_t WrongStepRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				SelectedPreparation, 87u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		Status.clear();
+		const bool_t WrongSerialRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				SelectedPreparation, 88u, 1u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		Status.clear();
+		const bool_t EmptyPreparationRejected =
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				nullptr, 88u, 0u, FrameA, Status) && !Status.empty() &&
+			FrameA.get() == PreservedFrame.get();
+		runner.Require(WrongStepRejected && WrongSerialRejected &&
+			EmptyPreparationRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Step Serial And Empty Preparation While Preserving Prior Frame");
+
+		auto WrongRandomRequest = Request;
+		WrongRandomRequest.Emitters[0u].iExpectedFinalRandomState ^= 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongRandomPreparation;
+		const bool_t WrongRandomPrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongRandomRequest, WrongRandomPreparation, Status);
+		Status.clear();
+		const bool_t WrongRandomRejected = WrongRandomPrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongRandomPreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongDrawRequest = Request;
+		WrongDrawRequest.Emitters[1u].iExpectedVisualRandomDrawCount += 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongDrawPreparation;
+		const bool_t WrongDrawPrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongDrawRequest, WrongDrawPreparation, Status);
+		Status.clear();
+		const bool_t WrongDrawRejected = WrongDrawPrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongDrawPreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongOccurrenceRequest = Request;
+		WrongOccurrenceRequest.Emitters[0u].iExpectedOccurrenceRandomValue += 1u;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongOccurrencePreparation;
+		const bool_t WrongOccurrencePrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongOccurrenceRequest, WrongOccurrencePreparation, Status);
+		Status.clear();
+		const bool_t WrongOccurrenceRejected = WrongOccurrencePrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongOccurrencePreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		auto WrongLifetimeRequest = Request;
+		WrongLifetimeRequest.Emitters[1u].fExpectedLifetimeSeconds += 0.125;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION>
+			WrongLifetimePreparation;
+		const bool_t WrongLifetimePrepared =
+			CEffectReconstructedSelectedEvaluator::Prepare(
+				Plan, WrongLifetimeRequest, WrongLifetimePreparation, Status);
+		Status.clear();
+		const bool_t WrongLifetimeRejected = WrongLifetimePrepared &&
+			!CEffectReconstructedSelectedEvaluator::Evaluate(
+				WrongLifetimePreparation, 88u, 0u, FrameA, Status) &&
+			!Status.empty() && FrameA.get() == PreservedFrame.get();
+		runner.Require(WrongRandomRejected && WrongDrawRejected &&
+			WrongOccurrenceRejected && WrongLifetimeRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Internal RNG Draw Occurrence And Lifetime Contract Mismatch While Preserving Prior Frame");
+
+		const std::string MeshAlphaDistributionId =
+			Request.Emitters[0u].Handlers[4u].Module.strId +
+			"::distribution:alphaoverlife";
+		const auto AlphaDistribution = Plan->Get_Distributions().find(
+			MeshAlphaDistributionId);
+		bool_t NonzeroEmptyAlphaRejected =
+			AlphaDistribution != Plan->Get_Distributions().end();
+		if (NonzeroEmptyAlphaRejected)
+		{
+			auto& MutableAlpha = const_cast<
+				EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION&>(
+					AlphaDistribution->second);
+			const auto SavedAlpha = MutableAlpha;
+			MutableAlpha.DefaultMinimum[0u] = 1.0;
+			Status.clear();
+			NonzeroEmptyAlphaRejected =
+				!CEffectReconstructedSelectedEvaluator::Evaluate(
+					SelectedPreparation, 88u, 0u, FrameA, Status) &&
+				!Status.empty() && FrameA.get() == PreservedFrame.get();
+			MutableAlpha = SavedAlpha;
+		}
+		runner.Require(NonzeroEmptyAlphaRejected,
+			"Artist 31470 nonProduct Debug M0 Evaluate Rejects Nonzero Empty Alpha Default Without Promoting It To Identity");
+
+		auto& MutableProgram =
+			const_cast<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM&>(*Program);
+		auto MeshEmitter = std::find_if(MutableProgram.Emitters.begin(),
+			MutableProgram.Emitters.end(), [&Request](const auto& Row)
+			{ return Row.Row.strId == Request.Emitters[0u].Emitter.strId; });
+		auto SpriteEmitter = std::find_if(MutableProgram.Emitters.begin(),
+			MutableProgram.Emitters.end(), [&Request](const auto& Row)
+			{ return Row.Row.strId == Request.Emitters[1u].Emitter.strId; });
+		bool_t RendererConfigIndependent =
+			MeshEmitter != MutableProgram.Emitters.end() &&
+			SpriteEmitter != MutableProgram.Emitters.end();
+		if (RendererConfigIndependent)
+		{
+			const auto SavedMeshConfig = MeshEmitter->RendererRuntimeConfig;
+			const auto SavedSpriteConfig = SpriteEmitter->RendererRuntimeConfig;
+			MeshEmitter->RendererRuntimeConfig = {};
+			SpriteEmitter->RendererRuntimeConfig = {};
+			std::shared_ptr<const
+				EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION> ClearPreparation;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> ClearFrame;
+			const bool_t ClearPrepared =
+				CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Request, ClearPreparation, Status);
+			const bool_t ClearEvaluated = ClearPrepared &&
+				CEffectReconstructedSelectedEvaluator::Evaluate(
+					ClearPreparation, 88u, 0u, ClearFrame, Status);
+			MeshEmitter->RendererRuntimeConfig.strSourceProjectionSha256 =
+				std::string(64u, 'f');
+			SpriteEmitter->RendererRuntimeConfig.strSourceProjectionSha256 =
+				std::string(64u, 'e');
+			MeshEmitter->RendererRuntimeConfig.Color.emplace().vMultiply = {
+				999999.0, -999999.0, 123456.0,
+				(std::numeric_limits<double>::quiet_NaN)() };
+			SpriteEmitter->RendererRuntimeConfig.Sprite.emplace().bBillboard = false;
+			SpriteEmitter->RendererRuntimeConfig.Sprite->fBillboardRollDegrees =
+				(std::numeric_limits<double>::quiet_NaN)();
+			std::shared_ptr<const
+				EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARATION> PoisonPreparation;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> PoisonFrame;
+			const bool_t PoisonPrepared =
+				CEffectReconstructedSelectedEvaluator::Prepare(
+					Plan, Request, PoisonPreparation, Status);
+			const bool_t PoisonEvaluated = PoisonPrepared &&
+				CEffectReconstructedSelectedEvaluator::Evaluate(
+					PoisonPreparation, 88u, 0u, PoisonFrame, Status);
+			MeshEmitter->RendererRuntimeConfig = SavedMeshConfig;
+			SpriteEmitter->RendererRuntimeConfig = SavedSpriteConfig;
+			RendererConfigIndependent = ClearPrepared && ClearEvaluated &&
+				PoisonPrepared && PoisonEvaluated && nullptr != ClearPreparation &&
+				nullptr != PoisonPreparation && nullptr != ClearFrame &&
+				nullptr != PoisonFrame &&
+				ClearPreparation->Get_CatalogEntry().get() == Entry.get() &&
+				PoisonPreparation->Get_CatalogEntry().get() == Entry.get() &&
+				ClearFrame->Get_ProjectionSha256() ==
+					PreservedFrame->Get_ProjectionSha256() &&
+				PoisonFrame->Get_ProjectionSha256() ==
+					PreservedFrame->Get_ProjectionSha256();
+		}
+		runner.Require(RendererConfigIndependent,
+			"Artist 31470 nonProduct Debug M0 Prepare And Evaluate Ignore Cleared Or Poisoned RendererRuntimeConfig Fallback");
+	}
+
+	void Test_Artist31470CatalogRenderResourceAuthority(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& Exact13CatalogPath,
+		const std::filesystem::path& HistoricalOld10CatalogPath = {})
+	{
+		using namespace Client;
+		constexpr const char* EffectId = "effect.artist.skill.31470";
+		const std::string CatalogText = Read_Text(Exact13CatalogPath);
+		const bool_t ExactCatalog = CatalogText.size() == 27'065'827u &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CatalogText) ==
+				"ea3afd4e6f2fb2b2a627a8ba565daf9db931e3306c10da7ee5523611bf481ab3";
+		runner.Require(ExactCatalog,
+			"Artist 31470 Exact13 Harness Input Has Frozen Catalog Identity");
+		if (!ExactCatalog)
+			return;
+
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		const std::filesystem::path ModuleDirectory =
+			0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(ModuleBuffer).parent_path();
+		const std::filesystem::path CatalogPath = ModuleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code FileError;
+		std::filesystem::create_directories(CatalogPath.parent_path(), FileError);
+		std::vector<char> PriorBytes;
+		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		if (HadPrior)
+		{
+			std::ifstream Prior(CatalogPath, std::ios::binary);
+			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		const auto WriteCatalog = [&CatalogPath](const std::string& Text)
+		{
+			std::ofstream Output(
+				CatalogPath, std::ios::binary | std::ios::trunc);
+			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
+			return Output.good();
+		};
+		const auto RestorePriorCatalogFile = [&]()
+		{
+			if (HadPrior)
+			{
+				std::ofstream Output(
+					CatalogPath, std::ios::binary | std::ios::trunc);
+				Output.write(PriorBytes.data(),
+					static_cast<std::streamsize>(PriorBytes.size()));
+			}
+			else
+			{
+				std::filesystem::remove(CatalogPath, FileError);
+			}
+		};
+
+		CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t Loaded = WriteCatalog(CatalogText) &&
+			CEffectCatalog::Load(Status);
+		if (!Loaded)
+			std::cout << "[INFO] Artist 31470 exact13 load status: " <<
+				Status << '\n';
+		const uint64_t Revision = CEffectCatalog::Get_RuntimeRevision();
+		const auto Entry = CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+		const auto Program = CEffectCatalog::Find_ReconstructedRuntimeProgram(
+			EffectId);
+		const auto Authority = nullptr == Entry ? nullptr :
+			Entry->Get_RenderResourceAuthority();
+		const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY* Identity =
+			nullptr == Entry ? nullptr : &Entry->Get_Identity();
+		const bool_t ExactIdentity = Loaded && nullptr != Entry &&
+			nullptr != Program && nullptr != Authority && nullptr != Identity &&
+			Entry->Get_Program().get() == Program.get() &&
+			Identity->iCatalogRevision == Revision &&
+			Identity->iRenderResourceSidecarFormatVersion == 1u &&
+			Identity->iRenderResourceSidecarByteCount == 746'788u &&
+			Identity->strRenderResourceSidecarSchema ==
+				"lostark.artist-31470-reconstructed-render-resource-authority-receipt" &&
+			Identity->strRenderResourceAuthorityId ==
+				"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1" &&
+			Identity->strRenderResourceSidecarDecisionProjectionSha256 ==
+				"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412" &&
+			Identity->strRenderResourceSidecarReceiptSha256 ==
+				"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a" &&
+			Identity->strRenderResourceSidecarRawSha256 ==
+				"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff" &&
+			Identity->strRenderResourceAuthorityLinkSha256 ==
+				"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e" &&
+			Identity->strRenderResourcePublishReceiptSha256 ==
+				"37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740" &&
+			Authority->Identity.strProgramId == Identity->strProgramId &&
+			Authority->Identity.strProgramSha256 == Identity->strProgramSha256 &&
+			Authority->TextureResourcesById.size() == 48u &&
+			Authority->TextureBindingsById.size() == 72u &&
+			Authority->NeutralProvidersById.size() == 4u &&
+			Authority->RecipeTextureBindingsById.size() == 27u &&
+			Authority->RendererSlotBindingsById.size() == 57u &&
+			Authority->RenderStateDescriptorsById.size() == 46u;
+		runner.Require(ExactIdentity,
+			"Artist 31470 Exact13 Catalog Commits One Immutable Render Resource Authority");
+		if (!ExactIdentity)
+		{
+			CEffectCatalog::Clear();
+			RestorePriorCatalogFile();
+			return;
+		}
+
+		const auto MeshRecipe = Authority->RecipeTextureBindingsById.find(
+			"recipe-texture-binding-06");
+		const auto SpriteRecipe = Authority->RecipeTextureBindingsById.find(
+			"recipe-texture-binding-01");
+		const auto MeshTexture0 = Authority->TextureBindingsById.find(
+			"render-binding-14");
+		const auto MeshTexture1 = Authority->TextureBindingsById.find(
+			"render-binding-15");
+		const auto SpriteTexture0 = Authority->TextureBindingsById.find(
+			"render-binding-03");
+		const auto SpriteTexture1 = Authority->TextureBindingsById.find(
+			"render-binding-02");
+		const auto MeshRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-048");
+		const auto SpriteMaskRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-049");
+		const auto SpriteBaseRenderer = Authority->RendererSlotBindingsById.find(
+			"renderer-material-input-binding-050");
+		const auto MeshBlend = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-12");
+		const auto SpriteBlend = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-02");
+		const auto SpriteRaster = Authority->RenderStateDescriptorsById.find(
+			"render-state-descriptor-03");
+		const auto ExactSampler = [](const auto& Binding)
+		{
+			const D3D11_SAMPLER_DESC& Sampler = Binding.SamplerDescriptor;
+			return Sampler.Filter == D3D11_FILTER_MIN_MAG_MIP_LINEAR &&
+				Sampler.AddressU == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.AddressV == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.AddressW == D3D11_TEXTURE_ADDRESS_WRAP &&
+				Sampler.MipLODBias == 0.f && Sampler.MaxAnisotropy == 0u &&
+				Sampler.ComparisonFunc == D3D11_COMPARISON_NEVER &&
+				Sampler.MinLOD == 0.f && Sampler.MaxLOD == FLT_MAX;
+		};
+		const bool_t SelectedRows =
+			MeshRecipe != Authority->RecipeTextureBindingsById.end() &&
+			SpriteRecipe != Authority->RecipeTextureBindingsById.end() &&
+			MeshTexture0 != Authority->TextureBindingsById.end() &&
+			MeshTexture1 != Authority->TextureBindingsById.end() &&
+			SpriteTexture0 != Authority->TextureBindingsById.end() &&
+			SpriteTexture1 != Authority->TextureBindingsById.end() &&
+			MeshRenderer != Authority->RendererSlotBindingsById.end() &&
+			SpriteMaskRenderer != Authority->RendererSlotBindingsById.end() &&
+			SpriteBaseRenderer != Authority->RendererSlotBindingsById.end() &&
+			MeshBlend != Authority->RenderStateDescriptorsById.end() &&
+			SpriteBlend != Authority->RenderStateDescriptorsById.end() &&
+			SpriteRaster != Authority->RenderStateDescriptorsById.end() &&
+			MeshRecipe->second.strRecipeId ==
+				"material-recipe-4b4c59364690a66d" &&
+			MeshRecipe->second.strRowSha256 ==
+				"b2604680e40023ff1ef5efcbaad9e2e6a193fed6b5a70c133c31eaa87f960393" &&
+			SpriteRecipe->second.strRecipeId ==
+				"material-recipe-2073fb45e643d1d5" &&
+			SpriteRecipe->second.strRowSha256 ==
+				"238f88b150d88389e897d27c946c63b38f512f7c91a24a81ea77c7786e72e1a3" &&
+			MeshTexture0->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_environ_002.dds" &&
+			MeshTexture0->second.strRowSha256 ==
+				"5507774c5a561098fa848c4d7cb37a216f1c247932e03898db08550e0abfbeb6" &&
+			MeshTexture0->second.strActualDdsRawSha256 ==
+				"cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962" &&
+			MeshTexture1->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_environ_002_n.dds" &&
+			MeshTexture1->second.strRowSha256 ==
+				"7d749c3da4418afaac5e639a2739fe5ec24baf8230a918bb86c8460e0d4a7304" &&
+			MeshTexture1->second.strActualDdsRawSha256 ==
+				"62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6" &&
+			SpriteTexture0->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_a_decal_013.dds" &&
+			SpriteTexture0->second.strRowSha256 ==
+				"36e94aa1077ce9bf07d7f2d819b9819499ae060594c913163c6f1001470c601c" &&
+			SpriteTexture0->second.strActualDdsRawSha256 ==
+				"c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e" &&
+			SpriteTexture1->second.strRuntimeAssetId ==
+				"Effect/Artist/Textures/fx_e_fluid_021.dds" &&
+			SpriteTexture1->second.strRowSha256 ==
+				"b5c56bdc4d6ee9df110444975cf1fe1f6d15983a85febc3c829df4e72c26f901" &&
+			SpriteTexture1->second.strActualDdsRawSha256 ==
+				"1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75" &&
+			ExactSampler(MeshTexture0->second) &&
+			ExactSampler(MeshTexture1->second) &&
+			ExactSampler(SpriteTexture0->second) &&
+			ExactSampler(SpriteTexture1->second) &&
+			MeshRenderer->second.iCandidateCount == 1u &&
+			MeshRenderer->second.strRowSha256 ==
+				"753c35a340aa78d4abb641620e672de6906940bad6ed71f820ec5b053a7825db" &&
+			SpriteMaskRenderer->second.iCandidateCount == 1u &&
+			SpriteMaskRenderer->second.strRowSha256 ==
+				"8eacb5756a8db3d401df71b104a7fc0de80670bcac8533bdf080f754480720fc" &&
+			SpriteBaseRenderer->second.iCandidateCount == 1u &&
+			SpriteBaseRenderer->second.strRowSha256 ==
+				"36e0a37f13b2b1a0ff54065995a089f6142fcdf5dea4e93c2550974f732e2b5d" &&
+			MeshBlend->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
+			MeshBlend->second.strImplementationStateName == "BS_EffectOpaque" &&
+			MeshBlend->second.strRowSha256 ==
+				"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a" &&
+			SpriteBlend->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
+			SpriteBlend->second.strImplementationStateName == "BS_EffectAlpha" &&
+			SpriteBlend->second.strRowSha256 ==
+				"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa" &&
+			SpriteRaster->second.eKind ==
+				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER &&
+			SpriteRaster->second.strImplementationStateName == "RS_Cull_None" &&
+			SpriteRaster->second.strRowSha256 ==
+				"608896ca6411f016505353c28f6ba0d46bff15f8aecebc9080db2e3fa43743c9";
+		runner.Require(SelectedRows,
+			"Artist 31470 Exact13 Typed Maps Retrieve Frozen Mesh And Sprite M0 Rows");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			Preparation;
+		CEffectReconstructedRuntimeBoundary Boundary;
+		const bool_t OnePointer =
+			CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+				EffectId, Preparation, Status) && nullptr != Preparation &&
+			Preparation->Get_CatalogEntry().get() == Entry.get() &&
+			Preparation->Get_RenderResourceAuthority().get() == Authority.get() &&
+			Boundary.Stage(Preparation,
+				EFFECT_RECONSTRUCTED_RUNTIME_SEAM::RENDERER, Status) &&
+			Boundary.Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(OnePointer,
+			"Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer");
+		if (OnePointer)
+		{
+			Test_Artist31470SelectedProductionEvaluator(
+				runner, Entry, Program, Authority, Preparation);
+		}
+
+		const uint64_t BeforeRevision = CEffectCatalog::Get_RuntimeRevision();
+		const std::string BeforeStatus = CEffectCatalog::Get_Status();
+		std::string SidecarMutation = CatalogText;
+		const std::string SidecarMarker =
+			"\\\"bindingAuthorityId\\\": \\\"render-binding-14\\\"";
+		const size_t SidecarOffset = SidecarMutation.find(SidecarMarker);
+		if (SidecarOffset != std::string::npos)
+		{
+			SidecarMutation[SidecarOffset + SidecarMarker.size() - 2u] = '5';
+		}
+		const bool_t SidecarRejected = SidecarOffset != std::string::npos &&
+			WriteCatalog(SidecarMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(SidecarRejected,
+			"Artist 31470 Exact13 Sidecar Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string LinkMutation = CatalogText;
+		const std::string LinkMarker =
+			"\"sidecarAuthorityId\":"
+			"\"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1\"";
+		const size_t LinkOffset = LinkMutation.find(LinkMarker);
+		if (LinkOffset != std::string::npos)
+			LinkMutation[LinkOffset + LinkMarker.size() - 2u] = '2';
+		const bool_t LinkRejected = LinkOffset != std::string::npos &&
+			WriteCatalog(LinkMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(LinkRejected,
+			"Artist 31470 Exact13 Link21 Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string ReceiptMutation = CatalogText;
+		const std::string ReceiptMarker =
+			"PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY";
+		const size_t ReceiptOffset = ReceiptMutation.find(ReceiptMarker);
+		if (ReceiptOffset != std::string::npos)
+			ReceiptMutation[ReceiptOffset + ReceiptMarker.size() - 1u] = 'X';
+		const bool_t ReceiptRejected = ReceiptOffset != std::string::npos &&
+			WriteCatalog(ReceiptMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(ReceiptRejected,
+			"Artist 31470 Exact13 Receipt26 Mutation Rolls Back Entry And Authority Pointers");
+
+		std::string OuterMutation = CatalogText;
+		const std::string OuterField = "\"renderResourcePublishReceiptSha256\"";
+		const size_t OuterOffset = OuterMutation.find(OuterField);
+		if (OuterOffset != std::string::npos)
+			OuterMutation[OuterOffset + OuterField.size() - 2u] = 'x';
+		const bool_t OuterRejected = OuterOffset != std::string::npos &&
+			WriteCatalog(OuterMutation) && !CEffectCatalog::Load(Status) &&
+			CEffectCatalog::Get_RuntimeRevision() == BeforeRevision &&
+			CEffectCatalog::Get_Status() == BeforeStatus &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == Entry.get() &&
+			CEffectCatalog::Find_RuntimeProgramEntry(EffectId)->
+				Get_RenderResourceAuthority().get() == Authority.get();
+		runner.Require(OuterRejected,
+			"Artist 31470 Exact13 Outer13 Mutation Rolls Back Entry And Authority Pointers");
+
+		if (!HistoricalOld10CatalogPath.empty())
+		{
+			const std::string HistoricalText = Read_Text(
+				HistoricalOld10CatalogPath);
+			const bool_t HistoricalInput =
+				HistoricalText.size() == 26'255'930u &&
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(HistoricalText) ==
+					"b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f";
+			const bool_t HistoricalLoaded = HistoricalInput &&
+				WriteCatalog(HistoricalText) && CEffectCatalog::Load(Status);
+			const auto HistoricalEntry =
+				CEffectCatalog::Find_RuntimeProgramEntry(EffectId);
+			const EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY* HistoricalIdentity =
+				nullptr == HistoricalEntry ? nullptr :
+					&HistoricalEntry->Get_Identity();
+			runner.Require(HistoricalLoaded && nullptr != HistoricalEntry &&
+				nullptr != HistoricalIdentity &&
+				nullptr == HistoricalEntry->Get_RenderResourceAuthority() &&
+				HistoricalIdentity->iRenderResourceSidecarFormatVersion == 0u &&
+				HistoricalIdentity->iRenderResourceSidecarByteCount == 0u &&
+				HistoricalIdentity->strRenderResourceAuthorityId.empty() &&
+				HistoricalIdentity->strRenderResourceAuthorityLinkSha256.empty() &&
+				HistoricalIdentity->strRenderResourcePublishReceiptSha256.empty(),
+				"Artist 31470 Exact Historical Old10 Loads With Null Render Resource Authority");
+		}
+
+		CEffectCatalog::Clear();
+		RestorePriorCatalogFile();
+	}
+
+	bool_t Replace_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view Field,
+		Client::DATA_JSON_VALUE Replacement,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || !Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		Object[std::string(Field)] = std::move(Replacement);
+		OutValue = DATA_JSON_VALUE::Object(
+			std::move(Object), Source.Get_ObjectInsertionOrder());
+		return true;
+	}
+
+	bool_t Remove_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view Field,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || !Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		Object.erase(std::string(Field));
+		std::vector<std::string> Order;
+		Order.reserve(Source.Get_ObjectInsertionOrder().size() - 1u);
+		for (const std::string& Key : Source.Get_ObjectInsertionOrder())
+		{
+			if (Key != Field)
+				Order.push_back(Key);
+		}
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Append_JsonObjectField(
+		const Client::DATA_JSON_VALUE& Source,
+		std::string Field,
+		Client::DATA_JSON_VALUE Added,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object() || Source.Get_Object().contains(Field))
+			return false;
+		DATA_JSON_VALUE::OBJECT Object = Source.Get_Object();
+		if (!Object.emplace(Field, std::move(Added)).second)
+			return false;
+		std::vector<std::string> Order = Source.Get_ObjectInsertionOrder();
+		Order.push_back(std::move(Field));
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Replace_JsonArrayElement(
+		const Client::DATA_JSON_VALUE& Source,
+		const size_t Index,
+		Client::DATA_JSON_VALUE Replacement,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Array() || Index >= Source.Get_Array().size())
+			return false;
+		DATA_JSON_VALUE::ARRAY Array = Source.Get_Array();
+		Array[Index] = std::move(Replacement);
+		OutValue = DATA_JSON_VALUE::Array(std::move(Array));
+		return true;
+	}
+
+	bool_t Build_JsonObjectProjection(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::initializer_list<std::string_view> Fields,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		if (!Source.Is_Object())
+			return false;
+		DATA_JSON_VALUE::OBJECT Object;
+		std::vector<std::string> Order;
+		Order.reserve(Fields.size());
+		for (const std::string_view Field : Fields)
+		{
+			const DATA_JSON_VALUE* Value = Source.Find(Field);
+			if (nullptr == Value ||
+				!Object.emplace(std::string(Field), *Value).second)
+			{
+				return false;
+			}
+			Order.emplace_back(Field);
+		}
+		OutValue = DATA_JSON_VALUE::Object(std::move(Object), std::move(Order));
+		return true;
+	}
+
+	bool_t Seal_JsonObject(
+		const Client::DATA_JSON_VALUE& Source,
+		const std::string_view HashField,
+		Client::DATA_JSON_VALUE& OutValue)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE Unsigned;
+		if (!Remove_JsonObjectField(Source, HashField, Unsigned))
+			return false;
+		const std::string Hash = CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+			CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(Unsigned));
+		return !Hash.empty() && Replace_JsonObjectField(
+			Source, HashField, DATA_JSON_VALUE::String(Hash), OutValue);
+	}
+
+	bool_t Build_ResealedRootFixture(
+		const Client::DATA_JSON_VALUE& MutatedRoot,
+		const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Frozen,
+		std::string& OutText,
+		Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& OutIdentity)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE SealedRoot;
+		if (!Seal_JsonObject(MutatedRoot, "programSha256", SealedRoot))
+			return false;
+		const DATA_JSON_VALUE* ProgramSha = SealedRoot.Find("programSha256");
+		if (nullptr == ProgramSha || !ProgramSha->Is_String())
+			return false;
+		// Production parsing also enforces the builder's insertion order. The
+		// fixture hashes remain canonical, but its transport text must preserve
+		// that order so a negative reaches the intended semantic stage.
+		OutText = CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(SealedRoot);
+		OutIdentity = Frozen;
+		OutIdentity.strProgramSha256 = ProgramSha->Get_String();
+		OutIdentity.strCandidateRawSha256 =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(OutText);
+		return !OutIdentity.strCandidateRawSha256.empty();
+	}
+
+	bool_t Build_ResealedSectionFixture(
+		const Client::DATA_JSON_VALUE& Root,
+		const std::string_view SectionName,
+		const size_t RowIndex,
+		const Client::DATA_JSON_VALUE& MutatedRow,
+		const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Frozen,
+		std::string& OutText,
+		Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& OutIdentity)
+	{
+		using namespace Client;
+		const DATA_JSON_VALUE* Section = Root.Find(SectionName);
+		const DATA_JSON_VALUE* Digests = Root.Find("sectionDigests");
+		if (nullptr == Section || !Section->Is_Array() ||
+			RowIndex >= Section->Get_Array().size() || nullptr == Digests ||
+			!Digests->Is_Array())
+		{
+			return false;
+		}
+		DATA_JSON_VALUE SealedRow;
+		DATA_JSON_VALUE MutatedSection;
+		if (!Seal_JsonObject(MutatedRow, "rowSha256", SealedRow) ||
+			!Replace_JsonArrayElement(
+				*Section, RowIndex, std::move(SealedRow), MutatedSection))
+		{
+			return false;
+		}
+
+		DATA_JSON_VALUE::ARRAY RowHashes;
+		RowHashes.reserve(MutatedSection.Get_Array().size());
+		for (const DATA_JSON_VALUE& Row : MutatedSection.Get_Array())
+		{
+			const DATA_JSON_VALUE* Hash = Row.Find("rowSha256");
+			if (nullptr == Hash || !Hash->Is_String())
+				return false;
+			RowHashes.push_back(DATA_JSON_VALUE::String(Hash->Get_String()));
+		}
+		const std::string OrderedSha =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+					DATA_JSON_VALUE::Array(std::move(RowHashes))));
+		if (OrderedSha.empty())
+			return false;
+
+		DATA_JSON_VALUE MutatedDigests = *Digests;
+		bool_t FoundDigest = false;
+		for (size_t Index = 0u; Index < Digests->Get_Array().size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Digest = Digests->Get_Array()[Index];
+			const DATA_JSON_VALUE* Name = Digest.Find("sectionName");
+			if (nullptr == Name || !Name->Is_String() ||
+				Name->Get_String() != SectionName)
+			{
+				continue;
+			}
+			DATA_JSON_VALUE MutatedDigest;
+			if (!Replace_JsonObjectField(Digest, "orderedSha256",
+					DATA_JSON_VALUE::String(OrderedSha), MutatedDigest) ||
+				!Replace_JsonArrayElement(
+					MutatedDigests, Index, std::move(MutatedDigest), MutatedDigests))
+			{
+				return false;
+			}
+			FoundDigest = true;
+			break;
+		}
+		if (!FoundDigest)
+			return false;
+
+		DATA_JSON_VALUE WithSection;
+		DATA_JSON_VALUE WithDigests;
+		if (!Replace_JsonObjectField(
+				Root, SectionName, std::move(MutatedSection), WithSection) ||
+			!Replace_JsonObjectField(WithSection, "sectionDigests",
+				std::move(MutatedDigests), WithDigests))
+		{
+			return false;
+		}
+		return Build_ResealedRootFixture(
+			WithDigests, Frozen, OutText, OutIdentity);
+	}
+
+	void Test_Artist31470ReconstructedRuntimeProgram(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& path)
+	{
+		using namespace Client;
+		std::string Text;
+		std::string FixtureStatus;
+		const bool_t Loaded = Read_FrozenReconstructedProgramFixture(
+			path, Text, FixtureStatus);
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Frozen =
+			CEffectRuntimeAuthorityCodec::Get_FrozenArtist31470FProgramIdentity();
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Parsed;
+		std::string Status;
+		const bool_t Baseline = Loaded &&
+			CEffectRuntimeAuthorityCodec::Parse_ReconstructedRuntimeProgram(
+				Text, Frozen, Parsed, Status);
+		DATA_JSON_VALUE Root;
+		DATA_JSON_PARSE_LIMITS ProgramLimits;
+		ProgramLimits.iMaximumBytes = 20u * 1024u * 1024u;
+		ProgramLimits.iMaximumDepth = 64u;
+		ProgramLimits.iMaximumValues = 1'000'000u;
+		std::string RootStatus;
+		const bool_t RootParsed = CDataJson::Parse(
+			Text, Root, RootStatus, ProgramLimits) && Root.Is_Object();
+		if (!Baseline)
+			std::cerr << "Reconstructed program baseline parse: " <<
+				(Loaded ? Status : FixtureStatus) << '\n';
+		const size_t ResolvedTextureCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.eResolutionStatus ==
+						EFFECT_RUNTIME_TEXTURE_RESOLUTION_STATUS::
+							RESOLVED_EXACT_RUNTIME_ASSET;
+				}));
+		const size_t RuntimeCookReceiptCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.strSourceReceiptStatus ==
+						"RESOLVED_EXACT_RUNTIME_COOK_RECEIPT";
+				}));
+		const size_t ReconstructedDeploymentReceiptCount = nullptr == Parsed ? 0u :
+			static_cast<size_t>(std::count_if(
+				Parsed->MaterialTextureBindings.begin(),
+				Parsed->MaterialTextureBindings.end(), [](const auto& Row)
+				{
+					return Row.strSourceReceiptStatus ==
+						"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT";
+				}));
+		runner.Require(Baseline && nullptr != Parsed &&
+			Parsed->Identity.strProgramSha256 == Frozen.strProgramSha256 &&
+			Parsed->InputArtifacts.size() == 13u &&
+			Parsed->Handlers.size() == 385u && Parsed->Emitters.size() == 35u &&
+			Parsed->ActionSchedules.size() == 7u && Parsed->Modules.size() == 399u &&
+			Parsed->Properties.size() == 1434u &&
+			Parsed->PrimitiveLeaves.size() == 1572u &&
+			Parsed->Literals.size() == 1590u &&
+			Parsed->Distributions.size() == 629u &&
+			Parsed->SeedPolicies.size() == 14u &&
+			Parsed->ImplicitDefaults.size() == 14u &&
+			Parsed->PointLightFields.size() == 8u &&
+			Parsed->MaterialFamilies.size() == 23u &&
+			Parsed->MaterialRecipes.size() == 27u &&
+			Parsed->MaterialInputs.size() == 729u &&
+			Parsed->MaterialStaticBindings.size() == 94u &&
+			Parsed->MaterialRenderBindings.size() == 162u &&
+			Parsed->MaterialOccurrences.size() == 34u &&
+			Parsed->MaterialPolicies.size() == 255u &&
+			Parsed->MaterialTextureBindings.size() == 72u &&
+			ResolvedTextureCount == 72u && RuntimeCookReceiptCount == 68u &&
+			ReconstructedDeploymentReceiptCount == 4u &&
+			Parsed->RendererTextureResources.size() == 57u &&
+			Parsed->GeometryCarriers.size() == 7u &&
+			Parsed->GeometryUses.size() == 13u &&
+			!Parsed->Admission.bSourceExact &&
+			!Parsed->Admission.bRuntimeExecution && !Parsed->Admission.bProduct,
+			"Artist 31470 Reconstructed Runtime Program Parses To Immutable Typed Rows");
+
+		const auto RejectsTransactionally = [&Parsed, &Frozen](
+			const std::string& Candidate,
+			const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Identity)
+		{
+			const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Before =
+				Parsed;
+			const std::string BeforeHash = nullptr == Before ? std::string{} :
+				Before->Identity.strProgramSha256;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Preserved = Before;
+			std::string Error;
+			return !CEffectRuntimeAuthorityCodec::Parse_ReconstructedRuntimeProgram(
+					Candidate, Identity, Preserved, Error) &&
+				Preserved == Before && nullptr != Preserved &&
+				Preserved->Identity.strProgramSha256 == BeforeHash && !Error.empty();
+		};
+		const auto RejectsResealedSemanticTransactionally = [&Parsed](
+			const std::string& Candidate,
+			const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY& Identity,
+			const std::string_view ExpectedError)
+		{
+			const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Before =
+				Parsed;
+			const std::string BeforeHash = nullptr == Before ? std::string{} :
+				Before->Identity.strProgramSha256;
+			std::string Error;
+			const bool_t Rejected = !Validate_ReconstructedRuntimeProgramForHarness(
+				Candidate, Identity, Error) && Parsed == Before && nullptr != Parsed &&
+				Parsed->Identity.strProgramSha256 == BeforeHash &&
+				!ExpectedError.empty() && Error.find(ExpectedError) != std::string::npos;
+			if (!Rejected)
+			{
+				std::cerr << "Expected semantic rejection stage '" << ExpectedError
+					<< "', actual error: " << Error << '\n';
+			}
+			return Rejected;
+		};
+		const auto FlipAfter = [](std::string Value, const std::string_view Marker)
+		{
+			const size_t Offset = Value.find(Marker);
+			if (Offset != std::string::npos)
+			{
+				const size_t Character = Offset + Marker.size();
+				if (Character < Value.size())
+					Value[Character] = Value[Character] == '0' ? '1' : '0';
+			}
+			return Value;
+		};
+		const auto ReplaceOnce = [](std::string Value,
+			const std::string_view From, const std::string_view To)
+		{
+			const size_t Offset = Value.find(From);
+			if (Offset != std::string::npos)
+				Value.replace(Offset, From.size(), To);
+			return Value;
+		};
+
+		std::vector<std::pair<std::string, std::string>> Attacks;
+		Attacks.emplace_back("malformed", Text.substr(0u, Text.size() / 2u));
+		Attacks.emplace_back("utf8-bom", std::string("\xEF\xBB\xBF") + Text);
+		Attacks.emplace_back("duplicate-key",
+			ReplaceOnce(Text, "{\n", "{\n  \"schema\": \"forged\",\n"));
+		Attacks.emplace_back("unknown-root-key",
+			ReplaceOnce(Text, "{\n", "{\n  \"unknown\": 0,\n"));
+		Attacks.emplace_back("reordered-root",
+			ReplaceOnce(Text,
+				"  \"schema\": \"lostark.artist-31470-reconstructed-runtime-program\",\n"
+				"  \"formatVersion\": 1,\n",
+				"  \"formatVersion\": 1,\n"
+				"  \"schema\": \"lostark.artist-31470-reconstructed-runtime-program\",\n"));
+		Attacks.emplace_back("bool-as-int",
+			ReplaceOnce(Text, "\"sourceExact\": false", "\"sourceExact\": 0    "));
+		Attacks.emplace_back("nonfinite",
+			ReplaceOnce(Text, "\"geometryPreScale\": 0.01",
+				"\"geometryPreScale\": 1e999"));
+		Attacks.emplace_back("runtime-path",
+			ReplaceOnce(Text, "Effect/Artist/Textures/", "../Artist/Textures/"));
+		Attacks.emplace_back("row-sha",
+			FlipAfter(Text, "\"rowSha256\": \""));
+		Attacks.emplace_back("section-sha",
+			FlipAfter(Text, "\"orderedSha256\": \""));
+		Attacks.emplace_back("blocker-owner",
+			FlipAfter(Text, "\"preservedBlockers\": [\n        \""));
+		Attacks.emplace_back("blocker-ownership-projection",
+			FlipAfter(Text, "\"projectionSha256\": \""));
+		Attacks.emplace_back("texture-a-b-identity",
+			FlipAfter(Text, "\"sourceBindingRowSha256\": \""));
+		Attacks.emplace_back("texture-runtime-asset",
+			FlipAfter(Text, "\"runtimeAssetId\": \"Effect/"));
+		Attacks.emplace_back("program-sha",
+			FlipAfter(Text, "\"programSha256\": \""));
+
+		bool_t AllRejected = Baseline;
+		for (const auto& [Name, Attack] : Attacks)
+		{
+			const bool_t Rejected = Attack != Text &&
+				RejectsTransactionally(Attack, Frozen);
+			if (!Rejected)
+				std::cerr << "Reconstructed program attack accepted: " << Name << '\n';
+			AllRejected = AllRejected && Rejected;
+		}
+		runner.Require(AllRejected,
+			"Artist 31470 Reconstructed Program Rejects Malformed And Raw Identity Attacks Transactionally");
+
+		bool_t SemanticAllRejected = Baseline && RootParsed;
+		const auto RunResealedSectionAttack =
+			[&Root, &Frozen, &RejectsResealedSemanticTransactionally,
+				&SemanticAllRejected](const std::string_view Name,
+				const std::string_view Section, const size_t RowIndex,
+				const DATA_JSON_VALUE& MutatedRow,
+				const std::string_view ExpectedError)
+		{
+			if (!SemanticAllRejected)
+				return;
+			std::string Candidate;
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Identity;
+			const bool_t Built = Build_ResealedSectionFixture(
+				Root, Section, RowIndex, MutatedRow, Frozen, Candidate, Identity);
+			const bool_t Rejected = Built &&
+				RejectsResealedSemanticTransactionally(
+					Candidate, Identity, ExpectedError);
+			if (!Rejected)
+				std::cerr << "Resealed semantic attack accepted: " << Name << '\n';
+			SemanticAllRejected = SemanticAllRejected && Rejected;
+		};
+		const auto RunResealedRootAttack =
+			[&Frozen, &RejectsResealedSemanticTransactionally,
+				&SemanticAllRejected](const std::string_view Name,
+				const DATA_JSON_VALUE& MutatedRoot,
+				const std::string_view ExpectedError)
+		{
+			if (!SemanticAllRejected)
+				return;
+			std::string Candidate;
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Identity;
+			const bool_t Built = Build_ResealedRootFixture(
+				MutatedRoot, Frozen, Candidate, Identity);
+			const bool_t Rejected = Built &&
+				RejectsResealedSemanticTransactionally(
+					Candidate, Identity, ExpectedError);
+			if (!Rejected)
+				std::cerr << "Resealed semantic root attack accepted: " << Name << '\n';
+			SemanticAllRejected = SemanticAllRejected && Rejected;
+		};
+
+		if (RootParsed)
+		{
+			const DATA_JSON_VALUE* Emitters = Root.Find("emitters");
+			const DATA_JSON_VALUE* Schedules = Root.Find("actionSchedules");
+			const DATA_JSON_VALUE* GeometryCarriers = Root.Find("geometryCarriers");
+			const DATA_JSON_VALUE* Distributions = Root.Find("distributions");
+			const DATA_JSON_VALUE* Policies = Root.Find("materialPolicyRows");
+			const DATA_JSON_VALUE* Modules = Root.Find("modules");
+			const DATA_JSON_VALUE* GeometryUses = Root.Find("geometryUses");
+			const DATA_JSON_VALUE* Textures = Root.Find("materialTextureBindings");
+			const DATA_JSON_VALUE* Artifacts = Root.Find("inputArtifacts");
+			if (nullptr == Emitters || !Emitters->Is_Array() ||
+				Emitters->Get_Array().empty() || nullptr == GeometryCarriers ||
+				nullptr == Schedules || !Schedules->Is_Array() ||
+				Schedules->Get_Array().size() < 2u ||
+				!GeometryCarriers->Is_Array() || GeometryCarriers->Get_Array().empty() ||
+				nullptr == Distributions || !Distributions->Is_Array() ||
+				Distributions->Get_Array().empty() || nullptr == Policies ||
+				!Policies->Is_Array() || Policies->Get_Array().empty() ||
+				nullptr == Modules || !Modules->Is_Array() ||
+				Modules->Get_Array().size() < 2u || nullptr == GeometryUses ||
+				!GeometryUses->Is_Array() || GeometryUses->Get_Array().size() < 2u ||
+				nullptr == Textures || !Textures->Is_Array() ||
+				Textures->Get_Array().empty() || nullptr == Artifacts ||
+				!Artifacts->Is_Array() || Artifacts->Get_Array().empty())
+			{
+				SemanticAllRejected = false;
+			}
+			else
+			{
+				{
+					const DATA_JSON_VALUE& Row = Schedules->Get_Array()[0];
+					const DATA_JSON_VALUE& Foreign = Schedules->Get_Array()[1];
+					const DATA_JSON_VALUE* ForeignCue = Foreign.Find("sourceCueId");
+					const DATA_JSON_VALUE* ForeignOccurrence =
+						Foreign.Find("sourceOccurrenceId");
+					const DATA_JSON_VALUE* ForeignSystem = Foreign.Find("sourceSystemId");
+					const DATA_JSON_VALUE* EventIndex =
+						Row.Find("sourceReceiptEventIndex");
+					const DATA_JSON_VALUE* GlobalTime = Row.Find("globalTimeSeconds");
+					const auto RunScheduleFieldAttack =
+						[&Row, &RunResealedSectionAttack, &SemanticAllRejected](
+							const std::string_view Name, const std::string_view Field,
+							DATA_JSON_VALUE Replacement,
+							const std::string_view ExpectedError)
+					{
+						DATA_JSON_VALUE MutatedRow;
+						if (Replace_JsonObjectField(
+								Row, Field, std::move(Replacement), MutatedRow))
+						{
+							RunResealedSectionAttack(Name, "actionSchedules", 0u,
+								MutatedRow, ExpectedError);
+						}
+						else
+						{
+							SemanticAllRejected = false;
+						}
+					};
+					if (nullptr != ForeignCue && ForeignCue->Is_String() &&
+						nullptr != ForeignOccurrence && ForeignOccurrence->Is_String() &&
+						nullptr != ForeignSystem && ForeignSystem->Is_String() &&
+						nullptr != EventIndex && EventIndex->Is_Number() &&
+						nullptr != GlobalTime && GlobalTime->Is_Number())
+					{
+						RunScheduleFieldAttack("schedule-id", "scheduleId",
+							DATA_JSON_VALUE::String(
+								"action-schedule-ffffffffffffffffffffffff"),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-order", "order",
+							DATA_JSON_VALUE::Number(99.0, false),
+							"core row parse failed");
+						RunScheduleFieldAttack("schedule-source-cue", "sourceCueId",
+							DATA_JSON_VALUE::String(ForeignCue->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack(
+							"schedule-source-occurrence", "sourceOccurrenceId",
+							DATA_JSON_VALUE::String(ForeignOccurrence->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-source-system", "sourceSystemId",
+							DATA_JSON_VALUE::String(ForeignSystem->Get_String()),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack(
+							"schedule-source-event-index", "sourceReceiptEventIndex",
+							DATA_JSON_VALUE::Number(EventIndex->Get_Number() + 1.0, false),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-global-time", "globalTimeSeconds",
+							DATA_JSON_VALUE::Number(0.125, true),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-duration", "durationSeconds",
+							DATA_JSON_VALUE::Number(1.625, true),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-source-cue-row-sha",
+							"sourceCueRowSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')),
+							"ownership graph mismatch: frozen-subprojections");
+						RunScheduleFieldAttack("schedule-event-index-float-token",
+							"sourceReceiptEventIndex",
+							DATA_JSON_VALUE::Number(EventIndex->Get_Number(), true),
+							"core row parse failed");
+						RunScheduleFieldAttack("schedule-global-time-int-token",
+							"globalTimeSeconds",
+							DATA_JSON_VALUE::Number(GlobalTime->Get_Number(), false),
+							"core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Config = Row.Find("rendererRuntimeConfig");
+					DATA_JSON_VALUE MutatedConfig;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Config && Append_JsonObjectField(*Config,
+							"unknownNestedField", DATA_JSON_VALUE::Number(1.0, false),
+							MutatedConfig) &&
+						Replace_JsonObjectField(Row, "rendererRuntimeConfig",
+							std::move(MutatedConfig), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"nested-extra-key", "emitters", 0u, MutatedRow,
+							"core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = GeometryCarriers->Get_Array().front();
+					const DATA_JSON_VALUE* Submeshes = Row.Find("submeshes");
+					DATA_JSON_VALUE MissingBounds;
+					DATA_JSON_VALUE MutatedSubmeshes;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Submeshes && Submeshes->Is_Array() &&
+						!Submeshes->Get_Array().empty() &&
+						Remove_JsonObjectField(Submeshes->Get_Array().front(),
+							"boundsF32Hex", MissingBounds) &&
+						Replace_JsonArrayElement(*Submeshes, 0u,
+							std::move(MissingBounds), MutatedSubmeshes) &&
+						Replace_JsonObjectField(Row, "submeshes",
+							std::move(MutatedSubmeshes), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"nested-missing-key", "geometryCarriers", 0u, MutatedRow,
+							"Geometry row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = GeometryCarriers->Get_Array().front();
+					const DATA_JSON_VALUE* ByteSize =
+						Row.Find("candidateResourceByteSize");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ByteSize && ByteSize->Is_Number() &&
+						Replace_JsonObjectField(Row, "candidateResourceByteSize",
+							DATA_JSON_VALUE::Number(
+								ByteSize->Get_Number() + 1.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"geometry-carrier-byte-size", "geometryCarriers", 0u,
+							MutatedRow, "ownership graph mismatch: frozen-subprojections");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Distributions->Get_Array().front(),
+							"variant", DATA_JSON_VALUE::String("FORGED_VARIANT"),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"unsupported-enum", "distributions", 0u, MutatedRow,
+							"value row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t DescriptorPolicyIndex = Policies->Get_Array().size();
+					for (size_t Index = 0u; Index < Policies->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Oracle =
+							Policies->Get_Array()[Index].Find("d3dDescriptorOracle");
+						const DATA_JSON_VALUE* Kind = nullptr == Oracle ? nullptr :
+							Oracle->Find("descriptorKind");
+						if (nullptr != Oracle && Oracle->Is_Object() && nullptr != Kind &&
+							Kind->Is_String() && Kind->Get_String() ==
+								"D3D11_DEPTH_STENCIL_DESC")
+						{
+							DescriptorPolicyIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedActual;
+					DATA_JSON_VALUE MutatedOracle;
+					DATA_JSON_VALUE MutatedRow;
+					const DATA_JSON_VALUE* Oracle =
+						DescriptorPolicyIndex < Policies->Get_Array().size() ?
+						Policies->Get_Array()[DescriptorPolicyIndex].Find(
+							"d3dDescriptorOracle") : nullptr;
+					const DATA_JSON_VALUE* Actual = nullptr == Oracle ? nullptr :
+						Oracle->Find("actualDescriptor");
+					const DATA_JSON_VALUE* DepthEnable = nullptr == Actual ? nullptr :
+						Actual->Find("DepthEnable");
+					if (nullptr != Oracle && nullptr != Actual && nullptr != DepthEnable &&
+						DepthEnable->Is_Boolean() &&
+						Replace_JsonObjectField(*Actual, "DepthEnable",
+							DATA_JSON_VALUE::Boolean(!DepthEnable->Get_Boolean()),
+							MutatedActual) &&
+						Replace_JsonObjectField(*Oracle, "actualDescriptor",
+							std::move(MutatedActual), MutatedOracle) &&
+						Replace_JsonObjectField(Policies->Get_Array()[DescriptorPolicyIndex],
+							"d3dDescriptorOracle", std::move(MutatedOracle), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"material-d3d-descriptor", "materialPolicyRows",
+							DescriptorPolicyIndex, MutatedRow,
+							"Material policy parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t BooleanPolicyIndex = Policies->Get_Array().size();
+					for (size_t Index = 0u; Index < Policies->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Value =
+							Policies->Get_Array()[Index].Find("boolValue");
+						if (nullptr != Value && Value->Is_Boolean())
+						{
+							BooleanPolicyIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedRow;
+					if (BooleanPolicyIndex < Policies->Get_Array().size() &&
+						Replace_JsonObjectField(
+							Policies->Get_Array()[BooleanPolicyIndex], "boolValue",
+							DATA_JSON_VALUE::Number(1.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack("bool-as-int", "materialPolicyRows",
+							BooleanPolicyIndex, MutatedRow, "Material policy parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* ForeignHandler =
+						Modules->Get_Array()[1].Find("handlerRegistryId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ForeignHandler && ForeignHandler->Is_String() &&
+						Replace_JsonObjectField(Modules->Get_Array()[0],
+							"handlerRegistryId",
+							DATA_JSON_VALUE::String(ForeignHandler->Get_String()), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"handler-reassignment", "modules", 0u, MutatedRow,
+							"ownership graph mismatch: module-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(GeometryUses->Get_Array()[1], "order",
+							DATA_JSON_VALUE::Number(0.0, false), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"duplicate-owner-order", "geometryUses", 1u, MutatedRow,
+							"Geometry row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* FirstId =
+						GeometryUses->Get_Array()[0].Find("geometryUseId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != FirstId && FirstId->Is_String() &&
+						Replace_JsonObjectField(GeometryUses->Get_Array()[1],
+							"geometryUseId", DATA_JSON_VALUE::String(
+								FirstId->Get_String()), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"duplicate-global-id", "geometryUses", 1u, MutatedRow,
+							"ownership graph mismatch: global-ids");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* ForeignEmitter =
+						GeometryUses->Get_Array()[1].Find("emitterId");
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != ForeignEmitter && ForeignEmitter->Is_String() &&
+						Replace_JsonObjectField(GeometryUses->Get_Array()[0], "emitterId",
+							DATA_JSON_VALUE::String(ForeignEmitter->Get_String()),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"geometry-owner", "geometryUses", 0u, MutatedRow,
+							"ownership graph mismatch: renderer-texture-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Timing = Row.Find("timing");
+					DATA_JSON_VALUE MutatedLoop;
+					DATA_JSON_VALUE TimingCore;
+					DATA_JSON_VALUE WithProjection;
+					DATA_JSON_VALUE SealedTiming;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Timing &&
+						Replace_JsonObjectField(*Timing, "emitterLoopCount",
+							DATA_JSON_VALUE::Number(99.0, false), MutatedLoop) &&
+						Build_JsonObjectProjection(MutatedLoop, {
+								"requiredModuleId", "spawnModuleId", "lifetimeModuleId",
+								"emitterDelaySeconds", "emitterDelayPolicy",
+								"emitterDurationSeconds", "emitterDurationPolicy",
+								"emitterLoopCount", "bursts" }, TimingCore) &&
+						Replace_JsonObjectField(MutatedLoop, "sourceProjectionSha256",
+							DATA_JSON_VALUE::String(
+								CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+									CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+										TimingCore))), WithProjection) &&
+						Seal_JsonObject(WithProjection, "timingSha256", SealedTiming) &&
+						Replace_JsonObjectField(Row, "timing", std::move(SealedTiming),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"timing-literal-reverse", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: emitter-timing-renderer-reverse");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Random = Row.Find("random");
+					const DATA_JSON_VALUE* Seed = nullptr == Random ? nullptr :
+						Random->Find("emitterRandomSeed");
+					DATA_JSON_VALUE MutatedRandom;
+					DATA_JSON_VALUE SealedRandom;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Random && nullptr != Seed && Seed->Is_Number() &&
+						Replace_JsonObjectField(*Random, "emitterRandomSeed",
+							DATA_JSON_VALUE::Number(Seed->Get_Number() + 1.0, false),
+							MutatedRandom) &&
+						Seal_JsonObject(MutatedRandom, "policySha256", SealedRandom) &&
+						Replace_JsonObjectField(Row, "random", std::move(SealedRandom),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"random-seed-authority", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: emitter-timing-renderer-reverse:"
+							"emitter:0:authority-digest");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Config = Row.Find("rendererRuntimeConfig");
+					const DATA_JSON_VALUE* Color = nullptr == Config ? nullptr :
+						Config->Find("color");
+					const DATA_JSON_VALUE* Clip = nullptr == Color ? nullptr :
+						Color->Find("clip");
+					const DATA_JSON_VALUE* SourceNode = Row.Find("sourceNode");
+					const DATA_JSON_VALUE* RendererType = Row.Find("rendererType");
+					DATA_JSON_VALUE MutatedColor;
+					DATA_JSON_VALUE ConfigWithColor;
+					DATA_JSON_VALUE RendererNested;
+					DATA_JSON_VALUE WithSourceNode;
+					DATA_JSON_VALUE RendererProjection;
+					DATA_JSON_VALUE MutatedConfig;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Config && nullptr != Color && nullptr != Clip &&
+						Clip->Is_Number() && nullptr != SourceNode &&
+						nullptr != RendererType &&
+						Replace_JsonObjectField(*Color, "clip",
+							DATA_JSON_VALUE::Number(Clip->Get_Number() + 0.25, true),
+							MutatedColor) &&
+						Replace_JsonObjectField(*Config, "color", std::move(MutatedColor),
+							ConfigWithColor) &&
+						Build_JsonObjectProjection(ConfigWithColor, {
+								"color", "uv", "linearLerp", "mesh", "sprite", "decal",
+								"trail", "afterImage", "screenPost" }, RendererNested) &&
+						Append_JsonObjectField(RendererNested, "sourceNode", *SourceNode,
+							WithSourceNode) &&
+						Append_JsonObjectField(WithSourceNode, "rendererType", *RendererType,
+							RendererProjection) &&
+						Replace_JsonObjectField(ConfigWithColor, "sourceProjectionSha256",
+							DATA_JSON_VALUE::String(
+								CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+									CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+										RendererProjection))), MutatedConfig) &&
+						Replace_JsonObjectField(Row, "rendererRuntimeConfig",
+							std::move(MutatedConfig), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"renderer-config-color", "emitters", 0u, MutatedRow,
+							"ownership graph mismatch: "
+							"emitter-timing-renderer-reverse:aggregate");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Distributions->Get_Array().front();
+					const DATA_JSON_VALUE* Samples = Row.Find("samples");
+					DATA_JSON_VALUE MutatedSample;
+					DATA_JSON_VALUE MutatedSamples;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Samples && Samples->Is_Array() &&
+						!Samples->Get_Array().empty() &&
+						Replace_JsonObjectField(Samples->Get_Array().front(), "inputSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')), MutatedSample) &&
+						Replace_JsonArrayElement(*Samples, 0u, std::move(MutatedSample),
+							MutatedSamples) &&
+						Replace_JsonObjectField(Row, "samples", std::move(MutatedSamples),
+							MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"distribution-sample-input-digest", "distributions", 0u,
+							MutatedRow, "ownership graph mismatch: frozen-subprojections");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Textures->Get_Array().front(),
+							"sourceBindingRowSha256", DATA_JSON_VALUE::String(
+								std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"texture-a-b-source-identity", "materialTextureBindings",
+							0u, MutatedRow, "texture row parse failed: profile-count");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					size_t DeploymentIndex = Textures->Get_Array().size();
+					for (size_t Index = 0u; Index < Textures->Get_Array().size(); ++Index)
+					{
+						const DATA_JSON_VALUE* Status =
+							Textures->Get_Array()[Index].Find("sourceReceiptStatus");
+						if (nullptr != Status && Status->Is_String() &&
+							Status->Get_String() ==
+								"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT")
+						{
+							DeploymentIndex = Index;
+							break;
+						}
+					}
+					DATA_JSON_VALUE MutatedRow;
+					if (DeploymentIndex < Textures->Get_Array().size() &&
+						Replace_JsonObjectField(Textures->Get_Array()[DeploymentIndex],
+							"sourceDeploymentRowSha256",
+							DATA_JSON_VALUE::String(std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"texture-deployment-source-identity", "materialTextureBindings",
+							DeploymentIndex, MutatedRow,
+							"texture row parse failed: profile-count");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					DATA_JSON_VALUE MutatedRow;
+					if (Replace_JsonObjectField(Artifacts->Get_Array().front(),
+							"canonicalJsonSha256", DATA_JSON_VALUE::String(
+								std::string(64u, '0')), MutatedRow))
+					{
+						RunResealedSectionAttack(
+							"external-artifact-identity", "inputArtifacts", 0u,
+							MutatedRow, "core row parse failed");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE& Row = Emitters->Get_Array().front();
+					const DATA_JSON_VALUE* Blockers =
+						Row.Find("operationalCapBlockers");
+					DATA_JSON_VALUE MutatedBlockers;
+					DATA_JSON_VALUE MutatedRow;
+					if (nullptr != Blockers && Blockers->Is_Array() &&
+						!Blockers->Get_Array().empty())
+					{
+						DATA_JSON_VALUE::ARRAY Reduced = Blockers->Get_Array();
+						Reduced.erase(Reduced.begin());
+						MutatedBlockers = DATA_JSON_VALUE::Array(std::move(Reduced));
+						if (Replace_JsonObjectField(Row, "operationalCapBlockers",
+								std::move(MutatedBlockers), MutatedRow))
+						{
+							RunResealedSectionAttack(
+								"owned-blocker-removal", "emitters", 0u, MutatedRow,
+								"root/row/section seal mismatch");
+						}
+						else
+						{
+							SemanticAllRejected = false;
+						}
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+				{
+					const DATA_JSON_VALUE* Admission = Root.Find("admission");
+					DATA_JSON_VALUE MutatedAdmission;
+					DATA_JSON_VALUE MutatedRoot;
+					if (nullptr != Admission &&
+						Replace_JsonObjectField(*Admission, "runtimeExecution",
+							DATA_JSON_VALUE::Boolean(true), MutatedAdmission) &&
+						Replace_JsonObjectField(Root, "admission",
+							std::move(MutatedAdmission), MutatedRoot))
+					{
+						RunResealedRootAttack("admission-promotion", MutatedRoot,
+							"root/row/section seal mismatch");
+					}
+					else
+					{
+						SemanticAllRejected = false;
+					}
+				}
+			}
+		}
+		runner.Require(SemanticAllRejected,
+			"Artist 31470 Reconstructed Program Reaches Semantic Validation And Rejects Canonically Resealed Nested Ownership Identity And Admission Attacks Transactionally");
+
+		EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY ForgedIdentity = Frozen;
+		ForgedIdentity.strBuilderAuthorityCommitId[0] =
+			ForgedIdentity.strBuilderAuthorityCommitId[0] == '0' ? '1' : '0';
+		runner.Require(Baseline && RejectsTransactionally(Text, ForgedIdentity),
+			"Artist 31470 Reconstructed Program Rejects A-B Builder Identity Swap Transactionally");
+	}
+
 	void Test_Artist31470SourceContractRoundTrip(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& path)
@@ -5468,6 +9705,51 @@ int main(const int argc, char* argv[])
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-execution-plan")
+	{
+		if (argc <= 3 || nullptr == argv[2] || nullptr == argv[3])
+		{
+			std::cout << "[FAILURE] --effect-reconstructed-execution-plan requires the exact reconstructed program fixture and tracked runtime catalog.\n";
+			return 1;
+		}
+		Test_Artist31470CatalogProgramAuthority(
+			runner, std::filesystem::path(argv[2]),
+			std::filesystem::path(argv[3]));
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-render-resource-authority" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470CatalogRenderResourceAuthority(
+			runner, std::filesystem::path(argv[2]),
+			argc > 3 && nullptr != argv[3] ? std::filesystem::path(argv[3]) :
+				std::filesystem::path{});
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-runtime-authority")
+	{
+		if (argc <= 3 || nullptr == argv[2] || nullptr == argv[3])
+		{
+			std::cout << "[FAILURE] --effect-runtime-authority requires the exact reconstructed program fixture and tracked runtime catalog.\n";
+			return 1;
+		}
+		Test_EffectRuntimeAuthorityCatalog(runner);
+		Test_Artist31470CatalogProgramAuthority(
+			runner, std::filesystem::path(argv[2]),
+			std::filesystem::path(argv[3]));
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-runtime-program" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470ReconstructedRuntimeProgram(
+			runner, std::filesystem::path(argv[2]));
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

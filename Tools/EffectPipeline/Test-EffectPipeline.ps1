@@ -9,10 +9,35 @@ $assemblies = Join-Path $dataRoot 'Effects\Assemblies\Fixture'
 $components = Join-Path $dataRoot 'Effects\Components\Fixture'
 $effectResource = Join-Path $resourceRoot 'Effect\Test'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
+$utf8NoBomStrict = [Text.UTF8Encoding]::new($false, $true)
 
 function Write-Utf8([string]$Path, [string]$Text) {
     [IO.Directory]::CreateDirectory((Split-Path -Parent $Path)) | Out-Null
     [IO.File]::WriteAllText($Path, $Text, $utf8NoBom)
+}
+
+function Get-CanonicalTrackedTextSha256([string]$Path) {
+    $payload = [IO.File]::ReadAllBytes($Path)
+    if ($payload.Length -ge 3 -and $payload[0] -eq 0xEF -and
+        $payload[1] -eq 0xBB -and $payload[2] -eq 0xBF) {
+        throw "Tracked JSON must be UTF-8 without BOM: $Path"
+    }
+    try {
+        $text = $utf8NoBomStrict.GetString($payload)
+    }
+    catch {
+        throw "Tracked JSON must be valid UTF-8: $Path"
+    }
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $canonicalBytes = $utf8NoBom.GetBytes($normalized)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString(
+            $sha.ComputeHash($canonicalBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha.Dispose()
+    }
 }
 
 function Write-Fixture(
@@ -89,8 +114,7 @@ function Write-Fixture(
         })
         sourceActionCues = @($SourceActionCues)
         sourceDocumentSha256 = ('1' * 64)
-        sourceDocumentFileSha256 = (Get-FileHash -LiteralPath $authoringPath `
-            -Algorithm SHA256).Hash.ToLowerInvariant()
+        sourceDocumentFileSha256 = Get-CanonicalTrackedTextSha256 $authoringPath
     }
     Write-Utf8 (Join-Path $components 'Fixture_00.particlesystem.wfx.json') `
         (($component | ConvertTo-Json -Depth 40) + "`n")
@@ -204,6 +228,38 @@ try {
         $null -ne $baselineRuntime.effects[0].PSObject.Properties['payloadKind']) {
         throw 'Legacy-only publish no longer preserves the format-2 catalog shape.'
     }
+
+    $authoringPath = Join-Path $authored "$effectId.effect.json"
+    $authoringLf = [IO.File]::ReadAllText(
+        $authoringPath, $utf8NoBomStrict).Replace("`r`n", "`n").Replace("`r", "`n")
+    Write-Utf8 $authoringPath $authoringLf
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ([Convert]::ToBase64String($baseline) -ne
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
+        throw 'LF authoring checkout changed the published catalog identity.'
+    }
+
+    $authoringCrLf = $authoringLf.Replace("`n", "`r`n")
+    Write-Utf8 $authoringPath $authoringCrLf
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ([Convert]::ToBase64String($baseline) -ne
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
+        throw 'CRLF authoring checkout changed the published catalog identity.'
+    }
+
+    [byte[]]$bomAuthoring = @([byte]0xEF, [byte]0xBB, [byte]0xBF) +
+        $utf8NoBom.GetBytes($authoringCrLf)
+    [IO.File]::WriteAllBytes($authoringPath, $bomAuthoring)
+    Assert-PublishRejected 'UTF-8 BOM authoring' $baseline
+
+    $semanticAuthoring = $authoringLf | ConvertFrom-Json
+    $semanticAuthoring.displayName = 'Semantically Changed Fixture'
+    Write-Utf8 $authoringPath `
+        (($semanticAuthoring | ConvertTo-Json -Depth 30) + "`n")
+    Assert-PublishRejected 'Unresealed authoring semantic mutation' $baseline
+    Write-Fixture $document $catalog
 
     $componentPath = Join-Path $components 'Fixture_00.particlesystem.wfx.json'
     $assemblyPath = Join-Path $assemblies "$effectId.assembly.json"
@@ -665,7 +721,7 @@ try {
         [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
         throw 'Required binding failure changed the committed runtime catalog.'
     }
-    Write-Host 'PASS: Effect pipeline v12 grouped-source/v8 particle-system/v7 model-cue/v6 compatibility/mesh-particle publish, full Assembly identity, shader-profile/version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
+    Write-Host 'PASS: Effect pipeline v12 grouped-source/v8 particle-system/v7 model-cue/v6 compatibility/mesh-particle publish, tracked-text LF/CRLF parity with BOM/semantic-mutation rejection, full Assembly identity, shader-profile/version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
 }
 finally {
     if (Test-Path -LiteralPath $fixture) {

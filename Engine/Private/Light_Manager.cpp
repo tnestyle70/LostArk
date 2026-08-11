@@ -17,6 +17,8 @@ namespace
 	{
 		if (Light.eType >= LIGHT::END || !IsFinite4(Light.vDiffuse) ||
 			!IsFinite4(Light.vAmbient) || !IsFinite4(Light.vSpecular) ||
+			!std::isfinite(Light.fFalloffExponent) ||
+			Light.fFalloffExponent <= 0.f ||
 			Light.vDiffuse.x < 0.f || Light.vDiffuse.y < 0.f ||
 			Light.vDiffuse.z < 0.f || Light.vAmbient.x < 0.f ||
 			Light.vAmbient.y < 0.f || Light.vAmbient.z < 0.f ||
@@ -33,7 +35,7 @@ namespace
 				Light.vDirection.z * Light.vDirection.z > 0.000001f;
 		}
 		return IsFinite4(Light.vPosition) && std::isfinite(Light.fRange) &&
-			Light.fRange > 0.000001f;
+			Light.fRange > 0.f;
 	}
 }
 
