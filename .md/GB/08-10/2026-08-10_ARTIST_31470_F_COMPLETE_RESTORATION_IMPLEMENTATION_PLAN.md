@@ -289,6 +289,52 @@ ordered module 순서와 module의 `distributionIds` 순서를 따른다. operat
 operation 2의 random-lock axis는 필요한 component draw를 모두 소비한 뒤 적용한다. cylinder handler는
 radius, height, angle, surfaceOnly=false일 때만 radial,
 height offset, startLocation, velocityScale 순서다. 선택 Mesh는 surfaceOnly=true이므로 radial draw가 없다.
+required/lifetime/spawn module과 그 timing distribution은 fixed-step timing core가 이미 occurrence 생성,
+`iLifetimeRandomValue`, lifetime, spawn step에 반영한 authority다. selected packet evaluator는 이 세 handler를
+consumed 집합에 포함하고 timing packet과 identity를 검증하지만 별도 local xorshift stream에서 다시 평가하거나
+unit을 소비하지 않는다. 따라서 local stream의 첫 draw는 ordered module 순서의 첫 non-timing visual distribution이다.
+required module의 fixed literal도 draw를 추가하지 않는다. 선택 행의 exact local draw sequence는 다음과 같다.
+
+```text
+Mesh026 seed 2215704123
+01 3224154448 0.75068195554210848 M002 startsize op2 c0
+02 2530594867 0.58920003184797243 M002 startsize op2 c1
+03 3064425754 0.71349222089943765 M002 startsize op2 c2
+04  998511512 0.23248407808888799 M003 startvelocity op2 c0
+05 2266931971 0.52781123005035591 M003 startvelocity op2 c1
+06 1017363772 0.23687346192004008 M003 startvelocity op2 c2
+07  730271614 0.17002960996935834 M006 acceleration op2 c0
+08 2273174282 0.52926463133871193 M006 acceleration op2 c1
+09 1485532676 0.34587752920246628 M006 acceleration op2 c2
+10 2620743809 0.61018946804343477 M007 startrotationrate op2 c0
+11  881740531 0.20529621541623402 M009 cylinder angle
+12 1205524347 0.28068300971777249 M009 cylinder height offset
+13 3145893313 0.73246036510273360 M009 velocityscale op2 c0
+14 2355157980 0.54835294851762073 M010 startlocation op3 whole-vector selector
+final state 2355157980; surfaceOnly=true이므로 cylinder radial draw 없음
+
+Sprite027 seed 244989949
+01 1708315311 0.39774815351649845 M002 startsize op3 whole-vector selector
+02 3479339244 0.81009679585930350 M004 startvelocity op2 c0
+03 1888920883 0.43979866510252436 M004 startvelocity op2 c1
+04  572682827 0.13333811125097286 M004 startvelocity op2 c2
+05 3775900606 0.87914536867270832 M007 startlocation op2 c0
+06 2608091586 0.60724364281800658 M007 startlocation op2 c1
+07  953103844 0.22191178151916521 M007 startlocation op2 c2
+final state 953103844; procedural draw 없음
+```
+
+이 sequence에서 Mesh pre-cue packet의 size XZY는
+`[1.6260229333131626,1.5702383313491564,1.3838000477719588]`, acceleration은
+`[0,-11.308244941595067,0]`, rotation rate는 `79.33641699127304 deg/s`, local position은
+`[1.0635928511667767,0.6978068300971776,-0.28824338214256146]`, velocity는
+`[0.18857087353033217,2.231900362239327,-0.653603293505097]`, handler RGBA는 implicit alpha
+identity를 적용한 `[0,0,0,1]`이다. Sprite packet의 signed world-size XZY는 `[-0.5,0,0.4]`,
+velocity는 `[0.8100967958593035,0.28666618887490275,0]`, local position은
+`[3.5165814746908333,0.1,-0.10724364281800661]`, color는
+`[0.009999999776482582,0.10000000149011612,0.20000000298023224,1.5]`, dynamic parameter는
+`[1,0.5,1,1]`이다.
+
 이 순서와 RNG version은 packet projection에 들어가며 legacy UE LCG나 timing emitter stream을 재사용하지
 않는다. step 88 serial 0의 timing identity는 Mesh occurrence/lifetime RNG
 `2215704123/2215704123`, lifetime `2.257941908612368`; Sprite는
