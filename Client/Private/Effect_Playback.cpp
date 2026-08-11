@@ -646,6 +646,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	m_Document = std::move(StagedDocument);
 	m_pPreparedResources = std::move(pPreparedResources);
 	m_ReconstructedRuntimeBoundary.Clear();
+	m_pReconstructedExecutionPlan.reset();
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
@@ -662,6 +663,12 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	if (!StagedBoundary.Stage(std::move(pPreparation),
 		EFFECT_RECONSTRUCTED_RUNTIME_SEAM::PLAYBACK, strOutError))
 		return false;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> StagedPlan;
+	if (!CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+		StagedBoundary.Get_Preparation(), StagedPlan, strOutError))
+	{
+		return false;
+	}
 	m_Document = {};
 	m_pPreparedResources.reset();
 	m_States.clear();
@@ -674,6 +681,7 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_fDurationSeconds = 0.f;
 	m_iSimulationStep = 0u;
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedExecutionPlan = std::move(StagedPlan);
 	strOutError.clear();
 	return true;
 }

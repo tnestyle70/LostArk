@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_Catalog.h"
+#include "Effect_ReconstructedExecution.h"
 
 #include <string>
 #include <string_view>
@@ -263,6 +264,11 @@ public:
 	{
 		return m_ReconstructedRuntimeBoundary.Get_Program();
 	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+		Get_ReconstructedExecutionPlan() const
+	{
+		return m_pReconstructedExecutionPlan;
+	}
 
 private:
 	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
@@ -361,6 +367,8 @@ private:
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_RESOURCES> m_pPreparedResources;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+		m_pReconstructedExecutionPlan;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;

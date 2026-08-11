@@ -32,6 +32,7 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
+	<ClInclude Include="..\Public\Effect_ReconstructedExecution.h" />
     <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h" />
     <ClInclude Include="..\Public\Effect_ComponentDocument.h" />
     <ClInclude Include="..\Public\Effect_Distribution.h" />
@@ -141,6 +142,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
+	<ClCompile Include="..\Private\Effect_ReconstructedExecution.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
     <ClCompile Include="..\Private\Effect_Distribution.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp" />

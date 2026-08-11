@@ -13,6 +13,7 @@
 #include "Effect_Object.h"
 #include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
+#include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
 #include "PlayerSkillCatalog.h"
 #include "PresentationProvider.h"
@@ -29,6 +30,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
@@ -4195,6 +4197,645 @@ namespace
 		}
 	}
 
+	void Test_Artist31470TypedExecutionPlan(
+		TEST_RUNNER& runner,
+		const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY& CatalogIdentity,
+		const std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>&
+			Program,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& Preparation,
+		Client::CEffectPlayback& Playback)
+	{
+		using namespace Client;
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> Plan =
+			Playback.Get_ReconstructedExecutionPlan();
+		std::array<uint32_t, 7u> ScheduleEmitterCounts{};
+		bool_t ExactScheduleOrder = nullptr != Plan &&
+			Plan->Get_ScheduleOrder().size() == ScheduleEmitterCounts.size();
+		for (size_t Index = 0u;
+			ExactScheduleOrder && Index < ScheduleEmitterCounts.size(); ++Index)
+		{
+			const std::string& ScheduleId = Plan->Get_ScheduleOrder()[Index];
+			const auto Iterator = Plan->Get_Schedules().find(ScheduleId);
+			ExactScheduleOrder = Iterator != Plan->Get_Schedules().end() &&
+				Iterator->second.iOrder == Index;
+			if (ExactScheduleOrder)
+			{
+				ScheduleEmitterCounts[Index] = static_cast<uint32_t>(
+					Iterator->second.EmitterIds.size());
+			}
+		}
+		const std::array<uint32_t, 7u> ExpectedScheduleCounts{
+			4u, 1u, 15u, 12u, 1u, 1u, 1u };
+		const std::array<uint32_t, 5u> ExpectedDistributionCounts{
+			612u, 8u, 5u, 1u, 3u };
+		constexpr std::string_view FrozenSeededEmitterId =
+			"fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01::"
+			"action-31470/stage-000/notify-028::FX_CM_01.distortion_onelayer."
+			"par_convatedisol_fsm_pushinghit_01.particlespriteemitter_21";
+		const std::string FrozenSeededModuleId =
+			std::string(FrozenSeededEmitterId) + "::module:001";
+		const std::string FrozenSeededPropertyId =
+			FrozenSeededModuleId + "::property:lifetime";
+		const std::string FrozenSeededDistributionId =
+			FrozenSeededModuleId + "::distribution:lifetime";
+		const std::string FrozenSeededPolicyId =
+			FrozenSeededModuleId + "::seed-policy";
+		const EFFECT_RECONSTRUCTED_EXECUTION_PLAN_SUMMARY* Summary =
+			nullptr == Plan ? nullptr : &Plan->Get_Summary();
+		std::array<uint32_t, 5u> ModuleRoleCounts{};
+		uint32_t CpuTimingDistributionCount = 0u;
+		uint32_t DeferredEfDistributionCount = 0u;
+		bool_t FrozenSeededAuthority = false;
+		if (nullptr != Plan)
+		{
+			for (const auto& [ModuleId, Module] : Plan->Get_Modules())
+			{
+				UNREFERENCED_PARAMETER(ModuleId);
+				++ModuleRoleCounts[static_cast<size_t>(Module.eRole)];
+			}
+			for (const auto& [DistributionId, Distribution] :
+				Plan->Get_Distributions())
+			{
+				UNREFERENCED_PARAMETER(DistributionId);
+				CpuTimingDistributionCount += Distribution.bCpuTimingExecutable;
+				DeferredEfDistributionCount +=
+					Distribution.eVariant ==
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::EF_MULTIPLY &&
+						!Distribution.bCpuTimingExecutable;
+			}
+			const auto& Seeded = Plan->Get_SeededLifetimeAuthority();
+			FrozenSeededAuthority =
+				Seeded.strEmitterId == FrozenSeededEmitterId &&
+				Seeded.strModuleId == FrozenSeededModuleId &&
+				Seeded.strPropertyId == FrozenSeededPropertyId &&
+				Seeded.strDistributionId == FrozenSeededDistributionId &&
+				Seeded.strSeedPolicyId == FrozenSeededPolicyId &&
+				Seeded.strModuleHandlerRegistryId ==
+					"handler-e2090fa9d17f0261c4dd44af" &&
+				Seeded.strPropertyHandlerRegistryId ==
+					"handler-bd8a985dfc08db23f1e06bd1" &&
+				Seeded.strEvaluatorRegistryId ==
+					"handler-3dbd1f0b4bdedf14ab3e9df0" &&
+				Seeded.strCapabilityPolicyFamilyId ==
+					"source.reconstructed.seeded.v1" &&
+				Seeded.strCapabilityImplementationId ==
+					"source.reconstructed.seeded.v1.implementation" &&
+				Seeded.iCapabilityImplementationVersion == 1u &&
+				Seeded.strCapabilityImplementationSha256 ==
+					"ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01" &&
+				Seeded.strModuleRowSha256 ==
+					"5fba6a5d4df33c509efe4ae08f30db0644bd78aa245e434c4fad33c3a082bc3f" &&
+				Seeded.strPropertyRowSha256 ==
+					"bd9b6e05cf6f055016dcaf4bdc16728f33ffda94d245897383e7b0802b46a21d" &&
+				Seeded.strDistributionRowSha256 ==
+					"62e3dfc92a0f943bbabee82a1d148a0a8e08a7a04756c00f3cad706c825c5de9" &&
+				Seeded.strSeedPolicyRowSha256 ==
+					"1d43e93331e50168277ffbc0ddb7709bdec0bf528541557362feb705cb39ee3a";
+		}
+		runner.Require(nullptr != Plan && nullptr != Summary &&
+			Plan->Get_Preparation().get() == Preparation.get() &&
+			Plan->Get_Program().get() == Program.get() &&
+			Plan->Get_Identity().iPlanVersion == 1u &&
+			Plan->Get_Identity().iOccurrenceRngVersion == 1u &&
+			Plan->Get_Identity().iFixedStepHz == 60u &&
+			Plan->Get_Identity().iCatalogRevision ==
+				CatalogIdentity.iCatalogRevision &&
+			Plan->Get_Identity().strProgramSha256 ==
+				CatalogIdentity.strProgramSha256 &&
+			Plan->Get_Identity().strSemanticProjectionSha256.size() == 64u &&
+			Summary->iScheduleCount == 7u && Summary->iEmitterCount == 35u &&
+			Summary->iModuleCount == 399u &&
+			Summary->iDistributionCount == 629u &&
+			Summary->iBurstCount == 31u &&
+			Summary->iLifetimeModuleCount == 34u &&
+			Summary->iSeededLifetimeModuleCount == 1u &&
+			Summary->iOperationalCapSum == 1291u &&
+			Summary->iOperationalCapMaximum == 594u &&
+			Summary->iRibbonOperationalMaxPoints == 500u &&
+			Summary->DistributionVariantCounts == ExpectedDistributionCounts &&
+			Plan->Get_SeedPolicies().size() == 14u &&
+			ModuleRoleCounts == std::array<uint32_t, 5u>{
+				35u, 35u, 34u, 1u, 294u } &&
+			CpuTimingDistributionCount == 105u &&
+			DeferredEfDistributionCount == 3u &&
+			ScheduleEmitterCounts == ExpectedScheduleCounts &&
+			FrozenSeededAuthority,
+			"Artist 31470 Typed Plan Freezes 7/35/399/629 Schedule Lifetime Burst Cap And Distribution Denominators");
+		if (nullptr == Plan)
+			return;
+
+		bool_t ExactReverseJoins = Plan->Get_EmitterOrder().size() == 35u &&
+			Plan->Get_ModuleOrder().size() == 399u &&
+			Plan->Get_DistributionOrder().size() == 629u;
+		std::set<std::string, std::less<>> StableIds;
+		for (const std::string& EmitterId : Plan->Get_EmitterOrder())
+		{
+			const auto Emitter = Plan->Get_Emitters().find(EmitterId);
+			if (Emitter == Plan->Get_Emitters().end())
+			{
+				ExactReverseJoins = false;
+				continue;
+			}
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(EmitterId).second &&
+				Plan->Get_Schedules().contains(Emitter->second.strScheduleId);
+			for (const std::string& ModuleId : Emitter->second.ModuleIds)
+			{
+				const auto Module = Plan->Get_Modules().find(ModuleId);
+				if (Module == Plan->Get_Modules().end())
+				{
+					ExactReverseJoins = false;
+					continue;
+				}
+				ExactReverseJoins = ExactReverseJoins &&
+					Module->second.strEmitterId == EmitterId;
+			}
+		}
+		for (const std::string& ModuleId : Plan->Get_ModuleOrder())
+		{
+			const auto Module = Plan->Get_Modules().find(ModuleId);
+			if (Module == Plan->Get_Modules().end())
+			{
+				ExactReverseJoins = false;
+				continue;
+			}
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(ModuleId).second;
+			for (const std::string& DistributionId : Module->second.DistributionIds)
+			{
+				const auto Distribution =
+					Plan->Get_Distributions().find(DistributionId);
+				ExactReverseJoins = ExactReverseJoins &&
+					Distribution != Plan->Get_Distributions().end() &&
+					Distribution->second.strModuleId == ModuleId;
+			}
+		}
+		for (const std::string& DistributionId : Plan->Get_DistributionOrder())
+		{
+			ExactReverseJoins = ExactReverseJoins &&
+				StableIds.insert(DistributionId).second &&
+				Plan->Get_Distributions().contains(DistributionId);
+		}
+		runner.Require(ExactReverseJoins,
+			"Artist 31470 Typed Plan Uses Exact Stable IDs And Complete Reverse Joins Without Vector Index Identity");
+
+		std::string Status;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			EarlyState;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			EarlyFrame;
+		const bool_t EarlySimulated = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 0.1, EarlyState, EarlyFrame, Status);
+		uint32_t WaitingSchedule = 0u;
+		uint32_t WaitingDelay = 0u;
+		uint32_t Emitting = 0u;
+		if (nullptr != EarlyState)
+		{
+			for (const auto& Emitter : EarlyState->Get_Emitters())
+			{
+				WaitingSchedule += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_SCHEDULE;
+				WaitingDelay += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::WAITING_FOR_DELAY;
+				Emitting += Emitter.ePhase ==
+					EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::EMITTING;
+			}
+		}
+		runner.Require(EarlySimulated && nullptr != EarlyState &&
+			nullptr != EarlyFrame && EarlyState->Get_FixedStepIndex() == 6u &&
+			EarlyState->Get_Emitters().size() == 35u && WaitingSchedule == 31u &&
+			WaitingDelay >= 1u && Emitting >= 1u,
+			"Artist 31470 CPU Inspection Uses 60Hz Schedule And Emitter Delay Gates");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			StateA;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			FrameA;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			StateB;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			FrameB;
+		const bool_t SimulatedA = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 1.75, StateA, FrameA, Status);
+		const bool_t SimulatedB = CEffectReconstructedCpuInspector::Simulate(
+			Plan, 1.75, StateB, FrameB, Status);
+		bool_t ExactEmitterOrder = nullptr != StateA &&
+			StateA->Get_Emitters().size() == Plan->Get_EmitterOrder().size();
+		bool_t CapsHeld = ExactEmitterOrder;
+		for (size_t Index = 0u;
+			ExactEmitterOrder && Index < Plan->Get_EmitterOrder().size(); ++Index)
+		{
+			const auto& State = StateA->Get_Emitters()[Index];
+			const auto& Emitter = Plan->Get_Emitters().at(
+				Plan->Get_EmitterOrder()[Index]);
+			ExactEmitterOrder = State.strEmitterId ==
+				Plan->Get_EmitterOrder()[Index];
+			CapsHeld = CapsHeld &&
+				State.iActiveCount <= Emitter.iOperationalMaxParticles;
+		}
+		bool_t UniqueOccurrenceIds = nullptr != FrameA;
+		bool_t StablePacketOrder = nullptr != FrameA;
+		std::set<std::string, std::less<>> OccurrenceIds;
+		std::map<std::string, uint32_t, std::less<>> PacketEmitterOrder;
+		uint32_t NextPacketEmitterOrder = 0u;
+		for (const std::string& ScheduleId : Plan->Get_ScheduleOrder())
+		{
+			for (const std::string& EmitterId :
+				Plan->Get_Schedules().at(ScheduleId).EmitterIds)
+			{
+				PacketEmitterOrder.emplace(EmitterId, NextPacketEmitterOrder++);
+			}
+		}
+		uint32_t PriorEmitterOrder = 0u;
+		uint64_t PriorSpawnSerial = 0u;
+		bool_t FirstPacket = true;
+		if (nullptr != FrameA)
+		{
+			for (const auto& Packet : FrameA->Get_ActiveOccurrences())
+			{
+				const auto Order = PacketEmitterOrder.find(Packet.strEmitterId);
+				UniqueOccurrenceIds = UniqueOccurrenceIds &&
+					!Packet.strOccurrenceId.empty() &&
+					OccurrenceIds.insert(Packet.strOccurrenceId).second &&
+					Plan->Get_Emitters().contains(Packet.strEmitterId) &&
+					Packet.fAgeSeconds >= 0.0 &&
+					Packet.fAgeSeconds < Packet.fLifetimeSeconds;
+				StablePacketOrder = StablePacketOrder &&
+					Order != PacketEmitterOrder.end() &&
+					(FirstPacket || Order->second > PriorEmitterOrder ||
+						(Order->second == PriorEmitterOrder &&
+						 Packet.iSpawnSerial > PriorSpawnSerial));
+				if (Order != PacketEmitterOrder.end())
+				{
+					PriorEmitterOrder = Order->second;
+					PriorSpawnSerial = Packet.iSpawnSerial;
+				}
+				FirstPacket = false;
+			}
+		}
+		uint32_t SeededEmitterCount = 0u;
+		bool_t SeededStateCovered = false;
+		bool_t SeededPacketCovered = false;
+		for (const std::string& EmitterId : Plan->Get_EmitterOrder())
+		{
+			const auto& Emitter = Plan->Get_Emitters().at(EmitterId);
+			if (!Emitter.strLifetimeSeedPolicyId.has_value())
+				continue;
+			++SeededEmitterCount;
+			if (nullptr != StateA)
+			{
+				const auto State = std::find_if(StateA->Get_Emitters().begin(),
+					StateA->Get_Emitters().end(), [&EmitterId](const auto& Row)
+					{ return Row.strEmitterId == EmitterId; });
+				SeededStateCovered = State != StateA->Get_Emitters().end() &&
+					State->iLifetimeRandomState != 0u;
+			}
+			if (nullptr != FrameA)
+			{
+				SeededPacketCovered = std::any_of(
+					FrameA->Get_ActiveOccurrences().begin(),
+					FrameA->Get_ActiveOccurrences().end(),
+					[&EmitterId](const auto& Packet)
+					{
+						return Packet.strEmitterId == EmitterId &&
+							Packet.iLifetimeRandomValue != 0u &&
+							Packet.iOccurrenceRandomValue != 0u;
+					});
+			}
+		}
+		runner.Require(SimulatedA && SimulatedB && nullptr != StateA &&
+			nullptr != FrameA && nullptr != StateB && nullptr != FrameB &&
+			StateA->Get_ProjectionSha256() == StateB->Get_ProjectionSha256() &&
+			FrameA->Get_ProjectionSha256() == FrameB->Get_ProjectionSha256() &&
+			!FrameA->Get_ActiveOccurrences().empty() && ExactEmitterOrder &&
+			CapsHeld && UniqueOccurrenceIds && StablePacketOrder &&
+			SeededEmitterCount == 1u && SeededStateCovered && SeededPacketCovered,
+			"Artist 31470 CPU Inspection RNG Packet Order Lifetime And Caps Are Deterministic");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_STATE>
+			CompletedState;
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_CPU_INSPECTION_FRAME>
+			CompletedFrame;
+		const bool_t CompletedSimulation =
+			CEffectReconstructedCpuInspector::Simulate(
+				Plan, 60.0, CompletedState, CompletedFrame, Status);
+		const bool_t AllLoopsComplete = nullptr != CompletedState &&
+			std::all_of(CompletedState->Get_Emitters().begin(),
+				CompletedState->Get_Emitters().end(), [](const auto& Emitter)
+				{
+					return Emitter.ePhase ==
+						EFFECT_RECONSTRUCTED_CPU_EMITTER_PHASE::COMPLETE &&
+						Emitter.iActiveCount == 0u;
+				});
+		runner.Require(CompletedSimulation && AllLoopsComplete &&
+			nullptr != CompletedFrame &&
+			CompletedFrame->Get_ActiveOccurrences().empty(),
+			"Artist 31470 CPU Inspection Completes Exact Loop And Lifetime Tails Without Fallback");
+
+		const auto PreservedState = StateA;
+		const auto PreservedFrame = FrameA;
+		const bool_t InvalidSimulationRejected =
+			!CEffectReconstructedCpuInspector::Simulate(
+				Plan, -1.0, StateA, FrameA, Status);
+		runner.Require(InvalidSimulationRejected &&
+			StateA.get() == PreservedState.get() &&
+			FrameA.get() == PreservedFrame.get(),
+			"Artist 31470 CPU Inspection Invalid Sample Preserves Prior State And Frame");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			PreservedPlan = Plan;
+		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY WrongIdentity = CatalogIdentity;
+		WrongIdentity.strProgramSha256 = std::string(64u, '0');
+		const bool_t WrongIdentityRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				WrongIdentity, Program, PreservedPlan, Status);
+		auto UnknownVariant =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		UnknownVariant->Distributions.front().eVariant =
+			static_cast<EFFECT_RUNTIME_DISTRIBUTION_VARIANT>(255u);
+		const bool_t UnknownVariantRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, UnknownVariant, PreservedPlan, Status);
+		auto WrongJoin =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		WrongJoin->Emitters.front().strScheduleId = "unknown.schedule";
+		const bool_t WrongJoinRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, WrongJoin, PreservedPlan, Status);
+		auto UnknownHandler =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		UnknownHandler->Modules.front().strHandlerRegistryId = "unknown.handler";
+		const bool_t UnknownHandlerRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, UnknownHandler, PreservedPlan, Status);
+		auto WrongSeed =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		for (const auto& Module : WrongSeed->Modules)
+		{
+			if (Module.strExactSourceClass != "particlemodulelifetime_seeded")
+				continue;
+			for (auto& Seed : WrongSeed->SeedPolicies)
+			{
+				if (Seed.Row.strId == Module.strSeedPolicyId)
+					Seed.RandomSeeds = { 4 };
+			}
+		}
+		const bool_t WrongSeedRejected =
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, WrongSeed, PreservedPlan, Status);
+		runner.Require(WrongIdentityRejected && UnknownVariantRejected &&
+			WrongJoinRejected && UnknownHandlerRejected && WrongSeedRejected &&
+			PreservedPlan.get() == Plan.get(),
+			"Artist 31470 Typed Plan Rejects A B Identity Unknown Variant And Broken Reverse Join Transactionally");
+
+		auto SwappedLifetimeAuthority =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto SeededModule = std::find_if(
+			SwappedLifetimeAuthority->Modules.begin(),
+			SwappedLifetimeAuthority->Modules.end(),
+			[&FrozenSeededModuleId](const auto& Row)
+			{ return Row.Row.strId == FrozenSeededModuleId; });
+		auto OrdinaryLifetimeModule = std::find_if(
+			SwappedLifetimeAuthority->Modules.begin(),
+			SwappedLifetimeAuthority->Modules.end(), [](const auto& Row)
+			{ return Row.strExactSourceClass == "particlemodulelifetime"; });
+		const bool_t SwapFixtureComplete =
+			SeededModule != SwappedLifetimeAuthority->Modules.end() &&
+			OrdinaryLifetimeModule != SwappedLifetimeAuthority->Modules.end();
+		if (SwapFixtureComplete)
+		{
+			const auto SeededRow = SeededModule->Row;
+			const auto SeededEmitterId = SeededModule->strEmitterId;
+			const auto SeededPropertyIds = SeededModule->PropertyIds;
+			const auto SeededPrimitiveLeafIds = SeededModule->PrimitiveLeafIds;
+			const auto SeededLiteralIds = SeededModule->LiteralIds;
+			const auto SeededDistributionIds = SeededModule->DistributionIds;
+			const auto SeededImplicitDefaultIds = SeededModule->ImplicitDefaultIds;
+			const auto OrdinaryRow = OrdinaryLifetimeModule->Row;
+			const auto OrdinaryEmitterId = OrdinaryLifetimeModule->strEmitterId;
+			const auto OrdinaryPropertyIds = OrdinaryLifetimeModule->PropertyIds;
+			const auto OrdinaryPrimitiveLeafIds =
+				OrdinaryLifetimeModule->PrimitiveLeafIds;
+			const auto OrdinaryLiteralIds = OrdinaryLifetimeModule->LiteralIds;
+			const auto OrdinaryDistributionIds =
+				OrdinaryLifetimeModule->DistributionIds;
+			const auto OrdinaryImplicitDefaultIds =
+				OrdinaryLifetimeModule->ImplicitDefaultIds;
+			std::swap(*SeededModule, *OrdinaryLifetimeModule);
+			SeededModule->Row = SeededRow;
+			SeededModule->strEmitterId = SeededEmitterId;
+			SeededModule->PropertyIds = SeededPropertyIds;
+			SeededModule->PrimitiveLeafIds = SeededPrimitiveLeafIds;
+			SeededModule->LiteralIds = SeededLiteralIds;
+			SeededModule->DistributionIds = SeededDistributionIds;
+			SeededModule->ImplicitDefaultIds = SeededImplicitDefaultIds;
+			OrdinaryLifetimeModule->Row = OrdinaryRow;
+			OrdinaryLifetimeModule->strEmitterId = OrdinaryEmitterId;
+			OrdinaryLifetimeModule->PropertyIds = OrdinaryPropertyIds;
+			OrdinaryLifetimeModule->PrimitiveLeafIds = OrdinaryPrimitiveLeafIds;
+			OrdinaryLifetimeModule->LiteralIds = OrdinaryLiteralIds;
+			OrdinaryLifetimeModule->DistributionIds = OrdinaryDistributionIds;
+			OrdinaryLifetimeModule->ImplicitDefaultIds = OrdinaryImplicitDefaultIds;
+			for (auto& Seed : SwappedLifetimeAuthority->SeedPolicies)
+			{
+				if (Seed.Row.strId == FrozenSeededPolicyId)
+					Seed.strModuleId = OrdinaryLifetimeModule->Row.strId;
+			}
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> SwapPlan = Plan;
+		std::string SwapStatus;
+		const bool_t CoordinatedSwapRejected = SwapFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, SwappedLifetimeAuthority, SwapPlan, SwapStatus);
+		runner.Require(CoordinatedSwapRejected && SwapPlan.get() == Plan.get() &&
+			SwapStatus ==
+				"Reconstructed execution frozen seeded lifetime authority tuple is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Seeded Lifetime Full Object Authority Swap Transactionally");
+
+		auto DynamicTargetMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto DynamicTarget = std::find_if(
+			DynamicTargetMutation->Distributions.begin(),
+			DynamicTargetMutation->Distributions.end(), [](const auto& Row)
+			{ return Row.strPropertyPath == "dynamicparams[0].paramvalue"; });
+		const bool_t DynamicTargetFixtureComplete =
+			DynamicTarget != DynamicTargetMutation->Distributions.end();
+		if (DynamicTargetFixtureComplete)
+		{
+			DynamicTarget->strPropertyPath =
+				"dynamicparams[0].paramvalue_mutated";
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DynamicTargetPlan = Plan;
+		std::string DynamicTargetStatus;
+		const bool_t DynamicTargetRejected = DynamicTargetFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DynamicTargetMutation, DynamicTargetPlan,
+				DynamicTargetStatus);
+		runner.Require(DynamicTargetRejected &&
+			DynamicTargetPlan.get() == Plan.get() &&
+			DynamicTargetStatus ==
+				"Reconstructed execution frozen distribution target projection is invalid.",
+			"Artist 31470 Typed Plan Rejects Bracket Qualified Dynamicparams Target Mutation Transactionally");
+
+		const auto FindDynamicParamsOwner = [](
+			EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM& MutatedProgram) ->
+				EFFECT_RUNTIME_PROGRAM_PROPERTY*
+		{
+			const auto Distribution = std::find_if(
+				MutatedProgram.Distributions.begin(),
+				MutatedProgram.Distributions.end(), [](const auto& Row)
+				{ return Row.strPropertyPath == "dynamicparams[0].paramvalue"; });
+			if (Distribution == MutatedProgram.Distributions.end())
+				return nullptr;
+			const auto Property = std::find_if(MutatedProgram.Properties.begin(),
+				MutatedProgram.Properties.end(), [&Distribution](const auto& Row)
+				{ return Row.Row.strId == Distribution->strPropertyId; });
+			if (Property == MutatedProgram.Properties.end() ||
+				Property->strPropertyPath != "dynamicparams")
+			{
+				return nullptr;
+			}
+			return &*Property;
+		};
+
+		auto DynamicOwnerMutation =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* DynamicOwner = FindDynamicParamsOwner(*DynamicOwnerMutation);
+		const bool_t DynamicOwnerFixtureComplete = nullptr != DynamicOwner;
+		if (DynamicOwnerFixtureComplete)
+			DynamicOwner->strPropertyPath = "dynamicparams[0].paramvalue";
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DynamicOwnerPlan = Plan;
+		std::string DynamicOwnerStatus;
+		const bool_t DynamicOwnerRejected = DynamicOwnerFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DynamicOwnerMutation, DynamicOwnerPlan,
+				DynamicOwnerStatus);
+		runner.Require(DynamicOwnerRejected &&
+			DynamicOwnerPlan.get() == Plan.get() &&
+			DynamicOwnerStatus ==
+				"Reconstructed execution frozen distribution owner projection is invalid.",
+			"Artist 31470 Typed Plan Rejects Coordinated Dynamicparams Owner Classification Mutation Transactionally");
+
+		auto ExtraSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* ExtraOwner = FindDynamicParamsOwner(*ExtraSemanticReverse);
+		std::string ExtraDistributionId;
+		if (nullptr != ExtraOwner)
+		{
+			const auto ExtraDistribution = std::find_if(
+				ExtraSemanticReverse->Distributions.begin(),
+				ExtraSemanticReverse->Distributions.end(),
+				[ExtraOwner](const auto& Row)
+				{ return Row.strPropertyId != ExtraOwner->Row.strId; });
+			if (ExtraDistribution != ExtraSemanticReverse->Distributions.end())
+				ExtraDistributionId = ExtraDistribution->Row.strId;
+		}
+		const bool_t ExtraSemanticFixtureComplete = nullptr != ExtraOwner &&
+			!ExtraDistributionId.empty() &&
+			std::find(ExtraOwner->SemanticDistributionIds.begin(),
+				ExtraOwner->SemanticDistributionIds.end(), ExtraDistributionId) ==
+				ExtraOwner->SemanticDistributionIds.end();
+		if (ExtraSemanticFixtureComplete)
+			ExtraOwner->SemanticDistributionIds.push_back(ExtraDistributionId);
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ExtraSemanticPlan = Plan;
+		std::string ExtraSemanticStatus;
+		const bool_t ExtraSemanticRejected = ExtraSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, ExtraSemanticReverse, ExtraSemanticPlan,
+				ExtraSemanticStatus);
+		runner.Require(ExtraSemanticRejected &&
+			ExtraSemanticPlan.get() == Plan.get() &&
+			ExtraSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Extra Property Distribution Reverse Membership Transactionally");
+
+		auto DuplicateSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* DuplicateOwner = FindDynamicParamsOwner(*DuplicateSemanticReverse);
+		const bool_t DuplicateSemanticFixtureComplete = nullptr != DuplicateOwner &&
+			!DuplicateOwner->SemanticDistributionIds.empty();
+		if (DuplicateSemanticFixtureComplete)
+		{
+			DuplicateOwner->SemanticDistributionIds.push_back(
+				DuplicateOwner->SemanticDistributionIds.front());
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			DuplicateSemanticPlan = Plan;
+		std::string DuplicateSemanticStatus;
+		const bool_t DuplicateSemanticRejected =
+			DuplicateSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, DuplicateSemanticReverse, DuplicateSemanticPlan,
+				DuplicateSemanticStatus);
+		runner.Require(DuplicateSemanticRejected &&
+			DuplicateSemanticPlan.get() == Plan.get() &&
+			DuplicateSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Duplicate Property Distribution Reverse Membership Transactionally");
+
+		auto ReorderedSemanticReverse =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		auto* ReorderedOwner = FindDynamicParamsOwner(*ReorderedSemanticReverse);
+		const bool_t ReorderedSemanticFixtureComplete = nullptr != ReorderedOwner &&
+			ReorderedOwner->SemanticDistributionIds.size() >= 2u;
+		if (ReorderedSemanticFixtureComplete)
+		{
+			std::swap(ReorderedOwner->SemanticDistributionIds[0u],
+				ReorderedOwner->SemanticDistributionIds[1u]);
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
+			ReorderedSemanticPlan = Plan;
+		std::string ReorderedSemanticStatus;
+		const bool_t ReorderedSemanticRejected =
+			ReorderedSemanticFixtureComplete &&
+			!CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, ReorderedSemanticReverse, ReorderedSemanticPlan,
+				ReorderedSemanticStatus);
+		runner.Require(ReorderedSemanticRejected &&
+			ReorderedSemanticPlan.get() == Plan.get() &&
+			ReorderedSemanticStatus ==
+				"Reconstructed execution property distribution reverse membership or order is invalid.",
+			"Artist 31470 Typed Plan Rejects Reordered Property Distribution Reverse Membership Transactionally");
+
+		auto RawPoison =
+			std::make_shared<EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>(*Program);
+		for (auto& Emitter : RawPoison->Emitters)
+		{
+			Emitter.bSourceRecipeEnabled = !Emitter.bSourceRecipeEnabled;
+			Emitter.RendererRuntimeConfig = {};
+			Emitter.DetailTransform.strProjectionSha256 = std::string(64u, 'f');
+			Emitter.CueLocalTransform.vPosition = {
+				999999.0, -999999.0, 123456.0 };
+		}
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> PoisonPlan;
+		const bool_t PoisonCompiled =
+			CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, RawPoison, PoisonPlan, Status);
+		runner.Require(PoisonCompiled && nullptr != PoisonPlan &&
+			PoisonPlan->Get_Identity().strSemanticProjectionSha256 ==
+				Plan->Get_Identity().strSemanticProjectionSha256 &&
+			PoisonPlan->Get_Summary().iEmitterCount == 35u &&
+			PoisonPlan->Get_Summary().iDistributionCount == 629u,
+			"Artist 31470 Typed Plan Is Invariant To Raw SourceRecipe Detail And Renderer Config Poison");
+
+		const auto BeforeInvalidPlaybackStage =
+			Playback.Get_ReconstructedExecutionPlan();
+		const auto BeforeInvalidPreparation =
+			Playback.Get_ReconstructedRuntimePreparation();
+		const bool_t InvalidPlaybackStageRejected =
+			!Playback.Stage_ReconstructedRuntimeProgram(nullptr, Status);
+		runner.Require(InvalidPlaybackStageRejected &&
+			Playback.Get_ReconstructedExecutionPlan().get() ==
+				BeforeInvalidPlaybackStage.get() &&
+			Playback.Get_ReconstructedRuntimePreparation().get() ==
+				BeforeInvalidPreparation.get(),
+			"Artist 31470 Playback Invalid Plan Restage Preserves Plan And Preparation Pointers");
+	}
+
 	void Test_Artist31470CatalogProgramAuthority(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& ProgramPath,
@@ -4428,6 +5069,11 @@ namespace
 		const bool_t PlaybackPrepared =
 			PreparedPlayback.Stage_ReconstructedRuntimeProgram(
 				ObjectDesc.pReconstructedRuntimePreparation, Status);
+		if (!PlaybackPrepared)
+		{
+			std::cerr << "[DIAGNOSTIC] Artist 31470 typed execution plan stage: "
+				<< Status << std::endl;
+		}
 		constexpr std::array<std::string_view, 5u> ExpectedAnchorOwners{
 			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_21",
 			"fx_pc_sdm_07.par_v_sdm_ink_spw_01::action-31470/stage-000/notify-000::FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
@@ -4472,6 +5118,10 @@ namespace
 			PreparedPlayback.Get_ReconstructedRuntimeProgram().get() ==
 				ProgramA.get(),
 			"Artist 31470 Catalog Presentation Object Playback Renderer Preserve One Opaque Handle");
+		const auto ExecutionPlanA =
+			PreparedPlayback.Get_ReconstructedExecutionPlan();
+		Test_Artist31470TypedExecutionPlan(runner, *EntryIdentityA, ProgramA,
+			Preparation, PreparedPlayback);
 		const auto PreservedBoundaryPreparation =
 			ObjectBoundary.Get_Preparation();
 		const bool_t InvalidRestageRejected = !ObjectBoundary.Stage(
@@ -4527,6 +5177,29 @@ namespace
 			ProgramB.get() != ProgramA.get() && ProgramA->Emitters.size() == 35u &&
 			EntryB->Get_Identity().iCatalogRevision == RevisionB,
 			"Artist 31470 Catalog Reload Keeps Generation A Alive And Queries Generation B");
+
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			PreparationB;
+		CEffectPlayback PreparedPlaybackB;
+		const bool_t ExecutionPlanBPrepared = LoadedB && nullptr != EntryB &&
+			nullptr != ProgramB &&
+			CEffectReconstructedRuntimeBoundary::Prepare_Presentation(
+				EffectId, PreparationB, Status) &&
+			PreparedPlaybackB.Stage_ReconstructedRuntimeProgram(
+				PreparationB, Status);
+		const auto ExecutionPlanB =
+			PreparedPlaybackB.Get_ReconstructedExecutionPlan();
+		runner.Require(ExecutionPlanBPrepared && nullptr != ExecutionPlanA &&
+			nullptr != ExecutionPlanB && ExecutionPlanA.get() != ExecutionPlanB.get() &&
+			ExecutionPlanA->Get_Program().get() == ProgramA.get() &&
+			ExecutionPlanB->Get_Program().get() == ProgramB.get() &&
+			ExecutionPlanA->Get_Identity().iCatalogRevision == RevisionA &&
+			ExecutionPlanB->Get_Identity().iCatalogRevision == RevisionB &&
+			ExecutionPlanA->Get_Identity().strSemanticProjectionSha256 ==
+				ExecutionPlanB->Get_Identity().strSemanticProjectionSha256 &&
+			!ExecutionPlanA->Get_Program()->Admission.bRuntimeExecution &&
+			!ExecutionPlanB->Get_Program()->Admission.bRuntimeExecution,
+			"Artist 31470 Typed Plan Reload Produces Independent A B Identity And Preserves Generation A");
 
 		const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT> SnapshotB =
 			CEffectCatalog::Capture_Runtime();
@@ -7620,6 +8293,19 @@ int main(const int argc, char* argv[])
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-reconstructed-execution-plan")
+	{
+		if (argc <= 3 || nullptr == argv[2] || nullptr == argv[3])
+		{
+			std::cout << "[FAILURE] --effect-reconstructed-execution-plan requires the exact reconstructed program fixture and tracked runtime catalog.\n";
+			return 1;
+		}
+		Test_Artist31470CatalogProgramAuthority(
+			runner, std::filesystem::path(argv[2]),
+			std::filesystem::path(argv[3]));
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
