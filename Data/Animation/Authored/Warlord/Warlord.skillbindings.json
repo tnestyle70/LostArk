@@ -81,7 +81,11 @@
       "skillId": 17240,
       "clips": [
         [ "wgl_sk_eternalcyclone_01" ],
-        [ "wgl_sk_eternalcyclone_02" ],
+        [
+          { "clip": "wgl_sk_eternalcyclone_02", "playMs": 300 },
+          { "clip": "wgl_sk_eternalcyclone_03", "playMs": 300 },
+          "wgl_sk_eternalcyclone_04"
+        ],
         [ "wgl_sk_eternalcyclone_07" ]
       ]
     },

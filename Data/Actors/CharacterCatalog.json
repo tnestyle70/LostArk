@@ -12,7 +12,9 @@
         "Character/LanceMaster/LanceMaster_Lower.wmodel",
         "Character/LanceMaster/LanceMaster_Arm.wmodel",
         "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
-        "Character/LanceMaster/LanceMaster_Helmet.wmodel"
+        "Character/LanceMaster/LanceMaster_Helmet.wmodel",
+        "Character/LanceMaster/LanceMaster_Helmet_Mokoko.wmodel",
+        "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel"
       ],
       "weaponModels": [
         "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",

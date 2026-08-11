@@ -39,6 +39,11 @@ namespace LostArk::Server
 		std::uint32_t iActionDurationMs = 0;
 		std::uint32_t iHitTimeMs = 0;
 		std::uint32_t iResourceCost = 0;
+		/* Charged once on a successful Try_Start, same as iResourceCost, but out
+		of the class identity gauge instead (Artist's moon/sun orbs). 0 for every
+		skill that does not spend it. Falling short leaves the skill unusable
+		rather than starting it for free. */
+		std::uint32_t iIdentityCost = 0;
 		float fMovementDistance = 0.f;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
@@ -147,8 +152,18 @@ namespace LostArk::Server
 		std::uint32_t iMaximumIdentity = 0;
 		std::uint32_t iIdentityRegenPerSecond = 0;
 		/* Spent per second while a stance the gauge pays for is held. Emptying
-		the gauge drops the stance. */
+		the gauge drops the stance. Only one of this and
+		iIdentityStanceSwitchCost is nonzero for a given class. */
 		std::uint32_t iIdentityDrainPerSecond = 0;
+		/* Charged once, only if already banked, the moment a stance-setting skill
+		lands (LanceMaster's spear swap). A short fall leaves the switch free and
+		does not touch the gauge. */
+		std::uint32_t iIdentityStanceSwitchCost = 0;
+		/* Non-zero turns the regen fill into a clock hand: reaching the maximum
+		wraps back to 0 and keeps regenerating instead of holding at full
+		(DimensionMaster). No stance or skill ever spends it -- the wrap itself
+		is the spend. What happens at a full lap is not decided yet. */
+		std::uint32_t iIdentityCyclic = 0;
 		LostArk::Shared::PLAYER_STANCE_ID eDefaultStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	};

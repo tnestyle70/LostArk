@@ -454,6 +454,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		matches the published class pool rather than the old 100. */
 		quickPlayer.iCurrentResource = 1000;
 		quickPlayer.iMaximumResource = 1000;
+		/* Same idea for identityCost (Artist's moon/sun orbs): a class without
+		a gauge finds nullptr and stays at 0, which is correct there too. */
+		const PLAYER_RUNTIME_PROFILE* quickIdentityProfile =
+			catalog.Find_Player(contract.characterClass);
+		quickPlayer.iMaximumIdentity = nullptr != quickIdentityProfile ?
+			quickIdentityProfile->iMaximumIdentity : 0u;
+		quickPlayer.iCurrentIdentity = quickPlayer.iMaximumIdentity;
 		C2S_USE_SKILL quickCommand{};
 		quickCommand.iClientSequence = 1;
 		quickCommand.iSkillId = contract.skillId;
@@ -1361,9 +1368,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
-				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
+				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
-				"\t1510\t2000\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
+				"\t1510\t2000\t0\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
 		}
 		wchar_t previousRoot[32768]{};
 		const DWORD previousLength = GetEnvironmentVariableW(
@@ -1413,9 +1420,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
-					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
-					"\t8000\t900\t" << hitTimeMs << "\t242\t6\t" << maximumRange <<
+					"\t8000\t900\t" << hitTimeMs << "\t242\t0\t6\t" << maximumRange <<
 					"\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
 			}
 			wchar_t previous[32768]{};
@@ -1482,9 +1489,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\n"
-					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
-					"\t0\t1633\t470\t0\t0\t3\tdamage.player.34010\tCOMBO"
+					"\t0\t1633\t470\t0\t0\t0\t3\tdamage.player.34010\tCOMBO"
 					"\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
 					"SKILLSTAGE\t34010\t0\t1633\t470\t329\t658\n"
 					"SKILLSTAGEROOTMOTION\t34010\t" << stageIndex <<

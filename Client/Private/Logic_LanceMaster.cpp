@@ -19,10 +19,18 @@ namespace
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_LanceMaster_Arm") },
-		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_LanceMaster_Helmet") },
+		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT_HELMET },
 		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_LanceMaster_Lower") },
 		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_LanceMaster_Shoulder") },
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_LanceMaster_Upper") },
+
+		/* Mokoko avatar test slots: presence hides the base parts they cover,
+		see CCharacter::Ready_PartObjects. */
+		{ TEXT("Part_15_Avatar_Head"),    TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
+		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_HEAD },
+		{ TEXT("Part_15_Avatar_Armor"),   TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
+		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_ARMOR },
 	};
 
 	/* The armour carries its own exposed skin, so the bare arm, torso and legs

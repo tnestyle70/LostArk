@@ -17,9 +17,10 @@ namespace
 	struct CHARACTER_PROTOTYPE_TAGS final
 	{
 		const tchar_t* pBody = nullptr;
-		/* Six, not five: Warlord's body does not draw hair, so its hair rides
-		along as an equipment part next to the five armour pieces. */
-		std::array<const tchar_t*, 6> Equipment{};
+		/* Eight, not five: Warlord's body does not draw hair, so its hair rides
+		along as an equipment part next to the five armour pieces, and a class
+		with an avatar head/armor slot adds two more next to its own five. */
+		std::array<const tchar_t*, 8> Equipment{};
 		size_t iEquipmentCount = 0;
 		std::array<const tchar_t*, 4> Weapons{};
 		size_t iWeaponCount = 0;
@@ -40,9 +41,11 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Lower"),
 				TEXT("Prototype_Component_Model_LanceMaster_Arm"),
 				TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
-				TEXT("Prototype_Component_Model_LanceMaster_Helmet")
+				TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
+				TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
+				TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko")
 			},
-			5u,
+			7u,
 			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
 			  TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short") },
 			2u
