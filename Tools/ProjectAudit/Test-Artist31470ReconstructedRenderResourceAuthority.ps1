@@ -61,13 +61,6 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
 
     $temporaryIndex = Join-Path $isolatedRoot 'temporary.index'
     $historicalRevision = '7d3e957f4d93bfd1416fa6a05d5d7fa8f46c12a2'
-    $overlayPaths = @(
-        '.gitattributes',
-        $receiptPath,
-        $module,
-        $generator,
-        $test
-    )
     $checkoutPaths = @(
         '.gitattributes',
         'Client/Public/Effect_RuntimeAuthority.h',
@@ -90,6 +83,14 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
         $module,
         $generator,
         $test
+    )
+    # The sidecar, Program and Material authority now advance together.  Keep
+    # that whole current closure in the isolated index; only the catalog blob
+    # is intentionally read from the frozen historical revision below.
+    $overlayPaths = @(
+        $checkoutPaths | Where-Object {
+            $_ -cne 'Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json'
+        }
     )
     $hadIndexEnvironment = Test-Path Env:GIT_INDEX_FILE
     $previousIndexEnvironment = $env:GIT_INDEX_FILE
