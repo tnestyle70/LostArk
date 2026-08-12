@@ -1528,6 +1528,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.geometry-binding.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.geometry-resource-binding.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.main-transform-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.wmodel-geometry-parity.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.local-reference-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.normalized-effect-graph.json" />
@@ -1550,6 +1551,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-texture-runtime-binding.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.native-base-texture-extraction.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.renderer-restoration-matrix.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json" />

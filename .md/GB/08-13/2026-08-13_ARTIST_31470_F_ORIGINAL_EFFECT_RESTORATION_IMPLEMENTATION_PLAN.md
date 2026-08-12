@@ -271,11 +271,12 @@ cache coverage, candidate VF/pass와 embedded code 유무를 전수 조사한다
 - 새 tool: `Tools/LevelPlacementExtractor/build_artist_31470_renderer_restoration_matrix.py`
 - 새 test: `Tools/LevelPlacementExtractor/test_build_artist_31470_renderer_restoration_matrix.py`
 - 새 receipt: `Data/Effects/Imported/Artist/Materials/skill.31470.renderer-restoration-matrix.receipt.json`
-- 새 audit wrapper: `Tools/ProjectAudit/Test-Artist31470RendererRestorationMatrix.ps1`
+- focused 검증은 generator의 `--validate-only`와 독립 Python unit test로 실행한다.
 - 기존 RefShaderCache/ShaderMap parser와 main golden fixture는 재사용한다.
 
-새 Python 파일은 기존 project에 등록하지 않는다. C++ 파일을 새로 만들지 않으므로
-`.vcxproj/.filters` 변경도 없다.
+새 Python 파일은 기존 project에 등록하지 않는다. 다만 새 Git 관리 `Data` receipt는
+`Sync-EffectDataProject.ps1`로 Client `.vcxproj/.filters`의 `96.DataFiles` 아래에 등록한다.
+전역 ProjectAudit aggregate/report에는 이 deep cache scan을 연결하지 않는다.
 
 ### 행별 필수 필드
 
@@ -330,7 +331,8 @@ family HLSL 구현을 먼저 시작하지 않는다. cache/code가 없는 행은
 - runtime delta: `Client/Private/Effect_Playback.cpp`
 - 필요한 경우 typed diagnostic만 `Client/Public/Effect_Playback.h`에 추가
 - numeric harness: `Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp`
-- audit wrapper: `Tools/ProjectAudit/Test-Artist31470MainTransformOracle.ps1`
+- focused 검증은 oracle의 `--validate-only`/`--check`, 독립 Python unit test와
+  `ClientFrontendHarness` numeric canary로 실행한다. 전역 ProjectAudit wrapper는 만들지 않는다.
 
 실제 H/CPP 선언은 구현 직전 G02 DETAIL PLAN에서 현재 전체 코드를 기준으로 확정한다. public header를
 변경하면 Engine/Client consumer와 Debug/Release 전체를 함께 검증한다.

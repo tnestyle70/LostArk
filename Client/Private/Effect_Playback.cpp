@@ -130,6 +130,35 @@ namespace
 		return float3_t(Value.x, Value.z, Value.y);
 	}
 
+	matrix_t UE3_EulerDegreesToClientRotation(const float3_t& SourceDegrees)
+	{
+		// Source MeshRotation vectors are UE roll(X), pitch(Y), yaw(Z).  Rotation
+		// is not a vector: preserve the source Euler composition and conjugate the
+		// resulting row matrix into the Client X-forward/Y-up basis.
+		const f32_t Roll = XMConvertToRadians(SourceDegrees.x);
+		const f32_t Pitch = XMConvertToRadians(SourceDegrees.y);
+		const f32_t Yaw = XMConvertToRadians(SourceDegrees.z);
+		const f32_t SP = std::sin(Pitch);
+		const f32_t CP = std::cos(Pitch);
+		const f32_t SY = std::sin(Yaw);
+		const f32_t CY = std::cos(Yaw);
+		const f32_t SR = std::sin(Roll);
+		const f32_t CR = std::cos(Roll);
+		const matrix_t Source = XMMatrixSet(
+			CP * CY, CP * SY, SP, 0.f,
+			SR * SP * CY - CR * SY,
+			SR * SP * SY + CR * CY, -SR * CP, 0.f,
+			-CR * SP * CY - SR * SY,
+			-CR * SP * SY + SR * CY, CR * CP, 0.f,
+			0.f, 0.f, 0.f, 1.f);
+		const matrix_t Basis = XMMatrixSet(
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 0.f, -1.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 0.f, 1.f);
+		return XMMatrixTranspose(Basis) * Source * Basis;
+	}
+
 	bool_t Is_MeshParticle(const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		return std::any_of(
@@ -2545,11 +2574,10 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotation"))
 		{
-			Particle.vRotationDegrees = Add3(
-				Particle.vRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "startrotation", fEmitterTimeSeconds,
-					float3_t{})), 360.f));
+			Particle.vSourceMeshRotationDegrees = Add3(
+				Particle.vSourceMeshRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "startrotation",
+					fEmitterTimeSeconds, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationrate"))
@@ -2564,11 +2592,10 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationrate"))
 		{
-			Particle.vRotationRateDegreesPerSecond = Add3(
-				Particle.vRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "startrotationrate", fEmitterTimeSeconds,
-					float3_t{})), 360.f));
+			Particle.vSourceMeshRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceMeshRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "startrotationrate",
+					fEmitterTimeSeconds, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -2621,16 +2648,14 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "offsetamount", 0.f, float3_t{})));
-			Particle.vOrbitRotationDegrees = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationamount", 0.f, float3_t{})),
-					360.f));
-			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationrateamount", 0.f,
-					float3_t{})), 360.f));
+			Particle.vSourceOrbitRotationDegrees = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
+					0.f, float3_t{}), 360.f));
+			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceOrbitRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
+					0.f, float3_t{}), 360.f));
 		}
 	}
 	if (!bHasSize)
@@ -2713,9 +2738,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vColor = Particle.vBaseColor;
 	Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 	Particle.vRotationRateScale = { 1.f, 1.f, 1.f };
+	Particle.vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
 	Particle.vOrbitOffset = {};
-	Particle.vOrbitRotationDegrees = {};
-	Particle.vOrbitRotationRateDegreesPerSecond = {};
+	Particle.vSourceOrbitRotationDegrees = {};
+	Particle.vSourceOrbitRotationRateDegreesPerSecond = {};
 	const bool_t bReconstructedDecalParticle =
 		Is_ReconstructedDecalParticle(
 			Element, m_bReconstructedSourceRuntimeActive);
@@ -2938,11 +2964,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationratemultiplylife"))
 		{
-			Particle.vRotationRateScale = Multiply3(
-				Particle.vRotationRateScale,
-				UE3_AxisScaleToClient(Evaluate_ModuleVector(
-					State, Module, "lifemultiplier", fNormalizedAge,
-					float3_t(1.f, 1.f, 1.f))));
+			Particle.vSourceMeshRotationRateScale = Multiply3(
+				Particle.vSourceMeshRotationRateScale,
+				Evaluate_ModuleVector(State, Module, "lifemultiplier",
+					fNormalizedAge, float3_t(1.f, 1.f, 1.f)));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationratemultiplylife"))
@@ -2955,10 +2980,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationrateoverlife"))
 		{
-			Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotrate", fNormalizedAge, float3_t{})),
-					360.f * fFixedDelta));
+			Particle.vSourceMeshRotationDegrees = Add3(
+				Particle.vSourceMeshRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotrate",
+					fNormalizedAge, float3_t{}), 360.f * fFixedDelta));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -3005,16 +3030,14 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "offsetamount", fNormalizedAge,
 					float3_t{})));
-			Particle.vOrbitRotationDegrees = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationamount", fNormalizedAge,
-					float3_t{})), 360.f));
-			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationrateamount", fNormalizedAge,
-					float3_t{})), 360.f));
+			Particle.vSourceOrbitRotationDegrees = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
+					fNormalizedAge, float3_t{}), 360.f));
+			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceOrbitRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
+					fNormalizedAge, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulevortex"))
 		{
@@ -3031,6 +3054,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
 		Scale3(Multiply3(Particle.vRotationRateDegreesPerSecond,
 			Particle.vRotationRateScale), fFixedDelta));
+	Particle.vSourceMeshRotationDegrees = Add3(
+		Particle.vSourceMeshRotationDegrees,
+		Scale3(Multiply3(Particle.vSourceMeshRotationRateDegreesPerSecond,
+			Particle.vSourceMeshRotationRateScale), fFixedDelta));
 }
 
 void Client::CEffectPlayback::Sample_Trail(
@@ -3646,25 +3673,30 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			const float3_t WorldScale = bReconstructedDecalParticle ?
 				float3_t(Size.x, Element.Detail.Decal.fDepth, Size.y) :
 				float3_t(Size.x, Size.y, fDepthScale);
-			const float3_t OrbitRotation = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(Particle.vOrbitRotationRateDegreesPerSecond,
+			const float3_t SourceOrbitRotation = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Particle.vSourceOrbitRotationRateDegreesPerSecond,
 					Particle.fAgeSeconds));
 			float3_t OrbitOffset{};
 			XMStoreFloat3(&OrbitOffset, XMVector3TransformNormal(
 				XMLoadFloat3(&Particle.vOrbitOffset),
-				XMMatrixRotationRollPitchYaw(
-					XMConvertToRadians(OrbitRotation.x),
-					XMConvertToRadians(OrbitRotation.y),
-					XMConvertToRadians(OrbitRotation.z))));
+				UE3_EulerDegreesToClientRotation(SourceOrbitRotation)));
 			const float3_t Position = Add3(
 				Particle.vPosition, OrbitOffset);
-			const matrix_t World = XMMatrixScaling(
-				WorldScale.x, WorldScale.y, WorldScale.z) *
+			const matrix_t ParticleRotation = bMeshParticle ?
+				UE3_EulerDegreesToClientRotation(
+					Particle.vSourceMeshRotationDegrees) *
+					XMMatrixRotationRollPitchYaw(
+						XMConvertToRadians(Particle.vRotationDegrees.x),
+						XMConvertToRadians(Particle.vRotationDegrees.y),
+						XMConvertToRadians(Particle.vRotationDegrees.z)) :
 				XMMatrixRotationRollPitchYaw(
 					XMConvertToRadians(Particle.vRotationDegrees.x),
 					XMConvertToRadians(Particle.vRotationDegrees.y),
-					XMConvertToRadians(Particle.vRotationDegrees.z)) *
+					XMConvertToRadians(Particle.vRotationDegrees.z));
+			const matrix_t World = XMMatrixScaling(
+				WorldScale.x, WorldScale.y, WorldScale.z) *
+				ParticleRotation *
 				XMMatrixTranslation(
 					Position.x,
 					Position.y,

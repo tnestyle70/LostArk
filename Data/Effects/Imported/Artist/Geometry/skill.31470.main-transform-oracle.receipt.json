@@ -1,0 +1,2061 @@
+{
+  "schema": "lostark.artist-31470-main-transform-oracle-receipt",
+  "formatVersion": 1,
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "inputSlot": "F",
+  "scope": "G02_MAIN_ROOT_BASIS_PIVOT_CANARY",
+  "toolIdentity": {
+    "path": "Tools/LevelPlacementExtractor/build_artist_31470_main_transform_oracle.py",
+    "canonicalLfSha256": "b3414c84cec0f8249447256d51e86d37c3e8fc243ec15f3692d11f5e6f30e382"
+  },
+  "inputs": {
+    "actionCueRecipe": {
+      "path": "Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json",
+      "rawSha256": "188364c612b65cd037385136ab8b99f5cab6e6b80def739c10f5306d951fafe1",
+      "canonicalJsonSha256": "e5b302c5c7580e4dffd6c1ef0088d449809159b4e7217dc78332f63f753da4c4"
+    },
+    "rendererRestorationMatrixWholeReceipt": {
+      "path": "Data/Effects/Imported/Artist/Materials/skill.31470.renderer-restoration-matrix.receipt.json",
+      "rawSha256": "ed54b8fcf6303e6f06d37a992bdc4637783e1503ac47212521edcd3eb6272e82",
+      "canonicalJsonSha256": "99bf7794512a4358c09b8ce7f14f505d74a36bcd4e9c27c03cd0a95e0c92b23c",
+      "receiptSha256": "8ce76746005949899b89af6c522530775072cc9e1f82cc9a10442f00a0cef0fb"
+    },
+    "reconstructedRuntimeProgram": {
+      "path": "Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json",
+      "rawSha256": "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6",
+      "canonicalJsonSha256": "0e55020c4386870824a1b14aaf9b0e11f2aea0f119c7f41c557aab486b7cf72a",
+      "programSha256": "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8"
+    },
+    "geometryResourceBinding": {
+      "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.geometry-resource-binding.receipt.json",
+      "rawSha256": "c9f304c313c921788b429f1e53142349614ffa3473b00f6b8a84ee903f6f5f62",
+      "canonicalJsonSha256": "f9adbc9acecfa06d94a0a22f5e5afeca54f1004559912b9f36f294fa00ec02bf",
+      "receiptSha256": "5b4331c33dd2ead13f69c9e3c58a392665c5ce71ce96835ac568d841a09e9156"
+    },
+    "installedWModelCount": 2,
+    "installedWModels": [
+      {
+        "assetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+        "physicalPath": "Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+        "byteSize": 33300,
+        "rawSha256": "e2b9f3337904fceca31c84650724788f20b1eaf68e0420615692c87028a7434c"
+      },
+      {
+        "assetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+        "physicalPath": "Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+        "byteSize": 27264,
+        "rawSha256": "9586b5d299b5e9dc7e5973cf8b4b7f31058413c334dc3f7ff2d8410ab7b0a8fd"
+      }
+    ]
+  },
+  "coordinateContract": {
+    "rowVectorConvention": true,
+    "sourceToClientBasisRows": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ]
+    ],
+    "sourceVectorToClient": "[x,y,z]*B=[x,z,-y]",
+    "sourceCentimetersToClientMeters": 0.01,
+    "sourceScaleToClient": "[x,y,z]->[x,z,y]",
+    "rotationConversion": "R_client=transpose(B)*R_source*B",
+    "eulerComponentSwizzleAllowed": false
+  },
+  "basisConjugationCanary": {
+    "sourceEulerDegrees": [
+      17.0,
+      -31.0,
+      43.0
+    ],
+    "sourceEulerComposition": "XMMatrixRotationRollPitchYaw_EQUIVALENT_IN_SOURCE_BASIS",
+    "sourceRotationRows": [
+      [
+        0.5241954193296452,
+        0.6521982752867582,
+        0.547591610661445
+      ],
+      [
+        -0.6947158060030295,
+        0.6993970231495834,
+        -0.1679694999071627
+      ],
+      [
+        -0.4925333605385311,
+        -0.2923717047227368,
+        0.8197131663174273
+      ]
+    ],
+    "sourcePoint": [
+      0.37,
+      -0.61,
+      1.19
+    ],
+    "clientPointByBasis": [
+      0.37,
+      1.19,
+      0.61
+    ],
+    "clientRotationRowsByConjugation": [
+      [
+        0.5241954193296452,
+        0.547591610661445,
+        -0.6521982752867582
+      ],
+      [
+        -0.4925333605385311,
+        0.8197131663174273,
+        0.2923717047227368
+      ],
+      [
+        0.6947158060030295,
+        0.1679694999071627,
+        0.6993970231495834
+      ]
+    ],
+    "rotateSourceThenConvertPoint": [
+      0.031614247772964676,
+      1.2805289588058424,
+      0.5332411508852022
+    ],
+    "convertPointThenRotateClient": [
+      0.031614247772964676,
+      1.2805289588058424,
+      0.5332411508852022
+    ],
+    "pointConsistencyMaxAbsError": 0.0,
+    "naiveComponentSwizzleDegrees": [
+      17.0,
+      43.0,
+      31.0
+    ],
+    "naiveComponentSwizzleRotationRows": [
+      [
+        0.7295895372211594,
+        0.492533360538531,
+        -0.47445758075304906
+      ],
+      [
+        -0.20575839445911465,
+        0.8197131663174273,
+        0.5345407450096439
+      ],
+      [
+        0.6521982752867581,
+        -0.29237170472273677,
+        0.6993970231495834
+      ]
+    ],
+    "conjugationVsNaiveMaxAbsDelta": 0.46034120462989947,
+    "componentSwizzleRejected": true
+  },
+  "actionCueProjection": {
+    "cueId": "skill-31470/clip-000/notify-018",
+    "localTimeSeconds": 1.3803969621658325,
+    "sourceOccurrence": {
+      "notifyId": "action-31470/stage-000/notify-018",
+      "stageIndex": 0,
+      "stageNotifyIndex": 18,
+      "enabled": true
+    },
+    "serializedPayloadSha256": "3229be39aedcc0464a5163a3c5902a05907d846710136180bc86e06f993d3372",
+    "sourcePositionUeCentimeters": [
+      100.0,
+      -100.0,
+      0.0
+    ],
+    "programProjection": {
+      "sourceCueId": "skill-31470/clip-000/notify-018",
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "actionCueParameterInputs": []
+    },
+    "programProjectionSha256": "23d13471b0fab4b7f1ec3a764ede821157fd04f33ccdcbb04db5855c70a5391f",
+    "sourceCueCanonicalSha256": "75b13df35a1943b8a8781aaec33a4dda32dec7c7a1eff653652d1e2d1fafb1f0",
+    "rowSha256": "d76e2ddfa9ebf37b060a3e3dfd2f50fa4a5ae531ec7d37a8635a55b8ec93dbca"
+  },
+  "rendererOccurrenceProjection": [
+    {
+      "occurrenceId": "source-active-009",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererFamily": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7",
+      "sourceEmitterNodeId": "FX_PC_SDM_07:export:1566",
+      "sourceEmitterRecordSha256": "346e15a97acf0667b717da621864cbeb2be66f3c4047fb5a24d626979f4ac6d2",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
+      "recipeId": "material-recipe-03cc03b86c1a4c8f",
+      "typeDataSourceObjectId": "FX_PC_SDM_07:export:1246",
+      "typeDataSourceRecordSha256": "6015815bf49acf996d51fb126518761d165d1de40e60f7e06cb34dd1821bebce",
+      "disposition": "JOINED_CANDIDATE",
+      "selectedVfPassAdmission": false,
+      "productAdmission": false,
+      "sourceRowSha256": "821c710086a8f18bf044a452780920c0a83ca13686db0936862e0ec7735d755f",
+      "rowSha256": "6fa87b99a238f19ed26eac84b25a725ef259ae2c6c4b23f0596205d55ce8250b"
+    },
+    {
+      "occurrenceId": "source-active-010",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererFamily": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13",
+      "sourceEmitterNodeId": "FX_PC_SDM_07:export:1555",
+      "sourceEmitterRecordSha256": "b92f72183294776e4a2e9f1305f41e86dca087d539c55a06c598ac236ecb6e9f",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
+      "recipeId": "material-recipe-03cc03b86c1a4c8f",
+      "typeDataSourceObjectId": "FX_PC_SDM_07:export:1239",
+      "typeDataSourceRecordSha256": "d0ec079279f872be15a38ce5575e0fd831b38a5af82d626e8bc1ade1e86c18cc",
+      "disposition": "JOINED_CANDIDATE",
+      "selectedVfPassAdmission": false,
+      "productAdmission": false,
+      "sourceRowSha256": "b2599e555b649a5de1af983c796f78597d96d8322cb9a9cf499854e5be4000ac",
+      "rowSha256": "84f09f02b2d91bb10b356c5929af2828d724d53b1ef49ed97e83646d0830b4e1"
+    },
+    {
+      "occurrenceId": "source-active-011",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererFamily": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
+      "sourceEmitterNodeId": "FX_PC_SDM_07:export:1565",
+      "sourceEmitterRecordSha256": "b5bc097dca9e7692dbff28646bfd6e6e992b6e096fc65aea493ca36c4fd37456",
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_m_pa_spritewave_01_19_tr",
+      "recipeId": "material-recipe-daf220acad2b656e",
+      "typeDataSourceObjectId": "FX_PC_SDM_07:export:1245",
+      "typeDataSourceRecordSha256": "3f6666af85a71fc5612d2dd9b3978854c5b4b4c6afec2554a082bc20ae439f62",
+      "disposition": "JOINED_CANDIDATE",
+      "selectedVfPassAdmission": false,
+      "productAdmission": false,
+      "sourceRowSha256": "1a901f8334f6689a996a4cf3a8f7876b5f6768c5faa4dc6fe3272ac0bc5a1794",
+      "rowSha256": "42110ec8e8f266703d2e140592793753c9c7b4ae8853781b4032562c8cdd9080"
+    }
+  ],
+  "fixedFixture": {
+    "capturedRoot": {
+      "capturePolicy": "SNAPSHOT_ROOT_AT_ELEMENT_START",
+      "follow": false,
+      "lateInitialSeekHistory": {
+        "status": "UNRESOLVED",
+        "admitted": false,
+        "reason": "NO_HISTORICAL_ACTOR_ROOT_PROVIDER"
+      },
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "rotationDegreesClient": [
+        9.0,
+        -23.0,
+        14.0
+      ],
+      "positionClientMeters": [
+        4.25,
+        1.5,
+        10.75
+      ],
+      "matrixRows": [
+        [
+          0.8783747361156685,
+          0.23894343561846595,
+          0.41396117876991034,
+          0.0
+        ],
+        [
+          -0.28199845558210274,
+          0.9583497757720929,
+          0.0451948927080045,
+          0.0
+        ],
+        [
+          -0.38592057991643636,
+          -0.15643446504023087,
+          0.9091719112162112,
+          0.0
+        ],
+        [
+          4.25,
+          1.5,
+          10.75,
+          1.0
+        ]
+      ]
+    },
+    "cueLocal": {
+      "scale": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "rotationDegreesClient": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "positionClientMeters": [
+        1.0,
+        0.0,
+        1.0
+      ],
+      "matrixRows": [
+        [
+          3.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          3.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          3.0,
+          0.0
+        ],
+        [
+          1.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      ]
+    },
+    "playablePresentationYawDiagnostic": {
+      "yawDegrees": -90.0,
+      "matrixRows": [
+        [
+          -2.220446049250313e-16,
+          0.0,
+          1.0000000000000002,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          -1.0000000000000002,
+          0.0,
+          -2.220446049250313e-16,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "relationStatus": "UNRESOLVED_BODY_MODEL_PRETRANSFORM_VS_EFFECT_ROOT",
+      "selectedForRuntimeWorld": false
+    },
+    "camera": {
+      "handedness": "LEFT_HANDED",
+      "rowVectorConvention": true,
+      "eye": [
+        4.0,
+        6.0,
+        -7.0
+      ],
+      "focus": [
+        4.0,
+        1.0,
+        10.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "fovYDegrees": 60.0,
+      "aspect": 1.7777777777777777,
+      "near": 0.1,
+      "far": 100.0,
+      "viewMatrixRows": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.9593655015712707,
+          -0.28216632399155017,
+          0.0
+        ],
+        [
+          -0.0,
+          0.28216632399155017,
+          0.9593655015712707,
+          0.0
+        ],
+        [
+          -4.0,
+          -3.7810287414867725,
+          8.408556454948195,
+          1.0
+        ]
+      ],
+      "projectionMatrixRows": [
+        [
+          0.9742785792574936,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.7320508075688774,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0010010010010009,
+          1.0
+        ],
+        [
+          0.0,
+          0.0,
+          -0.10010010010010009,
+          0.0
+        ]
+      ]
+    }
+  },
+  "geometry": [
+    {
+      "assetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "physicalPath": "Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "fileByteSize": 33300,
+      "fileSha256": "e2b9f3337904fceca31c84650724788f20b1eaf68e0420615692c87028a7434c",
+      "formatVersion": "1.1",
+      "payloadSha256": "fed0c184e9fe1b100e9aad82cb9ede5ef016987bb2dbf07b5d76e91e778b5f36",
+      "sourceGltfSha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7",
+      "sourceBufferSetSha256": "8abf5fbd43e7b56a55082ee5bf6c2b9d88f73f7a360a3224b205b9af7b4d728e",
+      "metadataIdentitySha256": "c75e2fc91e08b0a8120d6f5af8a4c1f659ffe0bebe721839f10614da8119ee8a",
+      "sourceToWModelScale": 100.0,
+      "geometryPreScaleContractDecimal": 0.01,
+      "geometryPreScaleF32": 0.009999999776482582,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "geometryPreScaleApplicationCountInOracle": 1,
+      "submesh": {
+        "name": "fm_h_swing_03",
+        "vertexCount": 378,
+        "indexCount": 1722,
+        "embeddedBounds": {
+          "minimum": [
+            -88.9000015258789,
+            -20.000001907348633,
+            -88.9000015258789
+          ],
+          "maximum": [
+            88.9000015258789,
+            20.000001907348633,
+            88.9000015258789
+          ],
+          "center": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "radius": 88.9000015258789,
+          "boundsF32Hex": [
+            "c2b1cccd",
+            "c1a00001",
+            "c2b1cccd",
+            "42b1cccd",
+            "41a00001",
+            "42b1cccd",
+            "00000000",
+            "00000000",
+            "00000000",
+            "42b1cccd"
+          ]
+        },
+        "originWModel": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "aabbCenterMinusOriginWModel": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "asymmetricVertexIndex": 0,
+        "asymmetricVertexWModel": [
+          5.021433353424072,
+          -3.074741509933931e-16,
+          -38.14171600341797
+        ]
+      },
+      "rawUpkToGltfPivot": {
+        "status": "UNRESOLVED",
+        "admitted": false,
+        "reason": "NO_RAW_UPK_TO_GLTF_PIVOT_AUTHORITY_IN_G02_INPUTS"
+      },
+      "runtimeConsumptionClaimFromProgram": false,
+      "productAdmission": false,
+      "rowSha256": "cdaea8c56b891f2dfd16be5cd24e98e04a6c40e0049bab7b613be9d8d2c6c566"
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "physicalPath": "Client/Bin/Resources/Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "fileByteSize": 27264,
+      "fileSha256": "9586b5d299b5e9dc7e5973cf8b4b7f31058413c334dc3f7ff2d8410ab7b0a8fd",
+      "formatVersion": "1.1",
+      "payloadSha256": "8b4118b8182b6dd0533f762ff04dfbe00a8f86d042412a23803c9b706b0313a5",
+      "sourceGltfSha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb",
+      "sourceBufferSetSha256": "5ab0e3ecd3a0c257ceb8454156927685f3ecf292da68f057fc736cd29a24be80",
+      "metadataIdentitySha256": "ed427b30d5fad6e2f8f3137cfd0b1f411cae31b786cc2fc0a2fa3645981272cb",
+      "sourceToWModelScale": 100.0,
+      "geometryPreScaleContractDecimal": 0.01,
+      "geometryPreScaleF32": 0.009999999776482582,
+      "geometryPreScaleF32Hex": "3c23d70a",
+      "geometryPreScaleApplicationCountInOracle": 1,
+      "submesh": {
+        "name": "fm_h_swing_05",
+        "vertexCount": 294,
+        "indexCount": 1476,
+        "embeddedBounds": {
+          "minimum": [
+            -86.98028564453125,
+            -20.000001907348633,
+            -86.98030090332031
+          ],
+          "maximum": [
+            86.98030090332031,
+            20.000001907348633,
+            86.98028564453125
+          ],
+          "center": [
+            7.62939453125e-06,
+            0.0,
+            -7.62939453125e-06
+          ],
+          "radius": 86.98030090332031,
+          "boundsF32Hex": [
+            "c2adf5e8",
+            "c1a00001",
+            "c2adf5ea",
+            "42adf5ea",
+            "41a00001",
+            "42adf5e8",
+            "37000000",
+            "00000000",
+            "b7000000",
+            "42adf5ea"
+          ]
+        },
+        "originWModel": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "aabbCenterMinusOriginWModel": [
+          7.62939453125e-06,
+          0.0,
+          -7.62939453125e-06
+        ],
+        "asymmetricVertexIndex": 0,
+        "asymmetricVertexWModel": [
+          60.05216979980469,
+          20.000001907348633,
+          -24.874431610107422
+        ]
+      },
+      "rawUpkToGltfPivot": {
+        "status": "UNRESOLVED",
+        "admitted": false,
+        "reason": "NO_RAW_UPK_TO_GLTF_PIVOT_AUTHORITY_IN_G02_INPUTS"
+      },
+      "runtimeConsumptionClaimFromProgram": false,
+      "productAdmission": false,
+      "rowSha256": "7452bcdca157f8735517fa08ef459cd9a97e9a73f5ece13ec3d1bd688d65f409"
+    }
+  ],
+  "occurrences": [
+    {
+      "occurrenceId": "source-active-009",
+      "rendererSourceRowSha256": "821c710086a8f18bf044a452780920c0a83ca13686db0936862e0ec7735d755f",
+      "runtimeEmitterId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7",
+      "runtimeEmitterRowSha256": "e2e17bbc7391c0f2ec60b3aaa88f1885e7449eb7e6cfa0d659ab772ce93d7050",
+      "geometryUseId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::geometry-use",
+      "geometryUseRowSha256": "71af3d72cb9193f96961283d576781e4696fdd441b31a5a9af7022c195d861dc",
+      "geometryCarrierId": "geometry-carrier-dff1d5ac1399b993b4ab",
+      "geometryCarrierRowSha256": "6ec9273dd23d77464db7587f8f19db33d980e280d16d88aaa29d6c8f19317c69",
+      "geometryAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "geometryRowSha256": "cdaea8c56b891f2dfd16be5cd24e98e04a6c40e0049bab7b613be9d8d2c6c566",
+      "localSpace": true,
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "startSizeSourceUe": [
+        1.7000000476837158,
+        1.7000000476837158,
+        1.0
+      ],
+      "startSizeClientAxisReordered": [
+        1.7000000476837158,
+        1.0,
+        1.7000000476837158
+      ],
+      "startSizeEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:002",
+        "moduleRowSha256": "8f3197e2e5bced63002162ab210e28b36ca7e52e6b891a49677ed17d660c87fd",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:002::property:startsize",
+        "propertyRowSha256": "ed155d17e0cb65e3d3391b333cdd56891c572b9510a5975e8e7a89cd2c099668",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:002::distribution:startsize",
+        "distributionRowSha256": "9d5d5a1ac31912a381f7a3a5de3545c4f519a7627d898e8d09c25c066f3ffba3",
+        "sampleOutputSha256": "c566c461e5ba5946b663fb7a98b35609b9bb637e3d0b87074b179f0ff849e6c1"
+      },
+      "meshRotationTurnsSourceUe": [
+        0.0,
+        0.0,
+        -0.44999998807907104
+      ],
+      "meshRotationDegreesSourceUe": [
+        0.0,
+        0.0,
+        -161.99999570846558
+      ],
+      "meshRotationSourceRows": [
+        [
+          -0.9510564931493437,
+          -0.3090170656104165,
+          -0.0
+        ],
+        [
+          0.3090170656104165,
+          -0.9510564931493437,
+          0.0
+        ],
+        [
+          0.0,
+          -0.0,
+          1.0
+        ]
+      ],
+      "meshRotationClientRowsByBasisConjugation": [
+        [
+          -0.9510564931493437,
+          0.0,
+          0.3090170656104165
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -0.3090170656104165,
+          0.0,
+          -0.9510564931493437
+        ]
+      ],
+      "meshRotationEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:006",
+        "moduleRowSha256": "406d09918c87a2b962115c406df6dc7616602c393472ada9c92ca1ed5c86cc21",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:006::property:startrotation",
+        "propertyRowSha256": "d427a4ef8a3948fa25f3a0896d351e64a17550eba2e3b971ef7b91e0a2afd089",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7::module:006::distribution:startrotation",
+        "distributionRowSha256": "d12d5d3fe7980c279e45b4b90848e0e0c665ebd39fa62d1af2c46332292bc93f",
+        "sampleOutputSha256": "e2f8d1d3ea89ab9f01a53e5c35d4789630494c4b9b16b50aa6d0aefc963170d6"
+      },
+      "applicationCounts": {
+        "geometryPreScale": 1,
+        "startSize": 1,
+        "cueScale": 1
+      },
+      "compositionOrderRowVector": [
+        "wmodelLocal",
+        "geometryPreScale",
+        "particleStartSize",
+        "basisConjugatedMeshRotation",
+        "particleTranslationZero",
+        "cueLocalSRT",
+        "capturedActorRoot"
+      ],
+      "matrices": {
+        "geometryPreScale": [
+          [
+            0.009999999776482582,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.009999999776482582,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.009999999776482582,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleStartSize": [
+          [
+            1.7000000476837158,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.7000000476837158,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "basisConjugatedMeshRotation": [
+          [
+            -0.9510564931493437,
+            0.0,
+            0.3090170656104165,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -0.3090170656104165,
+            0.0,
+            -0.9510564931493437,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleLocal": [
+          [
+            -0.016167960475655833,
+            0.0,
+            0.005253290145307712,
+            0.0
+          ],
+          [
+            0.0,
+            0.009999999776482582,
+            0.0,
+            0.0
+          ],
+          [
+            -0.005253290145307712,
+            0.0,
+            -0.016167960475655833,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "cueLocal": [
+          [
+            3.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            3.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            3.0,
+            0.0
+          ],
+          [
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "capturedRoot": [
+          [
+            0.8783747361156685,
+            0.23894343561846595,
+            0.41396117876991034,
+            0.0
+          ],
+          [
+            -0.28199845558210274,
+            0.9583497757720929,
+            0.0451948927080045,
+            0.0
+          ],
+          [
+            -0.38592057991643636,
+            -0.15643446504023087,
+            0.9091719112162112,
+            0.0
+          ],
+          [
+            4.25,
+            1.5,
+            10.75,
+            1.0
+          ]
+        ],
+        "runtimeWorldWithoutBodyPresentationYaw": [
+          [
+            -0.04868664238703761,
+            -0.014055070969737302,
+            -0.005750292405675327,
+            0.0
+          ],
+          [
+            -0.008459953478368382,
+            0.028750492630539186,
+            0.0013558467509345979,
+            0.0
+          ],
+          [
+            0.004875574013122254,
+            0.003821961156541086,
+            -0.05062234112127634,
+            0.0
+          ],
+          [
+            4.742454156199232,
+            1.5825089705782351,
+            12.073133089986122,
+            1.0
+          ]
+        ],
+        "playablePresentationYawDiagnostic": [
+          [
+            -2.220446049250313e-16,
+            0.0,
+            1.0000000000000002,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.0000000000000002,
+            0.0,
+            -2.220446049250313e-16,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "worldWithPlayablePresentationYawDiagnostic": [
+          [
+            0.0048755740131222695,
+            0.0038219611565410913,
+            -0.05062234112127635,
+            0.0
+          ],
+          [
+            -0.008459953478368382,
+            0.028750492630539186,
+            0.0013558467509345979,
+            0.0
+          ],
+          [
+            0.048686642387037626,
+            0.014055070969737307,
+            0.005750292405675341,
+            0.0
+          ],
+          [
+            2.985704683967895,
+            1.1046220993413032,
+            11.245210732446301,
+            1.0
+          ]
+        ]
+      },
+      "runtimeWorldVariant": {
+        "selected": "WITHOUT_BODY_MODEL_PRESENTATION_YAW",
+        "reason": "CURRENT_EFFECT_ROOT_IS_ACTOR_WORLD_AND_BODY_MODEL_YAW_RELATION_IS_UNRESOLVED"
+      },
+      "transformedEmbeddedBounds": {
+        "runtimeWorld": {
+          "minimum": [
+            -0.1884260492078849,
+            -0.5817691201740963,
+            7.034488945817542
+          ],
+          "maximum": [
+            9.673334361606349,
+            3.7467870613305667,
+            17.1117772341547
+          ],
+          "center": [
+            4.742454156199232,
+            1.5825089705782351,
+            12.073133089986122
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "minimum": [
+            -1.945175521439224,
+            -1.059655991411029,
+            6.2065665882777195
+          ],
+          "maximum": [
+            7.916584889375014,
+            3.2689001900936354,
+            16.283854876614882
+          ],
+          "center": [
+            2.985704683967895,
+            1.1046220993413032,
+            11.245210732446301
+          ]
+        }
+      },
+      "fixedViewProjectionPoint": {
+        "runtimeWorld": {
+          "localPoint": [
+            5.021433353424072,
+            -3.074741509933931e-16,
+            -38.14171600341797
+          ],
+          "worldPoint": [
+            4.312014666888577,
+            1.3661562114171688,
+            13.975081338384191
+          ],
+          "viewPoint": [
+            0.3120146668885768,
+            1.4729117262389466,
+            21.430284096472644
+          ],
+          "clipPoint": [
+            0.30398920636370275,
+            2.551157944909837,
+            21.351635732204844,
+            21.430284096472644
+          ],
+          "ndcPoint": [
+            0.014185029232241415,
+            0.11904452285491397,
+            0.9963300363208557
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "localPoint": [
+            5.021433353424072,
+            -3.074741509933931e-16,
+            -38.14171600341797
+          ],
+          "worldPoint": [
+            1.1531949668481143,
+            0.587729297232645,
+            10.771688000437633
+          ],
+          "viewPoint": [
+            -2.8468050331518855,
+            -0.1777739231916673,
+            18.57670490095501
+          ],
+          "clipPoint": [
+            -2.773581163122301,
+            -0.3079134672288149,
+            18.495200101056064,
+            18.57670490095501
+          ],
+          "ndcPoint": [
+            -0.1493042591735262,
+            -0.016575246733503603,
+            0.9956125265307543
+          ]
+        }
+      },
+      "rawUpkToGltfPivotAdmitted": false,
+      "visualApproval": false,
+      "productAdmission": false,
+      "rowSha256": "c41b1b2095406716de8ea26dae3819ac02540c12739d8a555a87859d998e0a42"
+    },
+    {
+      "occurrenceId": "source-active-010",
+      "rendererSourceRowSha256": "b2599e555b649a5de1af983c796f78597d96d8322cb9a9cf499854e5be4000ac",
+      "runtimeEmitterId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13",
+      "runtimeEmitterRowSha256": "e5119ca0e37d880f3b6d1f40c1670ab4c9af158e8bcf95474183777669914e33",
+      "geometryUseId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::geometry-use",
+      "geometryUseRowSha256": "434f60c6d7ace176f68fa09a37e4dc03747b6018c011e0cb65b1ab5257b10018",
+      "geometryCarrierId": "geometry-carrier-dff1d5ac1399b993b4ab",
+      "geometryCarrierRowSha256": "6ec9273dd23d77464db7587f8f19db33d980e280d16d88aaa29d6c8f19317c69",
+      "geometryAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "geometryRowSha256": "cdaea8c56b891f2dfd16be5cd24e98e04a6c40e0049bab7b613be9d8d2c6c566",
+      "localSpace": true,
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "startSizeSourceUe": [
+        1.399999976158142,
+        1.399999976158142,
+        1.399999976158142
+      ],
+      "startSizeClientAxisReordered": [
+        1.399999976158142,
+        1.399999976158142,
+        1.399999976158142
+      ],
+      "startSizeEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:002",
+        "moduleRowSha256": "ca2d42f9178fa68e5fea65b4bb7c0db2ba074aa7e9294b9be1802895ed9096cb",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:002::property:startsize",
+        "propertyRowSha256": "d9000301f62669f8d25fa4e2ed401f9201a7cd55243dc5f67e9570e13c8d3b9a",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:002::distribution:startsize",
+        "distributionRowSha256": "55ba4e91fcdb872533c6d63bc9f9da94b94253b959674d31d6a49fbb582e388c",
+        "sampleOutputSha256": "f99092ad787633d31161de20dd28520a32eb9bab3043767e72e976c7bffea244"
+      },
+      "meshRotationTurnsSourceUe": [
+        0.0,
+        0.0,
+        -0.10000000149011612
+      ],
+      "meshRotationDegreesSourceUe": [
+        0.0,
+        0.0,
+        -36.0000005364418
+      ],
+      "meshRotationSourceRows": [
+        [
+          0.8090169888717047,
+          -0.5877852598670369,
+          -0.0
+        ],
+        [
+          0.5877852598670369,
+          0.8090169888717047,
+          0.0
+        ],
+        [
+          0.0,
+          -0.0,
+          1.0
+        ]
+      ],
+      "meshRotationClientRowsByBasisConjugation": [
+        [
+          0.8090169888717047,
+          0.0,
+          0.5877852598670369
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -0.5877852598670369,
+          0.0,
+          0.8090169888717047
+        ]
+      ],
+      "meshRotationEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:006",
+        "moduleRowSha256": "b4805fd6de58f98d9ae228b573656444e676521935719cc73241b5be88fd22a5",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:006::property:startrotation",
+        "propertyRowSha256": "b6de5a3d8531dbbaa94353f012837ea653f240a66abddb7b9ff0a8945860f100",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13::module:006::distribution:startrotation",
+        "distributionRowSha256": "56dc9c2771a22833a7f8996849cb2ff298a47c1fed0ab57e8f91637b12255bc8",
+        "sampleOutputSha256": "41190e072625941069f5735ed8205977e3be168f9b2599d13f17ffff74f801ca"
+      },
+      "applicationCounts": {
+        "geometryPreScale": 1,
+        "startSize": 1,
+        "cueScale": 1
+      },
+      "compositionOrderRowVector": [
+        "wmodelLocal",
+        "geometryPreScale",
+        "particleStartSize",
+        "basisConjugatedMeshRotation",
+        "particleTranslationZero",
+        "cueLocalSRT",
+        "capturedActorRoot"
+      ],
+      "matrices": {
+        "geometryPreScale": [
+          [
+            0.009999999776482582,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.009999999776482582,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.009999999776482582,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleStartSize": [
+          [
+            1.399999976158142,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.399999976158142,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.399999976158142,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "basisConjugatedMeshRotation": [
+          [
+            0.8090169888717047,
+            0.0,
+            0.5877852598670369,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -0.5877852598670369,
+            0.0,
+            0.8090169888717047,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleLocal": [
+          [
+            0.011326237398158046,
+            0.0,
+            0.008228993314067252,
+            0.0
+          ],
+          [
+            0.0,
+            0.013999999448657041,
+            0.0,
+            0.0
+          ],
+          [
+            -0.008228993314067252,
+            0.0,
+            0.011326237398158046,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "cueLocal": [
+          [
+            3.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            3.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            3.0,
+            0.0
+          ],
+          [
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "capturedRoot": [
+          [
+            0.8783747361156685,
+            0.23894343561846595,
+            0.41396117876991034,
+            0.0
+          ],
+          [
+            -0.28199845558210274,
+            0.9583497757720929,
+            0.0451948927080045,
+            0.0
+          ],
+          [
+            -0.38592057991643636,
+            -0.15643446504023087,
+            0.9091719112162112,
+            0.0
+          ],
+          [
+            4.25,
+            1.5,
+            10.75,
+            1.0
+          ]
+        ],
+        "runtimeWorldWithoutBodyPresentationYaw": [
+          [
+            0.020318828741691535,
+            0.004257095728921474,
+            0.03651057648931588,
+            0.0
+          ],
+          [
+            -0.011843934668014726,
+            0.0402506889972897,
+            0.0018981854189825315,
+            0.0
+          ],
+          [
+            -0.03479750380712941,
+            -0.011214233467332376,
+            0.020673039389372663,
+            0.0
+          ],
+          [
+            4.742454156199232,
+            1.5825089705782351,
+            12.073133089986122,
+            1.0
+          ]
+        ],
+        "playablePresentationYawDiagnostic": [
+          [
+            -2.220446049250313e-16,
+            0.0,
+            1.0000000000000002,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.0000000000000002,
+            0.0,
+            -2.220446049250313e-16,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "worldWithPlayablePresentationYawDiagnostic": [
+          [
+            -0.034797503807129426,
+            -0.01121423346733238,
+            0.020673039389372656,
+            0.0
+          ],
+          [
+            -0.011843934668014726,
+            0.0402506889972897,
+            0.0018981854189825315,
+            0.0
+          ],
+          [
+            -0.02031882874169153,
+            -0.0042570957289214725,
+            -0.036510576489315896,
+            0.0
+          ],
+          [
+            2.985704683967895,
+            1.1046220993413032,
+            11.245210732446301,
+            1.0
+          ]
+        ]
+      },
+      "runtimeWorldVariant": {
+        "selected": "WITHOUT_BODY_MODEL_PRESENTATION_YAW",
+        "reason": "CURRENT_EFFECT_ROOT_IS_ACTOR_WORLD_AND_BODY_MODEL_YAW_RELATION_IS_UNRESOLVED"
+      },
+      "transformedEmbeddedBounds": {
+        "runtimeWorld": {
+          "minimum": [
+            -0.3942666074426068,
+            -0.5979060752939978,
+            6.951545839115285
+          ],
+          "maximum": [
+            9.87917491984107,
+            3.762924016450468,
+            17.19472034085696
+          ],
+          "center": [
+            4.742454156199232,
+            1.5825089705782351,
+            12.073133089986122
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "minimum": [
+            -2.1510160796739446,
+            -1.07579294653093,
+            6.123623481575463
+          ],
+          "maximum": [
+            8.122425447609734,
+            3.2850371452135363,
+            16.366797983317138
+          ],
+          "center": [
+            2.985704683967895,
+            1.1046220993413032,
+            11.245210732446301
+          ]
+        }
+      },
+      "fixedViewProjectionPoint": {
+        "runtimeWorld": {
+          "localPoint": [
+            5.021433353424072,
+            -3.074741509933931e-16,
+            -38.14171600341797
+          ],
+          "worldPoint": [
+            6.171720308384659,
+            2.0316158011671774,
+            11.467963319205388
+          ],
+          "viewPoint": [
+            2.171720308384659,
+            1.4039064240502162,
+            18.837271274300114
+          ],
+          "clipPoint": [
+            2.1158605765976515,
+            2.4316372555273116,
+            18.756027301601712,
+            18.837271274300114
+          ],
+          "ndcPoint": [
+            0.11232309317986741,
+            0.12908649135635794,
+            0.995687062551929
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "localPoint": [
+            5.021433353424072,
+            -3.074741509933931e-16,
+            -38.14171600341797
+          ],
+          "worldPoint": [
+            3.585966333122559,
+            1.2106835096672424,
+            12.741595061529303
+          ],
+          "viewPoint": [
+            -0.41403366687744114,
+            0.9757082913098207,
+            20.290789076530285
+          ],
+          "clipPoint": [
+            -0.40338413273012375,
+            1.6899763339148246,
+            20.21100007660689,
+            20.290789076530285
+          ],
+          "ndcPoint": [
+            -0.019880159968579312,
+            0.08328785674824085,
+            0.9960677231613587
+          ]
+        }
+      },
+      "rawUpkToGltfPivotAdmitted": false,
+      "visualApproval": false,
+      "productAdmission": false,
+      "rowSha256": "95d761f2e983daa5bdce603cf198b771cc3f51b21cfe6a771864fc3bf16ec301"
+    },
+    {
+      "occurrenceId": "source-active-011",
+      "rendererSourceRowSha256": "1a901f8334f6689a996a4cf3a8f7876b5f6768c5faa4dc6fe3272ac0bc5a1794",
+      "runtimeEmitterId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
+      "runtimeEmitterRowSha256": "a025008232de2fd361af824619c27c4f9338b184264585365bd9a254e456f6af",
+      "geometryUseId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::geometry-use",
+      "geometryUseRowSha256": "54e684a06c6d2a9daa24e12b844cfe70cf08c4b75e16f8fa6d4d6eb7118d5d2a",
+      "geometryCarrierId": "geometry-carrier-c860b9f478f7d8baabfc",
+      "geometryCarrierRowSha256": "761f3e17d40f366b2c9b162880b9bb123545e6b5f0ba753f76897dd17824600b",
+      "geometryAssetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "geometryRowSha256": "7452bcdca157f8735517fa08ef459cd9a97e9a73f5ece13ec3d1bd688d65f409",
+      "localSpace": true,
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "startSizeSourceUe": [
+        1.2999999523162842,
+        1.2999999523162842,
+        1.2999999523162842
+      ],
+      "startSizeClientAxisReordered": [
+        1.2999999523162842,
+        1.2999999523162842,
+        1.2999999523162842
+      ],
+      "startSizeEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:002",
+        "moduleRowSha256": "11f7b784880e8f05fa397bd5221d5d463e1ec693f15fa86dd01aeda9c1d4b3ba",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:002::property:startsize",
+        "propertyRowSha256": "4618457893244a567ea892ab45679cf1ed66cf4d848af07d0f61fc146dbd7407",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:002::distribution:startsize",
+        "distributionRowSha256": "e62f74b497ac7a70a54781b21b2ee37a6dd5c4d79d1487e7872df39340b0bad7",
+        "sampleOutputSha256": "821be85c4d03132ac086970f11544d7b0a70b9c08b080d5327d0ed8e4f7b4738"
+      },
+      "meshRotationTurnsSourceUe": [
+        0.0,
+        0.0,
+        0.41999998688697815
+      ],
+      "meshRotationDegreesSourceUe": [
+        0.0,
+        0.0,
+        151.19999527931213
+      ],
+      "meshRotationSourceRows": [
+        [
+          -0.8763066403514304,
+          0.48175374630197615,
+          0.0
+        ],
+        [
+          -0.48175374630197615,
+          -0.8763066403514304,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "meshRotationClientRowsByBasisConjugation": [
+        [
+          -0.8763066403514304,
+          0.0,
+          -0.48175374630197615
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.48175374630197615,
+          0.0,
+          -0.8763066403514304
+        ]
+      ],
+      "meshRotationEvidence": {
+        "moduleId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:006",
+        "moduleRowSha256": "9de3d37661e95f4e4b142fc4e4ddb7d3904de9a9b444007a954c35586d3b8891",
+        "propertyId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:006::property:startrotation",
+        "propertyRowSha256": "ff0196a17b941904072b61ed1abc78a01850f6c052265dbac81bff435d5d9748",
+        "distributionId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01::action-31470/stage-000/notify-018::FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6::module:006::distribution:startrotation",
+        "distributionRowSha256": "c38b3f4e571755d6b6a17d00416f53136e23c733a7e0faa085540b68e636016e",
+        "sampleOutputSha256": "3aecede90725e7325d6a5524c113482e5355cdfb663dd4e3322a98ece5ec1ea8"
+      },
+      "applicationCounts": {
+        "geometryPreScale": 1,
+        "startSize": 1,
+        "cueScale": 1
+      },
+      "compositionOrderRowVector": [
+        "wmodelLocal",
+        "geometryPreScale",
+        "particleStartSize",
+        "basisConjugatedMeshRotation",
+        "particleTranslationZero",
+        "cueLocalSRT",
+        "capturedActorRoot"
+      ],
+      "matrices": {
+        "geometryPreScale": [
+          [
+            0.009999999776482582,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.009999999776482582,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.009999999776482582,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleStartSize": [
+          [
+            1.2999999523162842,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.2999999523162842,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.2999999523162842,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "basisConjugatedMeshRotation": [
+          [
+            -0.8763066403514304,
+            0.0,
+            -0.48175374630197615,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.48175374630197615,
+            0.0,
+            -0.8763066403514304,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "particleLocal": [
+          [
+            -0.011391985652082298,
+            0.0,
+            -0.006262798332223148,
+            0.0
+          ],
+          [
+            0.0,
+            0.01299999923259021,
+            0.0,
+            0.0
+          ],
+          [
+            0.006262798332223148,
+            0.0,
+            -0.011391985652082298,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "cueLocal": [
+          [
+            3.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            3.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            3.0,
+            0.0
+          ],
+          [
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "capturedRoot": [
+          [
+            0.8783747361156685,
+            0.23894343561846595,
+            0.41396117876991034,
+            0.0
+          ],
+          [
+            -0.28199845558210274,
+            0.9583497757720929,
+            0.0451948927080045,
+            0.0
+          ],
+          [
+            -0.38592057991643636,
+            -0.15643446504023087,
+            0.9091719112162112,
+            0.0
+          ],
+          [
+            4.25,
+            1.5,
+            10.75,
+            1.0
+          ]
+        ],
+        "runtimeWorldWithoutBodyPresentationYaw": [
+          [
+            -0.02276846888013007,
+            -0.005226968050405909,
+            -0.031229400415004743,
+            0.0
+          ],
+          [
+            -0.01099793911847688,
+            0.03737563904877062,
+            0.001762600711563166,
+            0.0
+          ],
+          [
+            0.02969245662499044,
+            0.009835661193949432,
+            -0.023294153963537987,
+            0.0
+          ],
+          [
+            4.742454156199232,
+            1.5825089705782351,
+            12.073133089986122,
+            1.0
+          ]
+        ],
+        "playablePresentationYawDiagnostic": [
+          [
+            -2.220446049250313e-16,
+            0.0,
+            1.0000000000000002,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.0000000000000002,
+            0.0,
+            -2.220446049250313e-16,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "worldWithPlayablePresentationYawDiagnostic": [
+          [
+            0.029692456624990447,
+            0.009835661193949435,
+            -0.023294153963537984,
+            0.0
+          ],
+          [
+            -0.01099793911847688,
+            0.03737563904877062,
+            0.001762600711563166,
+            0.0
+          ],
+          [
+            0.022768468880130066,
+            0.005226968050405907,
+            0.03122940041500475,
+            0.0
+          ],
+          [
+            2.985704683967895,
+            1.1046220993413032,
+            11.245210732446301,
+            1.0
+          ]
+        ]
+      },
+      "runtimeWorldVariant": {
+        "selected": "WITHOUT_BODY_MODEL_PRESENTATION_YAW",
+        "reason": "CURRENT_EFFECT_ROOT_IS_ACTOR_WORLD_AND_BODY_MODEL_YAW_RELATION_IS_UNRESOLVED"
+      },
+      "transformedEmbeddedBounds": {
+        "runtimeWorld": {
+          "minimum": [
+            -0.040571733249263026,
+            -0.47515590575473116,
+            7.295406261669352
+          ],
+          "maximum": [
+            9.52547924515753,
+            3.640173617073719,
+            16.85085979722064
+          ],
+          "center": [
+            4.742453755954133,
+            1.582508855659494,
+            12.073133029444996
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "minimum": [
+            -1.7973207524096677,
+            -0.9530426269113839,
+            6.467483548688949
+          ],
+          "maximum": [
+            7.7687302259971265,
+            3.1622868959170667,
+            16.022937084240237
+          ],
+          "center": [
+            2.9857047367937293,
+            1.1046221345028413,
+            11.245210316464593
+          ]
+        }
+      },
+      "fixedViewProjectionPoint": {
+        "runtimeWorld": {
+          "localPoint": [
+            60.05216979980469,
+            20.000001907348633,
+            -24.874431610107422
+          ],
+          "worldPoint": [
+            2.4166164119272446,
+            1.7714745682318092,
+            10.812420690792662
+          ],
+          "viewPoint": [
+            -1.5833835880727554,
+            0.9693638459568299,
+            18.281769387207593
+          ],
+          "clipPoint": [
+            -1.5426567126071566,
+            1.6789874322176002,
+            18.199969356564154,
+            18.281769387207593
+          ],
+          "ndcPoint": [
+            -0.0843822433121057,
+            0.09183943833097728,
+            0.9955255955312139
+          ]
+        },
+        "withPlayablePresentationYawDiagnostic": {
+          "localPoint": [
+            60.05216979980469,
+            20.000001907348633,
+            -24.874431610107422
+          ],
+          "worldPoint": [
+            3.9824896056130608,
+            2.3127698884194525,
+            9.104784676030587
+          ],
+          "viewPoint": [
+            -0.017510394386939243,
+            1.006826525305835,
+            16.490786994713034
+          ],
+          "clipPoint": [
+            -0.017060002165545558,
+            1.7438746962377385,
+            16.407194188901933,
+            16.490786994713034
+          ],
+          "ndcPoint": [
+            -0.001034517162280673,
+            0.10574842163668882,
+            0.9949309389638044
+          ]
+        }
+      },
+      "rawUpkToGltfPivotAdmitted": false,
+      "visualApproval": false,
+      "productAdmission": false,
+      "rowSha256": "573bc18fe6f966d48027ea5dedcc59ac300b31b630ff771ec006bdd2a60add9c"
+    }
+  ],
+  "summary": {
+    "mainOccurrenceCount": 3,
+    "mainWModelCount": 2,
+    "basisConjugationCanaryCount": 1,
+    "geometryPreScaleExactlyOnceCount": 3,
+    "rawUpkToGltfPivotResolvedCount": 0,
+    "lateHistoricalRootResolvedCount": 0,
+    "playablePresentationYawSelectedCount": 0,
+    "visualApprovalCount": 0,
+    "productAdmissionCount": 0
+  },
+  "admission": {
+    "actionCueRootSnapshotProjection": true,
+    "threeAxisBasisConjugation": true,
+    "currentWModelIdentityAndBounds": true,
+    "geometryPreScaleExactlyOnceInOracle": true,
+    "rawUpkToGltfPivot": false,
+    "lateHistoricalRootReplay": false,
+    "playablePresentationYawRelation": false,
+    "runtimeExecution": false,
+    "visualApproval": false,
+    "product": false,
+    "blockers": [
+      "RAW_UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED",
+      "LATE_INITIAL_SEEK_HISTORICAL_ACTOR_ROOT_PROVIDER_UNRESOLVED",
+      "PLAYABLE_PRESENTATION_YAW_RELATION_UNRESOLVED",
+      "G02_RUNTIME_NUMERIC_CONSUMER_NOT_ADMITTED",
+      "MANUAL_VISUAL_APPROVAL_REQUIRED",
+      "PRODUCT_ADMISSION_NOT_OPEN"
+    ]
+  },
+  "receiptSha256": "73806b33b77af48a8a7c1e88afe3400b5d29b673d2574a8d573c473d9b1f6764"
+}

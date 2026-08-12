@@ -6,7 +6,13 @@ import base64
 import struct
 import unittest
 
-from build_action_cue_recipe import build_action_cue_recipe, decode_typed_payload
+from build_action_cue_recipe import (
+    build_action_cue_recipe,
+    decode_typed_payload,
+    directx_roll_pitch_yaw_rows,
+    ue3_euler_degrees_to_client,
+    ue3_euler_degrees_to_client_rotation_rows,
+)
 
 
 class ActionCueRecipeTests(unittest.TestCase):
@@ -64,7 +70,7 @@ class ActionCueRecipeTests(unittest.TestCase):
         raw[marker_start : marker_start + len(marker)] = marker
         transform_start = marker_start + len(marker) + 72
         struct.pack_into("<fff", raw, transform_start + 20, 0.0, 0.0, 45.0)
-        struct.pack_into("<fff", raw, transform_start + 32, 0.0, 0.0, 0.0)
+        struct.pack_into("<fff", raw, transform_start + 32, 30.0, -45.0, 60.0)
         struct.pack_into("<fff", raw, transform_start + 80, 1.2, 1.2, 1.2)
         typed = decode_typed_payload(
             "PlaySkeletalMesh",
@@ -93,6 +99,41 @@ class ActionCueRecipeTests(unittest.TestCase):
         self.assertEqual(typed["localTransform"]["position"], [0.0, 0.45, 0.0])
         for value in typed["localTransform"]["scale"]:
             self.assertAlmostEqual(value, 1.2)
+        expected_rotation = [-20.704811054635428, 82.20765429859648, -49.106605350869096]
+        for actual, expected in zip(
+            typed["localTransform"]["rotationDegrees"], expected_rotation
+        ):
+            self.assertAlmostEqual(actual, expected, places=6)
+
+    def test_basis_conjugates_asymmetric_ue3_euler_rotation(self) -> None:
+        source = [30.0, -45.0, 60.0]
+        converted = ue3_euler_degrees_to_client(source)
+        expected_rows = (
+            (0.353553390593, -0.707106781187, -0.612372435696),
+            (-0.126826484044, 0.612372435696, -0.780330085890),
+            (0.926776695297, 0.353553390593, 0.126826484044),
+        )
+        source_rows = ue3_euler_degrees_to_client_rotation_rows(source)
+        client_rows = directx_roll_pitch_yaw_rows(converted)
+        for row in range(3):
+            for column in range(3):
+                self.assertAlmostEqual(
+                    source_rows[row][column], expected_rows[row][column], places=10
+                )
+                self.assertAlmostEqual(
+                    client_rows[row][column], expected_rows[row][column], places=10
+                )
+        component_swizzle_rows = directx_roll_pitch_yaw_rows(
+            [source[0], source[2], -source[1]]
+        )
+        self.assertGreater(
+            max(
+                abs(component_swizzle_rows[row][column] - expected_rows[row][column])
+                for row in range(3)
+                for column in range(3)
+            ),
+            1.0,
+        )
 
     def test_model_material_payload_stays_explicitly_unsupported(self) -> None:
         typed = decode_typed_payload(

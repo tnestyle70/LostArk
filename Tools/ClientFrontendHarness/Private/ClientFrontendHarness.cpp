@@ -3491,6 +3491,134 @@ namespace
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 300.f) < 0.0001f &&
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 200.f) < 0.0001f,
 			"Effect Source Mesh Size Preserves Dimensionless XZY Before Renderer Geometry Scale");
+
+		EFFECT_DOCUMENT_DESC meshRotationDocument;
+		meshRotationDocument.strEffectAssetId =
+			"effect.mesh.rotation.basis.harness";
+		meshRotationDocument.strDisplayName =
+			"Source Mesh Rotation Basis Harness";
+		const auto MakeMeshRotationElement = [&](const std::string& strElementId,
+			const bool_t bWithRotationRate)
+		{
+			EFFECT_ELEMENT_DESC element = sourceElement(strElementId);
+			element.SourceRecipe.strRendererShape = "mesh";
+			element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+			element.Detail.Particle.bLocalSpace = true;
+
+			EFFECT_SOURCE_MODULE_DESC meshLifetime = lifetime();
+			meshLifetime.strStableId = strElementId + ".lifetime";
+			meshLifetime.strObjectPath = "Harness." + strElementId + ".Lifetime";
+			element.SourceRecipe.Modules.push_back(std::move(meshLifetime));
+
+			EFFECT_SOURCE_MODULE_DESC meshSize;
+			meshSize.strStableId = strElementId + ".size";
+			meshSize.strClassName = "particlemodulesize";
+			meshSize.strObjectPath = "Harness." + strElementId + ".Size";
+			meshSize.Distributions.push_back(distribution(
+				"startsize", { 1.f, 1.f, 1.f, 0.f },
+				{ 1.f, 1.f, 1.f, 0.f }, 3u));
+			element.SourceRecipe.Modules.push_back(std::move(meshSize));
+
+			EFFECT_SOURCE_MODULE_DESC meshRotation;
+			meshRotation.strStableId = strElementId + ".rotation";
+			meshRotation.strClassName = "particlemodulemeshrotation";
+			meshRotation.strObjectPath =
+				"Harness." + strElementId + ".Rotation";
+			meshRotation.Distributions.push_back(distribution(
+				"startrotation",
+				{ 1.f / 12.f, -1.f / 8.f, 1.f / 6.f, 0.f },
+				{ 1.f / 12.f, -1.f / 8.f, 1.f / 6.f, 0.f }, 3u));
+			element.SourceRecipe.Modules.push_back(std::move(meshRotation));
+
+			if (bWithRotationRate)
+			{
+				EFFECT_SOURCE_MODULE_DESC meshRotationRate;
+				meshRotationRate.strStableId = strElementId + ".rotation-rate";
+				meshRotationRate.strClassName =
+					"particlemodulemeshrotationrate";
+				meshRotationRate.strObjectPath =
+					"Harness." + strElementId + ".RotationRate";
+				meshRotationRate.Distributions.push_back(distribution(
+					"startrotationrate",
+					{ 1.f / 12.f, 0.f, 0.f, 0.f },
+					{ 1.f / 12.f, 0.f, 0.f, 0.f }, 3u));
+				element.SourceRecipe.Modules.push_back(
+					std::move(meshRotationRate));
+			}
+			element.ResourceBindings.push_back({
+				"meshModel",
+				"Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" });
+			return element;
+		};
+		meshRotationDocument.Elements.push_back(
+			MakeMeshRotationElement("mesh.rotation.basis", false));
+		meshRotationDocument.Elements.push_back(
+			MakeMeshRotationElement("mesh.rotation.rate", true));
+
+		CEffectPlayback meshRotationPlayback;
+		const bool_t bMeshRotationStaged = meshRotationPlayback.Stage_Document(
+			meshRotationDocument, status);
+		if (bMeshRotationStaged)
+			meshRotationPlayback.Seek(1.f / 60.f, identity);
+		const auto FindMeshRotationParticle = [&meshRotationPlayback](
+			const std::string_view strElementId)
+			-> const EFFECT_EVALUATED_PARTICLE*
+		{
+			const auto& particles = meshRotationPlayback.Get_Frame().Particles;
+			const auto found = std::find_if(particles.begin(), particles.end(),
+				[strElementId](const EFFECT_EVALUATED_PARTICLE& particle)
+				{
+					return nullptr != particle.pElement &&
+						particle.pElement->strElementId == strElementId;
+				});
+			return found == particles.end() ? nullptr : &*found;
+		};
+		float4x4_t expectedMeshRotation{};
+		expectedMeshRotation._11 = 0.35355339f;
+		expectedMeshRotation._12 = -0.70710678f;
+		expectedMeshRotation._13 = -0.61237244f;
+		expectedMeshRotation._21 = -0.12682648f;
+		expectedMeshRotation._22 = 0.61237244f;
+		expectedMeshRotation._23 = -0.78033009f;
+		expectedMeshRotation._31 = 0.92677670f;
+		expectedMeshRotation._32 = 0.35355339f;
+		expectedMeshRotation._33 = 0.12682648f;
+		expectedMeshRotation._44 = 1.f;
+		float4x4_t expectedMeshRotationAfterRate{};
+		expectedMeshRotationAfterRate._11 = 0.35355339f;
+		expectedMeshRotationAfterRate._12 = -0.70710678f;
+		expectedMeshRotationAfterRate._13 = -0.61237244f;
+		expectedMeshRotationAfterRate._21 = -0.13490920f;
+		expectedMeshRotationAfterRate._22 = 0.60926382f;
+		expectedMeshRotationAfterRate._23 = -0.78140713f;
+		expectedMeshRotationAfterRate._31 = 0.92563465f;
+		expectedMeshRotationAfterRate._32 = 0.35888382f;
+		expectedMeshRotationAfterRate._33 = 0.12001208f;
+		expectedMeshRotationAfterRate._44 = 1.f;
+		const auto MeshRotationMatrixNear = [](const float4x4_t& actual,
+			const float4x4_t& expected)
+		{
+			const f32_t* const pActual = &actual._11;
+			const f32_t* const pExpected = &expected._11;
+			for (size_t i = 0u; i < 16u; ++i)
+			{
+				if (std::abs(pActual[i] - pExpected[i]) > 0.0002f)
+					return false;
+			}
+			return true;
+		};
+		const EFFECT_EVALUATED_PARTICLE* pMeshRotation =
+			FindMeshRotationParticle("mesh.rotation.basis");
+		const EFFECT_EVALUATED_PARTICLE* pMeshRotationRate =
+			FindMeshRotationParticle("mesh.rotation.rate");
+		runner.Require(bMeshRotationStaged && nullptr != pMeshRotation &&
+			MeshRotationMatrixNear(
+				pMeshRotation->World, expectedMeshRotation),
+			"Effect Source Mesh Rotation Conjugates UE Roll Pitch Yaw Into Client Basis Instead Of Component Swizzle");
+		runner.Require(bMeshRotationStaged && nullptr != pMeshRotationRate &&
+			MeshRotationMatrixNear(
+				pMeshRotationRate->World, expectedMeshRotationAfterRate),
+			"Effect Source Mesh Rotation Rate Integrates One Fixed Step In UE Euler Space Before Basis Conjugation");
 		resourceRootEnvironment.Restore();
 
 		EFFECT_DOCUMENT_DESC worldAccelerationDocument;
@@ -8602,6 +8730,187 @@ namespace
 			}
 			runner.Require(bExactFrames,
 				"Artist 31470 V3 Main Review Has No Early Plate Three Main Rows At 1.670 Only Outer At 2.177 And No 2.610 Tail");
+
+			constexpr f32_t MainReviewStartDelay = 1.3803969621658325f;
+			bool_t bMainCueProjectionExact = bMainReviewStaged;
+			size_t iMainCueProjectionCount = 0u;
+			for (const EFFECT_ELEMENT_DESC& Element : MainReviewDocument.Elements)
+			{
+				if (!Element.bVisible)
+					continue;
+				const auto Order = OrderByElementId.find(Element.strElementId);
+				const bool_t bMainOrder = Order != OrderByElementId.end() &&
+					Order->second >= 9u && Order->second <= 11u;
+				const auto RuntimeEmitter = std::find_if(
+					Program->Emitters.begin(), Program->Emitters.end(),
+					[&Element](const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter)
+					{
+						return Emitter.strSourceElementId == Element.strElementId;
+					});
+				const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
+					Element.ActionCueAttachment;
+				bMainCueProjectionExact = bMainCueProjectionExact && bMainOrder &&
+					RuntimeEmitter != Program->Emitters.end() &&
+					Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+					Element.Renderer.eType ==
+						EFFECT_RENDERER_TYPE::MESH_PARTICLE &&
+					Element.SourceRecipe.strRendererShape == "mesh" &&
+					Element.Detail.Particle.bLocalSpace &&
+					std::abs(Element.Detail.Timing.fStartDelaySeconds -
+						MainReviewStartDelay) < 0.000001f &&
+					std::abs(RuntimeEmitter->CueLocalTransform.
+						vSourcePositionUeUnits[0u] - 100.0) < 0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.
+						vSourcePositionUeUnits[1u] + 100.0) < 0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.
+						vSourcePositionUeUnits[2u]) < 0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vPosition[0u] - 1.0) <
+						0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vPosition[1u]) <
+						0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vPosition[2u] - 1.0) <
+						0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vScale[0u] - 3.0) <
+						0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vScale[1u] - 3.0) <
+						0.0001 &&
+					std::abs(RuntimeEmitter->CueLocalTransform.vScale[2u] - 3.0) <
+						0.0001 &&
+					std::abs(Element.Detail.Transform.vPosition.x - 1.f) <
+						0.0001f &&
+					std::abs(Element.Detail.Transform.vPosition.y) < 0.0001f &&
+					std::abs(Element.Detail.Transform.vPosition.z - 1.f) <
+						0.0001f &&
+					std::abs(Element.Detail.Transform.vScale.x - 3.f) < 0.0001f &&
+					std::abs(Element.Detail.Transform.vScale.y - 3.f) < 0.0001f &&
+					std::abs(Element.Detail.Transform.vScale.z - 3.f) < 0.0001f &&
+					Attachment.bEnabled && !Attachment.bFollow &&
+					Attachment.strSourceAnchorSlotId == "root" &&
+					Attachment.strRuntimeAnchorSlotId == "root" &&
+					Attachment.strRuntimeBoneName.empty() &&
+					std::abs(Attachment.SocketLocalTransform.vPosition.x) < 0.0001f &&
+					std::abs(Attachment.SocketLocalTransform.vPosition.y) < 0.0001f &&
+					std::abs(Attachment.SocketLocalTransform.vPosition.z) < 0.0001f &&
+					std::abs(Attachment.SocketLocalTransform.vScale.x - 1.f) <
+						0.0001f &&
+					std::abs(Attachment.SocketLocalTransform.vScale.y - 1.f) <
+						0.0001f &&
+					std::abs(Attachment.SocketLocalTransform.vScale.z - 1.f) <
+						0.0001f;
+				++iMainCueProjectionCount;
+			}
+			runner.Require(bMainCueProjectionExact &&
+				iMainCueProjectionCount == 3u,
+				"Artist 31470 Main 009 010 011 Projects UE Cue 100 Negative100 0 Once Into Client 1 0 1 Scale3 Root Snapshot Mesh Particles");
+
+			struct MAIN_MESH_ORACLE final
+			{
+				uint32_t iOrder = 0u;
+				float3_t vFirstFixedStepSize{};
+				f32_t fFirstFixedStepSourceYawDegrees = 0.f;
+			};
+			constexpr std::array<MAIN_MESH_ORACLE, 3u> MainMeshOracles{{
+				{ 9u, { 1.360000058413f, 0.800000011921f,
+					1.360000058413f }, -130.499995708466f },
+				{ 10u, { 1.119999997616f, 1.119999997616f,
+					1.119999997616f }, -22.500000536442f },
+				{ 11u, { 1.364999887943f, 1.364999887943f,
+					1.364999887943f }, 151.199995279312f }
+			}};
+			float4x4_t MainReviewRootAtCue{};
+			float4x4_t MainReviewRootAfterCue{};
+			XMStoreFloat4x4(&MainReviewRootAtCue,
+				XMMatrixRotationY(XMConvertToRadians(30.f)) *
+				XMMatrixTranslation(4.f, 2.f, -3.f));
+			XMStoreFloat4x4(&MainReviewRootAfterCue,
+				XMMatrixRotationY(XMConvertToRadians(-70.f)) *
+				XMMatrixTranslation(104.f, 20.f, 30.f));
+			if (bMainReviewStaged)
+			{
+				MainReviewPlayback.Seek(
+					MainReviewStartDelay, MainReviewRootAtCue);
+				MainReviewPlayback.Update(
+					1.f / 60.f, MainReviewRootAfterCue);
+			}
+			const auto MainMatrixNear = [](const float4x4_t& Actual,
+				const float4x4_t& Expected)
+			{
+				const f32_t* const pActual = &Actual._11;
+				const f32_t* const pExpected = &Expected._11;
+				for (size_t i = 0u; i < 16u; ++i)
+				{
+					if (std::abs(pActual[i] - pExpected[i]) > 0.0002f)
+						return false;
+				}
+				return true;
+			};
+			std::set<uint32_t> ExactMainMeshOrders;
+			bool_t bMainMeshWorldExact = bMainReviewStaged &&
+				MainReviewPlayback.Get_Frame().Particles.size() == 3u;
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				MainReviewPlayback.Get_Frame().Particles)
+			{
+				if (nullptr == Particle.pElement)
+				{
+					bMainMeshWorldExact = false;
+					continue;
+				}
+				const auto Order = OrderByElementId.find(
+					Particle.pElement->strElementId);
+				const auto Oracle = Order == OrderByElementId.end() ?
+					MainMeshOracles.end() : std::find_if(
+						MainMeshOracles.begin(), MainMeshOracles.end(),
+						[&Order](const MAIN_MESH_ORACLE& Row)
+						{
+							return Row.iOrder == Order->second;
+						});
+				if (Oracle == MainMeshOracles.end())
+				{
+					bMainMeshWorldExact = false;
+					continue;
+				}
+				float4x4_t ExpectedAtCueRoot{};
+				float4x4_t ExpectedAtCurrentRoot{};
+				const matrix_t ParticleLocal = XMMatrixScaling(
+					Oracle->vFirstFixedStepSize.x,
+					Oracle->vFirstFixedStepSize.y,
+					Oracle->vFirstFixedStepSize.z) *
+					XMMatrixRotationY(XMConvertToRadians(
+						Oracle->fFirstFixedStepSourceYawDegrees)) *
+					XMMatrixScaling(3.f, 3.f, 3.f) *
+					XMMatrixTranslation(1.f, 0.f, 1.f);
+				XMStoreFloat4x4(&ExpectedAtCueRoot,
+					ParticleLocal * XMLoadFloat4x4(&MainReviewRootAtCue));
+				XMStoreFloat4x4(&ExpectedAtCurrentRoot,
+					ParticleLocal * XMLoadFloat4x4(&MainReviewRootAfterCue));
+				const f32_t fRow1Length = std::sqrt(
+					Particle.World._11 * Particle.World._11 +
+					Particle.World._12 * Particle.World._12 +
+					Particle.World._13 * Particle.World._13);
+				const f32_t fRow2Length = std::sqrt(
+					Particle.World._21 * Particle.World._21 +
+					Particle.World._22 * Particle.World._22 +
+					Particle.World._23 * Particle.World._23);
+				const f32_t fRow3Length = std::sqrt(
+					Particle.World._31 * Particle.World._31 +
+					Particle.World._32 * Particle.World._32 +
+					Particle.World._33 * Particle.World._33);
+				const bool_t bExact =
+					MainMatrixNear(Particle.World, ExpectedAtCueRoot) &&
+					!MainMatrixNear(Particle.World, ExpectedAtCurrentRoot) &&
+					std::abs(fRow1Length -
+						Oracle->vFirstFixedStepSize.x * 3.f) < 0.0002f &&
+					std::abs(fRow2Length -
+						Oracle->vFirstFixedStepSize.y * 3.f) < 0.0002f &&
+					std::abs(fRow3Length -
+						Oracle->vFirstFixedStepSize.z * 3.f) < 0.0002f;
+				bMainMeshWorldExact = bMainMeshWorldExact && bExact;
+				if (bExact)
+					ExactMainMeshOrders.insert(Oracle->iOrder);
+			}
+			runner.Require(bMainMeshWorldExact &&
+				ExactMainMeshOrders == std::set<uint32_t>{ 9u, 10u, 11u },
+				"Artist 31470 Main MeshParticles Preserve RootA Snapshot Against RootB And Match First Fixed Step Source Size Yaw Cue Composition World Matrices");
 			CEffectCatalog::Clear();
 			RestorePriorCatalogFile();
 			return;

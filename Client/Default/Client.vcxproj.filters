@@ -4743,6 +4743,9 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.geometry-resource-binding.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.main-transform-oracle.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Geometry\skill.31470.wmodel-geometry-parity.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Geometry</Filter>
     </None>
@@ -4807,6 +4810,9 @@
       <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.renderer-restoration-matrix.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json">

@@ -196,12 +196,15 @@ private:
 		float3_t vRotationDegrees{};
 		float3_t vRotationRateDegreesPerSecond{};
 		float3_t vRotationRateScale = { 1.f, 1.f, 1.f };
+		float3_t vSourceMeshRotationDegrees{};
+		float3_t vSourceMeshRotationRateDegreesPerSecond{};
+		float3_t vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
 		float4_t vBaseColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vDynamicParameter{};
 		float3_t vOrbitOffset{};
-		float3_t vOrbitRotationDegrees{};
-		float3_t vOrbitRotationRateDegreesPerSecond{};
+		float3_t vSourceOrbitRotationDegrees{};
+		float3_t vSourceOrbitRotationRateDegreesPerSecond{};
 		f32_t fCameraOffset = 0.f;
 		f32_t fSubImageIndex = 0.f;
 		f32_t fDistributionRandom = 0.f;

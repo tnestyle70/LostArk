@@ -52,6 +52,99 @@ def ue3_axis_scale_to_client(values: list[float]) -> list[float]:
     return [float(values[0]), float(values[2]), float(values[1])]
 
 
+UE3_TO_CLIENT_BASIS = (
+    (1.0, 0.0, 0.0),
+    (0.0, 0.0, -1.0),
+    (0.0, 1.0, 0.0),
+)
+
+
+def _matrix_transpose(
+    matrix: tuple[tuple[float, ...], ...],
+) -> tuple[tuple[float, ...], ...]:
+    return tuple(
+        tuple(matrix[row][column] for row in range(3))
+        for column in range(3)
+    )
+
+
+def _matrix_multiply(
+    left: tuple[tuple[float, ...], ...],
+    right: tuple[tuple[float, ...], ...],
+) -> tuple[tuple[float, ...], ...]:
+    return tuple(
+        tuple(
+            sum(left[row][index] * right[index][column] for index in range(3))
+            for column in range(3)
+        )
+        for row in range(3)
+    )
+
+
+def ue3_euler_degrees_to_client_rotation_rows(
+    values: list[float],
+) -> tuple[tuple[float, ...], ...]:
+    """Basis-conjugate UE Euler (roll X, pitch Y, yaw Z) into Client rows."""
+
+    if len(values) != 3 or not all(math.isfinite(float(value)) for value in values):
+        raise ValueError("UE3 Euler rotation must contain three finite components")
+    roll, pitch, yaw = (math.radians(float(value)) for value in values)
+    sp, cp = math.sin(pitch), math.cos(pitch)
+    sy, cy = math.sin(yaw), math.cos(yaw)
+    sr, cr = math.sin(roll), math.cos(roll)
+    ue3_rows = (
+        (cp * cy, cp * sy, sp),
+        (sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, -sr * cp),
+        (-cr * sp * cy - sr * sy, -cr * sp * sy + sr * cy, cr * cp),
+    )
+    return _matrix_multiply(
+        _matrix_multiply(_matrix_transpose(UE3_TO_CLIENT_BASIS), ue3_rows),
+        UE3_TO_CLIENT_BASIS,
+    )
+
+
+def directx_roll_pitch_yaw_rows(
+    values: list[float],
+) -> tuple[tuple[float, ...], ...]:
+    """Mirror XMMatrixRotationRollPitchYaw for a numeric round-trip canary."""
+
+    if len(values) != 3:
+        raise ValueError("Client Euler rotation must have exactly three components")
+    pitch, yaw, roll = (math.radians(float(value)) for value in values)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    cr, sr = math.cos(roll), math.sin(roll)
+    return (
+        (cr * cy + sr * sp * sy, sr * cp, sr * sp * cy - cr * sy),
+        (cr * sp * sy - sr * cy, cr * cp, sr * sy + cr * sp * cy),
+        (cp * sy, -sp, cp * cy),
+    )
+
+
+def ue3_euler_degrees_to_client(values: list[float]) -> list[float]:
+    """Return Client pitch/yaw/roll whose matrix is B^T * R_UE * B."""
+
+    rows = ue3_euler_degrees_to_client_rotation_rows(values)
+    pitch = math.asin(max(-1.0, min(1.0, -rows[2][1])))
+    if abs(math.cos(pitch)) > 1.0e-7:
+        yaw = math.atan2(rows[2][0], rows[2][2])
+        roll = math.atan2(rows[0][1], rows[1][1])
+    else:
+        yaw = math.atan2(-rows[0][2], rows[0][0])
+        roll = 0.0
+    result = [math.degrees(pitch), math.degrees(yaw), math.degrees(roll)]
+    result = [0.0 if abs(value) < 1.0e-12 else value for value in result]
+    round_trip = directx_roll_pitch_yaw_rows(result)
+    error = max(
+        abs(round_trip[row][column] - rows[row][column])
+        for row in range(3)
+        for column in range(3)
+    )
+    if error > 1.0e-6:
+        raise ValueError(f"UE3-to-Client Euler rotation round-trip failed: {error}")
+    return result
+
+
 def normalize_clip(value: str) -> str:
     result = value.casefold()
     for prefix in ("pc_sp_m_00_sk_", "pc_sp_f_00_sk_"):
@@ -461,7 +554,7 @@ def decode_typed_payload(
                 "position": [
                     value * 0.01 for value in ue3_vector_to_client(position_ue)
                 ],
-                "rotationDegrees": ue3_vector_to_client(rotation_degrees),
+                "rotationDegrees": ue3_euler_degrees_to_client(rotation_degrees),
                 "scale": ue3_axis_scale_to_client(scale),
             },
             "sourceTransformByteOffset": transform_start,
@@ -754,7 +847,7 @@ def decode_typed_payload(
             "position": [
                 value * 0.01 for value in ue3_vector_to_client(position_ue)
             ],
-            "rotationDegrees": ue3_vector_to_client(rotation_degrees),
+            "rotationDegrees": ue3_euler_degrees_to_client(rotation_degrees),
             "scale": ue3_axis_scale_to_client(scale),
         },
         "sourceTransformByteOffset": transform_start,
