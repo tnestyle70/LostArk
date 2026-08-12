@@ -39,7 +39,7 @@ namespace
 		"OFFLINE_IMMUTABLE_TYPED_PROGRAM_NOT_RUNTIME_OR_PRODUCT_AUTHORITY";
 
 	// This profile is intentionally the only candidate-specific switch point.
-	// It pins the final Material 72/72 corrective. The parser never accepts an
+	// It pins the final Material 77/77 corrective. The parser never accepts an
 	// earlier profile or a range of texture-resolution states.
 	struct RECONSTRUCTED_PROGRAM_PROFILE final
 	{
@@ -67,34 +67,40 @@ namespace
 		uint32_t iUnresolvedTextureCount;
 		uint32_t iRuntimeCookReceiptCount;
 		uint32_t iReconstructedDeploymentReceiptCount;
+		uint32_t iFollowAttachmentCount;
+		uint32_t iSnapshotRootAttachmentCount;
+		uint32_t iDisabledRootAttachmentCount;
 		EFFECT_RUNTIME_TEXTURE_RESOLUTION_STATUS eRequiredTextureStatus;
 	};
 
 	constexpr RECONSTRUCTED_PROGRAM_PROFILE ACTIVE_RECONSTRUCTED_PROFILE{
-		"a85b8b41afb2f2a51bceafa55d06bf0937b1a245",
-		"384ed35ca808ab9a71a4edb703ca4d9121b48c18",
-		"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849",
-		"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b",
-		"d47b33c183d863761470585348dc4da2cc48e69a12b3594515444d20e5c04650",
-		"0a90b6e6033dedc71ca6b3c6f7c817d503ad2baa7ceb2fd7cc44536ccf34e17d",
-		"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c",
+		"31ecc2edc328347ac6e3bf6fe444c270d463ef40",
+		"6d8853d989bd71a988eaebf254398ae08599ad0d",
+		"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6",
+		"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8",
+		"1fd6038ee3eb09c68d0721cc819e605ce82301c5191fd6e1f5d9b2a03ec5f0ff",
+		"316a94e3ed1e68f28c086726bafd5161151825dc5afd54f7dd7e7721b8e99358",
+		"ac7f0478f9403110c72fee7e63ed15062d714080c6e70e36c766a635d0c68375",
 		"d367b8c6f8134bf70fb16bbb7bf071f06bcf0bfcb5b459dad0c687effecbbc94",
 		"7e4abfe5346568f053859fc717be94ff9a8b750cd64edad4128288a7adb6d546",
 		"07cd536fb3461b2b2cf5b51ab3c90b2a8a9db3d3dc055bca26476625709f178d",
 		"5350e20004898130541c6dc147ce2c14fa8a7870bee36a9baeaf14dcda33b5d3",
 		"23977bf027c015086393b1f4b2a9495313a992025ffdc4ad3ac769e20595f69b",
 		"94b0bc3704e4c9aaca5216cfafbfcb397c924390395597442c6831d096f2bff5",
-		"ff20fa85823982e289631f848dfef17cddf85c28960233f539f4eb15a7679f7b",
+		"c3744585bf19a3d6fadf4e4e9fcfc7ab8ca50ffc76d602e6ab4eeff280403f1a",
 		"6b3b6aca73f88661a2b7dc0970737dee038d1e53381f8cfcd48c1732fe437612",
 		"6c4ff35e5323f81e1c7556167e3264fc83c57d8e9390cf89b10c3ac5ac01c023",
 		"a602be873f49bb21954a0554c467c6945d26c328a5f46218af7ad6cf22254ba3",
-		15'072'141u,
-		6108u,
-		6670u,
-		72u,
+		15'117'436u,
+		6133u,
+		6775u,
+		77u,
 		0u,
-		68u,
+		73u,
 		4u,
+		5u,
+		30u,
+		0u,
 		EFFECT_RUNTIME_TEXTURE_RESOLUTION_STATUS::RESOLVED_EXACT_RUNTIME_ASSET,
 	};
 
@@ -1043,7 +1049,7 @@ namespace
 				"sourceOccurrenceIdentitySha256", "bindingSha256",
 				"sourceOccurrenceBindingSha256", "preservedBlockers",
 				"sourceExact", "rowSha256" }) ||
-			!Add("materialPolicyRows", 255u, {
+			!Add("materialPolicyRows", 260u, {
 				"policyRowId", "order", "domain", "sourceMatrixRowId", "recipeId",
 				"materialOccurrenceIds", "fieldId", "fieldKind", "bindingOrigin",
 				"evidenceOwnerRecipeId", "policyFidelity", "sourceExact",
@@ -1058,7 +1064,7 @@ namespace
 				"approvalMaterialOrder", "approvalRequiredOracleIds",
 				"approvalExecutionBlockers", "approvalMaterialRow",
 				"approvalMaterialRowSha256", "sourceRowSha256", "rowSha256" }) ||
-			!Add("materialTextureBindings", 72u, {
+			!Add("materialTextureBindings", 77u, {
 				"bindingId", "order", "recipeId", "materialInputFieldId",
 				"logicalTexturePath", "samplerPolicyRowId",
 				"materialOccurrenceIds", "sourceBindingId",
@@ -2657,7 +2663,7 @@ namespace
 			!Read_U32(*Route, "materialExecutionFamilyCount", MaterialFamilyCount) ||
 			MaterialFamilyCount != 8u ||
 			!Read_U32(*Route, "materialPolicyRowCount", MaterialRowCount) ||
-			MaterialRowCount != 255u ||
+			MaterialRowCount != 260u ||
 			!Read_U32(*Route, "materialArithmeticRowCount", ArithmeticRowCount) ||
 			ArithmeticRowCount != 23u ||
 			!Read_U32(*Route, "geometryPolicyRowCount", GeometryRowCount) ||
@@ -3377,11 +3383,6 @@ namespace
 			}
 			const bool_t Reconstructed = Parsed.eSelection ==
 				EFFECT_RUNTIME_MODULE_SELECTION::RECONSTRUCTED_HANDLER;
-			if (Parsed.strSourceDecision !=
-				(Reconstructed ? "BLOCKED" : "READY_FOR_HANDLER"))
-			{
-				return false;
-			}
 			if (Reconstructed)
 			{
 				const std::array<const std::string*, 17u> RequiredStrings{
@@ -3660,6 +3661,8 @@ namespace
 				false, 1024u) ||
 			!Read_ClosedString(Value, "provenanceTier", {
 				"CURRENT_UE3_RAW_DISTRIBUTION_DEFAULT_AND_PAYLOAD_SHAPE",
+				"CURRENT_ENGINE_CDO_RECONSTRUCTED",
+				"NULL_RAW_DISTRIBUTION_FAIL_CLOSED",
 				"CURRENT_REVISION_INSTANCE_EXPLICIT", "EVALUATOR_DEFAULT",
 				"PARENT_CDO_HIERARCHY", "CLASS_CDO",
 				"CURRENT_NATIVE_EVALUATOR_DEFAULT", "NESTED_ARCHETYPE_TEMPLATE" },
@@ -3684,13 +3687,19 @@ namespace
 		}
 		if (!OutProvenance.strTypedValueBindingSha256.empty())
 		{
+			const bool_t CurrentEngineCdo =
+				OutProvenance.strProvenanceTier ==
+					"CURRENT_ENGINE_CDO_RECONSTRUCTED";
 			return (OutProvenance.strFieldPath == "operation" ||
 					OutProvenance.strFieldPath == "lookupTableChunkSize" ||
 					OutProvenance.strFieldPath == "lookupTableNumElements") &&
-				OutProvenance.strProvenanceTier ==
-					"CURRENT_UE3_RAW_DISTRIBUTION_DEFAULT_AND_PAYLOAD_SHAPE" &&
-				(OutProvenance.strEvidenceStatus == "SOURCE_EXACT" ||
-					OutProvenance.strEvidenceStatus == "CURRENT_REVISION_EVIDENCE");
+				((CurrentEngineCdo &&
+				  OutProvenance.strEvidenceStatus == "CURRENT_REVISION_EVIDENCE") ||
+				 (!CurrentEngineCdo &&
+				  OutProvenance.strProvenanceTier ==
+					  "CURRENT_UE3_RAW_DISTRIBUTION_DEFAULT_AND_PAYLOAD_SHAPE" &&
+				  (OutProvenance.strEvidenceStatus == "SOURCE_EXACT" ||
+				   OutProvenance.strEvidenceStatus == "CURRENT_REVISION_EVIDENCE")));
 		}
 		return true;
 	}
@@ -4175,9 +4184,11 @@ namespace
 				true, 1024u) ||
 			!Read_ClosedString(Row, "payloadStatus", {
 				"INLINE_SOURCE_PAYLOAD", "DECODED_EXTERNAL_RECORD_WITHOUT_PACKAGE_IDENTITY",
-				"UNRESOLVED_SEMANTIC_CLOSURE" }, OutDistribution.strPayloadStatus) ||
+				"UNRESOLVED_SEMANTIC_CLOSURE", "CURRENT_ENGINE_CDO_RECONSTRUCTED" },
+				OutDistribution.strPayloadStatus) ||
 			!Read_ClosedString(Row, "fidelity", {
 				"DETERMINISTIC_SOURCE_RECIPE",
+				"CURRENT_ENGINE_CDO_RECONSTRUCTED",
 				"RECORD_DECODED_PACKAGE_IDENTITY_UNPINNED",
 				"SOURCE_EXACT_PHYSICAL_PACKAGE",
 				"PINNED_SOURCE_RECORD_PHYSICAL_ABSENT",
@@ -4279,13 +4290,33 @@ namespace
 			OutDistribution.eVariant == EFFECT_RUNTIME_DISTRIBUTION_VARIANT::EF_MULTIPLY;
 		if (TableVariant)
 		{
+			const bool_t CurrentEngineCdoInline = Inline &&
+				OutDistribution.strPayloadStatus ==
+					"CURRENT_ENGINE_CDO_RECONSTRUCTED" &&
+				OutDistribution.strFidelity ==
+					"CURRENT_ENGINE_CDO_RECONSTRUCTED";
+			const std::vector<std::string> BlockedDefaultTokens{
+				"DEFAULT_DEPENDENT_DISTRIBUTION_REQUIRES_TYPED_DEFAULT_POLICY",
+				"DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+				"DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+				"DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+				"INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
+			};
+			const bool_t BlockedDefaultInline = Inline &&
+				OutDistribution.strPayloadStatus ==
+					"UNRESOLVED_SEMANTIC_CLOSURE" &&
+				OutDistribution.strFidelity == "UNRESOLVED_CROSS_REVISION" &&
+				OutDistribution.PreservedBlockers == BlockedDefaultTokens;
 			if ((Inline &&
 					(!OutDistribution.strSourceClass.empty() ||
-					 !OutDistribution.strSourceObjectPath.empty() ||
+					 (!CurrentEngineCdoInline && !BlockedDefaultInline &&
+					  !OutDistribution.strSourceObjectPath.empty()) ||
 					 !OutDistribution.strReferenceId.empty() ||
 					 !OutDistribution.strOccurrenceId.empty() ||
-					 OutDistribution.strPayloadStatus != "INLINE_SOURCE_PAYLOAD" ||
-					 OutDistribution.strFidelity != "DETERMINISTIC_SOURCE_RECIPE")) ||
+					 (!CurrentEngineCdoInline && !BlockedDefaultInline &&
+					  (OutDistribution.strPayloadStatus != "INLINE_SOURCE_PAYLOAD" ||
+					   OutDistribution.strFidelity !=
+						   "DETERMINISTIC_SOURCE_RECIPE")))) ||
 				(FloatCurve &&
 					(OutDistribution.strSourceClass != "distributionfloatconstantcurve" ||
 					 OutDistribution.strSourceObjectPath.empty() ||
@@ -4313,8 +4344,34 @@ namespace
 				!OutDistribution.strCapabilityImplementationId.empty() ||
 				OutDistribution.iCapabilityImplementationVersion != 0u ||
 				!OutDistribution.strCapabilityImplementationSha256.empty() ||
-				!OutDistribution.PreservedBlockers.empty() ||
-				OutDistribution.Samples.size() != 3u)
+				(!BlockedDefaultInline &&
+				 !OutDistribution.PreservedBlockers.empty()) ||
+				OutDistribution.Samples.size() !=
+					(BlockedDefaultInline ? 0u : 3u))
+			{
+				return false;
+			}
+			if (CurrentEngineCdoInline &&
+				(OutDistribution.strPropertyPath != "ratescale" ||
+				 OutDistribution.strSourceObjectPath !=
+					 "Default__ParticleModuleSpawn" ||
+				 OutDistribution.iComponentCount != 1u ||
+				 *OutDistribution.iOperation != 1u ||
+				 *OutDistribution.iRandomLockAxes != 0u ||
+				 *OutDistribution.iLookupTableChunkSize != 1u ||
+				 *OutDistribution.iLookupTableNumElements != 1u ||
+				 *OutDistribution.fLookupTableTimeScale != 0.0 ||
+				 *OutDistribution.fLookupTableStartTime != 0.0 ||
+				 OutDistribution.LookupTable !=
+					 std::vector<double>{ 1.0, 1.0, 1.0, 1.0 }))
+			{
+				return false;
+			}
+			if (BlockedDefaultInline &&
+				(!OutDistribution.strSourceObjectPath.empty() ||
+				 !OutDistribution.LookupTable.empty() ||
+				 !OutDistribution.CurveKeys.empty() ||
+				 !OutDistribution.FieldProvenance.empty()))
 			{
 				return false;
 			}
@@ -5415,7 +5472,8 @@ namespace
 				!Read_String(Row, "fieldId", Parsed.strFieldId, false, 1024u) ||
 				!Read_ClosedString(Row, "fieldKind", {
 						"STATIC_PERMUTATION_SELECTION", "RENDER_STATE_DEFAULT",
-						"DIRECT_TEXTURE_SAMPLER", "PARENT_DEFAULT_TEXTURE_SAMPLER" },
+						"DIRECT_TEXTURE_SAMPLER", "PARENT_DEFAULT_TEXTURE_SAMPLER",
+						"SELF_DEFAULT_TEXTURE_SAMPLER" },
 					Parsed.strFieldKind) ||
 				!Read_ClosedString(Row, "bindingOrigin", {
 						"PARENT_DEFAULT", "PARENT_MATERIAL", "INSTANCE_OVERRIDE",
@@ -6139,6 +6197,84 @@ namespace
 		{
 			return false;
 		}
+		const size_t ReadySourceModuleCount = static_cast<size_t>(std::count_if(
+			Program.Modules.begin(), Program.Modules.end(), [](const auto& Row)
+			{
+				return Row.strSourceDecision == "READY_FOR_HANDLER";
+			}));
+		const size_t BlockedSourceModuleCount = Program.Modules.size() -
+			ReadySourceModuleCount;
+		const size_t CurrentEngineCdoDistributionCount =
+			static_cast<size_t>(std::count_if(
+				Program.Distributions.begin(), Program.Distributions.end(),
+				[](const auto& Row)
+				{
+					return Row.strPayloadStatus ==
+						"CURRENT_ENGINE_CDO_RECONSTRUCTED";
+				}));
+		const size_t BlockedDefaultDistributionCount =
+			static_cast<size_t>(std::count_if(
+				Program.Distributions.begin(), Program.Distributions.end(),
+				[](const auto& Row)
+				{
+					return Row.eVariant ==
+							EFFECT_RUNTIME_DISTRIBUTION_VARIANT::INLINE &&
+						Row.strPayloadStatus ==
+							"UNRESOLVED_SEMANTIC_CLOSURE" &&
+						Row.strFidelity == "UNRESOLVED_CROSS_REVISION" &&
+						Row.PreservedBlockers == std::vector<std::string>{
+							"DEFAULT_DEPENDENT_DISTRIBUTION_REQUIRES_TYPED_DEFAULT_POLICY",
+							"DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+							"DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+							"DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+							"INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
+						};
+				}));
+		if ((0u == CurrentEngineCdoDistributionCount &&
+			 (0u != BlockedDefaultDistributionCount ||
+			  ReadySourceModuleCount != 370u || BlockedSourceModuleCount != 29u)) ||
+			(0u != CurrentEngineCdoDistributionCount &&
+			 (CurrentEngineCdoDistributionCount != 35u ||
+			  BlockedDefaultDistributionCount != 102u ||
+			  ReadySourceModuleCount != 291u || BlockedSourceModuleCount != 108u)))
+		{
+			OutFailure = "source-semantic-denominators";
+			return false;
+		}
+		for (const auto& Row : Program.Distributions)
+		{
+			if (Row.strPayloadStatus != "CURRENT_ENGINE_CDO_RECONSTRUCTED")
+				continue;
+			const auto Module = Modules.find(Row.strModuleId);
+			const auto Property = Properties.find(Row.strPropertyId);
+			if (Row.eVariant != EFFECT_RUNTIME_DISTRIBUTION_VARIANT::INLINE ||
+				Module == Modules.end() ||
+				Module->second->strExactSourceClass != "particlemodulespawn" ||
+				Property == Properties.end() ||
+				Property->second->strModuleId != Row.strModuleId ||
+				Property->second->strPropertyPath != "ratescale" ||
+				Row.strPropertyPath != "ratescale" ||
+				Row.DefaultMinimum != std::vector<double>(4u, 0.0) ||
+				Row.DefaultMaximum != std::vector<double>(4u, 0.0) ||
+				!Row.CurveKeys.empty() || !Row.strReferenceId.empty() ||
+				!Row.strOccurrenceId.empty() || Row.FieldProvenance.size() != 1u)
+			{
+				OutFailure = "current-engine-cdo-distribution-owner";
+				return false;
+			}
+			const auto& Provenance = Row.FieldProvenance.front();
+			if (Provenance.strFieldPath != "operation" ||
+				Provenance.strProvenanceTier !=
+					"CURRENT_ENGINE_CDO_RECONSTRUCTED" ||
+				Provenance.strEvidenceStatus != "CURRENT_REVISION_EVIDENCE" ||
+				!Provenance.strValueSha256.empty() ||
+				Provenance.strTypedValueBindingSha256 !=
+					"df4ce246be322ec67ebe59726aa2757b7f8383eed117ca1928476e699c1dc124")
+			{
+				OutFailure = "current-engine-cdo-distribution-provenance";
+				return false;
+			}
+		}
 
 		OutFailure = "orders";
 		if (!Validate_PerOwnerOrder(Program.Modules,
@@ -6694,6 +6830,8 @@ namespace
 		}
 		uint32_t TotalBurstCount = 0u;
 		uint32_t FollowAttachmentCount = 0u;
+		uint32_t SnapshotRootAttachmentCount = 0u;
+		uint32_t DisabledRootAttachmentCount = 0u;
 		uint32_t OperationalParticleTotal = 0u;
 		DATA_JSON_VALUE::ARRAY ActionCueAuthorityProjection;
 		DATA_JSON_VALUE::ARRAY RendererConfigAuthorityProjection;
@@ -6867,35 +7005,64 @@ namespace
 			OperationalParticleTotal += Row.iOperationalMaxParticles;
 			if (Row.ActionCueAttachment.bEnabled)
 			{
-				if (!Row.ActionCueAttachment.bFollow || Row.AnchorRequests.size() != 1u)
+				if (Row.ActionCueAttachment.bFollow)
 				{
-					OutFailure = EmitterFailurePrefix + "attachment-cardinality";
-					return false;
+					if (Row.AnchorRequests.size() != 1u)
+					{
+						OutFailure = EmitterFailurePrefix + "attachment-cardinality";
+						return false;
+					}
+					const auto& Anchor = Row.AnchorRequests.front();
+					if (Anchor.strSourceAnchorSlotId !=
+							Row.ActionCueAttachment.strSourceAnchorSlotId ||
+						Anchor.strRuntimeAnchorSlotId !=
+							Row.ActionCueAttachment.strRuntimeAnchorSlotId ||
+						Anchor.strRuntimeBoneName !=
+							Row.ActionCueAttachment.strRuntimeBoneName ||
+						Anchor.SocketLocalTransform.vPosition !=
+							Row.ActionCueAttachment.SocketLocalTransform.vPosition ||
+						Anchor.SocketLocalTransform.vRotationDegrees !=
+							Row.ActionCueAttachment.SocketLocalTransform.vRotationDegrees ||
+						Anchor.SocketLocalTransform.vScale !=
+							Row.ActionCueAttachment.SocketLocalTransform.vScale ||
+						!Anchor.bFollow)
+					{
+						OutFailure = EmitterFailurePrefix + "attachment-reverse";
+						return false;
+					}
+					++FollowAttachmentCount;
 				}
-				const auto& Anchor = Row.AnchorRequests.front();
-				if (Anchor.strSourceAnchorSlotId !=
-						Row.ActionCueAttachment.strSourceAnchorSlotId ||
-					Anchor.strRuntimeAnchorSlotId !=
-						Row.ActionCueAttachment.strRuntimeAnchorSlotId ||
-					Anchor.strRuntimeBoneName !=
-						Row.ActionCueAttachment.strRuntimeBoneName ||
-					Anchor.SocketLocalTransform.vPosition !=
-						Row.ActionCueAttachment.SocketLocalTransform.vPosition ||
-					Anchor.SocketLocalTransform.vRotationDegrees !=
-						Row.ActionCueAttachment.SocketLocalTransform.vRotationDegrees ||
-					Anchor.SocketLocalTransform.vScale !=
-						Row.ActionCueAttachment.SocketLocalTransform.vScale ||
-					!Anchor.bFollow)
+				else
 				{
-					OutFailure = EmitterFailurePrefix + "attachment-reverse";
-					return false;
+					if (Row.ActionCueAttachment.strSourceAnchorSlotId != "root" ||
+						Row.ActionCueAttachment.strRuntimeAnchorSlotId != "root" ||
+						!Row.ActionCueAttachment.strRuntimeBoneName.empty() ||
+						!Row.AnchorRequests.empty())
+					{
+						OutFailure = EmitterFailurePrefix + "snapshot-root-attachment";
+						return false;
+					}
+					++SnapshotRootAttachmentCount;
 				}
-				++FollowAttachmentCount;
 			}
-			else if (Row.ActionCueAttachment.bFollow || !Row.AnchorRequests.empty())
+			else
 			{
-				OutFailure = EmitterFailurePrefix + "root-attachment";
-				return false;
+				if (Row.ActionCueAttachment.bFollow ||
+					!Row.ActionCueAttachment.strSourceAnchorSlotId.empty() ||
+					Row.ActionCueAttachment.strRuntimeAnchorSlotId != "root" ||
+					!Row.ActionCueAttachment.strRuntimeBoneName.empty() ||
+					Row.ActionCueAttachment.SocketLocalTransform.vPosition !=
+						std::array<double, 3u>{} ||
+					Row.ActionCueAttachment.SocketLocalTransform.vRotationDegrees !=
+						std::array<double, 3u>{} ||
+					Row.ActionCueAttachment.SocketLocalTransform.vScale !=
+						std::array<double, 3u>{ 1.0, 1.0, 1.0 } ||
+					!Row.AnchorRequests.empty())
+				{
+					OutFailure = EmitterFailurePrefix + "disabled-root-attachment";
+					return false;
+				}
+				++DisabledRootAttachmentCount;
 			}
 			const auto Schedule = Schedules.find(Row.strScheduleId);
 			const auto RequiredModule = Modules.find(Row.Timing.strRequiredModuleId);
@@ -7255,7 +7422,13 @@ namespace
 				ACTIVE_RECONSTRUCTED_PROFILE.RendererConfigProjectionsSha256) ||
 			std::any_of(ScheduleCoverage.begin(), ScheduleCoverage.end(),
 				[](const auto& Entry) { return Entry.second == 0u; }) ||
-			TotalBurstCount != 31u || FollowAttachmentCount != 5u ||
+			TotalBurstCount != 31u ||
+			FollowAttachmentCount !=
+				ACTIVE_RECONSTRUCTED_PROFILE.iFollowAttachmentCount ||
+			SnapshotRootAttachmentCount !=
+				ACTIVE_RECONSTRUCTED_PROFILE.iSnapshotRootAttachmentCount ||
+			DisabledRootAttachmentCount !=
+				ACTIVE_RECONSTRUCTED_PROFILE.iDisabledRootAttachmentCount ||
 			OperationalParticleTotal != 1291u)
 		{
 			OutFailure = "emitter-timing-renderer-reverse:aggregate";
@@ -7902,17 +8075,17 @@ namespace
 		std::string D3dDescriptorSha256;
 		std::string SrvDescriptorSha256;
 		if (!Read_U32(*Summary, "materialD3dDescriptorCount", D3dDescriptorCount) ||
-			D3dDescriptorCount != 107u ||
+			D3dDescriptorCount != 112u ||
 			!Read_Sha(*Summary, "materialD3dDescriptorProjectionSha256",
 				D3dDescriptorSha256) ||
 			D3dDescriptorSha256 !=
-				"5b76e727418c588efd614524e5202b3aaf7040ba4064d0faafe7195ce994c49d" ||
+				"8eec266215ab6df354babe26e192d6e0c1fd4f3dbe0631c4ef7c5ffc939f7a9c" ||
 			!Read_U32(*Summary, "materialSrvDescriptorCount", SrvDescriptorCount) ||
-			SrvDescriptorCount != 72u ||
+			SrvDescriptorCount != 77u ||
 			!Read_Sha(*Summary, "materialSrvDescriptorProjectionSha256",
 				SrvDescriptorSha256) ||
 			SrvDescriptorSha256 !=
-				"47d4c6bea3fa30805ae5a085cfe2094c56766a04ae45d4c76120dbefecedb14f")
+				"ca2dcf3e7d1dbc407103eeb213b0c3e5f04fca002ae2fe8f269fc77dd5a01c67")
 		{
 			return false;
 		}
@@ -7948,7 +8121,7 @@ namespace
 				{ "EF_MULTIPLY", 3u } }) &&
 			ValidateCountMap("materialPolicyDomainCounts", {
 				{ "RENDER_STATE", 89u }, { "STATIC_PERMUTATION", 94u },
-				{ "SAMPLER_DESCRIPTOR", 72u } }) &&
+				{ "SAMPLER_DESCRIPTOR", 77u } }) &&
 			ValidateCountMap("rendererTextureSlotCounts", {
 				{ "base", 19u }, { "dissolve", 5u }, { "emissive", 3u },
 				{ "mask", 15u }, { "noise", 15u } });
