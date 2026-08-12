@@ -59,6 +59,7 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	WORLD_PLACEMENT_KIND eKind = WORLD_PLACEMENT_KIND::END;
 	std::string archetypeId;
 	std::string encounterId;
+	std::string npcIdleClip;
 	float3_t position = {};
 	f32_t yawDegrees = {};
 	bool_t isEnabled = true;

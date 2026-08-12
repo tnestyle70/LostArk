@@ -549,6 +549,7 @@ namespace
 		source.eKind = WORLD_ENTITY_KIND::BOSS;
 		source.strArchetypeId = "BOSS_VALTAN";
 		source.strEncounterId = "ENCOUNTER_VALTAN";
+		source.strPlacementId = "boss_valtan_1";
 		source.fPositionX = 151.25f;
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
@@ -569,6 +570,7 @@ namespace
 			decoded.eKind == source.eKind &&
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
+			decoded.strPlacementId == source.strPlacementId &&
 			decoded.fPositionX == source.fPositionX &&
 			decoded.fYawDegrees == source.fYawDegrees &&
 			decoded.fCollisionRadius == source.fCollisionRadius,
@@ -583,6 +585,18 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Unstable World Archetype ID");
+		invalid = source;
+		invalid.strPlacementId = "../boss_valtan_1";
+		CPacketWriter invalidPlacementWriter;
+		testRunner.Require(
+			!Write_Message(invalidPlacementWriter, invalid),
+			"Reject Unstable World Placement ID");
+		invalid = source;
+		invalid.strPlacementId.clear();
+		CPacketWriter emptyPlacementWriter;
+		testRunner.Require(
+			Write_Message(emptyPlacementWriter, invalid),
+			"Allow Dynamic Spawn Without Placement ID");
 		invalid = source;
 		invalid.fCollisionRadius = 0.f;
 		CPacketWriter zeroRadiusWriter;

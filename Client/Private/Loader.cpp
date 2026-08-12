@@ -20,6 +20,7 @@
 #include "Navigation.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
+#include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
@@ -242,6 +243,14 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::CHARACTER_SELECT));
+	CNpcPlacementPresentationService::Begin_LevelLoad(
+		ETOUI(LEVEL::CHARACTER_SELECT));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::CHARACTER_SELECT), "CHARACTER_SELECT_ARENA")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
 	using LostArk::Shared::CHARACTER_CLASS_ID;
 	CHARACTER_CLASS_ID initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 	if (!CCharacterSelectionState::Try_Get_SelectedClass(initialClass) ||
@@ -286,6 +295,13 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 HRESULT CLoader::Ready_For_Bern()
 {
 	CNpcPresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::BERN));
+	CNpcPlacementPresentationService::Begin_LevelLoad(ETOUI(LEVEL::BERN));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::BERN), "BERN")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::BERN));
 	Set_Status(TEXT("BERN: world catalog and placements"));
 
@@ -319,6 +335,14 @@ HRESULT CLoader::Ready_For_ValtanArena()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::VALTAN_ARENA));
+	CNpcPlacementPresentationService::Begin_LevelLoad(
+		ETOUI(LEVEL::VALTAN_ARENA));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::VALTAN_ARENA), "VALTAN_ARENA")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
 	CMonsterPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::VALTAN_ARENA));
 	CLevelResourceRollbackScope rollback(
@@ -373,6 +397,8 @@ HRESULT CLoader::Ready_For_Development()
 #ifdef _DEBUG
 	if (CMapEditorWorkspaceService::Is_Requested())
 	{
+		CNpcPresentationAssetService::Begin_LevelLoad(
+			ETOUI(LEVEL::DEVELOPMENT));
 		Set_Status(TEXT("MAP EDITOR: core rendering resources"));
 		if (FAILED(Ready_MapAuthoringCore(ETOUI(LEVEL::DEVELOPMENT))))
 		{
@@ -391,6 +417,15 @@ HRESULT CLoader::Ready_For_Development()
 		return S_OK;
 	}
 #endif
+
+	CNpcPlacementPresentationService::Begin_LevelLoad(
+		ETOUI(LEVEL::DEVELOPMENT));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::DEVELOPMENT), "TRAINING_GROUND")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::DEVELOPMENT);

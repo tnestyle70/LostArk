@@ -233,7 +233,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.npc-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
+			pVersion->Get_Number() != 2.0 ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
@@ -244,9 +244,10 @@ namespace
 		std::vector<NPC_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 5u != value.Get_Object().size())
+			if (!value.Is_Object() || 6u != value.Get_Object().size())
 				return false;
 			NPC_ACTOR_ENTRY entry;
+			const DATA_JSON_VALUE* pAnimSet = value.Find("animationSetId");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "clientPresentationId",
 					entry.clientPresentationId) ||
@@ -254,11 +255,19 @@ namespace
 				!ReadRequiredString(value, "idleClip", entry.idleClip) ||
 				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
 				!IsResourceId(entry.modelAssetId) ||
+				nullptr == pAnimSet ||
+				(!pAnimSet->Is_Null() && !pAnimSet->Is_String()) ||
 				entry.runtimeStatus != "supported" ||
 				!archetypes.insert(entry.archetypeId).second ||
 				!presentations.insert(entry.clientPresentationId).second)
 			{
 				return false;
+			}
+			if (pAnimSet->Is_String())
+			{
+				entry.animationSetId = pAnimSet->Get_String();
+				if (!IsResourceId(entry.animationSetId))
+					return false;
 			}
 			staged.push_back(std::move(entry));
 		}
@@ -359,6 +368,12 @@ const Client::NPC_ACTOR_ENTRY* Client::CActorCatalog::Find_Npc(
 		if (entry.archetypeId == archetypeId)
 			return &entry;
 	return nullptr;
+}
+
+const std::vector<Client::NPC_ACTOR_ENTRY>& Client::CActorCatalog::Get_Npcs()
+{
+	Initialize();
+	return g_Npcs;
 }
 
 const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(

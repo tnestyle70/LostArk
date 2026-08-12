@@ -16,7 +16,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.world-gameplay";
-	constexpr uint32_t FORMAT_VERSION = 4;
+	constexpr uint32_t FORMAT_VERSION = 5;
 
 	bool_t Is_IntegerNumber(const DATA_JSON_VALUE* value)
 	{
@@ -181,7 +181,12 @@ bool_t Client::CWorldGameplayDocument::Load(
 			WORLD_PLACEMENT_KIND::COLLISION_BOX == record.eKind;
 		const bool_t destroyablePlacement =
 			WORLD_PLACEMENT_KIND::DESTROYABLE == record.eKind;
-		if ((actorPlacement && !Is_ExactObject(value,
+		const bool_t npcPlacement =
+			WORLD_PLACEMENT_KIND::NPC == record.eKind;
+		if ((npcPlacement && !Is_ExactObject(value,
+			{ "placementId", "kind", "archetypeId", "encounterId",
+			  "position", "yawDegrees", "enabled", "idleClip" })) ||
+			(actorPlacement && !npcPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "archetypeId", "encounterId",
 			  "position", "yawDegrees", "enabled" })) ||
 			(triggerPlacement && !Is_ExactObject(value,
@@ -225,6 +230,21 @@ bool_t Client::CWorldGameplayDocument::Load(
 				archetypeId->Get_String() : std::string{};
 			record.encounterId = encounterId->Is_String() ?
 				encounterId->Get_String() : std::string{};
+			if (npcPlacement)
+			{
+				const DATA_JSON_VALUE* idleClip = value.Find("idleClip");
+				if (nullptr == idleClip ||
+					(!idleClip->Is_Null() && !idleClip->Is_String()) ||
+					(idleClip->Is_String() &&
+						(idleClip->Get_String().empty() ||
+							idleClip->Get_String().size() > 64u)))
+				{
+					outStatus = "Gameplay npc idleClip is invalid";
+					return false;
+				}
+				record.npcIdleClip = idleClip->Is_String() ?
+					idleClip->Get_String() : std::string{};
+			}
 		}
 		else if (triggerPlacement)
 		{
@@ -509,6 +529,13 @@ bool_t Client::CWorldGameplayDocument::Save(
 			output << ",\n      \"encounterId\": ";
 			if (record.encounterId.empty()) output << "null";
 			else output << '"' << CDataJson::Escape(record.encounterId) << '"';
+			if (WORLD_PLACEMENT_KIND::NPC == record.eKind)
+			{
+				output << ",\n      \"idleClip\": ";
+				if (record.npcIdleClip.empty()) output << "null";
+				else output << '"' <<
+					CDataJson::Escape(record.npcIdleClip) << '"';
+			}
 			output << ",\n";
 		}
 		output

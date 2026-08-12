@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 15;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 16;
 
 	enum class WORLD_ID : std::uint16_t
 	{

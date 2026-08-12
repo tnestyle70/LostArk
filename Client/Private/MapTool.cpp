@@ -2,6 +2,7 @@
 
 #include "MapTool.h"
 
+#include "ActorCatalog.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Camera_Free.h"
 #include "DataJson.h"
@@ -16,6 +17,8 @@
 #include "DestructionSimulationController.h"
 #include "Model.h"
 #include "Navigation.h"
+#include "Npc.h"
+#include "NpcPresentationAssetService.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Trigger_Box.h"
@@ -25,6 +28,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -41,6 +45,21 @@ namespace
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	std::string Editor_AreaShortName(const std::string& areaId)
+	{
+		if ("LV_BER_BERNCASTLE" == areaId) return "bern";
+		if ("LV_LUT_HEARTRB_ED" == areaId) return "valtan";
+		if ("LV_DEV_TRAINING_GROUND" == areaId) return "training";
+		if ("LV_LOBBY_CLASSSELECT_SL00" == areaId) return "character-select";
+		std::string lowered;
+		for (const char character : areaId)
+		{
+			lowered += static_cast<char>(std::tolower(
+				static_cast<unsigned char>(character)));
+		}
+		return lowered;
 	}
 
 	bool_t TryBuildCentralEditorFrame(
@@ -985,11 +1004,76 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 		}
 		else if (WORLD_PLACEMENT_KIND::NPC == m_eWorldPlacementKind)
 		{
-			strcpy_s(m_WorldArchetypeId, "NPC_BEDA");
+			const std::vector<NPC_ACTOR_ENTRY>& npcs =
+				CActorCatalog::Get_Npcs();
+			if (npcs.empty())
+			{
+				m_WorldArchetypeId[0] = '\0';
+				ImGui::TextDisabled(
+					"NpcCatalog has no supported archetype.");
+			}
+			else
+			{
+				if (m_iWorldNpcArchetypeIndex < 0 ||
+					m_iWorldNpcArchetypeIndex >=
+						static_cast<int32_t>(npcs.size()))
+				{
+					m_iWorldNpcArchetypeIndex = 0;
+				}
+				if (ImGui::BeginCombo("NPC Archetype",
+					npcs[m_iWorldNpcArchetypeIndex].archetypeId.c_str()))
+				{
+					for (int32_t index = 0;
+						index < static_cast<int32_t>(npcs.size()); ++index)
+					{
+						const bool_t isSelected =
+							index == m_iWorldNpcArchetypeIndex;
+						if (ImGui::Selectable(
+							npcs[index].archetypeId.c_str(), isSelected))
+							m_iWorldNpcArchetypeIndex = index;
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				strcpy_s(m_WorldArchetypeId,
+					npcs[m_iWorldNpcArchetypeIndex].archetypeId.c_str());
+				const auto strippedNameOf =
+					[](const std::string& archetypeId)
+				{
+					std::string name;
+					for (const char_t character : archetypeId)
+					{
+						name += static_cast<char_t>(std::tolower(
+							static_cast<unsigned char>(character)));
+					}
+					if (0 == name.rfind("npc_", 0))
+						name.erase(0, 4);
+					return name;
+				};
+				const std::string selectedAutoId = "npc." +
+					Editor_AreaShortName(active->areaId) + "." +
+					strippedNameOf(
+						npcs[m_iWorldNpcArchetypeIndex].archetypeId);
+				const std::string currentId = m_WorldPlacementId;
+				bool_t isAutoValue = "player.spawn.editor" == currentId;
+				for (size_t index = 0;
+					!isAutoValue && index < npcs.size(); ++index)
+				{
+					const std::string name =
+						strippedNameOf(npcs[index].archetypeId);
+					isAutoValue = 0 == currentId.rfind("npc.", 0) &&
+						currentId.size() > name.size() &&
+						0 == currentId.compare(
+							currentId.size() - name.size(),
+							name.size(), name);
+				}
+				if (isAutoValue && selectedAutoId != currentId)
+					strcpy_s(m_WorldPlacementId, selectedAutoId.c_str());
+				ImGui::TextDisabled(
+					"Archetypes come from Data/Actors/NpcCatalog.json (runtimeStatus=supported).");
+			}
 			m_WorldEncounterId[0] = '\0';
-			ImGui::TextUnformatted("Archetype: NPC_BEDA (Npc_Beda)");
-			ImGui::TextDisabled(
-				"The current product path supports this one NpcCatalog presentation.");
 		}
 		else
 		{
@@ -1310,6 +1394,68 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				ImGuiSliderFlags_AlwaysClamp);
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 		}
+		else if (WORLD_PLACEMENT_KIND::NPC == staged.eKind)
+		{
+			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
+			const auto preview = std::find_if(
+				m_WorldNpcPreviews.begin(), m_WorldNpcPreviews.end(),
+				[&](const NPC_PREVIEW_ENTRY& entry)
+				{
+					return entry.placementId == staged.placementId;
+				});
+			if (m_WorldNpcPreviews.end() != preview &&
+				nullptr != preview->object &&
+				nullptr != preview->object->Get_Model())
+			{
+				ImGui::SeparatorText("NPC Preview Animation");
+				const shared_ptr<CModel> model =
+					preview->object->Get_Model();
+				const uint32_t clipCount = model->Get_NumAnimations();
+				const char_t* currentClip =
+					model->Get_AnimationName(model->Get_CurrentAnimIndex());
+				if (ImGui::BeginCombo("Preview Clip",
+					nullptr != currentClip ? currentClip : "<none>"))
+				{
+					for (uint32_t clipIndex = 0;
+						clipIndex < clipCount; ++clipIndex)
+					{
+						const char_t* clipName =
+							model->Get_AnimationName(clipIndex);
+						if (nullptr == clipName)
+							continue;
+						const bool_t isSelected =
+							clipIndex == model->Get_CurrentAnimIndex();
+						if (ImGui::Selectable(clipName, isSelected))
+							preview->object->Set_Animation(clipName, true);
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				if (nullptr != currentClip &&
+					ImGui::Button("Use As Placement Idle"))
+				{
+					staged.npcIdleClip = currentClip;
+					edited = true;
+				}
+				if (!staged.npcIdleClip.empty())
+				{
+					ImGui::SameLine();
+					if (ImGui::Button("Clear Placement Idle"))
+					{
+						staged.npcIdleClip.clear();
+						edited = true;
+					}
+					ImGui::Text("Saved idle: %s",
+						staged.npcIdleClip.c_str());
+				}
+				else
+				{
+					ImGui::TextDisabled(
+						"No placement idle saved; the catalog idleClip plays.");
+				}
+			}
+		}
 		else
 		{
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
@@ -1327,6 +1473,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				{
 					Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 					m_WorldTriggerBoxes = std::move(stagedBoxes);
+					Sync_WorldNpcPreviews();
 					m_bWorldGameplayDirty = true;
 					m_WorldGameplayStatus = "Gameplay placement edited";
 				}
@@ -1355,6 +1502,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				{
 					Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 					m_WorldTriggerBoxes = std::move(stagedBoxes);
+					Sync_WorldNpcPreviews();
 					m_SelectedWorldPlacementId.clear();
 					m_bWorldGameplayDirty = true;
 					m_WorldGameplayStatus =
@@ -1902,6 +2050,7 @@ bool_t Client::CMapTool::Load_WorldGameplay()
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	m_WorldGameplayDocument = std::move(stagedDocument);
 	m_WorldTriggerBoxes = std::move(stagedBoxes);
+	Sync_WorldNpcPreviews();
 	m_SelectedWorldPlacementId.clear();
 	m_bWorldGameplayPlacementArmed = false;
 	m_bWorldTriggerTargetPickArmed = false;
@@ -2090,7 +2239,27 @@ bool_t Client::CMapTool::Try_PlaceWorldGameplay()
 	}
 
 	WORLD_GAMEPLAY_PLACEMENT placement;
-	placement.placementId = m_WorldPlacementId;
+	std::string placementId = m_WorldPlacementId;
+	if (!placementId.empty() &&
+		nullptr != m_WorldGameplayDocument.Find(placementId))
+	{
+		std::string candidate;
+		for (uint32_t suffix = 2u; suffix < 1000u; ++suffix)
+		{
+			candidate = placementId + "." + std::to_string(suffix);
+			if (nullptr == m_WorldGameplayDocument.Find(candidate))
+				break;
+			candidate.clear();
+		}
+		if (candidate.empty())
+		{
+			m_WorldGameplayStatus =
+				"Gameplay placement failed: no free placement ID";
+			return false;
+		}
+		placementId = std::move(candidate);
+	}
+	placement.placementId = placementId;
 	placement.eKind = m_eWorldPlacementKind;
 	placement.position = position;
 	placement.yawDegrees = 0.f;
@@ -2124,6 +2293,7 @@ bool_t Client::CMapTool::Try_PlaceWorldGameplay()
 
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	m_WorldTriggerBoxes = std::move(stagedBoxes);
+	Sync_WorldNpcPreviews();
 	m_SelectedWorldPlacementId = placement.placementId;
 	m_bWorldGameplayPlacementArmed = false;
 	m_bWorldGameplayDirty = true;
@@ -2249,6 +2419,107 @@ void Client::CMapTool::Remove_WorldTriggerBoxes(
 		}
 	}
 	entries.clear();
+}
+
+bool_t Client::CMapTool::Stage_WorldNpcPreviews(
+	const CWorldGameplayDocument& document,
+	vector<NPC_PREVIEW_ENTRY>& outEntries)
+{
+	outEntries.clear();
+	if (m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
+		nullptr == m_pDevice || nullptr == m_pContext)
+	{
+		return false;
+	}
+
+	size_t skippedCount = 0;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		document.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::NPC != placement.eKind)
+			continue;
+
+		const NPC_ACTOR_ENTRY* actor =
+			CActorCatalog::Find_Npc(placement.archetypeId);
+		const wstring_t modelTag =
+			CNpcPresentationAssetService::Get_ModelPrototypeTag(
+				placement.archetypeId);
+		if (nullptr == actor || modelTag.empty() ||
+			FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+				m_pDevice, m_pContext,
+				m_iAuthoringLevelIndex, placement.archetypeId)))
+		{
+			++skippedCount;
+			continue;
+		}
+
+		CNpc::NPC_DESC desc{};
+		desc.iPrototypeLevelIndex = m_iAuthoringLevelIndex;
+		desc.strModelTag = modelTag;
+		desc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.pIdleClip = placement.npcIdleClip.empty() ?
+			actor->idleClip.c_str() : placement.npcIdleClip.c_str();
+		desc.vPosition = placement.position;
+		desc.fYawDegree = placement.yawDegrees;
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_iAuthoringLevelIndex,
+			TEXT("Prototype_GameObject_Npc"),
+			m_iAuthoringLevelIndex,
+			TEXT("Layer_NpcPreviews"),
+			&desc,
+			&gameObject)))
+		{
+			++skippedCount;
+			continue;
+		}
+		shared_ptr<CNpc> npc = dynamic_pointer_cast<CNpc>(gameObject);
+		if (nullptr == npc)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_NpcPreviews"),
+				gameObject);
+			++skippedCount;
+			continue;
+		}
+		outEntries.push_back(
+			{ placement.placementId, placement.archetypeId, std::move(npc) });
+	}
+	if (0 < skippedCount)
+	{
+		m_WorldGameplayStatus =
+			"NPC preview skipped " + std::to_string(skippedCount) +
+			" placement(s): unknown archetype or asset admission failed";
+	}
+	return true;
+}
+
+void Client::CMapTool::Remove_WorldNpcPreviews(
+	vector<NPC_PREVIEW_ENTRY>& entries)
+{
+	for (const NPC_PREVIEW_ENTRY& entry : entries)
+	{
+		if (nullptr != entry.object &&
+			m_iAuthoringLevelIndex < ETOUI(LEVEL::END))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_NpcPreviews"),
+				static_pointer_cast<CGameObject>(entry.object));
+		}
+	}
+	entries.clear();
+}
+
+void Client::CMapTool::Sync_WorldNpcPreviews()
+{
+	vector<NPC_PREVIEW_ENTRY> staged;
+	if (!Stage_WorldNpcPreviews(m_WorldGameplayDocument, staged))
+		return;
+	Remove_WorldNpcPreviews(m_WorldNpcPreviews);
+	m_WorldNpcPreviews = std::move(staged);
 }
 
 void Client::CMapTool::Update_WorldTriggerBoxPresentation(
@@ -3104,11 +3375,13 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
+	Remove_WorldNpcPreviews(m_WorldNpcPreviews);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
 	m_DeployRuntime = std::move(stagedDeployRuntime);
 	m_WorldGameplayDocument = std::move(stagedWorld);
 	m_WorldTriggerBoxes = std::move(stagedTriggerBoxes);
+	Sync_WorldNpcPreviews();
 	m_SpawnGroupDocument = std::move(stagedSpawnGroups);
 	m_SpawnAnchorBoxes = std::move(stagedSpawnAnchorBoxes);
 	m_NavigationDocument = std::move(stagedNavigation);
@@ -8946,8 +9219,8 @@ void Client::CMapTool::Render_Inspector()
 				}
 				else
 				{
-					/* Mirror parity°¡ ¹Ù²î¸é ±âÁ¸ batch pass¿Í ´Þ¶óÁö¹Ç·Î
-					   ¾ÈÀüÇÏ°Ô standaloneÀ¸·Î ÀÌµ¿ÇÏ°í Reload ¶§ Àç¹èÄ¡ÇÑ´Ù. */
+					/* Mirror parityï¿½ï¿½ ï¿½Ù²ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ batch passï¿½ï¿½ ï¿½Þ¶ï¿½ï¿½ï¿½ï¿½Ç·ï¿½
+					   ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ standaloneï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½Ï°ï¿½ Reload ï¿½ï¿½ ï¿½ï¿½ï¿½Ä¡ï¿½Ñ´ï¿½. */
 					PLACED_ENTRY migrated{};
 					if (Create_Placement(staged, migrated))
 					{
@@ -9063,7 +9336,7 @@ bool_t Client::CMapTool::Try_PlaceNavigationBounds()
 	m_NavigationBakeStatus =
 		"Nav Bounds placed; adjust Transform and press Bake";
 	return true;
-	//±âÁ¸ Grid ¹üÀ§¸¦ ÃÊ±â Bounds·Î »ç¿ëÇÑ´Ù
+	//ï¿½ï¿½ï¿½ï¿½ Grid ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½ Boundsï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½
 }
 
 bool_t Client::CMapTool::Collect_NavigationBakePlacements(
@@ -9663,8 +9936,8 @@ bool_t Client::CMapTool::Is_CellInsideNavigationBounds(
 bool_t Client::CMapTool::Is_ValidNavigationBakeDesc(
 	const NAVGRID_BAKE_DESC& desc)
 {
-	//Bounds °ª¿¡ ´ëÇÑ °ËÁõÀ» ÇÏ´Â ÇÔ¼ö - È£ÃâÀ» ´©°¡ ÇÏÁö?
-	//¾î¶² »óÅÂ¸¦ º¯°æÇÏ°í º¸Á¸ÇÏ´Â ¿ªÇÒÀ» ÇÏ´Â °ÅÁö?
+	//Bounds ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½ - È£ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½?
+	//ï¿½î¶² ï¿½ï¿½ï¿½Â¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½?
 	return
 		desc.isReady &&
 
