@@ -28,6 +28,7 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumMaterials { Prototype.m_iNumMaterials }
     , m_Materials { Prototype.m_Materials }
    // , m_Bones { Prototype.m_Bones }
+    , m_iSkeletonHash { Prototype.m_iSkeletonHash }
     , m_iCurrentAnimIndex { Prototype.m_iCurrentAnimIndex }
     , m_iNumAnimations { Prototype.m_iNumAnimations}
     // , m_Animations { Prototype.m_Animations }
@@ -601,6 +602,7 @@ HRESULT CModel::Ready_BinaryModel(
 	{
 		return E_FAIL;
 	}
+	m_iSkeletonHash = asset.hasSkeleton ? asset.skeleton.skeletonHash : 0;
 
 	m_bHasSelfConsistentUnauthenticatedGeometryMetadata =
 		asset.geometryMetadata.present;
@@ -769,6 +771,34 @@ HRESULT CModel::Ready_Animations(const MODEL_ASSET_DATA& asset)
         m_Animations.push_back(pAnimation);
     }
     return S_OK;
+}
+
+HRESULT CModel::Attach_AnimationSet(const CModel& animationSet)
+{
+	if (MODEL::ANIM != m_eType || MODEL::ANIM != animationSet.m_eType ||
+		m_Bones.empty() || animationSet.m_Bones.empty() ||
+		0 == m_iSkeletonHash ||
+		m_iSkeletonHash != animationSet.m_iSkeletonHash ||
+		m_Bones.size() != animationSet.m_Bones.size())
+	{
+		return E_FAIL;
+	}
+
+	for (const auto& pIncoming : animationSet.m_Animations)
+	{
+		for (const auto& pExisting : m_Animations)
+		{
+			if (pExisting->Compare_Name(pIncoming->Get_Name()))
+				return E_FAIL;
+		}
+	}
+
+	m_Animations.reserve(
+		m_Animations.size() + animationSet.m_Animations.size());
+	for (const auto& pIncoming : animationSet.m_Animations)
+		m_Animations.push_back(pIncoming->Clone());
+	m_iNumAnimations = static_cast<uint32_t>(m_Animations.size());
+	return S_OK;
 }
 
 unique_ptr<CModel> CModel::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix)

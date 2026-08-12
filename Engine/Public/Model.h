@@ -119,6 +119,11 @@ public:
 	void Set_AnimationSpeed(f32_t speed);
 	bool_t Update_Animation(f32_t fTimeDelta);
 
+	uint64_t Get_SkeletonHash() const {
+		return m_iSkeletonHash;
+	}
+	HRESULT Attach_AnimationSet(const CModel& animationSet);
+
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
 	HRESULT Initialize_Prototype(MODEL eType,
@@ -155,6 +160,7 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
+	uint64_t							m_iSkeletonHash = {};
 
 	uint32_t								m_iCurrentAnimIndex = {};
 	uint32_t								m_iNumAnimations = {};

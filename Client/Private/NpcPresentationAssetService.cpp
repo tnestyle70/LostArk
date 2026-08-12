@@ -18,9 +18,8 @@
 namespace
 {
 	std::mutex g_NpcAssetMutex;
-	/* level index -> archetypes whose model prototypes are committed there */
 	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyArchetypes;
-	/* levels that already committed the shared CNpc GameObject prototype */
+	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyAnimSets;
 	std::unordered_set<uint32_t> g_NpcObjectReadyLevels;
 
 	Engine::wstring_t Derive_ModelTag(const std::string& modelAssetId)
@@ -31,6 +30,16 @@ namespace
 			return {};
 		return Engine::wstring_t(TEXT("Prototype_Component_Model_")) + stem;
 	}
+
+	Engine::wstring_t Derive_AnimSetTag(const std::string& animationSetId)
+	{
+		const std::filesystem::path assetPath(animationSetId);
+		const std::wstring stem = assetPath.stem().wstring();
+		if (stem.empty())
+			return {};
+		return Engine::wstring_t(TEXT("Prototype_Component_Model_AnimSet_")) +
+			stem;
+	}
 }
 
 void Client::CNpcPresentationAssetService::Begin_LevelLoad(
@@ -38,6 +47,7 @@ void Client::CNpcPresentationAssetService::Begin_LevelLoad(
 {
 	std::scoped_lock lock{ g_NpcAssetMutex };
 	g_ReadyArchetypes.erase(iLevelIndex);
+	g_ReadyAnimSets.erase(iLevelIndex);
 	g_NpcObjectReadyLevels.erase(iLevelIndex);
 }
 
@@ -78,16 +88,62 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 	const matrix_t preTransform =
 		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
+
+	unique_ptr<CModel> bodyModel = CModel::Create(
+		pDevice,
+		pContext,
+		MODEL::ANIM,
+		modelPath.string().c_str(),
+		preTransform);
+	if (nullptr == bodyModel)
+		return E_FAIL;
+
+	wstring_t animSetTag;
+	unique_ptr<CModel> newAnimSet;
+	bool_t animSetAlreadyReady = false;
+	if (!actor->animationSetId.empty())
+	{
+		animSetTag = Derive_AnimSetTag(actor->animationSetId);
+		if (animSetTag.empty())
+			return E_FAIL;
+		const auto animSets = g_ReadyAnimSets.find(iLevelIndex);
+		animSetAlreadyReady = animSets != g_ReadyAnimSets.end() &&
+			animSets->second.contains(actor->animationSetId);
+		shared_ptr<CModel> existingAnimSet;
+		const CModel* pAnimSet = nullptr;
+		if (animSetAlreadyReady)
+		{
+			existingAnimSet = dynamic_pointer_cast<CModel>(
+				CGameInstance::Get().Clone_Prototype(
+					iLevelIndex, animSetTag));
+			pAnimSet = existingAnimSet.get();
+		}
+		else
+		{
+			const std::filesystem::path animSetPath =
+				CRuntimeAssetRoot::Resolve(actor->animationSetId);
+			if (animSetPath.empty())
+				return E_FAIL;
+			newAnimSet = CModel::Create(
+				pDevice,
+				pContext,
+				MODEL::ANIM,
+				animSetPath.string().c_str(),
+				preTransform);
+			pAnimSet = newAnimSet.get();
+		}
+		if (nullptr == pAnimSet ||
+			FAILED(bodyModel->Attach_AnimationSet(*pAnimSet)))
+		{
+			return E_FAIL;
+		}
+	}
+
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
-	staged.reserve(2u);
-	staged.emplace_back(
-		modelTag,
-		CModel::Create(
-			pDevice,
-			pContext,
-			MODEL::ANIM,
-			modelPath.string().c_str(),
-			preTransform));
+	staged.reserve(3u);
+	if (nullptr != newAnimSet)
+		staged.emplace_back(animSetTag, std::move(newAnimSet));
+	staged.emplace_back(modelTag, std::move(bodyModel));
 	const bool_t needsObjectPrototype =
 		!g_NpcObjectReadyLevels.contains(iLevelIndex);
 	if (needsObjectPrototype)
@@ -109,6 +165,8 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 	}
 
 	g_ReadyArchetypes[iLevelIndex].insert(std::string(archetypeId));
+	if (!actor->animationSetId.empty() && !animSetAlreadyReady)
+		g_ReadyAnimSets[iLevelIndex].insert(actor->animationSetId);
 	if (needsObjectPrototype)
 		g_NpcObjectReadyLevels.insert(iLevelIndex);
 	return S_OK;

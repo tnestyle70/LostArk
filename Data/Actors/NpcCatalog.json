@@ -1,11 +1,12 @@
 {
   "schema": "lostark.npc-catalog",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "npcs": [
     {
       "archetypeId": "NPC_BEDA",
       "clientPresentationId": "npc.beda.client.v1",
       "modelAssetId": "Character/NPC/Npc_Beda/Npc_Beda.wmodel",
+      "animationSetId": null,
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     },
@@ -13,6 +14,7 @@
       "archetypeId": "NPC_AYLARA",
       "clientPresentationId": "npc.aylara.client.v1",
       "modelAssetId": "Character/NPC/Npc_Aylara/Npc_Aylara.wmodel",
+      "animationSetId": null,
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     },
@@ -20,6 +22,7 @@
       "archetypeId": "NPC_FORMAN",
       "clientPresentationId": "npc.forman.client.v1",
       "modelAssetId": "Character/NPC/Npc_Forman/Npc_Forman.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/HM_MA01/HM_MA01.wmodel",
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     },
@@ -27,6 +30,7 @@
       "archetypeId": "NPC_SCHMIDT",
       "clientPresentationId": "npc.schmidt.client.v1",
       "modelAssetId": "Character/NPC/Npc_Schmidt/Npc_Schmidt.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/HM_MA01/HM_MA01.wmodel",
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     }

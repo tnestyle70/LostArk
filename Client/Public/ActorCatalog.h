@@ -51,6 +51,7 @@ struct NPC_ACTOR_ENTRY final
 	std::string archetypeId;
 	std::string clientPresentationId;
 	std::string modelAssetId;
+	std::string animationSetId;
 	std::string idleClip;
 	std::string runtimeStatus;
 };
