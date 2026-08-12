@@ -40,10 +40,18 @@ PLAN: `2026-08-12_NPC_SHARED_ANIMSET_PLAN.md`
 
 - MapTool에서 슈미트 배치 → Preview Clip 콤보에 45개 클립 표출·재생 확인 (2026-08-12).
 
-## 4. 남은 것
+## 4. 아일라라 전환 (2026-08-12 추가)
 
-- 아일라라: 옷깃 graft 본 1개 포기 여부 결정 후 HM_FE04 애니셋 + mesh-only 전환.
-- HM_MA01의 다른 `ani_*` 그룹(스테이징에 다수) 추가 시 클립 이름 충돌 dedupe 필요.
+- HM_FE04 애니셋(33클립, 23.4MB) 쿠킹, 아일라라 24MB → 0.48MB mesh-only.
+  skeletonHash 일치(`0x3ab697a7c9d7df09`), validate OK, MapTool 33클립 표출 사용자 확인.
+- 옷깃 graft 본은 실측 결과 존재하지 않았다 — 구본 시절 기록이었고 신본 바디는 순수
+  124본이라 `--no-graft`가 병합할 것이 없었다. `build_npc.py`의 웨이트 병합 경로는
+  안전망으로 유지한다.
+- 최종: 아일라라·포먼·슈미트 = 공유 애니셋, 베다 = 자체 rig 내장(1.85MB).
+
+## 5. 남은 것
+
+- HM_MA01/HM_FE04의 다른 `ani_*` 그룹(스테이징에 다수) 추가 시 클립 이름 dedupe 필요.
 - Bern 제품 경로(Server snapshot) 육안 확인은 아직 안 함 — 코드 경로는 에디터
   미리보기와 동일한 서비스 attach를 사용한다.
 - 팀 공유: Engine public header 변경이라 머지 후 각자 UpdateLib 재실행 필요.

@@ -14,7 +14,7 @@
       "archetypeId": "NPC_AYLARA",
       "clientPresentationId": "npc.aylara.client.v1",
       "modelAssetId": "Character/NPC/Npc_Aylara/Npc_Aylara.wmodel",
-      "animationSetId": null,
+      "animationSetId": "Character/NPC/AnimSets/HM_FE04/HM_FE04.wmodel",
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
     },
