@@ -62,4 +62,9 @@
 # Keep the baseline byte-exact so its read-only verifier also passes fresh checkouts.
 /Data/Effects/Baselines/legacy-product-cue-projection-v1.json text eol=lf
 
+# The R8 offline raw-resource manifests freeze exact raw SHA-256 identities.
+# Keep them canonical LF so clean core.autocrlf=true checkouts remain verifiable.
+/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-denominator.checkpoint.json text eol=lf
+/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-inventory-v1.json text eol=lf
+
 

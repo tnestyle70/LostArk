@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -1535,6 +1535,11 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.active-material-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-recovery.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-runtime-deployment.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-original-dxbc-replay.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-ref-shader-cache.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-runtime-source-replay.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-shader-map-identity.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-native-resource.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-oracle-acquisition.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-parent-resolution.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-reconstructed-approved-v1.receipt.json" />
@@ -1543,6 +1548,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-runtime-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-source-value-acquisition.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-texture-runtime-binding.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.native-base-texture-extraction.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json" />
@@ -1854,6 +1860,8 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34600.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34620.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-denominator.checkpoint.json" />
+    <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md" />
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.basebuff-effect-source.json" />
