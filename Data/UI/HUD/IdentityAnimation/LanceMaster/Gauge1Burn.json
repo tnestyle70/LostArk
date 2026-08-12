@@ -1,0 +1,708 @@
+{
+ "schema": "lostark.identity-keyframe-animation",
+ "formatVersion": 1,
+ "frameRate": 40.0,
+ "frameCount": 42,
+ "labels": {
+  "burn": 0
+ },
+ "layers": [
+  {
+   "depth": 0,
+   "sourceKey": "1/1:gauge_shape398_s398b397.png",
+   "keyframes": [
+    {
+     "frame": 9,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape398_s398b397.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 11,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "sourceKey": "1/1:gauge_shape400_s400b399.png",
+   "keyframes": [
+    {
+     "frame": 11,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape400_s400b399.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 13,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 2,
+   "sourceKey": "1/1:gauge_shape402_s402b401.png",
+   "keyframes": [
+    {
+     "frame": 13,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape402_s402b401.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 15,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 3,
+   "sourceKey": "1/1:gauge_shape404_s404b403.png",
+   "keyframes": [
+    {
+     "frame": 15,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape404_s404b403.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 17,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 4,
+   "sourceKey": "1/1:gauge_shape406_s406b405.png",
+   "keyframes": [
+    {
+     "frame": 17,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape406_s406b405.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 19,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 5,
+   "sourceKey": "1/1:gauge_shape408_s408b407.png",
+   "keyframes": [
+    {
+     "frame": 19,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape408_s408b407.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 21,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 6,
+   "sourceKey": "1/1:gauge_shape410_s410b409.png",
+   "keyframes": [
+    {
+     "frame": 21,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape410_s410b409.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 23,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 7,
+   "sourceKey": "1/1:gauge_shape412_s412b411.png",
+   "keyframes": [
+    {
+     "frame": 23,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape412_s412b411.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 25,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 8,
+   "sourceKey": "1/1:gauge_shape414_s414b413.png",
+   "keyframes": [
+    {
+     "frame": 25,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape414_s414b413.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 27,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 9,
+   "sourceKey": "1/1:gauge_shape416_s416b415.png",
+   "keyframes": [
+    {
+     "frame": 27,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape416_s416b415.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 29,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 10,
+   "sourceKey": "1/1:gauge_shape418_s418b417.png",
+   "keyframes": [
+    {
+     "frame": 29,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape418_s418b417.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 31,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 11,
+   "sourceKey": "1/1:gauge_shape420_s420b419.png",
+   "keyframes": [
+    {
+     "frame": 31,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape420_s420b419.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 33,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 12,
+   "sourceKey": "1/1:gauge_shape422_s422b421.png",
+   "keyframes": [
+    {
+     "frame": 33,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape422_s422b421.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 35,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 13,
+   "sourceKey": "1/1:gauge_shape424_s424b423.png",
+   "keyframes": [
+    {
+     "frame": 35,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape424_s424b423.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 37,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 14,
+   "sourceKey": "1/1:gauge_shape426_s426b425.png",
+   "keyframes": [
+    {
+     "frame": 37,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape426_s426b425.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 39,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 15,
+   "sourceKey": "1/1:gauge_shape428_s428b427.png",
+   "keyframes": [
+    {
+     "frame": 39,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape428_s428b427.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 41,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 16,
+   "sourceKey": "1/1:gauge_shape430_s430b429.png",
+   "keyframes": [
+    {
+     "frame": 41,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape430_s430b429.png",
+     "x": -21.0,
+     "y": -18.75,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    }
+   ]
+  },
+  {
+   "depth": 17,
+   "sourceKey": "3/1:gauge_shape395_s395b394.png",
+   "keyframes": [
+    {
+     "frame": 1,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    },
+    {
+     "frame": 2,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.125,
+     "additive": false
+    },
+    {
+     "frame": 3,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.25,
+     "additive": false
+    },
+    {
+     "frame": 4,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.375,
+     "additive": false
+    },
+    {
+     "frame": 5,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.5,
+     "additive": false
+    },
+    {
+     "frame": 6,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.625,
+     "additive": false
+    },
+    {
+     "frame": 7,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.75,
+     "additive": false
+    },
+    {
+     "frame": 8,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.875,
+     "additive": false
+    },
+    {
+     "frame": 9,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape395_s395b394.png",
+     "x": -3.0,
+     "y": -2.25,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 18,
+   "sourceKey": "5/1:gauge_shape33_s33b32.png",
+   "keyframes": [
+    {
+     "frame": 1,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 23,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.8906,
+     "additive": false
+    },
+    {
+     "frame": 24,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.7773,
+     "additive": false
+    },
+    {
+     "frame": 25,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.668,
+     "additive": false
+    },
+    {
+     "frame": 26,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.5547,
+     "additive": false
+    },
+    {
+     "frame": 27,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.4453,
+     "additive": false
+    },
+    {
+     "frame": 28,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.332,
+     "additive": false
+    },
+    {
+     "frame": 29,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.2227,
+     "additive": false
+    },
+    {
+     "frame": 30,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.1094,
+     "additive": false
+    },
+    {
+     "frame": 31,
+     "asset": "UI/HUD/LanceMaster/Identity/gauge_shape33_s33b32.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    },
+    {
+     "frame": 41,
+     "asset": null,
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0,
+     "additive": false
+    }
+   ]
+  }
+ ]
+}
