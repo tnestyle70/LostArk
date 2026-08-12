@@ -93,6 +93,12 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
       <Link>Client\Effect_LightPresentation.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+      <Link>Client\DataJson.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\MapLightDocument.cpp">
+      <Link>Client\MapLightDocument.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\..\Engine\Private\Light.cpp">
       <Link>Engine\Light.cpp</Link>
     </ClCompile>

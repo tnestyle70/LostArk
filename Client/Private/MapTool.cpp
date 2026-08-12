@@ -452,6 +452,14 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
 		CMapEditorWorkspaceService::Is_Active();
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
+	if (isMapAuthoringLevel && nullptr != m_pMapLightPresentation &&
+		!m_pMapLightPresentation->Submit_Frame() &&
+		!m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[MapTool][MapLight] " +
+			m_pMapLightPresentation->Get_Status() + "\n").c_str());
+	}
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(isMapAuthoringLevel);
 
@@ -1802,7 +1810,6 @@ bool_t Client::CMapTool::Reload_DestructionAuthoring()
 	const std::string previousGroupId = m_SelectedDestructionGroupId;
 	const std::string previousProfileId =
 		m_SelectedDestructionSimulationProfileId;
-
 	Restore_DestructionPreview();
 	m_bDestructionPickArmed = false;
 	m_bDestructionAddMemberArmed = false;
@@ -2714,6 +2721,25 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		descriptor.sourceCatalog = ResolveDataCatalogPath(sourceCatalog);
 		descriptor.sourcePlacements =
 			ResolveDataCatalogPath(sourcePlacements);
+		const DATA_JSON_VALUE* sourceLights = selected->Find("sourceLights");
+		if (nullptr != sourceLights)
+		{
+			if (!sourceLights->Is_String() ||
+				sourceLights->Get_String().empty())
+			{
+				m_Status = "MapCatalog light authoring source is invalid: " +
+					descriptor.areaId;
+				return false;
+			}
+			descriptor.sourceLights = ResolveDataCatalogPath(
+				sourceLights->Get_String());
+			if (descriptor.sourceLights.empty())
+			{
+				m_Status = "MapCatalog light path escapes Data root: " +
+					descriptor.areaId;
+				return false;
+			}
+		}
 		const DATA_JSON_VALUE* sourceDeployCatalog =
 			selected->Find("sourceDeployCatalog");
 		const DATA_JSON_VALUE* sourceDeployPlacements =
@@ -2767,6 +2793,11 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		}
 		if (descriptor.areaId == "LV_LUT_HEARTRB_ED")
 		{
+			if (descriptor.sourceLights.empty())
+			{
+				m_Status = "Valtan source light presentation is missing";
+				return false;
+			}
 			std::string blockers;
 			if (!ReadRequiredString(*selected, "navigationBlockers", blockers))
 			{
@@ -3035,6 +3066,18 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Status = stagedStatus;
 		return false;
 	}
+	shared_ptr<CMapLightPresentationRuntime> stagedMapLightPresentation;
+	if (!descriptor.sourceLights.empty())
+	{
+		stagedMapLightPresentation =
+			make_shared<CMapLightPresentationRuntime>();
+		if (!stagedMapLightPresentation->Load(
+			descriptor.sourceLights, descriptor.areaId))
+		{
+			m_Status = stagedMapLightPresentation->Get_Status();
+			return false;
+		}
+	}
 
 	if (!Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
@@ -3116,6 +3159,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_DestructionDocument = std::move(stagedDestruction);
 	m_EncounterReference = std::move(stagedEncounterReference);
 	m_DestructionSimulationDocument = std::move(stagedSimulation);
+	m_pMapLightPresentation = std::move(stagedMapLightPresentation);
+	m_bMapLightSubmissionFailureReported = false;
 	m_WorldEventsPath = descriptor.worldEventsDocument;
 	m_NavigationSourcePath = descriptor.navigationSource;
 	m_NavigationPaintPath = descriptor.navigationPaint;
@@ -3236,6 +3281,8 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_bSpawnGroupsDirty = false;
 	m_SpawnGroupDocument.Reset();
 	m_DestructionSimulationDocument.Clear();
+	m_pMapLightPresentation.reset();
+	m_bMapLightSubmissionFailureReported = false;
 	m_Catalog = CMapAssetCatalog{};
 	m_EditorAreas.clear();
 	m_iActiveEditorArea = SIZE_MAX;
@@ -4359,7 +4406,6 @@ bool_t Client::CMapTool::Save_DestructionAuthoringPair()
 		m_DestructionStatus = status;
 		return false;
 	}
-
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
 	const std::filesystem::path destructionPath =
 		Get_WorldDestructionPath();
@@ -4449,7 +4495,6 @@ bool_t Client::CMapTool::Load_DestructionSimulation()
 		m_DestructionSimulationStatus = status;
 		return false;
 	}
-
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
 	m_bDestructionSimulationClearRequested = false;
@@ -6900,7 +6945,10 @@ void Client::CMapTool::Render_DestructionSimulationWindow(
 	if (ImGui::Button("Reload Simulations"))
 		Load_DestructionSimulation();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(m_SelectedDestructionGroupId.empty());
+	const bool_t hasSelectedDeployGroup =
+		nullptr != m_DestructionDocument.Find_Group(
+			m_SelectedDestructionGroupId);
+	ImGui::BeginDisabled(!hasSelectedDeployGroup);
 	if (ImGui::Button("Create Default for Selected Group"))
 		Create_DefaultDestructionSimulationProfile();
 	ImGui::EndDisabled();
@@ -7017,7 +7065,7 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	const bool_t canSoloFragment =
-		!m_SelectedDestructionSimulationFragmentId.empty();
+		hasProfile && !m_SelectedDestructionSimulationFragmentId.empty();
 	ImGui::BeginDisabled(!canSoloFragment);
 	if (ImGui::RadioButton("Solo Fragment", soloFragment))
 	{
@@ -7027,7 +7075,8 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 	}
 	ImGui::EndDisabled();
 
-	size_t fragmentCount = hasProfile ? profile->Elements.size() *
+	size_t fragmentCount = hasProfile ?
+		profile->Elements.size() *
 		CDestructionSimulationRuntime::PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT :
 		0u;
 	if (nullptr != m_pDestructionSimulationController)
@@ -7323,11 +7372,11 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 							ownerFrames)
 						{
 						ImGui::TextDisabled(
-							"Deploy %llu | %s | life %.2f",
-							static_cast<unsigned long long>(
-								ownerFrame->sourceRuntimePlacementId),
-							SimulationElementStateLabel(ownerFrame->eState),
-							ownerFrame->fNormalizedLife);
+								"Deploy %llu | %s | life %.2f",
+								static_cast<unsigned long long>(
+									ownerFrame->sourceRuntimePlacementId),
+								SimulationElementStateLabel(ownerFrame->eState),
+								ownerFrame->fNormalizedLife);
 						for (const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& fragment :
 							ownerFrame->Fragments)
 						{
@@ -8864,7 +8913,6 @@ void Client::CMapTool::Render_Inspector()
 	ImGui::TextWrapped("Asset: %s", pEntry->record.assetId.c_str());
 	ImGui::Text("Runtime: %s",
 		nullptr != pEntry->batch ? "Static Batch" : "Standalone Fallback");
-
 	float3_t position = pEntry->record.position;
 	float4_t quaternion = pEntry->record.rotationQuaternion;
 	float3_t scale = pEntry->record.signedScale;

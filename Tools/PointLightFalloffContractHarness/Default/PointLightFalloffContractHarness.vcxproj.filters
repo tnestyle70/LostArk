@@ -13,6 +13,12 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\MapLightDocument.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Engine\Private\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

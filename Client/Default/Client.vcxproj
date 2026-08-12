@@ -108,6 +108,8 @@
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapLightDocument.h" />
+    <ClInclude Include="..\Public\MapLightPresentationRuntime.h" />
     <ClInclude Include="..\Public\MapEditorWorkspaceService.h" />
     <ClInclude Include="..\Public\MapNavigationContract.h" />
     <ClInclude Include="..\Public\MapAssetObject.h" />
@@ -209,6 +211,8 @@
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapLightDocument.cpp" />
+    <ClCompile Include="..\Private\MapLightPresentationRuntime.cpp" />
     <ClCompile Include="..\Private\MapEditorWorkspaceService.cpp" />
     <ClCompile Include="..\Private\MapNavigationContract.cpp" />
     <ClCompile Include="..\Private\MapAssetObject.cpp" />
@@ -303,8 +307,16 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02306.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02307.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02308.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02309.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02310.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02311.debrisrecipe.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02315.debrisrecipe.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset" />

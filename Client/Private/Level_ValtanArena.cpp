@@ -47,9 +47,21 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_MapRuntime.Clear();
 		return E_FAIL;
 	}
+	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
+	if (!mapLightPresentation->Load_Runtime(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_ValtanArena][MapLight] " +
+			mapLightPresentation->Get_Status() + "\n").c_str());
+		m_DeployRuntime.Clear();
+		m_MapRuntime.Clear();
+		return E_FAIL;
+	}
+	m_pMapLightPresentation = std::move(mapLightPresentation);
 
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 	{
+		m_pMapLightPresentation->Clear();
+		m_pMapLightPresentation.reset();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
 		return E_FAIL;
@@ -68,6 +80,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 		TEXT("Layer_WorldEntity");
 	if (!m_Replication.Initialize(replicationDesc))
 	{
+		m_pMapLightPresentation->Clear();
+		m_pMapLightPresentation.reset();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
 		return E_FAIL;
@@ -87,6 +101,14 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 			LEVEL::VALTAN_ARENA))
 	{
 		return;
+	}
+	if (nullptr != m_pMapLightPresentation &&
+		!m_pMapLightPresentation->Submit_Frame() &&
+		!m_bMapLightSubmissionFailureReported)
+	{
+		m_bMapLightSubmissionFailureReported = true;
+		OutputDebugStringA(("[Level_ValtanArena][MapLight] " +
+			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 
 	if (!m_Replication.Update())

@@ -5,6 +5,7 @@
 #include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
+#include "MapLightPresentationRuntime.h"
 #include "DeployPropRuntime.h"
 #include "DestructionSimulationDocument.h"
 #include "EncounterPatternReference.h"
@@ -61,6 +62,7 @@ private:
 		std::string label;
 		std::filesystem::path sourceCatalog;
 		std::filesystem::path sourcePlacements;
+		std::filesystem::path sourceLights;
 		std::filesystem::path sourceDeployCatalog;
 		std::filesystem::path sourceDeployPlacements;
 		std::filesystem::path navigationSource;
@@ -351,6 +353,8 @@ private:
 
 	CMapAssetCatalog m_Catalog;
 	CDeployPropRuntime m_DeployRuntime;
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	bool_t m_bMapLightSubmissionFailureReported = false;
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
 	std::string m_Status = "Enter AssetTest with F2";

@@ -16,9 +16,9 @@
           "sourceRuntimePlacementId": "9335938568718910930",
           "suppressionAliasPlacementIds": [],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.670147955, 0.0380745605, -0.741250336],
-          "speedMetersPerSecond": 8,
-          "gravityScale": 1,
+          "direction": [-0.6917609, 0.12, 0.7120862],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
         },
@@ -27,9 +27,9 @@
           "sourceRuntimePlacementId": "9681544306002658031",
           "suppressionAliasPlacementIds": [],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.501837671, 0.0358004309, -0.864220619],
-          "speedMetersPerSecond": 8,
-          "gravityScale": 1,
+          "direction": [0.4303523, 0.12, 0.8946490],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
         },
@@ -38,9 +38,9 @@
           "sourceRuntimePlacementId": "12037145985028191659",
           "suppressionAliasPlacementIds": [],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.912198126, 0.0360196903, 0.40816313],
-          "speedMetersPerSecond": 8,
-          "gravityScale": 1,
+          "direction": [-0.9260072, 0.12, -0.3579256],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
         },
@@ -49,9 +49,9 @@
           "sourceRuntimePlacementId": "17280669848983777578",
           "suppressionAliasPlacementIds": [],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.99944061, 0.0327578895, 0.00673802011],
-          "speedMetersPerSecond": 8,
-          "gravityScale": 1,
+          "direction": [0.9925904, 0.12, 0.0190873],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
         },
@@ -60,9 +60,9 @@
           "sourceRuntimePlacementId": "18177041425620847396",
           "suppressionAliasPlacementIds": [],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.0498539805, 0.0311269294, 0.998271346],
-          "speedMetersPerSecond": 8,
-          "gravityScale": 1,
+          "direction": [-0.1147712, 0.12, -0.9861174],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
         }
@@ -81,9 +81,9 @@
           "sourceRuntimePlacementId": "17150846598057876717",
           "suppressionAliasPlacementIds": ["10426387515393336411"],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.027661, 0.12, -0.9923885],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [-0.0652118, 0.12, 0.9906298],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         },
@@ -92,9 +92,9 @@
           "sourceRuntimePlacementId": "9863801195242004116",
           "suppressionAliasPlacementIds": ["12598937882346321836"],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.027661, 0.12, -0.9923885],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [0.1233438, 0.12, 0.9850819],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         }
@@ -113,9 +113,9 @@
           "sourceRuntimePlacementId": "11190594702002930167",
           "suppressionAliasPlacementIds": ["12150087330863237518"],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.9926594, 0.12, 0.0150767],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [-0.9925203, 0.12, 0.0224381],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         },
@@ -124,9 +124,9 @@
           "sourceRuntimePlacementId": "13195423984589183291",
           "suppressionAliasPlacementIds": ["16879630230908101275"],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.9926594, 0.12, 0.0150767],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [-0.9914867, 0.12, -0.0505385],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         }
@@ -145,9 +145,9 @@
           "sourceRuntimePlacementId": "9522135662464469029",
           "suppressionAliasPlacementIds": ["9606721395667492840"],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.0133771, 0.12, 0.9926838],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [0.0421792, 0.12, -0.9918775],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         },
@@ -156,9 +156,9 @@
           "sourceRuntimePlacementId": "11909088500311713272",
           "suppressionAliasPlacementIds": ["15375899663358889626"],
           "spawnOffset": [0, 0, 0],
-          "direction": [0.0133771, 0.12, 0.9926838],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [-0.0752425, 0.12, -0.9899185],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         }
@@ -177,9 +177,9 @@
           "sourceRuntimePlacementId": "15675921917269125843",
           "suppressionAliasPlacementIds": ["15212127038612238715"],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.9927583, 0.12, -0.0055636],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [0.9869303, 0.12, -0.1075577],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         },
@@ -188,9 +188,705 @@
           "sourceRuntimePlacementId": "13221745590928612509",
           "suppressionAliasPlacementIds": ["10358956607506909163"],
           "spawnOffset": [0, 0, 0],
-          "direction": [-0.9927583, 0.12, -0.0055636],
-          "speedMetersPerSecond": 10.5,
-          "gravityScale": 1.25,
+          "direction": [0.9858182, 0.12, 0.1173132],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.9652616057759700150.preview",
+      "groupId": "destroyable.group.valtan.deploy.9652616057759700150",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.9652616057759700150",
+          "sourceRuntimePlacementId": "9652616057759700150",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.3793832, 0.12, 0.9174249],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.13520360247339696445.preview",
+      "groupId": "destroyable.group.valtan.deploy.13520360247339696445",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.13520360247339696445",
+          "sourceRuntimePlacementId": "13520360247339696445",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.6824574, 0.12, 0.7210076],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.15495684800954131707.preview",
+      "groupId": "destroyable.group.valtan.deploy.15495684800954131707",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.15495684800954131707",
+          "sourceRuntimePlacementId": "15495684800954131707",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.5341243, 0.12, 0.8368460],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14210737191027038638",
+          "sourceRuntimePlacementId": "14210737191027038638",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.7960272, 0.12, 0.5932459],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14345577340107998055",
+          "sourceRuntimePlacementId": "14345577340107998055",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.3633768, 0.12, 0.9238816],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14439275443581760904",
+          "sourceRuntimePlacementId": "14439275443581760904",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.2234990, 0.12, 0.9672891],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18100758183075339831",
+          "sourceRuntimePlacementId": "18100758183075339831",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.7297721, 0.12, 0.6730770],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15423695113667715748",
+          "sourceRuntimePlacementId": "15423695113667715748",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.2657583, 0.12, 0.9565420],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12804542616476082944",
+          "sourceRuntimePlacementId": "12804542616476082944",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.5583712, 0.12, 0.8208664],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.9671293252162296055",
+          "sourceRuntimePlacementId": "9671293252162296055",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.7172599, 0.12, 0.6863951],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15358675764127682739",
+          "sourceRuntimePlacementId": "15358675764127682739",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.0163093, 0.12, 0.9926399],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13290943434399830027",
+          "sourceRuntimePlacementId": "13290943434399830027",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.1571069, 0.12, 0.9802640],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12819104299115621849",
+          "sourceRuntimePlacementId": "12819104299115621849",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.6529500, 0.12, 0.7478344],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17359606121069777624",
+          "sourceRuntimePlacementId": "17359606121069777624",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.4153130, 0.12, 0.9017290],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14520149530921636720",
+          "sourceRuntimePlacementId": "14520149530921636720",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8321367, 0.12, 0.5414320],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.11170070275064524686.preview",
+      "groupId": "destroyable.group.valtan.deploy.11170070275064524686",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.11170070275064524686",
+          "sourceRuntimePlacementId": "11170070275064524686",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9921213, 0.12, -0.0359915],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.12252498194881956917.preview",
+      "groupId": "destroyable.group.valtan.deploy.12252498194881956917",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.12252498194881956917",
+          "sourceRuntimePlacementId": "12252498194881956917",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8391103, 0.12, -0.5305600],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17404480870746281119",
+          "sourceRuntimePlacementId": "17404480870746281119",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8237380, 0.12, -0.5541261],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13154681496987253568",
+          "sourceRuntimePlacementId": "13154681496987253568",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9487938, 0.12, -0.2922162],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15393154990485032341",
+          "sourceRuntimePlacementId": "15393154990485032341",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9915619, 0.12, 0.0490409],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17788407538468874008",
+          "sourceRuntimePlacementId": "17788407538468874008",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9468446, 0.12, 0.2984717],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10912388091405377926",
+          "sourceRuntimePlacementId": "10912388091405377926",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8998350, 0.12, -0.4194007],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18362175117092037953",
+          "sourceRuntimePlacementId": "18362175117092037953",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9869254, 0.12, -0.1076019],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13837284136111935898",
+          "sourceRuntimePlacementId": "13837284136111935898",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9657031, 0.12, -0.2302554],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15148418014021580024",
+          "sourceRuntimePlacementId": "15148418014021580024",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9906371, 0.12, -0.0651008],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10435996578153793381",
+          "sourceRuntimePlacementId": "10435996578153793381",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9286367, 0.12, -0.3510469],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15736179535184396369",
+          "sourceRuntimePlacementId": "15736179535184396369",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9397913, 0.12, 0.3199881],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17296963925068961735",
+          "sourceRuntimePlacementId": "17296963925068961735",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8688997, 0.12, 0.4802221],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.17695249952621776147.preview",
+      "groupId": "destroyable.group.valtan.deploy.17695249952621776147",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.17695249952621776147",
+          "sourceRuntimePlacementId": "17695249952621776147",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.4888783, 0.12, -0.8640591],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10672658406952543185",
+          "sourceRuntimePlacementId": "10672658406952543185",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.0788953, 0.12, -0.9896340],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.9460380659834835619",
+          "sourceRuntimePlacementId": "9460380659834835619",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.3770198, 0.12, -0.9183986],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14462438123003083514",
+          "sourceRuntimePlacementId": "14462438123003083514",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.2664088, 0.12, -0.9563610],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14398285027733086155",
+          "sourceRuntimePlacementId": "14398285027733086155",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.0074741, 0.12, -0.9927458],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15451422525499780584",
+          "sourceRuntimePlacementId": "15451422525499780584",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.0248709, 0.12, -0.9924623],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12681913253468198394",
+          "sourceRuntimePlacementId": "12681913253468198394",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.1561332, 0.12, -0.9804195],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.12135716830026868823.preview",
+      "groupId": "destroyable.group.valtan.deploy.12135716830026868823",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.12135716830026868823",
+          "sourceRuntimePlacementId": "12135716830026868823",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.6883593, 0.12, -0.7153750],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12612119053333525111",
+          "sourceRuntimePlacementId": "12612119053333525111",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8695603, 0.12, -0.4790248],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18105374220469669789",
+          "sourceRuntimePlacementId": "18105374220469669789",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.3859886, 0.12, -0.9146654],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10938566942418286882",
+          "sourceRuntimePlacementId": "10938566942418286882",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8802910, 0.12, -0.4590073],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15590072441712178822",
+          "sourceRuntimePlacementId": "15590072441712178822",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8076958, 0.12, -0.5772587],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.13907193421470993692",
+          "sourceRuntimePlacementId": "13907193421470993692",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.6267686, 0.12, -0.7699098],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12956154234820310428",
+          "sourceRuntimePlacementId": "12956154234820310428",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.3560711, 0.12, -0.9267218],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18360145892842596691",
+          "sourceRuntimePlacementId": "18360145892842596691",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.7827965, 0.12, -0.6105977],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15590636842883334976",
+          "sourceRuntimePlacementId": "15590636842883334976",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.5865005, 0.12, -0.8010101],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.16181172586312392552",
+          "sourceRuntimePlacementId": "16181172586312392552",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.1532961, 0.12, -0.9808671],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.14754587218800370239",
+          "sourceRuntimePlacementId": "14754587218800370239",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9178542, 0.12, -0.3783434],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.deploy.11047903315509031966.preview",
+      "groupId": "destroyable.group.valtan.deploy.11047903315509031966",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.11047903315509031966",
+          "sourceRuntimePlacementId": "11047903315509031966",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8656769, 0.12, 0.4860077],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10619331645164562008",
+          "sourceRuntimePlacementId": "10619331645164562008",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8545045, 0.12, 0.5053930],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15221142224278623810",
+          "sourceRuntimePlacementId": "15221142224278623810",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9895256, 0.12, -0.0802445],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.10758879797263276529",
+          "sourceRuntimePlacementId": "10758879797263276529",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9629761, 0.12, 0.2414062],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12385961325933108240",
+          "sourceRuntimePlacementId": "12385961325933108240",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.6664858, 0.12, 0.7357967],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.15719065619666776634",
+          "sourceRuntimePlacementId": "15719065619666776634",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.4313317, 0.12, 0.8941773],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.16891123250307634887",
+          "sourceRuntimePlacementId": "16891123250307634887",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8023112, 0.12, 0.5847194],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17769051189408857662",
+          "sourceRuntimePlacementId": "17769051189408857662",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.4126627, 0.12, 0.9029449],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18064647264029106986",
+          "sourceRuntimePlacementId": "18064647264029106986",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.0896188, 0.12, 0.9887206],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18095941116451824308",
+          "sourceRuntimePlacementId": "18095941116451824308",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.0393086, 0.12, 0.9919954],
+          "speedMetersPerSecond": 5,
+          "gravityScale": 2,
           "lifetimeSeconds": 4,
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         }

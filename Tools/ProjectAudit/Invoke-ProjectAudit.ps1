@@ -53,7 +53,7 @@ function Test-JsonNumber {
 function Test-Uint64String {
 	param([object]$Value)
 	$parsed = [uint64]0
-	return $Value -is [string] -and $Value -match '^[0-9]{1,20}$' -and
+	return $Value -is [string] -and $Value -match '^[1-9][0-9]{0,19}$' -and
 		[uint64]::TryParse($Value, [Globalization.NumberStyles]::None,
 			[Globalization.CultureInfo]::InvariantCulture, [ref]$parsed) -and $parsed -ne 0
 }
@@ -114,8 +114,9 @@ try {
         }
         foreach ($property in @(
             'sourceCatalog', 'sourcePlacements',
+            'sourceLights',
             'sourceDeployCatalog', 'sourceDeployPlacements',
-            'catalog', 'placements', 'deployCatalog', 'deployPlacements',
+            'catalog', 'placements', 'lights', 'deployCatalog', 'deployPlacements',
             'navigationSource', 'navigationPaint', 'navigationBlockers',
             'navigationRuntime',
             'gameplayDocument')) {
@@ -128,13 +129,14 @@ try {
         }
         foreach ($property in @(
             'sourceCatalog', 'sourcePlacements',
+            'sourceLights',
             'sourceDeployCatalog', 'sourceDeployPlacements')) {
             if ($area.PSObject.Properties.Name -contains $property -and
                 -not ([string]$area.$property).StartsWith('Data/Maps/', [StringComparison]::Ordinal)) {
                 $invalidMapPaths.Add("$($area.id):$property")
             }
         }
-        foreach ($property in @('catalog', 'placements', 'deployCatalog', 'deployPlacements')) {
+        foreach ($property in @('catalog', 'placements', 'lights', 'deployCatalog', 'deployPlacements')) {
             if ($area.PSObject.Properties.Name -contains $property -and
                 -not ([string]$area.$property).StartsWith('Client/Bin/DataFiles/Map/', [StringComparison]::Ordinal)) {
                 $invalidMapPaths.Add("$($area.id):$property")
@@ -157,6 +159,341 @@ try {
 	Add-Check 'maps.catalog' ($mapCatalog.schema -eq 'lostark.map-catalog' -and
 		$missingMapFiles.Count -eq 0 -and $invalidMapPaths.Count -eq 0 -and
 		$legacyMapFiles.Count -eq 0) "missing=$($missingMapFiles.Count) invalidPaths=$($invalidMapPaths.Count) legacy=$($legacyMapFiles.Count)"
+
+	$valtanCatalogEntries = @($mapCatalog.areas | Where-Object {
+		$_.id -ceq 'LV_LUT_HEARTRB_ED'
+	})
+	$valtanLightErrors = [Collections.Generic.List[string]]::new()
+	$valtanLightCount = 0
+	$valtanLightHashesMatch = $false
+	if ($valtanCatalogEntries.Count -ne 1) {
+		$valtanLightErrors.Add('catalog-entry-count')
+	}
+	else {
+		$valtanCatalogEntry = $valtanCatalogEntries[0]
+		$expectedSourceLightPath =
+			'Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json'
+		$expectedRuntimeLightPath =
+			'Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.maplights.json'
+		if ($valtanCatalogEntry.sourceLights -cne $expectedSourceLightPath -or
+			$valtanCatalogEntry.lights -cne $expectedRuntimeLightPath) {
+			$valtanLightErrors.Add('catalog-paths')
+		}
+		elseif (-not (Test-Path -LiteralPath $expectedSourceLightPath -PathType Leaf) -or
+			-not (Test-Path -LiteralPath $expectedRuntimeLightPath -PathType Leaf)) {
+			$valtanLightErrors.Add('missing-source-or-runtime')
+		}
+		else {
+			$valtanLightHashesMatch =
+				(Get-FileHash -LiteralPath $expectedSourceLightPath -Algorithm SHA256).Hash -ceq
+				(Get-FileHash -LiteralPath $expectedRuntimeLightPath -Algorithm SHA256).Hash
+			if (-not $valtanLightHashesMatch) {
+				$valtanLightErrors.Add('source-runtime-sha')
+			}
+
+			$lightDocument = Read-Json $expectedSourceLightPath
+			$rootFields = @('schema', 'formatVersion', 'areaId', 'provenance', 'lights')
+			$rootHasExactFields = @($lightDocument.PSObject.Properties).Count -eq $rootFields.Count -and
+				@($rootFields | Where-Object {
+					$lightDocument.PSObject.Properties.Name -cnotcontains $_
+				}).Count -eq 0
+			if (-not $rootHasExactFields -or
+				$lightDocument.schema -cne 'lostark.map-light-presentation' -or
+				-not (Test-JsonNumber $lightDocument.formatVersion) -or
+				[double]$lightDocument.formatVersion -ne 1.0 -or
+				$lightDocument.areaId -cne 'LV_LUT_HEARTRB_ED' -or
+				$lightDocument.provenance -cne `
+				'SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED' -or
+				$lightDocument.lights -isnot [System.Array]) {
+				$valtanLightErrors.Add('root-contract')
+			}
+
+			$expectedTowerLights = @{
+				'light.valtan.tower.pointlight_102_lc' = @{
+					Source = 'SL04:export:733:pointlight_102_lc'
+					Position = @(203.460606, 24.734033, -127.571465)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_104_lc' = @{
+					Source = 'SL04:export:735:pointlight_104_lc'
+					Position = @(187.751602, 24.734033, -158.425654)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_21_lc' = @{
+					Source = 'SL04:export:750:pointlight_21_lc'
+					Position = @(161.835400, 24.734033, -168.356855)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_106_lc' = @{
+					Source = 'SL04:export:737:pointlight_106_lc'
+					Position = @(135.544980, 24.734033, -159.737500)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_11_lc' = @{
+					Source = 'SL04:export:739:pointlight_11_lc'
+					Position = @(191.995703, 24.734033, -99.211338)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_64_lc' = @{
+					Source = 'SL04:export:768:pointlight_64_lc'
+					Position = @(188.291309, 14.172728, -123.240234)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_5_lc' = @{
+					Source = 'SL04:export:767:pointlight_5_lc'
+					Position = @(196.451973, -1.394727, -127.035703)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_103_lc' = @{
+					Source = 'SL04:export:734:pointlight_103_lc'
+					Position = @(198.301699, -16.068151, -123.891680)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 10.24; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_98_lc' = @{
+					Source = 'SL04:export:780:pointlight_98_lc'
+					Position = @(187.936191, -35.772830, -122.317480)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 3.0
+				}
+				'light.valtan.tower.pointlight_24_lc' = @{
+					Source = 'SL04:export:753:pointlight_24_lc'
+					Position = @(176.511172, 10.832922, -143.720859)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_25_lc' = @{
+					Source = 'SL04:export:754:pointlight_25_lc'
+					Position = @(173.250137, 10.832922, -145.604990)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_27_lc' = @{
+					Source = 'SL04:export:756:pointlight_27_lc'
+					Position = @(180.038984, -1.394727, -150.643105)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_28_lc' = @{
+					Source = 'SL04:export:757:pointlight_28_lc'
+					Position = @(183.363691, -21.762295, -150.889150)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_29_lc' = @{
+					Source = 'SL04:export:758:pointlight_29_lc'
+					Position = @(136.400566, 13.365049, -151.214629)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_68_lc' = @{
+					Source = 'SL04:export:770:pointlight_68_lc'
+					Position = @(131.826855, -1.394727, -159.343447)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_105_lc' = @{
+					Source = 'SL04:export:736:pointlight_105_lc'
+					Position = @(137.638096, -1.394727, -151.278281)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_22_lc' = @{
+					Source = 'SL04:export:751:pointlight_22_lc'
+					Position = @(137.706982, -21.762295, -151.423994)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_30_lc' = @{
+					Source = 'SL04:export:760:pointlight_30_lc'
+					Position = @(182.656191, 14.172728, -101.204268)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_15_lc' = @{
+					Source = 'SL04:export:743:pointlight_15_lc'
+					Position = @(184.628574, -1.394727, -100.711621)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_26_lc' = @{
+					Source = 'SL04:export:755:pointlight_26_lc'
+					Position = @(158.904902, 13.365049, -153.888477)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 9.0; Falloff = 2.0; Brightness = 6.0
+				}
+				'light.valtan.tower.pointlight_0_lc' = @{
+					Source = 'SL04:export:732:pointlight_0_lc'
+					Position = @(160.520391, -1.394727, -161.196641)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+				'light.valtan.tower.pointlight_20_lc' = @{
+					Source = 'SL04:export:749:pointlight_20_lc'
+					Position = @(162.287881, -21.762295, -160.083994)
+					Color = @(1.0, (37.0 / 255.0), 0.0, 1.0)
+					Radius = 20.48; Falloff = 2.0; Brightness = 2.5
+				}
+			}
+			$lightFields = @('lightId', 'sourceLevel', 'sourceObjectId', 'position',
+				'radiusMeters', 'falloffExponent', 'color', 'brightness')
+			$seenLightIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			$seenSourceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			$valtanLights = @($lightDocument.lights)
+			$valtanLightCount = $valtanLights.Count
+			foreach ($light in $valtanLights) {
+				$lightId = [string]$light.lightId
+				$expectedLight = $expectedTowerLights[$lightId]
+				$position = @($light.position)
+				$color = @($light.color)
+				$lightHasExactFields = @($light.PSObject.Properties).Count -eq $lightFields.Count -and
+					@($lightFields | Where-Object {
+						$light.PSObject.Properties.Name -cnotcontains $_
+					}).Count -eq 0
+				$lightValid = $lightHasExactFields -and $null -ne $expectedLight -and
+					$seenLightIds.Add($lightId) -and
+					$seenSourceIds.Add([string]$light.sourceObjectId) -and
+					$light.sourceLevel -ceq 'LV_LUT_HEARTRB_ED_SL04' -and
+					$light.sourceObjectId -ceq $expectedLight.Source -and
+					$light.position -is [System.Array] -and $position.Count -eq 3 -and
+					$light.color -is [System.Array] -and $color.Count -eq 4 -and
+					(Test-JsonNumber $light.radiusMeters) -and
+					[math]::Abs([double]$light.radiusMeters - [double]$expectedLight.Radius) -le 0.000000001 -and
+					(Test-JsonNumber $light.falloffExponent) -and
+					[math]::Abs([double]$light.falloffExponent - [double]$expectedLight.Falloff) -le 0.000000001 -and
+					(Test-JsonNumber $light.brightness) -and
+					[math]::Abs([double]$light.brightness - [double]$expectedLight.Brightness) -le 0.000000001
+				for ($axis = 0; $lightValid -and $axis -lt 3; ++$axis) {
+					$lightValid = (Test-JsonNumber $position[$axis]) -and
+						[math]::Abs([double]$position[$axis] -
+							[double]$expectedLight.Position[$axis]) -le 0.000000001
+				}
+				for ($channel = 0; $lightValid -and $channel -lt 4; ++$channel) {
+					$lightValid = (Test-JsonNumber $color[$channel]) -and
+						[math]::Abs([double]$color[$channel] -
+							[double]$expectedLight.Color[$channel]) -le 0.000000001
+				}
+				if (-not $lightValid) {
+					$valtanLightErrors.Add("light:$lightId")
+				}
+			}
+			if ($valtanLightCount -ne $expectedTowerLights.Count -or
+				$seenLightIds.Count -ne $expectedTowerLights.Count -or
+				$seenSourceIds.Count -ne $expectedTowerLights.Count) {
+				$valtanLightErrors.Add('light-count-or-identity')
+			}
+		}
+	}
+	$mapLightDocumentSource = Get-Content 'Client\Private\MapLightDocument.cpp' -Raw
+	$mapLightRuntimeSource = Get-Content 'Client\Private\MapLightPresentationRuntime.cpp' -Raw
+	$valtanLevelSource = Get-Content 'Client\Private\Level_ValtanArena.cpp' -Raw
+	$mapToolLightSource = Get-Content 'Client\Private\MapTool.cpp' -Raw
+	$mapPublisherSource = Get-Content 'Tools\MapPipeline\Publish-MapAuthoring.ps1' -Raw
+	$mapLightSeamsValid =
+		$mapLightDocumentSource -match 'lostark\.map-light-presentation' -and
+		$mapLightRuntimeSource -match 'Try_BuildEffectPointLightDesc' -and
+		$mapLightRuntimeSource -match 'Add_TransientLight' -and
+		$valtanLevelSource -match 'Load_Runtime\(pEntry->pMapAreaId\)' -and
+		$mapToolLightSource -match 'descriptor\.sourceLights' -and
+		$mapToolLightSource -match 'stagedMapLightPresentation->Load' -and
+		$mapPublisherSource -match 'function Add-MapLightPublishFile' -and
+		$mapPublisherSource -match 'Add-MapLightPublishFile \$files'
+	if (-not $mapLightSeamsValid) {
+		$valtanLightErrors.Add('publisher-or-runtime-seam')
+	}
+	Add-Check 'maps.valtan-source-light-presentation' `
+		($valtanLightErrors.Count -eq 0) `
+		"lights=$valtanLightCount shaMatch=$valtanLightHashesMatch errors=$($valtanLightErrors.Count)"
+
+	$valtanSourcePlacements =
+		'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements'
+	$valtanRuntimePlacements =
+		'Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapplacements'
+	$sourcePlacementText = Get-Content -LiteralPath $valtanSourcePlacements -Raw -Encoding UTF8
+	$runtimePlacementText = Get-Content -LiteralPath $valtanRuntimePlacements -Raw -Encoding UTF8
+	$sourcePlacementLines = @($sourcePlacementText -split "`r?`n" |
+		Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+	$runtimePlacementLines = @($runtimePlacementText -split "`r?`n" |
+		Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+	$sourcePlacementHeader = if ($sourcePlacementLines.Count -gt 0) {
+		$sourcePlacementLines[0]
+	} else { '' }
+	$runtimePlacementHeader = if ($runtimePlacementLines.Count -gt 0) {
+		$runtimePlacementLines[0]
+	} else { '' }
+	$sourcePlacementIds = [Collections.Generic.HashSet[string]]::new(
+		[StringComparer]::Ordinal)
+	$runtimePlacementIds = [Collections.Generic.HashSet[string]]::new(
+		[StringComparer]::Ordinal)
+	$sourcePlacementRowsValid = $true
+	$runtimePlacementRowsValid = $true
+	foreach ($placementLine in @($sourcePlacementLines | Select-Object -Skip 1)) {
+		$placementMatch = [regex]::Match(
+			$placementLine, '^(?<Id>[0-9]+)\s+')
+		if (-not $placementMatch.Success -or
+			-not $sourcePlacementIds.Add($placementMatch.Groups['Id'].Value)) {
+			$sourcePlacementRowsValid = $false
+		}
+	}
+	foreach ($placementLine in @($runtimePlacementLines | Select-Object -Skip 1)) {
+		$placementMatch = [regex]::Match(
+			$placementLine, '^(?<Id>[0-9]+)\s+')
+		if (-not $placementMatch.Success -or
+			-not $runtimePlacementIds.Add($placementMatch.Groups['Id'].Value)) {
+			$runtimePlacementRowsValid = $false
+		}
+	}
+	$placementFilesMatch =
+		(Get-FileHash -LiteralPath $valtanSourcePlacements -Algorithm SHA256).Hash -ceq
+		(Get-FileHash -LiteralPath $valtanRuntimePlacements -Algorithm SHA256).Hash
+	$sourceTowerRepresentatives = @(
+		@{ Id = '16607808932384341195'; Export = '2842' },
+		@{ Id = '17340363601769171092'; Export = '3990' },
+		@{ Id = '12792519784808763156'; Export = '4281' },
+		@{ Id = '15813727945424250256'; Export = '4401' },
+		@{ Id = '12059080955363256336'; Export = '4544' })
+	$missingTowerRepresentatives = [Collections.Generic.List[string]]::new()
+	foreach ($representative in $sourceTowerRepresentatives) {
+		$representativePattern = '(?m)^' + [regex]::Escape($representative.Id) +
+			'\s+"LV_LUT_HEARTRB_ED_SL04:export:' + [regex]::Escape($representative.Export) +
+			'"\s+"LV_LUT_HEARTRB_ED_SL04"\s+"component"\s+' +
+			'"MAP_70B41719DECE_BG_ATM_LOGHILL_CONSTRUCTPROP04_SM_OLD_02"\s+'
+		if ($sourcePlacementText -notmatch $representativePattern -or
+			$runtimePlacementText -notmatch $representativePattern) {
+			$missingTowerRepresentatives.Add($representative.Id)
+		}
+	}
+	$badTowerOverlayPattern = '(?m)^710[0-9]+\s+'
+	$badTowerOverlayCount =
+		[regex]::Matches($sourcePlacementText, $badTowerOverlayPattern).Count +
+		[regex]::Matches($runtimePlacementText, $badTowerOverlayPattern).Count
+	$badTowerProvenanceCount =
+		[regex]::Matches($sourcePlacementText, 'PROJECT_AUTHORED_RIM').Count +
+		[regex]::Matches($runtimePlacementText, 'PROJECT_AUTHORED_RIM').Count
+	$valtanPlacementDocumentsValid =
+		$sourcePlacementHeader -ceq 'LOSTARK_MAP_PLACEMENTS 2 "LV_LUT_HEARTRB_ED" 13192' -and
+		$runtimePlacementHeader -ceq 'LOSTARK_MAP_PLACEMENTS 2 "LV_LUT_HEARTRB_ED" 13192' -and
+		$sourcePlacementLines.Count -eq 13193 -and
+		$runtimePlacementLines.Count -eq 13193 -and
+		$sourcePlacementIds.Count -eq 13192 -and
+		$runtimePlacementIds.Count -eq 13192 -and
+		$sourcePlacementRowsValid -and $runtimePlacementRowsValid -and
+		$placementFilesMatch -and
+		@(Compare-Object @($sourcePlacementIds) @($runtimePlacementIds) -CaseSensitive).Count -eq 0 -and
+		$valtanCatalogEntries.Count -eq 1 -and
+		[int]$valtanCatalogEntries[0].placementCount -eq 13192 -and
+		$badTowerProvenanceCount -eq 0 -and $badTowerOverlayCount -eq 0 -and
+		$missingTowerRepresentatives.Count -eq 0
+	Add-Check 'maps.valtan-tower-source-geometry' `
+		$valtanPlacementDocumentsValid `
+		"placements=$($sourcePlacementIds.Count)/13192 bytesMatch=$placementFilesMatch representatives=$($sourceTowerRepresentatives.Count - $missingTowerRepresentatives.Count)/$($sourceTowerRepresentatives.Count) badRim=$badTowerProvenanceCount bad710=$badTowerOverlayCount"
 	$editorAreas = @{}
 	foreach ($area in $mapCatalog.areas) { $editorAreas[[string]$area.id] = $area }
 	$characterSelectEditor = $editorAreas['LV_LOBBY_CLASSSELECT_SL00']
@@ -282,6 +619,28 @@ try {
 	$profiles = @($simulation.profiles)
 	$simulationErrors = [Collections.Generic.List[string]]::new()
 	$profileIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$staticWallAssets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	@('DEPLOY_ITR_02306', 'DEPLOY_ITR_02307', 'DEPLOY_ITR_02308', 'DEPLOY_ITR_02309',
+		'DEPLOY_ITR_02310', 'DEPLOY_ITR_02311', 'DEPLOY_ITR_02315', 'DEPLOY_ITR_02316') |
+		ForEach-Object { [void]$staticWallAssets.Add($_) }
+	$deployPlacementLines = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements')
+	$eligibleWallPlacementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$deployPlacementPositions = @{}
+	foreach ($deployPlacementLine in @($deployPlacementLines | Select-Object -Skip 1)) {
+		if ($deployPlacementLine -match '^(?<id>\d+)\s+\d+\s+\d+\s+"[^"]+"\s+"(?<asset>[^"]+)"\s+(?<x>[-+0-9.eE]+)\s+[-+0-9.eE]+\s+(?<z>[-+0-9.eE]+)\s') {
+			$placementId = $Matches['id']
+			$deployPlacementPositions[$placementId] = @([double]$Matches['x'], [double]$Matches['z'])
+			if ($staticWallAssets.Contains($Matches['asset'])) {
+				[void]$eligibleWallPlacementIds.Add($placementId)
+			}
+		}
+	}
+	$allProjectedPlacementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$inwardEmitterCount = 0
+	$arenaCenterX = 156.131
+	$arenaCenterZ = -122.385
+	$inwardVertical = 0.12
+	$inwardPlanarMagnitude = [math]::Sqrt(1.0 - $inwardVertical * $inwardVertical)
 	foreach ($profile in $profiles) {
 		$elements = @($profile.elements)
 		if ($profile.profileId -isnot [string] -or -not $profileIds.Add($profile.profileId) -or
@@ -314,10 +673,44 @@ try {
 				[double]$element.lifetimeSeconds -le 0.0 -or [double]$element.lifetimeSeconds -gt 60.0) {
 				$simulationErrors.Add("element:$($element.elementId)")
 			}
+			if ([double]$element.speedMetersPerSecond -ne 5.0 -or
+				[double]$element.gravityScale -ne 2.0 -or [double]$element.lifetimeSeconds -ne 4.0) {
+				$simulationErrors.Add("collapse-policy:$($element.elementId)")
+			}
+			$sourcePlacementId = [string]$element.sourceRuntimePlacementId
+			if (-not $allProjectedPlacementIds.Add($sourcePlacementId)) {
+				$simulationErrors.Add("duplicate-placement:$sourcePlacementId")
+			}
+			$directionIsNumeric = $direction.Count -eq 3 -and
+				@($direction | Where-Object { -not (Test-JsonNumber $_) }).Count -eq 0
+			if ($deployPlacementPositions.ContainsKey($sourcePlacementId) -and $directionIsNumeric) {
+				$position = $deployPlacementPositions[$sourcePlacementId]
+				$deltaX = $arenaCenterX - [double]$position[0]
+				$deltaZ = $arenaCenterZ - [double]$position[1]
+				$planarLength = [math]::Sqrt($deltaX * $deltaX + $deltaZ * $deltaZ)
+				if ($planarLength -le 0.001) {
+					$simulationErrors.Add("not-inward:$sourcePlacementId")
+				} else {
+					$expectedDirectionX = $deltaX / $planarLength * $inwardPlanarMagnitude
+					$expectedDirectionZ = $deltaZ / $planarLength * $inwardPlanarMagnitude
+					if ([math]::Abs([double]$direction[0] - $expectedDirectionX) -gt 0.00001 -or
+						[math]::Abs([double]$direction[1] - $inwardVertical) -gt 0.00001 -or
+						[math]::Abs([double]$direction[2] - $expectedDirectionZ) -gt 0.00001) {
+						$simulationErrors.Add("not-inward:$sourcePlacementId")
+					} else {
+						$inwardEmitterCount++
+					}
+				}
+			} else {
+				$simulationErrors.Add("missing-placement:$sourcePlacementId")
+			}
 			foreach ($aliasPlacementId in $aliases) {
 				if (-not (Test-Uint64String $aliasPlacementId) -or
 					-not $projectedPlacementIds.Add([string]$aliasPlacementId)) {
 					$simulationErrors.Add("alias:$($element.elementId):$aliasPlacementId")
+				}
+				if (-not $allProjectedPlacementIds.Add([string]$aliasPlacementId)) {
+					$simulationErrors.Add("duplicate-placement:$aliasPlacementId")
 				}
 			}
 		}
@@ -339,7 +732,6 @@ try {
 		$_.profileId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId.preview" -and
 		$_.groupId -ceq "destroyable.group.valtan.deploy.$selectedPlacementId"
 	})
-	$deployPlacementLines = @(Get-Content 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements')
 	$expectedGroupMembers = [System.Collections.Generic.List[string]]::new()
 	$matchedDeployRows = 0
 	foreach ($emitterPair in $selectedEmitterPairs) {
@@ -367,25 +759,124 @@ try {
 	$selectedGroupMembers = if ($selectedGroup.Count -eq 1) {
 		@($selectedGroup[0].memberPlacementIds | ForEach-Object { [string]$_ })
 	} else { @() }
+	$collapseGroupId = 'destroyable.group.valtan.deploy.11047903315509031966'
+	$collapseExpectedMembers = @(
+		'11047903315509031966',
+		'10619331645164562008',
+		'15221142224278623810',
+		'10758879797263276529',
+		'12385961325933108240',
+		'15719065619666776634',
+		'16891123250307634887',
+		'17769051189408857662',
+		'18064647264029106986',
+		'18095941116451824308'
+	)
+	$collapseGroup = @($worldEvents.groups | Where-Object { $_.groupId -ceq $collapseGroupId })
+	$collapseProfile = @($profiles | Where-Object { $_.groupId -ceq $collapseGroupId })
+	$collapseGroupMembers = if ($collapseGroup.Count -eq 1) {
+		@($collapseGroup[0].memberPlacementIds | ForEach-Object { [string]$_ })
+	} else { @() }
+	$collapseElements = if ($collapseProfile.Count -eq 1) { @($collapseProfile[0].elements) } else { @() }
+	$collapseEmitterIds = @($collapseElements | ForEach-Object { [string]$_.sourceRuntimePlacementId })
+	$collapseGroupValid =
+		$collapseGroup.Count -eq 1 -and $collapseProfile.Count -eq 1 -and
+		$collapseGroupMembers.Count -eq $collapseExpectedMembers.Count -and
+		$collapseElements.Count -eq $collapseExpectedMembers.Count -and
+		@(Compare-Object $collapseExpectedMembers $collapseGroupMembers -CaseSensitive).Count -eq 0 -and
+		@(Compare-Object $collapseExpectedMembers $collapseEmitterIds -CaseSensitive).Count -eq 0 -and
+		@($collapseElements | Where-Object { @($_.suppressionAliasPlacementIds).Count -ne 0 }).Count -eq 0
+	$singleClickGroupId = 'destroyable.group.valtan.deploy.15495684800954131707'
+	$singleClickExpectedMembers = @(
+		'15495684800954131707',
+		'14210737191027038638',
+		'14345577340107998055',
+		'14439275443581760904',
+		'18100758183075339831',
+		'15423695113667715748',
+		'12804542616476082944',
+		'9671293252162296055',
+		'15358675764127682739',
+		'13290943434399830027',
+		'12819104299115621849',
+		'17359606121069777624',
+		'14520149530921636720'
+	)
+	$singleClickGroup = @($worldEvents.groups | Where-Object { $_.groupId -ceq $singleClickGroupId })
+	$singleClickProfile = @($profiles | Where-Object { $_.groupId -ceq $singleClickGroupId })
+	$singleClickGroupMembers = if ($singleClickGroup.Count -eq 1) {
+		@($singleClickGroup[0].memberPlacementIds | ForEach-Object { [string]$_ })
+	} else { @() }
+	$singleClickElements = if ($singleClickProfile.Count -eq 1) { @($singleClickProfile[0].elements) } else { @() }
+	$singleClickEmitterIds = @($singleClickElements | ForEach-Object { [string]$_.sourceRuntimePlacementId })
+	$singleClickGroupValid =
+		$singleClickGroup.Count -eq 1 -and $singleClickProfile.Count -eq 1 -and
+		$singleClickGroupMembers.Count -eq $singleClickExpectedMembers.Count -and
+		$singleClickElements.Count -eq $singleClickExpectedMembers.Count -and
+		@(Compare-Object $singleClickExpectedMembers $singleClickGroupMembers -CaseSensitive).Count -eq 0 -and
+		@(Compare-Object $singleClickExpectedMembers $singleClickEmitterIds -CaseSensitive).Count -eq 0 -and
+		@($singleClickElements | Where-Object { @($_.suppressionAliasPlacementIds).Count -ne 0 }).Count -eq 0
+	$frontCollapseGroupId = 'destroyable.group.valtan.deploy.12252498194881956917'
+	$frontCollapseExpectedMembers = @(
+		'12252498194881956917',
+		'17404480870746281119',
+		'13154681496987253568',
+		'15393154990485032341',
+		'17788407538468874008',
+		'10912388091405377926',
+		'18362175117092037953',
+		'13837284136111935898',
+		'15148418014021580024',
+		'10435996578153793381',
+		'15736179535184396369',
+		'17296963925068961735'
+	)
+	$frontCollapseGroup = @($worldEvents.groups | Where-Object { $_.groupId -ceq $frontCollapseGroupId })
+	$frontCollapseProfile = @($profiles | Where-Object { $_.groupId -ceq $frontCollapseGroupId })
+	$frontCollapseGroupMembers = if ($frontCollapseGroup.Count -eq 1) {
+		@($frontCollapseGroup[0].memberPlacementIds | ForEach-Object { [string]$_ })
+	} else { @() }
+	$frontCollapseElements = if ($frontCollapseProfile.Count -eq 1) { @($frontCollapseProfile[0].elements) } else { @() }
+	$frontCollapseEmitterIds = @($frontCollapseElements | ForEach-Object { [string]$_.sourceRuntimePlacementId })
+	$frontCollapseGroupValid =
+		$frontCollapseGroup.Count -eq 1 -and $frontCollapseProfile.Count -eq 1 -and
+		$frontCollapseGroupMembers.Count -eq $frontCollapseExpectedMembers.Count -and
+		$frontCollapseElements.Count -eq $frontCollapseExpectedMembers.Count -and
+		@(Compare-Object $frontCollapseExpectedMembers $frontCollapseGroupMembers -CaseSensitive).Count -eq 0 -and
+		@(Compare-Object $frontCollapseExpectedMembers $frontCollapseEmitterIds -CaseSensitive).Count -eq 0 -and
+		@($frontCollapseElements | Where-Object { @($_.suppressionAliasPlacementIds).Count -ne 0 }).Count -eq 0
 	$simulationAuthoringValid =
 		$simulation.schema -ceq 'lostark.destruction-simulation' -and (Test-JsonNumber $simulation.formatVersion) -and
 		[double]$simulation.formatVersion -eq 2.0 -and $simulation.areaId -ceq 'LV_LUT_HEARTRB_ED' -and
 		$profiles.Count -ge 1 -and $profiles.Count -le 128 -and $simulationErrors.Count -eq 0 -and
+		$eligibleWallPlacementIds.Count -eq 77 -and $allProjectedPlacementIds.Count -eq 77 -and
+		@(Compare-Object @($eligibleWallPlacementIds) @($allProjectedPlacementIds) -CaseSensitive).Count -eq 0 -and
+		$inwardEmitterCount -eq 69 -and
 		@($worldEvents.bindings | Where-Object { $_.enabled -isnot [bool] -or $_.enabled }).Count -eq 0 -and
 		$selectedProfile.Count -eq 1 -and $selectedEmittersValid -and
 		$selectedGroup.Count -eq 1 -and
 		$selectedGroupMembers.Count -eq $expectedGroupMembers.Count -and
 		@(Compare-Object @($expectedGroupMembers) $selectedGroupMembers -CaseSensitive).Count -eq 0 -and
-		$matchedDeployRows -eq $expectedGroupMembers.Count
+		$matchedDeployRows -eq $expectedGroupMembers.Count -and $collapseGroupValid -and
+		$singleClickGroupValid -and $frontCollapseGroupValid
 	Add-Check 'maps.valtan-destruction-simulation-authoring' `
 		$simulationAuthoringValid `
-		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) emitters=$($selectedElements.Count) groupMembers=$($selectedGroupMembers.Count) deployRows=$matchedDeployRows"
+		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) inward=$inwardEmitterCount/69 coverage=$($allProjectedPlacementIds.Count)/$($eligibleWallPlacementIds.Count) emitters=$($selectedElements.Count) groupMembers=$($selectedGroupMembers.Count) collapse=$($collapseElements.Count)/$($collapseGroupMembers.Count) singleClick=$($singleClickElements.Count)/$($singleClickGroupMembers.Count) frontCollapse=$($frontCollapseElements.Count)/$($frontCollapseGroupMembers.Count) deployRows=$matchedDeployRows"
 
 	# One exact 12-shard recipe per source Deploy wall asset. Runtime admission keys
 	# on sourceDeployAssetId, so every cooked asset must stay 1:1 with its receipt.
+	# Order must match Get_ProjectAuthoredDebrisModelSpecs so the runtime table and
+	# the receipts can be compared 1:1. Every STATIC Valtan wall asset is cooked, so
+	# no destructible placement falls back to the generic stone proxies.
 	$debrisRecipes = @(
 		@{ Asset = 'DEPLOY_ITR_02316'; Triangles = 17731L },
-		@{ Asset = 'DEPLOY_ITR_02315'; Triangles = 8867L })
+		@{ Asset = 'DEPLOY_ITR_02315'; Triangles = 8867L },
+		@{ Asset = 'DEPLOY_ITR_02306'; Triangles = 19833L },
+		@{ Asset = 'DEPLOY_ITR_02307'; Triangles = 11397L },
+		@{ Asset = 'DEPLOY_ITR_02308'; Triangles = 24985L },
+		@{ Asset = 'DEPLOY_ITR_02309'; Triangles = 29832L },
+		@{ Asset = 'DEPLOY_ITR_02310'; Triangles = 25747L },
+		@{ Asset = 'DEPLOY_ITR_02311'; Triangles = 23774L })
 	$recipeValid = $true
 	$recipePieces = [System.Collections.Generic.List[object]]::new()
 	$triangleTotal = 0L
@@ -666,6 +1157,22 @@ try {
 		[IO.Directory]::CreateDirectory($mapFixtureImported) | Out-Null
 		[IO.Directory]::CreateDirectory($mapFixtureRuntime) | Out-Null
 		$fixtureUtf8 = [Text.UTF8Encoding]::new($false)
+		$fixtureMapCatalog = [ordered]@{
+			schema = 'lostark.map-catalog'
+			formatVersion = 1
+			areas = @([ordered]@{
+				id = 'FIXTURE'
+				kind = 'development'
+				catalogType = 'shard-set'
+				sourceCatalog = 'Data/Maps/Imported/FIXTURE/FIXTURE.mapset'
+				sourcePlacements = 'Data/Maps/Authoring/FIXTURE/FIXTURE.mapplacements'
+				catalog = 'Client/Bin/DataFiles/Map/FIXTURE.mapset'
+			})
+		}
+		[IO.File]::WriteAllText(
+			(Join-Path $mapFixtureRoot 'Data\Maps\MapCatalog.json'),
+			($fixtureMapCatalog | ConvertTo-Json -Depth 8),
+			$fixtureUtf8)
 		$rowA = '1 "source:a" "A" "editor" "ASSET_A" 0 0 0 0 0 0 1 1 1 1 1'
 		$rowB = '2 "source:b" "B" "editor" "ASSET_B" 0 0 0 0 0 0 1 1 1 1 1'
 		$rowNew = '3 "source:new" "A" "editor" "ASSET_A" 1 0 0 0 0 0 1 1 1 1 1'

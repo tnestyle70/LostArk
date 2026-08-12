@@ -107,3 +107,39 @@ UModel `-list`로 독립 복구한 SL00~SL05 StaticMeshComponent 합계 12,949�
 양수-only scale validator를 그대로 사용하면 원본 배치의 약 38.5%가 탈락한다. Client
 좌표축/handedness와 reflection 처리, hidden/collision/material override 분류를 끝내기 전에는
 **Client map reconstruction PASS**로 승격하지 않는다.
+
+## 2026-08-12 철탑 source 재감사
+
+원본 13,091개 extraction과 이후 정당한 reconstruction placement를 합친 현재 authoring/runtime
+header는 13,192개다. 원작 화면의 다섯 외곽 철탑은 새 asset을 배치해야 하는 누락 geometry가 아니라
+SL04 source placement에 이미 존재했다. 각 station에서 같은 9개 asset/106 placement의 rigid core가
+복구되며 station 간 registration RMS는 0.000025~0.000058m다. 대표 source ID 다섯 개는
+`SL04:export:2842`, `3990`, `4281`, `4401`, `4544`이고 ProjectAudit이 source/runtime 양쪽에서
+보존 여부를 검사한다.
+
+반대로 `MAP_0AEF815A33D8_BG_LUT_LUTOMB_STRUCTURE06_SM_OLD`만 회전시킨
+`PROJECT_AUTHORED_RIM` 136행은 source evidence가 없는 잘못된 철탑 대체물이어서 제거했다.
+StaticMesh extraction이 제외한 non-static 표현 중 SL04 source-instance-exact PointLight 22개를
+`LV_LUT_HEARTRB_ED.maplights.json`으로 분리 복구했다. 높이 기준 상단 5개와 중·하단 17개이며
+RGB `(255,37,0)`, 행별 radius/brightness를 그대로 보존한다. falloff `2`는 source 행에
+직렬화되지 않아 current-revision class default에서 상속한 inference다. 다만 22개를
+각 철탑 station에 대응시키는 것은 geometry와 위치 정렬에 따른 inference이며 source-authored parent
+관계가 아니다. `BFX_LOW_02.fire.par_c_fire_r_001` visible fire와 발광 slot surface는 아직
+resource/runtime에 없으므로 이 재감사는 geometry와 주변광 복구까지만 PASS이고 visible 발광 연출은
+미완료다.
+
+### 2026-08-12 검증
+
+- Client x64 Debug/Release build: PASS
+- PointLightFalloffContractHarness x64 Debug/Release build/run: PASS,
+  strict document rollback과 상단·하단 source tuple 및 transient light 22개 제출 확인
+- `Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`: PASS,
+  placement 13,192개와 source/runtime maplight 22개 SHA 일치
+- promotion 3개 뒤 injected failure: runtime 5파일 hash 보존, rollback/staging 잔여 0
+- ProjectAudit 대상 검사 `maps.catalog`, `maps.valtan-source-light-presentation`,
+  `maps.valtan-tower-source-geometry`, `maps.sharded-authoring-publish`: PASS
+- 전체 ProjectAudit: 기존 Effect/Python 및 기존 data-source visibility 문제 28건으로 FAIL.
+  이번 철탑/MapLight 신규 실패는 0이다.
+- JSON/XML/PowerShell parse, MapTool CP949 roundtrip/BOM, `git diff --check`: PASS
+- 실제 Map Editor/제품 Valtan 육안 smoke는 아직 미실행이다. 철탑 5개 위치, 22개 광원 노출,
+  잘못된 box overlay 부재는 새 Client 실행 화면에서 별도로 확인해야 한다.
