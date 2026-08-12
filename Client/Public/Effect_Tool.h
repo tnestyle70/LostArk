@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AnimationTargetService.h"
 #include "CharacterPreviewPanel.h"
 #include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
@@ -25,6 +26,8 @@ NS_BEGIN(Client)
 
 class CEffectObject;
 class CEffectThumbnailCache;
+class EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION;
+struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE;
 enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t;
 
 enum class EFFECT_PREVIEW_PIVOT_KIND : uint8_t
@@ -239,7 +242,19 @@ private:
     bool_t Ensure_WorldPreviewObject();
 	bool_t Try_StartArtist31470Diagnostic(
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Try_StartArtist31470FullPreview();
+	bool_t Synchronize_Artist31470FullPreview(
+		const std::shared_ptr<const
+			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pPreparation);
 	void Update_ReconstructedDiagnosticRoot();
+	bool_t Prepare_ReconstructedSourceRuntimeTransformHistory();
+	bool_t Build_ReconstructedSourceRuntimeTransformSample(
+		f32_t fEffectSampleTimeSeconds,
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError) const;
+	bool_t Update_ReconstructedSourceRuntimeTimeline(f32_t fTimeDelta);
+	bool_t Seek_ReconstructedSourceRuntimeTimeline(f32_t fSampleTimeSeconds);
+	void Reset_ReconstructedSourceRuntimeTimeline();
     bool_t Stage_WorldPreview();
     bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
@@ -380,6 +395,10 @@ private:
 	bool_t m_bPreviewVisibleRequested = false;
 	bool_t m_bPreviewScreenPostEnabled = true;
 	bool_t m_bReconstructedDiagnosticActive = false;
+	bool_t m_bReconstructedSourceRuntimeActive = false;
+	bool_t m_bReconstructedSourceRuntimeStartPending = false;
+	bool_t m_bReconstructedSourceRuntimeNaturalTailActive = false;
+	CAnimationHistoricalPoseBinding m_ReconstructedSourceRuntimePoseBinding;
     bool_t m_bDocumentDirty = false;
     bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
@@ -403,8 +422,10 @@ private:
         EFFECT_RESOURCE_FILE_KIND::END;
     EFFECT_RESOURCE_FILE_KIND m_eResourceLibraryFileKind =
         EFFECT_RESOURCE_FILE_KIND::MODEL;
-    uint32_t m_iCueTransferDurationMs = 250u;
-    size_t m_iSynchronizedAnimationClipIndex = 0u;
+	uint32_t m_iCueTransferDurationMs = 250u;
+	size_t m_iSynchronizedAnimationClipIndex = 0u;
+	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
+	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 
     string m_strDocumentStatus;
     string m_strActiveDocumentDrawableError;

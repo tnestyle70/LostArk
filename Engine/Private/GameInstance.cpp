@@ -20,6 +20,36 @@
 #include "Profiler.h"
 #include "Physics_Manager.h"
 
+#include <atomic>
+
+namespace
+{
+	std::atomic_bool g_isNonInteractiveErrorMode = false;
+}
+
+void Engine::Set_NonInteractiveErrorMode(const bool isEnabled)
+{
+	g_isNonInteractiveErrorMode.store(isEnabled, std::memory_order_release);
+}
+
+bool Engine::Is_NonInteractiveErrorMode()
+{
+	return g_isNonInteractiveErrorMode.load(std::memory_order_acquire);
+}
+
+int Engine::Show_EngineMessage(const wchar_t* pMessage)
+{
+	const wchar_t* pResolvedMessage = nullptr != pMessage ? pMessage : L"Engine error";
+	if (Is_NonInteractiveErrorMode())
+	{
+		OutputDebugStringW(pResolvedMessage);
+		OutputDebugStringW(L"\n");
+		return IDOK;
+	}
+
+	return MessageBoxW(nullptr, pResolvedMessage, L"System Message", MB_OK);
+}
+
 CGameInstance::CGameInstance()
 {
 }
@@ -30,78 +60,95 @@ CGameInstance::~CGameInstance()
 
 HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
 {
+	Set_NonInteractiveErrorMode(EngineDesc.bNonInteractiveErrors);
+	pOutDevice.Reset();
+	pOutContext.Reset();
+	Release_Engine();
+	const auto FailInitialization = [this, &pOutDevice, &pOutContext](
+		const HRESULT hResult) -> HRESULT
+	{
+		Release_Engine();
+		pOutDevice.Reset();
+		pOutContext.Reset();
+		return FAILED(hResult) ? hResult : E_FAIL;
+	};
+
 	//viewport 사이즈 설정
 	m_vViewportDesc = float2_t(EngineDesc.iWinSizeX, EngineDesc.iWinSizeY);
 
-	m_pGraphic_Device = CGraphic_Device::Create(EngineDesc.hWnd, EngineDesc.eWinMode, EngineDesc.iWinSizeX, EngineDesc.iWinSizeY, pOutDevice, pOutContext);
+	m_pGraphic_Device = CGraphic_Device::Create(EngineDesc.hWnd, EngineDesc.eWinMode,
+		EngineDesc.eDriverType, EngineDesc.iWinSizeX, EngineDesc.iWinSizeY,
+		pOutDevice, pOutContext);
 	if (nullptr == m_pGraphic_Device)
-		return E_FAIL;	
+		return FailInitialization(E_FAIL);
 
 	m_pInput_Device = CInput_Device::Create(EngineDesc.hInstance, EngineDesc.hWnd);
 	if (nullptr == m_pInput_Device)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 #ifdef _WIN64
 	m_pSound_Manager = CSound_Manager::Create();
 	if (nullptr == m_pSound_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 #endif
 
 	m_pTarget_Manager = CTarget_Manager::Create(pOutDevice, pOutContext);
 	if (nullptr == m_pTarget_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pRenderer = CRenderer::Create(pOutDevice, pOutContext);
 	if (nullptr == m_pRenderer)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pTimer_Manager = CTimer_Manager::Create();
 	if (nullptr == m_pTimer_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pPrototype_Manager = CPrototype_Manager::Create(EngineDesc.iNumLevels);
 	if (nullptr == m_pPrototype_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pObject_Manager = CObject_Manager::Create(EngineDesc.iNumLevels);
 	if (nullptr == m_pObject_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pLevel_Manager = CLevel_Manager::Create();
 	if (nullptr == m_pLevel_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pPipeLine = CPipeLine::Create();
 	if (nullptr == m_pPipeLine)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pLight_Manager = CLight_Manager::Create();
 	if (nullptr == m_pLight_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pFont_Manager = CFont_Manager::Create(pOutDevice, pOutContext);
 	if (nullptr == m_pFont_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pPicking = CPicking::Create(pOutDevice, pOutContext, EngineDesc.hWnd);
 	if (nullptr == m_pPicking)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pShadow = CShadow::Create();
 	if (nullptr == m_pShadow)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pFrustum = CFrustum::Create();
 	if (nullptr == m_pFrustum)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pPhysics_Manager = CPhysics_Manager::Create(EngineDesc.iNumLevels);
 	if (nullptr == m_pPhysics_Manager)
-		return E_FAIL;
+		return FailInitialization(E_FAIL);
 
 	m_pProfiler = std::make_unique<CProfiler>();
-	if (FAILED(m_pProfiler->Initialize(pOutDevice, pOutContext)))
-		return E_FAIL;
+	const HRESULT hProfilerResult =
+		m_pProfiler->Initialize(pOutDevice, pOutContext);
+	if (FAILED(hProfilerResult))
+		return FailInitialization(hProfilerResult);
 
 	return S_OK;
 }
@@ -149,11 +196,13 @@ HRESULT CGameInstance::Render_Begin(const float4_t* pClearColor)
 
 HRESULT CGameInstance::Render()
 {
-	if (FAILED(m_pRenderer->Draw()))
-		return E_FAIL;
+	const HRESULT hDrawResult = m_pRenderer->Draw();
+	if (FAILED(hDrawResult))
+		return hDrawResult;
 
-	if (FAILED(m_pLevel_Manager->Render()))
-		return E_FAIL;
+	const HRESULT hLevelResult = m_pLevel_Manager->Render();
+	if (FAILED(hLevelResult))
+		return hLevelResult;
 
 	return S_OK;
 }
@@ -508,6 +557,8 @@ void CGameInstance::Release_Engine()
 {	
 	m_pProfiler.reset();
 	m_pFrustum.reset();
+	m_pShadow.reset();
+	m_pPicking.reset();
 	m_pTarget_Manager.reset();
 	m_pFont_Manager.reset();
 	m_pLight_Manager.reset();
@@ -523,6 +574,7 @@ void CGameInstance::Release_Engine()
 	m_pSound_Manager.reset();
 #endif
 	m_pInput_Device.reset();
-	m_pGraphic_Device->Shutdown();
+	if (nullptr != m_pGraphic_Device)
+		m_pGraphic_Device->Shutdown();
 	m_pGraphic_Device.reset();
 }

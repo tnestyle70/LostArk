@@ -12,6 +12,7 @@
 NS_BEGIN(Client)
 
 class CCharacter;
+class CEffectObject;
 
 struct EFFECT_SPAWN_DESC final
 {
@@ -29,9 +30,18 @@ struct EFFECT_SPAWN_DESC final
     f32_t fInitialSampleTimeSeconds = 0.f;
 };
 
+struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final
+{
+	float4x4_t RawBone{};
+	float4x4_t OwnerWorld{};
+};
+
 class CEffectPresentationService final
 {
 public:
+	static bool_t Build_SourceBoneAnchorWorld(
+		const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
+		float4x4_t& OutWorld);
     static bool_t Prepare_ProductCues(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,
@@ -45,10 +55,34 @@ public:
     static bool_t Spawn(
         const EFFECT_SPAWN_DESC& Desc,
         std::string& strOutStatus);
+	/* Product cue requests can originate while Object Manager is iterating its
+	   layer map.  Commit them only after Update_Engine finishes. */
+	static void Commit_PendingSpawns();
 	static bool_t Prepare_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
 			OutPreparation,
+		std::string& strOutStatus);
+	/* Debug/non-Product Artist F keeps its source runtime separate from Product
+	   cue admission.  Preparation performs all document/resource work before an
+	   authoritative action edge; Spawn only attaches the immutable result. */
+	static bool_t Prepare_ReconstructedArtist31470(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::string& strOutStatus);
+	static bool_t Acquire_ReconstructedArtist31470(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			OutPreparation,
+		std::string& strOutStatus);
+	static bool_t Stage_ReconstructedArtist31470Preview(
+		const std::shared_ptr<CEffectObject>& pObject,
+		const std::shared_ptr<const
+			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pExpectedPreparation,
+		std::string& strOutStatus);
+	static bool_t Spawn_ReconstructedArtist31470(
+		const EFFECT_SPAWN_DESC& Desc,
 		std::string& strOutStatus);
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
@@ -57,6 +91,11 @@ public:
     static void Clear_All();
     static void Release_PreparedResources();
     static const std::string& Get_Status();
+
+private:
+	static bool_t Spawn_Immediate(
+		const EFFECT_SPAWN_DESC& Desc,
+		std::string& strOutStatus);
 };
 
 NS_END

@@ -14,10 +14,10 @@ else {
 $generator = 'Tools/LevelPlacementExtractor/build_artist_31470_material_render_resource_binding_approval.py'
 $test = 'Tools/LevelPlacementExtractor/test_build_artist_31470_material_render_resource_binding_approval.py'
 $receiptPath = 'Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json'
-$expectedReceiptByteCount = 376183
-$expectedReceiptRawSha256 = '68ae71bd70260270404d4a7b6c296e41f74d0031d27899b56a4376c1b11f4931'
-$expectedReceiptSha256 = 'd643c9bf1bc2f10a887c805534b28e4322646cea426656de61b894e5b6284644'
-$expectedDecisionProjectionSha256 = '4731ed9c2882c948373ec54f56087803145447851f3fc793fb8e9fa9d96cc957'
+$expectedReceiptByteCount = 378236
+$expectedReceiptRawSha256 = 'bc19ea75c917b5bf73cf4801b5d94cbaeea40760e1717868bd890607388c0e35'
+$expectedReceiptSha256 = '2e4cf180b1bb00d5ea7bd597e8d832a7b810267023186666d88edcfe348feaab'
+$expectedDecisionProjectionSha256 = '6aa084a0ff5f369a88ffc711a75aeef057ca601c6d06104b70836cc032f813b5'
 
 function Invoke-AutocrlfIsolatedCheckoutRegression {
     param(

@@ -24,6 +24,9 @@ public:
 	static bool_t Validate_Drawable(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	static bool_t Validate_Artist31470ReconstructedRuntimeDrawable(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
 
 	static bool_t Parse(
 		std::string_view Json,

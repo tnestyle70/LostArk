@@ -382,6 +382,32 @@ try {
     & $publisher -Mode Publish -DataRoot $dataRoot `
         -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'v12 Grouped Source Material publish failed.' }
+
+    $originalSourceSubUVMode =
+        [string]$groupedElement.material.sourceProfile.subUVMode
+    foreach ($sourceSubUVMode in @(
+            'none',
+            'psuvim_random',
+            'psuvim_linear_blend',
+            'psuvim_linear_blend_random_flip_square')) {
+        $groupedElement.material.sourceProfile.subUVMode = $sourceSubUVMode
+        Write-Fixture $document $catalog
+        & $publisher -Mode Validate -DataRoot $dataRoot `
+            -ResourceRoot $resourceRoot -OutputPath $output
+        if ($LASTEXITCODE) {
+            throw "Source Material SubUV mode validation failed: $sourceSubUVMode"
+        }
+        & $publisher -Mode Publish -DataRoot $dataRoot `
+            -ResourceRoot $resourceRoot -OutputPath $output
+        if ($LASTEXITCODE) {
+            throw "Source Material SubUV mode publish failed: $sourceSubUVMode"
+        }
+    }
+    $groupedElement.material.sourceProfile.subUVMode = $originalSourceSubUVMode
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Grouped Source Material restore failed.' }
     $groupedBaseline = [IO.File]::ReadAllBytes($output)
 
     $groupedElement.resources = @([ordered]@{

@@ -120,6 +120,35 @@ void CAnimation::Set_TrackPosition(f32_t fTrackPosition)
 		iLeftKeyFrameIndex = 0;
 }
 
+bool_t CAnimation::Sample_LocalBoneTransforms(
+	const f32_t fTrackPosition,
+	const std::span<float4x4_t> InOutLocalTransforms) const
+{
+	if (!std::isfinite(fTrackPosition) ||
+		!std::isfinite(m_fDuration) || fTrackPosition < 0.f ||
+		fTrackPosition > m_fDuration || m_fDuration <= 0.f ||
+		m_iNumChannels != m_Channels.size())
+	{
+		return false;
+	}
+
+	for (const shared_ptr<CChannel>& Channel : m_Channels)
+	{
+		if (nullptr == Channel)
+			return false;
+		uint32_t iBoneIndex = 0u;
+		float4x4_t Local{};
+		if (!Channel->Sample_TransformationMatrix(
+				fTrackPosition, iBoneIndex, Local) ||
+			iBoneIndex >= InOutLocalTransforms.size())
+		{
+			return false;
+		}
+		InOutLocalTransforms[iBoneIndex] = Local;
+	}
+	return true;
+}
+
 shared_ptr<CAnimation> CAnimation::Create(const aiAnimation* pAIAnimation, const vector<shared_ptr<class CBone>>& Bones)
 {
 	auto pInstance = shared_ptr<CAnimation>(new CAnimation());

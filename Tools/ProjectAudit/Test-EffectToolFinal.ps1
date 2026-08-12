@@ -365,7 +365,7 @@ if ($animationPreviewAssets -notmatch 'bPlayableClassBody' -or
 }
 $presentationSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_PresentationService.cpp') -Raw -Encoding UTF8
-if ($mainAppSource -notmatch 'Update_Engine\(fTimeDelta\);\s+CEffectPresentationService::Synchronize_FollowAnchors\(\);' -or
+if ($mainAppSource -notmatch 'Update_Engine\(fTimeDelta\);\s+CEffectPresentationService::Commit_PendingSpawns\(\);\s+CEffectPresentationService::Synchronize_FollowAnchors\(\);' -or
     $presentationSource -notmatch 'Synchronize_FollowAnchors\(\)' -or
     $presentationSource -notmatch 'bFollowAnchorMissing' -or
     $presentationSource -notmatch 'Set_Visible\(false\)') {
@@ -661,7 +661,7 @@ $rendererSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_DocumentRenderer.cpp') -Raw -Encoding UTF8
 $playbackSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_Playback.cpp') -Raw -Encoding UTF8
-if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 12u' -or
+if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 13u' -or
 	$authoringHeader -notmatch 'struct EFFECT_SOURCE_MATERIAL_DESC' -or
 	$authoringHeader -notmatch 'DynamicParameterSemantics' -or
 	$codecSource -notmatch 'Read_SourceMaterialProfile' -or
@@ -729,6 +729,42 @@ foreach ($domainId in $effectAuthoringDomains) {
 $rendererSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_DocumentRenderer.cpp') `
     -Raw -Encoding UTF8
+$playbackSource = Get-Content -LiteralPath (
+    Require-File 'Client\Private\Effect_Playback.cpp') `
+    -Raw -Encoding UTF8
+if ($rendererSource -match
+        'case Client::EFFECT_RENDERER_TYPE::END:[\s\S]{0,500}?if \(Element\.SourceRecipe\.bEnabled\)' -or
+    $playbackSource -match
+        'case Client::EFFECT_RENDERER_TYPE::END:[\s\S]{0,500}?if \(Element\.SourceRecipe\.bEnabled\)') {
+    throw 'Legacy source-recipe Elements without native-v14 renderer identity must retain their kind-derived GPU occurrence family.'
+}
+$legacySourceRecipeDocumentCount = 0
+$legacySourceRecipeGpuOccurrenceCount = 0
+$authoredRoot = Join-Path $repoRoot 'Data\Effects\Authored'
+Get-ChildItem -LiteralPath $authoredRoot -Recurse -Filter '*.effect.json' -File |
+    ForEach-Object {
+        $document = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 |
+            ConvertFrom-Json
+        $documentCount = 0
+        foreach ($element in @($document.elements)) {
+            $sourceRecipe = $element.sourceRecipe
+            $renderer = $element.renderer
+            $rendererType = if ($null -eq $renderer) { '' } else { [string]$renderer.type }
+            if ($null -ne $sourceRecipe -and [bool]$sourceRecipe.enabled -and
+                [string]::IsNullOrWhiteSpace($rendererType) -and
+                @('particle', 'decal') -contains [string]$element.kind) {
+                ++$documentCount
+            }
+        }
+        if ($documentCount -gt 0) {
+            ++$legacySourceRecipeDocumentCount
+            $legacySourceRecipeGpuOccurrenceCount += $documentCount
+        }
+    }
+if ($legacySourceRecipeDocumentCount -ne 18 -or
+    $legacySourceRecipeGpuOccurrenceCount -ne 1300) {
+    throw "Legacy source-recipe/native-renderer denominator changed: documents=$legacySourceRecipeDocumentCount gpuOccurrences=$legacySourceRecipeGpuOccurrenceCount"
+}
 if ($rendererSource -notmatch 'fSequenceTerm\) \+\s+Element\.Detail\.UV\.iTileIndex' -or
     $effectToolSource -notmatch 'Active\.Detail\.UV\.iTileIndex = iTile') {
     throw 'UV tile clicks must set the authored sequence offset and refresh preview.'
@@ -840,18 +876,27 @@ if ($canonicalR.Count -ne 1 -or [int64]$canonicalR[0].skillId -ne 2050180 -or
 }
 
 $catalog = Read-JsonFile 'Data\Effects\EffectCatalog.json'
+$artistDebugEffectId = 'effect.artist.skill.31470'
+$expectedCatalogCount = $expectedEffectCount + 1
 if ($catalog.formatVersion -ne 1 -or
-    $catalog.effects.Count -ne $expectedEffectCount) {
-    throw "EffectCatalog.json must contain exactly the admitted four-class Authored Product target set: expected=$expectedEffectCount actual=$($catalog.effects.Count)"
+    $catalog.effects.Count -ne $expectedCatalogCount) {
+    throw "EffectCatalog.json must contain the admitted Product set plus the one non-Product Artist debug target: expected=$expectedCatalogCount actual=$($catalog.effects.Count)"
 }
 $catalogIds = @($catalog.effects | ForEach-Object { [string]$_.effectAssetId })
-if (@($catalogIds | Sort-Object -Unique).Count -ne $expectedEffectCount) {
+if (@($catalogIds | Sort-Object -Unique).Count -ne $expectedCatalogCount) {
     throw 'EffectCatalog.json contains a duplicate EffectAssetId.'
 }
 foreach ($effectId in $expectedCatalogIds) {
     if ($catalogIds -cnotcontains $effectId) {
         throw "EffectCatalog.json is missing $effectId"
     }
+}
+$extraCatalogIds = @($catalogIds | Where-Object {
+    $expectedCatalogIds -cnotcontains $_
+})
+if ($extraCatalogIds.Count -ne 1 -or
+    $extraCatalogIds[0] -cne $artistDebugEffectId) {
+    throw 'EffectCatalog.json may add only the exact non-Product Artist 31470 debug target outside the admitted Product rollout.'
 }
 
 $authoredBaselineCorrectionPath =
@@ -990,6 +1035,18 @@ if ($dimensionMasterEvents -notmatch
 $documentResourceIds = [Collections.Generic.HashSet[string]]::new(
     [StringComparer]::Ordinal)
 foreach ($entry in $catalog.effects) {
+	if ([string]$entry.effectAssetId -ceq $artistDebugEffectId) {
+		if ([string]$entry.payloadKind -cne
+				'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM' -or
+			-not [string]::IsNullOrWhiteSpace([string]$entry.authoringPath) -or
+			[string]$entry.reconstructedRuntimeProgramPath -cne
+				'Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json' -or
+			[string]$entry.reconstructedRenderResourceAuthorityPath -cne
+				'Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json') {
+			throw 'Artist 31470 debug Catalog entry is not the exact immutable reconstructed payload.'
+		}
+		continue
+	}
     $relativeDocument = [string]$entry.authoringPath
     if ($relativeDocument -notmatch '^Effects/Authored/[a-z0-9._-]+\.effect\.json$') {
         throw "Unsafe catalog document path: $relativeDocument"

@@ -2,6 +2,8 @@
 
 #include "Engine_Defines.h"
 
+#include <span>
+
 NS_BEGIN(Engine)
 
 struct MODEL_ANIMATION_DATA;
@@ -24,6 +26,12 @@ public:
 	f32_t Get_TickPerSecond() const { return m_fTickPerSecond; }
 	f32_t Get_CurrentTrackPosition() const { return m_fCurrentTrackPosition; }
 	void Set_TrackPosition(f32_t fTrackPosition);
+
+private:
+	friend class CModel;
+	bool_t Sample_LocalBoneTransforms(
+		f32_t fTrackPosition,
+		std::span<float4x4_t> InOutLocalTransforms) const;
 
 private:
 	char_t				m_szName[MAX_PATH] = {};

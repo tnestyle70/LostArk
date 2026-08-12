@@ -43,32 +43,41 @@ def reseal_material_approval(receipt: dict, section: str, index: int) -> None:
     receipt["receiptSha256"] = approval_builder.canonical_sha256(receipt)
 
 
-def reseal_publisher_entry(entry: dict) -> None:
-    link = entry["reconstructedRuntimeProgram"]
-    receipt = entry["publishReceipt"]
-    receipt["reconstructedRuntimeProgramSha256"] = builder.canonical_sha256(link)
-    receipt.pop("receiptSha256", None)
-    receipt["receiptSha256"] = builder.canonical_sha256(receipt)
-    entry["publishReceiptSha256"] = builder.canonical_sha256(receipt)
-
-
 class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        _, cls.program = builder._read_program()
-        cls.approval_raw, cls.approval = builder._read_approval(cls.program)
+        cls.temporary = tempfile.TemporaryDirectory()
+        root = Path(cls.temporary.name)
+        cls.program_path = root / "program.json"
+        cls.approval_path = root / "approval.json"
+        cls.output_path = root / "sidecar.json"
+        cls.program = builder.program_module.build_program()
+        cls.program_raw = builder.program_module.output_bytes(cls.program)
+        cls.program_path.write_bytes(cls.program_raw)
+        cls.approval = approval_builder.build_receipt(cls.program)
+        approval_builder.validate_receipt(
+            cls.approval,
+            cls.program,
+            _program_already_validated=True,
+            require_approval=False,
+        )
+        cls.approval_raw = approval_builder.serialized_receipt(cls.approval)
+        cls.approval_path.write_bytes(cls.approval_raw)
         cls.expected, cls.payloads = builder.build_receipt(
             cls.program,
             cls.approval,
+            require_independent_approval=False,
             _inputs_already_validated=True,
         )
-        (
-            _,
-            cls.publisher_catalog,
-            cls.publisher_entry,
-            cls.publisher_expected_entry,
-        ) = builder._read_publisher_runtime_authority()
+        cls.publisher_projection = builder._build_publisher_base_authority(
+            cls.program
+        )
         cls.serialized = builder.serialized_receipt(cls.expected)
+        cls.output_path.write_bytes(cls.serialized)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.temporary.cleanup()
 
     def receipt_copy(self) -> dict:
         return copy.deepcopy(self.expected)
@@ -79,17 +88,19 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
         ):
             builder.validate_receipt(
                 receipt,
+                program_path=self.program_path,
+                approval_path=self.approval_path,
                 require_independent_approval=False,
                 **kwargs,
             )
 
     def test_01_exact_denominators_and_derived_formats(self) -> None:
         summary = self.expected["summary"]
-        self.assertEqual(48, summary["textureResourceCount"])
-        self.assertEqual(72, summary["textureBindingCount"])
+        self.assertEqual(52, summary["textureResourceCount"])
+        self.assertEqual(77, summary["textureBindingCount"])
         self.assertEqual(
             {
-                "BC1_SRGB": 35,
+                "BC1_SRGB": 39,
                 "BC3_LINEAR": 1,
                 "BC3_SRGB": 8,
                 "BC5_LINEAR": 4,
@@ -97,11 +108,11 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
             {row["classification"]: row["count"] for row in summary["resourceFormatCounts"]},
         )
         self.assertEqual(
-            {72: 58, 77: 1, 78: 9, 83: 4},
+            {72: 63, 77: 1, 78: 9, 83: 4},
             {row["dxgiFormat"]: row["count"] for row in summary["bindingSrvDxgiFormatCounts"]},
         )
         self.assertEqual(
-            {"LINEAR": 5, "SRGB": 67},
+            {"LINEAR": 5, "SRGB": 72},
             {
                 row["colorSpacePolicy"]: row["count"]
                 for row in summary["bindingColorSpaceCounts"]
@@ -112,16 +123,14 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
         self.assertEqual(3, summary["ambiguousRendererDecisionCount"])
         self.assertEqual(46, summary["renderStateDescriptorCount"])
 
-    def test_02_canonical_receipt_and_independent_pins_accept(self) -> None:
-        builder.validate_receipt(self.expected)
-        self.assertEqual(
-            authority_module.APPROVED_DECISION_PROJECTION_SHA256,
-            self.expected["decisionProjectionSha256"],
+    def test_02_canonical_receipt_matches_independent_pins(self) -> None:
+        builder.validate_receipt(
+            self.expected,
+            program_path=self.program_path,
+            approval_path=self.approval_path,
+            require_independent_approval=False,
         )
-        self.assertEqual(
-            authority_module.APPROVED_RECEIPT_PROJECTION_SHA256,
-            self.expected["receiptSha256"],
-        )
+        authority_module.require_approved_receipt(self.expected)
 
     def test_03_serialization_is_lf_utf8_and_contains_no_absolute_path(self) -> None:
         self.assertFalse(self.serialized.startswith(b"\xef\xbb\xbf"))
@@ -129,7 +138,7 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
         self.assertNotIn(b"C:\\", self.serialized)
         self.assertNotIn(b"C:/", self.serialized)
         self.assertNotIn(b"Users", self.serialized)
-        self.assertEqual(self.serialized, builder.DEFAULT_OUTPUT.read_bytes())
+        self.assertEqual(self.serialized, self.output_path.read_bytes())
 
     def test_04_every_resource_matches_current_bytes_and_dds_header(self) -> None:
         resources = {row["runtimeAssetId"]: row for row in self.expected["textureResources"]}
@@ -302,81 +311,86 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
         self.assertFalse(self.expected["admission"]["runtimeExecutionAdmission"])
         self.assertFalse(self.expected["admission"]["product"])
 
-    def test_25_publisher_runtime_authority_tuple_is_exact(self) -> None:
+    def test_25_publisher_base_projection_is_exact_and_self_reference_free(self) -> None:
         evidence = self.expected["sourceEvidence"]["publisherRuntimeCatalogAuthority"]
-        self.assertEqual(26_255_931, evidence["currentCheckoutByteCount"])
         self.assertEqual(
-            "bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29",
-            evidence["currentCheckoutRawSha256"],
+            "BASE_RUNTIME_ENTRY_PROJECTION_BEFORE_RENDER_RESOURCE_SIDECAR",
+            evidence["authorityScope"],
         )
-        self.assertEqual(10, evidence["outerKeyCount"])
-        self.assertEqual(16, evidence["linkKeyCount"])
-        self.assertEqual(25, evidence["receiptKeyCount"])
-        self.assertEqual(3, evidence["toolDependencyCount"])
+        self.assertFalse(evidence["runtimeCatalogBytesRead"])
+        self.assertFalse(evidence["completedRuntimeEntryRead"])
+        self.assertFalse(evidence["renderResourceSidecarRead"])
+        self.assertTrue(evidence["selfReferenceExcluded"])
         self.assertEqual(
-            "74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2",
-            evidence["linkCanonicalSha256"],
-        )
-        self.assertEqual(
-            "5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3",
-            evidence["receiptSelfSha256"],
+            tuple(builder.publisher_module.RECONSTRUCTED_BASE_AUTHORITY_PROJECTION_KEYS),
+            tuple(evidence["projectionKeyOrder"]),
         )
         self.assertEqual(
-            "92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94",
-            evidence["outerPublishReceiptSha256"],
-        )
-        builder.publisher_module.validate_reconstructed_runtime_entry(
-            self.publisher_entry
+            len(self.publisher_projection), evidence["projectionKeyCount"]
         )
         builder.strict_ordered_equal(
-            self.publisher_entry,
-            self.publisher_expected_entry,
-            "testPublisherExpected",
+            evidence["baseProjection"],
+            self.publisher_projection,
+            "testPublisherBaseProjection",
+        )
+        self.assertEqual(
+            builder.canonical_sha256(self.publisher_projection),
+            evidence["projectionCanonicalSha256"],
+        )
+        builder.publisher_module.validate_reconstructed_base_authority_projection(
+            evidence["baseProjection"]
         )
 
-    def test_26_publisher_outer_coordinated_reseal_rejects(self) -> None:
-        forged = copy.deepcopy(self.publisher_entry)
-        forged["artifactRevision"] = 2
-        forged["publishReceipt"]["artifactRevision"] = 2
-        reseal_publisher_entry(forged)
-        self.assertPureRejects(self.expected, supplied_publisher_entry=forged)
+    def test_26_base_projection_program_identity_reseal_rejects(self) -> None:
+        receipt = self.receipt_copy()
+        authority = receipt["sourceEvidence"]["publisherRuntimeCatalogAuthority"]
+        authority["baseProjection"]["programSha256"] = "0" * 64
+        authority["projectionCanonicalSha256"] = builder.canonical_sha256(
+            authority["baseProjection"]
+        )
+        reseal_authority(receipt)
+        self.assertPureRejects(receipt)
 
-    def test_27_publisher_link_coordinated_reseal_rejects(self) -> None:
-        forged = copy.deepcopy(self.publisher_entry)
-        forged["reconstructedRuntimeProgram"]["programVersion"] = 2
-        forged["publishReceipt"]["programVersion"] = 2
-        reseal_publisher_entry(forged)
-        self.assertPureRejects(self.expected, supplied_publisher_entry=forged)
+    def test_27_base_projection_scope_reseal_rejects(self) -> None:
+        receipt = self.receipt_copy()
+        receipt["sourceEvidence"]["publisherRuntimeCatalogAuthority"][
+            "authorityScope"
+        ] += "_FORGED"
+        reseal_authority(receipt)
+        self.assertPureRejects(receipt)
 
-    def test_28_publisher_receipt_coordinated_reseal_rejects(self) -> None:
-        forged = copy.deepcopy(self.publisher_entry)
-        forged["publishReceipt"]["receiptRole"] += "_FORGED"
-        reseal_publisher_entry(forged)
-        self.assertPureRejects(self.expected, supplied_publisher_entry=forged)
+    def test_28_catalog_or_completed_entry_dependency_reseal_rejects(self) -> None:
+        for field in ("runtimeCatalogBytesRead", "completedRuntimeEntryRead",
+                      "renderResourceSidecarRead"):
+            receipt = self.receipt_copy()
+            receipt["sourceEvidence"]["publisherRuntimeCatalogAuthority"][field] = True
+            reseal_authority(receipt)
+            self.assertPureRejects(receipt)
 
-    def test_29_publisher_tool_coordinated_reseal_rejects(self) -> None:
-        forged = copy.deepcopy(self.publisher_entry)
-        forged["publishReceipt"]["toolDependencies"][1]["sha256"] = "0" * 64
-        reseal_publisher_entry(forged)
-        self.assertPureRejects(self.expected, supplied_publisher_entry=forged)
+    def test_29_removed_catalog_and_entry_injection_api_rejects(self) -> None:
+        self.assertPureRejects(
+            self.expected,
+            supplied_runtime_catalog_bytes=b"{}",
+        )
+        self.assertPureRejects(
+            self.expected,
+            supplied_publisher_entry={},
+        )
 
-    def test_30_publisher_catalog_a_b_coordinated_reseal_rejects(self) -> None:
-        forged_catalog = copy.deepcopy(self.publisher_catalog)
-        forged = forged_catalog["effects"][builder.RUNTIME_ENTRY_EFFECT_INDEX]
-        alternate_id = "effect.artist.skill.31470.b"
-        forged["effectAssetId"] = alternate_id
-        forged["reconstructedRuntimeProgram"]["effectAssetId"] = alternate_id
-        forged["publishReceipt"]["effectAssetId"] = alternate_id
-        reseal_publisher_entry(forged)
-        raw = json.dumps(
-            forged_catalog,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
-        self.assertPureRejects(self.expected, supplied_runtime_catalog_bytes=raw)
+    def test_30_public_projection_validator_rejects_mutations(self) -> None:
+        for field, value in (
+            ("programVersion", 2),
+            ("sourceExact", 0),
+            ("productAdmission", True),
+        ):
+            forged = copy.deepcopy(self.publisher_projection)
+            forged[field] = value
+            with self.assertRaises(builder.publisher_module.ContractError):
+                builder.publisher_module.validate_reconstructed_base_authority_projection(
+                    forged
+                )
 
-    def test_31_publisher_read_trace_and_current_tools_are_mandatory(self) -> None:
+    def test_31_publisher_projection_never_reads_catalog_or_sidecar(self) -> None:
         with self.assertRaisesRegex(ValueError, "duplicate JSON key schema"):
             builder._parse_json_object_bytes(
                 b'{"schema":1,"schema":2}',
@@ -387,122 +401,23 @@ class ReconstructedRenderResourceAuthorityTests(unittest.TestCase):
                 b'{"schema":NaN}',
                 "publisher non-finite fixture",
             )
-
         original_read_bytes = Path.read_bytes
-        actual_catalog_bytes = original_read_bytes(builder.DEFAULT_RUNTIME_CATALOG)
-        forged_catalog = copy.deepcopy(self.publisher_catalog)
-        forged_catalog["components"][0] = {
-            "forged": "SECOND_PATH_READ_MUST_NEVER_BECOME_THE_VALIDATED_OBJECT"
-        }
-        forged_catalog_bytes = json.dumps(
-            forged_catalog,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
-        original_parse = builder._parse_json_object_bytes
-        original_validate_catalog = builder.publisher_module.validate_runtime_catalog
-        saved_catalog_cache = builder._PUBLISHER_CATALOG_CACHE
-        saved_expected_cache = builder._PUBLISHER_EXPECTED_ENTRY_CACHE
+        reads: list[Path] = []
 
-        def invoke_split_read() -> tuple[
-            tuple[bytes, dict, dict, dict], list[Path], int, list[dict], list[dict]
-        ]:
-            reads: list[Path] = []
-            runtime_catalog_read_count = 0
-            parsed_catalogs: list[dict] = []
-            publicly_validated_catalogs: list[dict] = []
+        def traced_read_bytes(path: Path) -> bytes:
+            reads.append(path.resolve())
+            return original_read_bytes(path)
 
-            def split_read_bytes(path: Path) -> bytes:
-                nonlocal runtime_catalog_read_count
-                resolved = path.resolve()
-                reads.append(resolved)
-                if resolved == builder.DEFAULT_RUNTIME_CATALOG.resolve():
-                    runtime_catalog_read_count += 1
-                    if runtime_catalog_read_count == 1:
-                        return actual_catalog_bytes
-                    return forged_catalog_bytes
-                return original_read_bytes(path)
-
-            def traced_parse(raw: bytes, label: str) -> dict:
-                value = original_parse(raw, label)
-                if label == "current publisher runtime catalog":
-                    parsed_catalogs.append(value)
-                return value
-
-            def traced_validate_catalog(value: dict) -> None:
-                publicly_validated_catalogs.append(value)
-                original_validate_catalog(value)
-
-            with (
-                mock.patch.object(Path, "read_bytes", split_read_bytes),
-                mock.patch.object(builder, "_parse_json_object_bytes", traced_parse),
-                mock.patch.object(
-                    builder.publisher_module,
-                    "validate_runtime_catalog",
-                    traced_validate_catalog,
-                ),
-                mock.patch.object(
-                    builder.publisher_module,
-                    "load_json",
-                    side_effect=AssertionError(
-                        "publisher catalog path was reopened after exact-byte hashing"
-                    ),
-                ),
-            ):
-                authority = builder._read_publisher_runtime_authority()
-            return (
-                authority,
-                reads,
-                runtime_catalog_read_count,
-                parsed_catalogs,
-                publicly_validated_catalogs,
-            )
-
-        try:
-            builder._PUBLISHER_CATALOG_CACHE = None
-            builder._PUBLISHER_EXPECTED_ENTRY_CACHE = None
-            cold, cold_reads, cold_count, parsed, publicly_validated = invoke_split_read()
-            cold_raw, cold_catalog, cold_entry, cold_expected = cold
-            self.assertEqual(1, cold_count)
-            self.assertEqual(actual_catalog_bytes, cold_raw)
-            self.assertEqual(1, len(parsed))
-            self.assertEqual(1, len(publicly_validated))
-            self.assertIs(cold_catalog, parsed[0])
-            self.assertIs(cold_catalog, publicly_validated[0])
-            self.assertIs(cold_entry, cold_catalog["effects"][builder.RUNTIME_ENTRY_EFFECT_INDEX])
-            self.assertNotEqual(
-                forged_catalog["components"][0],
-                cold_catalog["components"][0],
-            )
-
-            cached, cached_reads, cached_count, cached_parsed, cached_validated = (
-                invoke_split_read()
-            )
-            cached_raw, cached_catalog, cached_entry, cached_expected = cached
-            self.assertEqual(1, cached_count)
-            self.assertEqual(actual_catalog_bytes, cached_raw)
-            self.assertEqual([], cached_parsed)
-            self.assertEqual([], cached_validated)
-            self.assertIs(cached_catalog, cold_catalog)
-            self.assertIs(cached_entry, cold_entry)
-            self.assertIs(cached_expected, cold_expected)
-
-            for reads in (cold_reads, cached_reads):
-                self.assertEqual(
-                    1,
-                    reads.count(builder.DEFAULT_RUNTIME_CATALOG.resolve()),
-                )
-                for relative, _blob_id in builder.PUBLISHER_TOOL_BLOBS:
-                    self.assertIn((builder.ROOT / relative).resolve(), reads)
-            current_tools = builder.publisher_module._current_reconstructed_tool_dependencies()
-            self.assertEqual(
-                current_tools,
-                cached_entry["publishReceipt"]["toolDependencies"],
-            )
-        finally:
-            builder._PUBLISHER_CATALOG_CACHE = saved_catalog_cache
-            builder._PUBLISHER_EXPECTED_ENTRY_CACHE = saved_expected_cache
+        with mock.patch.object(Path, "read_bytes", traced_read_bytes):
+            actual = builder._build_publisher_base_authority(self.program)
+        builder.strict_ordered_equal(
+            actual, self.publisher_projection, "tracedPublisherProjection"
+        )
+        self.assertFalse(any(path.name == "EffectCatalog.runtime.json" for path in reads))
+        self.assertFalse(any(
+            path.name == "skill.31470.reconstructed-render-resource-authority.receipt.json"
+            for path in reads
+        ))
 
 
 if __name__ == "__main__":

@@ -7,6 +7,10 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 
 @AGENTS.md
 
+모든 세션은 작업 전에 `AGENTS.md`, 이 문서, `.md/GB/gotchas.md`, 있으면
+`.md/GB/gotchas.local.md`, `.md/TEAM/README.md`, 대응 PLAN/RESULT를 읽는다. Artist F와
+Effect Tool의 화면 조작·판정은 사용자 전용이며 아래 경계를 따른다.
+
 ## 프로젝트 개요
 
 **LostArk** — C++로 직접 작성한 DirectX 11 3D 게임 엔진 프레임워크와 그 위에서 동작하는 클라이언트. **여러 명이 함께 작업하는 팀 프로젝트**이며, 엔진은 DLL로 빌드되어 클라이언트 EXE가 이를 링크해 사용한다.
@@ -209,7 +213,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 `dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 LAN 검증 Server `192.168.200.103`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
-2026-08-20 23:59 KST까지 팀 LAN 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server를 `0.0.0.0:7777`에 열고 모든 Client가 `192.168.200.103:7777`으로 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 각 PC의 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하므로 동기화 후 `Ctrl+F5`로 시작한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 만료 뒤에는 스크립트를 우회하지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 갱신한다. 세부 설정과 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-08-20 23:59 KST까지 팀 LAN 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server를 `0.0.0.0:7777`에 열고 모든 Client가 `192.168.200.103:7777`으로 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 각 PC의 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 동기화 뒤 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 만료 뒤에는 스크립트를 우회하지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 갱신한다. 세부 설정과 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
@@ -275,6 +279,16 @@ Authored 문서만 class-scoped builder와 기존 publisher를 거쳐 transactio
 저작 UI는 runtime Published 목록을 편집하지 않으며, 제품 재생은 계속 `CEffectCatalog ->
 CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
 `Tools/EffectPipeline/Publish-Effects.ps1`만 수행한다.
+
+#### Artist F와 Effect Tool 화면 검증은 사용자 전용
+
+- 에이전트는 Client나 Effect Tool UI를 자율적으로 실행·조작하지 않고 화면을 직접 캡처하거나 스크린샷을 만들지 않으며, visual fidelity를 대신 판정하지 않는다.
+- 사용자가 대화에 첨부한 스크린샷이나 이미지를 분석해 달라고 요청하면 에이전트는 반드시 열람·분석해 형태·색·타이밍·밀도·궤적의 관찰 결과와 가능한 occurrence 진단을 보고한다.
+- 에이전트가 수행하는 자동 검증은 빌드, 구조화된 로그, draw/resource/shader 수치 진단까지다. 최종 화면 판정은 사용자가 실제 Client에서 직접 수행한다.
+- 에이전트는 실행 준비 후 Server CMD/Client 상태와 `F1 -> Effect Tool -> All Effects -> Artist -> Restore/Full F`처럼 사용자가 누를 경로만 전달하고 멈춘다.
+- 사용자의 서면 판정이 없으면 `manual first pixel`, `eye smoke`, `visual PASS`, occurrence 승인을 완료로 기록하지 않는다.
+- 일반적인 완성·복원 요청은 Client/UI 자율 실행·조작이나 화면 캡처를 허가하지 않는다. 요청받은 사용자 첨부 이미지 분석은 진단 입력이며 최종 visual PASS나 단독 admission 증거가 아니다.
+
 연속 clip을 가진 스킬의 Product Effect는 stage 첫 clip 하나에 합치지 않는다. 각 시각 clip의
 `effectref=asset` cue가 clip-local Authored 문서를 가리키며 Character가 이미 적용하는 `playMs`,
 `playRate`, loop와 late snapshot catch-up을 그대로 사용한다. Character gameplay 준비는 승인된

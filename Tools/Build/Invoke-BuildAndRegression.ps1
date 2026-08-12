@@ -114,6 +114,13 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw 'ClientFrontendHarness failed.'
         }
+
+		$effectCatalog = Join-Path $repoRoot `
+			'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json'
+		& $frontendHarness --effect-reconstructed-gpu-material $effectCatalog
+		if ($LASTEXITCODE -ne 0) {
+			throw 'Artist 31470 WARP first-draw harness failed.'
+		}
     }
     finally {
         [Environment]::SetEnvironmentVariable(

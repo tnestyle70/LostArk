@@ -87,9 +87,10 @@ inline constexpr std::array<std::string_view, 19u>
 		"missile_dissolve"
 	}};
 
-inline constexpr std::array<std::string_view, 3u>
+inline constexpr std::array<std::string_view, 4u>
 	EFFECT_SOURCE_SUBUV_MODES = {{
 		"none",
+		"psuvim_random",
 		"psuvim_linear_blend",
 		"psuvim_linear_blend_random_flip_square"
 	}};
@@ -175,6 +176,13 @@ inline bool_t Is_SupportedEffectSourceSubUVMode(
 	const std::string_view strMode)
 {
 	return Contains_EffectMaterialToken(EFFECT_SOURCE_SUBUV_MODES, strMode);
+}
+
+inline bool_t Is_EffectSourceLinearBlendSubUVMode(
+	const std::string_view strMode)
+{
+	return strMode == "psuvim_linear_blend" ||
+		strMode == "psuvim_linear_blend_random_flip_square";
 }
 
 inline bool_t Is_EffectSourceMaterialStagingSignatureEqual(
@@ -589,6 +597,7 @@ inline bool_t Is_EffectGroupedTranslucentResourceContractSatisfied(
 inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
 	const std::string_view strRuntimeShaderProfileId,
 	const bool_t bSafeBase,
+	const bool_t bHasNoise,
 	const bool_t bHasMask,
 	const bool_t bHasDissolve,
 	const bool_t bHasMesh)
@@ -602,7 +611,7 @@ inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
 	if (strRuntimeShaderProfileId == "effect.ue3.slice.v1")
 		return bSafeBase;
 	if (strRuntimeShaderProfileId == "effect.ue3.missiletrail-01.v1")
-		return bSafeBase && bHasMask && bHasDissolve && bHasMesh;
+		return bSafeBase && bHasNoise && bHasMask && bHasDissolve && bHasMesh;
 	if (strRuntimeShaderProfileId ==
 		"effect.ue3.procedural-center-glow.v1")
 	{

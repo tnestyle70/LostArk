@@ -1,16 +1,26 @@
 #include "Effect_ReconstructedExecution.h"
 
+#include "Effect_DocumentCodec.h"
+#include "Effect_Distribution.h"
+#include "Effect_MaterialTemplate.h"
 #include "Effect_RuntimeAuthority.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <bit>
+#include <cctype>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <set>
 #include <sstream>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 struct Client::EFFECT_RECONSTRUCTED_SELECTED_EVALUATOR_PREPARED_DATA final
@@ -67,12 +77,22 @@ namespace
 
 	constexpr std::string_view ARTIST_EFFECT_ID =
 		"effect.artist.skill.31470";
+	constexpr std::string_view ARTIST_ONE_LAYER_RECIPE_ID =
+		"material-recipe-3992a9772b12abf2";
+	constexpr std::string_view ARTIST_ONE_LAYER_EMISSIVE_SOURCE =
+		"fx_tex_03.fx_e_atypical_012";
+	constexpr std::string_view ARTIST_ONE_LAYER_NOISE_SOURCE =
+		"fx_tex_02.fx_d_noise_009";
+	constexpr std::string_view ARTIST_ONE_LAYER_EMISSIVE_ASSET =
+		"Effect/Artist/Textures/fx_e_atypical_012.dds";
+	constexpr std::string_view ARTIST_ONE_LAYER_NOISE_ASSET =
+		"Effect/Artist/Textures/fx_d_noise_009.dds";
 	constexpr std::string_view ARTIST_PROGRAM_ID =
 		"effect.artist.skill.31470.reconstructed-approved-v1";
 	constexpr std::string_view ARTIST_PROGRAM_SHA256 =
-		"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b";
+		"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
 	constexpr std::string_view ARTIST_CANDIDATE_SHA256 =
-		"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849";
+		"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6";
 	constexpr std::string_view ARTIST_RANDOM_POLICY =
 		"DETERMINISTIC_OCCURRENCE_RNG_FROM_SOURCE_CANDIDATE_V1";
 	constexpr std::string_view ARTIST_SEED_EVALUATOR =
@@ -82,7 +102,7 @@ namespace
 	constexpr std::string_view FROZEN_DISTRIBUTION_OWNER_PROJECTION_SHA256 =
 		"35b0977b106c003b2542327959dd1ee11ea326dd17324c5dbc242153b086bd88";
 	constexpr std::string_view FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
-		"e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df";
+		"3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5";
 	constexpr std::string_view FROZEN_SEEDED_EMITTER_ID =
 		"fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01::"
 		"action-31470/stage-000/notify-028::FX_CM_01.distortion_onelayer."
@@ -134,7 +154,7 @@ namespace
 	constexpr std::string_view FROZEN_SEEDED_CAPABILITY_ACTION_CUE_SHA256 =
 		"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945";
 	constexpr std::string_view FROZEN_SEEDED_MODULE_ROW_SHA256 =
-		"5fba6a5d4df33c509efe4ae08f30db0644bd78aa245e434c4fad33c3a082bc3f";
+		"2d988e0da3cc6c9db7ab2eba7a41545a5eb3aed046f924372d347cb47e270bd4";
 	constexpr std::string_view FROZEN_SEEDED_PROPERTY_ROW_SHA256 =
 		"bd9b6e05cf6f055016dcaf4bdc16728f33ffda94d245897383e7b0802b46a21d";
 	constexpr std::string_view FROZEN_SEEDED_DISTRIBUTION_ROW_SHA256 =
@@ -425,16 +445,16 @@ namespace
 			Identity.iArtifactRevision != 1u ||
 			Identity.iProgramVersion != 1u ||
 			Identity.iInputArtifactCount != 13u ||
-			Identity.iCandidateByteCount != 15'072'141u ||
+			Identity.iCandidateByteCount != 15'117'436u ||
 			Identity.strProgramId != ARTIST_PROGRAM_ID ||
 			Identity.strProgramSha256 != ARTIST_PROGRAM_SHA256 ||
 			Identity.strCandidateRawSha256 != ARTIST_CANDIDATE_SHA256 ||
 			Identity.strCompilerRevision !=
 				"artist31470.reconstructed-runtime-program-link-v1" ||
 			Identity.strCandidateBuilderCommitId !=
-				"a85b8b41afb2f2a51bceafa55d06bf0937b1a245" ||
+				"31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
 			Identity.strCandidateBuilderTreeId !=
-				"384ed35ca808ab9a71a4edb703ca4d9121b48c18")
+				"6d8853d989bd71a988eaebf254398ae08599ad0d")
 		{
 			return Reject(strOutError,
 				"Reconstructed execution plan Catalog identity is not frozen.");
@@ -451,9 +471,9 @@ namespace
 			Program.Identity.strProgramSha256 != ARTIST_PROGRAM_SHA256 ||
 			Program.Identity.strCandidateRawSha256 != ARTIST_CANDIDATE_SHA256 ||
 			Program.Identity.strBuilderAuthorityCommitId !=
-				"a85b8b41afb2f2a51bceafa55d06bf0937b1a245" ||
+				"31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
 			Program.Identity.strBuilderAuthorityTreeId !=
-				"384ed35ca808ab9a71a4edb703ca4d9121b48c18" ||
+				"6d8853d989bd71a988eaebf254398ae08599ad0d" ||
 			Program.strCharacterClass != "ARTIST" || Program.iSkillId != 31470u ||
 			Program.strInputSlot != "F" ||
 			Program.strRuntimeCatalogAssetId != ARTIST_EFFECT_ID ||
@@ -1471,6 +1491,25 @@ namespace
 		for (const EFFECT_RUNTIME_PROGRAM_DISTRIBUTION& Source :
 			Program.Distributions)
 		{
+			const std::vector<std::string> BlockedDefaultTokens{
+				"DEFAULT_DEPENDENT_DISTRIBUTION_REQUIRES_TYPED_DEFAULT_POLICY",
+				"DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+				"DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+				"DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+				"INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
+			};
+			const bool_t BlockedDefaultDistribution =
+				Source.eVariant == EFFECT_RUNTIME_DISTRIBUTION_VARIANT::INLINE &&
+				Source.strPayloadStatus == "UNRESOLVED_SEMANTIC_CLOSURE" &&
+				Source.strFidelity == "UNRESOLVED_CROSS_REVISION" &&
+				Source.PreservedBlockers == BlockedDefaultTokens;
+			if (BlockedDefaultDistribution)
+			{
+				strOutError =
+					"Reconstructed execution contains an unresolved default-dependent distribution: " +
+					Source.Row.strId + ".";
+				return false;
+			}
 			const auto Property = Properties.find(Source.strPropertyId);
 			const auto Handler = Handlers.find(Source.strEvaluatorRegistryId);
 			const bool_t Multiply = Source.eVariant ==
@@ -4634,6 +4673,2016 @@ bool_t Client::CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
 	Staged->m_pPreparation = std::move(pPreparation);
 	Staged->m_pProgram = Program;
 	InOutPlan = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> pPreparation,
+	EFFECT_DOCUMENT_DESC& OutDocument,
+	std::string& strOutError,
+	const EFFECT_RECONSTRUCTED_VISUAL_SCOPE eVisualScope)
+{
+	const auto Fail = [&strOutError](const std::string& strReason) -> bool_t
+	{
+		strOutError = "Reconstructed source runtime document rejected: " +
+			strReason;
+		return false;
+	};
+	CEffectReconstructedRuntimeBoundary Boundary;
+	if (!Boundary.Stage(pPreparation, EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT,
+		strOutError))
+	{
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> Program =
+		Boundary.Get_Program();
+	if (nullptr == Program ||
+		(eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ADMITTED_ONLY &&
+		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::V3_MAIN_REVIEW &&
+		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CONDITIONAL_REVIEW &&
+		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ALL_DIAGNOSTIC) ||
+		Program->Admission.bRuntimeExecution ||
+		Program->Admission.bProduct || Program->Emitters.size() != 35u ||
+		Program->ActionSchedules.size() != 7u)
+	{
+		return Fail("the immutable nonProduct Program identity is invalid.");
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> ExecutionPlan;
+	if (!CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+		pPreparation, ExecutionPlan, strOutError) || nullptr == ExecutionPlan ||
+		ExecutionPlan->Get_Program().get() != Program.get())
+	{
+		if (strOutError.empty())
+			strOutError = "Reconstructed source runtime execution plan is invalid.";
+		return false;
+	}
+
+	const EFFECT_RUNTIME_PROGRAM_INPUT_ARTIFACT* SourceCandidate =
+		Find_UniqueProgramRowById(Program->InputArtifacts, "sourceCandidate");
+	if (nullptr == SourceCandidate || SourceCandidate->strSchema !=
+			"lostark.effect-authoring" ||
+		SourceCandidate->strVersionField != "version" ||
+		SourceCandidate->iVersionValue !=
+			EFFECT_SOURCE_CONTRACT_FORMAT_VERSION ||
+		SourceCandidate->strHashDomain != "GIT_OBJECT_CANONICAL_LF_JSON" ||
+		SourceCandidate->strPath.rfind("Data/", 0u) != 0u ||
+		SourceCandidate->strPath.find('\\') != std::string::npos ||
+		SourceCandidate->strTrackedTextSha256.size() != 64u)
+	{
+		return Fail("the sourceCandidate artifact contract is invalid.");
+	}
+	const std::filesystem::path CandidatePath = CProjectDataRoot::Resolve(
+		std::filesystem::path(SourceCandidate->strPath.substr(5u)));
+	std::error_code PathError;
+	if (CandidatePath.empty() ||
+		!std::filesystem::is_regular_file(CandidatePath, PathError) || PathError)
+	{
+		return Fail("the tracked native-v14 sourceCandidate file is missing.");
+	}
+	std::ifstream CandidateStream(CandidatePath, std::ios::binary);
+	if (!CandidateStream)
+		return Fail("the tracked native-v14 sourceCandidate file cannot be read.");
+	const std::string CandidateBytes{
+		std::istreambuf_iterator<char>(CandidateStream),
+		std::istreambuf_iterator<char>() };
+	if (CandidateStream.bad() || CandidateBytes.empty())
+	{
+		return Fail("the single-read sourceCandidate bytes are empty or invalid.");
+	}
+	std::string CanonicalCandidateBytes;
+	CanonicalCandidateBytes.reserve(CandidateBytes.size());
+	for (size_t i = 0u; i < CandidateBytes.size(); ++i)
+	{
+		if ('\r' != CandidateBytes[i])
+		{
+			CanonicalCandidateBytes.push_back(CandidateBytes[i]);
+			continue;
+		}
+		if (i + 1u >= CandidateBytes.size() || '\n' != CandidateBytes[i + 1u])
+			return Fail("sourceCandidate contains a non-canonical lone CR byte.");
+		CanonicalCandidateBytes.push_back('\n');
+		++i;
+	}
+	if (CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+		CanonicalCandidateBytes) != SourceCandidate->strTrackedTextSha256)
+	{
+		return Fail("the single-read sourceCandidate canonical-LF bytes do not "
+			"match the tracked text SHA-256.");
+	}
+
+	EFFECT_DOCUMENT_DESC StagedDocument;
+	if (!CEffectDocumentCodec::Parse(
+		CandidateBytes, StagedDocument, strOutError))
+	{
+		return false;
+	}
+	if (!CEffectDocumentCodec::Validate_SourceContract(
+		StagedDocument, strOutError))
+	{
+		return false;
+	}
+	if (StagedDocument.Elements.size() != Program->Emitters.size())
+		return Fail("native-v14 and Program emitter denominators differ.");
+
+	const auto AssignF32 = [&Fail](const double fValue, f32_t& fOut,
+		const std::string_view strField) -> bool_t
+	{
+		if (!std::isfinite(fValue) ||
+			std::abs(fValue) >
+				static_cast<double>((std::numeric_limits<f32_t>::max)()))
+		{
+			return Fail(std::string(strField) + " is not a finite f32 value.");
+		}
+		fOut = static_cast<f32_t>(fValue);
+		return std::isfinite(fOut) ? true :
+			Fail(std::string(strField) + " did not survive f32 conversion.");
+	};
+	const auto AssignF2 = [&AssignF32](const std::array<double, 2u>& Value,
+		float2_t& Out, const std::string_view strField) -> bool_t
+	{
+		return AssignF32(Value[0u], Out.x, strField) &&
+			AssignF32(Value[1u], Out.y, strField);
+	};
+	const auto AssignF3 = [&AssignF32](const std::array<double, 3u>& Value,
+		float3_t& Out, const std::string_view strField) -> bool_t
+	{
+		return AssignF32(Value[0u], Out.x, strField) &&
+			AssignF32(Value[1u], Out.y, strField) &&
+			AssignF32(Value[2u], Out.z, strField);
+	};
+	const auto AssignF4 = [&AssignF32](const std::array<double, 4u>& Value,
+		float4_t& Out, const std::string_view strField) -> bool_t
+	{
+		return AssignF32(Value[0u], Out.x, strField) &&
+			AssignF32(Value[1u], Out.y, strField) &&
+			AssignF32(Value[2u], Out.z, strField) &&
+			AssignF32(Value[3u], Out.w, strField);
+	};
+	const auto Lower = [](std::string Value)
+	{
+		std::transform(Value.begin(), Value.end(), Value.begin(),
+			[](const unsigned char Character)
+			{
+				return static_cast<char>(std::tolower(Character));
+			});
+		return Value;
+	};
+	const auto EqualsNoCase = [&Lower](const std::string_view Left,
+		const std::string_view Right)
+	{
+		return Lower(std::string(Left)) == Lower(std::string(Right));
+	};
+	const auto ResolveParameterDistribution =
+		[&Fail, &EqualsNoCase](
+			const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Source,
+			std::array<double, 4u>& OutValue) -> bool_t
+	{
+		if (Source.iComponentCount == 0u || Source.iComponentCount > 4u ||
+			Source.ParamModes.size() != Source.iComponentCount ||
+			Source.MinimumInput.size() != Source.iComponentCount ||
+			Source.MaximumInput.size() != Source.iComponentCount ||
+			Source.MinimumOutput.size() != Source.iComponentCount ||
+			Source.MaximumOutput.size() != Source.iComponentCount ||
+			Source.ConstantValues.size() != Source.iComponentCount)
+		{
+			return Fail("parameter distribution shape is not exhaustive.");
+		}
+		std::optional<std::vector<double>> BoundInput;
+		for (const EFFECT_RUNTIME_PROGRAM_ACTION_CUE_VALUE& Binding :
+			Source.ActionCueBindings)
+		{
+			if (!EqualsNoCase(Binding.strName, Source.strParameterName))
+				continue;
+			if (Source.iComponentCount == 1u &&
+				Binding.eKind == EFFECT_RUNTIME_ACTION_CUE_VALUE_KIND::SCALAR &&
+				Binding.fScalarValue.has_value())
+			{
+				BoundInput = std::vector<double>{ *Binding.fScalarValue };
+				break;
+			}
+			if (Source.iComponentCount > 1u &&
+				Binding.eKind == EFFECT_RUNTIME_ACTION_CUE_VALUE_KIND::VECTOR &&
+				Binding.VectorValue.size() >= Source.iComponentCount)
+			{
+				BoundInput = std::vector<double>(Binding.VectorValue.begin(),
+					Binding.VectorValue.begin() + Source.iComponentCount);
+				break;
+			}
+			/* The frozen source contract has one intentional scalar/vector kind
+			   mismatch (PointLight Size scalar -> vector StartSize).  Native
+			   ParticleParameter semantics use the distribution constant in this
+			   branch; never coerce the scalar into a vector. */
+			continue;
+		}
+		OutValue.fill(0.0);
+		for (uint32_t i = 0u; i < Source.iComponentCount; ++i)
+		{
+			if (!BoundInput.has_value())
+			{
+				OutValue[i] = Source.ConstantValues[i];
+			}
+			else if (Source.ParamModes[i] == "dpm_direct")
+			{
+				OutValue[i] = (*BoundInput)[i];
+			}
+			else if (Source.ParamModes[i] == "dpm_normal")
+			{
+				const double fInputRange =
+					Source.MaximumInput[i] - Source.MinimumInput[i];
+				const double fRatio = 0.0 == fInputRange ? 0.0 : std::clamp(
+					((*BoundInput)[i] - Source.MinimumInput[i]) / fInputRange,
+					0.0, 1.0);
+				OutValue[i] = std::lerp(
+					Source.MinimumOutput[i], Source.MaximumOutput[i], fRatio);
+			}
+			else
+			{
+				return Fail("parameter distribution mode is unsupported.");
+			}
+			if (!std::isfinite(OutValue[i]) ||
+				std::abs(OutValue[i]) >
+					static_cast<double>((std::numeric_limits<f32_t>::max)()))
+			{
+				return Fail("parameter distribution result is not finite f32.");
+			}
+		}
+		return true;
+	};
+	const auto RendererMatches = [](const EFFECT_RUNTIME_RENDERER_KIND eRuntime,
+		const EFFECT_ELEMENT_DESC& Element)
+	{
+		switch (eRuntime)
+		{
+		case EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE:
+			return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE:
+			return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::SPRITE_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE:
+			return Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON:
+			return Element.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::CASCADE_RIBBON;
+		case EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE:
+			return Element.eKind == EFFECT_ELEMENT_KIND::LIGHT &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::LIGHT_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST:
+			return Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::SCREEN_POST;
+		default:
+			return false;
+		}
+	};
+	const auto ResolveSourceSubUVProjection = [&Fail, &Lower](
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutMode,
+		bool_t& bOutRandom2x2,
+		bool_t& bOutLinearBlend6x6) -> bool_t
+	{
+		strOutMode = "none";
+		bOutRandom2x2 = false;
+		bOutLinearBlend6x6 = false;
+		const EFFECT_SOURCE_MODULE_DESC* Required = nullptr;
+		const EFFECT_SOURCE_MODULE_DESC* SubUV = nullptr;
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			const std::string strClass = Lower(Module.strClassName);
+			if (strClass == "particlemodulerequired")
+			{
+				if (nullptr != Required)
+					return Fail("a source emitter has duplicate Required modules.");
+				Required = &Module;
+			}
+			else if (strClass == "particlemodulesubuv")
+			{
+				if (nullptr != SubUV)
+					return Fail("a source emitter has duplicate ParticleModuleSubUV modules.");
+				SubUV = &Module;
+			}
+		}
+		if (nullptr == SubUV)
+			return true;
+		if (Emitter.eRenderer != EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE ||
+			nullptr == Required || !Element.SourceRecipe.bEnabled)
+		{
+			return Fail("ParticleModuleSubUV is not owned by one Sprite emitter with "
+				"one Required module.");
+		}
+
+		const auto FindLiteral = [](const EFFECT_SOURCE_MODULE_DESC& Module,
+			const std::string_view strPropertyPath,
+			size_t& iOutCount) -> const EFFECT_SOURCE_LITERAL_DESC*
+		{
+			iOutCount = 0u;
+			const EFFECT_SOURCE_LITERAL_DESC* Found = nullptr;
+			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+			{
+				if (Literal.strPropertyPath != strPropertyPath)
+					continue;
+				++iOutCount;
+				Found = &Literal;
+			}
+			return Found;
+		};
+		size_t iInterpolationCount = 0u;
+		size_t iColumnsCount = 0u;
+		size_t iRowsCount = 0u;
+		size_t iRandomImageTimeCount = 0u;
+		size_t iAllowFlipCount = 0u;
+		size_t iSquareFlipCount = 0u;
+		const EFFECT_SOURCE_LITERAL_DESC* Interpolation = FindLiteral(
+			*Required, "interpolationmethod", iInterpolationCount);
+		const EFFECT_SOURCE_LITERAL_DESC* Columns = FindLiteral(
+			*Required, "subimages_horizontal", iColumnsCount);
+		const EFFECT_SOURCE_LITERAL_DESC* Rows = FindLiteral(
+			*Required, "subimages_vertical", iRowsCount);
+		const EFFECT_SOURCE_LITERAL_DESC* RandomImageTime = FindLiteral(
+			*Required, "randomimagetime", iRandomImageTimeCount);
+		const EFFECT_SOURCE_LITERAL_DESC* AllowFlip = FindLiteral(
+			*Required, "ballowimageflipping", iAllowFlipCount);
+		const EFFECT_SOURCE_LITERAL_DESC* SquareFlip = FindLiteral(
+			*Required, "bsquareimageflipping", iSquareFlipCount);
+		if (iInterpolationCount != 1u || iColumnsCount != 1u ||
+			iRowsCount != 1u || iRandomImageTimeCount != 1u ||
+			iAllowFlipCount != 1u || iSquareFlipCount > 1u ||
+			nullptr == Interpolation || nullptr == Columns || nullptr == Rows ||
+			nullptr == RandomImageTime || nullptr == AllowFlip ||
+			Interpolation->eKind != EFFECT_SOURCE_LITERAL_KIND::STRING ||
+			Columns->eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+			Rows->eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+			RandomImageTime->eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+			AllowFlip->eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN ||
+			(nullptr != SquareFlip &&
+			 SquareFlip->eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN) ||
+			!std::isfinite(Columns->fNumber) ||
+			!std::isfinite(Rows->fNumber) ||
+			!std::isfinite(RandomImageTime->fNumber))
+		{
+			return Fail("ParticleModuleSubUV Required literals are incomplete or "
+				"not exactly typed.");
+		}
+		if (SubUV->Distributions.size() != 1u)
+			return Fail("ParticleModuleSubUV must own exactly one distribution.");
+		const EFFECT_DISTRIBUTION_DESC& SubImageIndex =
+			SubUV->Distributions.front();
+		if (SubImageIndex.strPropertyPath != "subimageindex" ||
+			SubImageIndex.iComponentCount != 1u ||
+			SubImageIndex.iOperation != 1u ||
+			SubImageIndex.iRandomLockAxes != 0u ||
+			SubImageIndex.iLookupTableChunkSize != 1u ||
+			SubImageIndex.iLookupTableNumElements != 1u ||
+			!std::isfinite(SubImageIndex.fLookupTableTimeScale) ||
+			!std::isfinite(SubImageIndex.fLookupTableStartTime) ||
+			SubImageIndex.fLookupTableStartTime != 0.f ||
+			!SubImageIndex.Keys.empty() || SubImageIndex.LookupTable.empty() ||
+			!std::all_of(SubImageIndex.LookupTable.begin(),
+				SubImageIndex.LookupTable.end(), [](const f32_t fValue)
+				{
+					return std::isfinite(fValue);
+				}))
+		{
+			return Fail("ParticleModuleSubUV SubImageIndex distribution is "
+				"incomplete or unsupported.");
+		}
+
+		const bool_t bSquareFlip = nullptr != SquareFlip &&
+			SquareFlip->bBoolean;
+		if (Interpolation->strString == "psuvim_random")
+		{
+			const std::vector<f32_t> ExpectedLookup{ 0.f, 3.f, 0.f, 3.f };
+			if (Columns->fNumber != 2.0 || Rows->fNumber != 2.0 ||
+				RandomImageTime->fNumber != 1.0 || !AllowFlip->bBoolean ||
+				iSquareFlipCount != 0u ||
+				SubImageIndex.fLookupTableTimeScale != 1.f ||
+				SubImageIndex.LookupTable != ExpectedLookup)
+			{
+				return Fail("the Artist F random SubUV source is not the exact 2x2 "
+					"0..3 recipe.");
+			}
+			bOutRandom2x2 = true;
+			strOutMode = "psuvim_random";
+		}
+		else if (Interpolation->strString == "psuvim_linear_blend")
+		{
+			const bool_t bMonotonicSamples = SubImageIndex.LookupTable.size() == 23u &&
+				std::is_sorted(SubImageIndex.LookupTable.begin() + 2u,
+					SubImageIndex.LookupTable.end());
+			if (Columns->fNumber != 6.0 || Rows->fNumber != 6.0 ||
+				RandomImageTime->fNumber != 1.0 || !AllowFlip->bBoolean ||
+				iSquareFlipCount != 1u || !bSquareFlip ||
+				SubImageIndex.fLookupTableTimeScale != 20.f ||
+				!bMonotonicSamples || SubImageIndex.LookupTable[0u] != 10.f ||
+				SubImageIndex.LookupTable[1u] != 35.f ||
+				SubImageIndex.LookupTable[2u] != 10.f ||
+				SubImageIndex.LookupTable.back() != 35.f)
+			{
+				return Fail("the Artist F linear-blend SubUV source is not the exact "
+					"6x6 10..35 recipe.");
+			}
+			bOutLinearBlend6x6 = true;
+			strOutMode = "psuvim_linear_blend_random_flip_square";
+		}
+		else
+		{
+			return Fail("ParticleModuleSubUV interpolation method is unsupported.");
+		}
+
+		return true;
+	};
+
+	std::unordered_map<std::string, EFFECT_ELEMENT_DESC*> ElementsById;
+	ElementsById.reserve(StagedDocument.Elements.size());
+	for (EFFECT_ELEMENT_DESC& Element : StagedDocument.Elements)
+	{
+		if (!ElementsById.emplace(Element.strElementId, &Element).second)
+			return Fail("native-v14 contains a duplicate Element identity.");
+	}
+	std::unordered_map<std::string, std::string> ElementIdsByEmitterId;
+	ElementIdsByEmitterId.reserve(Program->Emitters.size());
+	for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter : Program->Emitters)
+	{
+		if (!ElementIdsByEmitterId.emplace(
+			Emitter.Row.strId, Emitter.strSourceElementId).second)
+		{
+			return Fail("Program contains a duplicate emitter identity.");
+		}
+	}
+
+	std::unordered_set<std::string> CoveredElements;
+	std::unordered_set<std::string> CoveredOccurrences;
+	std::unordered_set<std::string> CoveredTextureResources;
+	std::unordered_set<std::string> CoveredGeometryUses;
+	uint32_t iOneLayerRuntimeTextureProjectionCount = 0u;
+	uint32_t iParameterDistributionOverlayCount = 0u;
+	uint32_t iCurveDistributionOverlayCount = 0u;
+	uint32_t iClearedDistributionReferenceCount = 0u;
+	uint32_t iSpriteEmitterCount = 0u;
+	uint32_t iSpriteIdentitySubUVCount = 0u;
+	uint32_t iSourceSubUVProjectionCount = 0u;
+	uint32_t iRandom2x2SubUVCount = 0u;
+	uint32_t iLinearBlend6x6SubUVCount = 0u;
+	uint32_t iMaterialSubUVProjectionCount = 0u;
+	uint32_t iMainCompositeMaterialProjectionCount = 0u;
+	uint32_t iMissileTrailFiniteProfileProjectionCount = 0u;
+	uint32_t iReconstructedEvaluatorMaterialProjectionCount = 0u;
+	uint32_t iRuntimeMaterialV2ProfileProjectionCount = 0u;
+	uint32_t iTypedRibbonGeometryProjectionCount = 0u;
+	uint32_t iTypedLightParticleInputProjectionCount = 0u;
+	uint32_t iTypedRendererProjectionCount = 0u;
+	for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter : Program->Emitters)
+	{
+		const auto ElementIterator = ElementsById.find(Emitter.strSourceElementId);
+		const EFFECT_RUNTIME_PROGRAM_ACTION_SCHEDULE* Schedule =
+			Find_UniqueProgramRowById(
+				Program->ActionSchedules, Emitter.strScheduleId);
+		if (ElementIterator == ElementsById.end() || nullptr == Schedule ||
+			!CoveredElements.emplace(Emitter.strSourceElementId).second)
+		{
+			return Fail("one Program emitter cannot be joined to exactly one "
+				"Element and schedule.");
+		}
+		EFFECT_ELEMENT_DESC& Element = *ElementIterator->second;
+		if (Element.strSourceNode != Emitter.strSourceNode ||
+			!RendererMatches(Emitter.eRenderer, Element) ||
+			Element.SourceRecipe.CompilerEvidence.strSourceOccurrenceId !=
+				Emitter.strSourceOccurrenceId ||
+			Element.SourceRecipe.CompilerEvidence.strSourceSystemId !=
+				Emitter.strSourceSystemId ||
+			Element.SourceRecipe.CompilerEvidence.strSourceEmitterPath !=
+				Emitter.strSourceEmitterPath ||
+			Schedule->strSourceOccurrenceId != Emitter.strSourceOccurrenceId ||
+			Schedule->strSourceSystemId != Emitter.strSourceSystemId)
+		{
+			return Fail("native-v14 Element provenance differs from its "
+				"Program emitter/schedule join.");
+		}
+		const EFFECT_SOURCE_SPACE eExpectedSourceSpace =
+			Emitter.eRenderer == EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST ?
+				EFFECT_SOURCE_SPACE::SCREEN_SPACE_V1 :
+				EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		const std::string_view strExpectedSourceSpace =
+			Emitter.eRenderer == EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST ?
+				"screenSpaceV1" : "ue3CascadeV1";
+		if (Emitter.strRendererSourceSpace != strExpectedSourceSpace ||
+			Element.Renderer.eSourceSpace != eExpectedSourceSpace)
+			return Fail("native-v14 renderer source space differs from Program.");
+
+		/* The immutable Program explicitly remains non-Product and has zero sealed
+		   human approvals.  A versioned shader route alone is not restoration:
+		   this conditional set also includes the typed finite/special families.
+		   Complete therefore stays empty, while V3 main review narrows the audition
+		   to the short #9/#10 core and #11 outer carrier stack. */
+		const bool_t bConditionalReview =
+			Emitter.Row.iOrder == 3u || Emitter.Row.iOrder == 4u ||
+			Emitter.Row.iOrder == 9u || Emitter.Row.iOrder == 10u ||
+			Emitter.Row.iOrder == 11u || Emitter.Row.iOrder == 16u ||
+			Emitter.Row.iOrder == 17u ||
+			Emitter.Row.iOrder == 22u || Emitter.Row.iOrder == 23u ||
+			Emitter.Row.iOrder == 30u || Emitter.Row.iOrder == 31u ||
+			Emitter.Row.iOrder == 32u || Emitter.Row.iOrder == 34u;
+		const bool_t bV3MainReview = Emitter.Row.iOrder == 9u ||
+			Emitter.Row.iOrder == 10u || Emitter.Row.iOrder == 11u;
+		Element.bVisible = Emitter.bVisible &&
+			(eVisualScope == EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ALL_DIAGNOSTIC ||
+			 (eVisualScope ==
+				 EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CONDITIONAL_REVIEW &&
+			  bConditionalReview) ||
+			 (eVisualScope == EFFECT_RECONSTRUCTED_VISUAL_SCOPE::V3_MAIN_REVIEW &&
+			  bV3MainReview));
+		if (!AssignF32(Schedule->fGlobalTimeSeconds,
+			Element.Detail.Timing.fStartDelaySeconds, "schedule start") ||
+			(Schedule->fDurationSeconds > 0.0 &&
+			 !AssignF32(Schedule->fDurationSeconds,
+				 Element.Detail.Timing.fLifeTimeSeconds, "schedule duration")) ||
+			!AssignF32(Emitter.Timing.fEmitterDelaySeconds,
+				Element.SourceRecipe.fEmitterDelaySeconds, "emitter delay") ||
+			!AssignF32(Emitter.Timing.fEmitterDurationSeconds,
+				Element.SourceRecipe.fEmitterDurationSeconds, "emitter duration"))
+		{
+			return false;
+		}
+		Element.SourceRecipe.bEnabled = Emitter.bSourceRecipeEnabled;
+		Element.SourceRecipe.iSourcePeakActiveParticles =
+			Emitter.iSourcePeakActiveParticles;
+		Element.SourceRecipe.iEmitterLoopCount = Emitter.Timing.iEmitterLoopCount;
+		Element.SourceRecipe.Bursts.clear();
+		Element.SourceRecipe.Bursts.reserve(Emitter.Timing.Bursts.size());
+		for (const EFFECT_RUNTIME_PROGRAM_BURST& Burst : Emitter.Timing.Bursts)
+		{
+			EFFECT_PARTICLE_BURST_DESC StagedBurst;
+			if (Burst.iCountMinimum > Burst.iCountMaximum ||
+				!AssignF32(Burst.fTimeSeconds, StagedBurst.fTimeSeconds,
+					"emitter burst time"))
+			{
+				return false;
+			}
+			StagedBurst.iCountMinimum = Burst.iCountMinimum;
+			StagedBurst.iCountMaximum = Burst.iCountMaximum;
+			Element.SourceRecipe.Bursts.push_back(std::move(StagedBurst));
+		}
+		if (Emitter.iOperationalMaxParticles > 0u)
+			Element.Detail.Particle.iMaxParticles =
+				Emitter.iOperationalMaxParticles;
+		if (0u == Emitter.Random.iEmitterRandomSeed)
+			return Fail("Program emitter random seed is zero.");
+		uint32_t iStableElementHash = 2166136261u;
+		for (const unsigned char Character : Element.strElementId)
+		{
+			iStableElementHash ^= Character;
+			iStableElementHash *= 16777619u;
+		}
+		if (0u == iStableElementHash)
+			iStableElementHash = 1u;
+		Element.Detail.Particle.iRandomSeed =
+			iStableElementHash ^ Emitter.Random.iEmitterRandomSeed;
+		if (0u == Element.Detail.Particle.iRandomSeed)
+			return Fail("the Playback seed inverse produced an invalid zero seed.");
+		Element.Detail.Particle.bLocalSpace = Emitter.bLocalSpace;
+
+		const auto PlanEmitterIterator =
+			ExecutionPlan->Get_Emitters().find(Emitter.Row.strId);
+		if (PlanEmitterIterator == ExecutionPlan->Get_Emitters().end() ||
+			PlanEmitterIterator->second.ModuleIds.size() !=
+				Element.SourceRecipe.Modules.size())
+		{
+			return Fail("source recipe module order differs from the compiled "
+				"execution plan.");
+		}
+		for (size_t iModule = 0u;
+			iModule < Element.SourceRecipe.Modules.size(); ++iModule)
+		{
+			EFFECT_SOURCE_MODULE_DESC& SourceModule =
+				Element.SourceRecipe.Modules[iModule];
+			const auto PlanModuleIterator = ExecutionPlan->Get_Modules().find(
+				PlanEmitterIterator->second.ModuleIds[iModule]);
+			if (PlanModuleIterator == ExecutionPlan->Get_Modules().end() ||
+				PlanModuleIterator->second.strExactSourceClass !=
+					SourceModule.strClassName ||
+				PlanModuleIterator->second.DistributionIds.size() !=
+					SourceModule.Distributions.size())
+			{
+				return Fail("source recipe module/distribution membership differs "
+					"from the compiled execution plan.");
+			}
+			std::unordered_map<std::string,
+				const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION*>
+				PlanDistributionsByPropertyPath;
+			PlanDistributionsByPropertyPath.reserve(
+				PlanModuleIterator->second.DistributionIds.size());
+			for (const std::string& DistributionId :
+				PlanModuleIterator->second.DistributionIds)
+			{
+				const auto DistributionIterator =
+					ExecutionPlan->Get_Distributions().find(DistributionId);
+				const EFFECT_RUNTIME_PROGRAM_DISTRIBUTION* ProgramDistribution =
+					Find_UniqueProgramRowById(
+						Program->Distributions, DistributionId);
+				if (DistributionIterator ==
+						ExecutionPlan->Get_Distributions().end() ||
+					nullptr == ProgramDistribution ||
+					DistributionIterator->second.strPropertyId.empty() ||
+					ProgramDistribution->strPropertyPath.empty() ||
+					!PlanDistributionsByPropertyPath.emplace(
+						ProgramDistribution->strPropertyPath,
+						&DistributionIterator->second).second)
+				{
+					return Fail("compiled execution plan module has a missing or "
+						"duplicate distribution property path.");
+				}
+			}
+			std::unordered_set<std::string> CoveredDistributionPropertyPaths;
+			for (size_t iDistribution = 0u;
+				iDistribution < SourceModule.Distributions.size(); ++iDistribution)
+			{
+				EFFECT_DISTRIBUTION_DESC& Destination =
+					SourceModule.Distributions[iDistribution];
+				const auto PlanDistributionIterator =
+					PlanDistributionsByPropertyPath.find(Destination.strPropertyPath);
+				if (PlanDistributionIterator ==
+						PlanDistributionsByPropertyPath.end() ||
+					!CoveredDistributionPropertyPaths.emplace(
+						Destination.strPropertyPath).second)
+				{
+					return Fail("source distribution property path is missing or "
+						"duplicated in the compiled execution plan module.");
+				}
+				const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Source =
+					*PlanDistributionIterator->second;
+				const bool_t bParameterBacked =
+					Source.eVariant ==
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_PARAMETER ||
+					Source.eVariant ==
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::VECTOR_PARAMETER ||
+					Source.eVariant == EFFECT_RUNTIME_DISTRIBUTION_VARIANT::EF_MULTIPLY;
+				if (bParameterBacked)
+				{
+					std::array<double, 4u> Resolved{};
+					if (!ResolveParameterDistribution(Source, Resolved))
+						return false;
+					float4_t Value{};
+					for (uint32_t i = 0u; i < Source.iComponentCount; ++i)
+						(&Value.x)[i] = static_cast<f32_t>(Resolved[i]);
+					Destination.iOperation = 1u;
+					Destination.iRandomLockAxes = 0u;
+					Destination.iLookupTableChunkSize = 0u;
+					Destination.iLookupTableNumElements = 0u;
+					Destination.fLookupTableTimeScale = 0.f;
+					Destination.fLookupTableStartTime = 0.f;
+					Destination.vDefaultMinimum = Value;
+					Destination.vDefaultMaximum = Value;
+					Destination.LookupTable.clear();
+					Destination.Keys.clear();
+					++iParameterDistributionOverlayCount;
+				}
+				else if (Source.eVariant ==
+					EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_CURVE)
+				{
+					if (Source.CurveKeys.empty())
+						return Fail("the referenced float curve has no typed keys.");
+					Destination.Keys.clear();
+					Destination.Keys.reserve(Source.CurveKeys.size());
+					for (const EFFECT_RUNTIME_PROGRAM_DISTRIBUTION_CURVE_KEY& Key :
+						Source.CurveKeys)
+					{
+						EFFECT_DISTRIBUTION_KEY_DESC StagedKey;
+						if (!AssignF32(Key.fTime, StagedKey.fTime,
+								"distribution curve time") ||
+							!AssignF4(Key.vMinimum, StagedKey.vMinimum,
+								"distribution curve minimum") ||
+							!AssignF4(Key.vMaximum, StagedKey.vMaximum,
+								"distribution curve maximum") ||
+							!AssignF4(Key.vArriveTangentMinimum,
+								StagedKey.vArriveTangentMinimum,
+								"distribution curve arrive minimum") ||
+							!AssignF4(Key.vLeaveTangentMinimum,
+								StagedKey.vLeaveTangentMinimum,
+								"distribution curve leave minimum") ||
+							!AssignF4(Key.vArriveTangentMaximum,
+								StagedKey.vArriveTangentMaximum,
+								"distribution curve arrive maximum") ||
+							!AssignF4(Key.vLeaveTangentMaximum,
+								StagedKey.vLeaveTangentMaximum,
+								"distribution curve leave maximum"))
+						{
+							return false;
+						}
+						StagedKey.eInterpolation =
+							Key.eInterpolation ==
+								EFFECT_RUNTIME_DISTRIBUTION_CURVE_INTERPOLATION::CUBIC ?
+								EFFECT_DISTRIBUTION_INTERPOLATION::CUBIC :
+								EFFECT_DISTRIBUTION_INTERPOLATION::LINEAR;
+						Destination.Keys.push_back(std::move(StagedKey));
+					}
+					++iCurveDistributionOverlayCount;
+				}
+				if (!Destination.strReferenceId.empty())
+				{
+					if (!bParameterBacked && Source.eVariant !=
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_CURVE)
+					{
+						return Fail("a referenced distribution lacks a typed Program "
+							"overlay.");
+					}
+					Destination.strReferenceId.clear();
+					Destination.strOccurrenceId.clear();
+					Destination.strPayloadStatus.clear();
+					Destination.strFidelity.clear();
+					Destination.ExecutionAdmission = {};
+					Destination.eParameterBinding =
+						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
+					Destination.strParameterName.clear();
+					++iClearedDistributionReferenceCount;
+				}
+			}
+			if (CoveredDistributionPropertyPaths.size() !=
+				PlanDistributionsByPropertyPath.size())
+			{
+				return Fail("source distribution property membership is not "
+					"exhaustive for the compiled execution plan module.");
+			}
+		}
+		std::string strProjectedSubUVMode;
+		bool_t bRandom2x2SubUV = false;
+		bool_t bLinearBlend6x6SubUV = false;
+		if (!ResolveSourceSubUVProjection(Emitter, Element,
+			strProjectedSubUVMode, bRandom2x2SubUV,
+			bLinearBlend6x6SubUV))
+		{
+			return false;
+		}
+		if (Emitter.eRenderer == EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE)
+		{
+			++iSpriteEmitterCount;
+			if (!bRandom2x2SubUV && !bLinearBlend6x6SubUV)
+				++iSpriteIdentitySubUVCount;
+		}
+		if (bRandom2x2SubUV || bLinearBlend6x6SubUV)
+			++iSourceSubUVProjectionCount;
+		if (bRandom2x2SubUV)
+			++iRandom2x2SubUVCount;
+		if (bLinearBlend6x6SubUV)
+			++iLinearBlend6x6SubUVCount;
+		Element.SourceRecipe.LocalReferenceBindings.clear();
+		Element.SourceRecipe.CompilerEvidence.ParameterOverrides.clear();
+
+		const EFFECT_RUNTIME_PROGRAM_RENDERER_CONFIG& Renderer =
+			Emitter.RendererRuntimeConfig;
+		if (Renderer.Color.has_value())
+		{
+			const auto& Source = *Renderer.Color;
+			if (!AssignF4(Source.vOffset, Element.Detail.Color.vColorOffset,
+					"renderer color offset") ||
+				!AssignF4(Source.vMultiply, Element.Detail.Color.vColorMultiply,
+					"renderer color multiply") ||
+				!AssignF32(Source.fClip, Element.Detail.Color.fColorClip,
+					"renderer color clip") ||
+				!AssignF32(Source.fEmissiveIntensity,
+					Element.Detail.Color.fEmissiveIntensity,
+					"renderer emissive intensity") ||
+				!AssignF32(Source.fDistortionIntensity,
+					Element.Detail.Color.fDistortionIntensity,
+					"renderer distortion intensity") ||
+				!AssignF32(Source.fRadialTime,
+					Element.Detail.Color.fRadialTime, "renderer radial time") ||
+				!AssignF32(Source.fRadialIntensity,
+					Element.Detail.Color.fRadialIntensity,
+					"renderer radial intensity"))
+			{
+				return false;
+			}
+			Element.Detail.Color.bDistortionOnBaseMaterial =
+				Source.bDistortionOnBaseMaterial;
+		}
+		if (Renderer.Uv.has_value())
+		{
+			const auto& Source = *Renderer.Uv;
+			if (Source.iTileColumns == 0u || Source.iTileRows == 0u ||
+				Source.iTileColumns >
+					static_cast<uint32_t>((std::numeric_limits<int32_t>::max)()) ||
+				Source.iTileRows >
+					static_cast<uint32_t>((std::numeric_limits<int32_t>::max)()) ||
+				Source.iTileIndex >
+					static_cast<uint32_t>((std::numeric_limits<int32_t>::max)()) ||
+				!AssignF2(Source.vStart, Element.Detail.UV.vStart,
+					"renderer UV start") ||
+				!AssignF2(Source.vSpeed, Element.Detail.UV.vSpeed,
+					"renderer UV speed") ||
+				!AssignF2(Source.vWaveAmplitude,
+					Element.Detail.UV.vWaveAmplitude,
+					"renderer UV wave amplitude") ||
+				!AssignF32(Source.fWaveFrequency,
+					Element.Detail.UV.fWaveFrequency,
+					"renderer UV wave frequency") ||
+				!AssignF32(Source.fSequenceTerm,
+					Element.Detail.UV.fSequenceTerm,
+					"renderer UV sequence term"))
+			{
+				return false;
+			}
+			Element.Detail.UV.bWave = Source.bWave;
+			Element.Detail.UV.bSequence = Source.bSequence;
+			Element.Detail.UV.bLoop = Source.bLoop;
+			Element.Detail.UV.iTileColumns =
+				static_cast<int32_t>(Source.iTileColumns);
+			Element.Detail.UV.iTileRows =
+				static_cast<int32_t>(Source.iTileRows);
+			Element.Detail.UV.iTileIndex =
+				static_cast<int32_t>(Source.iTileIndex);
+		}
+		if (Renderer.LinearLerp.has_value())
+		{
+			const auto& Source = *Renderer.LinearLerp;
+			if (!AssignF3(Source.vEndPosition,
+					Element.Detail.LinearLerp.vEndPosition,
+					"renderer end position") ||
+				!AssignF3(Source.vEndRotationDegrees,
+					Element.Detail.LinearLerp.vEndRotationDegrees,
+					"renderer end rotation") ||
+				!AssignF3(Source.vEndRevolutionDegreesPerSecond,
+					Element.Detail.LinearLerp.vEndRevolutionDegreesPerSecond,
+					"renderer end revolution") ||
+				!AssignF3(Source.vEndScale,
+					Element.Detail.LinearLerp.vEndScale,
+					"renderer end scale") ||
+				!AssignF3(Source.vEndVelocityPerSecond,
+					Element.Detail.LinearLerp.vEndVelocityPerSecond,
+					"renderer end velocity") ||
+				!AssignF4(Source.vEndColorOffset,
+					Element.Detail.LinearLerp.vEndColorOffset,
+					"renderer end color offset") ||
+				!AssignF4(Source.vEndColorMultiply,
+					Element.Detail.LinearLerp.vEndColorMultiply,
+					"renderer end color multiply") ||
+				!AssignF32(Source.fEndEmissiveIntensity,
+					Element.Detail.LinearLerp.fEndEmissiveIntensity,
+					"renderer end emissive"))
+			{
+				return false;
+			}
+			Element.Detail.LinearLerp.bPosition = Source.bPosition;
+			Element.Detail.LinearLerp.bRotation = Source.bRotation;
+			Element.Detail.LinearLerp.bRevolution = Source.bRevolution;
+			Element.Detail.LinearLerp.bScale = Source.bScale;
+			Element.Detail.LinearLerp.bVelocity = Source.bVelocity;
+			Element.Detail.LinearLerp.bColorOffset = Source.bColorOffset;
+			Element.Detail.LinearLerp.bColorMultiply = Source.bColorMultiply;
+			Element.Detail.LinearLerp.bEmissiveIntensity =
+				Source.bEmissiveIntensity;
+		}
+		if (Renderer.Mesh.has_value())
+			Element.Detail.Mesh.bUseModelMaterial =
+				Renderer.Mesh->bUseModelMaterial;
+		if (Renderer.Sprite.has_value())
+		{
+			Element.Detail.Sprite.bBillboard = Renderer.Sprite->bBillboard;
+			if (!AssignF32(Renderer.Sprite->fBillboardRollDegrees,
+				Element.Detail.Sprite.fBillboardRollDegrees,
+				"renderer billboard roll"))
+			{
+				return false;
+			}
+		}
+		if (Renderer.Decal.has_value() &&
+			(!AssignF2(Renderer.Decal->vSize, Element.Detail.Decal.vSize,
+				"renderer decal size") ||
+			 !AssignF32(Renderer.Decal->fDepth, Element.Detail.Decal.fDepth,
+				 "renderer decal depth")))
+		{
+			return false;
+		}
+		if (Renderer.Trail.has_value())
+		{
+			const auto& Source = *Renderer.Trail;
+			Element.Detail.Trail.iMaxPoints = Source.iMaxPoints;
+			Element.Detail.Trail.bFaceCamera = Source.bFaceCamera;
+			if (!AssignF32(Source.fPointLifeTimeSeconds,
+					Element.Detail.Trail.fPointLifeTimeSeconds,
+					"renderer trail lifetime") ||
+				!AssignF32(Source.fSampleIntervalSeconds,
+					Element.Detail.Trail.fSampleIntervalSeconds,
+					"renderer trail sample interval") ||
+				!AssignF32(Source.fMinimumDistance,
+					Element.Detail.Trail.fMinimumDistance,
+					"renderer trail minimum distance") ||
+				!AssignF32(Source.fStartWidth,
+					Element.Detail.Trail.fStartWidth,
+					"renderer trail start width") ||
+				!AssignF32(Source.fEndWidth,
+					Element.Detail.Trail.fEndWidth,
+					"renderer trail end width"))
+			{
+				return false;
+			}
+		}
+		if (Renderer.AfterImage.has_value())
+		{
+			const auto& Source = *Renderer.AfterImage;
+			Element.Detail.AfterImage.iMaxCopies = Source.iMaxCopies;
+			if (!AssignF32(Source.fSampleIntervalSeconds,
+					Element.Detail.AfterImage.fSampleIntervalSeconds,
+					"renderer after-image interval") ||
+				!AssignF32(Source.fAlphaExponent,
+					Element.Detail.AfterImage.fAlphaExponent,
+					"renderer after-image alpha exponent"))
+			{
+				return false;
+			}
+		}
+
+		const std::array<double, 3u> ZeroTransform{ 0.0, 0.0, 0.0 };
+		const std::array<double, 3u> UnitTransform{ 1.0, 1.0, 1.0 };
+		if (Emitter.DetailTransform.vPosition != ZeroTransform ||
+			Emitter.DetailTransform.vRotationDegrees != ZeroTransform ||
+			Emitter.DetailTransform.vRevolutionDegreesPerSecond != ZeroTransform ||
+			Emitter.DetailTransform.vScale != UnitTransform ||
+			Emitter.DetailTransform.vVelocityPerSecond != ZeroTransform)
+		{
+			return Fail("the frozen emitter element transform is not identity; "
+				"the format-13 cue projection would require matrix decomposition.");
+		}
+		if (!AssignF3(Emitter.CueLocalTransform.vSourcePositionUeUnits,
+				Element.SourceRecipe.CompilerEvidence.vCueSourcePositionUeUnits,
+				"cue source position") ||
+			!AssignF3(Emitter.CueLocalTransform.vPosition,
+				Element.SourceRecipe.CompilerEvidence.CueLocalTransform.vPosition,
+				"cue local position") ||
+			!AssignF3(Emitter.CueLocalTransform.vRotationDegrees,
+				Element.SourceRecipe.CompilerEvidence.CueLocalTransform.
+					vRotationDegrees, "cue local rotation") ||
+			!AssignF3(Emitter.CueLocalTransform.vScale,
+				Element.SourceRecipe.CompilerEvidence.CueLocalTransform.vScale,
+				"cue local scale") ||
+			!AssignF3(Emitter.CueLocalTransform.vPosition,
+				Element.Detail.Transform.vPosition, "runtime cue position") ||
+			!AssignF3(Emitter.CueLocalTransform.vRotationDegrees,
+				Element.Detail.Transform.vRotationDegrees, "runtime cue rotation") ||
+			!AssignF3(Emitter.DetailTransform.vRevolutionDegreesPerSecond,
+				Element.Detail.Transform.vRevolutionDegreesPerSecond,
+				"detail revolution") ||
+			!AssignF3(Emitter.CueLocalTransform.vScale,
+				Element.Detail.Transform.vScale, "runtime cue scale") ||
+			!AssignF3(Emitter.DetailTransform.vVelocityPerSecond,
+				Element.Detail.Transform.vVelocityPerSecond, "detail velocity"))
+		{
+			return false;
+		}
+
+		Element.ActionCueAttachment.bEnabled =
+			Emitter.ActionCueAttachment.bEnabled;
+		Element.ActionCueAttachment.bFollow =
+			Emitter.ActionCueAttachment.bFollow;
+		Element.ActionCueAttachment.strSourceAnchorSlotId =
+			Emitter.ActionCueAttachment.strSourceAnchorSlotId;
+		Element.ActionCueAttachment.strRuntimeAnchorSlotId =
+			Emitter.ActionCueAttachment.strRuntimeAnchorSlotId;
+		Element.ActionCueAttachment.strRuntimeBoneName =
+			Emitter.ActionCueAttachment.strRuntimeBoneName;
+		if (!AssignF3(Emitter.ActionCueAttachment.SocketLocalTransform.vPosition,
+				Element.ActionCueAttachment.SocketLocalTransform.vPosition,
+				"attachment position") ||
+			!AssignF3(
+				Emitter.ActionCueAttachment.SocketLocalTransform.vRotationDegrees,
+				Element.ActionCueAttachment.SocketLocalTransform.vRotationDegrees,
+				"attachment rotation") ||
+			!AssignF3(Emitter.ActionCueAttachment.SocketLocalTransform.vScale,
+				Element.ActionCueAttachment.SocketLocalTransform.vScale,
+				"attachment scale"))
+		{
+			return false;
+		}
+		Element.TransformInheritance.bEnabled =
+			Emitter.TransformInheritance.bEnabled;
+		Element.TransformInheritance.strMasterElementId.clear();
+		if (Emitter.TransformInheritance.bEnabled)
+		{
+			const auto Master = ElementIdsByEmitterId.find(
+				Emitter.TransformInheritance.strMasterEmitterId);
+			if (Master == ElementIdsByEmitterId.end())
+				return Fail("transform inheritance master emitter is missing.");
+			Element.TransformInheritance.strMasterElementId = Master->second;
+		}
+		if (Element.SourcePresentation.bEnabled)
+		{
+			if (!AssignF32(Schedule->fGlobalTimeSeconds,
+				Element.SourcePresentation.fSourceTimeSeconds,
+				"source presentation time"))
+			{
+				return false;
+			}
+		}
+
+		Element.ResourceBindings.clear();
+		if (Emitter.strGeometryUseId.has_value())
+		{
+			const EFFECT_RUNTIME_PROGRAM_GEOMETRY_USE* Use =
+				Find_UniqueProgramRowById(
+					Program->GeometryUses, *Emitter.strGeometryUseId);
+			const EFFECT_RUNTIME_PROGRAM_GEOMETRY_CARRIER* Carrier =
+				nullptr == Use ? nullptr : Find_UniqueProgramRowById(
+					Program->GeometryCarriers, Use->strCarrierId);
+			if (nullptr == Use || nullptr == Carrier ||
+				Use->strEmitterId != Emitter.Row.strId ||
+				Use->strAssetId != Carrier->strAssetId ||
+				!CoveredGeometryUses.emplace(Use->Row.strId).second ||
+				Carrier->fGeometryPreScale <= 0.0)
+			{
+				return Fail("Program geometry use/carrier join is invalid.");
+			}
+			Element.ResourceBindings.push_back(
+				{ "meshModel", Carrier->strAssetId });
+			Element.SourceRecipe.GeometryBinding.bEnabled = true;
+			Element.SourceRecipe.GeometryBinding.strAssetId = Carrier->strAssetId;
+			if (!AssignF32(Carrier->fGeometryPreScale,
+				Element.SourceRecipe.GeometryBinding.fCarrierGeometryPreScale,
+				"geometry carrier preScale"))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			Element.SourceRecipe.GeometryBinding.bEnabled = false;
+		}
+		std::unordered_set<std::string> ResourceSlots;
+		if (!Element.ResourceBindings.empty())
+			ResourceSlots.emplace(Element.ResourceBindings.front().strSlotId);
+		for (const std::string& strTextureResourceId :
+			Emitter.TextureResourceIds)
+		{
+			const EFFECT_RUNTIME_PROGRAM_RENDERER_TEXTURE* Resource =
+				Find_UniqueProgramRowById(
+					Program->RendererTextureResources, strTextureResourceId);
+			if (nullptr == Resource ||
+				Resource->strEmitterId != Emitter.Row.strId ||
+				Resource->strSourceNode != Emitter.strSourceNode ||
+				!CoveredTextureResources.emplace(Resource->Row.strId).second ||
+				!ResourceSlots.emplace(Resource->strSlotId).second)
+			{
+				return Fail("Program renderer texture resource join is invalid.");
+			}
+			Element.ResourceBindings.push_back(
+				{ Resource->strSlotId, Resource->strAssetId });
+		}
+
+		Element.Material.SourceMaterial = {};
+		if (Emitter.strMaterialOccurrenceId.has_value())
+		{
+			const EFFECT_RUNTIME_PROGRAM_MATERIAL_OCCURRENCE* Occurrence =
+				Find_UniqueProgramRowById(Program->MaterialOccurrences,
+					*Emitter.strMaterialOccurrenceId);
+			const EFFECT_RUNTIME_PROGRAM_MATERIAL_RECIPE* Recipe =
+				nullptr == Occurrence ? nullptr : Find_UniqueProgramRowById(
+					Program->MaterialRecipes, Occurrence->strRecipeId);
+			const EFFECT_RUNTIME_PROGRAM_MATERIAL_FAMILY* Family =
+				nullptr == Occurrence ? nullptr : Find_UniqueProgramRowById(
+					Program->MaterialFamilies, Occurrence->strFamilyId);
+			if (nullptr == Occurrence || nullptr == Recipe || nullptr == Family ||
+				Occurrence->strEmitterId != Emitter.Row.strId ||
+				Occurrence->eRenderer != Emitter.eRenderer ||
+				Occurrence->strFamilyId != Recipe->strFamilyId ||
+				!CoveredOccurrences.emplace(Occurrence->Row.strId).second)
+			{
+				return Fail("Program material occurrence/recipe/family join is invalid.");
+			}
+			Element.Material.strSourceMaterialPath = Recipe->strSourceMaterialPath;
+			const bool_t bPresentationMaterial =
+				Emitter.eRenderer != EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE &&
+				Emitter.eRenderer != EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST;
+			if (bPresentationMaterial)
+			{
+				EFFECT_SOURCE_MATERIAL_DESC& Source =
+					Element.Material.SourceMaterial;
+				Source.bEnabled = true;
+				Source.strProfileId = Recipe->Row.strId;
+				Source.strParentMaterialPath = Recipe->strSourceMaterialPath;
+				Source.eStatus =
+					EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE;
+				Source.strSubUVMode = strProjectedSubUVMode;
+				if (Source.strSubUVMode != "none")
+					++iMaterialSubUVProjectionCount;
+				bool_t bOneLayerDistortion = Lower(
+					Recipe->strSourceMaterialPath).find("onelayerdistortion") !=
+						std::string::npos;
+				const bool_t bExactArtistOneLayerRecipe =
+					Recipe->Row.strId == ARTIST_ONE_LAYER_RECIPE_ID;
+				bool_t bTwoSided = true;
+				std::string strBlendMode;
+				for (const std::string& strBindingId : Recipe->RenderBindingIds)
+				{
+					const EFFECT_RUNTIME_PROGRAM_MATERIAL_VALUE* Binding =
+						Find_UniqueProgramRowById(
+							Program->MaterialRenderBindings, strBindingId);
+					if (nullptr == Binding || Binding->strRecipeId != Recipe->Row.strId)
+						return Fail("Program Material render binding join is invalid.");
+					if (Binding->strFieldName == "blendmode")
+						strBlendMode = Lower(Binding->strStringValue);
+					else if (Binding->strFieldName == "twosided" &&
+						Binding->bValue.has_value())
+						bTwoSided = *Binding->bValue;
+					else if (Binding->strFieldName == "buseonelayerdistortion" &&
+						Binding->bValue.value_or(false))
+						bOneLayerDistortion = true;
+				}
+				if (strBlendMode.find("additive") != std::string::npos)
+				{
+					Element.Material.eRenderProfile = bTwoSided ?
+						EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ :
+						EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ;
+				}
+				else if (strBlendMode.find("opaque") != std::string::npos ||
+					strBlendMode.find("masked") != std::string::npos)
+				{
+					Element.Material.eRenderProfile =
+						EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE;
+				}
+				else
+				{
+					Element.Material.eRenderProfile = bTwoSided ?
+						EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ :
+						EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ;
+				}
+
+				std::unordered_set<std::string> ScalarNames;
+				std::unordered_set<std::string> VectorNames;
+				std::unordered_set<std::string> TextureNames;
+				const EFFECT_RUNTIME_PROGRAM_TEXTURE_BINDING*
+					pPreferredBaseBinding = nullptr;
+				int32_t iPreferredBaseScore = (std::numeric_limits<int32_t>::max)();
+				for (const std::string& strInputId : Recipe->InputIds)
+				{
+					const EFFECT_RUNTIME_PROGRAM_MATERIAL_VALUE* Input =
+						Find_UniqueProgramRowById(Program->MaterialInputs, strInputId);
+					if (nullptr == Input || Input->strRecipeId != Recipe->Row.strId)
+						return Fail("Program Material input join is invalid.");
+					const std::string& strName =
+						Input->strNormalizedParameterName.empty() ?
+							Input->strParameterName :
+							Input->strNormalizedParameterName;
+					if (strName.empty())
+						return Fail("Program Material input has no parameter identity.");
+					if (Input->eVariant == EFFECT_RUNTIME_MATERIAL_VALUE_VARIANT::F64)
+					{
+						if (!Input->fValue.has_value() ||
+							!ScalarNames.emplace(strName).second)
+							continue;
+						EFFECT_NAMED_FLOAT_DESC Value;
+						Value.strName = strName;
+						Value.strGroup = Input->strBindingRole;
+						if (!AssignF32(*Input->fValue, Value.fValue,
+							"Material scalar"))
+						{
+							return false;
+						}
+						Source.Scalars.push_back(std::move(Value));
+					}
+					else if (Input->eVariant ==
+						EFFECT_RUNTIME_MATERIAL_VALUE_VARIANT::F64X4)
+					{
+						if (!VectorNames.emplace(strName).second)
+							continue;
+						EFFECT_NAMED_FLOAT4_DESC Value;
+						Value.strName = strName;
+						Value.strGroup = Input->strBindingRole;
+						if (!AssignF4(Input->vValue, Value.vValue,
+							"Material vector"))
+						{
+							return false;
+						}
+						Source.Vectors.push_back(std::move(Value));
+					}
+					else if (Input->eVariant ==
+						EFFECT_RUNTIME_MATERIAL_VALUE_VARIANT::TEXTURE_ID)
+					{
+						if (!TextureNames.emplace(strName).second)
+							continue;
+						const EFFECT_RUNTIME_PROGRAM_TEXTURE_BINDING* Binding =
+							Find_UniqueProgramRow(Program->MaterialTextureBindings,
+								[&](const EFFECT_RUNTIME_PROGRAM_TEXTURE_BINDING& Row)
+								{
+									return Row.strRecipeId == Recipe->Row.strId &&
+										Row.strMaterialInputFieldId == Input->Row.strId;
+								});
+						EFFECT_NAMED_TEXTURE_DESC Value;
+						Value.strName = strName;
+						Value.strGroup = Input->strBindingRole;
+						if (nullptr == Binding)
+						{
+							Value.strSourceObjectPath = Input->strStringValue;
+							if (bExactArtistOneLayerRecipe &&
+								Input->strStringValue == ARTIST_ONE_LAYER_EMISSIVE_SOURCE)
+							{
+								Value.strAssetId = ARTIST_ONE_LAYER_EMISSIVE_ASSET;
+								Value.strSamplingEvidence =
+									"reconstructed-cross-export-byte-identical-v1";
+							}
+							else if (bExactArtistOneLayerRecipe &&
+								Input->strStringValue == ARTIST_ONE_LAYER_NOISE_SOURCE)
+							{
+								Value.strAssetId = ARTIST_ONE_LAYER_NOISE_ASSET;
+								Value.strSamplingEvidence =
+									"reconstructed-cross-export-byte-identical-v1";
+							}
+							else
+							{
+								Value.strSamplingEvidence = "reconstructed-unbound-v1";
+							}
+						}
+						else
+						{
+							Value.strSourceObjectPath = Binding->strLogicalTexturePath;
+							Value.strAssetId = Binding->strRuntimeAssetId.value_or("");
+							Value.strSamplingEvidence = "reconstructed-program-v1";
+							const EFFECT_RUNTIME_PROGRAM_MATERIAL_POLICY* SamplerPolicy =
+								Find_UniqueProgramRowById(
+									Program->MaterialPolicies,
+									Binding->strSamplerPolicyRowId);
+							if (nullptr == SamplerPolicy ||
+								!SamplerPolicy->SamplerDescriptor.has_value())
+							{
+								return Fail("Program Material sampler policy is missing.");
+							}
+							const auto& Sampler = *SamplerPolicy->SamplerDescriptor;
+							Value.eAddressU =
+								Lower(Sampler.strAddressUUe3).find("clamp") !=
+									std::string::npos ? EFFECT_TEXTURE_ADDRESS_MODE::CLAMP :
+									EFFECT_TEXTURE_ADDRESS_MODE::WRAP;
+							Value.eAddressV =
+								Lower(Sampler.strAddressVUe3).find("clamp") !=
+									std::string::npos ? EFFECT_TEXTURE_ADDRESS_MODE::CLAMP :
+									EFFECT_TEXTURE_ADDRESS_MODE::WRAP;
+							Value.eColorSpace = Sampler.bSrgb ?
+								EFFECT_TEXTURE_COLOR_SPACE::SRGB :
+								EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+							if (Binding->strRuntimeAssetId.has_value() &&
+								!Binding->strRuntimeAssetId->empty())
+							{
+								const std::string LowerName = Lower(strName);
+								const std::string LowerRole =
+									Lower(Input->strBindingRole);
+								const int32_t iScore =
+									LowerRole == "color_texture" ||
+									LowerName.find("main") != std::string::npos ||
+									LowerName.find("base") != std::string::npos ||
+									LowerName.find("diffuse") != std::string::npos ? 0 :
+									(LowerName.find("emissive") != std::string::npos ? 1 : 2);
+								if (iScore < iPreferredBaseScore)
+								{
+									iPreferredBaseScore = iScore;
+									pPreferredBaseBinding = Binding;
+								}
+							}
+						}
+						if (Value.strSourceObjectPath.empty())
+							Value.strSourceObjectPath = Input->strStringValue;
+						if (Value.strSourceObjectPath.empty())
+							continue;
+						Source.Textures.push_back(std::move(Value));
+					}
+				}
+				if (bExactArtistOneLayerRecipe)
+				{
+					constexpr std::array<std::pair<std::string_view, f32_t>, 5u>
+						ExpectedScalars{
+							std::pair{ "distortion_intensity", -40.f },
+							std::pair{ "uv_noise_01_intensity", 0.30000001192092896f },
+							std::pair{ "uv_noise_01_tiling_x", 3.f },
+							std::pair{ "uv_noise_01_panning_y", 5.f },
+							std::pair{ "uv_noise_01_tiling_y", 4.f }
+						};
+					const auto HasExactTexture = [&Source](
+						const std::string_view strSource,
+						const std::string_view strAsset)
+					{
+						return std::ranges::any_of(Source.Textures,
+							[strSource, strAsset](const EFFECT_NAMED_TEXTURE_DESC& Value)
+							{
+								return Value.strSourceObjectPath == strSource &&
+									Value.strAssetId == strAsset;
+							});
+					};
+					bool_t bExactScalarLayout =
+						Source.Scalars.size() == ExpectedScalars.size();
+					for (size_t i = 0u; bExactScalarLayout &&
+						i < ExpectedScalars.size(); ++i)
+					{
+						bExactScalarLayout =
+							Source.Scalars[i].strName == ExpectedScalars[i].first &&
+							Source.Scalars[i].fValue == ExpectedScalars[i].second;
+					}
+					if (!bOneLayerDistortion || Source.Textures.size() != 2u ||
+						!bExactScalarLayout ||
+						!HasExactTexture(ARTIST_ONE_LAYER_EMISSIVE_SOURCE,
+							ARTIST_ONE_LAYER_EMISSIVE_ASSET) ||
+						!HasExactTexture(ARTIST_ONE_LAYER_NOISE_SOURCE,
+							ARTIST_ONE_LAYER_NOISE_ASSET) ||
+						ResourceSlots.contains("base") ||
+						ResourceSlots.contains("noise"))
+					{
+						return Fail("the exact Artist one-layer texture projection is invalid.");
+					}
+					Element.ResourceBindings.push_back(
+						{ "base", std::string(ARTIST_ONE_LAYER_EMISSIVE_ASSET) });
+					Element.ResourceBindings.push_back(
+						{ "noise", std::string(ARTIST_ONE_LAYER_NOISE_ASSET) });
+					ResourceSlots.emplace("base");
+					ResourceSlots.emplace("noise");
+					++iOneLayerRuntimeTextureProjectionCount;
+				}
+				if (!ResourceSlots.contains("base") &&
+					nullptr != pPreferredBaseBinding &&
+					pPreferredBaseBinding->strRuntimeAssetId.has_value())
+				{
+					Element.ResourceBindings.push_back({ "base",
+						*pPreferredBaseBinding->strRuntimeAssetId });
+					ResourceSlots.emplace("base");
+				}
+				std::unordered_set<std::string> SwitchNames;
+				for (const std::string& strStaticId : Recipe->StaticBindingIds)
+				{
+					const EFFECT_RUNTIME_PROGRAM_MATERIAL_VALUE* Binding =
+						Find_UniqueProgramRowById(
+							Program->MaterialStaticBindings, strStaticId);
+					if (nullptr == Binding || Binding->strRecipeId != Recipe->Row.strId)
+						return Fail("Program Material static binding join is invalid.");
+					const std::string& strName =
+						Binding->strNormalizedParameterName.empty() ?
+							Binding->strParameterName :
+							Binding->strNormalizedParameterName;
+					if (strName.empty() || !SwitchNames.emplace(strName).second)
+						continue;
+					EFFECT_NAMED_BOOL_DESC Value;
+					Value.strName = strName;
+					Value.strGroup = Binding->strBindingOrigin;
+					Value.bValue = Binding->bSelectedValue.value_or(
+						Binding->bValue.value_or(
+							Binding->bSourceValue.value_or(false)));
+					Source.StaticSwitches.push_back(std::move(Value));
+				}
+				const auto FindResource = [&Element](const std::string_view strSlotId)
+					-> const EFFECT_RESOURCE_BINDING_DESC*
+				{
+					const auto Iterator = std::find_if(
+						Element.ResourceBindings.begin(),
+						Element.ResourceBindings.end(),
+						[strSlotId](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+						{
+							return Binding.strSlotId == strSlotId;
+						});
+					return Iterator == Element.ResourceBindings.end() ?
+						nullptr : &*Iterator;
+				};
+				const EFFECT_RESOURCE_BINDING_DESC* Base = FindResource("base");
+				const bool_t bGroupedContract =
+					Is_EffectGroupedTranslucentResourceContractSatisfied(
+						Source,
+						nullptr != Base &&
+							!Is_UnsafeEffectBaseTextureAssetId(Base->strAssetId),
+						nullptr != FindResource("mask"),
+						nullptr != FindResource("emissive"),
+						nullptr != FindResource("dissolve"));
+				const bool_t bMainCompositeMaterial =
+					Occurrence->Row.iOrder == 4u ||
+					(Occurrence->Row.iOrder >= 7u &&
+						Occurrence->Row.iOrder <= 18u);
+				const bool_t bRuntimeMaterialV2 =
+					Occurrence->Row.iOrder == 3u ||
+					Occurrence->Row.iOrder == 4u ||
+					Occurrence->Row.iOrder == 9u ||
+					Occurrence->Row.iOrder == 10u ||
+					Occurrence->Row.iOrder == 11u ||
+					Occurrence->Row.iOrder == 16u ||
+					Occurrence->Row.iOrder == 22u ||
+					Occurrence->Row.iOrder == 23u ||
+					Occurrence->Row.iOrder == 30u ||
+					Occurrence->Row.iOrder == 31u;
+				if (bMainCompositeMaterial)
+					++iMainCompositeMaterialProjectionCount;
+
+				if (Occurrence->Row.iOrder == 17u)
+				{
+					constexpr std::array<std::pair<std::string_view, f32_t>, 16u>
+						RequiredScalars{{
+							{ "alpha_tex_strength", 1.f },
+							{ "alpha_out_falloff", 100.f },
+							{ "emissive_tex_strength", 500.f },
+							{ "emissive_tex_power", 10.f },
+							{ "alpha_tex_r_texcoord", 0.8999999761581421f },
+							{ "alpha_tex_g_texcoord", 1.f },
+							{ "uv_noise_head_velue", 0.5f },
+							{ "dissolve_hardness", 5.f },
+							{ "alpha_tex_positon_r", 0.f },
+							{ "alpha_tex_positon_g", 0.05000000074505806f },
+							{ "uvnoise_tex_01_r_texcoord", 0.30000001192092896f },
+							{ "uvnoise_tex_01_g_texcoord", 1.f },
+							{ "uvnoise_tex_02_r_texcoord", 1.f },
+							{ "uvnoise_tex_02_g_texcoord", 1.f },
+							{ "emissive_tex_backvelue", 0.029999999329447746f },
+							{ "fresnelalpha_power", 2.f }
+						}};
+					const auto HasScalar = [&Source](
+						const std::string_view strName, const f32_t fValue)
+					{
+						return std::ranges::count_if(Source.Scalars,
+							[strName, fValue](const EFFECT_NAMED_FLOAT_DESC& Value)
+							{
+								return Value.strName == strName && Value.fValue == fValue;
+							}) == 1;
+					};
+					const auto HasTexture = [&Source](
+						const std::string_view strName,
+						const std::string_view strAssetId)
+					{
+						return std::ranges::count_if(Source.Textures,
+							[strName, strAssetId](const EFFECT_NAMED_TEXTURE_DESC& Value)
+							{
+								return Value.strName == strName &&
+									Value.strAssetId == strAssetId &&
+									Value.strSamplingEvidence ==
+										"reconstructed-program-v1";
+							}) == 1;
+					};
+					bool_t bExactScalars = Source.Scalars.size() == 26u;
+					for (const auto& [strName, fValue] : RequiredScalars)
+						bExactScalars = bExactScalars && HasScalar(strName, fValue);
+
+					const EFFECT_RUNTIME_PROGRAM_MODULE* DynamicModule = nullptr;
+					uint32_t iDynamicModuleCount = 0u;
+					for (const std::string& strModuleId : Emitter.ModuleIds)
+					{
+						const EFFECT_RUNTIME_PROGRAM_MODULE* Module =
+							Find_UniqueProgramRowById(Program->Modules, strModuleId);
+						if (nullptr == Module)
+							return Fail("Program Material dynamic module join is invalid.");
+						if (Module->strExactSourceClass ==
+							"particlemoduleparameterdynamic")
+						{
+							DynamicModule = Module;
+							++iDynamicModuleCount;
+						}
+					}
+					constexpr std::array<std::string_view, 4u> DynamicNames{{
+						"alpha_pan", "uv_noise_velue", "uv_noise_pan",
+						"alpha_dissolve"
+					}};
+					bool_t bExactDynamic = iDynamicModuleCount == 1u &&
+						nullptr != DynamicModule &&
+						DynamicModule->DistributionIds.size() == DynamicNames.size();
+					for (size_t iDynamic = 0u;
+						bExactDynamic && iDynamic < DynamicNames.size(); ++iDynamic)
+					{
+						const std::string strPath = "dynamicparams[" +
+							std::to_string(iDynamic) + "].paramname";
+						const EFFECT_RUNTIME_PROGRAM_LITERAL* Literal =
+							Find_UniqueProgramRow(Program->Literals,
+								[&](const EFFECT_RUNTIME_PROGRAM_LITERAL& Row)
+								{
+									return Row.strModuleId == DynamicModule->Row.strId &&
+										Row.strPropertyPath == strPath;
+								});
+						bExactDynamic = nullptr != Literal &&
+							Literal->eVariant ==
+								EFFECT_RUNTIME_LITERAL_VARIANT::ENUM_STRING &&
+							Literal->strEnumValue == DynamicNames[iDynamic];
+					}
+
+					const EFFECT_RESOURCE_BINDING_DESC* Mesh =
+						FindResource("meshModel");
+					const EFFECT_RESOURCE_BINDING_DESC* Noise =
+						FindResource("noise");
+					const EFFECT_RESOURCE_BINDING_DESC* Mask = FindResource("mask");
+					const EFFECT_RESOURCE_BINDING_DESC* Dissolve =
+						FindResource("dissolve");
+					const bool_t bExactIdentity =
+						Occurrence->Row.strId == "source-active-017" &&
+						Occurrence->Row.strRowSha256 ==
+							"eaa64427a2ad034803b350bb7b5d82f23fa39f7432179d39879c14d5730b874b" &&
+						Recipe->Row.strId == "material-recipe-76e78b77b8e6f2f1" &&
+						Recipe->Row.strRowSha256 ==
+							"df0330451fdecaa7234df290a5166907262dfa85bfeb741c06b8655269b34675" &&
+						Recipe->strSourceRecipeCompositionSha256 ==
+							"87f953c10c597177b091d6374c386144f687940003ebb22eeea183927aecfc5e" &&
+						Recipe->strSourceMaterialPath ==
+							"fx_m_mi_s_00.fx_mi.fx_s_me_missiletrail_01_5_ts_tr" &&
+						Family->Row.strId == "material-family-4e1ecdcff38a53d1" &&
+						Family->Row.strRowSha256 ==
+							"7d67b2fb7b4fbc01e2ed61f98d452c095e09689bb9318f49dc2d3a04c65714e1" &&
+						Family->strEvaluatorId ==
+							"reconstructed-evaluator-47a191250dbffb2d" &&
+						Family->iEvaluatorVersion == 1u &&
+						Family->strEvaluatorSha256 ==
+							"f909d8022f63f13934a60ee5a51b60f0138debc9567b13fcb85fcc197ce8a2dc";
+					const bool_t bExactResources =
+						Element.ResourceBindings.size() == 5u && nullptr != Mesh &&
+						Mesh->strAssetId == "Effect/Artist/Meshes/fm_m_trail_002.wmodel" &&
+						nullptr != Base && nullptr != Mask && nullptr != Noise &&
+						nullptr != Dissolve && Base->strAssetId == Mask->strAssetId &&
+						Mask->strAssetId ==
+							"Effect/Artist/Textures/fx_d_trail_002_cl.dds" &&
+						Noise->strAssetId ==
+							"Effect/Artist/Textures/fx_j_risingforce_01.dds" &&
+						Dissolve->strAssetId ==
+							"Effect/Artist/Textures/fx_h_atypical_01_1.dds";
+					const bool_t bExactFields = bExactScalars &&
+						Source.Vectors.empty() && Source.Textures.size() == 3u &&
+						HasTexture("alpha_tex",
+							"Effect/Artist/Textures/fx_d_trail_002_cl.dds") &&
+						HasTexture("uv_dissolve_tex",
+							"Effect/Artist/Textures/fx_h_atypical_01_1.dds") &&
+						HasTexture("uv_noise_tex",
+							"Effect/Artist/Textures/fx_j_risingforce_01.dds") &&
+						Source.StaticSwitches.size() == 1u &&
+						Source.StaticSwitches.front().strName == "dissolve_rampmap" &&
+						Source.StaticSwitches.front().bValue;
+					if (!bExactIdentity || !bExactResources || !bExactFields ||
+						!bExactDynamic || !Is_EffectFiniteProfileResourceContractSatisfied(
+							"effect.ue3.missiletrail-01.v1", true, true, true,
+							true, true))
+					{
+						return Fail("the exact Artist missile-trail finite profile contract is invalid.");
+					}
+					Source.strRuntimeShaderProfileId =
+						"effect.ue3.missiletrail-01.v1";
+					Source.DynamicParameterSemantics = {
+						"missile_alpha_pan", "missile_noise_strength",
+						"missile_noise_pan", "missile_dissolve" };
+					++iMissileTrailFiniteProfileProjectionCount;
+				}
+				else if (bMainCompositeMaterial || bRuntimeMaterialV2)
+				{
+					/* Runtime Material v2 owns the complete shader packet for these
+					   occurrences.  Keep their source-material carrier on the neutral
+					   reconstructed-standard profile even when newly admitted texture
+					   providers would also satisfy the legacy grouped-translucent
+					   heuristic.  Prepared-resource staging then starts from one canonical
+					   profile-0/texture-mask-0 seam before it binds the immutable v2 lanes. */
+					Source.strRuntimeShaderProfileId =
+						"effect.ue3.reconstructed-standard.v1";
+					if (bMainCompositeMaterial)
+						++iReconstructedEvaluatorMaterialProjectionCount;
+					if (bRuntimeMaterialV2)
+						++iRuntimeMaterialV2ProfileProjectionCount;
+				}
+				else
+				{
+					Source.strRuntimeShaderProfileId = bOneLayerDistortion ?
+						"effect.ue3.one-layer-distortion.v1" :
+						(bGroupedContract ?
+							"effect.ue3.grouped-translucent.v1" :
+							"effect.ue3.reconstructed-standard.v1");
+				}
+			}
+		}
+
+		if (Emitter.DecalAdapter.has_value() &&
+			Emitter.DecalAdapter->Common.bEnabled &&
+			!AssignF32(Emitter.DecalAdapter->fDepthRuntimeUnits,
+				Element.Detail.Decal.fDepth, "decal adapter runtime depth"))
+		{
+			return false;
+		}
+		if (Emitter.RibbonAdapter.has_value() &&
+			Emitter.RibbonAdapter->Common.bEnabled)
+		{
+			const auto& Adapter = *Emitter.RibbonAdapter;
+			const auto FindUniqueSourceDistribution = [&Element, &Lower](
+				const std::string_view strClassName,
+				const std::string_view strPropertyPath)
+				-> const EFFECT_DISTRIBUTION_DESC*
+			{
+				const EFFECT_DISTRIBUTION_DESC* pFound = nullptr;
+				for (const EFFECT_SOURCE_MODULE_DESC& Module :
+					Element.SourceRecipe.Modules)
+				{
+					if (Lower(Module.strClassName) != strClassName)
+						continue;
+					for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+						Module.Distributions)
+					{
+						if (Distribution.strPropertyPath != strPropertyPath)
+							continue;
+						if (nullptr != pFound)
+							return nullptr;
+						pFound = &Distribution;
+					}
+				}
+				return pFound;
+			};
+			const auto ReadUniformConstant = [](
+				const EFFECT_DISTRIBUTION_DESC* pDistribution,
+				const uint32_t iComponentCount, float4_t& OutValue)
+			{
+				if (nullptr == pDistribution ||
+					pDistribution->iComponentCount != iComponentCount ||
+					pDistribution->iOperation != 1u)
+				{
+					return false;
+				}
+
+				constexpr std::array<f32_t, 5u> SampleTimes{
+					-1.f, 0.f, 0.25f, 1.f, 2.f };
+				const float4_t First = CEffectDistribution::Evaluate(
+					*pDistribution, SampleTimes.front(), float4_t{});
+				const auto Matches = [iComponentCount, &First](
+					const float4_t& Value)
+				{
+					const f32_t* const pFirst = &First.x;
+					const f32_t* const pValue = &Value.x;
+					for (uint32_t i = 0u; i < iComponentCount; ++i)
+					{
+						if (!std::isfinite(pValue[i]) ||
+							pValue[i] != pFirst[i])
+						{
+							return false;
+						}
+					}
+					return true;
+				};
+				if (!Matches(First))
+					return false;
+				for (const f32_t fSampleTime : SampleTimes)
+				{
+					if (!Matches(CEffectDistribution::Evaluate(
+						*pDistribution, fSampleTime, float4_t{})) ||
+						!Matches(CEffectDistribution::Evaluate(
+							*pDistribution, fSampleTime,
+							float4_t(1.f, 1.f, 1.f, 1.f))))
+					{
+						return false;
+					}
+				}
+				OutValue = First;
+				return true;
+			};
+			const auto ResolveReconstructedSpawnRateScale =
+				[&Fail, &Program, &ReadUniformConstant](
+					const std::string& strDistributionId,
+					const EFFECT_DISTRIBUTION_DESC* pSourceDistribution,
+					float4_t& OutValue) -> bool_t
+			{
+				/* The pinned Program still carries the source null
+				   RawDistributionFloat as a fabricated zero.  This nonProduct
+				   preview-only bridge admits exactly the separately reconstructed
+				   current Engine CDO identity value.  It is deliberately not
+				   SOURCE_EXACT and must fail closed when the official Program row
+				   is regenerated. */
+				constexpr std::string_view PolicyId =
+					"CURRENT_ENGINE_CDO_RECONSTRUCTED";
+				constexpr std::string_view DescriptorSha256 =
+					"45e438c780ff075bb5e485731cd8bf914b34dbac8fdb369d0824926639741826";
+				constexpr std::string_view StaleProgramRowSha256 =
+					"05ea1c48d12ac4a608a2477c056a264bbab38b2dba87a5893cd81257c695a85c";
+				static_assert(DescriptorSha256.size() == 64u);
+				static_assert(StaleProgramRowSha256.size() == 64u);
+
+				const EFFECT_RUNTIME_PROGRAM_DISTRIBUTION* ProgramDistribution =
+					Find_UniqueProgramRowById(
+						Program->Distributions, strDistributionId);
+				float4_t SourceValue{};
+				const std::vector<double> Zero4(4u, 0.0);
+				if (nullptr == ProgramDistribution ||
+					ProgramDistribution->Row.strRowSha256 != StaleProgramRowSha256 ||
+					ProgramDistribution->Row.bSourceExact ||
+					ProgramDistribution->eVariant !=
+						EFFECT_RUNTIME_DISTRIBUTION_VARIANT::INLINE ||
+					ProgramDistribution->strPropertyPath != "ratescale" ||
+					!ProgramDistribution->strSourceClass.empty() ||
+					!ProgramDistribution->strSourceObjectPath.empty() ||
+					ProgramDistribution->strPayloadStatus !=
+						"INLINE_SOURCE_PAYLOAD" ||
+					ProgramDistribution->strFidelity !=
+						"DETERMINISTIC_SOURCE_RECIPE" ||
+					ProgramDistribution->iComponentCount != 1u ||
+					ProgramDistribution->iOperation != 1u ||
+					ProgramDistribution->iRandomLockAxes != 0u ||
+					ProgramDistribution->iLookupTableChunkSize != 0u ||
+					ProgramDistribution->iLookupTableNumElements != 0u ||
+					ProgramDistribution->DefaultMinimum != Zero4 ||
+					ProgramDistribution->DefaultMaximum != Zero4 ||
+					!ProgramDistribution->LookupTable.empty() ||
+					!ProgramDistribution->CurveKeys.empty() ||
+					!ReadUniformConstant(pSourceDistribution, 1u, SourceValue) ||
+					SourceValue.x != 0.f)
+				{
+					return Fail("typed Ribbon RateScale " +
+						std::string(PolicyId) + " policy " +
+						std::string(DescriptorSha256) +
+						" no longer matches the pinned null source row.");
+				}
+
+				OutValue = float4_t{ 1.f, 0.f, 0.f, 0.f };
+				return true;
+			};
+			float4_t SpawnRate{};
+			float4_t SpawnRateScale{};
+			float4_t Lifetime{};
+			float4_t StartSize{};
+			if (Adapter.Common.strAdapterId !=
+					"CASCADE_RIBBON_TYPED_ADAPTER_V1" ||
+				Adapter.strWidthPolicy != "TYPED_SIZE_DISTRIBUTION_X_AXIS" ||
+				Adapter.strGeometryPolicy !=
+					"TYPED_RIBBON_DEFAULTS_RENDER_GEOMETRY" ||
+				Adapter.strOrientationPolicy !=
+					"CAMERA_FACING_SINGLE_SHEET_RECONSTRUCTED_V1" ||
+				Adapter.iTypedMaxParticleInTrailCount != 500u ||
+				Adapter.iOperationalMaxPoints != 500u ||
+				Adapter.SpawnDistributionIds.size() != 2u ||
+				!ReadUniformConstant(FindUniqueSourceDistribution(
+					"particlemodulespawn", "rate"), 1u, SpawnRate) ||
+				!ResolveReconstructedSpawnRateScale(
+					Adapter.SpawnDistributionIds[1u],
+					FindUniqueSourceDistribution(
+						"particlemodulespawn", "ratescale"),
+					SpawnRateScale) ||
+				!ReadUniformConstant(FindUniqueSourceDistribution(
+					"particlemodulelifetime", "lifetime"), 1u, Lifetime) ||
+				!ReadUniformConstant(FindUniqueSourceDistribution(
+					"particlemodulesize", "startsize"), 3u, StartSize) ||
+				SpawnRate.x <= 0.f || SpawnRateScale.x != 1.f ||
+				Lifetime.x <= 0.f || StartSize.x <= 0.f)
+			{
+				return Fail("typed Ribbon lifetime/width projection is invalid.");
+			}
+			const f32_t fWidthWorldUnits = StartSize.x * 0.01f;
+			const f32_t fTilingDistanceWorldUnits =
+				static_cast<f32_t>(Adapter.fTilingDistance * 0.01);
+			const f32_t fDistanceTessellationStepWorldUnits =
+				static_cast<f32_t>(Adapter.fDistanceTessellationStepSize * 0.01);
+			if (!std::isfinite(fWidthWorldUnits) || fWidthWorldUnits <= 0.f ||
+				!std::isfinite(fTilingDistanceWorldUnits) ||
+				fTilingDistanceWorldUnits <= 0.f ||
+				!std::isfinite(fDistanceTessellationStepWorldUnits) ||
+				fDistanceTessellationStepWorldUnits <= 0.f)
+				return Fail("typed Ribbon width conversion is invalid.");
+
+			Element.Detail.Trail.iMaxPoints = Adapter.iOperationalMaxPoints;
+			Element.Detail.Trail.fPointLifeTimeSeconds = Lifetime.x;
+			Element.Detail.Trail.fSampleIntervalSeconds =
+				1.f / (SpawnRate.x * SpawnRateScale.x);
+			Element.Detail.Trail.fStartWidth = fWidthWorldUnits;
+			Element.Detail.Trail.fEndWidth = fWidthWorldUnits;
+			Element.Detail.Trail.fTilingDistanceWorldUnits =
+				fTilingDistanceWorldUnits;
+			Element.Detail.Trail.fDistanceTessellationStepWorldUnits =
+				fDistanceTessellationStepWorldUnits;
+			Element.Detail.Trail.bFaceCamera = true;
+			++iTypedRibbonGeometryProjectionCount;
+		}
+		if (Emitter.ScreenPostAdapter.has_value() &&
+			Emitter.ScreenPostAdapter->Common.bEnabled)
+		{
+			const auto& Adapter = *Emitter.ScreenPostAdapter;
+			Element.Detail.ScreenPost.bEnabled = true;
+			Element.Detail.ScreenPost.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			const std::string AdapterId = Lower(Adapter.Common.strAdapterId);
+			if (AdapterId.find("zoom") != std::string::npos)
+				Element.Detail.ScreenPost.eProfile =
+					EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1;
+			else if (AdapterId.find("film") != std::string::npos)
+				Element.Detail.ScreenPost.eProfile =
+					EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1;
+			else if (AdapterId.find("rgb") != std::string::npos)
+				Element.Detail.ScreenPost.eProfile =
+					EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1;
+			else
+				return Fail("screen-post adapter profile is unsupported.");
+			if (!AssignF32(Adapter.fSecondaryIntensity,
+					Element.Detail.ScreenPost.fSecondaryIntensity,
+					"screen-post secondary intensity") ||
+				!AssignF4(Adapter.vTint, Element.Detail.ScreenPost.vTint,
+					"screen-post tint"))
+			{
+				return false;
+			}
+			Element.Detail.ScreenPost.iRandomSeed =
+				Emitter.Random.iEmitterRandomSeed;
+		}
+		if (Emitter.LightAdapter.has_value() &&
+			Emitter.LightAdapter->Common.bEnabled)
+		{
+			const auto& Adapter = *Emitter.LightAdapter;
+			if (Adapter.strPositionSourcePolicy !=
+				"EMITTER_TRANSFORM_PLUS_PARTICLE_LOCATION" ||
+				Adapter.fUeUnitScale != 0.01)
+			{
+				return Fail("point-light particle input policy is unsupported.");
+			}
+			Element.Detail.Light.bEnabled = true;
+			Element.Detail.Light.eProfile =
+				EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+			Element.Detail.Light.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			for (const std::string& strFieldId : Adapter.FieldIds)
+			{
+				const EFFECT_RUNTIME_PROGRAM_POINT_LIGHT_FIELD* Field =
+					Find_UniqueProgramRowById(Program->PointLightFields, strFieldId);
+				if (nullptr == Field || Field->strModuleId != Adapter.strModuleId)
+					return Fail("point-light adapter field join is invalid.");
+				if (Field->strFieldPath == "brightness" && Field->fValue.has_value())
+				{
+					if (!AssignF32(*Field->fValue,
+						Element.Detail.Light.fIntensity, "point-light intensity"))
+						return false;
+				}
+				else if (Field->strFieldPath == "radius" &&
+					Field->fValue.has_value())
+				{
+					if (!AssignF32(*Field->fValue * Adapter.fUeUnitScale,
+						Element.Detail.Light.fRange, "point-light range"))
+						return false;
+				}
+				else if (Field->strFieldPath == "falloffexponent" &&
+					Field->fValue.has_value())
+				{
+					if (!AssignF32(*Field->fValue,
+						Element.Detail.Light.fFalloffExponent,
+						"point-light falloff"))
+						return false;
+				}
+				else if (Field->strFieldPath == "lightcolor" &&
+					Field->ColorRgba8Value.has_value())
+				{
+					const auto& Color = *Field->ColorRgba8Value;
+					Element.Detail.Light.vColor = {
+						static_cast<f32_t>(Color[0u]) / 255.f,
+						static_cast<f32_t>(Color[1u]) / 255.f,
+						static_cast<f32_t>(Color[2u]) / 255.f,
+						static_cast<f32_t>(Color[3u]) / 255.f };
+				}
+			}
+
+			const auto FindUniqueSourceDistribution = [&Element, &Lower](
+				const std::string_view strClassName,
+				const std::string_view strPropertyPath)
+				-> const EFFECT_DISTRIBUTION_DESC*
+			{
+				const EFFECT_DISTRIBUTION_DESC* pFound = nullptr;
+				for (const EFFECT_SOURCE_MODULE_DESC& Module :
+					Element.SourceRecipe.Modules)
+				{
+					if (Lower(Module.strClassName) != strClassName)
+						continue;
+					for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+						Module.Distributions)
+					{
+						if (Distribution.strPropertyPath != strPropertyPath)
+							continue;
+						if (nullptr != pFound)
+							return nullptr;
+						pFound = &Distribution;
+					}
+				}
+				return pFound;
+			};
+			const auto ReadConstant = [](const EFFECT_DISTRIBUTION_DESC* pDistribution,
+				const uint32_t iComponentCount, float4_t& OutValue)
+			{
+				if (nullptr == pDistribution ||
+					pDistribution->iComponentCount != iComponentCount ||
+					pDistribution->iOperation != 1u ||
+					!pDistribution->LookupTable.empty() ||
+					!pDistribution->Keys.empty())
+				{
+					return false;
+				}
+				const f32_t* const pMinimum =
+					&pDistribution->vDefaultMinimum.x;
+				const f32_t* const pMaximum =
+					&pDistribution->vDefaultMaximum.x;
+				for (uint32_t i = 0u; i < iComponentCount; ++i)
+				{
+					if (!std::isfinite(pMinimum[i]) ||
+						pMinimum[i] != pMaximum[i])
+					{
+						return false;
+					}
+				}
+				OutValue = pDistribution->vDefaultMinimum;
+				return true;
+			};
+			float4_t SourceLocation{};
+			float4_t SourceStartColor{};
+			float4_t SourceStartAlpha{};
+			if (!ReadConstant(FindUniqueSourceDistribution(
+					"particlemodulelocation", "startlocation"),
+					3u, SourceLocation) ||
+				!ReadConstant(FindUniqueSourceDistribution(
+					"particlemodulecolor", "startcolor"),
+					3u, SourceStartColor) ||
+				!ReadConstant(FindUniqueSourceDistribution(
+					"particlemodulecolor", "startalpha"),
+					1u, SourceStartAlpha))
+			{
+				return Fail("point-light particle input distribution is not one "
+					"typed constant after Program overlay.");
+			}
+			const std::array<double, 3u> ClientPosition = Source_ToClientVector(
+				{ SourceLocation.x, SourceLocation.y, SourceLocation.z },
+				Adapter.fUeUnitScale);
+			if (!AssignF3(ClientPosition,
+					Element.Detail.Particle.vInitialPositionMin,
+					"point-light particle location") ||
+				!AssignF3(ClientPosition,
+					Element.Detail.Particle.vInitialPositionMax,
+					"point-light particle location maximum"))
+			{
+				return false;
+			}
+			Element.Detail.Color.vColorMultiply = {
+				SourceStartColor.x,
+				SourceStartColor.y,
+				SourceStartColor.z,
+				SourceStartAlpha.x
+			};
+			++iTypedLightParticleInputProjectionCount;
+		}
+
+		/* Project the already-verified native-v14 carrier into the ordinary
+		   format-13 runtime shape.  The renderer type and source space are part
+		   of the drawable runtime contract, so preserve the exact Program-joined
+		   values.  Only source-evidence fields that the format-13 evaluator must
+		   not consume are cleared below. */
+		if (Emitter.eRenderer == EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE)
+			Element.eKind = EFFECT_ELEMENT_KIND::DECAL;
+		Element.SourceRecipe.strSourceContractProfileId.clear();
+		Element.SourceRecipe.strSourceContractSha256.clear();
+		Element.SourceRecipe.strSourceGraphSha256.clear();
+		Element.SourceRecipe.strSourceClosureSha256.clear();
+		Element.SourceRecipe.strSourceMaterialClosureSha256.clear();
+		Element.SourceRecipe.iSourcePeakActiveParticles = 0u;
+		Element.SourceRecipe.LocalReferenceBindings.clear();
+		Element.SourceRecipe.ModuleCoverage.clear();
+		Element.SourceRecipe.CompilerEvidence = {};
+		Element.SourceRecipe.CompiledExecutionAdmission = {};
+		Element.SourceRecipe.MaterialAdmission = {};
+		Element.SourceRecipe.GeometryBinding = {};
+		for (EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
+		{
+			for (EFFECT_DISTRIBUTION_DESC& Distribution : Module.Distributions)
+			{
+				Distribution.strReferenceId.clear();
+				Distribution.strOccurrenceId.clear();
+				Distribution.strPayloadStatus.clear();
+				Distribution.strFidelity.clear();
+				Distribution.ExecutionAdmission = {};
+				Distribution.eParameterBinding =
+					EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
+				Distribution.strParameterName.clear();
+			}
+		}
+		if (!RendererMatches(Emitter.eRenderer, Element) ||
+			Element.Renderer.eSourceSpace != eExpectedSourceSpace)
+		{
+			return Fail("the typed renderer identity was lost while projecting the "
+				"native-v14 carrier into the format-13 runtime document.");
+		}
+		++iTypedRendererProjectionCount;
+	}
+
+	if (CoveredElements.size() != Program->Emitters.size() ||
+		CoveredOccurrences.size() != Program->MaterialOccurrences.size() ||
+		CoveredTextureResources.size() !=
+			Program->RendererTextureResources.size() ||
+		CoveredGeometryUses.size() != Program->GeometryUses.size() ||
+		iOneLayerRuntimeTextureProjectionCount != 1u ||
+		iParameterDistributionOverlayCount != 16u ||
+		iCurveDistributionOverlayCount != 1u ||
+		iClearedDistributionReferenceCount != 17u ||
+		iSpriteEmitterCount != 16u ||
+		iSpriteIdentitySubUVCount != 11u ||
+		iSourceSubUVProjectionCount != 5u ||
+		iRandom2x2SubUVCount != 3u ||
+		iLinearBlend6x6SubUVCount != 2u ||
+		iMaterialSubUVProjectionCount != 5u ||
+		iMainCompositeMaterialProjectionCount != 13u ||
+		iMissileTrailFiniteProfileProjectionCount != 1u ||
+		iReconstructedEvaluatorMaterialProjectionCount != 12u ||
+		iRuntimeMaterialV2ProfileProjectionCount != 10u ||
+		iTypedRibbonGeometryProjectionCount != 1u ||
+		iTypedLightParticleInputProjectionCount != 1u ||
+		iTypedRendererProjectionCount != Program->Emitters.size())
+	{
+		return Fail("the 35-emitter material/resource/geometry/SubUV projection is "
+			"not exhaustive.");
+	}
+	StagedDocument.iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	StagedDocument.iLoadedFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	StagedDocument.bSourceContract = false;
+	StagedDocument.strEffectAssetId = Program->strRuntimeCatalogAssetId;
+	StagedDocument.strDisplayName =
+		"Artist F 31470 Reconstructed Source Runtime Preview";
+	if (!CEffectDocumentCodec::
+		Validate_Artist31470ReconstructedRuntimeDrawable(
+		StagedDocument, strOutError))
+	{
+		return false;
+	}
+	OutDocument = std::move(StagedDocument);
 	strOutError.clear();
 	return true;
 }

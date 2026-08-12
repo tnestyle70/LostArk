@@ -164,7 +164,7 @@ Require-Match $objectSource `
     'Prepared EffectObject spawn must use the prevalidated playback path.'
 $preparedObjectBody = Function-Body $objectSource `
     'bool_t Client::CEffectObject::Stage_PreparedDocument\(' `
-    'void Client::CEffectObject::Set_RootWorld\('
+    'bool_t Client::CEffectObject::Stage_ReconstructedRuntimeProgram\('
 Require-NoMatch $preparedObjectBody `
     'm_Playback\.Seek' `
     'Prepared product staging must defer its first Seek until post-Character anchor sync.'
@@ -206,8 +206,14 @@ Require-Match $presentationSource `
     'fCueDelta\s*=[\s\S]*?fTimeDelta\)\s*\*\s*Effect\.fPlaybackRate[\s\S]*?Advance_Preview\(fCueDelta\)' `
     'Service playback and cue-end clocks must advance on the same authored clip-rate delta.'
 Require-Match $mainAppSource `
-    'Update_Engine\(fTimeDelta\);\s*CEffectPresentationService::Synchronize_FollowAnchors\(\);\s*CEffectPresentationService::Update\(fTimeDelta\);' `
-    'Current Character root/bones must be synchronized before service-owned Effect playback captures occurrences.'
+    'Update_Engine\(fTimeDelta\);\s*CEffectPresentationService::Commit_PendingSpawns\(\);\s*CEffectPresentationService::Synchronize_FollowAnchors\(\);\s*CEffectPresentationService::Update\(fTimeDelta\);' `
+    'Effect layer insertion must commit after Object Manager iteration and before current Character anchors are synchronized.'
+Require-Match $presentationSource `
+    'g_PendingEffectSpawns\.push_back[\s\S]*?Commit_PendingSpawns\(\)[\s\S]*?Spawn_Immediate' `
+    'Product cue Spawn must queue a stable request and commit it through the existing fail-closed spawn path.'
+Require-Match $presentationSource `
+    'Stop_Owner[\s\S]*?g_PendingEffectSpawns\.erase[\s\S]*?Clear_Level[\s\S]*?g_PendingEffectSpawns\.erase[\s\S]*?Clear_All[\s\S]*?g_PendingEffectSpawns\.clear' `
+    'Owner stop, level clear, and global clear must cancel queued Effect requests before layer insertion.'
 
 Require-Match $catalogHeader 'RUNTIME_SNAPSHOT' `
     'Effect Catalog must expose an explicit rollback snapshot boundary.'
@@ -221,4 +227,4 @@ Require-Match $toolSource `
 Write-Host (
     'Effect runtime prewarm audit PASS: cue-target-only prewarm, one core/device, ' +
     'shared immutable bundles, per-instance mutable state, no-I/O product Spawn, ' +
-    'catalog rollback, and post-Character authored cue timing are wired.')
+    'catalog rollback, deferred layer commit, and post-Character authored cue timing are wired.')

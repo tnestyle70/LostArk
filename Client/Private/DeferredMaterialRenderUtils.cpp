@@ -72,40 +72,49 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		pEmissiveOverride->vColor : float4_t(1.f, 1.f, 1.f, 1.f);
 	const f32_t fFullSurfaceEmissiveIntensity = hasValidOverride ?
 		pEmissiveOverride->fIntensity : 0.f;
+	HRESULT hFirstBindFailure = S_OK;
+	const auto BindFailed = [&hFirstBindFailure](const HRESULT hResult)
+	{
+		if (SUCCEEDED(hResult))
+			return false;
+		if (SUCCEEDED(hFirstBindFailure))
+			hFirstBindFailure = hResult;
+		return true;
+	};
 
-	if (FAILED(Model.Bind_Material(
+	if (BindFailed(Model.Bind_Material(
 		pShader, "g_DiffuseTexture", iMeshIndex, aiTextureType_DIFFUSE, 0)) ||
-		FAILED(pShader->Bind_RawValue(
+		BindFailed(pShader->Bind_RawValue(
 			"g_HasNormalTexture", &iHasNormal, sizeof(iHasNormal))) ||
-		(0u != iHasNormal && FAILED(Model.Bind_Material(
+		(0u != iHasNormal && BindFailed(Model.Bind_Material(
 			pShader, "g_NormalTexture", iMeshIndex, aiTextureType_NORMALS, 0))) ||
-		FAILED(pShader->Bind_RawValue(
+		BindFailed(pShader->Bind_RawValue(
 			"g_HasSpecularTexture", &iHasSpecular, sizeof(iHasSpecular))) ||
-		FAILED(pShader->Bind_RawValue("g_SpecularIntensity",
+		BindFailed(pShader->Bind_RawValue("g_SpecularIntensity",
 			&Profile.fSpecularIntensity, sizeof(Profile.fSpecularIntensity))) ||
-		FAILED(pShader->Bind_RawValue("g_SpecularPower",
+		BindFailed(pShader->Bind_RawValue("g_SpecularPower",
 			&Profile.fSpecularPower, sizeof(Profile.fSpecularPower))) ||
-		(0u != iHasSpecular && FAILED(Model.Bind_Material(
+		(0u != iHasSpecular && BindFailed(Model.Bind_Material(
 			pShader, "g_SpecularTexture", iMeshIndex, aiTextureType_SPECULAR, 0))) ||
-		FAILED(pShader->Bind_RawValue(
+		BindFailed(pShader->Bind_RawValue(
 			"g_HasEmissiveTexture", &iHasEmissive, sizeof(iHasEmissive))) ||
-		FAILED(pShader->Bind_RawValue("g_EmissiveColor",
+		BindFailed(pShader->Bind_RawValue("g_EmissiveColor",
 			&Profile.vEmissiveColor, sizeof(Profile.vEmissiveColor))) ||
-		FAILED(pShader->Bind_RawValue("g_EmissiveIntensity",
+		BindFailed(pShader->Bind_RawValue("g_EmissiveIntensity",
 			&Profile.fEmissiveIntensity, sizeof(Profile.fEmissiveIntensity))) ||
-		FAILED(pShader->Bind_RawValue("g_HasFullSurfaceEmissiveOverride",
+		BindFailed(pShader->Bind_RawValue("g_HasFullSurfaceEmissiveOverride",
 			&iHasFullSurfaceEmissiveOverride,
 			sizeof(iHasFullSurfaceEmissiveOverride))) ||
-		FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveColor",
+		BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveColor",
 			&vFullSurfaceEmissiveColor,
 			sizeof(vFullSurfaceEmissiveColor))) ||
-		FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
+		BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
 			&fFullSurfaceEmissiveIntensity,
 			sizeof(fFullSurfaceEmissiveIntensity))) ||
-		(0u != iHasEmissive && FAILED(Model.Bind_Material(
+		(0u != iHasEmissive && BindFailed(Model.Bind_Material(
 			pShader, "g_EmissiveTexture", iMeshIndex, aiTextureType_EMISSIVE, 0))))
 	{
-		return E_FAIL;
+		return hFirstBindFailure;
 	}
 
 	const Engine::MODEL_COLOR_TINT* pColorTint =
@@ -120,18 +129,18 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	the flag stuck on for the undyed mesh that follows. */
 	pShader->Bind_RawValue("g_HasDyeMask", &iHasDyeMask, sizeof(iHasDyeMask));
 	if (0u != iHasDyeMask &&
-		(FAILED(Model.Bind_Material(pShader, "g_DyeMaskTexture",
+		(BindFailed(Model.Bind_Material(pShader, "g_DyeMaskTexture",
 			iMeshIndex, aiTextureType_BASE_COLOR, 0)) ||
-		FAILED(pShader->Bind_RawValue("g_DyeDiffuseColor",
+		BindFailed(pShader->Bind_RawValue("g_DyeDiffuseColor",
 			&pColorTint->vDiffuse, sizeof(pColorTint->vDiffuse))) ||
-		FAILED(pShader->Bind_RawValue("g_DyeRegionA",
+		BindFailed(pShader->Bind_RawValue("g_DyeRegionA",
 			&pColorTint->vRegionA, sizeof(pColorTint->vRegionA))) ||
-		FAILED(pShader->Bind_RawValue("g_DyeRegionB",
+		BindFailed(pShader->Bind_RawValue("g_DyeRegionB",
 			&pColorTint->vRegionB, sizeof(pColorTint->vRegionB))) ||
-		FAILED(pShader->Bind_RawValue("g_DyeRegionC",
+		BindFailed(pShader->Bind_RawValue("g_DyeRegionC",
 			&pColorTint->vRegionC, sizeof(pColorTint->vRegionC)))))
 	{
-		return E_FAIL;
+		return hFirstBindFailure;
 	}
 	return S_OK;
 }

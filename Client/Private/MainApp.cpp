@@ -292,6 +292,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 
 	CNetworkManager::Get().Update();
 	CGameInstance::Get().Update_Engine(fTimeDelta);
+	CEffectPresentationService::Commit_PendingSpawns();
 	CEffectPresentationService::Synchronize_FollowAnchors();
 	CEffectPresentationService::Update(fTimeDelta);
 

@@ -1,6 +1,9 @@
 #include "AnimationTargetService.h"
 
 #include "Character.h"
+#include "Model.h"
+
+#include <cmath>
 
 weak_ptr<Client::CCharacter> Client::CAnimationTargetService::s_Target;
 weak_ptr<Engine::CModel> Client::CAnimationTargetService::s_PreviewModel;
@@ -160,5 +163,114 @@ bool_t Client::CAnimationTargetService::Resolve_AnchorTransform(
 	XMStoreFloat4x4(
 		pOut,
 		model->Get_BoneMatrix(pAnchorSlotId) * XMLoadFloat4x4(&root));
+	return true;
+}
+
+bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBinding(
+	const uint64_t iExpectedTargetGeneration,
+	const uint32_t iExpectedAnimationIndex,
+	const std::span<const std::string> BoneNames,
+	CAnimationHistoricalPoseBinding& OutBinding)
+{
+	if (0u == iExpectedTargetGeneration ||
+		iExpectedTargetGeneration != Resolve_TargetGeneration() ||
+		BoneNames.empty())
+	{
+		return false;
+	}
+
+	const shared_ptr<Engine::CModel> Model = Resolve_Model();
+	if (nullptr == Model ||
+		iExpectedAnimationIndex != Model->Get_CurrentAnimIndex() ||
+		iExpectedAnimationIndex >= Model->Get_NumAnimations())
+	{
+		return false;
+	}
+
+	CAnimationHistoricalPoseBinding Staged;
+	Staged.m_Model = Model;
+	Staged.m_iTargetGeneration = iExpectedTargetGeneration;
+	Staged.m_iAnimationIndex = iExpectedAnimationIndex;
+	Staged.m_BoneIndices.reserve(BoneNames.size());
+	for (const std::string& BoneName : BoneNames)
+	{
+		if (BoneName.empty())
+			return false;
+		const int32_t iBoneIndex = Model->Find_BoneIndex(BoneName.c_str());
+		if (iBoneIndex < 0)
+			return false;
+		Staged.m_BoneIndices.push_back(static_cast<uint32_t>(iBoneIndex));
+	}
+
+	f32_t fTrackPosition = 0.f;
+	if (!Model->Get_AnimationProgress(iExpectedAnimationIndex,
+			fTrackPosition, Staged.m_fDurationTicks))
+	{
+		return false;
+	}
+	Staged.m_fTickRate =
+		Model->Get_AnimationTickPerSecond(iExpectedAnimationIndex);
+	if (!std::isfinite(Staged.m_fTickRate) || Staged.m_fTickRate <= 0.f ||
+		!std::isfinite(Staged.m_fDurationTicks) ||
+		Staged.m_fDurationTicks <= 0.f)
+	{
+		return false;
+	}
+	Staged.m_fDurationSeconds =
+		Staged.m_fDurationTicks / Staged.m_fTickRate;
+	if (!std::isfinite(Staged.m_fDurationSeconds) ||
+		Staged.m_fDurationSeconds <= 0.f ||
+		iExpectedTargetGeneration != Resolve_TargetGeneration() ||
+		Resolve_Model() != Model)
+	{
+		return false;
+	}
+
+	OutBinding = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CAnimationTargetService::Sample_HistoricalPose(
+	const CAnimationHistoricalPoseBinding& Binding,
+	const f32_t fAnimationLocalTimeSeconds,
+	ANIMATION_HISTORICAL_POSE_SAMPLE& OutSample)
+{
+	if (!Binding.Is_Valid() ||
+		!std::isfinite(fAnimationLocalTimeSeconds) ||
+		fAnimationLocalTimeSeconds < 0.f ||
+		fAnimationLocalTimeSeconds > Binding.m_fDurationSeconds ||
+		Binding.m_BoneIndices.empty() ||
+		Binding.m_iTargetGeneration != Resolve_TargetGeneration())
+	{
+		return false;
+	}
+
+	const shared_ptr<Engine::CModel> Model = Binding.m_Model.lock();
+	if (nullptr == Model || Resolve_Model() != Model ||
+		Binding.m_iAnimationIndex != Model->Get_CurrentAnimIndex())
+	{
+		return false;
+	}
+
+	ANIMATION_HISTORICAL_POSE_SAMPLE Staged;
+	if (!Resolve_RootTransform(&Staged.RootWorld))
+		return false;
+	Staged.BoneCombinedMatrices.resize(Binding.m_BoneIndices.size());
+	const f32_t fTrackPositionTicks = (std::min)(
+		Binding.m_fDurationTicks,
+		fAnimationLocalTimeSeconds * Binding.m_fTickRate);
+	if (!std::isfinite(fTrackPositionTicks) ||
+		!Model->Sample_CurrentAnimationBoneCombinedMatrices(
+			Binding.m_iAnimationIndex,
+			fTrackPositionTicks,
+			Binding.m_BoneIndices,
+			Staged.BoneCombinedMatrices) ||
+		Binding.m_iTargetGeneration != Resolve_TargetGeneration() ||
+		Resolve_Model() != Model)
+	{
+		return false;
+	}
+
+	OutSample = std::move(Staged);
 	return true;
 }

@@ -1,5 +1,18 @@
 # LostArk merge 회귀 방지 정본
 
+## 0. 모든 세션의 사용자 전용 화면 검증 경계
+
+- 세션 시작 시 `AGENTS.md`, `CLAUDE.md`, 이 문서, 있으면 `gotchas.local.md`,
+  `.md/TEAM/README.md`, 대응 PLAN/RESULT를 먼저 읽는다.
+- Artist F, Effect Tool, Character Select와 Client 시각 결과는 사용자만 직접 조작하고 최종 visual fidelity를 판정한다.
+- 에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고 화면 캡처·스크린샷 생성을 하지 않으며,
+  visual fidelity를 대신 판정하지 않는다.
+- 사용자가 대화에 첨부한 스크린샷이나 이미지 분석을 요청하면 에이전트는 반드시 열람·분석해
+  관찰된 결함과 가능한 occurrence 진단을 보고한다.
+- 에이전트는 빌드와 구조화된 로그·수치 진단, 실행 준비까지만 수행하고 사용자가 직접 누를 경로를
+  보고한 뒤 멈춘다. 사용자의 서면 판정 전에는 first pixel, eye smoke, visual PASS를 기록하지 않는다.
+- 일반적인 완성·복원 요청과 기존 캡처 파일의 존재는 Client/UI 자율 실행·조작이나 화면 캡처를 허가하지 않는다.
+
 이 문서는 merge, pull, rebase와 충돌 해결에서 이미 닫힌 다른 작성자의 계약을 되살리거나
 지우는 회귀를 막는 공용 체크리스트다. 날짜별 실패 로그는 대응 RESULT에 기록한다.
 
@@ -53,6 +66,58 @@ git rev-list --left-right --count HEAD...origin/main
 - Effect asset ID와 resource ID는 `Client/Bin/Resources` 기준 상대 안정 ID다. 절대 경로,
   drive-qualified 경로, `..` 탈출 경로를 저장 계약으로 되살리지 않는다.
 
+### Bone/socket scale은 transform 계층별로 검증
+
+- model prototype admission scale을 `CModel::Get_BoneMatrix()`의 combined socket scale로 간주하지 않는다.
+  Artist는 admission `0.0001`과 rig `sdm` root `100`이 합성되어 `b_wp_1` combined basis가 `0.01`이다.
+- Artist Effect anchor는 combined basis `0.01`을 exact tolerance로 검사한 뒤 3x3에만 `x100`을 적용한다.
+  translation, animation rotation, asset orientation과 owner world는 보존한다.
+- 관찰한 임의 scale 자동 정규화, `0.0001 또는 0.01` 동시 허용, raw fallback은 금지한다. 다른 class/asset에
+  확대할 때는 `prototypeAdmissionScale`, `rigRootScale`, `combinedAnchorScale`, reciprocal을 manifest가 소유한다.
+- 회귀는 synthetic matrix만으로 닫지 않는다. 실제 model을 제품 pretransform으로 로드해 bind pose와 대상
+  animation pose의 named bone combined scale, 정규화 결과, 잘못된 scale fail-close를 Debug·Release에서 검사한다.
+
+### ObjectManager layer-map AV는 Effect 오류와 분리
+
+- `std::map<..., shared_ptr<CLayer>>::_Find_lower_bound` 내부 AV만으로 missing layer tag, map insertion,
+  Effect clone 또는 shader를 원인으로 확정하지 않는다. key 비교 전 map tree-state 주소에서 fault면 manager/map
+  lifetime, ABI, out-of-bounds 또는 선행 메모리 손상을 full dump로 구분한다.
+- authored animation Effect cue와 balance `effectId` fallback은 별도 경로다. `effectId=""`만 보고 cue가 없다고
+  결론내리지 말고 실제 `.animevents`의 published `effectref=asset` row와 runtime caller를 함께 확인한다.
+- 위험 경로를 queue로 옮긴 뒤 같은 RVA가 재현되면 그 변경을 root fix로 기록하지 않는다. Client 전용 full
+  LocalDump의 전체 stack과 matching EXE/DLL/PDB identity가 확보되기 전에는 `OPEN`을 유지한다.
+
+### Effect 준비 성공과 첫 GPU draw 성공은 별도 gate
+
+- Catalog parse, typed Program 검사, DDS/SRV/sampler 준비와 prepared-cache commit이 PASS해도 실제
+  `Bind -> Begin -> Draw`는 아직 한 번도 실행하지 않았을 수 있다. Effect 종료 회귀는 제품과 같은
+  `CEffectObject`를 layer에 넣고 실제 fixed-step occurrence가 활성화된 시점까지 진행한 뒤 첫 draw의
+  `attempted/submitted/suppressed/failed/committed`를 검사한다.
+- native-v14 Artist 문서를 format-13 runtime drawable로 낮출 때 `Renderer.eType`과
+  `Renderer.eSourceSpace`를 지우지 않는다. 35개 element는 stable element/emitter ID로 Program의
+  renderer/source-space와 다시 exact join하고, aggregate family count만 맞는 것은 증거로 쓰지 않는다.
+- 반대로 기존 v3~v13 문서에는 `SourceRecipe.bEnabled=true`이면서 `Renderer==END`인 정상 저작 문서가
+  존재한다. 이 경로는 kind와 geometry binding으로 legacy family를 결정한다. typed Artist 규칙을
+  legacy에 역적용하거나 `SourceRecipe.bEnabled`를 이유로 GPU occurrence를 제거하지 않는다. 2026-08-12
+  기준 회귀 분모는 authored 18문서, particle/decal GPU occurrence 1,300개다.
+- Effect 하나의 frozen input, packet denominator, profile, local resource identity 위반은 명시적인
+  `LOCAL_CONTRACT`로 기록하고 해당 object만 격리한다. D3D Map/draw, device removal, OOM, global render
+  target과 presentation capacity 실패는 `GLOBAL_RUNTIME`으로 전파한다. `E_FAIL` 값만 보고 둘을 추론하지 않는다.
+- 첫 draw 회귀는 최소 Artist Full35와 legacy Lance BA1을 함께 태운다. Artist만 검사하면 legacy
+  renderer fallback 퇴행을, Lance만 검사하면 35행 typed renderer join 퇴행을 놓친다. 화면 모양은 이
+  자동 gate가 녹색인 뒤 사용자가 별도로 판정한다.
+
+### Artist F 수동 검증 경계
+
+- 화면의 최종 판정자는 사용자다. 에이전트는 Client HWND나 Effect Tool을 자율적으로 실행·조작하거나
+  직접 캡처하지 않는다.
+- 사용자가 첨부한 실행 화면이나 이미지를 분석해 달라고 요청하면 반드시 열람·분석한다. 분석 결과는
+  occurrence별 진단·리뷰 입력으로 사용하되 최종 visual PASS나 단독 admission 증거로 승격하지 않는다.
+- 자동 증거는 compile, structured diagnostic, resource/shader/draw 수치에 한정한다. 에이전트가 직접 만든
+  캡처나 자동 클릭 결과를 구현·리뷰·완료 증거로 사용하지 않는다.
+- 에이전트는 Server CMD와 Client 준비 상태, 정확한 수동 클릭 경로만 전달한다. 사용자의 관찰 결과를
+  받은 뒤에만 occurrence별 결함과 튜닝 작업을 이어간다.
+
 ### Debug Client `abort()` 팝업
 
 - `Client/Bin/Debug/Client.exe` 실행 직후 Microsoft Visual C++ Runtime Library의
@@ -75,8 +140,9 @@ git rev-list --left-right --count HEAD...origin/main
   Client 초기화 실패 메시지 경계로 전달한다. `catch (...)`는 C++ 표준 예외가 아닌 DirectX 경계도
   process abort로 빠지지 않게 하는 마지막 변환이며 성공으로 삼지 않고 반드시 `E_FAIL`을 반환한다.
   기본 폰트나 다른 디렉터리로 자동 fallback해 정상 시작으로 위장하지 않는다.
-- 수정 후에는 Debug Client를 다시 빌드하고 아무 입력 없이 실행해 Lobby 렌더, `abort()` 부재,
-  종료 후 잔류 Client process 부재를 확인한다. resource pack의 `Verify` 결과도 별도로 확인한다.
+- 수정 후에는 Debug Client를 다시 빌드하고 사용자가 아무 입력 없이 실행해 Lobby 렌더와 `abort()` 부재를
+  눈으로 확인한다. 에이전트는 공유된 결과와 종료 후 잔류 Client process 부재, resource pack의 `Verify`
+  결과를 별도로 확인한다.
 
 ### 프로젝트·데이터 등록
 
@@ -96,7 +162,7 @@ git rev-list --left-right --count HEAD...origin/main
 4. Character Preview 공용 경로와 project/filter 등록 확인
 5. 변경 JSON과 XML parse
 6. 관련 focused harness와 Debug build
-7. 실제 Character Select 재진입 또는 Effect Tool 수동 smoke
+7. 사용자가 직접 수행한 Character Select 재진입 또는 Effect Tool 수동 smoke의 서면 결과
 8. Tools/ProjectAudit/Invoke-ProjectAudit.ps1
 9. git diff --check
 10. 잔류 Client/Server process와 listener 확인

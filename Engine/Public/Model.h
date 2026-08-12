@@ -3,6 +3,7 @@
 #include "Component.h"
 
 #include <array>
+#include <span>
 
 NS_BEGIN(Engine)
 
@@ -89,6 +90,14 @@ public:
 	int32_t Get_BoneParentIndex(uint32_t iBoneIndex) const;
 	bool_t Get_BoneLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
 	bool_t Get_BoneCombinedMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
+	/* Samples the currently bound animation without moving its cursor or the
+	   live bone palette.  expectedAnimationIndex closes the race where a tool
+	   prepared one clip and another owner changed it before the sample. */
+	bool_t Sample_CurrentAnimationBoneCombinedMatrices(
+		uint32_t iExpectedAnimationIndex,
+		f32_t fTrackPositionTicks,
+		std::span<const uint32_t> BoneIndices,
+		std::span<float4x4_t> OutCombinedMatrices) const;
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(

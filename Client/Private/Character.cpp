@@ -106,6 +106,23 @@ HRESULT CCharacter::Initialize(void* pArg)
 	unavailable. */
 	Load_ClipChains();
 	Load_EffectCues();
+#ifdef _DEBUG
+	/* Artist F is intentionally a non-Product visual route.  Prewarm it while
+	   the Character is staged so the authoritative skill edge performs no file
+	   or GPU resource creation. */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST ==
+		m_pSpec->eCharacterClass)
+	{
+		std::string status;
+		if (!CEffectPresentationService::Prepare_ReconstructedArtist31470(
+			m_pDevice, m_pContext, status))
+		{
+			OutputDebugStringA((
+				"Artist 31470 reconstructed prewarm isolated: " +
+				status + "\n").c_str());
+		}
+	}
+#endif
 	/* Secondary motion is optional per class: a spec with no chains simply never
 	activates the solver. */
 	m_BoneChains.Initialize(
@@ -866,6 +883,33 @@ bool_t CCharacter::Apply_NetworkAction(
 				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 				true);
 		}
+#ifdef _DEBUG
+		if (presented && nullptr != m_pSpec &&
+			CHARACTER_CLASS_ID::ARTIST == m_pSpec->eCharacterClass &&
+			31470u == skillId)
+		{
+			EFFECT_SPAWN_DESC Desc;
+			Desc.strEffectAssetId = "effect.artist.skill.31470";
+			Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+			Desc.strAnchorSlotId = "root";
+			Desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+			Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+			Desc.iActionStartTick = actionStartTick;
+			Desc.iCueStartMs = 0u;
+			Desc.strOccurrenceId =
+				"reconstructed:artist:31470:authoritative-action";
+			Desc.fPlaybackRate = 1.f;
+			Desc.fInitialSampleTimeSeconds = fActionAgeSeconds;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_ReconstructedArtist31470(
+				Desc, status))
+			{
+				OutputDebugStringA((
+					"Artist 31470 reconstructed action edge isolated: " +
+					status + "\n").c_str());
+			}
+		}
+#endif
 		Spawn_FallbackEffect(skillId);
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
