@@ -1557,6 +1557,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31470.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\README.md" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Temporal\skill.31470.main-temporal-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31000.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31210.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31230.source-receipt.json" />

@@ -1705,13 +1705,22 @@ void Client::CEffectPlayback::Step(
 							(Burst.iCountMaximum - Burst.iCountMinimum + 1u);
 						Spawn_Particles(Element, State, iCount, RootWorld);
 					}
-					const f32_t fRate = Evaluate_SourceFloat(Element,
-						"particlemodulespawn", "rate", fEmitterTime,
-						static_cast<f32_t>(Next_Random(State)) /
-							static_cast<f32_t>(UINT32_MAX),
-						Element.Detail.Particle.fSpawnRatePerSecond);
+					const EFFECT_SOURCE_MODULE_DESC* pSpawnModule =
+						Find_SourceModule(Element, "particlemodulespawn");
+					/* Cascade consumes a random draw only when the distribution
+					   operation requires one.  Drawing unconditionally here shifts every
+					   later occurrence/module stream even for deterministic Rate data. */
+					const f32_t fRate = nullptr == pSpawnModule ?
+						Element.Detail.Particle.fSpawnRatePerSecond :
+						Evaluate_ModuleFloat(State, *pSpawnModule, "rate",
+							fEmitterTime,
+							Element.Detail.Particle.fSpawnRatePerSecond);
+					const f32_t fRateScale = nullptr == pSpawnModule ? 1.f :
+						Evaluate_ModuleFloat(State, *pSpawnModule, "ratescale",
+							fEmitterTime, 1.f);
 					State.fSpawnAccumulator +=
-						(std::max)(0.f, fRate) * fFixedDelta;
+						(std::max)(0.f, fRate) *
+						(std::max)(0.f, fRateScale) * fFixedDelta;
 					const uint32_t iSpawnCount = static_cast<uint32_t>(
 						std::floor(State.fSpawnAccumulator));
 					State.fSpawnAccumulator -=

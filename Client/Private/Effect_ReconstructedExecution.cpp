@@ -2025,6 +2025,19 @@ namespace
 		return iInOutState;
 	}
 
+	double Distribution_RandomUnit(
+		const EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Distribution,
+		uint32_t& iInOutState)
+	{
+		if (!Distribution.iOperation.has_value() ||
+			(*Distribution.iOperation != 2u && *Distribution.iOperation != 3u))
+		{
+			return 0.0;
+		}
+		return static_cast<double>(Next_Random(iInOutState)) /
+			static_cast<double>((std::numeric_limits<uint32_t>::max)());
+	}
+
 	struct TIMING_PARTICLE final
 	{
 		std::string strOccurrenceId;
@@ -2273,14 +2286,12 @@ namespace
 								"Reconstructed fixed-step spawn evaluator is not executable.");
 						}
 						std::array<double, 4u> RandomUnits{};
-						RandomUnits[0u] = static_cast<double>(
-							Next_Random(State.Public.iRandomState)) /
-							static_cast<double>((std::numeric_limits<uint32_t>::max)());
+						RandomUnits[0u] = Distribution_RandomUnit(
+							RateDistribution, State.Public.iRandomState);
 						const double Rate = Evaluate_Distribution(
 							RateDistribution, EmitterTime, RandomUnits)[0u];
-						RandomUnits[0u] = static_cast<double>(
-							Next_Random(State.Public.iRandomState)) /
-							static_cast<double>((std::numeric_limits<uint32_t>::max)());
+						RandomUnits[0u] = Distribution_RandomUnit(
+							RateScaleDistribution, State.Public.iRandomState);
 						const double RateScale = Evaluate_Distribution(
 							RateScaleDistribution, EmitterTime, RandomUnits)[0u];
 						if (!Is_Finite(Rate) || !Is_Finite(RateScale) ||

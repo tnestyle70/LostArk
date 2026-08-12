@@ -8731,6 +8731,338 @@ namespace
 			runner.Require(bExactFrames,
 				"Artist 31470 V3 Main Review Has No Early Plate Three Main Rows At 1.670 Only Outer At 2.177 And No 2.610 Tail");
 
+			/* This is a runtime-clock projection canary, not an admission of the
+			   native UE3 Material CurrentTime origin.  The continuous five-point
+			   rows pin the staged source distributions; playback comparisons below
+			   pin the Client's discrete 60 Hz owner separately. */
+			struct MAIN_TEMPORAL_SOURCE_ORACLE final
+			{
+				uint32_t iOrder = 0u;
+				f32_t fLifetimeSeconds = 0.f;
+				std::array<f32_t, 5u> SizeFactor{};
+				std::array<f32_t, 5u> Alpha{};
+				std::array<f32_t, 5u> RotationRateFactor{};
+				std::array<float4_t, 5u> Dynamic{};
+			};
+			constexpr std::array<f32_t, 5u> TemporalFractions{
+				0.f, 0.25f, 0.5f, 0.75f, 1.f };
+			constexpr std::array<f32_t, 5u> MainSizeFactors{
+				0.800000011921f, 0.968749880791f, 1.05833327770f,
+				1.09375f, 1.10000002384f };
+			constexpr std::array<f32_t, 5u> MainAlpha{
+				0.f, 3.12048465014f, 1.12633571029f,
+				0.216447263956f, 0.f };
+			constexpr std::array<f32_t, 5u> MainRotationRateFactors{
+				1.5f, 0.795292139053f, 0.331926375628f,
+				0.0775973945856f, 0.f };
+			constexpr std::array<float4_t, 5u> MainDynamic{{
+				{ 1.f, 1.f, 1.f, 1.f },
+				{ 1.f, 1.f, 1.f, 1.05000001192f },
+				{ 1.f, 1.f, 1.f, 1.10000002384f },
+				{ 1.f, 1.f, 1.f, 1.15000003576f },
+				{ 1.f, 1.f, 1.f, 1.20000004768f }
+			}};
+			constexpr std::array<MAIN_TEMPORAL_SOURCE_ORACLE, 3u>
+				MainTemporalSourceOracles{{
+				{ 9u, 0.5f, MainSizeFactors, MainAlpha,
+					MainRotationRateFactors, MainDynamic },
+				{ 10u, 0.5f, MainSizeFactors, MainAlpha,
+					MainRotationRateFactors, MainDynamic },
+				{ 11u, 0.800000011921f,
+					{ 1.04999995232f, 1.04999995232f, 1.04999995232f,
+					  1.04999995232f, 1.04999995232f },
+					{ 25.f, 25.f, 25.f, 25.f, 25.f },
+					{ 8.f, 2.92323803902f, 1.03593635559f,
+					  0.174032777548f, 0.f },
+					{{
+						{ 2.56568674282f, 1.07457602024f, 2.03287181302f, 1.f },
+						{ -0.601839221552f, 1.13991979994f, 2.42917390194f, 1.f },
+						{ -0.790566983439f, 1.26304866825f, 2.82547599087f, 1.f },
+						{ -0.887794161572f, 1.56208085166f, 3.22177807979f, 1.f },
+						{ -0.968809545040f, 1.97751510143f, 3.61808016872f, 1.f }
+					}}
+				}
+			}};
+			const auto FindSourceDistribution = [](
+				const EFFECT_ELEMENT_DESC& Element,
+				const std::string_view strClass,
+				const std::string_view strProperty,
+				const size_t iClassOccurrence = 0u)
+				-> const EFFECT_DISTRIBUTION_DESC*
+			{
+				size_t iMatchedClass = 0u;
+				for (const EFFECT_SOURCE_MODULE_DESC& Module :
+					Element.SourceRecipe.Modules)
+				{
+					if (Module.strClassName != strClass)
+						continue;
+					if (iMatchedClass++ != iClassOccurrence)
+						continue;
+					for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+						Module.Distributions)
+					{
+						if (Distribution.strPropertyPath == strProperty)
+							return &Distribution;
+					}
+					return nullptr;
+				}
+				return nullptr;
+			};
+			const auto NearTemporal = [](const f32_t fActual, const f32_t fExpected)
+			{
+				return std::isfinite(fActual) &&
+					std::abs(fActual - fExpected) < 0.00002f;
+			};
+			bool_t bFivePointSourceProjection = bMainReviewStaged;
+			for (const MAIN_TEMPORAL_SOURCE_ORACLE& Oracle :
+				MainTemporalSourceOracles)
+			{
+				const auto RuntimeEmitter = std::find_if(Program->Emitters.begin(),
+					Program->Emitters.end(), [&Oracle](const auto& Row)
+					{ return Row.Row.iOrder == Oracle.iOrder; });
+				const auto Element = RuntimeEmitter == Program->Emitters.end() ?
+					MainReviewDocument.Elements.end() : std::find_if(
+						MainReviewDocument.Elements.begin(),
+						MainReviewDocument.Elements.end(), [&RuntimeEmitter](const auto& Row)
+						{ return Row.strElementId == RuntimeEmitter->strSourceElementId; });
+				if (Element == MainReviewDocument.Elements.end())
+				{
+					bFivePointSourceProjection = false;
+					continue;
+				}
+				const auto* pLifetime = FindSourceDistribution(*Element,
+					"particlemodulelifetime", "lifetime");
+				const auto* pSize = FindSourceDistribution(*Element,
+					"particlemodulesizemultiplylife", "lifemultiplier");
+				const auto* pRotation = FindSourceDistribution(*Element,
+					"particlemodulemeshrotationratemultiplylife", "lifemultiplier");
+				const auto* pDynamic0 = FindSourceDistribution(*Element,
+					"particlemoduleparameterdynamic", "dynamicparams[0].paramvalue");
+				bFivePointSourceProjection = bFivePointSourceProjection &&
+					nullptr != pLifetime && nullptr != pSize && nullptr != pRotation &&
+					nullptr != pDynamic0 && NearTemporal(
+						CEffectDistribution::Evaluate(*pLifetime, 0.f, 0.f).x,
+						Oracle.fLifetimeSeconds);
+				for (size_t iSample = 0u;
+					bFivePointSourceProjection && iSample < TemporalFractions.size();
+					++iSample)
+				{
+					const f32_t T = TemporalFractions[iSample];
+					const float4_t Size = CEffectDistribution::Evaluate(*pSize, T, 0.f);
+					const float4_t Rotation = CEffectDistribution::Evaluate(
+						*pRotation, T, 0.f);
+					float4_t Dynamic{};
+					for (size_t iLane = 0u; iLane < 4u; ++iLane)
+					{
+						const std::string Property = "dynamicparams[" +
+							std::to_string(iLane) + "].paramvalue";
+						const auto* pLane = FindSourceDistribution(*Element,
+							"particlemoduleparameterdynamic", Property);
+						if (nullptr == pLane)
+						{
+							bFivePointSourceProjection = false;
+							break;
+						}
+						(&Dynamic.x)[iLane] =
+							CEffectDistribution::Evaluate(*pLane, T, 0.f).x;
+					}
+					f32_t fAlpha = 1.f;
+					if (Oracle.iOrder <= 10u)
+					{
+						const auto* pBase = FindSourceDistribution(*Element,
+							"particlemodulecolor", "startalpha");
+						const auto* pScale = FindSourceDistribution(*Element,
+							"particlemodulecolorscaleoverlife", "alphascaleoverlife");
+						bFivePointSourceProjection = bFivePointSourceProjection &&
+							nullptr != pBase && nullptr != pScale;
+						if (nullptr != pBase && nullptr != pScale)
+							fAlpha = CEffectDistribution::Evaluate(*pBase, 0.f, 0.f).x *
+								CEffectDistribution::Evaluate(*pScale, T, 0.f).x;
+					}
+					else
+					{
+						const auto* pBase = FindSourceDistribution(*Element,
+							"particlemodulecoloroverlife", "alphaoverlife");
+						const auto* pScale = FindSourceDistribution(*Element,
+							"particlemodulecolorscaleoverlife", "alphascaleoverlife", 1u);
+						bFivePointSourceProjection = bFivePointSourceProjection &&
+							nullptr != pBase && nullptr != pScale;
+						if (nullptr != pBase && nullptr != pScale)
+							fAlpha = CEffectDistribution::Evaluate(*pBase, T, 0.f).x *
+								CEffectDistribution::Evaluate(*pScale, T, 0.f).x;
+					}
+					const f32_t fRotationFactor = Oracle.iOrder <= 10u ?
+						Rotation.z : Rotation.x;
+					bFivePointSourceProjection = bFivePointSourceProjection &&
+						NearTemporal(Size.x, Oracle.SizeFactor[iSample]) &&
+						NearTemporal(fAlpha, Oracle.Alpha[iSample]) &&
+						NearTemporal(fRotationFactor,
+							Oracle.RotationRateFactor[iSample]) &&
+						NearTemporal(Dynamic.x, Oracle.Dynamic[iSample].x) &&
+						NearTemporal(Dynamic.y, Oracle.Dynamic[iSample].y) &&
+						NearTemporal(Dynamic.z, Oracle.Dynamic[iSample].z) &&
+						NearTemporal(Dynamic.w, Oracle.Dynamic[iSample].w);
+				}
+			}
+			runner.Require(bFivePointSourceProjection,
+				"Artist 31470 Main Runtime Clock Projection Pins Source Lifetime Size Alpha Rotation And Dynamic At Zero 25 50 75 100 Percent");
+
+			const auto SnapshotMainTemporalFrame = [&OrderByElementId](
+				const EFFECT_EVALUATED_FRAME& Frame)
+			{
+				std::ostringstream Out;
+				Out << std::hexfloat;
+				for (const EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+				{
+					if (nullptr == Particle.pElement)
+						continue;
+					const auto Order = OrderByElementId.find(
+						Particle.pElement->strElementId);
+					if (Order == OrderByElementId.end() || Order->second < 9u ||
+						Order->second > 11u)
+						continue;
+					Out << Order->second << ':';
+					const f32_t* pWorld = &Particle.World._11;
+					for (size_t i = 0u; i < 16u; ++i)
+						Out << pWorld[i] << ',';
+					Out << Particle.Color.x << ',' << Particle.Color.y << ','
+						<< Particle.Color.z << ',' << Particle.Color.w << ','
+						<< Particle.vDynamicParameter.x << ','
+						<< Particle.vDynamicParameter.y << ','
+						<< Particle.vDynamicParameter.z << ','
+						<< Particle.vDynamicParameter.w << ','
+						<< Particle.fNormalizedLife << '|';
+				}
+				return Out.str();
+			};
+			constexpr std::array<uint32_t, 9u> MainTemporalTicks{
+				83u, 90u, 94u, 97u, 105u, 106u, 112u, 118u, 130u };
+			struct MAIN_TEMPORAL_REPLAY final
+			{
+				bool_t bStaged = false;
+				std::vector<std::string> Frames;
+				std::vector<f64_t> Clocks;
+			};
+			const auto RunMainTemporalStraight = [&]()
+			{
+				MAIN_TEMPORAL_REPLAY Result;
+				CEffectPlayback Playback;
+				std::string Status;
+				Result.bStaged = Playback.Stage_ReconstructedSourceRuntime(
+					MainReviewDocument, MainReviewResources, Preparation, Status);
+				uint32_t iTick = 0u;
+				for (const uint32_t iTarget : MainTemporalTicks)
+				{
+					while (Result.bStaged && iTick < iTarget)
+					{
+						Playback.Update(1.f / 60.f, MainReviewRoot);
+						++iTick;
+					}
+					Result.Frames.push_back(
+						SnapshotMainTemporalFrame(Playback.Get_Frame()));
+					Result.Clocks.push_back(Playback.Get_FixedStepClockSeconds());
+				}
+				return Result;
+			};
+			const auto RunMainTemporalSeek = [&]()
+			{
+				MAIN_TEMPORAL_REPLAY Result;
+				Result.bStaged = true;
+				for (const uint32_t iTarget : MainTemporalTicks)
+				{
+					CEffectPlayback Playback;
+					std::string Status;
+					Result.bStaged = Result.bStaged &&
+						Playback.Stage_ReconstructedSourceRuntime(
+							MainReviewDocument, MainReviewResources, Preparation, Status);
+					if (Result.bStaged)
+					{
+						/* float tick/60 can round just below the exact double step
+						   boundary (notably ticks 83 and 106).  Seek to the first
+						   representable float inside that same discrete tick. */
+						const f32_t fTickTime = std::nextafter(
+							static_cast<f32_t>(iTarget) / 60.f,
+							(std::numeric_limits<f32_t>::infinity)());
+						Playback.Seek(fTickTime, MainReviewRoot);
+					}
+					Result.Frames.push_back(
+						SnapshotMainTemporalFrame(Playback.Get_Frame()));
+					Result.Clocks.push_back(Playback.Get_FixedStepClockSeconds());
+				}
+				return Result;
+			};
+			const MAIN_TEMPORAL_REPLAY StraightA = RunMainTemporalStraight();
+			const MAIN_TEMPORAL_REPLAY StraightB = RunMainTemporalStraight();
+			const MAIN_TEMPORAL_REPLAY DirectSeek = RunMainTemporalSeek();
+			bool_t bTemporalReplayExact = StraightA.bStaged && StraightB.bStaged &&
+				DirectSeek.bStaged && StraightA.Frames == StraightB.Frames &&
+				StraightA.Frames == DirectSeek.Frames &&
+				StraightA.Clocks.size() == DirectSeek.Clocks.size();
+			for (size_t i = 0u; bTemporalReplayExact &&
+				i < StraightA.Clocks.size(); ++i)
+			{
+				const uint64_t iStraightTick = static_cast<uint64_t>(std::llround(
+					StraightA.Clocks[i] * 60.0));
+				const uint64_t iSeekTick = static_cast<uint64_t>(std::llround(
+					DirectSeek.Clocks[i] * 60.0));
+				bTemporalReplayExact =
+					iStraightTick == MainTemporalTicks[i] &&
+					iSeekTick == MainTemporalTicks[i] &&
+					std::abs(StraightA.Clocks[i] - DirectSeek.Clocks[i]) < 0.000001;
+			}
+			runner.Require(bTemporalReplayExact,
+				"Artist 31470 Main Runtime Clock Projection Has Identical 60Hz Straight Direct Seek Reseed Particle Order World Color Dynamic Normalized Life And Discrete Tick Clock");
+
+			CEffectPlayback TailPlayback;
+			std::string TailStatus;
+			bool_t bNoLifetimeTail = TailPlayback.Stage_ReconstructedSourceRuntime(
+				MainReviewDocument, MainReviewResources, Preparation, TailStatus);
+			TailPlayback.Seek(113.f / 60.f, MainReviewRoot);
+			const std::set<uint32_t> HalfSecondTailOrders =
+				CollectFrameOrders(TailPlayback.Get_Frame());
+			TailPlayback.Seek(131.f / 60.f, MainReviewRoot);
+			const std::set<uint32_t> AllTailOrders =
+				CollectFrameOrders(TailPlayback.Get_Frame());
+			bNoLifetimeTail = bNoLifetimeTail &&
+				!HalfSecondTailOrders.contains(9u) &&
+				!HalfSecondTailOrders.contains(10u) &&
+				!AllTailOrders.contains(9u) && !AllTailOrders.contains(10u) &&
+				!AllTailOrders.contains(11u);
+			runner.Require(bNoLifetimeTail,
+				"Artist 31470 Main Runtime Clock Projection Removes Point5 And Point8 Lifetime Rows On Their First Owning Fixed Tick Without Tail");
+
+			CEffectPlayback ClockOwnerPlayback;
+			std::string ClockOwnerStatus;
+			bool_t bClockOwnersSeparated =
+				ClockOwnerPlayback.Stage_ReconstructedSourceRuntime(
+					MainReviewDocument, MainReviewResources, Preparation,
+					ClockOwnerStatus);
+			ClockOwnerPlayback.Seek(90.f / 60.f, MainReviewRoot);
+			size_t iSeparatedClockRows = 0u;
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				ClockOwnerPlayback.Get_Frame().Particles)
+			{
+				if (nullptr == Particle.pElement)
+					continue;
+				const auto Order = OrderByElementId.find(
+					Particle.pElement->strElementId);
+				if (Order == OrderByElementId.end() || Order->second < 9u ||
+					Order->second > 11u)
+					continue;
+				const f32_t fElementLocalTime = (std::max)(0.f,
+					ClockOwnerPlayback.Get_Frame().fSampleTimeSeconds -
+					Particle.pElement->Detail.Timing.fStartDelaySeconds);
+				const f32_t fParticleAgeSeconds = Particle.fNormalizedLife *
+					(Order->second == 11u ? 0.800000011921f : 0.5f);
+				bClockOwnersSeparated = bClockOwnersSeparated &&
+					std::abs(Particle.pElement->Detail.Timing.fStartDelaySeconds -
+						1.3803969621658325f) < 0.000001f &&
+					std::abs(fElementLocalTime - fParticleAgeSeconds) > 0.001f;
+				++iSeparatedClockRows;
+			}
+			runner.Require(bClockOwnersSeparated && iSeparatedClockRows == 3u,
+				"Artist 31470 Main Runtime Clock Projection Keeps Element Start Relative Material Local Time Separate From Particle Normalized Age");
+
 			constexpr f32_t MainReviewStartDelay = 1.3803969621658325f;
 			bool_t bMainCueProjectionExact = bMainReviewStaged;
 			size_t iMainCueProjectionCount = 0u;

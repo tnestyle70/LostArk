@@ -1695,6 +1695,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Modules">
       <UniqueIdentifier>{cf593182-df82-506a-82cb-b8ced23f43e9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Temporal">
+      <UniqueIdentifier>{9bb53cd5-73e1-58fa-8900-7398248a88d9}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster">
       <UniqueIdentifier>{78876c2f-8083-54e4-93a4-3f27a588f00c}</UniqueIdentifier>
     </Filter>
@@ -4829,6 +4832,9 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\README.md">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Temporal\skill.31470.main-temporal-oracle.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Temporal</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31000.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>

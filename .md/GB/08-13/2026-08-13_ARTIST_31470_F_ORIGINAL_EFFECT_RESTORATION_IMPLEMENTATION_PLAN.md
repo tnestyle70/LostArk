@@ -389,9 +389,9 @@ RNG 소비를 결정론적으로 재생한다.
   `skill.31470.main-temporal-oracle.receipt.json`
 - runtime delta: `Client/Private/Effect_Playback.cpp`,
   필요 시 `Client/Private/Effect_ReconstructedExecution.cpp`
-- numeric harness와 audit:
-  `ClientFrontendHarness.cpp`,
-  `Test-Artist31470MainTemporalOracle.ps1`
+- numeric harness: `ClientFrontendHarness.cpp`
+- focused 검증은 oracle의 `--validate-only`/`--check`, 독립 Python unit test와
+  `ClientFrontendHarness` temporal canary로 실행한다. 전역 ProjectAudit wrapper는 만들지 않는다.
 
 ### canary
 
