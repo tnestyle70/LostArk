@@ -1,11 +1,100 @@
 # 발탄 HeartRB 맵 완전 복원 작업 핸드오프
 
 - 작성일: 2026-07-30
-- 마지막 동기화: 2026-07-30 15:24 KST
+- 마지막 동기화: 2026-08-12 KST
 - 대상: `LV_LUT_HEARTRB_ED`, zone `37051`
 - 작업 위치: `C:/Users/user/Desktop/LostArk`
-- 현재 상태: 맵 세션은 문서만 갱신 중이며, 다른 활성 세션이 Profiler/Frustum/FPS 표시를 조사·수정 중
-- 한 줄 결론: 정적 맵과 전투장 Deploy Prop의 **배치 기반**은 복구됐지만, 파괴 Prop은 아직 원작 트리거에 따라 자동으로 무너지는 완성형 게임플레이가 아니라 **수동 intact/fractured/despawned 시각 상태기**다.
+- 현재 상태: 2026-07-30의 정적 맵/Deploy 이력 위에 2026-08-12 철탑 source 재감사와 point-light presentation 복구를 추가했다.
+- 한 줄 결론: 다섯 철탑 geometry는 13,091개 exact extraction 안에 이미 있었고 잘못 추가한 136개 box overlay는 제거했다. tower-aligned source-instance 붉은 PointLight 22개(상단 5 + 중·하단 17)는 데이터·MapTool·제품 Level에 연결했지만 visible fire/slot 표현은 아직 복구하지 못했다.
+
+## 0. 2026-08-12 철탑/광원 재감사
+
+아래 1~11장은 2026-07-30 당시 13,103 placement와 수동 Deploy 상태기의 역사적 기록이다.
+현재 정적 visual 정본은 275 assets / 13,192 placements이며, 이 절이 철탑에 관한 최신 판정을 우선한다.
+
+### 0.1 잘못 만든 136개를 제거한 이유
+
+이전 작업은 asset `MAP_0AEF815A33D8_BG_LUT_LUTOMB_STRUCTURE06_SM_OLD` 하나를 34개씩
+회전시켜 placement ID `7100000000000000001`~`7100000000000000136`, source level
+`PROJECT_AUTHORED_RIM`으로 저장했다. 이 asset은 약 1.012×0.561×1.012m, 634 triangle의 작은
+비발광 구조물이므로 원작의 높은 철탑이 아니라 공중에 뜬 상자처럼 보인 원인이었다. 이 136개만
+authoring에서 제거했고, 잘못된 overlay를 추가하기 전 13,192개 authoring baseline은 보존했다.
+
+### 0.2 실제 철탑 geometry는 이미 source placement에 있었다
+
+SL04 원본을 다시 군집화하면 다섯 철탑 station 각각에 같은 9개 asset/106 placement의 rigid core가
+존재한다. station 간 registration RMS는 0.000025~0.000058m이고 cooked geometry 범위는 약
+10.09×44.97×8.16m다. 즉 한 메시를 추측 복제할 대상이 아니라 source exact 반복 구조다.
+
+ProjectAudit이 보존을 검사하는 station별 대표 placement는 다음과 같다.
+
+| station | placement ID | source placement |
+|---|---:|---|
+| pointlight_21 | `16607808932384341195` | `LV_LUT_HEARTRB_ED_SL04:export:2842` |
+| pointlight_106 | `17340363601769171092` | `LV_LUT_HEARTRB_ED_SL04:export:3990` |
+| pointlight_104 | `12792519784808763156` | `LV_LUT_HEARTRB_ED_SL04:export:4281` |
+| pointlight_11 | `15813727945424250256` | `LV_LUT_HEARTRB_ED_SL04:export:4401` |
+| pointlight_102 | `12059080955363256336` | `LV_LUT_HEARTRB_ED_SL04:export:4544` |
+
+여기서 station 이름은 반복 geometry를 rigid registration한 뒤 가까운 PointLight 이름을 붙인 조사용
+grouping이다. placement나 PointLight source가 직접 parent/station 관계를 저장한 것은 아니다.
+
+### 0.3 tower-aligned source-instance PointLight 22개
+
+StaticMesh extractor가 제외했던 SL04 PointLight를 별도 presentation 문서로 복구했다.
+각 PointLight의 export, object ID, 위치·색·반경·밝기는 source instance exact다. 다만 `상단`과 `중·하단` 구분은 world Y와
+철탑 geometry를 대조한 설명용 inference이며 source-authored group field가 아니다.
+
+| 구분 | source export/object | Client world position (m) | radius (m) | brightness |
+|---|---|---|---:|---:|
+| 상단 | `733 / pointlight_102_lc` | `(203.460606, 24.734033, -127.571465)` | 9 | 6 |
+| 상단 | `735 / pointlight_104_lc` | `(187.751602, 24.734033, -158.425654)` | 9 | 6 |
+| 상단 | `750 / pointlight_21_lc` | `(161.835400, 24.734033, -168.356855)` | 9 | 6 |
+| 상단 | `737 / pointlight_106_lc` | `(135.544980, 24.734033, -159.737500)` | 9 | 6 |
+| 상단 | `739 / pointlight_11_lc` | `(191.995703, 24.734033, -99.211338)` | 9 | 6 |
+| 중·하단 | `768 / pointlight_64_lc` | `(188.291309, 14.172728, -123.240234)` | 9 | 6 |
+| 중·하단 | `767 / pointlight_5_lc` | `(196.451973, -1.394727, -127.035703)` | 20.48 | 2.5 |
+| 중·하단 | `734 / pointlight_103_lc` | `(198.301699, -16.068151, -123.891680)` | 10.24 | 2.5 |
+| 중·하단 | `780 / pointlight_98_lc` | `(187.936191, -35.772830, -122.317480)` | 20.48 | 3 |
+| 중·하단 | `753 / pointlight_24_lc` | `(176.511172, 10.832922, -143.720859)` | 9 | 6 |
+| 중·하단 | `754 / pointlight_25_lc` | `(173.250137, 10.832922, -145.604990)` | 9 | 6 |
+| 중·하단 | `756 / pointlight_27_lc` | `(180.038984, -1.394727, -150.643105)` | 20.48 | 2.5 |
+| 중·하단 | `757 / pointlight_28_lc` | `(183.363691, -21.762295, -150.889150)` | 20.48 | 2.5 |
+| 중·하단 | `758 / pointlight_29_lc` | `(136.400566, 13.365049, -151.214629)` | 9 | 6 |
+| 중·하단 | `770 / pointlight_68_lc` | `(131.826855, -1.394727, -159.343447)` | 20.48 | 2.5 |
+| 중·하단 | `736 / pointlight_105_lc` | `(137.638096, -1.394727, -151.278281)` | 20.48 | 2.5 |
+| 중·하단 | `751 / pointlight_22_lc` | `(137.706982, -21.762295, -151.423994)` | 20.48 | 2.5 |
+| 중·하단 | `760 / pointlight_30_lc` | `(182.656191, 14.172728, -101.204268)` | 9 | 6 |
+| 중·하단 | `743 / pointlight_15_lc` | `(184.628574, -1.394727, -100.711621)` | 20.48 | 2.5 |
+| 중·하단 | `755 / pointlight_26_lc` | `(158.904902, 13.365049, -153.888477)` | 9 | 6 |
+| 중·하단 | `732 / pointlight_0_lc` | `(160.520391, -1.394727, -161.196641)` | 20.48 | 2.5 |
+| 중·하단 | `749 / pointlight_20_lc` | `(162.287881, -21.762295, -160.083994)` | 20.48 | 2.5 |
+
+공통 color는 RGB `(255,37,0)`이다. falloff exponent `2`는 해당 source row에 직렬화되지 않았으며
+current-revision `Engine.Default__PointLightComponent`의 상속 기본값을 사용한 inference다.
+따라서 문서 provenance는 `SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED`이고, radius와 brightness는
+위 표의 행별 source 값을 사용한다.
+정본은 `Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json`, 생성물은
+`Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.maplights.json`이다. MapCatalog는 `sourceLights`와
+`lights`를 한 쌍으로 선언하고 `Publish-MapAuthoring.ps1`은 map/deploy와 같은 transaction으로 publish한다.
+MapTool은 source 문서를, `CLevel_ValtanArena`는 runtime 문서를 읽어 기존 transient point-light
+presentation에 제출한다. parse/validate/stage가 실패하면 MapTool은 이전 Area를 보존하고 제품 Valtan은
+map/deploy를 rollback한 뒤 진입을 실패시킨다.
+
+### 0.4 아직 복구되지 않은 원작 요소
+
+PointLight는 표면이나 sprite를 직접 그리지 않고 주변광만 만든다. source 조사에서 확인한 visible fire 후보
+`BFX_LOW_02.fire.par_c_fire_r_001`(drawScale `5`)과 원작 화면에서 밝게 보이는 slot surface/material은
+현재 `Client/Bin/Resources` 및 runtime presentation에서 복구되지 않았다. 22개 PointLight와 이 표현 사이에
+source-authored one-to-one 관계가 확인됐다고 주장하지 않는다. fire/sprite와 slot 표현의 실제
+추출·cook·등록·MapTool/제품 runtime smoke가 끝날 때까지 철탑 연출은 부분 완료다.
+
+### 0.5 현재 검증 경계
+
+- 자동 검사: source/runtime light 문서 SHA 일치, source-instance 22개 값과 inferred falloff, 13,192 placement header,
+  잘못된 136 ID/provenance 부재, 다섯 대표 source placement 보존
+- 아직 필요한 수동 검사: Map Editor Valtan과 제품 Valtan에서 22개 붉은 조명의 위치·반경·노출 확인
+- 완성 판정에 추가로 필요한 것: visible fire/sprite와 slot surface 복구, 원작 캡처 대조
 
 ## 1. 지금 어디까지 왔는가
 

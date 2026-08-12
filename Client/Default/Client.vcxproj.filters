@@ -246,6 +246,12 @@
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapLightDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapLightPresentationRuntime.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapEditorWorkspaceService.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -548,6 +554,12 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetCatalog.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapLightDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapLightPresentationRuntime.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapEditorWorkspaceService.h">
@@ -994,10 +1006,34 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02306.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02307.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02308.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02309.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02310.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02311.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02315.debrisrecipe.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\DEPLOY_ITR_02316.debrisrecipe.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements">

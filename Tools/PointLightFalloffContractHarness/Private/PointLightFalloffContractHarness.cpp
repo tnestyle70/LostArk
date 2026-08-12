@@ -1,6 +1,7 @@
 #include "Effect_LightPresentation.h"
 #include "Light.h"
 #include "Light_Manager.h"
+#include "MapLightDocument.h"
 #include "Presentation_Manager.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
@@ -10,7 +11,9 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <vector>
@@ -147,6 +150,26 @@ namespace
 		std::cerr << "PointLightFalloffContractHarness FAIL: " << Message << '\n';
 		return 1;
 	}
+
+	bool_t ReadText(const std::filesystem::path& Path, std::string& OutText)
+	{
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input.is_open())
+			return false;
+		OutText.assign(
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>());
+		return Input.good() || Input.eof();
+	}
+
+	bool_t WriteText(const std::filesystem::path& Path, const std::string& Text)
+	{
+		std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+		if (!Output.is_open())
+			return false;
+		Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
+		return Output.good();
+	}
 }
 
 int wmain(const int iArgumentCount, wchar_t* pArguments[])
@@ -154,6 +177,97 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 	if (2 != iArgumentCount)
 		return Fail("expected the repository root argument");
 	const std::filesystem::path RepoRoot(pArguments[1]);
+	const std::filesystem::path MapLightsPath = RepoRoot / L"Data" / L"Maps" /
+		L"Authoring" / L"LV_LUT_HEARTRB_ED" /
+		L"LV_LUT_HEARTRB_ED.maplights.json";
+	CMapLightDocument MapLights;
+	std::string MapLightStatus;
+	if (!MapLights.Load(
+		MapLightsPath, "LV_LUT_HEARTRB_ED", MapLightStatus) ||
+		MapLights.Get_Provenance() !=
+			"SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED" ||
+		22u != MapLights.Get_Lights().size())
+	{
+		return Fail("Valtan source-instance map light document did not load");
+	}
+	const MAP_POINT_LIGHT_RECORD& FirstTowerLight =
+		MapLights.Get_Lights().front();
+	if (FirstTowerLight.lightId != "light.valtan.tower.pointlight_102_lc" ||
+		!SameBits(FirstTowerLight.position.x, 203.460606f) ||
+		!SameBits(FirstTowerLight.position.y, 24.734033f) ||
+		!SameBits(FirstTowerLight.position.z, -127.571465f) ||
+		!SameBits(FirstTowerLight.radiusMeters, 9.f) ||
+		!SameBits(FirstTowerLight.falloffExponent, 2.f) ||
+		!SameBits(FirstTowerLight.brightness, 6.f))
+	{
+		return Fail("Valtan tower light tuple changed during strict load");
+	}
+	const MAP_POINT_LIGHT_RECORD* pLowerTowerLight = nullptr;
+	for (const MAP_POINT_LIGHT_RECORD& Light : MapLights.Get_Lights())
+	{
+		if (Light.sourceObjectId ==
+			"SL04:export:780:pointlight_98_lc")
+		{
+			pLowerTowerLight = &Light;
+			break;
+		}
+	}
+	if (nullptr == pLowerTowerLight ||
+		pLowerTowerLight->lightId !=
+			"light.valtan.tower.pointlight_98_lc" ||
+		pLowerTowerLight->sourceLevel != "LV_LUT_HEARTRB_ED_SL04" ||
+		!SameBits(pLowerTowerLight->position.x, 187.936191f) ||
+		!SameBits(pLowerTowerLight->position.y, -35.772830f) ||
+		!SameBits(pLowerTowerLight->position.z, -122.317480f) ||
+		!SameBits(pLowerTowerLight->radiusMeters, 20.48f) ||
+		!SameBits(pLowerTowerLight->falloffExponent, 2.f) ||
+		!SameBits(pLowerTowerLight->brightness, 3.f))
+	{
+		return Fail("Valtan lower tower light tuple changed during strict load");
+	}
+
+	std::string MapLightText;
+	if (!ReadText(MapLightsPath, MapLightText))
+		return Fail("could not read Valtan map light fixture");
+	const std::filesystem::path InvalidMapLightsPath =
+		std::filesystem::temp_directory_path() /
+		(L"lostark-point-light-invalid-" +
+			std::to_wstring(GetCurrentProcessId()) + L".maplights.json");
+	std::string InvalidMapLightText = MapLightText;
+	const std::string VersionNeedle = "\"formatVersion\": 1";
+	const size_t VersionOffset = InvalidMapLightText.find(VersionNeedle);
+	if (std::string::npos == VersionOffset)
+		return Fail("map light version fixture anchor is missing");
+	InvalidMapLightText.replace(
+		VersionOffset, VersionNeedle.size(), "\"formatVersion\": 2");
+	if (!WriteText(InvalidMapLightsPath, InvalidMapLightText) ||
+		MapLights.Load(
+			InvalidMapLightsPath, "LV_LUT_HEARTRB_ED", MapLightStatus) ||
+		22u != MapLights.Get_Lights().size() ||
+		MapLights.Get_AreaId() != "LV_LUT_HEARTRB_ED")
+	{
+		std::filesystem::remove(InvalidMapLightsPath);
+		return Fail("invalid map light version changed committed document");
+	}
+	InvalidMapLightText = MapLightText;
+	const std::string DuplicateNeedle =
+		"light.valtan.tower.pointlight_104_lc";
+	const size_t DuplicateOffset = InvalidMapLightText.find(DuplicateNeedle);
+	if (std::string::npos == DuplicateOffset)
+		return Fail("map light duplicate fixture anchor is missing");
+	InvalidMapLightText.replace(
+		DuplicateOffset,
+		DuplicateNeedle.size(),
+		"light.valtan.tower.pointlight_102_lc");
+	if (!WriteText(InvalidMapLightsPath, InvalidMapLightText) ||
+		MapLights.Load(
+			InvalidMapLightsPath, "LV_LUT_HEARTRB_ED", MapLightStatus) ||
+		22u != MapLights.Get_Lights().size())
+	{
+		std::filesystem::remove(InvalidMapLightsPath);
+		return Fail("duplicate map light changed committed document");
+	}
+	std::filesystem::remove(InvalidMapLightsPath);
 
 	const LIGHT_DESC DefaultDesc{};
 	if (!SameBits(DefaultDesc.fFalloffExponent, 1.f))
@@ -209,6 +323,25 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	Presentation.Set_TransientLightsEnabled(true);
+	Presentation.Clear_TransientLights();
+	for (const MAP_POINT_LIGHT_RECORD& Record : MapLights.Get_Lights())
+	{
+		EFFECT_EVALUATED_LIGHT Evaluated{};
+		Evaluated.vWorldPosition = Record.position;
+		Evaluated.fRange = Record.radiusMeters;
+		Evaluated.fIntensity = Record.brightness;
+		Evaluated.vColor = Record.color;
+		Evaluated.vAmbient = { 0.f, 0.f, 0.f, 0.f };
+		Evaluated.fFalloffExponent = Record.falloffExponent;
+		LIGHT_DESC Desc{};
+		if (!Try_BuildEffectPointLightDesc(Evaluated, Desc) ||
+			FAILED(Presentation.Add_TransientLight(Desc)))
+		{
+			return Fail("Valtan map light did not reach transient presentation");
+		}
+	}
+	if (22u != Presentation.Get_TransientLights().size())
+		return Fail("Valtan map light transient count changed");
 	Presentation.Clear_TransientLights();
 	if (FAILED(Presentation.Add_TransientLight(MappedTwo)) ||
 		1u != Presentation.Get_TransientLights().size() ||
@@ -340,6 +473,7 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 		"PointLightFalloffContractHarness PASS: artist-exact-tuple-"
 		"desc-transient-shader-point-shadow0; legacy1; "
 		"invalid-evaluated-rollback; abi/default; "
-		"final-boundary; scene-rollback; transient-no-push\n";
+		"final-boundary; scene-rollback; transient-no-push; "
+		"valtan-map-light-strict-load-rollback-twenty-two-submit\n";
 	return 0;
 }

@@ -284,6 +284,20 @@ prepared miss는 동기 fallback 없이 fail-closed한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
+MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 point-light presentation 계약이다.
+source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
+`Client/Bin/DataFiles/Map/<AreaId>.maplights.json`이며 둘 중 하나만 선언할 수 없다.
+`Publish-MapAuthoring.ps1`이 visual placement와 같은 transaction으로 strict validate/publish하고,
+MapTool은 source를, 제품 Level은 runtime을 기존 `CPresentation_Manager` transient light 경로로 제출한다.
+Valtan은 이 pair를 필수로 선언하며 누락·손상 시 이전 editor Area 보존 또는 제품 Level 진입 실패로
+fail-closed한다. 이 레이어는 Client 표현 전용이고 Server gameplay light/collision 계약이 아니다.
+현재 Valtan 문서는 SL04 source-instance-exact PointLight 22개를 소유한다. 높이 기준 상단 5개와 중·하단
+17개로 구분하지만, 이를 특정 철탑 station에 묶는 것은 geometry와 위치를 대조한 inference이지
+source가 직접 제공한 parent/slot 관계가 아니다. 위치·색·반경·밝기는 source instance 값이고,
+falloff `2`는 source 행에 직렬화되지 않아 current-revision class default에서 가져온 inference다.
+PointLight는 주변 조명만 만들며 원작 화면의 visible
+fire/sprite와 발광 slot surface는 별도 미복구 표현이다.
+
 Valtan의 `World Destruction` 모드에는 제품 Server와 분리된 `Destruction Model View`가 있다.
 `Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json` format v2의
 stable debris element를 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` world instance에
@@ -393,8 +407,8 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
 - 애니메이션 추출 참조: `Data/Animation/Reference/<AssetId>/`; 0-row 컨테이너는 Tool 경로/파서 계약일 뿐 추출 완료 증거가 아니다.
 - 맵 추출 기준본: `Data/Maps/Imported/<AreaId>/`; `.mapassets`, shard `.mapset`과 baseline placement를 소유한다.
-- MapTool 작성본: `Data/Maps/Authoring/<AreaId>/`; publish 후에만 `Client/Bin/DataFiles/Map/` 런타임 입력이 된다.
-- shard-set을 포함한 visual publish는 `Tools/MapPipeline/Publish-MapAuthoring.ps1`만 수행한다. `Imported` catalog와 `Authoring` placement를 읽어 catalog, 여러 shard placement, mapset, optional deploy pair를 한 트랜잭션으로 교체하고 중간 실패 시 전부 rollback한다.
+- MapTool 작성본: `Data/Maps/Authoring/<AreaId>/`; visual placement와 optional point-light presentation source를 소유하며 publish 후에만 `Client/Bin/DataFiles/Map/` 런타임 입력이 된다.
+- shard-set을 포함한 visual publish는 `Tools/MapPipeline/Publish-MapAuthoring.ps1`만 수행한다. `Imported` catalog와 `Authoring` placement를 읽어 catalog, 여러 shard placement, mapset, optional deploy pair, optional point-light presentation을 한 트랜잭션으로 교체하고 중간 실패 시 전부 rollback한다.
 
 ## 팀 작업 인터페이스
 

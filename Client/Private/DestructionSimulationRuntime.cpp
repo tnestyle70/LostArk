@@ -332,6 +332,366 @@ Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
 			L"Prototype_Component_Model_DestructionWall_02315_Chunk11",
 			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315/fractured/DEPLOY_ITR_02315_CHUNK_11.wmodel",
 			1.f, "DEPLOY_ITR_02315", { -0.021922151f, 1.126421284f, 0.996424876f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02306", { -0.413609834f, 0.502041143f, 0.014695302f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.206001368f, 0.498764852f, 0.031917819f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.786687923f, 0.490523317f, -0.037660099f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02306", { -0.344671356f, 1.870687497f, 0.003419492f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.223126491f, 1.920743282f, -0.000579594f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.716736253f, 1.808157311f, -0.013036868f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02306", { -0.382843584f, 3.456244987f, -0.008279195f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.226871493f, 3.463111220f, 0.014070998f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.716452582f, 3.462258880f, -0.028121681f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02306", { -0.443971466f, 4.413128896f, 0.007977752f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 0.237917975f, 4.597841509f, 0.001708896f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02306_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306/fractured/DEPLOY_ITR_02306_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02306", { 2.265354279f, 6.168880197f, -0.000246972f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.585852233f, 0.419190480f, 0.027871948f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.011797362f, 0.380123801f, -0.029185121f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.567135085f, 0.422135281f, 0.042870590f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.515047040f, 1.385693281f, -0.001939032f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.011219164f, 1.462219338f, -0.029601135f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.514072051f, 1.348621066f, -0.005922144f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.496609403f, 2.983730951f, -0.025763108f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.011199639f, 2.916075232f, 0.009701721f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.466735315f, 2.999294838f, -0.003009702f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02307", { -0.474510838f, 3.894155375f, 0.005616023f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.004285712f, 4.035916554f, 0.000064679f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02307_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307/fractured/DEPLOY_ITR_02307_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02307", { 0.456327499f, 3.874061156f, -0.000170814f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.074499871f, 0.386916761f, -1.686325331f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02308", { -0.004715975f, 0.347878380f, -0.057331228f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.078319845f, 0.379259147f, 1.584189110f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.182887240f, 1.341541559f, -1.647869051f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02308", { -0.175817378f, 1.373196202f, -0.051017456f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.194124203f, 1.368392160f, 1.743283575f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.322830517f, 2.251236420f, -1.649542701f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.263706754f, 2.282005394f, 0.012970754f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.378998144f, 2.279920078f, 1.647072685f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.307291099f, 3.009768894f, -1.586292113f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.296702922f, 2.971980638f, 0.012278425f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02308_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308/fractured/DEPLOY_ITR_02308_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02308", { 0.316204455f, 3.006900205f, 1.564351069f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.073325735f, 0.677552147f, 2.324659396f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02309", { -0.102490311f, 0.570092539f, 0.210167638f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.117411292f, 0.628846063f, -2.205660784f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.176356617f, 1.833057845f, 2.248257987f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02309", { -0.063706070f, 1.808965217f, 0.128822783f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.176218776f, 1.808509897f, -2.256522781f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.310044094f, 2.898194620f, 2.326502971f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.220534921f, 2.907076210f, 0.145195755f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.318956850f, 2.889124480f, -2.238975701f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.283080723f, 3.727127999f, 2.250254531f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.242067212f, 3.741598931f, 0.178424930f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02309_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309/fractured/DEPLOY_ITR_02309_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02309", { 0.311613830f, 3.683327563f, -2.184207953f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.144224395f, 0.645974287f, 2.212936597f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.083607712f, 0.676070559f, -0.127374782f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.193558835f, 0.662441474f, -2.302550143f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02310", { 0.002123307f, 1.754389499f, 2.149854229f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.146820287f, 1.734151878f, -0.104092730f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.214844601f, 1.706374078f, -2.379587929f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.132985725f, 2.856021812f, 2.201294314f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02310", { 0.024623762f, 2.840472211f, -0.046166610f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.060246357f, 2.870232273f, -2.447429824f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.145861477f, 3.754597375f, 2.301883577f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02310", { 0.033351245f, 3.752719969f, 0.016963585f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02310_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310/fractured/DEPLOY_ITR_02310_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02310", { -0.019418219f, 3.763921271f, -2.311486805f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk00",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_00.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.014174476f, 0.199173338f, -2.948491269f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk01",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_01.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.311911016f, 0.158361609f, 0.137515049f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk02",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_02.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.313310977f, 0.238010426f, 3.131556558f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk03",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_03.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.036693606f, 1.597539832f, -3.014707970f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk04",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_04.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.207935500f, 1.633287492f, -0.124113489f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk05",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_05.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.089330470f, 1.567338439f, 3.236542540f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk06",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_06.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.177695469f, 3.014410616f, -2.943148775f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk07",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_07.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.426726987f, 3.036723726f, 0.039974364f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk08",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_08.wmodel",
+			1.f, "DEPLOY_ITR_02311", { 0.271216621f, 3.048757692f, 3.164656944f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk09",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_09.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.273329594f, 4.002954292f, -2.969686619f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk10",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_10.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.017746531f, 3.988279169f, 0.064272791f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionWall_02311_Chunk11",
+			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_11.wmodel",
+			1.f, "DEPLOY_ITR_02311", { -0.078028878f, 3.978823340f, 3.146037265f }
 		}
 	};
 	return specs;

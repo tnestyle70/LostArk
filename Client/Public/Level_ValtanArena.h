@@ -5,6 +5,7 @@
 #include "DeployPropRuntime.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
+#include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
 
 NS_BEGIN(Client)
@@ -34,6 +35,8 @@ private:
 private:
 	CMapPlacementRuntime m_MapRuntime;
 	CDeployPropRuntime m_DeployRuntime;
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	bool_t m_bMapLightSubmissionFailureReported = false;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;

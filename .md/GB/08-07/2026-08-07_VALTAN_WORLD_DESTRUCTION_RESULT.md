@@ -609,3 +609,181 @@ integration 증거를 구분한다.
 | `git diff --check` | PASS |
 | 실제 GUI: Restart + Play 후 두 원본 숨김, 12조각만 방출 | PASS: 사용자 육안 확인 |
 | 실제 GUI: Reset 후 source/alias 복원 | 코드·PhysicsContractHarness PASS, 별도 수동 확인 기록 없음 |
+
+## 12. 2026-08-12 7번 벽 연결 범위 교정
+
+### 12.1 원인과 대상 확정
+
+- `destroyable.group.valtan.deploy.11047903315509031966`은 원래 선택한 5개 벽만 함께 넘어뜨리는
+  audition group이었다.
+- 후속 저작에서 인접 벽 5개가 한꺼번에 추가되어 10 emitter, 120 fragment로 확장됐고, 사용자가
+  표시하지 않은 옆 벽까지 함께 파괴됐다.
+- 표시된 외벽은 실제 intact WModel을 비교해 `15719065619666776634 / DEPLOY_ITR_02311`로 확정했다.
+  이 모델은 약 `4.72 x 5.22 x 9.99 m`의 넓은 3단 판벽이다. 혼동 후보였던
+  `16891123250307634887 / DEPLOY_ITR_02315`는 약 `0.99 x 1.90 x 4.21 m`의 낮고 좁은 조각이다.
+
+### 12.2 교정 결과
+
+- 공동 파괴 group은 원래 5개와 `15719065619666776634`만 소유한다.
+- simulation profile도 같은 6 emitter만 투영하며, 각 asset의 exact 12-piece recipe를 사용해 총
+  72 fragment를 재생한다.
+- 최초 교정에서는 6개 벽에 공통 방향 `[-0.8529114, 0.12, 0.5080769]`를 사용했다. 이후 13절의
+  전체 inward 정규화에서 group은 유지하되 각 source placement가 arena 중심을 정확히 향하도록
+  emitter별 방향으로 교체했다.
+- 잘못 합쳐졌던 `16891123250307634887`, `17769051189408857662`,
+  `18064647264029106986`, `18095941116451824308`은 각자 singleton group/profile/mutation/binding으로
+  복원했다. binding은 제품 gate를 우회하지 않도록 계속 `enabled=false`다.
+
+### 12.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| WorldEvents / simulation JSON parse와 graph cardinality | PASS: group/profile/mutation/binding 40/40/40/40 |
+| 공동 파괴 group 투영 | PASS: 6 members = 6 emitters, 중복 membership 0 |
+| exact fragment 수 | PASS: 6 x 12 = 72 |
+| 분리한 벽 복원 | PASS: singleton group/profile 4/4 |
+| PhysicsContractHarness x64 Debug/Release | PASS |
+| ProjectAudit destruction 관련 검사 | PASS: simulation errors 0, recipes 8/96 pieces, runtime specs 96 |
+| 전체 ProjectAudit | 기존 별도 Effect/Python/project visibility 28건으로 FAIL; destruction 관련 failure 0 |
+| `git diff --check` | PASS |
+| MapTool `Restart + Play` 육안 확인 | 미실행: 사용자가 `Reload Authoring Data` 후 확인 필요 |
+
+## 13. 2026-08-12 전체 벽 inward collapse 정규화
+
+### 13.1 적용 범위
+
+- Valtan Deploy placement 85개 가운데 fractured STATIC 벽은 77개이며, 모두 WorldEvents group과
+  destruction simulation에 정확히 한 번 투영된다.
+- 77개 중 69개는 실제 12-piece emitter이고, 거의 같은 위치에 겹친 8개는 파편을 중복 생성하지 않는
+  suppress-only alias다. 따라서 전체 재생 계약은 69 emitter, 828 exact fragment다.
+- 남은 8개 `DEPLOY_ITR_02326`은 ANIM placement이고 fractured WModel과 debris recipe가 없다. 이를 벽
+  emitter로 위조하면 잘못된 모델이 날아가므로 이번 파괴 집합에는 넣지 않았다.
+
+### 13.2 방향과 공동 파괴
+
+- 모든 emitter direction은 각 source placement에서 고정 arena 중심 `(156.131, -122.385)`을 향하는
+  normalized world vector로 다시 계산했다. Y 성분은 `0.12`로 유지하고 XZ 성분을 정규화했다.
+- 모든 벽의 collapse policy를 `speed=5 m/s`, `gravityScale=2`, `lifetime=4 s`로 통일했다. 이 값은
+  파편이 바깥으로 솟기보다 안쪽으로 넘어지고 빠르게 가라앉는 MapTool audition 값이다.
+- 이미 육안으로 한 벽 조립체임을 확인한 multi-emitter group은 그대로 함께 발화한다. 7번 벽의 최신
+  공동 파괴 범위는 14절의 재생 후 잔존 벽 교정을 포함해 10 emitter, 120 fragment다.
+- 기존 co-located alias 8개는 각 source와 함께 숨겨져 잔존 원본을 없애지만 별도 파편은 만들지 않는다.
+  일반 `.mapplacements` 배경 장식은 Deploy 파괴 대상으로 추측해 합치지 않았다.
+
+### 13.3 자동 검증
+
+- ProjectAudit의 simulation check가 8개 STATIC wall asset의 eligible placement 집합 77개와
+  source+alias 투영 집합 77개가 정확히 같은지 검사한다.
+- 같은 check가 69개 emitter 모두의 direction을 placement 좌표에서 arena 중심으로 다시 계산해
+  `1e-5` 허용 오차로 대조하고, speed/gravity/lifetime 정책도 고정한다.
+- WorldEvents binding은 제품 Server destruction gate를 우회하지 않도록 계속 `enabled=false`이며,
+  이번 결과는 MapTool authoring PhysX audition이다.
+
+| 검증 | 결과 |
+|---|---|
+| JSON / ProjectAudit PowerShell parse | PASS |
+| STATIC wall 전체 투영 | PASS: eligible 77 = source+alias 77, 중복 0 |
+| inward direction | PASS: 69/69 emitter |
+| exact debris recipe/runtime 등록 | PASS: 8 recipes, 96 pieces |
+| PhysicsContractHarness x64 Debug/Release | PASS / PASS |
+| destruction 관련 ProjectAudit | PASS |
+| 전체 ProjectAudit | 기존 Effect/Python/project visibility 28건으로 FAIL; destruction 관련 failure 0 |
+| `git diff --check` | PASS |
+| MapTool `Reload Simulations` 후 All/Group 재생 | 미실행: 사용자 육안 확인 필요 |
+
+## 14. 2026-08-12 7번 벽 재생 후 잔존 Deploy 교정
+
+### 14.1 재현과 식별
+
+- 12절의 6-emitter 교정본을 MapTool에서 `Restart + Play`한 뒤, 사용자가 녹색 selection 범위 안에
+  남은 두 벽 영역을 다시 표시했다.
+- 해당 잔존 형상은 자동 좌표 근접 검색으로 임의 편입하지 않고, 앞서 분리해 두었던 stable Deploy
+  placement 네 개와 WModel/배치 구간을 다시 대조했다.
+- 최종 편입 ID는 `16891123250307634887`, `17769051189408857662`,
+  `18064647264029106986`, `18095941116451824308`이다. 주변의 다른 singleton group이나
+  일반 `.mapplacements` 장식은 건드리지 않았다.
+
+### 14.2 최종 공동 파괴 계약
+
+- `destroyable.group.valtan.deploy.11047903315509031966`은 기존 6개와 위 4개, 총 10개의 Deploy
+  placement를 정확히 한 번 소유한다.
+- simulation profile도 같은 10개 emitter만 투영한다. 각 emitter는 자기 placement에서 arena 중심을
+  향하는 기존 inward direction과 `speed=5`, `gravityScale=2`, `lifetime=4`를 유지한다.
+- 네 singleton group/profile/mutation/binding은 제거하고 공동 group의 한 mutation/binding으로 합쳤다.
+  binding은 제품 Server gate를 우회하지 않도록 계속 `enabled=false`다.
+- 한 벽당 exact 12-piece recipe를 사용하므로 해당 group 재생은 10 emitter, 총 120 fragment다.
+
+### 14.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| WorldEvents / simulation graph | PASS: group/profile/mutation/binding 36/36/36/36 |
+| 7번 공동 파괴 stable ID 집합 | PASS: 10 members = 10 emitters, alias 0 |
+| 전체 STATIC wall 투영 | PASS: 77 placements = source+alias 77, emitter 69 |
+| 7번 exact fragment 수 | PASS: 10 x 12 = 120 |
+| MapTool `Reload Simulations` 후 재생 | 미실행: 사용자 육안 확인 필요 |
+
+## 15. 2026-08-12~13 남서쪽 13개 오브젝트 단일 클릭 공동 파괴
+
+### 15.1 사용자 선택 범위
+
+- 사용자가 Destruction Model View 캡처로 지정한 13개 벽을 stable ID로 식별했다.
+- 대표 group은 첫 캡처의 `destroyable.group.valtan.deploy.15495684800954131707`을 사용한다.
+- 함께 발화하는 placement는 `15495684800954131707`, `14210737191027038638`,
+  `14345577340107998055`, `14439275443581760904`, `18100758183075339831`,
+  `15423695113667715748`, `12804542616476082944`, `9671293252162296055`,
+  `15358675764127682739`, `13290943434399830027`, `12819104299115621849`,
+  `17359606121069777624`, `14520149530921636720`이다.
+
+### 15.2 공동 파괴 계약
+
+- 나머지 12개 singleton group/profile/mutation/binding을 제거하고, 그 emitter를 대표 profile에
+  정확히 한 번씩 옮겼다.
+- 각 emitter의 기존 inward direction, `speed=5`, `gravityScale=2`, `lifetime=4`, 0초 timeline trigger는
+  유지한다. 따라서 벽마다 자기 위치에서 arena 중심 쪽으로 무너진다.
+- 모든 placement가 실제 source emitter이며 suppress-only alias는 없다. 한 오브젝트당 exact 12-piece
+  recipe를 사용하므로 한 번 재생하면 13 emitter, 총 156 fragment가 발화한다.
+- 대표 binding은 계속 `enabled=false`이며 MapTool authoring audition 범위를 벗어나지 않는다.
+
+### 15.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| WorldEvents / simulation graph | PASS: group/profile/mutation/binding 13/13/13/13 |
+| stable ID 공동 투영 | PASS: 13 members = 13 emitters, alias 0 |
+| 전체 STATIC wall 투영 | PASS: 77 placements = source+alias 77, emitter 69 |
+| 공동 파괴 fragment 수 | PASS: 13 x 12 = 156 |
+| MapTool `Reload Simulations` 후 재생 | 미실행: 사용자 육안 확인 필요 |
+
+## 16. 2026-08-13 전면 12개 오브젝트 단일 클릭 공동 파괴
+
+### 16.1 사용자 선택 범위
+
+- 사용자가 Destruction Model View 캡처로 지정한 12개 profile을 stable ID로 직접 확정했다.
+- 대표 group은 첫 캡처의 `destroyable.group.valtan.deploy.12252498194881956917`을 사용한다.
+- 함께 발화하는 placement는 `12252498194881956917`, `17404480870746281119`,
+  `13154681496987253568`, `15393154990485032341`, `17788407538468874008`,
+  `10912388091405377926`, `18362175117092037953`, `13837284136111935898`,
+  `15148418014021580024`, `10435996578153793381`, `15736179535184396369`,
+  `17296963925068961735`이다.
+
+### 16.2 공동 파괴 계약
+
+- 대표를 제외한 10개 singleton group/profile/mutation/binding을 제거하고, 직전 남서쪽 group에 잘못
+  임시 포함됐던 `17296963925068961735`도 이 대표 group으로 옮겼다.
+- 각 emitter의 기존 arena 중심 방향, `speed=5`, `gravityScale=2`, `lifetime=4`, 0초 timeline trigger를
+  그대로 유지한다. 한 번 Play하면 12개가 각자 현재 위치에서 전면/안쪽으로 동시에 무너진다.
+- 모든 placement는 source emitter이며 suppression alias가 없다. exact 12-piece recipe 기준으로
+  12 emitter, 총 144 fragment가 발화한다.
+- 대표 binding은 `enabled=false`를 유지하므로 제품 Server 파괴를 활성화하지 않고 MapTool audition만 바꾼다.
+
+### 16.3 검증
+
+| 검증 | 결과 |
+|---|---|
+| WorldEvents / simulation graph | PASS: group/profile/mutation/binding 13/13/13/13 |
+| 전면 stable ID 공동 투영 | PASS: 12 members = 12 emitters, alias 0 |
+| 기존 남서쪽 group 복원 | PASS: 13 members = 13 emitters, alias 0 |
+| 전체 STATIC wall 투영 | PASS: 77 placements = source+alias 77, emitter 69 |
+| 공동 파괴 fragment 수 | PASS: 12 x 12 = 144 |
+| MapTool `Reload Simulations` 후 재생 | 미실행: 사용자 육안 확인 필요 |

@@ -14,6 +14,7 @@ LevelCatalog scenario
   -> MapCatalog area
      -> visual asset admission / placement
      -> optional deploy asset / placement pair
+     -> optional point-light presentation source / runtime pair
      -> Gameplay.world.json formatVersion 4 (actor placement + gated trigger/destroyable authoring)
      -> navigation authoring -> runtime navgrid
      -> stable actor / encounter / balance ID 참조
@@ -24,7 +25,7 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 275 assets / 13,115 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | 275 assets / 13,192 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, tower-aligned source-instance point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
@@ -37,6 +38,7 @@ LevelCatalog scenario
 |---|---|---|
 | visual map | scenario가 Map domain을 요구하면 load 실패 | catalog/placement 참조 오류는 rollback |
 | deploy | `.deployassets`와 `.deployplacements`가 모두 없으면 skip | 둘 중 하나만 있으면 오류 |
+| point-light presentation | `sourceLights`와 `lights`가 모두 없으면 skip | 둘 중 하나만 있거나 문서 검증이 실패하면 publish/load 실패 |
 | NPC/boss placement | 해당 kind 행이 없으면 spawn하지 않음 | unknown archetype/encounter는 publish 실패 |
 | navigation | 현재 Bern처럼 Server nav를 사용하지 않는 world는 생략 가능 | nav를 요구하는 Valtan/Training/Character Select Arena는 누락·손상 시 room 기동 실패 |
 | balance definition | 사용하지 않는 actor/skill 정의는 runtime state를 만들지 않음 | placement/action이 없는 stable ID를 참조하면 publish 또는 Server load 실패 |
@@ -68,6 +70,7 @@ Cancel` 중 하나를 요구한다. 전환 stage가 실패하면 기존 Area 객
 MapTool의 저장 대상은 Data 원본뿐이다.
 
 - visual: active descriptor의 `Data/Maps/Authoring/...mapplacements`
+- point-light presentation: catalog가 선언한 `Data/Maps/Authoring/...maplights.json`
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
@@ -87,12 +90,43 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
 
+MapCatalog의 `sourceLights`와 `lights`는 선택적인 한 쌍이다. source는
+`Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은
+`Client/Bin/DataFiles/Map/<AreaId>.maplights.json`만 허용한다. schema
+`lostark.map-light-presentation` formatVersion 1은 stable `lightId`, source level/object ID,
+world position, radius, falloff, RGBA와 brightness를 소유한다. publisher는 이 문서를 visual placement와
+optional deploy pair와 같은 파일 집합 트랜잭션으로 교체하며 중간 실패 시 전부 rollback한다. MapTool은
+source 문서를, 제품 Level은 runtime 문서를 읽고 둘 다 기존 `CPresentation_Manager`의 transient point-light
+경로에 제출한다. 이 레이어는 Client 시각 표현 전용이며 Server gameplay 판정이나 광원 충돌을 만들지 않는다.
+Valtan은 catalog가 이 pair를 선언하므로 누락·손상을 정상적인 생략으로 취급하지 않고 Area stage를 실패시킨다.
+
 Valtan DeployProp은 Development MapTool에서 source catalog 9 asset / 85 placement를
 `CDeployPropRuntime` 한 경로로 stage한다. Area 전환은 catalog가 요구하는 모든 Map/Deploy runtime
 asset이 실제 `Client/Bin/Resources`에 있을 때만 commit하며, 하나라도 없으면 이전 Area를 보존하고
 누락된 Resources-relative asset ID를 workspace status에 표시한다.
 Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
 있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
+
+Valtan 외곽의 기존 다섯 철탑은 새 조립물이 아니다. 13,192개 imported baseline에 보존된 SL04 exact
+반복 구조이며, 각 철탑 core는 같은 9개 asset의 106개 placement로 이루어진다. 다섯 station을 rigid
+registration한 RMS는
+약 0.000025~0.000058m이고 cooked core 외형은 약 10.09×44.97×8.16m다. 따라서
+`MAP_0AEF815A33D8_BG_LUT_LUTOMB_STRUCTURE06_SM_OLD` 한 종류를 돌려 배치한 136개
+`PROJECT_AUTHORED_RIM` overlay는 원본 철탑 복원이 아니며 제거된 상태를 유지한다.
+
+철탑 주변의 SL04 PointLight는 총 22개를 source-instance 데이터로 복구했다. 높이 기준 상단 5개와
+중·하단 17개이며, 공통 color는 RGB `(255,37,0)`, falloff는 source class 기본값 `2`다. radius는
+`9m`, `10.24m`, `20.48m`, brightness는 `2.5`, `3`, `6`의 source 값을 행별로 보존한다.
+위치·색·반경·밝기는 source instance exact다. falloff `2`는 source 행에 없으며
+current-revision `Engine.Default__PointLightComponent`의 상속 기본값을 사용한 inference다.
+22개를 특정 철탑 station에 묶는 것은 반복 geometry와 world position 정렬을 근거로 한 inference이고,
+source가 parent/slot 연결을 직접 제공한 것은 아니다.
+
+PointLight는 주변 조명만 만든다. 원작 화면의 visible fire/sprite 후보
+`BFX_LOW_02.fire.par_c_fire_r_001`과 밝게 보이는 slot surface/material은 현재
+`Client/Bin/Resources` 및 runtime presentation에서 복구되지 않았다. 따라서 붉은 주변광 복구를
+발광 불꽃이나 slot geometry 복구와 동일시하지 않으며, 해당 표현이 실제 추출·cook·runtime smoke를
+통과하기 전에는 원작 철탑 연출 완성으로 판정하지 않는다.
 
 `NpcCatalog.json`은 현재 `NPC_BEDA` 한 archetype을 지원한다. Bern의 enabled NPC placement는
 Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
@@ -116,9 +150,9 @@ Development world의 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` 
 연결한다. Profile 아래 source placement를 Wall Mesh Emitter로, 각 Emitter 아래 runtime-generated
 `fragment.00`~`fragment.11`을 표시하고 All Fragments/Solo Emitter/Solo Fragment,
 play/pause/restart, 1/60 step과 reset 후 고정-step seek를 제공한다. fragment는 runtime sample이며
-format v2 JSON은 source emitter와 `suppressionAliasPlacementIds`의 합집합이 WorldEvents group member와
-정확히 일치해야 한다. alias는 source와 함께 숨길 뿐 debris actor를 추가 생성하지 않는다. format v1은
-자동 추측 이관 없이 fail-closed하므로 MapTool에서 v2로 다시 authoring해야 한다.
+format v2 JSON은 source emitter와 `suppressionAliasPlacementIds`의 합집합이
+WorldEvents group member와 정확히 일치해야 한다. alias는 source와 함께 숨길 뿐 debris actor를 추가
+생성하지 않는다. format v1은 자동 추측 이관 없이 fail-closed하므로 MapTool에서 v2로 다시 authoring해야 한다.
 이 문서는 `Publish-WorldGameplay.ps1`의 입력이 아니므로 tool audition 자체는 위 destroyable admission에
 거부되지 않는다. 반대로 이 preview가 Server 파괴 상태, 동적 collision/navigation, Shared replication이나
 제품 Valtan presentation을 활성화했다는 뜻은 아니며, 그 제품 gate는 계속 fail-closed다.

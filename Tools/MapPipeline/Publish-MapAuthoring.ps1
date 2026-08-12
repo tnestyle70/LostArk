@@ -17,12 +17,15 @@ if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $authoringPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapplacements"
 $authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.deployplacements"
+$authoringLightPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.maplights.json"
 $importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
 $sourceCatalogPath = Join-Path $importRoot "$AreaId.mapassets"
 $sourceShardSetPath = Join-Path $importRoot "$AreaId.mapset"
 $sourceDeployCatalogPath = Join-Path $importRoot "$AreaId.deployassets"
 $runtimeRoot = Join-Path $ProjectRoot 'Client\Bin\DataFiles\Map'
 $runtimePath = Join-Path $runtimeRoot "$AreaId.mapplacements"
+$runtimeLightPath = Join-Path $runtimeRoot "$AreaId.maplights.json"
+$mapCatalogPath = Join-Path $ProjectRoot 'Data\Maps\MapCatalog.json'
 $shardSetPath = Join-Path $runtimeRoot "$AreaId.mapset"
 $utf8 = [Text.UTF8Encoding]::new($false)
 $importedPlacementMask = [uint64]::Parse(
@@ -115,12 +118,167 @@ function Assert-ImportedLeaf {
 	return $fullPath
 }
 
+function Test-JsonNumber {
+    param([object]$Value)
+    if ($Value -is [bool] -or $null -eq $Value) { return $false }
+    if ($Value -isnot [byte] -and $Value -isnot [sbyte] -and
+        $Value -isnot [int16] -and $Value -isnot [uint16] -and
+        $Value -isnot [int32] -and $Value -isnot [uint32] -and
+        $Value -isnot [int64] -and $Value -isnot [uint64] -and
+        $Value -isnot [single] -and $Value -isnot [double] -and
+        $Value -isnot [decimal]) {
+        return $false
+    }
+    $number = [double]$Value
+    return -not [double]::IsNaN($number) -and
+        -not [double]::IsInfinity($number)
+}
+
+function Assert-ExactJsonProperties {
+    param([object]$Value, [string[]]$Expected, [string]$Context)
+    if ($null -eq $Value) { throw "$Context is null" }
+    $actual = @($Value.PSObject.Properties.Name | Sort-Object)
+    $expectedSorted = @($Expected | Sort-Object)
+    if ($actual.Count -ne $expectedSorted.Count -or
+        (Compare-Object $actual $expectedSorted)) {
+        throw "$Context has unexpected properties"
+    }
+}
+
+function Read-MapLightDocument {
+    param([string]$Path)
+    $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    try { $document = $raw | ConvertFrom-Json }
+    catch { throw "Map light JSON parse failed: $Path" }
+    Assert-ExactJsonProperties $document `
+        @('schema','formatVersion','areaId','provenance','lights') `
+        'Map light root'
+    if ($document.schema -isnot [string] -or
+        $document.schema -ne 'lostark.map-light-presentation' -or
+        -not (Test-JsonNumber $document.formatVersion) -or
+        [double]$document.formatVersion -ne 1.0 -or
+        $document.areaId -isnot [string] -or $document.areaId -ne $AreaId -or
+        $document.provenance -isnot [string] -or
+        $document.provenance -notin @(
+            'SOURCE_EXACT',
+            'SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED',
+            'PROJECT_AUTHORED')) {
+        throw "Map light header is invalid: $Path"
+    }
+    if ($document.lights -isnot [System.Array]) {
+        throw "Map light lights property must be an array: $Path"
+    }
+    $lights = @($document.lights)
+    if ($lights.Count -lt 1 -or $lights.Count -gt 64) {
+        throw "Map light count is invalid: $Path"
+    }
+    $lightIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $sourceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($light in $lights) {
+        Assert-ExactJsonProperties $light `
+            @('lightId','sourceLevel','sourceObjectId','position','radiusMeters',
+              'falloffExponent','color','brightness') 'Map point light'
+        if ($light.lightId -isnot [string] -or
+            $light.lightId -notmatch '^[A-Za-z0-9._-]{1,128}$' -or
+            $light.sourceLevel -isnot [string] -or
+            $light.sourceLevel -notmatch '^[A-Za-z0-9._-]{1,128}$' -or
+            $light.sourceObjectId -isnot [string] -or
+            $light.sourceObjectId -notmatch '^[A-Za-z0-9._:-]{1,256}$' -or
+            -not $lightIds.Add($light.lightId) -or
+            -not $sourceIds.Add($light.sourceObjectId)) {
+            throw "Map point light identity is invalid or duplicated: $Path"
+        }
+        if ($light.position -isnot [System.Array] -or
+            $light.color -isnot [System.Array]) {
+            throw "Map point light vectors must be arrays: $($light.lightId)"
+        }
+        $position = @($light.position)
+        $color = @($light.color)
+        if ($position.Count -ne 3 -or $color.Count -ne 4) {
+            throw "Map point light vector width is invalid: $($light.lightId)"
+        }
+        foreach ($component in $position) {
+            if (-not (Test-JsonNumber $component) -or
+                [double]$component -lt -100000.0 -or
+                [double]$component -gt 100000.0) {
+                throw "Map point light position is invalid: $($light.lightId)"
+            }
+        }
+        foreach ($component in $color) {
+            if (-not (Test-JsonNumber $component) -or
+                [double]$component -lt 0.0 -or [double]$component -gt 1.0) {
+                throw "Map point light color is invalid: $($light.lightId)"
+            }
+        }
+        if (-not (Test-JsonNumber $light.radiusMeters) -or
+            [double]$light.radiusMeters -lt 0.01 -or
+            [double]$light.radiusMeters -gt 1000.0 -or
+            -not (Test-JsonNumber $light.falloffExponent) -or
+            [double]$light.falloffExponent -lt 0.01 -or
+            [double]$light.falloffExponent -gt 64.0 -or
+            -not (Test-JsonNumber $light.brightness) -or
+            [double]$light.brightness -lt 0.0 -or
+            [double]$light.brightness -gt 64.0) {
+            throw "Map point light scalar is invalid: $($light.lightId)"
+        }
+    }
+    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+}
+
+function Add-MapLightPublishFile {
+    param([Collections.Generic.List[object]]$Files)
+    if ($script:mapLightsDeclared) {
+        if (-not [IO.File]::Exists($authoringLightPath)) {
+            throw "Declared map light authoring source is missing: $authoringLightPath"
+        }
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.maplights.json"
+            Lines = Read-MapLightDocument $authoringLightPath
+        })
+    }
+}
+
+if (-not [IO.File]::Exists($mapCatalogPath)) {
+    throw "Map catalog is missing: $mapCatalogPath"
+}
+try { $mapCatalog = [IO.File]::ReadAllText(
+        $mapCatalogPath, [Text.Encoding]::UTF8) | ConvertFrom-Json }
+catch { throw "Map catalog JSON parse failed: $mapCatalogPath" }
+$areaEntries = @($mapCatalog.areas | Where-Object { $_.id -eq $AreaId })
+if (1 -ne $areaEntries.Count) {
+    throw "Map catalog must declare Area exactly once: $AreaId"
+}
+$areaEntry = $areaEntries[0]
+$sourceLightsProperty = $areaEntry.PSObject.Properties['sourceLights']
+$runtimeLightsProperty = $areaEntry.PSObject.Properties['lights']
+if (($null -eq $sourceLightsProperty) -ne ($null -eq $runtimeLightsProperty)) {
+    throw "Map catalog light source/runtime declaration is incomplete: $AreaId"
+}
+$script:mapLightsDeclared = $null -ne $sourceLightsProperty
+if ($AreaId -eq 'LV_LUT_HEARTRB_ED' -and -not $script:mapLightsDeclared) {
+    throw "Valtan source/runtime map light declarations are required: $AreaId"
+}
+if ($script:mapLightsDeclared) {
+    $expectedSourceLights = "Data/Maps/Authoring/$AreaId/$AreaId.maplights.json"
+    $expectedRuntimeLights = "Client/Bin/DataFiles/Map/$AreaId.maplights.json"
+    if ($areaEntry.sourceLights -isnot [string] -or
+        $areaEntry.sourceLights -ne $expectedSourceLights -or
+        $areaEntry.lights -isnot [string] -or
+        $areaEntry.lights -ne $expectedRuntimeLights) {
+        throw "Map catalog light paths are not canonical: $AreaId"
+    }
+}
+elseif ([IO.File]::Exists($authoringLightPath)) {
+    throw "Map light source exists without a MapCatalog declaration: $AreaId"
+}
+
 function Invoke-FileSetTransaction {
     param([object[]]$Files)
     $transactionId = [Guid]::NewGuid().ToString('N')
     $stagingRoot = Join-Path $runtimeRoot ".map-publish.staging.$AreaId.$transactionId"
     [IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
     $entries = [Collections.Generic.List[object]]::new()
+    $committed = $false
     try {
         foreach ($file in $Files) {
             $staged = Join-Path $stagingRoot $file.Name
@@ -150,11 +308,7 @@ function Invoke-FileSetTransaction {
                 throw "Injected map publish failure after $promotedCount promotion(s)."
             }
         }
-        foreach ($entry in $entries) {
-            if ([IO.File]::Exists($entry.Rollback)) {
-                [IO.File]::Delete($entry.Rollback)
-            }
-        }
+        $committed = $true
     }
     catch {
         $failure = $_
@@ -171,11 +325,26 @@ function Invoke-FileSetTransaction {
     }
     finally {
         if ([IO.Directory]::Exists($stagingRoot)) {
-            Remove-Item -LiteralPath $stagingRoot -Recurse -Force
+            try {
+                Remove-Item -LiteralPath $stagingRoot -Recurse -Force
+            }
+            catch {
+                Write-Warning "Map publish staging cleanup failed: $($_.Exception.Message)"
+            }
         }
+    }
+
+    if ($committed) {
         foreach ($entry in $entries) {
             if ([IO.File]::Exists($entry.Rollback)) {
-                [IO.File]::Delete($entry.Rollback)
+                try {
+                    [IO.File]::Delete($entry.Rollback)
+                }
+                catch {
+                    Write-Warning (
+                        "Map publish committed, but backup cleanup failed for " +
+                        "'$($entry.Rollback)': $($_.Exception.Message)")
+                }
             }
         }
     }
@@ -220,6 +389,8 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
             Lines = [IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8)
         })
     }
+
+    Add-MapLightPublishFile $files
 
     Invoke-FileSetTransaction $files
     [pscustomobject]@{
@@ -340,6 +511,7 @@ $files.Add([pscustomobject]@{
     Name = "$AreaId.mapset"
     Lines = $newMapSetLines
 })
+Add-MapLightPublishFile $files
 Invoke-FileSetTransaction $files
 
 [pscustomobject]@{
