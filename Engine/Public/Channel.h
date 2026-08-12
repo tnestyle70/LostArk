@@ -19,6 +19,14 @@ public:
 	HRESULT Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
 		const vector<shared_ptr<class CBone>>& Bones);
 	void Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex);
+
+private:
+	friend class CAnimation;
+	bool_t Sample_TransformationMatrix(
+		f32_t fTrackPosition,
+		uint32_t& iOutBoneIndex,
+		float4x4_t& OutTransformationMatrix) const;
+
 private:
 	char_t					m_szName[MAX_PATH] = {};
 

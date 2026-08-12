@@ -3,6 +3,16 @@
 작성일: 2026-08-03
 정본 브랜치: `codex/baren-player-replication`
 
+## 0. 세션 시작과 사용자 전용 화면 검증
+
+모든 세션은 `AGENTS.md`, `CLAUDE.md`, `.md/GB/gotchas.md`, 있으면
+`.md/GB/gotchas.local.md`, `.md/TEAM/README.md`, 대응 PLAN/RESULT를 먼저 읽는다.
+Artist F, Effect Tool, Character Select와 Client의 시각 결과는 사용자만 직접 조작하고 최종 visual fidelity를 판정한다.
+에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고 화면 캡처·스크린샷 생성을 하지 않으며 visual fidelity를 대신 판정하지 않는다.
+사용자가 대화에 첨부한 스크린샷이나 이미지 분석을 요청하면 에이전트는 반드시 열람·분석해 관찰 결과와 가능한 occurrence 진단을 보고한다.
+빌드와 구조화된 진단, 실행 준비 후 사용자가 누를 경로를 전달하고 멈추며, 사용자 서면 판정 전에는
+first pixel, eye smoke, visual PASS 또는 occurrence 승인을 완료로 기록하지 않는다.
+
 ## 1. 한 줄 계약
 
 제품 게임플레이는 항상 다음 한 방향으로 흐른다.
@@ -21,7 +31,7 @@ Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss
 
 Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
-2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 `Ctrl+F5`로 시작한다.
+2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
 

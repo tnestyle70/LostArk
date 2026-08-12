@@ -8,6 +8,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 
 | 작업 | 추가로 읽을 문서 |
 |---|---|
+| 모든 세션(예외 없음) | `AGENTS.md`, `CLAUDE.md`, `.md/GB/gotchas.md`, 있으면 `.md/GB/gotchas.local.md`, `.md/TEAM/README.md`, 대응 `*_PLAN.md`와 `*_RESULT.md` |
 | 빌드, Prototype/Clone, Level/Layer, Binary Asset, 리소스 배포 | `CLAUDE.md` |
 | 계획서, 설계서, 구현 가이드 | 아래 `계획서 규칙`에서 발견한 첫 번째 규칙 파일 |
 | G별 H/CPP/struct/변수 설명, 전체 코드 출력 원칙 | `.md/GB/계획서하네스규칙.local.md`가 있으면 먼저 읽고, 없으면 `.md/GB/local.md` |
@@ -30,7 +31,8 @@ powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 갱신한다.
 현재 endpoint 주소를 실제로 가진 PC만 `server-host`로 판정해 `Server.vcxproj.user`의
 `--bind-address 0.0.0.0`과 TCP 7777 LocalSubnet 방화벽 규칙도 확인한다. 출력이
-`server-host`이면 `Server + Client` profile, `client`이면 Client project만 `Ctrl+F5`로 시작한다.
+`server-host`이면 `Server + Client` profile, `client`이면 Client project를 사용자가 `Ctrl+F5`로
+시작할 대상으로 안내한다. 에이전트가 Client나 UI를 자율적으로 실행·조작하지 않는다.
 관리자 권한이 있어야 방화벽 규칙을 추가할 수 있으면 그 사실을 즉시 보고한다.
 현재 Server가 꺼져 있어 endpoint probe가 `not-listening`이어도 로컬 설정은 완료된 것이므로 작업을
 막지 않는다. 만료 뒤에는 `-AllowExpired`로 조용히 우회하지 말고 endpoint 정본과 public 계약을
@@ -175,6 +177,16 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 - 플레이어 스킬, 일반 몬스터, Lugaru, Valtan의 combat overlap은 Engine/PhysX 비의존 Shared XZ primitive 계약을 Server fixed tick에서 평가한다. Client의 character/NPC/Valtan collider는 같은 body radius를 표시하는 Debug mirror이며 hit·damage 권위를 갖지 않는다.
 - MapTool gameplay 저장은 `Data/Worlds/<AreaId>/Gameplay.world.json`이 정본이다. `Publish-WorldGameplay.ps1`이 Server bootstrap을 생성하며 생성물을 직접 편집하지 않는다.
 - `playerSpawn`은 spawn slot과 transform만 소유하고 `archetypeId`는 `null`이다. 실제 character class는 인증된 session/player selection이 소유한다.
+
+## 사용자 전용 화면 검증 경계
+
+- Artist F, Effect Tool, Character Select와 모든 Client 시각 결과는 사용자가 직접 조작하고 최종 visual fidelity를 판정한다.
+- 에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고, 화면을 직접 캡처하거나 스크린샷을 만들지 않으며, visual fidelity를 대신 판정하지 않는다.
+- 사용자가 대화에 첨부한 스크린샷이나 이미지를 분석해 달라고 요청하면 에이전트는 반드시 열람·분석하고, 관찰된 결함과 가능한 occurrence 진단을 보고한다. 이 분석은 사용자의 최종 육안 판정을 대체하지 않는다.
+- `완성`, `복원`, `보이게 해줘`, `눈으로 검증 가능하게 해줘` 같은 일반 구현 요청은 Client/UI 자율 실행·조작이나 화면 캡처 권한이 아니다.
+- 에이전트는 빌드, 구조화된 로그와 수치 진단, 실행 준비까지만 수행한다. 그 뒤 Server CMD와 Client 실행 상태, 사용자가 직접 누를 정확한 경로를 보고하고 멈춘다.
+- `manual first pixel`, `eye smoke`, `visual PASS`, occurrence 승인은 사용자의 서면 관찰과 결정이 있어야 한다. 에이전트가 대신 PASS로 기록하지 않는다.
+- 사용자가 첨부한 이미지는 요청 시 진단·리뷰 입력으로 사용하되 단독 자동 admission이나 완료 증거로 승격하지 않는다. 에이전트가 직접 만든 캡처나 자동 UI 조작 결과는 증거로 사용하지 않는다.
 
 ## AI 코드 하네스
 

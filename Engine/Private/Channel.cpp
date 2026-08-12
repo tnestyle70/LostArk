@@ -3,6 +3,7 @@
 #include "Bone.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
@@ -208,6 +209,83 @@ void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const ve
 	matrix_t	BoneTranslationMatrix = XMMatrixAffineTransformation(vScale, XMVectorSet(0.f, 0.f, 0.f, 1.f), vRotation, vTranslation);
 
 	Bones[m_iBoneIndex]->Update_TransformationMatrix(BoneTranslationMatrix);
+}
+
+bool_t CChannel::Sample_TransformationMatrix(
+	const f32_t fTrackPosition,
+	uint32_t& iOutBoneIndex,
+	float4x4_t& OutTransformationMatrix) const
+{
+	if (!std::isfinite(fTrackPosition) || m_iBoneIndex < 0)
+		return false;
+
+	matrix_t Transformation;
+	if (m_bUsesSeparateTracks)
+	{
+		const float3_t Scale = SampleVector(
+			m_ScaleKeys, fTrackPosition, float3_t(1.f, 1.f, 1.f));
+		const float4_t Rotation = SampleQuaternion(
+			m_RotationKeys, fTrackPosition);
+		const float3_t Translation = SampleVector(
+			m_PositionKeys, fTrackPosition, float3_t(0.f, 0.f, 0.f));
+		Transformation = XMMatrixAffineTransformation(
+			XMLoadFloat3(&Scale),
+			XMVectorZero(),
+			XMLoadFloat4(&Rotation),
+			XMVectorSetW(XMLoadFloat3(&Translation), 1.f));
+	}
+	else
+	{
+		if (m_KeyFrames.empty())
+			return false;
+
+		const KEYFRAME& LastKeyFrame = m_KeyFrames.back();
+		vector_t Scale;
+		vector_t Rotation;
+		vector_t Translation;
+		if (1u == m_KeyFrames.size() ||
+			fTrackPosition >= LastKeyFrame.fTrackPosition)
+		{
+			Scale = XMLoadFloat3(&LastKeyFrame.vScale);
+			Rotation = XMLoadFloat4(&LastKeyFrame.vRotation);
+			Translation = XMVectorSetW(
+				XMLoadFloat3(&LastKeyFrame.vTranslation), 1.f);
+		}
+		else
+		{
+			size_t iLeftKeyFrame = 0u;
+			while (iLeftKeyFrame + 1u < m_KeyFrames.size() - 1u &&
+				fTrackPosition >=
+					m_KeyFrames[iLeftKeyFrame + 1u].fTrackPosition)
+			{
+				++iLeftKeyFrame;
+			}
+			const KEYFRAME& Left = m_KeyFrames[iLeftKeyFrame];
+			const KEYFRAME& Right = m_KeyFrames[iLeftKeyFrame + 1u];
+			const f32_t fSpan =
+				Right.fTrackPosition - Left.fTrackPosition;
+			const f32_t fRatio = fSpan > 0.f ?
+				(fTrackPosition - Left.fTrackPosition) / fSpan : 0.f;
+			Scale = XMVectorLerp(
+				XMLoadFloat3(&Left.vScale),
+				XMLoadFloat3(&Right.vScale), fRatio);
+			Rotation = XMQuaternionSlerp(
+				XMLoadFloat4(&Left.vRotation),
+				XMLoadFloat4(&Right.vRotation), fRatio);
+			Translation = XMVectorLerp(
+				XMVectorSetW(XMLoadFloat3(&Left.vTranslation), 1.f),
+				XMVectorSetW(XMLoadFloat3(&Right.vTranslation), 1.f),
+				fRatio);
+		}
+		Transformation = XMMatrixAffineTransformation(
+			Scale, XMVectorZero(), Rotation, Translation);
+	}
+
+	float4x4_t Staged{};
+	XMStoreFloat4x4(&Staged, Transformation);
+	iOutBoneIndex = static_cast<uint32_t>(m_iBoneIndex);
+	OutTransformationMatrix = Staged;
+	return true;
 }
 
 shared_ptr<CChannel> CChannel::Create(const aiNodeAnim* pAIChannel, const vector<shared_ptr<class CBone>>& Bones)

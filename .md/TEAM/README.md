@@ -14,20 +14,31 @@ endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실�
 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
 현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
-Client project만 `Ctrl+F5`로 시작한다.
+Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
+
+## 모든 세션의 사용자 전용 화면 검증 경계
+
+- Artist F, Effect Tool, Character Select와 모든 Client 시각 결과는 사용자가 직접 조작하고 최종 visual fidelity를 판정한다.
+- 에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고 화면 캡처·스크린샷 생성을 하지 않으며, visual fidelity를 대신 판정하지 않는다.
+- 사용자가 대화에 첨부한 스크린샷이나 이미지 분석을 요청하면 에이전트는 반드시 열람·분석하고 관찰 결과와 가능한 결함 위치를 보고한다.
+- 에이전트는 빌드, 구조화된 로그와 수치 진단, 실행 준비까지만 수행한 뒤 사용자가 직접 누를 경로를 전달하고 멈춘다.
+- 사용자의 서면 판정 전에는 first pixel, eye smoke, visual PASS, occurrence 승인을 완료로 기록하지 않는다.
+- 완성·복원·시각 검증 요청 자체는 Client/UI 자율 실행·조작이나 화면 캡처 권한이 아니다. 첨부 이미지 분석은 최종 육안 판정이나 단독 완료 증거가 아니다.
 
 ## 읽는 순서
 
 1. 저장소 금지 경계와 완료 조건: `../../AGENTS.md`
 2. 최초 세팅, 빌드, 런타임 구조: `../../CLAUDE.md`
-3. 통합 데이터 수명·stable ID·publish 구조: `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md`
-4. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
-5. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
-6. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
-7. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
-8. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
-9. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-10. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
+3. merge·실행·화면 검증 금지 경계: `../GB/gotchas.md`, 있으면 `../GB/gotchas.local.md`
+4. 현재 작업의 대응 PLAN/RESULT
+5. 통합 데이터 수명·stable ID·publish 구조: `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md`
+6. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
+7. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
+8. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
+9. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
+10. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
+11. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+12. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 

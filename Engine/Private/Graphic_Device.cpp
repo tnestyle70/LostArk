@@ -12,8 +12,9 @@ CGraphic_Device::~CGraphic_Device()
 
 }
 
-HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, int32_t iWinSizeX, int32_t iWinSizeY,
-	ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
+HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+	int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+	ComPtr<ID3D11DeviceContext>& pOutContext)
 {
 	int32_t		iFlag = 0;
 
@@ -29,8 +30,23 @@ HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, int32_t iWinSiz
 	/* dx11 : 우선적으로 장치 객체를 생성하고 장치객체를 통해서 기타 초기화작업 및 설정을 해나간다. */
 
 	/* 그래픽 장치를 초기화한다. */
-	if (FAILED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, 0, iFlag, nullptr, 0, D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext)))
-		return E_FAIL;
+	if (eDriverType != D3D_DRIVER_TYPE_HARDWARE &&
+		eDriverType != D3D_DRIVER_TYPE_WARP)
+		return E_INVALIDARG;
+
+	HRESULT hDeviceResult = D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
+		D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
+#ifdef _DEBUG
+	if (FAILED(hDeviceResult) && eDriverType == D3D_DRIVER_TYPE_WARP &&
+		0 != (iFlag & D3D11_CREATE_DEVICE_DEBUG))
+	{
+		iFlag &= ~D3D11_CREATE_DEVICE_DEBUG;
+		hDeviceResult = D3D11CreateDevice(nullptr, eDriverType, 0, iFlag, nullptr, 0,
+			D3D11_SDK_VERSION, &m_pDevice, &FeatureLV, &m_pDeviceContext);
+	}
+#endif
+	if (FAILED(hDeviceResult))
+		return hDeviceResult;
 
 
 
@@ -130,8 +146,11 @@ HRESULT CGraphic_Device::Present()
 
 void CGraphic_Device::Shutdown()
 {
-	m_pDeviceContext->ClearState();
-	m_pDeviceContext->Flush();
+	if (nullptr != m_pDeviceContext)
+	{
+		m_pDeviceContext->ClearState();
+		m_pDeviceContext->Flush();
+	}
 
 
 	m_pSwapChain.Reset();
@@ -142,8 +161,9 @@ void CGraphic_Device::Shutdown()
 
 
 #if defined(DEBUG) || defined(_DEBUG)
-	ID3D11Debug* d3dDebug;
-	HRESULT hr = m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&d3dDebug));
+	ID3D11Debug* d3dDebug = nullptr;
+	HRESULT hr = nullptr == m_pDevice ? E_FAIL :
+		m_pDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&d3dDebug));
 	if (SUCCEEDED(hr))
 	{
 		OutputDebugStringW(L"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- \r ");
@@ -282,15 +302,15 @@ HRESULT CGraphic_Device::Ready_DepthStencilView(int32_t iWinCX, int32_t iWinCY)
 	return S_OK;
 }
 
-unique_ptr<CGraphic_Device> CGraphic_Device::Create(HWND hWnd, WINMODE eWinMode, int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
+unique_ptr<CGraphic_Device> CGraphic_Device::Create(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+	int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+	ComPtr<ID3D11DeviceContext>& pOutContext)
 {
 	auto		pInstance = unique_ptr<CGraphic_Device>(new CGraphic_Device());
 
-	if (FAILED(pInstance->Initialize(hWnd, eWinMode, iWinSizeX, iWinSizeY, pOutDevice, pOutContext)))
-	{
-		MSG_BOX("Failed to Created : CGraphic_Device");
-	
-	}
+	if (FAILED(pInstance->Initialize(hWnd, eWinMode, eDriverType, iWinSizeX, iWinSizeY,
+		pOutDevice, pOutContext)))
+		return nullptr;
 
 	return pInstance;
 }

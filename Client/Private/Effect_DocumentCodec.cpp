@@ -2630,6 +2630,10 @@ namespace
 			Read_Float(*pTrail, "minimumDistance", Out.Trail.fMinimumDistance, strOutError) &&
 			Read_Float(*pTrail, "startWidth", Out.Trail.fStartWidth, strOutError) &&
 			Read_Float(*pTrail, "endWidth", Out.Trail.fEndWidth, strOutError) &&
+			Read_OptionalFloat(*pTrail, "tilingDistanceWorldUnits",
+				Out.Trail.fTilingDistanceWorldUnits, strOutError) &&
+			Read_OptionalFloat(*pTrail, "distanceTessellationStepWorldUnits",
+				Out.Trail.fDistanceTessellationStepWorldUnits, strOutError) &&
 			Read_Bool(*pTrail, "faceCamera", Out.Trail.bFaceCamera, strOutError) &&
 			Read_Float(*pAfterImage, "sampleIntervalSeconds", Out.AfterImage.fSampleIntervalSeconds, strOutError) &&
 			Read_UInt(*pAfterImage, "maxCopies", Out.AfterImage.iMaxCopies, strOutError) &&
@@ -2730,6 +2734,10 @@ namespace
 			<< ", \"minimumDistance\": " << Detail.Trail.fMinimumDistance
 			<< ", \"startWidth\": " << Detail.Trail.fStartWidth
 			<< ", \"endWidth\": " << Detail.Trail.fEndWidth
+			<< ", \"tilingDistanceWorldUnits\": "
+			<< Detail.Trail.fTilingDistanceWorldUnits
+			<< ", \"distanceTessellationStepWorldUnits\": "
+			<< Detail.Trail.fDistanceTessellationStepWorldUnits
 			<< ", \"faceCamera\": " << (Detail.Trail.bFaceCamera ? "true" : "false") << " },\n"
 			<< "        \"afterImage\": { \"sampleIntervalSeconds\": " << Detail.AfterImage.fSampleIntervalSeconds
 			<< ", \"maxCopies\": " << Detail.AfterImage.iMaxCopies
@@ -3406,12 +3414,16 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Is_Finite(D.Particle.vStartSize) && D.Particle.vStartSize.x > 0.f && D.Particle.vStartSize.y > 0.f &&
 			Is_Finite(D.Particle.vEndSize) && D.Particle.vEndSize.x >= 0.f && D.Particle.vEndSize.y >= 0.f;
 		const bool_t bTrailValid =
-			D.Trail.iMaxPoints >= 2u && D.Trail.iMaxPoints <= 256u &&
+			D.Trail.iMaxPoints >= 2u && D.Trail.iMaxPoints <= 512u &&
 			std::isfinite(D.Trail.fPointLifeTimeSeconds) && D.Trail.fPointLifeTimeSeconds > 0.f &&
 			std::isfinite(D.Trail.fSampleIntervalSeconds) && D.Trail.fSampleIntervalSeconds > 0.f &&
 			std::isfinite(D.Trail.fMinimumDistance) && D.Trail.fMinimumDistance >= 0.f &&
 			std::isfinite(D.Trail.fStartWidth) && D.Trail.fStartWidth > 0.f &&
-			std::isfinite(D.Trail.fEndWidth) && D.Trail.fEndWidth >= 0.f;
+			std::isfinite(D.Trail.fEndWidth) && D.Trail.fEndWidth >= 0.f &&
+			std::isfinite(D.Trail.fTilingDistanceWorldUnits) &&
+			D.Trail.fTilingDistanceWorldUnits >= 0.f &&
+			std::isfinite(D.Trail.fDistanceTessellationStepWorldUnits) &&
+			D.Trail.fDistanceTessellationStepWorldUnits >= 0.f;
 		const bool_t bAfterImageValid =
 			std::isfinite(D.AfterImage.fSampleIntervalSeconds) && D.AfterImage.fSampleIntervalSeconds > 0.f &&
 			D.AfterImage.iMaxCopies <= 32u && std::isfinite(D.AfterImage.fAlphaExponent) && D.AfterImage.fAlphaExponent > 0.f &&
@@ -4373,6 +4385,8 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 					!Is_UnsafeEffectBaseTextureAssetId(
 						pBaseBinding->strAssetId),
 				nullptr != FindBinding(
+					EFFECT_MATERIAL_INPUT_SEMANTIC::NOISE),
+				nullptr != FindBinding(
 					EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
 				bHasDissolve,
 				bParticleMesh))
@@ -4412,6 +4426,97 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 			}
 		}
 	}
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::
+	Validate_Artist31470ReconstructedRuntimeDrawable(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::string& strOutError)
+{
+	constexpr std::string_view ARTIST_31470_EFFECT_ID =
+		"effect.artist.skill.31470";
+	if (Document.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		Document.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		Document.bSourceContract ||
+		Document.strEffectAssetId != ARTIST_31470_EFFECT_ID ||
+		Document.Elements.size() != 35u)
+	{
+		strOutError =
+			"Artist 31470 reconstructed runtime drawable identity is invalid.";
+		return false;
+	}
+	std::array<uint32_t,
+		static_cast<size_t>(EFFECT_RENDERER_TYPE::END)> RendererCounts{};
+	EFFECT_DOCUMENT_DESC LegacyValidationProjection = Document;
+	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
+	{
+		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
+		const bool_t bUe3Source =
+			Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		const bool_t bScreenSource =
+			Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::SCREEN_SPACE_V1;
+		bool_t bRendererMatchesKind = false;
+		switch (Element.Renderer.eType)
+		{
+		case EFFECT_RENDERER_TYPE::MESH_PARTICLE:
+		case EFFECT_RENDERER_TYPE::SPRITE_PARTICLE:
+			bRendererMatchesKind = bUe3Source &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE;
+			break;
+		case EFFECT_RENDERER_TYPE::DECAL_PARTICLE:
+			bRendererMatchesKind = bUe3Source &&
+				Element.eKind == EFFECT_ELEMENT_KIND::DECAL;
+			break;
+		case EFFECT_RENDERER_TYPE::CASCADE_RIBBON:
+			bRendererMatchesKind = bUe3Source &&
+				Element.eKind == EFFECT_ELEMENT_KIND::TRAIL;
+			break;
+		case EFFECT_RENDERER_TYPE::LIGHT_PARTICLE:
+			bRendererMatchesKind = bUe3Source &&
+				Element.eKind == EFFECT_ELEMENT_KIND::LIGHT;
+			break;
+		case EFFECT_RENDERER_TYPE::SCREEN_POST:
+			bRendererMatchesKind = bScreenSource &&
+				Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+			break;
+		case EFFECT_RENDERER_TYPE::STANDALONE_MESH:
+		case EFFECT_RENDERER_TYPE::LEGACY_STANDALONE_SPRITE:
+		case EFFECT_RENDERER_TYPE::ANIM_TRAIL:
+		case EFFECT_RENDERER_TYPE::END:
+		default:
+			break;
+		}
+		if (!bRendererMatchesKind)
+		{
+			strOutError =
+				"Reconstructed runtime renderer type/source-space does not match "
+				"its Element kind.";
+			return false;
+		}
+		++RendererCounts[static_cast<size_t>(Element.Renderer.eType)];
+		LegacyValidationProjection.Elements[iElement].Renderer = {};
+	}
+	if (RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::MESH_PARTICLE)] != 13u ||
+		RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::SPRITE_PARTICLE)] != 16u ||
+		RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::DECAL_PARTICLE)] != 3u ||
+		RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::CASCADE_RIBBON)] != 1u ||
+		RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::LIGHT_PARTICLE)] != 1u ||
+		RendererCounts[static_cast<size_t>(
+			EFFECT_RENDERER_TYPE::SCREEN_POST)] != 1u)
+	{
+		strOutError =
+			"Artist 31470 reconstructed runtime renderer denominator changed.";
+		return false;
+	}
+	if (!Validate_Drawable(LegacyValidationProjection, strOutError))
+		return false;
 	strOutError.clear();
 	return true;
 }

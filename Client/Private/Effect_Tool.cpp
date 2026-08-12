@@ -12,6 +12,7 @@
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
+#include "Effect_ReconstructedExecution.h"
 #include "Effect_ThumbnailCache.h"
 #include "GameInstance.h"
 #include "Logic_Artist.h"
@@ -39,6 +40,7 @@
 #include <string_view>
 #include <system_error>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 namespace
@@ -1136,6 +1138,12 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	if (m_bReconstructedDiagnosticActive)
 	{
 		Update_ReconstructedDiagnosticRoot();
+		return;
+	}
+	if (m_bReconstructedSourceRuntimeActive)
+	{
+		Update_SynchronizedAnimationSequence();
+		Update_ReconstructedSourceRuntimeTimeline(fTimeDelta);
 		return;
 	}
     Update_SynchronizedAnimationSequence();
@@ -2258,58 +2266,97 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         {
             m_bPreviewPlaying = false;
             Set_SynchronizedAnimationPaused(true);
-        }
-        else if (nullptr != m_pWorldPreviewObject.lock())
-        {
-            if (m_fPreviewTimeSeconds >= m_fPreviewDurationSeconds)
-                Start_WorldPreviewFromBeginning();
-            else
-            {
+		}
+		else if (nullptr != m_pWorldPreviewObject.lock())
+		{
+			if (m_bReconstructedSourceRuntimeActive &&
+				m_bReconstructedSourceRuntimeNaturalTailActive)
+			{
 				m_bPreviewVisibleRequested = true;
 				m_bPreviewPlaying = true;
-                Set_SynchronizedAnimationPaused(false);
-            }
-        }
+				Set_SynchronizedAnimationPaused(true);
+			}
+			else if (m_fPreviewTimeSeconds >= m_fPreviewDurationSeconds)
+				Start_WorldPreviewFromBeginning();
+			else
+			{
+				m_bPreviewVisibleRequested = true;
+				m_bPreviewPlaying = true;
+				Set_SynchronizedAnimationPaused(
+					m_bReconstructedSourceRuntimeStartPending);
+			}
+		}
     }
     ImGui::SameLine();
-    if (ImGui::Checkbox("Loop", &m_bPreviewLoop))
-    {
-        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
-        Set_SynchronizedAnimationPaused(!m_bPreviewPlaying);
+	if (ImGui::Checkbox("Loop", &m_bPreviewLoop))
+	{
+		if (m_bReconstructedSourceRuntimeActive &&
+			m_bReconstructedSourceRuntimeNaturalTailActive &&
+			m_bPreviewLoop)
+		{
+			Start_WorldPreviewFromBeginning();
+		}
+		else
+		{
+			Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+			if (m_bReconstructedSourceRuntimeActive)
+			{
+				m_fReconstructedSourceRuntimeClockSeconds =
+					m_fPreviewTimeSeconds;
+			}
+			Set_SynchronizedAnimationPaused(
+				!m_bPreviewPlaying ||
+				m_bReconstructedSourceRuntimeStartPending ||
+				m_bReconstructedSourceRuntimeNaturalTailActive);
+		}
     }
     ImGui::SameLine();
     if (ImGui::Button("Restart + Play"))
         Start_WorldPreviewFromBeginning();
-    ImGui::Text("World Preview: %s | %.3f / %.3f s",
-        m_bPreviewPlaying ? "PLAYING" : "PAUSED",
-        m_fPreviewTimeSeconds, m_fPreviewDurationSeconds);
+	ImGui::Text("World Preview: %s | %.3f / %.3f s",
+		m_bPreviewPlaying ? "PLAYING" : "PAUSED",
+		m_fPreviewTimeSeconds, m_fPreviewDurationSeconds);
+	if (m_bReconstructedSourceRuntimeNaturalTailActive)
+	{
+		ImGui::TextDisabled(
+			"Natural Stop tail: +%.3f s after animation end.",
+			m_fReconstructedSourceRuntimeTailSeconds);
+	}
     if (!m_SynchronizedAnimationClips.empty())
     {
         ImGui::TextDisabled(
             "Animation source time owns this Effect timeline; playRate is applied automatically.");
     }
-    if (ImGui::SliderFloat("Sample Time", &m_fPreviewTimeSeconds,
-        0.f, m_fPreviewDurationSeconds, "%.3f s"))
-    {
-        m_bPreviewPlaying = false;
+	if (ImGui::SliderFloat("Sample Time", &m_fPreviewTimeSeconds,
+		0.f, m_fPreviewDurationSeconds, "%.3f s"))
+	{
+		m_bPreviewPlaying = false;
 		m_bPreviewVisibleRequested = true;
-        Reset_ProductCueSnapshot();
-        Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
-        if (const shared_ptr<CEffectObject> pObject =
-            m_pWorldPreviewObject.lock())
-        {
-            float4x4_t Root{};
-            const bool_t bRootResolved = Resolve_PreviewRoot(Root);
-            if (bRootResolved)
-                pObject->Set_RootWorld(Root);
-            pObject->Set_SampleTime(
-                Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
-            pObject->Set_Visible(
-                bRootResolved &&
-                Is_ProductCueVisible(m_fPreviewTimeSeconds));
-        }
-        Set_SynchronizedAnimationPaused(true);
-    }
+		Reset_ProductCueSnapshot();
+		if (m_bReconstructedSourceRuntimeActive)
+		{
+			Seek_ReconstructedSourceRuntimeTimeline(
+				m_fPreviewTimeSeconds);
+		}
+		else
+		{
+			Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+			if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock())
+			{
+				float4x4_t Root{};
+				const bool_t bRootResolved = Resolve_PreviewRoot(Root);
+				if (bRootResolved)
+					pObject->Set_RootWorld(Root);
+				pObject->Set_SampleTime(
+					Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+				pObject->Set_Visible(
+					bRootResolved &&
+					Is_ProductCueVisible(m_fPreviewTimeSeconds));
+			}
+			Set_SynchronizedAnimationPaused(true);
+		}
+	}
 	if (m_ActiveDocument.has_value())
 	{
 		const std::string& SelectedEmitter =
@@ -4433,7 +4480,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				LostArk::Shared::CHARACTER_CLASS_ID::ARTIST &&
 			Entry.Skill.iSkillId == ARTIST_F_DIAGNOSTIC_SKILL_ID;
 		const bool_t bRestoreMatchesSearch = bArtistFRestore &&
-			Contains_NoCase("Restore Original Mesh Sprite", Search);
+			Contains_NoCase("V4 Material Composition Main Review Diagnostics", Search);
 		if (Entry.Skill.eCharacterClass != m_eAllEffectsClass ||
 			(!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
 			 !Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
@@ -4445,27 +4492,28 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		{
 			ImGui::PushID("artist-f-original-restore");
 			const ImGuiTreeNodeFlags RestoreFlags =
-				ImGuiTreeNodeFlags_OpenOnArrow |
-				(m_bReconstructedDiagnosticActive ?
+				((m_bReconstructedDiagnosticActive ||
+					m_bReconstructedSourceRuntimeActive) ?
 					ImGuiTreeNodeFlags_Selected : 0);
 			const bool_t bRestoreOpen = ImGui::TreeNodeEx(
-				"Skill | F | Restore | Original Mesh 1 + Sprite 1",
+				"Skill | F | V4 Material Composition | Main Review + Diagnostics",
 				RestoreFlags);
-			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
-			{
-				Try_StartArtist31470Diagnostic(
-					RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH);
-			}
 			if (ImGui::IsItemHovered())
 			{
 				ImGui::SetTooltip(
-					"Original-data GPU diagnostic. Product remains OFF.\n"
-					"Open this row and verify Mesh Solo, then Sprite Solo.");
+					"V4 Artist-F material-composition review only. This is not a restoration PASS.\n"
+					"Open the row for optional Mesh/Sprite plumbing diagnostics.");
 			}
 			if (bRestoreOpen)
 			{
 				ImGui::TextDisabled(
-					"Restore diagnostic: exact WModel/DDS, Material and render state.");
+					"Admission truth: 0 admitted | 13 conditional | 22 diagnostic-only.");
+				ImGui::TextWrapped(
+					"V4 Main Review shows only #9/#10 dark-ink water core and #11 RGB-masked outer carrier.");
+				if (ImGui::Button("Play V4 Main Review (3)##artist-f-restore"))
+				{
+					Try_StartArtist31470FullPreview();
+				}
 				if (ImGui::Button("Mesh 1 Solo##artist-f-restore"))
 				{
 					Try_StartArtist31470Diagnostic(
@@ -4477,18 +4525,16 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 					Try_StartArtist31470Diagnostic(
 						RECONSTRUCTED_DIAGNOSTIC_SOLO::SPRITE);
 				}
+				ImGui::TextWrapped("V4 review: %s",
+					m_strPreviewStatus.empty() ?
+						"not staged" : m_strPreviewStatus.c_str());
 				if (const shared_ptr<CEffectObject> pDiagnostic =
 					m_pWorldPreviewObject.lock();
-					m_bReconstructedDiagnosticActive && nullptr != pDiagnostic)
+					(m_bReconstructedDiagnosticActive ||
+					 m_bReconstructedSourceRuntimeActive) && nullptr != pDiagnostic)
 				{
-					ImGui::TextWrapped(
-						"GPU: %s", pDiagnostic->Get_Status().c_str());
-				}
-				else
-				{
-					ImGui::TextWrapped("GPU: %s",
-						m_strPreviewStatus.empty() ?
-							"not staged" : m_strPreviewStatus.c_str());
+					ImGui::TextDisabled(
+						"Runtime: %s", pDiagnostic->Get_Status().c_str());
 				}
 				ImGui::TreePop();
 			}
@@ -7803,6 +7849,10 @@ bool_t Client::CEffect_Tool::Try_StartArtist31470Diagnostic(
 		pObject->Set_ReconstructedDiagnosticSolo(eSolo);
 		pObject->Set_Visible(true);
 		m_bReconstructedDiagnosticActive = true;
+		m_bReconstructedSourceRuntimeActive = false;
+		Set_SynchronizedAnimationPaused(true);
+		Reset_SynchronizedAnimationSequence();
+		Reset_ReconstructedSourceRuntimeTimeline();
 		m_bPreviewPlaying = false;
 		m_bPreviewVisibleRequested = true;
 		Update_ReconstructedDiagnosticRoot();
@@ -7853,12 +7903,256 @@ bool_t Client::CEffect_Tool::Try_StartArtist31470Diagnostic(
 		return false;
 	}
 	m_bReconstructedDiagnosticActive = true;
+	m_bReconstructedSourceRuntimeActive = false;
+	Set_SynchronizedAnimationPaused(true);
+	Reset_SynchronizedAnimationSequence();
+	Reset_ReconstructedSourceRuntimeTimeline();
 	m_bPreviewPlaying = false;
 	m_bPreviewVisibleRequested = true;
 	Update_ReconstructedDiagnosticRoot();
 	m_strPreviewStatus = eSolo == RECONSTRUCTED_DIAGNOSTIC_SOLO::MESH ?
 		"Artist F original Mesh Solo staged; Product remains OFF." :
 		"Artist F original Sprite Solo staged; Product remains OFF.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_StartArtist31470FullPreview()
+{
+	if (!Ensure_WorldPreviewObject())
+	{
+		Reset_ReconstructedSourceRuntimeTimeline();
+		return false;
+	}
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject)
+	{
+		Reset_ReconstructedSourceRuntimeTimeline();
+		m_strPreviewStatus =
+			"Artist F V4 material-composition EffectObject is unavailable.";
+		return false;
+	}
+	const auto FailStart = [this, &pObject](std::string Reason)
+	{
+		pObject->Set_Playing(false);
+		pObject->Set_Visible(false);
+		Set_SynchronizedAnimationPaused(true);
+		Reset_SynchronizedAnimationSequence();
+		Reset_ReconstructedSourceRuntimeTimeline();
+		m_bReconstructedDiagnosticActive = false;
+		m_bReconstructedSourceRuntimeActive = false;
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = false;
+		m_strPreviewStatus = std::move(Reason);
+		return false;
+	};
+
+	/* Resource preparation is synchronous and may consume several seconds.
+	   Neither the previous Object nor its animation may absorb that wall time. */
+	pObject->Set_Playing(false);
+	Set_SynchronizedAnimationPaused(true);
+	std::string Error;
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> Preparation;
+	if (!CEffectPresentationService::Acquire_ReconstructedArtist31470(
+		m_pDevice, m_pContext, Preparation, Error))
+	{
+		return FailStart(
+			"Artist F V4 material-composition cache failed: " + Error);
+	}
+	const bool_t bReusePreparedPreview =
+		m_bReconstructedSourceRuntimeActive &&
+		pObject->Is_ReconstructedSourceRuntimeActive() &&
+		pObject->Get_ReconstructedRuntimePreparation().get() ==
+			Preparation.get();
+	if (!Synchronize_Artist31470FullPreview(Preparation))
+	{
+		return FailStart(m_strPreviewAnimationStatus);
+	}
+	if (!bReusePreparedPreview &&
+		!CEffectPresentationService::Stage_ReconstructedArtist31470Preview(
+			pObject, Preparation, Error))
+	{
+		return FailStart(
+			"Artist F V4 material-composition cache stage failed: " + Error);
+	}
+	m_bReconstructedDiagnosticActive = false;
+	m_bReconstructedSourceRuntimeActive = true;
+	m_bPreviewPlaying = true;
+	m_bPreviewVisibleRequested = true;
+	m_fPreviewTimeSeconds = 0.f;
+	Reset_ReconstructedSourceRuntimeTimeline();
+	if (!Prepare_ReconstructedSourceRuntimeTransformHistory())
+	{
+		return FailStart(
+			"Artist F historical anchor preparation failed: " +
+			m_strPreviewAnimationStatus);
+	}
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[this](const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			return Build_ReconstructedSourceRuntimeTransformSample(
+				fSampleTimeSeconds, OutSample, strOutError);
+		};
+	if (!pObject->Set_SampleTimeWithTransformHistory(
+			0.f, TransformProvider, Error))
+	{
+		return FailStart(
+			"Artist F historical zero-frame stage failed: " + Error);
+	}
+	m_bReconstructedSourceRuntimeStartPending = true;
+	pObject->Set_Playing(false);
+	/* Do not expose a zero-time frame whose bone palette predates the deferred
+	   animation update.  The next Tool update refreshes the exact zero pose,
+	   its normalized source anchors, and only then publishes visibility. */
+	pObject->Set_Visible(false);
+	m_strPreviewStatus =
+		bReusePreparedPreview ?
+		"Artist F V4 material-composition review (#9/#10/#11) prepared from the shared cache; playback starts on the next update." :
+		"Artist F V4 material-composition review (#9/#10/#11) prepared; playback starts on the next update.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Synchronize_Artist31470FullPreview(
+	const std::shared_ptr<const
+		EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pPreparation)
+{
+	m_strPreviewAnimationStatus.clear();
+	if (nullptr == pPreparation ||
+		5u != pPreparation->Get_AnchorRequests().size())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F exact five-anchor preparation is unavailable.";
+		return false;
+	}
+	std::string CatalogStatus;
+	if (!Ensure_PlayerSkillCatalog(CatalogStatus))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F animation catalog unavailable: " + CatalogStatus;
+		return false;
+	}
+	const vector<PLAYER_SKILL_DEFINITION>& Skills =
+		CPlayerSkillCatalog::Get_Skills();
+	const auto Skill = std::find_if(Skills.begin(), Skills.end(),
+		[](const PLAYER_SKILL_DEFINITION& Candidate)
+		{
+			return Candidate.eCharacterClass ==
+				LostArk::Shared::CHARACTER_CLASS_ID::ARTIST &&
+				Candidate.iSkillId == 31470u;
+		});
+	if (Skill == Skills.end())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F animation catalog row 31470 is unavailable.";
+		return false;
+	}
+	const char* pAnimationAsset = Animation_AssetName(
+		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST);
+	if (nullptr == pAnimationAsset ||
+		(CAnimationTargetService::Resolve_AssetName() != pAnimationAsset &&
+		 !m_pCharacterPreviewPanel->Select_TargetAsset(pAnimationAsset)))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist preview character could not be staged.";
+		return false;
+	}
+	const shared_ptr<Engine::CModel> pModel =
+		CAnimationTargetService::Resolve_Model();
+	if (nullptr == pModel)
+	{
+		m_strPreviewAnimationStatus =
+			"Artist preview animation model is unavailable.";
+		return false;
+	}
+	float4x4_t PreviewRoot{};
+	if (!CAnimationTargetService::Resolve_RootTransform(&PreviewRoot))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist preview root transform is unavailable.";
+		return false;
+	}
+	for (const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding :
+		pPreparation->Get_AnchorRequests())
+	{
+		const EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST& Request = Binding.Request;
+		if (!Request.bFollow || Request.strRuntimeAnchorSlotId.empty() ||
+			Request.strRuntimeBoneName.empty() ||
+			!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
+		{
+			m_strPreviewAnimationStatus =
+				"Artist F required animation anchor is unavailable: " +
+				Request.strRuntimeBoneName;
+			return false;
+		}
+		EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+		XMStoreFloat4x4(&AnchorBuild.RawBone,
+			pModel->Get_BoneMatrix(Request.strRuntimeBoneName.c_str()));
+		AnchorBuild.OwnerWorld = PreviewRoot;
+		float4x4_t Anchor{};
+		if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(
+			AnchorBuild, Anchor))
+		{
+			m_strPreviewAnimationStatus =
+				"Artist F required animation anchor import transform is invalid: " +
+				Request.strRuntimeBoneName;
+			return false;
+		}
+	}
+	ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+	std::string BindingStatus;
+	if (!CAnimationSkillBindingDocument::Load(pAnimationAsset,
+		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, Skills,
+		Collect_AnimationClipNames(pModel),
+		Bindings, BindingStatus))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F animation binding unavailable: " + BindingStatus;
+		return false;
+	}
+	const auto Binding = std::find_if(Bindings.Bindings.begin(),
+		Bindings.Bindings.end(), [](const ANIMATION_SKILL_BINDING& Candidate)
+		{
+			return Candidate.iSkillId == 31470u;
+		});
+	if (Binding == Bindings.Bindings.end())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F animation binding row 31470 is unavailable.";
+		return false;
+	}
+	vector<ANIMATION_SKILL_CLIP> StagedClips;
+	for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
+	{
+		StagedClips.insert(
+			StagedClips.end(),
+			Stage.Clips.begin(), Stage.Clips.end());
+	}
+	if (StagedClips.empty())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F animation binding contains no clips.";
+		return false;
+	}
+	const ANIMATION_SKILL_CLIP FirstClip =
+		StagedClips.front();
+	const bool_t bSingleClip = 1u == StagedClips.size();
+	if (!pModel->Start_Animation(
+		FirstClip.strClipName.c_str(), bSingleClip && m_bPreviewLoop))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F first animation clip is unavailable: " +
+			FirstClip.strClipName;
+		return false;
+	}
+	m_SynchronizedAnimationClips = std::move(StagedClips);
+	m_iSynchronizedAnimationClipIndex = 0u;
+	m_iSynchronizedAnimationTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	pModel->Set_AnimationSpeed(FirstClip.fPlayRate);
+	pModel->Set_AnimPaused(true);
+	m_strPreviewAnimationStatus = "Artist F animation prepared at zero: " +
+		FirstClip.strClipName + " (skill 31470).";
 	return true;
 }
 
@@ -7877,6 +8171,464 @@ void Client::CEffect_Tool::Update_ReconstructedDiagnosticRoot()
 		XMMatrixTranslation(-2.25f, -0.4f, 4.5f) * CameraWorld);
 	pObject->Set_RootWorld(DiagnosticRoot);
 	pObject->Set_Visible(true);
+}
+
+bool_t Client::CEffect_Tool::Prepare_ReconstructedSourceRuntimeTransformHistory()
+{
+	m_strPreviewAnimationStatus.clear();
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject || !pObject->Is_ReconstructedSourceRuntimeActive() ||
+		1u != m_SynchronizedAnimationClips.size() ||
+		0u != m_iSynchronizedAnimationClipIndex ||
+		0u == m_iSynchronizedAnimationTargetGeneration ||
+		m_iSynchronizedAnimationTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration() ||
+		CAnimationTargetService::Resolve_AssetName() !=
+			Animation_AssetName(LostArk::Shared::CHARACTER_CLASS_ID::ARTIST))
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F historical anchor target identity is invalid.";
+		return false;
+	}
+
+	const shared_ptr<Engine::CModel> pModel =
+		CAnimationTargetService::Resolve_Model();
+	if (nullptr == pModel)
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F historical anchor model is unavailable.";
+		return false;
+	}
+	const uint32_t iAnimationIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* pCurrentClip = pModel->Get_AnimationName(iAnimationIndex);
+	if (nullptr == pCurrentClip ||
+		m_SynchronizedAnimationClips.front().strClipName != pCurrentClip)
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F historical anchor clip identity changed.";
+		return false;
+	}
+
+	const auto Preparation = pObject->Get_ReconstructedRuntimePreparation();
+	if (nullptr == Preparation || 5u != Preparation->Get_AnchorRequests().size())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F exact five-anchor preparation is unavailable.";
+		return false;
+	}
+	std::vector<std::string> BoneNames;
+	BoneNames.reserve(Preparation->Get_AnchorRequests().size());
+	for (const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding :
+		Preparation->Get_AnchorRequests())
+	{
+		const EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST& Request = Binding.Request;
+		if (!Request.bFollow || Request.strRuntimeAnchorSlotId.empty() ||
+			Request.strRuntimeBoneName.empty())
+		{
+			m_strPreviewAnimationStatus =
+				"Artist F historical anchor request is incomplete: " +
+				Binding.strOwnerEmitterId;
+			return false;
+		}
+		BoneNames.push_back(Request.strRuntimeBoneName);
+	}
+
+	CAnimationHistoricalPoseBinding StagedBinding;
+	if (!CAnimationTargetService::Prepare_HistoricalPoseBinding(
+			m_iSynchronizedAnimationTargetGeneration,
+			iAnimationIndex, BoneNames, StagedBinding) ||
+		StagedBinding.Get_BoneCount() != BoneNames.size())
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F historical bone binding could not be prepared.";
+		return false;
+	}
+	f32_t fDurationSeconds = StagedBinding.Get_DurationSeconds();
+	const uint32_t iPlayMs = m_SynchronizedAnimationClips.front().iPlayMs;
+	if (0u != iPlayMs)
+	{
+		fDurationSeconds = (std::min)(fDurationSeconds,
+			static_cast<f32_t>(iPlayMs) * 0.001f);
+	}
+	if (!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f)
+	{
+		m_strPreviewAnimationStatus =
+			"Artist F historical animation duration is invalid.";
+		return false;
+	}
+
+	m_ReconstructedSourceRuntimePoseBinding = std::move(StagedBinding);
+	m_fPreviewDurationSeconds = fDurationSeconds;
+	m_strPreviewAnimationStatus =
+		"Artist F historical root plus five ordered anchor samples prepared.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Build_ReconstructedSourceRuntimeTransformSample(
+	const f32_t fEffectSampleTimeSeconds,
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+	std::string& strOutError) const
+{
+	if (!m_bReconstructedSourceRuntimeActive ||
+		!std::isfinite(fEffectSampleTimeSeconds) ||
+		fEffectSampleTimeSeconds < 0.f ||
+		!m_ReconstructedSourceRuntimePoseBinding.Is_Valid() ||
+		1u != m_SynchronizedAnimationClips.size() ||
+		0u != m_iSynchronizedAnimationClipIndex ||
+		m_iSynchronizedAnimationTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration() ||
+		CAnimationTargetService::Resolve_AssetName() !=
+			Animation_AssetName(LostArk::Shared::CHARACTER_CLASS_ID::ARTIST))
+	{
+		strOutError =
+			"Artist F historical transform sample identity is invalid.";
+		return false;
+	}
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	const auto Preparation = nullptr == pObject ? nullptr :
+		pObject->Get_ReconstructedRuntimePreparation();
+	if (nullptr == pObject || !pObject->Is_ReconstructedSourceRuntimeActive() ||
+		nullptr == Preparation || 5u != Preparation->Get_AnchorRequests().size() ||
+		m_ReconstructedSourceRuntimePoseBinding.Get_BoneCount() !=
+			Preparation->Get_AnchorRequests().size())
+	{
+		strOutError =
+			"Artist F historical transform preparation was lost.";
+		return false;
+	}
+
+	const f32_t fAnimationEndSeconds = (std::min)(
+		m_fPreviewDurationSeconds,
+		m_ReconstructedSourceRuntimePoseBinding.Get_DurationSeconds());
+	const f32_t fAnimationSampleTimeSeconds = std::clamp(
+		fEffectSampleTimeSeconds, 0.f, fAnimationEndSeconds);
+	ANIMATION_HISTORICAL_POSE_SAMPLE PoseSample;
+	if (!CAnimationTargetService::Sample_HistoricalPose(
+			m_ReconstructedSourceRuntimePoseBinding,
+			fAnimationSampleTimeSeconds, PoseSample) ||
+		PoseSample.BoneCombinedMatrices.size() !=
+			Preparation->Get_AnchorRequests().size())
+	{
+		strOutError =
+			"Artist F historical animation pose sampling failed.";
+		return false;
+	}
+
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+	Staged.RootWorld = PoseSample.RootWorld;
+	for (size_t iAnchor = 0u;
+		iAnchor < Preparation->Get_AnchorRequests().size(); ++iAnchor)
+	{
+		const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding =
+			Preparation->Get_AnchorRequests()[iAnchor];
+		const EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST& Request = Binding.Request;
+		if (!Request.bFollow || Request.strRuntimeAnchorSlotId.empty() ||
+			Request.strRuntimeBoneName.empty())
+		{
+			strOutError =
+				"Artist F historical anchor request became invalid: " +
+				Binding.strOwnerEmitterId;
+			return false;
+		}
+		EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+		AnchorBuild.RawBone = PoseSample.BoneCombinedMatrices[iAnchor];
+		AnchorBuild.OwnerWorld = PoseSample.RootWorld;
+		float4x4_t BoneWorld{};
+		if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(
+				AnchorBuild, BoneWorld))
+		{
+			strOutError =
+				"Artist F historical anchor import transform is invalid: " +
+				Request.strRuntimeBoneName;
+			return false;
+		}
+
+		const auto& Local = Request.SocketLocalTransform;
+		const matrix_t SocketLocal = XMMatrixScaling(
+			static_cast<f32_t>(Local.vScale[0]),
+			static_cast<f32_t>(Local.vScale[1]),
+			static_cast<f32_t>(Local.vScale[2])) *
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(static_cast<f32_t>(Local.vRotationDegrees[0])),
+				XMConvertToRadians(static_cast<f32_t>(Local.vRotationDegrees[1])),
+				XMConvertToRadians(static_cast<f32_t>(Local.vRotationDegrees[2]))) *
+			XMMatrixTranslation(
+				static_cast<f32_t>(Local.vPosition[0]),
+				static_cast<f32_t>(Local.vPosition[1]),
+				static_cast<f32_t>(Local.vPosition[2]));
+		float4x4_t AnchorWorld{};
+		XMStoreFloat4x4(&AnchorWorld,
+			SocketLocal * XMLoadFloat4x4(&BoneWorld));
+		const auto [It, bInserted] = Staged.SourceAnchorWorlds.emplace(
+			Request.strRuntimeAnchorSlotId, AnchorWorld);
+		if (!bInserted && 0 != std::memcmp(
+				&It->second, &AnchorWorld, sizeof(float4x4_t)))
+		{
+			strOutError =
+				"Artist F duplicate historical anchor slot disagrees: " +
+				Request.strRuntimeAnchorSlotId;
+			return false;
+		}
+	}
+	if (Staged.SourceAnchorWorlds.empty())
+	{
+		strOutError = "Artist F historical anchor map is empty.";
+		return false;
+	}
+
+	OutSample = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Update_ReconstructedSourceRuntimeTimeline(
+	const f32_t fTimeDelta)
+{
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject || !m_bReconstructedSourceRuntimeActive)
+	{
+		m_bReconstructedSourceRuntimeActive = false;
+		Reset_ReconstructedSourceRuntimeTimeline();
+		return false;
+	}
+	const auto FailPreview = [this, &pObject](const std::string& Reason)
+	{
+		pObject->Set_Playing(false);
+		pObject->Set_Visible(false);
+		Set_SynchronizedAnimationPaused(true);
+		Reset_SynchronizedAnimationSequence();
+		Reset_ReconstructedSourceRuntimeTimeline();
+		m_bReconstructedSourceRuntimeActive = false;
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = false;
+		m_strPreviewStatus = Reason;
+		return false;
+	};
+	if (pObject->Is_RenderFailureIsolated())
+		return FailPreview(pObject->Get_Status());
+	if (!pObject->Is_ReconstructedSourceRuntimeActive())
+	{
+		m_bReconstructedSourceRuntimeActive = false;
+		Reset_ReconstructedSourceRuntimeTimeline();
+		return false;
+	}
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[this](const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			return Build_ReconstructedSourceRuntimeTransformSample(
+				fSampleTimeSeconds, OutSample, strOutError);
+		};
+
+	/* Tool previews are clocked only from the bound animation.  Keeping the
+	   Object's autonomous update disabled prevents the same wall-clock delta
+	   from being consumed by both the Level and the Effect Tool. */
+	pObject->Set_Playing(false);
+	if (m_bReconstructedSourceRuntimeStartPending)
+	{
+		/* Force the model's zero pose to refresh without exposing an unpaused
+		   Engine update to the cache-build delta. */
+		Seek_SynchronizedAnimationSequence(0.f);
+		Set_SynchronizedAnimationPaused(true);
+		f32_t fVisibleAnimationTimeSeconds = 0.f;
+		if (!Try_ResolveSynchronizedAnimationTime(
+				fVisibleAnimationTimeSeconds) ||
+			std::abs(fVisibleAnimationTimeSeconds) > 1.0e-5f)
+		{
+			return FailPreview(
+				"Artist F visible animation could not commit synchronized time zero.");
+		}
+		/* The expensive prepared-cache frame has already passed through Engine
+		   update while both participants were paused.  Publish an exact zero frame
+		   before allowing the animation clock to advance. */
+		std::string Error;
+		if (!pObject->Set_SampleTimeWithTransformHistory(
+				0.f, TransformProvider, Error))
+		{
+			return FailPreview(
+				"Artist F zero-frame history sample failed: " + Error);
+		}
+		if (std::abs(pObject->Get_PreviewFixedStepClockSeconds()) > 1.0e-6)
+		{
+			return FailPreview(
+				"Artist F zero-frame effect clock diverged from animation time zero.");
+		}
+		m_fPreviewTimeSeconds = 0.f;
+		m_fReconstructedSourceRuntimeClockSeconds = 0.f;
+		m_bReconstructedSourceRuntimeStartPending = false;
+		pObject->Set_Visible(m_bPreviewVisibleRequested);
+		Set_SynchronizedAnimationPaused(!m_bPreviewPlaying);
+	m_strPreviewStatus = m_bPreviewPlaying ?
+			"Artist F V4 material-composition review is running from synchronized time zero; zero occurrences are admitted and Product remains OFF." :
+			"Artist F V4 material-composition review is paused at synchronized time zero; zero occurrences are admitted and Product remains OFF.";
+		return true;
+	}
+	if (m_bReconstructedSourceRuntimeNaturalTailActive)
+	{
+		const f32_t fTailDelta = std::isfinite(fTimeDelta) ?
+			std::clamp(fTimeDelta, 0.f, 0.1f) : 0.f;
+		if (m_bPreviewPlaying && fTailDelta > 0.f)
+		{
+			std::string Error;
+			if (!pObject->Advance_PreviewWithTransformHistory(
+					fTailDelta, TransformProvider, Error))
+			{
+				return FailPreview(
+					"Artist F Natural Stop anchor history failed: " + Error);
+			}
+			m_fReconstructedSourceRuntimeTailSeconds += fTailDelta;
+		}
+		if (pObject->Is_Finished())
+		{
+			m_bReconstructedSourceRuntimeNaturalTailActive = false;
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Artist F V4 material-composition Natural Stop tail completed; Product remains OFF.";
+		}
+		return true;
+	}
+
+	f32_t fAnimationTimeSeconds = 0.f;
+	if (!Try_ResolveSynchronizedAnimationTime(fAnimationTimeSeconds))
+	{
+		return FailPreview(
+			"Artist F preview stopped: synchronized animation time is unavailable.");
+	}
+	fAnimationTimeSeconds = std::clamp(
+		fAnimationTimeSeconds, 0.f, m_fPreviewDurationSeconds);
+	const f32_t fPreviousTimeSeconds =
+		m_fReconstructedSourceRuntimeClockSeconds;
+	const bool_t bTimelineWrapped =
+		fAnimationTimeSeconds + 0.0001f < fPreviousTimeSeconds;
+
+	std::string Error;
+	if (bTimelineWrapped)
+	{
+		if (!pObject->Set_SampleTimeWithTransformHistory(
+				fAnimationTimeSeconds, TransformProvider, Error))
+		{
+			return FailPreview(
+				"Artist F loop history replay failed: " + Error);
+		}
+	}
+	else if (m_bPreviewPlaying &&
+		fAnimationTimeSeconds > fPreviousTimeSeconds)
+	{
+		if (!pObject->Advance_PreviewWithTransformHistory(
+				fAnimationTimeSeconds - fPreviousTimeSeconds,
+				TransformProvider, Error))
+		{
+			return FailPreview(
+				"Artist F fixed-step anchor history failed: " + Error);
+		}
+	}
+	const f64_t fEffectClockSeconds =
+		pObject->Get_PreviewFixedStepClockSeconds();
+	if (!std::isfinite(fEffectClockSeconds) ||
+		std::abs(fEffectClockSeconds -
+			static_cast<f64_t>(fAnimationTimeSeconds)) > 1.0e-5)
+	{
+		return FailPreview(
+			"Artist F effect clock diverged from its animation clock.");
+	}
+	m_fPreviewTimeSeconds = fAnimationTimeSeconds;
+	m_fReconstructedSourceRuntimeClockSeconds = fAnimationTimeSeconds;
+
+	if (m_bPreviewPlaying && !m_bPreviewLoop &&
+		fAnimationTimeSeconds + 0.0001f >= m_fPreviewDurationSeconds)
+	{
+		Set_SynchronizedAnimationPaused(true);
+		m_bReconstructedSourceRuntimeNaturalTailActive =
+			!pObject->Is_Finished();
+		m_fReconstructedSourceRuntimeTailSeconds = 0.f;
+		if (m_bReconstructedSourceRuntimeNaturalTailActive)
+		{
+			m_strPreviewStatus =
+				"Artist F animation reached its synchronized end; Natural Stop particle tail is running.";
+		}
+		else
+		{
+			m_bPreviewPlaying = false;
+			m_strPreviewStatus =
+				"Artist F V4 material-composition review reached its synchronized end and completed; Product remains OFF.";
+		}
+	}
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Seek_ReconstructedSourceRuntimeTimeline(
+	const f32_t fSampleTimeSeconds)
+{
+	const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+	if (nullptr == pObject || !m_bReconstructedSourceRuntimeActive ||
+		!std::isfinite(fSampleTimeSeconds))
+	{
+		return false;
+	}
+	const f32_t fClampedTime = std::clamp(
+		fSampleTimeSeconds, 0.f, m_fPreviewDurationSeconds);
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[this](const f32_t fHistoryTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			return Build_ReconstructedSourceRuntimeTransformSample(
+				fHistoryTimeSeconds, OutSample, strOutError);
+		};
+	std::string Error;
+	/* History replay is validated and committed before the visible model seek.
+	   Internal fixed steps never seek or mutate the live animation cursor. */
+	if (!pObject->Set_SampleTimeWithTransformHistory(
+			fClampedTime, TransformProvider, Error))
+	{
+		m_strPreviewStatus =
+			"Artist F synchronized history seek failed: " + Error;
+		return false;
+	}
+	if (std::abs(pObject->Get_PreviewFixedStepClockSeconds() -
+			static_cast<f64_t>(fClampedTime)) > 1.0e-5)
+	{
+		m_strPreviewStatus =
+			"Artist F synchronized history seek produced a divergent effect clock.";
+		return false;
+	}
+	m_bPreviewPlaying = false;
+	m_bReconstructedSourceRuntimeStartPending = false;
+	m_bReconstructedSourceRuntimeNaturalTailActive = false;
+	m_fReconstructedSourceRuntimeTailSeconds = 0.f;
+	m_fPreviewTimeSeconds = fClampedTime;
+	m_fReconstructedSourceRuntimeClockSeconds = fClampedTime;
+	pObject->Set_Playing(false);
+	Seek_SynchronizedAnimationSequence(fClampedTime);
+	Set_SynchronizedAnimationPaused(true);
+	f32_t fVisibleAnimationTimeSeconds = 0.f;
+	if (!Try_ResolveSynchronizedAnimationTime(
+			fVisibleAnimationTimeSeconds) ||
+		std::abs(fVisibleAnimationTimeSeconds - fClampedTime) > 1.0e-4f)
+	{
+		pObject->Set_Visible(false);
+		Reset_SynchronizedAnimationSequence();
+		Reset_ReconstructedSourceRuntimeTimeline();
+		m_bReconstructedSourceRuntimeActive = false;
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = false;
+		m_strPreviewStatus =
+			"Artist F visible animation seek diverged from the effect clock.";
+		return false;
+	}
+	pObject->Set_Visible(m_bPreviewVisibleRequested);
+	m_strPreviewStatus =
+		"Artist F V4 material-composition review sampled from the synchronized animation clock; Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_ReconstructedSourceRuntimeTimeline()
+{
+	m_bReconstructedSourceRuntimeStartPending = false;
+	m_bReconstructedSourceRuntimeNaturalTailActive = false;
+	m_fReconstructedSourceRuntimeClockSeconds = 0.f;
+	m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 }
 
 bool_t Client::CEffect_Tool::Stage_WorldPreview()
@@ -7901,7 +8653,9 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         return false;
     }
 	m_bReconstructedDiagnosticActive = false;
-    pObject->Set_Playing(false);
+	m_bReconstructedSourceRuntimeActive = false;
+	Reset_ReconstructedSourceRuntimeTimeline();
+	pObject->Set_Playing(false);
     pObject->Set_SampleTime(
         Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
     switch (m_ePreviewFilter)
@@ -8246,9 +9000,65 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     }
     if (nullptr == pObject)
     {
+		if (m_bReconstructedSourceRuntimeActive)
+		{
+			Set_SynchronizedAnimationPaused(true);
+			Reset_SynchronizedAnimationSequence();
+			m_bReconstructedSourceRuntimeActive = false;
+			Reset_ReconstructedSourceRuntimeTimeline();
+		}
         m_bPreviewPlaying = false;
         return;
     }
+	if (m_bReconstructedSourceRuntimeActive)
+	{
+		Set_SynchronizedAnimationPaused(true);
+		Reset_ReconstructedSourceRuntimeTimeline();
+		if (!Prepare_ReconstructedSourceRuntimeTransformHistory())
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			Reset_SynchronizedAnimationSequence();
+			m_bReconstructedSourceRuntimeActive = false;
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			m_strPreviewStatus =
+				"Artist F restart historical anchor preparation failed: " +
+				m_strPreviewAnimationStatus;
+			return;
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+			[this](const f32_t fSampleTimeSeconds,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& strOutError)
+			{
+				return Build_ReconstructedSourceRuntimeTransformSample(
+					fSampleTimeSeconds, OutSample, strOutError);
+			};
+		std::string Error;
+		if (!pObject->Set_SampleTimeWithTransformHistory(
+				0.f, TransformProvider, Error))
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			Set_SynchronizedAnimationPaused(true);
+			Reset_SynchronizedAnimationSequence();
+			m_bReconstructedSourceRuntimeActive = false;
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			m_strPreviewStatus =
+				"Artist F restart historical zero-frame failed: " + Error;
+			return;
+		}
+		m_bReconstructedSourceRuntimeStartPending = true;
+		m_bPreviewVisibleRequested = true;
+		m_bPreviewPlaying = true;
+		pObject->Set_Playing(false);
+		pObject->Set_Visible(false);
+		m_strPreviewStatus =
+			"Artist F V4 material-composition restart prepared at synchronized time zero; playback starts on the next update.";
+		return;
+	}
     float4x4_t TargetRoot{};
     const bool_t bRootResolved = Resolve_PreviewRoot(TargetRoot);
     if (bRootResolved)
@@ -8699,9 +9509,16 @@ void Client::CEffect_Tool::Update_SynchronizedAnimationSequence()
         return;
     }
 
-    m_iSynchronizedAnimationClipIndex =
-        (m_iSynchronizedAnimationClipIndex + 1u) %
-        m_SynchronizedAnimationClips.size();
+	const bool_t bLastClip =
+		m_iSynchronizedAnimationClipIndex + 1u ==
+			m_SynchronizedAnimationClips.size();
+	if (bLastClip && !m_bPreviewLoop)
+	{
+		pModel->Set_AnimPaused(true);
+		return;
+	}
+	m_iSynchronizedAnimationClipIndex = bLastClip ?
+		0u : m_iSynchronizedAnimationClipIndex + 1u;
     const ANIMATION_SKILL_CLIP& NextClip =
         m_SynchronizedAnimationClips[m_iSynchronizedAnimationClipIndex];
     if (!pModel->Start_Animation(NextClip.strClipName.c_str(), false))
@@ -8728,6 +9545,7 @@ void Client::CEffect_Tool::Reset_SynchronizedAnimationSequence()
     m_SynchronizedAnimationClips.clear();
     m_iSynchronizedAnimationClipIndex = 0u;
     m_iSynchronizedAnimationTargetGeneration = 0u;
+	m_ReconstructedSourceRuntimePoseBinding = {};
 }
 
 void Client::CEffect_Tool::Hide_WorldPreview()
@@ -8742,6 +9560,8 @@ void Client::CEffect_Tool::Hide_WorldPreview()
 void Client::CEffect_Tool::Release_WorldPreview(
     const bool_t bRemoveFromLayer)
 {
+	const bool_t bWasReconstructedSourceRuntimeActive =
+		m_bReconstructedSourceRuntimeActive;
     const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
     if (bRemoveFromLayer && nullptr != pObject &&
         m_iWorldPreviewLevel == CGameInstance::Get().Get_CurrentLevelID())
@@ -8750,8 +9570,15 @@ void Client::CEffect_Tool::Release_WorldPreview(
             m_iWorldPreviewLevel, PREVIEW_LAYER, pObject);
     }
     m_pWorldPreviewObject.reset();
-    m_iWorldPreviewLevel = UINT32_MAX;
+	m_iWorldPreviewLevel = UINT32_MAX;
 	m_bReconstructedDiagnosticActive = false;
+	m_bReconstructedSourceRuntimeActive = false;
+	Reset_ReconstructedSourceRuntimeTimeline();
+	if (bWasReconstructedSourceRuntimeActive)
+	{
+		Set_SynchronizedAnimationPaused(true);
+		Reset_SynchronizedAnimationSequence();
+	}
 }
 
 void Client::CEffect_Tool::Discard_ActiveDocument()

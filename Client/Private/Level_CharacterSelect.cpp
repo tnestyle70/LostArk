@@ -8,6 +8,7 @@
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
@@ -169,6 +170,20 @@ HRESULT CLevel_CharacterSelect::Initialize()
 
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
+
+#ifdef _DEBUG
+	/* Build the single non-Product Artist F cache on the main thread before the
+	   first Character Select frame.  The Effect Tool and the authoritative F
+	   route attach this same immutable cache; neither rebuilds it on click. */
+	std::string artistFStatus;
+	if (!CEffectPresentationService::Prepare_ReconstructedArtist31470(
+		m_pDevice, m_pContext, artistFStatus))
+	{
+		OutputDebugStringA((
+			"Artist 31470 Character Select prewarm isolated: " +
+			artistFStatus + "\n").c_str());
+	}
+#endif
 
 	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext,
@@ -672,7 +687,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	{
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::SetNextWindowPos(
-			ImVec2(viewport->WorkPos.x + 24.f, viewport->WorkPos.y + 24.f),
+			ImVec2(viewport->WorkPos.x + 224.f, viewport->WorkPos.y + 24.f),
 			ImGuiCond_Always);
 	}
 	if (!ImGui::Begin(

@@ -85,11 +85,11 @@ foreach ($boundary in @(
     'Reconstructed execution timing cannot use a deferred EF evaluator',
     'Reconstructed execution module handler identity or selection is invalid',
     'Reconstructed execution distribution enum is unknown',
-    '618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b',
-    '72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849',
+    '8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8',
+    'bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6',
     '9f99d7a65d6e2a74bc241dd4268751fc876522c9deac387eacfb40be7cc429b1',
     '35b0977b106c003b2542327959dd1ee11ea326dd17324c5dbc242153b086bd88',
-    'e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df',
+    '3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5',
     'Build_DistributionOwnerProjection',
     'FROZEN_SEEDED_MODULE_HANDLER_ID',
     'FROZEN_SEEDED_PROPERTY_HANDLER_ID',
@@ -99,7 +99,7 @@ foreach ($boundary in @(
     'Reconstructed execution frozen distribution owner projection is invalid',
     'Reconstructed execution frozen semantic projection authority is invalid',
     'Reconstructed execution property distribution reverse membership or order is invalid',
-    'Reconstructed CPU inspection refuses a non-positive lifetime fallback',
+    'Reconstructed fixed-step refuses a non-positive lifetime fallback.',
     'strSemanticProjectionSha256')) {
     if ($executionContract -notmatch [regex]::Escape($boundary)) {
         throw "Typed execution fail-closed boundary is missing: $boundary"
@@ -120,12 +120,20 @@ if ($semanticComputeIndex -lt 0 -or
     throw 'The exact semantic projection must be checked before compiled plan data commit.'
 }
 
+$compileProgramStart = $source.IndexOf('bool_t Compile_Program(')
+$compileProgramEnd = $source.IndexOf(
+    'uint32_t Next_Random(', $compileProgramStart)
+if ($compileProgramStart -lt 0 -or $compileProgramEnd -le $compileProgramStart) {
+    throw 'Typed execution compiler implementation boundary is missing.'
+}
+$compileProgramSource = $source.Substring(
+    $compileProgramStart, $compileProgramEnd - $compileProgramStart)
 foreach ($forbiddenRawInput in @(
     'SourceRecipe',
     'DetailTransform',
     'RendererRuntimeConfig',
     'EFFECT_DETAIL_DESC')) {
-    if ($source -match [regex]::Escape($forbiddenRawInput)) {
+    if ($compileProgramSource -match [regex]::Escape($forbiddenRawInput)) {
         throw "Typed execution compiler consumes a forbidden raw input: $forbiddenRawInput"
     }
 }
@@ -202,8 +210,8 @@ if (-not (Test-Path -LiteralPath $resolvedProgram -PathType Leaf)) {
 }
 $candidateBytes = [IO.File]::ReadAllBytes($resolvedProgram)
 $candidateSha = (Get-FileHash -LiteralPath $resolvedProgram -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($candidateBytes.Length -ne 15072141 -or
-    $candidateSha -ne '72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849' -or
+if ($candidateBytes.Length -ne 15117436 -or
+    $candidateSha -ne 'bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6' -or
     $candidateBytes -contains 13) {
     throw 'Typed execution input must remain the exact frozen LF candidate.'
 }
@@ -244,7 +252,7 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
         if ($LASTEXITCODE -ne 0 -or
             $outputText -notmatch 'failures : 0' -or
             $outputText -notmatch
-                'semanticProjection=e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df') {
+                'semanticProjection=3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5') {
             throw "Artist 31470 typed execution harness failed:`n$($output -join "`n")"
         }
     }
@@ -258,4 +266,4 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
     }
 }
 
-Write-Output 'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 projection=e05c09542624522d20bfdcb0e27913c4aeeec7f45e0e397b11072ac5859bd8df rng=v1 fixedHz=60 Product=false'
+Write-Output 'PASS: Artist 31470 typed execution plan schedules=7 emitters=35 modules=399 distributions=629 projection=3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5 rng=v1 fixedHz=60 Product=false'

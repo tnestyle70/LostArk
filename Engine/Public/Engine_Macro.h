@@ -4,8 +4,21 @@
 #define			ETOI(_enum)			static_cast<int32_t>(_enum)
 #define			ETOUI(_enum)		static_cast<uint32_t>(_enum)
 
+#ifdef	ENGINE_EXPORTS
+#define ENGINE_DLL		_declspec(dllexport)
+#else
+#define ENGINE_DLL		_declspec(dllimport)
+#endif
+
+namespace Engine
+{
+	ENGINE_DLL void Set_NonInteractiveErrorMode(bool isEnabled);
+	ENGINE_DLL bool Is_NonInteractiveErrorMode();
+	ENGINE_DLL int Show_EngineMessage(const wchar_t* pMessage);
+}
+
 #ifndef			MSG_BOX
-#define			MSG_BOX(_message)	MessageBox(nullptr, TEXT(_message), L"System Message", MB_OK)
+#define			MSG_BOX(_message)	Engine::Show_EngineMessage(TEXT(_message))
 #endif
 
 #define			NS_BEGIN(_namespace)	namespace _namespace {
@@ -13,13 +26,6 @@
 	
 #define			USING(_namespace)		using namespace _namespace;
 	
-#ifdef	ENGINE_EXPORTS
-#define ENGINE_DLL		_declspec(dllexport)
-#else
-#define ENGINE_DLL		_declspec(dllimport)
-#endif
-
-
 #define NULL_CHECK( _ptr)	\
 	{if( _ptr == 0){ return;}}
 	
@@ -27,22 +33,22 @@
 	{if( _ptr == 0){return _return;}}
 	
 #define NULL_CHECK_MSG( _ptr, _message )		\
-	{if( _ptr == 0){MessageBox(NULL, _message, L"System Message",MB_OK);}}
+	{if( _ptr == 0){Engine::Show_EngineMessage(_message);}}
 	
 #define NULL_CHECK_RETURN_MSG( _ptr, _return, _message )	\
-	{if( _ptr == 0){MessageBox(NULL, _message, L"System Message",MB_OK);return _return;}}
+	{if( _ptr == 0){Engine::Show_EngineMessage(_message);return _return;}}
 	
 #define FAILED_CHECK(_hr)	if( ((HRESULT)(_hr)) < 0 )	\
-	{ MessageBoxW(NULL, L"Failed", L"System Error",MB_OK);  return E_FAIL;}
+	{ Engine::Show_EngineMessage(L"Failed");  return E_FAIL;}
 	
 #define FAILED_CHECK_RETURN(_hr, _return)	if( ((HRESULT)(_hr)) < 0 )		\
-	{ MessageBoxW(NULL, L"Failed", L"System Error",MB_OK);  return _return;}
+	{ Engine::Show_EngineMessage(L"Failed");  return _return;}
 	
 #define FAILED_CHECK_MSG( _hr, _message)	if( ((HRESULT)(_hr)) < 0 )	\
-	{ MessageBoxW(NULL, _message, L"System Message",MB_OK); return E_FAIL;}
+	{ Engine::Show_EngineMessage(_message); return E_FAIL;}
 	
 #define FAILED_CHECK_RETURN_MSG( _hr, _return, _message)	if( ((HRESULT)(_hr)) < 0 )	\
-	{ MessageBoxW(NULL, _message, L"System Message",MB_OK); return _return;}
+	{ Engine::Show_EngineMessage(_message); return _return;}
 	
 	
 	

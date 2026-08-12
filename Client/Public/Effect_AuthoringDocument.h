@@ -477,6 +477,10 @@ struct EFFECT_TRAIL_DESC final
 	f32_t fMinimumDistance = 0.01f;
 	f32_t fStartWidth = 0.2f;
 	f32_t fEndWidth = 0.f;
+	/* Reconstructed Ribbon-only geometry inputs.  Zero keeps the authored
+	   legacy Trail contract (point-index U and no typed tessellation). */
+	f32_t fTilingDistanceWorldUnits = 0.f;
+	f32_t fDistanceTessellationStepWorldUnits = 0.f;
 	bool_t bFaceCamera = true;
 };
 

@@ -2,6 +2,14 @@
 
 #include <cstring>
 
+namespace
+{
+	// Source-authored Ribbon control points may be tessellated into as many as
+	// 25 render points per segment.  Keep this as a render-buffer ceiling; the
+	// authoring/runtime control-point contract remains capped at 512.
+	constexpr uint32_t MAX_DYNAMIC_TRAIL_POINTS = 16384u;
+}
+
 Engine::CVIBuffer_DynamicTrail::CVIBuffer_DynamicTrail(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -14,7 +22,7 @@ Engine::CVIBuffer_DynamicTrail::~CVIBuffer_DynamicTrail() = default;
 HRESULT Engine::CVIBuffer_DynamicTrail::Initialize_Prototype(
 	const uint32_t iMaxPoints)
 {
-	if (iMaxPoints < 2u || iMaxPoints > 256u)
+	if (iMaxPoints < 2u || iMaxPoints > MAX_DYNAMIC_TRAIL_POINTS)
 		return E_INVALIDARG;
 
 	m_iMaxVertices = iMaxPoints * 2u;
@@ -65,23 +73,25 @@ HRESULT Engine::CVIBuffer_DynamicTrail::Update_Geometry(
 	}
 
 	D3D11_MAPPED_SUBRESOURCE VertexMapped{};
-	if (FAILED(m_pContext->Map(
-		m_pVB.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &VertexMapped)))
+	const HRESULT hVertexMapResult = m_pContext->Map(
+		m_pVB.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &VertexMapped);
+	if (FAILED(hVertexMapResult))
 	{
 		m_iActiveVertices = 0u;
 		m_iNumIndices = 0u;
-		return E_FAIL;
+		return hVertexMapResult;
 	}
 	std::memcpy(VertexMapped.pData, Vertices.data(), Vertices.size_bytes());
 	m_pContext->Unmap(m_pVB.Get(), 0u);
 
 	D3D11_MAPPED_SUBRESOURCE IndexMapped{};
-	if (FAILED(m_pContext->Map(
-		m_pIB.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &IndexMapped)))
+	const HRESULT hIndexMapResult = m_pContext->Map(
+		m_pIB.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &IndexMapped);
+	if (FAILED(hIndexMapResult))
 	{
 		m_iActiveVertices = 0u;
 		m_iNumIndices = 0u;
-		return E_FAIL;
+		return hIndexMapResult;
 	}
 	std::memcpy(IndexMapped.pData, Indices.data(), Indices.size_bytes());
 	m_pContext->Unmap(m_pIB.Get(), 0u);

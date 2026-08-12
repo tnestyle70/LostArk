@@ -15,10 +15,10 @@ $generator = 'Tools/LevelPlacementExtractor/build_artist_31470_reconstructed_ren
 $module = 'Tools/LevelPlacementExtractor/artist_31470_reconstructed_render_resource_authority.py'
 $test = 'Tools/LevelPlacementExtractor/test_build_artist_31470_reconstructed_render_resource_authority.py'
 $receiptPath = 'Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json'
-$expectedReceiptByteCount = 746788
-$expectedReceiptRawSha256 = 'bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff'
-$expectedReceiptSha256 = 'bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a'
-$expectedDecisionProjectionSha256 = '4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412'
+$expectedReceiptByteCount = 774127
+$expectedReceiptRawSha256 = '1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660'
+$expectedReceiptSha256 = '6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4'
+$expectedDecisionProjectionSha256 = 'fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de'
 
 function Invoke-PythonUnit {
     param(
@@ -235,7 +235,7 @@ function Invoke-AutocrlfIsolatedCheckoutRegression {
             2>&1 | Out-String).Trim()
         if ($LASTEXITCODE -ne 0 -or
             $checkOutput -notmatch
-                'PASS Artist 31470 reconstructed render-resource authority resources=48 bindings=72 recipes=27 renderer=57') {
+                'PASS Artist 31470 reconstructed render-resource authority resources=52 bindings=77 recipes=27 renderer=57') {
             throw "Artist F authority autocrlf generator check failed: $checkOutput"
         }
 
@@ -302,8 +302,8 @@ try {
         $receipt.schema -cne 'lostark.artist-31470-reconstructed-render-resource-authority-receipt' -or
         [int]$receipt.formatVersion -ne 1 -or
         $receipt.authorityId -cne 'ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1' -or
-        $resources.Count -ne 48 -or
-        $bindings.Count -ne 72 -or
+        $resources.Count -ne 52 -or
+        $bindings.Count -ne 77 -or
         $recipes.Count -ne 27 -or
         $renderers.Count -ne 57 -or
         $ambiguous.Count -ne 3 -or
@@ -317,26 +317,23 @@ try {
         $receipt.blockerProjection.bindingFailureBehavior -cne
             'ROLLBACK_PRESERVE_PREVIOUS_RESOURCE_SET' -or
         [bool]$receipt.blockerProjection.partialCommitAllowed -or
-        $publisherAuthority.publisherIntegrationCommitId -cne
-            '932d648f95bc7f2d9c7209fad55aee8a857c94d7' -or
-        $publisherAuthority.publisherOriginalCommitId -cne
-            '74c692755791e592d6f808f3c50b3321c60af181' -or
-        [int]$publisherAuthority.currentCheckoutByteCount -ne 26255931 -or
-        $publisherAuthority.currentCheckoutRawSha256 -cne
-            'bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29' -or
-        [int]$publisherAuthority.outerKeyCount -ne 10 -or
-        [int]$publisherAuthority.linkKeyCount -ne 16 -or
-        [int]$publisherAuthority.receiptKeyCount -ne 25 -or
-        [int]$publisherAuthority.toolDependencyCount -ne 3 -or
-        $publisherAuthority.linkCanonicalSha256 -cne
-            '74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2' -or
-        $publisherAuthority.receiptSelfSha256 -cne
-            '5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3' -or
-        $publisherAuthority.outerPublishReceiptSha256 -cne
-            '92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94' -or
-        [bool]$publisherAuthority.sourceExact -or
-        [bool]$publisherAuthority.runtimeExecutionAdmission -or
-        [bool]$publisherAuthority.productAdmission) {
+        $publisherAuthority.authorityScope -cne
+            'BASE_RUNTIME_ENTRY_PROJECTION_BEFORE_RENDER_RESOURCE_SIDECAR' -or
+        [bool]$publisherAuthority.runtimeCatalogBytesRead -or
+        [bool]$publisherAuthority.completedRuntimeEntryRead -or
+        [bool]$publisherAuthority.renderResourceSidecarRead -or
+        -not [bool]$publisherAuthority.selfReferenceExcluded -or
+        [int]$publisherAuthority.projectionKeyCount -ne 17 -or
+        $publisherAuthority.projectionCanonicalSha256 -cne
+            'e7a630b9d94dfb177b3f678561865bd9e7bad2dd3f1eb082656b79e5c3af3190' -or
+        $publisherAuthority.baseProjection.programSha256 -cne
+            '8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8' -or
+        $publisherAuthority.baseProjection.candidateRawSha256 -cne
+            'bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6' -or
+        [int]$publisherAuthority.baseProjection.candidateByteCount -ne 15117436 -or
+        [bool]$publisherAuthority.baseProjection.sourceExact -or
+        [bool]$publisherAuthority.baseProjection.runtimeExecutionAdmission -or
+        [bool]$publisherAuthority.baseProjection.productAdmission) {
         throw 'Artist F render-resource authority identity or fail-closed boundary changed.'
     }
 
@@ -352,15 +349,15 @@ try {
     foreach ($row in @($receipt.summary.bindingColorSpaceCounts)) {
         $colors[[string]$row.colorSpacePolicy] = [int]$row.count
     }
-    if ($resourceFormats['BC1_SRGB'] -ne 35 -or
+    if ($resourceFormats['BC1_SRGB'] -ne 39 -or
         $resourceFormats['BC3_SRGB'] -ne 8 -or
         $resourceFormats['BC5_LINEAR'] -ne 4 -or
         $resourceFormats['BC3_LINEAR'] -ne 1 -or
-        $srvFormats[72] -ne 58 -or
+        $srvFormats[72] -ne 63 -or
         $srvFormats[78] -ne 9 -or
         $srvFormats[83] -ne 4 -or
         $srvFormats[77] -ne 1 -or
-        $colors['SRGB'] -ne 67 -or
+        $colors['SRGB'] -ne 72 -or
         $colors['LINEAR'] -ne 5) {
         throw 'Artist F actual DDS/SRV/color derived counts changed.'
     }
@@ -421,7 +418,7 @@ try {
 
     Write-Output (
         'PASS: Artist F 31470 reconstructed render-resource authority ' +
-        'resources=48 bindings=72 formats=35+8+4+1 srv=58+9+4+1 colors=67+5 ' +
+        'resources=52 bindings=77 formats=39+8+4+1 srv=63+9+4+1 colors=72+5 ' +
         'recipes=27 renderer=57 ambiguous=3 descriptors=27+18+1/46 ' +
         'publisher=10/16/25/tool3 bridge=13/21/26/tool3 ' +
         "autocrlf=$($autocrlfRegression.UnitTestCount)/31+check " +

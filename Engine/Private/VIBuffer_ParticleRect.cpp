@@ -86,12 +86,13 @@ HRESULT Engine::CVIBuffer_ParticleRect::Update_Instances(
 	}
 
 	D3D11_MAPPED_SUBRESOURCE Mapped{};
-	if (FAILED(m_pContext->Map(
+	const HRESULT hMapResult = m_pContext->Map(
 		m_pInstanceBuffer.Get(), 0u,
-		D3D11_MAP_WRITE_DISCARD, 0u, &Mapped)))
+		D3D11_MAP_WRITE_DISCARD, 0u, &Mapped);
+	if (FAILED(hMapResult))
 	{
 		m_iNumInstances = 0u;
-		return E_FAIL;
+		return hMapResult;
 	}
 	std::memcpy(
 		Mapped.pData,

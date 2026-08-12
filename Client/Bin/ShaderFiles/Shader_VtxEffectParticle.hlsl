@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
+#include "Shader_Artist31470RuntimeMaterial.hlsli"
 
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
@@ -28,6 +29,9 @@ struct VS_OUT
     float2 uvNext : TEXCOORD2;
     float2 particleData : TEXCOORD3;
     float2 localUV : TEXCOORD4;
+    float2 runtimeLocalUV : TEXCOORD5;
+    float4 runtimeSubUVTransform : TEXCOORD6;
+    float4 runtimeSubUVTransformNext : TEXCOORD7;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -45,6 +49,9 @@ VS_OUT VS_MAIN(VS_IN input)
         (input.uv * input.uvTransformNext.xy + input.uvTransformNext.zw) *
         g_UVScale + g_UVOffset;
     output.localUV = input.uv * g_UVScale + g_UVOffset;
+    output.runtimeLocalUV = input.uv;
+    output.runtimeSubUVTransform = input.uvTransform;
+    output.runtimeSubUVTransformNext = input.uvTransformNext;
     output.color = input.color;
     output.dynamicParameter = input.dynamicParameter;
     output.particleData = input.particleData;
@@ -53,6 +60,13 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_RuntimeMaterialV2Enabled)
+    {
+        return Shade_RuntimeMaterialV2Particle(
+            input.runtimeLocalUV, input.runtimeSubUVTransform,
+            input.runtimeSubUVTransformNext, input.particleData.y,
+            input.color, input.dynamicParameter);
+    }
     if (0u != g_ReconstructedMaterialEvaluatorEnabled)
     {
         return Shade_ReconstructedMaterial(

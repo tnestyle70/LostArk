@@ -2,19 +2,24 @@
 
 #include "Effect_DocumentCodec.h"
 #include "Effect_Distribution.h"
+#include "Effect_MaterialTemplate.h"
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <bit>
+#include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace
 {
@@ -25,6 +30,25 @@ namespace
 	// advances at the same rate as the authoritative action/animation clock.
 	constexpr uint32_t MAX_CATCH_UP_STEPS = 60u;
 	constexpr uint32_t MAX_SOURCE_EVENTS_PER_STEP = 4096u;
+
+	bool_t Is_FiniteAffineMatrix(const float4x4_t& Matrix)
+	{
+		const f32_t* const Values = &Matrix._11;
+		for (size_t i = 0u; i < 16u; ++i)
+		{
+			if (!std::isfinite(Values[i]))
+				return false;
+		}
+		const f32_t Determinant =
+			Matrix._11 * (Matrix._22 * Matrix._33 - Matrix._23 * Matrix._32) -
+			Matrix._12 * (Matrix._21 * Matrix._33 - Matrix._23 * Matrix._31) +
+			Matrix._13 * (Matrix._21 * Matrix._32 - Matrix._22 * Matrix._31);
+		return std::isfinite(Determinant) && std::abs(Determinant) > 1.0e-8f &&
+			std::abs(Matrix._14) <= 1.0e-5f &&
+			std::abs(Matrix._24) <= 1.0e-5f &&
+			std::abs(Matrix._34) <= 1.0e-5f &&
+			std::abs(Matrix._44 - 1.f) <= 1.0e-5f;
+	}
 
 	struct SOURCE_VECTOR_FIELD final
 	{
@@ -124,6 +148,17 @@ namespace
 		// Mesh particles use a converted WModel and therefore need the same
 		// component-axis reorder as the mesh transform, without a handedness sign.
 		return Is_MeshParticle(Element) ? UE3_AxisScaleToClient(Value) : Value;
+	}
+
+	float3_t UE3_StartSizeToClient(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const float3_t& Value)
+	{
+		// Mesh StartSize is a dimensionless instance scale.  Its WModel carrier
+		// already applies geometryPreScale exactly once during model creation.
+		// Sprite StartSize remains a centimetre-sized billboard extent.
+		return Is_MeshParticle(Element) ?
+			UE3_AxisScaleToClient(Value) : Scale3(Value, 0.01f);
 	}
 
 	f32_t DistanceSquared(const float3_t& A, const float3_t& B)
@@ -227,6 +262,71 @@ namespace
 		return Class == BaseClass;
 	}
 
+	bool_t Is_ReconstructedDecalParticle(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bReconstructedSourceRuntimeActive)
+	{
+		return bReconstructedSourceRuntimeActive &&
+			Client::EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
+			Element.SourceRecipe.bEnabled &&
+			std::ranges::any_of(Element.SourceRecipe.Modules,
+				[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return SourceClass_Matches(
+						Module, "particlemoduletypedatadecal");
+				});
+	}
+
+	bool_t Is_ParticleSimulationElement(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bReconstructedSourceRuntimeActive)
+	{
+		return Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
+			Is_ReconstructedDecalParticle(
+				Element, bReconstructedSourceRuntimeActive);
+	}
+
+	bool_t Is_GpuVisualOccurrence(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		switch (Element.Renderer.eType)
+		{
+		case Client::EFFECT_RENDERER_TYPE::STANDALONE_MESH:
+		case Client::EFFECT_RENDERER_TYPE::MESH_PARTICLE:
+		case Client::EFFECT_RENDERER_TYPE::LEGACY_STANDALONE_SPRITE:
+		case Client::EFFECT_RENDERER_TYPE::SPRITE_PARTICLE:
+		case Client::EFFECT_RENDERER_TYPE::DECAL_PARTICLE:
+		case Client::EFFECT_RENDERER_TYPE::ANIM_TRAIL:
+		case Client::EFFECT_RENDERER_TYPE::CASCADE_RIBBON:
+			return true;
+		case Client::EFFECT_RENDERER_TYPE::LIGHT_PARTICLE:
+		case Client::EFFECT_RENDERER_TYPE::SCREEN_POST:
+			return false;
+		case Client::EFFECT_RENDERER_TYPE::END:
+			/* Legacy authored/source-recipe documents up through format v13 do
+			   not carry the native-v14 renderer descriptor.  Their drawable
+			   Element kind remains the occurrence authority.  Native-v14 and
+			   reconstructed Artist documents are validated separately and carry
+			   a non-END typed renderer before reaching this compatibility path. */
+			switch (Element.eKind)
+			{
+			case Client::EFFECT_ELEMENT_KIND::MESH:
+			case Client::EFFECT_ELEMENT_KIND::SPRITE:
+			case Client::EFFECT_ELEMENT_KIND::PARTICLE:
+			case Client::EFFECT_ELEMENT_KIND::DECAL:
+			case Client::EFFECT_ELEMENT_KIND::TRAIL:
+				return true;
+			case Client::EFFECT_ELEMENT_KIND::LIGHT:
+			case Client::EFFECT_ELEMENT_KIND::SCREEN_POST:
+			case Client::EFFECT_ELEMENT_KIND::END:
+			default:
+				return false;
+			}
+		default:
+			return false;
+		}
+	}
+
 	const Client::EFFECT_SOURCE_LITERAL_DESC* Find_SourceLiteral(
 		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
 		const std::string_view PropertyPath)
@@ -284,12 +384,14 @@ namespace
 	void Resolve_SourceSpritePresentation(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT& eOutAlignment,
-		float2_t& vOutPivot)
+		float2_t& vOutPivot,
+		bool_t& bOutAllowImageFlipping)
 	{
 		eOutAlignment = Element.SourceRecipe.bEnabled ?
 			Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_SQUARE :
 			Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_RECTANGLE;
 		vOutPivot = { 0.5f, 0.5f };
+		bOutAllowImageFlipping = false;
 		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
 			Element.SourceRecipe.Modules)
 		{
@@ -321,6 +423,8 @@ namespace
 					vOutPivot.y = SourceNumber(
 						Module, "offsetcentery", 0.5f);
 				}
+				bOutAllowImageFlipping = SourceBool(
+					Module, "ballowimageflipping", false);
 			}
 			else if (SourceClass_Matches(
 				Module, "particlemoduleorientationaxislock"))
@@ -478,6 +582,390 @@ namespace
 			Lerp3(V00, V10, Fraction.y),
 			Lerp3(V01, V11, Fraction.y), Fraction.z);
 	}
+
+	bool_t Reject_ReconstructedSourceRuntime(
+		std::string& strOutError,
+		const std::string& strReason)
+	{
+		strOutError = "Reconstructed source runtime rejected: " + strReason;
+		return false;
+	}
+
+	bool_t Equals_NoCaseAscii(
+		const std::string_view Left,
+		const std::string_view Right)
+	{
+		if (Left.size() != Right.size())
+			return false;
+		for (size_t Index = 0u; Index < Left.size(); ++Index)
+		{
+			const auto Lower = [](const char_t Value)
+			{
+				return Value >= 'A' && Value <= 'Z' ?
+					static_cast<char_t>(Value - 'A' + 'a') : Value;
+			};
+			if (Lower(Left[Index]) != Lower(Right[Index]))
+				return false;
+		}
+		return true;
+	}
+
+	bool_t Is_ReconstructedSourceModuleSupported(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+	{
+		static constexpr std::array<std::string_view, 32u> Supported = {
+			"particlemoduleacceleration",
+			"particlemodulecameraoffset",
+			"particlemodulecolor",
+			"particlemodulecoloroverlife",
+			"particlemodulecolorscaleoverlife",
+			"particlemodulelifetime",
+			"particlemodulelocation",
+			"particlemodulelocationdirect",
+			"particlemodulelocationonground",
+			"particlemodulelocationprimitivecylinder",
+			"particlemodulelocationprimitivecylinderspin",
+			"particlemodulelocationprimitivesphere",
+			"particlemodulemeshrotation",
+			"particlemodulemeshrotationrate",
+			"particlemodulemeshrotationratemultiplylife",
+			"particlemodulemeshrotationrateoverlife",
+			"particlemoduleorientationaxislock",
+			"particlemoduleparameterdynamic",
+			"particlemodulerequired",
+			"particlemodulerotation",
+			"particlemodulerotationrate",
+			"particlemodulesize",
+			"particlemodulesizemultiplylife",
+			"particlemodulespawn",
+			"particlemodulespawnperunit",
+			"particlemodulesubuv",
+			"particlemoduletypedatadecal",
+			"particlemoduletypedatalight",
+			"particlemoduletypedatamesh",
+			"particlemoduletypedataribbon",
+			"particlemodulevelocity",
+			"particlemodulevelocityoverlifetime"
+		};
+		return std::ranges::any_of(Supported,
+			[&Module](const std::string_view ClassName)
+			{
+				return SourceClass_Matches(Module, ClassName);
+			});
+	}
+
+	bool_t Try_ResolveReconstructedParameter(
+		const Client::EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Source,
+		std::array<double, 4u>& OutValue,
+		std::string& strOutError)
+	{
+		const uint32_t ComponentCount = Source.iComponentCount;
+		if (0u == ComponentCount || ComponentCount > OutValue.size() ||
+			Source.ParamModes.size() != ComponentCount ||
+			Source.MinimumInput.size() != ComponentCount ||
+			Source.MaximumInput.size() != ComponentCount ||
+			Source.MinimumOutput.size() != ComponentCount ||
+			Source.MaximumOutput.size() != ComponentCount ||
+			Source.ConstantValues.size() != ComponentCount)
+		{
+			return Reject_ReconstructedSourceRuntime(strOutError,
+				"parameter distribution shape is not exhaustive");
+		}
+
+		std::optional<std::vector<double>> BoundInput;
+		for (const Client::EFFECT_RUNTIME_PROGRAM_ACTION_CUE_VALUE& Binding :
+			Source.ActionCueBindings)
+		{
+			if (!Equals_NoCaseAscii(Binding.strName, Source.strParameterName))
+				continue;
+			if (1u == ComponentCount &&
+				Client::EFFECT_RUNTIME_ACTION_CUE_VALUE_KIND::SCALAR == Binding.eKind &&
+				Binding.fScalarValue.has_value())
+			{
+				BoundInput = std::vector<double>{ *Binding.fScalarValue };
+				break;
+			}
+			if (ComponentCount > 1u &&
+				Client::EFFECT_RUNTIME_ACTION_CUE_VALUE_KIND::VECTOR == Binding.eKind &&
+				Binding.VectorValue.size() >= ComponentCount)
+			{
+				BoundInput = std::vector<double>(Binding.VectorValue.begin(),
+					Binding.VectorValue.begin() + ComponentCount);
+				break;
+			}
+			/* A typed cue with the same name but the wrong scalar/vector kind is
+			   not an executable binding.  The approved Artist F source contract
+			   classifies this branch as CONSTANT_FALLBACK. */
+			continue;
+		}
+
+		OutValue.fill(0.0);
+		for (uint32_t Index = 0u; Index < ComponentCount; ++Index)
+		{
+			if (!BoundInput.has_value())
+			{
+				OutValue[Index] = Source.ConstantValues[Index];
+			}
+			else if ("dpm_direct" == Source.ParamModes[Index])
+			{
+				OutValue[Index] = (*BoundInput)[Index];
+			}
+			else if ("dpm_normal" == Source.ParamModes[Index])
+			{
+				const double InputRange = Source.MaximumInput[Index] -
+					Source.MinimumInput[Index];
+				const double Ratio = 0.0 == InputRange ? 0.0 : std::clamp(
+					((*BoundInput)[Index] - Source.MinimumInput[Index]) / InputRange,
+					0.0, 1.0);
+				OutValue[Index] = std::lerp(Source.MinimumOutput[Index],
+					Source.MaximumOutput[Index], Ratio);
+			}
+			else
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"parameter mode is unsupported");
+			}
+			if (!std::isfinite(OutValue[Index]) ||
+				std::abs(OutValue[Index]) > FLT_MAX)
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"parameter result is not a finite f32 value");
+			}
+		}
+		return true;
+	}
+
+	bool_t Overlay_ReconstructedParameterDistribution(
+		const Client::EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION& Source,
+		Client::EFFECT_DISTRIBUTION_DESC& Destination,
+		std::string& strOutError)
+	{
+		std::array<double, 4u> Resolved{};
+		if (!Try_ResolveReconstructedParameter(Source, Resolved, strOutError))
+			return false;
+		float4_t Value{};
+		for (uint32_t Index = 0u; Index < Source.iComponentCount; ++Index)
+			(&Value.x)[Index] = static_cast<f32_t>(Resolved[Index]);
+
+		Destination.iOperation = 1u;
+		Destination.iRandomLockAxes = 0u;
+		Destination.iLookupTableChunkSize = 0u;
+		Destination.iLookupTableNumElements = 0u;
+		Destination.fLookupTableTimeScale = 0.f;
+		Destination.fLookupTableStartTime = 0.f;
+		Destination.vDefaultMinimum = Value;
+		Destination.vDefaultMaximum = Value;
+		Destination.LookupTable.clear();
+		Destination.Keys.clear();
+		return true;
+	}
+
+	bool_t Build_ReconstructedSourceRuntimeDocument(
+		const Client::EFFECT_DOCUMENT_DESC& SourceDocument,
+		const Client::EFFECT_RECONSTRUCTED_EXECUTION_PLAN& Plan,
+		Client::EFFECT_DOCUMENT_DESC& OutDocument,
+		std::string& strOutError)
+	{
+		constexpr uint32_t EXPECTED_SCHEDULES = 7u;
+		constexpr uint32_t EXPECTED_EMITTERS = 35u;
+		constexpr uint32_t EXPECTED_MODULES = 399u;
+		constexpr uint32_t EXPECTED_DISTRIBUTIONS = 629u;
+		const auto Program = Plan.Get_Program();
+		const auto& Summary = Plan.Get_Summary();
+		if (nullptr == Program || Program->strCharacterClass != "ARTIST" ||
+			Program->iSkillId != 31470u || Program->strInputSlot != "F" ||
+			Program->Admission.bRuntimeExecution || Program->Admission.bProduct ||
+			Summary.iScheduleCount != EXPECTED_SCHEDULES ||
+			Summary.iEmitterCount != EXPECTED_EMITTERS ||
+			Summary.iModuleCount != EXPECTED_MODULES ||
+			Summary.iDistributionCount != EXPECTED_DISTRIBUTIONS ||
+			SourceDocument.Elements.size() != EXPECTED_EMITTERS)
+		{
+			return Reject_ReconstructedSourceRuntime(strOutError,
+				"only the frozen non-Product Artist 31470 F program is supported");
+		}
+
+		std::unordered_map<std::string,
+			const Client::EFFECT_RUNTIME_PROGRAM_EMITTER*> ProgramEmitters;
+		for (const Client::EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter :
+			Program->Emitters)
+		{
+			if (Emitter.strSourceElementId.empty() ||
+				!ProgramEmitters.emplace(Emitter.strSourceElementId, &Emitter).second)
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"program source element identity is duplicate or empty");
+			}
+		}
+		std::unordered_map<std::string,
+			const Client::EFFECT_RUNTIME_PROGRAM_DISTRIBUTION*>
+			ProgramDistributions;
+		ProgramDistributions.reserve(Program->Distributions.size());
+		for (const Client::EFFECT_RUNTIME_PROGRAM_DISTRIBUTION& Distribution :
+			Program->Distributions)
+		{
+			if (Distribution.Row.strId.empty() ||
+				!ProgramDistributions.emplace(
+					Distribution.Row.strId, &Distribution).second)
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"program distribution identity is duplicate or empty");
+			}
+		}
+
+		OutDocument = SourceDocument;
+		uint32_t ModuleCount = 0u;
+		uint32_t DistributionCount = 0u;
+		uint32_t GroundModuleCount = 0u;
+		uint32_t SpawnPerUnitModuleCount = 0u;
+		uint32_t ParameterDistributionCount = 0u;
+		uint32_t FloatCurveCount = 0u;
+		std::unordered_set<std::string> ConsumedEmitterIds;
+		for (Client::EFFECT_ELEMENT_DESC& Element : OutDocument.Elements)
+		{
+			const auto ProgramEmitterIt = ProgramEmitters.find(Element.strElementId);
+			if (ProgramEmitterIt == ProgramEmitters.end() ||
+				!Element.SourceRecipe.bEnabled)
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"document element is not an aligned source-recipe emitter");
+			}
+			const Client::EFFECT_RUNTIME_PROGRAM_EMITTER& ProgramEmitter =
+				*ProgramEmitterIt->second;
+			const auto PlanEmitterIt = Plan.Get_Emitters().find(
+				ProgramEmitter.Row.strId);
+			if (PlanEmitterIt == Plan.Get_Emitters().end() ||
+				!ConsumedEmitterIds.emplace(ProgramEmitter.Row.strId).second ||
+				PlanEmitterIt->second.ModuleIds.size() !=
+					Element.SourceRecipe.Modules.size())
+			{
+				return Reject_ReconstructedSourceRuntime(strOutError,
+					"document/program emitter module order is not closed");
+			}
+
+			for (size_t ModuleIndex = 0u;
+				ModuleIndex < Element.SourceRecipe.Modules.size(); ++ModuleIndex)
+			{
+				Client::EFFECT_SOURCE_MODULE_DESC& SourceModule =
+					Element.SourceRecipe.Modules[ModuleIndex];
+				const std::string& ModuleId =
+					PlanEmitterIt->second.ModuleIds[ModuleIndex];
+				const auto PlanModuleIt = Plan.Get_Modules().find(ModuleId);
+				if (PlanModuleIt == Plan.Get_Modules().end() ||
+					PlanModuleIt->second.strExactSourceClass !=
+						SourceModule.strClassName ||
+					!Is_ReconstructedSourceModuleSupported(SourceModule) ||
+					PlanModuleIt->second.DistributionIds.size() !=
+						SourceModule.Distributions.size())
+				{
+					return Reject_ReconstructedSourceRuntime(strOutError,
+						"source module class or distribution order is unsupported");
+				}
+				++ModuleCount;
+				if (SourceClass_Matches(
+					SourceModule, "particlemodulelocationonground"))
+				{
+					++GroundModuleCount;
+				}
+				if (SourceClass_Matches(
+					SourceModule, "particlemodulespawnperunit"))
+				{
+					const f32_t fUnitScalar = SourceNumber(
+						SourceModule, "unitscalar", 0.f);
+					if (!std::isfinite(fUnitScalar) || fUnitScalar <= 0.f)
+					{
+						return Reject_ReconstructedSourceRuntime(strOutError,
+							"SpawnPerUnit unitScalar must be finite and positive");
+					}
+					++SpawnPerUnitModuleCount;
+				}
+
+				std::unordered_map<std::string,
+					const Client::EFFECT_RECONSTRUCTED_EXECUTION_DISTRIBUTION*>
+					PlanDistributionsByPropertyPath;
+				PlanDistributionsByPropertyPath.reserve(
+					PlanModuleIt->second.DistributionIds.size());
+				for (const std::string& DistributionId :
+					PlanModuleIt->second.DistributionIds)
+				{
+					const auto PlanDistributionIt =
+						Plan.Get_Distributions().find(DistributionId);
+					const auto ProgramDistributionIt =
+						ProgramDistributions.find(DistributionId);
+					if (PlanDistributionIt == Plan.Get_Distributions().end() ||
+						ProgramDistributionIt == ProgramDistributions.end() ||
+						ProgramDistributionIt->second->strModuleId != ModuleId ||
+						ProgramDistributionIt->second->strPropertyPath.empty() ||
+						PlanDistributionIt->second.strPropertyId.empty() ||
+						PlanDistributionIt->second.strPropertyId !=
+							ProgramDistributionIt->second->strPropertyId ||
+						!PlanDistributionsByPropertyPath.emplace(
+							ProgramDistributionIt->second->strPropertyPath,
+							&PlanDistributionIt->second).second)
+					{
+						return Reject_ReconstructedSourceRuntime(strOutError,
+							"compiled module distribution property path is missing or duplicate");
+					}
+				}
+				std::unordered_set<std::string> CoveredDistributionPropertyPaths;
+				for (Client::EFFECT_DISTRIBUTION_DESC& SourceDistribution :
+					SourceModule.Distributions)
+				{
+					const auto PlanDistributionIt =
+						PlanDistributionsByPropertyPath.find(
+							SourceDistribution.strPropertyPath);
+					if (PlanDistributionIt ==
+							PlanDistributionsByPropertyPath.end() ||
+						!CoveredDistributionPropertyPaths.emplace(
+							SourceDistribution.strPropertyPath).second)
+					{
+						return Reject_ReconstructedSourceRuntime(strOutError,
+							"source distribution property path is missing or duplicate");
+					}
+					const auto& PlanDistribution = *PlanDistributionIt->second;
+					const auto Variant = PlanDistribution.eVariant;
+					if (Client::EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_PARAMETER ==
+							Variant ||
+						Client::EFFECT_RUNTIME_DISTRIBUTION_VARIANT::VECTOR_PARAMETER ==
+							Variant ||
+						Client::EFFECT_RUNTIME_DISTRIBUTION_VARIANT::EF_MULTIPLY == Variant)
+					{
+						if (!Overlay_ReconstructedParameterDistribution(
+							PlanDistribution, SourceDistribution,
+							strOutError))
+						{
+							return false;
+						}
+						++ParameterDistributionCount;
+					}
+					else if (Client::EFFECT_RUNTIME_DISTRIBUTION_VARIANT::FLOAT_CURVE ==
+						Variant)
+					{
+						++FloatCurveCount;
+					}
+					++DistributionCount;
+				}
+				if (CoveredDistributionPropertyPaths.size() !=
+					PlanDistributionsByPropertyPath.size())
+				{
+					return Reject_ReconstructedSourceRuntime(strOutError,
+						"source distribution property membership is not exhaustive");
+				}
+			}
+		}
+
+		if (ConsumedEmitterIds.size() != EXPECTED_EMITTERS ||
+			ModuleCount != EXPECTED_MODULES ||
+			DistributionCount != EXPECTED_DISTRIBUTIONS ||
+			GroundModuleCount != 2u || SpawnPerUnitModuleCount != 2u ||
+			ParameterDistributionCount != 16u || FloatCurveCount != 1u)
+		{
+			return Reject_ReconstructedSourceRuntime(strOutError,
+				"35/399/629 source coverage or special handler counts changed");
+		}
+		strOutError.clear();
+		return true;
+	}
 }
 
 struct Client::CEffectPlayback::PREPARED_RESOURCES final
@@ -611,7 +1099,9 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 		if (!Element.bVisible)
 			continue;
 		f32_t fElementTail = 0.f;
-		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
+		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
+			(EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
+				Element.SourceRecipe.bEnabled))
 			fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y;
 		else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
 			fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
@@ -647,9 +1137,58 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	m_pPreparedResources = std::move(pPreparedResources);
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedExecutionPlan.reset();
+	m_bReconstructedSourceRuntimeActive = false;
+	m_strReconstructedSourceRuntimeStatus.clear();
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
+	Reset();
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Stage_ReconstructedSourceRuntime(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION> pPreparation,
+	std::string& strOutError)
+{
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (nullptr == pPreparedResources ||
+		!StagedBoundary.Stage(std::move(pPreparation),
+			EFFECT_RECONSTRUCTED_RUNTIME_SEAM::PLAYBACK, strOutError))
+	{
+		if (strOutError.empty())
+			strOutError =
+				"Reconstructed source runtime prepared resources are missing.";
+		return false;
+	}
+	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> StagedPlan;
+	if (!CEffectReconstructedExecutionPlanCompiler::Compile_Preparation(
+		StagedBoundary.Get_Preparation(), StagedPlan, strOutError))
+	{
+		return false;
+	}
+	EFFECT_DOCUMENT_DESC StagedDocument;
+	if (nullptr == StagedPlan ||
+		!Build_ReconstructedSourceRuntimeDocument(
+			Document, *StagedPlan, StagedDocument, strOutError))
+	{
+		if (strOutError.empty())
+			strOutError = "Reconstructed source runtime plan is missing.";
+		return false;
+	}
+	if (!Stage_PrevalidatedDocument(
+		StagedDocument, std::move(pPreparedResources), strOutError))
+	{
+		return false;
+	}
+
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedExecutionPlan = std::move(StagedPlan);
+	m_bReconstructedSourceRuntimeActive = true;
+	m_strReconstructedSourceRuntimeStatus =
+		"Artist 31470 reconstructed source runtime staged; Product remains false.";
 	Reset();
 	strOutError.clear();
 	return true;
@@ -682,6 +1221,8 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_iSimulationStep = 0u;
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedExecutionPlan = std::move(StagedPlan);
+	m_bReconstructedSourceRuntimeActive = false;
+	m_strReconstructedSourceRuntimeStatus.clear();
 	strOutError.clear();
 	return true;
 }
@@ -729,7 +1270,8 @@ Client::CEffectPlayback::Resolve_SourceSubUVFrame(
 void Client::CEffectPlayback::Reset()
 {
 	std::string GateStatus;
-	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
 		return;
@@ -760,7 +1302,8 @@ void Client::CEffectPlayback::Update(
 	const float4x4_t& RootWorld)
 {
 	std::string GateStatus;
-	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
 		return;
@@ -790,7 +1333,8 @@ void Client::CEffectPlayback::Seek(
 	const float4x4_t& RootWorld)
 {
 	std::string GateStatus;
-	if (!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
 		return;
@@ -825,6 +1369,228 @@ void Client::CEffectPlayback::Seek(
 		static_cast<f64_t>(iTargetSteps) * FIXED_STEP_SECONDS_EXACT);
 	m_fSampleTimeSeconds = fTarget;
 	Rebuild_Frame(RootWorld);
+}
+
+bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
+	const f32_t fSampleTimeSeconds,
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+	std::string& strOutError) const
+{
+	if (!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f ||
+		!TransformProvider)
+	{
+		strOutError = "Effect transform history request is invalid.";
+		return false;
+	}
+
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+	std::string ProviderError;
+	if (!TransformProvider(fSampleTimeSeconds, Staged, ProviderError))
+	{
+		strOutError = ProviderError.empty() ?
+			"Effect transform history provider rejected the sample." :
+			std::move(ProviderError);
+		return false;
+	}
+	if (!Is_FiniteAffineMatrix(Staged.RootWorld))
+	{
+		strOutError = "Effect transform history root is not a finite affine matrix.";
+		return false;
+	}
+	for (const auto& [AnchorId, AnchorWorld] : Staged.SourceAnchorWorlds)
+	{
+		if (AnchorId.empty() || !Is_FiniteAffineMatrix(AnchorWorld))
+		{
+			strOutError =
+				"Effect transform history contains an invalid source anchor.";
+			return false;
+		}
+	}
+
+	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	{
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
+			Element.ActionCueAttachment;
+		if (Element.bVisible && Attachment.bEnabled && Attachment.bFollow &&
+			(Attachment.strRuntimeAnchorSlotId.empty() ||
+			 !Staged.SourceAnchorWorlds.contains(
+				 Attachment.strRuntimeAnchorSlotId)))
+		{
+			strOutError = "Effect transform history is missing required anchor: " +
+				Attachment.strRuntimeAnchorSlotId;
+			return false;
+		}
+	}
+	const auto Preparation =
+		m_ReconstructedRuntimeBoundary.Get_Preparation();
+	if (m_bReconstructedSourceRuntimeActive && nullptr != Preparation)
+	{
+		for (const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding :
+			Preparation->Get_AnchorRequests())
+		{
+			const EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST& Request = Binding.Request;
+			if (Request.bFollow &&
+				(Request.strRuntimeAnchorSlotId.empty() ||
+				 !Staged.SourceAnchorWorlds.contains(
+					 Request.strRuntimeAnchorSlotId)))
+			{
+				strOutError =
+					"Effect transform history is missing prepared anchor: " +
+					Request.strRuntimeAnchorSlotId;
+				return false;
+			}
+		}
+	}
+
+	OutSample = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Update_WithTransformHistory(
+	const f32_t fTimeDelta,
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+	std::string& strOutError)
+{
+	std::string GateStatus;
+	if ((!m_bReconstructedSourceRuntimeActive &&
+		 !m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus)) ||
+		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+	{
+		strOutError = GateStatus.empty() ?
+			"Effect transform-history update request is invalid." : GateStatus;
+		return false;
+	}
+
+	const f64_t fPendingAccumulator =
+		m_fAccumulatorSeconds + static_cast<f64_t>(fTimeDelta);
+	if (!std::isfinite(fPendingAccumulator) || fPendingAccumulator < 0.0)
+	{
+		strOutError = "Effect transform-history accumulator is invalid.";
+		return false;
+	}
+	/* This typed path must never claim animation-clock equality after applying
+	   only part of a backlog.  The deferred Tool start absorbs cache-build wall
+	   time; a later hitch larger than the bounded 60-step transaction is rejected
+	   before any provider call or playback mutation. */
+	if (fPendingAccumulator >
+		(static_cast<f64_t>(MAX_CATCH_UP_STEPS) + 1.0) *
+			FIXED_STEP_SECONDS_EXACT)
+	{
+		strOutError =
+			"Effect transform-history update exceeds the 60-step catch-up transaction.";
+		return false;
+	}
+	const uint64_t iAvailableSteps = static_cast<uint64_t>(std::floor(
+		(fPendingAccumulator + FIXED_STEP_EPSILON) /
+		FIXED_STEP_SECONDS_EXACT));
+	if (iAvailableSteps > static_cast<uint64_t>(MAX_CATCH_UP_STEPS))
+	{
+		strOutError =
+			"Effect transform-history update exceeds the 60-step catch-up transaction.";
+		return false;
+	}
+	const uint32_t iStepCount = static_cast<uint32_t>(iAvailableSteps);
+	std::vector<EFFECT_FIXED_STEP_TRANSFORM_SAMPLE> Samples;
+	Samples.reserve(iStepCount);
+	for (uint32_t iStep = 0u; iStep < iStepCount; ++iStep)
+	{
+		const f32_t fStepTime = static_cast<f32_t>(
+			static_cast<f64_t>(m_iSimulationStep + iStep + 1u) *
+			FIXED_STEP_SECONDS_EXACT);
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Sample;
+		if (!Collect_TransformHistorySample(
+				fStepTime, TransformProvider, Sample, strOutError))
+		{
+			return false;
+		}
+		Samples.push_back(std::move(Sample));
+	}
+
+	f64_t fCommittedAccumulator = fPendingAccumulator;
+	float4x4_t FinalRoot = m_Frame.RootWorld;
+	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
+	{
+		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
+		FinalRoot = Sample.RootWorld;
+		Step(FIXED_STEP_SECONDS, FinalRoot);
+		fCommittedAccumulator = (std::max)(
+			0.0, fCommittedAccumulator - FIXED_STEP_SECONDS_EXACT);
+	}
+	m_fAccumulatorSeconds = fCommittedAccumulator;
+	Rebuild_Frame(FinalRoot);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
+	const f32_t fSampleTimeSeconds,
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+	std::string& strOutError)
+{
+	std::string GateStatus;
+	if ((!m_bReconstructedSourceRuntimeActive &&
+		 !m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus)) ||
+		!std::isfinite(fSampleTimeSeconds))
+	{
+		strOutError = GateStatus.empty() ?
+			"Effect transform-history seek request is invalid." : GateStatus;
+		return false;
+	}
+	const f32_t fTarget = std::clamp(
+		fSampleTimeSeconds, 0.f, m_fDurationSeconds);
+	const uint64_t iTargetSteps = static_cast<uint64_t>(std::floor(
+		static_cast<f64_t>(fTarget) / FIXED_STEP_SECONDS_EXACT +
+		FIXED_STEP_EPSILON));
+	std::vector<EFFECT_FIXED_STEP_TRANSFORM_SAMPLE> Samples;
+	Samples.reserve(static_cast<size_t>(iTargetSteps));
+	for (uint64_t iStep = 0u; iStep < iTargetSteps; ++iStep)
+	{
+		const f32_t fStepTime = static_cast<f32_t>(
+			static_cast<f64_t>(iStep + 1u) * FIXED_STEP_SECONDS_EXACT);
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Sample;
+		if (!Collect_TransformHistorySample(
+				fStepTime, TransformProvider, Sample, strOutError))
+		{
+			return false;
+		}
+		Samples.push_back(std::move(Sample));
+	}
+	const f64_t fSteppedTime =
+		static_cast<f64_t>(iTargetSteps) * FIXED_STEP_SECONDS_EXACT;
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE FinalSample;
+	if (!Samples.empty() &&
+		std::abs(static_cast<f64_t>(fTarget) - fSteppedTime) <=
+			FIXED_STEP_EPSILON)
+	{
+		FinalSample = Samples.back();
+	}
+	else if (!Collect_TransformHistorySample(
+			fTarget, TransformProvider, FinalSample, strOutError))
+	{
+		return false;
+	}
+
+	Reset();
+	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
+	{
+		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
+		Step(FIXED_STEP_SECONDS, Sample.RootWorld);
+	}
+	m_fAccumulatorSeconds = (std::max)(
+		0.0, static_cast<f64_t>(fTarget) - fSteppedTime);
+	m_fSampleTimeSeconds = fTarget;
+	m_SourceAnchorWorlds = std::move(FinalSample.SourceAnchorWorlds);
+	Rebuild_Frame(FinalSample.RootWorld);
+	strOutError.clear();
+	return true;
+}
+
+f64_t Client::CEffectPlayback::Get_FixedStepClockSeconds() const
+{
+	return static_cast<f64_t>(m_iSimulationStep) *
+		FIXED_STEP_SECONDS_EXACT + m_fAccumulatorSeconds;
 }
 
 void Client::CEffectPlayback::Step(
@@ -867,7 +1633,8 @@ void Client::CEffectPlayback::Step(
 					static_cast<f32_t>(
 						Element.SourceRecipe.iEmitterLoopCount)) :
 			Element.Detail.Timing.fLifeTimeSeconds;
-		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind &&
+		if (Is_ParticleSimulationElement(
+				Element, m_bReconstructedSourceRuntimeActive) &&
 			fEmitterElapsed >= 0.f &&
 			fEmitterElapsed <= fSourceEmissionDuration)
 		{
@@ -893,6 +1660,8 @@ void Client::CEffectPlayback::Step(
 						State.iSourceLoopIndex = iLoopIndex;
 						State.iNextSourceBurst = 0u;
 						State.fSpawnAccumulator = 0.f;
+						State.fSourceSpawnPerUnitAccumulator = 0.f;
+						State.bSourceSpawnPerUnitOriginInitialized = false;
 						Reset_LoopingModuleRandomStates(State);
 					}
 					while (State.iNextSourceBurst < Recipe.Bursts.size() &&
@@ -919,6 +1688,10 @@ void Client::CEffectPlayback::Step(
 					State.fSpawnAccumulator -=
 						static_cast<f32_t>(iSpawnCount);
 					Spawn_Particles(Element, State, iSpawnCount, RootWorld);
+					const uint32_t iSpawnPerUnitCount = Consume_SourceSpawnPerUnit(
+						Element, State, fEmitterTime, RootWorld);
+					Spawn_Particles(
+						Element, State, iSpawnPerUnitCount, RootWorld);
 				}
 			}
 			else
@@ -957,6 +1730,100 @@ void Client::CEffectPlayback::Step(
 			Sample_AfterImages(Element, State, fFixedDelta, RootWorld);
 		}
 	}
+}
+
+uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
+	const EFFECT_ELEMENT_DESC& Element,
+	ELEMENT_STATE& State,
+	const f32_t fEmitterTimeSeconds,
+	const float4x4_t& RootWorld)
+{
+	if (!m_bReconstructedSourceRuntimeActive)
+		return 0u;
+
+	std::vector<const EFFECT_SOURCE_MODULE_DESC*> SpawnPerUnitModules;
+	for (const EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
+	{
+		if (SourceModule_Enabled(Module) &&
+			SourceClass_Matches(Module, "particlemodulespawnperunit"))
+		{
+			SpawnPerUnitModules.push_back(&Module);
+		}
+	}
+	if (SpawnPerUnitModules.empty() || !Can_EvaluateElementWorld(Element))
+		return 0u;
+
+	const float3_t CurrentOrigin = Get_Translation(Evaluate_ElementWorld(
+		Element, m_fSampleTimeSeconds, RootWorld));
+	if (!std::isfinite(CurrentOrigin.x) || !std::isfinite(CurrentOrigin.y) ||
+		!std::isfinite(CurrentOrigin.z))
+	{
+		m_strReconstructedSourceRuntimeStatus =
+			"SpawnPerUnit rejected a nonfinite emitter origin: " +
+			Element.strElementId;
+		State.bSourceSpawnPerUnitOriginInitialized = false;
+		State.fSourceSpawnPerUnitAccumulator = 0.f;
+		return 0u;
+	}
+	if (!State.bSourceSpawnPerUnitOriginInitialized)
+	{
+		State.vSourceSpawnPerUnitPreviousOrigin = CurrentOrigin;
+		State.bSourceSpawnPerUnitOriginInitialized = true;
+		return 0u;
+	}
+
+	const f32_t fDistance = Length3(Subtract3(
+		CurrentOrigin, State.vSourceSpawnPerUnitPreviousOrigin));
+	State.vSourceSpawnPerUnitPreviousOrigin = CurrentOrigin;
+	if (!std::isfinite(fDistance) || fDistance < 0.f)
+	{
+		m_strReconstructedSourceRuntimeStatus =
+			"SpawnPerUnit rejected a nonfinite movement distance: " +
+			Element.strElementId;
+		State.fSourceSpawnPerUnitAccumulator = 0.f;
+		return 0u;
+	}
+
+	double SpawnContribution = 0.0;
+	for (const EFFECT_SOURCE_MODULE_DESC* pModule : SpawnPerUnitModules)
+	{
+		const f32_t fUnitScalarUeCentimeters = SourceNumber(
+			*pModule, "unitscalar", 0.f);
+		const f32_t fSpawnPerUnit = Evaluate_ModuleFloat(
+			State, *pModule, "spawnperunit", fEmitterTimeSeconds, 0.f);
+		const f32_t fUnitScalarClient = 0.01f * fUnitScalarUeCentimeters;
+		if (!std::isfinite(fUnitScalarClient) || fUnitScalarClient <= 0.f ||
+			!std::isfinite(fSpawnPerUnit) || fSpawnPerUnit < 0.f)
+		{
+			m_strReconstructedSourceRuntimeStatus =
+				"SpawnPerUnit rejected invalid rate/unitScalar: " +
+				Element.strElementId;
+			State.fSourceSpawnPerUnitAccumulator = 0.f;
+			return 0u;
+		}
+		SpawnContribution += static_cast<double>(fDistance) *
+			static_cast<double>(fSpawnPerUnit) /
+			static_cast<double>(fUnitScalarClient);
+	}
+
+	const double Accumulated =
+		static_cast<double>(State.fSourceSpawnPerUnitAccumulator) +
+		SpawnContribution;
+	if (!std::isfinite(Accumulated) || Accumulated < 0.0 ||
+		Accumulated > static_cast<double>(
+			(std::numeric_limits<uint32_t>::max)()))
+	{
+		m_strReconstructedSourceRuntimeStatus =
+			"SpawnPerUnit rejected an unbounded accumulator: " +
+			Element.strElementId;
+		State.fSourceSpawnPerUnitAccumulator = 0.f;
+		return 0u;
+	}
+	const uint32_t iWholeParticles = static_cast<uint32_t>(
+		std::floor(Accumulated));
+	State.fSourceSpawnPerUnitAccumulator = static_cast<f32_t>(
+		Accumulated - static_cast<double>(iWholeParticles));
+	return (std::min)(iWholeParticles, Element.Detail.Particle.iMaxParticles);
 }
 
 void Client::CEffectPlayback::Spawn_Particles(
@@ -1111,7 +1978,8 @@ void Client::CEffectPlayback::Dispatch_SourceEvents(
 		const SOURCE_PARTICLE_EVENT Event = m_PendingSourceEvents[iEvent];
 		for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
 		{
-			if (!Element.bVisible || EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind)
+			if (!Element.bVisible || !Is_ParticleSimulationElement(
+				Element, m_bReconstructedSourceRuntimeActive))
 				continue;
 			ELEMENT_STATE& State = m_States[Element.strElementId];
 			for (const EFFECT_SOURCE_MODULE_DESC& Module :
@@ -1306,6 +2174,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 	const float4x4_t& ElementWorld)
 {
 	bool_t bHasSize = false;
+	const bool_t bReconstructedDecalParticle =
+		Is_ReconstructedDecalParticle(
+			Element, m_bReconstructedSourceRuntimeActive);
 	for (const EFFECT_SOURCE_MODULE_DESC& Module :
 		Element.SourceRecipe.Modules)
 	{
@@ -1343,6 +2214,21 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "direction",
 					fEmitterTimeSeconds, float3_t{})));
+		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulelocationonground"))
+		{
+			if (!m_bReconstructedSourceRuntimeActive)
+				continue;
+			const f32_t fSkipLocation = Evaluate_ModuleFloat(
+				State, Module, "skiplocation", fEmitterTimeSeconds,
+				SourceNumber(Module, "skiplocation", 0.f));
+			if (fSkipLocation >= 0.5f)
+				continue;
+			const float3_t Adjust = UE3_CentimetersToClient(
+				Evaluate_ModuleVector(State, Module, "adjustlocation",
+					fEmitterTimeSeconds, float3_t{}));
+			Particle.vPosition = Add3(Particle.vPosition, Adjust);
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocationbonesocket"))
@@ -1606,9 +2492,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(Module, "particlemodulesize"))
 		{
 			Particle.vBaseSize = Add3(Particle.vBaseSize,
-				Scale3(UE3_SizeToClient(Element, Evaluate_ModuleVector(
+				UE3_StartSizeToClient(Element, Evaluate_ModuleVector(
 					State, Module, "startsize", fEmitterTimeSeconds,
-					float3_t{})), 0.01f));
+					float3_t{})));
 			bHasSize = true;
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecolor"))
@@ -1651,7 +2537,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		}
 		else if (SourceClass_Matches(Module, "particlemodulerotation"))
 		{
-			Particle.vRotationDegrees.z += Evaluate_ModuleFloat(
+			f32_t& fYawOrSpriteRoll = bReconstructedDecalParticle ?
+				Particle.vRotationDegrees.y : Particle.vRotationDegrees.z;
+			fYawOrSpriteRoll += Evaluate_ModuleFloat(
 				State, Module, "startrotation", fEmitterTimeSeconds, 0.f) * 360.f;
 		}
 		else if (SourceClass_Matches(
@@ -1666,7 +2554,10 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationrate"))
 		{
-			Particle.vRotationRateDegreesPerSecond.z +=
+			f32_t& fYawOrSpriteRollRate = bReconstructedDecalParticle ?
+				Particle.vRotationRateDegreesPerSecond.y :
+				Particle.vRotationRateDegreesPerSecond.z;
+			fYawOrSpriteRollRate +=
 				Evaluate_ModuleFloat(State, Module, "startrotationrate",
 					fEmitterTimeSeconds, 0.f) * 360.f;
 		}
@@ -1717,6 +2608,13 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 					pValues[iParameter] *= Length3(Particle.vVelocity);
 				}
 			}
+		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulespawnperunit"))
+		{
+			/* Distance-based spawn is consumed once per emitter step by
+			   Consume_SourceSpawnPerUnit. It has no per-particle mutation. */
+			continue;
 		}
 		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
 		{
@@ -1818,6 +2716,9 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vOrbitOffset = {};
 	Particle.vOrbitRotationDegrees = {};
 	Particle.vOrbitRotationRateDegreesPerSecond = {};
+	const bool_t bReconstructedDecalParticle =
+		Is_ReconstructedDecalParticle(
+			Element, m_bReconstructedSourceRuntimeActive);
 
 	for (const EFFECT_SOURCE_MODULE_DESC& Module :
 		Element.SourceRecipe.Modules)
@@ -2046,7 +2947,9 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationratemultiplylife"))
 		{
-			Particle.vRotationRateScale.z *= Evaluate_ModuleFloat(
+			f32_t& fYawOrSpriteRollRateScale = bReconstructedDecalParticle ?
+				Particle.vRotationRateScale.y : Particle.vRotationRateScale.z;
+			fYawOrSpriteRollRateScale *= Evaluate_ModuleFloat(
 				State, Module, "lifemultiplier", fNormalizedAge, 1.f);
 		}
 		else if (SourceClass_Matches(
@@ -2136,32 +3039,136 @@ void Client::CEffectPlayback::Sample_Trail(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
+	const bool_t bReconstructedRibbon =
+		m_bReconstructedSourceRuntimeActive &&
+		Element.SourceRecipe.bEnabled &&
+		nullptr != Find_SourceModule(Element, "particlemoduletypedataribbon");
+	constexpr f32_t RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS = 1e-6f;
+	const auto EvaluateDeterministicFloat = [&Element](
+		const char_t* pModuleClass,
+		const std::string_view PropertyPath,
+		const f32_t fTime,
+		f32_t& fOutValue)
+	{
+		const EFFECT_SOURCE_MODULE_DESC* pModule =
+			Find_SourceModule(Element, pModuleClass);
+		const EFFECT_DISTRIBUTION_DESC* pDistribution =
+			Find_SourceDistribution(pModule, PropertyPath);
+		if (nullptr == pDistribution || 1u != pDistribution->iOperation ||
+			Uses_ImplicitAlphaIdentity(*pDistribution, PropertyPath))
+		{
+			return false;
+		}
+		const f32_t fValue = CEffectDistribution::Evaluate(
+			*pDistribution, fTime, float4_t{}).x;
+		if (!std::isfinite(fValue))
+			return false;
+		fOutValue = fValue;
+		return true;
+	};
+	const auto UpdatePointPayload = [&Element, &EvaluateDeterministicFloat](
+		EFFECT_EVALUATED_TRAIL_POINT& Point)
+	{
+		Point.vSourceColor = { 1.f, 1.f, 1.f, 1.f };
+		Point.vDynamicParameter = {};
+		Point.iSourceColorComponentMask = 0u;
+		Point.iDynamicParameterComponentMask = 0u;
+
+		f32_t fStartAlpha = 0.f;
+		f32_t fAlphaScale = 0.f;
+		if (EvaluateDeterministicFloat(
+				"particlemodulecolor", "startalpha", 0.f, fStartAlpha) &&
+			EvaluateDeterministicFloat("particlemodulecolorscaleoverlife",
+				"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale) &&
+			std::isfinite(fStartAlpha * fAlphaScale))
+		{
+			Point.vSourceColor.w = fStartAlpha * fAlphaScale;
+			Point.iSourceColorComponentMask = 1u << 3u;
+		}
+
+		const EFFECT_SOURCE_MODULE_DESC* pDynamic = Find_SourceModule(
+			Element, "particlemoduleparameterdynamic");
+		if (nullptr == pDynamic)
+			return;
+		f32_t* const pValues = &Point.vDynamicParameter.x;
+		for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
+		{
+			const std::string Prefix = "dynamicparams[" +
+				std::to_string(iParameter) + "].";
+			/* These branches require particle spawn/emitter time or velocity state;
+			   a geometry-only trail point cannot manufacture that authority. */
+			if (SourceBool(*pDynamic, Prefix + "bspawntimeonly", false) ||
+				SourceBool(*pDynamic, Prefix + "buseemittertime", false) ||
+				SourceBool(*pDynamic,
+					Prefix + "bscalevelocitybyparamvalue", false))
+			{
+				continue;
+			}
+			f32_t fValue = 0.f;
+			if (EvaluateDeterministicFloat("particlemoduleparameterdynamic",
+				Prefix + "paramvalue", Point.fNormalizedAge, fValue))
+			{
+				pValues[iParameter] = fValue;
+				Point.iDynamicParameterComponentMask |= 1u << iParameter;
+			}
+		}
+	};
+
 	for (EFFECT_EVALUATED_TRAIL_POINT& Point : State.TrailPoints)
 	{
 		Point.fNormalizedAge += fFixedDelta /
 			Element.Detail.Trail.fPointLifeTimeSeconds;
 	}
 	std::erase_if(State.TrailPoints,
-		[](const EFFECT_EVALUATED_TRAIL_POINT& Point)
+		[bReconstructedRibbon](const EFFECT_EVALUATED_TRAIL_POINT& Point)
 		{
-			return Point.fNormalizedAge >= 1.f;
+			return Point.fNormalizedAge +
+				(bReconstructedRibbon ?
+					RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS : 0.f) >= 1.f;
 		});
+	for (EFFECT_EVALUATED_TRAIL_POINT& Point : State.TrailPoints)
+		UpdatePointPayload(Point);
+	if (State.TrailPoints.empty())
+		State.fTrailCumulativeDistance = 0.f;
 
 	const f32_t fLocalTime = m_fSampleTimeSeconds -
 		Element.Detail.Timing.fStartDelaySeconds;
-	if (fLocalTime < 0.f ||
-		fLocalTime > Element.Detail.Timing.fLifeTimeSeconds)
+	const f32_t fEmitterElapsed = bReconstructedRibbon ?
+		fLocalTime - Element.SourceRecipe.fEmitterDelaySeconds : fLocalTime;
+	const f32_t fEmissionDuration = bReconstructedRibbon &&
+		Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
+		(0u == Element.SourceRecipe.iEmitterLoopCount ?
+			Element.Detail.Timing.fLifeTimeSeconds :
+			Element.SourceRecipe.fEmitterDurationSeconds *
+				static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount)) :
+		Element.Detail.Timing.fLifeTimeSeconds;
+	if (fEmitterElapsed < 0.f || fEmitterElapsed > fEmissionDuration)
 	{
 		return;
 	}
 
 	State.fTrailSampleAccumulator += fFixedDelta;
-	if (State.fTrailSampleAccumulator <
+	if (State.fTrailSampleAccumulator +
+		(bReconstructedRibbon ?
+			RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS : 0.f) <
 		Element.Detail.Trail.fSampleIntervalSeconds)
 	{
 		return;
 	}
-	State.fTrailSampleAccumulator = 0.f;
+	if (bReconstructedRibbon)
+	{
+		/* Keep the fractional remainder.  Resetting to zero quantizes the
+		   typed 40 Hz Ribbon to 30 Hz on the 60 Hz fixed simulation clock. */
+		State.fTrailSampleAccumulator = (std::max)(0.f,
+			State.fTrailSampleAccumulator -
+			Element.Detail.Trail.fSampleIntervalSeconds);
+	}
+	else
+	{
+		/* Preserve the legacy Trail cadence outside the reconstructed source
+		   runtime until that public contract has its own regression evidence. */
+		State.fTrailSampleAccumulator = 0.f;
+	}
 	if (!Can_EvaluateElementWorld(Element))
 		return;
 	const float4x4_t World = Evaluate_ElementWorld(
@@ -2174,7 +3181,19 @@ void Client::CEffectPlayback::Sample_Trail(
 	{
 		return;
 	}
-	State.TrailPoints.push_back({ Position, 0.f });
+	if (!State.TrailPoints.empty())
+	{
+		const f32_t fSegmentDistance = std::sqrt(DistanceSquared(
+			Position, State.TrailPoints.back().vWorldPosition));
+		if (!std::isfinite(fSegmentDistance))
+			return;
+		State.fTrailCumulativeDistance += fSegmentDistance;
+	}
+	EFFECT_EVALUATED_TRAIL_POINT Point;
+	Point.vWorldPosition = Position;
+	Point.fCumulativeDistance = State.fTrailCumulativeDistance;
+	UpdatePointPayload(Point);
+	State.TrailPoints.push_back(std::move(Point));
 	while (State.TrailPoints.size() > Element.Detail.Trail.iMaxPoints)
 		State.TrailPoints.erase(State.TrailPoints.begin());
 }
@@ -2315,7 +3334,8 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 			}
 		}
 	}
-	if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
+	if (Is_ParticleSimulationElement(
+		Element, m_bReconstructedSourceRuntimeActive))
 	{
 		const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
 			m_Document.ParticleSystem;
@@ -2454,16 +3474,45 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		const f32_t fPresentationTime = fLocalTime -
 			(Element.SourceRecipe.bEnabled ?
 				Element.SourceRecipe.fEmitterDelaySeconds : 0.f);
-		const f32_t T = Clamp01(fPresentationTime /
-			Element.Detail.Timing.fLifeTimeSeconds);
+		const f32_t fStableRandom = static_cast<f32_t>(
+			Hash_StableId(Element.strElementId) ^
+			Element.Detail.Particle.iRandomSeed) /
+			static_cast<f32_t>(UINT32_MAX);
+		f32_t fPresentationLifeTimeSeconds =
+			Element.Detail.Timing.fLifeTimeSeconds;
+		if (m_bReconstructedSourceRuntimeActive &&
+			(EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+			 EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind))
+		{
+			fPresentationLifeTimeSeconds = (std::max)(0.f,
+				Evaluate_SourceFloat(Element, "particlemodulelifetime", "lifetime",
+					0.f, fStableRandom, fPresentationLifeTimeSeconds));
+		}
+		const f32_t T = fPresentationLifeTimeSeconds > 0.f ?
+			Clamp01(fPresentationTime / fPresentationLifeTimeSeconds) : 1.f;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
+		const bool_t bPresentationActive = fPresentationTime >= 0.f &&
+			fPresentationTime < fPresentationLifeTimeSeconds;
+		const bool_t bGpuVisualOccurrence = Is_GpuVisualOccurrence(Element);
+		const size_t iGpuOccurrence = m_Frame.GpuOccurrences.size();
+		if (bGpuVisualOccurrence)
+		{
+			m_Frame.GpuOccurrences.push_back({
+				&Element, bPresentationActive, 0u });
+		}
+		const size_t iElementRowBegin = m_Frame.Elements.size();
+		const size_t iParticleRowBegin = m_Frame.Particles.size();
+		const size_t iTrailRowBegin = m_Frame.Trails.size();
+		const size_t iAfterImageRowBegin = m_Frame.AfterImages.size();
 		if (!Can_EvaluateElementWorld(Element))
 			continue;
 
-		const bool_t bPresentationActive = fPresentationTime >= 0.f &&
-			fPresentationTime < Element.Detail.Timing.fLifeTimeSeconds;
+		const bool_t bReconstructedDecalParticle =
+			Is_ReconstructedDecalParticle(
+				Element, m_bReconstructedSourceRuntimeActive);
 		if (bPresentationActive &&
 			EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind &&
+			!bReconstructedDecalParticle &&
 			EFFECT_ELEMENT_KIND::TRAIL != Element.eKind &&
 			EFFECT_ELEMENT_KIND::LIGHT != Element.eKind &&
 			EFFECT_ELEMENT_KIND::SCREEN_POST != Element.eKind)
@@ -2476,10 +3525,6 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				T });
 		}
 
-		const f32_t fStableRandom = static_cast<f32_t>(
-			Hash_StableId(Element.strElementId) ^
-			Element.Detail.Particle.iRandomSeed) /
-			static_cast<f32_t>(UINT32_MAX);
 		if (bPresentationActive &&
 			EFFECT_ELEMENT_KIND::LIGHT == Element.eKind &&
 			Element.Detail.Light.bEnabled &&
@@ -2504,18 +3549,25 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				"alphascaleoverlife", T, fStableRandom, 1.f);
 			EFFECT_EVALUATED_LIGHT Light;
 			Light.pElement = &Element;
-			Light.vWorldPosition = Get_Translation(World);
+			XMStoreFloat3(&Light.vWorldPosition, XMVector3TransformCoord(
+				XMLoadFloat3(&Element.Detail.Particle.vInitialPositionMin),
+				XMLoadFloat4x4(&World)));
 			Light.fRange = Element.Detail.Light.fRange;
 			Light.fIntensity = Element.Detail.Light.fIntensity *
-				(std::max)(0.f, fAlpha);
+				(std::max)(0.f, fAlpha) *
+				(std::max)(0.f, Element.Detail.Color.vColorMultiply.w);
 			Light.vColor = {
-				Element.Detail.Light.vColor.x * ColorOverLife.x *
+				Element.Detail.Light.vColor.x *
+					Element.Detail.Color.vColorMultiply.x * ColorOverLife.x *
 					ColorScaleOverLife.x,
-				Element.Detail.Light.vColor.y * ColorOverLife.y *
+				Element.Detail.Light.vColor.y *
+					Element.Detail.Color.vColorMultiply.y * ColorOverLife.y *
 					ColorScaleOverLife.y,
-				Element.Detail.Light.vColor.z * ColorOverLife.z *
+				Element.Detail.Light.vColor.z *
+					Element.Detail.Color.vColorMultiply.z * ColorOverLife.z *
 					ColorScaleOverLife.z,
-				Element.Detail.Light.vColor.w };
+				Element.Detail.Light.vColor.w *
+					Element.Detail.Color.vColorMultiply.w };
 			Light.vAmbient = Element.Detail.Light.vAmbient;
 			Light.fFalloffExponent = Element.Detail.Light.fFalloffExponent;
 			Light.fNormalizedLife = T;
@@ -2591,6 +3643,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			const f32_t fDepthScale = bMeshParticle ?
 				(Element.SourceRecipe.bEnabled ? Size.z :
 					0.5f * (Size.x + Size.y)) : 1.f;
+			const float3_t WorldScale = bReconstructedDecalParticle ?
+				float3_t(Size.x, Element.Detail.Decal.fDepth, Size.y) :
+				float3_t(Size.x, Size.y, fDepthScale);
 			const float3_t OrbitRotation = Add3(
 				Particle.vOrbitRotationDegrees,
 				Scale3(Particle.vOrbitRotationRateDegreesPerSecond,
@@ -2605,7 +3660,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			const float3_t Position = Add3(
 				Particle.vPosition, OrbitOffset);
 			const matrix_t World = XMMatrixScaling(
-				Size.x, Size.y, fDepthScale) *
+				WorldScale.x, WorldScale.y, WorldScale.z) *
 				XMMatrixRotationRollPitchYaw(
 					XMConvertToRadians(Particle.vRotationDegrees.x),
 					XMConvertToRadians(Particle.vRotationDegrees.y),
@@ -2640,7 +3695,15 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Element.Detail.Sprite.fBillboardRollDegrees;
 			Evaluated.fCameraOffset = Particle.fCameraOffset;
 			Resolve_SourceSpritePresentation(Element,
-				Evaluated.eSpriteAlignment, Evaluated.vSpritePivot);
+				Evaluated.eSpriteAlignment, Evaluated.vSpritePivot,
+				Evaluated.bSourceImageFlipping);
+			if (Evaluated.bSourceImageFlipping)
+			{
+				Evaluated.vSourceImageFlipSign = {
+					Size.x < 0.f ? -1.f : 1.f,
+					Size.y < 0.f ? -1.f : 1.f
+				};
+			}
 			const float3_t EvaluatedVelocity = Multiply3(
 				Particle.vVelocity, Particle.vVelocityScale);
 			XMStoreFloat3(&Evaluated.vWorldVelocity,
@@ -2650,7 +3713,23 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			Evaluated.fSubImageIndex = Particle.fSubImageIndex;
 			Evaluated.fDistributionRandom = Particle.fDistributionRandom;
 			Evaluated.fNormalizedLife = ParticleT;
-			m_Frame.Particles.push_back(Evaluated);
+			if (bReconstructedDecalParticle)
+			{
+				EFFECT_EVALUATED_ELEMENT DecalParticle;
+				DecalParticle.pElement = &Element;
+				DecalParticle.World = Evaluated.World;
+				DecalParticle.Color = Element.Detail.Color;
+				DecalParticle.Color.vColorMultiply = Evaluated.Color;
+				DecalParticle.fLocalTimeSeconds =
+					Particle.fAgeSeconds;
+				DecalParticle.fNormalizedLife = ParticleT;
+				DecalParticle.bWorldOwnsDecalProjectionVolume = true;
+				m_Frame.Elements.push_back(std::move(DecalParticle));
+			}
+			else
+			{
+				m_Frame.Particles.push_back(Evaluated);
+			}
 		}
 
 		if (!State.TrailPoints.empty())
@@ -2665,6 +3744,19 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				AfterImage.World,
 				std::pow(1.f - Age,
 					Element.Detail.AfterImage.fAlphaExponent) });
+		}
+		if (bGpuVisualOccurrence)
+		{
+			const size_t iCandidateRowCount =
+				(m_Frame.Elements.size() - iElementRowBegin) +
+				(m_Frame.Particles.size() - iParticleRowBegin) +
+				(m_Frame.Trails.size() - iTrailRowBegin) +
+				(m_Frame.AfterImages.size() - iAfterImageRowBegin);
+			EFFECT_EVALUATED_GPU_OCCURRENCE& Occurrence =
+				m_Frame.GpuOccurrences[iGpuOccurrence];
+			Occurrence.iCandidateRowCount =
+				static_cast<uint32_t>(iCandidateRowCount);
+			Occurrence.bActive = Occurrence.bActive || 0u < iCandidateRowCount;
 		}
 	}
 }
@@ -2771,8 +3863,8 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 		OutProbe.FirstSubUV = Resolve_SourceSubUVFrame(
 			iColumns, iRows, pFirst->fSubImageIndex,
 			bAllowFlip, bSquareFlip, pFirst->fDistributionRandom,
-			pElement->Material.SourceMaterial.strSubUVMode.starts_with(
-				"psuvim_linear_blend"));
+			Is_EffectSourceLinearBlendSubUVMode(
+				pElement->Material.SourceMaterial.strSubUVMode));
 	}
 	return true;
 }

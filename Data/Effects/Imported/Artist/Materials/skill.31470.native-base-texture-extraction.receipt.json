@@ -1,0 +1,426 @@
+{
+  "schema": "lostark.artist-31470-native-base-texture-extraction-receipt",
+  "formatVersion": 1,
+  "characterClass": "ARTIST",
+  "skillId": 31470,
+  "inputSlot": "F",
+  "status": "SOURCE_EXTRACTED_BASE_DEFAULT_ONLY",
+  "scope": "EXTERNAL_EVIDENCE_STAGING_NOT_RUNTIME_DEPLOYMENT",
+  "sourceEvidence": {
+    "nativeMaterialReceipt": {
+      "path": "Data/Effects/Imported/Artist/Materials/skill.31470.material-native-resource.receipt.json",
+      "receiptSha256": "d313965e193827522995a31f79377a07dcfe3608a94bcc1a055db761a970580d",
+      "canonicalJsonSha256": "f8611229bbd4bf79010de1ae044bdfec615c0ad564fa10cf94ea33ee87faef13"
+    },
+    "extractor": {
+      "sourceRootId": "Resource_LostArk",
+      "relativePath": "06_Tools/UEViewerLostArk_runtime/umodel_lostark_v7.exe",
+      "byteCount": 1766400,
+      "rawSha256": "b9573cdcbb7e9d26dbf60a0e3af47fb5af8543140873da8483c26d58cf40b249"
+    },
+    "sourcePackages": [
+      {
+        "logicalPackage": "WP_WGDH_01",
+        "fileName": "7U1M73IA1BZ6E7CKHX64S5P.upk",
+        "byteCount": 1194109,
+        "rawSha256": "bdfda5a2f65ce9f3c3ee7bdc2e4ae7c344f8b886b4eada7aca5d5e71b4eda5ee",
+        "packageVersion": 868,
+        "licenseeVersion": 16,
+        "exportCount": 51
+      },
+      {
+        "logicalPackage": "FX_TEX_HIGH_03",
+        "fileName": "ZHJ4TPSHN4JDK6D4T2NH2DJURL.upk",
+        "byteCount": 49333042,
+        "rawSha256": "887fa9c48aa14d54120dd6066bd0182328217775230cc0726e72e9d910bce7b3",
+        "packageVersion": 868,
+        "licenseeVersion": 16,
+        "exportCount": 613
+      }
+    ]
+  },
+  "localBindings": {
+    "sourcePackageRootId": "LostArkInstallPackages",
+    "resourceRootId": "Resource_LostArk",
+    "extractionRelativeRoot": "01_Extracted/Effect/ARTIST/31470_NativeBaseLookup_20260812",
+    "trackingPolicy": "EXTERNAL_READ_ONLY_RECONSTRUCTION_EVIDENCE"
+  },
+  "extractionInvocations": [
+    {
+      "logicalPackage": "WP_WGDH_01",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackageRoot}",
+        "-out={extractionRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=wp_wgdh_01s_d",
+        "-obj=wp_wgdh_01s_n",
+        "-obj=wp_wgdh_01s_s",
+        "WP_WGDH_01"
+      ],
+      "foundPhysicalPackage": "7U1M73IA1BZ6E7CKHX64S5P.upk",
+      "foundObjectCount": 3,
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "FX_TEX_HIGH_03",
+      "argv": [
+        "{umodel}",
+        "-export",
+        "-game=lostark",
+        "-kr",
+        "-nameresolve",
+        "-path={sourcePackageRoot}",
+        "-out={extractionRoot}",
+        "-dds",
+        "-nooverwrite",
+        "-obj=fx_d_cloud_006",
+        "FX_TEX_HIGH_03"
+      ],
+      "foundPhysicalPackage": "ZHJ4TPSHN4JDK6D4T2NH2DJURL.upk",
+      "foundObjectCount": 1,
+      "exitCode": 0
+    }
+  ],
+  "toolDependencies": [
+    {
+      "path": "Tools/LevelPlacementExtractor/extract_artist_31470_native_base_textures.py",
+      "sha256": "2beb1bd749fdd45ccabe0a7a702191f55776ba1825e779cf6e732428b3213a62",
+      "hashRole": "TRACKED_SOURCE_EOL_CANONICAL_TEXT"
+    }
+  ],
+  "assets": [
+    {
+      "logicalTexturePath": "wp_wgdh_01.tex.wp_wgdh_01s_d",
+      "logicalPackage": "WP_WGDH_01",
+      "baseLookupEvidence": {
+        "familyId": "material-family-2c00ce5593538d7c",
+        "legacyLookup": {
+          "index": 1,
+          "offsetInNativeTail": 100,
+          "texCoordIndex": 0,
+          "textureIndex": 2,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_d",
+          "uScale": 1.0,
+          "vScale": 1.0,
+          "fidelity": "SOURCE_EXACT_LEGACY_TEXTURE_LOOKUP_METADATA_NOT_SHADER_UV_UNIFORM"
+        },
+        "parameterName": "diffuse_tex",
+        "activeRecipeResolutions": [
+          {
+            "recipeId": "material-recipe-a4ee2b242b08bb39",
+            "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_transition_05_2_ma",
+            "parameterNames": [
+              "diffuse_tex"
+            ],
+            "overrideValues": [
+              "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_d"
+            ],
+            "baseDefaultEffective": false
+          }
+        ],
+        "effectiveOverrideValue": "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_d",
+        "status": "SOURCE_EXACT_BASE_DEFAULT_REPLACED_BY_ACTIVE_MIC",
+        "baseDefaultEffectiveForActiveArtist31470": false
+      },
+      "sourceTexture2D": {
+        "objectPath": "tex.wp_wgdh_01s_d",
+        "className": "texture2d",
+        "exportIndex": 48,
+        "packageReference": 49,
+        "serialOffset": 1154219,
+        "serialSize": 84870,
+        "serialSha256": "ae7045967e939043917d050d26feca11cde12ea9a7c74b174e47e828c12337d9",
+        "propertyStreamEnd": 297,
+        "selectedProperties": {
+          "sizex": 512,
+          "sizey": 512,
+          "originalsizex": 512,
+          "originalsizey": 512,
+          "format": "pf_dxt1",
+          "miptailbaseidx": 9,
+          "busecrunchcompression": true,
+          "lodgroup": "texturegroup_weapon"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "WP_WGDH_01/Texture2D/wp_wgdh_01s_d.dds",
+      "copyPolicy": "FRESH_UMODEL_DDS_NO_REENCODE_EXTERNAL_EVIDENCE_ONLY",
+      "dds": {
+        "byteCount": 131200,
+        "rawSha256": "f6404f62f5bdcf0081b57f07d6d17523427eeb920c7ed5a1c36d873ad1102398",
+        "header128Sha256": "a1476edb93f18fca39a017da8d1899b54d940d6d8d0bf9ba7a32f816186be9e2",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "flagsHex": "0x00081007",
+        "width": 512,
+        "height": 512,
+        "pitchOrLinearSize": 131072,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT1",
+        "rawMipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadByteCount": 131072,
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      },
+      "runtimeAssetId": null,
+      "runtimeBindingAdmission": false,
+      "productAdmission": false
+    },
+    {
+      "logicalTexturePath": "wp_wgdh_01.tex.wp_wgdh_01s_n",
+      "logicalPackage": "WP_WGDH_01",
+      "baseLookupEvidence": {
+        "familyId": "material-family-2c00ce5593538d7c",
+        "legacyLookup": {
+          "index": 0,
+          "offsetInNativeTail": 84,
+          "texCoordIndex": 0,
+          "textureIndex": 0,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_n",
+          "uScale": 1.0,
+          "vScale": 1.0,
+          "fidelity": "SOURCE_EXACT_LEGACY_TEXTURE_LOOKUP_METADATA_NOT_SHADER_UV_UNIFORM"
+        },
+        "parameterName": "normal_tex",
+        "activeRecipeResolutions": [
+          {
+            "recipeId": "material-recipe-a4ee2b242b08bb39",
+            "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_transition_05_2_ma",
+            "parameterNames": [
+              "normal_tex"
+            ],
+            "overrideValues": [
+              "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_n"
+            ],
+            "baseDefaultEffective": false
+          }
+        ],
+        "effectiveOverrideValue": "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_n",
+        "status": "SOURCE_EXACT_BASE_DEFAULT_REPLACED_BY_ACTIVE_MIC",
+        "baseDefaultEffectiveForActiveArtist31470": false
+      },
+      "sourceTexture2D": {
+        "objectPath": "tex.wp_wgdh_01s_n",
+        "className": "texture2d",
+        "exportIndex": 49,
+        "packageReference": 50,
+        "serialOffset": 1239089,
+        "serialSize": 186949,
+        "serialSha256": "5bf53c5e76390fe4e74959b251dd6e497d866e036c4879581d4034ebe77b290a",
+        "propertyStreamEnd": 446,
+        "selectedProperties": {
+          "sizex": 512,
+          "sizey": 512,
+          "originalsizex": 512,
+          "originalsizey": 512,
+          "format": "pf_bc5",
+          "miptailbaseidx": 9,
+          "srgb": false,
+          "busecrunchcompression": true,
+          "compressionsettings": "tc_normalmapbc5",
+          "lodgroup": "texturegroup_weaponnormalmap"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "WP_WGDH_01/Texture2D/wp_wgdh_01s_n.dds",
+      "copyPolicy": "FRESH_UMODEL_DDS_NO_REENCODE_EXTERNAL_EVIDENCE_ONLY",
+      "dds": {
+        "byteCount": 262272,
+        "rawSha256": "5c1f99b0fed0e4b406c392524ba562b5df32482fbac0fc16aff367c3c5dd0333",
+        "header128Sha256": "586bcca503ef5dc7845f40153bb159664922072d880d89c8210dc8b64193252e",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "flagsHex": "0x00081007",
+        "width": 512,
+        "height": 512,
+        "pitchOrLinearSize": 262144,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "ATI2",
+        "rawMipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadByteCount": 262144,
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      },
+      "runtimeAssetId": null,
+      "runtimeBindingAdmission": false,
+      "productAdmission": false
+    },
+    {
+      "logicalTexturePath": "wp_wgdh_01.tex.wp_wgdh_01s_s",
+      "logicalPackage": "WP_WGDH_01",
+      "baseLookupEvidence": {
+        "familyId": "material-family-2c00ce5593538d7c",
+        "legacyLookup": {
+          "index": 3,
+          "offsetInNativeTail": 132,
+          "texCoordIndex": 0,
+          "textureIndex": 3,
+          "textureObjectPath": "wp_wgdh_01.tex.wp_wgdh_01s_s",
+          "uScale": 1.0,
+          "vScale": 1.0,
+          "fidelity": "SOURCE_EXACT_LEGACY_TEXTURE_LOOKUP_METADATA_NOT_SHADER_UV_UNIFORM"
+        },
+        "parameterName": "spec_tex",
+        "activeRecipeResolutions": [
+          {
+            "recipeId": "material-recipe-a4ee2b242b08bb39",
+            "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_transition_05_2_ma",
+            "parameterNames": [
+              "spec_tex"
+            ],
+            "overrideValues": [
+              "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_s"
+            ],
+            "baseDefaultEffective": false
+          }
+        ],
+        "effectiveOverrideValue": "wp_mn_lrcn_01.tex.wp_mn_lrcn_01_s",
+        "status": "SOURCE_EXACT_BASE_DEFAULT_REPLACED_BY_ACTIVE_MIC",
+        "baseDefaultEffectiveForActiveArtist31470": false
+      },
+      "sourceTexture2D": {
+        "objectPath": "tex.wp_wgdh_01s_s",
+        "className": "texture2d",
+        "exportIndex": 50,
+        "packageReference": 51,
+        "serialOffset": 1426038,
+        "serialSize": 46478,
+        "serialSha256": "adf65eeae0bdaadc49c6b91dcf5ff63399936a2cf5e6fe6b3d3323d12564f33f",
+        "propertyStreamEnd": 297,
+        "selectedProperties": {
+          "sizex": 256,
+          "sizey": 256,
+          "originalsizex": 256,
+          "originalsizey": 256,
+          "format": "pf_dxt5",
+          "miptailbaseidx": 8,
+          "busecrunchcompression": true,
+          "lodgroup": "texturegroup_weaponspecular"
+        }
+      },
+      "sourceExtractedDdsRelativePath": "WP_WGDH_01/Texture2D/wp_wgdh_01s_s.dds",
+      "copyPolicy": "FRESH_UMODEL_DDS_NO_REENCODE_EXTERNAL_EVIDENCE_ONLY",
+      "dds": {
+        "byteCount": 65664,
+        "rawSha256": "add721e576b2b81479e13ba6f9e9ca3e7718a225a7aecfe07f02ca4adbdb2df9",
+        "header128Sha256": "bbeafd97d4a7046ae2ce8c122ab30d382b823f38fa9416afb388cf7d52906f31",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "flagsHex": "0x00081007",
+        "width": 256,
+        "height": 256,
+        "pitchOrLinearSize": 65536,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT5",
+        "rawMipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadByteCount": 65536,
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      },
+      "runtimeAssetId": null,
+      "runtimeBindingAdmission": false,
+      "productAdmission": false
+    },
+    {
+      "logicalTexturePath": "fx_tex_high_03.fx_d_cloud_006",
+      "logicalPackage": "FX_TEX_HIGH_03",
+      "baseLookupEvidence": {
+        "familyId": "material-family-b53107e635922285",
+        "legacyLookup": {
+          "index": 0,
+          "offsetInNativeTail": 72,
+          "texCoordIndex": 0,
+          "textureIndex": 0,
+          "textureObjectPath": "fx_tex_high_03.fx_d_cloud_006",
+          "uScale": 1.0,
+          "vScale": 1.0,
+          "fidelity": "SOURCE_EXACT_LEGACY_TEXTURE_LOOKUP_METADATA_NOT_SHADER_UV_UNIFORM"
+        },
+        "parameterName": "01.map",
+        "activeRecipeResolutions": [
+          {
+            "recipeId": "material-recipe-533e2243c834e448",
+            "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_sqc_01_01_tr",
+            "parameterNames": [
+              "01.map"
+            ],
+            "overrideValues": [
+              "fx_tex_05.fx_m_smokesq_01"
+            ],
+            "baseDefaultEffective": false
+          }
+        ],
+        "effectiveOverrideValue": "fx_tex_05.fx_m_smokesq_01",
+        "status": "SOURCE_EXACT_BASE_DEFAULT_REPLACED_BY_ACTIVE_MIC",
+        "baseDefaultEffectiveForActiveArtist31470": false
+      },
+      "sourceTexture2D": {
+        "objectPath": "fx_d_cloud_006",
+        "className": "texture2d",
+        "exportIndex": 124,
+        "packageReference": 125,
+        "serialOffset": 69428,
+        "serialSize": 82143,
+        "serialSha256": "b361d8cd2bd33f2821214e7ffd7c90f2a27979b2983377905d8075f242e5ad3a",
+        "propertyStreamEnd": 333,
+        "selectedProperties": {
+          "sizex": 512,
+          "sizey": 512,
+          "originalsizex": 512,
+          "originalsizey": 512,
+          "format": "pf_dxt5",
+          "miptailbaseidx": 9,
+          "busecrunchcompression": true,
+          "lodgroup": "texturegroup_effects",
+          "lodbias": -1
+        }
+      },
+      "sourceExtractedDdsRelativePath": "FX_TEX_HIGH_03/Texture2D/fx_d_cloud_006.dds",
+      "copyPolicy": "FRESH_UMODEL_DDS_NO_REENCODE_EXTERNAL_EVIDENCE_ONLY",
+      "dds": {
+        "byteCount": 262272,
+        "rawSha256": "a4c5e500c8fde3e778cce3f72a36873aae6290710ee372d879717da7c326148c",
+        "header128Sha256": "58fab4115cdaa18e41b2f880f864d9d2f621230402e85fd6b45e987ada303d09",
+        "magic": "DDS ",
+        "headerSize": 124,
+        "flagsHex": "0x00081007",
+        "width": 512,
+        "height": 512,
+        "pitchOrLinearSize": 262144,
+        "pixelFormatFlagsHex": "0x00000004",
+        "fourCC": "DXT5",
+        "rawMipMapCount": 0,
+        "capsHex": "0x00001000",
+        "payloadByteCount": 262144,
+        "payloadScope": "UMODEL_DECODED_TOP_MIP_EXPORT"
+      },
+      "runtimeAssetId": null,
+      "runtimeBindingAdmission": false,
+      "productAdmission": false
+    }
+  ],
+  "decision": {
+    "sourceExactBaseDefaultTextureEvidence": true,
+    "activeArtist31470BaseDefaultEffective": false,
+    "runtimeDeploymentAdmission": false,
+    "runtimeBindingAdmission": false,
+    "shaderGraphAdmission": false,
+    "productAdmission": false,
+    "reason": "ALL_FOUR_BASE_DEFAULTS_REPLACED_BY_SOURCE_EXACT_ACTIVE_MIC_OVERRIDES"
+  },
+  "summary": {
+    "sourcePackageCount": 2,
+    "assetCount": 4,
+    "sourceExactTexture2DCount": 4,
+    "freshDdsVerifiedCount": 4,
+    "baseDefaultReplacedByActiveMicCount": 4,
+    "runtimeDeploymentAdmittedCount": 0,
+    "runtimeBindingAdmittedCount": 0,
+    "productAdmittedCount": 0
+  },
+  "receiptSha256": "0b980872ce88fbc8306c50e90b187ae8ecfc530daa14bf733b094e617ed15919"
+}

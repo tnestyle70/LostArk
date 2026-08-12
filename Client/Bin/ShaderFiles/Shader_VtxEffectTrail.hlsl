@@ -1,4 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
+#include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_Artist31470Active003RibbonMaterial.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
@@ -15,6 +17,7 @@ struct VS_OUT
 {
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
+    float2 runtimeUV : TEXCOORD1;
     float4 color : COLOR0;
 };
 
@@ -25,12 +28,26 @@ VS_OUT VS_MAIN(VS_IN input)
         float4(input.position, 1.f),
         mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix));
     output.uv = input.uv * g_UVScale + g_UVOffset;
+    output.runtimeUV = input.uv;
     output.color = input.color;
     return output;
 }
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_RuntimeMaterialV2Enabled)
+    {
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_ACTIVE003_RIBBON)
+        {
+            return Shade_Artist31470Active003RibbonMaterial(
+                input.runtimeUV, input.color);
+        }
+
+        EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+        clip(-1.f);
+        return output;
+    }
     return Shade_Effect(input.uv, float3(1.f, 1.f, 1.f), input.color);
 }
 

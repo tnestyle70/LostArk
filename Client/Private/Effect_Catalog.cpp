@@ -177,21 +177,21 @@ namespace
 		constexpr std::string_view COMPILER_REVISION =
 			"artist31470.reconstructed-runtime-program-link-v1";
 		constexpr std::string_view BUILDER_COMMIT_ID =
-			"a85b8b41afb2f2a51bceafa55d06bf0937b1a245";
+			"31ecc2edc328347ac6e3bf6fe444c270d463ef40";
 		constexpr std::string_view BUILDER_TREE_ID =
-			"384ed35ca808ab9a71a4edb703ca4d9121b48c18";
+			"6d8853d989bd71a988eaebf254398ae08599ad0d";
 		constexpr std::string_view CANDIDATE_BLOB_ID =
-			"345ab15bbb76648a650eaa854f18c4cd63cb1556";
+			"a9655729578d847d323a32c904c70d10baee9102";
 		constexpr std::string_view RESOURCE_BINDING_HASH =
 			"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c";
 		constexpr std::string_view INPUT_ARTIFACTS_ORDERED_SHA256 =
-			"938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa";
+			"da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6";
 		constexpr std::string_view RECONSTRUCTED_LINK_SHA256 =
-			"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2";
+			"a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2";
 		constexpr std::string_view RECEIPT_SELF_SHA256 =
-			"5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3";
+			"ebdd01e2815990308eb703abc4b73e4c99a051a2cb4ff36d553f9bc6e61ac240";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
-			"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94";
+			"5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836";
 		const bool bHistoricalOuter10 = Has_ExactOrderedKeys(Value, {
 			"payloadKind", "effectAssetId", "artifactRevision",
 			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
@@ -321,7 +321,7 @@ namespace
 			iProgramVersion != Frozen.iProgramVersion ||
 			!Read_U32(*Link, "candidateByteCount", iCandidateByteCount) ||
 			Link->Find("candidateByteCount")->Was_FloatingPointToken() ||
-			iCandidateByteCount != 15'072'141u ||
+			iCandidateByteCount != 15'117'436u ||
 			CandidateUtf8->Get_String().size() != iCandidateByteCount ||
 			Frozen.strBuilderAuthorityCommitId != BuilderCommitId->Get_String() ||
 			Frozen.strBuilderAuthorityTreeId != BuilderTreeId->Get_String())
@@ -884,7 +884,7 @@ namespace
 			std::less<>>& OutResources, std::string& strOutError)
 	{
 		using namespace Client;
-		if (!Value.Is_Array() || Value.Get_Array().size() != 48u)
+		if (!Value.Is_Array() || Value.Get_Array().size() != 52u)
 		{
 			strOutError = "Render-resource textureResources denominator is invalid.";
 			return false;
@@ -918,44 +918,63 @@ namespace
 				Row, "ddsHeader", DATA_JSON_TYPE::OBJECT);
 			const DATA_JSON_VALUE* Srv = Required(
 				Row, "actualExpectedSrvDescriptor", DATA_JSON_TYPE::OBJECT);
-			if (!Read_StringExact(Row, "resourceAuthorityId",
-					Resource.strResourceAuthorityId) ||
-				!Is_StableId(Resource.strResourceAuthorityId) ||
-				!Read_U32(Row, "order", Resource.iOrder) ||
-				Resource.iOrder != Index ||
-				!Read_StringExact(Row, "runtimeAssetId",
-					Resource.strRuntimeAssetId) ||
-				!CEffectDocumentCodec::Is_SafeResourceAssetId(
-					Resource.strRuntimeAssetId) ||
-				!Read_StringArrayExact(Row, "candidateBindingIds",
-					CandidateBindingIds) || CandidateBindingIds.empty() ||
-				!Read_StringArrayExact(Row, "candidateBindingRowSha256",
-					CandidateBindingRowHashes, true) ||
-				!Read_U32(Row, "candidateBindingCount", iCandidateBindingCount) ||
-				iCandidateBindingCount != CandidateBindingIds.size() ||
-				iCandidateBindingCount != CandidateBindingRowHashes.size() ||
-				!Read_U64Exact(Row, "byteCount", Resource.iByteCount) ||
-				Resource.iByteCount <= 128u ||
-				!Read_ShaExact(Row, "rawSha256", Resource.strRawSha256) ||
-				nullptr == DdsHeader ||
-				!Validate_DdsHeader(*DdsHeader, Resource.iByteCount) ||
-				!Read_StringExact(Row, "actualCompressedFormatClassification",
-					Classification) ||
-				!Read_StringExact(Row, "colorSpacePolicy", ColorSpace) ||
-				nullptr == Srv || !Parse_DdsSrvIdentity(*Srv, Resource.ExpectedSrv) ||
-				ColorSpace != Resource.ExpectedSrv.strColorSpace ||
-				!Read_StringExact(Row, "resourceIdentityBasis", IdentityBasis) ||
-				IdentityBasis != "CANONICAL_MAIN_RESOURCES_BYTE_EXACT_DDS" ||
-				!Read_BooleanExact(Row, "absolutePathRecorded", false) ||
-				!Read_BooleanExact(Row, "actionTimeIoAllowed", false) ||
-				!Validate_FailClosedAuthorityRow(Row) ||
-				!Read_ShaExact(Row, "rowSha256", Resource.strRowSha256) ||
-				!Staged.emplace(Resource.strResourceAuthorityId,
-					std::move(Resource)).second)
+			const auto FailRow = [&](const std::string_view Field)
 			{
-				strOutError = "Render-resource textureResources row is invalid.";
+				strOutError = "Render-resource textureResources row " +
+					std::to_string(Index) + " has an invalid " +
+					std::string(Field) + ".";
 				return false;
-			}
+			};
+			if (!Read_StringExact(Row, "resourceAuthorityId",
+				Resource.strResourceAuthorityId) ||
+				!Is_StableId(Resource.strResourceAuthorityId))
+				return FailRow("resourceAuthorityId");
+			if (!Read_U32(Row, "order", Resource.iOrder) ||
+				Resource.iOrder != Index)
+				return FailRow("order");
+			if (!Read_StringExact(Row, "runtimeAssetId",
+				Resource.strRuntimeAssetId) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Resource.strRuntimeAssetId))
+				return FailRow("runtimeAssetId");
+			if (!Read_StringArrayExact(Row, "candidateBindingIds",
+				CandidateBindingIds) || CandidateBindingIds.empty())
+				return FailRow("candidateBindingIds");
+			if (!Read_StringArrayExact(Row, "candidateBindingRowSha256",
+				CandidateBindingRowHashes, true))
+				return FailRow("candidateBindingRowSha256");
+			if (!Read_U32(Row, "candidateBindingCount", iCandidateBindingCount) ||
+				iCandidateBindingCount != CandidateBindingIds.size() ||
+				iCandidateBindingCount != CandidateBindingRowHashes.size())
+				return FailRow("candidateBindingCount");
+			if (!Read_U64Exact(Row, "byteCount", Resource.iByteCount) ||
+				Resource.iByteCount <= 128u)
+				return FailRow("byteCount");
+			if (!Read_ShaExact(Row, "rawSha256", Resource.strRawSha256))
+				return FailRow("rawSha256");
+			if (nullptr == DdsHeader ||
+				!Validate_DdsHeader(*DdsHeader, Resource.iByteCount))
+				return FailRow("ddsHeader");
+			if (!Read_StringExact(Row, "actualCompressedFormatClassification",
+				Classification))
+				return FailRow("actualCompressedFormatClassification");
+			if (!Read_StringExact(Row, "colorSpacePolicy", ColorSpace))
+				return FailRow("colorSpacePolicy");
+			if (nullptr == Srv || !Parse_DdsSrvIdentity(*Srv, Resource.ExpectedSrv) ||
+				ColorSpace != Resource.ExpectedSrv.strColorSpace)
+				return FailRow("actualExpectedSrvDescriptor");
+			if (!Read_StringExact(Row, "resourceIdentityBasis", IdentityBasis) ||
+				IdentityBasis != "CANONICAL_MAIN_RESOURCES_BYTE_EXACT_DDS")
+				return FailRow("resourceIdentityBasis");
+			if (!Read_BooleanExact(Row, "absolutePathRecorded", false) ||
+				!Read_BooleanExact(Row, "actionTimeIoAllowed", false) ||
+				!Validate_FailClosedAuthorityRow(Row))
+				return FailRow("admission flags");
+			if (!Read_ShaExact(Row, "rowSha256", Resource.strRowSha256))
+				return FailRow("rowSha256");
+			if (!Staged.emplace(Resource.strResourceAuthorityId,
+				std::move(Resource)).second)
+				return FailRow("duplicate resourceAuthorityId");
 		}
 		OutResources = std::move(Staged);
 		return true;
@@ -1003,7 +1022,7 @@ namespace
 			std::less<>>& OutBindings, std::string& strOutError)
 	{
 		using namespace Client;
-		if (!Value.Is_Array() || Value.Get_Array().size() != 72u)
+		if (!Value.Is_Array() || Value.Get_Array().size() != 77u)
 		{
 			strOutError = "Render-resource textureBindings denominator is invalid.";
 			return false;
@@ -1961,18 +1980,11 @@ namespace
 			"parserIntegrationTreeId", "parserFiles", "sourceExact",
 			"runtimeExecutionAdmission", "product" }) ||
 			nullptr == Publisher || !Has_ExactOrderedKeys(*Publisher, {
-			"path", "publisherIntegrationCommitId", "publisherOriginalCommitId",
-			"publisherTreeId", "trackedBlobId", "currentCheckoutByteCount",
-			"currentCheckoutRawSha256", "currentCheckoutCarriageReturnCount",
-			"schema", "formatVersion", "componentCount", "effectCount",
-			"artist31470EffectIndex", "outerKeyCount", "outerKeyOrder",
-			"outerCanonicalSha256", "linkKeyCount", "linkKeyOrder",
-			"linkCanonicalSha256", "receiptKeyCount", "receiptKeyOrder",
-			"receiptSelfSha256", "outerPublishReceiptSha256",
-			"toolDependencyCount", "toolDependencies", "publicValidator",
-			"payloadKind", "effectAssetId", "artifactRevision",
-			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
-			"productAdmission" }))
+			"authorityScope", "runtimeCatalogBytesRead",
+			"completedRuntimeEntryRead", "renderResourceSidecarRead",
+			"selfReferenceExcluded", "projectionKeyCount",
+			"projectionKeyOrder", "projectionCanonicalSha256",
+			"baseProjection", "publicValidator" }))
 		{
 			return false;
 		}
@@ -1982,69 +1994,161 @@ namespace
 		std::string RawSha;
 		std::string ProgramId;
 		std::string ProgramSha;
+		std::string Text;
 		if (!Read_U64Exact(*Program, "rawByteCount", iRawBytes) ||
-			iRawBytes != 15'072'141u ||
+			iRawBytes != 15'117'436u ||
+			!Read_StringExact(*Program, "path", Text) || Text !=
+				"Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json" ||
+			!Read_StringExact(*Program, "candidateBuilderCommitId", Text) ||
+			Text != "31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
+			!Read_StringExact(*Program, "candidateBuilderTreeId", Text) ||
+			Text != "6d8853d989bd71a988eaebf254398ae08599ad0d" ||
+			!Read_StringExact(*Program, "candidateBlobIdAtIntegration", Text) ||
+			Text != "a9655729578d847d323a32c904c70d10baee9102" ||
 			!Read_ShaExact(*Program, "rawSha256", RawSha) || RawSha !=
-				"72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849" ||
+				"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" ||
 			!Read_StringExact(*Program, "programId", ProgramId) || ProgramId !=
 				"effect.artist.skill.31470.reconstructed-approved-v1" ||
 			!Read_U32(*Program, "programVersion", iProgramVersion) ||
 			iProgramVersion != 1u ||
 			!Read_ShaExact(*Program, "programSha256", ProgramSha) || ProgramSha !=
-				"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b" ||
+				"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" ||
 			!Read_U32(*Program, "inputArtifactCount", iInputArtifactCount) ||
 			iInputArtifactCount != 13u ||
+			!Read_StringExact(*Program, "inputArtifactsOrderedSha256", Text) ||
+			Text != "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6" ||
+			!Read_StringExact(*Program, "parserIntegrationCommitId", Text) ||
+			Text != "fee93749a50938249ec13ea2542bfabd73f1db90" ||
+			!Read_StringExact(*Program, "parserIntegrationTreeId", Text) ||
+			Text != "2a8834a3f16bd526c882c28e147457fd045fd67c" ||
 			!Validate_FailClosedAuthorityRow(*Program))
 		{
 			return false;
 		}
-		uint32_t iFormatVersion = 0u;
-		uint32_t iOuterKeyCount = 0u;
-		uint32_t iLinkKeyCount = 0u;
-		uint32_t iReceiptKeyCount = 0u;
-		uint32_t iToolCount = 0u;
-		std::string Schema;
-		std::string OuterSha;
-		std::string LinkSha;
-		std::string ReceiptSelfSha;
-		std::string OuterReceiptSha;
-		std::string PayloadKind;
-		std::string EffectId;
-		std::string CompilerRevision;
-		return Read_StringExact(*Publisher, "schema", Schema) &&
-			Schema == "lostark.effect-runtime-catalog" &&
-			Read_U32(*Publisher, "formatVersion", iFormatVersion) &&
-			iFormatVersion == 3u &&
-			Read_U32(*Publisher, "outerKeyCount", iOuterKeyCount) &&
-			iOuterKeyCount == 10u &&
-			Read_ShaExact(*Publisher, "outerCanonicalSha256", OuterSha) &&
-			OuterSha ==
-				"e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2" &&
-			Read_U32(*Publisher, "linkKeyCount", iLinkKeyCount) &&
-			iLinkKeyCount == 16u &&
-			Read_ShaExact(*Publisher, "linkCanonicalSha256", LinkSha) &&
-			LinkSha ==
-				"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2" &&
-			Read_U32(*Publisher, "receiptKeyCount", iReceiptKeyCount) &&
-			iReceiptKeyCount == 25u &&
-			Read_ShaExact(*Publisher, "receiptSelfSha256", ReceiptSelfSha) &&
-			ReceiptSelfSha ==
-				"5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3" &&
-			Read_ShaExact(*Publisher, "outerPublishReceiptSha256",
-				OuterReceiptSha) && OuterReceiptSha ==
-				"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94" &&
-			Read_U32(*Publisher, "toolDependencyCount", iToolCount) &&
-			iToolCount == 3u &&
-			Read_StringExact(*Publisher, "payloadKind", PayloadKind) &&
-			PayloadKind == "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM" &&
-			Read_StringExact(*Publisher, "effectAssetId", EffectId) &&
-			EffectId == "effect.artist.skill.31470" &&
-			Read_StringExact(*Publisher, "compilerRevision", CompilerRevision) &&
-			CompilerRevision ==
-				"artist31470.reconstructed-runtime-program-link-v1" &&
-			Read_BooleanExact(*Publisher, "sourceExact", false) &&
-			Read_BooleanExact(*Publisher, "runtimeExecutionAdmission", false) &&
-			Read_BooleanExact(*Publisher, "productAdmission", false);
+		const DATA_JSON_VALUE* ParserFiles = Required(
+			*Program, "parserFiles", DATA_JSON_TYPE::ARRAY);
+		constexpr std::array<std::string_view, 2u> PARSER_PATHS{
+			"Client/Public/Effect_RuntimeAuthority.h",
+			"Client/Private/Effect_RuntimeAuthority.cpp" };
+		constexpr std::array<std::string_view, 2u> PARSER_BLOBS{
+			"ad35f6921d290492a87ac7303dc599c9a341e4ee",
+			"91ce38b9c0429affff0f9dbc9ce1c593e8384af2" };
+		constexpr std::array<std::string_view, 2u> PARSER_TEXT_SHA256{
+			"fbc23cd08712d549a08f2c95113e3a3117a3c8d7733ec2a5580d144ee898ca6b",
+			"715a3990fc467c09e9a4e8a5ccd8515b54c2299c8e40f9f99e42d16d355b0e1c" };
+		if (nullptr == ParserFiles ||
+			ParserFiles->Get_Array().size() != PARSER_PATHS.size())
+		{
+			return false;
+		}
+		for (size_t Index = 0u; Index < PARSER_PATHS.size(); ++Index)
+		{
+			const DATA_JSON_VALUE& File = ParserFiles->Get_Array()[Index];
+			std::string Path;
+			std::string Blob;
+			std::string TextSha;
+			if (!Has_ExactOrderedKeys(File, {
+					"path", "parserIntegrationBlobId", "currentTrackedTextSha256" }) ||
+				!Read_StringExact(File, "path", Path) ||
+				Path != PARSER_PATHS[Index] ||
+				!Read_StringExact(File, "parserIntegrationBlobId", Blob) ||
+				Blob != PARSER_BLOBS[Index] ||
+				!Read_ShaExact(File, "currentTrackedTextSha256", TextSha) ||
+				TextSha != PARSER_TEXT_SHA256[Index])
+			{
+				return false;
+			}
+		}
+
+		const DATA_JSON_VALUE* ProjectionOrder = Required(
+			*Publisher, "projectionKeyOrder", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* BaseProjection = Required(
+			*Publisher, "baseProjection", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* PublicValidator = Required(
+			*Publisher, "publicValidator", DATA_JSON_TYPE::OBJECT);
+		constexpr std::array<std::string_view, 17u> PROJECTION_KEYS{
+			"schema", "formatVersion", "projectionRole", "payloadKind",
+			"effectAssetId", "artifactRevision", "compilerRevision", "programId",
+			"programVersion", "programSha256", "candidateRawSha256",
+			"candidateByteCount", "inputArtifactCount",
+			"inputArtifactsOrderedSha256", "sourceExact",
+			"runtimeExecutionAdmission", "productAdmission" };
+		if (nullptr == ProjectionOrder || nullptr == BaseProjection ||
+			nullptr == PublicValidator ||
+			ProjectionOrder->Get_Array().size() != PROJECTION_KEYS.size() ||
+			!Has_ExactOrderedKeys(*BaseProjection, {
+				"schema", "formatVersion", "projectionRole", "payloadKind",
+				"effectAssetId", "artifactRevision", "compilerRevision",
+				"programId", "programVersion", "programSha256",
+				"candidateRawSha256", "candidateByteCount", "inputArtifactCount",
+				"inputArtifactsOrderedSha256", "sourceExact",
+				"runtimeExecutionAdmission", "productAdmission" }) ||
+			!Has_ExactOrderedKeys(*PublicValidator,
+				{ "path", "builderFunction", "validatorFunction" }))
+		{
+			return false;
+		}
+		for (size_t Index = 0u; Index < PROJECTION_KEYS.size(); ++Index)
+		{
+			const DATA_JSON_VALUE& Key = ProjectionOrder->Get_Array()[Index];
+			if (!Key.Is_String() || Key.Get_String() != PROJECTION_KEYS[Index])
+				return false;
+		}
+
+		uint32_t iProjectionKeyCount = 0u;
+		uint32_t iBaseFormatVersion = 0u;
+		uint32_t iBaseArtifactRevision = 0u;
+		uint32_t iBaseProgramVersion = 0u;
+		uint32_t iBaseInputCount = 0u;
+		uint64_t iBaseCandidateBytes = 0u;
+		std::string Sha;
+		return Read_StringExact(*Publisher, "authorityScope", Text) &&
+			Text == "BASE_RUNTIME_ENTRY_PROJECTION_BEFORE_RENDER_RESOURCE_SIDECAR" &&
+			Read_BooleanExact(*Publisher, "runtimeCatalogBytesRead", false) &&
+			Read_BooleanExact(*Publisher, "completedRuntimeEntryRead", false) &&
+			Read_BooleanExact(*Publisher, "renderResourceSidecarRead", false) &&
+			Read_BooleanExact(*Publisher, "selfReferenceExcluded", true) &&
+			Read_U32(*Publisher, "projectionKeyCount", iProjectionKeyCount) &&
+			iProjectionKeyCount == PROJECTION_KEYS.size() &&
+			Read_ShaExact(*Publisher, "projectionCanonicalSha256", Sha) &&
+			Sha == "e7a630b9d94dfb177b3f678561865bd9e7bad2dd3f1eb082656b79e5c3af3190" &&
+			Read_StringExact(*BaseProjection, "schema", Text) &&
+			Text == "lostark.effect-reconstructed-base-authority-projection" &&
+			Read_U32(*BaseProjection, "formatVersion", iBaseFormatVersion) &&
+			iBaseFormatVersion == 1u &&
+			Read_StringExact(*BaseProjection, "projectionRole", Text) &&
+			Text == "PROGRAM_TO_BASE_ENTRY_BEFORE_RENDER_RESOURCE_SIDECAR" &&
+			Read_StringExact(*BaseProjection, "payloadKind", Text) &&
+			Text == "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM" &&
+			Read_StringExact(*BaseProjection, "effectAssetId", Text) &&
+			Text == "effect.artist.skill.31470" &&
+			Read_U32(*BaseProjection, "artifactRevision", iBaseArtifactRevision) &&
+			iBaseArtifactRevision == 1u &&
+			Read_StringExact(*BaseProjection, "compilerRevision", Text) &&
+			Text == "artist31470.reconstructed-runtime-program-link-v1" &&
+			Read_StringExact(*BaseProjection, "programId", Text) &&
+			Text == "effect.artist.skill.31470.reconstructed-approved-v1" &&
+			Read_U32(*BaseProjection, "programVersion", iBaseProgramVersion) &&
+			iBaseProgramVersion == 1u &&
+			Read_ShaExact(*BaseProjection, "programSha256", Sha) &&
+			Sha == "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" &&
+			Read_ShaExact(*BaseProjection, "candidateRawSha256", Sha) &&
+			Sha == "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" &&
+			Read_U64Exact(*BaseProjection, "candidateByteCount",
+				iBaseCandidateBytes) && iBaseCandidateBytes == 15'117'436u &&
+			Read_U32(*BaseProjection, "inputArtifactCount", iBaseInputCount) &&
+			iBaseInputCount == 13u &&
+			Read_ShaExact(*BaseProjection, "inputArtifactsOrderedSha256", Sha) &&
+			Sha == "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6" &&
+			Read_BooleanExact(*BaseProjection, "sourceExact", false) &&
+			Read_BooleanExact(*BaseProjection, "runtimeExecutionAdmission", false) &&
+			Read_BooleanExact(*BaseProjection, "productAdmission", false) &&
+			Read_StringExact(*PublicValidator, "path", Text) &&
+			Text == "Tools/EffectPipeline/build_effect_derived_artifact.py" &&
+			Read_StringExact(*PublicValidator, "builderFunction", Text) &&
+			Text == "make_reconstructed_base_authority_projection" &&
+			Read_StringExact(*PublicValidator, "validatorFunction", Text) &&
+			Text == "validate_reconstructed_base_authority_projection";
 	}
 
 	bool Parse_ReconstructedRenderResourceSidecar(
@@ -2058,12 +2162,12 @@ namespace
 		constexpr std::string_view AUTHORITY_ID =
 			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
 		constexpr std::string_view SIDECAR_RAW_SHA256 =
-			"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff";
+			"1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660";
 		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
-			"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a";
+			"6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4";
 		constexpr std::string_view SIDECAR_DECISION_SHA256 =
-			"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412";
-		if (Text.size() != 746'788u ||
+			"fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de";
+		if (Text.size() != 774'127u ||
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Text) !=
 				SIDECAR_RAW_SHA256)
 		{
@@ -2214,9 +2318,9 @@ namespace
 		uint32_t iRasterCount = 0u;
 		uint32_t iDepthCount = 0u;
 		if (!Read_U32(*Summary, "textureResourceCount", iTextureResourceCount) ||
-			iTextureResourceCount != 48u ||
+			iTextureResourceCount != 52u ||
 			!Read_U32(*Summary, "textureBindingCount", iTextureBindingCount) ||
-			iTextureBindingCount != 72u ||
+			iTextureBindingCount != 77u ||
 			!Read_U32(*Summary, "neutralProviderCount", iNeutralProviderCount) ||
 			iNeutralProviderCount != 4u ||
 			!Read_U32(*Summary, "recipeTextureBindingCount", iRecipeCount) ||
@@ -2247,7 +2351,7 @@ namespace
 		Staged.Identity.strProgramId =
 			"effect.artist.skill.31470.reconstructed-approved-v1";
 		Staged.Identity.strProgramSha256 =
-			"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b";
+			"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
 		Staged.Identity.strSidecarDecisionProjectionSha256 = DecisionSha;
 		Staged.Identity.strSidecarReceiptSha256 = ReceiptSha;
 		Staged.Identity.strSidecarRawSha256 = std::string(SIDECAR_RAW_SHA256);
@@ -2300,29 +2404,29 @@ namespace
 		constexpr std::string_view PROGRAM_ID =
 			"effect.artist.skill.31470.reconstructed-approved-v1";
 		constexpr std::string_view PROGRAM_SHA256 =
-			"618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b";
+			"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
 		constexpr std::string_view BASE_ENTRY_SHA256 =
-			"e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2";
+			"1536d7b780f6787c624bbad1150889fe7f63e78ede91067029856b07b9718d02";
 		constexpr std::string_view BASE_LINK_SHA256 =
-			"74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2";
+			"a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2";
 		constexpr std::string_view BASE_RECEIPT_SHA256 =
-			"92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94";
+			"5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836";
 		constexpr std::string_view SIDECAR_SCHEMA =
 			"lostark.artist-31470-reconstructed-render-resource-authority-receipt";
 		constexpr std::string_view SIDECAR_AUTHORITY_ID =
 			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
 		constexpr std::string_view SIDECAR_DECISION_SHA256 =
-			"4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412";
+			"fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de";
 		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
-			"bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a";
+			"6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4";
 		constexpr std::string_view SIDECAR_RAW_SHA256 =
-			"bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff";
+			"1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660";
 		constexpr std::string_view AUTHORITY_LINK_SHA256 =
-			"8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e";
+			"1706bb76180d3650c043db59b4eb09291fde3b7c3a5884675270a4f887bbb16b";
 		constexpr std::string_view RECEIPT_SELF_SHA256 =
-			"815418a98fbf84a00ae172098a57470b25fac6b5ddfb9836d38dea25db3dafbd";
+			"63d7107714b6eb812f709f6d97876665b4929ef51785dd50cc59eb3015d3601c";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
-			"37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740";
+			"01cd26412754ffd8e7acb4e7c1fe4280ec2dfab65077a664c86eac6a415b8541";
 
 		const DATA_JSON_VALUE* Link = Required(
 			Value, "reconstructedRenderResourceAuthority", DATA_JSON_TYPE::OBJECT);
@@ -2374,7 +2478,7 @@ namespace
 			!LinkStringEquals("sidecarReceiptSha256", SIDECAR_RECEIPT_SHA256) ||
 			!LinkStringEquals("sidecarRawSha256", SIDECAR_RAW_SHA256) ||
 			!Read_U64Exact(*Link, "sidecarByteCount", iSidecarByteCount) ||
-			iSidecarByteCount != 746'788u ||
+			iSidecarByteCount != 774'127u ||
 			!Read_BooleanExact(*Link, "sourceExact", false) ||
 			!Read_BooleanExact(*Link, "runtimeExecutionAdmission", false) ||
 			!Read_BooleanExact(*Link, "executeAdmission", false) ||
@@ -2486,9 +2590,9 @@ namespace
 			"Tools/EffectPipeline/build_effect_derived_artifact.py",
 			"Tools/EffectPipeline/Publish-Effects.ps1" };
 		constexpr std::array<std::string_view, 3u> TOOL_SHA256{
-			"74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef",
-			"508187b5b905ed714af7c1d18c572f07770a0011b07527e7e16fd61217797e6a",
-			"2a2e4bc7fd79164ebb578c7f8f531e7afae7c1f30e5f0d57d3e316bea2fd7922" };
+			"3c92bd9c0f5cda40269acd74fcad8013d3993f492dd53d0e98523e01784f226f",
+			"fd664af8d5ea58ef59d68319d23ca84ee7faf29465adce9a3af8c213bfb4a4e6",
+			"f0196a52c55939e681c6236789d8a0ca006138fe9173a66e95b26ca2174845e8" };
 		if (nullptr == Tools || Tools->Get_Array().size() != TOOL_ROLES.size())
 		{
 			strOutError =

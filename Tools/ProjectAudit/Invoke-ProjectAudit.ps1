@@ -1550,6 +1550,144 @@ try {
 	Add-Check 'effect.artist-31470-shader-cache-oracle' `
 		$artistShaderCachePassed `
 		$artistShaderCacheDetail
+	$artistMaterialNativeResourcePassed = $false
+	$artistMaterialNativeResourceDetail = ''
+	try {
+		$artistMaterialNativeResourceDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialNativeResource.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialNativeResourcePassed =
+			$artistMaterialNativeResourceDetail -match
+			'PASS: Artist F 31470 Material native resource mode=shallow families=23 textures=64/55 exact-bound=17 artist-dds=34/55 lookups=4/7 effective=3 replaced=4 identity-override=1 main-dissolve=2 lookup=0 delta=0'
+	}
+	catch {
+		$artistMaterialNativeResourceDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-native-resource' `
+		$artistMaterialNativeResourcePassed `
+		$artistMaterialNativeResourceDetail
+	$artistMainShaderMapIdentityPassed = $false
+	$artistMainShaderMapIdentityDetail = ''
+	try {
+		$artistMainShaderMapIdentityDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MainShaderMapIdentity.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMainShaderMapIdentityPassed =
+			$artistMainShaderMapIdentityDetail -match
+			'PASS: Artist F 31470 main ShaderMap identity mode=shallow families=2 occurrences=3 key=FStaticParameterSet platform=4 map-end=25/25 join=0 dxbc=0 hlsl=false visual=false'
+	}
+	catch {
+		$artistMainShaderMapIdentityDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-main-shader-map-identity' `
+		$artistMainShaderMapIdentityPassed `
+		$artistMainShaderMapIdentityDetail
+	$artistMainOriginalDxbcPassed = $false
+	$artistMainOriginalDxbcDetail = ''
+	try {
+		$artistMainOriginalDxbcDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MainOriginalDxbcReplay.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMainOriginalDxbcPassed =
+			$artistMainOriginalDxbcDetail -match
+			'PASS: Artist F 31470 main original DXBC mode=shallow shaders=2 cases=21 candidate=true occurrence=false hlsl=false visual=false'
+	}
+	catch {
+		$artistMainOriginalDxbcDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-main-original-dxbc-replay' `
+		$artistMainOriginalDxbcPassed `
+		$artistMainOriginalDxbcDetail
+	$artistMainRuntimeSourceReplayPassed = $false
+	$artistMainRuntimeSourceReplayDetail = ''
+	try {
+		$artistMainRuntimeSourceReplayDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MainRuntimeSourceReplay.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMainRuntimeSourceReplayPassed =
+			$artistMainRuntimeSourceReplayDetail -match
+			'Artist 31470 main runtime source replay audit PASS: mode=shallow product=false visual=false'
+	}
+	catch {
+		$artistMainRuntimeSourceReplayDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-main-runtime-source-replay' `
+		$artistMainRuntimeSourceReplayPassed `
+		$artistMainRuntimeSourceReplayDetail
+	$artistWarpEngineStruct = Get-Content -LiteralPath `
+		'.\Engine\Public\Engine_Struct.h' -Raw
+	$artistWarpEngineMacro = Get-Content -LiteralPath `
+		'.\Engine\Public\Engine_Macro.h' -Raw
+	$artistWarpGraphicDevice = Get-Content -LiteralPath `
+		'.\Engine\Private\Graphic_Device.cpp' -Raw
+	$artistWarpGameInstance = Get-Content -LiteralPath `
+		'.\Engine\Private\GameInstance.cpp' -Raw
+	$artistWarpHarness = Get-Content -LiteralPath `
+		'.\Tools\ClientFrontendHarness\Private\ClientFrontendHarness.cpp' -Raw
+	$artistWarpMainApp = Get-Content -LiteralPath `
+		'.\Client\Private\MainApp.cpp' -Raw
+	$artistWarpRegression = Get-Content -LiteralPath `
+		'.\Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
+	Add-Check 'effect.artist-31470-main-warp-first-draw-contract' (
+		$artistWarpEngineStruct -match
+			'D3D_DRIVER_TYPE\s+eDriverType\s*=\s*D3D_DRIVER_TYPE_HARDWARE' -and
+		$artistWarpEngineStruct -match
+			'bool_t\s+bNonInteractiveErrors\s*=\s*false' -and
+		$artistWarpEngineMacro -match
+			'MSG_BOX\(_message\)[\s\S]{0,100}Show_EngineMessage' -and
+		$artistWarpGraphicDevice -match
+			'eDriverType\s*!=\s*D3D_DRIVER_TYPE_HARDWARE[\s\S]{0,100}eDriverType\s*!=\s*D3D_DRIVER_TYPE_WARP' -and
+		$artistWarpGraphicDevice -match
+			'D3D11CreateDevice\(nullptr,\s*eDriverType' -and
+		$artistWarpGraphicDevice -notmatch
+			'MSG_BOX\("Failed to Created : CGraphic_Device"\)' -and
+		$artistWarpGraphicDevice -match
+			'if \(nullptr != m_pDeviceContext\)[\s\S]{0,100}ClearState\(\)' -and
+		$artistWarpGameInstance -match
+			'const auto FailInitialization[\s\S]{0,300}Release_Engine\(\)[\s\S]{0,200}pOutDevice\.Reset\(\)[\s\S]{0,100}pOutContext\.Reset\(\)' -and
+		$artistWarpGameInstance -match
+			'if \(nullptr != m_pGraphic_Device\)[\s\S]{0,100}m_pGraphic_Device->Shutdown\(\)' -and
+		$artistWarpGameInstance -match
+			'm_pShadow\.reset\(\)[\s\S]{0,100}m_pPicking\.reset\(\)[\s\S]{0,100}m_pTarget_Manager\.reset\(\)' -and
+		$artistWarpGameInstance -match
+			'Set_NonInteractiveErrorMode\(EngineDesc\.bNonInteractiveErrors\)' -and
+		$artistWarpGameInstance -match
+			'if \(Is_NonInteractiveErrorMode\(\)\)[\s\S]{0,200}OutputDebugStringW[\s\S]{0,200}return IDOK[\s\S]{0,200}MessageBoxW' -and
+		$artistWarpMainApp -notmatch
+			'D3D_DRIVER_TYPE_WARP' -and
+		$artistWarpMainApp -notmatch
+			'bNonInteractiveErrors\s*=\s*true' -and
+		$artistWarpHarness -match
+			'Desc\.eDriverType\s*=\s*D3D_DRIVER_TYPE_WARP' -and
+		$artistWarpHarness -match
+			'Desc\.bNonInteractiveErrors\s*=\s*true' -and
+		$artistWarpHarness -match
+			'SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors\(true\)[\s\S]{0,1000}Test_Artist31470CatalogRenderResourceAuthority' -and
+		$artistWarpHarness -match
+			'AdapterDesc\.VendorId\s*!=\s*0x1414u' -and
+		$artistWarpHarness -match
+			'AdapterDesc\.DeviceId\s*!=\s*0x008cu' -and
+		$artistWarpHarness -match
+			'Resolve_ClientWorkingDirectory\(\)' -and
+		$artistWarpRegression -match
+			'--effect-reconstructed-gpu-material\s+\$effectCatalog'
+	) 'production defaults to interactive hardware; initialization rolls back safely; the D/R first-draw harness pins noninteractive Microsoft WARP and Client/Default'
+	$artistNativeBaseTexturesPassed = $false
+	$artistNativeBaseTexturesDetail = ''
+	try {
+		$artistNativeBaseTexturesDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470NativeBaseTextures.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistNativeBaseTexturesPassed =
+			$artistNativeBaseTexturesDetail -match
+			'PASS: Artist F 31470 native base textures mode=shallow packages=2 assets=4 fresh-dds=4 active-effective=0 runtime-binding=0 product=0'
+	}
+	catch {
+		$artistNativeBaseTexturesDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-native-base-textures' `
+		$artistNativeBaseTexturesPassed `
+		$artistNativeBaseTexturesDetail
 	$artistMaterialRuntimePassed = $false
 	$artistMaterialRuntimeDetail = ''
 	try {

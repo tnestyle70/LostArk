@@ -6,8 +6,10 @@
 #include "Engine_Defines.h"
 
 #include <memory>
+#include <span>
 #include <string>
 #include <cstdint>
+#include <vector>
 
 namespace Engine
 {
@@ -18,6 +20,31 @@ namespace Client
 {
 
 class CCharacter;
+
+class CAnimationHistoricalPoseBinding final
+{
+public:
+	bool_t Is_Valid() const { return !m_Model.expired(); }
+	size_t Get_BoneCount() const { return m_BoneIndices.size(); }
+	uint32_t Get_AnimationIndex() const { return m_iAnimationIndex; }
+	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
+
+private:
+	friend class CAnimationTargetService;
+	std::weak_ptr<Engine::CModel> m_Model;
+	std::vector<uint32_t> m_BoneIndices;
+	uint64_t m_iTargetGeneration = 0u;
+	uint32_t m_iAnimationIndex = UINT32_MAX;
+	f32_t m_fTickRate = 0.f;
+	f32_t m_fDurationTicks = 0.f;
+	f32_t m_fDurationSeconds = 0.f;
+};
+
+struct ANIMATION_HISTORICAL_POSE_SAMPLE final
+{
+	float4x4_t RootWorld{};
+	std::vector<float4x4_t> BoneCombinedMatrices;
+};
 
 // The active scene publishes an editable character. Animation tooling consumes
 // this contract and never searches a level/layer/part/index by convention.
@@ -58,6 +85,20 @@ public:
 	static bool_t Resolve_AnchorTransform(
 		const char_t* pAnchorSlotId,
 		float4x4_t* pOut);
+
+	/* Pins one target generation, current clip and ordered bone-name list.  The
+	   resulting binding samples clip-local bone time without seeking the live
+	   model. RootWorld is the current resolved actor/preview root at call time;
+	   this contract does not fabricate historical moving-actor root poses. */
+	static bool_t Prepare_HistoricalPoseBinding(
+		uint64_t iExpectedTargetGeneration,
+		uint32_t iExpectedAnimationIndex,
+		std::span<const std::string> BoneNames,
+		CAnimationHistoricalPoseBinding& OutBinding);
+	static bool_t Sample_HistoricalPose(
+		const CAnimationHistoricalPoseBinding& Binding,
+		f32_t fAnimationLocalTimeSeconds,
+		ANIMATION_HISTORICAL_POSE_SAMPLE& OutSample);
 
 private:
 	static std::weak_ptr<CCharacter> s_Target;

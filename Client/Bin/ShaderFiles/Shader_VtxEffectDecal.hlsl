@@ -1,4 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
+#include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_Artist31470Active022DecalMaterial.hlsli"
 
 float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
@@ -49,6 +51,20 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     const float2 decalUV = float2(
         local.x / g_DecalSize.x + 0.5f,
         0.5f - local.z / g_DecalSize.y);
+    if (0u != g_RuntimeMaterialV2Enabled)
+    {
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_ACTIVE022_DECAL)
+        {
+            return Shade_Artist31470RuntimeMaterialV2Active022Decal(
+                decalUV * g_UVScale + g_UVOffset,
+                g_ColorMultiply + g_ColorOffset);
+        }
+
+        EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+        clip(-1.f);
+        return output;
+    }
     return Shade_Effect(
         decalUV * g_UVScale + g_UVOffset,
         float3(1.f, 1.f, 1.f),
