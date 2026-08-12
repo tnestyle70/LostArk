@@ -134,8 +134,8 @@ def policy_rows(receipt: dict[str, Any]) -> list[dict[str, Any]]:
         + list(receipt.get("staticPermutationPolicies") or [])
         + list(receipt.get("samplerPolicies") or [])
     )
-    require(len(rows) == 255, "policy row denominator changed")
-    require([row.get("policyOrder") for row in rows] == list(range(255)), "policy row order changed")
+    require(len(rows) == 260, "policy row denominator changed")
+    require([row.get("policyOrder") for row in rows] == list(range(260)), "policy row order changed")
     return rows
 
 
@@ -450,8 +450,8 @@ def run_warp_descriptor_oracle(receipt: dict[str, Any]) -> dict[str, Any]:
                     )
                 finally:
                     release(view)
-        require(len(results) == 107, "WARP descriptor row denominator changed")
-        require(len(srv_results) == 72, "WARP SRV color-space row denominator changed")
+        require(len(results) == 112, "WARP descriptor row denominator changed")
+        require(len(srv_results) == 77, "WARP SRV color-space row denominator changed")
         projection = json.dumps(results, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
         srv_projection = json.dumps(srv_results, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
         return {
@@ -507,7 +507,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     expected_warp = run_warp_descriptor_oracle(receipt)
     require(receipt["hlslVerification"] == expected_hlsl, "stored HLSL policy verification is stale")
     require(receipt["warpDescriptorVerification"] == expected_warp, "stored WARP descriptor verification is stale")
-    print("PASS: Artist F reconstructed Material policy WARP rows=255 descriptors=107 tolerance=0")
+    print("PASS: Artist F reconstructed Material policy WARP rows=260 descriptors=112 tolerance=0")
     return 0
 
 

@@ -428,10 +428,33 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
     }
     else if (5 == g_SourceMaterialProfile)
     {
-        const float4 noise = g_NoiseTexture.Sample(LinearSampler, uv);
-        shape = saturate(noise.a + noise.r);
+        const float2 noiseTiling = max(
+            abs(float2(g_SourceScalars0.z, g_SourceScalars1.x)),
+            float2(0.01f, 0.01f));
+        const float2 noiseUV = uv * noiseTiling +
+            float2(0.f, g_SourceScalars0.w * g_EffectLocalTime);
+        const float4 noise = g_NoiseTexture.Sample(LinearSampler, noiseUV);
+        const float noiseStrength =
+            min(abs(g_SourceScalars0.y), 1.f);
+        const float2 carrierUV = uv +
+            (noise.rg * 2.f - 1.f) * noiseStrength * 0.05f;
+        const float4 carrier = g_BaseTexture.Sample(
+            LinearSampler, carrierUV);
+        const float carrierMask = max(carrier.a, dot(
+            carrier.rgb, float3(0.299f, 0.587f, 0.114f)));
+        const float edgeDistance = min(
+            min(uv.x, 1.f - uv.x), min(uv.y, 1.f - uv.y));
+        shape = saturate(carrierMask * 2.f) *
+            saturate(edgeDistance * 64.f);
+        output.SceneColor.rgb = carrier.rgb;
+        // The cooked one-layer recipe carries a signed -40 scalar while the
+        // renderer color field is zero. Preserve that typed sign and use the
+        // same percent-to-runtime scale as the other reconstructed distortion
+        // profiles instead of silently producing a zero vector.
+        const float sourceDistortion = clamp(
+            g_SourceScalars0.x * 0.01f, -0.5f, 0.5f);
         output.Distortion.xy = (noise.rg * 2.f - 1.f) *
-            max(g_DistortionIntensity, 0.f) * distortionScale;
+            sourceDistortion * distortionScale;
     }
     else if (7 == g_SourceMaterialProfile)
     {
@@ -783,6 +806,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
 
     float4 color = (g_ColorMultiply + g_ColorOffset) * vertexColor;
     if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile &&
+        5 != g_SourceMaterialProfile &&
         7 != g_SourceMaterialProfile && 8 != g_SourceMaterialProfile &&
         9 != g_SourceMaterialProfile && 11 != g_SourceMaterialProfile &&
         12 != g_SourceMaterialProfile && 13 != g_SourceMaterialProfile)

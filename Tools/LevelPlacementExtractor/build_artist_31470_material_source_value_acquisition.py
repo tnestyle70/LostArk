@@ -333,6 +333,7 @@ ACQUISITION_SUMMARY_KEYS = {
     "staticNonoverrideSemanticsUnverifiedCount",
     "staticNoExactGuidEntryCount",
     "previousDirectUnprovenSamplerRowCount",
+    "newSelfDefaultSamplerRowCount",
     "previouslyAdmittedExactSamplerReauditCount",
     "previouslyAdmittedExactSamplerBlockedCount",
     "strictSamplerRowCount",
@@ -362,7 +363,7 @@ ACQUISITION_ADMISSION_KEYS = {
 ACQUISITION_BLOCKERS = [
     "RENDER_STATE_89_SOURCE_VALUES_UNRESOLVED",
     "STATIC_71_SOURCE_SELECTIONS_UNRESOLVED",
-    "STRICT_SAMPLER_72_FULL_DESCRIPTORS_UNRESOLVED",
+    "STRICT_SAMPLER_77_FULL_DESCRIPTORS_UNRESOLVED",
     "SOURCE_SPECIFIC_ACTUAL_OUTPUT_READINESS_ZERO",
     "FINAL_RUNTIME_CONSUMERS_NOT_IMPLEMENTED",
 ]
@@ -1244,7 +1245,14 @@ def build_sampler_rows(
                 "baselineKind": (
                     "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
                     if previous is not None
-                    else "PREVIOUSLY_BLOCKED_68"
+                    else (
+                        "NEW_SELF_DEFAULT_UNRESOLVED_5"
+                        if (baseline.get("bindingOriginAndOwner") or {}).get(
+                            "bindingOrigin"
+                        )
+                        == "SELF_DEFAULT"
+                        else "PREVIOUSLY_BLOCKED_68"
+                    )
                 ),
                 "matrixRowId": baseline["matrixRowId"],
                 "materialRecipeId": baseline["materialRecipeId"],
@@ -1264,7 +1272,7 @@ def build_sampler_rows(
                 "previousExactBinding": previous,
             }
         )
-    require(len(seeds) == 72, "strict sampler seed denominator changed")
+    require(len(seeds) == 77, "strict sampler seed denominator changed")
 
     texture_cache: dict[str, dict[str, Any]] = {}
     rows: list[dict[str, Any]] = []
@@ -1321,7 +1329,7 @@ def build_sampler_rows(
             ],
         }
         rows.append(row)
-    require(len(rows) == 72, "strict sampler denominator changed")
+    require(len(rows) == 77, "strict sampler denominator changed")
     return rows
 
 
@@ -1452,6 +1460,10 @@ def build_receipt(
             for row in static_rows
         ),
         "previousDirectUnprovenSamplerRowCount": 68,
+        "newSelfDefaultSamplerRowCount": sum(
+            row["baselineKind"] == "NEW_SELF_DEFAULT_UNRESOLVED_5"
+            for row in sampler_rows
+        ),
         "previouslyAdmittedExactSamplerReauditCount": len(exact4),
         "previouslyAdmittedExactSamplerBlockedCount": sum(
             row["strictReauditDecision"] == "BLOCKED" for row in exact4
@@ -1484,9 +1496,10 @@ def build_receipt(
         and summary["staticOverrideTrueSourceValueAcquiredCount"] == 23
         and summary["staticNonoverrideSemanticsUnverifiedCount"] == 43
         and summary["staticNoExactGuidEntryCount"] == 28
-        and summary["strictSamplerRowCount"] == 72
+        and summary["newSelfDefaultSamplerRowCount"] == 5
+        and summary["strictSamplerRowCount"] == 77
         and summary["previouslyAdmittedExactSamplerBlockedCount"] == 4
-        and summary["strictExecutionRowCount"] == 255
+        and summary["strictExecutionRowCount"] == 260
         and summary["strictExecutionReadyCount"] == 0,
         "source-value acquisition summary changed",
     )
@@ -1553,11 +1566,11 @@ def build_receipt(
         },
         "coordinatedCorrectiveRequirements": [
             {
-                "requirementId": "strict-sampler-denominator-72",
+                "requirementId": "strict-sampler-denominator-77",
                 "decision": "REQUIRED",
                 "baselineDirectUnproven": 68,
                 "previousExactReaudit": 4,
-                "strictDenominator": 72,
+                "strictDenominator": 77,
                 "bindingOriginCounts": {"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1},
                 "shared627ReceiptChangedHere": True,
             },
@@ -1603,7 +1616,7 @@ def build_receipt(
             "blockers": [
                 "RENDER_STATE_89_SOURCE_VALUES_UNRESOLVED",
                 "STATIC_71_SOURCE_SELECTIONS_UNRESOLVED",
-                "STRICT_SAMPLER_72_FULL_DESCRIPTORS_UNRESOLVED",
+                "STRICT_SAMPLER_77_FULL_DESCRIPTORS_UNRESOLVED",
                 "SOURCE_SPECIFIC_ACTUAL_OUTPUT_READINESS_ZERO",
                 "FINAL_RUNTIME_CONSUMERS_NOT_IMPLEMENTED",
             ],
@@ -1642,12 +1655,17 @@ def _strict_sampler_membership_from_contract(
                     "UNRESOLVED_SAMPLER_PROVENANCE",
                 }:
                     continue
-                if (
-                    source_section == "parentDefaults"
-                    and sampler.get("fidelity")
-                    != "UNRESOLVED_SAMPLER_PROVENANCE"
-                ):
-                    continue
+                if source_section == "parentDefaults":
+                    origin = field.get("bindingOrigin")
+                    fidelity = sampler.get("fidelity")
+                    if not (
+                        (
+                            origin == "PARENT_DEFAULT"
+                            and fidelity == "UNRESOLVED_SAMPLER_PROVENANCE"
+                        )
+                        or (origin == "SELF_DEFAULT" and fidelity == "UNRESOLVED")
+                    ):
+                        continue
                 membership.append(
                     {
                         "materialRecipeId": recipe_id,
@@ -2013,7 +2031,7 @@ def validate_receipt_semantics(
     require(
         len(render_rows) == 89
         and len(static_rows) == 94
-        and len(sampler_rows) == 72,
+        and len(sampler_rows) == 77,
         "source-value acquisition matrix denominator changed",
     )
     require(
@@ -2023,7 +2041,7 @@ def validate_receipt_semantics(
                 for row in render_rows + static_rows + sampler_rows
             }
         )
-        == 255,
+        == 260,
         "source-value acquisition matrix identity changed",
     )
     require(
@@ -2151,8 +2169,14 @@ def validate_receipt_semantics(
                 )
         expected_legacy = expected_exact4.get(row["fieldId"])
         if expected_legacy is None:
+            expected_baseline = (
+                "NEW_SELF_DEFAULT_UNRESOLVED_5"
+                if (row.get("bindingOriginAndOwner") or {}).get("bindingOrigin")
+                == "SELF_DEFAULT"
+                else "PREVIOUSLY_BLOCKED_68"
+            )
             require(
-                row.get("baselineKind") == "PREVIOUSLY_BLOCKED_68"
+                row.get("baselineKind") == expected_baseline
                 and row.get("previousAdmission") == "BLOCKED",
                 "strict sampler nonlegacy classification changed",
             )
@@ -2211,7 +2235,7 @@ def validate_receipt_semantics(
         and len(corrective) == 3
         and [row.get("requirementId") for row in corrective]
         == [
-            "strict-sampler-denominator-72",
+            "strict-sampler-denominator-77",
             "static-blanket-reason-retirement",
             "artist-resource-manifest-texture-selector",
         ]
@@ -2255,9 +2279,10 @@ def validate_receipt_semantics(
         and summary.get("previouslyAdmittedExactSamplerReauditCount") == 4
         and summary.get("previouslyAdmittedExactSamplerBlockedCount") == 4
         and summary.get("previousDirectUnprovenSamplerRowCount") == 68
-        and summary.get("strictSamplerRowCount") == 72
+        and summary.get("newSelfDefaultSamplerRowCount") == 5
+        and summary.get("strictSamplerRowCount") == 77
         and summary.get("strictSamplerSourceValueAcquiredCount") == 0
-        and summary.get("strictExecutionRowCount") == 255
+        and summary.get("strictExecutionRowCount") == 260
         and summary.get("strictExecutionReadyCount") == 0
         and summary.get("productCount") == 0
         and summary.get("valueProvenanceDelta")
@@ -2369,8 +2394,8 @@ def main(argv: list[str] | None = None) -> int:
             "Artist F Material source-value acquisition check: "
             f"render={checked['summary']['renderStateSourceValueAcquiredCount']}/89 "
             f"static={checked['summary']['staticOverrideTrueSourceValueAcquiredCount']}/94 "
-            f"sampler={checked['summary']['strictSamplerSourceValueAcquiredCount']}/72 "
-            "execution=0/255 product=false R2=NO-GO"
+            f"sampler={checked['summary']['strictSamplerSourceValueAcquiredCount']}/77 "
+            "execution=0/260 product=false R2=NO-GO"
         )
         return 0
     receipt = build_receipt(
@@ -2388,8 +2413,8 @@ def main(argv: list[str] | None = None) -> int:
     args.output.write_bytes(output_bytes(receipt))
     print(
         "Artist F Material source-value acquisition write: "
-        f"render=0/89 static=23/94 sampler=0/72 "
-        "execution=0/255 product=false R2=NO-GO"
+        f"render=0/89 static=23/94 sampler=0/77 "
+        "execution=0/260 product=false R2=NO-GO"
     )
     return 0
 

@@ -99,9 +99,9 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
     def test_checked_receipt_is_valid(self) -> None:
         self.validate(self.receipt)
         self.validate(self.receipt, require_approval=False)
-        self.assertEqual(self.receipt["summary"]["resolvedBindingRowCount"], 72)
+        self.assertEqual(self.receipt["summary"]["resolvedBindingRowCount"], 77)
         self.assertEqual(self.receipt["summary"]["unresolvedBindingRowCount"], 0)
-        self.assertEqual(self.receipt["summary"]["runtimeCookBindingRowCount"], 68)
+        self.assertEqual(self.receipt["summary"]["runtimeCookBindingRowCount"], 73)
         self.assertEqual(self.receipt["summary"]["deploymentBindingRowCount"], 4)
         self.assertFalse(self.receipt["admission"]["product"])
 
@@ -121,8 +121,8 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
         self.assertEqual(rebuilt, self.receipt)
 
     def test_exact_denominators_and_reverse_coverage(self) -> None:
-        self.assertEqual(len(self.receipt["materialTextureBindings"]), 72)
-        self.assertEqual(len(self.receipt["textureResources"]), 48)
+        self.assertEqual(len(self.receipt["materialTextureBindings"]), 77)
+        self.assertEqual(len(self.receipt["textureResources"]), 52)
         self.assertEqual(len(self.receipt["provisioningProposals"]), 4)
         self.assertEqual(
             {row["logicalTexturePath"] for row in self.receipt["textureResources"]},
@@ -130,7 +130,7 @@ class MaterialTextureRuntimeBindingTests(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(row["materialOccurrenceIds"]) for row in self.receipt["materialTextureBindings"]),
-            83,
+            94,
         )
 
     def test_four_exact_dds_rows_are_reconstructed_deployment_bound(self) -> None:

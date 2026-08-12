@@ -17,21 +17,21 @@
   },
   "sourceEvidence": {
     "runtimeOracle": {
-      "receiptSha256": "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6",
-      "trackedTextSha256": "58b06308713f87262a9a716e48fc29ba5137ab77507f0e9d3ee633938e5ddb34"
+      "receiptSha256": "8e96b8f725c708d87221fcd9e081122956da1208db09e4982d8483499cf719e1",
+      "trackedTextSha256": "72c23b0cdab0026a589b3e7ab10087c96d257d2670e89d8469ad9ac70206161c"
     },
     "sourceValueAcquisition": {
-      "receiptSha256": "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43",
-      "trackedTextSha256": "cfbf89625b612aa623aa47c0f7c85c721037a2856088a652a886b37c261bb40f"
+      "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+      "trackedTextSha256": "aa94cc621f6031aa38f85a6447e7b2bf4000dbfbd90d46a61e8c1524eb2fa0bc"
     },
     "typedMaterialContract": {
       "contractSha256": "638fae77c5805a8d33cacb69b5cdd810d40d2f304606dd56f970dd2504c1cfcb",
       "trackedTextSha256": "a8728231ae0df26c8e203064712154989f3d42fbe5e7eaafff3db81aecda97a5"
     },
-    "generatorTrackedTextSha256": "f1c42f550dfef0f1782773dc04852867413d6652873acf067f5d296c20fc1d93",
+    "generatorTrackedTextSha256": "652139a85da715a64cf10aa6c2a158a0455caba8bbcb98cb2ddcdd24585edc4d",
     "hlslTrackedTextSha256": "2901471f07495ff079c64ea8234ca30cd26300819d56760dbdeabae353c0b718",
-    "verifierTrackedTextSha256": "b264930b85d2f9274255f220745021c99882b334e96f3aa917e31e62ef2289b9",
-    "approvalTrackedTextSha256": "c3e35ff3f2b8675c14811f422a0435291a9c539d28b87cdc0fa548d710033669",
+    "verifierTrackedTextSha256": "e209b931fda6666a4975c12b20bde7675016fbf33b3e469c4b5148413153f67a",
+    "approvalTrackedTextSha256": "6c0d5be8eda33c859293761077b99be6d390fa8cb38d41e68eaa16e02241672a",
     "directImportClosure": {
       "hashRole": "TRACKED_SOURCE_EOL_CANONICAL_TEXT",
       "dependencyCount": 7,
@@ -48,28 +48,28 @@
           "moduleName": "build_artist_31470_material_runtime_oracle",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
           "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py",
-          "canonicalTextSha256": "82fc449f17568d7e7c217bb48da05f14574ef9efbe16e1293f866a409464c0d2"
+          "canonicalTextSha256": "166e325304648c9059986f277733d901c79268a54f79f22211884182979f45c4"
         },
         {
           "dependencyId": "MATERIAL_SOURCE_VALUE_ACQUISITION_VALIDATOR",
           "moduleName": "build_artist_31470_material_source_value_acquisition",
           "relativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
           "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/build_artist_31470_material_source_value_acquisition.py",
-          "canonicalTextSha256": "a70cd68a0efa7c9d1b2a8b35f7233f961d9702afbc0a5523cbb5d70c9f470c7b"
+          "canonicalTextSha256": "4f3cb6886c670d8e6a653425101e4bbee1886512320e01a8c3b52fa6e540a35a"
         },
         {
           "dependencyId": "RECONSTRUCTED_POLICY_APPROVAL",
           "moduleName": "artist_31470_material_reconstructed_policy_approval",
           "relativePath": "Tools/LevelPlacementExtractor/artist_31470_material_reconstructed_policy_approval.py",
           "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/artist_31470_material_reconstructed_policy_approval.py",
-          "canonicalTextSha256": "c3e35ff3f2b8675c14811f422a0435291a9c539d28b87cdc0fa548d710033669"
+          "canonicalTextSha256": "6c0d5be8eda33c859293761077b99be6d390fa8cb38d41e68eaa16e02241672a"
         },
         {
           "dependencyId": "RECONSTRUCTED_POLICY_WARP_VERIFIER",
           "moduleName": "verify_artist_31470_material_reconstructed_policy_hlsl",
           "relativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py",
           "loadedModuleRelativePath": "Tools/LevelPlacementExtractor/verify_artist_31470_material_reconstructed_policy_hlsl.py",
-          "canonicalTextSha256": "b264930b85d2f9274255f220745021c99882b334e96f3aa917e31e62ef2289b9"
+          "canonicalTextSha256": "e209b931fda6666a4975c12b20bde7675016fbf33b3e469c4b5148413153f67a"
         },
         {
           "dependencyId": "RUNTIME_WARP_SUPPORT",
@@ -86,7 +86,7 @@
           "canonicalTextSha256": "98305194c7d68121417e9b1b09ceda66d0105acc567d3e9975d728fd802bbdfb"
         }
       ],
-      "projectionSha256": "3622e631e6a06e4b4d0e5cae6a23dfc6da27326f372a41536ec50c2eba28d642"
+      "projectionSha256": "c49bef514a8b086eef7ec5d7eeb9827a074e5f5df8ac70a7b1387d05ec311346"
     }
   },
   "renderStatePolicies": [
@@ -12885,7 +12885,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "b7ffed69798fbc12df20283dc614418e5b63832fd8e9be073b22a9226de81b65",
-        "runtimeOracleRowSha256": "7f7fb1269375df9725473638928c634c0adf343f1f916c28f17638e0d3a01aa1"
+        "runtimeOracleRowSha256": "574ce2cba6458faa4046c329b84ba027ce9e93a9f035663a265d2126baa5a2cb"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13022,7 +13022,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "4920e8c8bf8ec0c939848802ac057eebc243a1f605bd939b540461973177fd94"
+      "rowSha256": "91e55356b820ced991333b7a9d535b3cef68afd275a8b579e81a13f433881fe8"
     },
     {
       "policyRowId": "material-reconstructed-policy-d38f2b2f2a4a03589572",
@@ -13044,7 +13044,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "761c3ddc371add52ddad642dd12fa283fa6e7b266db4377bcbb0c74782c4fc5d",
-        "runtimeOracleRowSha256": "c1c64f0568a477820dfffbcf11a27eb232edc656ef4651280a3fbfd343084d5a"
+        "runtimeOracleRowSha256": "caa8e1940dc3b0cf58e52812b748a2b753ea34d26a60203b50e2dc189149435f"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13181,7 +13181,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "7242473926fec1df95c3fb08af1a5fad42a577f3980e52a34571b10c6501d89e"
+      "rowSha256": "ccd44dbacd8b37c0a600f375f268c82b0d142c93ee92325a49041e895d72945b"
     },
     {
       "policyRowId": "material-reconstructed-policy-300f64f5c91f35575f26",
@@ -13202,7 +13202,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "13cdf39d95a6f5209d28d26a10fc7637816bf93d7d3bda9b3ac431cef22acd22",
-        "runtimeOracleRowSha256": "82d6ef8fdbf15db36c9713e575cf05f191645848238c6ddbd8e23fb8ef7254db"
+        "runtimeOracleRowSha256": "93bbffe118f9376c009aa3d2fa8ff7636ba32c61e39a6edae65293b8185f81ba"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13339,7 +13339,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "d9cc3836348adfc4e6e8167e2c250d50e29b6bcf8e8cbc6806c4e4cead1e75c0"
+      "rowSha256": "4d2d5df226d277360221478a93fa2465d7dcb85b50e16a501417a3dbca79209b"
     },
     {
       "policyRowId": "material-reconstructed-policy-478283291730ec2c2599",
@@ -13360,7 +13360,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "dd5bedc5b1d157c863d9a0b7648422b8477f2046491e0f22fa7afc229db43da0",
-        "runtimeOracleRowSha256": "932f69f5974ca030f2e6b9abd1460ff3fe36418b414faadfe7bbd34603d7e6db"
+        "runtimeOracleRowSha256": "001180ccb2c4c6dba06d8a97ef88fc55ccb288c2a38a8713488a2cdf119043af"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13497,7 +13497,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "f900cb51cce98da0a57a10c87430ebe5e3de6e4e732740ea607c29a64b0f8752"
+      "rowSha256": "71a84f09b5abe01358bd96d8f0187afb6a2f9ee8558b758012d24262b6efd0f6"
     },
     {
       "policyRowId": "material-reconstructed-policy-0960f4f64ce6678979b9",
@@ -13518,7 +13518,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "dfa683d8ede2fa41a76aac7f40cfad2ac284c2896f7bd8730aa68be59025d2dd",
-        "runtimeOracleRowSha256": "923d60651de26458fb64b230051b66e7c825f6f65ca47a042b5380b496320959"
+        "runtimeOracleRowSha256": "7e4dfa17eb3874a3300697cfcf3c4b0ea2b31bcddd35e0f78995fd4b098ccd6e"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13654,7 +13654,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "b8840349e7dc21c1723d747fafa086398f0dce7e9358c696f44107833bafdcd5"
+      "rowSha256": "f290789482b94ae71cdbdea16373a46f5ac9ac3a0f275ffa10371534c9428209"
     },
     {
       "policyRowId": "material-reconstructed-policy-96b5a072f82837f81c2b",
@@ -13675,7 +13675,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "5c4083271f5d5cf5161f5f6a9e055c62743b0032d4e662a08c9eea366de8c51a",
-        "runtimeOracleRowSha256": "be40ec6e78b20e73484e65f3b836e884d08393b69fb4e7aec81f9107367ae9b0"
+        "runtimeOracleRowSha256": "172be62ed7c2337c3dbb469e3eceecbd5c8c67f4094c4e0bb41124ecd2b4064a"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13812,7 +13812,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "4e42413b6c63266b6f265e45a5e4addf8f6f04f856f5043a4d651f6d7cb1d3cf"
+      "rowSha256": "32de25ad1cc5763666d9644fc5f6f139d2a4119d119b1e5724e86d8e8c27d020"
     },
     {
       "policyRowId": "material-reconstructed-policy-0a9b833c1d052dfa73ce",
@@ -13833,7 +13833,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "9633df62f7900a19cddbcb199c52ac34264cd6e22effbcb2a3b4c277826a0ea2",
-        "runtimeOracleRowSha256": "cf86be684b0edd231ece3135ec958c6bd758052283c964cd37144737809756c8"
+        "runtimeOracleRowSha256": "73743238d6ec63122d38914e1dbb2d6d76fd7ceb4c2bd1c790c444244b7fd83a"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -13970,7 +13970,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "df2f8e6dd98b02961ada3b2b0cdac316d360286d8067a6a4348a86a0c0deb7c9"
+      "rowSha256": "d2ccf9628938ce2213112d7160966df12f938bfa5691bb235ed020e2280db1dc"
     },
     {
       "policyRowId": "material-reconstructed-policy-85c30216c9165ee1aeb6",
@@ -13991,7 +13991,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "b511cb9e10e7a238ac35e287b0f62c3db67eb967afea07a6990f9193e9d168d2",
-        "runtimeOracleRowSha256": "808e99cf09bdb7ca153dc3d46104f0a2818767f5165f39af72a7e8fc40bb55dd"
+        "runtimeOracleRowSha256": "a41b4727d8e44f2016917c1144e9066784b5fc87525cdc246707f73be86bfdc1"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14128,7 +14128,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a97b7104e867e92205318e6c3cb9054635311a270ab53e3f2b77b756d0f339d8"
+      "rowSha256": "11f264e2ba32cabb48b96713ef8e70aa8f978a683fa74742f0713ceda221c4cb"
     },
     {
       "policyRowId": "material-reconstructed-policy-519809ac61364c8a21b3",
@@ -14149,7 +14149,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "b1ead66c7b383f0118ecaec4ad3eef95227f4972844e3ba2c483312388a5e6cf",
-        "runtimeOracleRowSha256": "de7f6e86e0181a83b207a06298ed2fd085b299e38422a154556d0b356fda4939"
+        "runtimeOracleRowSha256": "3b4cef096405bb9b8ec7612149705c42dad88a4a198e2053d769caa013fd25dd"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14286,7 +14286,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "91b96873ecf20c379e8cf512197c66c90b08908855b467413e0db104dde4eefe"
+      "rowSha256": "eff6cf0070ee053a80e6cd9d8e2f540ed4aa7b9e3a17e269d30dfefe33adb378"
     },
     {
       "policyRowId": "material-reconstructed-policy-844aead9ffb66021efb2",
@@ -14307,7 +14307,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "f3331a6bc287572e9c48f8de695faf121dce3d8ee8b0ea817204a410f57afed5",
-        "runtimeOracleRowSha256": "48aaa85649bcc04def0fc3015a3a5d928cd0d834653564ce80f5c02d1b4bec38"
+        "runtimeOracleRowSha256": "4a032190b0781945d515ba27791bcd5eaa7c357bf2fc1480a972c3f7c839392d"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14444,7 +14444,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "755a4d5f8fd242e720e9c56f4f9b0fef64d7d722720a6e5a732be27824a83306"
+      "rowSha256": "e69f1a9136a337d0b165b92528b73bf1319b67310c1e1c9c5b1996322b54a300"
     },
     {
       "policyRowId": "material-reconstructed-policy-1c258d7ba21d2254f3a0",
@@ -14465,7 +14465,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "cec56bdf6253d66d6a768dbc7368ec891ec1bcc00eea1b677ca4c41740f580ad",
-        "runtimeOracleRowSha256": "0b2fd832418b023ae41bc217b97f08d3b545041a778ede86f1e80fe54969709e"
+        "runtimeOracleRowSha256": "844f43d520203094a4f6c8d7e4cb4a628bda2ed92d1287e854c61f2df64be603"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14602,7 +14602,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "bd79969c701134cfb016ad3400e574d524d23161e01b78f0dc7c92891ce89edf"
+      "rowSha256": "90719f104a7d4878fd44a6e8457dad6b57fca87c16c6bbbd4b6fe7464628d751"
     },
     {
       "policyRowId": "material-reconstructed-policy-6792c5001d92df0244ba",
@@ -14623,7 +14623,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0125d479f499d868a171a157a97d0e1660f4c3657519aab88036c7f34c52ec13",
-        "runtimeOracleRowSha256": "9b39bd0a599f3f1e3ee653f9564a9fef94a2c3e7948d324a2d685e1ff0df6b42"
+        "runtimeOracleRowSha256": "8d8a5abbdef9d7707bf7b3f05592a2c0f4f93e30b1d368d434f69c9209bc2c0e"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14760,7 +14760,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "7676aa093b0eb247c2af272ba155fa39f7bc7fb583366b6b12c19d162cb65dec"
+      "rowSha256": "38bb47079a0e94faef5a52c8a3fe6da5466774d00bc52e4aa273ee4b59486bff"
     },
     {
       "policyRowId": "material-reconstructed-policy-8e5d0f948e09898c926e",
@@ -14781,7 +14781,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "dd45010e84926ed0a6bcdda8d7b6e372fd4a2c0f8b498650492c9c53cc66d06d",
-        "runtimeOracleRowSha256": "9bd1a28734cdf1737ec8a6555967a1e1f65d4ef24c4b572516921b85505b96de"
+        "runtimeOracleRowSha256": "ce215c3b1716acf397d62cec4bae50339efea98d1a78cefaa5cd5f81502017e2"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -14918,7 +14918,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "94ecc9533a35744d00a9ee73a27f350939956d267c3de709160ef293f660132c"
+      "rowSha256": "17d6c762b3e5cdfc5d26210a3235fad28674a30299ed88ca61d122520fe5cc9f"
     },
     {
       "policyRowId": "material-reconstructed-policy-7e847bcf0cc84e8415d8",
@@ -14939,7 +14939,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "00ac2c8bf66b0d0bc78dc124d3f70fab58505959ca70f89f04d1bc6689c28ab8",
-        "runtimeOracleRowSha256": "56cb7888b0f355108022866a5ab40f5ffaa8841d0bd09d22c7409dd81f310b44"
+        "runtimeOracleRowSha256": "33f4fe95fa51fb2ed48dbf69fe6e18800a5f56839adc047843b9e62b08f8561c"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15076,7 +15076,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "0056b5e7df54640d65d50f7693735675b3f0b8e91315e251c90b85b6e1f8c1a0"
+      "rowSha256": "71b37fdbf49ec3a8312ac305412769b8955541975d747988d463834e781a00a0"
     },
     {
       "policyRowId": "material-reconstructed-policy-515a17c3340198bdcf21",
@@ -15097,7 +15097,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "502cc2634ff0eee0a87e4fa338055f25bfdc586b2bd48e79e460f5a001fc4802",
-        "runtimeOracleRowSha256": "23801121c55014882de32cb264a40970ad25a0f393475e029c985e5ce8bbdfa5"
+        "runtimeOracleRowSha256": "50697ebef84daa7b79a68d6729927e4ee60e6a273b7a7887ef29776cd6cfbed7"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15234,7 +15234,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "6a11c65f53b11a3af37c956c3365623fe2cc29f251e6f7c20a31e0688bf796ff"
+      "rowSha256": "717b8d2fc8b6c2b52ffbaf5e8515fd42ebbf03300e83d96dcdb2b44dab0f8c5f"
     },
     {
       "policyRowId": "material-reconstructed-policy-ae06d5776b669f2578ec",
@@ -15255,7 +15255,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "2d0ce493efe83051415fa4a11599a9d643fac224e5e9d1452ccbc132b76779d1",
-        "runtimeOracleRowSha256": "7edfb31084ff244ae0de8ad8159020c94ead5cf41600d008467a9d94791366ef"
+        "runtimeOracleRowSha256": "33bbfee09875a5c6ad22e5e3e5486d2c5df0ac78a30cf77065c2e99325329f2e"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15391,7 +15391,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "73c1f3b01a2c317d25733fd45d8f1a140408c43f4a0ac06c933a20ab0a749e13"
+      "rowSha256": "7a83c1e0992290b93a0ae3364d462a2ff7b44990eac5cc585cccbb823019b4c7"
     },
     {
       "policyRowId": "material-reconstructed-policy-1437d759109cdfa0e9c0",
@@ -15412,7 +15412,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "eccf23e99d60084125ffcdd58f8c6f96d3840989e7895dec9bad90f7368b3852",
-        "runtimeOracleRowSha256": "a004093472fede228168c6f09f90c50db591dacd3074257f7e4095d5204f513a"
+        "runtimeOracleRowSha256": "7d616d6c89a60880ea929179f22b023f73b75015dbee4cd5b03c15b0ba5c0bba"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15549,7 +15549,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "03c3aaff45229eb1be3cb3ffe1bc12381f71d7a290f9b9c1412f31ecca0a47af"
+      "rowSha256": "8f0d64e8134c52c76e15f79c499910982bef4c3681baa7766af0900ed446422c"
     },
     {
       "policyRowId": "material-reconstructed-policy-1818ade3bbbf42c3414d",
@@ -15570,7 +15570,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "8aea1636a6c456e219c1da981bfdb9ed17f6d78f67c60ccc2d57cdd97470e277",
-        "runtimeOracleRowSha256": "5c2709d4ff497dac050a5258677491f1d3b09fd6c26ad20c1faf7b6ee5013b81"
+        "runtimeOracleRowSha256": "7f291421bdb6412184918eab1b814a4873fa766a9dee2a416ac6ac4ccba143a8"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15707,7 +15707,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "0537cb6647b0200e653a32a665a5817978e3c3e7848db57153ccb2bb96c6d133"
+      "rowSha256": "1b8a6bd8be523ea59f84cc1099038a43dc0448d65aa4c71beebd4c26f76cb1ed"
     },
     {
       "policyRowId": "material-reconstructed-policy-8e0158e48873721fa036",
@@ -15728,7 +15728,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "02ea0bf3c35c0da2a648ad916b65fcab32e7b0a6d5608cd6affbc5197f3643f3",
-        "runtimeOracleRowSha256": "5a941bc5b1acd4e2a1f034163db560b3dd7c4cb0822a10059b41286dd1805122"
+        "runtimeOracleRowSha256": "2aa63fa762bfb2a54355c95fb6a2fad8dd6993400c281c639597a24849184768"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -15865,7 +15865,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "c16945421f1f5fbba3bcb724a55d2cf1817595772788f4a2870fae8057c60ddc"
+      "rowSha256": "cd41e008d43558c13117b23b29e8a4db3cbcb9e484dc71d593ef5c684b8e992b"
     },
     {
       "policyRowId": "material-reconstructed-policy-651cfa9a6664a2fcc1de",
@@ -15886,7 +15886,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "8651230f8296225eca83003d94bd7f5a53a0371fa50d9bdde57b016ca5339e20",
-        "runtimeOracleRowSha256": "812d785eac2b3f3d70053692344321e8973bf8087c5105d5cc8cf4f41f51a77d"
+        "runtimeOracleRowSha256": "109704bacefb278949d824999d618e206969f0c42b9a9e7e66b5e59771697de6"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16025,7 +16025,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "d84f6477f081d7c54e0dbde1287b7b74dd775a6e70d2eb86e8d53a2080ed3434"
+      "rowSha256": "b0f39afb7df45d76867da2fba9a77f4d38a043d8f7ea2570f7c3b7f40b68d559"
     },
     {
       "policyRowId": "material-reconstructed-policy-a8df058fb50ca74ca66f",
@@ -16047,7 +16047,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "8759d8b8436e05b2b195f6de2bba689b9e6215931b0b5f915080e1dcda6f1e70",
-        "runtimeOracleRowSha256": "2a3671a5a742c95c76d710f493e7668d3136ae3789328426f27d7df1f73e014d"
+        "runtimeOracleRowSha256": "b15a68ce36ab3fff3f79e7e9f9a6cf10893a3e98e5dd2d2d8712c3efcaa3e298"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16184,7 +16184,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "d3d8493b5cb76094cd390d59692d9c70766f53d57beaa4c2cd1e127e43d0e2b8"
+      "rowSha256": "89e69035521605e9019e3c55590ec2256feaea766538824d230b20e86888c9c0"
     },
     {
       "policyRowId": "material-reconstructed-policy-db20ddc44fa65aa24a09",
@@ -16205,7 +16205,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0987b15e9523451e7d8e5b843642e20a5bb52376e768e3e4a98b9910dca3e29c",
-        "runtimeOracleRowSha256": "f8b348d2b8436ec1710b54bd70e0a6d06504b056bee9aac33211e60f3541c06f"
+        "runtimeOracleRowSha256": "56ab8bc76caf02cded24cd41175b51a232ced36f4bd4f26d623d356927da4b22"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16342,7 +16342,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "54103236aa57259ff08b75c1f0bc96a21e279b8f0759481c47df97c8189e1154"
+      "rowSha256": "772994394bd39411eb566a6f7d9111dba1c36980fe4a1ee39bcd197fead8e6c6"
     },
     {
       "policyRowId": "material-reconstructed-policy-18915f8ca098aabef0fb",
@@ -16363,7 +16363,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "33459214efafb0924361d256903da9beba909bf3260d9443fa579ed2553bc20c",
-        "runtimeOracleRowSha256": "84d585205a299cca97a62f8af58090cc29c03c0b99874c0789b7f3b9d912140b"
+        "runtimeOracleRowSha256": "a5ec021fe4a0c3c6fb3746fbf522ac0de761aefaf6817fc4e706d296c649ec4a"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16500,7 +16500,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "9cc62f2189001983fb2bb262af07c6161bd8046519112afaaf8ba8d89b2788d5"
+      "rowSha256": "e69b72e3d9eb19eac46a7669894bb3dfe71c6c3ebf5c9c5471eeae7e12f8d0ce"
     },
     {
       "policyRowId": "material-reconstructed-policy-f771468f1996e853029f",
@@ -16521,7 +16521,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "90505bb1e927ecdd4008d8a94265fe1a064addadfca383e4dde622b9009a5c88",
-        "runtimeOracleRowSha256": "f7e77100c928e899faab9675b44424ed1a64c55267e12666ee4cc0c7615967bc"
+        "runtimeOracleRowSha256": "2bf9c24f030934c7fffce558b9802e7191a6b472689a1c2803ddc6149d3b6e0f"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16658,7 +16658,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "503201dbeefd4cc80edd3363bfbf0af2628ce05048db193d9bfc2bcb3add22a2"
+      "rowSha256": "b25ca061058aa4f0b97c065ffc00250786234b2021b5b4398ebc96cfc70e57cb"
     },
     {
       "policyRowId": "material-reconstructed-policy-6c0a5acc8e6ee6c80ec1",
@@ -16679,7 +16679,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "bc45dc0fd5825b8864bb1121b401943e741cb4f0eff6d0a370df9ef74305dbbb",
-        "runtimeOracleRowSha256": "3a5e5fd812d6681b33ee04433d945a330ff61bcc31590d83a43ca978b19d6cc0"
+        "runtimeOracleRowSha256": "0c9fc37d66aecdbd45fde111e36f0e485a414788da991c88ed4f145f6661d939"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16816,7 +16816,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "01c511cedc59a63acecb1e486bdeb2044ca3c3c1f9a1e0cd0cc1539957946a0a"
+      "rowSha256": "4151453154d38c782675018cebd2fbb6ae1e0d1667863dec6075df45ffcc9261"
     },
     {
       "policyRowId": "material-reconstructed-policy-6d082a8fb7411643255d",
@@ -16837,7 +16837,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "f574e8a0cbbc5c89427e26b8be2789d0d8fc00a0a3c066e8004391ec82b01eee",
-        "runtimeOracleRowSha256": "e5bbe88f27f907f333b57d379ff503a1a26af6e1d167f4c0e3b06ddf3614b18c"
+        "runtimeOracleRowSha256": "f958da54730ec90dec98d7da8e6407c169d6ef1f460ea5e06d2be5824e7977e3"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -16976,7 +16976,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a8f91a249b79aa17a9cc0756f3e1815b7c6d9e014d128e2a6f05b28e5ff4bd82"
+      "rowSha256": "2bd38dc0dbee672d9edf7eb09684c8b692f78b54dd0c2f8fcc433937976bd2fb"
     },
     {
       "policyRowId": "material-reconstructed-policy-6ae5a4badcbb8d714068",
@@ -16997,7 +16997,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "d4d68328df85ee935569b33ac3755e27f6dc068ff6c46123cbd92bc1dd2213c8",
-        "runtimeOracleRowSha256": "09d6631b528d4c09d55120dd4e1b5e21c79ba8147b227638d842f295d9f01d37"
+        "runtimeOracleRowSha256": "2a569611d3d3c3b3b1f1ab4976ec119a526052c9ac4812dbb269c2a146877772"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17134,7 +17134,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "403259f1de77e4d7b7e979fd614e180910528e66807788e4aecaf1c5a9acc825"
+      "rowSha256": "98847c6adf55477942d244695aaf62b039b8933bf20cb11441f9722e890932d4"
     },
     {
       "policyRowId": "material-reconstructed-policy-00b446a77e860816dc99",
@@ -17155,7 +17155,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "a6130d348f1924acee1311ff8e4f6bceec2c6d8ecc845aefa06e826621968fc0",
-        "runtimeOracleRowSha256": "f7fe863cd65f7a4707c4b8a94d8faf71f7125a152e002257942d58a0639531f0"
+        "runtimeOracleRowSha256": "0468bc62ed3b4937f49b8a9823265947f63e4732409b1c5ac7612332fa982668"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17292,7 +17292,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "0b97cde83fa2f20e184d63f6fbce44682918b4e7356801926c33901b1b02a5aa"
+      "rowSha256": "483da471bdfefe99854023105284eaf1cfcef31aa05da00d68649968b210e0e4"
     },
     {
       "policyRowId": "material-reconstructed-policy-b3249bffa097706dcca0",
@@ -17313,7 +17313,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "560a0790ed103af0eff9ae877acd9ab4408bfa3cef4fd58316a57b221b2b4ba8",
-        "runtimeOracleRowSha256": "3278d518b8c5e450c8fe7f7053cd120c3cfdfeba856f9dafadc9f1079410ae2f"
+        "runtimeOracleRowSha256": "b304b27af32731a7d021c724faa41c7b764876b68bc5ae73d6f481d6e5cd8bfc"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17452,7 +17452,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "44c5903056fdaad12661a0aeb653b24850d6b60cafc8a2a2f1bb63c35d025d43"
+      "rowSha256": "4c07bdf0554c0fa44edfa0f85fc9a05c1ab5d5f99ebfd1fecc7a7eb98025216d"
     },
     {
       "policyRowId": "material-reconstructed-policy-28cb7c7354aa9668347d",
@@ -17473,7 +17473,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "f35d5a8b7e6f01ca0d8a3db88213596f8f339ce86d6432f1a00db661a7d4c472",
-        "runtimeOracleRowSha256": "ae6769641ca9d3c266ea58e03884837921cdaf19fc9adefefe48be3ed53e9744"
+        "runtimeOracleRowSha256": "5f8d7ff09b8190e4603eaa706e404c55b0af7a168858cd14f31d28f6f6a18b66"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17610,7 +17610,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "0a1f598c14cb10ddc2ed315831f9f037543d62519b4e261fe371b89e19255349"
+      "rowSha256": "98f9e192fd9f6ab54003675769a5d72e169b66b69b3b5fb672d52504c4873f6f"
     },
     {
       "policyRowId": "material-reconstructed-policy-171bc94fea2d3a24514a",
@@ -17631,7 +17631,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0dad2e2cc8848f2ae85856eee248d6d92322f632ea2d21d7e3cbd917fcd6ee50",
-        "runtimeOracleRowSha256": "e83f216e8069b3e2ede829fd2ce9f5ca65a80f6e1d9a0e37dab7d72443e0bedb"
+        "runtimeOracleRowSha256": "ffb4b671746d915d1cf9e63dc2faa45cb97e2d679180068182f0300115398845"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17768,7 +17768,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "2a3c920ce48df5579a7b9217b52991aeabaee3fc90cb1004b613b1c594a06ece"
+      "rowSha256": "c940c6c96c4f503cb3ddc4343aabdc51da245ea5a767b291fc0bf2a6dd65c3bc"
     },
     {
       "policyRowId": "material-reconstructed-policy-db36c53958b82e6863d6",
@@ -17789,7 +17789,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "16cef55cbf60ba1ff5b05e9a33f830064d7353687ff67632857fea2ddcd4a08f",
-        "runtimeOracleRowSha256": "fdcea12b56590e81862f4118c7ef328cd44e0ac24d2a8f80633e2bb1bd290cbb"
+        "runtimeOracleRowSha256": "6dcabbe6da88e70871a4a43935d663bd64533d14ccf162beea0bb7d1bc291248"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -17928,7 +17928,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "e802350d774145243fff6cd36a60b2b9052ac6bf705ce6174c82b3d51ca3da42"
+      "rowSha256": "870b770b56a693c383fde7ad7ae1f3fad8461b83b17d2b329010712d502440df"
     },
     {
       "policyRowId": "material-reconstructed-policy-25b62cee562d35eecbda",
@@ -17949,7 +17949,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "fe4b4705a91ec2fa3ef3a36a566a99a6f8e6be0e3380780fcb1758734de377f7",
-        "runtimeOracleRowSha256": "6253d3a5ecfb7bbb7951f59a8e0c075390a4b1bb9b7c0136bcbe78cdda1d21c8"
+        "runtimeOracleRowSha256": "c65674df837b334badfd8b9c13eb1ebcab35c30a3c68ab55e6bb212358b7c9a6"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18086,7 +18086,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "1a01e66b90ac53b03f5806728b737a86d8945a86247bf690395e181b6dc1a17b"
+      "rowSha256": "6db7ee0737365cf2476a64eac72f4a6ebb2a43173e5d567f7cce816ef7fea6a5"
     },
     {
       "policyRowId": "material-reconstructed-policy-2b2843e63f0957b3afc4",
@@ -18107,7 +18107,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "6cd4e30b05fe90625305f463671c5dd1880485ec702ad2ebaed81ebdf7a000aa",
-        "runtimeOracleRowSha256": "d982b035b8097547ebee2dc3a3b1e152edfd7075920c117eb1d6701917e894b1"
+        "runtimeOracleRowSha256": "cf490a0e8002e1255d6303b0b1770bae6944e8938a25cf189e53d17b694512c1"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18244,7 +18244,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "07fb44da2d0b628746d455fed4f6ca5ddfed6e23c8b38686ccb2860a5e2fa7a9"
+      "rowSha256": "bf79d5aefca314e0460a3fbffaf791e879f45602326eb96335b54549e2b7d320"
     },
     {
       "policyRowId": "material-reconstructed-policy-023cbb02f2f9b11fe5b1",
@@ -18265,7 +18265,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0865ddb8a5a873bdcb0851e60b8d534199e0e4e59d45f529b90b10a12e26de20",
-        "runtimeOracleRowSha256": "0cd69fa771d6c29c21a56b30219ada7d289f4e33ae33118202a64e3a109e2cf8"
+        "runtimeOracleRowSha256": "85c3641a46cb0439582349508dec38aed639440d8a043aaa583be6592319d622"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18402,7 +18402,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "5fe96c5c1621d71319eec3a844923f022f61d005d435a770657ffba219c2bca7"
+      "rowSha256": "9341f924de13030082d5410e808b37ab76d1f052820a6b98ee06efe01a8e1ddf"
     },
     {
       "policyRowId": "material-reconstructed-policy-d2acdec2eb27c3d779b2",
@@ -18423,7 +18423,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "099806adf5674ac9f7166613eeda15b200683bee24956969ee60633bc1c25321",
-        "runtimeOracleRowSha256": "cb07fb71f206b6027e5aa5371bae026fdc87a657b6a25c1fc6414721dc2692d0"
+        "runtimeOracleRowSha256": "4ffdd9ccab754005dbc383a87f70e4a043c2ec570bb9098d706444f721083177"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18560,7 +18560,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "642b6fb1a19f7c179d3f346b47d56d9d78e5b8acea9d7580905d26e6d6c8993a"
+      "rowSha256": "bd4807cf9132b2e5aec5f9436f0353e9a803a94b833bfd23a91e65f9d1c9f63a"
     },
     {
       "policyRowId": "material-reconstructed-policy-d6eb8ed76d501f9ab1e7",
@@ -18582,7 +18582,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "ca2bec8d489c86984dbc65a7de92939a73d3240571fa7413d679163d3555daa9",
-        "runtimeOracleRowSha256": "42f79f78299ae0f3a59210022059c3b79c333257fe255987e195572b2f5f5efe"
+        "runtimeOracleRowSha256": "e2dcb38094c54d1f69ad7d555dbba6492e8cd45f957cbb1a6973c71369e0f014"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18721,7 +18721,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "d32d469e2dca672328e5c4ada83c5beade004f619a6bb132aae62ac5ea2c31b6"
+      "rowSha256": "d873f9d560a192a3b1ac481fd8ea3b97f56030d4fa17228234507b170f4bfad4"
     },
     {
       "policyRowId": "material-reconstructed-policy-aa801434a4629457170d",
@@ -18743,7 +18743,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "065d2b6f95e3238c8247a163b9e6a33ca1075ae36410d1ce9781ecb4ccc92015",
-        "runtimeOracleRowSha256": "0e8462c6d3406e552f5dac10e5451c2b83acae54db3f8d2025177836a514ee8e"
+        "runtimeOracleRowSha256": "b38254a079d98433a163c130117e3e723910475b822b380c283c8add57d8c7b2"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -18880,7 +18880,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ab6c7db1ae15abbeb2c30f4977c23cfd20d7b8da0ac747aa9d56d20d8bb47883"
+      "rowSha256": "1fbcebffb6003f5f9485233d9764e04340346099b0eadb57f609c3ead9f24e69"
     },
     {
       "policyRowId": "material-reconstructed-policy-652d33b9f4e1a5e99a98",
@@ -18901,7 +18901,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "49487a90becc481ee59f3817135be6c56faedbd8058cffaf7fa8d9f53ec66d07",
-        "runtimeOracleRowSha256": "e08db28fdfc9b222e8da0d0938ca3770096d89c8cd53c651e26519eb9083f631"
+        "runtimeOracleRowSha256": "c6868f56d39f93e1bfbba34f5420709c2aa739a9e13c1cd4cbe57593f5c5eb94"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19038,7 +19038,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "2aa100e61b9b93f02ec1c0de8c7f0cf64ecf05cfe3a00f2d03d800fe3647f7c2"
+      "rowSha256": "691958d686f373dabaaf19b4fac285f72e3e79139301782c735793e140b90463"
     },
     {
       "policyRowId": "material-reconstructed-policy-b68e6659e30dda93c209",
@@ -19059,7 +19059,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "270d8638b349e69de0e34451d7b9ae9c4bbecb8972bbb46624a2b65a29e5730d",
-        "runtimeOracleRowSha256": "c3c80c791e984ace2e9e05525a1d45c24cc2a6194875b0b3172a8b9f9a3d855c"
+        "runtimeOracleRowSha256": "b7567bdd706d11813a3eaf41b38ffb63d6b8be9d27cc9149e9c686d04a8ea410"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19196,7 +19196,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ab1ac8e0614699e94c805b182fca94c24b88a39041953f101cef58ac1b479c90"
+      "rowSha256": "3661f7e1ec9f1b6402f0b3ce3a5b9f2fc6cdd461e8d3e8a21313cdc224f73d19"
     },
     {
       "policyRowId": "material-reconstructed-policy-32534fd35ddd1ecf2c4f",
@@ -19217,7 +19217,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "c7e955474384cf4b9a96f9d103cdcf9ed27bf9dcbfea7a78e0234aaa4f20361b",
-        "runtimeOracleRowSha256": "d8d208ba5ec7ccfcb4eed28edf441ba2592f74b162ed4bee3b4c2d428bbb4de9"
+        "runtimeOracleRowSha256": "dad0e7acc8b22ac10d9f259e46cf8f3bae8882d946b2d8389f24865572d97fea"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19354,7 +19354,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "3c9e146980459179aa0ca8343ef153fa8919cbd62d985e2dac67e3d582ab8169"
+      "rowSha256": "1f5bbe9091071e4001a1948acf79ce7a4e8b8969db3a9bc4a26bdb39ddba10d5"
     },
     {
       "policyRowId": "material-reconstructed-policy-8286f97bc7fc9e2c10c3",
@@ -19375,7 +19375,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "f2cf4c8da2a313d19977bb614b1802d15c0aeab7370fd301de1004a649543292",
-        "runtimeOracleRowSha256": "facfb45b4df89df5e3063cb0c2fee65993b28a227325fcf4f2678de618f3e090"
+        "runtimeOracleRowSha256": "b0cce63828ccc8f763ed151039d4ac64f7c985f372537dbf4baa19fed3907b52"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19512,7 +19512,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "7fdbb4eaab6b9d30740e3486615cc024a29fb4648b01f7d8856604f6a46e07f3"
+      "rowSha256": "72ae069b12722947c3cd9a1d5acd729edd0817c8b519f46ab39d9908d2070ab8"
     },
     {
       "policyRowId": "material-reconstructed-policy-028057a273c97d2bec05",
@@ -19533,7 +19533,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "342c846a4b10340f8d322b8f82229cdcbc9fbdfdb04d4735e88c9735e02c68e6",
-        "runtimeOracleRowSha256": "a2fa024da7738210032b3135fb3e45ac196c0d1ef3b0ee7b264fc6b49d892dd4"
+        "runtimeOracleRowSha256": "4e179e1302eb2b056fd56cd55c8e71202abd37fe4abe0b206f64c0bf62ba3158"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19670,7 +19670,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a519c3840e35c323cfe4ef4926fa2ac1a7e3b840b71e125c5c958939d2bdb7b7"
+      "rowSha256": "7a7f7f6f197f766a504d959539dfb1dc514a7a75c7e0acfd844a4f5e6eac5d8a"
     },
     {
       "policyRowId": "material-reconstructed-policy-39f9c1d8ecfddf1809b3",
@@ -19692,7 +19692,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "ebeee2da4e2ec6b1c21edf87977f07fc84b2113d73c13b9a6ce1ba2a7004e1c1",
-        "runtimeOracleRowSha256": "0136ee03ae4dcb45f0311766e516c4644c319e173d24c6388d6d2d782e985ec1"
+        "runtimeOracleRowSha256": "8a466cbe6adec03b79fafff659671734c34c1bb08ffe096351c7c53d797a29eb"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19829,7 +19829,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ddbffce5af384e1b6151c390058df3752782df78491c4cd324aff1bfabf1991b"
+      "rowSha256": "04c8dbd101e3d223f7fecc34b760dedf9a06d74ae6c3fb698bbb6ac27c1276e7"
     },
     {
       "policyRowId": "material-reconstructed-policy-c224f5f876b7c868890c",
@@ -19851,7 +19851,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "d8d8356b9a79c425d0610c915419f5db38c64675ca9b6f6dce567729a86aafd2",
-        "runtimeOracleRowSha256": "e2b69fba9ccb70a5f597858c32f176eb81057085e5e91a3fba7bc226ed4f2339"
+        "runtimeOracleRowSha256": "62b66dde05da6325e403c9fd482b4b86dc1e6d49bf7aab27e28566ee2d6931b3"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -19988,7 +19988,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "771cf0e08d46b2f2bffb09afeae6b4aee79ba1b97f0e73c58a628f7199cdd631"
+      "rowSha256": "de01a873495aad532b914c7da2946df1a195981a891dde2be714567caa30b8a6"
     },
     {
       "policyRowId": "material-reconstructed-policy-536f69ea0e9fe28d13e6",
@@ -20010,7 +20010,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "95c45dc4f62257b1f4a4a41cadebc273793f4aea38d747296c8b12c62e2d1e3c",
-        "runtimeOracleRowSha256": "0eb2383e51dbc0466aa046bb4a2d969ecf8b39468f65678d5358125662852c7c"
+        "runtimeOracleRowSha256": "f117e7f9d537ea693f1bbd07dc80d89991cc795f95244a7d979a46f241c0e1f4"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20146,7 +20146,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ab71b9d7d4a1d3be4416657fd4070ddaafb9570d64a442e303f02e635b05098a"
+      "rowSha256": "bbfc69b263d5bae7711c045fe5e1936597f4345ab5ab23031c2b080480aacdd3"
     },
     {
       "policyRowId": "material-reconstructed-policy-22b5789f90dda5640758",
@@ -20168,7 +20168,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "88b5255532f8db8694642a89e6099501e7c9f878f1725e5a6f5b6e71da65471c",
-        "runtimeOracleRowSha256": "83a53f7024970d3acd8518ee4081161dc24440876bf31214b4510bba0cd56453"
+        "runtimeOracleRowSha256": "7fa1a0e7d138f4fd062b4dd7b1512cccb2aa0cd5ac339c95f44c4f32d5fc8879"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20305,7 +20305,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "07586b5030ebbb5a8ab22019991bb3b96e910c1df2125a3115b79bea5e70b4a8"
+      "rowSha256": "2767f571f56acdb2a6f0722d97a6294be09ce2764de01bce4a5f45bad7bcd7bf"
     },
     {
       "policyRowId": "material-reconstructed-policy-07c17c22e9d174fca2c7",
@@ -20326,7 +20326,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "1045a5485d6733c41392077103aa0c0abb9ab353ebcf45f4fe7ec532f0784942",
-        "runtimeOracleRowSha256": "aa944b4da1f23ee3b6ae37342691c4360c845746d0e9fb9de54f6db0de70b90e"
+        "runtimeOracleRowSha256": "c400e904f1f30b6002f7603fed71133031085dd8bce0dd068dec125681e8f32e"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20463,7 +20463,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "da87d97d4c69fdc90006df6c13256e6ad0a70e7172eb0f22b5cb030347864e55"
+      "rowSha256": "1b8ccc36da3b4024396ff8dbb501df6facf157e5bddb163e0ea6cbf5df5046ad"
     },
     {
       "policyRowId": "material-reconstructed-policy-a86752abfd94ceaeb9db",
@@ -20484,7 +20484,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "84f5445e0f0d7cd73de356208afe221ab90423d7e6ccdbfe4d5ecef31fa584b7",
-        "runtimeOracleRowSha256": "2e330fbf719e02eb88c9f07fd3e2f08777e81fc36844786d84caa297b07336f0"
+        "runtimeOracleRowSha256": "d6740dd3e6443abfc953197658a47be3d0a973ca2ceb52f2c5295e1c0b843749"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20620,7 +20620,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "33058fe1dee0c51a1f1d1c4993673cfc3e20d2fc05f4f2d8f2f97a42b279cc99"
+      "rowSha256": "f9ff4f598611a89efb37afe0c4a8c8834148280693e0cdbf5c199f951c711c46"
     },
     {
       "policyRowId": "material-reconstructed-policy-4dbd8506a4e63e55c9a5",
@@ -20641,7 +20641,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "bd70e042b127bf3c0322f926a112de01a32ed277f641e3378cc0fd72fd6d3a5c",
-        "runtimeOracleRowSha256": "656a3d1f6e7f78ba2f01c77a644b2fe0cbd58a24066df7311ec81c3d06e5e151"
+        "runtimeOracleRowSha256": "6ce6e4585d3ee602bbbb8f95655b0025e6b47e3ac746891dfde79bea2526791c"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20778,7 +20778,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "99951284df0e7ac85d6136c78015486890ace4a236ae640698350d61749e61b5"
+      "rowSha256": "ff52baa8c6ab14a5236eef7785756847fe97946e99de6143e661a61aabb326ff"
     },
     {
       "policyRowId": "material-reconstructed-policy-307d41b80a4d0d1cb2e1",
@@ -20799,7 +20799,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "66e2808785b231999f14c48275c204bf14a72b634308d88d0fa6a873104867b4",
-        "runtimeOracleRowSha256": "c34d505ce138f033b9d6b5ca704757b96f9e9f9941d181624a2de154ba7e00df"
+        "runtimeOracleRowSha256": "8b9aebb6598324b419235a0e417b5586843988b0639a24a013076a141c3805f8"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -20936,7 +20936,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "bbd98a9e4b30f3d64b34875738c9c9e68ad633c4a0584b16ec05acf30767a1f4"
+      "rowSha256": "39131dbd37d7fb333ff6dc6b29284b215c4971901b9514b192dc61e1c3e07158"
     },
     {
       "policyRowId": "material-reconstructed-policy-527d90a533e7f80af065",
@@ -20957,7 +20957,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "3482c855ee0f1c8d8ca4066f397014de146b08722f3451160d7014a5bf3171db",
-        "runtimeOracleRowSha256": "6da224b48c3e3809b930d06f46b9a3b1a55ea0eb439638152eb4fd7a6dece45c"
+        "runtimeOracleRowSha256": "9dd63dc25d94f026f708bbbf2447b3bb89d92b9dbcc7becd04a94d9bc186df13"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21094,7 +21094,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "5d9e5e237fcccb87d4ea0a9c8d53db5cfdaa4f0e237f4fc41ee7ea6adfa2028f"
+      "rowSha256": "8c98fec6dedb135113d1044feeeeb28caec9756ec94a683282e3967fd9b7f615"
     },
     {
       "policyRowId": "material-reconstructed-policy-2f786b657500e104d820",
@@ -21115,7 +21115,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "5e3e911f850c2056f111816d8343b348b5af9569128f7aa0c8eab2a2f2b95544",
-        "runtimeOracleRowSha256": "b13f3265676fe3d1ca97547092e885031be6e85dd36185e5573018af59bb541b"
+        "runtimeOracleRowSha256": "1c4fa32db1c50f16eb9d76d6d289f86405b017f1f6900fb8b43ada65d862af8f"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21252,7 +21252,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "fcfe6e0cddf3530ed283c82451a80a03d5cd4a932e9f3c0193884bca9a01af80"
+      "rowSha256": "c6fe32b13fab48cb4f358a5d7cf5e329a42754dfd2f8b4e34f4c6aba3340d4ce"
     },
     {
       "policyRowId": "material-reconstructed-policy-73c145f5bcb8923c6655",
@@ -21273,7 +21273,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "86f74d3990ea02cac48e23f0655379ad3eb2202d006ce75d2cd80a20daa3dd1d",
-        "runtimeOracleRowSha256": "bcc1f7465bc2e19a158eea92e7d675f8e134cc0ff23f67538ef548c6b850097f"
+        "runtimeOracleRowSha256": "5eb4fb814614d485d70a4422e0b851551a7c613275ecadc1e9f3aeff706bcdc1"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21412,11 +21412,808 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "3d7a17335972955b5ed4f7406986f4e063ecf5a43171d139b01fd637ff906593"
+      "rowSha256": "de68d6edc5530b867fd044e2f39b3d4dc73e688db182df8da52df410c6c617bd"
+    },
+    {
+      "policyRowId": "material-reconstructed-policy-86bec67bd21bb0b7d379",
+      "policyOrder": 237,
+      "policyKind": "SAMPLER_DESCRIPTOR",
+      "sourceMatrixRowId": "material-feasibility-sampler-4ab045410cc30e1e",
+      "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+      "materialOccurrenceIds": [
+        "source-active-002",
+        "source-active-019",
+        "source-active-031"
+      ],
+      "fieldId": "material-input-281f2c37bdf51c10",
+      "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+      "bindingOriginAndOwner": {
+        "bindingOrigin": "SELF_DEFAULT",
+        "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+        "sourceSection": "parentDefaults",
+        "sourceSectionIndex": 1
+      },
+      "upstreamEvidence": {
+        "sourceValueAcquisitionRowSha256": "fe33311693cff949fd9df1c3758a53830d6c130235be0ecc15702a962840b8f7",
+        "runtimeOracleRowSha256": "7b103f6c801e28c3947a1917f7533aaeae979fadc8e28557484b66cbd0c6f608"
+      },
+      "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
+      "sourceExact": false,
+      "evidenceBlockers": {
+        "sourceValueAcquisition": [
+          "FULL_SAMPLER_DESCRIPTOR_SOURCE_VALUE_UNRESOLVED",
+          "SOURCE_REVISION_TEXTURE_CDO_OR_CONFIG_MISSING",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "runtimeOracle": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ]
+      },
+      "policySelectionAdmission": true,
+      "runtimeConsumerAdmission": false,
+      "rendererConsumerAdmission": false,
+      "productAdmission": false,
+      "logicalTexturePath": "fx_tex_02.fx_d_noise_003",
+      "selectedDescriptor": {
+        "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
+        "filter": {
+          "ue3": "tf_linear",
+          "d3d11": 21
+        },
+        "addressU": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressV": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressW": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "mipLODBias": 0.0,
+        "maxAnisotropy": 0,
+        "comparisonFunc": {
+          "name": "D3D11_COMPARISON_NEVER",
+          "d3d11": 1
+        },
+        "borderColor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "minLOD": 0.0,
+        "maxLOD": 3.4028234663852886e+38,
+        "sRgb": true,
+        "srvColorSpace": "SRGB",
+        "lodGroup": "texturegroup_effects"
+      },
+      "providerBasis": {
+        "basisId": "VERSIONED_EFFECT_SAMPLER_ROLE_POLICY",
+        "basisRevision": 1,
+        "addressU": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressV": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressW": {
+          "basisId": "EFFECT_UV_W_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "filter": {
+          "basisId": "CURRENT_TEXTURE_CDO_TF_LINEAR_CANDIDATE_POLICY",
+          "basisRevision": 1,
+          "candidateId": "current-default-texture",
+          "exportIdentity": {
+            "exportIndex": 9747,
+            "packageReference": 9748,
+            "objectPath": "Default__Texture",
+            "className": "texture",
+            "serialOffset": 3753709,
+            "serialSize": 351,
+            "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+          },
+          "propertyEvidence": {
+            "propertyName": "Filter",
+            "arrayIndex": 0,
+            "propertyType": "ByteProperty",
+            "structType": null,
+            "declaredDataSize": 8,
+            "serializedPayloadSize": 8,
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "value": "TF_Linear",
+            "encodedValueHex": "764d000000000000",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c"
+          },
+          "revisionFidelity": "CURRENT_REVISION_CROSS_REVISION_CANDIDATE_ONLY",
+          "admissibleAsSourceEra": false
+        },
+        "sRgb": {
+          "basisId": "SOURCE_LODGROUP_COLOR_ROLE_POLICY",
+          "basisRevision": 1,
+          "lodGroup": "texturegroup_effects",
+          "role": "COLOR_DATA"
+        },
+        "lodGroup": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132"
+        },
+        "remainingDescriptorFields": {
+          "basisId": "D3D11_EFFECT_SAMPLER_ROLE_POLICY",
+          "basisRevision": 1
+        }
+      },
+      "implementation": {
+        "implementationId": "ARTIST_F_SAMPLER_DESCRIPTOR_RECONSTRUCTION_V1",
+        "implementationVersion": 1,
+        "consumerContract": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT"
+      },
+      "numericOracle": {
+        "implementationId": "ARTIST_F_POLICY_NUMERIC_ORACLE_V1",
+        "implementationVersion": 1,
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "finiteRequired": true
+      },
+      "d3dStateOracleId": "D3D11_SAMPLER_DESC",
+      "rowSha256": "4461970fc14ac075e89398c0c2320a9f0c758d59753bea30b735dea5c8e56aaa"
+    },
+    {
+      "policyRowId": "material-reconstructed-policy-ed8f7b76674ad3f97ed7",
+      "policyOrder": 238,
+      "policyKind": "SAMPLER_DESCRIPTOR",
+      "sourceMatrixRowId": "material-feasibility-sampler-58cff8878f35d2a9",
+      "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+      "materialOccurrenceIds": [
+        "source-active-002",
+        "source-active-019",
+        "source-active-031"
+      ],
+      "fieldId": "material-input-2c489800fead4548",
+      "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+      "bindingOriginAndOwner": {
+        "bindingOrigin": "SELF_DEFAULT",
+        "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+        "sourceSection": "parentDefaults",
+        "sourceSectionIndex": 3
+      },
+      "upstreamEvidence": {
+        "sourceValueAcquisitionRowSha256": "f0437f7806cd9e8ac217dfbaa48829894290f5d68526b298be8b9a2ed8d3c83b",
+        "runtimeOracleRowSha256": "d134a3fac1c63a68e3edb26adcf0f6687dbf60b4e7785b52fed048b71d5deddc"
+      },
+      "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
+      "sourceExact": false,
+      "evidenceBlockers": {
+        "sourceValueAcquisition": [
+          "FULL_SAMPLER_DESCRIPTOR_SOURCE_VALUE_UNRESOLVED",
+          "SOURCE_REVISION_TEXTURE_CDO_OR_CONFIG_MISSING",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "runtimeOracle": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ]
+      },
+      "policySelectionAdmission": true,
+      "runtimeConsumerAdmission": false,
+      "rendererConsumerAdmission": false,
+      "productAdmission": false,
+      "logicalTexturePath": "fx_tex_02.fx_d_noise_003",
+      "selectedDescriptor": {
+        "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
+        "filter": {
+          "ue3": "tf_linear",
+          "d3d11": 21
+        },
+        "addressU": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressV": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressW": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "mipLODBias": 0.0,
+        "maxAnisotropy": 0,
+        "comparisonFunc": {
+          "name": "D3D11_COMPARISON_NEVER",
+          "d3d11": 1
+        },
+        "borderColor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "minLOD": 0.0,
+        "maxLOD": 3.4028234663852886e+38,
+        "sRgb": true,
+        "srvColorSpace": "SRGB",
+        "lodGroup": "texturegroup_effects"
+      },
+      "providerBasis": {
+        "basisId": "VERSIONED_EFFECT_SAMPLER_ROLE_POLICY",
+        "basisRevision": 1,
+        "addressU": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressV": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressW": {
+          "basisId": "EFFECT_UV_W_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "filter": {
+          "basisId": "CURRENT_TEXTURE_CDO_TF_LINEAR_CANDIDATE_POLICY",
+          "basisRevision": 1,
+          "candidateId": "current-default-texture",
+          "exportIdentity": {
+            "exportIndex": 9747,
+            "packageReference": 9748,
+            "objectPath": "Default__Texture",
+            "className": "texture",
+            "serialOffset": 3753709,
+            "serialSize": 351,
+            "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+          },
+          "propertyEvidence": {
+            "propertyName": "Filter",
+            "arrayIndex": 0,
+            "propertyType": "ByteProperty",
+            "structType": null,
+            "declaredDataSize": 8,
+            "serializedPayloadSize": 8,
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "value": "TF_Linear",
+            "encodedValueHex": "764d000000000000",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c"
+          },
+          "revisionFidelity": "CURRENT_REVISION_CROSS_REVISION_CANDIDATE_ONLY",
+          "admissibleAsSourceEra": false
+        },
+        "sRgb": {
+          "basisId": "SOURCE_LODGROUP_COLOR_ROLE_POLICY",
+          "basisRevision": 1,
+          "lodGroup": "texturegroup_effects",
+          "role": "COLOR_DATA"
+        },
+        "lodGroup": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132"
+        },
+        "remainingDescriptorFields": {
+          "basisId": "D3D11_EFFECT_SAMPLER_ROLE_POLICY",
+          "basisRevision": 1
+        }
+      },
+      "implementation": {
+        "implementationId": "ARTIST_F_SAMPLER_DESCRIPTOR_RECONSTRUCTION_V1",
+        "implementationVersion": 1,
+        "consumerContract": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT"
+      },
+      "numericOracle": {
+        "implementationId": "ARTIST_F_POLICY_NUMERIC_ORACLE_V1",
+        "implementationVersion": 1,
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "finiteRequired": true
+      },
+      "d3dStateOracleId": "D3D11_SAMPLER_DESC",
+      "rowSha256": "cddca5b300fbed80ae2a9a95c797afcf19505f64fa7512de810d45757f3175c4"
+    },
+    {
+      "policyRowId": "material-reconstructed-policy-b76fe8e4759e1950bee4",
+      "policyOrder": 239,
+      "policyKind": "SAMPLER_DESCRIPTOR",
+      "sourceMatrixRowId": "material-feasibility-sampler-59e3c0fb09f720f0",
+      "materialRecipeId": "material-recipe-aa19ee0d487380ca",
+      "materialOccurrenceIds": [
+        "source-active-002",
+        "source-active-019",
+        "source-active-031"
+      ],
+      "fieldId": "material-input-30557ad00debea91",
+      "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+      "bindingOriginAndOwner": {
+        "bindingOrigin": "SELF_DEFAULT",
+        "evidenceOwnerRecipeId": "material-recipe-aa19ee0d487380ca",
+        "sourceSection": "parentDefaults",
+        "sourceSectionIndex": 5
+      },
+      "upstreamEvidence": {
+        "sourceValueAcquisitionRowSha256": "26cff5ac3d880668dc4b59562640ae4a9e03f2949d5e3c58aa9b9e5b306d4b8b",
+        "runtimeOracleRowSha256": "04fc639d8b8e9c7ab9bc503d0305d5dfc436fca1445c11865ab8d0ef5b5a3004"
+      },
+      "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
+      "sourceExact": false,
+      "evidenceBlockers": {
+        "sourceValueAcquisition": [
+          "FULL_SAMPLER_DESCRIPTOR_SOURCE_VALUE_UNRESOLVED",
+          "SOURCE_REVISION_TEXTURE_CDO_OR_CONFIG_MISSING",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "runtimeOracle": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ]
+      },
+      "policySelectionAdmission": true,
+      "runtimeConsumerAdmission": false,
+      "rendererConsumerAdmission": false,
+      "productAdmission": false,
+      "logicalTexturePath": "fx_tex_01.fx_c_noise_002",
+      "selectedDescriptor": {
+        "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
+        "filter": {
+          "ue3": "tf_linear",
+          "d3d11": 21
+        },
+        "addressU": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressV": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressW": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "mipLODBias": 0.0,
+        "maxAnisotropy": 0,
+        "comparisonFunc": {
+          "name": "D3D11_COMPARISON_NEVER",
+          "d3d11": 1
+        },
+        "borderColor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "minLOD": 0.0,
+        "maxLOD": 3.4028234663852886e+38,
+        "sRgb": true,
+        "srvColorSpace": "SRGB",
+        "lodGroup": "texturegroup_effects"
+      },
+      "providerBasis": {
+        "basisId": "VERSIONED_EFFECT_SAMPLER_ROLE_POLICY",
+        "basisRevision": 1,
+        "addressU": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressV": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressW": {
+          "basisId": "EFFECT_UV_W_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "filter": {
+          "basisId": "CURRENT_TEXTURE_CDO_TF_LINEAR_CANDIDATE_POLICY",
+          "basisRevision": 1,
+          "candidateId": "current-default-texture",
+          "exportIdentity": {
+            "exportIndex": 9747,
+            "packageReference": 9748,
+            "objectPath": "Default__Texture",
+            "className": "texture",
+            "serialOffset": 3753709,
+            "serialSize": 351,
+            "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+          },
+          "propertyEvidence": {
+            "propertyName": "Filter",
+            "arrayIndex": 0,
+            "propertyType": "ByteProperty",
+            "structType": null,
+            "declaredDataSize": 8,
+            "serializedPayloadSize": 8,
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "value": "TF_Linear",
+            "encodedValueHex": "764d000000000000",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c"
+          },
+          "revisionFidelity": "CURRENT_REVISION_CROSS_REVISION_CANDIDATE_ONLY",
+          "admissibleAsSourceEra": false
+        },
+        "sRgb": {
+          "basisId": "SOURCE_LODGROUP_COLOR_ROLE_POLICY",
+          "basisRevision": 1,
+          "lodGroup": "texturegroup_effects",
+          "role": "COLOR_DATA"
+        },
+        "lodGroup": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "d884e783a505e6ead99d1a609394ef2218f257ac11fd3da4e3d45e9d56489455"
+        },
+        "remainingDescriptorFields": {
+          "basisId": "D3D11_EFFECT_SAMPLER_ROLE_POLICY",
+          "basisRevision": 1
+        }
+      },
+      "implementation": {
+        "implementationId": "ARTIST_F_SAMPLER_DESCRIPTOR_RECONSTRUCTION_V1",
+        "implementationVersion": 1,
+        "consumerContract": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT"
+      },
+      "numericOracle": {
+        "implementationId": "ARTIST_F_POLICY_NUMERIC_ORACLE_V1",
+        "implementationVersion": 1,
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "finiteRequired": true
+      },
+      "d3dStateOracleId": "D3D11_SAMPLER_DESC",
+      "rowSha256": "e1273502219d70add2db49b8185b28d896d7e948e3a6e22b6b7e3fe28e99744d"
+    },
+    {
+      "policyRowId": "material-reconstructed-policy-50b95dabdbe5bfb37ffb",
+      "policyOrder": 240,
+      "policyKind": "SAMPLER_DESCRIPTOR",
+      "sourceMatrixRowId": "material-feasibility-sampler-b21259a40da22d5c",
+      "materialRecipeId": "material-recipe-b508403ea55fedbc",
+      "materialOccurrenceIds": [
+        "source-active-003"
+      ],
+      "fieldId": "material-input-2b161e06207b4a97",
+      "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+      "bindingOriginAndOwner": {
+        "bindingOrigin": "SELF_DEFAULT",
+        "evidenceOwnerRecipeId": "material-recipe-b508403ea55fedbc",
+        "sourceSection": "parentDefaults",
+        "sourceSectionIndex": 0
+      },
+      "upstreamEvidence": {
+        "sourceValueAcquisitionRowSha256": "262783ead3b064c8e81771d5c21a614a9e636b93e2252cbb0ae3ac168bb37aa3",
+        "runtimeOracleRowSha256": "394096ac07fca8687738b71a2ea7590cecdedff1664caaaafaf2de271ef95dfe"
+      },
+      "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
+      "sourceExact": false,
+      "evidenceBlockers": {
+        "sourceValueAcquisition": [
+          "FULL_SAMPLER_DESCRIPTOR_SOURCE_VALUE_UNRESOLVED",
+          "SOURCE_REVISION_TEXTURE_CDO_OR_CONFIG_MISSING",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "runtimeOracle": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ]
+      },
+      "policySelectionAdmission": true,
+      "runtimeConsumerAdmission": false,
+      "rendererConsumerAdmission": false,
+      "productAdmission": false,
+      "logicalTexturePath": "fx_tex_04.fx_i_atypical_03_ycl",
+      "selectedDescriptor": {
+        "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
+        "filter": {
+          "ue3": "tf_linear",
+          "d3d11": 21
+        },
+        "addressU": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressV": {
+          "ue3": "ta_clamp",
+          "d3d11": 3
+        },
+        "addressW": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "mipLODBias": 0.0,
+        "maxAnisotropy": 0,
+        "comparisonFunc": {
+          "name": "D3D11_COMPARISON_NEVER",
+          "d3d11": 1
+        },
+        "borderColor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "minLOD": 0.0,
+        "maxLOD": 3.4028234663852886e+38,
+        "sRgb": true,
+        "srvColorSpace": "SRGB",
+        "lodGroup": "texturegroup_effects"
+      },
+      "providerBasis": {
+        "basisId": "VERSIONED_EFFECT_SAMPLER_ROLE_POLICY",
+        "basisRevision": 1,
+        "addressU": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressV": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "f1d0cfb87406b26d6bacab2fc712d13b6a213caf9c421d54385755e620991e25"
+        },
+        "addressW": {
+          "basisId": "EFFECT_UV_W_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "filter": {
+          "basisId": "CURRENT_TEXTURE_CDO_TF_LINEAR_CANDIDATE_POLICY",
+          "basisRevision": 1,
+          "candidateId": "current-default-texture",
+          "exportIdentity": {
+            "exportIndex": 9747,
+            "packageReference": 9748,
+            "objectPath": "Default__Texture",
+            "className": "texture",
+            "serialOffset": 3753709,
+            "serialSize": 351,
+            "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+          },
+          "propertyEvidence": {
+            "propertyName": "Filter",
+            "arrayIndex": 0,
+            "propertyType": "ByteProperty",
+            "structType": null,
+            "declaredDataSize": 8,
+            "serializedPayloadSize": 8,
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "value": "TF_Linear",
+            "encodedValueHex": "764d000000000000",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c"
+          },
+          "revisionFidelity": "CURRENT_REVISION_CROSS_REVISION_CANDIDATE_ONLY",
+          "admissibleAsSourceEra": false
+        },
+        "sRgb": {
+          "basisId": "SOURCE_LODGROUP_COLOR_ROLE_POLICY",
+          "basisRevision": 1,
+          "lodGroup": "texturegroup_effects",
+          "role": "COLOR_DATA"
+        },
+        "lodGroup": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "02b80da26089a7e23984c1eb9c495990522cb72ab8e450a41691ea6f1e9721ad"
+        },
+        "remainingDescriptorFields": {
+          "basisId": "D3D11_EFFECT_SAMPLER_ROLE_POLICY",
+          "basisRevision": 1
+        }
+      },
+      "implementation": {
+        "implementationId": "ARTIST_F_SAMPLER_DESCRIPTOR_RECONSTRUCTION_V1",
+        "implementationVersion": 1,
+        "consumerContract": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT"
+      },
+      "numericOracle": {
+        "implementationId": "ARTIST_F_POLICY_NUMERIC_ORACLE_V1",
+        "implementationVersion": 1,
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          3.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "finiteRequired": true
+      },
+      "d3dStateOracleId": "D3D11_SAMPLER_DESC",
+      "rowSha256": "aa26166a1965c8b56eef3bc95a8fe8ce42efce53fbf1e957f452d3e567b389e3"
+    },
+    {
+      "policyRowId": "material-reconstructed-policy-d266c50c59b56966bec2",
+      "policyOrder": 241,
+      "policyKind": "SAMPLER_DESCRIPTOR",
+      "sourceMatrixRowId": "material-feasibility-sampler-e7a488241030b53f",
+      "materialRecipeId": "material-recipe-b508403ea55fedbc",
+      "materialOccurrenceIds": [
+        "source-active-003"
+      ],
+      "fieldId": "material-input-88d1c7b61c5c81d7",
+      "fieldKind": "SELF_DEFAULT_TEXTURE_SAMPLER",
+      "bindingOriginAndOwner": {
+        "bindingOrigin": "SELF_DEFAULT",
+        "evidenceOwnerRecipeId": "material-recipe-b508403ea55fedbc",
+        "sourceSection": "parentDefaults",
+        "sourceSectionIndex": 10
+      },
+      "upstreamEvidence": {
+        "sourceValueAcquisitionRowSha256": "82bd1f55134bd674b63be6fb2119707df1c64049e185904e659a1f10ed99e796",
+        "runtimeOracleRowSha256": "50d9ae8b2c59457762c4e7c1446c59b0d15d651ff60b04dc96f614d761ba6157"
+      },
+      "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
+      "sourceExact": false,
+      "evidenceBlockers": {
+        "sourceValueAcquisition": [
+          "FULL_SAMPLER_DESCRIPTOR_SOURCE_VALUE_UNRESOLVED",
+          "SOURCE_REVISION_TEXTURE_CDO_OR_CONFIG_MISSING",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ],
+        "runtimeOracle": [
+          "SAMPLER_EVIDENCE_MISSING",
+          "SOURCE_VALUE_PROVIDER_UNAVAILABLE",
+          "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
+        ]
+      },
+      "policySelectionAdmission": true,
+      "runtimeConsumerAdmission": false,
+      "rendererConsumerAdmission": false,
+      "productAdmission": false,
+      "logicalTexturePath": "fx_tex_00.fx_b_atypical_004",
+      "selectedDescriptor": {
+        "type": "D3D11_SAMPLER_DESC_AND_SRV_COLOR_SPACE",
+        "filter": {
+          "ue3": "tf_linear",
+          "d3d11": 21
+        },
+        "addressU": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressV": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "addressW": {
+          "ue3": "ta_wrap",
+          "d3d11": 1
+        },
+        "mipLODBias": 0.0,
+        "maxAnisotropy": 0,
+        "comparisonFunc": {
+          "name": "D3D11_COMPARISON_NEVER",
+          "d3d11": 1
+        },
+        "borderColor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "minLOD": 0.0,
+        "maxLOD": 3.4028234663852886e+38,
+        "sRgb": true,
+        "srvColorSpace": "SRGB",
+        "lodGroup": "texturegroup_effects"
+      },
+      "providerBasis": {
+        "basisId": "VERSIONED_EFFECT_SAMPLER_ROLE_POLICY",
+        "basisRevision": 1,
+        "addressU": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressV": {
+          "basisId": "EFFECT_UV_WRAP_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "addressW": {
+          "basisId": "EFFECT_UV_W_ROLE_POLICY",
+          "basisRevision": 1
+        },
+        "filter": {
+          "basisId": "CURRENT_TEXTURE_CDO_TF_LINEAR_CANDIDATE_POLICY",
+          "basisRevision": 1,
+          "candidateId": "current-default-texture",
+          "exportIdentity": {
+            "exportIndex": 9747,
+            "packageReference": 9748,
+            "objectPath": "Default__Texture",
+            "className": "texture",
+            "serialOffset": 3753709,
+            "serialSize": 351,
+            "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+          },
+          "propertyEvidence": {
+            "propertyName": "Filter",
+            "arrayIndex": 0,
+            "propertyType": "ByteProperty",
+            "structType": null,
+            "declaredDataSize": 8,
+            "serializedPayloadSize": 8,
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "value": "TF_Linear",
+            "encodedValueHex": "764d000000000000",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c"
+          },
+          "revisionFidelity": "CURRENT_REVISION_CROSS_REVISION_CANDIDATE_ONLY",
+          "admissibleAsSourceEra": false
+        },
+        "sRgb": {
+          "basisId": "SOURCE_LODGROUP_COLOR_ROLE_POLICY",
+          "basisRevision": 1,
+          "lodGroup": "texturegroup_effects",
+          "role": "COLOR_DATA"
+        },
+        "lodGroup": {
+          "basisId": "SOURCE_ARCHIVE_EXPLICIT_VALUE_RETAINED_AS_RECONSTRUCTION_POLICY",
+          "basisRevision": 1,
+          "propertyRecordSha256": "8ab3d3864c74d0dd124800d3b75ccf6d2e824e5269466493b87725e1c3afbcb2"
+        },
+        "remainingDescriptorFields": {
+          "basisId": "D3D11_EFFECT_SAMPLER_ROLE_POLICY",
+          "basisRevision": 1
+        }
+      },
+      "implementation": {
+        "implementationId": "ARTIST_F_SAMPLER_DESCRIPTOR_RECONSTRUCTION_V1",
+        "implementationVersion": 1,
+        "consumerContract": "D3D11_SAMPLER_DESC_AND_SRGB_SRV_FORMAT"
+      },
+      "numericOracle": {
+        "implementationId": "ARTIST_F_POLICY_NUMERIC_ORACLE_V1",
+        "implementationVersion": 1,
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "finiteRequired": true
+      },
+      "d3dStateOracleId": "D3D11_SAMPLER_DESC",
+      "rowSha256": "9bb47e1202a4d4231405fa5ea64510072ab72bb51ebbc9bce8a717f15941adce"
     },
     {
       "policyRowId": "material-reconstructed-policy-3e54f5fafef85d526d36",
-      "policyOrder": 237,
+      "policyOrder": 242,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-36202194fcc98aab",
       "materialRecipeId": "material-recipe-c9a33671bd6f57df",
@@ -21433,7 +22230,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "c73c261445092bfdb0f8c003fbfee2b2429f332e740f417f243372f71ee43fe5",
-        "runtimeOracleRowSha256": "dc04321fac50b9df4b2b122ceb4b755d6899ed4caa8233c0bdf966876799dcf6"
+        "runtimeOracleRowSha256": "a35f79c96fe18ba3e38a9ade1926e8a2c919b064be5214e24c9cf9b1363784d1"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21570,11 +22367,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "1ceb966775597e42d529409a73fdd8dd7c32cfec76e592102ca4d03d9f1af436"
+      "rowSha256": "0d6e2608a81a54fa6af33edfd3c5dc8aea4db7ff8091eaa1f856510be03190f4"
     },
     {
       "policyRowId": "material-reconstructed-policy-cc2ea5058f47933c9d5b",
-      "policyOrder": 238,
+      "policyOrder": 243,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-37b1c3ea6bd35c28",
       "materialRecipeId": "material-recipe-c9a33671bd6f57df",
@@ -21591,7 +22388,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "c887916f5af8ff9c5ba7c25779285dbfcc43947374b57dd51b0cce63e2af4382",
-        "runtimeOracleRowSha256": "060851a13dba7bd0d3fdcbb3451dabfc372df0062b9bd3539763ef4bcd41ce25"
+        "runtimeOracleRowSha256": "7e15af9f0e818b6dda347d013376c425ec63d820a21b45c349e3c292dc3ea96a"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21728,11 +22525,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "7ce573fb168f1895f69e3fcabff28af845b4e2ccf8878fd0c2b282325f940315"
+      "rowSha256": "a50a8d2ef5f9b1bf9c32262f990d7538663e66b5b32fb0f879f4a4338f714c81"
     },
     {
       "policyRowId": "material-reconstructed-policy-f9b2be2282d20e3823ff",
-      "policyOrder": 239,
+      "policyOrder": 244,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-90a65fc213b6b0ba",
       "materialRecipeId": "material-recipe-c9a33671bd6f57df",
@@ -21749,7 +22546,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "bec081951ae7368686feee8233120ca1499fccbb1311d18d796d624b981ebedc",
-        "runtimeOracleRowSha256": "e5b5a376b1d6ad90237e7ead08e5f0fd85ebc8bc2052354824c0f70a72308309"
+        "runtimeOracleRowSha256": "5720e71bfe8ad6a2f915af9c14d14fb2eb6dbc075101f5e385bd0a8f53bb721e"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -21888,11 +22685,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "87ba4555e1b895bfe094fd100719066bcf961312850ecc9a9c25c1ee902889ed"
+      "rowSha256": "5af7a0beee9488f28c1c984a1a0b9306e951546d1cb0284d40343ee090af80d5"
     },
     {
       "policyRowId": "material-reconstructed-policy-855646ac4e09266526e4",
-      "policyOrder": 240,
+      "policyOrder": 245,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-7c9e79ec4230a421",
       "materialRecipeId": "material-recipe-c9a33671bd6f57df",
@@ -21909,7 +22706,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "8067a9380b3ce3721a4b5cf798617f6d76d0475dab16619b93d8368e8bad1c71",
-        "runtimeOracleRowSha256": "efd9ec0b7a08aee49f65d144c3686372bd2e4f89fa9b83c7980ab8774e36ebd3"
+        "runtimeOracleRowSha256": "543199529e161a8b2ad448c58673aafc41096aa99c72343170c20d70c15142cf"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22046,11 +22843,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "dbd3fe510fda50d787a2e65d0205ce98f9a8acf7de3871aafa1f45042c64f0b8"
+      "rowSha256": "c6042bd726a82e35420b0c5f4b2c43e91e69b725dd027d57787142077c3e2a22"
     },
     {
       "policyRowId": "material-reconstructed-policy-840d7fde25042cb38cb7",
-      "policyOrder": 241,
+      "policyOrder": 246,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-b9d52c9c448f1dd9",
       "materialRecipeId": "material-recipe-d75fcbbbae79bd5f",
@@ -22067,7 +22864,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "8bccc9a79479af7dcf74b1fa4a22893278079d0d52a90c0e9434bcbccf31b17d",
-        "runtimeOracleRowSha256": "13ee137e316a10633b286b01fd2d5a6c26ae6860f86272802add4858ac712f05"
+        "runtimeOracleRowSha256": "0037191455ec42abddaabf10d87ccf62de69e6228b08c14783031108df836ef2"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22204,11 +23001,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "79bc999370efa89e6d4cabe28c201f27617d64c8cad8d89372e016f85268765f"
+      "rowSha256": "16a1c432fe30e69635eb150371a50f0598c575d05bf96229dceff097c98c57ee"
     },
     {
       "policyRowId": "material-reconstructed-policy-31d1c0a3b5ef9816e2f2",
-      "policyOrder": 242,
+      "policyOrder": 247,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-a4f4c6958e18192b",
       "materialRecipeId": "material-recipe-d75fcbbbae79bd5f",
@@ -22225,7 +23022,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "ca3aee9d27b2d40fc696317cc37fedb9a33270372b85543bb0d73b45c8371d60",
-        "runtimeOracleRowSha256": "d03df31da56e44301e52e21193e5aefd6762d4e899d282509b5c62805ea37110"
+        "runtimeOracleRowSha256": "c9952d19b20b0483c3729ff73bc1a9c4030a94c0e51b4098fb627dfd7029dc46"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22362,11 +23159,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "5565580b0eac2f5ef555190d26c1be24c2ecfb8d5730a7f6366756ab0ca50c0f"
+      "rowSha256": "63331171eadcfd09bda16d14a73b480acb23a3e1258a24ff4d2dabec66acd00c"
     },
     {
       "policyRowId": "material-reconstructed-policy-c68954c9f7b574a34c63",
-      "policyOrder": 243,
+      "policyOrder": 248,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-df9cc9e7b9c26771",
       "materialRecipeId": "material-recipe-d75fcbbbae79bd5f",
@@ -22383,7 +23180,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "5880963b67172c0663988a2b903c10122206e2662d5c03535f85d6c04bb8412d",
-        "runtimeOracleRowSha256": "05281596a948207fa2ef5c996cc294dff3088af8beb5ca4785f4ef82fb358ca9"
+        "runtimeOracleRowSha256": "3818c217256146ff39fa9c795c170a20c06639f15a95a184dc89d212fea23571"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22520,11 +23317,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "e28d13fd9d3e63e1f52f8c75fcb17c1594678b40a7e054fdcdffdcebd97c32ce"
+      "rowSha256": "fd7167aac4cb34386276e8c732b853c6f4e4de138a492d8d53415dfa28b839a6"
     },
     {
       "policyRowId": "material-reconstructed-policy-7f76566a3ae3a546df47",
-      "policyOrder": 244,
+      "policyOrder": 249,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-6b23b449073d973d",
       "materialRecipeId": "material-recipe-d75fcbbbae79bd5f",
@@ -22541,7 +23338,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "5bd9e6debca5fc32b98019c7a83bfe35fb38f4d5585c992fe786a242ee3c8f04",
-        "runtimeOracleRowSha256": "62bc8b18388b331e6bf119acc30feca4ae8af5f33d78ee50416434060169a15a"
+        "runtimeOracleRowSha256": "97ec1a24d40202b70740dd5ed49db70be62d5249e646d5944d4b225f1bd46fb4"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22678,11 +23475,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a0edafb00cd19d8378689492378eced04975616e43a9c3cc1b109198c3aad962"
+      "rowSha256": "8b31915dd1594cd3f669aea41cd65f8febba41a0eebd6f2292d88119a338874a"
     },
     {
       "policyRowId": "material-reconstructed-policy-3e961174dffa8d797bd8",
-      "policyOrder": 245,
+      "policyOrder": 250,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-67cabe803fd7f633",
       "materialRecipeId": "material-recipe-daf220acad2b656e",
@@ -22699,7 +23496,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "e6e8f8e931ebc9362e96cf2a1ea17ba8173906dabc3b22b2e2f31fed25ae432d",
-        "runtimeOracleRowSha256": "6e8e3fdda0c3e6abfaa7d2855226154430a054aa57087fd4c2f36a3e5c2b1871"
+        "runtimeOracleRowSha256": "8ad70bdfa4c5a6cf36cfdd9c9a91491c2915732f28b48a6e4c1685367fee4486"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22836,11 +23633,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "0a666178803d59300f7b80476fc1d821eec831891bbfb63ddbffd95a47a66245"
+      "rowSha256": "c2236e6525f19542e2417685fb01df17e344d0ff6779515548ac6626327dd4d3"
     },
     {
       "policyRowId": "material-reconstructed-policy-89ec510e668d6b156733",
-      "policyOrder": 246,
+      "policyOrder": 251,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-2d60a61f71f68320",
       "materialRecipeId": "material-recipe-daf220acad2b656e",
@@ -22857,7 +23654,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "72b43f316a8eb619a186ff1151579c8ec0e15f2897ea6c44538ef5dd9dffa2b3",
-        "runtimeOracleRowSha256": "af0459d0cbed8fba537a08e0e0809efc53ca8743ab223b4eda1e78262f8e2e54"
+        "runtimeOracleRowSha256": "c9f31c3c2538d8be565874d4497e38515bff1713f52c0d62d93cc567682e93d7"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -22994,11 +23791,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a5b4a89298a3d5ca229607c3f8c67e0fddd36b108a97d096d4656e7268d2fdd8"
+      "rowSha256": "fea545d66b348b186aefa7e83ce875ecff544db86d3c45695cbcbd03667d3ccb"
     },
     {
       "policyRowId": "material-reconstructed-policy-03b3984340b8ad3fba71",
-      "policyOrder": 247,
+      "policyOrder": 252,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-b2774a46d7c4f6ac",
       "materialRecipeId": "material-recipe-daf220acad2b656e",
@@ -23015,7 +23812,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "e0c9a461bc1a8d6de5253ed5eaab4754928a54f9ae9d28e1918f3d0545cf2995",
-        "runtimeOracleRowSha256": "cf63c049596fec2844649f214f310cf79b9c49c355074e31661a02f9c50e7b04"
+        "runtimeOracleRowSha256": "ee0c975ef9211c0c40ff4e707cb269bdefe1a222862d951eacaf96d8ebbaed7c"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23154,11 +23951,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ce1130c1e6b8ddc32722bb0fa8837f8fa24e7984e9a848090508d9f9964569c9"
+      "rowSha256": "985199014950c3410447c20d12a65ebfb7fce84078a868c52daec798c9d7d878"
     },
     {
       "policyRowId": "material-reconstructed-policy-208072e6c83e16247ada",
-      "policyOrder": 248,
+      "policyOrder": 253,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-be8c08f95df58cfc",
       "materialRecipeId": "material-recipe-daf220acad2b656e",
@@ -23175,7 +23972,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0ca88f7cacda7962e905ddcae977f057cff3ccaba17dfc2e7911fda80eb144e9",
-        "runtimeOracleRowSha256": "eb6830070278091411f718c974e3e2ca4ebd220d6f3bb320501a69309efe365d"
+        "runtimeOracleRowSha256": "70448d78cce6d01b8edcf4d6f141401ddd06a7e8381e922bf4cc2ff559d3385d"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23312,11 +24109,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "7f452afb8d0f42d8234d7281e84071092d696314d1737897d549e4a4013476b9"
+      "rowSha256": "7384e4cecff86c5f656030e05196f3514b9049753813719e04f3b898767180c5"
     },
     {
       "policyRowId": "material-reconstructed-policy-62eccf7cb847b5dee047",
-      "policyOrder": 249,
+      "policyOrder": 254,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-96092fed8008df93",
       "materialRecipeId": "material-recipe-e45b1f4c930b11df",
@@ -23333,7 +24130,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "76e0719428db521d7731f9ece16883ab5bebcb16f87f0bac7506a6c12c2b2e79",
-        "runtimeOracleRowSha256": "ec7186f96e03b158859f4d1f793138a46c5091421a731ea395e87f63328b25b0"
+        "runtimeOracleRowSha256": "a1e4ffcd73656d9ad23ca71acdba652ccc8fc3c93e0ea7914a675a7afce472fa"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23470,11 +24267,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ff287c31ae1e3f898e4fc158ffc195de77f587e8db5fcbe7a8ced6404d965b16"
+      "rowSha256": "16cb1dc177dfbd8a890ba19c5235b996d4f5cf9332bc4245c10059b59308c4b3"
     },
     {
       "policyRowId": "material-reconstructed-policy-09f1a0030577eb17b495",
-      "policyOrder": 250,
+      "policyOrder": 255,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-b480050f9f5fba39",
       "materialRecipeId": "material-recipe-e45b1f4c930b11df",
@@ -23491,7 +24288,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "9555b7e0134f6f19ef475a3299fe70f32a4f0e030453d0cb8fc41c33a2af3359",
-        "runtimeOracleRowSha256": "b6ca97322384499ed2ed40e2f846bcbbed27550fcbff31b99253053298733487"
+        "runtimeOracleRowSha256": "ee12eafac48b0c6596da7584297a7614b9f28f0167483a84622d4c5747cedd59"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23628,11 +24425,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "a03546bcb4b583979e0546b9e49445fdc8d395c3a1804c7baea90dc47315ad47"
+      "rowSha256": "088c20ee86273cad90c0c774d1d21cc72e71f6839370fedaca2e3563b2beb146"
     },
     {
       "policyRowId": "material-reconstructed-policy-d5e42456edf284b516c5",
-      "policyOrder": 251,
+      "policyOrder": 256,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-733493e5bb3519a1",
       "materialRecipeId": "material-recipe-e45b1f4c930b11df",
@@ -23649,7 +24446,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "0dfb9fcca487004377de8fef457ced3bb8a3081bf43aa2475fdc7386f69d304a",
-        "runtimeOracleRowSha256": "ee5c2b6f638923d2ad257a1f80cabd65fd0877acb3056faf609193d6efa601e0"
+        "runtimeOracleRowSha256": "4f1b00f8a54e154e6b569c0a243cb54876c1af2eb5f86c6fcaa243ec07037daa"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23786,11 +24583,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "ab08c4d09b828d0436775d5798cab00fa8e83fc472f88ca03376a4c6240a9fd4"
+      "rowSha256": "87162c6c6e363ca6655041725ef93ca41d4ad36ddfd0ebbc6c7544c75e39ae44"
     },
     {
       "policyRowId": "material-reconstructed-policy-e656e29bc986c5be2505",
-      "policyOrder": 252,
+      "policyOrder": 257,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-86b95f0e85a69dfb",
       "materialRecipeId": "material-recipe-e45b1f4c930b11df",
@@ -23807,7 +24604,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "c926990e921bd0ba09f88c4f903519d7e53adc8438534176648101ad41135d60",
-        "runtimeOracleRowSha256": "0e3dbb8d87c07fbe55ad1d6db97250e567a6f86e8b13df33bf6ea2fe85491bbf"
+        "runtimeOracleRowSha256": "f693eee0c197c043c668db073073534945b9c10297e18adce778a97d4670476a"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -23944,11 +24741,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "b41dbfaf54c87930556582abffe2bdca82e53f41efd5274d44077ebfad236048"
+      "rowSha256": "7f937ece52ecc6520c688e5d3c8924f25eca0dacef20770fc9685a4ffa2d440a"
     },
     {
       "policyRowId": "material-reconstructed-policy-4b47a9526853531e865c",
-      "policyOrder": 253,
+      "policyOrder": 258,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-7d640df2305c985d",
       "materialRecipeId": "material-recipe-eca6507a183c9c39",
@@ -23966,7 +24763,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "4ecd0dc8346feed68668777f4172d8f2a80678db766bd5152ced5e1dede2053f",
-        "runtimeOracleRowSha256": "6d60ace37f5e5b897bcc2b0c65b1b9f53d4cc137864807532712fd06f8f8ecd1"
+        "runtimeOracleRowSha256": "dce1e9fab8ef44c1d904f0c60602a10f6e0c82d7877ad2549c6e1875ede831ca"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -24105,11 +24902,11 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "084ffb41be295b474dacc181341d7c72f114a7b1379a64acdf6ffa9f89c38025"
+      "rowSha256": "dd22e0a1409bec59340f63544034b1c1965c6806bf1436716879715e136030ee"
     },
     {
       "policyRowId": "material-reconstructed-policy-8c135bb91e2d7176f893",
-      "policyOrder": 254,
+      "policyOrder": 259,
       "policyKind": "SAMPLER_DESCRIPTOR",
       "sourceMatrixRowId": "material-feasibility-sampler-f235b8be01089ce5",
       "materialRecipeId": "material-recipe-eca6507a183c9c39",
@@ -24127,7 +24924,7 @@
       },
       "upstreamEvidence": {
         "sourceValueAcquisitionRowSha256": "d1d81d3f5600e336dca409cbcf7472edaa9091d4845a981c0d20a950e828d8e2",
-        "runtimeOracleRowSha256": "ca6c092584d7047bd0fa908da6b3ed53888c1a05e56a7a125bab703c98634255"
+        "runtimeOracleRowSha256": "43f157e4d795d47b5eb8a6ea68161bb80e3d253cacd2e539d09b1754261294e1"
       },
       "policyFidelity": "RECONSTRUCTED_APPROVED_V1",
       "sourceExact": false,
@@ -24264,7 +25061,7 @@
         "finiteRequired": true
       },
       "d3dStateOracleId": "D3D11_SAMPLER_DESC",
-      "rowSha256": "fe67e707b0b20ac0ddeded503192d3e14b10367b2aa9879aac021813cb065f99"
+      "rowSha256": "64854a70eda998e26a8a52f310c62a3f5472f203767b38983a882313df4dd7bb"
     }
   ],
   "hlslVerification": {
@@ -24280,9 +25077,9 @@
     },
     "hlslTrackedTextSha256": "2901471f07495ff079c64ea8234ca30cd26300819d56760dbdeabae353c0b718",
     "compiledDxbcSha256": "a7a4192b0d1fa70e19be8a14c8b7001d4e4020b95459bf6f88da9d3b09922bd9",
-    "sampleCount": 255,
-    "inputBytesSha256": "751c1969342ccf23e608c403e7d3c126b6bc07febd2d978d767347ecb3aaffd1",
-    "outputFloat32BytesSha256": "8eb1f9e4a53b681a8c3cf8bdada42718470d278955bc05df97e11922baeb9445",
+    "sampleCount": 260,
+    "inputBytesSha256": "f24dde047c463451c6b3dd9e309818a56b396bce0b19f8c44e06965ad22679ce",
+    "outputFloat32BytesSha256": "d7cb94ee9e049947e529bbb0e6ccf6120afd8a1ca1c55e0f2a631d4199ec9993",
     "numericTolerance": 0.0,
     "maxAbsoluteError": 0.0,
     "rowResults": [
@@ -28316,6 +29113,91 @@
         "decision": "PASS"
       },
       {
+        "policyRowId": "material-reconstructed-policy-86bec67bd21bb0b7d379",
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "actualFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-ed8f7b76674ad3f97ed7",
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "actualFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-b76fe8e4759e1950bee4",
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "actualFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-50b95dabdbe5bfb37ffb",
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          3.0,
+          1.0
+        ],
+        "actualFloat4": [
+          21.0,
+          1.0,
+          3.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-d266c50c59b56966bec2",
+        "expectedFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "actualFloat4": [
+          21.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
         "policyRowId": "material-reconstructed-policy-3e54f5fafef85d526d36",
         "expectedFloat4": [
           21.0,
@@ -28622,13 +29504,13 @@
         "decision": "PASS"
       }
     ],
-    "rowResultsSha256": "b58f66134b824a8f43f02f0bcc2d745aedc7b32d7aa6aab362384e1a9b145d4d"
+    "rowResultsSha256": "251f352c3572492cf2e5c355001fbd1ce9957cd753627dbdeabc7e386252e7fa"
   },
   "warpDescriptorVerification": {
     "verified": true,
     "backend": "D3D11_WARP_STATE_OBJECTS",
     "featureLevel": 45056,
-    "descriptorRowCount": 107,
+    "descriptorRowCount": 112,
     "numericTolerance": 0.0,
     "rowResults": [
       {
@@ -32258,6 +33140,206 @@
         "decision": "PASS"
       },
       {
+        "policyRowId": "material-reconstructed-policy-86bec67bd21bb0b7d379",
+        "descriptorKind": "D3D11_SAMPLER_DESC",
+        "expectedDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "actualDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-ed8f7b76674ad3f97ed7",
+        "descriptorKind": "D3D11_SAMPLER_DESC",
+        "expectedDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "actualDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-b76fe8e4759e1950bee4",
+        "descriptorKind": "D3D11_SAMPLER_DESC",
+        "expectedDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "actualDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-50b95dabdbe5bfb37ffb",
+        "descriptorKind": "D3D11_SAMPLER_DESC",
+        "expectedDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 3,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "actualDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 3,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-d266c50c59b56966bec2",
+        "descriptorKind": "D3D11_SAMPLER_DESC",
+        "expectedDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "actualDescriptor": {
+          "Filter": 21,
+          "AddressU": 1,
+          "AddressV": 1,
+          "AddressW": 1,
+          "MipLODBias": 0.0,
+          "MaxAnisotropy": 0,
+          "ComparisonFunc": 1,
+          "BorderColor": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "MinLOD": 0.0,
+          "MaxLOD": 3.4028234663852886e+38
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
         "policyRowId": "material-reconstructed-policy-3e54f5fafef85d526d36",
         "descriptorKind": "D3D11_SAMPLER_DESC",
         "expectedDescriptor": {
@@ -32978,8 +34060,8 @@
         "decision": "PASS"
       }
     ],
-    "rowResultsSha256": "5b76e727418c588efd614524e5202b3aaf7040ba4064d0faafe7195ce994c49d",
-    "srvColorSpaceRowCount": 72,
+    "rowResultsSha256": "8eec266215ab6df354babe26e192d6e0c1fd4f3dbe0631c4ef7c5ffc939f7a9c",
+    "srvColorSpaceRowCount": 77,
     "srvRowResults": [
       {
         "policyRowId": "material-reconstructed-policy-ab2944964634ef2584e5",
@@ -34008,6 +35090,101 @@
         "decision": "PASS"
       },
       {
+        "policyRowId": "material-reconstructed-policy-86bec67bd21bb0b7d379",
+        "expectedSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "actualSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-ed8f7b76674ad3f97ed7",
+        "expectedSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "actualSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-b76fe8e4759e1950bee4",
+        "expectedSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "actualSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-50b95dabdbe5bfb37ffb",
+        "expectedSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "actualSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
+        "policyRowId": "material-reconstructed-policy-d266c50c59b56966bec2",
+        "expectedSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "actualSrv": {
+          "Format": 29,
+          "ViewDimension": 4,
+          "MostDetailedMip": 0,
+          "MipLevels": 1,
+          "srvColorSpace": "SRGB"
+        },
+        "numericTolerance": 0.0,
+        "decision": "PASS"
+      },
+      {
         "policyRowId": "material-reconstructed-policy-3e54f5fafef85d526d36",
         "expectedSrv": {
           "Format": 29,
@@ -34350,12 +35527,12 @@
         "decision": "PASS"
       }
     ],
-    "srvRowResultsSha256": "47d4c6bea3fa30805ae5a085cfe2094c56766a04ae45d4c76120dbefecedb14f"
+    "srvRowResultsSha256": "ca2dcf3e7d1dbc407103eeb213b0c3e5f04fca002ae2fe8f269fc77dd5a01c67"
   },
   "admission": {
     "policySelection": {
       "ready": true,
-      "rowCount": 255
+      "rowCount": 260
     },
     "runtimeConsumer": {
       "ready": false,
@@ -34376,14 +35553,14 @@
     "renderStatePolicyRowCount": 89,
     "staticPermutationPolicyRowCount": 94,
     "staticExactOverrideValueRetainedCount": 23,
-    "samplerPolicyRowCount": 72,
-    "totalPolicyRowCount": 255,
+    "samplerPolicyRowCount": 77,
+    "totalPolicyRowCount": 260,
     "sourceExactPolicyRowCount": 0,
-    "d3dDescriptorOracleRowCount": 107,
-    "srvColorSpaceOracleRowCount": 72,
+    "d3dDescriptorOracleRowCount": 112,
+    "srvColorSpaceOracleRowCount": 77,
     "runtimeConsumerReadyRowCount": 0,
     "rendererConsumerReadyRowCount": 0,
     "productReadyRowCount": 0
   },
-  "receiptSha256": "10c7cacac0c54bf22060ab54a5596d48785631dd65b12c1c2810a87eb013d1c7"
+  "receiptSha256": "e33f0c18d8eefa453c635ad0b8cd149f288b6505c6204d9b304ad3f1e8d623dc"
 }

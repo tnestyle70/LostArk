@@ -2,7 +2,7 @@
 """Build the fail-closed Artist 31470 F reconstructed Material policy.
 
 This policy deliberately does not change source fidelity.  It selects explicit,
-versioned execution values for the 255 rows frozen at Material checkpoint
+versioned execution values for the 260 rows frozen at Material checkpoint
 cde8f3bd, preserves every evidence blocker, and keeps runtime/Product admission
 closed until a typed runtime consumer exists.
 """
@@ -63,8 +63,8 @@ DIRECT_IMPORT_MODULE_NAMES = {
 DEFAULT_OUTPUT = MATERIAL_ROOT / "skill.31470.material-reconstructed-approved-v1.receipt.json"
 
 FROZEN_MATERIAL_COMMIT = "cde8f3bddea2f9415f682b387d2705fd25794075"
-PINNED_RUNTIME_RECEIPT_SHA256 = "e128e281753fbd01582e588afbb682847401348836a046ad424a720360003ff6"
-PINNED_ACQUISITION_RECEIPT_SHA256 = "cf45b6db4290aaffb10410bea346daf1bbbc52d585611a4347326483a7d48f43"
+PINNED_RUNTIME_RECEIPT_SHA256 = "8e96b8f725c708d87221fcd9e081122956da1208db09e4982d8483499cf719e1"
+PINNED_ACQUISITION_RECEIPT_SHA256 = "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802"
 PINNED_MATERIAL_CONTRACT_SHA256 = "638fae77c5805a8d33cacb69b5cdd810d40d2f304606dd56f970dd2504c1cfcb"
 
 POLICY_ID = "RECONSTRUCTED_APPROVED_V1"
@@ -76,10 +76,10 @@ NUMERIC_IMPLEMENTATION_ID = "ARTIST_F_POLICY_NUMERIC_ORACLE_V1"
 
 EXPECTED_RENDER_ROWS = 89
 EXPECTED_STATIC_ROWS = 94
-EXPECTED_SAMPLER_ROWS = 72
-EXPECTED_TOTAL_ROWS = 255
+EXPECTED_SAMPLER_ROWS = 77
+EXPECTED_TOTAL_ROWS = 260
 EXPECTED_STATIC_EXACT_OVERRIDE_ROWS = 23
-EXPECTED_D3D_DESCRIPTOR_ROWS = 107
+EXPECTED_D3D_DESCRIPTOR_ROWS = 112
 
 D3D11_FILTER_MIN_MAG_MIP_LINEAR = 0x15
 D3D11_TEXTURE_ADDRESS_WRAP = 1
@@ -1110,13 +1110,13 @@ def main(argv: Iterable[str] | None = None) -> int:
             args.hlsl,
             args.verifier,
         )
-        print("PASS: Artist F reconstructed Material policy shallow rows=255 runtime=0 product=false")
+        print("PASS: Artist F reconstructed Material policy shallow rows=260 runtime=0 product=false")
         return 0
     candidate = build_from_paths(args)
     if args.check:
         require(args.output.is_file(), f"policy receipt is missing: {args.output}")
         require(read_json(args.output) == candidate, "reconstructed Material policy receipt is stale")
-        print("PASS: Artist F reconstructed Material policy deep rows=255 warp=107 runtime=0 product=false")
+        print("PASS: Artist F reconstructed Material policy deep rows=260 warp=112 runtime=0 product=false")
         return 0
     write_json_atomic(args.output, candidate)
     print(f"wrote {args.output}")

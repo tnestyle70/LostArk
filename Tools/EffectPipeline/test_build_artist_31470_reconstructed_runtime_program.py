@@ -57,11 +57,11 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
         self.assertEqual(summary["primitiveLeafCount"], 1572)
         self.assertEqual(summary["distributionCount"], 629)
         self.assertEqual(summary["actionScheduleCount"], 7)
-        self.assertEqual(summary["materialPolicyCount"], 255)
+        self.assertEqual(summary["materialPolicyCount"], 260)
         self.assertEqual(summary["geometryCarrierCount"], 7)
         self.assertEqual(summary["geometryUseCount"], 13)
         self.assertEqual(summary["sourceExactRowCount"], 0)
-        self.assertEqual(summary["resolvedMaterialTextureBindingCount"], 72)
+        self.assertEqual(summary["resolvedMaterialTextureBindingCount"], 77)
         self.assertNotIn(
             "MATERIAL_TEXTURE_RUNTIME_ASSET_UNRESOLVED", self.program["blockerUnion"]
         )
@@ -396,12 +396,12 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
     def test_08_material_texture_receipt_projection_is_immutable(self) -> None:
         self.assertEqual(len(self.program["inputArtifacts"]), 13)
         self.assertEqual(
-            self.program["summary"]["resolvedMaterialTextureBindingCount"], 72
+            self.program["summary"]["resolvedMaterialTextureBindingCount"], 77
         )
         self.assertEqual(sum(
             row["sourceReceiptStatus"] == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
             for row in self.program["materialTextureBindings"]
-        ), 68)
+        ), 73)
         self.assertEqual(sum(
             row["sourceReceiptStatus"]
             == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
@@ -666,8 +666,8 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             ("EXACT_NATIVE_PARTICLE_OUTPUT_ORACLE_REQUIRED", 29, "module"),
             ("FULL_CULL_MODE_UNRESOLVED", 61, "material_cull"),
             ("NO_EXACT_GUID_NATIVE_ENTRY", 28, "material_policy"),
-            ("SAMPLER_EVIDENCE_MISSING", 68, "material_policy"),
-            ("SOURCE_VALUE_PROVIDER_UNAVAILABLE", 161, "material_policy"),
+            ("SAMPLER_EVIDENCE_MISSING", 73, "material_policy"),
+            ("SOURCE_VALUE_PROVIDER_UNAVAILABLE", 166, "material_policy"),
             ("STATIC_PERMUTATION_SELECTION_UNRESOLVED", 28, "material_policy"),
             ("R3_TYPED_TIMING_EXECUTOR_NOT_COMPLETE", 35, "timing"),
             ("SOURCE_ERA_REQUIRED_DELAY_DEFAULT_UNPROVEN", 25, "timing"),
@@ -675,7 +675,7 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             ("R5_SCREEN_POST_RUNTIME_PROBE_NOT_COMPLETE", 1, "screen"),
             ("R5_POINT_LIGHT_RUNTIME_PROBE_NOT_COMPLETE", 1, "light"),
             ("R5_DECAL_RUNTIME_PROBE_NOT_COMPLETE", 3, "decal"),
-            ("R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE", 72, "texture"),
+            ("R4_TEXTURE_SRV_CONSUMER_NOT_COMPLETE", 77, "texture"),
         )
 
         for token, expected_count, owner_kind in cases:
