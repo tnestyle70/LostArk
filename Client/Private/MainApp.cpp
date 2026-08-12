@@ -455,6 +455,21 @@ void CMainApp::RenderCombatHUD()
 	{
 		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+
+		/* LanceMaster's identity icon is a keyframe-animated Scaleform extraction, not a static
+		layer stack -- it has to be told to play, and only on an actual stance edge (the source
+		asset's own stanceMc.gotoAndPlay("focus"/"wild") trigger, see LanceMasterSkinFrame.as).
+		Every other class's identity art still comes from Slot.Layers and needs nothing here. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass &&
+			player.eStance != m_ePreviousHudStance)
+		{
+			const char_t* pLabel =
+				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
+					"wild" : "focus";
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
+		}
+		m_ePreviousHudStance = player.eStance;
+
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
 

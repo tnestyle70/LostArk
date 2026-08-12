@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "LobbyCommandService.h"
+#include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
 
 NS_BEGIN(Engine)
@@ -82,6 +83,12 @@ private:
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
+	/* Edge-detects the local player's stance so RenderCombatHUD only calls
+	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
+	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
+	real stance, so the very first Render sees an edge and plays the arrival pose. */
+	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
 	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
 	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };

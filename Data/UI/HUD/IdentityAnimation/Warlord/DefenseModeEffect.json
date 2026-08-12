@@ -1,0 +1,2113 @@
+{
+ "schema": "lostark.identity-keyframe-animation",
+ "formatVersion": 1,
+ "frameRate": 40.0,
+ "frameCount": 173,
+ "labels": {
+  "full": 10,
+  "on": 30,
+  "off": 130
+ },
+ "layers": [
+  {
+   "depth": 1,
+   "keyframes": [
+    {
+     "frame": 10,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    },
+    {
+     "frame": 11,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.1445
+    },
+    {
+     "frame": 12,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.2852
+    },
+    {
+     "frame": 13,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.4297
+    },
+    {
+     "frame": 14,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.5703
+    },
+    {
+     "frame": 15,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.7148
+    },
+    {
+     "frame": 16,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.8555
+    },
+    {
+     "frame": 17,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 131,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.918
+    },
+    {
+     "frame": 132,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.832
+    },
+    {
+     "frame": 133,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.75
+    },
+    {
+     "frame": 134,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.668
+    },
+    {
+     "frame": 135,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.582
+    },
+    {
+     "frame": 136,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.5
+    },
+    {
+     "frame": 137,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.418
+    },
+    {
+     "frame": 138,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.332
+    },
+    {
+     "frame": 139,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.25
+    },
+    {
+     "frame": 140,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.168
+    },
+    {
+     "frame": 141,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.082
+    },
+    {
+     "frame": 142,
+     "asset": null,
+     "x": 872.0,
+     "y": 940.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 3,
+   "keyframes": [
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 965.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 963.6,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 958.3,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 946.15,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 918.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 918.5,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 41,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 919.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 42,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 917.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 43,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 915.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 130,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 922.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 131,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 929.2,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 132,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 936.4,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 133,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 943.6,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 950.8,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape625_s625b624.png",
+     "x": 929.0,
+     "y": 958.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    }
+   ]
+  },
+  {
+   "depth": 4,
+   "keyframes": [
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 901.85,
+     "y": 968.8,
+     "scaleX": 0.8572,
+     "scaleY": 0.8572,
+     "rotationDeg": 30.86,
+     "alpha": 1.0
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 899.6,
+     "y": 963.6,
+     "scaleX": 0.945,
+     "scaleY": 0.945,
+     "rotationDeg": 18.77,
+     "alpha": 1.0
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.7,
+     "y": 959.75,
+     "scaleX": 0.9819,
+     "scaleY": 0.9819,
+     "rotationDeg": 10.56,
+     "alpha": 1.0
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.4,
+     "y": 957.35,
+     "scaleX": 0.9948,
+     "scaleY": 0.9948,
+     "rotationDeg": 5.53,
+     "alpha": 1.0
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.3,
+     "y": 955.95,
+     "scaleX": 0.9987,
+     "scaleY": 0.9987,
+     "rotationDeg": 2.5,
+     "alpha": 1.0
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.25,
+     "y": 955.15,
+     "scaleX": 0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": 0.77,
+     "alpha": 1.0
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.0,
+     "y": 955.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 132,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.1,
+     "y": 956.85,
+     "scaleX": 0.9974,
+     "scaleY": 0.9974,
+     "rotationDeg": 3.78,
+     "alpha": 0.875
+    },
+    {
+     "frame": 133,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.25,
+     "y": 958.65,
+     "scaleX": 0.9905,
+     "scaleY": 0.9905,
+     "rotationDeg": 7.56,
+     "alpha": 0.75
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 898.6,
+     "y": 960.5,
+     "scaleX": 0.9787,
+     "scaleY": 0.9787,
+     "rotationDeg": 11.53,
+     "alpha": 0.625
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 899.05,
+     "y": 962.3,
+     "scaleX": 0.963,
+     "scaleY": 0.963,
+     "rotationDeg": 15.31,
+     "alpha": 0.5
+    },
+    {
+     "frame": 136,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 899.55,
+     "y": 964.1,
+     "scaleX": 0.9421,
+     "scaleY": 0.9421,
+     "rotationDeg": 19.28,
+     "alpha": 0.375
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 900.2,
+     "y": 965.8,
+     "scaleX": 0.918,
+     "scaleY": 0.918,
+     "rotationDeg": 23.07,
+     "alpha": 0.25
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 901.0,
+     "y": 967.5,
+     "scaleX": 0.8884,
+     "scaleY": 0.8884,
+     "rotationDeg": 27.04,
+     "alpha": 0.125
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 901.85,
+     "y": 968.8,
+     "scaleX": 0.8572,
+     "scaleY": 0.8572,
+     "rotationDeg": 30.86,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 5,
+   "keyframes": [
+    {
+     "frame": 32,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 871.05,
+     "y": 976.7,
+     "scaleX": 0.809,
+     "scaleY": 0.809,
+     "rotationDeg": 35.88,
+     "alpha": 1.0
+    },
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 868.6,
+     "y": 965.2,
+     "scaleX": 0.9161,
+     "scaleY": 0.9161,
+     "rotationDeg": 23.34,
+     "alpha": 1.0
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 868.45,
+     "y": 956.95,
+     "scaleX": 0.9664,
+     "scaleY": 0.9664,
+     "rotationDeg": 14.57,
+     "alpha": 1.0
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.0,
+     "y": 951.3,
+     "scaleX": 0.988,
+     "scaleY": 0.988,
+     "rotationDeg": 8.56,
+     "alpha": 1.0
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.75,
+     "y": 947.6,
+     "scaleX": 0.9963,
+     "scaleY": 0.9963,
+     "rotationDeg": 4.56,
+     "alpha": 1.0
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 870.3,
+     "y": 945.35,
+     "scaleX": 0.9991,
+     "scaleY": 0.9991,
+     "rotationDeg": 2.06,
+     "alpha": 1.0
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 870.65,
+     "y": 944.2,
+     "scaleX": 0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": 0.75,
+     "alpha": 1.0
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 871.0,
+     "y": 943.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.95,
+     "y": 946.95,
+     "scaleX": 0.9967,
+     "scaleY": 0.9967,
+     "rotationDeg": 4.31,
+     "alpha": 0.875
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.05,
+     "y": 951.1,
+     "scaleX": 0.9873,
+     "scaleY": 0.9873,
+     "rotationDeg": 8.81,
+     "alpha": 0.75
+    },
+    {
+     "frame": 136,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 868.6,
+     "y": 955.3,
+     "scaleX": 0.9718,
+     "scaleY": 0.9718,
+     "rotationDeg": 13.31,
+     "alpha": 0.625
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 868.45,
+     "y": 959.5,
+     "scaleX": 0.9504,
+     "scaleY": 0.9504,
+     "rotationDeg": 17.82,
+     "alpha": 0.5
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 868.55,
+     "y": 963.75,
+     "scaleX": 0.9231,
+     "scaleY": 0.9231,
+     "rotationDeg": 22.32,
+     "alpha": 0.375
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.05,
+     "y": 968.05,
+     "scaleX": 0.8901,
+     "scaleY": 0.8901,
+     "rotationDeg": 26.83,
+     "alpha": 0.25
+    },
+    {
+     "frame": 140,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 869.9,
+     "y": 972.15,
+     "scaleX": 0.8517,
+     "scaleY": 0.8517,
+     "rotationDeg": 31.34,
+     "alpha": 0.125
+    },
+    {
+     "frame": 141,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 871.05,
+     "y": 976.7,
+     "scaleX": 0.809,
+     "scaleY": 0.809,
+     "rotationDeg": 35.88,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 6,
+   "keyframes": [
+    {
+     "frame": 30,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 845.2,
+     "y": 987.05,
+     "scaleX": 0.6428,
+     "scaleY": 0.6428,
+     "rotationDeg": 50.0,
+     "alpha": 0.0
+    },
+    {
+     "frame": 31,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 839.15,
+     "y": 964.3,
+     "scaleX": 0.822,
+     "scaleY": 0.822,
+     "rotationDeg": 34.58,
+     "alpha": 0.3086
+    },
+    {
+     "frame": 32,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 838.55,
+     "y": 946.75,
+     "scaleX": 0.9189,
+     "scaleY": 0.9189,
+     "rotationDeg": 23.07,
+     "alpha": 0.5352
+    },
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 840.25,
+     "y": 934.25,
+     "scaleX": 0.966,
+     "scaleY": 0.966,
+     "rotationDeg": 14.8,
+     "alpha": 0.7031
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 842.6,
+     "y": 925.65,
+     "scaleX": 0.9871,
+     "scaleY": 0.9871,
+     "rotationDeg": 9.02,
+     "alpha": 0.8203
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 844.6,
+     "y": 919.95,
+     "scaleX": 0.9959,
+     "scaleY": 0.9959,
+     "rotationDeg": 5.02,
+     "alpha": 0.8984
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 846.25,
+     "y": 916.15,
+     "scaleX": 0.999,
+     "scaleY": 0.999,
+     "rotationDeg": 2.3,
+     "alpha": 0.9492
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 847.25,
+     "y": 914.0,
+     "scaleX": 0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": 0.78,
+     "alpha": 0.9844
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 848.0,
+     "y": 913.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 844.3,
+     "y": 921.5,
+     "scaleX": 0.994,
+     "scaleY": 0.994,
+     "rotationDeg": 6.06,
+     "alpha": 0.875
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 841.4,
+     "y": 930.55,
+     "scaleX": 0.9763,
+     "scaleY": 0.9763,
+     "rotationDeg": 12.32,
+     "alpha": 0.75
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 839.55,
+     "y": 939.95,
+     "scaleX": 0.9469,
+     "scaleY": 0.9469,
+     "rotationDeg": 18.58,
+     "alpha": 0.625
+    },
+    {
+     "frame": 140,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 838.65,
+     "y": 949.45,
+     "scaleX": 0.9063,
+     "scaleY": 0.9063,
+     "rotationDeg": 24.84,
+     "alpha": 0.5
+    },
+    {
+     "frame": 141,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 838.85,
+     "y": 958.9,
+     "scaleX": 0.8549,
+     "scaleY": 0.8549,
+     "rotationDeg": 31.11,
+     "alpha": 0.375
+    },
+    {
+     "frame": 142,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 840.05,
+     "y": 968.4,
+     "scaleX": 0.7933,
+     "scaleY": 0.7933,
+     "rotationDeg": 37.38,
+     "alpha": 0.25
+    },
+    {
+     "frame": 143,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 842.3,
+     "y": 977.7,
+     "scaleX": 0.7224,
+     "scaleY": 0.7224,
+     "rotationDeg": 43.65,
+     "alpha": 0.125
+    },
+    {
+     "frame": 144,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 845.2,
+     "y": 987.05,
+     "scaleX": 0.6428,
+     "scaleY": 0.6428,
+     "rotationDeg": 50.0,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 7,
+   "keyframes": [
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 813.0,
+     "y": 880.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.7109
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 809.25,
+     "y": 876.8,
+     "scaleX": 1.0098,
+     "scaleY": 1.0098,
+     "rotationDeg": 0.0,
+     "alpha": 0.6445
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 805.8,
+     "y": 873.95,
+     "scaleX": 1.0188,
+     "scaleY": 1.0188,
+     "rotationDeg": 0.0,
+     "alpha": 0.582
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 802.75,
+     "y": 871.25,
+     "scaleX": 1.027,
+     "scaleY": 1.027,
+     "rotationDeg": 0.0,
+     "alpha": 0.5273
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 799.8,
+     "y": 868.8,
+     "scaleX": 1.0346,
+     "scaleY": 1.0346,
+     "rotationDeg": 0.0,
+     "alpha": 0.4766
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 797.1,
+     "y": 866.55,
+     "scaleX": 1.0416,
+     "scaleY": 1.0416,
+     "rotationDeg": 0.0,
+     "alpha": 0.4297
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 794.7,
+     "y": 864.45,
+     "scaleX": 1.048,
+     "scaleY": 1.048,
+     "rotationDeg": 0.0,
+     "alpha": 0.3867
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 792.45,
+     "y": 862.55,
+     "scaleX": 1.0539,
+     "scaleY": 1.0539,
+     "rotationDeg": 0.0,
+     "alpha": 0.3477
+    },
+    {
+     "frame": 41,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 790.4,
+     "y": 860.75,
+     "scaleX": 1.0593,
+     "scaleY": 1.0593,
+     "rotationDeg": 0.0,
+     "alpha": 0.3086
+    },
+    {
+     "frame": 42,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 788.45,
+     "y": 859.15,
+     "scaleX": 1.0643,
+     "scaleY": 1.0643,
+     "rotationDeg": 0.0,
+     "alpha": 0.2734
+    },
+    {
+     "frame": 43,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 786.7,
+     "y": 857.7,
+     "scaleX": 1.0689,
+     "scaleY": 1.0689,
+     "rotationDeg": 0.0,
+     "alpha": 0.2422
+    },
+    {
+     "frame": 44,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 785.1,
+     "y": 856.3,
+     "scaleX": 1.0732,
+     "scaleY": 1.0732,
+     "rotationDeg": 0.0,
+     "alpha": 0.2148
+    },
+    {
+     "frame": 45,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 783.65,
+     "y": 855.1,
+     "scaleX": 1.077,
+     "scaleY": 1.077,
+     "rotationDeg": 0.0,
+     "alpha": 0.1875
+    },
+    {
+     "frame": 46,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 782.25,
+     "y": 853.9,
+     "scaleX": 1.0806,
+     "scaleY": 1.0806,
+     "rotationDeg": 0.0,
+     "alpha": 0.1641
+    },
+    {
+     "frame": 47,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 781.0,
+     "y": 852.8,
+     "scaleX": 1.0839,
+     "scaleY": 1.0839,
+     "rotationDeg": 0.0,
+     "alpha": 0.1445
+    },
+    {
+     "frame": 48,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 779.9,
+     "y": 851.85,
+     "scaleX": 1.0869,
+     "scaleY": 1.0869,
+     "rotationDeg": 0.0,
+     "alpha": 0.1211
+    },
+    {
+     "frame": 49,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 778.85,
+     "y": 850.95,
+     "scaleX": 1.0897,
+     "scaleY": 1.0897,
+     "rotationDeg": 0.0,
+     "alpha": 0.1016
+    },
+    {
+     "frame": 50,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 777.85,
+     "y": 850.2,
+     "scaleX": 1.0922,
+     "scaleY": 1.0922,
+     "rotationDeg": 0.0,
+     "alpha": 0.0859
+    },
+    {
+     "frame": 51,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 777.0,
+     "y": 849.4,
+     "scaleX": 1.0945,
+     "scaleY": 1.0945,
+     "rotationDeg": 0.0,
+     "alpha": 0.0703
+    },
+    {
+     "frame": 52,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 776.2,
+     "y": 848.7,
+     "scaleX": 1.0966,
+     "scaleY": 1.0966,
+     "rotationDeg": 0.0,
+     "alpha": 0.0547
+    },
+    {
+     "frame": 53,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 775.4,
+     "y": 848.05,
+     "scaleX": 1.0986,
+     "scaleY": 1.0986,
+     "rotationDeg": 0.0,
+     "alpha": 0.043
+    },
+    {
+     "frame": 54,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 774.7,
+     "y": 847.5,
+     "scaleX": 1.1004,
+     "scaleY": 1.1004,
+     "rotationDeg": 0.0,
+     "alpha": 0.0312
+    },
+    {
+     "frame": 55,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 774.1,
+     "y": 846.95,
+     "scaleX": 1.102,
+     "scaleY": 1.102,
+     "rotationDeg": 0.0,
+     "alpha": 0.0195
+    },
+    {
+     "frame": 56,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 773.5,
+     "y": 846.5,
+     "scaleX": 1.1035,
+     "scaleY": 1.1035,
+     "rotationDeg": 0.0,
+     "alpha": 0.0078
+    },
+    {
+     "frame": 57,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 773.0,
+     "y": 846.05,
+     "scaleX": 1.1049,
+     "scaleY": 1.1049,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 8,
+   "keyframes": [
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1017.25,
+     "y": 968.8,
+     "scaleX": -0.8572,
+     "scaleY": 0.8572,
+     "rotationDeg": -149.14,
+     "alpha": 1.0
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1019.45,
+     "y": 963.6,
+     "scaleX": -0.945,
+     "scaleY": 0.945,
+     "rotationDeg": -161.23,
+     "alpha": 1.0
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.35,
+     "y": 959.75,
+     "scaleX": -0.9819,
+     "scaleY": 0.9819,
+     "rotationDeg": -169.44,
+     "alpha": 1.0
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.65,
+     "y": 957.35,
+     "scaleX": -0.9948,
+     "scaleY": 0.9948,
+     "rotationDeg": -174.47,
+     "alpha": 1.0
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.75,
+     "y": 955.95,
+     "scaleX": -0.9987,
+     "scaleY": 0.9987,
+     "rotationDeg": -177.5,
+     "alpha": 1.0
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.8,
+     "y": 955.15,
+     "scaleX": -0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": -179.24,
+     "alpha": 1.0
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1021.1,
+     "y": 955.0,
+     "scaleX": -1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 132,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.95,
+     "y": 956.85,
+     "scaleX": -0.9974,
+     "scaleY": 0.9974,
+     "rotationDeg": -176.22,
+     "alpha": 0.875
+    },
+    {
+     "frame": 133,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.8,
+     "y": 958.65,
+     "scaleX": -0.9905,
+     "scaleY": 0.9905,
+     "rotationDeg": -172.44,
+     "alpha": 0.75
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.45,
+     "y": 960.5,
+     "scaleX": -0.9787,
+     "scaleY": 0.9787,
+     "rotationDeg": -168.47,
+     "alpha": 0.625
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1020.0,
+     "y": 962.3,
+     "scaleX": -0.963,
+     "scaleY": 0.963,
+     "rotationDeg": -164.69,
+     "alpha": 0.5
+    },
+    {
+     "frame": 136,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1019.5,
+     "y": 964.1,
+     "scaleX": -0.9421,
+     "scaleY": 0.9421,
+     "rotationDeg": -160.72,
+     "alpha": 0.375
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1018.85,
+     "y": 965.8,
+     "scaleX": -0.918,
+     "scaleY": 0.918,
+     "rotationDeg": -156.93,
+     "alpha": 0.25
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1018.05,
+     "y": 967.5,
+     "scaleX": -0.8884,
+     "scaleY": 0.8884,
+     "rotationDeg": -152.96,
+     "alpha": 0.125
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape623_s623b622.png",
+     "x": 1017.25,
+     "y": 968.8,
+     "scaleX": -0.8572,
+     "scaleY": 0.8572,
+     "rotationDeg": -149.14,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 9,
+   "keyframes": [
+    {
+     "frame": 32,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1048.05,
+     "y": 976.7,
+     "scaleX": -0.809,
+     "scaleY": 0.809,
+     "rotationDeg": -144.12,
+     "alpha": 1.0
+    },
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.45,
+     "y": 965.2,
+     "scaleX": -0.9161,
+     "scaleY": 0.9161,
+     "rotationDeg": -156.66,
+     "alpha": 1.0
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.6,
+     "y": 956.95,
+     "scaleX": -0.9664,
+     "scaleY": 0.9664,
+     "rotationDeg": -165.43,
+     "alpha": 1.0
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.05,
+     "y": 951.3,
+     "scaleX": -0.988,
+     "scaleY": 0.988,
+     "rotationDeg": -171.44,
+     "alpha": 1.0
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1049.3,
+     "y": 947.6,
+     "scaleX": -0.9963,
+     "scaleY": 0.9963,
+     "rotationDeg": -175.44,
+     "alpha": 1.0
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1048.75,
+     "y": 945.35,
+     "scaleX": -0.9991,
+     "scaleY": 0.9991,
+     "rotationDeg": -177.94,
+     "alpha": 1.0
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1048.4,
+     "y": 944.2,
+     "scaleX": -0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": -179.25,
+     "alpha": 1.0
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1048.1,
+     "y": 943.0,
+     "scaleX": -1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1049.1,
+     "y": 946.95,
+     "scaleX": -0.9967,
+     "scaleY": 0.9967,
+     "rotationDeg": -175.69,
+     "alpha": 0.875
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.0,
+     "y": 951.1,
+     "scaleX": -0.9873,
+     "scaleY": 0.9873,
+     "rotationDeg": -171.19,
+     "alpha": 0.75
+    },
+    {
+     "frame": 136,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.45,
+     "y": 955.3,
+     "scaleX": -0.9718,
+     "scaleY": 0.9718,
+     "rotationDeg": -166.69,
+     "alpha": 0.625
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.6,
+     "y": 959.5,
+     "scaleX": -0.9504,
+     "scaleY": 0.9504,
+     "rotationDeg": -162.19,
+     "alpha": 0.5
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.5,
+     "y": 963.75,
+     "scaleX": -0.9231,
+     "scaleY": 0.9231,
+     "rotationDeg": -157.68,
+     "alpha": 0.375
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1050.0,
+     "y": 968.05,
+     "scaleX": -0.8901,
+     "scaleY": 0.8901,
+     "rotationDeg": -153.17,
+     "alpha": 0.25
+    },
+    {
+     "frame": 140,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1049.15,
+     "y": 972.15,
+     "scaleX": -0.8517,
+     "scaleY": 0.8517,
+     "rotationDeg": -148.66,
+     "alpha": 0.125
+    },
+    {
+     "frame": 141,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape619_s619b618.png",
+     "x": 1048.05,
+     "y": 976.7,
+     "scaleX": -0.809,
+     "scaleY": 0.809,
+     "rotationDeg": -144.12,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 10,
+   "keyframes": [
+    {
+     "frame": 30,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1073.9,
+     "y": 987.05,
+     "scaleX": -0.6428,
+     "scaleY": 0.6428,
+     "rotationDeg": -130.0,
+     "alpha": 0.0
+    },
+    {
+     "frame": 31,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1079.9,
+     "y": 964.3,
+     "scaleX": -0.822,
+     "scaleY": 0.822,
+     "rotationDeg": -145.42,
+     "alpha": 0.3086
+    },
+    {
+     "frame": 32,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1080.5,
+     "y": 946.75,
+     "scaleX": -0.9189,
+     "scaleY": 0.9189,
+     "rotationDeg": -156.93,
+     "alpha": 0.5352
+    },
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1078.8,
+     "y": 934.25,
+     "scaleX": -0.966,
+     "scaleY": 0.966,
+     "rotationDeg": -165.2,
+     "alpha": 0.7031
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1076.45,
+     "y": 925.65,
+     "scaleX": -0.9871,
+     "scaleY": 0.9871,
+     "rotationDeg": -170.98,
+     "alpha": 0.8203
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1074.45,
+     "y": 919.95,
+     "scaleX": -0.9959,
+     "scaleY": 0.9959,
+     "rotationDeg": -174.98,
+     "alpha": 0.8984
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1072.8,
+     "y": 916.15,
+     "scaleX": -0.999,
+     "scaleY": 0.999,
+     "rotationDeg": -177.7,
+     "alpha": 0.9492
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1071.8,
+     "y": 914.0,
+     "scaleX": -0.9998,
+     "scaleY": 0.9998,
+     "rotationDeg": -179.22,
+     "alpha": 0.9844
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1071.1,
+     "y": 913.0,
+     "scaleX": -1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 137,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1074.8,
+     "y": 921.5,
+     "scaleX": -0.994,
+     "scaleY": 0.994,
+     "rotationDeg": -173.94,
+     "alpha": 0.875
+    },
+    {
+     "frame": 138,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1077.7,
+     "y": 930.55,
+     "scaleX": -0.9763,
+     "scaleY": 0.9763,
+     "rotationDeg": -167.68,
+     "alpha": 0.75
+    },
+    {
+     "frame": 139,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1079.55,
+     "y": 939.95,
+     "scaleX": -0.9469,
+     "scaleY": 0.9469,
+     "rotationDeg": -161.42,
+     "alpha": 0.625
+    },
+    {
+     "frame": 140,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1080.45,
+     "y": 949.45,
+     "scaleX": -0.9063,
+     "scaleY": 0.9063,
+     "rotationDeg": -155.16,
+     "alpha": 0.5
+    },
+    {
+     "frame": 141,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1080.25,
+     "y": 958.9,
+     "scaleX": -0.8549,
+     "scaleY": 0.8549,
+     "rotationDeg": -148.89,
+     "alpha": 0.375
+    },
+    {
+     "frame": 142,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1079.05,
+     "y": 968.4,
+     "scaleX": -0.7933,
+     "scaleY": 0.7933,
+     "rotationDeg": -142.62,
+     "alpha": 0.25
+    },
+    {
+     "frame": 143,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1076.8,
+     "y": 977.7,
+     "scaleX": -0.7224,
+     "scaleY": 0.7224,
+     "rotationDeg": -136.35,
+     "alpha": 0.125
+    },
+    {
+     "frame": 144,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape617_s617b616.png",
+     "x": 1073.9,
+     "y": 987.05,
+     "scaleX": -0.6428,
+     "scaleY": 0.6428,
+     "rotationDeg": -130.0,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 11,
+   "keyframes": [
+    {
+     "frame": 33,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1106.1,
+     "y": 880.0,
+     "scaleX": -1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.7109
+    },
+    {
+     "frame": 34,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1109.8,
+     "y": 876.8,
+     "scaleX": -1.0098,
+     "scaleY": 1.0098,
+     "rotationDeg": 0.0,
+     "alpha": 0.6445
+    },
+    {
+     "frame": 35,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1113.25,
+     "y": 873.95,
+     "scaleX": -1.0188,
+     "scaleY": 1.0188,
+     "rotationDeg": 0.0,
+     "alpha": 0.582
+    },
+    {
+     "frame": 36,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1116.3,
+     "y": 871.25,
+     "scaleX": -1.027,
+     "scaleY": 1.027,
+     "rotationDeg": 0.0,
+     "alpha": 0.5273
+    },
+    {
+     "frame": 37,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1119.25,
+     "y": 868.8,
+     "scaleX": -1.0346,
+     "scaleY": 1.0346,
+     "rotationDeg": 0.0,
+     "alpha": 0.4766
+    },
+    {
+     "frame": 38,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1121.95,
+     "y": 866.55,
+     "scaleX": -1.0416,
+     "scaleY": 1.0416,
+     "rotationDeg": 0.0,
+     "alpha": 0.4297
+    },
+    {
+     "frame": 39,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1124.35,
+     "y": 864.45,
+     "scaleX": -1.048,
+     "scaleY": 1.048,
+     "rotationDeg": 0.0,
+     "alpha": 0.3867
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1126.6,
+     "y": 862.55,
+     "scaleX": -1.0539,
+     "scaleY": 1.0539,
+     "rotationDeg": 0.0,
+     "alpha": 0.3477
+    },
+    {
+     "frame": 41,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1128.65,
+     "y": 860.75,
+     "scaleX": -1.0593,
+     "scaleY": 1.0593,
+     "rotationDeg": 0.0,
+     "alpha": 0.3086
+    },
+    {
+     "frame": 42,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1130.6,
+     "y": 859.15,
+     "scaleX": -1.0643,
+     "scaleY": 1.0643,
+     "rotationDeg": 0.0,
+     "alpha": 0.2734
+    },
+    {
+     "frame": 43,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1132.35,
+     "y": 857.7,
+     "scaleX": -1.0689,
+     "scaleY": 1.0689,
+     "rotationDeg": 0.0,
+     "alpha": 0.2422
+    },
+    {
+     "frame": 44,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1133.95,
+     "y": 856.3,
+     "scaleX": -1.0732,
+     "scaleY": 1.0732,
+     "rotationDeg": 0.0,
+     "alpha": 0.2148
+    },
+    {
+     "frame": 45,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1135.4,
+     "y": 855.1,
+     "scaleX": -1.077,
+     "scaleY": 1.077,
+     "rotationDeg": 0.0,
+     "alpha": 0.1875
+    },
+    {
+     "frame": 46,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1136.8,
+     "y": 853.9,
+     "scaleX": -1.0806,
+     "scaleY": 1.0806,
+     "rotationDeg": 0.0,
+     "alpha": 0.1641
+    },
+    {
+     "frame": 47,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1138.05,
+     "y": 852.8,
+     "scaleX": -1.0839,
+     "scaleY": 1.0839,
+     "rotationDeg": 0.0,
+     "alpha": 0.1445
+    },
+    {
+     "frame": 48,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1139.15,
+     "y": 851.85,
+     "scaleX": -1.0869,
+     "scaleY": 1.0869,
+     "rotationDeg": 0.0,
+     "alpha": 0.1211
+    },
+    {
+     "frame": 49,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1140.2,
+     "y": 850.95,
+     "scaleX": -1.0897,
+     "scaleY": 1.0897,
+     "rotationDeg": 0.0,
+     "alpha": 0.1016
+    },
+    {
+     "frame": 50,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1141.2,
+     "y": 850.2,
+     "scaleX": -1.0922,
+     "scaleY": 1.0922,
+     "rotationDeg": 0.0,
+     "alpha": 0.0859
+    },
+    {
+     "frame": 51,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1142.05,
+     "y": 849.4,
+     "scaleX": -1.0945,
+     "scaleY": 1.0945,
+     "rotationDeg": 0.0,
+     "alpha": 0.0703
+    },
+    {
+     "frame": 52,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1142.85,
+     "y": 848.7,
+     "scaleX": -1.0966,
+     "scaleY": 1.0966,
+     "rotationDeg": 0.0,
+     "alpha": 0.0547
+    },
+    {
+     "frame": 53,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1143.65,
+     "y": 848.05,
+     "scaleX": -1.0986,
+     "scaleY": 1.0986,
+     "rotationDeg": 0.0,
+     "alpha": 0.043
+    },
+    {
+     "frame": 54,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1144.35,
+     "y": 847.5,
+     "scaleX": -1.1004,
+     "scaleY": 1.1004,
+     "rotationDeg": 0.0,
+     "alpha": 0.0312
+    },
+    {
+     "frame": 55,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1144.95,
+     "y": 846.95,
+     "scaleX": -1.102,
+     "scaleY": 1.102,
+     "rotationDeg": 0.0,
+     "alpha": 0.0195
+    },
+    {
+     "frame": 56,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1145.55,
+     "y": 846.5,
+     "scaleX": -1.1035,
+     "scaleY": 1.1035,
+     "rotationDeg": 0.0,
+     "alpha": 0.0078
+    },
+    {
+     "frame": 57,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape621_1_s621b620.png",
+     "x": 1146.1,
+     "y": 846.05,
+     "scaleX": -1.1049,
+     "scaleY": 1.1049,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    }
+   ]
+  },
+  {
+   "depth": 12,
+   "keyframes": [
+    {
+     "frame": 0,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 900.0,
+     "y": 922.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 40,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 899.0,
+     "y": 920.65,
+     "scaleX": 1.0171,
+     "scaleY": 1.0171,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 41,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 896.8,
+     "y": 917.75,
+     "scaleX": 1.0536,
+     "scaleY": 1.0536,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 42,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 891.15,
+     "y": 910.15,
+     "scaleX": 1.15,
+     "scaleY": 1.15,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 43,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 894.1,
+     "y": 914.1,
+     "scaleX": 1.1,
+     "scaleY": 1.1,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 131,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 894.4,
+     "y": 914.55,
+     "scaleX": 1.0943,
+     "scaleY": 1.0943,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 132,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 894.95,
+     "y": 915.3,
+     "scaleX": 1.085,
+     "scaleY": 1.085,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 133,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 895.8,
+     "y": 916.4,
+     "scaleX": 1.0707,
+     "scaleY": 1.0707,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 134,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 897.15,
+     "y": 918.25,
+     "scaleX": 1.0476,
+     "scaleY": 1.0476,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 135,
+     "asset": "UI/HUD/WarLord/Identity/warlord_shape612_s612b611.png",
+     "x": 900.0,
+     "y": 922.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    }
+   ]
+  },
+  {
+   "depth": 13,
+   "keyframes": [
+    {
+     "frame": 30,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    },
+    {
+     "frame": 31,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.168
+    },
+    {
+     "frame": 32,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.332
+    },
+    {
+     "frame": 33,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.5
+    },
+    {
+     "frame": 34,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.668
+    },
+    {
+     "frame": 35,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.832
+    },
+    {
+     "frame": 36,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 1.0
+    },
+    {
+     "frame": 131,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.832
+    },
+    {
+     "frame": 132,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.668
+    },
+    {
+     "frame": 133,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.5
+    },
+    {
+     "frame": 134,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.332
+    },
+    {
+     "frame": 135,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.168
+    },
+    {
+     "frame": 136,
+     "asset": null,
+     "x": 837.0,
+     "y": 811.0,
+     "scaleX": 1.0,
+     "scaleY": 1.0,
+     "rotationDeg": 0.0,
+     "alpha": 0.0
+    }
+   ]
+  }
+ ]
+}

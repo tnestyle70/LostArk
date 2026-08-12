@@ -196,6 +196,13 @@ HRESULT Client::CHUDRuntimeView::Load()
 					Slot.bAnimationLoop = pLoop->Get_Boolean();
 		}
 
+		if (const DATA_JSON_VALUE* pKeyframePath = SlotValue.Find("keyframeAnimationPath"))
+			if (pKeyframePath->Is_String())
+				Slot.strKeyframeAnimationPath = pKeyframePath->Get_String();
+		if (const DATA_JSON_VALUE* pKeyframeScale = SlotValue.Find("keyframeAnimationScale"))
+			if (pKeyframeScale->Is_Number() && pKeyframeScale->Get_Number() > 0.0)
+				Slot.fKeyframeAnimationScale = static_cast<f32_t>(pKeyframeScale->Get_Number());
+
 		m_Slots.push_back(move(Slot));
 	}
 
@@ -260,7 +267,161 @@ ID3D11ShaderResourceView* Client::CHUDRuntimeView::Get_Or_Load_Texture(const str
 
 	m_TextureCache[strPath] = pSRV;
 
+	TEXTURE_SIZE Size{};
+	if (SUCCEEDED(hr) && nullptr != pSRV)
+	{
+		ComPtr<ID3D11Resource> pResource;
+		pSRV->GetResource(&pResource);
+		ComPtr<ID3D11Texture2D> pTexture2D;
+		if (SUCCEEDED(pResource.As(&pTexture2D)))
+		{
+			D3D11_TEXTURE2D_DESC Desc{};
+			pTexture2D->GetDesc(&Desc);
+			Size.fWidth = static_cast<f32_t>(Desc.Width);
+			Size.fHeight = static_cast<f32_t>(Desc.Height);
+		}
+	}
+	m_TextureSizeCache[strPath] = Size;
+
 	return FAILED(hr) ? nullptr : pSRV.Get();
+}
+
+Client::CHUDRuntimeView::TEXTURE_SIZE Client::CHUDRuntimeView::Get_Texture_Size(const string& strPath)
+{
+	Get_Or_Load_Texture(strPath);
+	const auto Iter = m_TextureSizeCache.find(strPath);
+	return m_TextureSizeCache.end() != Iter ? Iter->second : TEXTURE_SIZE{};
+}
+
+const Client::CHUDRuntimeView::KEYFRAME_ANIM_DOCUMENT*
+Client::CHUDRuntimeView::Get_Or_Load_KeyframeAnimation(const string& strPath)
+{
+	if (strPath.empty())
+		return nullptr;
+
+	const auto Iter = m_KeyframeAnimationCache.find(strPath);
+	if (m_KeyframeAnimationCache.end() != Iter)
+		return Iter->second.isLoaded ? &Iter->second : nullptr;
+
+	KEYFRAME_ANIM_DOCUMENT Document{};
+
+	const u8string Utf8Path(strPath.begin(), strPath.end());
+	const filesystem::path DataPath = CProjectDataRoot::Resolve(filesystem::path(Utf8Path));
+	ifstream Stream(DataPath, ios::binary);
+	if (Stream.is_open())
+	{
+		const string Text(
+			(istreambuf_iterator<char>(Stream)),
+			istreambuf_iterator<char>());
+
+		DATA_JSON_VALUE Root;
+		string Error;
+		if (CDataJson::Parse(Text, Root, Error) && Root.Is_Object())
+		{
+			if (const DATA_JSON_VALUE* pFrameRate = Root.Find("frameRate"))
+				if (pFrameRate->Is_Number() && pFrameRate->Get_Number() > 0.0)
+					Document.fFrameRate = static_cast<f32_t>(pFrameRate->Get_Number());
+			if (const DATA_JSON_VALUE* pFrameCount = Root.Find("frameCount"))
+				if (pFrameCount->Is_Number())
+					Document.iFrameCount = static_cast<int32_t>(pFrameCount->Get_Number());
+
+			if (const DATA_JSON_VALUE* pLabels = Root.Find("labels"))
+			{
+				if (pLabels->Is_Object())
+				{
+					for (const auto& Pair : pLabels->Get_Object())
+						if (Pair.second.Is_Number())
+							Document.Labels[Pair.first] = static_cast<int32_t>(Pair.second.Get_Number());
+				}
+			}
+
+			if (const DATA_JSON_VALUE* pLayers = Root.Find("layers"))
+			{
+				if (pLayers->Is_Array())
+				{
+					for (const DATA_JSON_VALUE& LayerValue : pLayers->Get_Array())
+					{
+						const DATA_JSON_VALUE* pKeyframes = LayerValue.Find("keyframes");
+						if (nullptr == pKeyframes || !pKeyframes->Is_Array())
+							continue;
+
+						KEYFRAME_ANIM_LAYER Layer{};
+						for (const DATA_JSON_VALUE& KeyValue : pKeyframes->Get_Array())
+						{
+							KEYFRAME_ANIM_KEY Key{};
+							if (const DATA_JSON_VALUE* pFrame = KeyValue.Find("frame"))
+								if (pFrame->Is_Number())
+									Key.iFrame = static_cast<int32_t>(pFrame->Get_Number());
+							if (const DATA_JSON_VALUE* pAsset = KeyValue.Find("asset"))
+								if (pAsset->Is_String())
+									Key.strAsset = pAsset->Get_String();
+							if (const DATA_JSON_VALUE* pX = KeyValue.Find("x"))
+								if (pX->Is_Number())
+									Key.fX = static_cast<f32_t>(pX->Get_Number());
+							if (const DATA_JSON_VALUE* pY = KeyValue.Find("y"))
+								if (pY->Is_Number())
+									Key.fY = static_cast<f32_t>(pY->Get_Number());
+							if (const DATA_JSON_VALUE* pScaleX = KeyValue.Find("scaleX"))
+								if (pScaleX->Is_Number())
+									Key.fScaleX = static_cast<f32_t>(pScaleX->Get_Number());
+							if (const DATA_JSON_VALUE* pScaleY = KeyValue.Find("scaleY"))
+								if (pScaleY->Is_Number())
+									Key.fScaleY = static_cast<f32_t>(pScaleY->Get_Number());
+							if (const DATA_JSON_VALUE* pRotation = KeyValue.Find("rotationDeg"))
+								if (pRotation->Is_Number())
+									Key.fRotationDeg = static_cast<f32_t>(pRotation->Get_Number());
+							if (const DATA_JSON_VALUE* pAlpha = KeyValue.Find("alpha"))
+								if (pAlpha->Is_Number())
+									Key.fAlpha = static_cast<f32_t>(pAlpha->Get_Number());
+							if (const DATA_JSON_VALUE* pAdditive = KeyValue.Find("additive"))
+								if (pAdditive->Is_Boolean())
+									Key.bAdditive = pAdditive->Get_Boolean();
+							Layer.Keys.push_back(move(Key));
+						}
+						Document.Layers.push_back(move(Layer));
+					}
+				}
+			}
+
+			Document.isLoaded = !Document.Layers.empty();
+		}
+	}
+
+	auto InsertedIter = m_KeyframeAnimationCache.emplace(strPath, move(Document)).first;
+	return InsertedIter->second.isLoaded ? &InsertedIter->second : nullptr;
+}
+
+bool_t Client::CHUDRuntimeView::Play_KeyframeAnimation(const string& strSlotId, const string& strLabel)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId || Slot.strKeyframeAnimationPath.empty())
+			continue;
+
+		const KEYFRAME_ANIM_DOCUMENT* pDocument =
+			Get_Or_Load_KeyframeAnimation(Slot.strKeyframeAnimationPath);
+		if (nullptr == pDocument)
+			return false;
+
+		const auto LabelIter = pDocument->Labels.find(strLabel);
+		if (pDocument->Labels.end() == LabelIter)
+			return false;
+
+		const int32_t iStartFrame = LabelIter->second;
+		int32_t iEndFrame = pDocument->iFrameCount;
+		for (const auto& Pair : pDocument->Labels)
+		{
+			if (Pair.second > iStartFrame && Pair.second < iEndFrame)
+				iEndFrame = Pair.second;
+		}
+
+		Slot.iKeyframeAnimWindowStart = iStartFrame;
+		Slot.iKeyframeAnimWindowEnd = iEndFrame;
+		Slot.dKeyframeAnimStartSeconds = ImGui::GetTime();
+		return true;
+	}
+
+	return false;
 }
 
 void Client::CHUDRuntimeView::Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd)
@@ -361,6 +522,64 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 				Get_Or_Load_Texture(Slot.AnimationFrames[iFrameIndex]);
 			if (nullptr != pSRV)
 				Draw_Image_Quad(pDrawList, pSRV, Corners, IM_COL32(255, 255, 255, 255), false, false);
+			continue;
+		}
+
+		/* A slot with a keyframe animation document (an extracted Scaleform identity-HUD asset,
+		e.g. LanceMaster's stance-switch icon) draws that instead of Layers, once something has
+		called Play_KeyframeAnimation() on it -- until then it draws nothing (Layers is
+		intentionally empty for such a slot; see HUD_Layout.json). */
+		if (!Slot.strKeyframeAnimationPath.empty())
+		{
+			if (Slot.dKeyframeAnimStartSeconds < 0.0)
+				continue;
+
+			const KEYFRAME_ANIM_DOCUMENT* pDocument =
+				Get_Or_Load_KeyframeAnimation(Slot.strKeyframeAnimationPath);
+			if (nullptr == pDocument)
+				continue;
+
+			const double dElapsedSeconds = ImGui::GetTime() - Slot.dKeyframeAnimStartSeconds;
+			int32_t iCurrentFrame = Slot.iKeyframeAnimWindowStart +
+				static_cast<int32_t>(dElapsedSeconds * static_cast<double>(pDocument->fFrameRate));
+			if (iCurrentFrame >= Slot.iKeyframeAnimWindowEnd)
+				iCurrentFrame = Slot.iKeyframeAnimWindowEnd - 1;
+			if (iCurrentFrame < Slot.iKeyframeAnimWindowStart)
+				iCurrentFrame = Slot.iKeyframeAnimWindowStart;
+
+			for (const KEYFRAME_ANIM_LAYER& Layer : pDocument->Layers)
+			{
+				const KEYFRAME_ANIM_KEY* pActiveKey = nullptr;
+				for (const KEYFRAME_ANIM_KEY& Key : Layer.Keys)
+				{
+					if (Key.iFrame > iCurrentFrame)
+						break;
+					pActiveKey = &Key;
+				}
+				if (nullptr == pActiveKey || pActiveKey->strAsset.empty() || pActiveKey->fAlpha <= 0.f)
+					continue;
+
+				ID3D11ShaderResourceView* pKeySRV = Get_Or_Load_Texture(pActiveKey->strAsset);
+				if (nullptr == pKeySRV)
+					continue;
+				const TEXTURE_SIZE KeySize = Get_Texture_Size(pActiveKey->strAsset);
+				if (KeySize.fWidth <= 0.f || KeySize.fHeight <= 0.f)
+					continue;
+
+				const f32_t fLocalScale = Slot.fKeyframeAnimationScale;
+				const ImVec2 vKeyTopLeft(
+					vTopLeft.x + pActiveKey->fX * fLocalScale * fScaleX,
+					vTopLeft.y + pActiveKey->fY * fLocalScale * fScaleY);
+				const ImVec2 vKeyBotRight(
+					vKeyTopLeft.x + KeySize.fWidth * pActiveKey->fScaleX * fLocalScale * fScaleX,
+					vKeyTopLeft.y + KeySize.fHeight * pActiveKey->fScaleY * fLocalScale * fScaleY);
+
+				ImVec2 KeyCorners[4];
+				Get_Rotated_Rect_Corners(vKeyTopLeft, vKeyBotRight, pActiveKey->fRotationDeg, KeyCorners);
+
+				const ImU32 iKeyTint = ImGui::ColorConvertFloat4ToU32(ImVec4(1.f, 1.f, 1.f, pActiveKey->fAlpha));
+				Draw_Image_Quad(pDrawList, pKeySRV, KeyCorners, iKeyTint, pActiveKey->bAdditive, false);
+			}
 			continue;
 		}
 
