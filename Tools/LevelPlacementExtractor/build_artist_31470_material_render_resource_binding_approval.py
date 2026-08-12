@@ -58,11 +58,11 @@ DEFAULT_TOOL = Path(__file__).resolve()
 EFFECT_SHADER = ROOT / "Client/Bin/ShaderFiles/Shader_EffectCommon.hlsli"
 ENGINE_SHADER_DEFINES = ROOT / "Engine/Bin/ShaderFiles/Engine_Shader_Defines.hlsli"
 
-PROGRAM_BYTE_COUNT = 15_072_141
-PROGRAM_RAW_SHA256 = "72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849"
-PROGRAM_SHA256 = "618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b"
+PROGRAM_BYTE_COUNT = 15_117_436
+PROGRAM_RAW_SHA256 = "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6"
+PROGRAM_SHA256 = "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8"
 EFFECT_SHADER_TRACKED_TEXT_SHA256 = (
-    "34ca3d68ea1e2d8714e975c2dc4c0ad245a399c9f4f7aee759bc993485675baf"
+    "955e3b53f9c340db0b32084cd1b1a891aa40524d91c8041cc83460c657df3b72"
 )
 ENGINE_SHADER_DEFINES_TRACKED_TEXT_SHA256 = (
     "869b1aec6f1a5839937b82f19cf88e4b38fe6890a4b299818709b483ed0a80f8"
@@ -213,17 +213,21 @@ def validate_program_authorities(program: dict[str, Any]) -> None:
     )
 
 
-def load_approved_program() -> dict[str, Any]:
+def load_approved_program(path: Path = DEFAULT_PROGRAM) -> dict[str, Any]:
     global _APPROVED_PROGRAM_CACHE
-    raw = DEFAULT_PROGRAM.read_bytes()
+    raw = path.read_bytes()
     require(not raw.startswith(b"\xef\xbb\xbf"), "program must be UTF-8 without BOM")
     require(len(raw) == PROGRAM_BYTE_COUNT, "frozen program byte-count mismatch")
     require(hashlib.sha256(raw).hexdigest() == PROGRAM_RAW_SHA256,
             "frozen program raw SHA-256 mismatch")
     require(b"\r" not in raw, "frozen program must remain canonical LF")
-    if _APPROVED_PROGRAM_CACHE is None:
-        _, _APPROVED_PROGRAM_CACHE = _read_program_bytes(DEFAULT_PROGRAM)
-    program = _APPROVED_PROGRAM_CACHE
+    use_cache = path.resolve() == DEFAULT_PROGRAM.resolve()
+    if not use_cache or _APPROVED_PROGRAM_CACHE is None:
+        _, program = _read_program_bytes(path)
+        if use_cache:
+            _APPROVED_PROGRAM_CACHE = program
+    else:
+        program = _APPROVED_PROGRAM_CACHE
     validate_program_authorities(program)
     return program
 
@@ -436,11 +440,22 @@ def _first_renderer_choice(
     rows: list[dict[str, Any]],
     slot_priority: Iterable[str],
     excluded_binding_id: str = "",
+    excluded_logical_texture_path: str = "",
+    bindings: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     for slot in slot_priority:
         for row in rows:
-            if row["slotId"] == slot and row["selectedTextureBindingId"] != excluded_binding_id:
-                return row
+            binding_id = row["selectedTextureBindingId"]
+            if row["slotId"] != slot or binding_id == excluded_binding_id:
+                continue
+            if excluded_logical_texture_path:
+                require(bindings is not None and binding_id in bindings,
+                        "renderer texture choice lacks a binding identity")
+                if bindings[binding_id]["logicalTexturePath"].casefold() == (
+                    excluded_logical_texture_path.casefold()
+                ):
+                    continue
+            return row
     return None
 
 
@@ -472,6 +487,15 @@ def build_recipe_decisions(
     for order, recipe in enumerate(program["materialRecipes"]):
         family = families[recipe["familyId"]]
         feature_mask = family["featureMask"]
+        recipe_texture_inputs = [
+            row for row in program["materialInputs"]
+            if row["recipeId"] == recipe["recipeId"]
+            and row["fieldKind"] == "texture"
+        ]
+        runtime_required_texture_inputs = [
+            row for row in recipe_texture_inputs
+            if row["bindingOrigin"] == "SELF_DEFAULT"
+        ]
         recipe_bindings = [
             row for row in program["materialTextureBindings"]
             if row["recipeId"] == recipe["recipeId"]
@@ -498,6 +522,9 @@ def build_recipe_decisions(
                 bindings, inputs, policies,
             )
         else:
+            require(not runtime_required_texture_inputs,
+                    "SELF_DEFAULT texture inputs have no runtime bindings: "
+                    f"{recipe['recipeId']}")
             texture0 = _neutral_provider(
                 NEUTRAL_BASE_WHITE,
                 "EXPLICIT_EVALUATOR_BASE_NEUTRAL_FOR_RECIPE_WITH_NO_TEXTURE_FIELDS",
@@ -505,11 +532,17 @@ def build_recipe_decisions(
 
         needs_texture1 = bool(feature_mask & (SECOND_TEXTURE_BIT | DISTORTION_BIT))
         texture0_binding_id = texture0["textureBindingId"]
+        texture0_logical_path = (
+            bindings[texture0_binding_id]["logicalTexturePath"]
+            if texture0_binding_id else ""
+        )
         if needs_texture1:
             texture1_renderer = _first_renderer_choice(
                 renderer_choices,
                 ("noise", "dissolve", "mask", "emissive", "base"),
                 texture0_binding_id,
+                texture0_logical_path,
+                bindings,
             )
             if texture1_renderer is not None:
                 texture1 = _provider_from_binding_id(
@@ -518,7 +551,12 @@ def build_recipe_decisions(
                     bindings, inputs, policies,
                 )
             else:
-                distinct = [row for row in recipe_bindings if row["bindingId"] != texture0_binding_id]
+                distinct = [
+                    row for row in recipe_bindings
+                    if row["bindingId"] != texture0_binding_id
+                    and row["logicalTexturePath"].casefold()
+                    != texture0_logical_path.casefold()
+                ]
                 if distinct:
                     texture1 = _provider_from_binding_id(
                         distinct[0]["bindingId"],
@@ -537,13 +575,20 @@ def build_recipe_decisions(
             )
 
         if texture0["providerKind"] == "NEUTRAL_CONSTANT":
-            require(not recipe_bindings,
-                    f"texture0 neutral chosen despite available texture fields: {recipe['recipeId']}")
+            require(not recipe_bindings and not runtime_required_texture_inputs,
+                    "texture0 neutral chosen despite runtime-bindable texture fields: "
+                    f"{recipe['recipeId']}")
             require(texture0["neutralProviderId"] == NEUTRAL_BASE_WHITE,
                     f"invalid base neutral: {recipe['recipeId']}")
         if texture1["providerKind"] == "NEUTRAL_CONSTANT":
             require(texture1["neutralProviderId"] == secondary_neutral,
                     f"secondary neutral does not match evaluator semantics: {recipe['recipeId']}")
+        elif needs_texture1 and texture0["providerKind"] == "MATERIAL_TEXTURE_BINDING":
+            require(
+                bindings[texture1["textureBindingId"]]["logicalTexturePath"].casefold()
+                != texture0_logical_path.casefold(),
+                f"secondary texture aliases the primary resource: {recipe['recipeId']}",
+            )
 
         result.append(seal_row({
             "recipeTextureDecisionId": f"recipe-texture-binding-{order:02d}",
@@ -883,6 +928,8 @@ def validate_receipt(
     receipt: dict[str, Any],
     program: dict[str, Any] | None = None,
     *,
+    program_path: Path = DEFAULT_PROGRAM,
+    _program_already_validated: bool = False,
     require_approval: bool = True,
 ) -> None:
     validate_recursive_types(receipt)
@@ -896,7 +943,14 @@ def validate_receipt(
             "receipt self seal mismatch")
     _validate_sealed_rows(receipt)
 
-    approved_program = load_approved_program()
+    if _program_already_validated:
+        require(program is not None,
+                "validated supplied Program is required")
+        program_module.validate_program(program)
+        validate_program_authorities(program)
+        approved_program = program
+    else:
+        approved_program = load_approved_program(program_path)
     if program is not None:
         program_module.validate_program(program)
         strict_ordered_equal(program, approved_program, "suppliedProgram")
@@ -929,7 +983,13 @@ def main() -> int:
             "program command-line input is not the frozen candidate")
     validate_program_authorities(program)
     receipt = build_receipt(program)
-    validate_receipt(receipt, program, require_approval=not args.allow_unapproved)
+    validate_receipt(
+        receipt,
+        program,
+        program_path=args.program,
+        _program_already_validated=True,
+        require_approval=not args.allow_unapproved,
+    )
     expected = serialized_receipt(receipt)
 
     if args.check:

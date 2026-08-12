@@ -29,6 +29,25 @@ FORMAT_VERSION = 1
 PRODUCT_OWNER_BLOCKER = "FINAL_INTEGRATION_PRODUCT_ADMISSION_REQUIRED"
 CUSTOM_HANDLER_BLOCKER = "EXACT_SOURCE_CLASS_HANDLER_NUMERIC_ORACLE_REQUIRED"
 CUSTOM_DISTRIBUTION_BLOCKER = "CUSTOM_EF_DISTRIBUTION_EVALUATOR_UNPROVEN"
+DEFAULT_DEPENDENT_BLOCKER = "DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED"
+DEFAULT_POLICY_BLOCKER = "DEFAULT_DEPENDENT_DISTRIBUTION_REQUIRES_TYPED_DEFAULT_POLICY"
+FAIL_CLOSED_DEFAULT_POLICY = "FAIL_CLOSED_NULL_RAW_DISTRIBUTION"
+CURRENT_ENGINE_CDO_POLICY = "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+ALLOWED_DEFAULT_POLICIES = {
+    FAIL_CLOSED_DEFAULT_POLICY,
+    CURRENT_ENGINE_CDO_POLICY,
+}
+EXPECTED_DEFAULT_DEPENDENT_COUNT = 137
+EXPECTED_SPAWN_DEFAULT_DEPENDENT_COUNT = 36
+EXPECTED_SPAWN_RATESCALE_DEFAULT_DEPENDENT_COUNT = 35
+EXPECTED_SPAWN_RATE_DEFAULT_DEPENDENT_OCCURRENCE = 2
+EXPECTED_SPAWN_PARAMETER_RATE_OCCURRENCE = 34
+EXPECTED_NONZERO_SPAWN_RATES = {
+    0: 7.0,
+    3: 40.0,
+    24: 80.0,
+    26: 50.0,
+}
 
 EXPECTED = {
     "occurrenceCount": 35,
@@ -228,6 +247,279 @@ def close_enough(left: Any, right: Any) -> bool:
     return left == right
 
 
+def is_zero_vector(value: Any) -> bool:
+    return as_vector(value) == [0.0, 0.0, 0.0, 0.0]
+
+
+def verify_null_raw_distribution_projection(
+    semantic_distribution: dict[str, Any], descriptor: dict[str, Any],
+) -> None:
+    evidence = semantic_distribution.get("fieldEvidence") or {}
+    raw_fields = evidence.get("rawFieldNames") or []
+    require(
+        evidence.get("defaultDependent") is True
+        and raw_fields and raw_fields[0] == "distribution"
+        and set(raw_fields).issubset({
+            "distribution", "lookuptabletimescale", "lookuptablestarttime",
+        })
+        and evidence.get("hasLookupPayload") is False
+        and evidence.get("explicitOperation") is None
+        and DEFAULT_DEPENDENT_BLOCKER
+        in semantic_distribution.get("executionBlockers", []),
+        "null RawDistribution semantic evidence changed",
+    )
+    require(
+        str(descriptor.get("sourceClass") or "") == ""
+        and str(descriptor.get("sourceObjectPath") or "") == ""
+        and 1 <= int(descriptor.get("componentCount", 0)) <= 4
+        and int(descriptor.get("operation", -1)) == 1
+        and int(descriptor.get("lookupTableChunkSize", -1)) == 0
+        and int(descriptor.get("lookupTableNumElements", -1)) == 0
+        and is_zero_vector(descriptor.get("defaultMinimum"))
+        and is_zero_vector(descriptor.get("defaultMaximum"))
+        and descriptor.get("lookupTable") == []
+        and descriptor.get("keys") == []
+        and str(descriptor.get("referenceId") or "") == ""
+        and str(descriptor.get("occurrenceId") or "") == "",
+        "null RawDistribution numeric payload shape changed",
+    )
+
+
+def verify_spawn_ratescale_raw_distribution_float(
+    semantic_distribution: dict[str, Any], descriptor: dict[str, Any],
+) -> None:
+    field_evidence = semantic_distribution.get("fieldEvidence") or {}
+    require(
+        str(semantic_distribution.get("propertyPath") or "").casefold()
+        == "ratescale"
+        and str(semantic_distribution.get("topLevelPropertyPath") or "").casefold()
+        == "ratescale"
+        and str(semantic_distribution.get("exactSourceClass") or "") == ""
+        and semantic_distribution.get("evaluatorId")
+        == "ue3.raw-distribution.cooked-lookup.v1"
+        and field_evidence.get("rawFieldNames") == ["distribution"]
+        and field_evidence.get("reconstructedFieldNames") == ["operation"]
+        and int(descriptor.get("componentCount", 0)) == 1
+        and str(descriptor.get("sourceClass") or "") == "",
+        "Spawn RateScale RawDistributionFloat source shape changed",
+    )
+
+
+def full35_default_dependent_gate(
+    semantic: dict[str, Any], candidate: dict[str, Any],
+) -> dict[str, Any]:
+    semantic_occurrences = semantic.get("occurrences") or []
+    candidate_elements = candidate.get("elements") or []
+    require(len(semantic_occurrences) == len(candidate_elements)
+            == EXPECTED["occurrenceCount"],
+            "Full35 default gate occurrence denominator changed")
+    default_count = 0
+    spawn_default_count = 0
+    spawn_ratescale_default_count = 0
+    rate_default_occurrences: list[int] = []
+    zero_rate_occurrences: list[int] = []
+    nonzero_rates: dict[int, float] = {}
+    parameter_occurrences: list[int] = []
+    spawn_count = 0
+    for occurrence_index, (semantic_occurrence, element) in enumerate(zip(
+        semantic_occurrences, candidate_elements
+    )):
+        semantic_modules = semantic_occurrence.get("modules") or []
+        candidate_modules = (element.get("sourceRecipe") or {}).get("modules") or []
+        require(len(semantic_modules) == len(candidate_modules),
+                "Full35 default gate module denominator changed")
+        for semantic_module, candidate_module in zip(
+            semantic_modules, candidate_modules
+        ):
+            semantic_distributions = semantic_module.get("distributions") or []
+            candidate_distributions = candidate_module.get("distributions") or []
+            require(len(semantic_distributions) == len(candidate_distributions),
+                    "Full35 default gate distribution denominator changed")
+            by_path: dict[str, list[dict[str, Any]]] = {}
+            for descriptor in candidate_distributions:
+                by_path.setdefault(
+                    str(descriptor.get("propertyPath") or "").casefold(), []
+                ).append(descriptor)
+            exact_class = str(semantic_module.get("exactSourceClass") or "").casefold()
+            if exact_class == "particlemodulespawn":
+                spawn_count += 1
+            for semantic_distribution in semantic_distributions:
+                path = str(semantic_distribution.get("propertyPath") or "").casefold()
+                candidates = by_path.get(path) or []
+                require(candidates, "Full35 default gate payload path changed")
+                descriptor = candidates.pop(0)
+                default_dependent = bool(
+                    (semantic_distribution.get("fieldEvidence") or {}).get(
+                        "defaultDependent"
+                    )
+                )
+                if default_dependent:
+                    default_count += 1
+                    verify_null_raw_distribution_projection(
+                        semantic_distribution, descriptor
+                    )
+                if exact_class != "particlemodulespawn":
+                    continue
+                require(path in {"rate", "ratescale"},
+                        "ParticleModuleSpawn distribution set changed")
+                if default_dependent:
+                    spawn_default_count += 1
+                    if path == "ratescale":
+                        verify_spawn_ratescale_raw_distribution_float(
+                            semantic_distribution, descriptor
+                        )
+                        spawn_ratescale_default_count += 1
+                    else:
+                        rate_default_occurrences.append(occurrence_index)
+                    continue
+                if path == "ratescale":
+                    raise ValueError("ParticleModuleSpawn RateScale became explicit")
+                source_class = str(
+                    semantic_distribution.get("exactSourceClass") or ""
+                ).casefold()
+                if source_class == "distributionfloatparticleparameter":
+                    require(
+                        occurrence_index == EXPECTED_SPAWN_PARAMETER_RATE_OCCURRENCE
+                        and str(descriptor.get("sourceClass") or "").casefold()
+                        == source_class
+                        and descriptor.get("lookupTable") == []
+                        and str(descriptor.get("referenceId") or "") != ""
+                        and str(descriptor.get("occurrenceId") or "") != "",
+                        "Full35 Spawn parameter Rate branch changed",
+                    )
+                    parameter_occurrences.append(occurrence_index)
+                    continue
+                table = [float(value) for value in descriptor.get("lookupTable", [])]
+                require(
+                    all(math.isfinite(value) for value in table)
+                    and str(descriptor.get("sourceClass") or "") == ""
+                    and int(descriptor.get("operation", -1)) == 1
+                    and int(descriptor.get("lookupTableChunkSize", -1)) == 1
+                    and int(descriptor.get("lookupTableNumElements", -1)) == 1
+                    and len(table) == 4 and len(set(table)) == 1,
+                    "Full35 explicit Spawn Rate shape changed",
+                )
+                if table[0] == 0.0:
+                    zero_rate_occurrences.append(occurrence_index)
+                else:
+                    nonzero_rates[occurrence_index] = table[0]
+            require(not any(by_path.values()),
+                    "Full35 default gate left unmatched payload distributions")
+    require(spawn_count == 35
+            and default_count == EXPECTED_DEFAULT_DEPENDENT_COUNT
+            and spawn_default_count == EXPECTED_SPAWN_DEFAULT_DEPENDENT_COUNT
+            and spawn_ratescale_default_count
+            == EXPECTED_SPAWN_RATESCALE_DEFAULT_DEPENDENT_COUNT
+            and rate_default_occurrences
+            == [EXPECTED_SPAWN_RATE_DEFAULT_DEPENDENT_OCCURRENCE]
+            and len(zero_rate_occurrences) == 29
+            and nonzero_rates == EXPECTED_NONZERO_SPAWN_RATES
+            and parameter_occurrences
+            == [EXPECTED_SPAWN_PARAMETER_RATE_OCCURRENCE],
+            "Full35 Spawn/default-dependent exact gate changed")
+    return {
+        "defaultDependentCount": default_count,
+        "spawnDefaultDependentCount": spawn_default_count,
+        "spawnRateScaleDefaultDependentCount": spawn_ratescale_default_count,
+        "spawnRateScaleSourceDistributionKind": "RawDistributionFloat",
+        "spawnRateDefaultDependentOccurrences": rate_default_occurrences,
+        "spawnExplicitZeroRateCount": len(zero_rate_occurrences),
+        "spawnExplicitNonzeroRates": {
+            str(index): value for index, value in sorted(nonzero_rates.items())
+        },
+        "spawnParameterRateOccurrences": parameter_occurrences,
+    }
+
+
+def current_engine_spawn_ratescale_reconstruction(
+    defaults: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    cdo = defaults["classDefaultObjects"]["particleModuleSpawn"]
+    require(cdo["recordSha256"] == canonical_sha256(cdo["properties"]),
+            "current ParticleModuleSpawn CDO record hash changed")
+    tagged = cdo["properties"].get("ratescale") or {}
+    raw_value = tagged.get("value") or {}
+    fields = raw_value.get("properties") or {}
+    require(
+        tagged.get("type") == "structproperty"
+        and tagged.get("structtype") == "rawdistributionfloat"
+        and int(raw_value.get("size", -1)) == 268
+        and int((fields.get("distribution") or {}).get("value", 0)) != 0
+        and (fields.get("op") or {}).get("value") == 1
+        and (fields.get("lookuptablechunksize") or {}).get("value") == 1
+        and (fields.get("lookuptablenumelements") or {}).get("value") == 1
+        and (fields.get("lookuptable") or {}).get("value")
+        == [1.0, 1.0, 1.0, 1.0]
+        and (fields.get("lookuptabletimescale") or {}).get("value") == 0.0
+        and (fields.get("lookuptablestarttime") or {}).get("value") == 0.0,
+        "current ParticleModuleSpawn RateScale CDO value changed",
+    )
+    engine = next(
+        row for row in defaults["scriptPackages"]
+        if str(row.get("logicalPackage") or "").casefold() == "engine"
+    )
+    descriptor = {
+        "propertyPath": "ratescale", "sourceClass": "",
+        "sourceObjectPath": cdo["objectPath"], "componentCount": 1,
+        "operation": 1, "randomLockAxes": 0,
+        "lookupTableChunkSize": 1, "lookupTableNumElements": 1,
+        "lookupTableTimeScale": 0.0, "lookupTableStartTime": 0.0,
+        "defaultMinimum": [0.0, 0.0, 0.0, 0.0],
+        "defaultMaximum": [0.0, 0.0, 0.0, 0.0],
+        "lookupTable": [1.0, 1.0, 1.0, 1.0], "keys": [],
+        "referenceId": "", "occurrenceId": "",
+        "payloadStatus": CURRENT_ENGINE_CDO_POLICY,
+        "fidelity": CURRENT_ENGINE_CDO_POLICY,
+    }
+    evidence = {
+        "policyId": CURRENT_ENGINE_CDO_POLICY,
+        "status": "RESOLVED_FOR_RECONSTRUCTED_HANDLER",
+        "provenanceTier": CURRENT_ENGINE_CDO_POLICY,
+        "sourceExact": False,
+        "sourceExactUpgradeAllowed": False,
+        "sourceEraIdentityPinned": False,
+        "logicalPackage": engine["logicalPackage"],
+        "physicalPackage": engine["physicalPackage"],
+        "packageBytes": engine["bytes"],
+        "packageSha256": engine["sha256"],
+        "classDefaultObject": cdo["objectPath"],
+        "classDefaultExportIndex": cdo["exportIndex"],
+        "classDefaultRecordSha256": cdo["recordSha256"],
+        "propertyPath": "ratescale", "value": 1.0,
+        "reconstructedDescriptorSha256": canonical_sha256(descriptor),
+    }
+    return descriptor, evidence
+
+
+def expected_default_policy(
+    policy_id: str, defaults: dict[str, Any],
+) -> dict[str, Any]:
+    require(policy_id in ALLOWED_DEFAULT_POLICIES,
+            "default-dependent policy is missing or unknown")
+    row = {
+        "policyId": policy_id, "sourceExact": False,
+        "sourceExactUpgradeAllowed": False,
+        "nullRawDistributionNumericPayloadByteCount": 0,
+        "numericPayloadDefinition": "LOOKUP_TABLE_OR_KEY_VALUE_BYTES",
+    }
+    if policy_id == FAIL_CLOSED_DEFAULT_POLICY:
+        row.update({"mode": "FAIL_CLOSED", "resolvedScope": []})
+    else:
+        _, evidence = current_engine_spawn_ratescale_reconstruction(defaults)
+        row.update({
+            "mode": CURRENT_ENGINE_CDO_POLICY,
+            "resolvedScope": [{
+                "exactSourceClass": "particlemodulespawn",
+                "propertyPath": "ratescale",
+                "sourceDistributionKind": "RawDistributionFloat",
+                "componentCount": 1,
+                "occurrenceCount": EXPECTED_SPAWN_RATESCALE_DEFAULT_DEPENDENT_COUNT,
+            }],
+            "typedEvidence": evidence,
+        })
+    return row
+
+
 def normalized_tagged(value: Any) -> Any:
     if isinstance(value, list):
         return [normalized_tagged(row) for row in value]
@@ -409,6 +701,7 @@ def verify_deep_native(
     cdo_specs = {
         "particleLodLevel": ("engine", "Default__ParticleLODLevel"),
         "particleModuleRequired": ("engine", "Default__ParticleModuleRequired"),
+        "particleModuleSpawn": ("engine", "Default__ParticleModuleSpawn"),
         "particleModuleTypeDataRibbon": (
             "engine", "Default__ParticleModuleTypeDataRibbon"
         ),
@@ -435,7 +728,17 @@ def verify_deep_native(
         stored = stored_cdos[key]
         require(end == entry.serial_size
                 and stored["exportIndex"] == entry.index
-                and stored["properties"] == normalized_tagged(properties),
+                and stored["objectPath"].casefold()
+                == package_ref_path(
+                    entry.index + 1, package.imports, package.exports
+                ).casefold()
+                and stored["className"]
+                == (package_ref_name(
+                    entry.class_index, package.imports, package.exports
+                ) or "").casefold()
+                and stored["properties"] == normalized_tagged(properties)
+                and stored["recordSha256"]
+                == canonical_sha256(normalized_tagged(properties)),
                 f"current CDO evidence changed: {key}")
 
 
@@ -494,6 +797,12 @@ def verify_receipt(
         "sourceEraIdentityPinned": False,
         "classCount": 8,
     }, "random seed current CDO quorum changed")
+    policy_id = str((receipt.get("defaultDependentPolicy") or {}).get(
+        "policyId"
+    ) or "")
+    require(receipt.get("defaultDependentPolicy")
+            == expected_default_policy(policy_id, defaults),
+            "default-dependent typed policy evidence changed")
 
     for name, row in receipt["inputs"].items():
         source = inputs.get(name)
@@ -507,7 +816,28 @@ def verify_receipt(
 
     semantic = inputs["semanticClosure"]
     candidate = inputs["candidate"]
+    require(receipt.get("full35DefaultDependentGate")
+            == full35_default_dependent_gate(semantic, candidate),
+            "Full35 default-dependent gate changed")
     local_closure = inputs["localReferenceClosure"]
+    expected_script_packages = [
+        {
+            **copy.deepcopy(row),
+            "provenance": "LATE_PINNED_CURRENT_REVISION_ENVIRONMENT_RECEIPT",
+            "sourceEraIdentityPinned": False,
+        }
+        for row in (
+            (local_closure.get("currentRevisionClassDefaultEvidence") or {}).get(
+                "scriptPackages", []
+            )
+        )
+    ]
+    require(defaults["scriptPackages"] == expected_script_packages,
+            "current script package pin changed")
+    require(all(
+        row["recordSha256"] == canonical_sha256(row["properties"])
+        for row in defaults["classDefaultObjects"].values()
+    ), "current CDO record hash changed")
     local_definitions = {
         str(row["definitionId"]): row
         for row in local_closure.get("distributionDefinitions", [])
@@ -540,12 +870,14 @@ def verify_receipt(
     distribution_decisions: Counter[str] = Counter()
     seed_count = 0
     default_count = 0
+    default_dependent_count = 0
+    default_dependent_reconstructed_count = 0
     selected_lod_count = 0
     external_native_count = 0
 
-    for semantic_occurrence, element, occurrence in zip(
-        semantic_occurrences, candidate_elements, receipt_occurrences
-    ):
+    for occurrence_index, (
+        semantic_occurrence, element, occurrence
+    ) in enumerate(zip(semantic_occurrences, candidate_elements, receipt_occurrences)):
         for name in ("occurrenceCompositeId", "evidenceId", "sourceOccurrenceId",
                      "sourceSystemId", "sourceEmitterPath", "rendererType"):
             require(occurrence[name] == semantic_occurrence[name],
@@ -616,6 +948,15 @@ def verify_receipt(
                     and not module_distribution_ids.intersection(all_payload_distributions),
                     f"payload distribution collision: {module_id}")
             all_payload_distributions.update(module_distribution_ids)
+            require(len(module["distributionAdapters"])
+                    == len(semantic_module["distributions"]),
+                    f"distribution adapter coverage changed: {module_id}")
+            adapter_by_id = {
+                row["distributionId"]: row
+                for row in module["distributionAdapters"]
+            }
+            require(len(adapter_by_id) == len(module["distributionAdapters"]),
+                    f"distribution adapter identity collision: {module_id}")
 
             require(len(module["properties"]) == len(semantic_module["properties"]),
                     f"property coverage changed: {module_id}")
@@ -644,11 +985,48 @@ def verify_receipt(
                     for row in semantic_module["distributions"]
                     if row["topLevelPropertyPath"] == prop["propertyPath"]
                 )
+                expected_semantic_ids = [
+                    row["distributionId"]
+                    for row in semantic_module["distributions"]
+                    if row["topLevelPropertyPath"] == prop["propertyPath"]
+                ]
+                require(prop["semanticDistributionIds"] == expected_semantic_ids,
+                        f"property semantic distribution join changed: {prop['propertyId']}")
+                expected_blockers_set: set[str] = set()
+                for semantic_distribution in semantic_module["distributions"]:
+                    if semantic_distribution["distributionId"] \
+                            not in expected_semantic_ids:
+                        continue
+                    field_evidence = semantic_distribution.get("fieldEvidence") or {}
+                    default_dependent = bool(field_evidence.get("defaultDependent"))
+                    resolved_by_current_cdo = (
+                        default_dependent
+                        and policy_id == CURRENT_ENGINE_CDO_POLICY
+                        and exact_class == "particlemodulespawn"
+                        and str(semantic_distribution.get("propertyPath") or "").casefold()
+                        == "ratescale"
+                    )
+                    if default_dependent and not resolved_by_current_cdo:
+                        expected_blockers_set.update(
+                            str(blocker) for blocker
+                            in semantic_distribution.get("executionBlockers", [])
+                        )
+                        expected_blockers_set.add(DEFAULT_POLICY_BLOCKER)
+                    if str(semantic_distribution.get(
+                        "exactSourceClass"
+                    ) or "").casefold() == \
+                            "efdistributionvectormultiplyparticleparameter":
+                        expected_blockers_set.add(CUSTOM_DISTRIBUTION_BLOCKER)
+                expected_blockers = sorted(expected_blockers_set)
                 expected_decision = (
                     "VERIFIED_IRRELEVANT" if expected_irrelevant else
-                    "BLOCKED" if expected_custom else "READY_FOR_HANDLER"
+                    "BLOCKED" if expected_blockers or expected_custom
+                    else "READY_FOR_HANDLER"
                 )
-                require(prop["decision"] == expected_decision,
+                require(prop["decision"] == expected_decision
+                        and prop["blockers"] == (
+                            [] if expected_irrelevant else expected_blockers
+                        ),
                         f"property decision changed: {prop['propertyId']}")
                 property_decisions[prop["decision"]] += 1
 
@@ -673,7 +1051,8 @@ def verify_receipt(
                         == literal_by_path[leaf["propertyPath"]],
                         f"leaf literal binding changed: {leaf['leafId']}")
                 parent = property_by_path[leaf["topLevelPropertyPath"]]
-                require(leaf["decision"] == parent["decision"],
+                require(leaf["decision"] == parent["decision"]
+                        and leaf["blockers"] == parent["blockers"],
                         f"leaf decision diverged: {leaf['leafId']}")
                 leaf_literal_refs.add(leaf["payloadLiteralId"])
                 leaf_decisions[leaf["decision"]] += 1
@@ -686,6 +1065,10 @@ def verify_receipt(
             }
             require(len(adapter_by_id) == len(module["distributionAdapters"]),
                     f"distribution adapter identity collision: {module_id}")
+            typed_descriptor_by_id = {
+                item["payloadDistributionId"]: item["descriptor"]
+                for item in typed["distributions"]
+            }
             for semantic_distribution in semantic_module["distributions"]:
                 row = adapter_by_id.get(semantic_distribution["distributionId"])
                 require(row is not None and row["distributionId"] not in all_distribution_ids,
@@ -694,7 +1077,31 @@ def verify_receipt(
                 require(row["payloadDistributionId"] in module_distribution_ids,
                         f"distribution payload escaped module: {row['distributionId']}")
                 distribution_payload_refs.add(row["payloadDistributionId"])
+                field_evidence = semantic_distribution["fieldEvidence"]
+                expected_default_dependent = bool(
+                    field_evidence.get("defaultDependent")
+                )
+                expected_semantic_blockers = sorted({
+                    str(blocker) for blocker in semantic_distribution.get(
+                        "executionBlockers", []
+                    )
+                })
+                require(
+                    row["propertyPath"]
+                    == str(semantic_distribution["propertyPath"]).casefold()
+                    and row["topLevelPropertyPath"]
+                    == str(semantic_distribution["topLevelPropertyPath"]).casefold()
+                    and row["defaultDependent"] is expected_default_dependent
+                    and row["semanticClosureExecutionBlockers"]
+                    == expected_semantic_blockers,
+                    f"semantic closure distribution evidence changed: {row['distributionId']}",
+                )
                 if row.get("legacyOccurrenceId"):
+                    require(not expected_default_dependent
+                            and row["sourceNumericPayloadByteCount"] is None
+                            and row["sourceNumericPayloadDefinition"] is None
+                            and row["defaultResolution"] is None,
+                            f"local distribution default seam changed: {row['distributionId']}")
                     legacy_occurrence = local_occurrences.get(
                         str(row["legacyOccurrenceId"])
                     )
@@ -744,18 +1151,144 @@ def verify_receipt(
                                 and close_enough(samples[0]["value"], value),
                                 f"local parameter oracle changed: {row['distributionId']}")
                 else:
-                    desc = next(item["descriptor"] for item in typed["distributions"]
-                                if item["payloadDistributionId"]
-                                == row["payloadDistributionId"])
-                    require(len(row["numericOracleSamples"]) == len(SAMPLES),
-                            f"inline oracle count changed: {row['distributionId']}")
-                    for stored, (time, random_values) in zip(
-                        row["numericOracleSamples"], SAMPLES
-                    ):
-                        require(close_enough(stored["value"],
-                                             evaluate(desc, time, random_values)),
-                                f"inline oracle changed: {row['distributionId']}")
+                    desc = typed_descriptor_by_id[row["payloadDistributionId"]]
+                    reconstructed_fields = list(
+                        field_evidence["reconstructedFieldNames"]
+                    )
+                    require(
+                        row["exactSourceClass"] == str(
+                            semantic_distribution.get("exactSourceClass") or ""
+                        ).casefold()
+                        and row["fieldProvenance"]["rawFieldSourceFidelity"]
+                        == field_evidence["rawFieldSourceFidelity"]
+                        and row["fieldProvenance"]["reconstructedFieldNames"]
+                        == reconstructed_fields
+                        and row["fieldProvenance"]["sourceExactUpgradeAllowed"]
+                        is False,
+                        f"inline field provenance changed: {row['distributionId']}",
+                    )
+                    if expected_default_dependent:
+                        default_dependent_count += 1
+                        verify_null_raw_distribution_projection(
+                            semantic_distribution, desc
+                        )
+                        if (exact_class == "particlemodulespawn"
+                                and row["propertyPath"] == "ratescale"):
+                            verify_spawn_ratescale_raw_distribution_float(
+                                semantic_distribution, desc
+                            )
+                        require(row["sourceNumericPayloadByteCount"] == 0,
+                                f"null numeric payload bytes changed: {row['distributionId']}")
+                        require(row["sourceNumericPayloadDefinition"]
+                                == "LOOKUP_TABLE_OR_KEY_VALUE_BYTES",
+                                f"null numeric payload definition changed: {row['distributionId']}")
+                        use_current_cdo = (
+                            policy_id == CURRENT_ENGINE_CDO_POLICY
+                            and exact_class == "particlemodulespawn"
+                            and row["propertyPath"] == "ratescale"
+                        )
+                        if use_current_cdo:
+                            expected_descriptor, expected_evidence = (
+                                current_engine_spawn_ratescale_reconstruction(defaults)
+                            )
+                            expected_samples = [
+                                {
+                                    "time": time,
+                                    "randomUnits": list(random_values),
+                                    "value": evaluate(
+                                        expected_descriptor, time, random_values
+                                    ),
+                                }
+                                for time, random_values in SAMPLES
+                            ]
+                            require(
+                                row["decision"] == "READY_FOR_HANDLER"
+                                and row["blockers"] == []
+                                and row["reconstructedDescriptor"]
+                                == expected_descriptor
+                                and row["defaultResolution"] == expected_evidence
+                                and row["numericOracleSamples"] == expected_samples
+                                and row["fieldProvenance"]["reconstructionBasis"]
+                                == CURRENT_ENGINE_CDO_POLICY,
+                                "current Engine CDO reconstruction evidence changed",
+                            )
+                            default_dependent_reconstructed_count += 1
+                        else:
+                            expected_blockers = sorted({
+                                *expected_semantic_blockers,
+                                DEFAULT_POLICY_BLOCKER,
+                            })
+                            require(
+                                row["decision"] == "BLOCKED"
+                                and row["blockers"] == expected_blockers
+                                and row["numericOracleSamples"] == []
+                                and row["reconstructedDescriptor"] is None
+                                and row["defaultResolution"] == {
+                                    "policyId": policy_id,
+                                    "status": "BLOCKED",
+                                    "provenanceTier": (
+                                        "SOURCE_NULL_RAW_DISTRIBUTION"
+                                    ),
+                                    "sourceExact": False,
+                                    "sourceExactUpgradeAllowed": False,
+                                    "numericPayloadByteCount": 0,
+                                    "numericPayloadDefinition": (
+                                        "LOOKUP_TABLE_OR_KEY_VALUE_BYTES"
+                                    ),
+                                }
+                                and row["fieldProvenance"]["reconstructionBasis"]
+                                == "NULL_RAW_DISTRIBUTION_FAIL_CLOSED",
+                                "default-dependent zero fabrication was admitted",
+                            )
+                    else:
+                        require(row["sourceNumericPayloadByteCount"] is None
+                                and row["sourceNumericPayloadDefinition"] is None
+                                and row["defaultResolution"] is None,
+                                f"non-default distribution gained a default seam: {row['distributionId']}")
+                        expected_basis = (
+                            "CURRENT_UE3_RAW_DISTRIBUTION_DEFAULT_AND_PAYLOAD_SHAPE"
+                            if reconstructed_fields else "SOURCE_TAGGED_FIELDS"
+                        )
+                        require(
+                            row["decision"] == "READY_FOR_HANDLER"
+                            and row["blockers"] == []
+                            and row["reconstructedDescriptor"] is None
+                            and row["fieldProvenance"]["reconstructionBasis"]
+                            == expected_basis
+                            and len(row["numericOracleSamples"]) == len(SAMPLES),
+                            f"inline oracle policy changed: {row['distributionId']}",
+                        )
+                        for stored, (time, random_values) in zip(
+                            row["numericOracleSamples"], SAMPLES
+                        ):
+                            require(close_enough(stored["value"], evaluate(
+                                desc, time, random_values
+                            )), f"inline oracle changed: {row['distributionId']}")
                 distribution_decisions[row["decision"]] += 1
+
+            if (occurrence_index == EXPECTED_SPAWN_PARAMETER_RATE_OCCURRENCE
+                    and exact_class == "particlemodulespawn"):
+                parameter_rate = next(
+                    row for row in module["distributionAdapters"]
+                    if row["propertyPath"] == "rate"
+                )
+                require(
+                    parameter_rate["exactSourceClass"]
+                    == "distributionfloatparticleparameter"
+                    and parameter_rate["decision"] == "READY_FOR_HANDLER"
+                    and len(parameter_rate["numericOracleSamples"]) == 1
+                    and parameter_rate["numericOracleSamples"][0]["branch"]
+                    == "PARAMETER_INPUT"
+                    and parameter_rate["numericOracleSamples"][0][
+                        "parameterInput"
+                    ] == {
+                        "name": "Spawn", "kind": "scalar", "value": 0.0,
+                        "sourceIndex": 0, "sourceValueByteOffset": 494,
+                    }
+                    and parameter_rate["numericOracleSamples"][0]["value"]
+                    == [0.0],
+                    "Full35 occurrence #34 Spawn parameter Rate branch changed",
+                )
 
             if module["seed"] is not None:
                 seed_count += 1
@@ -784,16 +1317,16 @@ def verify_receipt(
             if semantic_module["sourceDocument"] == "externalModuleClosure":
                 external_native_count += 1
 
-            expected_blocked = custom_handler(exact_class) or any(
-                row["decision"] == "BLOCKED"
-                for row in module["distributionAdapters"]
-            )
-            require(module["decision"] == (
-                "BLOCKED" if expected_blocked else "READY_FOR_HANDLER"
-            ), f"module decision changed: {module_id}")
-            if custom_handler(exact_class):
-                require(CUSTOM_HANDLER_BLOCKER in module["blockers"],
-                        f"custom class blocker lost: {module_id}")
+            expected_module_blockers = sorted({
+                *([CUSTOM_HANDLER_BLOCKER] if custom_handler(exact_class) else []),
+                *(blocker for row in module["distributionAdapters"]
+                  for blocker in row["blockers"]),
+            })
+            require(module["blockers"] == expected_module_blockers
+                    and module["decision"] == (
+                        "BLOCKED" if expected_module_blockers
+                        else "READY_FOR_HANDLER"
+                    ), f"module decision changed: {module_id}")
             module_decisions[module["decision"]] += 1
 
     require(all_payload_literals == property_literal_refs,
@@ -892,6 +1425,21 @@ def verify_receipt(
     require(dict(sorted(distribution_decisions.items()))
             == receipt["summary"]["distributionDecisionCounts"],
             "distribution decision summary changed")
+    expected_reconstructed = (
+        EXPECTED_SPAWN_RATESCALE_DEFAULT_DEPENDENT_COUNT
+        if policy_id == CURRENT_ENGINE_CDO_POLICY else 0
+    )
+    require(
+        default_dependent_count == EXPECTED_DEFAULT_DEPENDENT_COUNT
+        and default_dependent_reconstructed_count == expected_reconstructed
+        and receipt["summary"]["defaultDependentDistributionCount"]
+        == EXPECTED_DEFAULT_DEPENDENT_COUNT
+        and receipt["summary"]["defaultDependentReconstructedCount"]
+        == expected_reconstructed
+        and receipt["summary"]["defaultDependentBlockedCount"]
+        == EXPECTED_DEFAULT_DEPENDENT_COUNT - expected_reconstructed,
+        "default-dependent decision summary changed",
+    )
     require(receipt["summary"]["typedPayloadLiteralCount"]
             == len(all_payload_literals), "typed literal summary changed")
     require(receipt["summary"]["typedPayloadDistributionCount"]
@@ -905,6 +1453,8 @@ def verify_receipt(
         PRODUCT_OWNER_BLOCKER,
         *(blocker for row in receipt["handlerCapabilities"] for blocker in row["blockers"]),
         *(blocker for row in local_rows for blocker in row["blockers"]),
+        *(blocker for occurrence in receipt_occurrences
+          for module in occurrence["modules"] for blocker in module["blockers"]),
     })
     require(receipt["blockerUnion"] == expected_union
             and receipt["productAdmission"]["blockers"] == expected_union,

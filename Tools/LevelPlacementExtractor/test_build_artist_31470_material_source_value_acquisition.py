@@ -298,17 +298,22 @@ class MaterialSourceValueAcquisitionTests(unittest.TestCase):
                             mutated, self.contract
                         )
 
-    def test_previous_exact_four_are_blocked_and_denominator_is_72(self) -> None:
+    def test_previous_exact_four_and_self_default_five_are_blocked_in_77(self) -> None:
         rows = self.committed["matrices"]["strictSamplerRows"]
         exact = [
             row
             for row in rows
             if row["baselineKind"] == "PREVIOUSLY_ADMITTED_EXACT_REAUDIT"
         ]
-        self.assertEqual(72, len(rows))
+        self.assertEqual(77, len(rows))
         self.assertEqual(4, len(exact))
         self.assertEqual(71, sum(row["bindingOriginAndOwner"]["bindingOrigin"] == "INSTANCE_OVERRIDE" for row in rows))
         self.assertEqual(1, sum(row["bindingOriginAndOwner"]["bindingOrigin"] == "PARENT_DEFAULT" for row in rows))
+        self.assertEqual(5, sum(row["bindingOriginAndOwner"]["bindingOrigin"] == "SELF_DEFAULT" for row in rows))
+        self.assertEqual(
+            5,
+            sum(row["baselineKind"] == "NEW_SELF_DEFAULT_UNRESOLVED_5" for row in rows),
+        )
         self.assertTrue(all(row["strictReauditDecision"] == "BLOCKED" for row in exact))
         self.assertTrue(all(not row["fullDescriptorSourceExact"] for row in rows))
         self.assertEqual(

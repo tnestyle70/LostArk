@@ -74,7 +74,7 @@ $supportedSourceDynamicParameterSemantics = @(
     'missile_dissolve'
 )
 $supportedSourceSubUVModes = @(
-    'none', 'psuvim_linear_blend',
+    'none', 'psuvim_random', 'psuvim_linear_blend',
     'psuvim_linear_blend_random_flip_square'
 )
 

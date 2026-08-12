@@ -290,6 +290,8 @@ class PackageSummary:
     import_count: int
     import_offset: int
     depends_offset: int
+    package_guid_offset: int
+    package_guid_hex: str
     engine_version: int
     cooker_version: int
     compression_flags: int
@@ -329,7 +331,24 @@ def parse_fname(reader: Reader, names: list[str]) -> tuple[str, int]:
     return name, number
 
 
-def parse_summary(physical: bytes) -> PackageSummary:
+def parse_summary(
+    physical: bytes,
+    *,
+    physical_size: int | None = None,
+) -> PackageSummary:
+    """Parse a Lost Ark package summary from complete bytes or a bounded prefix.
+
+    ``physical_size`` is only used by streaming inventory callers that have read
+    enough bytes for the summary and chunk table, but intentionally have not read
+    every compressed payload.  Complete-package callers retain the old behavior.
+    """
+
+    if physical_size is None:
+        physical_size = len(physical)
+    if physical_size < len(physical):
+        raise ExtractionError(
+            f"physical size {physical_size} is smaller than supplied bytes {len(physical)}"
+        )
     reader = Reader(physical)
     tag = reader.u32()
     if tag != PACKAGE_FILE_TAG:
@@ -351,7 +370,8 @@ def parse_summary(physical: bytes) -> PackageSummary:
         reader.read(12)
     if version >= 584:
         reader.read(4)
-    reader.read(16)  # package GUID
+    package_guid_offset = reader.offset
+    package_guid = reader.read(16)
 
     generation_count = reader.i32()
     if generation_count < 0 or generation_count > 4096:
@@ -374,7 +394,7 @@ def parse_summary(physical: bytes) -> PackageSummary:
             or chunk.uncompressed_size <= 0
             or chunk.compressed_offset < 0
             or chunk.compressed_size <= 0
-            or chunk.compressed_offset + chunk.compressed_size > len(physical)
+            or chunk.compressed_offset + chunk.compressed_size > physical_size
             or chunk.encrypted_lz4 not in (0, 1)
         ):
             raise ExtractionError(f"invalid Lost Ark compressed chunk {chunk}")
@@ -393,11 +413,43 @@ def parse_summary(physical: bytes) -> PackageSummary:
         import_count=import_count,
         import_offset=import_offset,
         depends_offset=depends_offset,
+        package_guid_offset=package_guid_offset,
+        package_guid_hex=package_guid.hex(),
         engine_version=engine_version,
         cooker_version=cooker_version,
         compression_flags=compression_flags,
         chunks=tuple(chunks),
     )
+
+
+def read_package_summary(
+    path: Path,
+    *,
+    initial_prefix_size: int = 4096,
+    maximum_prefix_size: int = 16 * 1024 * 1024,
+) -> PackageSummary:
+    """Read only as much physical data as is required for a package summary."""
+
+    physical_size = path.stat().st_size
+    if physical_size <= 0:
+        raise ExtractionError(f"empty package: {path}")
+    prefix_size = min(physical_size, max(128, initial_prefix_size))
+    with path.open("rb") as source:
+        while True:
+            source.seek(0)
+            prefix = source.read(prefix_size)
+            try:
+                return parse_summary(prefix, physical_size=physical_size)
+            except ExtractionError as error:
+                if "read outside buffer" not in str(error) or prefix_size >= physical_size:
+                    raise
+                next_size = min(physical_size, prefix_size * 2)
+                if next_size > maximum_prefix_size:
+                    raise ExtractionError(
+                        f"package summary exceeds streaming prefix limit "
+                        f"0x{maximum_prefix_size:X}: {path}"
+                    ) from error
+                prefix_size = next_size
 
 
 def decompress_chunk(
@@ -408,6 +460,21 @@ def decompress_chunk(
     source = physical[
         chunk.compressed_offset : chunk.compressed_offset + chunk.compressed_size
     ]
+    return decompress_chunk_payload(source, chunk, aes)
+
+
+def decompress_chunk_payload(
+    source: bytes,
+    chunk: CompressedChunk,
+    aes: WindowsAesEcbDecryptor,
+) -> bytes:
+    """Decode one chunk from its exact physical payload bytes."""
+
+    if len(source) != chunk.compressed_size:
+        raise ExtractionError(
+            f"compressed chunk payload size mismatch {len(source)} != "
+            f"{chunk.compressed_size}"
+        )
     if chunk.encrypted_lz4 == 0:
         if len(source) != chunk.uncompressed_size:
             raise ExtractionError(f"uncompressed chunk has mismatched sizes: {chunk}")
@@ -443,6 +510,198 @@ def decompress_chunk(
             f"chunk output mismatch {len(output)} != {chunk.uncompressed_size}"
         )
     return bytes(output)
+
+
+class LostArkPackageRangeReader:
+    """Random-access logical reader that materializes only overlapping chunks."""
+
+    def __init__(
+        self,
+        path: Path,
+        summary: PackageSummary | None = None,
+        aes_key: str = LOSTARK_KR_AES_KEY,
+    ) -> None:
+        self.path = path
+        self.summary = summary or read_package_summary(path)
+        self.aes_key = aes_key
+        self.physical_size = path.stat().st_size
+        self.logical_size = max(
+            chunk.uncompressed_offset + chunk.uncompressed_size
+            for chunk in self.summary.chunks
+        )
+
+    def _read_physical(self, offset: int, size: int) -> bytes:
+        if offset < 0 or size < 0 or offset + size > self.physical_size:
+            raise ExtractionError(
+                f"physical range is outside package: offset=0x{offset:X} "
+                f"size=0x{size:X} package=0x{self.physical_size:X}"
+            )
+        with self.path.open("rb") as source:
+            source.seek(offset)
+            payload = source.read(size)
+        if len(payload) != size:
+            raise ExtractionError(
+                f"short package read: offset=0x{offset:X} size=0x{size:X} "
+                f"read=0x{len(payload):X}"
+            )
+        return payload
+
+    def _read_chunk_logical_slice(
+        self,
+        chunk: CompressedChunk,
+        relative_start: int,
+        relative_end: int,
+        aes: WindowsAesEcbDecryptor | None,
+    ) -> bytes:
+        """Decode only the independent 128 KiB blocks overlapping one range."""
+
+        if not (0 <= relative_start <= relative_end <= chunk.uncompressed_size):
+            raise ExtractionError("chunk-relative logical range is invalid")
+        if relative_start == relative_end:
+            return b""
+        if chunk.encrypted_lz4 == 0:
+            return self._read_physical(
+                chunk.compressed_offset + relative_start,
+                relative_end - relative_start,
+            )
+        if aes is None:
+            raise ExtractionError("encrypted Lost Ark chunk requires AES")
+
+        block_count = math.ceil(chunk.uncompressed_size / 0x20000)
+        table_size = 16 + block_count * 8
+        table = self._read_physical(chunk.compressed_offset, table_size)
+        reader = Reader(table)
+        tag = reader.u32()
+        _stored_block_size = reader.i32()
+        sum_compressed = reader.i32()
+        sum_uncompressed = reader.i32()
+        if tag != PACKAGE_FILE_TAG:
+            raise ExtractionError(f"wrong compressed chunk tag 0x{tag:08X}")
+        if sum_uncompressed != chunk.uncompressed_size:
+            raise ExtractionError(
+                f"compressed chunk size mismatch {sum_uncompressed} != "
+                f"{chunk.uncompressed_size}"
+            )
+        block_sizes = [reader.unpack("<II") for _ in range(block_count)]
+        if sum(item[0] for item in block_sizes) != sum_compressed:
+            raise ExtractionError("compressed chunk block table does not match its summary")
+        if table_size + sum_compressed > chunk.compressed_size:
+            raise ExtractionError("compressed chunk block payload exceeds its summary")
+        if sum(item[1] for item in block_sizes) != sum_uncompressed:
+            raise ExtractionError("uncompressed chunk block table does not match its summary")
+
+        result = bytearray(relative_end - relative_start)
+        compressed_cursor = chunk.compressed_offset + table_size
+        uncompressed_cursor = 0
+        covered = bytearray(len(result))
+        for compressed_size, uncompressed_size in block_sizes:
+            block_start = uncompressed_cursor
+            block_end = block_start + uncompressed_size
+            overlap_start = max(relative_start, block_start)
+            overlap_end = min(relative_end, block_end)
+            if overlap_start < overlap_end:
+                block = bytearray(
+                    self._read_physical(compressed_cursor, compressed_size)
+                )
+                encrypted_size = min(4096, len(block)) & ~15
+                if encrypted_size:
+                    block[:encrypted_size] = aes.decrypt(bytes(block[:encrypted_size]))
+                decoded = decompress_lz4_block(bytes(block), uncompressed_size)
+                decoded_start = overlap_start - block_start
+                decoded_end = overlap_end - block_start
+                local_start = overlap_start - relative_start
+                local_end = overlap_end - relative_start
+                result[local_start:local_end] = decoded[decoded_start:decoded_end]
+                covered[local_start:local_end] = b"\x01" * (local_end - local_start)
+            compressed_cursor += compressed_size
+            uncompressed_cursor = block_end
+            if uncompressed_cursor >= relative_end:
+                break
+        missing = covered.find(b"\x00")
+        if missing >= 0:
+            raise ExtractionError(
+                f"compressed chunk slice has an uncovered byte at "
+                f"0x{relative_start + missing:X}"
+            )
+        return bytes(result)
+
+    def read_logical_range(
+        self,
+        offset: int,
+        size: int,
+        *,
+        aes: WindowsAesEcbDecryptor | None = None,
+    ) -> bytes:
+        if offset < 0 or size < 0 or offset + size > self.logical_size:
+            raise ExtractionError(
+                f"logical range is outside package: offset=0x{offset:X} "
+                f"size=0x{size:X} logical=0x{self.logical_size:X}"
+            )
+        if size == 0:
+            return b""
+
+        end = offset + size
+        result = bytearray(size)
+        covered = bytearray(size)
+        first_chunk_offset = min(
+            chunk.uncompressed_offset for chunk in self.summary.chunks
+        )
+        direct_start = offset
+        direct_end = min(end, first_chunk_offset)
+        if direct_start < direct_end:
+            payload = self._read_physical(
+                direct_start, direct_end - direct_start
+            )
+            local_start = direct_start - offset
+            local_end = direct_end - offset
+            result[local_start:local_end] = payload
+            covered[local_start:local_end] = b"\x01" * len(payload)
+
+        owned_aes: WindowsAesEcbDecryptor | None = None
+        try:
+            for chunk in self.summary.chunks:
+                chunk_start = chunk.uncompressed_offset
+                chunk_end = chunk_start + chunk.uncompressed_size
+                overlap_start = max(offset, chunk_start)
+                overlap_end = min(end, chunk_end)
+                if overlap_start >= overlap_end:
+                    continue
+                if chunk.encrypted_lz4 and aes is None and owned_aes is None:
+                    owned_aes = WindowsAesEcbDecryptor(
+                        self.aes_key.encode("ascii")
+                    )
+                decryptor = aes or owned_aes
+                if decryptor is None:
+                    # The uncompressed branch never calls the decryptor.
+                    decryptor = _NoOpAesDecryptor()
+                decoded = self._read_chunk_logical_slice(
+                    chunk,
+                    overlap_start - chunk_start,
+                    overlap_end - chunk_start,
+                    decryptor,
+                )
+                local_start = overlap_start - offset
+                local_end = overlap_end - offset
+                result[local_start:local_end] = decoded
+                covered[local_start:local_end] = b"\x01" * (
+                    local_end - local_start
+                )
+        finally:
+            if owned_aes is not None:
+                owned_aes.close()
+
+        missing = covered.find(b"\x00")
+        if missing >= 0:
+            raise ExtractionError(
+                f"logical range has an uncovered byte at 0x{offset + missing:X}: "
+                f"{self.path}"
+            )
+        return bytes(result)
+
+
+class _NoOpAesDecryptor:
+    def decrypt(self, _data: bytes) -> bytes:
+        raise ExtractionError("unencrypted chunk unexpectedly requested AES")
 
 
 def decompress_package(physical: bytes, summary: PackageSummary, aes_key: str) -> bytes:

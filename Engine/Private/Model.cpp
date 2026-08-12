@@ -11,7 +11,49 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstring>
 #include <limits>
+
+namespace
+{
+	bool Is_FiniteMatrix(const float4x4_t& Matrix)
+	{
+		const f32_t* const Values = &Matrix._11;
+		for (size_t i = 0u; i < 16u; ++i)
+		{
+			if (!std::isfinite(Values[i]))
+				return false;
+		}
+		return true;
+	}
+
+	bool Try_BlendLocalMatrix(
+		const float4x4_t& From,
+		const f32_t fWeight,
+		float4x4_t& InOutTarget)
+	{
+		vector_t FromScale{};
+		vector_t FromRotation{};
+		vector_t FromTranslation{};
+		vector_t TargetScale{};
+		vector_t TargetRotation{};
+		vector_t TargetTranslation{};
+		if (!XMMatrixDecompose(&FromScale, &FromRotation, &FromTranslation,
+				XMLoadFloat4x4(&From)) ||
+			!XMMatrixDecompose(&TargetScale, &TargetRotation,
+				&TargetTranslation, XMLoadFloat4x4(&InOutTarget)))
+		{
+			return false;
+		}
+		XMStoreFloat4x4(&InOutTarget,
+			XMMatrixAffineTransformation(
+				XMVectorLerp(FromScale, TargetScale, fWeight),
+				XMVectorZero(),
+				XMQuaternionSlerp(FromRotation, TargetRotation, fWeight),
+				XMVectorLerp(FromTranslation, TargetTranslation, fWeight)));
+		return Is_FiniteMatrix(InOutTarget);
+	}
+}
 
 CModel::CModel(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CComponent { pDevice, pContext }
@@ -188,6 +230,186 @@ bool_t CModel::Get_BoneCombinedMatrix(
 
     outMatrix = m_Bones[iBoneIndex]->Get_CombinedTransformationMatrix();
     return true;
+}
+
+bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
+	const uint32_t iExpectedAnimationIndex,
+	const f32_t fTrackPositionTicks,
+	const std::span<const uint32_t> BoneIndices,
+	const std::span<float4x4_t> OutCombinedMatrices) const
+{
+	if (iExpectedAnimationIndex != m_iCurrentAnimIndex ||
+		iExpectedAnimationIndex >= m_Animations.size() ||
+		nullptr == m_Animations[iExpectedAnimationIndex] ||
+		!std::isfinite(fTrackPositionTicks) ||
+		fTrackPositionTicks < 0.f ||
+		fTrackPositionTicks >
+			m_Animations[iExpectedAnimationIndex]->Get_Duration() ||
+		!std::isfinite(
+			m_Animations[iExpectedAnimationIndex]->Get_Duration()) ||
+		BoneIndices.empty() ||
+		BoneIndices.size() != OutCombinedMatrices.size() ||
+		m_Bones.empty())
+	{
+		return false;
+	}
+	for (const uint32_t iBoneIndex : BoneIndices)
+	{
+		if (iBoneIndex >= m_Bones.size() || nullptr == m_Bones[iBoneIndex])
+			return false;
+	}
+
+	const auto BuildCombined = [this, iExpectedAnimationIndex,
+		fTrackPositionTicks](std::vector<float4x4_t>& OutCombined)
+	{
+		std::vector<float4x4_t> LocalTransforms(m_Bones.size());
+		for (size_t iBone = 0u; iBone < m_Bones.size(); ++iBone)
+		{
+			if (nullptr == m_Bones[iBone])
+				return false;
+			XMStoreFloat4x4(&LocalTransforms[iBone],
+				m_Bones[iBone]->Get_TransformationMatrix());
+			if (!Is_FiniteMatrix(LocalTransforms[iBone]))
+				return false;
+		}
+		if (!m_Animations[iExpectedAnimationIndex]->Sample_LocalBoneTransforms(
+				fTrackPositionTicks, LocalTransforms))
+		{
+			return false;
+		}
+
+		if (!std::isfinite(m_fBlendElapsed) ||
+			!std::isfinite(m_fBlendDuration) ||
+			m_fBlendElapsed < 0.f || m_fBlendDuration < 0.f)
+		{
+			return false;
+		}
+		if (m_fBlendElapsed < m_fBlendDuration)
+		{
+			if (m_fBlendDuration <= 0.f ||
+				m_BlendFromPose.size() != LocalTransforms.size())
+			{
+				return false;
+			}
+			const f32_t fRatio =
+				(min)(m_fBlendElapsed / m_fBlendDuration, 1.f);
+			for (size_t iBone = 0u; iBone < LocalTransforms.size(); ++iBone)
+			{
+				if (!Is_FiniteMatrix(m_BlendFromPose[iBone]) ||
+					!Try_BlendLocalMatrix(
+						m_BlendFromPose[iBone], fRatio,
+						LocalTransforms[iBone]))
+				{
+					return false;
+				}
+			}
+		}
+
+		if (m_iRootMotionBoneIndex >= 0)
+		{
+			if (static_cast<size_t>(m_iRootMotionBoneIndex) >=
+					LocalTransforms.size() ||
+				m_iRootMotionVerticalAxis < -1 ||
+				m_iRootMotionVerticalAxis > 2)
+			{
+				return false;
+			}
+			float4x4_t& Root =
+				LocalTransforms[static_cast<size_t>(m_iRootMotionBoneIndex)];
+			if (0 != m_iRootMotionVerticalAxis)
+				Root._41 = m_vRootMotionRestTranslation.x;
+			if (1 != m_iRootMotionVerticalAxis)
+				Root._42 = m_vRootMotionRestTranslation.y;
+			if (2 != m_iRootMotionVerticalAxis)
+				Root._43 = m_vRootMotionRestTranslation.z;
+		}
+
+		OutCombined.resize(LocalTransforms.size());
+		const matrix_t PreTransform =
+			XMLoadFloat4x4(&m_PreTransformMatrix);
+		if (!Is_FiniteMatrix(m_PreTransformMatrix))
+			return false;
+		for (size_t iBone = 0u; iBone < LocalTransforms.size(); ++iBone)
+		{
+			const int32_t iParent = m_Bones[iBone]->Get_ParentBoneIndex();
+			matrix_t Combined;
+			if (-1 == iParent)
+			{
+				Combined = XMLoadFloat4x4(&LocalTransforms[iBone]) *
+					PreTransform;
+			}
+			else
+			{
+				if (iParent < 0 || static_cast<size_t>(iParent) >= iBone)
+					return false;
+				Combined = XMLoadFloat4x4(&LocalTransforms[iBone]) *
+					XMLoadFloat4x4(
+						&OutCombined[static_cast<size_t>(iParent)]);
+			}
+			XMStoreFloat4x4(&OutCombined[iBone], Combined);
+			if (!Is_FiniteMatrix(OutCombined[iBone]))
+				return false;
+		}
+		return true;
+	};
+
+#if defined(_DEBUG)
+	const f32_t fTrackPositionBefore =
+		m_Animations[iExpectedAnimationIndex]->Get_CurrentTrackPosition();
+	const std::vector<uint32_t> LeftKeyFrameIndicesBefore =
+		m_Animations[iExpectedAnimationIndex]->m_iLeftKeyFrameIndices;
+	std::vector<float4x4_t> LiveLocalBefore(m_Bones.size());
+	std::vector<float4x4_t> LiveCombinedBefore(m_Bones.size());
+	for (size_t iBone = 0u; iBone < m_Bones.size(); ++iBone)
+	{
+		XMStoreFloat4x4(&LiveLocalBefore[iBone],
+			m_Bones[iBone]->Get_TransformationMatrix());
+		XMStoreFloat4x4(&LiveCombinedBefore[iBone],
+			m_Bones[iBone]->Get_CombinedTransformationMatrix());
+	}
+#endif
+
+	std::vector<float4x4_t> StagedCombined;
+	if (!BuildCombined(StagedCombined))
+		return false;
+
+#if defined(_DEBUG)
+	std::vector<float4x4_t> DeterministicCombined;
+	if (!BuildCombined(DeterministicCombined) ||
+		DeterministicCombined.size() != StagedCombined.size() ||
+		0 != std::memcmp(DeterministicCombined.data(), StagedCombined.data(),
+			StagedCombined.size() * sizeof(float4x4_t)) ||
+		fTrackPositionBefore !=
+			m_Animations[iExpectedAnimationIndex]->Get_CurrentTrackPosition() ||
+		LeftKeyFrameIndicesBefore !=
+			m_Animations[iExpectedAnimationIndex]->m_iLeftKeyFrameIndices)
+	{
+		return false;
+	}
+	for (size_t iBone = 0u; iBone < m_Bones.size(); ++iBone)
+	{
+		float4x4_t LiveLocalAfter{};
+		float4x4_t LiveCombinedAfter{};
+		XMStoreFloat4x4(&LiveLocalAfter,
+			m_Bones[iBone]->Get_TransformationMatrix());
+		XMStoreFloat4x4(&LiveCombinedAfter,
+			m_Bones[iBone]->Get_CombinedTransformationMatrix());
+		if (0 != std::memcmp(&LiveLocalBefore[iBone], &LiveLocalAfter,
+				sizeof(float4x4_t)) ||
+			0 != std::memcmp(&LiveCombinedBefore[iBone], &LiveCombinedAfter,
+				sizeof(float4x4_t)))
+		{
+			return false;
+		}
+	}
+#endif
+
+	std::vector<float4x4_t> StagedOutput(BoneIndices.size());
+	for (size_t i = 0u; i < BoneIndices.size(); ++i)
+		StagedOutput[i] = StagedCombined[BoneIndices[i]];
+	std::copy(StagedOutput.begin(), StagedOutput.end(),
+		OutCombinedMatrices.begin());
+	return true;
 }
 
 bool_t CModel::Set_BoneLocalMatrix(

@@ -70,31 +70,27 @@ DEFAULT_OUTPUT = ROOT / (
     "skill.31470.reconstructed-render-resource-authority.receipt.json"
 )
 DEFAULT_TOOL = Path(__file__).resolve()
-DEFAULT_RUNTIME_CATALOG = ROOT / "Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json"
 
-BASE_INTEGRATION_COMMIT = "846394cb39306c3d5f781c3eae83adb59324ace3"
-BASE_INTEGRATION_TREE = "68be53aa25a3c7ed697e5c13485dba68ea79ebe6"
-CANDIDATE_BUILDER_COMMIT = "a85b8b41afb2f2a51bceafa55d06bf0937b1a245"
-CANDIDATE_BUILDER_TREE = "384ed35ca808ab9a71a4edb703ca4d9121b48c18"
-PARSER_INTEGRATION_COMMIT = "eacb58bda2315e858c562677bbf38c17d5d3e785"
-PARSER_INTEGRATION_TREE = "8a2828fe2b3deb9c1270143b78a6edd6211d4801"
-APPROVAL_AUTHORITY_COMMIT = "d053522f6c993730d1ee7a8eb156861f63a02b6d"
-APPROVAL_AUTHORITY_TREE = "68be53aa25a3c7ed697e5c13485dba68ea79ebe6"
-PUBLISHER_INTEGRATION_COMMIT = "932d648f95bc7f2d9c7209fad55aee8a857c94d7"
-PUBLISHER_ORIGINAL_COMMIT = "74c692755791e592d6f808f3c50b3321c60af181"
-PUBLISHER_TREE = "f4da1e28a13875ae162eec4aa273c75647caa3a9"
+BASE_INTEGRATION_COMMIT = "31ecc2edc328347ac6e3bf6fe444c270d463ef40"
+BASE_INTEGRATION_TREE = "6d8853d989bd71a988eaebf254398ae08599ad0d"
+CANDIDATE_BUILDER_COMMIT = "31ecc2edc328347ac6e3bf6fe444c270d463ef40"
+CANDIDATE_BUILDER_TREE = "6d8853d989bd71a988eaebf254398ae08599ad0d"
+PARSER_INTEGRATION_COMMIT = "fee93749a50938249ec13ea2542bfabd73f1db90"
+PARSER_INTEGRATION_TREE = "2a8834a3f16bd526c882c28e147457fd045fd67c"
+APPROVAL_AUTHORITY_COMMIT = "31ecc2edc328347ac6e3bf6fe444c270d463ef40"
+APPROVAL_AUTHORITY_TREE = "6d8853d989bd71a988eaebf254398ae08599ad0d"
 
 PROGRAM_PATH = (
     "Data/Effects/Imported/Artist/Candidates/"
     "skill.31470.reconstructed-runtime-program.candidate.json"
 )
-PROGRAM_BLOB_ID = "345ab15bbb76648a650eaa854f18c4cd63cb1556"
-PROGRAM_BYTE_COUNT = 15_072_141
-PROGRAM_RAW_SHA256 = "72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849"
-PROGRAM_SHA256 = "618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b"
+PROGRAM_BLOB_ID = "a9655729578d847d323a32c904c70d10baee9102"
+PROGRAM_BYTE_COUNT = 15_117_436
+PROGRAM_RAW_SHA256 = "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6"
+PROGRAM_SHA256 = "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8"
 PROGRAM_INPUT_ARTIFACT_COUNT = 13
 PROGRAM_INPUT_ARTIFACTS_ORDERED_SHA256 = (
-    "938dbd9573ca3a5784675ba9d412b9dc3c12a7431a06c70e37d8c9bf2e614eaa"
+    "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6"
 )
 
 PARSER_FILES = (
@@ -104,7 +100,7 @@ PARSER_FILES = (
     ),
     (
         "Client/Private/Effect_RuntimeAuthority.cpp",
-        "5aea53f02da79e2a48eefd9650b6c941f0c349fa",
+        "91ce38b9c0429affff0f9dbc9ce1c593e8384af2",
     ),
 )
 
@@ -112,12 +108,12 @@ APPROVAL_PATH = (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.material-render-resource-binding-approved-v1.receipt.json"
 )
-APPROVAL_BLOB_ID = "7e17f42d15f77a24e9149e150e277cbdff2dc900"
-APPROVAL_BYTE_COUNT = 376_183
-APPROVAL_RAW_SHA256 = "68ae71bd70260270404d4a7b6c296e41f74d0031d27899b56a4376c1b11f4931"
-APPROVAL_SELF_SHA256 = "d643c9bf1bc2f10a887c805534b28e4322646cea426656de61b894e5b6284644"
+APPROVAL_BLOB_ID = "19f8395225bcc91b41d48169b9ade03e83e3acb5"
+APPROVAL_BYTE_COUNT = 378_236
+APPROVAL_RAW_SHA256 = "bc19ea75c917b5bf73cf4801b5d94cbaeea40760e1717868bd890607388c0e35"
+APPROVAL_SELF_SHA256 = "2e4cf180b1bb00d5ea7bd597e8d832a7b810267023186666d88edcfe348feaab"
 APPROVAL_DECISION_SHA256 = (
-    "4731ed9c2882c948373ec54f56087803145447851f3fc793fb8e9fa9d96cc957"
+    "6aa084a0ff5f369a88ffc711a75aeef057ca601c6d06104b70836cc032f813b5"
 )
 
 MATERIAL_TEXTURE_ARTIFACT_ID = "materialTextureBinding"
@@ -125,52 +121,18 @@ MATERIAL_TEXTURE_PATH = (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.material-texture-runtime-binding.receipt.json"
 )
-MATERIAL_TEXTURE_AUTHORITY_COMMIT = "1a0b1a6834d562dac02db4f57dda54644d75695b"
-MATERIAL_TEXTURE_AUTHORITY_TREE = "84cc7ef8cde7a7cf5194b0ed2ccf56a45a927b57"
-MATERIAL_TEXTURE_BLOB_ID = "1a917e44d5605e322e2c554db21573d856b05874"
+MATERIAL_TEXTURE_AUTHORITY_COMMIT = "9cd3bd4e1661b60771870966cdbcc212cac5193f"
+MATERIAL_TEXTURE_AUTHORITY_TREE = "3ecff71492ae9633fdb9a62aab83aa27614f1dd6"
+MATERIAL_TEXTURE_BLOB_ID = "db6b6e7bd3a3b265cff866dd3c32f4fef7a076c5"
 MATERIAL_TEXTURE_TRACKED_SHA256 = (
-    "87a28be564308117ac666206382c94ce5ee2bf37a47111cbef717994a0266077"
+    "4280a7a565b8d274115f2724efc0c495d38f4f3acaeee89031f652fae54b4781"
 )
 MATERIAL_TEXTURE_SELF_SHA256 = (
-    "3e722cf02085497c63083fbf51161ff5fd6670be91607737863b9c4019e55b48"
+    "170ba2d4c70a202e384ca8a577b09921d0a5d5b3e90504f5f10d8e8db8c16d5a"
 )
 
-RUNTIME_CATALOG_PATH = "Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json"
-RUNTIME_CATALOG_BLOB_ID = "ca360e952dd110f0246a5e0f1374baf77b7ebc0c"
-RUNTIME_CATALOG_BYTE_COUNT = 26_255_931
-RUNTIME_CATALOG_RAW_SHA256 = (
-    "bf0807ec1b4d975c988ed7e8bb204c6b1713218968be76ea6accb6340e714d29"
-)
-RUNTIME_CATALOG_COMPONENT_COUNT = 555
-RUNTIME_CATALOG_EFFECT_COUNT = 102
-RUNTIME_ENTRY_EFFECT_INDEX = 0
-RUNTIME_ENTRY_CANONICAL_SHA256 = (
-    "e9694f000a50a426386afd6ff8f65b4a2a5fcafe9883860efff9103e1fff82d2"
-)
-RUNTIME_LINK_SHA256 = "74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2"
-RUNTIME_RECEIPT_SELF_SHA256 = (
-    "5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3"
-)
-RUNTIME_OUTER_RECEIPT_SHA256 = (
-    "92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94"
-)
-PUBLISHER_TOOL_BLOBS = (
-    (
-        "Tools/EffectPipeline/build_artist_31470_reconstructed_runtime_program.py",
-        "130260991146c92988bd916f41d183463883e056",
-    ),
-    (
-        "Tools/EffectPipeline/build_effect_derived_artifact.py",
-        "35231dd7621ba8809e1745c9532e6e63dbd09696",
-    ),
-    (
-        "Tools/EffectPipeline/Publish-Effects.ps1",
-        "db261bdf6dfd88988da79ad7d2324ab6cc980f09",
-    ),
-)
-
-EXPECTED_TEXTURE_BINDING_COUNT = 72
-EXPECTED_UNIQUE_RESOURCE_COUNT = 48
+EXPECTED_TEXTURE_BINDING_COUNT = 77
+EXPECTED_UNIQUE_RESOURCE_COUNT = 52
 EXPECTED_RECIPE_COUNT = 27
 EXPECTED_RENDERER_SLOT_COUNT = 57
 EXPECTED_AMBIGUOUS_RENDERER_COUNT = 3
@@ -193,8 +155,6 @@ ROOT_KEYS = (
 )
 _APPROVED_PROGRAM_CACHE: dict[str, Any] | None = None
 _APPROVED_MATERIAL_CACHE: dict[str, Any] | None = None
-_PUBLISHER_CATALOG_CACHE: dict[str, Any] | None = None
-_PUBLISHER_EXPECTED_ENTRY_CACHE: dict[str, Any] | None = None
 
 
 def require(condition: bool, message: str) -> None:
@@ -332,11 +292,14 @@ def _read_program(path: Path = DEFAULT_PROGRAM) -> tuple[bytes, dict[str, Any]]:
     require(len(raw) == PROGRAM_BYTE_COUNT, "frozen program byte-count mismatch")
     require(hashlib.sha256(raw).hexdigest() == PROGRAM_RAW_SHA256,
             "frozen program raw SHA-256 mismatch")
-    if _APPROVED_PROGRAM_CACHE is None:
+    use_cache = path.resolve() == DEFAULT_PROGRAM.resolve()
+    if not use_cache or _APPROVED_PROGRAM_CACHE is None:
         program = program_module.load_json_bytes(raw, str(path))
         program_module.validate_program(program)
-        _APPROVED_PROGRAM_CACHE = program
-    program = _APPROVED_PROGRAM_CACHE
+        if use_cache:
+            _APPROVED_PROGRAM_CACHE = program
+    else:
+        program = _APPROVED_PROGRAM_CACHE
     require(program["programSha256"] == PROGRAM_SHA256, "frozen program SHA mismatch")
     require(program["summary"]["inputArtifactCount"] == PROGRAM_INPUT_ARTIFACT_COUNT,
             "frozen program input-artifact count mismatch")
@@ -352,7 +315,10 @@ def _read_program(path: Path = DEFAULT_PROGRAM) -> tuple[bytes, dict[str, Any]]:
 
 
 def _read_approval(
-    program: dict[str, Any], path: Path = DEFAULT_APPROVAL
+    program: dict[str, Any],
+    path: Path = DEFAULT_APPROVAL,
+    *,
+    require_independent_approval: bool = True,
 ) -> tuple[bytes, dict[str, Any]]:
     global _APPROVED_MATERIAL_CACHE
     raw = path.read_bytes()
@@ -361,11 +327,21 @@ def _read_approval(
     require(len(raw) == APPROVAL_BYTE_COUNT, "Material approval byte-count mismatch")
     require(hashlib.sha256(raw).hexdigest() == APPROVAL_RAW_SHA256,
             "Material approval raw SHA-256 mismatch")
-    if _APPROVED_MATERIAL_CACHE is None:
+    use_cache = path.resolve() == DEFAULT_APPROVAL.resolve()
+    if not use_cache or _APPROVED_MATERIAL_CACHE is None:
         approval = _parse_json_object_bytes(raw, "Material approval")
-        approval_builder.validate_receipt(approval, program)
-        _APPROVED_MATERIAL_CACHE = approval
-    approval = _APPROVED_MATERIAL_CACHE
+        approval_builder.validate_receipt(
+            approval,
+            program,
+            _program_already_validated=True,
+            require_approval=require_independent_approval,
+        )
+        if use_cache:
+            _APPROVED_MATERIAL_CACHE = approval
+    else:
+        approval = _APPROVED_MATERIAL_CACHE
+    if require_independent_approval:
+        material_approval.require_approved_receipt(approval)
     require(approval["receiptSha256"] == APPROVAL_SELF_SHA256,
             "Material approval self identity mismatch")
     require(material_approval.decision_projection_sha256(approval) == APPROVAL_DECISION_SHA256,
@@ -373,108 +349,25 @@ def _read_approval(
     return raw, approval
 
 
-def _extract_reconstructed_runtime_entry(
-    catalog: dict[str, Any], label: str
-) -> tuple[int, dict[str, Any]]:
-    require(
-        tuple(catalog.keys()) == ("schema", "formatVersion", "components", "effects"),
-        f"{label}: runtime catalog root key/order changed",
+def _build_publisher_base_authority(
+    program: dict[str, Any],
+) -> dict[str, Any]:
+    payload = program_module.output_bytes(program)
+    require(len(payload) == PROGRAM_BYTE_COUNT,
+            "publisher projection Program byte-count mismatch")
+    require(hashlib.sha256(payload).hexdigest() == PROGRAM_RAW_SHA256,
+            "publisher projection Program raw SHA mismatch")
+    projection = publisher_module.make_reconstructed_base_authority_projection(
+        payload
     )
-    publisher_module.validate_runtime_catalog(catalog)
-    matches = [
-        (index, row)
-        for index, row in enumerate(catalog["effects"])
-        if row.get("effectAssetId") == publisher_module.RECONSTRUCTED_EFFECT_ID
-    ]
-    require(len(matches) == 1, f"{label}: Artist 31470 publisher entry denominator changed")
-    index, entry = matches[0]
-    publisher_module.validate_reconstructed_runtime_entry(entry)
-    return index, entry
-
-
-def _read_publisher_runtime_authority(
-    path: Path = DEFAULT_RUNTIME_CATALOG,
-) -> tuple[bytes, dict[str, Any], dict[str, Any], dict[str, Any]]:
-    global _PUBLISHER_CATALOG_CACHE, _PUBLISHER_EXPECTED_ENTRY_CACHE
-    raw = path.read_bytes()
-    require(not raw.startswith(b"\xef\xbb\xbf"), "runtime catalog must be UTF-8 without BOM")
-    require(len(raw) == RUNTIME_CATALOG_BYTE_COUNT, "runtime catalog byte-count mismatch")
-    require(hashlib.sha256(raw).hexdigest() == RUNTIME_CATALOG_RAW_SHA256,
-            "runtime catalog raw SHA-256 mismatch")
-
-    # The exact raw identity is re-read on every validation.  The cold path must
-    # parse these same bytes rather than reopening the path after the hash check;
-    # otherwise a split read could validate a different catalog object.  Cache
-    # only that exact parsed object, then invoke the public entry validator on
-    # every call so all three current tool dependencies are always re-read.
-    use_cache = path.resolve() == DEFAULT_RUNTIME_CATALOG.resolve()
-    if not use_cache or _PUBLISHER_CATALOG_CACHE is None:
-        catalog = _parse_json_object_bytes(raw, "current publisher runtime catalog")
-        validate_recursive_types(catalog, "currentPublisherCatalog")
-        index, entry = _extract_reconstructed_runtime_entry(
-            catalog,
-            "currentPublisherCatalog",
-        )
-        expected_entry = publisher_module.prepare_reconstructed_runtime_entry(
-            DEFAULT_PROGRAM
-        )
-        publisher_module.validate_reconstructed_runtime_entry(expected_entry)
-        strict_ordered_equal(
-            entry,
-            expected_entry,
-            "publisherRuntimeEntryVsFrozenExpected",
-        )
-        if use_cache:
-            _PUBLISHER_CATALOG_CACHE = catalog
-            _PUBLISHER_EXPECTED_ENTRY_CACHE = expected_entry
-    else:
-        catalog = _PUBLISHER_CATALOG_CACHE
-        index = RUNTIME_ENTRY_EFFECT_INDEX
-        entry = catalog["effects"][index]
-        publisher_module.validate_reconstructed_runtime_entry(entry)
-        require(_PUBLISHER_EXPECTED_ENTRY_CACHE is not None,
-                "publisher expected-entry cache is missing")
-        expected_entry = _PUBLISHER_EXPECTED_ENTRY_CACHE
-        strict_ordered_equal(
-            entry,
-            expected_entry,
-            "publisherRuntimeEntryVsFrozenExpected",
-        )
-    require(index == RUNTIME_ENTRY_EFFECT_INDEX, "Artist 31470 runtime effect order changed")
-    require(len(catalog["components"]) == RUNTIME_CATALOG_COMPONENT_COUNT,
-            "runtime component denominator changed")
-    require(len(catalog["effects"]) == RUNTIME_CATALOG_EFFECT_COUNT,
-            "runtime effect denominator changed")
-
-    link = entry["reconstructedRuntimeProgram"]
-    receipt = entry["publishReceipt"]
-    require(tuple(entry.keys()) == tuple(publisher_module.RECONSTRUCTED_ENTRY_KEYS),
-            "publisher outer-10 key/order changed")
-    require(tuple(link.keys()) == tuple(publisher_module.RECONSTRUCTED_LINK_KEYS),
-            "publisher link-16 key/order changed")
-    require(tuple(receipt.keys()) == tuple(publisher_module.RECONSTRUCTED_RECEIPT_KEYS),
-            "publisher receipt-25 key/order changed")
-    require(len(entry) == 10 and len(link) == 16 and len(receipt) == 25,
-            "publisher exact tuple denominator changed")
-    require(len(receipt["toolDependencies"]) == 3,
-            "publisher tool dependency denominator changed")
-    require(canonical_sha256(entry) == RUNTIME_ENTRY_CANONICAL_SHA256,
-            "publisher runtime entry canonical identity changed")
-    require(canonical_sha256(link) == RUNTIME_LINK_SHA256,
-            "publisher runtime link identity changed")
-    require(receipt["receiptSha256"] == RUNTIME_RECEIPT_SELF_SHA256,
-            "publisher receipt self identity changed")
-    require(entry["publishReceiptSha256"] == RUNTIME_OUTER_RECEIPT_SHA256,
-            "publisher outer receipt identity changed")
-    require(canonical_sha256(receipt) == RUNTIME_OUTER_RECEIPT_SHA256,
-            "publisher complete receipt identity changed")
-    require(entry["sourceExact"] is False,
-            "publisher sourceExact admission changed")
-    require(entry["runtimeExecutionAdmission"] is False,
-            "publisher runtime execution admission changed")
-    require(entry["productAdmission"] is False,
-            "publisher Product admission changed")
-    return raw, catalog, entry, expected_entry
+    publisher_module.validate_reconstructed_base_authority_projection(projection)
+    require(projection["programSha256"] == PROGRAM_SHA256,
+            "publisher projection Program identity mismatch")
+    require(projection["sourceExact"] is False and
+            projection["runtimeExecutionAdmission"] is False and
+            projection["productAdmission"] is False,
+            "publisher projection admission changed")
+    return projection
 
 
 def _material_texture_artifact(program: dict[str, Any]) -> dict[str, Any]:
@@ -505,8 +398,6 @@ def _validate_frozen_git_inputs() -> None:
         (PARSER_INTEGRATION_COMMIT, PARSER_INTEGRATION_TREE),
         (APPROVAL_AUTHORITY_COMMIT, APPROVAL_AUTHORITY_TREE),
         (MATERIAL_TEXTURE_AUTHORITY_COMMIT, MATERIAL_TEXTURE_AUTHORITY_TREE),
-        (PUBLISHER_INTEGRATION_COMMIT, PUBLISHER_TREE),
-        (PUBLISHER_ORIGINAL_COMMIT, PUBLISHER_TREE),
     ):
         _validate_git_identity(commit, tree)
     _validate_git_blob(BASE_INTEGRATION_COMMIT, PROGRAM_PATH, PROGRAM_BLOB_ID)
@@ -516,18 +407,6 @@ def _validate_frozen_git_inputs() -> None:
         MATERIAL_TEXTURE_PATH,
         MATERIAL_TEXTURE_BLOB_ID,
     )
-    _validate_git_blob(
-        PUBLISHER_INTEGRATION_COMMIT,
-        RUNTIME_CATALOG_PATH,
-        RUNTIME_CATALOG_BLOB_ID,
-    )
-    _validate_git_blob(
-        PUBLISHER_ORIGINAL_COMMIT,
-        RUNTIME_CATALOG_PATH,
-        RUNTIME_CATALOG_BLOB_ID,
-    )
-    for path, blob_id in PUBLISHER_TOOL_BLOBS:
-        _validate_git_blob(PUBLISHER_INTEGRATION_COMMIT, path, blob_id)
     for path, blob_id in PARSER_FILES:
         _validate_git_blob(PARSER_INTEGRATION_COMMIT, path, blob_id)
 
@@ -821,8 +700,7 @@ def build_texture_authority(
 def _source_evidence(
     program: dict[str, Any],
     approval: dict[str, Any],
-    publisher_catalog: dict[str, Any],
-    publisher_entry: dict[str, Any],
+    publisher_projection: dict[str, Any],
 ) -> dict[str, Any]:
     material_texture = _material_texture_artifact(program)
     parser_files = []
@@ -832,22 +710,12 @@ def _source_evidence(
             "parserIntegrationBlobId": blob_id,
             "currentTrackedTextSha256": strict_io.tracked_text_sha256(ROOT / path),
         })
-    publisher_link = publisher_entry["reconstructedRuntimeProgram"]
-    publisher_receipt = publisher_entry["publishReceipt"]
-    publisher_tools = []
-    for tool, (path, blob_id) in zip(
-        publisher_receipt["toolDependencies"],
-        PUBLISHER_TOOL_BLOBS,
-        strict=True,
-    ):
-        require(tool["path"] == path, "publisher tool/blob order changed")
-        publisher_tools.append({
-            "role": tool["role"],
-            "path": tool["path"],
-            "hashDomain": tool["hashDomain"],
-            "sha256": tool["sha256"],
-            "publisherIntegrationBlobId": blob_id,
-        })
+    publisher_module.validate_reconstructed_base_authority_projection(
+        publisher_projection
+    )
+    publisher_tool_path = (
+        "Tools/EffectPipeline/build_effect_derived_artifact.py"
+    )
     return {
         "programAndParserTuple": {
             "path": PROGRAM_PATH,
@@ -899,44 +767,28 @@ def _source_evidence(
             "product": False,
         },
         "publisherRuntimeCatalogAuthority": {
-            "path": RUNTIME_CATALOG_PATH,
-            "publisherIntegrationCommitId": PUBLISHER_INTEGRATION_COMMIT,
-            "publisherOriginalCommitId": PUBLISHER_ORIGINAL_COMMIT,
-            "publisherTreeId": PUBLISHER_TREE,
-            "trackedBlobId": RUNTIME_CATALOG_BLOB_ID,
-            "currentCheckoutByteCount": RUNTIME_CATALOG_BYTE_COUNT,
-            "currentCheckoutRawSha256": RUNTIME_CATALOG_RAW_SHA256,
-            "currentCheckoutCarriageReturnCount": 1,
-            "schema": publisher_catalog["schema"],
-            "formatVersion": publisher_catalog["formatVersion"],
-            "componentCount": len(publisher_catalog["components"]),
-            "effectCount": len(publisher_catalog["effects"]),
-            "artist31470EffectIndex": RUNTIME_ENTRY_EFFECT_INDEX,
-            "outerKeyCount": len(publisher_entry),
-            "outerKeyOrder": list(publisher_entry.keys()),
-            "outerCanonicalSha256": RUNTIME_ENTRY_CANONICAL_SHA256,
-            "linkKeyCount": len(publisher_link),
-            "linkKeyOrder": list(publisher_link.keys()),
-            "linkCanonicalSha256": RUNTIME_LINK_SHA256,
-            "receiptKeyCount": len(publisher_receipt),
-            "receiptKeyOrder": list(publisher_receipt.keys()),
-            "receiptSelfSha256": RUNTIME_RECEIPT_SELF_SHA256,
-            "outerPublishReceiptSha256": RUNTIME_OUTER_RECEIPT_SHA256,
-            "toolDependencyCount": len(publisher_tools),
-            "toolDependencies": publisher_tools,
+            "authorityScope": (
+                "BASE_RUNTIME_ENTRY_PROJECTION_BEFORE_RENDER_RESOURCE_SIDECAR"
+            ),
+            "runtimeCatalogBytesRead": False,
+            "completedRuntimeEntryRead": False,
+            "renderResourceSidecarRead": False,
+            "selfReferenceExcluded": True,
+            "projectionKeyCount": len(publisher_projection),
+            "projectionKeyOrder": list(publisher_projection.keys()),
+            "projectionCanonicalSha256": canonical_sha256(
+                publisher_projection
+            ),
+            "baseProjection": copy.deepcopy(publisher_projection),
             "publicValidator": {
-                "path": "Tools/EffectPipeline/build_effect_derived_artifact.py",
-                "function": "validate_reconstructed_runtime_entry",
-                "currentToolReadsRequired": True,
-                "extractedEntryStrictEqualFrozenExpected": True,
+                "path": publisher_tool_path,
+                "builderFunction": (
+                    "make_reconstructed_base_authority_projection"
+                ),
+                "validatorFunction": (
+                    "validate_reconstructed_base_authority_projection"
+                ),
             },
-            "payloadKind": publisher_entry["payloadKind"],
-            "effectAssetId": publisher_entry["effectAssetId"],
-            "artifactRevision": publisher_entry["artifactRevision"],
-            "compilerRevision": publisher_entry["compilerRevision"],
-            "sourceExact": publisher_entry["sourceExact"],
-            "runtimeExecutionAdmission": publisher_entry["runtimeExecutionAdmission"],
-            "productAdmission": publisher_entry["productAdmission"],
         },
         "generatorAndValidator": {
             "path": (
@@ -1015,27 +867,22 @@ def build_receipt(
     approval: dict[str, Any],
     *,
     resources_root: Path | None = None,
+    require_independent_approval: bool = True,
     _inputs_already_validated: bool = False,
-    _publisher_authority: tuple[
-        bytes, dict[str, Any], dict[str, Any], dict[str, Any]
-    ] | None = None,
 ) -> tuple[dict[str, Any], dict[str, bytes]]:
     _validate_frozen_git_inputs()
     approved_root = _require_canonical_resources_root(resources_root)
     if not _inputs_already_validated:
         program_module.validate_program(program)
-        approval_builder.validate_receipt(approval, program)
+        approval_builder.validate_receipt(
+            approval,
+            program,
+            require_approval=require_independent_approval,
+        )
     require(program["programSha256"] == PROGRAM_SHA256, "program identity changed")
     require(approval["receiptSha256"] == APPROVAL_SELF_SHA256, "approval identity changed")
     _material_texture_artifact(program)
-    if _publisher_authority is None:
-        _publisher_authority = _read_publisher_runtime_authority()
-    _, publisher_catalog, publisher_entry, publisher_expected = _publisher_authority
-    strict_ordered_equal(
-        publisher_entry,
-        publisher_expected,
-        "publisherRuntimeEntryVsFrozenExpected",
-    )
+    publisher_projection = _build_publisher_base_authority(program)
 
     resources, bindings, payloads = build_texture_authority(program, approved_root)
     receipt: dict[str, Any] = {
@@ -1064,8 +911,7 @@ def build_receipt(
         "sourceEvidence": _source_evidence(
             program,
             approval,
-            publisher_catalog,
-            publisher_entry,
+            publisher_projection,
         ),
         "textureResources": resources,
         "textureBindings": bindings,
@@ -1132,11 +978,11 @@ def validate_receipt(
     approval: dict[str, Any] | None = None,
     *,
     resources_root: Path | None = None,
+    program_path: Path = DEFAULT_PROGRAM,
+    approval_path: Path = DEFAULT_APPROVAL,
     supplied_resource_payloads: Mapping[str, bytes] | None = None,
     supplied_approval_bytes: bytes | None = None,
     supplied_tool_bytes: bytes | None = None,
-    supplied_publisher_entry: dict[str, Any] | None = None,
-    supplied_runtime_catalog_bytes: bytes | None = None,
     require_independent_approval: bool = True,
 ) -> None:
     validate_recursive_types(receipt)
@@ -1153,19 +999,33 @@ def validate_receipt(
             "decision projection self field mismatch")
     _validate_sealed_rows(receipt)
 
-    _, approved_program = _read_program()
-    _, approved_material = _read_approval(approved_program)
+    _, approved_program = _read_program(program_path)
+    _, approved_material = _read_approval(
+        approved_program,
+        approval_path,
+        require_independent_approval=require_independent_approval,
+    )
     if program is not None:
         program_module.validate_program(program)
         strict_ordered_equal(program, approved_program, "suppliedProgram")
     if approval is not None:
-        approval_builder.validate_receipt(approval, approved_program)
+        approval_builder.validate_receipt(
+            approval,
+            approved_program,
+            _program_already_validated=True,
+            require_approval=require_independent_approval,
+        )
         strict_ordered_equal(approval, approved_material, "suppliedApproval")
     if supplied_approval_bytes is not None:
         supplied_approval = _parse_json_object_bytes(
             supplied_approval_bytes, "supplied Material approval"
         )
-        approval_builder.validate_receipt(supplied_approval, approved_program)
+        approval_builder.validate_receipt(
+            supplied_approval,
+            approved_program,
+            _program_already_validated=True,
+            require_approval=require_independent_approval,
+        )
         strict_ordered_equal(supplied_approval, approved_material, "suppliedApprovalBytes")
     if supplied_tool_bytes is not None:
         require(
@@ -1174,43 +1034,12 @@ def validate_receipt(
             "supplied current-tool object differs from actual validator",
         )
 
-    publisher_authority = _read_publisher_runtime_authority()
-    _, actual_catalog, actual_publisher_entry, _ = publisher_authority
-    if supplied_publisher_entry is not None:
-        publisher_module.validate_reconstructed_runtime_entry(
-            supplied_publisher_entry
-        )
-        strict_ordered_equal(
-            supplied_publisher_entry,
-            actual_publisher_entry,
-            "suppliedPublisherEntry",
-        )
-    if supplied_runtime_catalog_bytes is not None:
-        supplied_catalog = _parse_json_object_bytes(
-            supplied_runtime_catalog_bytes,
-            "supplied publisher runtime catalog",
-        )
-        _, supplied_entry = _extract_reconstructed_runtime_entry(
-            supplied_catalog,
-            "suppliedPublisherCatalog",
-        )
-        strict_ordered_equal(
-            supplied_entry,
-            actual_publisher_entry,
-            "suppliedPublisherCatalog.artist31470",
-        )
-        strict_ordered_equal(
-            supplied_catalog,
-            actual_catalog,
-            "suppliedPublisherCatalog",
-        )
-
     expected, actual_payloads = build_receipt(
         approved_program,
         approved_material,
         resources_root=resources_root,
+        require_independent_approval=require_independent_approval,
         _inputs_already_validated=True,
-        _publisher_authority=publisher_authority,
     )
     if supplied_resource_payloads is not None:
         _validate_supplied_resource_payloads(supplied_resource_payloads, actual_payloads)
@@ -1241,14 +1070,25 @@ def main() -> int:
     raw, program = _read_program(args.program)
     require(hashlib.sha256(raw).hexdigest() == PROGRAM_RAW_SHA256,
             "command-line program is not the frozen candidate")
-    approval_raw, approval = _read_approval(program, args.approval)
+    approval_raw, approval = _read_approval(
+        program,
+        args.approval,
+        require_independent_approval=not args.allow_unapproved,
+    )
     require(hashlib.sha256(approval_raw).hexdigest() == APPROVAL_RAW_SHA256,
             "command-line approval is not frozen")
-    receipt, _ = build_receipt(program, approval)
+    receipt, _ = build_receipt(
+        program,
+        approval,
+        require_independent_approval=not args.allow_unapproved,
+        _inputs_already_validated=True,
+    )
     validate_receipt(
         receipt,
         program,
         approval,
+        program_path=args.program,
+        approval_path=args.approval,
         require_independent_approval=not args.allow_unapproved,
     )
     expected = serialized_receipt(receipt)

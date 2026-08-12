@@ -24,6 +24,42 @@ function Read-RequiredSource([string]$RelativePath) {
     return [IO.File]::ReadAllText($path)
 }
 
+function Assert-RequiredFileIdentity(
+	[string]$RelativePath,
+	[long]$ExpectedByteCount,
+	[string]$ExpectedSha256) {
+	$path = Join-Path $RepositoryRoot $RelativePath
+	if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+		throw "Required Effect runtime authority artifact is missing: $RelativePath"
+	}
+	$bytes = [IO.File]::ReadAllBytes($path)
+	$sha256 = [Security.Cryptography.SHA256]::Create()
+	try {
+		$actualSha256 = ([BitConverter]::ToString(
+			$sha256.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+	}
+	finally {
+		$sha256.Dispose()
+	}
+	if ($bytes.LongLength -ne $ExpectedByteCount -or
+		$actualSha256 -cne $ExpectedSha256) {
+		throw "Effect runtime authority artifact identity is stale: $RelativePath"
+	}
+}
+
+Assert-RequiredFileIdentity `
+	'Data\Effects\Imported\Artist\Candidates\skill.31470.reconstructed-runtime-program.candidate.json' `
+	15117436 `
+	'bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6'
+Assert-RequiredFileIdentity `
+	'Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json' `
+	774127 `
+	'1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660'
+Assert-RequiredFileIdentity `
+	'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json' `
+	27144447 `
+	'e8412973025b01510e3a81ac7c119ac58994ab126aa8cf624afa8c126d342f8d'
+
 $header = Read-RequiredSource 'Client\Public\Effect_RuntimeAuthority.h'
 $source = Read-RequiredSource 'Client\Private\Effect_RuntimeAuthority.cpp'
 $catalogHeader = Read-RequiredSource 'Client\Public\Effect_Catalog.h'
@@ -98,9 +134,9 @@ foreach ($boundary in @(
     'MAXIMUM_PROGRAM_DEPTH',
     'MAXIMUM_PROGRAM_VALUES',
     'blockerOwnership',
-    'a85b8b41afb2f2a51bceafa55d06bf0937b1a245',
-	'72e417747dee14dd0a3be5ffd64f69f904bd696ef1acc049037fc81f38779849',
-	'618d5684c94fffa2c21ec0ee911e564fd0f6a1d35fc92843d8efcaeeadd55b4b',
+    '31ecc2edc328347ac6e3bf6fe444c270d463ef40',
+	'bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6',
+	'8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8',
 	'94b0bc3704e4c9aaca5216cfafbfcb397c924390395597442c6831d096f2bff5',
 	'sourceDeploymentRowId',
     'sourceDeploymentRowSha256',
@@ -138,15 +174,17 @@ foreach ($catalogBoundary in @(
 	'publishReceiptSha256',
 	'PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_AUTHORITY',
 	'CANONICAL_JSON_EXCLUDING_RECEIPT_SHA256',
-	'74175fe1e41b22ae593a9d1ff92027606bc0b31d62d17927ef6ac5673dd4a7a2',
-	'5c91709f2f0ec855c54c94e6dad5bcd7ed048c6133ca9a9af7d4873f20da1bd3',
-	'92c883f78d88018a50d8dec09eb6fb155974bec4b3756a796b3499fc2f839d94',
+	'a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2',
+	'ebdd01e2815990308eb703abc4b73e4c99a051a2cb4ff36d553f9bc6e61ac240',
+	'5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836',
 	'5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e',
 	'5407c3d0983c3aaf4bf085904ef8d7b5f3e9119ae448703ff7e8f612a1c144fb',
 	'ee4a12cf5cbd63bc9af6b0af18ca37da7631a4b0b6ed1465c95bf99fb9be8825',
 	'candidateUtf8Json',
 	'UTF8_JSON_EXACT',
-	'df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c')) {
+	'df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c',
+	'da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6',
+	'15''117''436u')) {
     if ($catalogHeader -notmatch [regex]::Escape($catalogBoundary) -and
         $catalogSource -notmatch [regex]::Escape($catalogBoundary)) {
         throw "Effect Catalog format3 boundary is missing: $catalogBoundary"
@@ -166,21 +204,29 @@ foreach ($renderResourceBoundary in @(
 	'lostark.effect-reconstructed-render-resource-authority-link',
 	'lostark.effect-reconstructed-render-resource-publication-receipt',
 	'PUBLICATION_PROVENANCE_ONLY_NOT_EXECUTION_SUBMIT_RENDER_AUTHORITY',
-	'bc5cd1accbbe3c628993a47093dc829eec6f050ab8467fca82f6b7bcf2dfe0ff',
-	'bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a',
-	'4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412',
-	'8a856dd473d49ee255f613c2e25395668c7209e434f7e3a869525a10f4a34c4e',
-	'815418a98fbf84a00ae172098a57470b25fac6b5ddfb9836d38dea25db3dafbd',
-	'37e1abb8309ac7fbd4244ce0a119db5e8cefc8213d98864e6dc7a4e0f2fa1740',
-	'74473d8be1e5930a0809740f1d8240216d4a5478acb9a8ff75001ce0335ceaef',
-	'508187b5b905ed714af7c1d18c572f07770a0011b07527e7e16fd61217797e6a',
-	'2a2e4bc7fd79164ebb578c7f8f531e7afae7c1f30e5f0d57d3e316bea2fd7922',
+	'1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660',
+	'6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4',
+	'fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de',
+	'1706bb76180d3650c043db59b4eb09291fde3b7c3a5884675270a4f887bbb16b',
+	'63d7107714b6eb812f709f6d97876665b4929ef51785dd50cc59eb3015d3601c',
+	'01cd26412754ffd8e7acb4e7c1fe4280ec2dfab65077a664c86eac6a415b8541',
+	'1536d7b780f6787c624bbad1150889fe7f63e78ede91067029856b07b9718d02',
+	'e7a630b9d94dfb177b3f678561865bd9e7bad2dd3f1eb082656b79e5c3af3190',
+	'774''127u',
 	'RESOLVED_EXACT_RUNTIME_COOK_RECEIPT',
 	'RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT')) {
 	if ($catalogHeader -notmatch [regex]::Escape($renderResourceBoundary) -and
 		$catalogSource -notmatch [regex]::Escape($renderResourceBoundary)) {
 		throw "Effect Catalog render-resource boundary is missing: $renderResourceBoundary"
 	}
+}
+if ($catalogSource -notmatch
+	'(?s)Parse_RenderTextureResources\(.*?Value\.Get_Array\(\)\.size\(\) != 52u' -or
+	$catalogSource -notmatch
+	'(?s)Parse_RenderTextureBindings\(.*?Value\.Get_Array\(\)\.size\(\) != 77u' -or
+	$catalogSource -notmatch
+	'(?s)iTextureResourceCount != 52u.*?iTextureBindingCount != 77u') {
+	throw 'Render-resource parser and sidecar summary must share the current exact 52-resource/77-binding denominators.'
 }
 if ($catalogSource -notmatch
 	'(?s)SourceReceiptStatus != "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT".*SourceReceiptStatus !=\s*"RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"') {
@@ -410,6 +456,15 @@ $selectedProductionHelperRegion = $executionSource.Substring(
 $selectedVisualHelperRegion = $executionSource.Substring(
 	$selectedVisualHelperStartIndex,
 	$selectedHelperEndIndex - $selectedVisualHelperStartIndex)
+$selectedActionVisualEndIndex = $executionSource.IndexOf(
+	'template <typename T>', $selectedVisualHelperStartIndex)
+if ($selectedActionVisualEndIndex -lt 0 -or
+	$selectedActionVisualEndIndex -le $selectedVisualHelperStartIndex) {
+	throw 'Selected evaluator action-time visual helper bounds are missing.'
+}
+$selectedActionVisualRegion = $executionSource.Substring(
+	$selectedVisualHelperStartIndex,
+	$selectedActionVisualEndIndex - $selectedVisualHelperStartIndex)
 if ($selectedProductionHelperRegion -notmatch
 	'(?s)case OPCODE::CYLINDER_Z:.*?Bind\(\{ "startradius", "startheight", "velocityscale",\s*"startlocation" \}\)' -or
 	$selectedProductionHelperRegion -notmatch
@@ -494,7 +549,7 @@ $forbiddenPreparedVisualTokens = @(
 	'strExactSourceClass',
 	'SourceRecipe')
 $preparedVisualViolation = Find-SelectedForbiddenToken `
-	($selectedVisualHelperRegion + $selectedEvaluateBody) `
+	($selectedActionVisualRegion + $selectedEvaluateBody) `
 	$forbiddenPreparedVisualTokens
 if (-not [string]::IsNullOrEmpty($preparedVisualViolation)) {
 	throw "Selected evaluator action-time visual path uses a forbidden raw lookup/dispatch token: $preparedVisualViolation"
@@ -597,15 +652,15 @@ if (($objectHeader + $playbackHeader + $rendererHeader) -match
 	'Stage_ReconstructedRuntimeProgram\s*\([^\)]*EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM') {
 	throw 'Raw reconstructed program staging must not bypass the Catalog-owned entry handle.'
 }
-if ($catalogSource -match 'Data/Effects/Imported/Artist/Candidates' -or
-	$catalogSource -match 'reconstructed-runtime-program\.candidate\.json' -or
+if ($catalogSource -match '(?s)(std::ifstream|ReadAllText|Read_Text)\s*\([^\)]*reconstructed-runtime-program\.candidate\.json' -or
 	$catalogSource -match 'Replace\([^\)]*\\r\\n[^\)]*\\n') {
-	throw 'Production Catalog must consume exact embedded candidate bytes without path I/O or EOL normalization.'
+	throw 'Production Catalog must not read or normalize external reconstructed candidate bytes at runtime.'
 }
 foreach ($actualCatalogBoundary in @(
 	'PublishedCatalogPath',
 	'PublishedCatalogStructure',
-	'b5086d14940ecb35d3c577024902a080e57f571112f0e79a4f8c8f0aa875509f',
+	'PublishedCatalogText.size() == 27''144''447u',
+	'e8412973025b01510e3a81ac7c119ac58994ab126aa8cf624afa8c126d342f8d',
 	'PublishedComponents->Get_Array().size() == 555u',
 	'PublishedEffects->Get_Array().size() == 102u',
 	'WriteCatalog(PublishedCatalogText)',
@@ -616,11 +671,13 @@ foreach ($actualCatalogBoundary in @(
 }
 foreach ($renderResourceCatalogBoundary in @(
 	'--effect-reconstructed-render-resource-authority',
-	'CatalogText.size() == 27''065''827u',
-	'ea3afd4e6f2fb2b2a627a8ba565daf9db931e3306c10da7ee5523611bf481ab3',
-	'nullptr == EntryA->Get_RenderResourceAuthority()')) {
+	'CatalogText.size() == 27''144''447u',
+	'e8412973025b01510e3a81ac7c119ac58994ab126aa8cf624afa8c126d342f8d',
+	'Identity->iRenderResourceSidecarByteCount == 774''127u',
+	'Authority->TextureResourcesById.size() == 52u',
+	'Authority->TextureBindingsById.size() == 77u')) {
 	if ($harness -notmatch [regex]::Escape($renderResourceCatalogBoundary)) {
-		throw "Exact old10/new13 Catalog harness identity is missing: $renderResourceCatalogBoundary"
+		throw "Current Catalog render-resource harness identity is missing: $renderResourceCatalogBoundary"
 	}
 }
 $publishedLoadIndex = $harness.IndexOf(
@@ -793,14 +850,14 @@ if (-not [string]::IsNullOrWhiteSpace($HarnessPath)) {
 			$resolvedRenderResourceCatalog = [IO.Path]::GetFullPath(
 				$RenderResourceRuntimeCatalogPath)
 			if (-not (Test-Path -LiteralPath $resolvedRenderResourceCatalog -PathType Leaf)) {
-				throw "Exact13 Effect runtime Catalog is missing: $resolvedRenderResourceCatalog"
+				throw "Current render-resource Effect runtime Catalog is missing: $resolvedRenderResourceCatalog"
 			}
 			$renderResourceOutput = & $resolvedHarness `
 				'--effect-reconstructed-render-resource-authority' `
 				$resolvedRenderResourceCatalog $resolvedCatalog 2>&1
 			if ($LASTEXITCODE -ne 0 -or
 				($renderResourceOutput -join "`n") -notmatch 'failures : 0') {
-				throw "Exact13 render-resource Catalog harness failed:`n$($renderResourceOutput -join "`n")"
+				throw "Current render-resource Catalog harness failed:`n$($renderResourceOutput -join "`n")"
 			}
 		}
 	}

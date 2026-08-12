@@ -25,8 +25,9 @@ public:
 public:
 	/* 그래픽 디바이스의 초기화. */
 	/* 장치객체를 생성한다. */
-	HRESULT Initialize(HWND hWnd, WINMODE eWinMode, int32_t iWinSizeX, int32_t iWinSizeY,
-		ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
+	HRESULT Initialize(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+		int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+		ComPtr<ID3D11DeviceContext>& pOutContext);
 	
 	/* 백버퍼를 지운다. */
 	HRESULT Clear_BackBuffer_View(const float4_t* pClearColor);
@@ -96,8 +97,9 @@ private:
 
 
 public:
-	static unique_ptr<CGraphic_Device> Create(HWND hWnd, WINMODE eWinMode, int32_t iWinSizeX, int32_t iWinSizeY,
-		ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
+	static unique_ptr<CGraphic_Device> Create(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
+		int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
+		ComPtr<ID3D11DeviceContext>& pOutContext);
 	
 };
 

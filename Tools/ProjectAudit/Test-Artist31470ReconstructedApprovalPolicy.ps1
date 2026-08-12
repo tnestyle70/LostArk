@@ -32,7 +32,7 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
         throw "reconstructed approval policy generator check failed:`n$generatorOutput"
     }
     if ($generatorOutput -notmatch
-        'source=29 material=255 sampler=72 geometry=7 sourceExact=false execution=false product=false') {
+        'source=29 material=260 sampler=77 geometry=7 sourceExact=false execution=false product=false') {
         throw "unexpected reconstructed policy generator summary: $generatorOutput"
     }
 
@@ -55,12 +55,12 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
     if ($receipt.schema -cne 'lostark.effect-reconstruction-approval-policy' -or
         [int]$receipt.formatVersion -ne 1 -or
         @($receipt.sourceRows).Count -ne 29 -or
-        @($receipt.materialRows).Count -ne 255 -or
+        @($receipt.materialRows).Count -ne 260 -or
         @($receipt.materialArithmeticRows).Count -ne 23 -or
         @($receipt.geometryRows).Count -ne 7 -or
         [int]$receipt.summary.materialRenderStateRowCount -ne 89 -or
         [int]$receipt.summary.materialStaticPermutationRowCount -ne 94 -or
-        [int]$receipt.summary.materialSamplerRowCount -ne 72 -or
+        [int]$receipt.summary.materialSamplerRowCount -ne 77 -or
         [int]$receipt.summary.formerExactSamplerReauditCount -ne 4 -or
         [int]$receipt.summary.formerExactSamplerPartialTagsCount -ne 1 -or
         [int]$receipt.summary.formerExactSamplerDefaultUnprovenCount -ne 3 -or
@@ -71,12 +71,12 @@ raise SystemExit(0 if result.wasSuccessful() else 1)
         [bool]$receipt.admissionPolicy.productAdmission -or
         [int]$receipt.manualValidation.completedOccurrenceCount -ne 0 -or
         [bool]$receipt.manualValidation.automatedScreenshotOrImageOracleAllowed) {
-        throw 'reconstructed approval policy is not fail-closed at 29/255/72/23/7'
+        throw 'reconstructed approval policy is not fail-closed at 29/260/77/23/7'
     }
 
     Write-Output (
         'PASS: Artist F 31470 reconstructed approval policy ' +
-        'tests=41 source=29 material=255 sampler=72 arithmetic=23 geometry=7 ' +
+        'tests=41 source=29 material=260 sampler=77 arithmetic=23 geometry=7 ' +
         'sourceExact=false execution=false product=false')
 }
 finally {

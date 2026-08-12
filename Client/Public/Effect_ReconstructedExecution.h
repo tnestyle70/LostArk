@@ -22,6 +22,27 @@ inline constexpr std::string_view
 	EFFECT_RECONSTRUCTED_SELECTED_OCCURRENCE_RNG_CONTRACT =
 		"artist-f.selected-occurrence-xorshift32.v1";
 
+enum class EFFECT_RECONSTRUCTED_VISUAL_SCOPE : uint8_t
+{
+	/* Product-style Complete output is fail-closed.  Artist 31470 currently has
+	   no occurrence whose source fidelity and human review are both sealed. */
+	ADMITTED_ONLY,
+	/* Explicit V3 audition of the shortest defensible main carrier stack.  These
+	   rows are conditional review candidates, never restoration claims. */
+	V3_MAIN_REVIEW,
+	/* V4 keeps the same three-row admission surface while replacing only the
+	   Artist-F material-composition revision.  The alias deliberately prevents
+	   a new Product or occurrence scope from being inferred. */
+	V4_ARTIST_F_MAIN_REVIEW = V3_MAIN_REVIEW,
+	/* All occurrence families with enough typed or versioned evidence to merit
+	   isolated human review.  They remain excluded from Complete output. */
+	CONDITIONAL_REVIEW,
+	/* Keeps all source occurrences available to explicit Solo/diagnostic
+	   tooling without relabelling them as restored or Product-admitted. */
+	ALL_DIAGNOSTIC,
+	END
+};
+
 enum class EFFECT_RECONSTRUCTED_EXECUTION_MODULE_ROLE : uint8_t
 {
 	REQUIRED_TIMING,
@@ -342,6 +363,22 @@ public:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>& InOutPlan,
 		std::string& strOutError);
 #endif
+};
+
+/* Builds the non-Product Artist F runtime document from the exact immutable
+   Catalog preparation.  The native-v14 file is used only as the structural
+   carrier; schedule, emitter, renderer and material values are rebound from
+   the parsed runtime Program before the document can be staged. */
+class CEffectReconstructedSourceRuntimeFactory final
+{
+public:
+	static bool_t Build_Document(
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		EFFECT_DOCUMENT_DESC& OutDocument,
+		std::string& strOutError,
+		EFFECT_RECONSTRUCTED_VISUAL_SCOPE eVisualScope =
+			EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ADMITTED_ONLY);
 };
 
 struct EFFECT_RECONSTRUCTED_CPU_EMITTER_STATE final

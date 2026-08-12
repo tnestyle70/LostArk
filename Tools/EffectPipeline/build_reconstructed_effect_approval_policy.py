@@ -81,8 +81,8 @@ V1_DENOMINATORS = {
     "sourceExecutionRowCount": 29,
     "materialRenderStateRowCount": 89,
     "materialStaticPermutationRowCount": 94,
-    "materialSamplerRowCount": 72,
-    "materialExecutionRowCount": 255,
+    "materialSamplerRowCount": 77,
+    "materialExecutionRowCount": 260,
     "materialArithmeticFamilyCount": 23,
     "geometryCarrierCount": 7,
     "effectOccurrenceCount": 35,
@@ -101,18 +101,18 @@ V1_FROZEN_LANE_IDENTITIES = {
         "requiredSourceArtifacts": (),
     },
     "MATERIAL": {
-        "commitId": "cde8f3bddea2f9415f682b387d2705fd25794075",
-        "treeId": "7b8f1d60870fd5c5410a6ef3e8060842bfd09cfd",
+        "commitId": "acf6a9949be999952f9c2c6470e7d6d189ba3654",
+        "treeId": "d9f6233824a6136cd80841314a7d7a5382c2233d",
         "receiptArtifacts": (
             (
                 "Data/Effects/Imported/Artist/Materials/"
                 "skill.31470.material-source-value-acquisition.receipt.json",
-                "e99419b34d6183b6709b1ce444ebbd2ef42ea497",
+                "5ddf91c4b92ee36453ba8542506343aa1792159a",
             ),
             (
                 "Data/Effects/Imported/Artist/Materials/"
                 "skill.31470.material-runtime-oracle.receipt.json",
-                "ac7467e5aeb230ce4cb3c8a5e4270068f6e28bd0",
+                "c26edb2af35f859a5888e5839a5bc08a34bf4061",
             ),
         ),
         "requiredSourceArtifacts": (),
@@ -236,7 +236,7 @@ V1_ALLOWED_PARTIAL_SOURCE_LABEL_COUNTS = {
 }
 V1_REQUIRED_GLOBAL_GATES = (
     "ALL_29_SOURCE_ROWS_HAVE_VERSIONED_HANDLER_AND_INDEPENDENT_NUMERIC_ORACLE",
-    "ALL_255_MATERIAL_ROWS_HAVE_VALUE_SELECTION_STATE_OUTPUT_AND_MUTATION_ORACLE",
+    "ALL_260_MATERIAL_ROWS_HAVE_VALUE_SELECTION_STATE_OUTPUT_AND_MUTATION_ORACLE",
     "ALL_23_ARITHMETIC_FAMILIES_PASS_CPU_AND_WARP_INDEPENDENT_SAMPLES",
     "ALL_7_GEOMETRY_BINDINGS_MATCH_EXPECTED_TUPLE_AND_CONSUME_PRESCALE_ONCE",
     "ALL_35_OCCURRENCES_PASS_FIXED_SEED_TIME_RUNTIME_PACKET_ORACLE",
@@ -258,17 +258,17 @@ V1_ROLLBACK_CONDITIONS = (
 V1_POLICY_SECTION_SHA256 = {
     "target": "b947c92093cf8a3a64de30acbad10c3ecdbedd3e39ce59b90441741bf7ec1df7",
     "approvalDecision": "2812912e0d76ecddf365e17ccc619363d32f18302b4a357f6174704baf95075f",
-    "frozenInputs": "6c148091386d2779e95f378767d99256c5b157a78a38e8c1815ffa3fb1006f68",
-    "denominators": "a1a370a0b6737ceb07284e3e77c75e282fb30fbd9379cc598a8087ea66e30a4b",
+    "frozenInputs": "c987c2989ff325f4a8dec0c9b6087510dfe810adfce0607ac78a3cd30373c6a9",
+    "denominators": "d3e1377aec856e05ec2428385465934f9a6b5925f2750e65c21974157d1486c8",
     "sourceFamilyPolicies": "a04768f32b2ba9007d74920cd392215ac742914c976c4ff9b43eb240f4c0509e",
     "materialExecutionFamilies": "79cb194c346658f19da6c0826def09c6e41fa97df664a2cc3a4c2769a29e9c1f",
     "materialRowRules": "7a9fdca74acc375519185f28bb7190da6ebf784ddc40beeb508eb5ec88fba824",
     "forbiddenClaims": "cd52f2855294579178687feb5bacede9f8427d3dae79bf40035bc5a0222c4687",
-    "requiredGlobalGates": "105f1f0e2a10d3d86690436c321b5cff3d3fff534f511fe503049d029ff2b8a7",
+    "requiredGlobalGates": "6e519e675e67edf03f537a25def95abfb2d724088df40fefd24598c98bedf35e",
     "rollbackConditions": "c4bad89887b56bcfea1a8c6f33961ba650f1bac68f61fe0365047d766fb377f9",
 }
 V1_POLICY_SOURCE_CANONICAL_SHA256 = (
-    "d559485809068968180d3b913e6e72121fcb219d977a3b596eff0c80ff6e83d7"
+    "e6c35ce45d9985461f7063f8d79e6bfcb614d747721212ebab195472cd65bf07"
 )
 V1_POLICY_SCHEMA_CANONICAL_SHA256 = (
     "d441711c2a88e58121d7ed3f335bdfa0dc38ed72c522232614ffbda1e8bcce81"
@@ -1229,7 +1229,7 @@ def validate_v1_fidelity_projection(
             "V1 partial Source fidelity label coverage changed")
 
     sampler_rows = [row for row in material_rows if row["domain"] == "SAMPLER"]
-    require(len(sampler_rows) == 72, "V1 strict sampler denominator changed")
+    require(len(sampler_rows) == 77, "V1 strict sampler denominator changed")
     require(all(row["fullDescriptorSourceExact"] is False for row in sampler_rows),
             "V1 sampler full descriptor was promoted to Source exact")
     require(all(row["evidenceFidelity"] != "SOURCE_EXACT_SAMPLER"

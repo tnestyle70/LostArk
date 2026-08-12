@@ -43,16 +43,16 @@ REQUIRED_GLOBAL_PROGRAM_BLOCKERS = frozenset({
     "TYPED_RUNTIME_MATERIAL_POLICY_CONSUMER_NOT_IMPLEMENTED",
 })
 EXPECTED_D3D_DESCRIPTOR_PROJECTION_SHA256 = (
-    "5b76e727418c588efd614524e5202b3aaf7040ba4064d0faafe7195ce994c49d"
+    "8eec266215ab6df354babe26e192d6e0c1fd4f3dbe0631c4ef7c5ffc939f7a9c"
 )
 EXPECTED_D3D_SRV_PROJECTION_SHA256 = (
-    "47d4c6bea3fa30805ae5a085cfe2094c56766a04ae45d4c76120dbefecedb14f"
+    "ca2dcf3e7d1dbc407103eeb213b0c3e5f04fca002ae2fe8f269fc77dd5a01c67"
 )
 EXPECTED_APPROVAL_RECEIPT_SHA256 = (
-    "da922add6d90287c88eed1d97efd8bd29ef35cd724c11f87ccfbb0bf9c3b7957"
+    "8a9263ed217d06f93845d923a7fb352f8151fc1636ae1dd20be794ce2ccc6c07"
 )
 EXPECTED_APPROVAL_CANONICAL_SHA256 = (
-    "5838c227ddde3755a49ca4b69437b8aecfd65e09679b584ab3e6a998b9088473"
+    "e4542b5bdc5a21bd70ce78683a32adbd7f76b8a23f5d200a2eee7e0aed93b7b7"
 )
 EXPECTED_APPROVAL_SOURCE_FAMILIES_SHA256 = (
     "faef8854a965934114c483dd70393efef91e439b578bb21ae59d38b025d15a36"
@@ -61,10 +61,10 @@ EXPECTED_APPROVAL_MATERIAL_FAMILIES_SHA256 = (
     "f6eef769a5057938276e5d57f163ee73840274a88a17c38cd98e0fb49a2ba20b"
 )
 EXPECTED_APPROVAL_SOURCE_ROWS_SHA256 = (
-    "fd5b0a034ed882d909f867da1adb0edd5d0861c2deed3f373623fa7281185a6f"
+    "ef6ec3dceeadb3d583a350c3e07693129a0a45eb7257eb21a0863a5c42bad55f"
 )
 EXPECTED_APPROVAL_MATERIAL_ROWS_SHA256 = (
-    "24f85942185874577ec2e0f1df364f515dccc2ae01110ec984af976ee59e9c1a"
+    "316beeccfa71b78d71cb5a062c03c44a2f25f1e6fda84ba44ae719776be0eade"
 )
 EXPECTED_APPROVAL_ARITHMETIC_ROWS_SHA256 = (
     "5eae02a316924651bf84e16dc93a2ddda7e6a97bf51b07156a11110aadbf6204"
@@ -79,36 +79,36 @@ EXPECTED_SOURCE_CAPABILITY_CANONICAL_SHA256 = (
     "62f3b5847262926ef5834ca9192dc9d5a3046045a3ad69cfa94bae0f59f2c55c"
 )
 EXPECTED_MATERIAL_POLICY_RECEIPT_SHA256 = (
-    "10c7cacac0c54bf22060ab54a5596d48785631dd65b12c1c2810a87eb013d1c7"
+    "e33f0c18d8eefa453c635ad0b8cd149f288b6505c6204d9b304ad3f1e8d623dc"
 )
 EXPECTED_MATERIAL_POLICY_CANONICAL_SHA256 = (
-    "412f8466ef50c67aa2c4a14a54a7f9f8df50ca7978b58a4daad0a69db93dc801"
+    "2a66f7c1010dba49e97a342c0f037cc3c7b3a6cfd6c7c14eb8d4c815759cf514"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_RECEIPT_SHA256 = (
-    "3e722cf02085497c63083fbf51161ff5fd6670be91607737863b9c4019e55b48"
+    "170ba2d4c70a202e384ca8a577b09921d0a5d5b3e90504f5f10d8e8db8c16d5a"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_CANONICAL_SHA256 = (
-    "6b83552e90b18500fec831939087c57e368225878982c0cd71de431e03a1d27b"
+    "9a20e884e5195e6278d9ab7d14b4645207c0f2a0437f051c51afe3120fedc298"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_TRACKED_TEXT_SHA256 = (
-    "87a28be564308117ac666206382c94ce5ee2bf37a47111cbef717994a0266077"
+    "4280a7a565b8d274115f2724efc0c495d38f4f3acaeee89031f652fae54b4781"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_TRACKED_TEXT_SHA256 = (
-    "6c2906e105fa65b284e4ddf566233e06fbfbabe07d5cecf231de434f86a52040"
+    "1cdccf929c12aeeb1fc2978923c7461b7f13f7ee69edba839774396cf3b946cf"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_PROJECTION_SHA256 = (
-    "be605d29418bb44e7d86c3ecd61a1b9c6807dded201875075532cf961133a876"
+    "bdf0f68fd47ccf862bef2aa1534e9da995f8c5a76abe724b80e0fcb3db3d0891"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_TREE_ID = (
-    "84cc7ef8cde7a7cf5194b0ed2ccf56a45a927b57"
+    "3ecff71492ae9633fdb9a62aab83aa27614f1dd6"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_BLOB_ID = (
-    "1a917e44d5605e322e2c554db21573d856b05874"
+    "db6b6e7bd3a3b265cff866dd3c32f4fef7a076c5"
 )
-# Filled from the exact normalized 72-row program projection below.  This is a
+# Filled from the exact normalized 77-row program projection below.  This is a
 # fixture-specific offline trust pin, not a production-parser constant.
 EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256 = (
-    "df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c"
+    "ac7f0478f9403110c72fee7e63ed15062d714080c6e70e36c766a635d0c68375"
 )
 EXPECTED_MATERIAL_FAMILY_SAMPLES_SHA256 = (
     "5350e20004898130541c6dc147ce2c14fa8a7870bee36a9baeaf14dcda33b5d3"
@@ -129,18 +129,18 @@ EXPECTED_GEOMETRY_CARRIERS_SHA256 = (
     "a602be873f49bb21954a0554c467c6945d26c328a5f46218af7ad6cf22254ba3"
 )
 EXPECTED_BLOCKER_OWNERSHIP_PROJECTION_SHA256 = (
-    "d47b33c183d863761470585348dc4da2cc48e69a12b3594515444d20e5c04650"
+    "1fd6038ee3eb09c68d0721cc819e605ce82301c5191fd6e1f5d9b2a03ec5f0ff"
 )
-EXPECTED_BLOCKER_OWNERSHIP_FIELD_COUNT = 6108
-EXPECTED_BLOCKER_TOKEN_OCCURRENCE_COUNT = 6670
+EXPECTED_BLOCKER_OWNERSHIP_FIELD_COUNT = 6133
+EXPECTED_BLOCKER_TOKEN_OCCURRENCE_COUNT = 6775
 EXPECTED_ACTION_CUE_PROJECTION_SHA256 = {
     "skill-31470/clip-000/notify-000": "af843d4cc8b81bae1f0a47ba3cb40c2962daae3bcd800e18eb5c50dd62bdcf1e",
     "skill-31470/clip-000/notify-014": "47a93850834f949645c79cdbdba0583cb0c3efe3e12683ec63d17bfe6cb074a6",
-    "skill-31470/clip-000/notify-018": "9f2fd20522ffd275667e83bf95066d754d48c9f1efdb4a6801afe8d6678da068",
-    "skill-31470/clip-000/notify-022": "554a99bc413989c76498aa84909fb768502e8c2e7376b3229ef26caf0a1893b3",
-    "skill-31470/clip-000/notify-026": "82d8f16ff1a4a7aaf188d98b608b4cba06cc763672588c8ab88eae3f80bbfc92",
-    "skill-31470/clip-000/notify-028": "0fdf5a735c2b9b8509585a8050963104164f6a9787276f85b189696967e467a4",
-    "skill-31470/clip-000/notify-029": "d4b2b817026969c468e475da3badb7ffed0a799a15cea622ec7c90a96749e395",
+    "skill-31470/clip-000/notify-018": "23d13471b0fab4b7f1ec3a764ede821157fd04f33ccdcbb04db5855c70a5391f",
+    "skill-31470/clip-000/notify-022": "37b72e0c6df6398b10cb85875e81e67ac022a1a03e3543cc986abd4beefd78ae",
+    "skill-31470/clip-000/notify-026": "5c60cf5bdf9c4fc1fa2c023324d16bd68039054071ca77e3b12fb54ddfd5eb83",
+    "skill-31470/clip-000/notify-028": "a2d75499f71ba8275a2f0da56e552bd63fe479b74223e4a4839888569b1178a5",
+    "skill-31470/clip-000/notify-029": "b61ebe50991c2981da6977cf32e55404021b962b7360258e1ac9f85da92b468e",
 }
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -149,12 +149,12 @@ DEFAULT_OUTPUT = REPO_ROOT / (
     "skill.31470.reconstructed-runtime-program.candidate.json"
 )
 
-APPROVAL_COMMIT = "baee9f64039b455dd17666c2cd1289b8d1777d28"
+APPROVAL_COMMIT = "9cd3bd4e1661b60771870966cdbcc212cac5193f"
 SOURCE_EVIDENCE_COMMIT = "7da937aeaa34c088c694e8eb4f53ff1f7f848ef3"
 SOURCE_CAPABILITY_COMMIT = "2fa2a2701e0ec9a8f990c65fef3fabb9e5a3e408"
-MATERIAL_EVIDENCE_COMMIT = "cde8f3bddea2f9415f682b387d2705fd25794075"
-MATERIAL_POLICY_COMMIT = "97597531215fa9c9873fe1be3ba8cd23db60031d"
-MATERIAL_TEXTURE_BINDING_COMMIT = "1a0b1a6834d562dac02db4f57dda54644d75695b"
+MATERIAL_EVIDENCE_COMMIT = "acf6a9949be999952f9c2c6470e7d6d189ba3654"
+MATERIAL_POLICY_COMMIT = "acf6a9949be999952f9c2c6470e7d6d189ba3654"
+MATERIAL_TEXTURE_BINDING_COMMIT = "9cd3bd4e1661b60771870966cdbcc212cac5193f"
 GEOMETRY_COMMIT = "0aca792819fdda3f541bb7cec7451c5ed93c6467"
 
 APPROVAL_PATH = (
@@ -802,8 +802,8 @@ SECTION_MAX_COUNTS = {
     "materialStaticBindings": 94,
     "materialRenderBindings": 162,
     "materialOccurrences": 34,
-    "materialPolicyRows": 255,
-    "materialTextureBindings": 72,
+    "materialPolicyRows": 260,
+    "materialTextureBindings": 77,
     "rendererTextureResources": 57,
     "geometryCarriers": 7,
     "geometryUses": 13,
@@ -1730,11 +1730,24 @@ def distribution_field_provenance(
         require_keys(item, FIELD_PROVENANCE_KEYS, "distribution field provenance")
         result.append(item)
     raw_provenance = module_adapter.get("fieldProvenance", {})
+    default_resolution = module_adapter.get("defaultResolution")
+    reconstructed_from_current_engine_cdo = (
+        type(default_resolution) is dict
+        and default_resolution.get("policyId") == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+        and default_resolution.get("status") == "RESOLVED_FOR_RECONSTRUCTED_HANDLER"
+        and default_resolution.get("provenanceTier")
+        == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+        and default_resolution.get("sourceExact") is False
+    )
     for field_name in raw_provenance.get("reconstructedFieldNames", []):
         item = {
             "fieldPath": field_name,
             "provenanceTier": raw_provenance.get("reconstructionBasis", ""),
-            "evidenceStatus": raw_provenance.get("rawFieldSourceFidelity", ""),
+            "evidenceStatus": (
+                "CURRENT_REVISION_EVIDENCE"
+                if reconstructed_from_current_engine_cdo
+                else raw_provenance.get("rawFieldSourceFidelity", "")
+            ),
             "valueSha256": "",
             "typedValueBindingSha256": "",
         }
@@ -1757,6 +1770,147 @@ def build_source_sections(
 ) -> dict[str, list[dict[str, Any]]]:
     require(source.get("characterClass") == "ARTIST" and source.get("skillId") == 31470,
             "source semantics target mismatch")
+    source_summary = source.get("summary") or {}
+    typed_evidence: dict[str, Any] = {}
+    if "defaultDependentDistributionCount" in source_summary:
+        default_policy = source.get("defaultDependentPolicy")
+        require(type(default_policy) is dict,
+                "source semantics default-dependent policy must be an object")
+        typed_evidence = default_policy.get("typedEvidence") or {}
+        resolved_scope = default_policy.get("resolvedScope") or []
+        current_defaults = source.get("currentRevisionDefaultEvidence") or {}
+        engine_packages = [
+            row for row in current_defaults.get("scriptPackages", [])
+            if row.get("logicalPackage") == "Engine"
+        ]
+        spawn_cdo_matches = [
+            row for key, row in
+            (current_defaults.get("classDefaultObjects") or {}).items()
+            if key.casefold() == "particlemodulespawn"
+        ]
+        spawn_cdo = spawn_cdo_matches[0] if len(spawn_cdo_matches) == 1 else {}
+        spawn_rate_scale = (spawn_cdo.get("properties") or {}).get("ratescale")
+        valid_sha256 = lambda value: (
+            type(value) is str
+            and len(value) == 64
+            and all(character in "0123456789abcdef" for character in value)
+        )
+        require(
+            default_policy.get("policyId")
+            == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+            and default_policy.get("mode")
+            == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+            and default_policy.get("sourceExact") is False
+            and default_policy.get("sourceExactUpgradeAllowed") is False
+            and default_policy.get("nullRawDistributionNumericPayloadByteCount") == 0
+            and default_policy.get("numericPayloadDefinition")
+            == "LOOKUP_TABLE_OR_KEY_VALUE_BYTES"
+            and resolved_scope == [{
+                "exactSourceClass": "particlemodulespawn",
+                "propertyPath": "ratescale",
+                "sourceDistributionKind": "RawDistributionFloat",
+                "componentCount": 1,
+                "occurrenceCount": 35,
+            }]
+            and type(typed_evidence) is dict
+            and typed_evidence.get("policyId")
+            == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+            and typed_evidence.get("status")
+            == "RESOLVED_FOR_RECONSTRUCTED_HANDLER"
+            and typed_evidence.get("provenanceTier")
+            == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+            and typed_evidence.get("sourceExact") is False
+            and typed_evidence.get("sourceExactUpgradeAllowed") is False
+            and typed_evidence.get("sourceEraIdentityPinned") is False
+            and typed_evidence.get("logicalPackage") == "Engine"
+            and type(typed_evidence.get("physicalPackage")) is str
+            and bool(typed_evidence.get("physicalPackage"))
+            and type(typed_evidence.get("packageBytes")) is int
+            and typed_evidence.get("packageBytes") > 0
+            and valid_sha256(typed_evidence.get("packageSha256"))
+            and typed_evidence.get("classDefaultObject")
+            == "Default__ParticleModuleSpawn"
+            and type(typed_evidence.get("classDefaultExportIndex")) is int
+            and typed_evidence.get("classDefaultExportIndex") >= 0
+            and valid_sha256(typed_evidence.get("classDefaultRecordSha256"))
+            and typed_evidence.get("propertyPath") == "ratescale"
+            and type(typed_evidence.get("value")) is float
+            and typed_evidence.get("value") == 1.0
+            and valid_sha256(typed_evidence.get("reconstructedDescriptorSha256"))
+            and len(engine_packages) == 1
+            and typed_evidence.get("physicalPackage")
+            == engine_packages[0].get("physicalPackage")
+            and typed_evidence.get("packageBytes")
+            == engine_packages[0].get("bytes")
+            and typed_evidence.get("packageSha256")
+            == engine_packages[0].get("sha256")
+            and typed_evidence.get("classDefaultObject")
+            == spawn_cdo.get("objectPath")
+            and typed_evidence.get("classDefaultExportIndex")
+            == spawn_cdo.get("exportIndex")
+            and typed_evidence.get("classDefaultRecordSha256")
+            == spawn_cdo.get("recordSha256"),
+            "source semantics current Engine CDO policy evidence mismatch",
+        )
+        require(
+            canonical_sha256(spawn_cdo.get("properties") or {})
+            == spawn_cdo.get("recordSha256")
+            and canonical_json_bytes(spawn_rate_scale)
+            == canonical_json_bytes({
+                "type": "structproperty",
+                "structtype": "rawdistributionfloat",
+                "value": {
+                    "size": 268,
+                    "properties": {
+                        "distribution": {
+                            "type": "objectproperty", "structtype": None,
+                            "value": 31985,
+                        },
+                        "type": {
+                            "type": "byteproperty", "structtype": None, "value": 0,
+                        },
+                        "op": {
+                            "type": "byteproperty", "structtype": None, "value": 1,
+                        },
+                        "lookuptablenumelements": {
+                            "type": "byteproperty", "structtype": None, "value": 1,
+                        },
+                        "lookuptablechunksize": {
+                            "type": "byteproperty", "structtype": None, "value": 1,
+                        },
+                        "lookuptable": {
+                            "type": "arrayproperty", "structtype": None,
+                            "value": [1.0, 1.0, 1.0, 1.0],
+                        },
+                        "lookuptabletimescale": {
+                            "type": "floatproperty", "structtype": None, "value": 0.0,
+                        },
+                        "lookuptablestarttime": {
+                            "type": "floatproperty", "structtype": None, "value": 0.0,
+                        },
+                    },
+                },
+            }),
+            "source semantics ParticleModuleSpawn RateScale CDO payload mismatch",
+        )
+        require(
+            source_summary.get("moduleDecisionCounts")
+            == {"BLOCKED": 108, "READY_FOR_HANDLER": 291}
+            and source_summary.get("distributionDecisionCounts")
+            == {"BLOCKED": 105, "READY_FOR_HANDLER": 524}
+            and source_summary.get("defaultDependentDistributionCount") == 137
+            and source_summary.get("defaultDependentReconstructedCount") == 35
+            and source_summary.get("defaultDependentBlockedCount") == 102,
+            "source semantics default-dependent denominator mismatch",
+        )
+    else:
+        require(
+            source_summary.get("moduleDecisionCounts")
+            == {"BLOCKED": 29, "READY_FOR_HANDLER": 370}
+            and source_summary.get("distributionDecisionCounts")
+            == {"BLOCKED": 3, "READY_FOR_HANDLER": 626},
+            "legacy source semantics decision denominator mismatch",
+        )
     capability_by_module = {
         row["moduleOccurrenceId"]: row for row in capability_receipt["occurrences"]
     }
@@ -1788,6 +1942,8 @@ def build_source_sections(
     seeds: list[dict[str, Any]] = []
     defaults: list[dict[str, Any]] = []
     point_fields: list[dict[str, Any]] = []
+    default_dependent_reconstructed_count = 0
+    default_dependent_blocked_count = 0
     candidate_by_source_node: dict[str, dict[str, Any]] = {}
     source_candidate_canonical_sha = canonical_sha256(candidate)
     for element in candidate["elements"]:
@@ -2290,6 +2446,96 @@ def build_source_sections(
                 source_class = payload.get("sourceClass", "")
                 descriptor = payload
                 variant = "INLINE"
+                reconstructed_default = module_adapter.get("reconstructedDescriptor")
+                default_resolution = module_adapter.get("defaultResolution")
+                blocked_default = (
+                    local is None
+                    and module_adapter.get("defaultDependent") is True
+                    and module_adapter.get("decision") == "BLOCKED"
+                    and type(default_resolution) is dict
+                    and default_resolution.get("status") == "BLOCKED"
+                    and default_resolution.get("provenanceTier")
+                    == "SOURCE_NULL_RAW_DISTRIBUTION"
+                    and reconstructed_default is None
+                )
+                if module_adapter.get("defaultDependent") is True:
+                    require(
+                        local is None and
+                        (blocked_default != (reconstructed_default is not None)),
+                        f"distribution {distribution_id} default-dependent disposition is ambiguous",
+                    )
+                    if blocked_default:
+                        default_dependent_blocked_count += 1
+                    else:
+                        default_dependent_reconstructed_count += 1
+                if blocked_default:
+                    require(
+                        default_resolution.get("policyId")
+                        == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+                        and default_resolution.get("sourceExact") is False
+                        and default_resolution.get("sourceExactUpgradeAllowed") is False
+                        and default_resolution.get("numericPayloadByteCount") == 0
+                        and default_resolution.get("numericPayloadDefinition")
+                        == "LOOKUP_TABLE_OR_KEY_VALUE_BYTES"
+                        and module_adapter.get("numericOracleSamples") == []
+                        and module_adapter.get("blockers") == [
+                            "DEFAULT_DEPENDENT_DISTRIBUTION_REQUIRES_TYPED_DEFAULT_POLICY",
+                            "DISTRIBUTION_CLASS_DEFAULT_VALUE_UNRESOLVED",
+                            "DISTRIBUTION_OPERATION_RECONSTRUCTION_UNVERIFIED",
+                            "DOWNSTREAM_EVALUATOR_RECEIPT_REQUIRED",
+                            "INDEPENDENT_NUMERIC_ORACLE_REQUIRED",
+                        ],
+                        f"distribution {distribution_id} blocked-default authority changed",
+                    )
+                if reconstructed_default is not None and local is None:
+                    require(
+                        module["exactSourceClass"] == "particlemodulespawn"
+                        and module_adapter["propertyPath"] == "ratescale"
+                        and module_adapter["topLevelPropertyPath"] == "ratescale"
+                        and module_adapter["decision"] == "READY_FOR_HANDLER"
+                        and module_adapter["defaultDependent"] is True
+                        and module_adapter["blockers"] == []
+                        and type(default_resolution) is dict
+                        and default_resolution.get("policyId")
+                        == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+                        and default_resolution.get("status")
+                        == "RESOLVED_FOR_RECONSTRUCTED_HANDLER"
+                        and default_resolution.get("provenanceTier")
+                        == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+                        and default_resolution.get("sourceExact") is False
+                        and default_resolution.get("sourceExactUpgradeAllowed") is False
+                        and default_resolution.get("sourceEraIdentityPinned") is False
+                        and default_resolution.get("propertyPath") == "ratescale"
+                        and type(default_resolution.get("value")) is float
+                        and default_resolution.get("value") == 1.0
+                        and default_resolution.get("reconstructedDescriptorSha256")
+                        == canonical_sha256(reconstructed_default)
+                        and canonical_json_bytes(default_resolution)
+                        == canonical_json_bytes(typed_evidence)
+                        and canonical_json_bytes(reconstructed_default)
+                        == canonical_json_bytes({
+                            "propertyPath": "ratescale",
+                            "sourceClass": "",
+                            "sourceObjectPath": "Default__ParticleModuleSpawn",
+                            "componentCount": 1,
+                            "operation": 1,
+                            "randomLockAxes": 0,
+                            "lookupTableChunkSize": 1,
+                            "lookupTableNumElements": 1,
+                            "lookupTableTimeScale": 0.0,
+                            "lookupTableStartTime": 0.0,
+                            "defaultMinimum": [0.0, 0.0, 0.0, 0.0],
+                            "defaultMaximum": [0.0, 0.0, 0.0, 0.0],
+                            "lookupTable": [1.0, 1.0, 1.0, 1.0],
+                            "keys": [],
+                            "referenceId": "",
+                            "occurrenceId": "",
+                            "payloadStatus": "CURRENT_ENGINE_CDO_RECONSTRUCTED",
+                            "fidelity": "CURRENT_ENGINE_CDO_RECONSTRUCTED",
+                        }),
+                        f"distribution {distribution_id} current Engine CDO authority changed",
+                    )
+                    descriptor = reconstructed_default
                 if local is not None:
                     source_class = local["exactSourceClass"]
                     descriptor = local.get("reconstructedDescriptor") or payload
@@ -2395,8 +2641,16 @@ def build_source_sections(
                     "sourceObjectPath": descriptor.get("sourceObjectPath", ""),
                     "referenceId": (local or {}).get("referenceId", descriptor.get("referenceId", "")),
                     "occurrenceId": (local or {}).get("legacyOccurrenceId", descriptor.get("occurrenceId", "")),
-                    "payloadStatus": descriptor.get("payloadStatus", "INLINE_SOURCE_PAYLOAD"),
-                    "fidelity": (local or {}).get("sourceFidelity", descriptor.get("fidelity", "")),
+                    "payloadStatus": (
+                        "UNRESOLVED_SEMANTIC_CLOSURE" if blocked_default
+                        else descriptor.get("payloadStatus", "INLINE_SOURCE_PAYLOAD")
+                    ),
+                    "fidelity": (
+                        "UNRESOLVED_CROSS_REVISION" if blocked_default
+                        else (local or {}).get(
+                            "sourceFidelity", descriptor.get("fidelity", "")
+                        )
+                    ),
                     "componentCount": component_count,
                     "operation": descriptor.get("operation") if variant in ("INLINE", "FLOAT_CURVE") else None,
                     "randomLockAxes": descriptor.get("randomLockAxes") if variant in ("INLINE", "FLOAT_CURVE") else None,
@@ -2417,7 +2671,10 @@ def build_source_sections(
                     "constantValues": constant_values,
                     "isDirty": is_dirty,
                     "actionCueBindings": action_cues,
-                    "fieldProvenance": distribution_field_provenance(local or {}, module_adapter),
+                    "fieldProvenance": (
+                        [] if blocked_default
+                        else distribution_field_provenance(local or {}, module_adapter)
+                    ),
                     "samples": normalized_distribution_samples(
                         local or module_adapter, action_cues
                     ),
@@ -2434,6 +2691,8 @@ def build_source_sections(
                 }
                 for provenance in row["fieldProvenance"]:
                     if provenance["valueSha256"] != "":
+                        continue
+                    if blocked_default:
                         continue
                     value_key = reconstructed_field_bindings.get(provenance["fieldPath"])
                     require(value_key is not None,
@@ -2737,6 +2996,19 @@ def build_source_sections(
         }
         point_fields.append(seal_row(row, "pointLightFields"))
 
+    if "defaultDependentDistributionCount" in source_summary:
+        require(
+            default_dependent_reconstructed_count == 35
+            and default_dependent_blocked_count == 102,
+            "source semantics default-dependent row disposition count mismatch",
+        )
+    else:
+        require(
+            default_dependent_reconstructed_count == 0
+            and default_dependent_blocked_count == 0,
+            "legacy source semantics unexpectedly contains default-dependent rows",
+        )
+
     return {
         "emitters": emitters,
         "modules": modules,
@@ -2937,10 +3209,10 @@ def build_material_sections(
         + policy["staticPermutationPolicies"]
         + policy["samplerPolicies"]
     )
-    require([row["policyOrder"] for row in all_policy_source_rows] == list(range(255)),
+    require([row["policyOrder"] for row in all_policy_source_rows] == list(range(260)),
             "material policy order must be the exact 0..254 sequence")
     policy_by_id = {row["policyRowId"]: row for row in all_policy_source_rows}
-    require(len(policy_by_id) == 255, "material policy IDs must be unique")
+    require(len(policy_by_id) == 260, "material policy IDs must be unique")
     static_policy_by_field = {
         row["fieldId"]: row for row in policy["staticPermutationPolicies"]
     }
@@ -2957,8 +3229,8 @@ def build_material_sections(
         row["upstreamMatrixRowId"]: order
         for order, row in enumerate(approval["materialRows"])
     }
-    require(len(approval_material_by_matrix) == 255,
-            "approval must own 255 unique Material policy rows")
+    require(len(approval_material_by_matrix) == 260,
+            "approval must own 260 unique Material policy rows")
     require(
         set(approval_material_by_matrix)
         == {row["sourceMatrixRowId"] for row in all_policy_source_rows},
@@ -2971,10 +3243,10 @@ def build_material_sections(
             "approval must own eight unique Material execution families")
     warp = policy["warpDescriptorVerification"]
     require(warp["verified"] is True, "Material WARP descriptor verification not passed")
-    require(type(warp["descriptorRowCount"]) is int and warp["descriptorRowCount"] == 107,
+    require(type(warp["descriptorRowCount"]) is int and warp["descriptorRowCount"] == 112,
             "Material D3D descriptor denominator mismatch")
     require(type(warp["srvColorSpaceRowCount"]) is int
-            and warp["srvColorSpaceRowCount"] == 72,
+            and warp["srvColorSpaceRowCount"] == 77,
             "Material D3D SRV denominator mismatch")
     require(canonical_sha256(warp["rowResults"]) == warp["rowResultsSha256"]
             == EXPECTED_D3D_DESCRIPTOR_PROJECTION_SHA256,
@@ -3340,15 +3612,15 @@ def build_material_sections(
         }
         summary = texture_binding_receipt["summary"]
         admission = texture_binding_receipt["admission"]
-        require(len(texture_binding_receipt["materialTextureBindings"]) == 72
-                and len(texture_binding_by_policy) == 72
-                and len(texture_binding_receipt["textureResources"]) == 48
-                and len(texture_resource_by_id) == 48
+        require(len(texture_binding_receipt["materialTextureBindings"]) == 77
+                and len(texture_binding_by_policy) == 77
+                and len(texture_binding_receipt["textureResources"]) == 52
+                and len(texture_resource_by_id) == 52
                 and len(texture_binding_receipt["provisioningProposals"]) == 4
                 and len(proposal_by_id) == 4
-                and summary["resolvedBindingRowCount"] == 72
+                and summary["resolvedBindingRowCount"] == 77
                 and summary["unresolvedBindingRowCount"] == 0
-                and summary["runtimeCookBindingRowCount"] == 68
+                and summary["runtimeCookBindingRowCount"] == 73
                 and summary["deploymentBindingRowCount"] == 4
                 and summary["completedProvisioningProposalCount"] == 4
                 and admission["completeRuntimeBinding"] == {
@@ -3511,8 +3783,8 @@ def build_material_sections(
             "blockers": binding_blockers,
         }
         texture_binding_rows.append(seal_row(row, "materialTextureBindings"))
-    require(len(texture_binding_rows) == 72,
-            "Material logical texture binding denominator must be 72")
+    require(len(texture_binding_rows) == 77,
+            "Material logical texture binding denominator must be 77")
 
     return {
         "materialFamilies": family_rows,
@@ -3752,18 +4024,28 @@ def normalized_action_cue_program_projection(cue: dict[str, Any]) -> dict[str, A
     require_keys(local, CUE_TRANSFORM_KEYS, "action cue local transform")
     socket = copy.deepcopy(attachment_raw["socketLocalTransform"])
     require_keys(socket, SOCKET_TRANSFORM_KEYS, "action cue socket transform")
-    follows_named_anchor = attachment_raw["mode"] == "FOLLOW_NAMED_ANCHORS"
-    require(attachment_raw["mode"] in {"FOLLOW_NAMED_ANCHORS", "SNAPSHOT_ROOT"},
+    attachment_mode = attachment_raw["mode"]
+    follows_named_anchor = attachment_mode == "FOLLOW_NAMED_ANCHORS"
+    snapshots_root = attachment_mode == "SNAPSHOT_ROOT"
+    require(follows_named_anchor or snapshots_root,
             "action cue attachment mode unsupported")
     attachment = {
-        "enabled": follows_named_anchor,
+        # An explicit root snapshot is still an attachment operation.  Mapping
+        # it to disabled makes runtime evaluation fall through to the current
+        # actor root every frame and destroys the source spawn-time snapshot.
+        "enabled": True,
         "follow": follows_named_anchor,
         "sourceAnchorSlotId": (attachment_raw["sourceAnchorNames"][0]
-                               if follows_named_anchor else ""),
+                               if follows_named_anchor else "root"),
         "runtimeAnchorSlotId": attachment_raw["runtimeAnchorSlotId"],
         "runtimeBoneName": attachment_raw["runtimeBoneName"],
         "socketLocalTransform": socket,
     }
+    if snapshots_root:
+        require(attachment["runtimeAnchorSlotId"] == "root"
+                and attachment["runtimeBoneName"] == ""
+                and attachment_raw["sourceAnchorNames"] == [],
+                "snapshot-root action cue projection mismatch")
     require_keys(attachment, ATTACHMENT_KEYS, "action cue attachment projection")
     parameter_rows = []
     for raw in payload["parameterOverrides"]:
@@ -3908,7 +4190,7 @@ def bind_emitter_direct_ids(
         row["actionCueParameterInputs"] = cue_projection["actionCueParameterInputs"]
         row["sourceActionCueProjectionSha256"] = canonical_sha256(cue_projection)
         row["anchorRequests"] = []
-        if row["actionCueAttachment"]["enabled"]:
+        if row["actionCueAttachment"]["follow"]:
             anchor = {
                 "anchorRequestId": row["emitterId"] + "::anchor:action-cue",
                 "order": 0,
@@ -4338,7 +4620,7 @@ def build_policy_route_binding(documents: dict[str, dict[str, Any]]) -> dict[str
             and row["sourcePolicyRowCount"] == 29,
             "approval Source policy route denominator mismatch")
     require(row["materialExecutionFamilyCount"] == 8
-            and row["materialPolicyRowCount"] == 255
+            and row["materialPolicyRowCount"] == 260
             and row["materialArithmeticRowCount"] == 23,
             "approval Material policy route denominator mismatch")
     require(row["geometryPolicyRowCount"] == 7,
@@ -4396,6 +4678,7 @@ def derive_program_blockers(
 ) -> list[str]:
     blockers = set(derive_program_blockers_from_sections(sections))
     external_blockers: set[str] = set()
+    external_blockers.update(documents["sourceSemantics"].get("blockerUnion", []))
     external_blockers.update(documents["sourceCapability"].get("blockerUnion", []))
     external_blockers.update(documents["materialPolicy"]["admission"]["blockers"])
     external_blockers.update(documents["geometryBinding"].get("productBlockers", []))
@@ -4635,8 +4918,8 @@ EXPECTED_COUNTS = {
     "materialStaticBindings": 94,
     "materialRenderBindings": 162,
     "materialOccurrences": 34,
-    "materialPolicyRows": 255,
-    "materialTextureBindings": 72,
+    "materialPolicyRows": 260,
+    "materialTextureBindings": 77,
     "rendererTextureResources": 57,
     "geometryCarriers": 7,
     "geometryUses": 13,
@@ -4925,7 +5208,7 @@ def validate_policy_route_binding(program: dict[str, Any]) -> None:
     material_rows = sorted(
         program["materialPolicyRows"], key=lambda row: row["approvalMaterialOrder"]
     )
-    require([row["approvalMaterialOrder"] for row in material_rows] == list(range(255)),
+    require([row["approvalMaterialOrder"] for row in material_rows] == list(range(260)),
             "approval Material row order mismatch")
     for row in material_rows:
         embedded = row["approvalMaterialRow"]
@@ -5793,22 +6076,22 @@ def validate_nested_shapes(program: dict[str, Any]) -> None:
                 "unknown Material texture source receipt status: "
                 + str(row["sourceReceiptStatus"])
             )
-    require(len(source_binding_ids) == 72,
+    require(len(source_binding_ids) == 77,
             "Material texture source binding reverse denominator mismatch")
     require(sum(
         row["sourceReceiptStatus"] == "RESOLVED_EXACT_RUNTIME_COOK_RECEIPT"
         for row in program["materialTextureBindings"]
-    ) == 68 and sum(
+    ) == 73 and sum(
         row["sourceReceiptStatus"]
         == "RESOLVED_RECONSTRUCTED_EXACT_DDS_DEPLOYMENT_RECEIPT"
         for row in program["materialTextureBindings"]
     ) == 4 and sum(
         row["resolutionStatus"] == "RESOLVED_EXACT_RUNTIME_ASSET"
         for row in program["materialTextureBindings"]
-    ) == 72, "Material texture source/runtime resolution denominator mismatch")
+    ) == 77, "Material texture source/runtime resolution denominator mismatch")
     require(canonical_sha256(program["materialTextureBindings"])
             == EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256,
-            "Material texture frozen 72-row projection mismatch")
+            "Material texture frozen 77-row projection mismatch")
     for row in program["rendererTextureResources"]:
         require_json_int(row["order"], "renderer texture resource order", 0)
         require(row["slotId"] in RENDERER_TEXTURE_SLOTS,
@@ -5933,13 +6216,30 @@ def validate_owner_order(program: dict[str, Any]) -> None:
             "action schedule reverse coverage mismatch")
     frozen_capabilities = frozen_source_capability_by_module()
     reconstructed_capability_ids: set[str] = set()
+    source_decision_counts = {
+        decision: sum(row["sourceDecision"] == decision for row in modules.values())
+        for decision in ("READY_FOR_HANDLER", "BLOCKED")
+    }
+    current_cdo_distribution_count = sum(
+        row["payloadStatus"] == "CURRENT_ENGINE_CDO_RECONSTRUCTED"
+        for row in distributions.values()
+    )
+    if current_cdo_distribution_count:
+        require(
+            current_cdo_distribution_count == 35
+            and source_decision_counts
+            == {"READY_FOR_HANDLER": 291, "BLOCKED": 108},
+            "current Engine CDO source decision denominator mismatch",
+        )
+    else:
+        require(
+            source_decision_counts
+            == {"READY_FOR_HANDLER": 370, "BLOCKED": 29},
+            "legacy source decision denominator mismatch",
+        )
     for module in modules.values():
         require(module["emitterId"] in emitters, "module has unknown emitter owner")
         require(module["handlerRegistryId"] in handlers, "module has unknown handler")
-        require(module["sourceDecision"]
-                == ("READY_FOR_HANDLER" if module["selectionKind"] == "SOURCE_HANDLER"
-                    else "BLOCKED"),
-                f"module {module['moduleId']} source decision mismatch")
         handler = handler_rows[module["handlerRegistryId"]]
         expected_kind = (
             "SOURCE_MODULE" if module["selectionKind"] == "SOURCE_HANDLER"
@@ -6166,6 +6466,7 @@ def validate_owner_order(program: dict[str, Any]) -> None:
     source_candidate_sha = source_candidate_artifacts[0]["canonicalJsonSha256"]
     total_bursts = 0
     follow_attachment_count = 0
+    snapshot_attachment_count = 0
     for emitter in emitters.values():
         timing = emitter["timing"]
         required = modules.get(timing["requiredModuleId"])
@@ -6278,9 +6579,11 @@ def validate_owner_order(program: dict[str, Any]) -> None:
                 == canonical_sha256(random_input),
                 f"emitter {emitter['emitterId']} random authority mismatch")
         attachment = emitter["actionCueAttachment"]
-        if attachment["enabled"]:
+        require(attachment["enabled"] is True,
+                f"emitter {emitter['emitterId']} attachment was disabled")
+        if attachment["follow"]:
             follow_attachment_count += 1
-            require(attachment["follow"] is True and len(emitter["anchorRequests"]) == 1,
+            require(len(emitter["anchorRequests"]) == 1,
                     f"emitter {emitter['emitterId']} follow attachment mismatch")
             anchor = emitter["anchorRequests"][0]
             require(anchor["sourceAnchorSlotId"] == attachment["sourceAnchorSlotId"]
@@ -6290,9 +6593,14 @@ def validate_owner_order(program: dict[str, Any]) -> None:
                     and anchor["follow"] is True,
                     f"emitter {emitter['emitterId']} anchor projection mismatch")
         else:
-            require(attachment["follow"] is False and emitter["anchorRequests"] == [],
+            snapshot_attachment_count += 1
+            require(attachment["sourceAnchorSlotId"] == "root"
+                    and attachment["runtimeAnchorSlotId"] == "root"
+                    and attachment["runtimeBoneName"] == ""
+                    and emitter["anchorRequests"] == [],
                     f"emitter {emitter['emitterId']} root attachment mismatch")
     require(total_bursts == 31 and follow_attachment_count == 5
+            and snapshot_attachment_count == 30
             and sum(row["operationalMaxParticles"] for row in emitters.values()) == 1291,
             "emitter operational denominator mismatch")
     reconstructed_modules = [
@@ -6509,9 +6817,9 @@ def validate_owner_order(program: dict[str, Any]) -> None:
         row for row in program["materialPolicyRows"]
         if row["domain"] == "SAMPLER_DESCRIPTOR"
     ]
-    require(len(texture_binding_field_ids) == 72
+    require(len(texture_binding_field_ids) == 77
             and texture_binding_field_ids == {row["fieldId"] for row in expected_sampler_rows}
-            and len(texture_binding_policy_ids) == 72
+            and len(texture_binding_policy_ids) == 77
             and texture_binding_policy_ids
             == {row["policyRowId"] for row in expected_sampler_rows},
             "Material texture binding reverse coverage mismatch")
@@ -6743,7 +7051,7 @@ def validate_program(program: dict[str, Any], expected: dict[str, Any] | None = 
     require(route["sourceExecutionFamilyCount"] == 7
             and route["sourcePolicyRowCount"] == 29
             and route["materialExecutionFamilyCount"] == 8
-            and route["materialPolicyRowCount"] == 255
+            and route["materialPolicyRowCount"] == 260
             and route["materialArithmeticRowCount"] == 23
             and route["geometryPolicyRowCount"] == 7,
             "policyRouteBinding denominator mismatch")
@@ -6819,13 +7127,13 @@ def validate_program(program: dict[str, Any], expected: dict[str, Any] | None = 
         "SOURCE_HANDLER": 370, "RECONSTRUCTED_HANDLER": 29,
     }, "module handler selection denominator mismatch")
     require(program["summary"]["materialPolicyDomainCounts"] == {
-        "RENDER_STATE": 89, "STATIC_PERMUTATION": 94, "SAMPLER_DESCRIPTOR": 72,
+        "RENDER_STATE": 89, "STATIC_PERMUTATION": 94, "SAMPLER_DESCRIPTOR": 77,
     }, "Material policy denominator mismatch")
-    require(program["summary"]["materialD3dDescriptorCount"] == 107
+    require(program["summary"]["materialD3dDescriptorCount"] == 112
             and program["summary"]["materialD3dDescriptorProjectionSha256"]
             == EXPECTED_D3D_DESCRIPTOR_PROJECTION_SHA256,
             "Material D3D descriptor projection mismatch")
-    require(program["summary"]["materialSrvDescriptorCount"] == 72
+    require(program["summary"]["materialSrvDescriptorCount"] == 77
             and program["summary"]["materialSrvDescriptorProjectionSha256"]
             == EXPECTED_D3D_SRV_PROJECTION_SHA256,
             "Material D3D SRV projection mismatch")

@@ -1399,13 +1399,23 @@ def build_material_feasibility_matrices(
         sampler_sources: list[tuple[str, int, dict[str, Any]]] = [
             ("textureOverrides", source_index, field)
             for source_index, field in enumerate(inputs.get("textureOverrides") or [])
+            if field.get("fieldKind") == "texture"
         ]
         sampler_sources.extend(
             ("parentDefaults", source_index, field)
             for source_index, field in enumerate(inputs.get("parentDefaults") or [])
             if field.get("fieldKind") == "texture"
-            and field.get("sampler", {}).get("fidelity")
-            == "UNRESOLVED_SAMPLER_PROVENANCE"
+            and (
+                (
+                    field.get("bindingOrigin") == "PARENT_DEFAULT"
+                    and field.get("sampler", {}).get("fidelity")
+                    == "UNRESOLVED_SAMPLER_PROVENANCE"
+                )
+                or (
+                    field.get("bindingOrigin") == "SELF_DEFAULT"
+                    and field.get("sampler", {}).get("fidelity") == "UNRESOLVED"
+                )
+            )
         )
         for source_section, source_index, field in sampler_sources:
             sampler = field.get("sampler") or {}
@@ -1430,7 +1440,11 @@ def build_material_feasibility_matrices(
                     "fieldKind": (
                         "DIRECT_TEXTURE_SAMPLER"
                         if source_section == "textureOverrides"
-                        else "PARENT_DEFAULT_TEXTURE_SAMPLER"
+                        else (
+                            "SELF_DEFAULT_TEXTURE_SAMPLER"
+                            if field.get("bindingOrigin") == "SELF_DEFAULT"
+                            else "PARENT_DEFAULT_TEXTURE_SAMPLER"
+                        )
                     ),
                     "bindingOriginAndOwner": {
                         "bindingOrigin": field.get("bindingOrigin"),
@@ -1529,14 +1543,14 @@ def build_material_feasibility_matrices(
             or []
         )
         require(
-            len(acquisition_sampler_rows) == 72,
+            len(acquisition_sampler_rows) == 77,
             "Material source-value sampler denominator changed",
         )
         acquisition_by_id = {
             row.get("matrixRowId"): row for row in acquisition_sampler_rows
         }
         require(
-            len(acquisition_by_id) == 72 and None not in acquisition_by_id,
+            len(acquisition_by_id) == 77 and None not in acquisition_by_id,
             "duplicate Material source-value sampler row identity",
         )
         for row in sampler_rows:
@@ -1597,7 +1611,7 @@ def build_material_feasibility_matrices(
 
     require(len(render_rows) == 89, "Material render-state feasibility denominator changed")
     require(len(static_rows) == 94, "Material static feasibility denominator changed")
-    require(len(sampler_rows) == 72, "Material sampler feasibility denominator changed")
+    require(len(sampler_rows) == 77, "Material sampler feasibility denominator changed")
     static_outcomes = Counter(
         row["instanceRecordIdentity"]["selectionOutcome"] for row in static_rows
     )
@@ -1617,7 +1631,7 @@ def build_material_feasibility_matrices(
     )
     require(
         sampler_origins
-        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1}),
+        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1, "SELF_DEFAULT": 5}),
         "Material strict sampler origin denominator changed",
     )
     all_rows = render_rows + static_rows + sampler_rows
@@ -2772,12 +2786,12 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     require(
         len(render_matrix) == 89
         and len(static_matrix) == 94
-        and len(sampler_matrix) == 72,
+        and len(sampler_matrix) == 77,
         "Material feasibility denominator changed",
     )
     all_matrix_rows = render_matrix + static_matrix + sampler_matrix
     require(
-        len({row.get("matrixRowId") for row in all_matrix_rows}) == 255,
+        len({row.get("matrixRowId") for row in all_matrix_rows}) == 260,
         "Material feasibility row identity changed",
     )
     require(
@@ -2855,7 +2869,7 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     )
     require(
         sampler_origins
-        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1})
+        == Counter({"INSTANCE_OVERRIDE": 71, "PARENT_DEFAULT": 1, "SELF_DEFAULT": 5})
         and sum(
             row.get("previouslyAdmittedExactSamplerReaudit") is True
             for row in sampler_matrix
@@ -2886,15 +2900,15 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         and matrix_summary.get("staticNoExactGuidEntryCount") == 28
         and matrix_summary.get("staticPermutationRowSetSha256")
         == canonical_sha256(static_matrix)
-        and matrix_summary.get("strictSamplerRowCount") == 72
+        and matrix_summary.get("strictSamplerRowCount") == 77
         and matrix_summary.get("strictSamplerReadinessCount") == 0
         and matrix_summary.get("strictSamplerRejectedLegacyExactRowCount") == 4
-        and matrix_summary.get("strictSamplerSourceTextureEvidenceRowCount") == 72
+        and matrix_summary.get("strictSamplerSourceTextureEvidenceRowCount") == 77
         and matrix_summary.get("strictSamplerRowSetSha256")
         == canonical_sha256(sampler_matrix)
-        and matrix_summary.get("totalRowCount") == 255
+        and matrix_summary.get("totalRowCount") == 260
         and matrix_summary.get("executionReadinessCount") == 0
-        and matrix_summary.get("blockedRowCount") == 255
+        and matrix_summary.get("blockedRowCount") == 260
         and matrix_summary.get("ownerlessRowCount") == 0
         and matrix_summary.get("unknownDecisionRowCount") == 0
         and matrix_summary.get("evidenceIntegrity") is True
@@ -2904,7 +2918,7 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
     validate_warp_state_provider_verification(receipt)
     require(
         type(summary.get("materialFeasibilityRowCount")) is int
-        and summary.get("materialFeasibilityRowCount") == len(all_matrix_rows) == 255
+        and summary.get("materialFeasibilityRowCount") == len(all_matrix_rows) == 260
         and type(summary.get("materialFeasibilityReadyCount")) is int
         and summary.get("materialFeasibilityReadyCount")
         == sum(row.get("executionDecision") != "BLOCKED" for row in all_matrix_rows)
@@ -2912,7 +2926,7 @@ def validate_runtime_receipt(receipt: dict[str, Any]) -> None:
         and type(summary.get("materialFeasibilityBlockedCount")) is int
         and summary.get("materialFeasibilityBlockedCount")
         == sum(row.get("executionDecision") == "BLOCKED" for row in all_matrix_rows)
-        == 255,
+        == 260,
         "Material feasibility top-level summary changed",
     )
     admission = receipt.get("admission") or {}
@@ -3272,7 +3286,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         print(
             "PASS: Artist F Material runtime oracle shallow "
-            "family=23 recipe=27 occurrence=34 feasibility=0/255 product=false"
+            "family=23 recipe=27 occurrence=34 feasibility=0/260 product=false"
         )
         return 0
     candidate = build_from_paths(args)
@@ -3281,7 +3295,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         require(read_json(args.output) == candidate, "Material runtime oracle receipt is stale")
         print(
             "PASS: Artist F Material runtime oracle deep "
-            "family=23 recipe=27 occurrence=34 feasibility=0/255 product=false"
+            "family=23 recipe=27 occurrence=34 feasibility=0/260 product=false"
         )
         return 0
     write_json_atomic(args.output, candidate)

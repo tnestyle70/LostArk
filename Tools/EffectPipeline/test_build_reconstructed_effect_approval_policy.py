@@ -81,7 +81,7 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(
             rows["MATERIAL"]["commitId"],
-            "cde8f3bddea2f9415f682b387d2705fd25794075",
+            "acf6a9949be999952f9c2c6470e7d6d189ba3654",
         )
         self.assertEqual(
             rows["GEOMETRY"]["commitId"],
@@ -105,13 +105,13 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
     def test_material_255_rows_have_corrected_denominators(self) -> None:
         rows = self.receipt["materialRows"]
         counts = Counter(row["domain"] for row in rows)
-        self.assertEqual(len(rows), 255)
+        self.assertEqual(len(rows), 260)
         self.assertEqual(counts, {
             "RENDER_STATE": 89,
             "STATIC_PERMUTATION": 94,
-            "SAMPLER": 72,
+            "SAMPLER": 77,
         })
-        self.assertEqual(len({row["upstreamMatrixRowId"] for row in rows}), 255)
+        self.assertEqual(len({row["upstreamMatrixRowId"] for row in rows}), 260)
         self.assertTrue(all(not row["sourceExact"] for row in rows))
         self.assertTrue(all(not row["executionAdmission"] for row in rows))
 
@@ -122,7 +122,7 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
         self.assertEqual(counts["RECONSTRUCTED_APPROVED_STATIC_EXPLICIT_SELECTION_V1"], 23)
         self.assertEqual(counts["RECONSTRUCTED_APPROVED_STATIC_NONOVERRIDE_SELECTION_V1"], 43)
         self.assertEqual(counts["RECONSTRUCTED_APPROVED_PARENT_DEFAULT_SELECTION_V1"], 28)
-        self.assertEqual(counts["RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1"], 69)
+        self.assertEqual(counts["RECONSTRUCTED_APPROVED_CURRENT_TEXTURE2D_EVIDENCE_V1"], 74)
         self.assertEqual(counts["RECONSTRUCTED_APPROVED_ROLE_SAMPLER_POLICY_V1"], 3)
 
     def test_four_former_exact_samplers_are_reclassified_one_plus_three(self) -> None:
@@ -133,7 +133,7 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
             row for row in all_sampler_rows
             if row["previousSamplerAdmission"] == "SOURCE_EXACT_SAMPLER"
         ]
-        self.assertEqual(len(all_sampler_rows), 72)
+        self.assertEqual(len(all_sampler_rows), 77)
         self.assertTrue(all(not row["fullDescriptorSourceExact"]
                             for row in all_sampler_rows))
         self.assertTrue(all(row["evidenceFidelity"] != "SOURCE_EXACT_SAMPLER"
@@ -565,7 +565,7 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(completed.returncode, 0, completed.stdout)
-        self.assertIn("source=29 material=255 sampler=72 geometry=7", completed.stdout)
+        self.assertIn("source=29 material=260 sampler=77 geometry=7", completed.stdout)
 
 
 if __name__ == "__main__":

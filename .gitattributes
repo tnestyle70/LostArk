@@ -41,6 +41,10 @@
 # identity. Keep this one generated candidate byte-exact on every checkout.
 /Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
 
+# The native Artist 31470 source-contract carrier is raw-hash bound by the
+# reconstructed runtime Program and must be materialized as canonical LF.
+/Data/Effects/Imported/Artist/Candidates/effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json text eol=lf
+
 # The Artist 31470 Material render-resource approval is raw-byte frozen and
 # must survive core.autocrlf=true clean checkouts without CRLF conversion.
 /Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json text eol=lf
@@ -57,5 +61,10 @@
 # The independent legacy Product cue projection is frozen by its raw file SHA.
 # Keep the baseline byte-exact so its read-only verifier also passes fresh checkouts.
 /Data/Effects/Baselines/legacy-product-cue-projection-v1.json text eol=lf
+
+# The R8 offline raw-resource manifests freeze exact raw SHA-256 identities.
+# Keep them canonical LF so clean core.autocrlf=true checkouts remain verifiable.
+/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-denominator.checkpoint.json text eol=lf
+/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-inventory-v1.json text eol=lf
 
 

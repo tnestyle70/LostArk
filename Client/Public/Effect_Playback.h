@@ -6,6 +6,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_ReconstructedExecution.h"
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <memory>
@@ -21,6 +22,10 @@ struct EFFECT_EVALUATED_ELEMENT final
 	EFFECT_COLOR_DESC Color{};
 	f32_t fLocalTimeSeconds = 0.f;
 	f32_t fNormalizedLife = 0.f;
+	/* Reconstructed DecalParticle owns its evaluated X/Yaw/Z footprint and
+	   projection depth in World exactly once.  Authored/static decals leave
+	   this false and continue to use Detail.Decal shader constants. */
+	bool_t bWorldOwnsDecalProjectionVolume = false;
 };
 
 enum class EFFECT_PARTICLE_SPRITE_ALIGNMENT : uint8_t
@@ -48,8 +53,15 @@ struct EFFECT_EVALUATED_PARTICLE final
 	float4_t vDynamicParameter{};
 	float3_t vWorldVelocity{};
 	float2_t vSpritePivot = { 0.5f, 0.5f };
+	/* UE3 Cascade can encode horizontal/vertical image flipping with signed
+	   StartSize axes.  World decomposition loses those signs, so a source
+	   Sprite that explicitly allows image flipping carries them separately to
+	   the final billboard basis.  Zero is deliberately represented as +1 here;
+	   CAMERA_SQUARE may legally derive its second extent from X. */
+	float2_t vSourceImageFlipSign = { 1.f, 1.f };
 	EFFECT_PARTICLE_SPRITE_ALIGNMENT eSpriteAlignment =
 		EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_RECTANGLE;
+	bool_t bSourceImageFlipping = false;
 	f32_t fSpriteRotationDegrees = 0.f;
 	f32_t fCameraOffset = 0.f;
 	f32_t fSubImageIndex = 0.f;
@@ -68,6 +80,17 @@ struct EFFECT_EVALUATED_TRAIL_POINT final
 {
 	float3_t vWorldPosition{};
 	f32_t fNormalizedAge = 0.f;
+	/* Geometry-derived distance in world units from the beginning of the
+	   current connected trail.  It is independent of point eviction and is
+	   suitable for a later typed tiling-distance consumer. */
+	f32_t fCumulativeDistance = 0.f;
+	/* Only lanes selected by the corresponding mask were evaluated from the
+	   staged source distributions.  Unselected color/dynamic lanes are explicit
+	   identity/zero placeholders and must not be treated as source authority. */
+	float4_t vSourceColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vDynamicParameter{};
+	uint32_t iSourceColorComponentMask = 0u;
+	uint32_t iDynamicParameterComponentMask = 0u;
 };
 
 struct EFFECT_EVALUATED_TRAIL final
@@ -109,10 +132,18 @@ struct EFFECT_EVALUATED_SCREEN_POST final
 	f32_t fNormalizedLife = 0.f;
 };
 
+struct EFFECT_EVALUATED_GPU_OCCURRENCE final
+{
+	const EFFECT_ELEMENT_DESC* pElement = nullptr;
+	bool_t bActive = false;
+	uint32_t iCandidateRowCount = 0u;
+};
+
 struct EFFECT_EVALUATED_FRAME final
 {
 	f32_t fSampleTimeSeconds = 0.f;
 	float4x4_t RootWorld{};
+	std::vector<EFFECT_EVALUATED_GPU_OCCURRENCE> GpuOccurrences;
 	std::vector<EFFECT_EVALUATED_ELEMENT> Elements;
 	std::vector<EFFECT_EVALUATED_PARTICLE> Particles;
 	std::vector<EFFECT_EVALUATED_TRAIL> Trails;
@@ -120,6 +151,17 @@ struct EFFECT_EVALUATED_FRAME final
 	std::vector<EFFECT_EVALUATED_LIGHT> Lights;
 	std::vector<EFFECT_EVALUATED_SCREEN_POST> ScreenPosts;
 };
+
+struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE final
+{
+	float4x4_t RootWorld{};
+	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
+};
+
+using EFFECT_FIXED_STEP_TRANSFORM_PROVIDER = std::function<bool_t(
+	f32_t,
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE&,
+	std::string&)>;
 
 struct EFFECT_PARTICLE_RUNTIME_PROBE final
 {
@@ -198,9 +240,13 @@ private:
 	{
 		uint32_t iRandomState = 1u;
 		f32_t fSpawnAccumulator = 0.f;
+		f32_t fSourceSpawnPerUnitAccumulator = 0.f;
 		f32_t fTrailSampleAccumulator = 0.f;
+		f32_t fTrailCumulativeDistance = 0.f;
 		f32_t fAfterImageAccumulator = 0.f;
 		bool_t bBurstSpawned = false;
+		bool_t bSourceSpawnPerUnitOriginInitialized = false;
+		float3_t vSourceSpawnPerUnitPreviousOrigin{};
 		bool_t bActionRootCaptured = false;
 		float4x4_t ActionRootWorld{};
 		uint32_t iSourceLoopIndex = 0u;
@@ -225,6 +271,12 @@ public:
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
 		std::string& strOutError);
+	bool_t Stage_ReconstructedSourceRuntime(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
 	bool_t Stage_ReconstructedRuntimeProgram(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -232,6 +284,14 @@ public:
 	void Reset();
 	void Update(f32_t fTimeDelta, const float4x4_t& RootWorld);
 	void Seek(f32_t fSampleTimeSeconds, const float4x4_t& RootWorld);
+	bool_t Update_WithTransformHistory(
+		f32_t fTimeDelta,
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+		std::string& strOutError);
+	bool_t Seek_WithTransformHistory(
+		f32_t fSampleTimeSeconds,
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+		std::string& strOutError);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
 	const EFFECT_EVALUATED_FRAME& Get_Frame() const { return m_Frame; }
@@ -240,6 +300,15 @@ public:
 		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const;
 	bool_t Is_Finished() const;
 	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
+	f64_t Get_FixedStepClockSeconds() const;
+	bool_t Is_ReconstructedSourceRuntimeActive() const
+	{
+		return m_bReconstructedSourceRuntimeActive;
+	}
+	const std::string& Get_ReconstructedSourceRuntimeStatus() const
+	{
+		return m_strReconstructedSourceRuntimeStatus;
+	}
 	static EFFECT_SUBUV_FRAME_DESC Resolve_SourceSubUVFrame(
 		uint32_t iColumns,
 		uint32_t iRows,
@@ -271,6 +340,11 @@ public:
 	}
 
 private:
+	bool_t Collect_TransformHistorySample(
+		f32_t fSampleTimeSeconds,
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError) const;
 	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
 	void Rebuild_Frame(const float4x4_t& RootWorld);
 	void Spawn_Particles(
@@ -279,6 +353,11 @@ private:
 		uint32_t iCount,
 		const float4x4_t& RootWorld,
 		const SOURCE_PARTICLE_EVENT* pSourceEvent = nullptr);
+	uint32_t Consume_SourceSpawnPerUnit(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		f32_t fEmitterTimeSeconds,
+		const float4x4_t& RootWorld);
 	void Update_Particles(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -378,6 +457,8 @@ private:
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;
 	uint64_t m_iSimulationStep = 0u;
+	bool_t m_bReconstructedSourceRuntimeActive = false;
+	std::string m_strReconstructedSourceRuntimeStatus;
 };
 
 NS_END

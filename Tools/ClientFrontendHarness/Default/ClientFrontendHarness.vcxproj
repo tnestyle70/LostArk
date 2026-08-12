@@ -61,6 +61,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+	  <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\EngineSDK\lib\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	  <AdditionalDependencies>Engine.lib;DirectXTKd.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -81,6 +83,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+	  <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\EngineSDK\lib\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+	  <AdditionalDependencies>Engine.lib;DirectXTK.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -96,6 +100,18 @@
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
 	  <Link>Client\Effect_DocumentCodec.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
+	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
+	  <Link>Client\Effect_LightPresentation.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_Object.cpp">
+	  <Link>Client\Effect_Object.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp">
+	  <Link>Client\DeferredMaterialRenderUtils.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp">
 	  <Link>Client\Effect_Catalog.cpp</Link>
@@ -135,5 +151,17 @@
 	</ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopyEngineRuntimeDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\Engine.dll" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\fmod.dll" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\PhysX_64.dll" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\PhysXCommon_64.dll" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\PhysXFoundation_64.dll" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\assimp-vc143-mtd.dll" Condition="'$(Configuration)'=='Debug'" />
+      <EngineRuntimeDependency Include="$(ProjectDir)..\..\..\Client\Bin\$(Configuration)\assimp-vc143-mt.dll" Condition="'$(Configuration)'=='Release'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(EngineRuntimeDependency)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

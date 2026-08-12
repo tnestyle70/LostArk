@@ -22,10 +22,10 @@ from typing import Any
 # Frozen projection pins.  The focused negative matrix independently exercises
 # each mutable domain before this lane is eligible for review publication.
 APPROVED_DECISION_PROJECTION_SHA256 = (
-    "4efa9ea724df336a5f3af719e24211b7206fe21dfd97becc630f88c5dbd9b412"
+    "fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de"
 )
 APPROVED_RECEIPT_PROJECTION_SHA256 = (
-    "bd05c7dca6bdef205b27c208644be19bb94bdbef2e05712bfc49b9b946d8f28a"
+    "6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4"
 )
 
 

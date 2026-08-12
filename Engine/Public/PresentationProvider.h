@@ -12,6 +12,13 @@ enum class PRESENTATION_SCREEN_POST_PROFILE : uint8_t
 	END
 };
 
+enum class PRESENTATION_FAILURE_SCOPE : uint8_t
+{
+	NONE,
+	LOCAL_PROVIDER_CONTRACT,
+	GLOBAL_RUNTIME,
+};
+
 struct PRESENTATION_SCREEN_POST_DESC final
 {
 	PRESENTATION_SCREEN_POST_PROFILE eProfile =
@@ -50,7 +57,20 @@ class ENGINE_DLL IPresentationProvider
 {
 public:
 	virtual ~IPresentationProvider() = default;
+	virtual void Begin_PresentationSubmission() {}
 	virtual HRESULT Submit_Presentation() = 0;
+	virtual bool_t Is_PresentationFailureIsolated() const
+	{
+		return false;
+	}
+	virtual PRESENTATION_FAILURE_SCOPE Get_PresentationFailureScope() const
+	{
+		return PRESENTATION_FAILURE_SCOPE::NONE;
+	}
+	virtual void Finalize_PresentationSubmission(bool_t bCommitted)
+	{
+		(void)bCommitted;
+	}
 };
 
 NS_END

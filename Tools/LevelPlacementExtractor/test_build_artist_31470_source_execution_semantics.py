@@ -12,6 +12,7 @@ from effect_source_contract_io import load_strict_json_object
 
 
 ROOT = Path(__file__).resolve().parents[2]
+RELEASE_ROOT = Path(r"C:\ProgramData\Smilegate\Games\LOSTARK\EFGame\ReleasePC")
 RECEIPT = ROOT / (
     "Data/Effects/Imported/Artist/Candidates/"
     "skill.31470.source-execution-semantics.receipt.json"
@@ -21,11 +22,19 @@ RECEIPT = ROOT / (
 class Artist31470SourceExecutionSemanticsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.receipt = load_strict_json_object(RECEIPT)
+        cls.tracked_receipt = load_strict_json_object(RECEIPT)
         cls.inputs = {
-            name: load_strict_json_object(ROOT / row["path"])
-            for name, row in cls.receipt["inputs"].items()
+            name: load_strict_json_object(ROOT / path)
+            for name, path in builder.TRACKED_INPUTS.items()
         }
+        cls.receipt = builder.build_receipt(
+            root=ROOT, release_root=RELEASE_ROOT, inputs=cls.inputs,
+            default_dependent_policy=builder.FAIL_CLOSED_DEFAULT_POLICY,
+        )
+        cls.current_engine_cdo_receipt = builder.build_receipt(
+            root=ROOT, release_root=RELEASE_ROOT, inputs=cls.inputs,
+            default_dependent_policy=builder.CURRENT_ENGINE_CDO_POLICY,
+        )
 
     @staticmethod
     def reseal(receipt: dict[str, Any]) -> None:
@@ -47,10 +56,26 @@ class Artist31470SourceExecutionSemanticsTests(unittest.TestCase):
             for row in module["distributionAdapters"]
         ]
 
+    @classmethod
+    def default_distributions(
+        cls, receipt: dict[str, Any]
+    ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+        return [
+            (module, row) for module in cls.modules(receipt)
+            for row in module["distributionAdapters"]
+            if row.get("defaultDependent") is True
+        ]
+
     def assert_mutation_rejected(
         self, mutation: Callable[[dict[str, Any]], None], pattern: str
     ) -> None:
-        changed = copy.deepcopy(self.receipt)
+        self.assert_receipt_mutation_rejected(self.receipt, mutation, pattern)
+
+    def assert_receipt_mutation_rejected(
+        self, receipt: dict[str, Any],
+        mutation: Callable[[dict[str, Any]], None], pattern: str,
+    ) -> None:
+        changed = copy.deepcopy(receipt)
         mutation(changed)
         self.reseal(changed)
         with self.assertRaisesRegex(ValueError, pattern):
@@ -64,11 +89,11 @@ class Artist31470SourceExecutionSemanticsTests(unittest.TestCase):
         )
         self.assertEqual(result, {
             "modules": 399,
-            "readyModules": 370,
-            "blockedModules": 29,
+            "readyModules": 257,
+            "blockedModules": 142,
             "distributions": 629,
-            "readyDistributions": 626,
-            "blockedDistributions": 3,
+            "readyDistributions": 489,
+            "blockedDistributions": 140,
         })
 
     def test_builder_validator_keeps_product_closed(self) -> None:
@@ -76,12 +101,219 @@ class Artist31470SourceExecutionSemanticsTests(unittest.TestCase):
         self.assertFalse(self.receipt["productAdmission"]["allowed"])
         self.assertEqual(
             self.receipt["summary"]["moduleDecisionCounts"],
-            {"BLOCKED": 29, "READY_FOR_HANDLER": 370},
+            {"BLOCKED": 142, "READY_FOR_HANDLER": 257},
         )
         self.assertEqual(
             self.receipt["summary"]["distributionDecisionCounts"],
-            {"BLOCKED": 3, "READY_FOR_HANDLER": 626},
+            {"BLOCKED": 140, "READY_FOR_HANDLER": 489},
         )
+
+    def test_tracked_receipt_is_intentionally_stale(self) -> None:
+        with self.assertRaisesRegex(ValueError, "default-dependent policy"):
+            builder.validate_receipt(self.tracked_receipt)
+
+    def test_full35_default_dependent_gate_is_exact(self) -> None:
+        self.assertEqual(self.receipt["full35DefaultDependentGate"], {
+            "defaultDependentCount": 137,
+            "spawnDefaultDependentCount": 36,
+            "spawnRateScaleDefaultDependentCount": 35,
+            "spawnRateScaleSourceDistributionKind": "RawDistributionFloat",
+            "spawnRateDefaultDependentOccurrences": [2],
+            "spawnExplicitZeroRateCount": 29,
+            "spawnExplicitNonzeroRates": {
+                "0": 7.0, "3": 40.0, "24": 80.0, "26": 50.0,
+            },
+            "spawnParameterRateOccurrences": [34],
+        })
+        rows = self.default_distributions(self.receipt)
+        self.assertEqual(len(rows), 137)
+        self.assertTrue(all(
+            row["sourceNumericPayloadByteCount"] == 0
+            and row["decision"] == "BLOCKED"
+            and row["numericOracleSamples"] == []
+            and builder.DEFAULT_DEPENDENT_BLOCKER
+            in row["semanticClosureExecutionBlockers"]
+            for _, row in rows
+        ))
+
+    def test_null_raw_distribution_zero_cannot_be_promoted(self) -> None:
+        def mutate(receipt: dict[str, Any]) -> None:
+            _, row = self.default_distributions(receipt)[0]
+            row["decision"] = "READY_FOR_HANDLER"
+            row["blockers"] = []
+            row["numericOracleSamples"] = [{
+                "time": 0.0,
+                "randomUnits": [0.0, 0.25, 0.5, 0.75],
+                "value": [0.0, 0.0, 0.0, 0.0],
+            }]
+
+        self.assert_mutation_rejected(
+            mutate, "default-dependent zero fabrication"
+        )
+
+    def test_semantic_closure_default_blocker_cannot_be_discarded(self) -> None:
+        def mutate(receipt: dict[str, Any]) -> None:
+            _, row = self.default_distributions(receipt)[0]
+            row["semanticClosureExecutionBlockers"].remove(
+                builder.DEFAULT_DEPENDENT_BLOCKER
+            )
+
+        self.assert_mutation_rejected(
+            mutate, "semantic closure distribution evidence changed"
+        )
+
+    def test_current_engine_cdo_policy_is_pinned_and_reconstructed_only(self) -> None:
+        receipt = self.current_engine_cdo_receipt
+        result = oracle.verify_receipt(
+            receipt, root=ROOT, inputs=self.inputs, release_root=RELEASE_ROOT
+        )
+        self.assertEqual(result, {
+            "modules": 399,
+            "readyModules": 291,
+            "blockedModules": 108,
+            "distributions": 629,
+            "readyDistributions": 524,
+            "blockedDistributions": 105,
+        })
+        reconstructed = [
+            (module, row) for module, row in self.default_distributions(receipt)
+            if row["decision"] == "READY_FOR_HANDLER"
+        ]
+        self.assertEqual(len(reconstructed), 35)
+        self.assertTrue(all(
+            module["exactSourceClass"] == "particlemodulespawn"
+            and row["propertyPath"] == "ratescale"
+            and [sample["value"] for sample in row["numericOracleSamples"]]
+            == [[1.0, 0.0, 0.0, 0.0]] * 3
+            and row["defaultResolution"]["provenanceTier"]
+            == builder.CURRENT_ENGINE_CDO_POLICY
+            and row["defaultResolution"]["sourceExact"] is False
+            and row["defaultResolution"]["sourceEraIdentityPinned"] is False
+            for module, row in reconstructed
+        ))
+        evidence = receipt["defaultDependentPolicy"]["typedEvidence"]
+        self.assertEqual(
+            evidence["packageSha256"],
+            "cee4257abe9a60730d48bab16e742f12123c71dd7f13faf7807c14647e989434",
+        )
+        self.assertEqual(
+            evidence["classDefaultRecordSha256"],
+            "0cb8fc23a1b827c3d25ba8ab518fca43aa4f425881fb8ca5fb775e96ccef7813",
+        )
+        spawn_two = next(
+            module for module in receipt["occurrences"][2]["modules"]
+            if module["exactSourceClass"] == "particlemodulespawn"
+        )
+        rate_two = next(
+            row for row in spawn_two["distributionAdapters"]
+            if row["propertyPath"] == "rate"
+        )
+        self.assertEqual(rate_two["decision"], "BLOCKED")
+        self.assertEqual(receipt["summary"]["defaultDependentBlockedCount"], 102)
+
+    def test_current_engine_cdo_policy_cannot_expand_to_spawn_rate(self) -> None:
+        def mutate(receipt: dict[str, Any]) -> None:
+            source = next(
+                row for module, row in self.default_distributions(receipt)
+                if module["exactSourceClass"] == "particlemodulespawn"
+                and row["propertyPath"] == "ratescale"
+            )
+            target_module = next(
+                module for module in receipt["occurrences"][2]["modules"]
+                if module["exactSourceClass"] == "particlemodulespawn"
+            )
+            target = next(
+                row for row in target_module["distributionAdapters"]
+                if row["propertyPath"] == "rate"
+            )
+            for name in (
+                "decision", "blockers", "numericOracleSamples",
+                "reconstructedDescriptor", "defaultResolution", "fieldProvenance",
+            ):
+                target[name] = copy.deepcopy(source[name])
+
+        self.assert_receipt_mutation_rejected(
+            self.current_engine_cdo_receipt, mutate,
+            "default-dependent zero fabrication",
+        )
+
+    def test_current_engine_package_pin_cannot_be_coordinated_away(self) -> None:
+        def mutate(receipt: dict[str, Any]) -> None:
+            replacement = "0" * 64
+            engine = next(
+                row for row in receipt["currentRevisionDefaultEvidence"][
+                    "scriptPackages"
+                ] if row["logicalPackage"].casefold() == "engine"
+            )
+            engine["sha256"] = replacement
+            receipt["defaultDependentPolicy"]["typedEvidence"][
+                "packageSha256"
+            ] = replacement
+            for _, row in self.default_distributions(receipt):
+                if row["decision"] == "READY_FOR_HANDLER":
+                    row["defaultResolution"]["packageSha256"] = replacement
+
+        self.assert_receipt_mutation_rejected(
+            self.current_engine_cdo_receipt, mutate,
+            "current script package pin changed",
+        )
+
+    def test_spawn_rate_shape_mutation_fails_before_default_policy(self) -> None:
+        changed = copy.deepcopy(self.inputs["candidate"])
+        spawn = next(
+            module for module in changed["elements"][0]["sourceRecipe"]["modules"]
+            if module["className"].casefold() == "particlemodulespawn"
+        )
+        rate = next(
+            row for row in spawn["distributions"]
+            if row["propertyPath"].casefold() == "rate"
+        )
+        rate["lookupTable"] = [8.0, 8.0, 8.0, 8.0]
+        with self.assertRaisesRegex(ValueError, "explicit nonzero Spawn Rates"):
+            builder.full35_default_dependent_gate(
+                self.inputs["semanticClosure"], changed
+            )
+
+    def test_spawn_ratescale_vector_type_drift_is_rejected(self) -> None:
+        changed = copy.deepcopy(self.inputs["candidate"])
+        spawn = next(
+            module for module in changed["elements"][0]["sourceRecipe"]["modules"]
+            if module["className"].casefold() == "particlemodulespawn"
+        )
+        rate_scale = next(
+            row for row in spawn["distributions"]
+            if row["propertyPath"].casefold() == "ratescale"
+        )
+        rate_scale["componentCount"] = 4
+        with self.assertRaisesRegex(
+            ValueError, "Spawn RateScale RawDistributionFloat source shape"
+        ):
+            builder.full35_default_dependent_gate(
+                self.inputs["semanticClosure"], changed
+            )
+
+    def test_occurrence_34_spawn_parameter_branch_is_exact(self) -> None:
+        spawn = next(
+            module for module in self.receipt["occurrences"][34]["modules"]
+            if module["exactSourceClass"] == "particlemodulespawn"
+        )
+        rate = next(
+            row for row in spawn["distributionAdapters"]
+            if row["propertyPath"] == "rate"
+        )
+        self.assertEqual(rate["exactSourceClass"],
+                         "distributionfloatparticleparameter")
+        self.assertEqual(rate["numericOracleSamples"], [{
+            "sourceCueId": "skill-31470/clip-000/notify-029",
+            "branch": "PARAMETER_INPUT",
+            "parameterInput": {
+                "name": "Spawn", "kind": "scalar", "value": 0.0,
+                "sourceIndex": 0, "sourceValueByteOffset": 494,
+            },
+            "value": [0.0],
+            "diagnosticStandardBaseValue": None,
+            "blocked": False,
+        }])
 
     def test_json_version_requires_exact_integer(self) -> None:
         self.assert_mutation_rejected(
@@ -152,6 +384,7 @@ class Artist31470SourceExecutionSemanticsTests(unittest.TestCase):
             row = next(
                 item for item in self.distributions(receipt)
                 if not item.get("legacyOccurrenceId")
+                and item["numericOracleSamples"]
             )
             row["numericOracleSamples"][0]["value"][0] += 1.0
 
