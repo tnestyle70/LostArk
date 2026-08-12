@@ -410,8 +410,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	{
 		const NPC_ACTOR_ENTRY* actor =
 			CActorCatalog::Find_Npc(spawned.strArchetypeId);
-		if (nullptr == actor ||
-			actor->clientPresentationId != "npc.beda.client.v1" ||
+		const wstring_t modelTag =
+			CNpcPresentationAssetService::Get_ModelPrototypeTag(
+				spawned.strArchetypeId);
+		if (nullptr == actor || modelTag.empty() ||
 			FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
 				m_Desc.pDevice,
 				m_Desc.pContext,
@@ -423,7 +425,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 
 		CNpc::NPC_DESC desc{};
 		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
-		desc.strModelTag = TEXT("Prototype_Component_Model_Npc_Beda");
+		desc.strModelTag = modelTag;
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		desc.pIdleClip = actor->idleClip.c_str();

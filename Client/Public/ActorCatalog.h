@@ -82,6 +82,7 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
 	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
+	static const std::vector<NPC_ACTOR_ENTRY>& Get_Npcs();
 	static const MONSTER_ACTOR_ENTRY* Find_Monster(
 		std::string_view archetypeId);
 	static const std::string& Get_Status();

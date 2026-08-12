@@ -28,6 +28,7 @@ NS_BEGIN(Client)
 class CMapAssetObject;
 class CMapStaticBatchObject;
 class CTrigger_Box;
+class CNpc;
 class CCamera_Free;
 class CDestructionSimulationController;
 class CMapTool final
@@ -90,7 +91,7 @@ private:
 		FORCE_WALKABLE,
 		ERASE,
 	};
-	//bake °¡ÀÌµå ¸Þ½Ã
+	//bake ï¿½ï¿½ï¿½Ìµï¿½ ï¿½Þ½ï¿½
 	enum class NAV_BOUNDS_STATE
 	{
 		IDLE,
@@ -119,6 +120,13 @@ private:
 	{
 		std::string placementId;
 		shared_ptr<CTrigger_Box> object;
+	};
+
+	struct NPC_PREVIEW_ENTRY
+	{
+		std::string placementId;
+		std::string archetypeId;
+		shared_ptr<CNpc> object;
 	};
 
 public:
@@ -267,6 +275,11 @@ private:
 		const CWorldGameplayDocument& document,
 		vector<TRIGGER_BOX_ENTRY>& outEntries);
 	void Remove_WorldTriggerBoxes(vector<TRIGGER_BOX_ENTRY>& entries);
+	bool_t Stage_WorldNpcPreviews(
+		const CWorldGameplayDocument& document,
+		vector<NPC_PREVIEW_ENTRY>& outEntries);
+	void Remove_WorldNpcPreviews(vector<NPC_PREVIEW_ENTRY>& entries);
+	void Sync_WorldNpcPreviews();
 	void Update_WorldTriggerBoxPresentation(bool_t isVisible);
 	std::filesystem::path Get_WorldGameplayPath() const;
 	std::filesystem::path Get_SpawnGroupsPath() const;
@@ -368,6 +381,8 @@ private:
 	/* World Gameplay State */
 	CWorldGameplayDocument m_WorldGameplayDocument;
 	vector<TRIGGER_BOX_ENTRY> m_WorldTriggerBoxes;
+	vector<NPC_PREVIEW_ENTRY> m_WorldNpcPreviews;
+	int32_t m_iWorldNpcArchetypeIndex = 0;
 	CSpawnGroupDocument m_SpawnGroupDocument;
 	vector<TRIGGER_BOX_ENTRY> m_SpawnAnchorBoxes;
 	bool_t m_bWorldGameplayDirty = false;

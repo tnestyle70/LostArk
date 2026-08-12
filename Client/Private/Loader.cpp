@@ -373,6 +373,8 @@ HRESULT CLoader::Ready_For_Development()
 #ifdef _DEBUG
 	if (CMapEditorWorkspaceService::Is_Requested())
 	{
+		CNpcPresentationAssetService::Begin_LevelLoad(
+			ETOUI(LEVEL::DEVELOPMENT));
 		Set_Status(TEXT("MAP EDITOR: core rendering resources"));
 		if (FAILED(Ready_MapAuthoringCore(ETOUI(LEVEL::DEVELOPMENT))))
 		{

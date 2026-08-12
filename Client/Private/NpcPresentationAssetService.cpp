@@ -7,7 +7,9 @@
 #include "RuntimeAssetRoot.h"
 
 #include <filesystem>
+#include <map>
 #include <mutex>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -16,15 +18,27 @@
 namespace
 {
 	std::mutex g_NpcAssetMutex;
-	std::unordered_set<uint32_t> g_ReadyLevels;
-	constexpr const char* SUPPORTED_ARCHETYPE = "NPC_BEDA";
+	/* level index -> archetypes whose model prototypes are committed there */
+	std::map<uint32_t, std::set<std::string, std::less<>>> g_ReadyArchetypes;
+	/* levels that already committed the shared CNpc GameObject prototype */
+	std::unordered_set<uint32_t> g_NpcObjectReadyLevels;
+
+	Engine::wstring_t Derive_ModelTag(const std::string& modelAssetId)
+	{
+		const std::filesystem::path assetPath(modelAssetId);
+		const std::wstring stem = assetPath.stem().wstring();
+		if (stem.empty())
+			return {};
+		return Engine::wstring_t(TEXT("Prototype_Component_Model_")) + stem;
+	}
 }
 
 void Client::CNpcPresentationAssetService::Begin_LevelLoad(
 	const uint32_t iLevelIndex)
 {
 	std::scoped_lock lock{ g_NpcAssetMutex };
-	g_ReadyLevels.erase(iLevelIndex);
+	g_ReadyArchetypes.erase(iLevelIndex);
+	g_NpcObjectReadyLevels.erase(iLevelIndex);
 }
 
 HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
@@ -34,22 +48,28 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 	const std::string_view archetypeId)
 {
 	if (nullptr == pDevice || nullptr == pContext ||
-		iLevelIndex >= ETOUI(LEVEL::END) ||
-		archetypeId != SUPPORTED_ARCHETYPE)
+		iLevelIndex >= ETOUI(LEVEL::END) || archetypeId.empty())
 	{
 		return E_INVALIDARG;
 	}
 
 	std::scoped_lock lock{ g_NpcAssetMutex };
-	if (g_ReadyLevels.contains(iLevelIndex))
+	const auto readyLevel = g_ReadyArchetypes.find(iLevelIndex);
+	if (readyLevel != g_ReadyArchetypes.end() &&
+		readyLevel->second.contains(archetypeId))
+	{
 		return S_FALSE;
+	}
 
 	const NPC_ACTOR_ENTRY* actor = CActorCatalog::Find_Npc(archetypeId);
 	if (nullptr == actor || actor->runtimeStatus != "supported" ||
-		actor->clientPresentationId != "npc.beda.client.v1")
+		actor->clientPresentationId.empty())
 	{
 		return E_FAIL;
 	}
+	const wstring_t modelTag = Derive_ModelTag(actor->modelAssetId);
+	if (modelTag.empty())
+		return E_FAIL;
 	const std::filesystem::path modelPath =
 		CRuntimeAssetRoot::Resolve(actor->modelAssetId);
 	if (modelPath.empty())
@@ -61,16 +81,21 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	staged.reserve(2u);
 	staged.emplace_back(
-		TEXT("Prototype_Component_Model_Npc_Beda"),
+		modelTag,
 		CModel::Create(
 			pDevice,
 			pContext,
 			MODEL::ANIM,
 			modelPath.string().c_str(),
 			preTransform));
-	staged.emplace_back(
-		TEXT("Prototype_GameObject_Npc"),
-		CNpc::Create(pDevice, pContext));
+	const bool_t needsObjectPrototype =
+		!g_NpcObjectReadyLevels.contains(iLevelIndex);
+	if (needsObjectPrototype)
+	{
+		staged.emplace_back(
+			TEXT("Prototype_GameObject_Npc"),
+			CNpc::Create(pDevice, pContext));
+	}
 	for (const auto& [tag, prototype] : staged)
 	{
 		(void)tag;
@@ -83,7 +108,9 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 		return E_FAIL;
 	}
 
-	g_ReadyLevels.insert(iLevelIndex);
+	g_ReadyArchetypes[iLevelIndex].insert(std::string(archetypeId));
+	if (needsObjectPrototype)
+		g_NpcObjectReadyLevels.insert(iLevelIndex);
 	return S_OK;
 }
 
@@ -91,8 +118,17 @@ bool_t Client::CNpcPresentationAssetService::Is_Ready(
 	const uint32_t iLevelIndex,
 	const std::string_view archetypeId)
 {
-	if (archetypeId != SUPPORTED_ARCHETYPE)
-		return false;
 	std::scoped_lock lock{ g_NpcAssetMutex };
-	return g_ReadyLevels.contains(iLevelIndex);
+	const auto readyLevel = g_ReadyArchetypes.find(iLevelIndex);
+	return readyLevel != g_ReadyArchetypes.end() &&
+		readyLevel->second.contains(archetypeId);
+}
+
+Engine::wstring_t Client::CNpcPresentationAssetService::Get_ModelPrototypeTag(
+	const std::string_view archetypeId)
+{
+	const NPC_ACTOR_ENTRY* actor = CActorCatalog::Find_Npc(archetypeId);
+	if (nullptr == actor)
+		return {};
+	return Derive_ModelTag(actor->modelAssetId);
 }

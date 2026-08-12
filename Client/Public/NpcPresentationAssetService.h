@@ -19,6 +19,10 @@ public:
 	static bool_t Is_Ready(
 		uint32_t iLevelIndex,
 		std::string_view archetypeId);
+
+	/* Stable per-archetype CModel prototype tag, derived from the catalog
+	modelAssetId stem. Empty when the archetype is not in the catalog. */
+	static wstring_t Get_ModelPrototypeTag(std::string_view archetypeId);
 };
 
 NS_END

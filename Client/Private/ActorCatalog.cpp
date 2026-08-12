@@ -361,6 +361,12 @@ const Client::NPC_ACTOR_ENTRY* Client::CActorCatalog::Find_Npc(
 	return nullptr;
 }
 
+const std::vector<Client::NPC_ACTOR_ENTRY>& Client::CActorCatalog::Get_Npcs()
+{
+	Initialize();
+	return g_Npcs;
+}
+
 const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(
 	const std::string_view archetypeId)
 {
