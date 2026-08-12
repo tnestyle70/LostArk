@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "LobbyCommandService.h"
+#include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
 
 NS_BEGIN(Engine)
@@ -61,8 +62,17 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	/* LanceMaster's 3-segment identity meter -- drawn procedurally (matching the real
+	LanceMasterProgress.as formula: target.rotation = maxDegree * value/100, cascading through
+	3 segments) rather than from extracted art, since the real asset's moving "target" piece is
+	a vector shape this pipeline can't crop as an image (see .../HudGfx_Extracted notes). */
+	void RenderLanceMasterIdentityGauge();
 	void RenderSkillIcons();
 	void RenderSkillCooldowns();
+	/* Experimental replacement for RenderSkillIcons/RenderSkillCooldowns, built from the real
+	extracted QuickSlot.gfx Scaleform asset (icon frame, cooldown sweep, on-use flash) instead
+	of hand-placed layers -- see .../HudGfx_Extracted. */
+	void RenderQuickSlot();
 	void RenderCombatHUDText();
 
 #ifdef _DEBUG
@@ -82,6 +92,22 @@ private:
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
+	/* Edge-detects the local player's stance so RenderCombatHUD only calls
+	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
+	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
+	real stance, so the very first Render sees an edge and plays the arrival pose. */
+	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
+	/* RenderQuickSlot edge-detects "skill just used" per Q..F slot as a ready-to-not-ready
+	transition. iCooldownEndTick itself can't be compared directly across frames: for a ready
+	skill CombatHUDViewModel defaults it to the current (ever-increasing) serverTick rather than
+	a fixed sentinel, so a raw "did it grow" check fires every single frame. Index order matches
+	RenderQuickSlot's own INPUT_SLOTS. */
+	bool_t m_bPreviousQuickSlotReady[8] = { true, true, true, true, true, true, true, true };
+	/* RenderLanceMasterIdentityGauge edge-detects each of the 3 identity segments reaching 100 to
+	trigger the real extracted gauge0/1/2 highLightMc "burn" flourish (Lance_Id_GaugeBurn0/1/2)
+	exactly once per fill, not every frame it stays full. */
+	bool_t m_bLanceGaugeSegmentWasFull[3] = { false, false, false };
 	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
 	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
 	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };

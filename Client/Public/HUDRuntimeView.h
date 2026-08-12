@@ -65,6 +65,14 @@ public:
 	instead of duplicating the JSON's numbers a second time. */
 	bool_t Get_SlotRect(const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
 
+	/* Jumps a slot's "keyframeAnimationPath" document (a lostark.identity-keyframe-animation
+	document -- a Scaleform identity-HUD extraction baked into per-layer keyframes) to the frame
+	labelled strLabel and plays forward in real time until the next authored label (or the
+	document's end), then holds on that last frame -- mirrors the original asset's own
+	stanceMc.gotoAndPlay(label) trigger. No-op if the slot has no keyframeAnimationPath, the
+	document fails to load, or the label is unknown. */
+	bool_t Play_KeyframeAnimation(const string& strSlotId, const string& strLabel);
+
 private:
 	struct TEXTURE_LAYER
 	{
@@ -72,6 +80,40 @@ private:
 		float	vTint[4] = { 1.f, 1.f, 1.f, 1.f };
 		bool_t	bAdditive = false;
 		bool_t	bFlipX = false;
+	};
+
+	struct KEYFRAME_ANIM_KEY
+	{
+		int32_t	iFrame = 0;
+		/* Empty = hidden from this frame onward (the source SWF depth was removed here). */
+		string	strAsset;
+		f32_t	fX = 0.f, fY = 0.f;
+		f32_t	fScaleX = 1.f, fScaleY = 1.f;
+		f32_t	fRotationDeg = 0.f;
+		f32_t	fAlpha = 1.f;
+		/* SWF blendMode 8 (ADD) on this piece's own placement -- glow/burst fragments are
+		authored expecting this; drawing them with normal alpha blend instead shows their baked
+		black backing as an opaque box. */
+		bool_t	bAdditive = false;
+	};
+
+	struct KEYFRAME_ANIM_LAYER
+	{
+		vector<KEYFRAME_ANIM_KEY> Keys;
+	};
+
+	struct KEYFRAME_ANIM_DOCUMENT
+	{
+		bool_t				isLoaded = false;
+		f32_t				fFrameRate = 40.f;
+		int32_t				iFrameCount = 0;
+		map<string, int32_t>			Labels;
+		vector<KEYFRAME_ANIM_LAYER>		Layers;
+	};
+
+	struct TEXTURE_SIZE
+	{
+		f32_t fWidth = 0.f, fHeight = 0.f;
 	};
 
 	struct HUD_SLOT
@@ -100,11 +142,27 @@ private:
 		drawn -- using the raw (app-launch-relative) clock directly would let engine/asset init
 		time before this view's first frame eat into or skip past a non-looping slot entirely. */
 		f64_t					dAnimationStartSeconds = -1.0;
+
+		/* Data-root-relative lostark.identity-keyframe-animation document (empty = this slot has
+		none; draws its Layers/shine as usual). Set once at Load() time. */
+		string					strKeyframeAnimationPath;
+		f32_t					fKeyframeAnimationScale = 1.f;
+		/* Play_KeyframeAnimation() playback window; negative dStartSeconds = nothing playing
+		(falls back to the slot's own Layers). Holds on iWindowEnd-1 once reached, rather than
+		looping, since a stance icon should settle on its arrival pose until the next trigger. */
+		f64_t					dKeyframeAnimStartSeconds = -1.0;
+		int32_t					iKeyframeAnimWindowStart = 0;
+		int32_t					iKeyframeAnimWindowEnd = 0;
 	};
 
 private:
 	HRESULT Load();
 	ID3D11ShaderResourceView* Get_Or_Load_Texture(const string& strPath);
+	/* Native pixel size of a texture already resident in m_TextureCache (0,0 if not loaded/found).
+	Keyframe layers size their quad off each piece's own bitmap instead of stretching to a shared
+	slot rect, unlike the fixed-rect Layers/shine path above. */
+	TEXTURE_SIZE Get_Texture_Size(const string& strPath);
+	const KEYFRAME_ANIM_DOCUMENT* Get_Or_Load_KeyframeAnimation(const string& strPath);
 	void Draw_Image_Quad(ImDrawList* pDrawList, ID3D11ShaderResourceView* pSRV,
 		const ImVec2 Corners[4], uint32_t iTint, bool_t bAdditive, bool_t bFlipX);
 	static void Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd);
@@ -116,6 +174,8 @@ private:
 	ComPtr<ID3D11DeviceContext>		m_pContext;
 	ComPtr<ID3D11BlendState>		m_pAdditiveBlendState;
 	map<string, ComPtr<ID3D11ShaderResourceView>>	m_TextureCache;
+	map<string, TEXTURE_SIZE>		m_TextureSizeCache;
+	map<string, KEYFRAME_ANIM_DOCUMENT>	m_KeyframeAnimationCache;
 
 	vector<HUD_SLOT>	m_Slots;
 	f32_t				m_fResolutionWidth = 1280.f;

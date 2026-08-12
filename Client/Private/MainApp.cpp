@@ -353,8 +353,13 @@ HRESULT CMainApp::Render()
 		}
 	#endif
 		RenderCombatHUD();
+		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
+		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
+		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
+		two calls previously took every class's skill icons off screen, not just LanceMaster's. */
 		RenderSkillIcons();
 		RenderSkillCooldowns();
+		RenderQuickSlot();
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
@@ -455,11 +460,82 @@ void CMainApp::RenderCombatHUD()
 	{
 		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+
+		/* LanceMaster's identity icon is a keyframe-animated Scaleform extraction, not a static
+		layer stack -- it has to be told to play, and only on an actual stance edge (the source
+		asset's own stanceMc.gotoAndPlay("focus"/"wild") trigger, see LanceMasterSkinFrame.as).
+		Every other class's identity art still comes from Slot.Layers and needs nothing here. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass &&
+			player.eStance != m_ePreviousHudStance)
+		{
+			/* spear01 (used by the "wild" label frame) is visually the straight short spear;
+			spear02 (used by "focus") is the curved glaive blade -- opposite of what the asset's
+			own "spear01/spear02" filenames suggest, confirmed by actually opening both crops. */
+			const char_t* pLabel =
+				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
+					"wild" : "focus";
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
+		}
+		m_ePreviousHudStance = player.eStance;
+
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
 
+	/* Disabled for now -- every attempt at the 3-segment gauge visual (procedural arcs, then the
+	real track art) has landed wrong (bad radius/position, missing tint) and needs a proper
+	in-game reference to get right rather than another guess. RenderLanceMasterIdentityGauge stays
+	defined, unchanged, for whenever that reference is available. */
+	// if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
+	//	RenderLanceMasterIdentityGauge();
+
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
+}
+
+void CMainApp::RenderLanceMasterIdentityGauge()
+{
+	/* Same real formula as ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress():
+	each of the 3 segments independently tracks 0..100, and only fills once every segment
+	before it is already full (LanceMasterStance.as's bubbleEffect cascade). Degrees come from
+	the real gauge0/1/2.maxDegree constants (-80/-82/-76); sign only decided sweep direction in
+	Flash's own rotation convention, so the sweep magnitude is what is real about it. */
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || 0u == player.iMaximumIdentity || nullptr == m_pHUDRuntimeView)
+		return;
+
+	constexpr f32_t SEGMENT_MAX = 100.f;
+	const f32_t fSegmentScale = player.iMaximumIdentity / (SEGMENT_MAX * 3.f);
+	f32_t fRemaining = static_cast<f32_t>(player.iCurrentIdentity) / fSegmentScale;
+	f32_t fSegmentValue[3];
+	for (int32_t i = 0; i < 3; ++i)
+	{
+		fSegmentValue[i] = (std::min)(SEGMENT_MAX, (std::max)(0.f, fRemaining));
+		fRemaining -= SEGMENT_MAX;
+	}
+
+	/* No procedural track/fill arc here anymore -- a prior pass drew one using each track piece's
+	own long-axis pixel length (44.25/48) as an ImGui PathArcTo *radius*, which is wrong: those
+	pieces are thin curved strips (their real footprint is 12.75x44.25 / 48x12 reference px, drawn
+	as-is by the real Lance_Id_GaugeTrack0/1/2 slots below), not a description of some much larger
+	circle. Using that length as a radius instead drew a circle nearly as wide as the whole icon --
+	the "two huge curves" this replaced. The AS3-driven fill ("target", the piece that actually
+	moves as value climbs 0->100) is confirmed vector-only, no extractable bitmap and no baked
+	track/fill *color* data either, so it is not redrawn here at all rather than guessed again;
+	real reference footage is needed to fill this back in correctly. */
+	for (int32_t i = 0; i < 3; ++i)
+	{
+		/* Real extracted gauge0/1/2 highLightMc flourish (Data/.../Gauge0/1/2Burn.json, baked from
+		lancemaster_identity.xml sprite386/438/368) -- the orange/yellow "this segment just filled"
+		burn, not an invented effect. Triggered once on the empty->full edge, same pattern as
+		RenderQuickSlot's on-use flash. */
+		const bool_t bIsFull = fSegmentValue[i] >= SEGMENT_MAX;
+		if (bIsFull && !m_bLanceGaugeSegmentWasFull[i])
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(
+				string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
+		}
+		m_bLanceGaugeSegmentWasFull[i] = bIsFull;
+	}
 }
 
 void CMainApp::RenderSkillCooldowns()
@@ -609,32 +685,32 @@ void CMainApp::RenderSkillIcons()
 		{ 34580, "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
 		{ 34590, "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
 		/* Warlord */
-		{ 17030, "UI/Skill/Warlord/17030_날카로운창.png" },
-		{ 17060, "UI/Skill/Warlord/17060_파이어불릿.png" },
-		{ 17080, "UI/Skill/Warlord/17080_대쉬어퍼파이어.png" },
-		{ 17110, "UI/Skill/Warlord/17110_리프어택.png" },
-		{ 17090, "UI/Skill/Warlord/17090_갈고리사슬.png" },
-		{ 17040, "UI/Skill/Warlord/17040_배쉬.png" },
-		{ 17100, "UI/Skill/Warlord/17100_방패격동.png" },
-		{ 17140, "UI/Skill/Warlord/17140_가디언의낙뢰.png" },
+		{ 17030, "UI/Skill/Warlord/17030_SharpSpear.png" },
+		{ 17060, "UI/Skill/Warlord/17060_FireBullet.png" },
+		{ 17080, "UI/Skill/Warlord/17080_DashUpperFire.png" },
+		{ 17110, "UI/Skill/Warlord/17110_LeapAttack.png" },
+		{ 17090, "UI/Skill/Warlord/17090_HookChain.png" },
+		{ 17040, "UI/Skill/Warlord/17040_Bash.png" },
+		{ 17100, "UI/Skill/Warlord/17100_ShieldShock.png" },
+		{ 17140, "UI/Skill/Warlord/17140_GuardiansLightning.png" },
 		/* Artist */
-		{ 31200, "UI/Skill/Artist/31200_먹물세례.png" },
-		{ 31430, "UI/Skill/Artist/31430_흩뿌리기.png" },
-		{ 31480, "UI/Skill/Artist/31480_두루미나래.png" },
-		{ 31210, "UI/Skill/Artist/31210_콩콩이.png" },
-		{ 31460, "UI/Skill/Artist/31460_호접몽.png" },
-		{ 31420, "UI/Skill/Artist/31420_난치기.png" },
-		{ 31490, "UI/Skill/Artist/31490_범가르기.png" },
-		{ 31470, "UI/Skill/Artist/31470_한획긋기.png" },
+		{ 31200, "UI/Skill/Artist/31200_InkShower.png" },
+		{ 31430, "UI/Skill/Artist/31430_Scatter.png" },
+		{ 31480, "UI/Skill/Artist/31480_CraneWings.png" },
+		{ 31210, "UI/Skill/Artist/31210_Kongkongi.png" },
+		{ 31460, "UI/Skill/Artist/31460_ButterflyDream.png" },
+		{ 31420, "UI/Skill/Artist/31420_OrchidStrike.png" },
+		{ 31490, "UI/Skill/Artist/31490_TigerSlash.png" },
+		{ 31470, "UI/Skill/Artist/31470_OneStroke.png" },
 		/* DimensionMaster */
-		{ 2050100, "UI/Skill/DimensionMaster/2050100_일침.png" },
-		{ 2050120, "UI/Skill/DimensionMaster/2050120_분절.png" },
-		{ 2050160, "UI/Skill/DimensionMaster/2050160_건너찌르기.png" },
-		{ 2050180, "UI/Skill/DimensionMaster/2050180_너머베기.png" },
-		{ 2050210, "UI/Skill/DimensionMaster/2050210_분광.png" },
-		{ 2050220, "UI/Skill/DimensionMaster/2050220_일점관통.png" },
-		{ 2050240, "UI/Skill/DimensionMaster/2050240_경계돌파.png" },
-		{ 2050230, "UI/Skill/DimensionMaster/2050230_시간분쇄.png" },
+		{ 2050100, "UI/Skill/DimensionMaster/2050100_OneNeedle.png" },
+		{ 2050120, "UI/Skill/DimensionMaster/2050120_Fragment.png" },
+		{ 2050160, "UI/Skill/DimensionMaster/2050160_CrossThrust.png" },
+		{ 2050180, "UI/Skill/DimensionMaster/2050180_BeyondSlash.png" },
+		{ 2050210, "UI/Skill/DimensionMaster/2050210_LightSplit.png" },
+		{ 2050220, "UI/Skill/DimensionMaster/2050220_PointPierce.png" },
+		{ 2050240, "UI/Skill/DimensionMaster/2050240_BoundaryBreak.png" },
+		{ 2050230, "UI/Skill/DimensionMaster/2050230_TimeShatter.png" },
 	};
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
@@ -690,6 +766,57 @@ void CMainApp::RenderSkillIcons()
 		}
 		if (nullptr != pEmptySlotSRV)
 			pDrawList->AddImage(pEmptySlotSRV, vTopLeft, vBotRight);
+	}
+}
+
+void CMainApp::RenderQuickSlot()
+{
+	/* Icon art, slot frame, keybind label, and cooldown sweep aren't extracted from QuickSlot.gfx
+	yet, so this only draws the real on-use flash -- RenderSkillIcons/RenderSkillCooldowns (called
+	alongside this, not instead of it) still own everything else. */
+
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || nullptr == m_pHUDRuntimeView)
+		return;
+
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	if (skillWindowOpen)
+		return;
+
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
+
+	uint32_t iSlotIndex = 0;
+	for (const char* pInputSlot : INPUT_SLOTS)
+	{
+		bool_t bIsReady = true;
+		for (const HUD_SKILL_STATE& Skill : player.Skills)
+		{
+			if (Skill.strInputSlot == pInputSlot)
+			{
+				bIsReady = Skill.Is_Ready(player.iServerTick);
+				break;
+			}
+		}
+
+		/* Ready-to-not-ready is the only reliable "used just now" signal -- see the member
+		comment on m_bPreviousQuickSlotReady for why comparing raw iCooldownEndTick doesn't work. */
+		if (m_bPreviousQuickSlotReady[iSlotIndex] && !bIsReady)
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(
+				string("Skill_") + pInputSlot + "_Flash", "flash");
+		}
+		m_bPreviousQuickSlotReady[iSlotIndex] = bIsReady;
+		++iSlotIndex;
 	}
 }
 
