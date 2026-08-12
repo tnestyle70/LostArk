@@ -33,8 +33,16 @@ def reseal_receipt(receipt: dict) -> None:
 class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.program = binding.load_approved_program()
-        cls.receipt = binding.strict_io.load_strict_json_object(binding.DEFAULT_OUTPUT)
+        cls.temporary = tempfile.TemporaryDirectory()
+        root = Path(cls.temporary.name)
+        cls.program_path = root / "program.json"
+        cls.output_path = root / "approval.json"
+        cls.program = binding.program_module.build_program()
+        cls.program_path.write_bytes(
+            binding.program_module.output_bytes(cls.program)
+        )
+        cls.receipt = binding.build_receipt(cls.program)
+        cls.output_path.write_bytes(binding.serialized_receipt(cls.receipt))
         cls.inputs = {row["fieldId"]: row for row in cls.program["materialInputs"]}
         cls.texture_bindings = {
             row["bindingId"]: row for row in cls.program["materialTextureBindings"]
@@ -43,38 +51,47 @@ class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
             row["policyRowId"]: row for row in cls.program["materialPolicyRows"]
         }
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.temporary.cleanup()
+
     def validate(self, receipt: dict, *, require_approval: bool = True) -> None:
-        binding.validate_receipt(receipt, require_approval=require_approval)
+        binding.validate_receipt(
+            receipt,
+            self.program,
+            program_path=self.program_path,
+            _program_already_validated=True,
+            require_approval=require_approval,
+        )
 
     def assert_invalid(self, receipt: dict, *, pure: bool = False) -> None:
         with self.assertRaises((ValueError, KeyError, TypeError)):
             self.validate(receipt, require_approval=not pure)
 
     def test_checked_receipt_is_exact_and_deterministic(self) -> None:
-        raw = binding.DEFAULT_OUTPUT.read_bytes()
-        self.assertEqual(len(raw), 376_183)
+        raw = self.output_path.read_bytes()
+        self.assertEqual(len(raw), 378_236)
         self.assertEqual(
             hashlib.sha256(raw).hexdigest(),
-            "68ae71bd70260270404d4a7b6c296e41f74d0031d27899b56a4376c1b11f4931",
+            "bc19ea75c917b5bf73cf4801b5d94cbaeea40760e1717868bd890607388c0e35",
         )
         self.assertFalse(raw.startswith(b"\xef\xbb\xbf"))
         self.assertNotIn(b"\r", raw)
         self.assertEqual(
             self.receipt["receiptSha256"],
-            "d643c9bf1bc2f10a887c805534b28e4322646cea426656de61b894e5b6284644",
+            "2e4cf180b1bb00d5ea7bd597e8d832a7b810267023186666d88edcfe348feaab",
         )
         self.assertEqual(
             approval.decision_projection_sha256(self.receipt),
-            "4731ed9c2882c948373ec54f56087803145447851f3fc793fb8e9fa9d96cc957",
+            "6aa084a0ff5f369a88ffc711a75aeef057ca601c6d06104b70836cc032f813b5",
         )
-        self.validate(self.receipt)
         self.validate(self.receipt, require_approval=False)
         rebuilt = binding.build_receipt(
             self.program, _program_already_validated=True
         )
         self.assertEqual(rebuilt, self.receipt)
         self.assertEqual(
-            binding.serialized_receipt(rebuilt), binding.DEFAULT_OUTPUT.read_bytes()
+            binding.serialized_receipt(rebuilt), self.output_path.read_bytes()
         )
 
     def test_denominators_and_all_admission_gates(self) -> None:
@@ -170,7 +187,7 @@ class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
             row for row in self.receipt["recipeTextureBindings"]
             if not row["candidateTextureBindingIds"]
         ]
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 3)
         for row in rows:
             self.assertEqual(
                 row["texture0Provider"]["neutralProviderId"],
@@ -183,6 +200,35 @@ class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
             else:
                 expected = binding.NEUTRAL_UNUSED_ZERO
             self.assertEqual(row["texture1Provider"]["neutralProviderId"], expected)
+
+    def test_self_default_sprite_and_ribbon_recipes_use_distinct_runtime_resources(self) -> None:
+        expected = {
+            "material-recipe-aa19ee0d487380ca": (
+                "Effect/Artist/Textures/fx_d_noise_003.dds",
+                "Effect/Artist/Textures/fx_c_noise_002.dds",
+            ),
+            "material-recipe-b508403ea55fedbc": (
+                "Effect/Artist/Textures/fx_i_atypical_03_ycl.dds",
+                "Effect/Artist/Textures/fx_b_atypical_004.dds",
+            ),
+        }
+        rows = {row["recipeId"]: row for row in self.receipt["recipeTextureBindings"]}
+        for recipe_id, assets in expected.items():
+            row = rows[recipe_id]
+            self.assertEqual(
+                row["texture0Provider"]["providerKind"],
+                "MATERIAL_TEXTURE_BINDING",
+            )
+            self.assertEqual(
+                row["texture1Provider"]["providerKind"],
+                "MATERIAL_TEXTURE_BINDING",
+            )
+            self.assertEqual(row["texture0Provider"]["runtimeAssetId"], assets[0])
+            self.assertEqual(row["texture1Provider"]["runtimeAssetId"], assets[1])
+            self.assertNotEqual(
+                row["texture0Provider"]["runtimeAssetId"].casefold(),
+                row["texture1Provider"]["runtimeAssetId"].casefold(),
+            )
 
     def test_neutral_provider_semantics_are_numeric_and_explicit(self) -> None:
         providers = {
@@ -309,6 +355,19 @@ class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
 
     def test_independent_pin_is_required_beyond_pure_validation(self) -> None:
         self.validate(self.receipt, require_approval=False)
+        with (
+            mock.patch.object(
+                approval,
+                "APPROVED_DECISION_PROJECTION_SHA256",
+                approval.decision_projection_sha256(self.receipt),
+            ),
+            mock.patch.object(
+                approval,
+                "APPROVED_RECEIPT_PROJECTION_SHA256",
+                approval.receipt_projection_sha256(self.receipt),
+            ),
+        ):
+            self.validate(self.receipt)
         with mock.patch.object(
             approval, "APPROVED_DECISION_PROJECTION_SHA256", "0" * 64
         ):
