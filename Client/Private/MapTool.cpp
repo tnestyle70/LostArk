@@ -28,6 +28,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -44,6 +45,21 @@ namespace
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	std::string Editor_AreaShortName(const std::string& areaId)
+	{
+		if ("LV_BER_BERNCASTLE" == areaId) return "bern";
+		if ("LV_LUT_HEARTRB_ED" == areaId) return "valtan";
+		if ("LV_DEV_TRAINING_GROUND" == areaId) return "training";
+		if ("LV_LOBBY_CLASSSELECT_SL00" == areaId) return "character-select";
+		std::string lowered;
+		for (const char character : areaId)
+		{
+			lowered += static_cast<char>(std::tolower(
+				static_cast<unsigned char>(character)));
+		}
+		return lowered;
 	}
 
 	bool_t TryBuildCentralEditorFrame(
@@ -1022,6 +1038,38 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				}
 				strcpy_s(m_WorldArchetypeId,
 					npcs[m_iWorldNpcArchetypeIndex].archetypeId.c_str());
+				const auto strippedNameOf =
+					[](const std::string& archetypeId)
+				{
+					std::string name;
+					for (const char_t character : archetypeId)
+					{
+						name += static_cast<char_t>(std::tolower(
+							static_cast<unsigned char>(character)));
+					}
+					if (0 == name.rfind("npc_", 0))
+						name.erase(0, 4);
+					return name;
+				};
+				const std::string selectedAutoId = "npc." +
+					Editor_AreaShortName(active->areaId) + "." +
+					strippedNameOf(
+						npcs[m_iWorldNpcArchetypeIndex].archetypeId);
+				const std::string currentId = m_WorldPlacementId;
+				bool_t isAutoValue = "player.spawn.editor" == currentId;
+				for (size_t index = 0;
+					!isAutoValue && index < npcs.size(); ++index)
+				{
+					const std::string name =
+						strippedNameOf(npcs[index].archetypeId);
+					isAutoValue = 0 == currentId.rfind("npc.", 0) &&
+						currentId.size() > name.size() &&
+						0 == currentId.compare(
+							currentId.size() - name.size(),
+							name.size(), name);
+				}
+				if (isAutoValue && selectedAutoId != currentId)
+					strcpy_s(m_WorldPlacementId, selectedAutoId.c_str());
 				ImGui::TextDisabled(
 					"Archetypes come from Data/Actors/NpcCatalog.json (runtimeStatus=supported).");
 			}
@@ -1384,8 +1432,28 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::TextDisabled(
-					"Preview only. The product idle clip stays in NpcCatalog.json idleClip.");
+				if (nullptr != currentClip &&
+					ImGui::Button("Use As Placement Idle"))
+				{
+					staged.npcIdleClip = currentClip;
+					edited = true;
+				}
+				if (!staged.npcIdleClip.empty())
+				{
+					ImGui::SameLine();
+					if (ImGui::Button("Clear Placement Idle"))
+					{
+						staged.npcIdleClip.clear();
+						edited = true;
+					}
+					ImGui::Text("Saved idle: %s",
+						staged.npcIdleClip.c_str());
+				}
+				else
+				{
+					ImGui::TextDisabled(
+						"No placement idle saved; the catalog idleClip plays.");
+				}
 			}
 		}
 		else
@@ -2171,7 +2239,27 @@ bool_t Client::CMapTool::Try_PlaceWorldGameplay()
 	}
 
 	WORLD_GAMEPLAY_PLACEMENT placement;
-	placement.placementId = m_WorldPlacementId;
+	std::string placementId = m_WorldPlacementId;
+	if (!placementId.empty() &&
+		nullptr != m_WorldGameplayDocument.Find(placementId))
+	{
+		std::string candidate;
+		for (uint32_t suffix = 2u; suffix < 1000u; ++suffix)
+		{
+			candidate = placementId + "." + std::to_string(suffix);
+			if (nullptr == m_WorldGameplayDocument.Find(candidate))
+				break;
+			candidate.clear();
+		}
+		if (candidate.empty())
+		{
+			m_WorldGameplayStatus =
+				"Gameplay placement failed: no free placement ID";
+			return false;
+		}
+		placementId = std::move(candidate);
+	}
+	placement.placementId = placementId;
 	placement.eKind = m_eWorldPlacementKind;
 	placement.position = position;
 	placement.yawDegrees = 0.f;
@@ -2370,7 +2458,8 @@ bool_t Client::CMapTool::Stage_WorldNpcPreviews(
 		desc.strModelTag = modelTag;
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
-		desc.pIdleClip = actor->idleClip.c_str();
+		desc.pIdleClip = placement.npcIdleClip.empty() ?
+			actor->idleClip.c_str() : placement.npcIdleClip.c_str();
 		desc.vPosition = placement.position;
 		desc.fYawDegree = placement.yawDegrees;
 		shared_ptr<CGameObject> gameObject;

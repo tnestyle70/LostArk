@@ -3,7 +3,7 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/World',
-	[ValidateRange(0, 8)]
+	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0
 )
 
@@ -370,17 +370,18 @@ function Convert-WorldDocument {
     $document = Read-ProjectJson $relativePath
     Assert-ExactProperties $document @('schema','formatVersion','areaId','revision','placements') $relativePath
 	Assert-JsonString $document.schema "$relativePath schema"
-	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 4 4
+	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 5 5
 	Assert-JsonString $document.areaId "$relativePath areaId"
 	Assert-JsonInteger $document.revision "$relativePath revision" 1 ([uint32]::MaxValue)
     if ($document.schema -ne 'lostark.world-gameplay' -or
-		$document.formatVersion -ne 4 -or
+		$document.formatVersion -ne 5 -or
         $document.areaId -ne $AreaId -or
         $document.revision -lt 1) {
         throw "World gameplay header is invalid: $relativePath"
     }
 
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$npcPresentationEntries = [Collections.Generic.List[object]]::new()
 	$placementIndex = @{}
 	foreach ($placement in @($document.placements)) {
 		if ($null -ne $placement.placementId) {
@@ -529,9 +530,27 @@ function Convert-WorldDocument {
 			continue
 		}
 
-		Assert-ExactProperties $placement @(
-			'placementId','kind','archetypeId','encounterId',
-			'position','yawDegrees','enabled') "$relativePath placement"
+		if ($placement.kind -eq 'npc') {
+			Assert-ExactProperties $placement @(
+				'placementId','kind','archetypeId','encounterId',
+				'idleClip','position','yawDegrees','enabled') "$relativePath placement"
+			if ($null -ne $placement.idleClip) {
+				Assert-JsonString $placement.idleClip "$relativePath idleClip"
+				$clip = [string]$placement.idleClip
+				if ($clip -notmatch '^[A-Za-z0-9_~.-]{1,64}$') {
+					throw "NPC idleClip is not a stable clip name: $($placement.placementId)"
+				}
+				$npcPresentationEntries.Add(@{
+					placementId = [string]$placement.placementId
+					idleClip = $clip
+				})
+			}
+		}
+		else {
+			Assert-ExactProperties $placement @(
+				'placementId','kind','archetypeId','encounterId',
+				'position','yawDegrees','enabled') "$relativePath placement"
+		}
 		Assert-JsonString $placement.archetypeId "$relativePath archetypeId" -AllowNull
 		Assert-JsonString $placement.encounterId "$relativePath encounterId" -AllowNull
 		if ($placement.kind -eq 'playerSpawn') {
@@ -584,6 +603,7 @@ function Convert-WorldDocument {
         AreaId = $AreaId
         Lines = $lines
         Count = $sortedRows.Count
+        NpcPresentation = $npcPresentationEntries
     }
 }
 
@@ -639,6 +659,38 @@ if ($Mode -eq 'Publish') {
 				Staged = $staged
 				Destination = Join-Path $resolvedOutputRoot "$($spawn.WorldId).spawngroupsbootstrap"
 				Rollback = Join-Path $resolvedOutputRoot ".$($spawn.WorldId).spawngroups.rollback.$transactionId"
+				HadPrevious = $false
+				Promoted = $false
+			})
+		}
+		$clientWorldRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'Client/Bin/DataFiles/World'))
+		[IO.Directory]::CreateDirectory($clientWorldRoot) | Out-Null
+		foreach ($world in $worlds) {
+			$staged = Join-Path $stagingRoot "$($world.WorldId).npcpresentation.json"
+			$jsonLines = [Collections.Generic.List[string]]::new()
+			$jsonLines.Add('{')
+			$jsonLines.Add('  "schema": "lostark.npc-placement-presentation",')
+			$jsonLines.Add('  "formatVersion": 1,')
+			$jsonLines.Add("  `"worldId`": `"$($world.WorldId)`",")
+			$entries = @($world.NpcPresentation | Sort-Object { [string]$_.placementId })
+			if ($entries.Count -eq 0) {
+				$jsonLines.Add('  "entries": []')
+			}
+			else {
+				$jsonLines.Add('  "entries": [')
+				for ($entryIndex = 0; $entryIndex -lt $entries.Count; $entryIndex++) {
+					$suffix = if ($entryIndex -lt $entries.Count - 1) { ',' } else { '' }
+					$jsonLines.Add("    { `"placementId`": `"$($entries[$entryIndex].placementId)`", `"idleClip`": `"$($entries[$entryIndex].idleClip)`" }$suffix")
+				}
+				$jsonLines.Add('  ]')
+			}
+			$jsonLines.Add('}')
+			[IO.File]::WriteAllLines($staged, $jsonLines, [Text.UTF8Encoding]::new($false))
+			$promotions.Add([ordered]@{
+				World = $world
+				Staged = $staged
+				Destination = Join-Path $clientWorldRoot "$($world.WorldId).npcpresentation.json"
+				Rollback = Join-Path $clientWorldRoot ".$($world.WorldId).npcpresentation.rollback.$transactionId"
 				HadPrevious = $false
 				Promoted = $false
 			})

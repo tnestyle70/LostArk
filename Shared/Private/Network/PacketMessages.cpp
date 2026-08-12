@@ -455,6 +455,7 @@ bool LostArk::Shared::Write_Message(
 		!Is_Valid_WorldEntityKind(spawned.eKind) ||
 		!Is_Valid_StableId(spawned.strArchetypeId, false) ||
 		!Is_Valid_StableId(spawned.strEncounterId, true) ||
+		!Is_Valid_StableId(spawned.strPlacementId, true) ||
 		!std::isfinite(spawned.fPositionX) ||
 		!std::isfinite(spawned.fPositionY) ||
 		!std::isfinite(spawned.fPositionZ) ||
@@ -472,7 +473,9 @@ bool LostArk::Shared::Write_Message(
 	if (!writer.Write_String(
 		spawned.strArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!writer.Write_String(
-		spawned.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES))
+		spawned.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+		spawned.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES))
 	{
 		return false;
 	}
@@ -496,6 +499,8 @@ bool LostArk::Shared::Read_Message(
 			decoded.strArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_String(
 			decoded.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_F32(decoded.fPositionX) ||
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
@@ -509,6 +514,7 @@ bool LostArk::Shared::Read_Message(
 		!Is_Valid_WorldEntityKind(decoded.eKind) ||
 		!Is_Valid_StableId(decoded.strArchetypeId, false) ||
 		!Is_Valid_StableId(decoded.strEncounterId, true) ||
+		!Is_Valid_StableId(decoded.strPlacementId, true) ||
 		!std::isfinite(decoded.fPositionX) ||
 		!std::isfinite(decoded.fPositionY) ||
 		!std::isfinite(decoded.fPositionZ) ||

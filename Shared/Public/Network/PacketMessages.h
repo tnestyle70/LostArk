@@ -142,6 +142,7 @@ namespace LostArk::Shared
 		WORLD_ENTITY_KIND eKind = WORLD_ENTITY_KIND::END;
 		std::string strArchetypeId;
 		std::string strEncounterId;
+		std::string strPlacementId;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;

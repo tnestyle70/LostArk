@@ -925,6 +925,7 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawned(
 	message.eKind = To_NetworkKind(entity.eKind);
 	message.strArchetypeId = entity.strArchetypeId;
 	message.strEncounterId = entity.strEncounterId;
+	message.strPlacementId = entity.strPlacementId;
 	message.fPositionX = entity.fPositionX;
 	message.fPositionY = entity.fPositionY;
 	message.fPositionZ = entity.fPositionZ;

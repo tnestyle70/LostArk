@@ -56,6 +56,7 @@
     <ClInclude Include="..\Public\DestructionSimulationController.h" />
     <ClInclude Include="..\Public\Trigger_Box.h" />
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
+	<ClInclude Include="..\Public\NpcPlacementPresentationService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
 	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp" />
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />

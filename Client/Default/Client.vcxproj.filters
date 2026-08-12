@@ -445,6 +445,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\NpcPlacementPresentationService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
@@ -752,6 +755,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
+	<ClInclude Include="..\Public\NpcPlacementPresentationService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>

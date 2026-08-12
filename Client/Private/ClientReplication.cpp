@@ -9,6 +9,7 @@
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
 #include "Npc.h"
+#include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
@@ -428,7 +429,11 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.strModelTag = modelTag;
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
-		desc.pIdleClip = actor->idleClip.c_str();
+		const std::string* pIdleClipOverride =
+			CNpcPlacementPresentationService::Find_IdleClip(
+				m_Desc.iPrototypeLevelIndex, spawned.strPlacementId);
+		desc.pIdleClip = nullptr != pIdleClipOverride ?
+			pIdleClipOverride->c_str() : actor->idleClip.c_str();
 		desc.vPosition = float3_t(
 			spawned.fPositionX,
 			spawned.fPositionY,
