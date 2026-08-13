@@ -299,6 +299,49 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_ENTER_REJECTED& message)
+{
+	if (NETWORK_PROTOCOL_VERSION != message.iProtocolVersion ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		ENTER_WORLD_REJECTION_REASON::ROOM_FULL != message.eReason)
+	{
+		return false;
+	}
+
+	writer.Write_U16(message.iProtocolVersion);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eReason));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_ENTER_REJECTED& message)
+{
+	std::uint16_t protocolVersion = 0;
+	std::uint16_t rawWorldId = 0;
+	std::uint8_t rawReason = 0;
+	if (!reader.Read_U16(protocolVersion) ||
+		!reader.Read_U16(rawWorldId) ||
+		!reader.Read_U8(rawReason) ||
+		NETWORK_PROTOCOL_VERSION != protocolVersion ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+		static_cast<std::uint8_t>(ENTER_WORLD_REJECTION_REASON::ROOM_FULL) !=
+			rawReason)
+	{
+		return false;
+	}
+
+	S2C_ENTER_REJECTED decoded{};
+	decoded.iProtocolVersion = protocolVersion;
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.eReason = static_cast<ENTER_WORLD_REJECTION_REASON>(rawReason);
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, 
     const S2C_PLAYER_SPAWNED& spawned)
 {

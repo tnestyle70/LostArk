@@ -55,6 +55,28 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_ENTER_ACCEPTED& message);
 
+	enum class ENTER_WORLD_REJECTION_REASON : std::uint8_t
+	{
+		ROOM_FULL,
+		END
+	};
+
+	struct S2C_ENTER_REJECTED
+	{
+		std::uint16_t iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		ENTER_WORLD_REJECTION_REASON eReason =
+			ENTER_WORLD_REJECTION_REASON::END;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_ENTER_REJECTED& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_ENTER_REJECTED& message);
+
 	//Player Spawn
 	struct S2C_PLAYER_SPAWNED
 	{

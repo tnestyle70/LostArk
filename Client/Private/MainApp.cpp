@@ -43,25 +43,6 @@
 
 namespace
 {
-	wstring Utf8ToWide(const string& value)
-	{
-		if (value.empty())
-			return {};
-		const int length = MultiByteToWideChar(
-			CP_UTF8, MB_ERR_INVALID_CHARS, value.c_str(),
-			static_cast<int>(value.size()), nullptr, 0);
-		if (length <= 0)
-			return {};
-		wstring result(static_cast<size_t>(length), L'\0');
-		if (length != MultiByteToWideChar(
-			CP_UTF8, MB_ERR_INVALID_CHARS, value.c_str(),
-			static_cast<int>(value.size()), result.data(), length))
-		{
-			return {};
-		}
-		return result;
-	}
-
 	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
 	the _DEBUG-only map tool focus check further down. */
 	bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
@@ -354,6 +335,7 @@ HRESULT CMainApp::Render()
 		}
 	#endif
 		RenderCombatHUD();
+		RenderBossHealthBar();
 		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
 		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
@@ -638,6 +620,56 @@ void CMainApp::RenderSkillCooldowns()
 	}
 }
 
+void CMainApp::RenderBossHealthBar()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (!boss.isValid || 0u == boss.iMaximumHp)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	const float uiScale = (std::min)(scaleX, scaleY);
+	const float healthRatio = (std::clamp)(
+		static_cast<float>(boss.iCurrentHp) /
+		static_cast<float>(boss.iMaximumHp), 0.f, 1.f);
+	const ImVec2 barMin{
+		pViewport->WorkPos.x + 360.f * scaleX,
+		pViewport->WorkPos.y + 30.f * scaleY };
+	const ImVec2 barMax{
+		pViewport->WorkPos.x + 920.f * scaleX,
+		pViewport->WorkPos.y + 50.f * scaleY };
+	const float fillRight = barMin.x +
+		(barMax.x - barMin.x) * healthRatio;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	pDrawList->AddRectFilled(
+		barMin, barMax, IM_COL32(24, 24, 28, 230), 3.f * uiScale);
+	if (fillRight > barMin.x)
+	{
+		pDrawList->AddRectFilled(
+			barMin,
+			ImVec2(fillRight, barMax.y),
+			IM_COL32(176, 34, 40, 255),
+			3.f * uiScale);
+	}
+	pDrawList->AddRect(
+		barMin, barMax, IM_COL32(224, 208, 176, 255),
+		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+}
+
 void CMainApp::RenderSkillIcons()
 {
 	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
@@ -858,26 +890,16 @@ void CMainApp::RenderCombatHUDText()
 			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!boss.isValid || 0u == boss.iMaximumHp ||
-		0u == boss.iMaximumHealthBars)
+	if (!boss.isValid || 0u == boss.iMaximumHp)
 	{
 		return;
 	}
-	const std::uint32_t currentHealthBar = 0u == boss.iCurrentHp ? 0u :
-		static_cast<std::uint32_t>((
-			static_cast<std::uint64_t>(boss.iCurrentHp) * boss.iMaximumHealthBars +
-			boss.iMaximumHp - 1u) / boss.iMaximumHp);
-	const wstring name = Utf8ToWide(boss.strDisplayName);
-	const wstring bars = std::to_wstring(currentHealthBar) + L" / " +
-		std::to_wstring(boss.iMaximumHealthBars) + L" \xC904";
-	const wstring hp = L"HP  " + std::to_wstring(boss.iCurrentHp) + L" / " +
+
+	const wstring hp = std::to_wstring(boss.iCurrentHp) + L" / " +
 		std::to_wstring(boss.iMaximumHp);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), name.c_str(),
-		position(640.f, 32.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.55f * textScale);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), bars.c_str(),
-		position(640.f, 57.f), Colors::Yellow, 0.f, float2_t(0.5f, 0.5f), 0.46f * textScale);
 	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
-		position(640.f, 77.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
+		position(640.f, 58.f), Colors::White, 0.f,
+		float2_t(0.5f, 0.5f), 0.42f * textScale);
 }
 
 HRESULT CMainApp::Ready_Fonts()

@@ -85,6 +85,9 @@ namespace LostArk::Server
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_PLAYER& player);
+		bool Send_EnterRejected(
+			const std::shared_ptr<CClientSession>& session,
+			LostArk::Shared::ENTER_WORLD_REJECTION_REASON reason);
 		bool Send_Spawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_PLAYER& player);
@@ -123,6 +126,7 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> Find_Session(
 			SESSION_ID sessionId) const;
 		void Rollback_Join(SESSION_ID sessionId);
+		[[nodiscard]] bool Is_PlayerAdmissionFull() const;
 		const WORLD_BOOTSTRAP_PLACEMENT* Find_AvailablePlayerSpawn() const;
 		const WORLD_BOOTSTRAP_PLACEMENT* Find_Placement(
 			const std::string& placementId) const;
@@ -131,7 +135,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
-		bool Reset_CharacterSelectArenaWhenEmpty();
+		bool Reset_ReplayableArenaWhenEmpty();
 		bool Activate_Encounter(const std::string& placementId);
 		bool Spawn_Monster(
 			const std::string& spawnGroupId,

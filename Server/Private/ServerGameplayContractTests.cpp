@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests.h"
 
 #include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
@@ -587,6 +588,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(world.Load(WORLD_ID::VALTAN_ARENA) &&
 		world.Get_AreaId() == "LV_LUT_HEARTRB_ED",
 		"Preserve world area ID across placement parsing");
+	tests.Require(
+		4u == static_cast<std::size_t>(std::count_if(
+			world.Get_Placements().begin(),
+			world.Get_Placements().end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.isEnabled;
+			})),
+		"Load exactly four enabled Valtan player spawns");
 	tests.Require(navigation.Load("LV_LUT_HEARTRB_ED"),
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
@@ -1935,6 +1946,222 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			resetRoom.m_SpawnGroupRuntime.Activate(
 				"spawn.character-select.monster"),
 			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
+	}
+
+	{
+		CGameRoom raidRoom{ WORLD_ID::VALTAN_ARENA };
+		const auto& placements = raidRoom.m_WorldBootstrap.Get_Placements();
+		std::vector<const WORLD_BOOTSTRAP_PLACEMENT*> playerSpawns;
+		for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
+		{
+			if (placement.isEnabled &&
+				WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind)
+			{
+				playerSpawns.push_back(&placement);
+			}
+		}
+
+		auto addPlayer = [&raidRoom](
+			const SESSION_ID sessionId,
+			const PLAYER_ID playerId,
+			const NET_ENTITY_ID entityId,
+			const WORLD_BOOTSTRAP_PLACEMENT& spawn)
+		{
+			SERVER_PLAYER player{};
+			player.iSessionId = sessionId;
+			player.iPlayerId = playerId;
+			player.iNetEntityId = entityId;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.strNickName = "RaidFixture" + std::to_string(playerId);
+			player.strSpawnPlacementId = spawn.strPlacementId;
+			player.fPositionX = spawn.fPositionX;
+			player.fPositionY = spawn.fPositionY;
+			player.fPositionZ = spawn.fPositionZ;
+			player.iCurrentHp = 100u;
+			player.iMaximumHp = 100u;
+			player.isCombatReady = true;
+			raidRoom.m_Players.emplace(playerId, player);
+			raidRoom.m_PlayerIdBySessionId.emplace(sessionId, playerId);
+			raidRoom.m_PlayerIdByEntityId.emplace(entityId, playerId);
+		};
+
+		if (raidRoom.Is_Ready() && 4u == playerSpawns.size())
+		{
+			for (std::size_t index = 0; index < playerSpawns.size(); ++index)
+			{
+				addPlayer(
+					1001u + index,
+					static_cast<PLAYER_ID>(2001u + index),
+					static_cast<NET_ENTITY_ID>(3001u + index),
+					*playerSpawns[index]);
+			}
+		}
+		const PLAYER_ID allocatorBeforeFull = raidRoom.m_iNextPlayerId;
+		const NET_ENTITY_ID entityAllocatorBeforeFull = raidRoom.m_iNextNetEntityId;
+		const std::size_t playersBeforeFull = raidRoom.m_Players.size();
+		const std::size_t sessionOwnersBeforeFull =
+			raidRoom.m_PlayerIdBySessionId.size();
+		const std::size_t entityOwnersBeforeFull =
+			raidRoom.m_PlayerIdByEntityId.size();
+		tests.Require(
+			raidRoom.Is_Ready() && 4u == playerSpawns.size() &&
+			raidRoom.Is_PlayerAdmissionFull() &&
+			nullptr == raidRoom.Find_AvailablePlayerSpawn() &&
+			allocatorBeforeFull == raidRoom.m_iNextPlayerId &&
+			entityAllocatorBeforeFull == raidRoom.m_iNextNetEntityId &&
+			playersBeforeFull == raidRoom.m_Players.size() &&
+			sessionOwnersBeforeFull == raidRoom.m_PlayerIdBySessionId.size() &&
+			entityOwnersBeforeFull == raidRoom.m_PlayerIdByEntityId.size(),
+			"Reject a fifth Valtan admission as room full without mutating room ownership or allocators");
+
+		const std::string releasedSpawnId =
+			playerSpawns.size() < 2u ? std::string{} :
+			playerSpawns[1]->strPlacementId;
+		raidRoom.Leave(1002u, PLAYER_DESPAWN_REASON::DISCONNECTED);
+		const WORLD_BOOTSTRAP_PLACEMENT* releasedSpawn =
+			raidRoom.Find_AvailablePlayerSpawn();
+		const bool releasedSlotAvailable = nullptr != releasedSpawn &&
+			releasedSpawn->strPlacementId == releasedSpawnId;
+		if (releasedSlotAvailable)
+		{
+			addPlayer(1010u, 2010u, 3010u, *releasedSpawn);
+		}
+		tests.Require(
+			releasedSlotAvailable && raidRoom.Is_PlayerAdmissionFull() &&
+			4u == raidRoom.m_Players.size(),
+			"Release a disconnected Valtan slot and admit a replacement into the same stable spawn");
+
+		const WORLD_BOOTSTRAP_PLACEMENT* bossTrigger =
+			raidRoom.Find_Placement("Stage_Boss");
+		if (nullptr != bossTrigger && !raidRoom.m_Players.empty())
+		{
+			SERVER_PLAYER& triggerPlayer = raidRoom.m_Players.begin()->second;
+			triggerPlayer.fPositionX = bossTrigger->fPositionX;
+			triggerPlayer.fPositionY = bossTrigger->fPositionY -
+				LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y;
+			triggerPlayer.fPositionZ = bossTrigger->fPositionZ;
+		}
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::uint32_t encounterActivationCount = 0u;
+		raidRoom.m_ServerTriggerSystem.Evaluate_Entries(
+			raidRoom.m_Players,
+			700u,
+			transfers,
+			[&raidRoom, &encounterActivationCount](
+				const WORLD_TRIGGER_ACTION_KIND kind,
+				const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind)
+					return false;
+				++encounterActivationCount;
+				return raidRoom.Activate_Encounter(targetId);
+			});
+		auto bossBeforeReset = std::find_if(
+			raidRoom.m_WorldEntities.begin(),
+			raidRoom.m_WorldEntities.end(),
+			[](const SERVER_WORLD_ENTITY& entity)
+			{
+				return "boss.valtan.center" == entity.strPlacementId;
+			});
+		const bool bossActivatedBeforeReset =
+			1u == encounterActivationCount &&
+			raidRoom.m_WorldEntities.end() != bossBeforeReset;
+		if (raidRoom.m_WorldEntities.end() != bossBeforeReset)
+		{
+			bossBeforeReset->iCurrentHp = 1u;
+			bossBeforeReset->iPhase = 2u;
+			bossBeforeReset->eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+			bossBeforeReset->strPatternId = "reset.fixture.pattern";
+		}
+		const bool spawnGroupActivatedBeforeReset =
+			raidRoom.m_SpawnGroupRuntime.Activate("spawn.valtan.stage01");
+		SERVER_WORLD_ENTITY dynamicMonster{};
+		dynamicMonster.iNetEntityId = 9001u;
+		dynamicMonster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		dynamicMonster.strPlacementId = "reset.fixture.monster";
+		dynamicMonster.strSpawnGroupId = "spawn.valtan.stage01";
+		raidRoom.m_WorldEntities.push_back(std::move(dynamicMonster));
+		DAMAGE_EVENT damageEvent{};
+		damageEvent.iTargetNetEntityId = 3001u;
+		damageEvent.iAmount = 1u;
+		raidRoom.m_TickDamageEvents.push_back(damageEvent);
+		raidRoom.m_iServerTick = 777u;
+		SERVER_WORLD_TRANSFER_REQUEST pendingTransfer{};
+		pendingTransfer.iSessionId = 8080u;
+		pendingTransfer.eTargetWorldId = WORLD_ID::BERN;
+		pendingTransfer.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		pendingTransfer.strNickName = "PendingTransfer";
+		raidRoom.m_PendingWorldTransfers.push_back(pendingTransfer);
+		const PLAYER_ID playerAllocatorBeforeReset = raidRoom.m_iNextPlayerId;
+		const NET_ENTITY_ID netAllocatorBeforeReset = raidRoom.m_iNextNetEntityId;
+
+		std::vector<SESSION_ID> activeSessions;
+		for (const auto& [sessionId, playerId] : raidRoom.m_PlayerIdBySessionId)
+		{
+			(void)playerId;
+			activeSessions.push_back(sessionId);
+		}
+		for (const SESSION_ID sessionId : activeSessions)
+		{
+			raidRoom.Leave(sessionId, PLAYER_DESPAWN_REASON::DISCONNECTED);
+		}
+		const bool emptyResetPreservedMonotonicState =
+			raidRoom.Is_Ready() && raidRoom.m_Players.empty() &&
+			raidRoom.m_PlayerIdBySessionId.empty() &&
+			raidRoom.m_PlayerIdByEntityId.empty() &&
+			raidRoom.m_WorldEntities.empty() &&
+			raidRoom.m_TickDamageEvents.empty() &&
+			777u == raidRoom.m_iServerTick &&
+			playerAllocatorBeforeReset == raidRoom.m_iNextPlayerId &&
+			netAllocatorBeforeReset == raidRoom.m_iNextNetEntityId &&
+			1u == raidRoom.m_PendingWorldTransfers.size() &&
+			8080u == raidRoom.m_PendingWorldTransfers.front().iSessionId;
+		const bool spawnGroupReactivated =
+			raidRoom.m_SpawnGroupRuntime.Activate("spawn.valtan.stage01");
+
+		if (!playerSpawns.empty() && nullptr != bossTrigger)
+		{
+			addPlayer(1020u, 2020u, 3020u, *playerSpawns.front());
+			SERVER_PLAYER& nextGenerationPlayer =
+				raidRoom.m_Players.find(2020u)->second;
+			nextGenerationPlayer.fPositionX = bossTrigger->fPositionX;
+			nextGenerationPlayer.fPositionY = bossTrigger->fPositionY -
+				LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y;
+			nextGenerationPlayer.fPositionZ = bossTrigger->fPositionZ;
+		}
+		encounterActivationCount = 0u;
+		raidRoom.m_ServerTriggerSystem.Evaluate_Entries(
+			raidRoom.m_Players,
+			778u,
+			transfers,
+			[&raidRoom, &encounterActivationCount](
+				const WORLD_TRIGGER_ACTION_KIND kind,
+				const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind)
+					return false;
+				++encounterActivationCount;
+				return raidRoom.Activate_Encounter(targetId);
+			});
+		const auto bossAfterReset = std::find_if(
+			raidRoom.m_WorldEntities.begin(),
+			raidRoom.m_WorldEntities.end(),
+			[](const SERVER_WORLD_ENTITY& entity)
+			{
+				return "boss.valtan.center" == entity.strPlacementId;
+			});
+		const bool encounterRestarted =
+			1u == encounterActivationCount &&
+			raidRoom.m_WorldEntities.end() != bossAfterReset &&
+			bossAfterReset->iCurrentHp == bossAfterReset->iMaximumHp &&
+			1u == bossAfterReset->iPhase &&
+			SERVER_ENTITY_ACTION::IDLE == bossAfterReset->eAction &&
+			bossAfterReset->strPatternId.empty();
+		tests.Require(
+			bossActivatedBeforeReset && spawnGroupActivatedBeforeReset &&
+			emptyResetPreservedMonotonicState && spawnGroupReactivated &&
+			encounterRestarted,
+			"Reset Valtan boss, triggers, spawn groups, dynamic entities, and damage after the last disconnect while preserving IDs, tick, and transfers");
 	}
 
 	{

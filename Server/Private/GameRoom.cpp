@@ -353,17 +353,28 @@ bool LostArk::Server::CGameRoom::Join(
 	using namespace LostArk::Shared;
 
 	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
-	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
 	if (nullptr == session || !Is_Valid_EnterWorld(enterWorld) ||
 		enterWorld.eWorldId != m_eWorldId ||
 		m_PlayerIdBySessionId.contains(sessionId) ||
 		m_Players.size() >= MAX_WORLD_SNAPSHOT_PLAYERS ||
-		nullptr == spawn ||
 		m_iNextPlayerId == INVALID_PLAYER_ID ||
 		m_iNextNetEntityId == INVALID_NET_ENTITY_ID)
 	{
 		if (nullptr != session)
 			session->Request_Close();
+		return false;
+	}
+	if (Is_PlayerAdmissionFull())
+	{
+		Send_EnterRejected(
+			session, ENTER_WORLD_REJECTION_REASON::ROOM_FULL);
+		session->Request_Close();
+		return false;
+	}
+	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
+	if (nullptr == spawn)
+	{
+		session->Request_Close();
 		return false;
 	}
 
@@ -495,9 +506,10 @@ void LostArk::Server::CGameRoom::Leave(
 		<< ", SessionId=" << sessionId
 		<< ", RoomPlayers=" << m_Players.size() << '\n';
 
-	if (!Reset_CharacterSelectArenaWhenEmpty())
+	if (!Reset_ReplayableArenaWhenEmpty())
 	{
-		std::cerr << "Character Select arena reset failed: "
+		std::cerr << "Replayable arena reset failed. World="
+			<< static_cast<unsigned>(m_eWorldId) << ", Status="
 			<< m_strStatus << '\n';
 	}
 }
@@ -981,6 +993,20 @@ bool LostArk::Server::CGameRoom::Send_Accepted(
 		session->Send_Frame(PACKET_TYPE::S2C_ENTER_ACCEPTED, writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_EnterRejected(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::ENTER_WORLD_REJECTION_REASON reason)
+{
+	using namespace LostArk::Shared;
+	S2C_ENTER_REJECTED message{};
+	message.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	message.eWorldId = m_eWorldId;
+	message.eReason = reason;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(PACKET_TYPE::S2C_ENTER_REJECTED, writer.Get_Buffer());
+}
+
 bool LostArk::Server::CGameRoom::Send_Spawned(
 	const std::shared_ptr<CClientSession>& session,
 	const SERVER_PLAYER& player)
@@ -1259,6 +1285,11 @@ void LostArk::Server::CGameRoom::Rollback_Join(const SESSION_ID sessionId)
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
 }
 
+bool LostArk::Server::CGameRoom::Is_PlayerAdmissionFull() const
+{
+	return nullptr == Find_AvailablePlayerSpawn();
+}
+
 const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
 LostArk::Server::CGameRoom::Find_AvailablePlayerSpawn() const
 {
@@ -1391,13 +1422,21 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 	return true;
 }
 
-bool LostArk::Server::CGameRoom::Reset_CharacterSelectArenaWhenEmpty()
+bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 {
 	using LostArk::Shared::WORLD_ID;
-	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId || !m_Players.empty())
+	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
+		WORLD_ID::VALTAN_ARENA != m_eWorldId) || !m_Players.empty())
 		return true;
 
 	std::string resetStatus;
+	if (!m_ServerTriggerSystem.Initialize(
+		m_WorldBootstrap.Get_Placements(), resetStatus))
+	{
+		m_strStatus = std::move(resetStatus);
+		m_isReady = false;
+		return false;
+	}
 	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, resetStatus))
 	{
 		m_strStatus = std::move(resetStatus);
@@ -1410,7 +1449,7 @@ bool LostArk::Server::CGameRoom::Reset_CharacterSelectArenaWhenEmpty()
 		return false;
 	}
 	m_TickDamageEvents.clear();
-	m_strStatus = "Character Select arena reset after the room became empty";
+	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
 }
 

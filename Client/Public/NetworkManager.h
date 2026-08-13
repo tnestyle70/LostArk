@@ -78,6 +78,8 @@ public:
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
+	bool Try_Consume_EnterRejected(
+		LostArk::Shared::S2C_ENTER_REJECTED& message);
 	bool Try_Consume_WorldEntitySpawnResult(
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
 	bool Try_Consume_CharacterClassChangeResult(
@@ -129,6 +131,8 @@ private:
 	bool m_hasPendingEnterAccepted = false;
 
 	LostArk::Shared::S2C_ENTER_ACCEPTED m_PendingEnterAccepted{};
+	bool m_hasPendingEnterRejected = false;
+	LostArk::Shared::S2C_ENTER_REJECTED m_PendingEnterRejected{};
 
 	LostArk::Shared::PLAYER_ID m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 

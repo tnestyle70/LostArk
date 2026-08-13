@@ -98,6 +98,17 @@ namespace
 		return true;
 	}
 	//플레이어 스폰
+	bool Build_EnterRejectedPayload(
+		const S2C_ENTER_REJECTED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
+
 	bool Build_PlayerSpawnedPayload(
 		const S2C_PLAYER_SPAWNED& message,
 		std::vector<std::uint8_t>& payload)
@@ -310,6 +321,76 @@ namespace
 			"Consume Entire Accepted Payload");
 	}
 	//플레이어 위치 
+	void Test_EnterRejectedRoundTrip(TEST_RUNNER& testRunner)
+	{
+		S2C_ENTER_REJECTED source{};
+		source.eWorldId = WORLD_ID::VALTAN_ARENA;
+		source.eReason = ENTER_WORLD_REJECTION_REASON::ROOM_FULL;
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_EnterRejectedPayload(source, payload) && 5u == payload.size(),
+			"Writer Enter Rejected Room Full");
+
+		CPacketReader reader{ payload };
+		S2C_ENTER_REJECTED decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
+			decoded.eWorldId == WORLD_ID::VALTAN_ARENA &&
+			decoded.eReason == ENTER_WORLD_REJECTION_REASON::ROOM_FULL &&
+			0u == reader.Get_RemainingSize(),
+			"Enter Rejected Room Full Round Trip");
+		testRunner.Require(
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_ENTER_REJECTED),
+			"Register Enter Rejected Packet Type");
+
+		S2C_ENTER_REJECTED invalid = source;
+		invalid.eReason = ENTER_WORLD_REJECTION_REASON::END;
+		CPacketWriter invalidReasonWriter;
+		testRunner.Require(
+			!Write_Message(invalidReasonWriter, invalid),
+			"Reject Unknown Enter Rejection Reason From Writer");
+		invalid = source;
+		invalid.eWorldId = WORLD_ID::END;
+		CPacketWriter invalidWorldWriter;
+		testRunner.Require(
+			!Write_Message(invalidWorldWriter, invalid),
+			"Reject Unknown Enter Rejection World From Writer");
+		invalid = source;
+		invalid.iProtocolVersion = NETWORK_PROTOCOL_VERSION + 1u;
+		CPacketWriter invalidProtocolWriter;
+		testRunner.Require(
+			!Write_Message(invalidProtocolWriter, invalid),
+			"Reject Enter Rejection Protocol Mismatch From Writer");
+
+		CPacketWriter unknownReasonPayload;
+		unknownReasonPayload.Write_U16(NETWORK_PROTOCOL_VERSION);
+		unknownReasonPayload.Write_U16(
+			static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+		unknownReasonPayload.Write_U8(
+			static_cast<std::uint8_t>(ENTER_WORLD_REJECTION_REASON::END));
+		CPacketReader unknownReasonReader{ unknownReasonPayload.Get_Buffer() };
+		S2C_ENTER_REJECTED unchanged{};
+		unchanged.iProtocolVersion = 77u;
+		unchanged.eWorldId = WORLD_ID::BERN;
+		unchanged.eReason = ENTER_WORLD_REJECTION_REASON::ROOM_FULL;
+		testRunner.Require(
+			!Read_Message(unknownReasonReader, unchanged) &&
+			77u == unchanged.iProtocolVersion &&
+			WORLD_ID::BERN == unchanged.eWorldId &&
+			ENTER_WORLD_REJECTION_REASON::ROOM_FULL == unchanged.eReason,
+			"Reject Unknown Enter Rejection Reason Without Mutation");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			77u == unchanged.iProtocolVersion &&
+			WORLD_ID::BERN == unchanged.eWorldId &&
+			ENTER_WORLD_REJECTION_REASON::ROOM_FULL == unchanged.eReason,
+			"Reject Truncated Enter Rejection Without Mutation");
+	}
+
 	void Test_F32RoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -1659,6 +1740,7 @@ int main()
 
 	Test_EnterAcceptedRoundTrip(testRunner);
 	Test_InvalidEnterAcceptedPayloads(testRunner);
+	Test_EnterRejectedRoundTrip(testRunner);
 
 	Test_F32RoundTrip(testRunner);
 	Test_PlayerSpawnedRoundTrip(testRunner);

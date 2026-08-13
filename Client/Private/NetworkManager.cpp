@@ -253,6 +253,8 @@ bool CNetworkManager::Connect_To_Server(
 	m_CharacterClassChangeResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
+	m_hasPendingEnterRejected = false;
+	m_PendingEnterRejected = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
@@ -474,6 +476,17 @@ bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEP
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_EnterRejected(
+	LostArk::Shared::S2C_ENTER_REJECTED& message)
+{
+	if (!m_hasPendingEnterRejected)
+		return false;
+
+	message = m_PendingEnterRejected;
+	m_hasPendingEnterRejected = false;
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message)
 {
@@ -532,6 +545,8 @@ void CNetworkManager::Close_ServerConnection()
 	m_CharacterClassChangeResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
+	m_hasPendingEnterRejected = false;
+	m_PendingEnterRejected = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
@@ -693,6 +708,19 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_LocalSpawn = {};
 		m_hasPendingEnterAccepted = true;
 		m_PendingEnterAccepted = accepted;
+		break;
+	}
+	case PACKET_TYPE::S2C_ENTER_REJECTED:
+	{
+		S2C_ENTER_REJECTED rejected{};
+		if (!Read_Message(reader, rejected) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		m_hasPendingEnterRejected = true;
+		m_PendingEnterRejected = rejected;
 		break;
 	}
 	//Player Spawn
