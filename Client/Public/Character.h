@@ -95,7 +95,8 @@ public:
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
-		bool_t isMoving);
+		bool_t isMoving,
+		std::uint32_t iServerTick);
 	/* comboStage is the server's 1-based stage, 0 outside a combo. The client
 	never counts stages itself. */
 	bool_t Apply_NetworkAction(
@@ -192,9 +193,16 @@ private:
 	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
 	DEFERRED_EMISSIVE_OVERRIDE m_ActionEmissiveOverride;
-	//next goal pos that server notice
-	float3_t m_vNetworkTargetPosition = {};
-	f32_t m_fNetworkTargetYawDegrees = { 0.f };
+	struct NETWORK_TRANSFORM_SAMPLE
+	{
+		std::uint32_t iServerTick = 0;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+	};
+	static constexpr size_t NETWORK_SAMPLE_CAPACITY = 8;
+	NETWORK_TRANSFORM_SAMPLE m_NetworkSamples[NETWORK_SAMPLE_CAPACITY] = {};
+	size_t m_iNetworkSampleCount = 0;
+	f32_t m_fPlaybackServerTick = 0.f;
 	/* Follows the network yaw at TURN_DEGREES_PER_SECOND instead of jumping to
 	it. Presentation only: the server's value stays the one gameplay reads. */
 	f32_t m_fPresentationYawDegrees = { 0.f };

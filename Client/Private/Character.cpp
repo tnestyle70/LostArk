@@ -33,6 +33,10 @@ namespace
 	.md/JS/08-10/2026-08-10_LOSTARK_CLOTH_SPRINGBONE_REWRITE_RESULT.md. */
 	constexpr bool_t BONE_CHAINS_ENABLED = true;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr f32_t INTERPOLATION_DELAY_TICKS = 2.f;
+	constexpr f32_t PLAYBACK_SNAP_TICKS = 6.f;
+	constexpr f32_t PLAYBACK_DRIFT_GAIN = 4.f;
+	constexpr f32_t TELEPORT_DISTANCE_SQ = 100.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
@@ -699,32 +703,76 @@ void CCharacter::Update_Chain()
 void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 {
 	if (!m_hasNetworkState ||
-		nullptr == m_pTransformCom)
+		nullptr == m_pTransformCom ||
+		0 == m_iNetworkSampleCount)
 	{
 		return;
 	}
-	//current pos
-	const vector_t current =
-		m_pTransformCom->Get_State(STATE::POSITION);
-	//network에서 받은 target pos와의 거리
-	const vector_t target = XMVectorSet(
-		m_vNetworkTargetPosition.x,
-		m_vNetworkTargetPosition.y,
-		m_vNetworkTargetPosition.z,
-		1.f);
-	//current와 target blending
-	const f32_t blend = (std::min)(1.f, 12.f * fTimeDelta);
 
-	vector_t next = XMVectorLerp(
-		current,
-		target,
-		blend);
+	const f32_t oldestTick =
+		static_cast<f32_t>(m_NetworkSamples[0].iServerTick);
+	const f32_t newestTick = static_cast<f32_t>(
+		m_NetworkSamples[m_iNetworkSampleCount - 1].iServerTick);
 
-	const vector_t remaining = target - next;
+	m_fPlaybackServerTick += fTimeDelta * SERVER_TICK_HZ;
 
-	if (XMVectorGetX(XMVector3LengthSq(remaining)) < 0.0001f)
+	const f32_t targetTick = newestTick - INTERPOLATION_DELAY_TICKS;
+	const f32_t drift = targetTick - m_fPlaybackServerTick;
+	if (fabsf(drift) > PLAYBACK_SNAP_TICKS)
 	{
-		next = target;
+		m_fPlaybackServerTick = targetTick;
+	}
+	else
+	{
+		m_fPlaybackServerTick +=
+			drift * (std::min)(1.f, PLAYBACK_DRIFT_GAIN * fTimeDelta);
+	}
+
+	m_fPlaybackServerTick = (std::max)(
+		oldestTick,
+		(std::min)(newestTick, m_fPlaybackServerTick));
+
+	size_t older = m_iNetworkSampleCount - 1;
+	for (size_t i = 0; i + 1 < m_iNetworkSampleCount; ++i)
+	{
+		if (m_fPlaybackServerTick <=
+			static_cast<f32_t>(m_NetworkSamples[i + 1].iServerTick))
+		{
+			older = i;
+			break;
+		}
+	}
+
+	const NETWORK_TRANSFORM_SAMPLE& from = m_NetworkSamples[older];
+	const NETWORK_TRANSFORM_SAMPLE& to = m_NetworkSamples[
+		(std::min)(older + 1, m_iNetworkSampleCount - 1)];
+
+	vector_t next = XMVectorSet(
+		to.vPosition.x,
+		to.vPosition.y,
+		to.vPosition.z,
+		1.f);
+	f32_t targetYawDegrees = to.fYawDegrees;
+
+	if (to.iServerTick > from.iServerTick)
+	{
+		const f32_t ratio =
+			(m_fPlaybackServerTick - static_cast<f32_t>(from.iServerTick)) /
+			static_cast<f32_t>(to.iServerTick - from.iServerTick);
+
+		const vector_t fromPosition = XMVectorSet(
+			from.vPosition.x,
+			from.vPosition.y,
+			from.vPosition.z,
+			1.f);
+		next = XMVectorLerp(fromPosition, next, ratio);
+
+		f32_t yawSpan = to.fYawDegrees - from.fYawDegrees;
+		while (yawSpan > 180.f)
+			yawSpan -= 360.f;
+		while (yawSpan < -180.f)
+			yawSpan += 360.f;
+		targetYawDegrees = from.fYawDegrees + yawSpan * ratio;
 	}
 
 	m_pTransformCom->Set_State(
@@ -735,7 +783,7 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 	direction at every cell, so copying the latest value straight in reads as a
 	series of snaps. Turning toward it at a fixed rate keeps the server's yaw
 	authoritative and only spreads the change over a few frames. */
-	f32_t difference = m_fNetworkTargetYawDegrees - m_fPresentationYawDegrees;
+	f32_t difference = targetYawDegrees - m_fPresentationYawDegrees;
 	while (difference > 180.f)
 		difference -= 360.f;
 	while (difference < -180.f)
@@ -743,7 +791,7 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 
 	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
 	if (fabsf(difference) <= step)
-		m_fPresentationYawDegrees = m_fNetworkTargetYawDegrees;
+		m_fPresentationYawDegrees = targetYawDegrees;
 	else
 		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
 
@@ -763,7 +811,7 @@ void CCharacter::Set_Position(fvector_t vPosition)
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
 }
 
-bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees, bool_t isMoving)
+bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees, bool_t isMoving, std::uint32_t iServerTick)
 {
 	//client replication이 서버 상태를 character 표현 상태로 전달하는 public 함수이다.
 	//character는 S2C_WORLD_SNAPSHOT을 직접 받지 않는다.
@@ -780,13 +828,48 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 	//network state apply!
 	/* The first snapshot is where the character is, not somewhere it turned to,
 	so it takes the yaw outright; spawning would otherwise spin into place. */
-	if (!m_hasNetworkState)
+	bool_t reset = !m_hasNetworkState;
+	if (!reset && m_iNetworkSampleCount > 0)
+	{
+		const NETWORK_TRANSFORM_SAMPLE& newest =
+			m_NetworkSamples[m_iNetworkSampleCount - 1];
+		const f32_t dx = position.x - newest.vPosition.x;
+		const f32_t dy = position.y - newest.vPosition.y;
+		const f32_t dz = position.z - newest.vPosition.z;
+		if (dx * dx + dy * dy + dz * dz > TELEPORT_DISTANCE_SQ)
+			reset = true;
+	}
+
+	if (reset)
+	{
+		m_iNetworkSampleCount = 0;
 		m_fPresentationYawDegrees = yawDegrees;
+		m_fPlaybackServerTick =
+			static_cast<f32_t>(iServerTick) - INTERPOLATION_DELAY_TICKS;
+	}
 	if (!m_hasNetworkState)
 		m_BoneChains.Reset();
+
+	if (m_iNetworkSampleCount > 0 &&
+		m_NetworkSamples[m_iNetworkSampleCount - 1].iServerTick >= iServerTick)
+	{
+		m_NetworkSamples[m_iNetworkSampleCount - 1].vPosition = position;
+		m_NetworkSamples[m_iNetworkSampleCount - 1].fYawDegrees = yawDegrees;
+	}
+	else
+	{
+		if (NETWORK_SAMPLE_CAPACITY == m_iNetworkSampleCount)
+		{
+			for (size_t i = 1; i < NETWORK_SAMPLE_CAPACITY; ++i)
+				m_NetworkSamples[i - 1] = m_NetworkSamples[i];
+			--m_iNetworkSampleCount;
+		}
+		m_NetworkSamples[m_iNetworkSampleCount].iServerTick = iServerTick;
+		m_NetworkSamples[m_iNetworkSampleCount].vPosition = position;
+		m_NetworkSamples[m_iNetworkSampleCount].fYawDegrees = yawDegrees;
+		++m_iNetworkSampleCount;
+	}
 	m_hasNetworkState = true;
-	m_vNetworkTargetPosition = position;
-	m_fNetworkTargetYawDegrees = yawDegrees;
 
 	Set_Locomotion(isMoving);
 	return true;

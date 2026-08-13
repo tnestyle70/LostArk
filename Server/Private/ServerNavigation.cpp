@@ -180,6 +180,68 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 	return true;
 }
 
+bool LostArk::Server::CServerNavigation::Sample_Position(
+	const float x,
+	const float z,
+	SERVER_NAV_POINT& outPoint) const
+{
+	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z))
+		return false;
+	const int cellX = static_cast<int>(std::floor((x - m_fOriginX) / m_fCellSize));
+	const int cellZ = static_cast<int>(std::floor((z - m_fOriginZ) / m_fCellSize));
+	if (cellX < 0 || cellZ < 0 ||
+		cellX >= static_cast<int>(m_iWidth) ||
+		cellZ >= static_cast<int>(m_iHeight))
+	{
+		return false;
+	}
+	const std::uint32_t index = static_cast<std::uint32_t>(
+		cellZ * static_cast<int>(m_iWidth) + cellX);
+	if (0u == m_Walkable[index])
+		return false;
+	outPoint = { x, m_Heights[index], z };
+	return true;
+}
+
+bool LostArk::Server::CServerNavigation::Has_LineOfSight(
+	const float startX,
+	const float startZ,
+	const float endX,
+	const float endZ) const
+{
+	constexpr float LOS_HEIGHT_TOLERANCE = 1.f;
+	SERVER_NAV_POINT startPoint{};
+	SERVER_NAV_POINT endPoint{};
+	if (!Sample_Position(startX, startZ, startPoint) ||
+		!Sample_Position(endX, endZ, endPoint))
+	{
+		return false;
+	}
+	const float deltaX = endX - startX;
+	const float deltaZ = endZ - startZ;
+	const float distance = std::hypot(deltaX, deltaZ);
+	const int stepCount =
+		1 + static_cast<int>(distance / (m_fCellSize * 0.25f));
+	for (int step = 1; step < stepCount; ++step)
+	{
+		const float ratio =
+			static_cast<float>(step) / static_cast<float>(stepCount);
+		SERVER_NAV_POINT samplePoint{};
+		if (!Sample_Position(
+			startX + deltaX * ratio,
+			startZ + deltaZ * ratio,
+			samplePoint))
+		{
+			return false;
+		}
+		const float expectedHeight =
+			startPoint.y + (endPoint.y - startPoint.y) * ratio;
+		if (std::abs(samplePoint.y - expectedHeight) > LOS_HEIGHT_TOLERANCE)
+			return false;
+	}
+	return true;
+}
+
 bool LostArk::Server::CServerNavigation::Find_Path(
 	const float startX,
 	const float startZ,

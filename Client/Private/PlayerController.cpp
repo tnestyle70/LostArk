@@ -51,9 +51,11 @@ namespace
 	on the Artist third basic-attack stage), so a held button cannot skip one. */
 	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
 
-	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 100 };
-	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 1.f;
+	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 50 };
+	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 0.5f;
 	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
+	constexpr std::chrono::milliseconds SKILL_AIM_RESEND_INTERVAL{ 50 };
+	constexpr f32_t SKILL_AIM_RESEND_EPSILON = 0.1f;
 }
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
@@ -72,6 +74,8 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_LastBasicAttackSentAt = {};
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
+	m_LastSkillAimSentAt = {};
+	m_LastSentSkillAim = {};
 }
 
 void Client::CPlayerController::Rebind_LocalCharacter(
@@ -88,6 +92,8 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	m_LastBasicAttackSentAt = {};
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
+	m_LastSkillAimSentAt = {};
+	m_LastSentSkillAim = {};
 }
 
 void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
@@ -188,6 +194,42 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 				aim.x,
 				aim.z))
 			{
+				++m_iNextActionSequence;
+				if (0 == m_iNextActionSequence)
+					m_iNextActionSequence = 1;
+				if (requestedSkillId == m_iHeldSkillId)
+				{
+					m_LastSkillAimSentAt = std::chrono::steady_clock::now();
+					m_LastSentSkillAim = aim;
+				}
+			}
+		}
+	}
+
+	if (LostArk::Shared::INVALID_SKILL_ID != m_iHeldSkillId &&
+		gameplayCommandsEnabled &&
+		nullptr != character && nullptr != commandSink)
+	{
+		const auto now = std::chrono::steady_clock::now();
+		const shared_ptr<CTransform> transform = character->Get_Transform();
+		float3_t aim{};
+		if (now - m_LastSkillAimSentAt >= SKILL_AIM_RESEND_INTERVAL &&
+			nullptr != transform &&
+			Try_PickGroundPlane(
+				XMVectorGetY(transform->Get_State(STATE::POSITION)), aim))
+		{
+			const f32_t driftX = aim.x - m_LastSentSkillAim.x;
+			const f32_t driftZ = aim.z - m_LastSentSkillAim.z;
+			if (driftX * driftX + driftZ * driftZ >=
+				SKILL_AIM_RESEND_EPSILON * SKILL_AIM_RESEND_EPSILON &&
+				commandSink->Request_SkillAim(
+					m_iNextActionSequence,
+					m_iHeldSkillId,
+					aim.x,
+					aim.z))
+			{
+				m_LastSkillAimSentAt = now;
+				m_LastSentSkillAim = aim;
 				++m_iNextActionSequence;
 				if (0 == m_iNextActionSequence)
 					m_iNextActionSequence = 1;

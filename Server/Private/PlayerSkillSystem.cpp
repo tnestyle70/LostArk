@@ -83,12 +83,13 @@ namespace
 	carries no direction and keeps the facing it already had. */
 	void ResolveAimDirection(
 		const LostArk::Server::SERVER_PLAYER& player,
-		const LostArk::Shared::C2S_USE_SKILL& command,
+		const float aimX,
+		const float aimZ,
 		float& outDirectionX,
 		float& outDirectionZ)
 	{
-		outDirectionX = command.fAimX - player.fPositionX;
-		outDirectionZ = command.fAimZ - player.fPositionZ;
+		outDirectionX = aimX - player.fPositionX;
+		outDirectionZ = aimZ - player.fPositionZ;
 		const float length = std::sqrt(
 			outDirectionX * outDirectionX + outDirectionZ * outDirectionZ);
 		if (length > 0.0001f)
@@ -141,7 +142,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 			player.hasBufferedComboInput = true;
 			ResolveAimDirection(
 				player,
-				command,
+				command.fAimX,
+				command.fAimZ,
 				player.fBufferedComboAimX,
 				player.fBufferedComboAimZ);
 		}
@@ -160,7 +162,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 
 	float directionX = 0.f;
 	float directionZ = 0.f;
-	ResolveAimDirection(player, command, directionX, directionZ);
+	ResolveAimDirection(
+		player, command.fAimX, command.fAimZ, directionX, directionZ);
 
 	player.iLastSkillSequence = command.iClientSequence;
 	player.eAction = PLAYER_ACTION_STATE::SKILL;
@@ -594,4 +597,35 @@ void LostArk::Server::CPlayerSkillSystem::Release(
 	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind)
 		return;
 	player.hasReleasedHold = true;
+}
+
+void LostArk::Server::CPlayerSkillSystem::Update_Aim(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_UPDATE_SKILL_AIM& command,
+	const CGameplayCatalog& catalog) const
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		player.iCurrentSkillId != command.iSkillId ||
+		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ))
+	{
+		return;
+	}
+	const PLAYER_SKILL_DEFINITION* skill =
+		catalog.Find_Skill(player.iCurrentSkillId);
+	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind)
+		return;
+	/* Stage 3 is the shot itself, and a released key means the charge is over
+	even if the stage jump lands next tick -- both keep the last aim. */
+	if (player.iComboStage >= 3u || player.hasReleasedHold)
+		return;
+
+	float directionX = 0.f;
+	float directionZ = 0.f;
+	ResolveAimDirection(
+		player, command.fAimX, command.fAimZ, directionX, directionZ);
+	player.fSkillAimDirectionX = directionX;
+	player.fSkillAimDirectionZ = directionZ;
+	player.fYawDegrees =
+		std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 }

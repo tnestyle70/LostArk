@@ -245,6 +245,19 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::RELEASE_SKILL;
 		command.ReleaseSkill = releaseSkill;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_UPDATE_SKILL_AIM)
+	{
+		C2S_UPDATE_SKILL_AIM updateSkillAim{};
+		if (!Read_Message(reader, updateSkillAim) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		targetRoom = Find_AssignedRoom(sessionId);
+		command.eType = ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM;
+		command.UpdateSkillAim = updateSkillAim;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_REVIVE_PLAYER)
 	{
 		C2S_REVIVE_PLAYER revivePlayer{};

@@ -27,6 +27,15 @@ namespace LostArk::Server
 			float x,
 			float z,
 			SERVER_NAV_POINT& outPoint) const;
+		bool Sample_Position(
+			float x,
+			float z,
+			SERVER_NAV_POINT& outPoint) const;
+		bool Has_LineOfSight(
+			float startX,
+			float startZ,
+			float endX,
+			float endZ) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
 		const std::string& Get_Status() const { return m_strStatus; }

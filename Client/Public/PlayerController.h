@@ -80,6 +80,8 @@ namespace Client
 		LostArk::Shared::SKILL_ID m_iHeldSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		uint8_t m_byHeldKeyCode = 0;
+		std::chrono::steady_clock::time_point m_LastSkillAimSentAt{};
+		float3_t m_LastSentSkillAim{};
 		/* A held basic attack has to keep asking: the combo buffer only takes a
 		press inside a window the server owns and the client is not told about, so
 		the press is repeated at a fixed rate instead of being predicted. */

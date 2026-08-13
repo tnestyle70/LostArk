@@ -379,6 +379,30 @@ bool CNetworkManager::Send_ReleaseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_SkillAim(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_UPDATE_SKILL_AIM message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_UPDATE_SKILL_AIM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_RevivePlayer(
 	const std::uint32_t clientSequence)
 {

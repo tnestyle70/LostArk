@@ -213,6 +213,7 @@ namespace
 				!ReadRequiredString(*pClips, "dead", entry.presentationClips.dead) ||
 				!IsResourceId(entry.bodyModel) ||
 				!IsResourceId(entry.weaponModel) ||
+				!IsResourceId(entry.animationSetId) ||
 				!archetypes.insert(entry.archetypeId).second ||
 				(entry.presentationStatus != "complete" &&
 				 entry.presentationStatus != "fallback"))

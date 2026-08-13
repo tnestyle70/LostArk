@@ -24,6 +24,13 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_RELEASE_SKILL& command,
 			const CGameplayCatalog& catalog);
 
+		/* A HOLD skill keeps accepting a new aim while it charges (stage 1 and 2,
+		before the key is released); the firing stage keeps the last direction. */
+		void Update_Aim(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_UPDATE_SKILL_AIM& command,
+			const CGameplayCatalog& catalog) const;
+
 		/* Every source of incoming player damage asks this first. A COUNTER skill
 		guarding inside its window absorbs the hit and promotes to its counter
 		stage, and the caller must then skip the damage it was about to apply. */
