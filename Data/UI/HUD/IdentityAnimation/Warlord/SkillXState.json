@@ -1,0 +1,13 @@
+{
+ "schema": "lostark.identity-keyframe-animation",
+ "formatVersion": 1,
+ "frameRate": 40.0,
+ "frameCount": 2,
+ "labels": { "ready": 0, "cooldown": 1 },
+ "layers": [
+  { "depth": 0, "sourceKey": "badge", "keyframes": [
+    { "frame": 0, "asset": "UI/HUD/Warlord/Identity/SkillX.png", "x": 0.0, "y": 0.0, "scaleX": 0.75, "scaleY": 0.75, "rotationDeg": 0.0, "alpha": 1.0, "additive": false },
+    { "frame": 1, "asset": "UI/HUD/Warlord/Identity/SkillX_Dark.png", "x": 0.0, "y": 0.0, "scaleX": 0.75, "scaleY": 0.75, "rotationDeg": 0.0, "alpha": 1.0, "additive": false }
+  ] }
+ ]
+}

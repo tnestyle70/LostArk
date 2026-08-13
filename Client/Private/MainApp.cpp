@@ -70,7 +70,7 @@ namespace
 		case CHARACTER_CLASS_ID::SLAYER:
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
-			return "Yinyangshi";
+			return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD:
@@ -95,7 +95,7 @@ namespace
 		case CHARACTER_CLASS_ID::SLAYER:
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
-			return "Yinyangshi";
+			return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD:
@@ -459,7 +459,300 @@ void CMainApp::RenderCombatHUD()
 					"wild" : "focus";
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
 		}
+		/* Warlord's defense-mode toggle (Z: skill 17800 WARLORD_NORMAL->WARLORD_DEFENSE, 17810
+		reverses it -- confirmed in Data/Balance/PlayerSkills.json, not X) is a real extracted
+		Scaleform clip too (WarLordSkinFrame::defenseMode -> defenseBody/defenseEffect
+		.gotoAndPlay("on"/"off")). protectMode (X: skill 17820, requiredStance/setsStance both
+		NONE) has no server-side stance field in HUD_PLAYER_STATE -- WarL_Id_ProtectBody/
+		ProtectEffect stay defined but untriggered until that data exists, rather than guessing a
+		fake source. */
+		else if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass &&
+			player.eStance != m_ePreviousHudStance)
+		{
+			const char_t* pLabel =
+				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance ?
+					"on" : "off";
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_DefenseBody", pLabel);
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_DefenseEffect", pLabel);
+		}
 		m_ePreviousHudStance = player.eStance;
+
+		/* Warlord's gaugeL/gaugeR identity-gauge fill is a real per-percentage reveal, not a
+		time-based clip: the source Scaleform mask (gaugeMask_8, symbol 730) is 100 distinct hand-
+		authored vector frames traced along the badge's own hex border and jumped to directly via
+		gotoAndStop(percentage) (WarLordSkinFrame::refreshGauge). GaugeL.json/GaugeR.json bake that
+		real 100-frame reveal into one real composited texture per percentage and expose each frame
+		under its own integer-string label ("0".."99"), so this reuses Play_KeyframeAnimation
+		exactly as-is -- no separate percentage-driven playback path needed in the engine. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass &&
+			player.iMaximumIdentity > 0u)
+		{
+			const int32_t iGaugeFrame = std::clamp(
+				static_cast<int32_t>(player.iCurrentIdentity * 99u / player.iMaximumIdentity),
+				0, 99);
+			const string strGaugeLabel = std::to_string(iGaugeFrame);
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_GaugeR", strGaugeLabel);
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_GaugeL", strGaugeLabel);
+		}
+
+		/* Warlord's real Z/X identity-slot art (WarLordEnableEffectMc, symbol 74) includes a hex
+		glow ring the source only shows while that slot's ability is off cooldown -- the AS3 is
+		`enabledEffect_0.visible = !this._defenseValue && this._slotEnable0` (and the _1/protectMode
+		mirror for X). eStance already gives us the exact "_defenseValue" equivalent for Z; there is
+		no client-side "_protectValue" (protectMode active) field to mirror for X (same gap noted
+		on WarL_Id_ProtectBody/ProtectEffect above), so the X ring only reflects real cooldown
+		readiness, not a "currently protecting" exclusion. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass)
+		{
+			bool_t bZReady = false, bXReady = false;
+			const HUD_SKILL_STATE* pZSkill = nullptr;
+			const HUD_SKILL_STATE* pXSkill = nullptr;
+			for (const HUD_SKILL_STATE& Skill : player.Skills)
+			{
+				if ("Z" == Skill.strInputSlot)
+				{
+					bZReady = Skill.Is_Ready(player.iServerTick);
+					pZSkill = &Skill;
+				}
+				else if ("X" == Skill.strInputSlot)
+				{
+					bXReady = Skill.Is_Ready(player.iServerTick);
+					pXSkill = &Skill;
+				}
+			}
+			const bool_t bShowZRing =
+				bZReady && LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE != player.eStance;
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_EnableRingZ", bShowZRing ? "on" : "off");
+			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_EnableRingX", bXReady ? "on" : "off");
+
+			/* The badge itself is the real cooldown indicator (WarLoardSkillSlot's SlotState.
+			SLOT_STATE_DISABLED instantly swaps depth11's child from the bright shape(589/89) to
+			the dark shape(594/584) -- confirmed frame-by-frame in the source timeline, no gradual
+			reveal baked into that swap). SkillZState.json/SkillXState.json hold both real frames
+			under "ready"/"cooldown" labels. */
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Skill_Z", bZReady ? "ready" : "cooldown");
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Skill_X", bXReady ? "ready" : "cooldown");
+
+			/* The real clockwise reveal itself lives in a separate overlay (WarLoardSkillSlot's
+			shared "coolDown" component, symbol 328 -- 240 real hand-authored frames, confirmed by
+			opening the source timeline directly) layered on top of the dark badge, not baked into
+			the badge swap above. Frame index tracks elapsed cooldown fraction: the source shape
+			starts at full coverage right after use and shrinks clockwise to nothing as the real
+			240-frame sequence progresses, so elapsed (not remaining) maps directly to frame. */
+			const auto PlayCooldownWipe = [&](const char* pSlotId, const HUD_SKILL_STATE* pSkill, bool_t bReady)
+			{
+				if (bReady || nullptr == pSkill || 0u == pSkill->iCooldownDurationTicks)
+				{
+					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, "ready");
+					return;
+				}
+				const uint32_t remainingTicks = pSkill->iCooldownEndTick > player.iServerTick ?
+					pSkill->iCooldownEndTick - player.iServerTick : 0u;
+				const f32_t fElapsedFraction = std::clamp(1.f -
+					static_cast<f32_t>(remainingTicks) / static_cast<f32_t>(pSkill->iCooldownDurationTicks),
+					0.f, 1.f);
+				const int32_t iWipeFrame = std::clamp(
+					static_cast<int32_t>(fElapsedFraction * 239.f), 0, 239);
+				m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, std::to_string(iWipeFrame));
+			};
+			PlayCooldownWipe("WarL_Id_CooldownWipeZ", pZSkill, bZReady);
+			PlayCooldownWipe("WarL_Id_CooldownWipeX", pXSkill, bXReady);
+		}
+
+		/* DimensionMaster's identity gauge is configured cyclic (Data/Balance/PlayerProfiles.json
+		identityCyclic=1): it fills 0..100 and wraps back to 0 forever, rather than holding at full
+		like every other class's gauge. The source's own minuteHand is driven the same way, one
+		full clockwise turn per cycle -- confirmed against the real DimensionMasterSkinFrame.as
+		(setMinuteHand writes straight to MovieClip.rotation, no frame-based clip involved), so
+		this maps the gauge fraction straight to degrees with no guessing. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER == player.eCharacterClass &&
+			player.iMaximumIdentity > 0u)
+		{
+			const f32_t fIdentityFraction =
+				static_cast<f32_t>(player.iCurrentIdentity) / static_cast<f32_t>(player.iMaximumIdentity);
+			m_pHUDRuntimeView->Set_SlotRotation("Dimen_MinuteHand", fIdentityFraction * 360.f);
+		}
+
+		/* DimensionMaster's backplate also holds 6 real independently spinning gear ornaments
+		(source symbols 515/519/523/529/535/545, each wrapping its own multi-frame rotating leaf)
+		-- confirmed by sampling each one's own SWF sub-timeline directly (source frameRate=40, so
+		1 frame = 25ms). None of the 6 map to any server field or DimensionMasterSkinFrame setter;
+		they are pure clockwork idle animation baked into the movieclip timeline itself, so they
+		run on wall-clock phase and loop unconditionally regardless of identity/cooldown state.
+		515/523/529 are true gears; 545 spins a full continuous 360 deg every 80 frames (measured
+		~4.515 deg/frame, 4.515*80=361.2 -- confirmed against the real curve, not assumed). 519/535
+		are small decorative filigree pieces, not circular gears (confirmed visually from the
+		extracted art), with only a brief few-degree real sway near the end of their own cycle;
+		included for completeness since real per-frame timeline data exists for both. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER == player.eCharacterClass)
+		{
+			const uint64_t ullNowMs = GetTickCount64();
+
+			// gear545: continuous full spin, real curve 0 -> 360 deg over 80 frames (2000ms)
+			{
+				constexpr uint64_t GEAR545_CYCLE_MS = 2000ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR545_CYCLE_MS) / static_cast<f32_t>(GEAR545_CYCLE_MS);
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_545", fFrac * 360.f);
+			}
+
+			// gear523: real full-cycle linear sweep 0 -> -90 deg over 120 frames (3000ms), snaps
+			// back to 0 at wrap (measured directly, no snap visible mid-cycle)
+			{
+				constexpr uint64_t GEAR523_CYCLE_MS = 3000ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR523_CYCLE_MS) / static_cast<f32_t>(GEAR523_CYCLE_MS);
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_523", fFrac * -90.f);
+			}
+
+			// gear529: real full-cycle linear sweep 0 -> -60 deg over 80 frames (2000ms), snaps
+			// back to 0 at wrap
+			{
+				constexpr uint64_t GEAR529_CYCLE_MS = 2000ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR529_CYCLE_MS) / static_cast<f32_t>(GEAR529_CYCLE_MS);
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_529", fFrac * -60.f);
+			}
+
+			// gear515: real curve holds at 0 deg through most of the cycle, winds 0->60 deg late
+			// (frac 0.625~0.8, matching source frames50-64 of 80), then holds at 60 deg until
+			// wrap -- measured directly from the source timeline, not a plain sawtooth.
+			{
+				constexpr uint64_t GEAR515_CYCLE_MS = 2000ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR515_CYCLE_MS) / static_cast<f32_t>(GEAR515_CYCLE_MS);
+				f32_t fDegrees = 0.f;
+				if (fFrac >= 0.8f)
+					fDegrees = 60.f;
+				else if (fFrac >= 0.625f)
+					fDegrees = 60.f * (fFrac - 0.625f) / 0.175f;
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_515", fDegrees);
+			}
+
+			// gear519: real brief symmetric sway 0->7.5->0 deg near frac 0.80~0.8625 of its
+			// 80-frame (2000ms) cycle, still the rest of the time
+			{
+				constexpr uint64_t GEAR519_CYCLE_MS = 2000ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR519_CYCLE_MS) / static_cast<f32_t>(GEAR519_CYCLE_MS);
+				f32_t fDegrees = 0.f;
+				if (fFrac >= 0.80f && fFrac < 0.825f)
+					fDegrees = 7.5f * (fFrac - 0.80f) / 0.025f;
+				else if (fFrac >= 0.825f && fFrac < 0.8625f)
+					fDegrees = 7.5f * (1.f - (fFrac - 0.825f) / 0.0375f);
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_519", fDegrees);
+			}
+
+			// gear535: real down-then-up swing (0 -> -8.984 -> 6.015 -> 0 deg) near the end of
+			// its 95-frame (2375ms) cycle, still the rest of the time
+			{
+				constexpr uint64_t GEAR535_CYCLE_MS = 2375ull;
+				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR535_CYCLE_MS) / static_cast<f32_t>(GEAR535_CYCLE_MS);
+				f32_t fDegrees = 0.f;
+				if (fFrac >= 0.7368f && fFrac < 0.9053f)
+					fDegrees = -8.984f * (fFrac - 0.7368f) / (0.9053f - 0.7368f);
+				else if (fFrac >= 0.9053f && fFrac < 0.9474f)
+					fDegrees = -8.984f + (6.015f - -8.984f) * (fFrac - 0.9053f) / (0.9474f - 0.9053f);
+				else if (fFrac >= 0.9474f && fFrac < 0.9895f)
+					fDegrees = 6.015f * (1.f - (fFrac - 0.9474f) / (0.9895f - 0.9474f));
+				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_535", fDegrees);
+			}
+		}
+
+		/* Artist's (yinyangshi) real 0..100 identity gauge (identityCyclic=0, holds at max --
+		Server has no separate bubble/stance counter, confirmed absent from PLAYER_STANCE_ID and
+		PLAYER_SNAPSHOT) is split into 3 equal thirds on the client to drive the 3 real
+		positionGuide slots. The current third plays the real per-percentage gauge ring
+		(coolDown_ArtistGauge, "0".."99"); thirds not yet reached stay empty. A third that just
+		completed plays the real one-shot bubble-fill sprite (artistBubbleEffect, real playback
+		order i56/i50/i51/i52/i53/i54/i55) exactly once on the edge into "filled" -- Play_
+		KeyframeAnimation() restarts its window on every call, so re-triggering it every frame
+		would never let the sprite finish -- then the engine's own "hold on last frame" behavior
+		(HUDRuntimeView.h) settles on that window's final key, which is the real persistent glow
+		(shape469) baked in as the sprite's last frame, matching the real play-once-then-stay-lit
+		behavior. This reads only the existing real iCurrentIdentity/iMaximumIdentity fields -- no
+		new server field. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass &&
+			player.iMaximumIdentity > 0u)
+		{
+			const f32_t fFraction = static_cast<f32_t>(player.iCurrentIdentity) /
+				static_cast<f32_t>(player.iMaximumIdentity);
+			const f32_t fScaled = std::clamp(fFraction, 0.f, 1.f) * 3.f;
+			/* iCompletedCount is how many of the 3 slots are fully done -- 0..3, NOT clamped to 2,
+			so fFraction==1.0 (fScaled==3.0) correctly marks all 3 slots complete instead of
+			leaving the 3rd stuck showing a 99%-full ring forever (the previous std::min(2, ...)
+			clamp made "i < iCurrentSegment" impossible to satisfy for i==2). */
+			const int32_t iCompletedCount = std::min(3, static_cast<int32_t>(fScaled));
+			const f32_t fSegmentFraction = fScaled - static_cast<f32_t>(iCompletedCount);
+
+			const char* pSlotIds[3] = { "Yi_Id_GaugeRing", "Yi_Id_GaugeSlot_2", "Yi_Id_GaugeSlot_3" };
+			static bool_t bPopped[3] = { false, false, false };
+			for (int32_t i = 0; i < 3; ++i)
+			{
+				if (i < iCompletedCount)
+				{
+					if (!bPopped[i])
+					{
+						m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotIds[i], "pop");
+						bPopped[i] = true;
+					}
+				}
+				else if (i > iCompletedCount)
+				{
+					bPopped[i] = false;
+					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotIds[i], "empty");
+				}
+				else
+				{
+					bPopped[i] = false;
+					const int32_t iGaugeFrame = std::clamp(
+						static_cast<int32_t>(fSegmentFraction * 99.f), 0, 99);
+					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotIds[i], std::to_string(iGaugeFrame));
+				}
+			}
+		}
+
+		/* Artist's Z/X identity slots are real ARKNewSlot instances (yinYangShiSlot, symbol 343,
+		shared by both) -- confirmed real skills (Z=31050, X=31110 in PlayerSkills.json) reacting
+		through the exact same generic mechanism as every other skill slot in the game: keyBind
+		text/icon dims to 30% brightness when not ready (ARKNewSlot.activate's real
+		ColorTransform(0.3,0.3,0.3,1)), and a real 238-frame coolDown wipe (symbol 334, same
+		per-frame vector mask technique as Warlord's 240-frame wipe) sweeps over the icon. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
+		{
+			bool_t bZReady = false, bXReady = false;
+			const HUD_SKILL_STATE* pZSkill = nullptr;
+			const HUD_SKILL_STATE* pXSkill = nullptr;
+			for (const HUD_SKILL_STATE& Skill : player.Skills)
+			{
+				if ("Z" == Skill.strInputSlot)
+				{
+					bZReady = Skill.Is_Ready(player.iServerTick);
+					pZSkill = &Skill;
+				}
+				else if ("X" == Skill.strInputSlot)
+				{
+					bXReady = Skill.Is_Ready(player.iServerTick);
+					pXSkill = &Skill;
+				}
+			}
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Yin_Skill_Z", bZReady ? "ready" : "cooldown");
+			m_pHUDRuntimeView->Play_KeyframeAnimation("Yin_Skill_X", bXReady ? "ready" : "cooldown");
+
+			const auto PlayZXWipe = [&](const char* pSlotId, const HUD_SKILL_STATE* pSkill, bool_t bReady)
+			{
+				if (bReady || nullptr == pSkill || 0u == pSkill->iCooldownDurationTicks)
+				{
+					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, "ready");
+					return;
+				}
+				const uint32_t remainingTicks = pSkill->iCooldownEndTick > player.iServerTick ?
+					pSkill->iCooldownEndTick - player.iServerTick : 0u;
+				const f32_t fElapsedFraction = std::clamp(1.f -
+					static_cast<f32_t>(remainingTicks) / static_cast<f32_t>(pSkill->iCooldownDurationTicks),
+					0.f, 1.f);
+				const int32_t iWipeFrame = std::clamp(
+					static_cast<int32_t>(fElapsedFraction * 237.f), 0, 237);
+				m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, std::to_string(iWipeFrame));
+			};
+			PlayZXWipe("Yin_Skill_Z_Wipe", pZSkill, bZReady);
+			PlayZXWipe("Yin_Skill_X_Wipe", pXSkill, bXReady);
+		}
 
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
@@ -557,6 +850,54 @@ void CMainApp::RenderSkillCooldowns()
 	{
 		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
 			continue;
+
+		/* Warlord's Z/X badges have their own real extracted cooldown visual (WarLordSkinFrame's
+		SkillSlot "disabled" state swaps the whole icon to a real dark variant, see the Skill_Z/X
+		keyframe wiring below) instead of this generic pie sweep, which was built for Q-F only. */
+		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
+		{
+			/* Artist's Z/X slots are real ARKNewSlot instances too, which have their own real
+			coolDown wipe (already keyframed, see Yin_Skill_Z/X_Wipe below) AND a real cooldownText
+			TextField sub-component (confirmed: yinYangShiSlot symbol 343, depth15, name
+			"cooldownText") -- draw just the countdown number here, same "Ns" style as Q-F, without
+			the generic pie (Artist's real wipe shape already covers that). */
+			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
+			{
+				const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
+					Skill.iCooldownEndTick - player.iServerTick : 0u;
+				if (0u != remainingTicks)
+				{
+					f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+					if (m_pHUDRuntimeView->Get_SlotRect("Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+					{
+						const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
+						const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
+						const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
+
+						const ImVec2 vTopLeft(
+							pViewport->WorkPos.x + fX * fScaleX,
+							pViewport->WorkPos.y + fY * fScaleY);
+						const ImVec2 vCenter(
+							vTopLeft.x + 22.5f * 0.5f * fScaleX,
+							vTopLeft.y + 22.5f * 0.5f * fScaleY);
+
+						ImFont* pFont = ImGui::GetFont();
+						const f32_t fFontSize = 22.5f * fScaleY * 0.34f;
+						const ImVec2 vTextSize =
+							pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
+						const ImVec2 vTextPos(
+							vCenter.x - vTextSize.x * 0.5f,
+							vCenter.y - vTextSize.y * 0.5f);
+
+						pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
+							IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
+						pDrawList->AddText(pFont, fFontSize, vTextPos,
+							IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
+					}
+				}
+			}
+			continue;
+		}
 
 		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
 			Skill.iCooldownEndTick - player.iServerTick : 0u;

@@ -424,6 +424,20 @@ bool_t Client::CHUDRuntimeView::Play_KeyframeAnimation(const string& strSlotId, 
 	return false;
 }
 
+bool_t Client::CHUDRuntimeView::Set_SlotRotation(const string& strSlotId, f32_t fDegrees)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId)
+			continue;
+
+		Slot.fRotation = fDegrees;
+		return true;
+	}
+
+	return false;
+}
+
 void Client::CHUDRuntimeView::Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd)
 {
 	auto pView = static_cast<CHUDRuntimeView*>(pCmd->UserCallbackData);

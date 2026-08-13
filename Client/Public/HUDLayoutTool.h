@@ -25,6 +25,13 @@ public:
 		IDENTITY_GAUGE,
 		SKILL,
 		ITEM,
+		/* Extracted Scaleform identity-HUD clips (LanceMaster's stance switch, Warlord's defense/
+		protect body+effect, gauge fill, Z/X slot art) play back through CHUDRuntimeView's own
+		keyframeAnimationPath, not the tint/frame-strip animation this enum otherwise describes.
+		Load() validates every slot's "type" against this enum's range, so a slot using this kind
+		without a matching entry here fails that check and takes the whole document down with it --
+		which silently emptied the Combat HUD tab's class list down to just "Default". */
+		KEYFRAME_ANIMATION,
 	};
 
 	/* Monochrome silhouette icons (the top-left bar set) are authored once and colored per state,
@@ -69,6 +76,12 @@ public:
 		float				fAnimationScale = 1.1f;
 		float				fAnimationOffsetX = 0.f;
 		float				fAnimationOffsetY = 0.f;
+
+		/* KEYFRAME_ANIMATION slots (extracted Scaleform identity clips) carry no TextureLayers of
+		their own -- CHUDRuntimeView draws them entirely from this document instead. The Tool only
+		round-trips the reference so repositioning one here does not silently drop it on Save(). */
+		string				strKeyframeAnimationPath;
+		float				fKeyframeAnimationScale = 1.f;
 	};
 
 public:
