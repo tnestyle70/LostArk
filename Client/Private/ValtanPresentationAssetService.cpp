@@ -51,19 +51,36 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		CRuntimeAssetRoot::Resolve(pActor->bodyModel);
 	const std::filesystem::path weaponPath =
 		CRuntimeAssetRoot::Resolve(pActor->weaponModel);
-	if (bodyPath.empty() || weaponPath.empty())
+	const std::filesystem::path animSetPath =
+		CRuntimeAssetRoot::Resolve(pActor->animationSetId);
+	if (bodyPath.empty() || weaponPath.empty() || animSetPath.empty())
 		return E_FAIL;
+
+	unique_ptr<CModel> bodyModel = CModel::Create(
+		pDevice,
+		pContext,
+		MODEL::ANIM,
+		bodyPath.string().c_str(),
+		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
+	if (nullptr == bodyModel)
+		return E_FAIL;
+	const unique_ptr<CModel> animSetModel = CModel::Create(
+		pDevice,
+		pContext,
+		MODEL::ANIM,
+		animSetPath.string().c_str(),
+		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
+	if (nullptr == animSetModel ||
+		FAILED(bodyModel->Attach_AnimationSet(*animSetModel)))
+	{
+		return E_FAIL;
+	}
 
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	staged.reserve(4u);
 	staged.emplace_back(
 		TEXT("Prototype_Component_Model_Valtan"),
-		CModel::Create(
-			pDevice,
-			pContext,
-			MODEL::ANIM,
-			bodyPath.string().c_str(),
-			XMMatrixScaling(0.0001f, 0.0001f, 0.0001f)));
+		std::move(bodyModel));
 	staged.emplace_back(
 		TEXT("Prototype_Component_Model_ValtanWeapon"),
 		CModel::Create(
