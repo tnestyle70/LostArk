@@ -51,8 +51,8 @@ namespace
 	on the Artist third basic-attack stage), so a held button cannot skip one. */
 	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
 
-	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 100 };
-	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 1.f;
+	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 50 };
+	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 0.5f;
 	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
 }
 

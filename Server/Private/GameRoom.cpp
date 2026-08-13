@@ -20,6 +20,17 @@ namespace
 	constexpr float MAX_ABS_MOVE_GOAL = 10000.f;
 	constexpr float MOVE_STOP_DISTANCE = 0.05f;
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
+	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
+	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
+
+	float Wrap_Degrees(float degrees)
+	{
+		while (degrees > 180.f)
+			degrees -= 360.f;
+		while (degrees < -180.f)
+			degrees += 360.f;
+		return degrees;
+	}
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 
@@ -56,6 +67,49 @@ namespace
 	{
 		return 0u != candidate &&
 			static_cast<std::int32_t>(candidate - previous) > 0;
+	}
+
+	void Smooth_MovePath(
+		const CServerNavigation& navigation,
+		const float startX,
+		const float startZ,
+		const float goalX,
+		const float goalZ,
+		std::vector<SERVER_NAV_POINT>& path)
+	{
+		if (path.empty())
+			return;
+		SERVER_NAV_POINT exactGoal{};
+		if (navigation.Sample_Position(goalX, goalZ, exactGoal) &&
+			navigation.Has_LineOfSight(
+				path.back().x, path.back().z, goalX, goalZ))
+		{
+			path.back() = exactGoal;
+		}
+		std::vector<SERVER_NAV_POINT> smoothed;
+		smoothed.reserve(path.size());
+		float fromX = startX;
+		float fromZ = startZ;
+		std::size_t index = 0;
+		while (index < path.size())
+		{
+			std::size_t visible = index;
+			for (std::size_t candidate = path.size();
+				candidate > index + 1; --candidate)
+			{
+				const SERVER_NAV_POINT& point = path[candidate - 1];
+				if (navigation.Has_LineOfSight(fromX, fromZ, point.x, point.z))
+				{
+					visible = candidate - 1;
+					break;
+				}
+			}
+			smoothed.push_back(path[visible]);
+			fromX = path[visible].x;
+			fromZ = path[visible].z;
+			index = visible + 1;
+		}
+		path = std::move(smoothed);
 	}
 
 	WORLD_ENTITY_KIND To_NetworkKind(const WORLD_BOOTSTRAP_KIND kind)
@@ -491,6 +545,13 @@ void LostArk::Server::CGameRoom::Handle_Move(
 			player.hasMoveGoal = false;
 			return;
 		}
+		Smooth_MovePath(
+			m_ServerNavigation,
+			player.fPositionX,
+			player.fPositionZ,
+			move.fGoalX,
+			move.fGoalZ,
+			player.MovePath);
 		const SERVER_NAV_POINT& goal = player.MovePath.back();
 		player.fMoveGoalX = goal.x;
 		player.fMoveGoalZ = goal.z;
@@ -1486,17 +1547,56 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		float proposedZ = targetZ;
 		if (!reachedPathPoint)
 		{
-			player.fYawDegrees =
+			const float desiredYaw =
 				std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+			const float yawDifference =
+				Wrap_Degrees(desiredYaw - player.fYawDegrees);
+			const float maxYawStep =
+				PLAYER_TURN_DEGREES_PER_SECOND * fixedDeltaSeconds;
+			if (distance <= DIRECT_BEARING_DISTANCE ||
+				std::abs(yawDifference) <= maxYawStep)
+			{
+				player.fYawDegrees = desiredYaw;
+			}
+			else
+			{
+				player.fYawDegrees = Wrap_Degrees(player.fYawDegrees +
+					(yawDifference > 0.f ? maxYawStep : -maxYawStep));
+			}
 			const float moveDistance = (std::min)(
 				player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player) *
 					fixedDeltaSeconds,
 				distance);
 			const float moveRatio = moveDistance / distance;
-			proposedX = player.fPositionX + deltaX * moveRatio;
+			float stepX = deltaX * moveRatio;
+			float stepZ = deltaZ * moveRatio;
+			if (player.fYawDegrees != desiredYaw)
+			{
+				const float headingRadians =
+					player.fYawDegrees / RADIANS_TO_DEGREES;
+				const float headingStepX =
+					std::sin(headingRadians) * moveDistance;
+				const float headingStepZ =
+					std::cos(headingRadians) * moveDistance;
+				SERVER_NAV_POINT walkable{};
+				if (!m_ServerNavigation.Is_Loaded() ||
+					m_ServerNavigation.Sample_Position(
+						player.fPositionX + headingStepX,
+						player.fPositionZ + headingStepZ,
+						walkable))
+				{
+					stepX = headingStepX;
+					stepZ = headingStepZ;
+				}
+				else
+				{
+					player.fYawDegrees = desiredYaw;
+				}
+			}
+			proposedX = player.fPositionX + stepX;
 			proposedY = player.fPositionY +
 				(targetY - player.fPositionY) * moveRatio;
-			proposedZ = player.fPositionZ + deltaZ * moveRatio;
+			proposedZ = player.fPositionZ + stepZ;
 		}
 
 		float resolvedX = player.fPositionX;

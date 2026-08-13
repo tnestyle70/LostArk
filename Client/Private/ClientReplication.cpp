@@ -737,7 +737,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		if (!character->Apply_NetworkState(
 			position,
 			player.fYawDegrees,
-			isMoving) ||
+			isMoving,
+			snapshot.iServerTick) ||
 			!character->Apply_NetworkAction(
 				player.eAction,
 				player.iSkillId,
