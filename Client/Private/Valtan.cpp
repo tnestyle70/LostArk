@@ -3,14 +3,17 @@
 #include "ActorCatalog.h"
 #include "Body_Valtan.h"
 #include "Collider.h"
+#include "DataJson.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
+#include "ProjectDataRoot.h"
 
 #include "Part_Equipment.h"
 #include "Transform.h"
 
 #include <cmath>
+#include <fstream>
 
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -71,7 +74,66 @@ HRESULT CValtan::Initialize(void* pArg)
 			m_pTransformCom->Get_State(STATE::POSITION)));
 	}
 
+	Load_PatternBindings();
+
 	return Ready_PartObjects();
+}
+
+void CValtan::Load_PatternBindings()
+{
+	m_PatternClipByActionId.clear();
+
+	const std::filesystem::path path = CProjectDataRoot::Resolve(
+		"Animation/Authored/Valtan/Valtan.patternbindings.json");
+	if (path.empty())
+		return;
+	std::ifstream input(path, std::ios::binary);
+	if (!input.is_open())
+		return;
+	const std::string text(
+		(std::istreambuf_iterator<char>(input)),
+		std::istreambuf_iterator<char>());
+
+	DATA_JSON_VALUE root;
+	std::string error;
+	const DATA_JSON_VALUE* pSchema = nullptr;
+	const DATA_JSON_VALUE* pVersion = nullptr;
+	const DATA_JSON_VALUE* pBindings = nullptr;
+	if (!CDataJson::Parse(text, root, error) || !root.Is_Object() ||
+		nullptr == (pSchema = root.Find("schema")) || !pSchema->Is_String() ||
+		pSchema->Get_String() != "lostark.valtan-pattern-bindings" ||
+		nullptr == (pVersion = root.Find("formatVersion")) ||
+		!pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
+		nullptr == (pBindings = root.Find("bindings")) ||
+		!pBindings->Is_Array())
+	{
+		OutputDebugStringA(
+			"[Client][Valtan] pattern bindings document rejected; "
+			"patterns fall back to catalog clips.\n");
+		return;
+	}
+
+	std::unordered_map<std::string, std::string> staged;
+	for (const DATA_JSON_VALUE& entry : pBindings->Get_Array())
+	{
+		const DATA_JSON_VALUE* pActionId = entry.Is_Object() ?
+			entry.Find("actionId") : nullptr;
+		const DATA_JSON_VALUE* pClip = entry.Is_Object() ?
+			entry.Find("clip") : nullptr;
+		if (nullptr == pActionId || !pActionId->Is_String() ||
+			pActionId->Get_String().empty() ||
+			nullptr == pClip || !pClip->Is_String() ||
+			pClip->Get_String().empty() ||
+			!staged.emplace(
+				pActionId->Get_String(), pClip->Get_String()).second)
+		{
+			OutputDebugStringA(
+				"[Client][Valtan] pattern bindings entry invalid or "
+				"duplicated; document rejected.\n");
+			return;
+		}
+	}
+	m_PatternClipByActionId = std::move(staged);
 }
 
 void CValtan::Priority_Update(f32_t fTimeDelta)
@@ -338,8 +400,16 @@ bool_t CValtan::Apply_NetworkState(
 		m_pColliderCom->Update(XMMatrixTranslationFromVector(
 			m_pTransformCom->Get_State(STATE::POSITION)));
 	}
+	const bool_t isPatternState =
+		VALTAN_STATE::PATTERN_WINDUP == nextState ||
+		VALTAN_STATE::PATTERN_ACTIVE == nextState ||
+		VALTAN_STATE::PATTERN_RECOVERY == nextState;
+	const bool_t actionIdChanged = m_strServerActionId != actionId;
 	m_strServerActionId.assign(actionId);
-	if (m_iState != nextState && nullptr != m_pBodyModelCom)
+	/* A pattern's stages can share one entity action kind (two ACTIVE stages in
+	a row), so the stage's actionId is what marks a clip change there. */
+	if ((m_iState != nextState || (isPatternState && actionIdChanged)) &&
+		nullptr != m_pBodyModelCom)
 	{
 		const BOSS_ACTOR_ENTRY* pActor =
 			CActorCatalog::Find_Boss("BOSS_VALTAN");
@@ -368,6 +438,13 @@ bool_t CValtan::Apply_NetworkState(
 			break;
 		default:
 			return false;
+		}
+		if (isPatternState && !m_strServerActionId.empty())
+		{
+			const auto bound =
+				m_PatternClipByActionId.find(m_strServerActionId);
+			if (bound != m_PatternClipByActionId.end())
+				pClip = &bound->second;
 		}
 		if (!m_pBodyModelCom->Set_Animation(pClip->c_str(), true))
 			return false;

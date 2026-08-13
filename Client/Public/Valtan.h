@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 
 #include <string_view>
+#include <unordered_map>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -86,6 +87,11 @@ private:
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
 	std::string m_strServerActionId;
+	/* Presentation only: pattern stage actionId -> original clip, from
+	Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A missing or
+	corrupt document leaves this empty and every pattern falls back to the
+	catalog's generic clips; it never blocks the spawn. */
+	std::unordered_map<std::string, std::string> m_PatternClipByActionId;
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
@@ -94,6 +100,7 @@ private:
 private:
 	HRESULT Ready_PartObjects();
 	HRESULT Ready_Components(f32_t collisionRadius);
+	void Load_PatternBindings();
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 
