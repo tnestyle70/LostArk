@@ -218,8 +218,49 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 	}
 
 	std::scoped_lock lock{ m_CommandMutex };
+	if (!m_acceptsCommands)
+		return false;
 	m_InboundCommands.push_back(std::move(command));
 	return true;
+}
+
+bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
+{
+	using LostArk::Shared::WORLD_ID;
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId)
+		return false;
+
+	// Gameplay containers are room-thread-owned. The mutex makes the empty
+	// decision atomic against every receive-thread Enqueue call.
+	std::scoped_lock lock{ m_CommandMutex };
+	if (!m_acceptsCommands)
+		return true;
+	if (!m_InboundCommands.empty() ||
+		!m_PendingWorldTransfers.empty() ||
+		!m_Sessions.empty() ||
+		!m_Players.empty() ||
+		!m_PlayerIdBySessionId.empty() ||
+		!m_PlayerIdByEntityId.empty())
+	{
+		return false;
+	}
+	m_acceptsCommands = false;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Commit_WorldTransferDeparture(
+	const SESSION_ID sessionId)
+{
+	if (!m_isReady || !m_PlayerIdBySessionId.contains(sessionId))
+		return false;
+
+	// CServerApp invokes this on the room thread after staging the target
+	// REGISTER/ENTER commands. The target cannot process them until this call
+	// has cleared the old CClientSession player binding.
+	Leave(
+		sessionId,
+		LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
+	return !m_PlayerIdBySessionId.contains(sessionId);
 }
 
 bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
@@ -309,10 +350,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
 			continue;
-		Leave(
-			transfer.iSessionId,
-			LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
-		m_PendingWorldTransfers.push_back(std::move(transfer));
+		const bool alreadyStaged = std::any_of(
+			m_PendingWorldTransfers.begin(),
+			m_PendingWorldTransfers.end(),
+			[sessionId = transfer.iSessionId](
+				const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == sessionId;
+			});
+		if (!alreadyStaged)
+			m_PendingWorldTransfers.push_back(std::move(transfer));
 	}
 	m_SpawnGroupRuntime.Update(
 		fixedDeltaSeconds,

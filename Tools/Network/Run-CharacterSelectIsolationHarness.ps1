@@ -2,21 +2,21 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
-    [ValidateRange(1000, 30000)]
-    [int]$HarnessTimeoutMilliseconds = 10000,
+    [ValidateRange(1000, 4000)]
+    [int]$HarnessTimeoutMilliseconds = 4000,
     [ValidateRange(1000, 15000)]
     [int]$ServerStartupTimeoutMilliseconds = 10000,
     [ValidateRange(1, 65535)]
-    [int]$HarnessPort = 17778
+    [int]$HarnessPort = 17777
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $serverExe = Join-Path $repoRoot "Server\Bin\$Configuration\Server.exe"
 $harnessExe = Join-Path $repoRoot `
-    "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
-$logRoot = [IO.Path]::GetFullPath(
-    (Join-Path $repoRoot ".codex_tmp\valtan-four-player-harness\$Configuration"))
+    "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
+$logRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot `
+    ".codex_tmp\character-select-isolation-harness\$Configuration"))
 $generatedRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot '.codex_tmp'))
 
 if (-not $logRoot.StartsWith(
@@ -28,7 +28,7 @@ if (-not (Test-Path -LiteralPath $serverExe -PathType Leaf)) {
     throw "Server executable is missing: $serverExe"
 }
 if (-not (Test-Path -LiteralPath $harnessExe -PathType Leaf)) {
-    throw "Valtan four-player harness executable is missing: $harnessExe"
+    throw "Character Select isolation harness executable is missing: $harnessExe"
 }
 
 function Get-HarnessPortListeners {
@@ -69,11 +69,13 @@ $harnessStdout = Join-Path $logRoot "$runToken.harness.stdout.log"
 $harnessStderr = Join-Path $logRoot "$runToken.harness.stderr.log"
 $serverProcess = $null
 $harnessProcess = $null
+$harnessExternalTimeoutMilliseconds =
+    $HarnessTimeoutMilliseconds * 13 + 3000
 $serverLifetimeMilliseconds = [Math]::Min(
     60000,
     [Math]::Max(
         15000,
-        $ServerStartupTimeoutMilliseconds + $HarnessTimeoutMilliseconds + 10000))
+        $harnessExternalTimeoutMilliseconds + 3000))
 
 try {
     $serverProcess = Start-Process `
@@ -133,13 +135,14 @@ try {
     $harnessProcess = [Diagnostics.Process]::new()
     $harnessProcess.StartInfo = $harnessStartInfo
     if (-not $harnessProcess.Start()) {
-        throw 'Valtan four-player harness failed to start.'
+        throw 'Character Select isolation harness failed to start.'
     }
     $harnessStdoutTask = $harnessProcess.StandardOutput.ReadToEndAsync()
     $harnessStderrTask = $harnessProcess.StandardError.ReadToEndAsync()
-    if (-not $harnessProcess.WaitForExit($HarnessTimeoutMilliseconds + 5000)) {
+    if (-not $harnessProcess.WaitForExit(
+            $harnessExternalTimeoutMilliseconds)) {
         $harnessProcess.Kill($true)
-        throw 'Valtan four-player harness exceeded its external timeout.'
+        throw 'Character Select isolation harness exceeded its external timeout.'
     }
     $harnessProcess.WaitForExit()
     $harnessExitCode = $harnessProcess.ExitCode
@@ -152,10 +155,10 @@ try {
     Write-CapturedLog -Path $harnessStdout
     Write-CapturedLog -Path $harnessStderr -AsError
     if (0 -ne $harnessExitCode) {
-        throw "Valtan four-player harness failed with code $harnessExitCode."
+        throw "Character Select isolation harness failed with code $harnessExitCode."
     }
 
-    Write-Host "Valtan four-player live harness passed: $Configuration"
+    Write-Host "Character Select isolation live harness passed: $Configuration"
 }
 catch {
     Write-CapturedLog -Path $harnessStdout

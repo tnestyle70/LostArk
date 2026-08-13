@@ -49,6 +49,12 @@ namespace LostArk::Server
 			return m_strStatus;
 		}
 
+		// Room thread only. A sealed private arena rejects every later command.
+		[[nodiscard]] bool Try_SealPrivateArenaForRetirement();
+		// Room thread only. Removes the source player before the target room can
+		// process its queued ENTER_WORLD and bind the same session again.
+		[[nodiscard]] bool Commit_WorldTransferDeparture(SESSION_ID sessionId);
+
 	private:
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
@@ -154,6 +160,7 @@ namespace LostArk::Server
 	private:
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;

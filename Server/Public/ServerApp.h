@@ -46,7 +46,8 @@ namespace LostArk::Server
 		//서버의 진입점
 		int Run(
 			std::uint32_t automaticShutdownMilliseconds = 0,
-			std::string_view bindAddress = "0.0.0.0");
+			std::string_view bindAddress = "0.0.0.0",
+			std::uint16_t port = 7777u);
 
 	private:
 		//접속을 계속 받아 새로운 session을 생성
@@ -63,16 +64,38 @@ namespace LostArk::Server
 		void Request_SessionClose(SESSION_ID sessionId);
 		//종료 callback이 남긴 sessionid를 안전하게 정리
 		void Reap_ClosedSessions();
-		CGameRoom* Find_Room(LostArk::Shared::WORLD_ID worldId);
-		CGameRoom* Find_AssignedRoom(SESSION_ID sessionId);
-		bool Bind_SessionWorld(
+
+		struct SESSION_GAMEPLAY_BINDING
+		{
+			LostArk::Shared::WORLD_ID eWorldId =
+				LostArk::Shared::WORLD_ID::END;
+			SESSION_ID iPrivateArenaOwnerSessionId =
+				INVALID_SESSION_ID;
+			std::shared_ptr<CGameRoom> pSimulation;
+		};
+
+		std::shared_ptr<CGameRoom> Acquire_EntrySimulation(
 			SESSION_ID sessionId,
 			LostArk::Shared::WORLD_ID worldId);
-		void Handle_WorldTransfers(CGameRoom& sourceRoom);
+		std::shared_ptr<CGameRoom> Find_SharedSimulation(
+			LostArk::Shared::WORLD_ID worldId);
+		bool Bind_SessionSimulation(
+			SESSION_ID sessionId,
+			LostArk::Shared::WORLD_ID worldId,
+			const std::shared_ptr<CGameRoom>& simulation);
+		bool Enqueue_AssignedCommand(
+			SESSION_ID sessionId,
+			ROOM_COMMAND command);
+		void Tick_GameplaySimulations(float fixedDeltaSeconds);
+		void Retire_QuiescentCharacterSelectArenas();
+		void Handle_WorldTransfers(
+			const std::shared_ptr<CGameRoom>& sourceSimulation);
 		bool Transfer_SessionWorld(
-			LostArk::Shared::WORLD_ID sourceWorldId,
+			const std::shared_ptr<CGameRoom>& sourceSimulation,
 			const SERVER_WORLD_TRANSFER_REQUEST& transfer);
-		void Unbind_SessionWorld(SESSION_ID sessionId);
+		void Unbind_SessionSimulation(
+			SESSION_ID sessionId,
+			const std::shared_ptr<CGameRoom>& expectedSimulation);
 		//서버 전체 종료 순서 한 곳으로 모아서 정리
 		void Shutdown();
 
@@ -84,7 +107,10 @@ namespace LostArk::Server
 		CTcpListener m_TcpListener;
 		std::map<
 			LostArk::Shared::WORLD_ID,
-			std::unique_ptr<CGameRoom>> m_GameRooms;
+			std::shared_ptr<CGameRoom>> m_SharedGameRooms;
+		std::unordered_map<
+			SESSION_ID,
+			std::shared_ptr<CGameRoom>> m_CharacterSelectArenas;
 		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
 		std::atomic_bool m_isRunning{ false };
 		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };
@@ -99,9 +125,10 @@ namespace LostArk::Server
 		std::unordered_map<
 			SESSION_ID,
 			std::shared_ptr<CClientSession>> m_Sessions;
+		// sessions, bindings, shared rooms, and private arenas share this mutex.
 		std::unordered_map<
 			SESSION_ID,
-			LostArk::Shared::WORLD_ID> m_WorldBySessionId;
+			SESSION_GAMEPLAY_BINDING> m_GameplayBindingBySessionId;
 		//종료 대기 Queue
 		std::mutex m_ClosedSessionMutex;
 		std::deque<SESSION_ID> m_ClosedSessionIds;

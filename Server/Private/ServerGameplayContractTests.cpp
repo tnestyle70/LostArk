@@ -1946,6 +1946,35 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			resetRoom.m_SpawnGroupRuntime.Activate(
 				"spawn.character-select.monster"),
 			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
+
+		CGameRoom retirementRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		ROOM_COMMAND queuedLeave{};
+		queuedLeave.eType = ROOM_COMMAND_TYPE::LEAVE;
+		queuedLeave.iSessionId = 601u;
+		queuedLeave.eLeaveReason = PLAYER_DESPAWN_REASON::DISCONNECTED;
+		const bool queuedBeforeRetirement =
+			retirementRoom.Enqueue(std::move(queuedLeave));
+		const bool sealedBeforeDrain =
+			retirementRoom.Try_SealPrivateArenaForRetirement();
+		retirementRoom.Tick(1.f / 30.f);
+		const bool sealedAfterDrain =
+			retirementRoom.Try_SealPrivateArenaForRetirement();
+
+		ROOM_COMMAND commandAfterSeal{};
+		commandAfterSeal.eType = ROOM_COMMAND_TYPE::LEAVE;
+		commandAfterSeal.iSessionId = 602u;
+		commandAfterSeal.eLeaveReason =
+			PLAYER_DESPAWN_REASON::DISCONNECTED;
+		tests.Require(
+			queuedBeforeRetirement && !sealedBeforeDrain &&
+			sealedAfterDrain &&
+			!retirementRoom.Enqueue(std::move(commandAfterSeal)),
+			"Retire a private Character Select arena only after queued leave work drains");
+
+		CGameRoom sharedRoom{ WORLD_ID::BERN };
+		tests.Require(
+			!sharedRoom.Try_SealPrivateArenaForRetirement(),
+			"Never seal a shared world through the private arena retirement path");
 	}
 
 	{
