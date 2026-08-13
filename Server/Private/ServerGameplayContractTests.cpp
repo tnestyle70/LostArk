@@ -1646,6 +1646,90 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	}
 
 	{
+		SERVER_PLAYER holdPlayer{};
+		holdPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		holdPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		holdPlayer.iCurrentHp = 1000;
+		holdPlayer.iMaximumHp = 1000;
+		holdPlayer.iCurrentResource = 1000;
+		holdPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem holdSkills;
+
+		C2S_USE_SKILL chargeStart{};
+		chargeStart.iClientSequence = 1;
+		chargeStart.iSkillId = 34590;
+		chargeStart.fAimX = 1.f;
+		chargeStart.fAimZ = 0.f;
+		tests.Require(holdSkills.Try_Start(holdPlayer, chargeStart, catalog, 10),
+			"Approve the short spear hold skill");
+
+		C2S_UPDATE_SKILL_AIM turnedAim{};
+		turnedAim.iClientSequence = 2;
+		turnedAim.iSkillId = 34590;
+		turnedAim.fAimX = 0.f;
+		turnedAim.fAimZ = -1.f;
+		const float chargeYaw = holdPlayer.fYawDegrees;
+		holdSkills.Update_Aim(holdPlayer, turnedAim, catalog);
+		tests.Require(
+			holdPlayer.fYawDegrees != chargeYaw &&
+			holdPlayer.fSkillAimDirectionZ < -0.99f,
+			"Turn a charging hold skill toward a new aim");
+
+		C2S_UPDATE_SKILL_AIM wrongSkillAim = turnedAim;
+		wrongSkillAim.iClientSequence = 3;
+		wrongSkillAim.iSkillId = 34540;
+		wrongSkillAim.fAimX = 1.f;
+		wrongSkillAim.fAimZ = 1.f;
+		holdSkills.Update_Aim(holdPlayer, wrongSkillAim, catalog);
+		tests.Require(holdPlayer.fSkillAimDirectionZ < -0.99f,
+			"Ignore an aim update naming a skill that is not running");
+
+		holdPlayer.hasReleasedHold = true;
+		C2S_UPDATE_SKILL_AIM releasedAim = turnedAim;
+		releasedAim.iClientSequence = 4;
+		releasedAim.fAimX = 1.f;
+		releasedAim.fAimZ = 0.f;
+		holdSkills.Update_Aim(holdPlayer, releasedAim, catalog);
+		tests.Require(holdPlayer.fSkillAimDirectionZ < -0.99f,
+			"Keep the last aim once the hold key is released");
+
+		holdPlayer.hasReleasedHold = false;
+		holdPlayer.iComboStage = 3u;
+		C2S_UPDATE_SKILL_AIM firingAim = turnedAim;
+		firingAim.iClientSequence = 5;
+		firingAim.fAimX = 1.f;
+		firingAim.fAimZ = 0.f;
+		holdSkills.Update_Aim(holdPlayer, firingAim, catalog);
+		tests.Require(holdPlayer.fSkillAimDirectionZ < -0.99f,
+			"Keep the last aim through the firing stage");
+
+		SERVER_PLAYER activePlayer{};
+		activePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		activePlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		activePlayer.iCurrentHp = 1000;
+		activePlayer.iMaximumHp = 1000;
+		activePlayer.iCurrentResource = 1000;
+		activePlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem activeSkills;
+		C2S_USE_SKILL activeStart{};
+		activeStart.iClientSequence = 1;
+		activeStart.iSkillId = 34540;
+		activeStart.fAimX = 1.f;
+		activeStart.fAimZ = 0.f;
+		tests.Require(activeSkills.Try_Start(activePlayer, activeStart, catalog, 10),
+			"Approve a non-hold short spear skill for the aim guard");
+		const float activeAimX = activePlayer.fSkillAimDirectionX;
+		C2S_UPDATE_SKILL_AIM activeAim{};
+		activeAim.iClientSequence = 2;
+		activeAim.iSkillId = 34540;
+		activeAim.fAimX = 0.f;
+		activeAim.fAimZ = -1.f;
+		activeSkills.Update_Aim(activePlayer, activeAim, catalog);
+		tests.Require(activeAimX == activePlayer.fSkillAimDirectionX,
+			"Ignore an aim update on a skill that is not a HOLD");
+	}
+
+	{
 		CSpawnGroupBootstrap spawnBootstrap;
 		const bool loaded =
 			spawnBootstrap.Load(WORLD_ID::CHARACTER_SELECT_ARENA);

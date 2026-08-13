@@ -66,6 +66,9 @@ namespace LostArk::Server
 		void Handle_ReleaseSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RELEASE_SKILL& releaseSkill);
+		void Handle_UpdateSkillAim(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_UPDATE_SKILL_AIM& updateSkillAim);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);

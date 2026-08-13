@@ -1243,6 +1243,65 @@ namespace
 			"Failed Release Does Not Mutate");
 	}
 
+	void Test_UpdateSkillAimRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_UPDATE_SKILL_AIM source{};
+		source.iClientSequence = 14;
+		source.iSkillId = 34590;
+		source.fAimX = 148.5f;
+		source.fAimZ = -119.25f;
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source),
+			"Writer Update Skill Aim");
+		std::vector<std::uint8_t> payload = writer.Get_Buffer();
+		testRunner.Require(
+			16 == payload.size(),
+			"Update Skill Aim Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_UPDATE_SKILL_AIM decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSkillId == source.iSkillId &&
+			decoded.fAimX == source.fAimX &&
+			decoded.fAimZ == source.fAimZ &&
+			0 == reader.Get_RemainingSize(),
+			"Update Skill Aim Round Trip");
+
+		C2S_UPDATE_SKILL_AIM invalidSkill = source;
+		invalidSkill.iSkillId = INVALID_SKILL_ID;
+		CPacketWriter invalidSkillWriter;
+		testRunner.Require(
+			!Write_Message(invalidSkillWriter, invalidSkill),
+			"Reject Aim Update Without Skill ID");
+
+		C2S_UPDATE_SKILL_AIM invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter invalidSequenceWriter;
+		testRunner.Require(
+			!Write_Message(invalidSequenceWriter, invalidSequence),
+			"Reject Aim Update Without Sequence");
+
+		C2S_UPDATE_SKILL_AIM invalidAim = source;
+		invalidAim.fAimX = std::numeric_limits<float>::quiet_NaN();
+		CPacketWriter invalidAimWriter;
+		testRunner.Require(
+			!Write_Message(invalidAimWriter, invalidAim),
+			"Reject Aim Update With Non-Finite Aim");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_UPDATE_SKILL_AIM unchanged{};
+		unchanged.iClientSequence = 66;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			66 == unchanged.iClientSequence,
+			"Failed Aim Update Does Not Mutate");
+	}
+
 	void Test_RevivePlayerRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_REVIVE_PLAYER source{};
@@ -1611,6 +1670,7 @@ int main()
 	Test_MoveRoundTrip(testRunner);
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
+	Test_UpdateSkillAimRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);

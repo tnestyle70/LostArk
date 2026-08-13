@@ -820,6 +820,46 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_UPDATE_SKILL_AIM& message)
+{
+	if (0 == message.iClientSequence ||
+		INVALID_SKILL_ID == message.iSkillId ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U32(message.iSkillId);
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_UPDATE_SKILL_AIM& message)
+{
+	C2S_UPDATE_SKILL_AIM decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U32(decoded.iSkillId) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		0 == decoded.iClientSequence ||
+		INVALID_SKILL_ID == decoded.iSkillId ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Read_Message(
 	CPacketReader& reader,
 	C2S_REVIVE_PLAYER& message)

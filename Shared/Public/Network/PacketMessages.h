@@ -280,6 +280,25 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_RELEASE_SKILL& message);
 
+	// A HOLD skill may keep turning toward the cursor while it charges. The
+	// server only honors this during the charge stages; the firing stage keeps
+	// the last direction it was given.
+	struct C2S_UPDATE_SKILL_AIM
+	{
+		std::uint32_t iClientSequence = 0;
+		SKILL_ID iSkillId = INVALID_SKILL_ID;
+		float fAimX = 0.f;
+		float fAimZ = 0.f;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_UPDATE_SKILL_AIM& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_UPDATE_SKILL_AIM& message);
+
 	bool Write_Message(
 		CPacketWriter& writer,
 		const C2S_REVIVE_PLAYER& message);

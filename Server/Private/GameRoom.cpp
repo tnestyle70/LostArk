@@ -262,6 +262,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::RELEASE_SKILL:
 			Handle_ReleaseSkill(command.iSessionId, command.ReleaseSkill);
 			break;
+		case ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM:
+			Handle_UpdateSkillAim(command.iSessionId, command.UpdateSkillAim);
+			break;
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;
@@ -689,6 +692,27 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 	m_PlayerSkillSystem.Release(
 		playerIter->second,
 		releaseSkill,
+		m_GameplayCatalog);
+}
+
+void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_UPDATE_SKILL_AIM& updateSkillAim)
+{
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+	{
+		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
+			session->Request_Close();
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	m_PlayerSkillSystem.Update_Aim(
+		playerIter->second,
+		updateSkillAim,
 		m_GameplayCatalog);
 }
 

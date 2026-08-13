@@ -65,6 +65,11 @@ public:
 	bool Send_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId);
+	bool Send_SkillAim(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float aimX,
+		float aimZ);
 	bool Send_RevivePlayer(std::uint32_t clientSequence);
 	bool Send_ChangeCharacterClass(
 		std::uint32_t clientSequence,
