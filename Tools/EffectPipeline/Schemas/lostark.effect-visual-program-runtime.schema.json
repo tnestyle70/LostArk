@@ -1,0 +1,766 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/effect-visual-program-runtime-v1.json",
+  "title": "LostArk generic Effect visual-program runtime sidecar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "runtimeId",
+    "contractRole",
+    "sourceCorpus",
+    "adapterContracts",
+    "programs",
+    "extensionCanaries",
+    "denominators",
+    "transactionPolicy",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.effect-visual-program-runtime" },
+    "formatVersion": { "const": 1 },
+    "runtimeId": { "$ref": "#/$defs/stableId" },
+    "contractRole": {
+      "const": "GENERIC_VISUAL_PROGRAM_RUNTIME_SIDECAR_STAGE_INPUT"
+    },
+    "sourceCorpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["corpusId", "artifactSha256", "rawSha256"],
+      "properties": {
+        "corpusId": { "$ref": "#/$defs/stableId" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" },
+        "rawSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "adapterContracts": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/adapterContract" }
+    },
+    "programs": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": { "$ref": "#/$defs/program" }
+    },
+    "extensionCanaries": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/extensionCanary" }
+    },
+    "denominators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "programCount",
+        "sourceRecipeOverlayProgramCount",
+        "adapterPacketProgramCount",
+        "visualRowCount",
+        "sourceRecipeOverlayCount",
+        "localDecalAdapterPacketCount",
+        "cascadeRibbonVisualRowCount",
+        "supplementalElementCount",
+        "artistFCascadeRibbonElementCount",
+        "animationTrailElementCount",
+        "failClosedCount",
+        "extensionCanaryCount",
+        "productMutationCount"
+      ],
+      "properties": {
+        "programCount": { "const": 13 },
+        "sourceRecipeOverlayProgramCount": { "const": 12 },
+        "adapterPacketProgramCount": { "const": 1 },
+        "visualRowCount": { "const": 135 },
+        "sourceRecipeOverlayCount": { "const": 70 },
+        "localDecalAdapterPacketCount": { "const": 2 },
+        "cascadeRibbonVisualRowCount": { "const": 4 },
+        "supplementalElementCount": { "const": 5 },
+        "artistFCascadeRibbonElementCount": { "const": 1 },
+        "animationTrailElementCount": { "const": 4 },
+        "failClosedCount": { "const": 63 },
+        "extensionCanaryCount": { "const": 2 },
+        "productMutationCount": { "const": 0 }
+      }
+    },
+    "transactionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loadOrder",
+        "commitMode",
+        "failureAction",
+        "productMutation",
+        "catalogMutation"
+      ],
+      "properties": {
+        "loadOrder": { "const": ["parse", "validate", "stage", "commit"] },
+        "commitMode": { "const": "ATOMIC_REPLACE_AFTER_FULL_RUNTIME_VALIDATION" },
+        "failureAction": { "const": "PRESERVE_PREVIOUS_SIDECAR_AND_PRODUCT_RUNTIME" },
+        "productMutation": { "const": false },
+        "catalogMutation": { "const": false }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullableSha256": {
+      "oneOf": [
+        { "$ref": "#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "family": {
+      "enum": [
+        "MESH_PARTICLE",
+        "SPRITE_PARTICLE",
+        "DECAL_PARTICLE",
+        "CASCADE_RIBBON",
+        "ANIMATION_TRAIL",
+        "LIGHT_PARTICLE",
+        "SCREEN_POST"
+      ]
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectAssetId", "occurrenceId"],
+      "properties": {
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "occurrenceId": { "$ref": "#/$defs/stableId" }
+      }
+    },
+    "adapterContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterId",
+        "family",
+        "packetLayouts",
+        "allowedResourceRoles"
+      ],
+      "properties": {
+        "adapterId": { "$ref": "#/$defs/stableId" },
+        "family": { "$ref": "#/$defs/family" },
+        "packetLayouts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "allowedResourceRoles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resourceRoleToken" }
+        }
+      }
+    },
+    "resourceRoleToken": {
+      "enum": [
+        "BASE_COLOR",
+        "DIFFUSE",
+        "DISSOLVE",
+        "EMISSIVE",
+        "HEIGHT",
+        "MASK",
+        "MESH_MODEL",
+        "NOISE",
+        "NORMAL",
+        "SPECULAR"
+      ]
+    },
+    "resourcePacketRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "slotId",
+        "assetId",
+        "resolutionStatus",
+        "rawSha256",
+        "byteCount",
+        "shaderRegister",
+        "sourceChannel"
+      ],
+      "properties": {
+        "role": { "$ref": "#/$defs/resourceRoleToken" },
+        "slotId": { "type": "string", "minLength": 1 },
+        "assetId": { "type": "string", "minLength": 1 },
+        "resolutionStatus": {
+          "enum": [
+            "TARGET_DOCUMENT_REFERENCE",
+            "SOURCE_EVIDENCE_ONLY",
+            "EXACT_RUNTIME_PAYLOAD_SHA256"
+          ]
+        },
+        "rawSha256": { "$ref": "#/$defs/nullableSha256" },
+        "byteCount": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "shaderRegister": {
+          "oneOf": [
+            { "type": "string", "pattern": "^t[0-9]+$" },
+            { "type": "null" }
+          ]
+        },
+        "sourceChannel": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRowId",
+        "sourceRowSha256",
+        "sourceRecordId",
+        "sourceRecordSha256",
+        "sourceRecipeSha256",
+        "moduleClosureSha256",
+        "moduleCount"
+      ],
+      "properties": {
+        "sourceRowId": { "$ref": "#/$defs/stableId" },
+        "sourceRowSha256": { "$ref": "#/$defs/sha256" },
+        "sourceRecordId": { "type": "string", "minLength": 1 },
+        "sourceRecordSha256": { "$ref": "#/$defs/sha256" },
+        "sourceRecipeSha256": { "$ref": "#/$defs/sha256" },
+        "moduleClosureSha256": { "$ref": "#/$defs/sha256" },
+        "moduleCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "targetIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetElementId",
+        "targetRecordSha256",
+        "targetPayloadRawSha256"
+      ],
+      "properties": {
+        "targetElementId": { "type": "string", "minLength": 1 },
+        "targetRecordSha256": { "$ref": "#/$defs/sha256" },
+        "targetPayloadRawSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "localDecalValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputId",
+        "normalizedParameterName",
+        "rowSha256",
+        "valueVariant",
+        "disposition",
+        "scalarValue",
+        "vectorValue",
+        "textureId",
+        "packedScalarIndex",
+        "packedVectorIndex"
+      ],
+      "properties": {
+        "inputId": { "type": "string", "minLength": 1 },
+        "normalizedParameterName": { "type": "string", "minLength": 1 },
+        "rowSha256": { "$ref": "#/$defs/sha256" },
+        "valueVariant": { "enum": ["F64", "F64X4", "TEXTURE_ID"] },
+        "disposition": { "enum": ["CONSUMED", "SUPPRESSED"] },
+        "scalarValue": {
+          "oneOf": [{ "type": "number" }, { "type": "null" }]
+        },
+        "vectorValue": {
+          "oneOf": [
+            {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "number" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "textureId": {
+          "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+        },
+        "packedScalarIndex": {
+          "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 21 }, { "type": "null" }]
+        },
+        "packedVectorIndex": {
+          "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 2 }, { "type": "null" }]
+        }
+      }
+    },
+    "localDecalStaticDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingId",
+        "normalizedParameterName",
+        "rowSha256",
+        "sourceValue",
+        "selectedValue",
+        "policyRowId",
+        "disposition"
+      ],
+      "properties": {
+        "bindingId": { "type": "string", "minLength": 1 },
+        "normalizedParameterName": { "type": "string", "minLength": 1 },
+        "rowSha256": { "$ref": "#/$defs/sha256" },
+        "sourceValue": { "type": "boolean" },
+        "selectedValue": { "type": "boolean" },
+        "policyRowId": { "type": "string", "minLength": 1 },
+        "disposition": { "const": "CONSUMED" }
+      }
+    },
+    "localDecalRenderDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingId",
+        "fieldName",
+        "rowSha256",
+        "valueVariant",
+        "boolValue",
+        "enumValue",
+        "f64Value",
+        "sourceStatus",
+        "sourceFidelity",
+        "disposition"
+      ],
+      "properties": {
+        "bindingId": { "type": "string", "minLength": 1 },
+        "fieldName": { "type": "string", "minLength": 1 },
+        "rowSha256": { "$ref": "#/$defs/sha256" },
+        "valueVariant": { "enum": ["BOOL", "ENUM_STRING", "F64"] },
+        "boolValue": {
+          "oneOf": [{ "type": "boolean" }, { "type": "null" }]
+        },
+        "enumValue": {
+          "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+        },
+        "f64Value": {
+          "oneOf": [{ "type": "number" }, { "type": "null" }]
+        },
+        "sourceStatus": { "type": "string", "minLength": 1 },
+        "sourceFidelity": { "type": "string", "minLength": 1 },
+        "disposition": { "enum": ["CONSUMED", "SUPPRESSED"] }
+      }
+    },
+    "localDecalSrv": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "assetId",
+        "rawSha256",
+        "byteCount",
+        "shaderRegister",
+        "sourceChannel",
+        "runtimeSamplerRegister",
+        "sourceSamplerEvidence",
+        "samplerPolicy",
+        "linearFormat",
+        "srgb",
+        "width",
+        "height",
+        "mipCount",
+        "arraySize"
+      ],
+      "properties": {
+        "role": { "$ref": "#/$defs/resourceRoleToken" },
+        "assetId": { "type": "string", "minLength": 1 },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "byteCount": { "type": "integer", "minimum": 1 },
+        "shaderRegister": { "type": "string", "pattern": "^t[0-5]$" },
+        "sourceChannel": { "type": "string", "minLength": 1 },
+        "runtimeSamplerRegister": { "type": "string", "pattern": "^s(?:[5-9]|10)$" },
+        "sourceSamplerEvidence": {
+          "oneOf": [
+            { "type": "string", "pattern": "^s[0-9]+$" },
+            { "type": "null" }
+          ]
+        },
+        "samplerPolicy": { "const": "LINEAR_CLAMP_UVW_BOUNDED_V1" },
+        "linearFormat": { "enum": ["BC1_UNORM", "BC3_UNORM"] },
+        "srgb": { "type": "boolean" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "mipCount": { "type": "integer", "minimum": 1 },
+        "arraySize": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "localDecalPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packetVersion",
+        "adapterId",
+        "boundedSemanticReplay",
+        "nativeExecution",
+        "nativeVertexFactoryAdmitted",
+        "nativeMrtAdmitted",
+        "runtimeCarrier",
+        "nativeVertexFactoryCandidate",
+        "nativeVertexShaderSha256",
+        "nativePixelShaderSha256",
+        "renderProfile",
+        "passIndex",
+        "pipelineState",
+        "opcode",
+        "textureLaneCount",
+        "textureMask",
+        "dynamicConsumedMask",
+        "dynamicSuppressedMask",
+        "particleColorPolicy",
+        "particleColorConsumedMask",
+        "particleColorSuppressedMask",
+        "inputConsumedMask",
+        "inputSuppressedMask",
+        "vectorComponentConsumedMask",
+        "vectorComponentSuppressedMask",
+        "staticSelectedMask",
+        "staticConsumedMask",
+        "staticSuppressedMask",
+        "renderConsumedMask",
+        "renderSuppressedMask",
+        "inputDispositions",
+        "staticDispositions",
+        "renderDispositions",
+        "packedScalars",
+        "packedVectors",
+        "srvs",
+        "preservedLimitations",
+        "packetSha256"
+      ],
+      "properties": {
+        "packetVersion": { "const": 1 },
+        "adapterId": { "const": "local-decal-rt0-bounded-v1" },
+        "boundedSemanticReplay": { "const": true },
+        "nativeExecution": { "const": false },
+        "nativeVertexFactoryAdmitted": { "const": false },
+        "nativeMrtAdmitted": { "const": false },
+        "runtimeCarrier": { "const": "EFFECT_TYPED_DECAL_PROJECTOR_RECT_V1" },
+        "nativeVertexFactoryCandidate": { "const": "flocaldecalvertexfactory" },
+        "nativeVertexShaderSha256": { "$ref": "#/$defs/sha256" },
+        "nativePixelShaderSha256": { "$ref": "#/$defs/sha256" },
+        "renderProfile": { "const": "ALPHA_ONE_SIDED_DEPTH_READ" },
+        "passIndex": { "const": 3 },
+        "pipelineState": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rasterizer", "depthStencil", "blend", "stencilReference"],
+          "properties": {
+            "rasterizer": { "const": "RS_Default" },
+            "depthStencil": { "const": "DSS_ReadOnly" },
+            "blend": { "const": "BS_EffectAlpha" },
+            "stencilReference": { "const": 0 }
+          }
+        },
+        "opcode": { "const": 14 },
+        "textureLaneCount": { "const": 6 },
+        "textureMask": { "const": 63 },
+        "dynamicConsumedMask": { "const": 0 },
+        "dynamicSuppressedMask": { "const": 15 },
+        "particleColorPolicy": { "const": 0 },
+        "particleColorConsumedMask": { "const": 0 },
+        "particleColorSuppressedMask": { "const": 0 },
+        "inputConsumedMask": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "prefixItems": [{ "const": 2182005247 }, { "const": 1 }]
+        },
+        "inputSuppressedMask": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "prefixItems": [{ "const": 2112962048 }, { "const": 0 }]
+        },
+        "vectorComponentConsumedMask": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "prefixItems": [{ "const": 15 }, { "const": 15 }, { "const": 0 }]
+        },
+        "vectorComponentSuppressedMask": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "prefixItems": [{ "const": 0 }, { "const": 0 }, { "const": 15 }]
+        },
+        "staticSelectedMask": { "const": 262139 },
+        "staticConsumedMask": { "const": 262143 },
+        "staticSuppressedMask": { "const": 0 },
+        "renderConsumedMask": { "const": 3 },
+        "renderSuppressedMask": { "const": 60 },
+        "inputDispositions": {
+          "type": "array", "minItems": 33, "maxItems": 33,
+          "items": { "$ref": "#/$defs/localDecalValue" }
+        },
+        "staticDispositions": {
+          "type": "array", "minItems": 18, "maxItems": 18,
+          "items": { "$ref": "#/$defs/localDecalStaticDisposition" }
+        },
+        "renderDispositions": {
+          "type": "array", "minItems": 6, "maxItems": 6,
+          "items": { "$ref": "#/$defs/localDecalRenderDisposition" }
+        },
+        "packedScalars": {
+          "type": "array", "minItems": 22, "maxItems": 22,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["inputId", "value"],
+            "properties": {
+              "inputId": { "type": "string", "minLength": 1 },
+              "value": { "type": "number" }
+            }
+          }
+        },
+        "packedVectors": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["inputId", "value"],
+            "properties": {
+              "inputId": { "type": "string", "minLength": 1 },
+              "value": {
+                "type": "array", "minItems": 4, "maxItems": 4,
+                "items": { "type": "number" }
+              }
+            }
+          }
+        },
+        "srvs": {
+          "type": "array", "minItems": 6, "maxItems": 6,
+          "items": { "$ref": "#/$defs/localDecalSrv" }
+        },
+        "preservedLimitations": {
+          "type": "array", "minItems": 3,
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "packetSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtimeRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selector",
+        "selectorSha256",
+        "family",
+        "adapterId",
+        "packetLayout",
+        "fidelity",
+        "disposition",
+        "tuningEligibleTransform",
+        "sourceIdentity",
+        "targetIdentity",
+        "resourcePacket",
+        "localDecalPacket",
+        "admissionBlockers",
+        "rowSha256"
+      ],
+      "properties": {
+        "selector": { "$ref": "#/$defs/selector" },
+        "selectorSha256": { "$ref": "#/$defs/sha256" },
+        "family": { "$ref": "#/$defs/family" },
+        "adapterId": { "$ref": "#/$defs/stableId" },
+        "packetLayout": { "$ref": "#/$defs/stableId" },
+        "fidelity": {
+          "enum": [
+            "LEGACY_APPROXIMATION",
+            "BOUNDED_RECONSTRUCTION",
+            "EVIDENCE_ONLY"
+          ]
+        },
+        "disposition": { "enum": ["ADMITTED_BOUNDED", "FAIL_CLOSED"] },
+        "tuningEligibleTransform": { "type": "boolean" },
+        "sourceIdentity": { "$ref": "#/$defs/sourceIdentity" },
+        "targetIdentity": {
+          "oneOf": [
+            { "$ref": "#/$defs/targetIdentity" },
+            { "type": "null" }
+          ]
+        },
+        "resourcePacket": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resourcePacketRow" }
+        },
+        "localDecalPacket": {
+          "oneOf": [
+            { "$ref": "#/$defs/localDecalPacket" },
+            { "type": "null" }
+          ]
+        },
+        "admissionBlockers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "rowSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtimeSupplementalElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selector", "selectorSha256", "family", "adapterId", "packetLayout",
+        "fidelity", "disposition", "tuningEligibleTransform", "sourceIdentity",
+        "targetIdentity", "schedule", "resourcePacket", "cascadeRibbonPacket",
+        "animationTrailPacket", "admissionBlockers", "rowSha256"
+      ],
+      "properties": {
+        "selector": { "$ref": "#/$defs/selector" },
+        "selectorSha256": { "$ref": "#/$defs/sha256" },
+        "family": { "enum": ["CASCADE_RIBBON", "ANIMATION_TRAIL"] },
+        "adapterId": { "$ref": "#/$defs/stableId" },
+        "packetLayout": { "enum": ["CASCADE_RIBBON_TYPED_PACKET_V1", "ANIMATION_TRAIL_ELEMENT_V1"] },
+        "fidelity": { "const": "BOUNDED_RECONSTRUCTION" },
+        "disposition": { "const": "ADMITTED_BOUNDED" },
+        "tuningEligibleTransform": { "const": true },
+        "sourceIdentity": {
+          "type": "object", "additionalProperties": false,
+          "required": ["sourceRecordId", "sourceRecordSha256", "sourcePayloadRawSha256"],
+          "properties": {
+            "sourceRecordId": { "type": "string", "minLength": 1 },
+            "sourceRecordSha256": { "$ref": "#/$defs/sha256" },
+            "sourcePayloadRawSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "targetIdentity": { "$ref": "#/$defs/targetIdentity" },
+        "schedule": {
+          "type": "object", "additionalProperties": false,
+          "required": ["stageId", "sourceEventId", "sourceTimelineSeconds", "localTimeSeconds", "durationSeconds"],
+          "properties": {
+            "stageId": { "$ref": "#/$defs/stableId" },
+            "sourceEventId": { "type": "string" },
+            "sourceTimelineSeconds": { "type": "number", "minimum": 0 },
+            "localTimeSeconds": { "type": "number", "minimum": 0 },
+            "durationSeconds": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "resourcePacket": { "type": "array", "items": { "$ref": "#/$defs/resourcePacketRow" } },
+        "cascadeRibbonPacket": {
+          "oneOf": [
+            { "type": "object", "required": ["packetSha256"], "properties": { "packetSha256": { "$ref": "#/$defs/sha256" } } },
+            { "type": "null" }
+          ]
+        },
+        "animationTrailPacket": {
+          "oneOf": [
+            { "type": "object", "required": ["packetSha256"], "properties": { "packetSha256": { "$ref": "#/$defs/sha256" } } },
+            { "type": "null" }
+          ]
+        },
+        "admissionBlockers": { "const": [] },
+        "rowSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "baseDocumentIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+        "required": ["rawSha256", "canonicalSha256", "typedCodecSha256"],
+        "properties": {
+          "rawSha256": { "$ref": "#/$defs/sha256" },
+          "canonicalSha256": { "$ref": "#/$defs/sha256" },
+          "typedCodecSha256": { "$ref": "#/$defs/sha256" }
+        }
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "projectionKind",
+        "baseDocumentIdentity",
+        "projectedDocument",
+        "projectedDocumentCanonicalByteCount",
+        "projectedDocumentSha256",
+        "projectedDocumentTypedCodecSha256",
+        "visualRows",
+        "supplementalElements",
+        "programSha256"
+      ],
+      "properties": {
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "projectionKind": {
+          "enum": ["SOURCE_RECIPE_OVERLAY_V1", "ADAPTER_PACKET_V1"]
+        },
+        "baseDocumentIdentity": {
+          "oneOf": [
+            { "$ref": "#/$defs/baseDocumentIdentity" },
+            { "type": "null" }
+          ]
+        },
+        "projectedDocument": {
+          "oneOf": [
+            { "type": "object" },
+            { "type": "null" }
+          ]
+        },
+        "projectedDocumentCanonicalByteCount": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+          "projectedDocumentSha256": { "$ref": "#/$defs/nullableSha256" },
+          "projectedDocumentTypedCodecSha256": { "$ref": "#/$defs/nullableSha256" },
+        "visualRows": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/runtimeRow" }
+        },
+        "supplementalElements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/runtimeSupplementalElement" }
+        },
+        "programSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "extensionCanary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canaryId",
+        "domain",
+        "selector",
+        "selectorSha256",
+        "family",
+        "adapterId",
+        "packetLayout",
+        "fidelity",
+        "disposition",
+        "productCountContribution",
+        "admissionBlockers",
+        "canarySha256"
+      ],
+      "properties": {
+        "canaryId": { "$ref": "#/$defs/stableId" },
+        "domain": { "enum": ["WARLORD", "VALTAN"] },
+        "selector": { "$ref": "#/$defs/selector" },
+        "selectorSha256": { "$ref": "#/$defs/sha256" },
+        "family": { "$ref": "#/$defs/family" },
+        "adapterId": { "$ref": "#/$defs/stableId" },
+        "packetLayout": { "const": "NONE" },
+        "fidelity": { "const": "EVIDENCE_ONLY" },
+        "disposition": { "const": "FAIL_CLOSED" },
+        "productCountContribution": { "const": false },
+        "admissionBlockers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "canarySha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

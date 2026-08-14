@@ -59,7 +59,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 3) Shared + NetworkProtocolHarness 빌드/실행
 4) Server 빌드
 5) Client 빌드
-6) Lobby/Bern/Valtan smoke + ProjectAudit
+6) Lobby/Bern/Valtan smoke + 변경 domain publisher validation
 ```
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
@@ -222,7 +222,7 @@ Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` si
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
-- automated contracts: `NetworkProtocolHarness`, `Server.exe --contract-test`, `ProjectAudit`을 실행
+- automated contracts: `NetworkProtocolHarness`, `ClientFrontendHarness`, `Server.exe --contract-test`와 변경 domain publisher validation을 실행
 - runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행해 Lobby → Server 승인 Character Select 진입, class 연속 변경과 각 class 스킬 snapshot, 우클릭 이동, F6 follow/free와 free-camera command 차단, disconnect 시 Lobby 복귀, Bern/Valtan 진입을 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
@@ -349,8 +349,8 @@ asset path는 반드시 `UI/...` Resources-relative ID이며 `CRuntimeAssetRoot:
 제품 전환 규칙은 다음과 같다.
 
 1. UI 담당자는 이미지를 `Resources/UI/<Domain>/...`에 준비하고 ImGui tool에서 slot/layer에
-   연결한다. Git에는 이미지 payload가 아니라 `Data/UI` JSON과 resource pack lock/manifest만
-   둔다.
+   연결한다. Git에는 `Data/UI` JSON을 두고, 실제 이미지 payload인 `Client/Bin/Resources`는
+   팀장이 관리하는 runtime 입력으로 유지한다. 별도 immutable pack/lock/manifest를 완료 조건으로 만들지 않는다.
 2. `slot.id`가 저장·runtime widget identity다. pointer, vector index, ImGui label은 ID가 아니다.
 3. 제품 runtime loader는 JSON을 한 번 `parse -> validate -> stage -> commit`하고 `CUIObject`
    계열 image widget을 만든다. 매 프레임 JSON이나 이미지를 다시 읽지 않는다.

@@ -1,0 +1,37 @@
+{
+  "schema": "lostark.effect-source-literal-fixture",
+  "formatVersion": 1,
+  "characterClass": "DimensionMaster",
+  "sourceReport": {
+    "artifactName": "FX_PC_SWP_05.particle-graph.json",
+    "sha256": "a583511b2af389d458f98a30576a5573c455c284dd77f13bf1cbc510f4f01afb"
+  },
+  "normalizedClass": "particlemoduletypedatamesh",
+  "records": [
+    {
+      "objectId": "FX_PC_SWP_05:export:2724",
+      "objectPath": "par_k_swp_demensiondetonate_cast_02.particlemoduletypedatamesh_9",
+      "literals": {
+        "pitch": 30.0,
+        "yaw": 280.0
+      }
+    },
+    {
+      "objectId": "FX_PC_SWP_05:export:2731",
+      "objectPath": "par_k_swp_dimensiondetonate_explo_01.particlemoduletypedatamesh_3",
+      "literals": {
+        "pitch": 90.0,
+        "roll": 10.0,
+        "yaw": 10.0
+      }
+    },
+    {
+      "objectId": "FX_PC_SWP_05:export:2761",
+      "objectPath": "par_k_swp_instance_prj_crack_01.particlemoduletypedatamesh_0",
+      "literals": {
+        "pitch": 90.0,
+        "roll": 180.0
+      }
+    }
+  ]
+}

@@ -89,6 +89,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientFrontendHarness.cpp" />
+	<ClCompile Include="..\Private\FourClassTrackAAuthoredMaterializer.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
 	  <Link>Client\ActionPresentationTimeline.cpp</Link>
 	</ClCompile>
@@ -122,6 +123,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
 	  <Link>Client\Effect_DocumentCodec.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp">
+	  <Link>Client\Effect_Artist31470ShaderRegistry.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
 	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
 	</ClCompile>
@@ -137,11 +141,17 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp">
 	  <Link>Client\Effect_Catalog.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_OccurrenceTuning.cpp">
+	  <Link>Client\Effect_OccurrenceTuning.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp">
 	  <Link>Client\Effect_CascadeCompiler.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp">
 	  <Link>Client\Effect_RuntimeAuthority.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_VisualProgramCorpus.cpp">
+	  <Link>Client\Effect_VisualProgramCorpus.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp">
 	  <Link>Client\Effect_ReconstructedExecution.cpp</Link>
@@ -171,6 +181,9 @@
 	  <Link>Client\RuntimeAssetRoot.cpp</Link>
 	</ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="CopyEngineRuntimeDependencies" AfterTargets="Build">
     <ItemGroup>
@@ -184,5 +197,12 @@
     </ItemGroup>
     <Copy SourceFiles="@(EngineRuntimeDependency)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
+	<Target Name="CopyHarnessEffectVisualProgramSidecar" AfterTargets="Build">
+		<MakeDir Directories="$(OutDir)DataFiles\Effect" />
+		<Copy
+			SourceFiles="$(ProjectDir)..\..\..\Data\Effects\VisualPrograms\effect-visual-program-runtime.v1.json"
+			DestinationFiles="$(OutDir)DataFiles\Effect\EffectVisualPrograms.runtime.json"
+			SkipUnchangedFiles="true" />
+	</Target>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

@@ -1,0 +1,824 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.boss-pattern-effects.schema.json",
+  "title": "LostArk boss pattern effect mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "gameplayAuthority",
+    "bindings"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.boss-pattern-effects"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "gameplayAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "encounterDocument",
+        "patternId",
+        "stageId",
+        "actionId",
+        "mode",
+        "duplicatedGameplayFields"
+      ],
+      "properties": {
+        "encounterDocument": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "patternId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "stageId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "actionId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "mode": {
+          "const": "REFERENCE_ONLY_NO_DUPLICATION"
+        },
+        "duplicatedGameplayFields": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/binding"
+      }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_./-]+$"
+    },
+    "notifyId": {
+      "type": "string",
+      "pattern": "^action-[0-9]+/stage-[0-9]{3}/notify-[0-9]{3}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceArtifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_./-]+$"
+    },
+    "graphNodeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]+:export:[0-9]+$"
+    },
+    "assetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "className",
+        "objectPath"
+      ],
+      "properties": {
+        "className": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objectPath": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "sourceSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalogSourceAsset",
+        "graphRootNodeId",
+        "resolutionStatus"
+      ],
+      "properties": {
+        "catalogSourceAsset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "graphRootNodeId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_]+:export:[0-9]+$"
+        },
+        "resolutionStatus": {
+          "const": "ACTION_BOUND_SOURCE_SYSTEM"
+        }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceAnchorSlotId",
+        "runtimeBoneName",
+        "admission"
+      ],
+      "properties": {
+        "sourceAnchorSlotId": {
+          "type": "string"
+        },
+        "runtimeBoneName": {
+          "type": "string"
+        },
+        "admission": {
+          "enum": [
+            "ADMITTED_EXPLICIT_RUNTIME_BONE",
+            "FAIL_CLOSED_TRAIL_BINDING_UNRESOLVED",
+            "FAIL_CLOSED_NO_EXPLICIT_SOURCE_ANCHOR"
+          ]
+        }
+      }
+    },
+    "occurrenceAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceIdentity",
+        "executableProjection",
+        "carrierDenominator",
+        "visibleExecutableCarrierCount",
+        "failClosedCarrierCount",
+        "carriers",
+        "blockers"
+      ],
+      "properties": {
+        "sourceIdentity": {
+          "const": "EXACT"
+        },
+        "executableProjection": {
+          "enum": [
+            "PORTABLE_AUTHORED_V13",
+            "PARTIAL_PORTABLE_AUTHORED_V13",
+            "FAIL_CLOSED"
+          ]
+        },
+        "carrierDenominator": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "visibleExecutableCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failClosedCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "carriers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/carrierAdmission"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    },
+    "sourceRecipeAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "moduleCount",
+        "distributionCount",
+        "sourceRecipeSha256",
+        "portableStatus"
+      ],
+      "properties": {
+        "moduleCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "distributionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceRecipeSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "portableStatus": {
+          "enum": [
+            "PORTABLE_AUTHORED_V13",
+            "PORTABLE_RECIPE_MATERIAL_BLOCKED",
+            "FAIL_CLOSED_UNSUPPORTED_MODULE_FAMILY",
+            "FAIL_CLOSED_INCOMPLETE_SOURCE_GRAPH"
+          ]
+        },
+        "portableRecipeSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "runtimeResourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slotId",
+        "sourceObjectPath",
+        "assetId",
+        "sha256"
+      ],
+      "properties": {
+        "slotId": {
+          "enum": [
+            "meshModel",
+            "base",
+            "mask",
+            "noise",
+            "emissive",
+            "dissolve"
+          ]
+        },
+        "sourceObjectPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assetId": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "materialAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ADMITTED_RECONSTRUCTED_PROFILE",
+            "FAIL_CLOSED"
+          ]
+        },
+        "profileId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "runtimeShaderProfileId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "parentMaterialPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semanticStatus": {
+          "const": "RECONSTRUCTED_PROFILE"
+        },
+        "evidenceKind": {
+          "enum": [
+            "REPOSITORY_SOURCE_MATERIAL_CONTRACT",
+            "EXTERNAL_PARENT_MATERIAL_PROPS"
+          ]
+        },
+        "evidencePath": {
+          "$ref": "#/$defs/sourceArtifactPath"
+        },
+        "evidenceSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "geometryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceObjectPath",
+        "sourceGltfPath",
+        "sourceGltfSha256",
+        "sourceBinPath",
+        "sourceBinSha256",
+        "runtimeAssetId",
+        "runtimeSha256",
+        "cookStatus"
+      ],
+      "properties": {
+        "sourceObjectPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceGltfPath": {
+          "$ref": "#/$defs/sourceArtifactPath"
+        },
+        "sourceGltfSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceBinPath": {
+          "$ref": "#/$defs/sourceArtifactPath"
+        },
+        "sourceBinSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "runtimeAssetId": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "runtimeSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "cookStatus": {
+          "const": "COOKED"
+        }
+      }
+    },
+    "carrierAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "carrierId",
+        "sourceOrder",
+        "sourceEmitterNodeId",
+        "sourceEmitterPath",
+        "sourceLodNodeId",
+        "rendererShape",
+        "sourceRecipe",
+        "sourceMaterialPath",
+        "disposition",
+        "resources",
+        "materialAdmission",
+        "blockers"
+      ],
+      "properties": {
+        "carrierId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "sourceOrder": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceEmitterNodeId": {
+          "$ref": "#/$defs/graphNodeId"
+        },
+        "sourceEmitterPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceLodNodeId": {
+          "$ref": "#/$defs/graphNodeId"
+        },
+        "rendererShape": {
+          "enum": [
+            "sprite",
+            "mesh",
+            "light"
+          ]
+        },
+        "sourceRecipe": {
+          "$ref": "#/$defs/sourceRecipeAdmission"
+        },
+        "sourceMaterialPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disposition": {
+          "enum": [
+            "VISIBLE_EXECUTABLE",
+            "FAIL_CLOSED"
+          ]
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runtimeResourceEvidence"
+          }
+        },
+        "materialAdmission": {
+          "$ref": "#/$defs/materialAdmission"
+        },
+        "geometryEvidence": {
+          "$ref": "#/$defs/geometryEvidence"
+        },
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    },
+    "sourceGraphDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalPackage",
+        "sourcePath",
+        "sha256"
+      ],
+      "properties": {
+        "logicalPackage": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_]+$"
+        },
+        "sourcePath": {
+          "$ref": "#/$defs/sourceArtifactPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactRootName",
+        "sourceParticleResourceCatalogSha256",
+        "runtimeCookReceiptSourcePath",
+        "runtimeCookReceiptSha256",
+        "sourceGraphDocuments"
+      ],
+      "properties": {
+        "artifactRootName": {
+          "const": "Resource_LostArk"
+        },
+        "sourceParticleResourceCatalogSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "runtimeCookReceiptSourcePath": {
+          "$ref": "#/$defs/sourceArtifactPath"
+        },
+        "runtimeCookReceiptSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceGraphDocuments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourceGraphDocument"
+          }
+        }
+      }
+    },
+    "sourceOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notifyId",
+        "sourceType",
+        "sourceResolutionStatus",
+        "sourceNotifyTimeSeconds",
+        "sourceNotifyDurationSeconds",
+        "assetReferences",
+        "sourceSystem",
+        "attachment",
+        "admission"
+      ],
+      "properties": {
+        "notifyId": {
+          "$ref": "#/$defs/notifyId"
+        },
+        "sourceType": {
+          "enum": [
+            "Trails",
+            "PlayParticleEffect"
+          ]
+        },
+        "sourceResolutionStatus": {
+          "const": "SOURCE_ASSET_EXPLICIT"
+        },
+        "sourceNotifyTimeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sourceNotifyDurationSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "assetReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/assetReference"
+          }
+        },
+        "sourceSystem": {
+          "$ref": "#/$defs/sourceSystem"
+        },
+        "attachment": {
+          "$ref": "#/$defs/attachment"
+        },
+        "admission": {
+          "$ref": "#/$defs/occurrenceAdmission"
+        }
+      }
+    },
+    "failClosedOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notifyId",
+        "sourceType",
+        "sourceResolutionStatus",
+        "serializedLabels",
+        "reason",
+        "disposition"
+      ],
+      "properties": {
+        "notifyId": {
+          "$ref": "#/$defs/notifyId"
+        },
+        "sourceType": {
+          "enum": [
+            "Effect",
+            "PawnMaterialParam",
+            "ViewShake"
+          ]
+        },
+        "sourceResolutionStatus": {
+          "enum": [
+            "UNRESOLVED_SOURCE_PAYLOAD",
+            "SOURCE_PARAMETERS_SERIALIZED"
+          ]
+        },
+        "serializedLabels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "$ref": "#/$defs/stableId"
+        },
+        "disposition": {
+          "const": "FAIL_CLOSED"
+        }
+      }
+    },
+    "branchCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceRole",
+        "notifyId",
+        "sourceType",
+        "sourceResolutionStatus",
+        "admission"
+      ],
+      "properties": {
+        "evidenceRole": {
+          "const": "PRECEDING_STAGE_CONDITION"
+        },
+        "notifyId": {
+          "$ref": "#/$defs/notifyId"
+        },
+        "sourceType": {
+          "const": "MonsterMoveNextStageConditionStatusEffect"
+        },
+        "sourceResolutionStatus": {
+          "const": "TIMING_OR_STATE_ONLY"
+        },
+        "admission": {
+          "const": "FAIL_CLOSED_SOURCE_CONDITION_PAYLOAD_UNRESOLVED"
+        }
+      }
+    },
+    "sourceBranch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "sourceDocumentSha256",
+        "sourceActionId",
+        "branchId",
+        "stagePath",
+        "sourceStageIndex",
+        "sourceClipName",
+        "runtimeClipName",
+        "condition"
+      ],
+      "properties": {
+        "profileId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "sourceDocumentSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sourceActionId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "branchId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "stagePath": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "sourceStageIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceClipName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtimeClipName": {
+          "$ref": "#/$defs/stableId"
+        },
+        "condition": {
+          "$ref": "#/$defs/branchCondition"
+        }
+      }
+    },
+    "modelBoneEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceAnchorSlotId",
+        "runtimeModelAssetId",
+        "runtimeBoneName",
+        "boneIndex",
+        "boneNameHash",
+        "matchPolicy",
+        "modelSha256",
+        "admission"
+      ],
+      "properties": {
+        "sourceAnchorSlotId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtimeModelAssetId": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "runtimeBoneName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boneIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "boneNameHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "matchPolicy": {
+          "enum": [
+            "EXACT_CASE_SENSITIVE",
+            "UNIQUE_ASCII_CASEFOLD"
+          ]
+        },
+        "modelSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "admission": {
+          "const": "ADMITTED_EXPLICIT_RUNTIME_BONE"
+        }
+      }
+    },
+    "productAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "productCatalogMapped",
+        "animationEventMapped",
+        "blockers"
+      ],
+      "properties": {
+        "status": {
+          "const": "FAIL_CLOSED_NON_PRODUCT_CANARY"
+        },
+        "productCatalogMapped": {
+          "const": false
+        },
+        "animationEventMapped": {
+          "const": false
+        },
+        "blockers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingId",
+        "patternId",
+        "semanticStageId",
+        "actionId",
+        "effectAssetId",
+        "effectDocument",
+        "animationBindingDocument",
+        "sourceCatalogDocument",
+        "sourceParticleResourceCatalogDocument",
+        "sourceEvidence",
+        "sourceBranch",
+        "modelBoneEvidence",
+        "sourceOccurrences",
+        "failClosedOccurrences",
+        "productAdmission"
+      ],
+      "properties": {
+        "bindingId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "patternId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "semanticStageId": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "actionId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "effectDocument": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "animationBindingDocument": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "sourceCatalogDocument": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "sourceParticleResourceCatalogDocument": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "sourceEvidence": {
+          "$ref": "#/$defs/sourceEvidence"
+        },
+        "sourceBranch": {
+          "$ref": "#/$defs/sourceBranch"
+        },
+        "modelBoneEvidence": {
+          "$ref": "#/$defs/modelBoneEvidence"
+        },
+        "sourceOccurrences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourceOccurrence"
+          }
+        },
+        "failClosedOccurrences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/failClosedOccurrence"
+          }
+        },
+        "productAdmission": {
+          "$ref": "#/$defs/productAdmission"
+        }
+      }
+    }
+  }
+}

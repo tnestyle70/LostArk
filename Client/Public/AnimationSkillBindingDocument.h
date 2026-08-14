@@ -94,4 +94,97 @@ namespace Client
 			const std::vector<std::string>& availableClips,
 			std::string& outStatus);
 	};
+
+	/* Boss actions are not PlayerSkills. Their authored animation document maps a
+	stable boss-owned action ID to one clip; gameplay pattern timing remains in
+	the encounter document. */
+	struct BOSS_PATTERN_ANIMATION_BINDING
+	{
+		std::string strActionId;
+		std::string strClipName;
+
+		bool operator==(const BOSS_PATTERN_ANIMATION_BINDING&) const = default;
+	};
+
+	struct BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT
+	{
+		std::string strBossArchetypeId;
+		std::vector<BOSS_PATTERN_ANIMATION_BINDING> Bindings;
+
+		bool operator==(
+			const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT&) const = default;
+	};
+
+	class CValtanPatternAnimationBindingDocument final
+	{
+	public:
+		static std::filesystem::path Resolve_Path(
+			std::string_view animationAssetId);
+		static bool_t Parse_Text(
+			std::string_view text,
+			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+		static bool_t Validate(
+			const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			std::string& outStatus);
+		static bool_t Load(
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+	};
+
+	/* Action-qualified boss Effect mapping.  It deliberately does not duplicate
+	   encounter damage/timing authority: one row only joins a replicated boss
+	   pattern action to an authored Effect document and its model clip/bone. */
+	struct BOSS_PATTERN_EFFECT_BINDING
+	{
+		std::string strBindingId;
+		std::string strPatternId;
+		std::string strSemanticStageId;
+		std::string strActionId;
+		std::string strEffectAssetId;
+		std::string strEffectDocument;
+		std::string strRuntimeClipName;
+		std::string strRuntimeBoneName;
+		std::string strProductAdmissionStatus;
+		bool_t bProductCatalogMapped = false;
+		bool_t bAnimationEventMapped = false;
+
+		bool operator==(const BOSS_PATTERN_EFFECT_BINDING&) const = default;
+	};
+
+	struct BOSS_PATTERN_EFFECT_BINDING_DOCUMENT
+	{
+		std::string strBossArchetypeId;
+		std::vector<BOSS_PATTERN_EFFECT_BINDING> Bindings;
+
+		bool operator==(
+			const BOSS_PATTERN_EFFECT_BINDING_DOCUMENT&) const = default;
+	};
+
+	class CValtanPatternEffectBindingDocument final
+	{
+	public:
+		static std::filesystem::path Resolve_Path(
+			std::string_view animationAssetId);
+		static bool_t Parse_Text(
+			std::string_view text,
+			BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+		static bool_t Validate(
+			const BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& document,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			std::string& outStatus);
+		static bool_t Load(
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+	};
 }

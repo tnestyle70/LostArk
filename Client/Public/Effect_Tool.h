@@ -6,6 +6,7 @@
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_ComponentDocument.h"
+#include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
 #include "PlayerSkillCatalog.h"
@@ -16,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -28,7 +30,10 @@ class CEffectObject;
 class CEffectThumbnailCache;
 class EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION;
 struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE;
-enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t;
+struct EFFECT_VISUAL_PROGRAM;
+struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
+enum class EFFECT_VISUAL_PROGRAM_FAMILY : uint8_t;
+enum class EFFECT_GPU_RENDER_FAMILY : uint8_t;
 
 enum class EFFECT_PREVIEW_PIVOT_KIND : uint8_t
 {
@@ -48,6 +53,9 @@ enum class EFFECT_PREVIEW_FILTER : uint8_t
 	SOLO_STANDALONE_SPRITES,
 	SOLO_SPRITE_EMITTERS,
     SOLO_SELECTED,
+    SOLO_MODEL_CUE,
+	SOLO_MODEL_CUES,
+	SOLO_AUTHORING_FAMILY,
     MUTE_SELECTED,
     SOLO_SELECTED_GROUP,
     MUTE_SELECTED_GROUP,
@@ -60,9 +68,11 @@ enum class EFFECT_DETAIL_SELECTION : uint8_t
 	SKILL,
     PARTICLE_SYSTEM,
     ELEMENT,
+	MODEL_CUE,
 	COMPONENT,
 	EMITTER,
 	SOURCE_MODULE,
+	RUNTIME_OCCURRENCE,
     END
 };
 
@@ -72,10 +82,31 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
     AUTHORED,
     IMPORTED,
     IMPORTED_REFERENCE,
+	MIGRATION_REFERENCE,
 	RUNTIME_ASSEMBLY,
 	RUNTIME_COMPONENT,
+	RUNTIME_VISUAL_PROGRAM,
     END
 };
+
+enum class EFFECT_AUTHORING_FAMILY : uint8_t
+{
+	MESH,
+	SPRITE,
+	MESH_PARTICLE,
+	SPRITE_PARTICLE,
+	LOCAL_DECAL,
+	TRAIL_RIBBON,
+	END
+};
+
+constexpr EFFECT_DOCUMENT_SOURCE Resolve_ProductCueDocumentSource(
+	const bool_t bHasVisualProgramProjection) noexcept
+{
+	return bHasVisualProgramProjection ?
+		EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM :
+		EFFECT_DOCUMENT_SOURCE::AUTHORED;
+}
 
 class CEffect_Tool final
 {
@@ -135,7 +166,46 @@ private:
         std::filesystem::path Path;
         std::string strSelectionId;
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		std::string strElementSelectionId;
+		std::string strModelCueSelectionId;
+		bool_t bPlayCompleteAfterLoad = false;
     };
+
+	struct UNIFIED_EFFECT_CACHE final
+	{
+		std::filesystem::path Path;
+		std::filesystem::file_time_type LastWriteTime{};
+		uint64_t iFileSize = 0u;
+		bool_t bObserved = false;
+		bool_t bExists = false;
+		bool_t bValid = false;
+		bool_t bDrawable = false;
+		bool_t bPreviewReady = false;
+		EFFECT_DOCUMENT_DESC Document;
+		std::string strDrawableError;
+		std::string strPreviewReadinessError;
+		std::string strStatus;
+	};
+
+	enum class ARTIST_F_PREPARATION_STATE : uint8_t
+	{
+		UNATTEMPTED,
+		READY,
+		FAILED
+	};
+
+	struct SOURCE_ELEMENT_PRESET_SELECTION final
+	{
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection;
+		EFFECT_ELEMENT_DESC GenericElement;
+		std::string strSourceEffectAssetId;
+		std::string strOccurrenceId;
+		std::string strRowSha256;
+		std::string strTargetElementId;
+		std::string strSourceRecordId;
+		std::string strSourceFamily;
+	};
 
 public:
     CEffect_Tool(
@@ -153,6 +223,7 @@ private:
     void Render_EffectDetailWindow();
     void Render_AuthoringSessionBar();
     void Render_AllEffectsWindow();
+	void Render_ActiveAuthoredEffectTree();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
         const EFFECT_DOCUMENT_DESC& Document,
@@ -184,6 +255,7 @@ private:
     void Render_SourceRecipeDetail(
         EFFECT_CASCADE_RECIPE_DESC& Recipe,
         bool_t& bChanged);
+	void Render_SelectedVisualProgramEvidence() const;
     void Render_SourceModuleDetail(
         EFFECT_SOURCE_MODULE_DESC& Module,
 		bool_t& bChanged,
@@ -195,6 +267,14 @@ private:
 	void Render_SelectionPath() const;
 	void Render_SkillSelectionDetail();
 	void Render_AssemblyHierarchy(const std::string& strEffectAssetId);
+	void Render_VisualProgramAuthoring(
+		const EFFECT_SKILL_TREE_ENTRY& Entry,
+		size_t iCueIndex);
+	void Render_ArtistFCoreAuthoring();
+	void Render_ModelCueDetail();
+	void Render_UnifiedEffectTree(
+		const UNIFIED_EFFECT_CACHE& Cache,
+		const std::string& strFallbackDisplayName);
 	void Render_ComponentSelectionDetail();
 	void Render_EmitterSelectionDetail();
 	void Render_SourceModuleSelectionDetail();
@@ -205,9 +285,10 @@ private:
         const std::shared_ptr<Engine::CModel>& pModel,
         bool_t bForce);
 
-    bool_t Try_CreateDocument();
-    bool_t Try_AddElement();
-    bool_t Try_CreateMeshEffect();
+	bool_t Try_CreateDocument();
+	bool_t Try_CreateElementDraft();
+	bool_t Try_CreateMeshEffect(bool_t bAddToCurrentEffect);
+	bool_t Try_UseSelectedElementAsAuthoringPreset();
     bool_t Try_BindMeshAuthoringResource(const std::string& strAssetId);
     bool_t Try_ClearMeshAuthoringSlot();
     bool_t Try_DeleteSelectedElement();
@@ -216,6 +297,8 @@ private:
     bool_t Try_SaveDocument();
     bool_t Try_PublishActiveProductAndReloadRuntime();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
+	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
+		const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
     bool_t Try_ReloadActiveDocument();
     bool_t Try_LoadDocument(const std::string& strAssetId);
@@ -240,13 +323,100 @@ private:
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
-	bool_t Try_StartArtist31470Diagnostic(
-		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
 	bool_t Try_StartArtist31470FullPreview();
+	bool_t Try_ResetArtist31470PreviewIsolation();
+	bool_t Try_SetArtist31470PreviewFamilyIsolation(
+		EFFECT_GPU_RENDER_FAMILY eFamily);
+	bool_t Ensure_ArtistFSourceSnapshotForAuthoring();
+	bool_t Ensure_ArtistFMaterialExecutionSnapshots();
+	void Reset_ArtistFPreparationFailureLatch();
+	bool_t Ensure_ArtistFSourceAuthoringOverlaySession();
+	bool_t Refresh_UnifiedEffectCache(
+		UNIFIED_EFFECT_CACHE& Cache,
+		const std::filesystem::path& Path,
+		const std::string& strExpectedEffectAssetId);
+	bool_t Is_UnifiedEffectActive(
+		const UNIFIED_EFFECT_CACHE& Cache) const;
+	bool_t Validate_UnifiedEffectPreviewReadiness(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError) const;
+	bool_t Try_LoadUnifiedElement(
+		const UNIFIED_EFFECT_CACHE& Cache,
+		const std::string& strElementId);
+	bool_t Try_LoadUnifiedModelCue(
+		const UNIFIED_EFFECT_CACHE& Cache,
+		const std::string& strCueId);
+	bool_t Try_PlayUnifiedAuthoringFamily(
+		const std::string& strEffectAssetId,
+		EFFECT_AUTHORING_FAMILY eFamily);
+	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
+	bool_t Try_PlayUnifiedModelCues(
+		const std::string& strEffectAssetId);
+	bool_t Try_CreateArtistFUnifiedDraft();
+	bool_t Try_CreateDimensionMasterTUnifiedDraft();
+	bool_t Try_ApplyArtistFTrackASeedData(
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
+		const EFFECT_ELEMENT_DESC& SourceElement,
+		EFFECT_ELEMENT_DESC& InOutElement,
+		std::string& strOutError) const;
+	bool_t Try_SelectRuntimeOccurrence(
+		const std::string& strEffectAssetId,
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter);
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		Resolve_VisualProgramProjectionForAuthoring(
+			const std::string& strEffectAssetId);
+	bool_t Try_OpenVisualProgramElementForAuthoring(
+		const std::string& strEffectAssetId,
+		const std::string& strOccurrenceId,
+		const std::string& strRowSha256,
+		const std::string& strTargetElementId,
+		const std::string& strSourceRecordId);
+	bool_t Try_OpenArtistFReconstructedElementForAuthoring(
+		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter);
+	bool_t Try_StageElementAsAuthoringPreset(
+		const EFFECT_DOCUMENT_DESC& SourceDocument,
+		const std::string& strElementId,
+		SOURCE_ELEMENT_PRESET_SELECTION Selection);
+	bool_t Try_SelectVisualOccurrence(
+		const std::string& strEffectAssetId,
+		const std::string& strOccurrenceId,
+		const std::string& strRowSha256,
+		const std::string& strTargetElementId,
+		const std::string& strSourceRecordId);
+	bool_t Try_SetVisualPreviewOccurrenceIsolation(
+		const std::string& strTargetElementId);
+	bool_t Try_SetVisualPreviewFamilyIsolation(
+		const EFFECT_VISUAL_PROGRAM& Program,
+		EFFECT_VISUAL_PROGRAM_FAMILY eFamily);
+	bool_t Try_ResetVisualPreviewIsolation();
+	void Render_RuntimeOccurrenceDetail();
+	bool_t Stage_RuntimeOccurrenceTuningPreview(
+		const EFFECT_OCCURRENCE_TUNING_DOCUMENT& Tuning);
+	bool_t Stage_SourceAuthoringOverlayPreview(
+		const EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT& Overlay);
+	bool_t Try_ApplyRuntimeOccurrenceDraft();
+	bool_t Try_ResetRuntimeOccurrenceToSource();
+	bool_t Try_SaveRuntimeOccurrenceTuning();
+	bool_t Try_ReloadRuntimeOccurrenceTuning();
+	void Reset_RuntimeOccurrenceTuningSession();
 	bool_t Synchronize_Artist31470FullPreview(
 		const std::shared_ptr<const
 			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pPreparation);
 	void Update_ReconstructedDiagnosticRoot();
+	bool_t Prepare_Artist31470HistoricalPoseBinding(
+		const std::shared_ptr<const
+			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pPreparation,
+		CAnimationHistoricalPoseBinding& OutPoseBinding,
+		f32_t& fOutDurationSeconds,
+		std::string& strOutError) const;
+	bool_t Build_Artist31470HistoricalTransformSample(
+		const std::shared_ptr<const
+			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pPreparation,
+		const CAnimationHistoricalPoseBinding& PoseBinding,
+		f32_t fAnimationDurationSeconds,
+		f32_t fEffectSampleTimeSeconds,
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError) const;
 	bool_t Prepare_ReconstructedSourceRuntimeTransformHistory();
 	bool_t Build_ReconstructedSourceRuntimeTransformSample(
 		f32_t fEffectSampleTimeSeconds,
@@ -257,15 +427,37 @@ private:
 	void Reset_ReconstructedSourceRuntimeTimeline();
     bool_t Stage_WorldPreview();
     bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document);
+	bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document,
+		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
         const EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
+	bool_t Try_PlayVisualProgramFamily(
+		const EFFECT_SKILL_TREE_ENTRY& Entry,
+		size_t iCueIndex,
+		EFFECT_VISUAL_PROGRAM_FAMILY eFamily);
+	bool_t Try_PlayVisualProgramElement(
+		const EFFECT_SKILL_TREE_ENTRY& Entry,
+		size_t iCueIndex,
+		const std::string& strTargetElementId);
     bool_t Try_SelectParticleSystem(const std::string& strEffectAssetId);
     bool_t Try_SelectElement(
         const std::string& strEffectAssetId,
         const std::string& strElementId);
+	bool_t Try_SelectModelCue(
+		const std::string& strEffectAssetId,
+		const std::string& strCueId);
+	bool_t Try_SoloElement(
+		const std::string& strEffectAssetId,
+		const std::string& strElementId);
+	bool_t Try_SoloElementGroup(
+		const std::string& strEffectAssetId,
+		const std::string& strGroupId);
+	bool_t Try_SoloModelCue(
+		const std::string& strEffectAssetId,
+		const std::string& strCueId);
 	bool_t Try_SelectComponent(
 		const std::string& strEffectAssetId,
 		const std::string& strComponentAssetId);
@@ -285,8 +477,10 @@ private:
     bool_t Try_AuditionSelectedElement();
     bool_t Stage_ParticleSystemDraftPreview();
     bool_t Stage_DetailDraftPreview();
+	bool_t Stage_ModelCueDraftPreview();
     bool_t Apply_ParticleSystemDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Apply_DetailDraft(EFFECT_DOCUMENT_DESC& Document) const;
+	bool_t Apply_ModelCueDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Resolve_PreviewRoot(float4x4_t& OutRoot);
     f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
     bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
@@ -307,6 +501,7 @@ private:
     void Reset_MeshAuthoringDraft();
     void Reset_ParticleSystemDraft();
     void Reset_DetailDraft();
+	void Reset_ModelCueDraft();
     void Recalculate_PreviewDuration();
     void Recalculate_PreviewDuration(const EFFECT_DOCUMENT_DESC& Document);
     bool_t Has_UnsavedWork() const;
@@ -318,6 +513,8 @@ private:
     void Refresh_RuntimeEquivalence();
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
+	EFFECT_MODEL_CUE_DESC* Find_SelectedModelCue();
+	const EFFECT_MODEL_CUE_DESC* Find_SelectedModelCue() const;
 
 private:
     ComPtr<ID3D11Device> m_pDevice;
@@ -328,11 +525,34 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
     optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
     EFFECT_ELEMENT_DESC m_MeshAuthoringDraft;
+	optional<SOURCE_ELEMENT_PRESET_SELECTION> m_SourceElementPresetSelection;
     optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
     optional<EFFECT_ELEMENT_DESC> m_DetailDraft;
-    optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
+	optional<EFFECT_MODEL_CUE_DESC> m_ModelCueDraft;
+	optional<EFFECT_OCCURRENCE_TUNING_DOCUMENT> m_OccurrenceTuningDocument;
+	optional<EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT>
+		m_SourceAuthoringOverlayDocument;
+	optional<EFFECT_OCCURRENCE_LOCAL_TRANSFORM> m_OccurrenceTransformDraft;
+	UNIFIED_EFFECT_CACHE m_ArtistFUnifiedCache;
+	UNIFIED_EFFECT_CACHE m_DimensionMasterTUnifiedCache;
+	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pSelectedVisualSourceProjection;
+	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pVisualPreviewProjection;
+	shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+		m_pArtistFSourcePreparation;
+	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pArtistFSourceProjection;
+	std::unordered_map<std::string, EFFECT_MATERIAL_EXECUTION_DESC>
+		m_ArtistFMaterialExecutionSnapshots;
+	ARTIST_F_PREPARATION_STATE m_eArtistFSourcePreparationState =
+		ARTIST_F_PREPARATION_STATE::UNATTEMPTED;
+	ARTIST_F_PREPARATION_STATE m_eArtistFMaterialPreparationState =
+		ARTIST_F_PREPARATION_STATE::UNATTEMPTED;
+	optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
     vector<EFFECT_RESOURCE_CATALOG_ENTRY> m_ResourceCatalog;
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
     vector<size_t> m_VisibleResourceIndices;
@@ -342,6 +562,8 @@ private:
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
     vector<string> m_AnimationClipDisplayLabels;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
+	EFFECT_AUTHORING_FAMILY m_eSelectedAuthoringFamily =
+		EFFECT_AUTHORING_FAMILY::MESH;
     EFFECT_DETAIL_SELECTION m_eDetailSelection =
         EFFECT_DETAIL_SELECTION::NONE;
     LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
@@ -356,9 +578,26 @@ private:
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
     string m_strSelectedElementGroupId;
+	string m_strSelectedModelCueId;
+	string m_strPreviewIsolationElementId;
+	string m_strPreviewIsolationGroupId;
+	string m_strPreviewIsolationModelCueId;
+	EFFECT_AUTHORING_FAMILY m_ePreviewIsolationAuthoringFamily =
+		EFFECT_AUTHORING_FAMILY::END;
 	string m_strSelectedComponentId;
 	string m_strSelectedEmitterId;
 	string m_strSelectedSourceModuleId;
+	string m_strSelectedRuntimeOccurrenceEffectId;
+	string m_strSelectedRuntimeOccurrenceId;
+	string m_strSelectedRuntimeOccurrenceRowSha256;
+	string m_strSelectedRuntimeOccurrenceElementId;
+	string m_strSelectedRuntimeOccurrenceEmitterPath;
+	string m_strArtistFSourceSnapshotStatus;
+	string m_strOccurrenceTuningBaselineCanonical;
+	std::filesystem::path m_OccurrenceTuningPath;
+	string m_strSourceAuthoringOverlayBaselineCanonical;
+	std::filesystem::path m_SourceAuthoringOverlayPath;
+	EFFECT_OCCURRENCE_LOCAL_TRANSFORM m_SelectedOccurrenceSourceTransform;
     string m_strSelectedResourceAssetId;
     string m_strSelectedDataFileAssetId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
@@ -378,6 +617,8 @@ private:
     array<char_t, 129> m_AllEffectsSearch{};
     array<char_t, 129> m_DataFilesSearch{};
     array<char_t, 129> m_PreviewAnchorBuffer{};
+	array<char_t, 257> m_ModelCueAssetIdDraft{};
+	array<char_t, 129> m_ModelCueClipNameDraft{};
 
     float4x4_t m_PreviewWorldRoot{};
     float4x4_t m_ProductCueSnapshotRoot{};
@@ -390,6 +631,7 @@ private:
     float3_t m_vPickedWorldPosition{};
     f32_t m_fPreviewTimeSeconds = 0.f;
     f32_t m_fPreviewDurationSeconds = 1.f;
+	double m_fDetailDraftPreviewDueSeconds = 0.0;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;
 	bool_t m_bPreviewVisibleRequested = false;
@@ -399,8 +641,8 @@ private:
 	bool_t m_bReconstructedSourceRuntimeStartPending = false;
 	bool_t m_bReconstructedSourceRuntimeNaturalTailActive = false;
 	CAnimationHistoricalPoseBinding m_ReconstructedSourceRuntimePoseBinding;
-    bool_t m_bDocumentDirty = false;
-    bool_t m_bActiveDocumentDrawable = false;
+	bool_t m_bDocumentDirty = false;
+	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
@@ -409,6 +651,11 @@ private:
     bool_t m_bParticleSystemDraftDirty = false;
     bool_t m_bMeshAuthoringDraftInitialized = false;
     bool_t m_bDetailDraftDirty = false;
+	bool_t m_bDetailDraftPreviewPending = false;
+	bool_t m_bModelCueDraftDirty = false;
+	bool_t m_bOccurrenceTuningDirty = false;
+	bool_t m_bOccurrenceTransformDraftDirty = false;
+	bool_t m_bSourceAuthoringOverlayNeedsInitialSave = false;
     bool_t m_bDiscardConfirmationRequested = false;
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
@@ -417,7 +664,11 @@ private:
     uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
     uint64_t m_iAnimationClipLabelTargetGeneration = 0u;
     uint64_t m_iResourceCatalogRevision = 0u;
-    uint64_t m_iResourceViewRevision = UINT64_MAX;
+	uint64_t m_iResourceViewRevision = UINT64_MAX;
+	uint64_t m_iArtistFSourceSnapshotRevision = UINT64_MAX;
+	uint64_t m_iArtistFMaterialExecutionSnapshotRevision = UINT64_MAX;
+	uint64_t m_iArtistFSourcePreparationAttemptRevision = UINT64_MAX;
+	uint64_t m_iArtistFMaterialPreparationAttemptRevision = UINT64_MAX;
     EFFECT_RESOURCE_FILE_KIND m_eResourceViewFileKind =
         EFFECT_RESOURCE_FILE_KIND::END;
     EFFECT_RESOURCE_FILE_KIND m_eResourceLibraryFileKind =
@@ -426,9 +677,10 @@ private:
 	size_t m_iSynchronizedAnimationClipIndex = 0u;
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
+	double m_fNextUnifiedCachePollSeconds = 0.0;
 
-    string m_strDocumentStatus;
-    string m_strActiveDocumentDrawableError;
+	string m_strDocumentStatus;
+	string m_strActiveDocumentDrawableError;
     shared_ptr<const EFFECT_DOCUMENT_DESC> m_pRuntimeEquivalenceDocument;
     string m_strRuntimeEquivalenceCanonical;
     string m_strElementStatus;

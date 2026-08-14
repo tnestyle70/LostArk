@@ -39,6 +39,7 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
+	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h" />
 	<ClInclude Include="..\Public\Effect_ReconstructedExecution.h" />
     <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h" />
     <ClInclude Include="..\Public\Effect_ComponentDocument.h" />
@@ -52,6 +53,8 @@
     <ClInclude Include="..\Public\Effect_Object.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
+    <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
+    <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
@@ -162,6 +165,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
+	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
 	<ClCompile Include="..\Private\Effect_ReconstructedExecution.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
     <ClCompile Include="..\Private\Effect_Distribution.cpp" />
@@ -171,6 +175,8 @@
     <ClCompile Include="..\Private\Effect_Object.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
+    <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
+    <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
@@ -406,6 +412,8 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshPreview.hlsl" />
@@ -670,24 +678,33 @@
     <None Include="..\..\Data\Effects\Assemblies\Warlord\effect.warlord.skill.17820.authored-baseline.clip5.assembly.json" />
     <None Include="..\..\Data\Effects\Assemblies\Warlord\effect.warlord.skill.17820.authored-baseline.clip8.assembly.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba2.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba3.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba3.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba4.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba4.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31200.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba4.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31420.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.authored-baseline.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31480.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31910.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.authored-baseline.clip1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.authored-baseline.clip2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba2.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba3.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba3.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba4.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba4.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.effect.json" />
@@ -719,6 +736,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.effect.json" />
@@ -727,12 +745,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba2.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba3.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.restoration-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34010.ba4.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.authored-baseline.clip1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.authored-baseline.clip2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.authored-baseline.effect.json" />
@@ -783,7 +805,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.authored-baseline.clip1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.authored-baseline.clip2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.authored-baseline.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.test.winters.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.test.winters2.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.test.winters3.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba1.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba3.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17030.authored-baseline.effect.json" />
@@ -816,6 +843,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.authored-baseline.clip8.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31000.materialization.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31470.occurrence-tuning.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.materialization.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31000.ba1.approximation-receipt.json" />
@@ -852,6 +880,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050540.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.authored-approximation-coverage.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.authored-product-rollout.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34010.ba1.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34010.ba2.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34010.ba3.approximation-receipt.json" />
@@ -1463,6 +1492,7 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip5\Warlord_skill_17820_authored-baseline_clip5_00.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_00.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json" />
+    <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
     <None Include="..\..\Data\Effects\EffectCatalog.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json" />
@@ -1547,8 +1577,11 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.normalized-effect-graph.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\fx_o_transition_01_ma.material-graph-evidence.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.active-material-closure.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.all-core-ref-shader-cache.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.all-core-ref-shader-targets.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-recovery.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-runtime-deployment.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.local-decal-acquisition.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-original-dxbc-replay.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-ref-shader-cache.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.main-runtime-source-replay.receipt.json" />
@@ -1566,6 +1599,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.reconstructed-render-resource-authority.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.v4-missing-texture-acquisition.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31470.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\README.md" />
@@ -1582,6 +1616,7 @@
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31510.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31900.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31920.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\CombatBA\lmb-combo-3class.v1.runtime-admission.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-cook.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-export.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-manifest.json" />
@@ -1977,6 +2012,8 @@
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\T\DimensionMaster.T.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\V\DimensionMaster.V.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\W\DimensionMaster.W.effect-resources.json" />
+    <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json" />
+    <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-runtime.v1.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>

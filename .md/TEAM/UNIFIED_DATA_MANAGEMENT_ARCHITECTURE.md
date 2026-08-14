@@ -877,7 +877,8 @@ Publish-MapAuthoring.ps1
 
 각 publisher의 domain parser는 유지한다. 현재 `Publish-BalanceRuntimeSet.ps1`은 gameplay bootstrap 1종과
 world bootstrap 4종을 sibling staging에 만든 뒤 한 rollback set으로 promotion한다. 중간/마지막 failure
-injection은 ProjectAudit fixture가 기존 5개 hash 복원과 transaction 잔재 0건을 검증한다. Navigation, Client
+injection은 저장소 내 임시 OutputRoot에 기존 runtime 5개를 복사한 뒤
+`Publish-BalanceRuntimeSet.ps1 -Mode Publish -FailureAfterPromote <n>`을 직접 실행해 기존 5개 hash 복원과 transaction 잔재 0건을 검증한다. Navigation, Client
 presentation, UI/effect까지 포함한 전체 data generation은 아래 목표 orchestrator 범위로 남는다.
 
 ### 16.2 목표 publish 순서
@@ -1044,7 +1045,7 @@ definition을 혼동하지 않는다. 모든 field에 receipt가 있다는 사�
 
 | 변경 | 최소 자동 검증 | runtime smoke |
 |---|---|---|
-| Profile/Skill/Damage | Gameplay publisher, Server contract, ProjectAudit | skill 승인/거부, HP/resource/cooldown/damage |
+| Profile/Skill/Damage | Gameplay publisher, BalanceRuntimeSet Validate/rollback fixture, Server contract | skill 승인/거부, HP/resource/cooldown/damage |
 | Combat Timeline | timeline parser 오류, tick 양자화, multi-hit 횟수, rollback | collider debug와 실제 Server hit event |
 | Animation binding | duplicate/missing skill, bad clip, combo count, atomic Save | key → snapshot → 지정 clip |
 | Animation Effect cue | bad EffectAssetId/anchor/time, dirty rollback | clip scrub와 실제 Effect spawn/stop |

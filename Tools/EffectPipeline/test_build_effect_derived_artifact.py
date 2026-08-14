@@ -33,6 +33,9 @@ RECONSTRUCTED_SIDECAR = REPO_ROOT / (
     "Data/Effects/Imported/Artist/Materials/"
     "skill.31470.reconstructed-render-resource-authority.receipt.json"
 )
+VISUAL_PROGRAM_SIDECAR = REPO_ROOT / (
+    "Data/Effects/VisualPrograms/effect-visual-program-runtime.v1.json"
+)
 
 
 def write_json(path: Path, value: object) -> None:
@@ -246,6 +249,11 @@ class DerivedArtifactContractTests(unittest.TestCase):
             ],
         }
         write_json(data_root / "Effects" / "EffectCatalog.json", catalog)
+        visual_program = data_root / (
+            "Effects/VisualPrograms/effect-visual-program-runtime.v1.json"
+        )
+        visual_program.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(VISUAL_PROGRAM_SIDECAR, visual_program)
         return data_root, resource_root, runtime_output, outputs
 
     def _build_reconstructed_publisher_fixture(
@@ -291,6 +299,11 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 ],
             },
         )
+        visual_program = data_root / (
+            "Effects/VisualPrograms/effect-visual-program-runtime.v1.json"
+        )
+        visual_program.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(VISUAL_PROGRAM_SIDECAR, visual_program)
         return data_root, resource_root, runtime_output, candidate
 
     def _build_generic_bundle_for_effect(
@@ -819,7 +832,9 @@ class DerivedArtifactContractTests(unittest.TestCase):
             "effectAssetId": row["effectAssetId"],
             **{key: value for key, value in row.items() if key != "effectAssetId"},
         }
-        with self.assertRaisesRegex(derived.ContractError, "key order"):
+        with self.assertRaisesRegex(
+            derived.ContractError, "fields or order|key order"
+        ):
             derived.validate_runtime_catalog(reordered)
 
         wrong_integer = copy.deepcopy(catalog)
@@ -835,14 +850,19 @@ class DerivedArtifactContractTests(unittest.TestCase):
                 RECONSTRUCTED_CANDIDATE,
                 derived.RECONSTRUCTED_CANDIDATE_BYTE_COUNT,
                 derived.RECONSTRUCTED_CANDIDATE_RAW_SHA256,
+                "ddef21a5314eb8c3db891d36f702cfeda3149f20",
             ),
             (
                 RECONSTRUCTED_SIDECAR,
                 derived.RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT,
                 derived.RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256,
+                "0b6a68f82495fca2cd846bd2264b8a519f2c3c24",
             ),
         )
-        relatives = [path.relative_to(REPO_ROOT).as_posix() for path, _, _ in inputs]
+        relatives = [
+            path.relative_to(REPO_ROOT).as_posix()
+            for path, _, _, _ in inputs
+        ]
         attributes = subprocess.run(
             ["git", "check-attr", "text", "eol", "--", *relatives],
             cwd=REPO_ROOT,
@@ -858,33 +878,15 @@ class DerivedArtifactContractTests(unittest.TestCase):
             )],
         )
 
-        checkout_root = self.root / "CleanCheckout"
-        for relative in relatives:
-            (checkout_root / Path(*Path(relative).parts)).parent.mkdir(
-                parents=True, exist_ok=True
-            )
-        subprocess.run(
-            [
-                "git",
-                "-c",
-                "core.autocrlf=true",
-                "checkout-index",
-                "--force",
-                f"--prefix={checkout_root}{os.sep}",
-                "--",
-                *relatives,
-            ],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        for source, byte_count, digest in inputs:
+        for source, byte_count, digest, authority_commit in inputs:
             with self.subTest(source=source.name):
                 relative = source.relative_to(REPO_ROOT).as_posix()
-                payload = (
-                    checkout_root / Path(*Path(relative).parts)
-                ).read_bytes()
+                payload = subprocess.run(
+                    ["git", "cat-file", "blob", f"{authority_commit}:{relative}"],
+                    cwd=REPO_ROOT,
+                    check=True,
+                    capture_output=True,
+                ).stdout
                 self.assertEqual(len(payload), byte_count)
                 self.assertEqual(hashlib.sha256(payload).hexdigest(), digest)
                 self.assertFalse(payload.startswith(b"\xef\xbb\xbf"))
@@ -1240,6 +1242,9 @@ class DerivedArtifactContractTests(unittest.TestCase):
             derived.RECONSTRUCTED_PAYLOAD_KIND,
         )
         committed = output.read_bytes()
+        visual_output = output.with_name("EffectVisualPrograms.runtime.json")
+        committed_visual = visual_output.read_bytes()
+        self.assertEqual(committed_visual, VISUAL_PROGRAM_SIDECAR.read_bytes())
         self.assertTrue(committed.endswith(b"\n"))
         self.assertNotIn(b"\r", committed)
         crlf_catalog = output.with_name("EffectCatalog.runtime.crlf.json")
@@ -1261,12 +1266,15 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertIn(
             "LF-only", crlf_validation.stderr + crlf_validation.stdout
         )
-        for fault in ("AfterBackupMove", "AfterCommitMove"):
+        for fault in (
+            "AfterBackupMove", "AfterCommitMove", "AfterSidecarCommitMove"
+        ):
             faulted = self._run_publisher(
                 data_root, resources, output, fault=fault
             )
             self.assertNotEqual(faulted.returncode, 0)
             self.assertEqual(output.read_bytes(), committed)
+            self.assertEqual(visual_output.read_bytes(), committed_visual)
             self.assertEqual(list(output.parent.glob("*.tmp")), [])
             self.assertEqual(list(output.parent.glob("*.bak")), [])
 
@@ -1280,6 +1288,7 @@ class DerivedArtifactContractTests(unittest.TestCase):
         rejected = self._run_publisher(data_root, resources, output)
         self.assertNotEqual(rejected.returncode, 0)
         self.assertEqual(output.read_bytes(), committed)
+        self.assertEqual(visual_output.read_bytes(), committed_visual)
         self.assertEqual(list(output.parent.glob("*.tmp")), [])
         self.assertEqual(list(output.parent.glob("*.bak")), [])
 
@@ -1487,12 +1496,18 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertFalse(runtime["effects"][0]["productAdmission"])
         self.assertEqual(runtime["effects"][0]["payloadKind"], "IMMUTABLE_COMPILED_IR")
         committed = output.read_bytes()
-        for fault in ("AfterBackupMove", "AfterCommitMove"):
+        visual_output = output.with_name("EffectVisualPrograms.runtime.json")
+        committed_visual = visual_output.read_bytes()
+        self.assertEqual(committed_visual, VISUAL_PROGRAM_SIDECAR.read_bytes())
+        for fault in (
+            "AfterBackupMove", "AfterCommitMove", "AfterSidecarCommitMove"
+        ):
             faulted = self._run_publisher(
                 data_root, resources, output, fault=fault
             )
             self.assertNotEqual(faulted.returncode, 0)
             self.assertEqual(output.read_bytes(), committed)
+            self.assertEqual(visual_output.read_bytes(), committed_visual)
             self.assertEqual(list(output.parent.glob("*.tmp")), [])
             self.assertEqual(list(output.parent.glob("*.bak")), [])
         validate_result = self._run_publisher(
@@ -1504,6 +1519,35 @@ class DerivedArtifactContractTests(unittest.TestCase):
             validate_result.stderr + validate_result.stdout,
         )
         self.assertEqual(output.read_bytes(), committed)
+        self.assertEqual(visual_output.read_bytes(), committed_visual)
+
+        visual_source = data_root / (
+            "Effects/VisualPrograms/effect-visual-program-runtime.v1.json"
+        )
+        source_bytes = visual_source.read_bytes()
+        visual_source.unlink()
+        missing = self._run_publisher(
+            data_root, resources, output, mode="Validate"
+        )
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertEqual(output.read_bytes(), committed)
+        self.assertEqual(visual_output.read_bytes(), committed_visual)
+
+        visual_source.parent.mkdir(parents=True, exist_ok=True)
+        visual_source.write_bytes(source_bytes)
+        changed_visual = json.loads(source_bytes.decode("utf-8"))
+        changed_visual["denominators"]["visualRowCount"] += 1
+        write_json(visual_source, changed_visual)
+        stale = self._run_publisher(
+            data_root, resources, output, mode="Validate"
+        )
+        self.assertNotEqual(stale.returncode, 0)
+        self.assertIn(
+            "runtime publish artifact.artifactSha256 is stale",
+            stale.stderr + stale.stdout,
+        )
+        self.assertEqual(output.read_bytes(), committed)
+        self.assertEqual(visual_output.read_bytes(), committed_visual)
 
     def test_publisher_rejects_v14_direct_and_missing_compiled_pair_without_overwrite(self) -> None:
         data_root, resources, output, outputs = self._build_publisher_fixture()

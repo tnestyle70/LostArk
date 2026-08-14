@@ -98,6 +98,16 @@ public:
 		f32_t fTrackPositionTicks,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
+	/* Historical action playback can prepare future clip poses while the live
+	   model is still at the start of its transition.  This variant evaluates the
+	   saved blend-from pose at an explicit elapsed time without advancing either
+	   the animation cursor, blend clock, or live bone palette. */
+	bool_t Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
+		uint32_t iExpectedAnimationIndex,
+		f32_t fTrackPositionTicks,
+		f32_t fBlendElapsedSeconds,
+		std::span<const uint32_t> BoneIndices,
+		std::span<float4x4_t> OutCombinedMatrices) const;
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
 	bool_t Enable_RootMotionSuppression(
@@ -127,7 +137,6 @@ public:
 	void Stop_Animation();
 	void Set_AnimationSpeed(f32_t speed);
 	bool_t Update_Animation(f32_t fTimeDelta);
-
 	uint64_t Get_SkeletonHash() const {
 		return m_iSkeletonHash;
 	}

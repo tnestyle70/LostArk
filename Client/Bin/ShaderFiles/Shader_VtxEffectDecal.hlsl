@@ -1,6 +1,7 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
 #include "Shader_Artist31470Active022DecalMaterial.hlsli"
+#include "Shader_EffectLocalDecalAdapter.hlsli"
 
 float4x4 g_ViewMatrixInverse;
 float4x4 g_ProjMatrixInverse;
@@ -59,6 +60,11 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
             return Shade_Artist31470RuntimeMaterialV2Active022Decal(
                 decalUV * g_UVScale + g_UVOffset,
                 g_ColorMultiply + g_ColorOffset);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
+            EFFECT_RUNTIME_ADAPTER_LOCAL_DECAL_RT0_SIX_SRV_V1)
+        {
+            return Shade_EffectLocalDecalRt0SixSrvV1(decalUV);
         }
 
         EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
