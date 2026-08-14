@@ -1,0 +1,575 @@
+LOSTARK_SKILL_TIMING 3 "Valtan" 100
+400420 "휘두르기" shapes=0 cd=3000 range=150 approach=50 turn=180
+400421 "내려찍기" shapes=0 cd=3000 range=150 approach=50 turn=180
+400422 "연속돌기(1회전)" shapes=0 cd=12000 range=150 approach=50 turn=180
+400423 "연속돌기(2회전)" shapes=0 cd=15000 range=150 approach=50 turn=180
+400424 "대쉬돌진(일반상태)" shapes=0 cd=12000 range=400 approach=300 turn=180
+400425 "사자후" shapes=0 cd=0 range=0 approach=0 turn=0
+400426 "대쉬돌진(분노상태)" shapes=0 cd=8000 range=600 approach=500 turn=180
+400427 "지진찍기" shapes=0 cd=8000 range=800 approach=700 turn=180
+400428 "점프찍기" shapes=0 cd=15000 range=1200 approach=1100 turn=180
+400429 "소닉붐" shapes=0 cd=10000 range=800 approach=700 turn=180
+400430 "그로기" shapes=0 cd=0 range=2000 approach=1900 turn=0
+400431 "광폭돌진(분노종료)" shapes=0 cd=0 range=2000 approach=1900 turn=180
+400432 "선회(사용안함)" shapes=0 cd=0 range=400 approach=300 turn=0
+400433 "연속_소닉붐" shapes=0 cd=10000 range=800 approach=700 turn=180
+400434 "우선회" shapes=0 cd=3000 range=350 approach=200 turn=0
+400435 "좌선회" shapes=0 cd=3000 range=350 approach=200 turn=0
+400436 "연속_점프찍기" shapes=0 cd=10000 range=800 approach=700 turn=180
+400437 "마력기운발산" shapes=0 cd=10000 range=1100 approach=1000 turn=0
+400438 "큰베기" shapes=0 cd=8000 range=300 approach=250 turn=180
+400439 "4연속베기" shapes=0 cd=18000 range=200 approach=100 turn=180
+400440 "발구르기" shapes=0 cd=15000 range=600 approach=500 turn=0
+400441 "파츠파괴" shapes=0 cd=10000 range=0 approach=0 turn=0
+400442 "사자후_광폭화" shapes=0 cd=8000 range=0 approach=0 turn=0
+400443 "마력기운발산" shapes=0 cd=10000 range=0 approach=0 turn=0
+420600 "레이드 발탄_AI 조립용 스킬 이펙트 모음" shapes=16 cd=0 range=0 approach=0 turn=180
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=11 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=500 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=10 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=43 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=300 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=400 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=450 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420601 "레이드 발탄_휘두르기" shapes=12 cd=5000 range=350 approach=300 turn=180
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=400 aa=140 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=425 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=-125 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42060102 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=425 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=-125 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=150 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420602 "레이드 발탄_내려찍기" shapes=45 cd=20000 range=350 approach=250 turn=180
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=25 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=230 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=325 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=275 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-300 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=500 aa=0 ah=500 ax=140 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=500 aa=0 ah=500 ax=140 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=500 aa=0 ah=500 ax=140 arem=0 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=500 aa=0 ah=500 ax=140 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=699 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=875 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-149 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-325 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=5 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=6 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=7 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=140 arem=600 maxt=8 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=354 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=500 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-354 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-500 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=250 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=125 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-125 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-250 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=230 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=325 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420603 "레이드 발탄_감금 사자후" shapes=16 cd=50000 range=800 approach=100 turn=180
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1500 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=750 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=42060305 key=38 area=1 ar=350 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-90 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060305 key=38 area=3 ar=950 aa=360 ah=500 ax=0 arem=350 maxt=0 hittype=4 rep=0 repms=0 fz=450 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-160 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060305 key=38 area=3 ar=1500 aa=360 ah=500 ax=0 arem=950 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-240 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060308 key=38 area=1 ar=350 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=240 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060308 key=38 area=3 ar=950 aa=360 ah=500 ax=0 arem=350 maxt=0 hittype=4 rep=0 repms=0 fz=450 fzin=150 fzout=280 fzcancel=1 push=97 pushr=160 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060308 key=38 area=3 ar=1500 aa=360 ah=500 ax=0 arem=950 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=5 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420604 "레이드 발탄_대쉬 돌진" shapes=11 cd=5000 range=1000 approach=500 turn=180
+  shape g=0 key=1 area=2 ar=400 aa=250 ah=500 ax=-25 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=2 ar=450 aa=250 ah=500 ax=-25 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1175 aa=250 ah=500 ax=-50 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1225 aa=250 ah=500 ax=-50 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=400 aa=250 ah=500 ax=-25 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=450 aa=250 ah=500 ax=-25 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420605 "레이드 발탄_지진 찍기" shapes=6 cd=10000 range=1000 approach=100 turn=180
+  shape g=0 key=1 area=3 ar=1200 aa=60 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1200 aa=75 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1200 aa=90 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1200 aa=75 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420606 "레이드 발탄_큰 베기 (반격기)" shapes=4 cd=50000 range=400 approach=250 turn=180
+  shape g=0 key=1 area=3 ar=450 aa=220 ah=500 ax=50 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=535 pushr=490 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=600 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420607 "레이드 발탄_큰 베기 (반격 성공)" shapes=0 cd=50000 range=400 approach=250 turn=0
+420608 "레이드 발탄_마력기운 발산 후 양자택일" shapes=8 cd=50000 range=650 approach=200 turn=180
+  shape g=42060801 key=38 area=1 ar=500 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060801 key=38 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060801 key=38 area=1 ar=1500 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=2000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=450 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1000 aa=360 ah=500 ax=275 arem=300 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=33 area=1 ar=450 aa=0 ah=500 ax=140 arem=0 maxt=8 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=1000 aa=360 ah=500 ax=140 arem=300 maxt=8 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420609 "레이드 발탄_4연속 베기" shapes=11 cd=10000 range=450 approach=300 turn=180
+  shape g=0 key=1 area=3 ar=450 aa=100 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=120 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=900 aa=360 ah=500 ax=300 arem=400 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42060905 key=1 area=1 ar=400 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=-100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=2 area=3 ar=600 aa=360 ah=500 ax=0 arem=400 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=850 aa=360 ah=500 ax=0 arem=600 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=900 aa=360 ah=500 ax=300 arem=400 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42060905 key=1 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=400 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=-100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420610 "레이드 발탄_고공 점프 찍기" shapes=26 cd=50000 range=10000 approach=0 turn=180
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061006 key=3 area=1 ar=180 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=17 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=350 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1500 aa=360 ah=500 ax=0 arem=350 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=875 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061006 key=3 area=1 ar=75 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061024 key=3 area=1 ar=180 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061024 key=3 area=1 ar=75 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=935 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-935 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=1500 aa=360 ah=500 ax=0 arem=350 maxt=8 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=200 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=100 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-100 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-200 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061040 key=3 area=1 ar=180 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061040 key=3 area=1 ar=75 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=400 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-400 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420611 "레이드 발탄_발구르기" shapes=13 cd=50000 range=500 approach=0 turn=180
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=3000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=300 aa=360 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=3 ar=600 aa=360 ah=500 ax=0 arem=450 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420612 "레이드 발탄_구속시켜 돌진 잡기 후 내려찍기 시작 (군단장 스킬)" shapes=41 cd=50000 range=800 approach=50 turn=180
+  shape g=0 key=2 area=3 ar=900 aa=135 ah=500 ax=75 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=48 area=2 ar=500 aa=200 ah=500 ax=-10 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=600 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=49 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=450 aa=0 ah=500 ax=170 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=1 ar=450 aa=0 ah=500 ax=170 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=170 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1200 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=625 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=625 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1150 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=600 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1100 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=575 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=575 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1050 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=550 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=550 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1000 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=525 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=525 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=950 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=500 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=500 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=900 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=475 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=475 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=850 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=450 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=450 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=37 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=450 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=450 aa=200 ah=500 ax=150 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420613 "레이드 발탄_구속시켜 돌진 잡기 후 내려찍기 종료 (군단장 스킬)" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420614 "레이드 발탄_구속시켜 돌진 잡기 후 내려찍기 (예외사항 처리)" shapes=0 cd=50000 range=10000 approach=0 turn=0
+420615 "레이드 발탄_지진파 내려찍기" shapes=11 cd=50000 range=450 approach=250 turn=180
+  shape g=42061500 key=1 area=1 ar=350 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=245 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=400 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=900 aa=360 ah=500 ax=0 arem=400 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1500 aa=360 ah=500 ax=0 arem=900 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061513 key=2 area=3 ar=1500 aa=60 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=245 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061500 key=1 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061539 key=2 area=3 ar=1500 aa=60 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+420616 "레이드 발탄_지면파괴 사자후 콤보" shapes=12 cd=50000 range=10000 approach=0 turn=180
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=3 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1600 aa=100 ah=500 ax=-100 arem=200 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-470 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1500 aa=176 ah=500 ax=0 arem=538 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1500 aa=20 ah=500 ax=0 arem=538 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1500 aa=18 ah=500 ax=0 arem=538 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1600 aa=100 ah=500 ax=-100 arem=200 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+420617 "레이드 발탄_마력구 폭발" shapes=12 cd=50000 range=500 approach=200 turn=180
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=3 area=1 ar=10000 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1000 aa=25 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=-300 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=2 area=1 ar=100 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=97 pushr=-40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061725 key=2 area=2 ar=250 aa=150 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=-250 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061725 key=2 area=2 ar=475 aa=150 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=-375 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061725 key=2 area=2 ar=700 aa=150 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=-500 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061725 key=2 area=2 ar=925 aa=150 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=-625 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42061725 key=2 area=2 ar=1150 aa=150 ah=500 ax=0 arem=150 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=-750 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=1 ar=10000 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+420618 "레이드 발탄_마력구 폭발 (저지 성공)" shapes=0 cd=50000 range=10000 approach=0 turn=0
+420619 "레이드 발탄_초강력 내려찍기 콤보 시작 (군단장 스킬)" shapes=23 cd=50000 range=10000 approach=0 turn=180
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=300 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42061902 key=1 area=1 ar=250 aa=0 ah=500 ax=175 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061902 key=2 area=3 ar=1500 aa=35 ah=500 ax=175 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061902 key=2 area=3 ar=1500 aa=35 ah=500 ax=88 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061902 key=2 area=3 ar=1500 aa=35 ah=500 ax=-88 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061902 key=2 area=3 ar=1500 aa=35 ah=500 ax=-175 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=175 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1000 aa=360 ah=500 ax=0 arem=350 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42061911 key=2 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061911 key=37 area=3 ar=10000 aa=60 ah=500 ax=7 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061911 key=37 area=1 ar=138 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1600 aa=80 ah=500 ax=-100 arem=200 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1500 aa=35 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=3 ar=10000 aa=300 ah=500 ax=0 arem=150 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=3 ar=10000 aa=55 ah=500 ax=0 arem=150 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=10000 aa=60 ah=500 ax=7 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42061911 key=2 area=1 ar=10000 aa=0 ah=500 ax=175 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1600 aa=80 ah=500 ax=-100 arem=200 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=100 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420620 "레이드 발탄_초강력 내려찍기 콤보 종료 (군단장 스킬) - 백업" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420621 "레이드 발탄_점프 찍기 후 휠윈드" shapes=9 cd=5000 range=800 approach=500 turn=180
+  shape g=42062101 key=1 area=1 ar=250 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=500 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=-50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=225 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062106 key=1 area=1 ar=320 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=300 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062106 key=1 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=250 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=320 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=300 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420622 "레이드 발탄_워프 돌진 콤보" shapes=18 cd=50000 range=450 approach=250 turn=180
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=500 aa=250 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=300 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=275 aa=0 ah=500 ax=290 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=2 ar=400 aa=250 ah=500 ax=-800 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=400 aa=250 ah=500 ax=-500 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=300 aa=250 ah=500 ax=-200 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1200 aa=250 ah=500 ax=-600 arem=150 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=17 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1250 aa=250 ah=500 ax=-625 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=250 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1250 aa=250 ah=500 ax=-625 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-468 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=468 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=2 ar=1000 aa=250 ah=500 ax=-850 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+420623 "레이드 발탄_돌진 잡기 후 사자후" shapes=8 cd=50000 range=700 approach=200 turn=180
+  shape g=0 key=48 area=3 ar=275 aa=140 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=48 area=2 ar=650 aa=200 ah=500 ax=50 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=49 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=3 area=3 ar=3000 aa=135 ah=500 ax=0 arem=100 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=700 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=48 area=3 ar=275 aa=225 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=49 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=250 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=3 area=3 ar=3000 aa=135 ah=500 ax=0 arem=100 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=300 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=3 ar=3000 aa=135 ah=500 ax=0 arem=100 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+420624 "레이드 발탄_하얗게 불사르고 망령화 (마수 군단장 레이드 존 전용)" shapes=51 cd=50000 range=10000 approach=0 turn=180
+  shape g=0 key=13 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062402 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062402 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42062404 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062404 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42062406 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062406 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42062408 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062408 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=1 ar=80 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=160 aa=360 ah=500 ax=0 arem=80 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=75 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=240 aa=360 ah=500 ax=0 arem=160 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=2 area=1 ar=240 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=120 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=140 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=60 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=160 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=70 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=180 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=80 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=220 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=240 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=260 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=120 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=280 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=130 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=300 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=140 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1691 tmpl_w=20
+  shape g=0 key=1 area=1 ar=400 aa=0 ah=500 ax=160 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=160 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1500 aa=360 ah=500 ax=0 arem=300 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=3 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=11 area=1 ar=1000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=200 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=120 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=140 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=160 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=110 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=180 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=120 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=130 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=220 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=140 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=240 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=150 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=260 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=160 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=280 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=170 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=300 aa=0 ah=500 ax=120 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=180 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=1 ar=80 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=160 aa=360 ah=500 ax=0 arem=80 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=75 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=240 aa=360 ah=500 ax=0 arem=160 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=400 aa=0 ah=500 ax=160 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1500 aa=360 ah=500 ax=0 arem=300 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420625 "레이드 발탄_망령화 사망" shapes=2 cd=0 range=10000 approach=0 turn=0
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=32 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420626 "레이드 발탄_망령화 분신 사망" shapes=0 cd=0 range=10000 approach=0 turn=0
+420627 "레이드 발탄_1번째 부위 파괴" shapes=0 cd=0 range=10000 approach=0 turn=0
+420628 "레이드 발탄_2번째 부위 파괴" shapes=0 cd=0 range=10000 approach=0 turn=0
+420629 "레이드 발탄_모든 지형물 파괴 연출" shapes=3 cd=0 range=10000 approach=0 turn=0
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420630 "레이드 발탄_1 페이즈 기믹 광역 즉사기" shapes=19 cd=50000 range=350 approach=300 turn=0
+  shape g=42063001 key=37 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42063001 key=37 area=3 ar=2000 aa=35 ah=500 ax=0 arem=250 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=37 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=100 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=1 ar=10000 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060024 key=7 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060024 key=7 area=3 ar=2000 aa=35 ah=500 ax=0 arem=250 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42063051 key=2 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42063051 key=2 area=3 ar=2000 aa=35 ah=500 ax=0 arem=250 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=2 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42063065 key=1 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42063065 key=1 area=3 ar=2000 aa=35 ah=500 ax=0 arem=250 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420631 "레이드 발탄_잡기 스킬 카운터 성공 및 저지 성공" shapes=1 cd=50000 range=800 approach=350 turn=0
+  shape g=0 key=49 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=1814 tmpl_w=20
+420632 "레이드 발탄_돌진 잡기 후 사자후 (예외사항 처리)" shapes=3 cd=50000 range=10000 approach=0 turn=0
+  shape g=42063001 key=3 area=1 ar=250 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42063001 key=3 area=3 ar=2000 aa=35 ah=500 ax=0 arem=250 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=3 area=1 ar=10000 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+420633 "레이드 발탄_휠윈드" shapes=3 cd=5000 range=300 approach=150 turn=0
+  shape g=0 key=7 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=3 ar=10000 aa=360 ah=500 ax=0 arem=300 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420634 "레이드 발탄_망령화 분신 스폰 대쉬 돌진" shapes=0 cd=50000 range=10000 approach=0 turn=0
+420635 "레이드 발탄_공격하면서 뒤로 빠지기" shapes=0 cd=20000 range=450 approach=200 turn=180
+420636 "레이드 발탄_붉은 검기 날리기" shapes=1 cd=30000 range=1000 approach=0 turn=180
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420637 "레이드 발탄_앞뒤앞 내려찍기" shapes=8 cd=5000 range=500 approach=300 turn=180
+  shape g=42063701 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42063701 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=42063703 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=42063703 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=1 ar=350 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=15 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420638 "레이드 발탄_두손 내려찍어 지면 폭발" shapes=4 cd=10000 range=1000 approach=0 turn=0
+  shape g=0 key=1 area=1 ar=400 aa=0 ah=500 ax=160 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=12 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=3 ar=1000 aa=360 ah=500 ax=0 arem=450 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=50 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=33 area=1 ar=450 aa=0 ah=500 ax=0 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420639 "레이드 발탄_낙사 사자후" shapes=0 cd=50000 range=1000 approach=0 turn=0
+420640 "레이드 발탄_연속 카운터 내려찍기 (마지막 그로기)" shapes=33 cd=0 range=10000 approach=0 turn=0
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=2 area=1 ar=200 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=300 fzin=150 fzout=230 fzcancel=1 push=97 pushr=40 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=1 ar=10000 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=30 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-2450 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-2100 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-1750 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-1400 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-1050 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-700 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=-350 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=350 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=700 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=1050 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=1400 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=1750 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=2100 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=2450 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=1 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=2 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=3 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=4 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=5 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=6 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=7 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=7 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=8 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=10000 aa=0 ah=500 ax=300 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+420641 "레이드 발탄_연속 카운터 내려찍기 (중간 그로기)" shapes=0 cd=0 range=10000 approach=0 turn=0
+420642 "레이드 발탄_연속 카운터 내려찍기 (첫 공격)" shapes=0 cd=0 range=10000 approach=0 turn=180
+420643 "레이드 발탄_연속 카운터 내려찍기 (중간 공격)" shapes=0 cd=0 range=10000 approach=0 turn=0
+420644 "레이드 발탄_연속 카운터 내려찍기 (마지막 공격)" shapes=0 cd=0 range=10000 approach=0 turn=0
+420645 "레이드 발탄_연속 카운터 내려찍기 (그로기 후 중간 공격)" shapes=0 cd=0 range=10000 approach=0 turn=0
+420646 "레이드 발탄_연속 카운터 내려찍기 (그로기 후 마지막 공격)" shapes=0 cd=0 range=10000 approach=0 turn=0
+420647 "레이드 발탄_연속 카운터 내려찍기_백업용" shapes=0 cd=0 range=10000 approach=0 turn=0
+420651 "레이드 발탄_3페이즈 전멸기" shapes=6 cd=50000 range=10000 approach=0 turn=180
+  shape g=42065101 key=38 area=1 ar=350 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-90 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42065101 key=38 area=3 ar=950 aa=360 ah=500 ax=0 arem=350 maxt=0 hittype=4 rep=0 repms=0 fz=450 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-190 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42065101 key=38 area=3 ar=1500 aa=360 ah=500 ax=0 arem=950 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=-340 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=37 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=500 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=3 area=3 ar=1600 aa=80 ah=500 ax=-100 arem=200 maxt=0 hittype=6 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=100 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1600 aa=80 ah=500 ax=-100 arem=200 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_EstherSkill_Bahunturr_Defense" sndset="" tmpl_t=0 tmpl_w=20
+420652 "레이드 발탄_망령화 발탄 분신 대기 스킬 (저지)" shapes=0 cd=0 range=10000 approach=0 turn=180
+420653 "레이드 발탄_망령화 발탄 분신 대기 스킬 (저지 완료)" shapes=0 cd=0 range=10000 approach=0 turn=180
+420654 "레이드 발탄_1페이즈 돌진 외벽 파괴 그로기" shapes=0 cd=50000 range=10000 approach=0 turn=0
+420655 "레이드 발탄_오프닝 공격" shapes=4 cd=50000 range=10000 approach=0 turn=0
+  shape g=0 key=1 area=1 ar=175 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=1814 tmpl_w=20
+  shape g=0 key=1 area=1 ar=275 aa=0 ah=500 ax=290 arem=0 maxt=0 hittype=5 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=2151 tmpl_w=20
+  shape g=0 key=7 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=8 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420656 "레이드 발탄_초강력 내려찍기 콤보 종료 - 1 (군단장 스킬)" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420657 "레이드 발탄_초강력 내려찍기 콤보 종료 - 2 (군단장 스킬)" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420658 "레이드 발탄_마지막 지면파괴 사자후 콤보" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420659 "레이드 발탄_지면파괴 사자후 콤보 마무리 공격" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420660 "레이드 발탄_휘두르기_노멀 버전" shapes=5 cd=5000 range=350 approach=300 turn=180
+  shape g=0 key=1 area=3 ar=400 aa=140 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=425 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=-125 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42060102 key=1 area=2 ar=600 aa=150 ah=500 ax=150 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420661 "레이드 발탄_내려찍기_노멀 버전" shapes=4 cd=20000 range=350 approach=250 turn=180
+  shape g=0 key=1 area=1 ar=150 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=175 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=200 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=200 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=230 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=325 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420662 "레이드 발탄_지진 찍기_노멀 버전" shapes=3 cd=10000 range=1000 approach=100 turn=180
+  shape g=0 key=1 area=3 ar=1200 aa=60 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=250 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1200 aa=75 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=250 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=3 ar=1200 aa=90 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=250 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420663 "레이드 발탄_점프 찍기 후 휠윈드_노멀 버전" shapes=4 cd=5000 range=800 approach=500 turn=180
+  shape g=42062101 key=1 area=1 ar=250 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=500 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=-50 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062101 key=1 area=2 ar=825 aa=170 ah=500 ax=225 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=225 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420664 "레이드 발탄_공격하면서 뒤로 빠지기_노멀 버전" shapes=0 cd=20000 range=450 approach=200 turn=180
+420665 "레이드 발탄_하얗게 불사르고 망령화_노멀 버전 (마수 군단장 레이드 존 전용)" shapes=13 cd=50000 range=10000 approach=0 turn=180
+  shape g=42062402 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=210 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062402 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062404 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=210 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062404 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062406 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=210 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062406 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062408 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=210 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062408 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=500 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=12 area=0 ar=0 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=1 ar=80 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=160 aa=360 ah=500 ax=0 arem=80 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42062411 key=2 area=3 ar=240 aa=360 ah=500 ax=0 arem=160 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=33 area=1 ar=10000 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=1 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=0 push=0 pushr=0 back=0 counter=0 hitset="" sndset="" tmpl_t=0 tmpl_w=20
+420666 "레이드 발탄_앞뒤앞 내려찍기_노멀 버전" shapes=5 cd=5000 range=500 approach=300 turn=180
+  shape g=42063701 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42063701 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42063703 key=1 area=3 ar=1000 aa=80 ah=500 ax=0 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=42063703 key=1 area=1 ar=175 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=97 pushr=90 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+  shape g=0 key=1 area=1 ar=350 aa=0 ah=500 ax=275 arem=0 maxt=0 hittype=4 rep=0 repms=0 fz=400 fzin=150 fzout=280 fzcancel=1 push=242 pushr=275 back=0 counter=0 hitset="SkHit_Claw1" sndset="" tmpl_t=0 tmpl_w=20
+420667 "레이드 발탄_연속 카운터 내려찍기 (마지막 그로기)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420668 "레이드 발탄_연속 카운터 내려찍기 (중간 그로기)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420669 "레이드 발탄_연속 카운터 내려찍기 (첫 공격)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=180
+420670 "레이드 발탄_연속 카운터 내려찍기 (중간 공격)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420671 "레이드 발탄_연속 카운터 내려찍기 (마지막 공격)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420672 "레이드 발탄_연속 카운터 내려찍기 (그로기 후 중간 공격)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420673 "레이드 발탄_연속 카운터 내려찍기 (그로기 후 마지막 공격)_헬 버전" shapes=0 cd=0 range=10000 approach=0 turn=0
+420674 "레이드 발탄_구속시켜 돌진 잡기 후 내려찍기 종료 (군단장 스킬)_헬 버전" shapes=0 cd=50000 range=10000 approach=0 turn=180
+420675 "레이드 발탄_대쉬 돌진_밈 섬" shapes=0 cd=5000 range=1000 approach=500 turn=180
+420676 "레이드 발탄_그로기_싱글 난이도" shapes=0 cd=0 range=10000 approach=0 turn=0
+420677 "발탄_7주년_텔레포트 카운터" shapes=0 cd=0 range=1000 approach=0 turn=0
+420678 "발탄_7주년_카운터 무력화" shapes=0 cd=0 range=1000 approach=0 turn=0
