@@ -1630,6 +1630,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			m_WorldEntities,
 			m_GameplayCatalog,
 			m_ServerNavigation.Is_Loaded() ? &m_ServerNavigation : nullptr,
+			&m_ServerCollisionSystem,
 			fixedDeltaSeconds,
 			updateTick,
 			m_TickDamageEvents);

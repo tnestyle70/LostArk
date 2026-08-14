@@ -533,6 +533,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				noTargets,
 				catalog,
 				nullptr,
+				nullptr,
 				1.f / 30.f,
 				tick,
 				noDamageEvents);
@@ -606,6 +607,101 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
 		"Reject navigation point outside projection radius");
+
+	/* Walk out from a point the path test already proved walkable until the grid
+	stops answering, so the boundary is whatever the current bake says it is
+	rather than a cell index frozen into this file. */
+	const float navCellSize = navigation.Get_CellSize();
+	const float boundaryProbeStep = navCellSize * 0.25f;
+	const float boundaryProbeZ = -137.f;
+	const float boundaryProbeOriginX = 152.f;
+	const float boundaryProbeLimitX = boundaryProbeOriginX + 60.f;
+	float lastWalkableX = boundaryProbeOriginX;
+	float firstBlockedX = 0.f;
+	bool foundBoundary = false;
+	SERVER_NAV_POINT boundaryProbe{};
+	for (float probeX = boundaryProbeOriginX + boundaryProbeStep;
+		probeX < boundaryProbeLimitX;
+		probeX += boundaryProbeStep)
+	{
+		if (!navigation.Sample_Position(probeX, boundaryProbeZ, boundaryProbe))
+		{
+			firstBlockedX = probeX;
+			foundBoundary = true;
+			break;
+		}
+		lastWalkableX = probeX;
+	}
+	tests.Require(
+		navCellSize > 0.f && foundBoundary,
+		"Find a Valtan navigation boundary to clamp root motion against");
+
+	SERVER_NAV_POINT rootMotionStop{ 0.f, 0.f, 0.f };
+	bool rootMotionClamped = false;
+	CPlayerSkillSystem::Clamp_StepToWalkable(
+		navigation,
+		lastWalkableX,
+		boundaryProbeZ,
+		firstBlockedX + navCellSize,
+		boundaryProbeZ,
+		rootMotionStop,
+		rootMotionClamped);
+	tests.Require(
+		rootMotionClamped &&
+		rootMotionStop.x >= lastWalkableX &&
+		rootMotionStop.x < firstBlockedX &&
+		firstBlockedX - rootMotionStop.x < navCellSize &&
+		std::abs(rootMotionStop.z - boundaryProbeZ) < 0.001f,
+		"Stop root motion against the Valtan non-walkable boundary");
+
+	SERVER_NAV_POINT rootMotionOpen{ 0.f, 0.f, 0.f };
+	bool openClamped = true;
+	CPlayerSkillSystem::Clamp_StepToWalkable(
+		navigation,
+		152.f,
+		boundaryProbeZ,
+		152.f + boundaryProbeStep,
+		boundaryProbeZ,
+		rootMotionOpen,
+		openClamped);
+	tests.Require(
+		!openClamped &&
+		std::abs(rootMotionOpen.x - (152.f + boundaryProbeStep)) < 0.001f,
+		"Preserve root motion that stays on walkable navigation");
+
+	/* Keep marching past the blocked band to the open floor behind it. A step
+	that spans the whole band is the case a plain bisection would wave through,
+	so the clamp has to answer with the near wall, not the far side. */
+	float farSideX = 0.f;
+	bool foundFarSide = false;
+	for (float probeX = firstBlockedX + boundaryProbeStep;
+		probeX < firstBlockedX + 60.f;
+		probeX += boundaryProbeStep)
+	{
+		if (navigation.Sample_Position(probeX, boundaryProbeZ, boundaryProbe))
+		{
+			farSideX = probeX;
+			foundFarSide = true;
+			break;
+		}
+	}
+	tests.Require(foundFarSide,
+		"Find walkable navigation beyond the blocked band");
+	SERVER_NAV_POINT rootMotionTunnel{ 0.f, 0.f, 0.f };
+	bool tunnelClamped = false;
+	CPlayerSkillSystem::Clamp_StepToWalkable(
+		navigation,
+		lastWalkableX,
+		boundaryProbeZ,
+		farSideX,
+		boundaryProbeZ,
+		rootMotionTunnel,
+		tunnelClamped);
+	tests.Require(
+		tunnelClamped &&
+		rootMotionTunnel.x >= lastWalkableX &&
+		rootMotionTunnel.x < firstBlockedX,
+		"Refuse root motion that would cross a blocked band in one step");
 
 	CWorldBootstrap bernWorld;
 	const bool bernLoaded = bernWorld.Load(WORLD_ID::BERN);
@@ -839,6 +935,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		arenaEntities,
 		catalog,
 		&characterSelectNavigation,
+		nullptr,
 		1.f / 30.f,
 		11,
 		arenaDamageEvents);
@@ -882,8 +979,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Reject duplicate skill command while action is active");
 	std::vector<DAMAGE_EVENT> damageEvents;
 	for (std::uint32_t tick = 11; tick < 70; ++tick)
-		skills.Update(player, entities, catalog, &navigation, 1.f / 30.f, tick,
-			damageEvents);
+		skills.Update(player, entities, catalog, &navigation, nullptr,
+			1.f / 30.f, tick, damageEvents);
 	/* 34120 is official rate 361 at attack power 100. */
 	tests.Require(9639u == entities[0].iCurrentHp,
 		"Apply server-authoritative player damage once");
@@ -961,7 +1058,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		about 667 ms: past the hit, nowhere near the full duration. */
 		for (std::uint32_t tick = 17; tick < 37; ++tick)
 			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
-				1.f / 30.f, tick, comboDamageEvents);
+				nullptr, 1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			2u == comboPlayer.iComboStage &&
 			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
@@ -971,7 +1068,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		instead of cutting at its hit. */
 		for (std::uint32_t tick = 37; tick < 57; ++tick)
 			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
-				1.f / 30.f, tick, comboDamageEvents);
+				nullptr, 1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			2u == comboPlayer.iComboStage &&
 			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
@@ -979,7 +1076,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		for (std::uint32_t tick = 57; tick < 120; ++tick)
 			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
-				1.f / 30.f, tick, comboDamageEvents);
+				nullptr, 1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == comboPlayer.eAction &&
 			0u == comboPlayer.iComboStage,
@@ -1083,8 +1180,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		for (std::uint32_t tick = 11; tick < 60; ++tick)
 		{
 			meleeSkills.Update(
-				meleePlayer, meleeEntities, catalog, nullptr, 1.f / 30.f, tick,
-				meleeDamageEvents);
+				meleePlayer, meleeEntities, catalog, nullptr, nullptr,
+				1.f / 30.f, tick, meleeDamageEvents);
 		}
 		tests.Require(10000u - 1050u == meleeEntities[0].iCurrentHp,
 			"Reach the boss through its collision radius");
@@ -1554,7 +1651,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		std::vector<SERVER_WORLD_ENTITY> counterEntities;
 		std::vector<DAMAGE_EVENT> counterDamageEvents;
 		counterSkills.Update(counterPlayer, counterEntities, catalog, nullptr,
-			1.f / 30.f, 11, counterDamageEvents);
+			nullptr, 1.f / 30.f, 11, counterDamageEvents);
 		tests.Require(
 			1u == counterPlayer.iComboStage && counterDamageEvents.empty(),
 			"Hold the guard stage and land no damage while it runs");
@@ -1635,7 +1732,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		for (std::uint32_t tick = 11; tick < 40; ++tick)
 		{
 			stanceSkills.Update(stancePlayer, stanceEntities, catalog, nullptr,
-				1.f / 30.f, tick, stanceDamageEvents);
+				nullptr, 1.f / 30.f, tick, stanceDamageEvents);
 		}
 		tests.Require(
 			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == stancePlayer.eStance &&
