@@ -696,7 +696,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.vPosition,
 		spawned.fYawDegrees,
 		WORLD_ENTITY_ACTION::IDLE,
-		{}))
+		{}, {}, 0u, 0u, 0u, 0u))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
@@ -945,7 +945,12 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				position,
 				entity.fYawDegrees,
 				entity.eAction,
-				entity.strActionId))
+				entity.strPatternId,
+				entity.strActionId,
+				snapshot.iServerTick,
+				entity.iActionStartTick,
+				entity.iPatternSequence,
+				entity.iPatternStageIndex))
 			{
 				allSucceeded = false;
 			}

@@ -145,7 +145,7 @@ runtime payload (Git 제외, 팀 리소스 배포 필요)
 
 recipe는 provenance/hash/pivot 감사 정본이며 runtime이 JSON을 직접 읽지는 않는다.
 `CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()`의 12 asset/pivot 등록을
-`ProjectAudit`이 recipe와 1:1 대조한다. exact 12개는 optional atomic batch라 하나라도 없거나 손상되면
+recipe와 1:1로 대조한다. 이 두 정본을 바꾸는 변경은 Map/Destruction 도메인의 focused validator로 12개 ID/pivot/hash를 재검증하고 `PhysicsContractHarness`와 Client destruction smoke를 통과시킨다. exact 12개는 optional atomic batch라 하나라도 없거나 손상되면
 부분 등록하지 않고 generic 12-instance fallback을 사용하며, fallback에서도 source는 숨긴다.
 
 ## 4. 데이터와 stable ID
@@ -404,6 +404,6 @@ collision truth로 쓰거나 작은 dust particle마다 rigid actor를 만들지
 [ ] 02316 재생 중 source+alias가 모두 숨고 lifetime 뒤에도 유지되며 Reset에서 둘 다 복원되는지 확인
 [ ] Collision trigger manual fire 확인
 [ ] Save/Reload와 pair rollback 확인
-[ ] PhysicsContractHarness, Server contract test, Client build, ProjectAudit 실행
+[ ] recipe 12개 ID/pivot/hash 직접 대조, PhysicsContractHarness, Server contract test, Client build 실행
 [ ] 제품 Server gate를 열었다면 publisher/Shared/late join까지 같은 PR에서 검증
 ```

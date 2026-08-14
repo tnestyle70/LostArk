@@ -2,6 +2,7 @@
 
 #include "Effect_DocumentRenderer.h"
 #include "Effect_LightPresentation.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Presentation_Manager.h"
 
@@ -104,6 +105,24 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
 	m_fPlaybackRate = Desc.fPlaybackRate;
+	if (nullptr != Desc.pVisualProgramProjection)
+	{
+		if (nullptr != Desc.pDocument || nullptr == Desc.pPreparedResources)
+		{
+			return E_FAIL;
+		}
+		const bool_t bStaged =
+			nullptr == Desc.pReconstructedRuntimePreparation ?
+			Stage_PrevalidatedVisualProgramDocument(
+				Desc.pVisualProgramProjection, Desc.pPreparedResources,
+				m_strStatus) :
+			Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+				Desc.pVisualProgramProjection, Desc.pPreparedResources,
+				Desc.pReconstructedRuntimePreparation, m_strStatus);
+		if (!bStaged)
+			return E_FAIL;
+		return S_OK;
+	}
 	if (nullptr != Desc.pReconstructedRuntimePreparation)
 	{
 		if (!Stage_ReconstructedRuntimeProgram(Desc, m_strStatus))
@@ -143,6 +162,7 @@ bool_t Client::CEffectObject::Stage_Document(
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
 	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
 	const CONFIGURED_PRESENTATION_COUNTS Counts =
 		Count_ConfiguredPresentation(Document);
@@ -179,6 +199,7 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
 	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
 	const CONFIGURED_PRESENTATION_COUNTS Counts =
 		Count_ConfiguredPresentation(Document);
@@ -191,12 +212,62 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 	return true;
 }
 
+bool_t Client::CEffectObject::Stage_PrevalidatedVisualProgramDocument(
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> pProjection,
+	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+		pPreparedResources,
+	std::string& strOutError)
+{
+	if (nullptr == pProjection || !pProjection->Is_Valid() ||
+		nullptr == pPreparedResources)
+	{
+		strOutError =
+			"Admitted source visual-program object inputs are missing.";
+		return false;
+	}
+	const EFFECT_DOCUMENT_DESC& Document = pProjection->Get_Document();
+	const std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+		pPlaybackResources =
+			CEffectDocumentRenderer::Get_PlaybackResources(pPreparedResources);
+	CEffectPlayback StagedPlayback;
+	if (!StagedPlayback.Stage_PrevalidatedVisualProgramDocument(
+			pProjection, pPlaybackResources, strOutError))
+	{
+		return false;
+	}
+	if (!m_pRenderer->Stage_PrevalidatedVisualProgramDocument(
+			pProjection, std::move(pPreparedResources), strOutError))
+	{
+		return false;
+	}
+	const bool_t bSourceVisualProgramActive =
+		StagedPlayback.Is_SourceVisualProgramActive();
+
+	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary.Clear();
+	m_pReconstructedDiagnosticFrame.reset();
+	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = bSourceVisualProgramActive;
+	m_bReconstructedSourceRuntimeActive = false;
+	const CONFIGURED_PRESENTATION_COUNTS Counts =
+		Count_ConfiguredPresentation(Document);
+	m_iConfiguredLightCount = Counts.iLights;
+	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_LastPresentationSubmissionStats = {};
+	Reset_RenderFailureIsolation();
+	m_strStatus = "Admitted source visual-program Effect Document staged.";
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectObject::Stage_ReconstructedRuntimeProgram(
 	const EFFECT_OBJECT_DESC& Desc,
 	std::string& strOutError)
 {
 	if (nullptr == Desc.pReconstructedRuntimePreparation ||
 		nullptr != Desc.pDocument || nullptr != Desc.pPreparedResources ||
+		nullptr != Desc.pVisualProgramProjection ||
 		!std::isfinite(Desc.fPlaybackRate) ||
 		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f)
 	{
@@ -240,6 +311,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedRuntimeEntry(
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
 	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
 	m_iConfiguredLightCount = 0u;
 	m_iConfiguredScreenPostCount = 0u;
@@ -303,6 +375,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 	m_pReconstructedDiagnosticFrame.reset();
 	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
 	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = true;
 	m_bReconstructedSourceRuntimeActive = true;
 	const CONFIGURED_PRESENTATION_COUNTS Counts =
 		Count_ConfiguredPresentation(Document);
@@ -313,7 +386,81 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 	m_Playback.Seek(0.f, m_RootWorld);
 	Reset_RenderFailureIsolation();
 	m_strStatus =
-		"Artist V4 material-composition review staged; zero occurrences are admitted and Product remains blocked.";
+		"Artist F core renderer preview staged; Product remains blocked.";
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectObject::
+	Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPreparedResources,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError)
+{
+	if (nullptr == pProjection || !pProjection->Is_Valid() ||
+		pProjection->Get_ProjectionKind() !=
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+		nullptr == pPreparedResources || nullptr == pPreparation ||
+		nullptr == pPreparation->Get_Program() ||
+		pProjection->Get_EffectAssetId() !=
+			pPreparation->Get_Program()->strRuntimeCatalogAssetId)
+	{
+		strOutError =
+			"Reconstructed source runtime visual adapter object identity is invalid.";
+		return false;
+	}
+
+	CEffectReconstructedRuntimeBoundary StagedBoundary;
+	if (!StagedBoundary.Stage(pPreparation,
+			EFFECT_RECONSTRUCTED_RUNTIME_SEAM::OBJECT, strOutError))
+	{
+		return false;
+	}
+	const std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+		pPlaybackResources =
+			CEffectDocumentRenderer::Get_PlaybackResources(pPreparedResources);
+	CEffectPlayback StagedPlayback;
+	if (!StagedPlayback.Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			pProjection, pPlaybackResources, pPreparation, strOutError) ||
+		StagedPlayback.Get_ReconstructedRuntimePreparation().get() !=
+			pPreparation.get() ||
+		StagedPlayback.Get_SourceVisualProgramProjection().get() !=
+			pProjection.get())
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Reconstructed source runtime visual adapter playback seam diverged.";
+		}
+		return false;
+	}
+	if (!m_pRenderer->Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			pProjection, std::move(pPreparedResources), pPreparation, strOutError))
+	{
+		return false;
+	}
+
+	m_Playback = std::move(StagedPlayback);
+	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
+	m_pReconstructedDiagnosticFrame.reset();
+	m_eReconstructedDiagnosticSolo = RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
+	m_bReconstructedDiagnosticActive = false;
+	m_bSourceVisualProgramActive = true;
+	m_bReconstructedSourceRuntimeActive = true;
+	const CONFIGURED_PRESENTATION_COUNTS Counts =
+		Count_ConfiguredPresentation(pProjection->Get_Document());
+	m_iConfiguredLightCount = Counts.iLights;
+	m_iConfiguredScreenPostCount = Counts.iScreenPosts;
+	m_LastPresentationSubmissionStats = {};
+	m_bVisible = true;
+	m_Playback.Seek(0.f, m_RootWorld);
+	Reset_RenderFailureIsolation();
+	m_strStatus =
+		"Reconstructed source runtime staged with immutable visual adapter.";
 	strOutError.clear();
 	return true;
 }
@@ -385,6 +532,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedDiagnostic(
 	m_pReconstructedDiagnosticFrame = std::move(pFrame);
 	m_eReconstructedDiagnosticSolo = eSolo;
 	m_bReconstructedDiagnosticActive = true;
+	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
 	m_iConfiguredLightCount = 0u;
 	m_iConfiguredScreenPostCount = 0u;
@@ -413,6 +561,53 @@ void Client::CEffectObject::Set_ReconstructedDiagnosticSolo(
 		"Reconstructed Sprite diagnostic solo active; Product execution remains blocked.";
 }
 
+bool_t Client::CEffectObject::Set_PreviewSubmissionIsolation(
+	const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+	std::string& strOutError)
+{
+	if ((!m_bReconstructedSourceRuntimeActive &&
+		!m_bSourceVisualProgramActive) ||
+		m_bReconstructedDiagnosticActive || nullptr == m_pRenderer)
+	{
+		strOutError =
+			"Preview submission isolation requires an active admitted source visual program.";
+		return false;
+	}
+	if (!m_pRenderer->Set_PreviewSubmissionIsolation(Isolation, strOutError))
+		return false;
+	m_strStatus = m_pRenderer->Get_Status();
+	return true;
+}
+
+bool_t Client::CEffectObject::Set_PreviewElementIsolation(
+	std::vector<std::string> ElementIds,
+	std::string& strOutError)
+{
+	EFFECT_PREVIEW_SUBMISSION_ISOLATION Isolation;
+	Isolation.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+	Isolation.ElementIds = std::move(ElementIds);
+	return Set_PreviewSubmissionIsolation(Isolation, strOutError);
+}
+
+void Client::CEffectObject::Reset_PreviewSubmissionIsolation()
+{
+	if (nullptr != m_pRenderer)
+		m_pRenderer->Reset_PreviewSubmissionIsolation();
+}
+
+bool_t Client::CEffectObject::Should_SubmitPreviewElement(
+	const EFFECT_ELEMENT_DESC* const pElement) const
+{
+	if (nullptr == m_pRenderer)
+		return true;
+	const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation =
+		m_pRenderer->Get_PreviewSubmissionIsolation();
+	return Isolation.eKind !=
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET ||
+		(nullptr != pElement && std::binary_search(Isolation.ElementIds.begin(),
+			Isolation.ElementIds.end(), pElement->strElementId));
+}
+
 void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
 {
 	m_RootWorld = RootWorld;
@@ -424,6 +619,12 @@ void Client::CEffectObject::Set_SourceAnchorWorlds(
 	const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds)
 {
 	m_Playback.Set_SourceAnchorWorlds(SourceAnchorWorlds);
+}
+
+void Client::CEffectObject::Set_SourceAnchorWorlds(
+	std::unordered_map<std::string, float4x4_t>&& SourceAnchorWorlds)
+{
+	m_Playback.Set_SourceAnchorWorlds(std::move(SourceAnchorWorlds));
 }
 
 void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
@@ -451,16 +652,23 @@ void Client::CEffectObject::Advance_Preview(
 	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
 }
 
+void Client::CEffectObject::Set_RootWorldForNextUpdate(
+	const float4x4_t& RootWorld)
+{
+	m_RootWorld = RootWorld;
+}
+
 bool_t Client::CEffectObject::Set_SampleTimeWithTransformHistory(
 	const f32_t fSampleTimeSeconds,
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 	std::string& strOutError)
 {
 	if (m_bReconstructedDiagnosticActive ||
-		!m_bReconstructedSourceRuntimeActive)
+		(!m_bReconstructedSourceRuntimeActive &&
+		 !m_bSourceVisualProgramActive))
 	{
 		strOutError =
-			"Effect object transform-history seek requires Full source runtime.";
+			"Effect object transform-history seek requires an admitted source visual runtime.";
 		return false;
 	}
 	if (!m_Playback.Seek_WithTransformHistory(
@@ -479,10 +687,11 @@ bool_t Client::CEffectObject::Advance_PreviewWithTransformHistory(
 	std::string& strOutError)
 {
 	if (m_bReconstructedDiagnosticActive ||
-		!m_bReconstructedSourceRuntimeActive)
+		(!m_bReconstructedSourceRuntimeActive &&
+		 !m_bSourceVisualProgramActive))
 	{
 		strOutError =
-			"Effect object transform-history update requires Full source runtime.";
+			"Effect object transform-history update requires an admitted source visual runtime.";
 		return false;
 	}
 	if (!m_Playback.Update_WithTransformHistory(
@@ -594,16 +803,37 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 	if (!m_bVisible)
 		return Complete(S_OK);
 	const EFFECT_EVALUATED_FRAME& Frame = m_Playback.Get_Frame();
-	m_LastPresentationSubmissionStats.Lights.iExpected = Frame.Lights.size();
+	const uint64_t iVisibleLightCount = static_cast<uint64_t>(std::count_if(
+		Frame.Lights.begin(), Frame.Lights.end(),
+		[this](const EFFECT_EVALUATED_LIGHT& Value)
+		{
+			return Should_SubmitPreviewElement(Value.pElement);
+		}));
+	const uint64_t iVisibleScreenPostCount = static_cast<uint64_t>(std::count_if(
+		Frame.ScreenPosts.begin(), Frame.ScreenPosts.end(),
+		[this](const EFFECT_EVALUATED_SCREEN_POST& Value)
+		{
+			return Should_SubmitPreviewElement(Value.pElement);
+		}));
+	m_LastPresentationSubmissionStats.Lights.iExpected = iVisibleLightCount;
 	m_LastPresentationSubmissionStats.ScreenPosts.iExpected =
-		Frame.ScreenPosts.size();
+		iVisibleScreenPostCount;
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
+	const bool_t bElementSetIsolation = nullptr != m_pRenderer &&
+		m_pRenderer->Get_PreviewSubmissionIsolation().eKind ==
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
 	Presentation.Register_ProviderSubmissionExpectation(
-		m_iConfiguredLightCount, Frame.Lights.size(),
-		m_iConfiguredScreenPostCount, Frame.ScreenPosts.size());
+		!bElementSetIsolation ? m_iConfiguredLightCount :
+			iVisibleLightCount,
+		iVisibleLightCount,
+		!bElementSetIsolation ? m_iConfiguredScreenPostCount :
+			iVisibleScreenPostCount,
+		iVisibleScreenPostCount);
 	bool_t bSuppressed = false;
 	for (const EFFECT_EVALUATED_LIGHT& Evaluated : Frame.Lights)
 	{
+		if (!Should_SubmitPreviewElement(Evaluated.pElement))
+			continue;
 		LIGHT_DESC Light{};
 		if (!Try_BuildEffectPointLightDesc(Evaluated, Light))
 		{
@@ -629,6 +859,8 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 
 	for (const EFFECT_EVALUATED_SCREEN_POST& Evaluated : Frame.ScreenPosts)
 	{
+		if (!Should_SubmitPreviewElement(Evaluated.pElement))
+			continue;
 		PRESENTATION_SCREEN_POST_DESC Post;
 		switch (Evaluated.eProfile)
 		{

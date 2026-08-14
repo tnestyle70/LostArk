@@ -626,3 +626,369 @@ bool_t Client::CAnimationSkillBindingDocument::Save_Atomic(
 		" skill animation binding(s) to " + destination.string();
 	return true;
 }
+
+std::filesystem::path
+Client::CValtanPatternAnimationBindingDocument::Resolve_Path(
+	const std::string_view animationAssetId)
+{
+	if (!Is_StableToken(animationAssetId))
+		return {};
+	const std::string asset{ animationAssetId };
+	return CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Animation/Authored") /
+		std::filesystem::path(asset) /
+		std::filesystem::path(asset + ".patternbindings.json"));
+}
+
+bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
+	const std::string_view text,
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+	std::string& outStatus)
+{
+	constexpr std::string_view BOSS_DOCUMENT_SCHEMA =
+		"lostark.valtan-pattern-bindings";
+	constexpr double BOSS_DOCUMENT_VERSION = 1.0;
+	constexpr std::size_t MAX_BOSS_PATTERN_BINDINGS = 512u;
+
+	DATA_JSON_VALUE root;
+	std::string parseError;
+	if (!CDataJson::Parse(text, root, parseError) ||
+		!Has_ExactProperties(root,
+			{ "schema", "formatVersion", "bossArchetypeId", "bindings" }))
+	{
+		outStatus = "Boss pattern binding JSON is malformed: " + parseError;
+		return false;
+	}
+	const DATA_JSON_VALUE* schema = Required(
+		root, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* version = Required(
+		root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+	const DATA_JSON_VALUE* boss = Required(
+		root, "bossArchetypeId", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* bindings = Required(
+		root, "bindings", DATA_JSON_TYPE::ARRAY);
+	if (nullptr == schema || schema->Get_String() != BOSS_DOCUMENT_SCHEMA ||
+		nullptr == version || version->Get_Number() != BOSS_DOCUMENT_VERSION ||
+		nullptr == boss || !Is_StableToken(boss->Get_String()) ||
+		nullptr == bindings || bindings->Get_Array().empty() ||
+		bindings->Get_Array().size() > MAX_BOSS_PATTERN_BINDINGS)
+	{
+		outStatus = "Boss pattern binding header is invalid.";
+		return false;
+	}
+
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
+	staged.strBossArchetypeId = boss->Get_String();
+	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
+	{
+		if (!Has_ExactProperties(value, { "actionId", "clip" }))
+		{
+			outStatus = "Boss pattern binding row has an unexpected field set.";
+			return false;
+		}
+		const DATA_JSON_VALUE* actionId = Required(
+			value, "actionId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* clip = Required(
+			value, "clip", DATA_JSON_TYPE::STRING);
+		if (nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
+			nullptr == clip || !Is_StableToken(clip->Get_String()))
+		{
+			outStatus = "Boss pattern binding row is invalid.";
+			return false;
+		}
+		staged.Bindings.push_back({
+			actionId->Get_String(), clip->Get_String() });
+	}
+
+	outDocument = std::move(staged);
+	outStatus = "Parsed boss pattern animation bindings.";
+	return true;
+}
+
+bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
+	const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	std::string& outStatus)
+{
+	if (!Is_StableToken(expectedBossArchetypeId) ||
+		document.strBossArchetypeId != expectedBossArchetypeId ||
+		document.Bindings.empty() || document.Bindings.size() > 512u)
+	{
+		outStatus = "Boss pattern binding owner does not match the target boss.";
+		return false;
+	}
+	std::unordered_set<std::string> claimedActions;
+	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
+	{
+		if (!Is_StableToken(binding.strActionId) ||
+			!Is_StableToken(binding.strClipName) ||
+			!claimedActions.insert(binding.strActionId).second ||
+			availableClips.end() == std::find(
+				availableClips.begin(), availableClips.end(),
+				binding.strClipName))
+		{
+			outStatus =
+				"Boss pattern binding has a duplicate action or missing model clip.";
+			return false;
+		}
+	}
+	outStatus = "Validated " + std::to_string(document.Bindings.size()) +
+		" boss pattern animation binding(s).";
+	return true;
+}
+
+bool_t Client::CValtanPatternAnimationBindingDocument::Load(
+	const std::string_view animationAssetId,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+	std::string& outStatus)
+{
+	const std::filesystem::path path = Resolve_Path(animationAssetId);
+	std::ifstream input(path, std::ios::binary);
+	if (path.empty() || !input)
+	{
+		outStatus = "Boss pattern binding document is missing: " + path.string();
+		return false;
+	}
+	const std::string text{
+		std::istreambuf_iterator<char>(input),
+		std::istreambuf_iterator<char>() };
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
+	if (!Parse_Text(text, staged, outStatus) ||
+		!Validate(staged, expectedBossArchetypeId, availableClips, outStatus))
+	{
+		return false;
+	}
+	outDocument = std::move(staged);
+	return true;
+}
+
+std::filesystem::path
+Client::CValtanPatternEffectBindingDocument::Resolve_Path(
+	const std::string_view animationAssetId)
+{
+	if (!Is_StableToken(animationAssetId))
+		return {};
+	const std::string asset{ animationAssetId };
+	return CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Animation/Authored") /
+		std::filesystem::path(asset) /
+		std::filesystem::path(asset + ".patterneffects.json"));
+}
+
+bool_t Client::CValtanPatternEffectBindingDocument::Parse_Text(
+	const std::string_view text,
+	BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
+	std::string& outStatus)
+{
+	constexpr std::string_view EFFECT_DOCUMENT_SCHEMA =
+		"lostark.boss-pattern-effects";
+	constexpr double EFFECT_DOCUMENT_VERSION = 1.0;
+	constexpr std::size_t MAX_EFFECT_BINDINGS = 512u;
+
+	DATA_JSON_VALUE root;
+	std::string parseError;
+	if (!CDataJson::Parse(text, root, parseError) ||
+		!Has_ExactProperties(root,
+			{ "schema", "formatVersion", "bossArchetypeId",
+			  "gameplayAuthority", "bindings" }))
+	{
+		outStatus = "Boss pattern Effect JSON is malformed: " + parseError;
+		return false;
+	}
+	const DATA_JSON_VALUE* schema = Required(
+		root, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* version = Required(
+		root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+	const DATA_JSON_VALUE* boss = Required(
+		root, "bossArchetypeId", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* gameplayAuthority = Required(
+		root, "gameplayAuthority", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* bindings = Required(
+		root, "bindings", DATA_JSON_TYPE::ARRAY);
+	if (nullptr == schema || schema->Get_String() != EFFECT_DOCUMENT_SCHEMA ||
+		nullptr == version || version->Get_Number() != EFFECT_DOCUMENT_VERSION ||
+		nullptr == boss || !Is_StableToken(boss->Get_String()) ||
+		nullptr == gameplayAuthority || nullptr == bindings ||
+		bindings->Get_Array().empty() ||
+		bindings->Get_Array().size() > MAX_EFFECT_BINDINGS)
+	{
+		outStatus = "Boss pattern Effect header is invalid.";
+		return false;
+	}
+
+	BOSS_PATTERN_EFFECT_BINDING_DOCUMENT staged;
+	staged.strBossArchetypeId = boss->Get_String();
+	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
+	{
+		if (!Has_ExactProperties(value,
+				{ "bindingId", "patternId", "semanticStageId", "actionId",
+				  "effectAssetId", "effectDocument",
+				  "animationBindingDocument", "sourceCatalogDocument",
+				  "sourceParticleResourceCatalogDocument", "sourceEvidence",
+				  "sourceBranch", "modelBoneEvidence", "sourceOccurrences",
+				  "failClosedOccurrences", "productAdmission" }))
+		{
+			outStatus =
+				"Boss pattern Effect row has an unexpected field set.";
+			return false;
+		}
+		const DATA_JSON_VALUE* bindingId = Required(
+			value, "bindingId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* patternId = Required(
+			value, "patternId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* semanticStageId = Required(
+			value, "semanticStageId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* actionId = Required(
+			value, "actionId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* effectAssetId = Required(
+			value, "effectAssetId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* effectDocument = Required(
+			value, "effectDocument", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* sourceParticleResourceCatalogDocument = Required(
+			value, "sourceParticleResourceCatalogDocument",
+			DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* sourceEvidence = Required(
+			value, "sourceEvidence", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* sourceBranch = Required(
+			value, "sourceBranch", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* boneEvidence = Required(
+			value, "modelBoneEvidence", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* productAdmission = Required(
+			value, "productAdmission", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* runtimeClip = nullptr == sourceBranch ? nullptr :
+			Required(*sourceBranch, "runtimeClipName", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* runtimeBone = nullptr == boneEvidence ? nullptr :
+			Required(*boneEvidence, "runtimeBoneName", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* boneAdmission = nullptr == boneEvidence ? nullptr :
+			Required(*boneEvidence, "admission", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* admissionStatus =
+			nullptr == productAdmission ? nullptr :
+			Required(*productAdmission, "status", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* catalogMapped =
+			nullptr == productAdmission ? nullptr :
+			Required(*productAdmission, "productCatalogMapped",
+				DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE* animationMapped =
+			nullptr == productAdmission ? nullptr :
+			Required(*productAdmission, "animationEventMapped",
+				DATA_JSON_TYPE::BOOLEAN);
+		if (nullptr == bindingId || !Is_StableToken(bindingId->Get_String()) ||
+			nullptr == patternId || !Is_StableToken(patternId->Get_String()) ||
+			nullptr == semanticStageId ||
+			!Is_StableToken(semanticStageId->Get_String()) ||
+			nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
+			nullptr == effectAssetId ||
+			!Is_StableToken(effectAssetId->Get_String()) ||
+			nullptr == effectDocument || effectDocument->Get_String().empty() ||
+			nullptr == sourceParticleResourceCatalogDocument ||
+			sourceParticleResourceCatalogDocument->Get_String().empty() ||
+			nullptr == sourceEvidence ||
+			nullptr == runtimeClip ||
+			!Is_StableToken(runtimeClip->Get_String()) ||
+			nullptr == runtimeBone ||
+			!Is_StableToken(runtimeBone->Get_String()) ||
+			nullptr == boneAdmission ||
+			boneAdmission->Get_String() !=
+				"ADMITTED_EXPLICIT_RUNTIME_BONE" ||
+			nullptr == admissionStatus ||
+			!Is_StableToken(admissionStatus->Get_String()) ||
+			nullptr == catalogMapped || nullptr == animationMapped)
+		{
+			outStatus = "Boss pattern Effect row is invalid.";
+			return false;
+		}
+		staged.Bindings.push_back({
+			bindingId->Get_String(), patternId->Get_String(),
+			semanticStageId->Get_String(), actionId->Get_String(),
+			effectAssetId->Get_String(), effectDocument->Get_String(),
+			runtimeClip->Get_String(), runtimeBone->Get_String(),
+			admissionStatus->Get_String(), catalogMapped->Get_Boolean(),
+			animationMapped->Get_Boolean() });
+	}
+
+	outDocument = std::move(staged);
+	outStatus = "Parsed boss pattern Effect bindings.";
+	return true;
+}
+
+bool_t Client::CValtanPatternEffectBindingDocument::Validate(
+	const BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& document,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	std::string& outStatus)
+{
+	if (!Is_StableToken(expectedBossArchetypeId) ||
+		document.strBossArchetypeId != expectedBossArchetypeId ||
+		document.Bindings.empty() || document.Bindings.size() > 512u)
+	{
+		outStatus =
+			"Boss pattern Effect owner does not match the target boss.";
+		return false;
+	}
+	std::unordered_set<std::string> bindingIds;
+	std::unordered_set<std::string> actionKeys;
+	std::unordered_set<std::string> effectAssets;
+	for (const BOSS_PATTERN_EFFECT_BINDING& binding : document.Bindings)
+	{
+		const bool_t bProductAdmitted =
+			binding.strProductAdmissionStatus == "ADMITTED_PRODUCT";
+		const std::filesystem::path effectPath{ binding.strEffectDocument };
+		if (!Is_StableToken(binding.strBindingId) ||
+			!Is_StableToken(binding.strPatternId) ||
+			!Is_StableToken(binding.strSemanticStageId) ||
+			!Is_StableToken(binding.strActionId) ||
+			!Is_StableToken(binding.strEffectAssetId) ||
+			!Is_StableToken(binding.strRuntimeClipName) ||
+			!Is_StableToken(binding.strRuntimeBoneName) ||
+			!Is_StableToken(binding.strProductAdmissionStatus) ||
+			effectPath.empty() || effectPath.is_absolute() ||
+			binding.strEffectDocument.find("..") != std::string::npos ||
+			!bindingIds.insert(binding.strBindingId).second ||
+			!actionKeys.insert(binding.strPatternId + "\n" +
+				binding.strActionId).second ||
+			!effectAssets.insert(binding.strEffectAssetId).second ||
+			availableClips.end() == std::find(availableClips.begin(),
+				availableClips.end(), binding.strRuntimeClipName) ||
+			bProductAdmitted != (binding.bProductCatalogMapped &&
+				binding.bAnimationEventMapped))
+		{
+			outStatus =
+				"Boss pattern Effect binding is duplicate, unsafe, or not admitted.";
+			return false;
+		}
+	}
+	outStatus = "Validated " + std::to_string(document.Bindings.size()) +
+		" boss pattern Effect binding(s).";
+	return true;
+}
+
+bool_t Client::CValtanPatternEffectBindingDocument::Load(
+	const std::string_view animationAssetId,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
+	std::string& outStatus)
+{
+	const std::filesystem::path path = Resolve_Path(animationAssetId);
+	std::ifstream input(path, std::ios::binary);
+	if (path.empty() || !input)
+	{
+		outStatus =
+			"Boss pattern Effect document is missing: " + path.string();
+		return false;
+	}
+	const std::string text{
+		std::istreambuf_iterator<char>(input),
+		std::istreambuf_iterator<char>() };
+	BOSS_PATTERN_EFFECT_BINDING_DOCUMENT staged;
+	if (!Parse_Text(text, staged, outStatus) ||
+		!Validate(staged, expectedBossArchetypeId, availableClips, outStatus))
+	{
+		return false;
+	}
+	outDocument = std::move(staged);
+	return true;
+}

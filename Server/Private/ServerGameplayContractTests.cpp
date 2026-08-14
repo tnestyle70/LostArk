@@ -1,5 +1,6 @@
 #include "ServerGameplayContractTests.h"
 
+#include "ClientSession.h"
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
@@ -11,6 +12,7 @@
 #include "SpawnGroupBootstrap.h"
 #include "SpawnGroupRuntime.h"
 #include "ValtanBrain.h"
+#include "WinSockContext.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -19,12 +21,20 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
+#include <span>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -38,6 +48,170 @@ namespace
 		}
 		int failures = 0;
 	};
+
+	struct RECEIVED_TEST_FRAME final
+	{
+		LostArk::Shared::PACKET_TYPE packetType =
+			LostArk::Shared::PACKET_TYPE::INVALID;
+		std::vector<std::uint8_t> payload;
+	};
+
+	void Close_TestSocket(SOCKET& socket)
+	{
+		if (INVALID_SOCKET == socket)
+			return;
+		::shutdown(socket, SD_BOTH);
+		::closesocket(socket);
+		socket = INVALID_SOCKET;
+	}
+
+	void Abort_TestSocket(SOCKET& socket)
+	{
+		if (INVALID_SOCKET == socket)
+			return;
+		linger abortiveClose{};
+		abortiveClose.l_onoff = 1u;
+		abortiveClose.l_linger = 0u;
+		(void)::setsockopt(
+			socket,
+			SOL_SOCKET,
+			SO_LINGER,
+			reinterpret_cast<const char*>(&abortiveClose),
+			static_cast<int>(sizeof(abortiveClose)));
+		::closesocket(socket);
+		socket = INVALID_SOCKET;
+	}
+
+	bool Create_LoopbackSocketPair(
+		SOCKET& outSessionSocket,
+		SOCKET& outPeerSocket)
+	{
+		outSessionSocket = INVALID_SOCKET;
+		outPeerSocket = INVALID_SOCKET;
+		SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (INVALID_SOCKET == listener)
+			return false;
+
+		sockaddr_in address{};
+		address.sin_family = AF_INET;
+		address.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+		address.sin_port = 0u;
+		if (SOCKET_ERROR == ::bind(
+			listener,
+			reinterpret_cast<const sockaddr*>(&address),
+			static_cast<int>(sizeof(address))) ||
+			SOCKET_ERROR == ::listen(listener, 1))
+		{
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		int addressBytes = static_cast<int>(sizeof(address));
+		if (SOCKET_ERROR == ::getsockname(
+			listener,
+			reinterpret_cast<sockaddr*>(&address),
+			&addressBytes))
+		{
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		SOCKET peer = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (INVALID_SOCKET == peer ||
+			SOCKET_ERROR == ::connect(
+				peer,
+				reinterpret_cast<const sockaddr*>(&address),
+				static_cast<int>(sizeof(address))))
+		{
+			Close_TestSocket(peer);
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		SOCKET session = ::accept(listener, nullptr, nullptr);
+		Close_TestSocket(listener);
+		if (INVALID_SOCKET == session)
+		{
+			Close_TestSocket(peer);
+			return false;
+		}
+
+		const DWORD receiveTimeoutMilliseconds = 1500u;
+		if (SOCKET_ERROR == ::setsockopt(
+			peer,
+			SOL_SOCKET,
+			SO_RCVTIMEO,
+			reinterpret_cast<const char*>(&receiveTimeoutMilliseconds),
+			static_cast<int>(sizeof(receiveTimeoutMilliseconds))))
+		{
+			Close_TestSocket(session);
+			Close_TestSocket(peer);
+			return false;
+		}
+
+		outSessionSocket = session;
+		outPeerSocket = peer;
+		return true;
+	}
+
+	bool Receive_Exact(
+		const SOCKET socket,
+		std::span<std::uint8_t> bytes)
+	{
+		std::size_t receivedBytes = 0u;
+		while (receivedBytes < bytes.size())
+		{
+			const int result = ::recv(
+				socket,
+				reinterpret_cast<char*>(bytes.data() + receivedBytes),
+				static_cast<int>(bytes.size() - receivedBytes),
+				0);
+			if (result <= 0)
+				return false;
+			receivedBytes += static_cast<std::size_t>(result);
+		}
+		return true;
+	}
+
+	bool Receive_TestFrame(
+		const SOCKET socket,
+		RECEIVED_TEST_FRAME& outFrame)
+	{
+		using namespace LostArk::Shared;
+		std::array<std::uint8_t, PACKET_HEADER_BYTES> headerBytes{};
+		if (!Receive_Exact(socket, headerBytes))
+			return false;
+		PACKET_HEADER header{};
+		if (!Read_Packet_Header(headerBytes, header))
+			return false;
+
+		RECEIVED_TEST_FRAME decoded{};
+		decoded.packetType = header.ePacketType;
+		decoded.payload.resize(
+			static_cast<std::size_t>(header.iTotalSize) - PACKET_HEADER_BYTES);
+		if (!decoded.payload.empty() &&
+			!Receive_Exact(socket, decoded.payload))
+		{
+			return false;
+		}
+		outFrame = std::move(decoded);
+		return true;
+	}
+
+	template <typename PREDICATE>
+	bool Wait_Until(
+		const std::chrono::milliseconds timeout,
+		PREDICATE&& predicate)
+	{
+		const auto deadline = std::chrono::steady_clock::now() + timeout;
+		do
+		{
+			if (predicate())
+				return true;
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		} while (std::chrono::steady_clock::now() < deadline);
+		return predicate();
+	}
 
 	struct QUICK_SKILL_CONTRACT final
 	{
@@ -242,6 +416,627 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	{
+		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		const auto firstSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 1u });
+		const auto firstReliable = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_CHAT, { 10u });
+		const auto secondSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 2u });
+		const auto secondReliable = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_PLAYER_DESPAWNED, { 11u });
+		const auto thirdSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 3u });
+		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
+			session.Get_OutboundMetrics();
+		const bool latestWinsAndReliableOrder =
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == firstSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == firstReliable &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::COALESCED == secondSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == secondReliable &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::COALESCED == thirdSnapshot &&
+			3u == session.m_OutboundFrames.size() &&
+			PACKET_TYPE::S2C_CHAT ==
+				session.m_OutboundFrames[0u].ePacketType &&
+			10u == session.m_OutboundFrames[0u].Bytes.front() &&
+			PACKET_TYPE::S2C_PLAYER_DESPAWNED ==
+				session.m_OutboundFrames[1u].ePacketType &&
+			11u == session.m_OutboundFrames[1u].Bytes.front() &&
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT ==
+				session.m_OutboundFrames[2u].ePacketType &&
+			3u == session.m_OutboundFrames[2u].Bytes.front() &&
+			3u == metrics.iSnapshotEnqueuedFrameCount &&
+			2u == metrics.iSnapshotCoalescedFrameCount &&
+			2u == metrics.iReliableEnqueuedFrameCount;
+		session.Request_Close();
+		tests.Require(
+			latestWinsAndReliableOrder,
+			"Coalesce queued snapshots to latest-wins without reordering reliable frames");
+	}
+	{
+		CClientSession session{ 90002u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		constexpr std::size_t SNAPSHOT_FRAME_LIMIT =
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT -
+			CClientSession::RELIABLE_FRAME_RESERVE;
+		bool admittedSnapshotBand = true;
+		for (std::size_t index = 0u; index < SNAPSHOT_FRAME_LIMIT; ++index)
+		{
+			admittedSnapshotBand = admittedSnapshotBand &&
+				CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(
+					PACKET_TYPE::S2C_CHAT,
+					{ static_cast<std::uint8_t>(index) });
+		}
+		const auto droppedSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 1u });
+		bool admittedReliableReserve = true;
+		while (session.m_OutboundFrames.size() <
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT)
+		{
+			admittedReliableReserve = admittedReliableReserve &&
+				CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(
+					PACKET_TYPE::S2C_CHAT, { 2u });
+		}
+		const auto overflow = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_CHAT, { 3u });
+		const bool queuePreservedOnOverflow =
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
+				session.m_OutboundFrames.size();
+		const std::array<std::uint8_t, 1u> payload{ 4u };
+		const bool publicOverflowFailedClosed =
+			!session.Send_Frame(PACKET_TYPE::S2C_CHAT, payload) &&
+			!session.m_isSendRunning.load() &&
+			session.m_OutboundFrames.empty();
+		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
+			session.Get_OutboundMetrics();
+		tests.Require(
+			admittedSnapshotBand && admittedReliableReserve &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::DROPPED_SNAPSHOT ==
+				droppedSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::RELIABLE_OVERFLOW ==
+				overflow &&
+			queuePreservedOnOverflow && publicOverflowFailedClosed &&
+			1u == metrics.iSnapshotDroppedFrameCount &&
+			2u == metrics.iReliableRejectedFrameCount &&
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
+				metrics.iQueuedFrameHighWatermark,
+			"Reserve outbound capacity for reliable FIFO and fail-close only the overflowing session");
+	}
+	{
+		CWinSockContext winSock;
+		const bool initialized = winSock.Initialize();
+		SOCKET slowSessionSocket = INVALID_SOCKET;
+		SOCKET slowPeerSocket = INVALID_SOCKET;
+		SOCKET fastSessionSocket = INVALID_SOCKET;
+		SOCKET fastPeerSocket = INVALID_SOCKET;
+		bool socketsReady = initialized &&
+			Create_LoopbackSocketPair(slowSessionSocket, slowPeerSocket) &&
+			Create_LoopbackSocketPair(fastSessionSocket, fastPeerSocket);
+		if (socketsReady)
+		{
+			const int smallBufferBytes = 1024;
+			socketsReady =
+				SOCKET_ERROR != ::setsockopt(
+					slowSessionSocket,
+					SOL_SOCKET,
+					SO_SNDBUF,
+					reinterpret_cast<const char*>(&smallBufferBytes),
+					static_cast<int>(sizeof(smallBufferBytes))) &&
+				SOCKET_ERROR != ::setsockopt(
+					slowPeerSocket,
+					SOL_SOCKET,
+					SO_RCVBUF,
+					reinterpret_cast<const char*>(&smallBufferBytes),
+					static_cast<int>(sizeof(smallBufferBytes)));
+		}
+
+		std::atomic_uint32_t slowClosedCount{ 0u };
+		std::atomic_uint32_t fastClosedCount{ 0u };
+		std::unique_ptr<CClientSession> slowSession;
+		std::unique_ptr<CClientSession> fastSession;
+		if (socketsReady)
+		{
+			slowSession = std::make_unique<CClientSession>(
+				90003u,
+				slowSessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&slowClosedCount](const SESSION_ID)
+				{
+					++slowClosedCount;
+				});
+			slowSessionSocket = INVALID_SOCKET;
+			fastSession = std::make_unique<CClientSession>(
+				90004u,
+				fastSessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&fastClosedCount](const SESSION_ID)
+				{
+					++fastClosedCount;
+				});
+			fastSessionSocket = INVALID_SOCKET;
+		}
+
+		const bool sessionsStarted = socketsReady &&
+			slowSession->Start() && fastSession->Start();
+		bool slowEnqueueStayedBounded = false;
+		bool slowCoalescedSnapshots = false;
+		bool fastReliableFifo = false;
+		bool slowClosureWasIsolated = false;
+		bool cleanShutdownWasBounded = false;
+		if (sessionsStarted)
+		{
+			std::vector<std::uint8_t> snapshotPayload(
+				static_cast<std::size_t>(MAX_PACKET_BYTES) -
+					PACKET_HEADER_BYTES,
+				0xA5u);
+			const auto enqueueStart = std::chrono::steady_clock::now();
+			std::size_t acceptedSnapshotCount = 0u;
+			for (std::size_t index = 0u; index < 256u; ++index)
+			{
+				snapshotPayload.front() = static_cast<std::uint8_t>(index);
+				if (!slowSession->Send_Frame(
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					snapshotPayload))
+				{
+					break;
+				}
+				++acceptedSnapshotCount;
+			}
+			const auto enqueueElapsed = std::chrono::steady_clock::now() -
+				enqueueStart;
+			const CLIENT_SESSION_OUTBOUND_METRICS slowMetrics =
+				slowSession->Get_OutboundMetrics();
+			slowEnqueueStayedBounded = acceptedSnapshotCount > 1u &&
+				enqueueElapsed < std::chrono::milliseconds(1500);
+			slowCoalescedSnapshots =
+				0u < slowMetrics.iSnapshotCoalescedFrameCount &&
+				1u >= slowMetrics.iCurrentQueuedFrameCount;
+
+			const std::array<std::uint8_t, 1u> firstPayload{ 21u };
+			const std::array<std::uint8_t, 1u> secondPayload{ 22u };
+			const std::array<std::uint8_t, 1u> thirdPayload{ 23u };
+			const bool queuedFastFrames =
+				fastSession->Send_Frame(PACKET_TYPE::S2C_CHAT, firstPayload) &&
+				fastSession->Send_Frame(
+					PACKET_TYPE::S2C_ENTER_REJECTED, secondPayload) &&
+				fastSession->Send_Frame(
+					PACKET_TYPE::S2C_PLAYER_DESPAWNED, thirdPayload);
+			RECEIVED_TEST_FRAME receivedFirst{};
+			RECEIVED_TEST_FRAME receivedSecond{};
+			RECEIVED_TEST_FRAME receivedThird{};
+			fastReliableFifo = queuedFastFrames &&
+				Receive_TestFrame(fastPeerSocket, receivedFirst) &&
+				Receive_TestFrame(fastPeerSocket, receivedSecond) &&
+				Receive_TestFrame(fastPeerSocket, receivedThird) &&
+				PACKET_TYPE::S2C_CHAT == receivedFirst.packetType &&
+				1u == receivedFirst.payload.size() &&
+				firstPayload.front() == receivedFirst.payload.front() &&
+				PACKET_TYPE::S2C_ENTER_REJECTED == receivedSecond.packetType &&
+				1u == receivedSecond.payload.size() &&
+				secondPayload.front() == receivedSecond.payload.front() &&
+				PACKET_TYPE::S2C_PLAYER_DESPAWNED == receivedThird.packetType &&
+				1u == receivedThird.payload.size() &&
+				thirdPayload.front() == receivedThird.payload.front();
+
+			Close_TestSocket(slowPeerSocket);
+			const bool slowSessionClosed = Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&slowClosedCount]()
+				{
+					return 0u < slowClosedCount.load();
+				});
+			const std::array<std::uint8_t, 1u> survivorPayload{ 24u };
+			RECEIVED_TEST_FRAME survivorFrame{};
+			slowClosureWasIsolated = slowSessionClosed &&
+				fastSession->Send_Frame(PACKET_TYPE::S2C_CHAT, survivorPayload) &&
+				Receive_TestFrame(fastPeerSocket, survivorFrame) &&
+				PACKET_TYPE::S2C_CHAT == survivorFrame.packetType &&
+				1u == survivorFrame.payload.size() &&
+				survivorPayload.front() == survivorFrame.payload.front();
+
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			slowSession->Stop();
+			fastSession->Stop();
+			const auto shutdownElapsed = std::chrono::steady_clock::now() -
+				shutdownStart;
+			cleanShutdownWasBounded =
+				shutdownElapsed < std::chrono::milliseconds(3000) &&
+				1u == slowClosedCount.load() &&
+				1u == fastClosedCount.load();
+		}
+		else
+		{
+			if (slowSession)
+				slowSession->Stop();
+			if (fastSession)
+				fastSession->Stop();
+		}
+
+		slowSession.reset();
+		fastSession.reset();
+		Close_TestSocket(slowSessionSocket);
+		Close_TestSocket(slowPeerSocket);
+		Close_TestSocket(fastSessionSocket);
+		Close_TestSocket(fastPeerSocket);
+		tests.Require(
+			initialized && socketsReady && sessionsStarted &&
+			slowEnqueueStayedBounded && slowCoalescedSnapshots &&
+			fastReliableFifo && slowClosureWasIsolated &&
+			cleanShutdownWasBounded,
+			"Isolate a slow reader while preserving another session FIFO and bounded shutdown");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				90006u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID)
+				{
+					++closedCount;
+				});
+			sessionSocket = INVALID_SOCKET;
+		}
+
+		const bool started = socketReady && session->Start();
+		bool reliableFlushedBeforeClose = false;
+		bool rejectedLateEnqueue = false;
+		bool shutdownWasBounded = false;
+		if (started)
+		{
+			const std::array<std::uint8_t, 1u> payload{ 0x46u };
+			const bool queued = session->Send_Frame(
+				PACKET_TYPE::S2C_ENTER_REJECTED, payload);
+			session->Request_Close_After_Flush();
+			RECEIVED_TEST_FRAME received{};
+			reliableFlushedBeforeClose = queued &&
+				Receive_TestFrame(peerSocket, received) &&
+				PACKET_TYPE::S2C_ENTER_REJECTED == received.packetType &&
+				1u == received.payload.size() &&
+				payload.front() == received.payload.front() &&
+				Wait_Until(
+					std::chrono::milliseconds(1500),
+					[&session, &closedCount]()
+					{
+						return 1u == closedCount.load() &&
+							!session->m_isSendRunning.load();
+					});
+			rejectedLateEnqueue = !session->Send_Frame(
+				PACKET_TYPE::S2C_CHAT, payload);
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			session->Stop();
+			shutdownWasBounded =
+				std::chrono::steady_clock::now() - shutdownStart <
+					std::chrono::milliseconds(3000);
+		}
+		else if (session)
+		{
+			session->Stop();
+		}
+
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			started && reliableFlushedBeforeClose && rejectedLateEnqueue &&
+			shutdownWasBounded && 1u == closedCount.load(),
+			"Flush a terminal reliable frame before sender-owned graceful close");
+	}
+	{
+		std::atomic_uint32_t closedCount{ 0u };
+		CClientSession session{
+			90007u,
+			INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{},
+			[&closedCount](const SESSION_ID)
+			{
+				++closedCount;
+			} };
+		session.m_isSendRunning.store(true);
+		session.Request_Close_After_Flush();
+		session.Request_Close();
+		session.Sender_Loop();
+		session.Notify_Closed();
+		tests.Require(
+			1u == closedCount.load() &&
+			!session.m_isSendRunning.load() &&
+			session.m_hasSenderExited,
+			"Notify close exactly once when a hard stop overtakes graceful flush");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		bool senderStarted = false;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				90005u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID)
+				{
+					++closedCount;
+				});
+			sessionSocket = INVALID_SOCKET;
+			senderStarted = session->Configure_SendTimeout();
+			if (senderStarted)
+			{
+				{
+					std::scoped_lock lock{ session->m_OutboundMutex };
+					session->m_hasSenderExited = false;
+				}
+				session->m_isSendRunning.store(true);
+				try
+				{
+					session->m_SendThread = std::thread(
+						&CClientSession::Sender_Loop,
+						session.get());
+				}
+				catch (...)
+				{
+					senderStarted = false;
+				}
+			}
+		}
+
+		bool sendFailureWasIsolated = false;
+		bool shutdownWasBounded = false;
+		if (senderStarted)
+		{
+			Abort_TestSocket(peerSocket);
+			const std::array<std::uint8_t, 1u> payload{ 31u };
+			const bool queued = session->Send_Frame(
+				PACKET_TYPE::S2C_CHAT, payload);
+			sendFailureWasIsolated = queued && Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&session, &closedCount]()
+				{
+					return 0u < session->Get_OutboundMetrics().iSendFailureCount &&
+					1u == closedCount.load() &&
+					!session->m_isSendRunning.load();
+				});
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			session->Stop();
+			shutdownWasBounded =
+				std::chrono::steady_clock::now() - shutdownStart <
+					std::chrono::milliseconds(3000);
+		}
+		else if (session)
+		{
+			session->Stop();
+		}
+
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			socketReady && senderStarted && sendFailureWasIsolated &&
+			shutdownWasBounded && 1u == closedCount.load(),
+			"Isolate a sender socket failure to its session and notify close exactly once");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto moveCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::MOVE;
+				command.iSessionId = sessionId;
+				command.Move.iClientSequence = sequence;
+				command.Move.fGoalX = static_cast<float>(sequence);
+				return command;
+			};
+		auto skillCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+				command.iSessionId = sessionId;
+				command.UseSkill.iClientSequence = sequence;
+				command.UseSkill.iSkillId = 34010u;
+				return command;
+			};
+		auto aimCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence,
+			const SKILL_ID skillId)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM;
+				command.iSessionId = sessionId;
+				command.UpdateSkillAim.iClientSequence = sequence;
+				command.UpdateSkillAim.iSkillId = skillId;
+				return command;
+			};
+
+		const bool enqueued = room.Is_Ready() &&
+			room.Enqueue(moveCommand(1u, 1u)) &&
+			room.Enqueue(skillCommand(2u, 10u)) &&
+			room.Enqueue(moveCommand(1u, 2u)) &&
+			room.Enqueue(skillCommand(1u, 20u)) &&
+			room.Enqueue(moveCommand(1u, 3u)) &&
+			room.Enqueue(aimCommand(1u, 30u, 34590u)) &&
+			room.Enqueue(aimCommand(1u, 31u, 34590u)) &&
+			room.Enqueue(aimCommand(1u, 32u, 34580u));
+		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
+			room.Get_PerformanceMetrics();
+		const bool preservedBarriers =
+			6u == room.m_InboundCommands.size() &&
+			ROOM_COMMAND_TYPE::USE_SKILL ==
+				room.m_InboundCommands[0u].eType &&
+			2u == room.m_InboundCommands[0u].iSessionId &&
+			ROOM_COMMAND_TYPE::MOVE ==
+				room.m_InboundCommands[1u].eType &&
+			2u == room.m_InboundCommands[1u].Move.iClientSequence &&
+			ROOM_COMMAND_TYPE::USE_SKILL ==
+				room.m_InboundCommands[2u].eType &&
+			ROOM_COMMAND_TYPE::MOVE ==
+				room.m_InboundCommands[3u].eType &&
+			3u == room.m_InboundCommands[3u].Move.iClientSequence &&
+			ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM ==
+				room.m_InboundCommands[4u].eType &&
+			31u == room.m_InboundCommands[4u].UpdateSkillAim.iClientSequence &&
+			ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM ==
+				room.m_InboundCommands[5u].eType &&
+			34580u == room.m_InboundCommands[5u].UpdateSkillAim.iSkillId;
+		tests.Require(
+			enqueued && preservedBarriers &&
+			1u == metrics.iCoalescedMoveCommandCount &&
+			1u == metrics.iCoalescedAimCommandCount,
+			"Coalesce only same-stream movement and aim without crossing a same-session reliable barrier");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		bool admittedBestEffort = room.Is_Ready();
+		for (std::size_t index = 0u;
+			index < CGameRoom::MAX_BEST_EFFORT_COMMAND_COUNT; ++index)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::MOVE;
+			command.iSessionId = static_cast<SESSION_ID>(index + 1u);
+			command.Move.iClientSequence = 1u;
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedBestEffort = admittedBestEffort && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND droppedMove{};
+		droppedMove.eType = ROOM_COMMAND_TYPE::MOVE;
+		droppedMove.iSessionId = 5000u;
+		droppedMove.Move.iClientSequence = 1u;
+		const bool bestEffortDropWasNonFatal =
+			room.Enqueue(std::move(droppedMove));
+
+		bool admittedReliableReserve = true;
+		while (room.m_InboundCommands.size() <
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+			command.iSessionId = static_cast<SESSION_ID>(
+				room.m_InboundCommands.size() + 10000u);
+			command.UseSkill.iClientSequence = 1u;
+			command.UseSkill.iSkillId = 34010u;
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedReliableReserve =
+				admittedReliableReserve && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND rejectedReliable{};
+		rejectedReliable.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+		rejectedReliable.iSessionId = 20000u;
+		rejectedReliable.UseSkill.iClientSequence = 1u;
+		rejectedReliable.UseSkill.iSkillId = 34010u;
+		const bool reliableRejectedWithoutMutation =
+			!room.Enqueue(std::move(rejectedReliable)) &&
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT ==
+				room.m_InboundCommands.size();
+
+		bool admittedCleanupReserve = true;
+		while (room.m_InboundCommands.size() <
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::LEAVE;
+			command.iSessionId = static_cast<SESSION_ID>(
+				room.m_InboundCommands.size() + 20000u);
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedCleanupReserve = admittedCleanupReserve && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND rejectedCleanup{};
+		rejectedCleanup.eType = ROOM_COMMAND_TYPE::LEAVE;
+		rejectedCleanup.iSessionId = 40000u;
+		const bool cleanupRejectedAtHardCap =
+			!room.Enqueue(std::move(rejectedCleanup)) &&
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
+				room.m_InboundCommands.size();
+		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
+			room.Get_PerformanceMetrics();
+		tests.Require(
+			admittedBestEffort && bestEffortDropWasNonFatal &&
+			admittedReliableReserve && reliableRejectedWithoutMutation &&
+			admittedCleanupReserve && cleanupRejectedAtHardCap &&
+			1u == metrics.iDroppedBestEffortCommandCount &&
+			1u == metrics.iRejectedReliableCommandCount &&
+			1u == metrics.iRejectedCleanupCommandCount &&
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
+				metrics.iIngressHighWatermark,
+			"Bound ingress, reserve reliable and cleanup capacity, and preserve the queue on overflow");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		const std::size_t commandCount =
+			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK + 5u;
+		bool enqueued = room.Is_Ready();
+		for (std::size_t index = 0u; index < commandCount; ++index)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+			command.iSessionId = static_cast<SESSION_ID>(50000u + index);
+			command.UseSkill.iClientSequence = 1u;
+			command.UseSkill.iSkillId = 34010u;
+			const bool accepted = room.Enqueue(std::move(command));
+			enqueued = enqueued && accepted;
+			if (!accepted)
+				break;
+		}
+		room.Tick(1.f / 30.f);
+		const SERVER_ROOM_PERFORMANCE_METRICS firstTickMetrics =
+			room.Get_PerformanceMetrics();
+		const bool retainedFifoTail =
+			5u == room.m_InboundCommands.size() &&
+			static_cast<SESSION_ID>(
+				50000u + CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK) ==
+				room.m_InboundCommands.front().iSessionId;
+		room.Tick(1.f / 30.f);
+		const SERVER_ROOM_PERFORMANCE_METRICS secondTickMetrics =
+			room.Get_PerformanceMetrics();
+
+		SERVER_PLAYER player{};
+		player.iSessionId = 60000u;
+		player.iPlayerId = 60000u;
+		player.iNetEntityId = 60000u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		room.m_Players.emplace(player.iPlayerId, player);
+		room.Broadcast_WorldSnapshot();
+		const SERVER_ROOM_PERFORMANCE_METRICS snapshotMetrics =
+			room.Get_PerformanceMetrics();
+		tests.Require(
+			enqueued && retainedFifoTail &&
+			commandCount == firstTickMetrics.iLastIngressDepth &&
+			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK ==
+				firstTickMetrics.iLastDrainedCommandCount &&
+			5u == firstTickMetrics.iLastRemainingCommandCount &&
+			1u == firstTickMetrics.iDrainLimitedTickCount &&
+			5u == secondTickMetrics.iLastIngressDepth &&
+			5u == secondTickMetrics.iLastDrainedCommandCount &&
+			0u == secondTickMetrics.iLastRemainingCommandCount &&
+			2u == secondTickMetrics.iTickCount &&
+			1u == snapshotMetrics.iSnapshotEncodeCount &&
+			0u == snapshotMetrics.iSnapshotEncodeFailureCount &&
+			1u == snapshotMetrics.iSnapshotEnqueueBatchCount &&
+			0u == snapshotMetrics.iSnapshotRecipientCount,
+			"Drain a deterministic FIFO prefix per tick and record tick, ingress, encode, and enqueue metrics");
+	}
 	{
 		using namespace LostArk::Shared::CombatCollision;
 

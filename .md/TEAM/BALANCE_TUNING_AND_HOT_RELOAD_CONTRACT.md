@@ -65,5 +65,5 @@ powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-Gameplay
 - Boss: HP, engage distance, move speed, phase threshold, pattern timing
 - Character: Server가 승인한 action과 hit/move timing의 시각 일치
 
-Training에서 확인한 뒤 Debug/Release regression과 ProjectAudit을 통과시킨다. 인게임에서
+Training에서 확인한 뒤 Debug/Release regression, `Publish-BalanceRuntimeSet.ps1 -Mode Validate`, Server contract test를 통과시킨다. 인게임에서
 보기 좋다는 이유만으로 JSON validation 범위나 Server authority를 완화하지 않는다.

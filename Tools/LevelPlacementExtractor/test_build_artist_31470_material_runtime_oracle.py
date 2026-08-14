@@ -81,9 +81,9 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         self.assertEqual(summary["familyNumericSampleCount"], 92)
         self.assertEqual(summary["recipeNumericSampleCount"], 108)
         self.assertEqual(summary["hlslSampleCount"], 200)
-        self.assertEqual(summary["materialFeasibilityRowCount"], 255)
+        self.assertEqual(summary["materialFeasibilityRowCount"], 260)
         self.assertEqual(summary["materialFeasibilityReadyCount"], 0)
-        self.assertEqual(summary["materialFeasibilityBlockedCount"], 255)
+        self.assertEqual(summary["materialFeasibilityBlockedCount"], 260)
         self.assertEqual(summary["sourceExactEvaluatorCount"], 0)
         self.assertEqual(summary["productRecipeCount"], 0)
         self.assertEqual(summary["productOccurrenceCount"], 0)
@@ -93,7 +93,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
         matrices = self.receipt["materialFeasibilityMatrices"]
         self.assertEqual(len(matrices["renderStateRows"]), 89)
         self.assertEqual(len(matrices["staticPermutationRows"]), 94)
-        self.assertEqual(len(matrices["strictSamplerRows"]), 72)
+        self.assertEqual(len(matrices["strictSamplerRows"]), 77)
         matrix_summary = matrices["summary"]
         self.assertEqual(matrix_summary["staticExactGuidJoinCount"], 66)
         self.assertEqual(
@@ -107,7 +107,7 @@ class Artist31470MaterialRuntimeOracleTests(unittest.TestCase):
             matrix_summary["strictSamplerRejectedLegacyExactRowCount"], 4
         )
         self.assertEqual(
-            matrix_summary["strictSamplerSourceTextureEvidenceRowCount"], 72
+            matrix_summary["strictSamplerSourceTextureEvidenceRowCount"], 77
         )
 
     def test_checked_receipt_rebuilds_from_pinned_sources(self) -> None:

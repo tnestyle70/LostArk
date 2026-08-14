@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Artist" 1030
+LOSTARK_ANIM_EVENTS 5 "Artist" 1031
 "sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
 "sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
 "sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
@@ -1024,6 +1024,7 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1030
 "sdm_sk_fourgentlemen" EFFECT startms=0 payload="effect.artist.skill.31420.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_inkpaddle" EFFECT startms=0 payload="effect.artist.skill.31200.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_inkshot" EFFECT startms=0 payload="effect.artist.skill.31430.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_onestroke" EFFECT startms=0 payload="effect.artist.skill.31470.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_pungnyudo" EFFECT startms=0 payload="effect.artist.skill.31910.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_skykongkong_01" EFFECT startms=0 payload="effect.artist.skill.31210.ba1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_skykongkong_02" EFFECT startms=0 payload="effect.artist.skill.31210.ba4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

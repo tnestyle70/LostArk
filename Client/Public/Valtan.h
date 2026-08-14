@@ -58,11 +58,22 @@ public:
 	PATH_RESULT_CODE Get_PathResult() const { return m_PathFollower.Get_LastResult(); }
 	uint32_t Get_PathExpandedNodes() const { return m_PathFollower.Get_LastExpandedNodes(); }
 	uint32_t Get_PathWaypointCount() const { return m_PathFollower.Get_NumWaypoints(); }
+	shared_ptr<Engine::CModel> Get_BodyModel() const {
+		return m_pBodyModelCom;
+	}
+	shared_ptr<Engine::CTransform> Get_Transform() const {
+		return m_pTransformCom;
+	}
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
 		LostArk::Shared::WORLD_ENTITY_ACTION action,
-		std::string_view actionId);
+		std::string_view patternId,
+		std::string_view actionId,
+		uint32_t iServerTick,
+		uint32_t iActionStartTick,
+		uint32_t iPatternSequence,
+		uint32_t iPatternStageIndex);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
@@ -86,7 +97,13 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	std::string m_strServerPatternId;
 	std::string m_strServerActionId;
+	uint32_t m_iLastServerTick = 0u;
+	uint32_t m_iServerActionStartTick = 0u;
+	uint32_t m_iServerPatternSequence = 0u;
+	uint32_t m_iServerPatternStageIndex = 0u;
+	f32_t m_fServerActionAgeSeconds = 0.f;
 	/* Presentation only: pattern stage actionId -> original clip, from
 	Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A missing or
 	corrupt document leaves this empty and every pattern falls back to the

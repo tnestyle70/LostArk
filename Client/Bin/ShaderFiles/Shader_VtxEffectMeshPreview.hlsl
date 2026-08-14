@@ -1,6 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
-#include "Shader_Artist31470Diagnostic.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_Artist31470Diagnostic.hlsli"
 #include "Shader_Artist31470Active011OuterMaterial.hlsli"
 
 float4x4 g_WorldMatrix;
@@ -70,11 +70,12 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
             g_ColorMultiply + g_ColorOffset,
             g_EffectDynamicParameter);
     }
-    if (0u != g_ReconstructedMaterialEvaluatorEnabled)
+    if (0u != g_ArtistVisualV4Opcode ||
+        0u != g_ReconstructedMaterialEvaluatorEnabled)
     {
         return Shade_ReconstructedMaterial(
             input.uv, float3(1.f, 1.f, 1.f),
-            float4(1.f, 1.f, 1.f, 1.f));
+            float4(1.f, 1.f, 1.f, 1.f), g_EffectDynamicParameter);
     }
     if (9 == g_SourceMaterialProfile)
     {

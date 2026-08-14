@@ -2252,6 +2252,18 @@
           ]
         },
         {
+          "propertyPath": "pitch",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
+          "propertyPath": "roll",
+          "kinds": [
+            "number"
+          ]
+        },
+        {
           "propertyPath": "yaw",
           "kinds": [
             "number"
@@ -6845,6 +6857,44 @@
       "runtimeImplemented": false
     },
     {
+      "ruleId": "field.particlemoduletypedatamesh.pitch.literal",
+      "normalizedClass": "particlemoduletypedatamesh",
+      "propertyPath": "pitch",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.particlemoduletypedatamesh.pitch",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
+      "ruleId": "field.particlemoduletypedatamesh.roll.literal",
+      "normalizedClass": "particlemoduletypedatamesh",
+      "propertyPath": "roll",
+      "storage": "literal",
+      "rendererApplicability": [
+        "MeshParticle"
+      ],
+      "plannedPhase": "type_data",
+      "plannedHandlerId": "source.particlemoduletypedatamesh.roll",
+      "plannedOpcodeId": "UNASSIGNED_TRACK_A_COMPILED_EXECUTION",
+      "unitRuleIds": [
+        "dimensionless_or_metadata"
+      ],
+      "timeDomain": "metadata",
+      "classDefaultPolicy": "EXPLICIT_ONLY_UNRESOLVED_IF_ABSENT",
+      "seedConsumption": "NOT_APPLICABLE",
+      "runtimeImplemented": false
+    },
+    {
       "ruleId": "field.particlemoduletypedatamesh.yaw.literal",
       "normalizedClass": "particlemoduletypedatamesh",
       "propertyPath": "yaw",
@@ -7119,5 +7169,5 @@
       "runtimeImplemented": false
     }
   ],
-  "contractSha256": "201652eceeaa40258fec5574669b2e873b2305cbe33f859c0f17e58a15b2e553"
+  "contractSha256": "670b12e280d4b6d03924fd64047208770ce7150605100a4fd573c11f01499b6a"
 }

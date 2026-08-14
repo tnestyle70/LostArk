@@ -6,6 +6,7 @@
 #include "Network/PacketWriter.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -23,6 +24,58 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.01745329251994329577f;
 	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
+
+	std::uint64_t To_Microseconds(
+		const std::chrono::steady_clock::duration duration)
+	{
+		return static_cast<std::uint64_t>(
+			std::chrono::duration_cast<std::chrono::microseconds>(
+				duration).count());
+	}
+
+	bool Is_BestEffortCommand(const ROOM_COMMAND_TYPE type)
+	{
+		return ROOM_COMMAND_TYPE::MOVE == type ||
+			ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM == type;
+	}
+
+	bool Is_SameBestEffortStream(
+		const ROOM_COMMAND& queued,
+		const ROOM_COMMAND& incoming)
+	{
+		if (queued.iSessionId != incoming.iSessionId ||
+			queued.eType != incoming.eType ||
+			!Is_BestEffortCommand(incoming.eType))
+		{
+			return false;
+		}
+		if (ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM == incoming.eType)
+		{
+			return queued.UpdateSkillAim.iSkillId ==
+				incoming.UpdateSkillAim.iSkillId;
+		}
+		return true;
+	}
+
+	bool Try_RemoveCoalescedCommand(
+		std::deque<ROOM_COMMAND>& commands,
+		const ROOM_COMMAND& incoming)
+	{
+		// A command from the same session is an ordering barrier. This keeps a
+		// newer move/aim from jumping across skill, release, or lifecycle intent.
+		for (std::size_t index = commands.size(); index > 0u; --index)
+		{
+			const ROOM_COMMAND& queued = commands[index - 1u];
+			if (queued.iSessionId != incoming.iSessionId)
+				continue;
+			if (!Is_SameBestEffortStream(queued, incoming))
+				return false;
+			commands.erase(commands.begin() +
+				static_cast<std::ptrdiff_t>(index - 1u));
+			return true;
+		}
+		return false;
+	}
 
 	float Wrap_Degrees(float degrees)
 	{
@@ -322,8 +375,49 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 	std::scoped_lock lock{ m_CommandMutex };
 	if (!m_acceptsCommands)
 		return false;
+
+	if (Is_BestEffortCommand(command.eType))
+	{
+		if (Try_RemoveCoalescedCommand(m_InboundCommands, command))
+		{
+			if (ROOM_COMMAND_TYPE::MOVE == command.eType)
+				++m_PerformanceMetrics.iCoalescedMoveCommandCount;
+			else
+				++m_PerformanceMetrics.iCoalescedAimCommandCount;
+			m_InboundCommands.push_back(std::move(command));
+			return true;
+		}
+		if (m_InboundCommands.size() >= MAX_BEST_EFFORT_COMMAND_COUNT)
+		{
+			++m_PerformanceMetrics.iDroppedBestEffortCommandCount;
+			return true;
+		}
+	}
+	else if (ROOM_COMMAND_TYPE::LEAVE != command.eType &&
+		m_InboundCommands.size() >= MAX_RELIABLE_COMMAND_COUNT)
+	{
+		++m_PerformanceMetrics.iRejectedReliableCommandCount;
+		return false;
+	}
+	else if (ROOM_COMMAND_TYPE::LEAVE == command.eType &&
+		m_InboundCommands.size() >= MAX_INBOUND_COMMAND_COUNT)
+	{
+		++m_PerformanceMetrics.iRejectedCleanupCommandCount;
+		return false;
+	}
+
 	m_InboundCommands.push_back(std::move(command));
+	m_PerformanceMetrics.iIngressHighWatermark = (std::max)(
+		m_PerformanceMetrics.iIngressHighWatermark,
+		m_InboundCommands.size());
 	return true;
+}
+
+LostArk::Server::SERVER_ROOM_PERFORMANCE_METRICS
+LostArk::Server::CGameRoom::Get_PerformanceMetrics() const
+{
+	std::scoped_lock lock{ m_CommandMutex };
+	return m_PerformanceMetrics;
 }
 
 bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
@@ -379,11 +473,36 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 {
 	if (!m_isReady)
 		return;
+	const auto tickStart = std::chrono::steady_clock::now();
+	const auto recordTickDuration = [this, tickStart]()
+		{
+			const std::uint64_t elapsedMicroseconds = To_Microseconds(
+				std::chrono::steady_clock::now() - tickStart);
+			std::scoped_lock lock{ m_CommandMutex };
+			++m_PerformanceMetrics.iTickCount;
+			m_PerformanceMetrics.iLastTickMicroseconds = elapsedMicroseconds;
+			m_PerformanceMetrics.iMaximumTickMicroseconds = (std::max)(
+				m_PerformanceMetrics.iMaximumTickMicroseconds,
+				elapsedMicroseconds);
+		};
 
 	std::deque<ROOM_COMMAND> commands;
 	{
 		std::scoped_lock lock{ m_CommandMutex };
-		commands.swap(m_InboundCommands);
+		const std::size_t ingressDepth = m_InboundCommands.size();
+		const std::size_t drainCount = (std::min)(
+			ingressDepth, MAX_COMMANDS_DRAINED_PER_TICK);
+		for (std::size_t index = 0u; index < drainCount; ++index)
+		{
+			commands.push_back(std::move(m_InboundCommands.front()));
+			m_InboundCommands.pop_front();
+		}
+		m_PerformanceMetrics.iLastIngressDepth = ingressDepth;
+		m_PerformanceMetrics.iLastDrainedCommandCount = drainCount;
+		m_PerformanceMetrics.iLastRemainingCommandCount =
+			m_InboundCommands.size();
+		if (!m_InboundCommands.empty())
+			++m_PerformanceMetrics.iDrainLimitedTickCount;
 	}
 
 	for (ROOM_COMMAND& command : commands)
@@ -432,7 +551,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	}
 
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
+	{
+		recordTickDuration();
 		return;
+	}
 
 	m_TickDamageEvents.clear();
 	Update_Players(fixedDeltaSeconds);
@@ -507,15 +629,86 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		});
 	Update_WorldEntities(fixedDeltaSeconds);
 	if (!m_isReady)
+	{
+		recordTickDuration();
 		return;
+	}
 	if (!Commit_DueWorldDestruction(updateTick))
 	{
 		m_isReady = false;
+		recordTickDuration();
 		return;
 	}
 	m_iServerTick = updateTick;
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
+	recordTickDuration();
+	if (!m_Players.empty() && 0u == (m_iServerTick % 300u))
+	{
+		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
+			Get_PerformanceMetrics();
+		std::size_t maximumCurrentOutboundFrames = 0u;
+		std::size_t maximumOutboundFrameHighWatermark = 0u;
+		std::uint64_t snapshotCoalescedCount = 0u;
+		std::uint64_t snapshotDroppedCount = 0u;
+		std::uint64_t reliableRejectedCount = 0u;
+		std::uint64_t sendFailureCount = 0u;
+		std::uint64_t maximumWireSendMicroseconds = 0u;
+		for (const auto& [sessionId, weakSession] : m_Sessions)
+		{
+			(void)sessionId;
+			const std::shared_ptr<CClientSession> session = weakSession.lock();
+			if (nullptr == session)
+				continue;
+			const CLIENT_SESSION_OUTBOUND_METRICS sessionMetrics =
+				session->Get_OutboundMetrics();
+			maximumCurrentOutboundFrames = (std::max)(
+				maximumCurrentOutboundFrames,
+				sessionMetrics.iCurrentQueuedFrameCount);
+			maximumOutboundFrameHighWatermark = (std::max)(
+				maximumOutboundFrameHighWatermark,
+				sessionMetrics.iQueuedFrameHighWatermark);
+			snapshotCoalescedCount +=
+				sessionMetrics.iSnapshotCoalescedFrameCount;
+			snapshotDroppedCount +=
+				sessionMetrics.iSnapshotDroppedFrameCount;
+			reliableRejectedCount +=
+				sessionMetrics.iReliableRejectedFrameCount;
+			sendFailureCount += sessionMetrics.iSendFailureCount;
+			maximumWireSendMicroseconds = (std::max)(
+				maximumWireSendMicroseconds,
+				sessionMetrics.iMaximumFrameSendMicroseconds);
+		}
+		std::cout << "[RoomPerf] World=" << static_cast<unsigned>(m_eWorldId)
+			<< " Tick=" << m_iServerTick
+			<< " TickUs=" << metrics.iLastTickMicroseconds
+			<< " TickMaxUs=" << metrics.iMaximumTickMicroseconds
+			<< " Ingress=" << metrics.iLastIngressDepth
+			<< " IngressHigh=" << metrics.iIngressHighWatermark
+			<< " Drained=" << metrics.iLastDrainedCommandCount
+			<< " Remaining=" << metrics.iLastRemainingCommandCount
+			<< " MoveCoalesced=" << metrics.iCoalescedMoveCommandCount
+			<< " AimCoalesced=" << metrics.iCoalescedAimCommandCount
+			<< " BestEffortDropped="
+			<< metrics.iDroppedBestEffortCommandCount
+			<< " ReliableRejected="
+			<< metrics.iRejectedReliableCommandCount
+			<< " SnapshotEncodeUs="
+			<< metrics.iLastSnapshotEncodeMicroseconds
+			<< " SnapshotEnqueueUs="
+			<< metrics.iLastSnapshotEnqueueMicroseconds
+			<< " SessionEnqueueMaxUs="
+			<< metrics.iMaximumSessionEnqueueMicroseconds
+			<< " SnapshotEnqueueFailures="
+			<< metrics.iSnapshotEnqueueFailureCount
+			<< " OutboundQueuedMax=" << maximumCurrentOutboundFrames
+			<< " OutboundHighMax=" << maximumOutboundFrameHighWatermark
+			<< " SnapshotCoalesced=" << snapshotCoalescedCount
+			<< " SnapshotDropped=" << snapshotDroppedCount
+			<< " OutboundReliableRejected=" << reliableRejectedCount
+			<< " WireSendMaxUs=" << maximumWireSendMicroseconds
+			<< " WireSendFailures=" << sendFailureCount << '\n';
+	}
 }
 
 void LostArk::Server::CGameRoom::Handle_Register(
@@ -546,9 +739,15 @@ bool LostArk::Server::CGameRoom::Join(
 	}
 	if (Is_PlayerAdmissionFull())
 	{
-		Send_EnterRejected(
-			session, ENTER_WORLD_REJECTION_REASON::ROOM_FULL);
-		session->Request_Close();
+		if (Send_EnterRejected(
+				session, ENTER_WORLD_REJECTION_REASON::ROOM_FULL))
+		{
+			session->Request_Close_After_Flush();
+		}
+		else
+		{
+			session->Request_Close();
+		}
 		return false;
 	}
 	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
@@ -1816,18 +2015,66 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 	}
 	message.DamageEvents = m_TickDamageEvents;
 
+	const auto encodeStart = std::chrono::steady_clock::now();
 	CPacketWriter writer;
-	if (!Write_Message(writer, message))
+	const bool encoded = Write_Message(writer, message);
+	const std::uint64_t encodeMicroseconds = To_Microseconds(
+		std::chrono::steady_clock::now() - encodeStart);
+	{
+		std::scoped_lock lock{ m_CommandMutex };
+		++m_PerformanceMetrics.iSnapshotEncodeCount;
+		m_PerformanceMetrics.iLastSnapshotEncodeMicroseconds =
+			encodeMicroseconds;
+		m_PerformanceMetrics.iMaximumSnapshotEncodeMicroseconds = (std::max)(
+			m_PerformanceMetrics.iMaximumSnapshotEncodeMicroseconds,
+			encodeMicroseconds);
+		if (!encoded)
+			++m_PerformanceMetrics.iSnapshotEncodeFailureCount;
+	}
+	if (!encoded)
 		return;
+
+	const auto enqueueBatchStart = std::chrono::steady_clock::now();
+	std::uint64_t maximumSessionEnqueueMicroseconds = 0u;
+	std::uint64_t recipientCount = 0u;
+	std::uint64_t enqueueFailureCount = 0u;
 	for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
 	{
 		(void)playerId;
 		const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
-		if (nullptr != session && !session->Send_Frame(
-			PACKET_TYPE::S2C_WORLD_SNAPSHOT, writer.Get_Buffer()))
+		if (nullptr == session)
+			continue;
+		++recipientCount;
+		const auto sessionEnqueueStart = std::chrono::steady_clock::now();
+		const bool enqueued = session->Send_Frame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, writer.Get_Buffer());
+		const std::uint64_t sessionEnqueueMicroseconds = To_Microseconds(
+			std::chrono::steady_clock::now() - sessionEnqueueStart);
+		maximumSessionEnqueueMicroseconds = (std::max)(
+			maximumSessionEnqueueMicroseconds, sessionEnqueueMicroseconds);
+		if (!enqueued)
 		{
+			++enqueueFailureCount;
 			session->Request_Close();
 		}
+	}
+	const std::uint64_t enqueueBatchMicroseconds = To_Microseconds(
+		std::chrono::steady_clock::now() - enqueueBatchStart);
+	{
+		std::scoped_lock lock{ m_CommandMutex };
+		++m_PerformanceMetrics.iSnapshotEnqueueBatchCount;
+		m_PerformanceMetrics.iSnapshotRecipientCount += recipientCount;
+		m_PerformanceMetrics.iSnapshotEnqueueFailureCount += enqueueFailureCount;
+		m_PerformanceMetrics.iLastSnapshotEnqueueMicroseconds =
+			enqueueBatchMicroseconds;
+		m_PerformanceMetrics.iMaximumSnapshotEnqueueMicroseconds = (std::max)(
+			m_PerformanceMetrics.iMaximumSnapshotEnqueueMicroseconds,
+			enqueueBatchMicroseconds);
+		m_PerformanceMetrics.iLastMaximumSessionEnqueueMicroseconds =
+			maximumSessionEnqueueMicroseconds;
+		m_PerformanceMetrics.iMaximumSessionEnqueueMicroseconds = (std::max)(
+			m_PerformanceMetrics.iMaximumSessionEnqueueMicroseconds,
+			maximumSessionEnqueueMicroseconds);
 	}
 }
 

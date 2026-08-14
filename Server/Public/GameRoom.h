@@ -17,6 +17,7 @@
 #include "WorldDestructionRuntime.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <map>
 #include <memory>
@@ -28,6 +29,34 @@
 namespace LostArk::Server
 {
 	class CClientSession;
+
+	struct SERVER_ROOM_PERFORMANCE_METRICS final
+	{
+		std::uint64_t iTickCount = 0;
+		std::uint64_t iLastTickMicroseconds = 0;
+		std::uint64_t iMaximumTickMicroseconds = 0;
+		std::size_t iLastIngressDepth = 0;
+		std::size_t iIngressHighWatermark = 0;
+		std::size_t iLastDrainedCommandCount = 0;
+		std::size_t iLastRemainingCommandCount = 0;
+		std::uint64_t iDrainLimitedTickCount = 0;
+		std::uint64_t iCoalescedMoveCommandCount = 0;
+		std::uint64_t iCoalescedAimCommandCount = 0;
+		std::uint64_t iDroppedBestEffortCommandCount = 0;
+		std::uint64_t iRejectedReliableCommandCount = 0;
+		std::uint64_t iRejectedCleanupCommandCount = 0;
+		std::uint64_t iSnapshotEncodeCount = 0;
+		std::uint64_t iSnapshotEncodeFailureCount = 0;
+		std::uint64_t iLastSnapshotEncodeMicroseconds = 0;
+		std::uint64_t iMaximumSnapshotEncodeMicroseconds = 0;
+		std::uint64_t iSnapshotEnqueueBatchCount = 0;
+		std::uint64_t iSnapshotRecipientCount = 0;
+		std::uint64_t iSnapshotEnqueueFailureCount = 0;
+		std::uint64_t iLastSnapshotEnqueueMicroseconds = 0;
+		std::uint64_t iMaximumSnapshotEnqueueMicroseconds = 0;
+		std::uint64_t iLastMaximumSessionEnqueueMicroseconds = 0;
+		std::uint64_t iMaximumSessionEnqueueMicroseconds = 0;
+	};
 
 	class CGameRoom final
 	{
@@ -50,6 +79,8 @@ namespace LostArk::Server
 		{
 			return m_strStatus;
 		}
+		[[nodiscard]] SERVER_ROOM_PERFORMANCE_METRICS
+			Get_PerformanceMetrics() const;
 
 		// Room thread only. A sealed private arena rejects every later command.
 		[[nodiscard]] bool Try_SealPrivateArenaForRetirement();
@@ -213,8 +244,16 @@ namespace LostArk::Server
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:
+		static constexpr std::size_t MAX_INBOUND_COMMAND_COUNT = 1024u;
+		// Best-effort traffic leaves room for gameplay/control commands. The
+		// final 64 slots stay available to LEAVE and failed-entry rollback.
+		static constexpr std::size_t MAX_BEST_EFFORT_COMMAND_COUNT = 768u;
+		static constexpr std::size_t MAX_RELIABLE_COMMAND_COUNT = 960u;
+		static constexpr std::size_t MAX_COMMANDS_DRAINED_PER_TICK = 256u;
+
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
 		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 

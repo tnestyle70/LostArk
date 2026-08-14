@@ -32,6 +32,10 @@ SOURCE_SEMANTIC_CLOSURE = ROOT / (
     "skill.31470.source-semantic-closure.json"
 )
 PUBLISHER = ROOT / "Tools/EffectPipeline/Publish-Effects.ps1"
+DIMENSION_MESH_ROTATION_FIXTURE = ROOT / (
+    "Tools/LevelPlacementExtractor/Fixtures/"
+    "dimensionmaster.fx_pc_swp_05.typedatamesh-rotation.fixture.json"
+)
 
 
 class Artist31470SourceContractTests(unittest.TestCase):
@@ -182,6 +186,120 @@ class Artist31470SourceContractTests(unittest.TestCase):
                 recipe["sourceContractSha256"], self.registry["contractSha256"]
             )
             self.assertEqual(len(recipe["modules"]), len(recipe["moduleCoverage"]))
+
+    def test_typedata_mesh_rotation_registry_is_three_axis_and_fail_closed(self) -> None:
+        mesh_class = next(
+            row
+            for row in self.registry["moduleClasses"]
+            if row["normalizedClass"] == "particlemoduletypedatamesh"
+        )
+        literal_properties = {
+            row["propertyPath"]: row["kinds"]
+            for row in mesh_class["literalProperties"]
+        }
+        for axis in ("pitch", "roll", "yaw"):
+            self.assertEqual(literal_properties[axis], ["number"])
+        self.assertFalse(mesh_class["runtimeImplemented"])
+
+        rotation_rules = {
+            row["propertyPath"]: row
+            for row in self.registry["fieldRules"]
+            if row["normalizedClass"] == "particlemoduletypedatamesh"
+            and row["propertyPath"] in {"pitch", "roll", "yaw"}
+        }
+        self.assertEqual(set(rotation_rules), {"pitch", "roll", "yaw"})
+        yaw_rule = rotation_rules["yaw"]
+        for axis, rule in rotation_rules.items():
+            expected = copy.deepcopy(yaw_rule)
+            expected["ruleId"] = (
+                f"field.particlemoduletypedatamesh.{axis}.literal"
+            )
+            expected["propertyPath"] = axis
+            expected["plannedHandlerId"] = (
+                f"source.particlemoduletypedatamesh.{axis}"
+            )
+            self.assertEqual(rule, expected)
+            self.assertFalse(rule["runtimeImplemented"])
+
+    def test_dimensionmaster_typedata_mesh_multi_axis_fixture_matches_schema(self) -> None:
+        fixture = json.loads(
+            DIMENSION_MESH_ROTATION_FIXTURE.read_text(encoding="utf-8")
+        )
+        self.assertEqual(fixture["characterClass"], "DimensionMaster")
+        self.assertEqual(
+            fixture["sourceReport"],
+            {
+                "artifactName": "FX_PC_SWP_05.particle-graph.json",
+                "sha256": (
+                    "a583511b2af389d458f98a30576a5573"
+                    "c455c284dd77f13bf1cbc510f4f01afb"
+                ),
+            },
+        )
+        self.assertTrue(
+            any(len(row["literals"]) > 1 for row in fixture["records"])
+        )
+        self.assertIn(
+            {"pitch": 90.0, "roll": 10.0, "yaw": 10.0},
+            [row["literals"] for row in fixture["records"]],
+        )
+
+        elements = []
+        for index, record in enumerate(fixture["records"]):
+            stable_id = f"dimension-fixture:{index}"
+            elements.append(
+                {
+                    "renderer": {"type": "meshParticle"},
+                    "sourceRecipe": {
+                        "modules": [
+                            {
+                                "stableId": stable_id,
+                                "className": fixture["normalizedClass"],
+                                "literals": [
+                                    {
+                                        "propertyPath": property_path,
+                                        "kind": "number",
+                                        "value": value,
+                                    }
+                                    for property_path, value in sorted(
+                                        record["literals"].items()
+                                    )
+                                ],
+                                "distributions": [],
+                            }
+                        ],
+                        "moduleCoverage": [
+                            {
+                                "moduleStableId": stable_id,
+                                "normalizedClass": fixture["normalizedClass"],
+                                "properties": [],
+                                "blockers": [],
+                            }
+                        ],
+                        "compiledExecutionAdmission": {"blockers": []},
+                        "materialAdmission": {"blockers": []},
+                        "geometryBinding": {"blockers": []},
+                    },
+                }
+            )
+
+        registry = source_contract.build_registry(elements, {})
+        mesh_class = next(
+            row
+            for row in registry["moduleClasses"]
+            if row["normalizedClass"] == fixture["normalizedClass"]
+        )
+        self.assertEqual(
+            {
+                row["propertyPath"]: row["kinds"]
+                for row in mesh_class["literalProperties"]
+            },
+            {
+                "pitch": ["number"],
+                "roll": ["number"],
+                "yaw": ["number"],
+            },
+        )
 
     def test_source_evidence_is_typed_linked_and_fail_closed(self) -> None:
         self.assertEqual(

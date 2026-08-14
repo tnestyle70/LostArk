@@ -156,7 +156,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publi
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Validate
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1 -Mode Validate
 Server/Bin/Debug/Server.exe --contract-test
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/ProjectAudit/Invoke-ProjectAudit.ps1
 ```
 
 완료 보고에서는 자동 검증과 수동 F1 smoke를 분리한다. Client를 실행하지 않았다면 Balance Tool의

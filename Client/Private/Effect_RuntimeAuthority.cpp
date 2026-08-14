@@ -74,24 +74,24 @@ namespace
 	};
 
 	constexpr RECONSTRUCTED_PROGRAM_PROFILE ACTIVE_RECONSTRUCTED_PROFILE{
-		"31ecc2edc328347ac6e3bf6fe444c270d463ef40",
-		"6d8853d989bd71a988eaebf254398ae08599ad0d",
-		"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6",
-		"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8",
+		"ddef21a5314eb8c3db891d36f702cfeda3149f20",
+		"36a36b889dae7be092e0d2f6f3c3aee2c28bc462",
+		"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6",
+		"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802",
 		"1fd6038ee3eb09c68d0721cc819e605ce82301c5191fd6e1f5d9b2a03ec5f0ff",
-		"316a94e3ed1e68f28c086726bafd5161151825dc5afd54f7dd7e7721b8e99358",
-		"ac7f0478f9403110c72fee7e63ed15062d714080c6e70e36c766a635d0c68375",
+		"ca59713e1bd95fa83224db93df8a712e010cdb8dba684a7a4985b9f9a16ca45f",
+		"a265a6f6a24aa81b608cb0b8ddbe2957c73e242cee6497b36bf66a27b581d6bb",
 		"d367b8c6f8134bf70fb16bbb7bf071f06bcf0bfcb5b459dad0c687effecbbc94",
 		"7e4abfe5346568f053859fc717be94ff9a8b750cd64edad4128288a7adb6d546",
 		"07cd536fb3461b2b2cf5b51ab3c90b2a8a9db3d3dc055bca26476625709f178d",
 		"5350e20004898130541c6dc147ce2c14fa8a7870bee36a9baeaf14dcda33b5d3",
 		"23977bf027c015086393b1f4b2a9495313a992025ffdc4ad3ac769e20595f69b",
 		"94b0bc3704e4c9aaca5216cfafbfcb397c924390395597442c6831d096f2bff5",
-		"c3744585bf19a3d6fadf4e4e9fcfc7ab8ca50ffc76d602e6ab4eeff280403f1a",
-		"6b3b6aca73f88661a2b7dc0970737dee038d1e53381f8cfcd48c1732fe437612",
+		"c85338bdeb9ebb997dbc629a0883772a3b64a4496c4c843a3bac93cfbed3208e",
+		"42cef303f171ec7be0fc523dfcf78a6f8c86698cde7cb55a8e8c18a52ff222c7",
 		"6c4ff35e5323f81e1c7556167e3264fc83c57d8e9390cf89b10c3ac5ac01c023",
 		"a602be873f49bb21954a0554c467c6945d26c328a5f46218af7ad6cf22254ba3",
-		15'117'436u,
+		15'121'873u,
 		6133u,
 		6775u,
 		77u,
@@ -1878,7 +1878,8 @@ namespace
 			Value, "socketLocalTransform", DATA_JSON_TYPE::OBJECT);
 		return Has_ExactKeyOrder(Value, {
 				"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
-				"runtimeBoneName", "socketLocalTransform" }) &&
+				"runtimeBoneName", "snapshotRootSourceBasisYawDegrees",
+				"socketLocalTransform" }) &&
 			Read_Boolean(Value, "enabled", OutAttachment.bEnabled) &&
 			Read_Boolean(Value, "follow", OutAttachment.bFollow) &&
 			Read_String(Value, "sourceAnchorSlotId",
@@ -1887,6 +1888,8 @@ namespace
 				OutAttachment.strRuntimeAnchorSlotId, false, 256u) &&
 			Read_String(Value, "runtimeBoneName",
 				OutAttachment.strRuntimeBoneName, true, 256u) &&
+			Read_FiniteF64(Value, "snapshotRootSourceBasisYawDegrees",
+				OutAttachment.fSnapshotRootSourceBasisYawDegrees) &&
 			nullptr != Socket &&
 			Parse_ProgramSocketTransform(*Socket, OutAttachment.SocketLocalTransform);
 	}
@@ -2073,8 +2076,18 @@ namespace
 		const DATA_JSON_VALUE& Value,
 		EFFECT_RUNTIME_PROGRAM_RENDERER_MESH& OutMesh)
 	{
-		return Has_ExactKeyOrder(Value, { "useModelMaterial" }) &&
-			Read_Boolean(Value, "useModelMaterial", OutMesh.bUseModelMaterial);
+		const DATA_JSON_VALUE* Rotation = Required(
+			Value, "sourceTypeDataRotationDegrees", DATA_JSON_TYPE::ARRAY);
+		return Has_ExactKeyOrder(Value,
+			{ "useModelMaterial", "sourceTypeDataRotationDegrees" }) &&
+			Read_Boolean(Value, "useModelMaterial", OutMesh.bUseModelMaterial) &&
+			nullptr != Rotation && Parse_FixedF64Array(
+				*Rotation, OutMesh.vSourceTypeDataRotationDegrees) &&
+			std::all_of(OutMesh.vSourceTypeDataRotationDegrees.begin(),
+				OutMesh.vSourceTypeDataRotationDegrees.end(), [](const double Value)
+				{
+					return std::abs(Value) <= 3600.0;
+				});
 	}
 
 	bool_t Parse_RendererSprite(
@@ -3204,11 +3217,11 @@ namespace
 				nullptr == Inheritance || !Parse_ProgramTransformInheritance(
 					*Inheritance, Parsed.TransformInheritance) ||
 				nullptr == Composition || !Parse_StringArray(
-					*Composition, Parsed.TransformCompositionOrder, false, 6u, 128u) ||
+					*Composition, Parsed.TransformCompositionOrder, false, 7u, 128u) ||
 				Parsed.TransformCompositionOrder != std::vector<std::string>{
 					"carrierGeometryPreScale", "signedParticleScaleRotationLocation",
 					"emitterElementTransform", "cueLocalTransform",
-					"attachmentSocketOrRoot", "actorWorld" } ||
+					"snapshotRootSourceBasis", "attachmentSocketOrRoot", "actorWorld" } ||
 				nullptr == Anchors ||
 				!Parse_ProgramAnchorRequests(*Anchors, Parsed.AnchorRequests) ||
 				nullptr == ModuleIds ||
@@ -7007,7 +7020,8 @@ namespace
 			{
 				if (Row.ActionCueAttachment.bFollow)
 				{
-					if (Row.AnchorRequests.size() != 1u)
+					if (Row.AnchorRequests.size() != 1u ||
+						Row.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees != 0.0)
 					{
 						OutFailure = EmitterFailurePrefix + "attachment-cardinality";
 						return false;
@@ -7037,6 +7051,7 @@ namespace
 					if (Row.ActionCueAttachment.strSourceAnchorSlotId != "root" ||
 						Row.ActionCueAttachment.strRuntimeAnchorSlotId != "root" ||
 						!Row.ActionCueAttachment.strRuntimeBoneName.empty() ||
+						Row.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees != -90.0 ||
 						!Row.AnchorRequests.empty())
 					{
 						OutFailure = EmitterFailurePrefix + "snapshot-root-attachment";
@@ -7051,6 +7066,7 @@ namespace
 					!Row.ActionCueAttachment.strSourceAnchorSlotId.empty() ||
 					Row.ActionCueAttachment.strRuntimeAnchorSlotId != "root" ||
 					!Row.ActionCueAttachment.strRuntimeBoneName.empty() ||
+					Row.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees != 0.0 ||
 					Row.ActionCueAttachment.SocketLocalTransform.vPosition !=
 						std::array<double, 3u>{} ||
 					Row.ActionCueAttachment.SocketLocalTransform.vRotationDegrees !=

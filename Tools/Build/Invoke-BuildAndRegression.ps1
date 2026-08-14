@@ -8,10 +8,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$reportParent = [IO.Path]::GetFullPath(
-    (Join-Path $repoRoot '.codex_tmp\regression'))
-$reportRoot = [IO.Path]::GetFullPath(
-    (Join-Path $reportParent $Configuration))
 $clientExe = Join-Path $repoRoot "Client\Bin\$Configuration\Client.exe"
 $serverExe = Join-Path $repoRoot "Server\Bin\$Configuration\Server.exe"
 $valtanHarnessExe = Join-Path $repoRoot `
@@ -70,18 +66,34 @@ function Assert-RuntimeLayout {
     }
 }
 
+function Invoke-PythonGate {
+    param(
+        [string]$Description,
+        [string[]]$Arguments
+    )
+
+    $python = (Get-Command python -ErrorAction Stop).Source
+    $pythonExitCode = -1
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # unittest writes successful progress to stderr.  Windows PowerShell
+        # surfaces that stream as NativeCommandError when the script-wide
+        # preference is Stop, so preserve the process exit code explicitly.
+        $ErrorActionPreference = 'Continue'
+        $LASTEXITCODE = 0
+        & $python -B @Arguments
+        $pythonExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($pythonExitCode -ne 0) {
+        throw "$Description failed."
+    }
+}
+
 Push-Location $repoRoot
 try {
-    if (-not $reportRoot.StartsWith(
-            $reportParent.TrimEnd('\') + '\',
-            [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Regression report path escaped its generated root: $reportRoot"
-    }
-    if ([IO.Directory]::Exists($reportRoot)) {
-        Remove-Item -LiteralPath $reportRoot -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $reportRoot -Force | Out-Null
-
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
@@ -103,6 +115,51 @@ try {
     }
 
     Assert-RuntimeLayout
+
+    $LASTEXITCODE = 0
+    & '.\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' `
+        -Mode Validate
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Gameplay balance validation failed.'
+    }
+
+    $LASTEXITCODE = 0
+    & '.\Tools\NavigationPipeline\Publish-ServerNavigation.ps1' `
+        -Mode Validate
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Server navigation validation failed.'
+    }
+
+    $LASTEXITCODE = 0
+    & '.\Tools\EffectPipeline\Publish-Effects.ps1' `
+        -Mode Validate -ResourceRoot $runtimeResourceRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Effect data validation failed.'
+    }
+
+    $LASTEXITCODE = 0
+    & '.\Tools\EffectPipeline\Sync-EffectDataProject.ps1' -Check
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Effect project registration validation failed.'
+    }
+
+    Invoke-PythonGate `
+        'Artist 31470 material runtime-oracle unit gate' `
+        @('Tools/LevelPlacementExtractor/test_build_artist_31470_material_runtime_oracle.py')
+    Invoke-PythonGate `
+        'Artist 31470 material runtime-oracle receipt gate' `
+        @('Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py',
+          '--shallow-check')
+    Invoke-PythonGate `
+        'Artist 31470 material runtime-oracle HLSL/WARP gate' `
+        @('Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py')
+
+    $LASTEXITCODE = 0
+    & '.\Tools\RenderingPipeline\Publish-RenderingProfiles.ps1' `
+        -Mode Validate
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Rendering profile validation failed.'
+    }
 
     $protocolHarness = Join-Path $repoRoot `
         "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
@@ -146,19 +203,11 @@ try {
         'Tools\Network\Run-ValtanFourPlayerHarness.ps1') `
         -Configuration $Configuration
 
-    & (Join-Path $repoRoot `
-        'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
-        -Configuration $Configuration
+	& (Join-Path $repoRoot `
+		'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
+		-Configuration $Configuration
 
-    & (Join-Path $repoRoot `
-        'Tools\ProjectAudit\Invoke-ProjectAudit.ps1') `
-        -ReportPath (Join-Path $reportRoot 'ProjectAudit.json') `
-        -ResourceRoot $runtimeResourceRoot
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Project audit failed.'
-    }
-
-    Write-Host "Regression completed: $Configuration"
+	Write-Host "Regression completed: $Configuration"
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'
 }
 finally {

@@ -238,10 +238,24 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 	const std::span<const uint32_t> BoneIndices,
 	const std::span<float4x4_t> OutCombinedMatrices) const
 {
+	return Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
+		iExpectedAnimationIndex, fTrackPositionTicks, m_fBlendElapsed,
+		BoneIndices, OutCombinedMatrices);
+}
+
+bool_t CModel::Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
+	const uint32_t iExpectedAnimationIndex,
+	const f32_t fTrackPositionTicks,
+	const f32_t fBlendElapsedSeconds,
+	const std::span<const uint32_t> BoneIndices,
+	const std::span<float4x4_t> OutCombinedMatrices) const
+{
 	if (iExpectedAnimationIndex != m_iCurrentAnimIndex ||
 		iExpectedAnimationIndex >= m_Animations.size() ||
 		nullptr == m_Animations[iExpectedAnimationIndex] ||
 		!std::isfinite(fTrackPositionTicks) ||
+		!std::isfinite(fBlendElapsedSeconds) ||
+		fBlendElapsedSeconds < 0.f ||
 		fTrackPositionTicks < 0.f ||
 		fTrackPositionTicks >
 			m_Animations[iExpectedAnimationIndex]->Get_Duration() ||
@@ -260,7 +274,8 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 	}
 
 	const auto BuildCombined = [this, iExpectedAnimationIndex,
-		fTrackPositionTicks](std::vector<float4x4_t>& OutCombined)
+		fTrackPositionTicks, fBlendElapsedSeconds](
+			std::vector<float4x4_t>& OutCombined)
 	{
 		std::vector<float4x4_t> LocalTransforms(m_Bones.size());
 		for (size_t iBone = 0u; iBone < m_Bones.size(); ++iBone)
@@ -284,7 +299,11 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 		{
 			return false;
 		}
-		if (m_fBlendElapsed < m_fBlendDuration)
+		/* Only an active live transition proves that m_BlendFromPose belongs to
+		   this clip edge.  Once the live transition is complete (or when the same
+		   clip is restarted without a new blend), ignore the stale saved pose. */
+		if (m_fBlendElapsed < m_fBlendDuration &&
+			fBlendElapsedSeconds < m_fBlendDuration)
 		{
 			if (m_fBlendDuration <= 0.f ||
 				m_BlendFromPose.size() != LocalTransforms.size())
@@ -292,7 +311,7 @@ bool_t CModel::Sample_CurrentAnimationBoneCombinedMatrices(
 				return false;
 			}
 			const f32_t fRatio =
-				(min)(m_fBlendElapsed / m_fBlendDuration, 1.f);
+				(min)(fBlendElapsedSeconds / m_fBlendDuration, 1.f);
 			for (size_t iBone = 0u; iBone < LocalTransforms.size(); ++iBone)
 			{
 				if (!Is_FiniteMatrix(m_BlendFromPose[iBone]) ||

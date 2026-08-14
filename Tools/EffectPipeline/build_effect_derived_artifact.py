@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -65,42 +66,42 @@ RECONSTRUCTED_COMPILER_REVISION = (
     "artist31470.reconstructed-runtime-program-link-v1"
 )
 RECONSTRUCTED_CANDIDATE_BUILDER_COMMIT = (
-    "31ecc2edc328347ac6e3bf6fe444c270d463ef40"
+    "ddef21a5314eb8c3db891d36f702cfeda3149f20"
 )
 RECONSTRUCTED_CANDIDATE_BUILDER_TREE = (
-    "6d8853d989bd71a988eaebf254398ae08599ad0d"
+    "36a36b889dae7be092e0d2f6f3c3aee2c28bc462"
 )
-RECONSTRUCTED_CANDIDATE_BLOB = "a9655729578d847d323a32c904c70d10baee9102"
+RECONSTRUCTED_CANDIDATE_BLOB = "4b090268b95ea590587276c8048c3b235ee33571"
 RECONSTRUCTED_RESOURCE_BINDING_SHA256 = (
     "df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c"
 )
 RECONSTRUCTED_INPUT_ARTIFACT_COUNT = 13
 RECONSTRUCTED_INPUT_ARTIFACTS_ORDERED_SHA256 = (
-    "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6"
+    "bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f"
 )
 RECONSTRUCTED_PROGRAM_ID = (
     "effect.artist.skill.31470.reconstructed-approved-v1"
 )
 RECONSTRUCTED_PROGRAM_VERSION = 1
 RECONSTRUCTED_PROGRAM_SHA256 = (
-    "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8"
+    "0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802"
 )
 RECONSTRUCTED_CANDIDATE_RAW_SHA256 = (
-    "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6"
+    "430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6"
 )
-RECONSTRUCTED_CANDIDATE_BYTE_COUNT = 15_117_436
+RECONSTRUCTED_CANDIDATE_BYTE_COUNT = 15_121_873
 
 RECONSTRUCTED_BASE_ENTRY_CANONICAL_SHA256 = (
-    "1536d7b780f6787c624bbad1150889fe7f63e78ede91067029856b07b9718d02"
+    "6cd44dbd323d50e46e854b865d70ebf922355ed3db4ff5b430ae241c83aa01b3"
 )
 RECONSTRUCTED_BASE_LINK_SHA256 = (
-    "a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2"
+    "282f450d95ae283acf91047fe6b293eb93fddaea9f4bde4cff9671e7aa27c523"
 )
 RECONSTRUCTED_BASE_RECEIPT_SELF_SHA256 = (
-    "ebdd01e2815990308eb703abc4b73e4c99a051a2cb4ff36d553f9bc6e61ac240"
+    "0a870ae15bd33f674b16e9c58a3504b69b9cb1c491d35c9216cb2a647a20724d"
 )
 RECONSTRUCTED_BASE_RECEIPT_SHA256 = (
-    "5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836"
+    "413c34440ee82b9511d1de4bbd31af282dce2e65204fd5cda0d75d8e4e58650b"
 )
 
 RECONSTRUCTED_RENDER_RESOURCE_LINK_SCHEMA = (
@@ -120,13 +121,13 @@ RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_AUTHORITY_ID = (
 )
 RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_BYTE_COUNT = 774_127
 RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RAW_SHA256 = (
-    "1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660"
+    "d69e262b7841f831f6e5d479fd588ff9fc52e4b72c896544d3c3ec178516139e"
 )
 RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_RECEIPT_SHA256 = (
-    "6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4"
+    "5af0e5e7b7882644ad6c3371bf888b191a6591684c4ac7a42f29b8c1e2a5a98e"
 )
 RECONSTRUCTED_RENDER_RESOURCE_SIDECAR_DECISION_SHA256 = (
-    "fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de"
+    "e3b19c2c8102746d8e9ba5b5494ec0b194baeb7bd9df61979c6fade2e5dc70eb"
 )
 
 RECONSTRUCTED_BASE_ENTRY_KEYS = (
@@ -165,6 +166,14 @@ RECONSTRUCTED_ENTRY_KEYS = RECONSTRUCTED_BASE_ENTRY_KEYS + (
     "renderResourcePublishReceipt",
     "reconstructedRenderResourceAuthority",
 )
+RECONSTRUCTED_TUNED_ENTRY_KEYS = RECONSTRUCTED_ENTRY_KEYS + (
+    "occurrenceTuningSourcePath",
+    "occurrenceTuningSha256",
+    "occurrenceTuning",
+)
+OCCURRENCE_TUNING_SCHEMA = "lostark.effect-occurrence-tuning"
+OCCURRENCE_TUNING_SOURCE_PREFIX = "Effects/AuthoredCorrections/"
+OCCURRENCE_TUNING_SOURCE_SUFFIX = ".occurrence-tuning.json"
 RECONSTRUCTED_LINK_KEYS = (
     "schema",
     "formatVersion",
@@ -214,7 +223,7 @@ RECONSTRUCTED_HISTORICAL_TOOL_DEPENDENCIES = (
     (
         "RECONSTRUCTED_RUNTIME_PROGRAM_CANDIDATE_BUILDER",
         "Tools/EffectPipeline/build_artist_31470_reconstructed_runtime_program.py",
-        "5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e",
+        "5421a989573aed54e24e98f3d5dc55874475332e3446bf966541800ab6db4c65",
     ),
     (
         "RECONSTRUCTED_RUNTIME_PROGRAM_CATALOG_VALIDATOR",
@@ -2410,6 +2419,140 @@ def validate_reconstructed_render_resource_publish_receipt(
         raise ContractError("render-resource publish receipt self digest mismatch")
 
 
+def _validate_occurrence_tuning_source_path(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ContractError("occurrence tuning source path must be a string")
+    if (
+        not value.startswith(OCCURRENCE_TUNING_SOURCE_PREFIX)
+        or not value.endswith(OCCURRENCE_TUNING_SOURCE_SUFFIX)
+        or len(value) > 1024
+        or "\\" in value
+        or ":" in value
+        or "//" in value
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
+    ):
+        raise ContractError("occurrence tuning source path is unsafe")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in ("", ".", "..") for part in path.parts):
+        raise ContractError("occurrence tuning source path is not normalized")
+    return value
+
+
+def _validate_occurrence_tuning_vector(
+    value: Any, label: str, minimum: float, maximum: float
+) -> None:
+    if not isinstance(value, list) or len(value) != 3:
+        raise ContractError(f"{label} must contain exactly three numbers")
+    for component in value:
+        if (
+            isinstance(component, bool)
+            or not isinstance(component, (int, float))
+            or not math.isfinite(float(component))
+            or float(component) < minimum
+            or float(component) > maximum
+        ):
+            raise ContractError(f"{label} contains an invalid component")
+
+
+def validate_occurrence_tuning(value: Any, program: Any) -> None:
+    if not isinstance(value, dict) or not isinstance(program, dict):
+        raise ContractError("occurrence tuning/program payload is invalid")
+    _require_exact_key_order(
+        value,
+        ("schema", "formatVersion", "effectAssetId", "entries"),
+        "occurrence tuning",
+    )
+    if value["schema"] != OCCURRENCE_TUNING_SCHEMA:
+        raise ContractError("occurrence tuning schema mismatch")
+    _require_exact_int(value["formatVersion"], 1, "occurrence tuning formatVersion")
+    target = program.get("target")
+    target_effect_ids = set()
+    if isinstance(target, dict):
+        for key in ("effectAssetId", "runtimeCatalogAssetId"):
+            if isinstance(target.get(key), str):
+                target_effect_ids.add(target[key])
+    if value["effectAssetId"] not in target_effect_ids:
+        raise ContractError("occurrence tuning effect/program identity mismatch")
+    entries = value["entries"]
+    emitters = program.get("emitters")
+    if not isinstance(entries, list) or len(entries) > 4096:
+        raise ContractError("occurrence tuning entries are invalid")
+    if not isinstance(emitters, list):
+        raise ContractError("occurrence tuning program emitters are invalid")
+    emitter_rows: dict[str, str] = {}
+    for emitter in emitters:
+        if not isinstance(emitter, dict):
+            raise ContractError("occurrence tuning program emitter is invalid")
+        occurrence_id = emitter.get("emitterId")
+        row_sha = emitter.get("rowSha256")
+        if (
+            not isinstance(occurrence_id, str)
+            or occurrence_id in emitter_rows
+            or not isinstance(row_sha, str)
+        ):
+            raise ContractError("occurrence tuning program occurrence identity is invalid")
+        emitter_rows[occurrence_id] = _require_sha(
+            row_sha, "occurrence tuning program emitter rowSha256"
+        )
+    previous_id: str | None = None
+    seen: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise ContractError(f"occurrence tuning entry[{index}] must be an object")
+        _require_exact_key_order(
+            entry,
+            (
+                "occurrenceId",
+                "sourceOccurrenceRowSha256",
+                "provenance",
+                "effectiveLocalTransform",
+            ),
+            f"occurrence tuning entry[{index}]",
+        )
+        occurrence_id = entry["occurrenceId"]
+        if (
+            not isinstance(occurrence_id, str)
+            or not occurrence_id
+            or len(occurrence_id) > 1024
+            or any(ord(character) < 0x20 or ord(character) == 0x7F for character in occurrence_id)
+            or occurrence_id in seen
+            or (previous_id is not None and previous_id >= occurrence_id)
+        ):
+            raise ContractError("occurrence tuning IDs must be unique and sorted")
+        seen.add(occurrence_id)
+        previous_id = occurrence_id
+        if occurrence_id not in emitter_rows:
+            raise ContractError("occurrence tuning references an unknown occurrence")
+        row_sha = _require_sha(
+            entry["sourceOccurrenceRowSha256"],
+            f"occurrence tuning entry[{index}] source row SHA",
+        )
+        if row_sha != emitter_rows[occurrence_id]:
+            raise ContractError("occurrence tuning source row SHA is stale")
+        if entry["provenance"] != "PROJECT_TUNED":
+            raise ContractError("occurrence tuning provenance must be PROJECT_TUNED")
+        transform = entry["effectiveLocalTransform"]
+        if not isinstance(transform, dict):
+            raise ContractError("occurrence tuning transform must be an object")
+        _require_exact_key_order(
+            transform,
+            ("position", "rotationDegrees", "scale"),
+            f"occurrence tuning entry[{index}] transform",
+        )
+        _validate_occurrence_tuning_vector(
+            transform["position"], "occurrence tuning position", -1000.0, 1000.0
+        )
+        _validate_occurrence_tuning_vector(
+            transform["rotationDegrees"],
+            "occurrence tuning rotation",
+            -360.0,
+            360.0,
+        )
+        _validate_occurrence_tuning_vector(
+            transform["scale"], "occurrence tuning scale", 0.001, 100.0
+        )
+
+
 def validate_reconstructed_runtime_entry(
     value: Any,
     *,
@@ -2417,9 +2560,9 @@ def validate_reconstructed_runtime_entry(
 ) -> None:
     if not isinstance(value, dict):
         raise ContractError("reconstructed runtime entry must be an object")
-    _require_exact_key_order(
-        value, RECONSTRUCTED_ENTRY_KEYS, "reconstructed runtime entry"
-    )
+    has_occurrence_tuning = tuple(value.keys()) == RECONSTRUCTED_TUNED_ENTRY_KEYS
+    if not has_occurrence_tuning and tuple(value.keys()) != RECONSTRUCTED_ENTRY_KEYS:
+        raise ContractError("reconstructed runtime entry fields or order are invalid")
     base_entry = {key: value[key] for key in RECONSTRUCTED_BASE_ENTRY_KEYS}
     _validate_reconstructed_base_entry(base_entry)
 
@@ -2488,10 +2631,28 @@ def validate_reconstructed_runtime_entry(
     if outer_receipt_sha != sha256_bytes(canonical_json_bytes(receipt)):
         raise ContractError("render-resource outer publish receipt SHA mismatch")
 
+    if has_occurrence_tuning:
+        _validate_occurrence_tuning_source_path(value["occurrenceTuningSourcePath"])
+        tuning = value["occurrenceTuning"]
+        tuning_sha = _require_sha(
+            value["occurrenceTuningSha256"], "occurrence tuning outer SHA"
+        )
+        if tuning_sha != sha256_bytes(canonical_json_bytes(tuning)):
+            raise ContractError("occurrence tuning canonical SHA binding mismatch")
+        try:
+            program = json.loads(
+                value["reconstructedRuntimeProgram"]["candidateUtf8Json"]
+            )
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise ContractError("occurrence tuning embedded program is invalid") from exc
+        validate_occurrence_tuning(tuning, program)
+
 
 def prepare_reconstructed_runtime_entry(
     candidate_path: Path,
     render_resource_authority_path: Path,
+    occurrence_tuning_path: Path | None = None,
+    occurrence_tuning_source_path: str | None = None,
     *,
     require_committed_candidate: bool = True,
     require_independent_sidecar_approval: bool = True,
@@ -2542,6 +2703,25 @@ def prepare_reconstructed_runtime_entry(
         "renderResourcePublishReceipt": resource_receipt,
         "reconstructedRenderResourceAuthority": resource_link,
     }
+    # The tuning payload is a sibling authoring overlay. It never participates
+    # in reconstructedRuntimeProgram/programSha256 identity.
+    if (occurrence_tuning_path is not None or occurrence_tuning_source_path is not None):
+        if occurrence_tuning_path is None or occurrence_tuning_source_path is None:
+            raise ContractError(
+                "occurrence tuning file and source path must be supplied together"
+            )
+        source_path = _validate_occurrence_tuning_source_path(
+            occurrence_tuning_source_path
+        )
+        tuning = load_json(occurrence_tuning_path, require_lf=True)
+        try:
+            program = json.loads(link["candidateUtf8Json"])
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise ContractError("occurrence tuning candidate program is invalid") from exc
+        validate_occurrence_tuning(tuning, program)
+        entry["occurrenceTuningSourcePath"] = source_path
+        entry["occurrenceTuningSha256"] = sha256_bytes(canonical_json_bytes(tuning))
+        entry["occurrenceTuning"] = tuning
     validate_reconstructed_runtime_entry(
         entry,
         require_independent_sidecar_approval=(
@@ -2759,7 +2939,10 @@ def _command_prepare(args: argparse.Namespace) -> None:
 
 def _command_prepare_reconstructed(args: argparse.Namespace) -> None:
     entry = prepare_reconstructed_runtime_entry(
-        args.candidate, args.render_resource_authority
+        args.candidate,
+        args.render_resource_authority,
+        args.occurrence_tuning,
+        args.occurrence_tuning_source_path,
     )
     _write_single_json(args.output, entry)
 
@@ -2798,6 +2981,8 @@ def make_parser() -> argparse.ArgumentParser:
     prepare_reconstructed.add_argument(
         "--render-resource-authority", type=Path, required=True
     )
+    prepare_reconstructed.add_argument("--occurrence-tuning", type=Path)
+    prepare_reconstructed.add_argument("--occurrence-tuning-source-path")
     prepare_reconstructed.add_argument("--output", type=Path, required=True)
     prepare_reconstructed.set_defaults(func=_command_prepare_reconstructed)
 

@@ -23,6 +23,8 @@ public:
 		const EFFECT_DOCUMENT_DESC* pDocument = nullptr;
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPreparedResources;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection;
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pReconstructedRuntimePreparation;
 		float4x4_t RootWorld{};
@@ -65,11 +67,25 @@ public:
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPreparedResources,
 		std::string& strOutError);
+	bool_t Stage_PrevalidatedVisualProgramDocument(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPreparedResources,
+		std::string& strOutError);
 	bool_t Stage_ReconstructedRuntimeProgram(
 		const EFFECT_OBJECT_DESC& Desc,
 		std::string& strOutError);
 	bool_t Stage_ReconstructedSourceRuntime(
 		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPreparedResources,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
+	bool_t Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPreparedResources,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
@@ -81,6 +97,18 @@ public:
 		std::string& strOutError);
 	void Set_ReconstructedDiagnosticSolo(
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Set_PreviewSubmissionIsolation(
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+		std::string& strOutError);
+	bool_t Set_PreviewElementIsolation(
+		std::vector<std::string> ElementIds,
+		std::string& strOutError);
+	void Reset_PreviewSubmissionIsolation();
+	const EFFECT_PREVIEW_SUBMISSION_ISOLATION&
+		Get_PreviewSubmissionIsolation() const
+	{
+		return m_pRenderer->Get_PreviewSubmissionIsolation();
+	}
 	bool_t Is_ReconstructedDiagnosticActive() const
 	{
 		return m_bReconstructedDiagnosticActive;
@@ -90,14 +118,29 @@ public:
 		return m_bReconstructedSourceRuntimeActive &&
 			!m_bRenderFailureIsolated;
 	}
+	bool_t Is_SourceVisualProgramActive() const
+	{
+		return m_bSourceVisualProgramActive &&
+			!m_bRenderFailureIsolated;
+	}
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Get_SourceVisualProgramProjection() const
+	{
+		return m_Playback.Get_SourceVisualProgramProjection();
+	}
 	bool_t Is_RenderFailureIsolated() const
 	{
 		return m_bRenderFailureIsolated;
 	}
 	HRESULT Get_IsolatedRenderFailure() const { return m_hRenderFailure; }
 	void Set_RootWorld(const float4x4_t& RootWorld);
+	/* PresentationService calls this immediately before its single seek/update.
+	   It changes only the pending root so FOLLOW does not rebuild twice. */
+	void Set_RootWorldForNextUpdate(const float4x4_t& RootWorld);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
+	void Set_SourceAnchorWorlds(
+		std::unordered_map<std::string, float4x4_t>&& SourceAnchorWorlds);
 	void Set_SampleTime(f32_t fSampleTimeSeconds);
 	void Advance_Preview(f32_t fTimeDelta);
 	void Advance_Preview(
@@ -144,6 +187,12 @@ public:
 	{
 		return m_pRenderer->Get_LastRenderSubmissionStats();
 	}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	const EFFECT_EVALUATED_FRAME& Get_ReconstructedTestFrame() const
+	{
+		return m_Playback.Get_Frame();
+	}
+#endif
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 		Get_ReconstructedRuntimePreparation() const
 	{
@@ -175,6 +224,7 @@ private:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
 		std::string& strOutError);
+	bool_t Should_SubmitPreviewElement(const EFFECT_ELEMENT_DESC* pElement) const;
 	HRESULT Complete_RenderResult(
 		HRESULT hResult,
 		std::string strFailureContext);
@@ -198,6 +248,7 @@ private:
 	RECONSTRUCTED_DIAGNOSTIC_SOLO m_eReconstructedDiagnosticSolo =
 		RECONSTRUCTED_DIAGNOSTIC_SOLO::END;
 	bool_t m_bReconstructedDiagnosticActive = false;
+	bool_t m_bSourceVisualProgramActive = false;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	bool_t m_bRenderFailureIsolated = false;
 	bool_t m_bPresentationFailureIsolated = false;

@@ -1,19 +1,24 @@
 #include "Valtan.h"
 
+#include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
+#include "AnimationSkillBindingDocument.h"
 #include "Body_Valtan.h"
 #include "Collider.h"
-#include "DataJson.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
-#include "ProjectDataRoot.h"
 
 #include "Part_Equipment.h"
 #include "Transform.h"
 
 #include <cmath>
-#include <fstream>
+
+namespace
+{
+	constexpr f32_t VALTAN_SERVER_TICK_HZ = 30.f;
+	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
+}
 
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -74,64 +79,42 @@ HRESULT CValtan::Initialize(void* pArg)
 			m_pTransformCom->Get_State(STATE::POSITION)));
 	}
 
+	if (FAILED(Ready_PartObjects()))
+		return E_FAIL;
 	Load_PatternBindings();
-
-	return Ready_PartObjects();
+	return S_OK;
 }
 
 void CValtan::Load_PatternBindings()
 {
 	m_PatternClipByActionId.clear();
-
-	const std::filesystem::path path = CProjectDataRoot::Resolve(
-		"Animation/Authored/Valtan/Valtan.patternbindings.json");
-	if (path.empty())
+	if (nullptr == m_pBodyModelCom)
 		return;
-	std::ifstream input(path, std::ios::binary);
-	if (!input.is_open())
-		return;
-	const std::string text(
-		(std::istreambuf_iterator<char>(input)),
-		std::istreambuf_iterator<char>());
-
-	DATA_JSON_VALUE root;
-	std::string error;
-	const DATA_JSON_VALUE* pSchema = nullptr;
-	const DATA_JSON_VALUE* pVersion = nullptr;
-	const DATA_JSON_VALUE* pBindings = nullptr;
-	if (!CDataJson::Parse(text, root, error) || !root.Is_Object() ||
-		nullptr == (pSchema = root.Find("schema")) || !pSchema->Is_String() ||
-		pSchema->Get_String() != "lostark.valtan-pattern-bindings" ||
-		nullptr == (pVersion = root.Find("formatVersion")) ||
-		!pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
-		nullptr == (pBindings = root.Find("bindings")) ||
-		!pBindings->Is_Array())
+	std::vector<std::string> availableClips;
+	availableClips.reserve(m_pBodyModelCom->Get_NumAnimations());
+	for (uint32_t index = 0u;
+		index < m_pBodyModelCom->Get_NumAnimations(); ++index)
 	{
-		OutputDebugStringA(
-			"[Client][Valtan] pattern bindings document rejected; "
-			"patterns fall back to catalog clips.\n");
+		const char_t* clip = m_pBodyModelCom->Get_AnimationName(index);
+		if (nullptr != clip && '\0' != *clip)
+			availableClips.emplace_back(clip);
+	}
+	Client::BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
+	std::string status;
+	if (!Client::CValtanPatternAnimationBindingDocument::Load(
+			"Valtan", "BOSS_VALTAN", availableClips, document, status))
+	{
+		const std::string message =
+			"[Client][Valtan] pattern bindings rejected; catalog clips remain: " +
+			status + "\n";
+		OutputDebugStringA(message.c_str());
 		return;
 	}
-
 	std::unordered_map<std::string, std::string> staged;
-	for (const DATA_JSON_VALUE& entry : pBindings->Get_Array())
+	for (const Client::BOSS_PATTERN_ANIMATION_BINDING& binding :
+		document.Bindings)
 	{
-		const DATA_JSON_VALUE* pActionId = entry.Is_Object() ?
-			entry.Find("actionId") : nullptr;
-		const DATA_JSON_VALUE* pClip = entry.Is_Object() ?
-			entry.Find("clip") : nullptr;
-		if (nullptr == pActionId || !pActionId->Is_String() ||
-			pActionId->Get_String().empty() ||
-			nullptr == pClip || !pClip->Is_String() ||
-			pClip->Get_String().empty() ||
-			!staged.emplace(
-				pActionId->Get_String(), pClip->Get_String()).second)
-		{
-			OutputDebugStringA(
-				"[Client][Valtan] pattern bindings entry invalid or "
-				"duplicated; document rejected.\n");
-			return;
-		}
+		staged.emplace(binding.strActionId, binding.strClipName);
 	}
 	m_PatternClipByActionId = std::move(staged);
 }
@@ -357,7 +340,12 @@ bool_t CValtan::Apply_NetworkState(
 	const float3_t& position,
 	const f32_t yawDegrees,
 	const LostArk::Shared::WORLD_ENTITY_ACTION action,
-	const std::string_view actionId)
+	const std::string_view patternId,
+	const std::string_view actionId,
+	const uint32_t iServerTick,
+	const uint32_t iActionStartTick,
+	const uint32_t iPatternSequence,
+	const uint32_t iPatternStageIndex)
 {
 	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
@@ -391,25 +379,64 @@ bool_t CValtan::Apply_NetworkState(
 		return false;
 	}
 
-	m_pTransformCom->Set_State(
-		STATE::POSITION,
-		XMVectorSet(position.x, position.y, position.z, 1.f));
-	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
-	if (nullptr != m_pColliderCom)
-	{
-		m_pColliderCom->Update(XMMatrixTranslationFromVector(
-			m_pTransformCom->Get_State(STATE::POSITION)));
-	}
 	const bool_t isPatternState =
 		VALTAN_STATE::PATTERN_WINDUP == nextState ||
 		VALTAN_STATE::PATTERN_ACTIVE == nextState ||
 		VALTAN_STATE::PATTERN_RECOVERY == nextState;
+	if (0u != iServerTick && 0u != m_iLastServerTick &&
+		iServerTick != m_iLastServerTick &&
+		!Client::CActionPresentationTimeline::Is_ForwardTick(
+			iServerTick, m_iLastServerTick))
+	{
+		return false;
+	}
+	f32_t fActionAgeSeconds = 0.f;
+	if (isPatternState)
+	{
+		if (patternId.empty() || actionId.empty() || 0u == iServerTick ||
+			0u == iActionStartTick || 0u == iPatternSequence ||
+			!Client::CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				iServerTick, iActionStartTick, VALTAN_SERVER_TICK_HZ,
+				fActionAgeSeconds))
+		{
+			return false;
+		}
+		if (0u != m_iServerPatternSequence)
+		{
+			if (iPatternSequence != m_iServerPatternSequence &&
+				!Client::CActionPresentationTimeline::Is_ForwardTick(
+					iPatternSequence, m_iServerPatternSequence))
+			{
+				return false;
+			}
+			if (iPatternSequence == m_iServerPatternSequence &&
+				(m_strServerPatternId != patternId ||
+				 iPatternStageIndex < m_iServerPatternStageIndex ||
+				 (iPatternStageIndex == m_iServerPatternStageIndex &&
+				  m_iServerActionStartTick != 0u &&
+				  iActionStartTick != m_iServerActionStartTick)))
+			{
+				return false;
+			}
+		}
+	}
+
 	const bool_t actionIdChanged = m_strServerActionId != actionId;
-	m_strServerActionId.assign(actionId);
+	const bool_t patternIdChanged = m_strServerPatternId != patternId;
+	const bool_t patternEdgeChanged = isPatternState &&
+		(patternIdChanged || actionIdChanged ||
+		 iPatternSequence != m_iServerPatternSequence ||
+		 iPatternStageIndex != m_iServerPatternStageIndex ||
+		 iActionStartTick != m_iServerActionStartTick);
 	/* A pattern's stages can share one entity action kind (two ACTIVE stages in
 	a row), so the stage's actionId is what marks a clip change there. */
-	if ((m_iState != nextState || (isPatternState && actionIdChanged)) &&
-		nullptr != m_pBodyModelCom)
+	const bool_t bAnimationEdgeChanged =
+		m_iState != nextState || patternEdgeChanged;
+	if (nullptr != m_pBodyModelCom &&
+		(bAnimationEdgeChanged ||
+		 (isPatternState && fActionAgeSeconds >
+			m_fServerActionAgeSeconds +
+				VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS)))
 	{
 		const BOSS_ACTOR_ENTRY* pActor =
 			CActorCatalog::Find_Boss("BOSS_VALTAN");
@@ -439,17 +466,76 @@ bool_t CValtan::Apply_NetworkState(
 		default:
 			return false;
 		}
-		if (isPatternState && !m_strServerActionId.empty())
+		if (isPatternState && !actionId.empty())
 		{
 			const auto bound =
-				m_PatternClipByActionId.find(m_strServerActionId);
+				m_PatternClipByActionId.find(std::string(actionId));
 			if (bound != m_PatternClipByActionId.end())
 				pClip = &bound->second;
 		}
-		if (!m_pBodyModelCom->Set_Animation(pClip->c_str(), true))
+		if (bAnimationEdgeChanged &&
+			!m_pBodyModelCom->Start_Animation(pClip->c_str(), true))
+		{
 			return false;
+		}
+		if (isPatternState)
+		{
+			const uint32_t iAnimation =
+				m_pBodyModelCom->Get_CurrentAnimIndex();
+			f32_t fTrackPosition = 0.f;
+			f32_t fTrackDuration = 0.f;
+			const f32_t fTicksPerSecond =
+				m_pBodyModelCom->Get_AnimationTickPerSecond(iAnimation);
+			if (!m_pBodyModelCom->Get_AnimationProgress(
+					iAnimation, fTrackPosition, fTrackDuration) ||
+				!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
+				!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+			{
+				return false;
+			}
+			const Client::ACTION_PRESENTATION_CLIP_TIMING Timing{
+				fTrackDuration / fTicksPerSecond, 0u, 1.f, true };
+			Client::ACTION_PRESENTATION_SAMPLE Sample;
+			if (!Client::CActionPresentationTimeline::Resolve_Sample(
+					std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING>(
+						&Timing, 1u), fActionAgeSeconds, Sample) ||
+				!m_pBodyModelCom->Set_AnimTrackPosition(
+					iAnimation,
+					Sample.fClipSourceTimeSeconds * fTicksPerSecond))
+			{
+				return false;
+			}
+			m_pBodyModelCom->Play_Animation(0.f);
+		}
 	}
+
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+	m_strServerActionId.assign(actionId);
 	m_iState = nextState;
+	if (0u != iServerTick)
+		m_iLastServerTick = iServerTick;
+	if (isPatternState)
+	{
+		m_strServerPatternId.assign(patternId);
+		m_iServerActionStartTick = iActionStartTick;
+		m_iServerPatternSequence = iPatternSequence;
+		m_iServerPatternStageIndex = iPatternStageIndex;
+		m_fServerActionAgeSeconds = fActionAgeSeconds;
+	}
+	else
+	{
+		m_iServerActionStartTick = 0u;
+		m_iServerPatternStageIndex = 0u;
+		m_fServerActionAgeSeconds = 0.f;
+	}
 	return true;
 }
 

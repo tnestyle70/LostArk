@@ -72,7 +72,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.103</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 같은 LAN의 모든 Client와 Server PC의 Client는 `192.168.200.103`을 사용한다. 주소를 바꾸면 Server/Client 코드 기본값, 공유 debugger 설정, 이 사용서와 ProjectAudit을 같은 변경 단위에서 갱신한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 같은 LAN의 모든 Client와 Server PC의 Client는 `192.168.200.103`을 사용한다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 현재 Server PC 주소가 실제 어댑터에 있는지는 다음 명령으로 확인한다.
 
@@ -107,7 +107,7 @@ Test-NetConnection <SERVER_REACHABLE_IPV4> -Port 7777
 | Server/Player | `Server/Public/GameRoom.h`, `PlayerSkillSystem.h`, `ServerNavigation.h` | `Data/Balance`, `Data/Navigation`, `Data/Worlds` |
 | Boss | `Server/Public/ValtanBrain.h`, `ServerWorldEntity.h` | `Data/Balance/BossProfiles.json`, `Data/Encounters` |
 | Map/Encounter | `Client/Public/MapTool.h`, `WorldGameplayDocument.h` | `Data/Maps/Authoring`, `Data/Worlds`, `Data/Navigation` |
-| 통합/검증 | `AGENTS.md`, `CLAUDE.md` | `Tools/Build`, `Tools/ProjectAudit` |
+| 통합/검증 | `AGENTS.md`, `CLAUDE.md` | `Tools/Build`, 각 domain publisher, 실행형 harness |
 
 ### 2.1 기능 담당자의 수직 슬라이스 책임
 
@@ -185,6 +185,24 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 현재 서버 충돌 계약은 walkable nav cell 경계다. 동적 capsule-vs-capsule, projectile, knockback obstacle collision은 아직 public 계약이 아니므로 Character collider에서 임의로 서버 판정을 대신하지 않는다. 추가할 때는 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
 
 ## 5. Character와 Animation
+
+### 5.1 Source Effect attachment basis
+
+Imported/Product Effect의 attachment는 `FOLLOW_NAMED_ANCHORS`와 `SNAPSHOT_ROOT`를 같은 transform
+경로로 취급하지 않는다. named-bone follow는 admitted model/bone world가 소유한 import basis를
+상속한다. root snapshot은 source cue local transform 뒤, occurrence 시작 시 캡처한 actor root 앞에
+character-specific `snapshotRootSourceBasisYawDegrees`를 정확히 한 번 합성한다.
+
+- 이 값은 화면을 보고 맞춘 global particle yaw가 아니며 character import evidence가 소유한다.
+- 다른 character에 Artist의 `-90°`를 복사하지 않는다. 근거가 없으면 identity `0°`다.
+- follow occurrence에 snapshot basis를 다시 적용하거나, Mesh geometry pitch/scale로 방향 오류를 숨기지
+  않는다.
+- codec/publisher/runtime은 attachment mode, basis 값, transform composition order를 함께 validate하고
+  unknown/non-finite 값은 stage 전에 거부한다.
+- 위치뿐 아니라 orientation covariance, fixed-step snapshot 불변성, invalid follow fail-closed를 harness로
+  검증한다.
+- stable occurrence/material program의 근거가 부족하면 해당 occurrence만 draw 전 fail-closed하며,
+  family 전체 fallback이나 white/opaque texture 대체로 열지 않는다.
 
 Character는 Server action을 시각화한다.
 
@@ -490,7 +508,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
 ```
 
-자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation validate → ProjectAudit이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
+자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation/effect/rendering publisher validate → 변경 domain의 실행형 harness이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
 
 최소 성공 증거:
 
@@ -499,7 +517,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Debug/Release Client와 Server 빌드 성공
 - 실제 Server+Client에서 Lobby → Character Select 승인 진입 → class 연속 변경/스킬 → Lobby → Bern/Valtan 진입 확인
 - 연결 실패 시 Lobby 유지와 제품 Level disconnect 후 Lobby 복귀 확인
-- ProjectAudit 성공
+- 변경 domain의 publisher Validate와 실행형 harness 성공
 - `git diff --check` 성공
 - 잔류 Client/Server/7777 listener 없음
 

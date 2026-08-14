@@ -756,7 +756,6 @@ void CMainApp::RenderCombatHUD()
 			PlayZXWipe("Yin_Skill_Z_Wipe", pZSkill, bZReady);
 			PlayZXWipe("Yin_Skill_X_Wipe", pXSkill, bXReady);
 		}
-
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
 

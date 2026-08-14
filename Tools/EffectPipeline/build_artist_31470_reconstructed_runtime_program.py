@@ -49,10 +49,10 @@ EXPECTED_D3D_SRV_PROJECTION_SHA256 = (
     "ca2dcf3e7d1dbc407103eeb213b0c3e5f04fca002ae2fe8f269fc77dd5a01c67"
 )
 EXPECTED_APPROVAL_RECEIPT_SHA256 = (
-    "8a9263ed217d06f93845d923a7fb352f8151fc1636ae1dd20be794ce2ccc6c07"
+    "1b0656192d14e067eb6a3f375a22cf054df509ade166e6b3073c43f51f234d65"
 )
 EXPECTED_APPROVAL_CANONICAL_SHA256 = (
-    "e4542b5bdc5a21bd70ce78683a32adbd7f76b8a23f5d200a2eee7e0aed93b7b7"
+    "0ff0afe3001646338a3717ffa8e52d34a89965764f973d2bf13cec3779080903"
 )
 EXPECTED_APPROVAL_SOURCE_FAMILIES_SHA256 = (
     "faef8854a965934114c483dd70393efef91e439b578bb21ae59d38b025d15a36"
@@ -61,10 +61,10 @@ EXPECTED_APPROVAL_MATERIAL_FAMILIES_SHA256 = (
     "f6eef769a5057938276e5d57f163ee73840274a88a17c38cd98e0fb49a2ba20b"
 )
 EXPECTED_APPROVAL_SOURCE_ROWS_SHA256 = (
-    "ef6ec3dceeadb3d583a350c3e07693129a0a45eb7257eb21a0863a5c42bad55f"
+    "3514234db3949dec9d41c2c978c49392d8f7b07554a51ca9c73c3470bd4b8b78"
 )
 EXPECTED_APPROVAL_MATERIAL_ROWS_SHA256 = (
-    "316beeccfa71b78d71cb5a062c03c44a2f25f1e6fda84ba44ae719776be0eade"
+    "40bf8493362a0968060b5f504b1eaf2f04e9697a93dfb6fdad07b28894d70749"
 )
 EXPECTED_APPROVAL_ARITHMETIC_ROWS_SHA256 = (
     "5eae02a316924651bf84e16dc93a2ddda7e6a97bf51b07156a11110aadbf6204"
@@ -79,36 +79,36 @@ EXPECTED_SOURCE_CAPABILITY_CANONICAL_SHA256 = (
     "62f3b5847262926ef5834ca9192dc9d5a3046045a3ad69cfa94bae0f59f2c55c"
 )
 EXPECTED_MATERIAL_POLICY_RECEIPT_SHA256 = (
-    "e33f0c18d8eefa453c635ad0b8cd149f288b6505c6204d9b304ad3f1e8d623dc"
+    "d753d2b51101679e1f997c8fa828ff6b0b061e782280bb9ca3fe762d8d7afec2"
 )
 EXPECTED_MATERIAL_POLICY_CANONICAL_SHA256 = (
-    "2a66f7c1010dba49e97a342c0f037cc3c7b3a6cfd6c7c14eb8d4c815759cf514"
+    "1902dda06b2d9ea046279dc2cf633ab188bd615b0b67c82b3f66c370229e210e"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_RECEIPT_SHA256 = (
-    "170ba2d4c70a202e384ca8a577b09921d0a5d5b3e90504f5f10d8e8db8c16d5a"
+    "07d04d8342ab6d31669d80514cfc7d168e51662819a5903978e2fc3503956aeb"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_CANONICAL_SHA256 = (
-    "9a20e884e5195e6278d9ab7d14b4645207c0f2a0437f051c51afe3120fedc298"
+    "4c124b549c0059cc3aeaf9678571bdecbfdc516b0979bf3e1d817bb4d32b1624"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_TRACKED_TEXT_SHA256 = (
-    "4280a7a565b8d274115f2724efc0c495d38f4f3acaeee89031f652fae54b4781"
+    "51d8ba83bde613117dd169bff09b2b12e9593b9258f408c2f72ac88db0279cb6"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_TRACKED_TEXT_SHA256 = (
-    "1cdccf929c12aeeb1fc2978923c7461b7f13f7ee69edba839774396cf3b946cf"
+    "8bde4897f0b476493d695c3e4235e49ced97d383d688dc1dae4556977bd641f7"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_APPROVAL_PROJECTION_SHA256 = (
-    "bdf0f68fd47ccf862bef2aa1534e9da995f8c5a76abe724b80e0fcb3db3d0891"
+    "26d5154d0cb65de0d3153de544c06bd261828fe9e0d6d27a9ff018674bbe2437"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_TREE_ID = (
-    "3ecff71492ae9633fdb9a62aab83aa27614f1dd6"
+    "f5253605b4e06fc5a761685e5cb8ed6eec0cb2e3"
 )
 EXPECTED_MATERIAL_TEXTURE_BINDING_BLOB_ID = (
-    "db6b6e7bd3a3b265cff866dd3c32f4fef7a076c5"
+    "f7c75bb92a1a972cca564e4fb021718dc8d320fb"
 )
 # Filled from the exact normalized 77-row program projection below.  This is a
 # fixture-specific offline trust pin, not a production-parser constant.
 EXPECTED_MATERIAL_TEXTURE_BINDINGS_SHA256 = (
-    "ac7f0478f9403110c72fee7e63ed15062d714080c6e70e36c766a635d0c68375"
+    "a265a6f6a24aa81b608cb0b8ddbe2957c73e242cee6497b36bf66a27b581d6bb"
 )
 EXPECTED_MATERIAL_FAMILY_SAMPLES_SHA256 = (
     "5350e20004898130541c6dc147ce2c14fa8a7870bee36a9baeaf14dcda33b5d3"
@@ -134,13 +134,13 @@ EXPECTED_BLOCKER_OWNERSHIP_PROJECTION_SHA256 = (
 EXPECTED_BLOCKER_OWNERSHIP_FIELD_COUNT = 6133
 EXPECTED_BLOCKER_TOKEN_OCCURRENCE_COUNT = 6775
 EXPECTED_ACTION_CUE_PROJECTION_SHA256 = {
-    "skill-31470/clip-000/notify-000": "af843d4cc8b81bae1f0a47ba3cb40c2962daae3bcd800e18eb5c50dd62bdcf1e",
-    "skill-31470/clip-000/notify-014": "47a93850834f949645c79cdbdba0583cb0c3efe3e12683ec63d17bfe6cb074a6",
-    "skill-31470/clip-000/notify-018": "23d13471b0fab4b7f1ec3a764ede821157fd04f33ccdcbb04db5855c70a5391f",
-    "skill-31470/clip-000/notify-022": "37b72e0c6df6398b10cb85875e81e67ac022a1a03e3543cc986abd4beefd78ae",
-    "skill-31470/clip-000/notify-026": "5c60cf5bdf9c4fc1fa2c023324d16bd68039054071ca77e3b12fb54ddfd5eb83",
-    "skill-31470/clip-000/notify-028": "a2d75499f71ba8275a2f0da56e552bd63fe479b74223e4a4839888569b1178a5",
-    "skill-31470/clip-000/notify-029": "b61ebe50991c2981da6977cf32e55404021b962b7360258e1ac9f85da92b468e",
+    "skill-31470/clip-000/notify-000": "762618a643b5028170754c4b6ed7a73839d7668e93ad5e21a10115d5c239ccad",
+    "skill-31470/clip-000/notify-014": "bdb4e31dce4e79808cb3db03d08251dd4b04ad77a964737af259a83cbbcd8d8b",
+    "skill-31470/clip-000/notify-018": "737d0046b1e1d2c91df2cbdfe3e78458d2fe3cb9ad40fbf7e656c6c29a204a1b",
+    "skill-31470/clip-000/notify-022": "cb05911c4a5d17391ddf475773b037df20166e91924eda5b6b2928b0ff9411d6",
+    "skill-31470/clip-000/notify-026": "b841868d957b66ad1bdd8b8bc6bae971d100c10502e9046bdf717ceb9669d6e8",
+    "skill-31470/clip-000/notify-028": "db9ae28dd9ff6c95a481681bf7e4f5efc6313c1ad52b96402019be35c23d4702",
+    "skill-31470/clip-000/notify-029": "eae83471a8c147d08a441fdb41914d120f13d938a9bbdd88859188cd0e5d6efa",
 }
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -149,12 +149,13 @@ DEFAULT_OUTPUT = REPO_ROOT / (
     "skill.31470.reconstructed-runtime-program.candidate.json"
 )
 
-APPROVAL_COMMIT = "9cd3bd4e1661b60771870966cdbcc212cac5193f"
+APPROVAL_COMMIT = "52b82e5013f35e771111e0e583c87cd114ea32c5"
 SOURCE_EVIDENCE_COMMIT = "7da937aeaa34c088c694e8eb4f53ff1f7f848ef3"
+SOURCE_CANDIDATE_COMMIT = "bc770990e58386fd58958c759f0e095bc3d237b1"
 SOURCE_CAPABILITY_COMMIT = "2fa2a2701e0ec9a8f990c65fef3fabb9e5a3e408"
-MATERIAL_EVIDENCE_COMMIT = "acf6a9949be999952f9c2c6470e7d6d189ba3654"
-MATERIAL_POLICY_COMMIT = "acf6a9949be999952f9c2c6470e7d6d189ba3654"
-MATERIAL_TEXTURE_BINDING_COMMIT = "9cd3bd4e1661b60771870966cdbcc212cac5193f"
+MATERIAL_EVIDENCE_COMMIT = "3ba493de5fde8d058ddee7e0fa0e6c3e466faa43"
+MATERIAL_POLICY_COMMIT = "3ba493de5fde8d058ddee7e0fa0e6c3e466faa43"
+MATERIAL_TEXTURE_BINDING_COMMIT = "bc770990e58386fd58958c759f0e095bc3d237b1"
 GEOMETRY_COMMIT = "0aca792819fdda3f541bb7cec7451c5ed93c6467"
 
 APPROVAL_PATH = (
@@ -218,7 +219,7 @@ AUTHORITIES = (
     ("sourceSemantics", SOURCE_SEMANTICS_PATH, SOURCE_EVIDENCE_COMMIT, "receiptSha256"),
     ("sourceCapability", SOURCE_CAPABILITY_PATH, SOURCE_CAPABILITY_COMMIT, "receiptSha256"),
     ("localReferenceClosure", LOCAL_CLOSURE_PATH, SOURCE_EVIDENCE_COMMIT, "closureSha256"),
-    ("sourceCandidate", SOURCE_CANDIDATE_PATH, SOURCE_EVIDENCE_COMMIT, ""),
+    ("sourceCandidate", SOURCE_CANDIDATE_PATH, SOURCE_CANDIDATE_COMMIT, ""),
     ("normalizedEffectGraph", NORMALIZED_GRAPH_PATH, SOURCE_EVIDENCE_COMMIT, ""),
     ("actionCueRecipe", ACTION_CUE_RECIPE_PATH, SOURCE_EVIDENCE_COMMIT, ""),
     ("materialContract", MATERIAL_CONTRACT_PATH, MATERIAL_EVIDENCE_COMMIT, "contractSha256"),
@@ -521,7 +522,7 @@ CUE_TRANSFORM_KEYS = ("sourcePositionUeUnits", "position", "rotationDegrees", "s
 SOCKET_TRANSFORM_KEYS = ("position", "rotationDegrees", "scale")
 ATTACHMENT_KEYS = (
     "enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId", "runtimeBoneName",
-    "socketLocalTransform",
+    "snapshotRootSourceBasisYawDegrees", "socketLocalTransform",
 )
 TRANSFORM_INHERITANCE_KEYS = (
     "enabled", "masterEmitterId", "decision", "consumptionPolicy", "projectionSha256",
@@ -549,7 +550,7 @@ RENDERER_LINEAR_LERP_KEYS = (
     "endVelocityPerSecond", "colorOffset", "endColorOffset", "colorMultiply",
     "endColorMultiply", "emissiveIntensity", "endEmissiveIntensity",
 )
-RENDERER_MESH_KEYS = ("useModelMaterial",)
+RENDERER_MESH_KEYS = ("useModelMaterial", "sourceTypeDataRotationDegrees")
 RENDERER_SPRITE_KEYS = ("billboard", "billboardRollDegrees")
 RENDERER_DECAL_KEYS = ("size", "depth")
 RENDERER_TRAIL_KEYS = (
@@ -1345,6 +1346,30 @@ def typed_action_cue_bindings(rows: list[dict[str, Any]]) -> list[dict[str, Any]
     return result
 
 
+def source_type_data_mesh_rotation_degrees(element: dict[str, Any]) -> list[float]:
+    modules = [
+        row for row in element["sourceRecipe"]["modules"]
+        if row["className"] == "particlemoduletypedatamesh"
+    ]
+    require(len(modules) == 1,
+            "MeshParticle must own exactly one ParticleModuleTypeDataMesh")
+    rotation = {"roll": 0.0, "pitch": 0.0, "yaw": 0.0}
+    seen: set[str] = set()
+    for literal in modules[0]["literals"]:
+        path = literal["propertyPath"]
+        if path not in rotation:
+            continue
+        require(path not in seen, f"duplicate TypeDataMesh {path} literal")
+        seen.add(path)
+        value = literal["value"]
+        require(literal["kind"] == "number"
+                and type(value) in (int, float) and type(value) is not bool
+                and math.isfinite(float(value)) and abs(float(value)) <= 3600.0,
+                f"TypeDataMesh {path} literal is invalid")
+        rotation[path] = float(value)
+    return [rotation["roll"], rotation["pitch"], rotation["yaw"]]
+
+
 def typed_renderer_runtime_config(
     element: dict[str, Any], renderer_type: str,
 ) -> dict[str, Any]:
@@ -1393,7 +1418,11 @@ def typed_renderer_runtime_config(
         require_keys(linear_lerp, RENDERER_LINEAR_LERP_KEYS, "renderer linear lerp config")
         mesh = None
         if renderer_type == "MeshParticle":
-            mesh = {"useModelMaterial": detail["mesh"]["useModelMaterial"]}
+            mesh = {
+                "useModelMaterial": detail["mesh"]["useModelMaterial"],
+                "sourceTypeDataRotationDegrees":
+                    source_type_data_mesh_rotation_degrees(element),
+            }
             require_keys(mesh, RENDERER_MESH_KEYS, "renderer mesh config")
         sprite = None
         if renderer_type == "SpriteParticle":
@@ -2161,6 +2190,9 @@ def build_source_sections(
             "sourceAnchorSlotId": raw_attachment["sourceAnchorSlotId"],
             "runtimeAnchorSlotId": raw_attachment["runtimeAnchorSlotId"],
             "runtimeBoneName": raw_attachment["runtimeBoneName"],
+            "snapshotRootSourceBasisYawDegrees": (
+                -90.0 if raw_attachment["enabled"] and not raw_attachment["follow"] else 0.0
+            ),
             "socketLocalTransform": socket_transform,
         }
         require_keys(attachment, ATTACHMENT_KEYS, "ActionCue attachment")
@@ -2204,6 +2236,14 @@ def build_source_sections(
             "operationalMaxParticles": source_peak,
             "policy": "SOURCE_LOD_PEAK_ACTIVE_PARTICLES_V1",
         }
+        source_transform_composition_order = compiler_evidence["compositionOrder"]
+        require(source_transform_composition_order == [
+            "carrierGeometryPreScale", "signedParticleScaleRotationLocation",
+            "emitterElementTransform", "cueLocalTransform",
+            "attachmentSocketOrRoot", "actorWorld",
+        ], f"emitter {occurrence['evidenceId']} source transform order mismatch")
+        runtime_transform_composition_order = list(source_transform_composition_order)
+        runtime_transform_composition_order.insert(4, "snapshotRootSourceBasis")
         emitter = {
             "emitterId": emitter_id,
             "order": emitter_order,
@@ -2247,7 +2287,7 @@ def build_source_sections(
             "detailTransform": detail_transform,
             "actionCueAttachment": attachment,
             "transformInheritance": transform_inheritance,
-            "transformCompositionOrder": compiler_evidence["compositionOrder"],
+            "transformCompositionOrder": runtime_transform_composition_order,
             "anchorRequests": anchor_requests,
             "moduleIds": emitter_module_ids,
             "actionCueParameterInputs": typed_action_cue_bindings(
@@ -4039,6 +4079,10 @@ def normalized_action_cue_program_projection(cue: dict[str, Any]) -> dict[str, A
                                if follows_named_anchor else "root"),
         "runtimeAnchorSlotId": attachment_raw["runtimeAnchorSlotId"],
         "runtimeBoneName": attachment_raw["runtimeBoneName"],
+        # Playable Artist models consume the same source character basis with
+        # a -90-degree Y pre-transform. Named-bone follow rows already inherit
+        # it; root snapshots require the equivalent typed basis operation.
+        "snapshotRootSourceBasisYawDegrees": 0.0 if follows_named_anchor else -90.0,
         "socketLocalTransform": socket,
     }
     if snapshots_root:
@@ -5435,6 +5479,11 @@ def validate_renderer_runtime_config(emitter: dict[str, Any]) -> None:
         require_keys(mesh, RENDERER_MESH_KEYS, "renderer diagnostic mesh")
         require(type(mesh["useModelMaterial"]) is bool,
                 "renderer mesh useModelMaterial must be bool")
+        require_numeric_vector(mesh["sourceTypeDataRotationDegrees"], 3,
+                               "renderer mesh source TypeData rotation")
+        require(all(type(item) is float and abs(item) <= 3600.0
+                    for item in mesh["sourceTypeDataRotationDegrees"]),
+                "renderer mesh source TypeData rotation must contain bounded JSON floats")
     else:
         require(mesh is None, "non-Mesh renderer carries mesh diagnostic")
     sprite = config["sprite"]
@@ -6482,6 +6531,32 @@ def validate_owner_order(program: dict[str, Any]) -> None:
                 and lifetime["exactSourceClass"] in {
                     "particlemodulelifetime", "particlemodulelifetime_seeded",
                 }, f"emitter {emitter['emitterId']} Lifetime timing owner mismatch")
+        if emitter["rendererType"] == "MeshParticle":
+            type_data_modules = [
+                row for row in modules.values()
+                if row["emitterId"] == emitter["emitterId"]
+                and row["exactSourceClass"] == "particlemoduletypedatamesh"
+            ]
+            require(len(type_data_modules) == 1,
+                    f"emitter {emitter['emitterId']} TypeDataMesh owner mismatch")
+            type_data_literals = {
+                row["propertyPath"]: row for row in program["literals"]
+                if row["moduleId"] == type_data_modules[0]["moduleId"]
+                and row["propertyPath"] in {"roll", "pitch", "yaw"}
+            }
+            expected_rotation: list[float] = []
+            for path in ("roll", "pitch", "yaw"):
+                literal = type_data_literals.get(path)
+                if literal is None:
+                    expected_rotation.append(0.0)
+                else:
+                    require(literal["variant"] == "F64"
+                            and type(literal["f64Value"]) is float,
+                            f"emitter {emitter['emitterId']} TypeDataMesh {path} mismatch")
+                    expected_rotation.append(literal["f64Value"])
+            require(emitter["rendererRuntimeConfig"]["mesh"]
+                    ["sourceTypeDataRotationDegrees"] == expected_rotation,
+                    f"emitter {emitter['emitterId']} TypeDataMesh rotation projection mismatch")
         lifetime_distributions = [
             row for row in program["distributions"]
             if row["moduleId"] == lifetime["moduleId"]
@@ -6583,7 +6658,8 @@ def validate_owner_order(program: dict[str, Any]) -> None:
                 f"emitter {emitter['emitterId']} attachment was disabled")
         if attachment["follow"]:
             follow_attachment_count += 1
-            require(len(emitter["anchorRequests"]) == 1,
+            require(attachment["snapshotRootSourceBasisYawDegrees"] == 0.0
+                    and len(emitter["anchorRequests"]) == 1,
                     f"emitter {emitter['emitterId']} follow attachment mismatch")
             anchor = emitter["anchorRequests"][0]
             require(anchor["sourceAnchorSlotId"] == attachment["sourceAnchorSlotId"]
@@ -6594,7 +6670,8 @@ def validate_owner_order(program: dict[str, Any]) -> None:
                     f"emitter {emitter['emitterId']} anchor projection mismatch")
         else:
             snapshot_attachment_count += 1
-            require(attachment["sourceAnchorSlotId"] == "root"
+            require(attachment["snapshotRootSourceBasisYawDegrees"] == -90.0
+                    and attachment["sourceAnchorSlotId"] == "root"
                     and attachment["runtimeAnchorSlotId"] == "root"
                     and attachment["runtimeBoneName"] == ""
                     and emitter["anchorRequests"] == [],

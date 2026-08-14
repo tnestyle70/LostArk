@@ -2,6 +2,8 @@
 
 #include "DataJson.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_OccurrenceTuning.h"
+#include "Effect_VisualProgramCorpus.h"
 #include <algorithm>
 #include <array>
 #include <cfloat>
@@ -31,6 +33,15 @@ namespace
 	std::map<std::string,
 		std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>,
 		std::less<>> g_RuntimeProgramEntries;
+	std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>
+		g_pVisualProgramCorpus;
+	std::map<std::string,
+		std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM>, std::less<>>
+		g_VisualPrograms;
+	std::map<std::string,
+		std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>, std::less<>>
+		g_VisualProjections;
     uint64_t g_iRuntimeRevision = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
 
@@ -75,6 +86,44 @@ namespace
                     (Character >= 'a' && Character <= 'f');
             });
     }
+
+	std::filesystem::path Find_RuntimeVisualProgramSidecar(
+		const std::filesystem::path& RuntimeCatalogPath)
+	{
+		return RuntimeCatalogPath.parent_path() /
+			L"EffectVisualPrograms.runtime.json";
+	}
+
+	bool Is_NormalizedOccurrenceTuningSourcePath(const std::string_view Value)
+	{
+		constexpr std::string_view Prefix = "Effects/AuthoredCorrections/";
+		constexpr std::string_view Suffix = ".occurrence-tuning.json";
+		if (!Value.starts_with(Prefix) || !Value.ends_with(Suffix) ||
+			Value.size() > 1024u || Value.find('\\') != std::string_view::npos ||
+			Value.find(':') != std::string_view::npos || Value.starts_with('/') ||
+			Value.find("//") != std::string_view::npos ||
+			std::any_of(Value.begin(), Value.end(), [](const unsigned char Character)
+			{
+				return Character < 0x20u || Character == 0x7fu;
+			}))
+		{
+			return false;
+		}
+		size_t Begin = 0u;
+		while (Begin < Value.size())
+		{
+			const size_t End = Value.find('/', Begin);
+			const std::string_view Segment = Value.substr(
+				Begin, End == std::string_view::npos ? Value.size() - Begin :
+					End - Begin);
+			if (Segment.empty() || Segment == "." || Segment == "..")
+				return false;
+			if (End == std::string_view::npos)
+				break;
+			Begin = End + 1u;
+		}
+		return true;
+	}
 
 	bool Has_ExactKeys(const Client::DATA_JSON_VALUE& Value,
 		const std::initializer_list<std::string_view> Keys)
@@ -153,6 +202,8 @@ namespace
 		std::shared_ptr<const
 			Client::EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
 			pRenderResourceAuthority;
+		std::shared_ptr<const Client::EFFECT_OCCURRENCE_TUNING_DOCUMENT>
+			pOccurrenceTuning;
 	};
 
 	bool Parse_ReconstructedRenderResourceExtension(
@@ -177,21 +228,21 @@ namespace
 		constexpr std::string_view COMPILER_REVISION =
 			"artist31470.reconstructed-runtime-program-link-v1";
 		constexpr std::string_view BUILDER_COMMIT_ID =
-			"31ecc2edc328347ac6e3bf6fe444c270d463ef40";
+			"ddef21a5314eb8c3db891d36f702cfeda3149f20";
 		constexpr std::string_view BUILDER_TREE_ID =
-			"6d8853d989bd71a988eaebf254398ae08599ad0d";
+			"36a36b889dae7be092e0d2f6f3c3aee2c28bc462";
 		constexpr std::string_view CANDIDATE_BLOB_ID =
-			"a9655729578d847d323a32c904c70d10baee9102";
+			"4b090268b95ea590587276c8048c3b235ee33571";
 		constexpr std::string_view RESOURCE_BINDING_HASH =
 			"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c";
 		constexpr std::string_view INPUT_ARTIFACTS_ORDERED_SHA256 =
-			"da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6";
+			"bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f";
 		constexpr std::string_view RECONSTRUCTED_LINK_SHA256 =
-			"a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2";
+			"282f450d95ae283acf91047fe6b293eb93fddaea9f4bde4cff9671e7aa27c523";
 		constexpr std::string_view RECEIPT_SELF_SHA256 =
-			"ebdd01e2815990308eb703abc4b73e4c99a051a2cb4ff36d553f9bc6e61ac240";
+			"0a870ae15bd33f674b16e9c58a3504b69b9cb1c491d35c9216cb2a647a20724d";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
-			"5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836";
+			"413c34440ee82b9511d1de4bbd31af282dce2e65204fd5cda0d75d8e4e58650b";
 		const bool bHistoricalOuter10 = Has_ExactOrderedKeys(Value, {
 			"payloadKind", "effectAssetId", "artifactRevision",
 			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
@@ -205,7 +256,18 @@ namespace
 			"renderResourcePublishReceiptSha256",
 			"renderResourcePublishReceipt",
 			"reconstructedRenderResourceAuthority" });
-		if (!bHistoricalOuter10 && !bRenderResourceOuter13)
+		const bool bOccurrenceTuningOuter16 = Has_ExactOrderedKeys(Value, {
+			"payloadKind", "effectAssetId", "artifactRevision",
+			"compilerRevision", "sourceExact", "runtimeExecutionAdmission",
+			"productAdmission", "publishReceiptSha256", "publishReceipt",
+			"reconstructedRuntimeProgram",
+			"renderResourcePublishReceiptSha256",
+			"renderResourcePublishReceipt",
+			"reconstructedRenderResourceAuthority",
+			"occurrenceTuningSourcePath", "occurrenceTuningSha256",
+			"occurrenceTuning" });
+		if (!bHistoricalOuter10 && !bRenderResourceOuter13 &&
+			!bOccurrenceTuningOuter16)
 		{
 			strOutError =
 				"Reconstructed runtime entry fields or order are invalid.";
@@ -321,7 +383,7 @@ namespace
 			iProgramVersion != Frozen.iProgramVersion ||
 			!Read_U32(*Link, "candidateByteCount", iCandidateByteCount) ||
 			Link->Find("candidateByteCount")->Was_FloatingPointToken() ||
-			iCandidateByteCount != 15'117'436u ||
+			iCandidateByteCount != 15'121'873u ||
 			CandidateUtf8->Get_String().size() != iCandidateByteCount ||
 			Frozen.strBuilderAuthorityCommitId != BuilderCommitId->Get_String() ||
 			Frozen.strBuilderAuthorityTreeId != BuilderTreeId->Get_String())
@@ -432,7 +494,7 @@ namespace
 			"Tools/EffectPipeline/build_effect_derived_artifact.py",
 			"Tools/EffectPipeline/Publish-Effects.ps1" };
 		constexpr std::array<std::string_view, 3u> TOOL_SHA256{
-			"5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e",
+			"5421a989573aed54e24e98f3d5dc55874475332e3446bf966541800ab6db4c65",
 			"5407c3d0983c3aaf4bf085904ef8d7b5f3e9119ae448703ff7e8f612a1c144fb",
 			"ee4a12cf5cbd63bc9af6b0af18ca37da7631a4b0b6ed1465c95bf99fb9be8825" };
 		if (nullptr == ToolDependencies || ToolDependencies->Get_Array().size() !=
@@ -550,12 +612,37 @@ namespace
 			ReconstructedLinkSha->Get_String();
 		Staged.Identity.strPublishReceiptSha256 =
 			PublishReceiptSha->Get_String();
-		if (bRenderResourceOuter13 &&
+		if ((bRenderResourceOuter13 || bOccurrenceTuningOuter16) &&
 			!Parse_ReconstructedRenderResourceExtension(
 				Value, Staged.Identity, Staged.pRenderResourceAuthority,
 				strOutError))
 		{
 			return false;
+		}
+		if (bOccurrenceTuningOuter16)
+		{
+			const DATA_JSON_VALUE* SourcePath = Required(
+				Value, "occurrenceTuningSourcePath", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* TuningSha = Required(
+				Value, "occurrenceTuningSha256", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* Tuning = Required(
+				Value, "occurrenceTuning", DATA_JSON_TYPE::OBJECT);
+			if (nullptr == SourcePath ||
+				!Is_NormalizedOccurrenceTuningSourcePath(SourcePath->Get_String()) ||
+				nullptr == TuningSha || nullptr == Tuning ||
+				!CEffectOccurrenceTuningCodec::Parse_RuntimePayload(
+					*Tuning, TuningSha->Get_String(), *Program,
+					Staged.pOccurrenceTuning, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Occurrence tuning catalog binding is invalid.";
+				return false;
+			}
+			Staged.Identity.strOccurrenceTuningSourcePath =
+				SourcePath->Get_String();
+			Staged.Identity.strOccurrenceTuningSha256 = TuningSha->Get_String();
+			Staged.Identity.iOccurrenceTuningEntryCount = static_cast<uint32_t>(
+				Staged.pOccurrenceTuning->Entries.size());
 		}
 		Staged.pProgram = std::move(Program);
 		OutEntry = std::move(Staged);
@@ -1996,31 +2083,31 @@ namespace
 		std::string ProgramSha;
 		std::string Text;
 		if (!Read_U64Exact(*Program, "rawByteCount", iRawBytes) ||
-			iRawBytes != 15'117'436u ||
+			iRawBytes != 15'121'873u ||
 			!Read_StringExact(*Program, "path", Text) || Text !=
 				"Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json" ||
 			!Read_StringExact(*Program, "candidateBuilderCommitId", Text) ||
-			Text != "31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
+			Text != "ddef21a5314eb8c3db891d36f702cfeda3149f20" ||
 			!Read_StringExact(*Program, "candidateBuilderTreeId", Text) ||
-			Text != "6d8853d989bd71a988eaebf254398ae08599ad0d" ||
+			Text != "36a36b889dae7be092e0d2f6f3c3aee2c28bc462" ||
 			!Read_StringExact(*Program, "candidateBlobIdAtIntegration", Text) ||
-			Text != "a9655729578d847d323a32c904c70d10baee9102" ||
+			Text != "4b090268b95ea590587276c8048c3b235ee33571" ||
 			!Read_ShaExact(*Program, "rawSha256", RawSha) || RawSha !=
-				"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" ||
+				"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6" ||
 			!Read_StringExact(*Program, "programId", ProgramId) || ProgramId !=
 				"effect.artist.skill.31470.reconstructed-approved-v1" ||
 			!Read_U32(*Program, "programVersion", iProgramVersion) ||
 			iProgramVersion != 1u ||
 			!Read_ShaExact(*Program, "programSha256", ProgramSha) || ProgramSha !=
-				"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" ||
+				"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802" ||
 			!Read_U32(*Program, "inputArtifactCount", iInputArtifactCount) ||
 			iInputArtifactCount != 13u ||
 			!Read_StringExact(*Program, "inputArtifactsOrderedSha256", Text) ||
-			Text != "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6" ||
+			Text != "bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f" ||
 			!Read_StringExact(*Program, "parserIntegrationCommitId", Text) ||
-			Text != "fee93749a50938249ec13ea2542bfabd73f1db90" ||
+			Text != "a57f5d27bb1ac29f890e6cb59121c886991f28d5" ||
 			!Read_StringExact(*Program, "parserIntegrationTreeId", Text) ||
-			Text != "2a8834a3f16bd526c882c28e147457fd045fd67c" ||
+			Text != "bea6e94e0535038bdaabfb53f3f3442ef2fe296c" ||
 			!Validate_FailClosedAuthorityRow(*Program))
 		{
 			return false;
@@ -2031,11 +2118,11 @@ namespace
 			"Client/Public/Effect_RuntimeAuthority.h",
 			"Client/Private/Effect_RuntimeAuthority.cpp" };
 		constexpr std::array<std::string_view, 2u> PARSER_BLOBS{
-			"ad35f6921d290492a87ac7303dc599c9a341e4ee",
-			"91ce38b9c0429affff0f9dbc9ce1c593e8384af2" };
+			"f86fcaa1f7554e5b1c274f3eaec3a6a0f8f22d9a",
+			"cf33b11374379e52c0eab9c57d34063b4fe78b93" };
 		constexpr std::array<std::string_view, 2u> PARSER_TEXT_SHA256{
-			"fbc23cd08712d549a08f2c95113e3a3117a3c8d7733ec2a5580d144ee898ca6b",
-			"715a3990fc467c09e9a4e8a5ccd8515b54c2299c8e40f9f99e42d16d355b0e1c" };
+			"691ca79cd71cafe4067d36441950c0efebcbf5756ce283fcb9151926d5bed999",
+			"aa0740303e1ed9ed97bba6ebdc083c26e4ff028c72f11b1a1537f9be4ab01369" };
 		if (nullptr == ParserFiles ||
 			ParserFiles->Get_Array().size() != PARSER_PATHS.size())
 		{
@@ -2111,7 +2198,7 @@ namespace
 			Read_U32(*Publisher, "projectionKeyCount", iProjectionKeyCount) &&
 			iProjectionKeyCount == PROJECTION_KEYS.size() &&
 			Read_ShaExact(*Publisher, "projectionCanonicalSha256", Sha) &&
-			Sha == "e7a630b9d94dfb177b3f678561865bd9e7bad2dd3f1eb082656b79e5c3af3190" &&
+			Sha == "86ce2f989ab41dab54cc2147b1fde170aa8c1fae01fa74ed043d177d6d23d453" &&
 			Read_StringExact(*BaseProjection, "schema", Text) &&
 			Text == "lostark.effect-reconstructed-base-authority-projection" &&
 			Read_U32(*BaseProjection, "formatVersion", iBaseFormatVersion) &&
@@ -2131,15 +2218,15 @@ namespace
 			Read_U32(*BaseProjection, "programVersion", iBaseProgramVersion) &&
 			iBaseProgramVersion == 1u &&
 			Read_ShaExact(*BaseProjection, "programSha256", Sha) &&
-			Sha == "8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" &&
+			Sha == "0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802" &&
 			Read_ShaExact(*BaseProjection, "candidateRawSha256", Sha) &&
-			Sha == "bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" &&
+			Sha == "430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6" &&
 			Read_U64Exact(*BaseProjection, "candidateByteCount",
-				iBaseCandidateBytes) && iBaseCandidateBytes == 15'117'436u &&
+				iBaseCandidateBytes) && iBaseCandidateBytes == 15'121'873u &&
 			Read_U32(*BaseProjection, "inputArtifactCount", iBaseInputCount) &&
 			iBaseInputCount == 13u &&
 			Read_ShaExact(*BaseProjection, "inputArtifactsOrderedSha256", Sha) &&
-			Sha == "da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6" &&
+			Sha == "bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f" &&
 			Read_BooleanExact(*BaseProjection, "sourceExact", false) &&
 			Read_BooleanExact(*BaseProjection, "runtimeExecutionAdmission", false) &&
 			Read_BooleanExact(*BaseProjection, "productAdmission", false) &&
@@ -2162,11 +2249,11 @@ namespace
 		constexpr std::string_view AUTHORITY_ID =
 			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
 		constexpr std::string_view SIDECAR_RAW_SHA256 =
-			"1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660";
+			"d69e262b7841f831f6e5d479fd588ff9fc52e4b72c896544d3c3ec178516139e";
 		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
-			"6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4";
+			"5af0e5e7b7882644ad6c3371bf888b191a6591684c4ac7a42f29b8c1e2a5a98e";
 		constexpr std::string_view SIDECAR_DECISION_SHA256 =
-			"fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de";
+			"e3b19c2c8102746d8e9ba5b5494ec0b194baeb7bd9df61979c6fade2e5dc70eb";
 		if (Text.size() != 774'127u ||
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Text) !=
 				SIDECAR_RAW_SHA256)
@@ -2351,7 +2438,7 @@ namespace
 		Staged.Identity.strProgramId =
 			"effect.artist.skill.31470.reconstructed-approved-v1";
 		Staged.Identity.strProgramSha256 =
-			"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
+			"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802";
 		Staged.Identity.strSidecarDecisionProjectionSha256 = DecisionSha;
 		Staged.Identity.strSidecarReceiptSha256 = ReceiptSha;
 		Staged.Identity.strSidecarRawSha256 = std::string(SIDECAR_RAW_SHA256);
@@ -2404,29 +2491,29 @@ namespace
 		constexpr std::string_view PROGRAM_ID =
 			"effect.artist.skill.31470.reconstructed-approved-v1";
 		constexpr std::string_view PROGRAM_SHA256 =
-			"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
+			"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802";
 		constexpr std::string_view BASE_ENTRY_SHA256 =
-			"1536d7b780f6787c624bbad1150889fe7f63e78ede91067029856b07b9718d02";
+			"6cd44dbd323d50e46e854b865d70ebf922355ed3db4ff5b430ae241c83aa01b3";
 		constexpr std::string_view BASE_LINK_SHA256 =
-			"a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2";
+			"282f450d95ae283acf91047fe6b293eb93fddaea9f4bde4cff9671e7aa27c523";
 		constexpr std::string_view BASE_RECEIPT_SHA256 =
-			"5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836";
+			"413c34440ee82b9511d1de4bbd31af282dce2e65204fd5cda0d75d8e4e58650b";
 		constexpr std::string_view SIDECAR_SCHEMA =
 			"lostark.artist-31470-reconstructed-render-resource-authority-receipt";
 		constexpr std::string_view SIDECAR_AUTHORITY_ID =
 			"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1";
 		constexpr std::string_view SIDECAR_DECISION_SHA256 =
-			"fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de";
+			"e3b19c2c8102746d8e9ba5b5494ec0b194baeb7bd9df61979c6fade2e5dc70eb";
 		constexpr std::string_view SIDECAR_RECEIPT_SHA256 =
-			"6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4";
+			"5af0e5e7b7882644ad6c3371bf888b191a6591684c4ac7a42f29b8c1e2a5a98e";
 		constexpr std::string_view SIDECAR_RAW_SHA256 =
-			"1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660";
+			"d69e262b7841f831f6e5d479fd588ff9fc52e4b72c896544d3c3ec178516139e";
 		constexpr std::string_view AUTHORITY_LINK_SHA256 =
-			"1706bb76180d3650c043db59b4eb09291fde3b7c3a5884675270a4f887bbb16b";
+			"2eb98fb864d5ba3c3e13c6eb2cbbec903e26341c7345e0e24a1eccd06878b56b";
 		constexpr std::string_view RECEIPT_SELF_SHA256 =
-			"63d7107714b6eb812f709f6d97876665b4929ef51785dd50cc59eb3015d3601c";
+			"1fb35ca58804041f774894385a8122071c6801968d02ef4d75467cd10172c24f";
 		constexpr std::string_view PUBLISH_RECEIPT_SHA256 =
-			"01cd26412754ffd8e7acb4e7c1fe4280ec2dfab65077a664c86eac6a415b8541";
+			"18eadecf168f4698a67a242572627b5c647f71abae81365ebe3f47f8bc4a5cc7";
 
 		const DATA_JSON_VALUE* Link = Required(
 			Value, "reconstructedRenderResourceAuthority", DATA_JSON_TYPE::OBJECT);
@@ -2590,9 +2677,9 @@ namespace
 			"Tools/EffectPipeline/build_effect_derived_artifact.py",
 			"Tools/EffectPipeline/Publish-Effects.ps1" };
 		constexpr std::array<std::string_view, 3u> TOOL_SHA256{
-			"3c92bd9c0f5cda40269acd74fcad8013d3993f492dd53d0e98523e01784f226f",
-			"fd664af8d5ea58ef59d68319d23ca84ee7faf29465adce9a3af8c213bfb4a4e6",
-			"f0196a52c55939e681c6236789d8a0ca006138fe9173a66e95b26ca2174845e8" };
+			"be8262731b3d69120107acd6e347279a06f741af2b0eea7edb7fd40db45390c8",
+			"a67cfcc02c00a83d4f18aa49635b6aedb7982d7803cb0feb6c9437b1b244232f",
+			"aef9268096f758fb18723ea0b93234f6fa89b6fbeda366953cfc0bc204a48008" };
 		if (nullptr == Tools || Tools->Get_Array().size() != TOOL_ROLES.size())
 		{
 			strOutError =
@@ -3074,6 +3161,7 @@ namespace
 				return Left.iSourceIndex < Right.iSourceIndex;
 			});
 		EFFECT_DOCUMENT_DESC Staged;
+		Staged.iLoadedFormatVersion = Assembly.iSourceAuthoringVersion;
 		Staged.strEffectAssetId = Assembly.strEffectAssetId;
 		Staged.strDisplayName = Assembly.strDisplayName;
 		Staged.ParticleSystem = Assembly.ParticleSystem;
@@ -3102,6 +3190,12 @@ struct Client::CEffectCatalog::RUNTIME_SNAPSHOT final
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>, std::less<>>
 		RuntimeProgramEntries;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> pVisualProgramCorpus;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM>, std::less<>> VisualPrograms;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>,
+		std::less<>> VisualProjections;
 	uint64_t iRuntimeRevision = 0u;
 	std::string strStatus;
 };
@@ -3127,6 +3221,21 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
         g_strStatus = strOutStatus;
         return false;
     }
+	const std::filesystem::path VisualProgramPath =
+		Find_RuntimeVisualProgramSidecar(Path);
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>
+		StagedVisualProgramCorpus;
+	std::string VisualProgramError;
+	if (!CEffectVisualProgramCorpusCodec::Load(
+			VisualProgramPath, StagedVisualProgramCorpus, VisualProgramError) ||
+		nullptr == StagedVisualProgramCorpus)
+	{
+		strOutStatus = "Effect visual-program sidecar rejected: " +
+			(VisualProgramError.empty() ? VisualProgramPath.string() :
+				VisualProgramError);
+		g_strStatus = strOutStatus;
+		return false;
+	}
     const std::string Text{
         std::istreambuf_iterator<char>(Input),
         std::istreambuf_iterator<char>() };
@@ -3185,6 +3294,12 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>, std::less<>>
 		StagedRuntimeProgramEntries;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM>, std::less<>>
+		StagedVisualPrograms;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>,
+		std::less<>> StagedVisualProjections;
 	if (UINT64_MAX == g_iRuntimeRevision)
 	{
 		strOutStatus = "Effect runtime catalog revision is exhausted.";
@@ -3257,9 +3372,145 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
 				ProgramEntry(new EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY(
 					std::move(Parsed.Identity), std::move(Parsed.pProgram),
-					std::move(Parsed.pRenderResourceAuthority)));
+					std::move(Parsed.pRenderResourceAuthority),
+					std::move(Parsed.pOccurrenceTuning)));
 			StagedRuntimeProgramEntries.emplace(
 				pAssetId->Get_String(), std::move(ProgramEntry));
+			continue;
+		}
+		const bool_t bDirectAuthoredPayload = bDerivedCatalog &&
+			nullptr != pPayloadKind && pPayloadKind->Get_String() ==
+				"DIRECT_AUTHORED_DOCUMENT_V13";
+		if (bDirectAuthoredPayload)
+		{
+			if (!Has_ExactOrderedKeys(Entry, {
+				"payloadKind", "effectAssetId", "authoringFormatVersion",
+				"contentSha256", "dependencies", "authoredDocumentUtf8" }))
+			{
+				strOutStatus =
+					"Effect direct authored runtime entry fields or order are invalid.";
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			const DATA_JSON_VALUE* pAuthoringVersion = Required(
+				Entry, "authoringFormatVersion", DATA_JSON_TYPE::NUMBER);
+			const DATA_JSON_VALUE* pContentSha = Required(
+				Entry, "contentSha256", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pDependencies = Required(
+				Entry, "dependencies", DATA_JSON_TYPE::ARRAY);
+			const DATA_JSON_VALUE* pAuthoredDocument = Required(
+				Entry, "authoredDocumentUtf8", DATA_JSON_TYPE::STRING);
+			if (nullptr == pAssetId || pAssetId->Get_String().empty() ||
+				nullptr == pAuthoringVersion ||
+				pAuthoringVersion->Was_FloatingPointToken() ||
+				pAuthoringVersion->Get_Number() !=
+					static_cast<double>(EFFECT_AUTHORING_FORMAT_VERSION) ||
+				nullptr == pContentSha ||
+				!Is_LowerHexSha256(pContentSha->Get_String()) ||
+				nullptr == pDependencies || nullptr == pAuthoredDocument ||
+				pAuthoredDocument->Get_String().empty() ||
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+					pAuthoredDocument->Get_String()) != pContentSha->Get_String() ||
+				Staged.contains(pAssetId->Get_String()) ||
+				StagedRuntimeAuthorities.contains(pAssetId->Get_String()) ||
+				StagedRuntimeProgramEntries.contains(pAssetId->Get_String()))
+			{
+				strOutStatus =
+					"Effect direct authored runtime entry has an invalid identity or content hash.";
+				g_strStatus = strOutStatus;
+				return false;
+			}
+
+			std::map<std::string, std::string, std::less<>> Dependencies;
+			std::string PreviousDependencyId;
+			for (const DATA_JSON_VALUE& Dependency :
+				pDependencies->Get_Array())
+			{
+				if (!Has_ExactOrderedKeys(Dependency, { "assetId", "sha256" }))
+				{
+					strOutStatus =
+						"Effect direct authored dependency fields or order are invalid.";
+					g_strStatus = strOutStatus;
+					return false;
+				}
+				const DATA_JSON_VALUE* pDependencyId = Required(
+					Dependency, "assetId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pDependencySha = Required(
+					Dependency, "sha256", DATA_JSON_TYPE::STRING);
+				if (nullptr == pDependencyId ||
+					(!CEffectDocumentCodec::Is_SafeResourceAssetId(
+						pDependencyId->Get_String()) &&
+					 !CEffectDocumentCodec::Is_SafeModelCueAssetId(
+						pDependencyId->Get_String())) ||
+					nullptr == pDependencySha ||
+					!Is_LowerHexSha256(pDependencySha->Get_String()) ||
+					(!PreviousDependencyId.empty() &&
+					 pDependencyId->Get_String() <= PreviousDependencyId) ||
+					!Dependencies.emplace(
+						pDependencyId->Get_String(),
+						pDependencySha->Get_String()).second)
+				{
+					strOutStatus =
+						"Effect direct authored dependency is unsafe, duplicate, or unsorted.";
+					g_strStatus = strOutStatus;
+					return false;
+				}
+				PreviousDependencyId = pDependencyId->Get_String();
+			}
+
+			EFFECT_DOCUMENT_DESC Document;
+			if (!CEffectDocumentCodec::Parse(
+					pAuthoredDocument->Get_String(), Document, Error) ||
+				!CEffectDocumentCodec::Validate_Drawable(Document, Error) ||
+				Document.bSourceContract ||
+				Document.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+				Document.strEffectAssetId != pAssetId->Get_String())
+			{
+				if (Error.empty())
+					Error = "document identity or drawable admission mismatch";
+				strOutStatus = "Effect direct authored document rejected for " +
+					pAssetId->Get_String() + ": " + Error;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			const std::string Canonical =
+				CEffectDocumentCodec::Serialize(Document);
+			EFFECT_DOCUMENT_DESC RoundTrip;
+			if (!CEffectDocumentCodec::Parse(Canonical, RoundTrip, Error) ||
+				!CEffectDocumentCodec::Validate_Drawable(RoundTrip, Error) ||
+				CEffectDocumentCodec::Serialize(RoundTrip) != Canonical)
+			{
+				strOutStatus =
+					"Effect direct authored document failed staged round-trip: " + Error;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			std::vector<std::string> DocumentDependencies;
+			CEffectDocumentCodec::Collect_ResourceAssetIds(
+				Document, DocumentDependencies);
+			if (DocumentDependencies.size() != Dependencies.size() ||
+				!std::equal(DocumentDependencies.begin(),
+					DocumentDependencies.end(), Dependencies.begin(),
+					[](const std::string& AssetId, const auto& Dependency)
+					{
+						return AssetId == Dependency.first;
+					}))
+			{
+				strOutStatus =
+					"Effect direct authored dependency set does not match its document.";
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			if (!Staged.emplace(pAssetId->Get_String(),
+				std::make_shared<const EFFECT_DOCUMENT_DESC>(
+					std::move(Document))).second)
+			{
+				strOutStatus =
+					"Duplicate direct authored EffectAssetId in runtime catalog: " +
+					pAssetId->Get_String();
+				g_strStatus = strOutStatus;
+				return false;
+			}
 			continue;
 		}
 		if (bDerivedCatalog && nullptr != pPayloadKind &&
@@ -3419,18 +3670,98 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		return false;
 	}
 
+	for (const EFFECT_VISUAL_PROGRAM& Program :
+		StagedVisualProgramCorpus->Programs)
+	{
+		const auto DocumentIterator = Staged.find(Program.strEffectAssetId);
+		const auto ReconstructedIterator = StagedRuntimeProgramEntries.find(
+			Program.strEffectAssetId);
+		const bool_t bMatchesDocument = DocumentIterator != Staged.end();
+		const bool_t bMatchesReconstructed =
+			ReconstructedIterator != StagedRuntimeProgramEntries.end();
+		if (!bMatchesDocument && !bMatchesReconstructed)
+			continue;
+		if (bMatchesDocument && bMatchesReconstructed)
+		{
+			strOutStatus =
+				"Effect visual-program target is ambiguous in the staged catalog: " +
+				Program.strEffectAssetId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM> ProgramAlias(
+			StagedVisualProgramCorpus, &Program);
+		if (!StagedVisualPrograms.emplace(
+				Program.strEffectAssetId, std::move(ProgramAlias)).second)
+		{
+			strOutStatus = "Duplicate matched Effect visual program: " +
+				Program.strEffectAssetId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+
+		if (bMatchesReconstructed)
+		{
+			if (Program.eProjectionKind !=
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+			{
+				strOutStatus =
+					"Reconstructed Effect requires an adapter-packet visual program: " +
+					Program.strEffectAssetId;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			continue;
+		}
+
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			Projection;
+		if (!CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*StagedVisualProgramCorpus, *DocumentIterator->second,
+				Projection, VisualProgramError) || nullptr == Projection ||
+			!Projection->Is_Valid() ||
+			Projection->Get_EffectAssetId() != Program.strEffectAssetId ||
+			Projection->Get_ProjectionKind() != Program.eProjectionKind)
+		{
+			strOutStatus = "Effect visual-program projection rejected for " +
+				Program.strEffectAssetId + ": " +
+				(VisualProgramError.empty() ?
+					std::string("invalid projection identity") :
+					VisualProgramError);
+			g_strStatus = strOutStatus;
+			return false;
+		}
+		DocumentIterator->second = Projection->Get_DocumentShared();
+		if (!StagedVisualProjections.emplace(
+				Program.strEffectAssetId, std::move(Projection)).second)
+		{
+			strOutStatus = "Duplicate matched Effect visual projection: " +
+				Program.strEffectAssetId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+	}
+
     g_Effects = std::move(Staged);
 	g_Assemblies = std::move(StagedAssemblies);
 	g_Components = std::move(StagedComponents);
 	g_RuntimeAuthorities = std::move(StagedRuntimeAuthorities);
 	g_RuntimeProgramEntries = std::move(StagedRuntimeProgramEntries);
+	g_pVisualProgramCorpus = std::move(StagedVisualProgramCorpus);
+	g_VisualPrograms = std::move(StagedVisualPrograms);
+	g_VisualProjections = std::move(StagedVisualProjections);
 	g_iRuntimeRevision = iStagedCatalogRevision;
     g_strStatus = "Loaded " + std::to_string(g_Effects.size()) +
         " Effect Assemblies, " + std::to_string(g_Components.size()) +
 		" Components, and " + std::to_string(g_RuntimeAuthorities.size()) +
 		" immutable compiled authorities (" +
 		std::to_string(g_RuntimeProgramEntries.size()) +
-		" reconstructed typed programs).";
+		" reconstructed typed programs, " +
+		std::to_string(g_VisualPrograms.size()) +
+		" matched visual programs, and " +
+		std::to_string(g_VisualProjections.size()) +
+		" committed visual projections).";
     strOutStatus = g_strStatus;
 	StatusGuard.bCommitted = true;
     return true;
@@ -3445,6 +3776,9 @@ Client::CEffectCatalog::Capture_Runtime()
 	Snapshot->Components = g_Components;
 	Snapshot->RuntimeAuthorities = g_RuntimeAuthorities;
 	Snapshot->RuntimeProgramEntries = g_RuntimeProgramEntries;
+	Snapshot->pVisualProgramCorpus = g_pVisualProgramCorpus;
+	Snapshot->VisualPrograms = g_VisualPrograms;
+	Snapshot->VisualProjections = g_VisualProjections;
 	Snapshot->iRuntimeRevision = g_iRuntimeRevision;
 	Snapshot->strStatus = g_strStatus;
 	return Snapshot;
@@ -3464,6 +3798,9 @@ bool_t Client::CEffectCatalog::Restore_Runtime(
 	g_Components = pSnapshot->Components;
 	g_RuntimeAuthorities = pSnapshot->RuntimeAuthorities;
 	g_RuntimeProgramEntries = pSnapshot->RuntimeProgramEntries;
+	g_pVisualProgramCorpus = pSnapshot->pVisualProgramCorpus;
+	g_VisualPrograms = pSnapshot->VisualPrograms;
+	g_VisualProjections = pSnapshot->VisualProjections;
 	g_iRuntimeRevision = pSnapshot->iRuntimeRevision;
 	g_strStatus = pSnapshot->strStatus;
 	strOutStatus = "Restored Effect runtime catalog revision " +
@@ -3522,6 +3859,28 @@ Client::CEffectCatalog::Find_ReconstructedRuntimeProgram(
 	const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY> Entry =
 		Find_RuntimeProgramEntry(strEffectAssetId);
 	return nullptr == Entry ? nullptr : Entry->Get_Program();
+}
+
+std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>
+Client::CEffectCatalog::Find_VisualProgramCorpus()
+{
+	return g_pVisualProgramCorpus;
+}
+
+std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM>
+Client::CEffectCatalog::Find_VisualProgram(
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator = g_VisualPrograms.find(strEffectAssetId);
+	return g_VisualPrograms.end() == Iterator ? nullptr : Iterator->second;
+}
+
+std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+Client::CEffectCatalog::Find_VisualProjection(
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator = g_VisualProjections.find(strEffectAssetId);
+	return g_VisualProjections.end() == Iterator ? nullptr : Iterator->second;
 }
 
 bool_t Client::CEffectCatalog::Prepare_ReconstructedRuntimeProgram(
@@ -3764,6 +4123,15 @@ Client::CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds()
 	return Result;
 }
 
+std::vector<std::string> Client::CEffectCatalog::Get_VisualProgramAssetIds()
+{
+	std::vector<std::string> Result;
+	Result.reserve(g_VisualPrograms.size());
+	for (const auto& [AssetId, Program] : g_VisualPrograms)
+		Result.push_back(AssetId);
+	return Result;
+}
+
 uint64_t Client::CEffectCatalog::Get_RuntimeRevision()
 {
     return g_iRuntimeRevision;
@@ -3781,5 +4149,8 @@ void Client::CEffectCatalog::Clear()
 	g_Components.clear();
 	g_RuntimeAuthorities.clear();
 	g_RuntimeProgramEntries.clear();
+	g_pVisualProgramCorpus.reset();
+	g_VisualPrograms.clear();
+	g_VisualProjections.clear();
     g_strStatus = "Effect catalog cleared.";
 }

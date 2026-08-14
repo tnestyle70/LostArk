@@ -247,7 +247,8 @@ namespace
 		L("pointlightcomponent.objectpath", true) };
 	constexpr PROPERTY_RULE g_TypeDataMesh[] = {
 		L("ballowmotionblur", false), L("boverridematerial", true),
-		L("lodvalidity", true), L("mesh", true), L("yaw", false) };
+		L("lodvalidity", true), L("mesh", true), L("pitch", false),
+		L("roll", false), L("yaw", false) };
 	constexpr PROPERTY_RULE g_TypeDataRibbon[] = {
 		L("btangentrecalculationeveryframe", true),
 		L("distancetessellationstepsize", true), L("lodvalidity", true),
