@@ -159,6 +159,17 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	{
 		return false;
 	}
+	/* A pair of opposite-direction stance-swap skills (LanceMaster's 34000/34500)
+	sit on their own independent CooldownEndTickBySkillId entries, so the reverse
+	skill is otherwise free to fire the instant the first one's action completes
+	and flips eStance -- same key, opposite skillId, no cooldown in its way. Gate
+	any stance-setting skill on the shared timer below so a swap can't be undone
+	within the same window it just opened. */
+	if (PLAYER_STANCE_ID::NONE != skill->eSetsStance &&
+		static_cast<std::int32_t>(player.iStanceSwitchCooldownEndTick - actionStartTick) > 0)
+	{
+		return false;
+	}
 
 	float directionX = 0.f;
 	float directionZ = 0.f;
@@ -178,6 +189,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.CooldownEndTickBySkillId.insert_or_assign(
 		command.iSkillId,
 		player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs));
+	if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
+	{
+		player.iStanceSwitchCooldownEndTick =
+			player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs);
+	}
 	player.hasMoveGoal = false;
 	player.MovePath.clear();
 	player.iMovePathIndex = 0;
