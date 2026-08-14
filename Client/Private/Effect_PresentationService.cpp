@@ -4,12 +4,19 @@
 #include "Effect_Catalog.h"
 #include "Effect_Object.h"
 #include "Effect_ReconstructedExecution.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Transform.h"
+#include "Valtan.h"
 
 #include <algorithm>
+#include <array>
+#include <cfloat>
 #include <cmath>
+#include <cstring>
+#include <limits>
+#include <map>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +26,20 @@ namespace
     constexpr const wchar_t* EFFECT_LAYER = L"Layer_Effect";
 	constexpr const char_t* RECONSTRUCTED_ARTIST_31470_ASSET_ID =
 		"effect.artist.skill.31470";
+	constexpr Client::EFFECT_RECONSTRUCTED_VISUAL_SCOPE
+		RECONSTRUCTED_ARTIST_31470_VISUAL_SCOPE =
+		Client::EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CORE_RENDERERS;
+	constexpr uint32_t RECONSTRUCTED_ARTIST_31470_ELEMENT_COUNT = 35u;
+	constexpr uint32_t RECONSTRUCTED_ARTIST_31470_VISIBLE_ELEMENT_COUNT = 33u;
+	constexpr size_t ARTIST_31470_ANCHOR_BINDING_COUNT = 5u;
+	constexpr const char_t* ARTIST_31470_RUNTIME_ANCHOR_SLOT_ID =
+		"WP_SDM_R_Battle";
+	constexpr const char_t* ARTIST_31470_RUNTIME_BONE_NAME = "b_wp_1";
+	constexpr const char_t* ARTIST_31470_ANIMATION_CLIP_NAME =
+		"sdm_sk_onestroke";
+	constexpr f64_t ARTIST_31470_FIXED_STEP_SECONDS_EXACT = 1.0 / 60.0;
+	constexpr f32_t ARTIST_31470_TRACK_TOLERANCE_TICKS = 0.01f;
+	constexpr size_t ARTIST_31470_MAX_HISTORY_SAMPLE_COUNT = 4096u;
 	// The playable Artist prototype contributes a 0.0001 admission transform,
 	// while the Artist rig's sdm root contributes a scale of 100. b_wp_1 is a
 	// combined bone matrix, so its admitted effective basis is 0.01. Keep this
@@ -40,10 +61,54 @@ namespace
 		bool_t bNormalizeSourceImportScale = false;
     };
 
+	struct ARTIST_31470_ANCHOR_HISTORY_SAMPLE final
+	{
+		f32_t fSampleTimeSeconds = 0.f;
+		float4x4_t AnchorWorld{};
+	};
+
+	struct ARTIST_31470_TRANSFORM_HISTORY final
+	{
+		bool_t bEnabled = false;
+		std::weak_ptr<Engine::CModel> pModel;
+		uint32_t iAnimationIndex = UINT32_MAX;
+		std::string strAnimationClipName;
+		f32_t fAnimationTickRate = 0.f;
+		f32_t fAnimationDurationTicks = 0.f;
+		f32_t fAnimationDurationSeconds = 0.f;
+		float4x4_t ActionStartRootWorld{};
+		std::array<uint32_t, ARTIST_31470_ANCHOR_BINDING_COUNT> BoneIndices{};
+		std::vector<ARTIST_31470_ANCHOR_HISTORY_SAMPLE> Samples;
+	};
+
+	struct EFFECT_OWNER_VIEW final
+	{
+		std::shared_ptr<Client::CCharacter> pCharacter;
+		std::shared_ptr<Client::CValtan> pBoss;
+
+		bool_t Is_Valid() const
+		{
+			return (nullptr != pCharacter) != (nullptr != pBoss);
+		}
+
+		std::shared_ptr<Engine::CTransform> Get_Transform() const
+		{
+			return nullptr != pCharacter ? pCharacter->Get_Transform() :
+				(nullptr != pBoss ? pBoss->Get_Transform() : nullptr);
+		}
+
+		std::shared_ptr<Engine::CModel> Get_Model() const
+		{
+			return nullptr != pCharacter ? pCharacter->Get_BodyModel() :
+				(nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr);
+		}
+	};
+
     struct ACTIVE_EFFECT final
     {
         std::shared_ptr<Client::CEffectObject> pObject;
         std::weak_ptr<Client::CCharacter> pOwner;
+		std::weak_ptr<Client::CValtan> pBossOwner;
         uint32_t iLevelIndex = UINT32_MAX;
         std::string strEffectAssetId;
         std::string strAnchorSlotId;
@@ -60,30 +125,190 @@ namespace
         f32_t fElapsedCueTimeSeconds = 0.f;
         f32_t fPendingInitialSampleTimeSeconds = 0.f;
         bool_t bPendingInitialSeek = true;
-        bool_t bFollowAnchorMissing = false;
-        std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
+		bool_t bFollowAnchorMissing = false;
+		std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
+		std::unordered_map<std::string, float4x4_t> SourceAnchorWorldsScratch;
+		ARTIST_31470_TRANSFORM_HISTORY Artist31470TransformHistory;
+		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
     };
+
+	EFFECT_OWNER_VIEW Resolve_Owner(
+		const Client::EFFECT_SPAWN_DESC& Desc)
+	{
+		return { Desc.pOwner.lock(), Desc.pBossOwner.lock() };
+	}
+
+	EFFECT_OWNER_VIEW Resolve_Owner(const ACTIVE_EFFECT& Effect)
+	{
+		return { Effect.pOwner.lock(), Effect.pBossOwner.lock() };
+	}
+
+	bool_t Same_Owner(
+		const EFFECT_OWNER_VIEW& Left,
+		const EFFECT_OWNER_VIEW& Right)
+	{
+		return Left.pCharacter == Right.pCharacter && Left.pBoss == Right.pBoss;
+	}
 
 	struct RECONSTRUCTED_SOURCE_RUNTIME_CACHE final
 	{
 		std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation;
 		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> pDocument;
+		std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> pVisualProjection;
 		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			pPrepared;
+		Client::EFFECT_RECONSTRUCTED_VISUAL_SCOPE eVisualScope =
+			Client::EFFECT_RECONSTRUCTED_VISUAL_SCOPE::END;
+		uint64_t iGeneration = 0u;
+		uint32_t iVisibleElementCount = 0u;
+	};
+
+	struct RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW final
+	{
+		std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation;
+		std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> pDocument;
+		std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> pVisualProjection;
+		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			pPrepared;
+		Client::EFFECT_ARTIST_31470_CACHE_IDENTITY Identity;
 	};
 
 	struct PENDING_EFFECT_SPAWN final
 	{
 		Client::EFFECT_SPAWN_DESC Desc;
 		uint32_t iLevelIndex = UINT32_MAX;
+		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
 	};
 
     std::vector<ACTIVE_EFFECT> g_ActiveEffects;
 	std::vector<PENDING_EFFECT_SPAWN> g_PendingEffectSpawns;
-    std::set<std::string, std::less<>> g_ProductEffectTargets;
+	std::set<std::string, std::less<>> g_ProductEffectTargets;
+	std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
+		g_ProductEffectBudgetCosts;
+	uint64_t g_iSceneBudgetRejectedSpawnCount = 0u;
 	RECONSTRUCTED_SOURCE_RUNTIME_CACHE g_ReconstructedArtist31470;
-    std::string g_strStatus = "Effect presentation service is idle.";
+	uint64_t g_iReconstructedArtist31470CacheGeneration = 0u;
+	Client::EFFECT_ARTIST_31470_CACHE_IDENTITY
+		g_LastArtist31470ToolPreviewConsumption;
+	Client::EFFECT_ARTIST_31470_CACHE_IDENTITY
+		g_LastArtist31470GameplayConsumption;
+	uint64_t g_iArtist31470ToolPreviewConsumeCount = 0u;
+	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
+	std::string g_strStatus = "Effect presentation service is idle.";
+
+	bool_t Add_BudgetCost(
+		Client::EFFECT_SCENE_BUDGET_COST& InOut,
+		const Client::EFFECT_SCENE_BUDGET_COST& Value)
+	{
+		const auto Add = [](uint64_t& Target, const uint64_t Increment)
+		{
+			if (Increment > (std::numeric_limits<uint64_t>::max)() - Target)
+				return false;
+			Target += Increment;
+			return true;
+		};
+		return Add(InOut.iEffects, Value.iEffects) &&
+			Add(InOut.iParticles, Value.iParticles) &&
+			Add(InOut.iMeshParticles, Value.iMeshParticles) &&
+			Add(InOut.iTrailPoints, Value.iTrailPoints) &&
+			Add(InOut.iAfterImages, Value.iAfterImages) &&
+			Add(InOut.iLights, Value.iLights) &&
+			Add(InOut.iScreenPosts, Value.iScreenPosts) &&
+			Add(InOut.iEstimatedDrawSubmissions,
+				Value.iEstimatedDrawSubmissions);
+	}
+
+	bool_t BudgetWithin(
+		const Client::EFFECT_SCENE_BUDGET_COST& Value,
+		const Client::EFFECT_SCENE_BUDGET_COST& Limit)
+	{
+		return Value.iEffects <= Limit.iEffects &&
+			Value.iParticles <= Limit.iParticles &&
+			Value.iMeshParticles <= Limit.iMeshParticles &&
+			Value.iTrailPoints <= Limit.iTrailPoints &&
+			Value.iAfterImages <= Limit.iAfterImages &&
+			Value.iLights <= Limit.iLights &&
+			Value.iScreenPosts <= Limit.iScreenPosts &&
+			Value.iEstimatedDrawSubmissions <=
+				Limit.iEstimatedDrawSubmissions;
+	}
+
+	const Client::EFFECT_SCENE_BUDGET_COST SCENE_HARD_BUDGET =
+		{ 128u, 16384u, 4096u, 12288u, 2048u, 32u, 16u, 6144u };
+	/* Remote cosmetics stop before the hard ceiling so a local action and boss
+	   telegraph retain deterministic headroom during a four-player burst. */
+	const Client::EFFECT_SCENE_BUDGET_COST REMOTE_SCENE_SOFT_BUDGET =
+		{ 96u, 12288u, 2814u, 8192u, 1536u, 24u, 4u, 4096u };
+	const Client::EFFECT_SCENE_BUDGET_COST OWNER_BUDGET =
+		{ 32u, 8192u, 2048u, 4096u, 1024u, 16u, 16u, 3072u };
+
+	Client::EFFECT_SCENE_BUDGET_COST Current_ActiveBudget()
+	{
+		Client::EFFECT_SCENE_BUDGET_COST Result;
+		for (const ACTIVE_EFFECT& Effect : g_ActiveEffects)
+			Add_BudgetCost(Result, Effect.AdmissionCost);
+		return Result;
+	}
+
+	Client::EFFECT_SCENE_BUDGET_COST Current_PendingBudget()
+	{
+		Client::EFFECT_SCENE_BUDGET_COST Result;
+		for (const PENDING_EFFECT_SPAWN& Pending : g_PendingEffectSpawns)
+			Add_BudgetCost(Result, Pending.AdmissionCost);
+		return Result;
+	}
+
+	bool_t Can_AdmitBudget(
+		const EFFECT_OWNER_VIEW& Owner,
+		const Client::EFFECT_SCENE_BUDGET_COST& Candidate,
+		const bool_t bIncludePending,
+		std::string& strOutStatus)
+	{
+		Client::EFFECT_SCENE_BUDGET_COST Scene = Current_ActiveBudget();
+		if (bIncludePending && !Add_BudgetCost(Scene, Current_PendingBudget()))
+		{
+			strOutStatus = "Effect scene budget accumulation overflowed.";
+			return false;
+		}
+		Client::EFFECT_SCENE_BUDGET_COST OwnerTotal;
+		for (const ACTIVE_EFFECT& Effect : g_ActiveEffects)
+		{
+			if (Same_Owner(Resolve_Owner(Effect), Owner))
+				Add_BudgetCost(OwnerTotal, Effect.AdmissionCost);
+		}
+		if (bIncludePending)
+		{
+			for (const PENDING_EFFECT_SPAWN& Pending : g_PendingEffectSpawns)
+			{
+				if (Same_Owner(Resolve_Owner(Pending.Desc), Owner))
+					Add_BudgetCost(OwnerTotal, Pending.AdmissionCost);
+			}
+		}
+		if (!Add_BudgetCost(Scene, Candidate) ||
+			!Add_BudgetCost(OwnerTotal, Candidate))
+		{
+			strOutStatus = "Effect scene budget accumulation overflowed.";
+			return false;
+		}
+		const bool_t bRemoteCharacter = nullptr != Owner.pCharacter &&
+			!Owner.pCharacter->Is_LocallyControlled();
+		const Client::EFFECT_SCENE_BUDGET_COST& SceneLimit =
+			bRemoteCharacter ? REMOTE_SCENE_SOFT_BUDGET : SCENE_HARD_BUDGET;
+		if (!BudgetWithin(Scene, SceneLimit) ||
+			!BudgetWithin(OwnerTotal, OWNER_BUDGET))
+		{
+			strOutStatus = bRemoteCharacter ?
+				"Remote cosmetic Effect suppressed to preserve local/boss frame budget." :
+				"Effect spawn rejected by the scene/owner frame budget.";
+			return false;
+		}
+		strOutStatus.clear();
+		return true;
+	}
 
 	bool_t Is_FiniteMatrix(const float4x4_t& Value)
 	{
@@ -198,7 +423,7 @@ namespace
 			fYZ <= SOURCE_BONE_ORTHOGONAL_TOLERANCE;
 	}
 
-    bool_t Prepare_TargetSet(
+	bool_t Prepare_TargetSet(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,
         const std::set<std::string, std::less<>>& Targets,
@@ -209,11 +434,12 @@ namespace
             strOutStatus = "No admitted animation Effect targets require prewarm.";
             return true;
         }
-        std::vector<std::pair<std::string,
-            std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>>> Documents;
-        Documents.reserve(Targets.size());
-        for (const std::string& EffectId : Targets)
-        {
+		std::vector<Client::EFFECT_RENDER_PREWARM_TARGET> PrewarmTargets;
+		PrewarmTargets.reserve(Targets.size());
+		std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
+			StagedBudgetCosts;
+		for (const std::string& EffectId : Targets)
+		{
             const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Document =
                 Client::CEffectCatalog::Find(EffectId);
             if (nullptr == Document)
@@ -223,26 +449,66 @@ namespace
                     EffectId;
                 return false;
             }
-            Documents.emplace_back(EffectId, Document);
-        }
-        return Client::CEffectDocumentRenderer::Prepare_Catalog(
-            std::move(pDevice), std::move(pContext),
-            Client::CEffectCatalog::Get_RuntimeRevision(),
-            Documents, strOutStatus);
-    }
+			const std::shared_ptr<const
+				Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection =
+				Client::CEffectCatalog::Find_VisualProjection(EffectId);
+			if (nullptr != Projection &&
+				Projection->Get_DocumentShared().get() != Document.get())
+			{
+				strOutStatus =
+					"Animation Effect visual projection/catalog document identity diverged: " +
+					EffectId;
+				return false;
+			}
+			Client::EFFECT_SCENE_BUDGET_COST BudgetCost;
+			if (!Client::CEffectPresentationService::Estimate_DocumentBudget(
+					*Document, BudgetCost, strOutStatus))
+			{
+				strOutStatus = "Animation Effect budget admission failed for " +
+					EffectId + ": " + strOutStatus;
+				return false;
+			}
+			StagedBudgetCosts.emplace(EffectId, BudgetCost);
+			PrewarmTargets.push_back({ EffectId, Document, Projection });
+		}
+		if (!Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
+			std::move(pDevice), std::move(pContext),
+			Client::CEffectCatalog::Get_RuntimeRevision(), PrewarmTargets,
+			strOutStatus))
+		{
+			return false;
+		}
+		g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
+		return true;
+	}
+
+	std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>
+		Find_ProductPrepared(
+			const std::string& strEffectAssetId,
+			const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		const std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection =
+			Client::CEffectCatalog::Find_VisualProjection(strEffectAssetId);
+		return Client::CEffectDocumentRenderer::Find_Prepared(
+			Client::CEffectCatalog::Get_RuntimeRevision(),
+			strEffectAssetId, Document, Projection);
+	}
 
     bool Resolve_Anchor(
-        const std::shared_ptr<Client::CCharacter>& pOwner,
+		const EFFECT_OWNER_VIEW& Owner,
         const std::string& strAnchorSlotId,
         float4x4_t& Out)
     {
-        if (nullptr == pOwner || nullptr == pOwner->Get_Transform())
+		const std::shared_ptr<Engine::CTransform> pTransform =
+			Owner.Get_Transform();
+		if (!Owner.Is_Valid() || nullptr == pTransform)
             return false;
-        Out = *pOwner->Get_Transform()->Get_WorldMatrixPtr();
+		Out = *pTransform->Get_WorldMatrixPtr();
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =
-            pOwner->Get_BodyModel();
+			Owner.Get_Model();
         if (nullptr == pModel || !pModel->Has_Bone(strAnchorSlotId.c_str()))
             return false;
         XMStoreFloat4x4(&Out,
@@ -355,18 +621,22 @@ namespace
 		return Requests;
 	}
 
-    std::unordered_map<std::string, float4x4_t> Resolve_SourceAnchors(
-        const std::shared_ptr<Client::CCharacter>& pOwner,
-        const std::vector<SOURCE_ANCHOR_REQUEST>& Requests)
+    void Resolve_SourceAnchors(
+		const EFFECT_OWNER_VIEW& Owner,
+        const std::vector<SOURCE_ANCHOR_REQUEST>& Requests,
+		std::unordered_map<std::string, float4x4_t>& InOutResult)
     {
-        std::unordered_map<std::string, float4x4_t> Result;
-        if (nullptr == pOwner || nullptr == pOwner->Get_Transform())
-            return Result;
-        const std::shared_ptr<Engine::CModel> pModel = pOwner->Get_BodyModel();
+		InOutResult.clear();
+		InOutResult.reserve(Requests.size());
+		const std::shared_ptr<Engine::CTransform> pTransform =
+			Owner.Get_Transform();
+		if (!Owner.Is_Valid() || nullptr == pTransform)
+            return;
+		const std::shared_ptr<Engine::CModel> pModel = Owner.Get_Model();
         if (nullptr == pModel)
-            return Result;
+            return;
 		const matrix_t OwnerWorld = XMLoadFloat4x4(
-			pOwner->Get_Transform()->Get_WorldMatrixPtr());
+			pTransform->Get_WorldMatrixPtr());
         for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
         {
             if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
@@ -415,9 +685,8 @@ namespace
 			if (Request.bNormalizeSourceImportScale &&
 				!Is_NonDegenerateAffineMatrix(World))
 				continue;
-            Result.emplace(Request.strRuntimeAnchorSlotId, World);
+            InOutResult.emplace(Request.strRuntimeAnchorSlotId, World);
         }
-        return Result;
     }
 
     float4x4_t Compose_Local(
@@ -438,6 +707,710 @@ namespace
         return Result;
     }
 
+	bool_t Is_FiniteTransform(const Client::EFFECT_TRANSFORM_DESC& Value)
+	{
+		return std::isfinite(Value.vPosition.x) &&
+			std::isfinite(Value.vPosition.y) &&
+			std::isfinite(Value.vPosition.z) &&
+			std::isfinite(Value.vRotationDegrees.x) &&
+			std::isfinite(Value.vRotationDegrees.y) &&
+			std::isfinite(Value.vRotationDegrees.z) &&
+			std::isfinite(Value.vScale.x) &&
+			std::isfinite(Value.vScale.y) &&
+			std::isfinite(Value.vScale.z);
+	}
+
+	bool_t Has_EqualTransform(
+		const Client::EFFECT_TRANSFORM_DESC& Left,
+		const Client::EFFECT_TRANSFORM_DESC& Right)
+	{
+		return Left.vPosition.x == Right.vPosition.x &&
+			Left.vPosition.y == Right.vPosition.y &&
+			Left.vPosition.z == Right.vPosition.z &&
+			Left.vRotationDegrees.x == Right.vRotationDegrees.x &&
+			Left.vRotationDegrees.y == Right.vRotationDegrees.y &&
+			Left.vRotationDegrees.z == Right.vRotationDegrees.z &&
+			Left.vScale.x == Right.vScale.x &&
+			Left.vScale.y == Right.vScale.y &&
+			Left.vScale.z == Right.vScale.z;
+	}
+
+	bool_t Has_ExactArtist31470AnchorContract(
+		const std::vector<SOURCE_ANCHOR_REQUEST>& Requests)
+	{
+		if (ARTIST_31470_ANCHOR_BINDING_COUNT != Requests.size())
+			return false;
+		const SOURCE_ANCHOR_REQUEST& First = Requests.front();
+		if (First.strRuntimeAnchorSlotId !=
+				ARTIST_31470_RUNTIME_ANCHOR_SLOT_ID ||
+			First.strRuntimeBoneName != ARTIST_31470_RUNTIME_BONE_NAME ||
+			!First.bNormalizeSourceImportScale ||
+			!Is_FiniteTransform(First.SocketLocalTransform))
+		{
+			return false;
+		}
+		return std::all_of(Requests.begin(), Requests.end(),
+			[&First](const SOURCE_ANCHOR_REQUEST& Request)
+			{
+				return Request.strRuntimeAnchorSlotId ==
+						ARTIST_31470_RUNTIME_ANCHOR_SLOT_ID &&
+					Request.strRuntimeBoneName ==
+						ARTIST_31470_RUNTIME_BONE_NAME &&
+					Request.bNormalizeSourceImportScale &&
+					Is_FiniteTransform(Request.SocketLocalTransform) &&
+					Has_EqualTransform(
+						Request.SocketLocalTransform,
+						First.SocketLocalTransform);
+			});
+	}
+
+	bool_t Sample_Artist31470AnchorWorld(
+		const std::shared_ptr<Engine::CModel>& pModel,
+		const ARTIST_31470_TRANSFORM_HISTORY& History,
+		const std::vector<SOURCE_ANCHOR_REQUEST>& Requests,
+		const f32_t fSampleTimeSeconds,
+		float4x4_t& OutAnchorWorld,
+		std::string& strOutError)
+	{
+		OutAnchorWorld = {};
+		const char_t* pCurrentClip = nullptr == pModel ? nullptr :
+			pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
+		if (nullptr == pModel || !History.bEnabled ||
+			!Has_ExactArtist31470AnchorContract(Requests) ||
+			pModel->Get_CurrentAnimIndex() != History.iAnimationIndex ||
+			nullptr == pCurrentClip ||
+			History.strAnimationClipName != pCurrentClip ||
+			History.strAnimationClipName != ARTIST_31470_ANIMATION_CLIP_NAME ||
+			!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f ||
+			!std::isfinite(History.fAnimationDurationSeconds) ||
+			History.fAnimationDurationSeconds <= 0.f ||
+			!Is_NonDegenerateAffineMatrix(History.ActionStartRootWorld))
+		{
+			strOutError =
+				"Artist 31470 historical model/clip identity is invalid.";
+			return false;
+		}
+
+		const f32_t fAnimationTimeSeconds = std::clamp(
+			fSampleTimeSeconds, 0.f, History.fAnimationDurationSeconds);
+		const f32_t fTrackPositionTicks = (std::min)(
+			History.fAnimationDurationTicks,
+			fAnimationTimeSeconds * History.fAnimationTickRate);
+		std::array<float4x4_t, ARTIST_31470_ANCHOR_BINDING_COUNT>
+			RawBoneMatrices{};
+		if (!std::isfinite(fTrackPositionTicks) ||
+			!pModel->Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
+				History.iAnimationIndex, fTrackPositionTicks,
+				fAnimationTimeSeconds,
+				History.BoneIndices, RawBoneMatrices))
+		{
+			strOutError =
+				"Artist 31470 side-effect-free historical bone sample failed.";
+			return false;
+		}
+
+		float4x4_t FirstAnchorWorld{};
+		for (size_t iBinding = 0u; iBinding < Requests.size(); ++iBinding)
+		{
+			if (0u != iBinding && 0 != std::memcmp(
+				&RawBoneMatrices.front(), &RawBoneMatrices[iBinding],
+				sizeof(float4x4_t)))
+			{
+				strOutError =
+					"Artist 31470 equal bone bindings sampled different poses.";
+				return false;
+			}
+			Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+			AnchorBuild.RawBone = RawBoneMatrices[iBinding];
+			AnchorBuild.OwnerWorld = History.ActionStartRootWorld;
+			float4x4_t BoneWorld{};
+			if (!Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
+					AnchorBuild, BoneWorld))
+			{
+				strOutError =
+					"Artist 31470 historical b_wp_1 import scale is invalid.";
+				return false;
+			}
+
+			const Client::EFFECT_TRANSFORM_DESC& Local =
+				Requests[iBinding].SocketLocalTransform;
+			const matrix_t SocketLocal = XMMatrixScaling(
+				Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+				XMMatrixRotationRollPitchYaw(
+					XMConvertToRadians(Local.vRotationDegrees.x),
+					XMConvertToRadians(Local.vRotationDegrees.y),
+					XMConvertToRadians(Local.vRotationDegrees.z)) *
+				XMMatrixTranslation(
+					Local.vPosition.x,
+					Local.vPosition.y,
+					Local.vPosition.z);
+			float4x4_t AnchorWorld{};
+			XMStoreFloat4x4(&AnchorWorld,
+				SocketLocal * XMLoadFloat4x4(&BoneWorld));
+			if (!Is_NonDegenerateAffineMatrix(AnchorWorld) ||
+				(0u != iBinding && 0 != std::memcmp(
+					&FirstAnchorWorld, &AnchorWorld, sizeof(float4x4_t))))
+			{
+				strOutError =
+					"Artist 31470 equal anchor bindings produced different worlds.";
+				return false;
+			}
+			if (0u == iBinding)
+				FirstAnchorWorld = AnchorWorld;
+		}
+		OutAnchorWorld = FirstAnchorWorld;
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Prepare_Artist31470TransformHistory(
+		const std::shared_ptr<Client::CCharacter>& pOwner,
+		const std::vector<SOURCE_ANCHOR_REQUEST>& Requests,
+		const float4x4_t& ActionStartRootWorld,
+		const f32_t fInitialSampleTimeSeconds,
+		ARTIST_31470_TRANSFORM_HISTORY& OutHistory,
+		std::string& strOutError)
+	{
+		OutHistory = {};
+		const std::shared_ptr<Engine::CModel> pModel = nullptr == pOwner ?
+			nullptr : pOwner->Get_BodyModel();
+		if (nullptr == pModel ||
+			!Has_ExactArtist31470AnchorContract(Requests) ||
+			!Is_NonDegenerateAffineMatrix(ActionStartRootWorld) ||
+			!std::isfinite(fInitialSampleTimeSeconds) ||
+			fInitialSampleTimeSeconds < 0.f)
+		{
+			strOutError =
+				"Artist 31470 action-start transform history input is invalid.";
+			return false;
+		}
+
+		ARTIST_31470_TRANSFORM_HISTORY Staged;
+		Staged.bEnabled = true;
+		Staged.pModel = pModel;
+		Staged.iAnimationIndex = pModel->Get_CurrentAnimIndex();
+		const char_t* pClipName =
+			pModel->Get_AnimationName(Staged.iAnimationIndex);
+		if (Staged.iAnimationIndex >= pModel->Get_NumAnimations() ||
+			nullptr == pClipName ||
+			std::string_view(pClipName) != ARTIST_31470_ANIMATION_CLIP_NAME)
+		{
+			strOutError =
+				"Artist 31470 current animation is not sdm_sk_onestroke.";
+			return false;
+		}
+		Staged.strAnimationClipName = pClipName;
+		f32_t fCurrentTrackTicks = 0.f;
+		if (!pModel->Get_AnimationProgress(
+				Staged.iAnimationIndex, fCurrentTrackTicks,
+				Staged.fAnimationDurationTicks))
+		{
+			strOutError =
+				"Artist 31470 current animation progress is unavailable.";
+			return false;
+		}
+		Staged.fAnimationTickRate =
+			pModel->Get_AnimationTickPerSecond(Staged.iAnimationIndex);
+		Staged.fAnimationDurationSeconds =
+			Staged.fAnimationDurationTicks / Staged.fAnimationTickRate;
+		const f32_t fExpectedTrackTicks = (std::min)(
+			Staged.fAnimationDurationTicks,
+			fInitialSampleTimeSeconds * Staged.fAnimationTickRate);
+		if (!std::isfinite(fCurrentTrackTicks) || fCurrentTrackTicks < 0.f ||
+			!std::isfinite(Staged.fAnimationTickRate) ||
+			Staged.fAnimationTickRate <= 0.f ||
+			!std::isfinite(Staged.fAnimationDurationTicks) ||
+			Staged.fAnimationDurationTicks <= 0.f ||
+			!std::isfinite(Staged.fAnimationDurationSeconds) ||
+			Staged.fAnimationDurationSeconds <= 0.f ||
+			std::abs(fCurrentTrackTicks - fExpectedTrackTicks) >
+				ARTIST_31470_TRACK_TOLERANCE_TICKS)
+		{
+			strOutError =
+				"Artist 31470 action age and current animation cursor disagree.";
+			return false;
+		}
+
+		int32_t iExpectedBoneIndex = -1;
+		for (size_t iBinding = 0u; iBinding < Requests.size(); ++iBinding)
+		{
+			const int32_t iBoneIndex = pModel->Find_BoneIndex(
+				Requests[iBinding].strRuntimeBoneName.c_str());
+			if (iBoneIndex < 0 ||
+				(0u != iBinding && iBoneIndex != iExpectedBoneIndex))
+			{
+				strOutError =
+					"Artist 31470 five binding rows do not resolve to one bone.";
+				return false;
+			}
+			if (0u == iBinding)
+				iExpectedBoneIndex = iBoneIndex;
+			Staged.BoneIndices[iBinding] =
+				static_cast<uint32_t>(iBoneIndex);
+		}
+		/* PlayerSkills 31470 has movementDistance=0.  The provider therefore
+		   keeps this authoritative action-start root for every fixed step. */
+		Staged.ActionStartRootWorld = ActionStartRootWorld;
+		const f64_t fFixedStepCountEstimate = std::floor(
+			static_cast<f64_t>(Staged.fAnimationDurationSeconds) /
+			ARTIST_31470_FIXED_STEP_SECONDS_EXACT);
+		if (!std::isfinite(fFixedStepCountEstimate) ||
+			fFixedStepCountEstimate < 0.0 ||
+			fFixedStepCountEstimate + 3.0 >
+				static_cast<f64_t>(ARTIST_31470_MAX_HISTORY_SAMPLE_COUNT))
+		{
+			strOutError =
+				"Artist 31470 fixed-step transform history exceeds its instance bound.";
+			return false;
+		}
+		Staged.Samples.reserve(
+			static_cast<size_t>(fFixedStepCountEstimate) + 3u);
+		const auto AppendSample = [&pModel, &Staged, &Requests, &strOutError](
+			const f32_t fSampleTimeSeconds)
+		{
+			if (!std::isfinite(fSampleTimeSeconds) ||
+				fSampleTimeSeconds < 0.f ||
+				fSampleTimeSeconds > Staged.fAnimationDurationSeconds)
+			{
+				strOutError =
+					"Artist 31470 prepared history time is invalid.";
+				return false;
+			}
+			const auto Existing = std::lower_bound(
+				Staged.Samples.begin(), Staged.Samples.end(),
+				fSampleTimeSeconds,
+				[](const ARTIST_31470_ANCHOR_HISTORY_SAMPLE& Sample,
+					const f32_t fTimeSeconds)
+				{
+					return Sample.fSampleTimeSeconds < fTimeSeconds;
+				});
+			if (Existing != Staged.Samples.end() &&
+				Existing->fSampleTimeSeconds == fSampleTimeSeconds)
+				return true;
+			if (Staged.Samples.size() >=
+				ARTIST_31470_MAX_HISTORY_SAMPLE_COUNT)
+			{
+				strOutError =
+					"Artist 31470 prepared history exceeded its instance bound.";
+				return false;
+			}
+			ARTIST_31470_ANCHOR_HISTORY_SAMPLE Sample;
+			Sample.fSampleTimeSeconds = fSampleTimeSeconds;
+			if (!Sample_Artist31470AnchorWorld(
+					pModel, Staged, Requests, fSampleTimeSeconds,
+					Sample.AnchorWorld, strOutError))
+			{
+				return false;
+			}
+			Staged.Samples.insert(Existing, std::move(Sample));
+			return true;
+		};
+		if (!AppendSample(0.f))
+			return false;
+		const uint64_t iFixedStepCount =
+			static_cast<uint64_t>(fFixedStepCountEstimate);
+		for (uint64_t iStep = 1u; iStep <= iFixedStepCount; ++iStep)
+		{
+			const f32_t fStepTimeSeconds = static_cast<f32_t>(
+				static_cast<f64_t>(iStep) *
+				ARTIST_31470_FIXED_STEP_SECONDS_EXACT);
+			if (fStepTimeSeconds > Staged.fAnimationDurationSeconds)
+				break;
+			if (!AppendSample(fStepTimeSeconds))
+				return false;
+		}
+		/* The exact end row is the immutable Natural-tail hold.  The arbitrary
+		   authoritative action age is also cached because Seek requests it after
+		   replaying all preceding fixed steps. */
+		if (!AppendSample(Staged.fAnimationDurationSeconds) ||
+			!AppendSample((std::min)(
+				fInitialSampleTimeSeconds,
+				Staged.fAnimationDurationSeconds)))
+		{
+			return false;
+		}
+		OutHistory = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Build_Artist31470TransformSample(
+		ACTIVE_EFFECT& Effect,
+		const f32_t fSampleTimeSeconds,
+		Client::EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError)
+	{
+		OutSample = {};
+		const ARTIST_31470_TRANSFORM_HISTORY& History =
+			Effect.Artist31470TransformHistory;
+		const std::shared_ptr<Client::CCharacter> pOwner = Effect.pOwner.lock();
+		const std::shared_ptr<Engine::CModel> pModel = History.pModel.lock();
+		if (!History.bEnabled || nullptr == pOwner || nullptr == pModel ||
+			pOwner->Get_BodyModel() != pModel ||
+			Effect.strEffectAssetId != RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
+			!Has_ExactArtist31470AnchorContract(Effect.SourceAnchorRequests) ||
+			!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f ||
+			!Is_NonDegenerateAffineMatrix(History.ActionStartRootWorld))
+		{
+			strOutError =
+				"Artist 31470 instance-local transform history identity is invalid.";
+			return false;
+		}
+
+		const f32_t fCanonicalTimeSeconds = (std::min)(
+			fSampleTimeSeconds, History.fAnimationDurationSeconds);
+		const auto Found = std::lower_bound(
+			History.Samples.begin(), History.Samples.end(),
+			fCanonicalTimeSeconds,
+			[](const ARTIST_31470_ANCHOR_HISTORY_SAMPLE& Sample,
+				const f32_t fTimeSeconds)
+			{
+				return Sample.fSampleTimeSeconds < fTimeSeconds;
+			});
+		if (Found == History.Samples.end() ||
+			Found->fSampleTimeSeconds != fCanonicalTimeSeconds)
+		{
+			strOutError =
+				"Artist 31470 cache-only provider received an unprepared history time.";
+			return false;
+		}
+		if (!Is_NonDegenerateAffineMatrix(Found->AnchorWorld))
+		{
+			strOutError =
+				"Artist 31470 cached historical anchor became invalid.";
+			return false;
+		}
+
+		Client::EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+		Staged.RootWorld = History.ActionStartRootWorld;
+		const auto [Iterator, bInserted] =
+			Staged.SourceAnchorWorlds.emplace(
+				ARTIST_31470_RUNTIME_ANCHOR_SLOT_ID, Found->AnchorWorld);
+		if (!bInserted || Iterator->first !=
+				ARTIST_31470_RUNTIME_ANCHOR_SLOT_ID ||
+			Staged.SourceAnchorWorlds.size() != 1u)
+		{
+			strOutError =
+				"Artist 31470 historical anchor map did not preserve one equal slot.";
+			return false;
+		}
+		OutSample = std::move(Staged);
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_Artist31470CoreDocument(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		uint32_t& iOutVisibleElementCount,
+		std::string& strOutStatus)
+	{
+		iOutVisibleElementCount = 0u;
+		if (Document.strEffectAssetId != RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
+			Document.Elements.size() != RECONSTRUCTED_ARTIST_31470_ELEMENT_COUNT)
+		{
+			strOutStatus =
+				"Artist Core F cache document identity/count is invalid.";
+			return false;
+		}
+
+		constexpr size_t RENDERER_COUNT = static_cast<size_t>(
+			Client::EFFECT_RENDERER_TYPE::END);
+		std::array<uint32_t, RENDERER_COUNT> VisibleByRenderer{};
+		std::array<uint32_t, RENDERER_COUNT> HiddenByRenderer{};
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			const size_t iRenderer = static_cast<size_t>(Element.Renderer.eType);
+			if (iRenderer >= RENDERER_COUNT)
+			{
+				strOutStatus =
+					"Artist Core F cache document has an invalid renderer family.";
+				return false;
+			}
+			if (Element.bVisible)
+			{
+				++VisibleByRenderer[iRenderer];
+				++iOutVisibleElementCount;
+			}
+			else
+			{
+				++HiddenByRenderer[iRenderer];
+			}
+		}
+
+		const auto VisibleCount = [&VisibleByRenderer](
+			const Client::EFFECT_RENDERER_TYPE eRenderer)
+		{
+			return VisibleByRenderer[static_cast<size_t>(eRenderer)];
+		};
+		const auto HiddenCount = [&HiddenByRenderer](
+			const Client::EFFECT_RENDERER_TYPE eRenderer)
+		{
+			return HiddenByRenderer[static_cast<size_t>(eRenderer)];
+		};
+		const bool_t bExactCoreScope =
+			iOutVisibleElementCount ==
+				RECONSTRUCTED_ARTIST_31470_VISIBLE_ELEMENT_COUNT &&
+			VisibleCount(Client::EFFECT_RENDERER_TYPE::MESH_PARTICLE) == 13u &&
+			VisibleCount(Client::EFFECT_RENDERER_TYPE::SPRITE_PARTICLE) == 16u &&
+			VisibleCount(Client::EFFECT_RENDERER_TYPE::DECAL_PARTICLE) == 3u &&
+			VisibleCount(Client::EFFECT_RENDERER_TYPE::CASCADE_RIBBON) == 1u &&
+			HiddenCount(Client::EFFECT_RENDERER_TYPE::LIGHT_PARTICLE) == 1u &&
+			HiddenCount(Client::EFFECT_RENDERER_TYPE::SCREEN_POST) == 1u;
+		uint32_t iVisibleCoreCount = 0u;
+		uint32_t iHiddenDeferredCount = 0u;
+		if (bExactCoreScope)
+		{
+			iVisibleCoreCount =
+				VisibleCount(Client::EFFECT_RENDERER_TYPE::MESH_PARTICLE) +
+				VisibleCount(Client::EFFECT_RENDERER_TYPE::SPRITE_PARTICLE) +
+				VisibleCount(Client::EFFECT_RENDERER_TYPE::DECAL_PARTICLE) +
+				VisibleCount(Client::EFFECT_RENDERER_TYPE::CASCADE_RIBBON);
+			iHiddenDeferredCount =
+				HiddenCount(Client::EFFECT_RENDERER_TYPE::LIGHT_PARTICLE) +
+				HiddenCount(Client::EFFECT_RENDERER_TYPE::SCREEN_POST);
+		}
+		const uint32_t iHiddenElementCount = static_cast<uint32_t>(
+			Document.Elements.size()) - iOutVisibleElementCount;
+		if (!bExactCoreScope ||
+			iVisibleCoreCount != iOutVisibleElementCount ||
+			iHiddenDeferredCount != iHiddenElementCount)
+		{
+			strOutStatus =
+				"Artist Core F cache document is not the exact 33 core/2 deferred scope.";
+			return false;
+		}
+		return true;
+	}
+
+	uint64_t Next_Artist31470CacheGeneration()
+	{
+		if (g_iReconstructedArtist31470CacheGeneration ==
+			(std::numeric_limits<uint64_t>::max)())
+		{
+			return 0u;
+		}
+		return ++g_iReconstructedArtist31470CacheGeneration;
+	}
+
+	bool_t Create_Artist31470VisualAdapterProjection(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>& OutProjection,
+		std::string& strOutStatus)
+	{
+		OutProjection.reset();
+		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS> pCorpus =
+			Client::CEffectCatalog::Find_VisualProgramCorpus();
+		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM> pProgram =
+			Client::CEffectCatalog::Find_VisualProgram(
+				std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
+		if (nullptr == pCorpus || nullptr == pProgram ||
+			pProgram->eProjectionKind !=
+				Client::EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+			Document.strEffectAssetId != RECONSTRUCTED_ARTIST_31470_ASSET_ID)
+		{
+			strOutStatus =
+				"Artist Core F visual adapter Program identity is unavailable.";
+			return false;
+		}
+		if (!Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*pCorpus, Document, OutProjection, strOutStatus) ||
+			nullptr == OutProjection || !OutProjection->Is_Valid() ||
+			OutProjection->Get_ProjectionKind() !=
+				Client::EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+			OutProjection->Get_EffectAssetId() !=
+				RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
+			OutProjection->Get_ProgramSha256() != pProgram->strProgramSha256 ||
+			OutProjection->Get_AdmittedRows().empty())
+		{
+			OutProjection.reset();
+			if (strOutStatus.empty())
+			{
+				strOutStatus =
+					"Artist Core F visual adapter projection identity is invalid.";
+			}
+			return false;
+		}
+		return true;
+	}
+
+	Client::EFFECT_ARTIST_31470_CACHE_IDENTITY
+		Build_Artist31470CacheIdentity(
+			const RECONSTRUCTED_SOURCE_RUNTIME_CACHE& Cache)
+	{
+		Client::EFFECT_ARTIST_31470_CACHE_IDENTITY Identity;
+		Identity.iGeneration = Cache.iGeneration;
+		Identity.iPreparationIdentity = reinterpret_cast<std::uintptr_t>(
+			Cache.pPreparation.get());
+		Identity.iDocumentIdentity = reinterpret_cast<std::uintptr_t>(
+			Cache.pDocument.get());
+		Identity.iPreparedDocumentIdentity = reinterpret_cast<std::uintptr_t>(
+			Cache.pPrepared.get());
+		Identity.eVisualScope = Cache.eVisualScope;
+		Identity.iDocumentElementCount = nullptr == Cache.pDocument ? 0u :
+			static_cast<uint32_t>(Cache.pDocument->Elements.size());
+		Identity.iVisibleElementCount = Cache.iVisibleElementCount;
+		if (nullptr != Cache.pPreparation &&
+			nullptr != Cache.pPreparation->Get_CatalogEntry())
+		{
+			Identity.iCatalogRevision = Cache.pPreparation->Get_CatalogEntry()->
+				Get_Identity().iCatalogRevision;
+		}
+		return Identity;
+	}
+
+	bool_t Resolve_Artist31470Cache(
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			pExpectedPreparation,
+		RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW& OutCache,
+		std::string& strOutStatus)
+	{
+		OutCache = {};
+		const std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+			pCurrentEntry = Client::CEffectCatalog::Find_RuntimeProgramEntry(
+				std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
+		const auto& Cache = g_ReconstructedArtist31470;
+		const std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+			pCachedEntry = nullptr == Cache.pPreparation ? nullptr :
+				Cache.pPreparation->Get_CatalogEntry();
+		const std::shared_ptr<const Client::EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+			pProgram = nullptr == Cache.pPreparation ? nullptr :
+				Cache.pPreparation->Get_Program();
+		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM>
+			pVisualProgram = Client::CEffectCatalog::Find_VisualProgram(
+				std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
+		if (nullptr == pCurrentEntry || nullptr == Cache.pPreparation ||
+			nullptr == Cache.pDocument || nullptr == Cache.pVisualProjection ||
+			nullptr == Cache.pPrepared || nullptr == pVisualProgram ||
+			nullptr == pCachedEntry || nullptr == pProgram ||
+			pCachedEntry.get() != pCurrentEntry.get() ||
+			pCachedEntry->Get_Program().get() != pProgram.get() ||
+			pCachedEntry->Get_Identity().strEffectAssetId !=
+				RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
+			pCachedEntry->Get_Identity().iCatalogRevision == 0u ||
+			!Cache.pVisualProjection->Is_Valid() ||
+			Cache.pVisualProjection->Get_ProjectionKind() !=
+				Client::EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+			Cache.pVisualProjection->Get_EffectAssetId() !=
+				RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
+			Cache.pVisualProjection->Get_ProgramSha256() !=
+				pVisualProgram->strProgramSha256 ||
+			Cache.pVisualProjection->Get_DocumentShared().get() !=
+				Cache.pDocument.get() ||
+			Cache.eVisualScope != RECONSTRUCTED_ARTIST_31470_VISUAL_SCOPE ||
+			Cache.iGeneration == 0u ||
+			(nullptr != pExpectedPreparation &&
+			 pExpectedPreparation.get() != Cache.pPreparation.get()) ||
+			pProgram->Admission.bRuntimeExecution || pProgram->Admission.bProduct)
+		{
+			strOutStatus =
+				"Artist Core F shared cache identity/provenance is invalid.";
+			return false;
+		}
+
+		uint32_t iVisibleElementCount = 0u;
+		if (!Validate_Artist31470CoreDocument(
+			*Cache.pDocument, iVisibleElementCount, strOutStatus))
+		{
+			return false;
+		}
+		if (iVisibleElementCount != Cache.iVisibleElementCount)
+		{
+			strOutStatus =
+				"Artist Core F shared cache scope provenance changed.";
+			return false;
+		}
+
+		const Client::EFFECT_ARTIST_31470_CACHE_IDENTITY Identity =
+			Build_Artist31470CacheIdentity(Cache);
+		if (Identity.iPreparationIdentity == 0u ||
+			Identity.iDocumentIdentity == 0u ||
+			Identity.iPreparedDocumentIdentity == 0u ||
+			Identity.iDocumentElementCount !=
+				RECONSTRUCTED_ARTIST_31470_ELEMENT_COUNT ||
+			Identity.iVisibleElementCount !=
+				RECONSTRUCTED_ARTIST_31470_VISIBLE_ELEMENT_COUNT)
+		{
+			strOutStatus =
+				"Artist Core F shared cache pointer/count identity is invalid.";
+			return false;
+		}
+
+		OutCache.pPreparation = Cache.pPreparation;
+		OutCache.pDocument = Cache.pDocument;
+		OutCache.pVisualProjection = Cache.pVisualProjection;
+		OutCache.pPrepared = Cache.pPrepared;
+		OutCache.Identity = Identity;
+		return true;
+	}
+
+	void Record_Artist31470ToolPreviewConsumption(
+		const Client::EFFECT_ARTIST_31470_CACHE_IDENTITY& Identity)
+	{
+		g_LastArtist31470ToolPreviewConsumption = Identity;
+		if (g_iArtist31470ToolPreviewConsumeCount !=
+			(std::numeric_limits<uint64_t>::max)())
+		{
+			++g_iArtist31470ToolPreviewConsumeCount;
+		}
+	}
+
+	void Record_Artist31470GameplayConsumption(
+		const Client::EFFECT_ARTIST_31470_CACHE_IDENTITY& Identity)
+	{
+		g_LastArtist31470GameplayConsumption = Identity;
+		if (g_iArtist31470GameplayConsumeCount !=
+			(std::numeric_limits<uint64_t>::max)())
+		{
+			++g_iArtist31470GameplayConsumeCount;
+		}
+	}
+
+	bool_t Attach_Artist31470CoreCache(
+		const std::shared_ptr<Client::CEffectObject>& pObject,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			pExpectedPreparation,
+		Client::EFFECT_ARTIST_31470_CACHE_IDENTITY& OutIdentity,
+		std::string& strOutStatus)
+	{
+		OutIdentity = {};
+		if (nullptr == pObject)
+		{
+			strOutStatus =
+				"Artist Core F cache attach object is invalid.";
+			return false;
+		}
+		RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+		if (!Resolve_Artist31470Cache(
+			pExpectedPreparation, Cache, strOutStatus))
+		{
+			return false;
+		}
+		if (!Cache.Identity.Is_ExactCoreScope())
+		{
+			strOutStatus =
+				"Artist Core F cache attach scope identity is invalid.";
+			return false;
+		}
+		if (!pObject->Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			Cache.pVisualProjection, Cache.pPrepared,
+			Cache.pPreparation, strOutStatus))
+		{
+			return false;
+		}
+		if (pObject->Get_ReconstructedRuntimePreparation().get() !=
+			Cache.pPreparation.get())
+		{
+			strOutStatus =
+				"Artist Core F object/cache preparation identity diverged.";
+			return false;
+		}
+		OutIdentity = Cache.Identity;
+		return true;
+	}
+
     void Remove_At(const size_t iIndex)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iIndex];
@@ -449,6 +1422,93 @@ namespace
         }
         g_ActiveEffects.erase(g_ActiveEffects.begin() + iIndex);
     }
+}
+
+bool_t Client::CEffectPresentationService::Estimate_DocumentBudget(
+	const EFFECT_DOCUMENT_DESC& Document,
+	EFFECT_SCENE_BUDGET_COST& OutCost,
+	std::string& strOutStatus)
+{
+	EFFECT_SCENE_BUDGET_COST Staged;
+	Staged.iEffects = 1u;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (!Element.bVisible)
+			continue;
+		const EFFECT_DETAIL_DESC& Detail = Element.Detail;
+		const bool_t bSourceParticle = Element.SourceRecipe.bEnabled &&
+			(Element.SourceRecipe.strRendererShape == "mesh" ||
+			 Element.SourceRecipe.strRendererShape == "sprite" ||
+			 Element.SourceRecipe.strRendererShape == "decal");
+		const bool_t bParticle =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE || bSourceParticle;
+		const bool_t bMeshParticle = bParticle &&
+			(Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE ||
+			 Element.SourceRecipe.strRendererShape == "mesh");
+		if (bParticle)
+		{
+			Staged.iParticles += Detail.Particle.iMaxParticles;
+			if (bMeshParticle)
+			{
+				Staged.iMeshParticles += Detail.Particle.iMaxParticles;
+				Staged.iEstimatedDrawSubmissions +=
+					Detail.Particle.iMaxParticles;
+			}
+			else
+			{
+				++Staged.iEstimatedDrawSubmissions;
+			}
+		}
+		else if (Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+			Element.eKind == EFFECT_ELEMENT_KIND::SPRITE ||
+			Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+		{
+			++Staged.iEstimatedDrawSubmissions;
+		}
+		if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
+		{
+			Staged.iTrailPoints += Detail.Trail.iMaxPoints;
+			++Staged.iEstimatedDrawSubmissions;
+		}
+		if (Detail.Timing.fAfterImageSeconds > 0.f &&
+			Detail.AfterImage.iMaxCopies > 0u)
+		{
+			Staged.iAfterImages += Detail.AfterImage.iMaxCopies;
+			Staged.iEstimatedDrawSubmissions +=
+				Detail.AfterImage.iMaxCopies;
+		}
+		if (Element.eKind == EFFECT_ELEMENT_KIND::LIGHT &&
+			Detail.Light.bEnabled)
+		{
+			++Staged.iLights;
+			++Staged.iEstimatedDrawSubmissions;
+		}
+		if (Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+			Detail.ScreenPost.bEnabled)
+		{
+			++Staged.iScreenPosts;
+			++Staged.iEstimatedDrawSubmissions;
+		}
+	}
+	if (!BudgetWithin(Staged, SCENE_HARD_BUDGET))
+	{
+		strOutStatus =
+			"One Effect document exceeds the scene hard budget.";
+		return false;
+	}
+	OutCost = Staged;
+	strOutStatus.clear();
+	return true;
+}
+
+Client::EFFECT_SCENE_BUDGET_PROBE
+Client::CEffectPresentationService::Get_SceneBudgetProbe()
+{
+	EFFECT_SCENE_BUDGET_PROBE Probe;
+	Probe.Active = Current_ActiveBudget();
+	Probe.Pending = Current_PendingBudget();
+	Probe.iRejectedSpawnCount = g_iSceneBudgetRejectedSpawnCount;
+	return Probe;
 }
 
 bool_t Client::CEffectPresentationService::Prepare_ProductCues(
@@ -601,13 +1661,13 @@ bool_t Client::CEffectPresentationService::Prepare_ReconstructedArtist31470(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	if (nullptr != g_ReconstructedArtist31470.pPreparation &&
-		g_ReconstructedArtist31470.pPreparation->Get_CatalogEntry().get() ==
-			pEntry.get() && nullptr != g_ReconstructedArtist31470.pDocument &&
-		nullptr != g_ReconstructedArtist31470.pPrepared)
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cached;
+	std::string strCacheStatus;
+	if (Resolve_Artist31470Cache(nullptr, Cached, strCacheStatus) &&
+		Cached.pPreparation->Get_CatalogEntry().get() == pEntry.get())
 	{
 		strOutStatus =
-			"Artist 31470 reconstructed source runtime is already prepared.";
+			"Artist Core F (33) shared document/prepared cache is already prepared.";
 		g_strStatus = strOutStatus;
 		return true;
 	}
@@ -615,17 +1675,42 @@ bool_t Client::CEffectPresentationService::Prepare_ReconstructedArtist31470(
 	EFFECT_DOCUMENT_DESC Document;
 	if (!CEffectReconstructedSourceRuntimeFactory::Build_Document(
 		pPreparation, Document, strOutStatus,
-		EFFECT_RECONSTRUCTED_VISUAL_SCOPE::V4_ARTIST_F_MAIN_REVIEW))
+		RECONSTRUCTED_ARTIST_31470_VISUAL_SCOPE))
 	{
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	auto pDocument =
-		std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(Document));
+	if (const std::shared_ptr<const EFFECT_OCCURRENCE_TUNING_DOCUMENT> pTuning =
+			pEntry->Get_OccurrenceTuning();
+		nullptr != pTuning &&
+		!CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+			Document, *pProgram, *pTuning, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	uint32_t iVisibleElementCount = 0u;
+	if (!Validate_Artist31470CoreDocument(
+		Document, iVisibleElementCount, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProjection;
+	if (!Create_Artist31470VisualAdapterProjection(
+			Document, pVisualProjection, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
+		pVisualProjection->Get_DocumentShared();
 	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> pPrepared;
-	if (!CEffectDocumentRenderer::Prepare_ReconstructedSourceRuntime(
-		std::move(pDevice), std::move(pContext), pPreparation, *pDocument,
-		pPrepared, strOutStatus))
+	if (!CEffectDocumentRenderer::
+		Prepare_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			std::move(pDevice), std::move(pContext), pPreparation,
+			pVisualProjection, pPrepared, strOutStatus))
 	{
 		g_strStatus = strOutStatus;
 		return false;
@@ -637,14 +1722,27 @@ bool_t Client::CEffectPresentationService::Prepare_ReconstructedArtist31470(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-
 	RECONSTRUCTED_SOURCE_RUNTIME_CACHE Staged;
 	Staged.pPreparation = std::move(pPreparation);
-	Staged.pDocument = std::move(pDocument);
+	Staged.pDocument = pDocument;
+	Staged.pVisualProjection = std::move(pVisualProjection);
 	Staged.pPrepared = std::move(pPrepared);
+	Staged.eVisualScope = RECONSTRUCTED_ARTIST_31470_VISUAL_SCOPE;
+	Staged.iGeneration = Next_Artist31470CacheGeneration();
+	Staged.iVisibleElementCount = iVisibleElementCount;
+	if (0u == Staged.iGeneration)
+	{
+		strOutStatus = "Artist Core F shared cache generation is exhausted.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	g_ReconstructedArtist31470 = std::move(Staged);
+	g_LastArtist31470ToolPreviewConsumption = {};
+	g_LastArtist31470GameplayConsumption = {};
+	g_iArtist31470ToolPreviewConsumeCount = 0u;
+	g_iArtist31470GameplayConsumeCount = 0u;
 	strOutStatus =
-		"Artist 31470 V4 material-composition review (#9/#10/#11) prepared; zero occurrences are admitted and Product remains false.";
+		"Artist Core F (33) shared cache prepared: MeshParticle 13, SpriteParticle 16, DecalParticle 3, CascadeRibbon 1; PointLight/ScreenPost stay deferred and Product remains false.";
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -662,24 +1760,15 @@ bool_t Client::CEffectPresentationService::Acquire_ReconstructedArtist31470(
 	{
 		return false;
 	}
-	const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
-		pCurrentEntry = CEffectCatalog::Find_RuntimeProgramEntry(
-			std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
-	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
-		pPreparation = g_ReconstructedArtist31470.pPreparation;
-	if (nullptr == pCurrentEntry || nullptr == pPreparation ||
-		pPreparation->Get_CatalogEntry().get() != pCurrentEntry.get() ||
-		nullptr == g_ReconstructedArtist31470.pDocument ||
-		nullptr == g_ReconstructedArtist31470.pPrepared)
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(nullptr, Cache, strOutStatus))
 	{
-		strOutStatus =
-			"Artist 31470 reconstructed prepared cache identity is invalid.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	OutPreparation = pPreparation;
+	OutPreparation = Cache.pPreparation;
 	strOutStatus =
-		"Artist 31470 reconstructed prepared cache acquired; Product remains false.";
+		"Artist Core F (33) shared cache acquired; Product remains false.";
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -691,37 +1780,294 @@ bool_t Client::CEffectPresentationService::
 			EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& pExpectedPreparation,
 		std::string& strOutStatus)
 {
-	const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
-		pCurrentEntry = CEffectCatalog::Find_RuntimeProgramEntry(
-			std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
-	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
-		pPreparation = g_ReconstructedArtist31470.pPreparation;
-	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram =
-		nullptr == pPreparation ? nullptr : pPreparation->Get_Program();
-	if (nullptr == pObject || nullptr == pExpectedPreparation ||
-		nullptr == pCurrentEntry || nullptr == pPreparation ||
-		pPreparation.get() != pExpectedPreparation.get() ||
-		pPreparation->Get_CatalogEntry().get() != pCurrentEntry.get() ||
-		nullptr == pProgram || pProgram->Admission.bRuntimeExecution ||
-		pProgram->Admission.bProduct ||
-		nullptr == g_ReconstructedArtist31470.pDocument ||
-		nullptr == g_ReconstructedArtist31470.pPrepared)
+	if (nullptr == pObject || nullptr == pExpectedPreparation)
 	{
 		strOutStatus =
-			"Artist 31470 reconstructed preview cache identity is invalid.";
+			"Artist Core F preview object/expected cache identity is invalid.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	if (!pObject->Stage_ReconstructedSourceRuntime(
-		*g_ReconstructedArtist31470.pDocument,
-		g_ReconstructedArtist31470.pPrepared,
-		pPreparation, strOutStatus))
+	EFFECT_ARTIST_31470_CACHE_IDENTITY ConsumedIdentity;
+	if (!Attach_Artist31470CoreCache(
+		pObject, pExpectedPreparation,
+		ConsumedIdentity, strOutStatus))
 	{
 		g_strStatus = strOutStatus;
 		return false;
 	}
+	Record_Artist31470ToolPreviewConsumption(ConsumedIdentity);
 	strOutStatus =
-		"Artist 31470 reconstructed preview attached from the shared prepared cache.";
+		"Artist Core F (33) Tool preview consumed the shared document/prepared cache.";
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::Get_ReconstructedOccurrenceInfo(
+	const std::string& strEffectAssetId,
+	const std::string& strOccurrenceId,
+	EFFECT_RECONSTRUCTED_OCCURRENCE_INFO& OutInfo,
+	std::string& strOutStatus)
+{
+	OutInfo = {};
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(nullptr, Cache, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram =
+		Cache.pPreparation->Get_Program();
+	if (nullptr == pProgram ||
+		pProgram->strRuntimeCatalogAssetId != strEffectAssetId)
+	{
+		strOutStatus =
+			"Reconstructed occurrence does not belong to the prepared Effect.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const auto Emitter = std::find_if(
+		pProgram->Emitters.begin(), pProgram->Emitters.end(),
+		[&strOccurrenceId](const EFFECT_RUNTIME_PROGRAM_EMITTER& Candidate)
+		{
+			return Candidate.Row.strId == strOccurrenceId;
+		});
+	if (Emitter == pProgram->Emitters.end())
+	{
+		strOutStatus = "Reconstructed occurrence ID is not in the prepared Program.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const auto Element = std::find_if(
+		Cache.pDocument->Elements.begin(), Cache.pDocument->Elements.end(),
+		[&Emitter](const EFFECT_ELEMENT_DESC& Candidate)
+		{
+			return Candidate.strElementId == Emitter->strSourceElementId;
+		});
+	if (Element == Cache.pDocument->Elements.end())
+	{
+		strOutStatus = "Reconstructed occurrence projected Element is missing.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const auto Assign = [](const std::array<double, 3u>& Source,
+		float3_t& Target)
+	{
+		if (std::any_of(Source.begin(), Source.end(), [](const double Value)
+			{
+				return !std::isfinite(Value) ||
+					Value < -static_cast<double>(FLT_MAX) ||
+					Value > static_cast<double>(FLT_MAX);
+			}))
+		{
+			return false;
+		}
+		Target = { static_cast<float>(Source[0]), static_cast<float>(Source[1]),
+			static_cast<float>(Source[2]) };
+		return true;
+	};
+	EFFECT_RECONSTRUCTED_OCCURRENCE_INFO Staged;
+	Staged.strEffectAssetId = strEffectAssetId;
+	Staged.strOccurrenceId = Emitter->Row.strId;
+	Staged.strSourceOccurrenceRowSha256 = Emitter->Row.strRowSha256;
+	Staged.strSourceElementId = Emitter->strSourceElementId;
+	Staged.strSourceEmitterPath = Emitter->strSourceEmitterPath;
+	Staged.eRenderer = Emitter->eRenderer;
+	if (!Assign(Emitter->CueLocalTransform.vPosition,
+			Staged.SourceLocalTransform.vPosition) ||
+		!Assign(Emitter->CueLocalTransform.vRotationDegrees,
+			Staged.SourceLocalTransform.vRotationDegrees) ||
+		!Assign(Emitter->CueLocalTransform.vScale,
+			Staged.SourceLocalTransform.vScale))
+	{
+		strOutStatus = "Reconstructed occurrence source transform is non-finite.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	Staged.EffectiveLocalTransform.vPosition = Element->Detail.Transform.vPosition;
+	Staged.EffectiveLocalTransform.vRotationDegrees =
+		Element->Detail.Transform.vRotationDegrees;
+	Staged.EffectiveLocalTransform.vScale = Element->Detail.Transform.vScale;
+	OutInfo = std::move(Staged);
+	strOutStatus.clear();
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::
+	Stage_ReconstructedOccurrenceTuningPreview(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<CEffectObject>& pObject,
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			pExpectedPreparation,
+		const EFFECT_OCCURRENCE_TUNING_DOCUMENT& Tuning,
+		std::string& strOutStatus)
+{
+	if (nullptr == pDevice || nullptr == pContext ||
+		nullptr == pObject || nullptr == pExpectedPreparation)
+	{
+		strOutStatus = "Occurrence tuning preview object/preparation is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(
+		pExpectedPreparation, Cache, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram =
+		Cache.pPreparation->Get_Program();
+	if (nullptr == pProgram)
+	{
+		strOutStatus = "Occurrence tuning preview Program is unavailable.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	EFFECT_DOCUMENT_DESC StagedDocument = *Cache.pDocument;
+	if (!CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+			StagedDocument, *pProgram, Tuning, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	uint32_t iVisibleElementCount = 0u;
+	if (!Validate_Artist31470CoreDocument(
+			StagedDocument, iVisibleElementCount, strOutStatus) ||
+		iVisibleElementCount != Cache.Identity.iVisibleElementCount)
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "Occurrence tuning changed the prepared visual scope.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProjection;
+	if (!Create_Artist31470VisualAdapterProjection(
+			StagedDocument, pVisualProjection, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> pPrepared;
+	if (!CEffectDocumentRenderer::
+			Prepare_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+				std::move(pDevice), std::move(pContext), Cache.pPreparation,
+				pVisualProjection, pPrepared, strOutStatus) ||
+		nullptr == pPrepared)
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Occurrence tuning visual adapter prewarm returned no result.";
+		}
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (!pObject->Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			pVisualProjection, pPrepared, Cache.pPreparation, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	Record_Artist31470ToolPreviewConsumption(Cache.Identity);
+	strOutStatus =
+		"Occurrence tuning staged object-locally; shared Product cache is unchanged.";
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::
+	Stage_ReconstructedSourceAuthoringOverlayPreview(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<CEffectObject>& pObject,
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
+			pExpectedPreparation,
+		const EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT& Overlay,
+		std::string& strOutStatus)
+{
+	if (nullptr == pDevice || nullptr == pContext ||
+		nullptr == pObject || nullptr == pExpectedPreparation)
+	{
+		strOutStatus =
+			"Source authoring overlay preview object/preparation is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(
+		pExpectedPreparation, Cache, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram =
+		Cache.pPreparation->Get_Program();
+	if (nullptr == pProgram)
+	{
+		strOutStatus =
+			"Source authoring overlay preview Program is unavailable.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+
+	/* The overlay is applied to an object-local document copy.  Its codec has no
+	   representation for Renderer, SourceRecipe, attachment, preparation,
+	   module or distribution fields, so those admitted source authorities are
+	   carried unchanged into the same visual-adapter prewarm transaction. */
+	EFFECT_DOCUMENT_DESC StagedDocument = *Cache.pDocument;
+	if (!CEffectSourceAuthoringOverlayCodec::Apply_ToProjectedDocument(
+			StagedDocument, *pProgram, Overlay, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	uint32_t iVisibleElementCount = 0u;
+	if (!Validate_Artist31470CoreDocument(
+			StagedDocument, iVisibleElementCount, strOutStatus) ||
+		iVisibleElementCount != Cache.Identity.iVisibleElementCount)
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Source authoring overlay changed the prepared visual scope.";
+		}
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProjection;
+	if (!Create_Artist31470VisualAdapterProjection(
+			StagedDocument, pVisualProjection, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> pPrepared;
+	if (!CEffectDocumentRenderer::
+			Prepare_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+				std::move(pDevice), std::move(pContext), Cache.pPreparation,
+				pVisualProjection, pPrepared, strOutStatus) ||
+		nullptr == pPrepared)
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Source authoring overlay prewarm returned no result.";
+		}
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (!pObject->Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+			pVisualProjection, pPrepared, Cache.pPreparation, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	Record_Artist31470ToolPreviewConsumption(Cache.Identity);
+	strOutStatus =
+		"Source authoring overlay staged object-locally; immutable source preparation and shared Product cache are unchanged.";
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -731,38 +2077,35 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	std::string& strOutStatus)
 {
 	const std::shared_ptr<CCharacter> pOwner = Desc.pOwner.lock();
-	const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
-		pCurrentEntry = CEffectCatalog::Find_RuntimeProgramEntry(
-			std::string(RECONSTRUCTED_ARTIST_31470_ASSET_ID));
-	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
-		pPreparation = g_ReconstructedArtist31470.pPreparation;
 	if (Desc.strEffectAssetId != RECONSTRUCTED_ARTIST_31470_ASSET_ID ||
 		nullptr == pOwner || nullptr == pOwner->Get_BodyModel() ||
-		nullptr == pCurrentEntry || nullptr == pPreparation ||
-		pPreparation->Get_CatalogEntry().get() != pCurrentEntry.get() ||
-		nullptr == g_ReconstructedArtist31470.pDocument ||
-		nullptr == g_ReconstructedArtist31470.pPrepared ||
-		Desc.strAnchorSlotId.empty() || Desc.strOccurrenceId.empty() ||
+		Desc.strAnchorSlotId != "root" || Desc.strOccurrenceId.empty() ||
 		0u == Desc.iActionStartTick ||
-		!std::isfinite(Desc.fPlaybackRate) || Desc.fPlaybackRate <= 0.f ||
-		Desc.fPlaybackRate > 16.f ||
+		!std::isfinite(Desc.fPlaybackRate) ||
+		std::abs(Desc.fPlaybackRate - 1.f) > 1.0e-6f ||
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
 		EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
-		EFFECT_STOP_POLICY::END == Desc.eStopPolicy)
+		EFFECT_STOP_POLICY::NATURAL != Desc.eStopPolicy)
 	{
 		strOutStatus =
-			"Artist 31470 reconstructed spawn descriptor/cache is invalid.";
+			"Artist Core F gameplay spawn descriptor is invalid.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram =
-		pPreparation->Get_Program();
-	if (nullptr == pProgram || pProgram->Admission.bRuntimeExecution ||
-		pProgram->Admission.bProduct)
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(nullptr, Cache, strOutStatus))
 	{
-		strOutStatus =
-			"Artist 31470 reconstructed spawn cannot cross Product admission.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	EFFECT_SCENE_BUDGET_COST AdmissionCost;
+	const EFFECT_OWNER_VIEW Owner{ pOwner, nullptr };
+	if (nullptr == Cache.pDocument ||
+		!Estimate_DocumentBudget(*Cache.pDocument, AdmissionCost, strOutStatus) ||
+		!Can_AdmitBudget(Owner, AdmissionCost, true, strOutStatus))
+	{
+		++g_iSceneBudgetRejectedSpawnCount;
 		g_strStatus = strOutStatus;
 		return false;
 	}
@@ -780,28 +2123,33 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	}
 
 	float4x4_t Anchor{};
-	if (!Resolve_Anchor(pOwner, Desc.strAnchorSlotId, Anchor))
+	if (!Resolve_Anchor(
+			Owner,
+			Desc.strAnchorSlotId, Anchor))
 	{
 		strOutStatus = "Artist 31470 root anchor is missing.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
 	std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
-		Collect_ReconstructedAnchorRequests(pPreparation);
-	if (5u != SourceAnchorRequests.size() ||
-		std::any_of(SourceAnchorRequests.begin(), SourceAnchorRequests.end(),
-			[&pOwner](const SOURCE_ANCHOR_REQUEST& Request)
-			{
-				return !pOwner->Get_BodyModel()->Has_Bone(
-					Request.strRuntimeBoneName.c_str());
-			}))
+		Collect_ReconstructedAnchorRequests(Cache.pPreparation);
+	if (!Has_ExactArtist31470AnchorContract(SourceAnchorRequests))
 	{
 		strOutStatus =
-			"Artist 31470 exact b_wp_1 source-anchor contract is unavailable.";
+			"Artist 31470 five equal WP_SDM_R_Battle binding rows are unavailable.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
 	const float4x4_t Root = Compose_Local(Desc.LocalTransform, Anchor);
+	ARTIST_31470_TRANSFORM_HISTORY ArtistTransformHistory;
+	if (!Prepare_Artist31470TransformHistory(
+			pOwner, SourceAnchorRequests, Root,
+			Desc.fInitialSampleTimeSeconds,
+			ArtistTransformHistory, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
 	ObjectDesc.RootWorld = Root;
 	ObjectDesc.bAutoPlay = false;
@@ -820,11 +2168,11 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	}
 	const std::shared_ptr<CEffectObject> pEffect =
 		std::dynamic_pointer_cast<CEffectObject>(pGameObject);
+	EFFECT_ARTIST_31470_CACHE_IDENTITY ConsumedIdentity;
 	if (nullptr == pEffect ||
-		!pEffect->Stage_ReconstructedSourceRuntime(
-			*g_ReconstructedArtist31470.pDocument,
-			g_ReconstructedArtist31470.pPrepared,
-			pPreparation, strOutStatus))
+		!Attach_Artist31470CoreCache(
+			pEffect, Cache.pPreparation,
+			ConsumedIdentity, strOutStatus))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			iLevelIndex, EFFECT_LAYER, pGameObject);
@@ -840,6 +2188,8 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		ProbeAfter.iTextureDiskLoadCount != ProbeBefore.iTextureDiskLoadCount ||
 		ProbeAfter.iVectorFieldDiskLoadCount !=
 			ProbeBefore.iVectorFieldDiskLoadCount ||
+		ProbeAfter.iMutableInstanceBufferBuildCount !=
+			ProbeBefore.iMutableInstanceBufferBuildCount ||
 		ProbeAfter.iSynchronousDocumentStageCount !=
 			ProbeBefore.iSynchronousDocumentStageCount ||
 		ProbeAfter.iPreparedAttachCount !=
@@ -848,13 +2198,10 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			iLevelIndex, EFFECT_LAYER, pGameObject);
 		strOutStatus =
-			"Artist 31470 action edge violated the prepared no-I/O contract.";
+			"Artist 31470 action edge violated the prepared no-I/O/no-GPU-allocation contract.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	pEffect->Set_SourceAnchorWorlds(
-		Resolve_SourceAnchors(pOwner, SourceAnchorRequests));
-
 	ACTIVE_EFFECT Active;
 	Active.pObject = pEffect;
 	Active.pOwner = pOwner;
@@ -873,9 +2220,76 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	Active.fPendingInitialSampleTimeSeconds =
 		Desc.fInitialSampleTimeSeconds;
 	Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
+	Active.Artist31470TransformHistory =
+		std::move(ArtistTransformHistory);
+	Active.AdmissionCost = AdmissionCost;
+	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+		[&Active](const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			return Build_Artist31470TransformSample(
+				Active, fSampleTimeSeconds, OutSample, strOutError);
+		};
+	std::string strHistoryError;
+	if (!pEffect->Set_SampleTimeWithTransformHistory(
+			Desc.fInitialSampleTimeSeconds,
+			TransformProvider, strHistoryError))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			iLevelIndex, EFFECT_LAYER, pGameObject);
+		strOutStatus =
+			"Artist 31470 initial transform-history seek failed: " +
+			strHistoryError;
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const f64_t fCommittedHistoryClock =
+		pEffect->Get_PreviewFixedStepClockSeconds();
+	if (!std::isfinite(fCommittedHistoryClock) ||
+		fCommittedHistoryClock < 0.0 ||
+		fCommittedHistoryClock >
+			static_cast<f64_t>(Desc.fInitialSampleTimeSeconds) + 1.0e-5)
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			iLevelIndex, EFFECT_LAYER, pGameObject);
+		strOutStatus =
+			"Artist 31470 initial transform-history clock is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	Active.fElapsedCueTimeSeconds =
+		static_cast<f32_t>(fCommittedHistoryClock);
+	Active.bPendingInitialSeek = false;
 	g_ActiveEffects.push_back(std::move(Active));
+	Record_Artist31470GameplayConsumption(ConsumedIdentity);
 	strOutStatus =
-		"Spawned nonProduct Artist 31470 reconstructed effect at authoritative action age.";
+		"Artist Core F (33) gameplay consumed the shared cache with an instance-local fixed-step anchor history.";
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::
+	Get_ReconstructedArtist31470CacheProbe(
+		EFFECT_ARTIST_31470_CACHE_PROBE& OutProbe,
+		std::string& strOutStatus)
+{
+	OutProbe = {};
+	RECONSTRUCTED_SOURCE_RUNTIME_CACHE_VIEW Cache;
+	if (!Resolve_Artist31470Cache(nullptr, Cache, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	OutProbe.Current = Cache.Identity;
+	OutProbe.LastToolPreviewConsumption =
+		g_LastArtist31470ToolPreviewConsumption;
+	OutProbe.LastGameplayConsumption = g_LastArtist31470GameplayConsumption;
+	OutProbe.iToolPreviewConsumeCount =
+		g_iArtist31470ToolPreviewConsumeCount;
+	OutProbe.iGameplayConsumeCount = g_iArtist31470GameplayConsumeCount;
+	strOutStatus =
+		"Artist Core F (33) shared-cache identity/provenance probe resolved.";
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -890,10 +2304,10 @@ bool_t Client::CEffectPresentationService::Spawn(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const std::shared_ptr<CCharacter> pOwner = Desc.pOwner.lock();
+	const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Desc);
 	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
 		CEffectCatalog::Find(Desc.strEffectAssetId);
-	const bool_t bDescriptorValid = nullptr != pOwner && nullptr != pDocument &&
+	const bool_t bDescriptorValid = Owner.Is_Valid() && nullptr != pDocument &&
 		!Desc.strAnchorSlotId.empty() && !Desc.strOccurrenceId.empty() &&
 		std::isfinite(Desc.fPlaybackRate) && Desc.fPlaybackRate > 0.f &&
 		Desc.fPlaybackRate <= 16.f &&
@@ -910,9 +2324,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 		return false;
 	}
 	const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
-		pPrepared = CEffectDocumentRenderer::Find_Prepared(
-			CEffectCatalog::Get_RuntimeRevision(),
-			Desc.strEffectAssetId, *pDocument);
+		pPrepared = Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
 	if (nullptr == pPrepared)
 	{
 		strOutStatus =
@@ -920,17 +2332,31 @@ bool_t Client::CEffectPresentationService::Spawn(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const auto SameEdge = [&Desc, &pOwner](const auto& Effect)
+	const auto Budget = g_ProductEffectBudgetCosts.find(
+		Desc.strEffectAssetId);
+	if (Budget == g_ProductEffectBudgetCosts.end() ||
+		!Can_AdmitBudget(Owner,
+			Budget == g_ProductEffectBudgetCosts.end() ?
+				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
+			true, strOutStatus))
 	{
-		return Effect.Desc.pOwner.lock() == pOwner &&
+		++g_iSceneBudgetRejectedSpawnCount;
+		if (Budget == g_ProductEffectBudgetCosts.end())
+			strOutStatus = "Effect spawn has no prepared scene-budget receipt.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const auto SameEdge = [&Desc, &Owner](const auto& Effect)
+	{
+		return Same_Owner(Resolve_Owner(Effect.Desc), Owner) &&
 			Effect.Desc.iActionStartTick == Desc.iActionStartTick &&
 			Effect.Desc.strOccurrenceId == Desc.strOccurrenceId;
 	};
 	const bool_t bActiveDuplicate = std::any_of(
 		g_ActiveEffects.begin(), g_ActiveEffects.end(),
-		[&Desc, &pOwner](const ACTIVE_EFFECT& Effect)
+		[&Desc, &Owner](const ACTIVE_EFFECT& Effect)
 		{
-			return Effect.pOwner.lock() == pOwner &&
+			return Same_Owner(Resolve_Owner(Effect), Owner) &&
 				Effect.iActionStartTick == Desc.iActionStartTick &&
 				Effect.strOccurrenceId == Desc.strOccurrenceId;
 		});
@@ -946,6 +2372,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 	PENDING_EFFECT_SPAWN Pending;
 	Pending.Desc = Desc;
 	Pending.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	Pending.AdmissionCost = Budget->second;
 	g_PendingEffectSpawns.push_back(std::move(Pending));
 	strOutStatus = "Queued admitted Effect for post-update layer commit: " +
 		Desc.strEffectAssetId;
@@ -990,10 +2417,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-    const std::shared_ptr<CCharacter> pOwner = Desc.pOwner.lock();
+	const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Desc);
     const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
         CEffectCatalog::Find(Desc.strEffectAssetId);
-    if (nullptr == pOwner || nullptr == pDocument ||
+	if (!Owner.Is_Valid() || nullptr == pDocument ||
         Desc.strAnchorSlotId.empty() ||
 		Desc.strOccurrenceId.empty() ||
 		!std::isfinite(Desc.fPlaybackRate) ||
@@ -1010,9 +2437,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
     const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
-        pPrepared = CEffectDocumentRenderer::Find_Prepared(
-            CEffectCatalog::Get_RuntimeRevision(),
-            Desc.strEffectAssetId, *pDocument);
+		pPrepared = Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
     if (nullptr == pPrepared)
     {
         strOutStatus =
@@ -1020,11 +2445,25 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         g_strStatus = strOutStatus;
         return false;
     }
+	const auto Budget = g_ProductEffectBudgetCosts.find(
+		Desc.strEffectAssetId);
+	if (Budget == g_ProductEffectBudgetCosts.end() ||
+		!Can_AdmitBudget(Owner,
+			Budget == g_ProductEffectBudgetCosts.end() ?
+				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
+			false, strOutStatus))
+	{
+		++g_iSceneBudgetRejectedSpawnCount;
+		if (Budget == g_ProductEffectBudgetCosts.end())
+			strOutStatus = "Effect spawn has no prepared scene-budget receipt.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
     const bool Duplicate = std::any_of(
         g_ActiveEffects.begin(), g_ActiveEffects.end(),
-        [&Desc, &pOwner](const ACTIVE_EFFECT& Effect)
+		[&Desc, &Owner](const ACTIVE_EFFECT& Effect)
         {
-            return Effect.pOwner.lock() == pOwner &&
+			return Same_Owner(Resolve_Owner(Effect), Owner) &&
                 Effect.iActionStartTick == Desc.iActionStartTick &&
 				Effect.strOccurrenceId == Desc.strOccurrenceId;
         });
@@ -1036,7 +2475,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     }
 
     float4x4_t Anchor{};
-    if (!Resolve_Anchor(pOwner, Desc.strAnchorSlotId, Anchor))
+	if (!Resolve_Anchor(Owner, Desc.strAnchorSlotId, Anchor))
     {
         strOutStatus = "Effect anchor is missing on the owner skeleton.";
         g_strStatus = strOutStatus;
@@ -1046,8 +2485,12 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
         Collect_SourceAnchorRequests(*pDocument);
     CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
-    ObjectDesc.pDocument = pDocument.get();
-    ObjectDesc.pPreparedResources = pPrepared;
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProjection = CEffectCatalog::Find_VisualProjection(
+			Desc.strEffectAssetId);
+	ObjectDesc.pDocument = nullptr == pVisualProjection ? pDocument.get() : nullptr;
+	ObjectDesc.pPreparedResources = pPrepared;
+	ObjectDesc.pVisualProgramProjection = pVisualProjection;
     ObjectDesc.RootWorld = Root;
     ObjectDesc.bAutoPlay = false;
     ObjectDesc.bRequirePreparedResources = true;
@@ -1081,6 +2524,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         ProbeAfter.iTextureDiskLoadCount != ProbeBefore.iTextureDiskLoadCount ||
 		ProbeAfter.iVectorFieldDiskLoadCount !=
 			ProbeBefore.iVectorFieldDiskLoadCount ||
+		ProbeAfter.iMutableInstanceBufferBuildCount !=
+			ProbeBefore.iMutableInstanceBufferBuildCount ||
         ProbeAfter.iSynchronousDocumentStageCount !=
             ProbeBefore.iSynchronousDocumentStageCount ||
         ProbeAfter.iPreparedAttachCount !=
@@ -1088,15 +2533,16 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(
             iLevelIndex, EFFECT_LAYER, pGameObject);
-        strOutStatus =
-            "Effect spawn violated the prepared no-I/O resource contract.";
+		strOutStatus =
+			"Effect spawn violated the prepared no-I/O/no-GPU-allocation resource contract.";
         g_strStatus = strOutStatus;
         return false;
     }
 
     ACTIVE_EFFECT Active;
     Active.pObject = pEffect;
-    Active.pOwner = pOwner;
+	Active.pOwner = Owner.pCharacter;
+	Active.pBossOwner = Owner.pBoss;
     Active.iLevelIndex = iLevelIndex;
     Active.strEffectAssetId = Desc.strEffectAssetId;
     Active.strAnchorSlotId = Desc.strAnchorSlotId;
@@ -1111,7 +2557,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.fElapsedCueTimeSeconds = Desc.fInitialSampleTimeSeconds;
     Active.fPendingInitialSampleTimeSeconds =
         Desc.fInitialSampleTimeSeconds;
-    Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
+	Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
+	Active.AdmissionCost = Budget->second;
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -1124,7 +2571,8 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
     for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
-        const std::shared_ptr<CCharacter> pOwner = Effect.pOwner.lock();
+		const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Effect);
+		const std::shared_ptr<CCharacter>& pCharacterOwner = Owner.pCharacter;
 		if (nullptr != Effect.pObject &&
 			Effect.pObject->Is_RenderFailureIsolated())
 		{
@@ -1134,24 +2582,78 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 			Remove_At(iEffect);
 			continue;
 		}
-        if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
-            !Effect.bFollowAnchorMissing)
-        {
-            Effect.pObject->Set_SampleTime(
-                Effect.fPendingInitialSampleTimeSeconds);
-            Effect.bPendingInitialSeek = false;
-        }
-        else if (nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
-        {
-            const f32_t fCueDelta =
-                (std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
-            Effect.pObject->Advance_Preview(fCueDelta);
-            Effect.fElapsedCueTimeSeconds += fCueDelta;
-        }
+		if (nullptr != pCharacterOwner && nullptr != Effect.pObject &&
+			!Effect.bFollowAnchorMissing &&
+			Effect.Artist31470TransformHistory.bEnabled)
+		{
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+				[&Effect](const f32_t fSampleTimeSeconds,
+					EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+					std::string& strOutError)
+				{
+					return Build_Artist31470TransformSample(
+						Effect, fSampleTimeSeconds, OutSample, strOutError);
+				};
+			std::string strHistoryError;
+			bool_t bHistoryCommitted = false;
+			if (Effect.bPendingInitialSeek)
+			{
+				bHistoryCommitted =
+					Effect.pObject->Set_SampleTimeWithTransformHistory(
+						Effect.fPendingInitialSampleTimeSeconds,
+						TransformProvider, strHistoryError);
+			}
+			else
+			{
+				const f32_t fCueDelta =
+					(std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
+				bHistoryCommitted =
+					Effect.pObject->Advance_PreviewWithTransformHistory(
+						fCueDelta, TransformProvider, strHistoryError);
+			}
+			if (!bHistoryCommitted)
+			{
+				Effect.pObject->Set_Visible(false);
+				g_strStatus =
+					"Artist 31470 transform-history playback failed closed: " +
+					strHistoryError;
+				OutputDebugStringA(("[Client][EffectPresentation] " +
+					g_strStatus + "\n").c_str());
+				Remove_At(iEffect);
+				continue;
+			}
+			const f64_t fCommittedClock =
+				Effect.pObject->Get_PreviewFixedStepClockSeconds();
+			if (!std::isfinite(fCommittedClock) || fCommittedClock < 0.0)
+			{
+				Effect.pObject->Set_Visible(false);
+				g_strStatus =
+					"Artist 31470 transform-history clock failed closed.";
+				Remove_At(iEffect);
+				continue;
+			}
+			Effect.fElapsedCueTimeSeconds =
+				static_cast<f32_t>(fCommittedClock);
+			Effect.bPendingInitialSeek = false;
+		}
+		else if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
+			!Effect.bFollowAnchorMissing)
+		{
+			Effect.pObject->Set_SampleTime(
+				Effect.fPendingInitialSampleTimeSeconds);
+			Effect.bPendingInitialSeek = false;
+		}
+		else if (nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
+		{
+			const f32_t fCueDelta =
+				(std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
+			Effect.pObject->Advance_Preview(fCueDelta);
+			Effect.fElapsedCueTimeSeconds += fCueDelta;
+		}
         const bool bCueEnded =
             EFFECT_STOP_POLICY::CUE_END == Effect.eStopPolicy &&
             Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs;
-        if (nullptr == pOwner || nullptr == Effect.pObject ||
+        if (!Owner.Is_Valid() || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel || bCueEnded ||
             Effect.pObject->Is_Finished() || Effect.bFollowAnchorMissing)
         {
@@ -1166,8 +2668,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
     {
-        const std::shared_ptr<CCharacter> pOwner = Effect.pOwner.lock();
-        if (nullptr == pOwner || nullptr == Effect.pObject ||
+		const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Effect);
+        if (!Owner.Is_Valid() || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel)
         {
             Effect.bFollowAnchorMissing = true;
@@ -1175,20 +2677,40 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
                 Effect.pObject->Set_Visible(false);
             continue;
         }
-        Effect.pObject->Set_SourceAnchorWorlds(
-            Resolve_SourceAnchors(pOwner, Effect.SourceAnchorRequests));
+		if (Effect.Artist31470TransformHistory.bEnabled)
+		{
+			const std::shared_ptr<Engine::CModel> pHistoryModel =
+				Effect.Artist31470TransformHistory.pModel.lock();
+			if (nullptr == Owner.pCharacter || nullptr == pHistoryModel ||
+				Owner.pCharacter->Get_BodyModel() != pHistoryModel ||
+				!Is_NonDegenerateAffineMatrix(
+					Effect.Artist31470TransformHistory.ActionStartRootWorld))
+			{
+				Effect.bFollowAnchorMissing = true;
+				Effect.pObject->Set_Visible(false);
+			}
+			/* Artist 31470 has no gameplay movement.  Its typed history provider
+			   owns both the captured root and WP_SDM_R_Battle anchor, so the live
+			   current-pose synchronization below must not overwrite either one. */
+			continue;
+		}
+		Resolve_SourceAnchors(
+			Owner, Effect.SourceAnchorRequests,
+			Effect.SourceAnchorWorldsScratch);
+		Effect.pObject->Set_SourceAnchorWorlds(
+			std::move(Effect.SourceAnchorWorldsScratch));
         if (EFFECT_FOLLOW_POLICY::FOLLOW != Effect.eFollowPolicy &&
             !Effect.bPendingInitialSeek)
             continue;
         float4x4_t Anchor{};
-        if (!Resolve_Anchor(pOwner, Effect.strAnchorSlotId, Anchor))
+        if (!Resolve_Anchor(Owner, Effect.strAnchorSlotId, Anchor))
         {
             Effect.bFollowAnchorMissing = true;
             Effect.pObject->Set_Visible(false);
             continue;
         }
-        Effect.pObject->Set_RootWorld(
-            Compose_Local(Effect.LocalTransform, Anchor));
+		Effect.pObject->Set_RootWorldForNextUpdate(
+			Compose_Local(Effect.LocalTransform, Anchor));
     }
 }
 
@@ -1206,6 +2728,22 @@ void Client::CEffectPresentationService::Stop_Owner(
         if (g_ActiveEffects[iEffect].pOwner.lock() == pOwner)
             Remove_At(iEffect);
     }
+}
+
+void Client::CEffectPresentationService::Stop_BossOwner(
+	const std::shared_ptr<CValtan>& pOwner)
+{
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[&pOwner](const PENDING_EFFECT_SPAWN& Pending)
+		{
+			return Pending.Desc.pBossOwner.lock() == pOwner;
+		}), g_PendingEffectSpawns.end());
+	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
+	{
+		if (g_ActiveEffects[iEffect].pBossOwner.lock() == pOwner)
+			Remove_At(iEffect);
+	}
 }
 
 void Client::CEffectPresentationService::Clear_Level(
@@ -1235,8 +2773,14 @@ void Client::CEffectPresentationService::Clear_All()
 void Client::CEffectPresentationService::Release_PreparedResources()
 {
     Clear_All();
-    g_ProductEffectTargets.clear();
+	g_ProductEffectTargets.clear();
+	g_ProductEffectBudgetCosts.clear();
+	g_iSceneBudgetRejectedSpawnCount = 0u;
 	g_ReconstructedArtist31470 = {};
+	g_LastArtist31470ToolPreviewConsumption = {};
+	g_LastArtist31470GameplayConsumption = {};
+	g_iArtist31470ToolPreviewConsumeCount = 0u;
+	g_iArtist31470GameplayConsumeCount = 0u;
     CEffectDocumentRenderer::Clear_Prepared_Catalog();
     g_strStatus = "Effect product prewarm resources released.";
 }

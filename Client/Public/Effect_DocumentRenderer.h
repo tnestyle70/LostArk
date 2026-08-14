@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
 
@@ -10,7 +11,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -23,6 +26,8 @@ class CShader;
 class CVIBuffer_Rect;
 class CVIBuffer_ParticleRect;
 class CVIBuffer_DynamicTrail;
+struct VTXEFFECT_PARTICLE;
+struct VTXEFFECT_TRAIL;
 NS_END
 
 NS_BEGIN(Client)
@@ -43,6 +48,8 @@ struct EFFECT_RENDER_PREWARM_PROBE final
 	uint64_t iTextureDiskLoadCount = 0u;
 	uint64_t iVectorFieldDiskLoadCount = 0u;
 	uint64_t iPreparedAttachCount = 0u;
+	uint64_t iPreparedIdentityLookupCount = 0u;
+	uint64_t iMutableInstanceBufferBuildCount = 0u;
 	uint64_t iSynchronousDocumentStageCount = 0u;
 	uint64_t iPreparedLookupMissCount = 0u;
 	uint64_t iCatalogRevision = 0u;
@@ -60,6 +67,14 @@ struct EFFECT_PARTICLE_SPRITE_SCALE_DESC final
 	float3_t vScale = { 1.f, 1.f, 1.f };
 };
 
+struct EFFECT_RENDER_PREWARM_TARGET final
+{
+	std::string strEffectAssetId;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProgramProjection;
+};
+
 enum class EFFECT_GPU_RENDER_FAMILY : uint8_t
 {
 	MESH,
@@ -67,6 +82,27 @@ enum class EFFECT_GPU_RENDER_FAMILY : uint8_t
 	DECAL,
 	RIBBON,
 	END
+};
+
+enum class EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND : uint8_t
+{
+	ALL,
+	FAMILY,
+	OCCURRENCE,
+	ELEMENT_SET,
+	END
+};
+
+/* Object-local Tool preview control.  It never changes the immutable source
+   document or evaluator scope; it only selects which already-evaluated Core
+   renderer occurrences may reach their GPU draw carrier. */
+struct EFFECT_PREVIEW_SUBMISSION_ISOLATION final
+{
+	EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND eKind =
+		EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ALL;
+	EFFECT_GPU_RENDER_FAMILY eFamily = EFFECT_GPU_RENDER_FAMILY::END;
+	std::string strElementId;
+	std::vector<std::string> ElementIds;
 };
 
 struct EFFECT_GPU_RENDER_FAMILY_STATS final
@@ -82,10 +118,63 @@ struct EFFECT_GPU_RENDER_FAMILY_STATS final
 	uint64_t iFailed = 0u;
 };
 
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+enum class EFFECT_GPU_RENDER_CARRIER : uint8_t
+{
+	MESH_CMODEL,
+	SPRITE_RECT,
+	SPRITE_INSTANCE,
+	DECAL_RECT,
+	RIBBON_DYNAMIC_TRAIL,
+	END
+};
+
+/* Focused execution evidence for one stable renderer occurrence.  These rows
+   are compiled only into the executable harness; production rendering keeps
+   the same code path without retaining per-draw diagnostic strings. */
+struct EFFECT_GPU_RENDER_OCCURRENCE_STATS final
+{
+	std::string strElementId;
+	EFFECT_GPU_RENDER_FAMILY eFamily = EFFECT_GPU_RENDER_FAMILY::END;
+	uint64_t iConfigured = 0u;
+	uint64_t iEvaluated = 0u;
+	uint64_t iActive = 0u;
+	uint64_t iCandidateRowCount = 0u;
+	uint64_t iAttempted = 0u;
+	uint64_t iMaterialBindCount = 0u;
+	uint64_t iTextureSrvBindCount = 0u;
+	uint64_t iSamplerBindCount = 0u;
+	uint64_t iShaderPassApplyCount = 0u;
+	uint64_t iVIBufferBindCount = 0u;
+	uint64_t iVIBufferDrawCount = 0u;
+	uint64_t iGeometryUploadCount = 0u;
+	uint64_t iIssuedDrawCallCount = 0u;
+	uint64_t iDrawSelectionCount = 0u;
+	uint64_t iSubmitted = 0u;
+	uint64_t iSuppressed = 0u;
+	uint64_t iFailed = 0u;
+	uint32_t iSelectedPassIndex = UINT32_MAX;
+	EFFECT_GPU_RENDER_CARRIER eCarrier = EFFECT_GPU_RENDER_CARRIER::END;
+	bool_t bDrawSelectionDiverged = false;
+	float3_t vSubmittedPositionMin{};
+	float3_t vSubmittedPositionMax{};
+	bool_t bHasSubmittedPosition = false;
+	uint64_t iFinalTrailUploadedVertexCount = 0u;
+	float3_t vFinalTrailPairCenterMin{};
+	float3_t vFinalTrailPairCenterMax{};
+	f32_t fFinalTrailPairWidthMin = 0.f;
+	f32_t fFinalTrailPairWidthMax = 0.f;
+	bool_t bHasFinalTrailPairCenter = false;
+};
+#endif
+
 struct EFFECT_GPU_RENDER_SUBMISSION_STATS final
 {
 	std::array<EFFECT_GPU_RENDER_FAMILY_STATS,
 		static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)> Families{};
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	std::vector<EFFECT_GPU_RENDER_OCCURRENCE_STATS> Occurrences;
+#endif
 	bool_t bCompleted = false;
 	bool_t bCommitted = false;
 };
@@ -140,14 +229,26 @@ private:
 		uint32_t iRuntimeMaterialV2RenderInputCount = 0u;
 		uint32_t iRuntimeMaterialV2RenderConsumedMask = 0u;
 		uint32_t iRuntimeMaterialV2RenderSuppressedMask = 0u;
+		/* Artist F V4 is a finite, occurrence-admitted visual program.  It
+		   deliberately owns a separate opcode namespace from RuntimeMaterialV2;
+		   SourceTextures remain the shared typed SRV carrier. */
+		uint32_t iArtistVisualV4Opcode = 0u;
+		uint32_t iArtistVisualV4TextureMask = 0u;
+		std::array<float4_t, 8u> ArtistVisualV4Params{};
+		std::array<float4_t, 2u> ArtistVisualV4Colors{};
 		std::array<float4_t, 13u> RuntimeMaterialV2ScalarBlocks{};
 		std::array<float4_t, 3u> RuntimeMaterialV2Vectors{};
 		std::array<uint32_t, 3u>
 			RuntimeMaterialV2VectorComponentConsumedMask{};
 		std::array<uint32_t, 3u>
 			RuntimeMaterialV2VectorComponentSuppressedMask{};
-		std::array<ComPtr<ID3D11SamplerState>, 5u>
+		std::array<ComPtr<ID3D11SamplerState>, 6u>
 			RuntimeMaterialV2Samplers{};
+		/* Import-time capture only.  The ordinary authored stage reconstructs
+		   the same GPU resources from Material.Execution and never consults the
+		   reconstructed source sidecars. */
+		std::array<std::optional<EFFECT_MATERIAL_TEXTURE_LANE_DESC>, 6u>
+			MaterialExecutionLanes{};
 		float2_t vReconstructedUVScale{ 1.f, 1.f };
 		float4_t vReconstructedPanRotationAux{};
 		float4_t vReconstructedColor{ 1.f, 1.f, 1.f, 1.f };
@@ -158,6 +259,7 @@ private:
 		std::array<uint32_t, 4u> DynamicParameterSemantics{};
 		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
 		bool_t bSourceMaterialFallbackBlocked = false;
+		bool_t bOccurrenceVisualSuppressed = false;
 	};
 	struct MODEL_CUE_RESOURCE final
 	{
@@ -179,10 +281,18 @@ public:
 		const std::vector<std::pair<std::string,
 			std::shared_ptr<const EFFECT_DOCUMENT_DESC>>>& Documents,
 		std::string& strOutError);
+	static bool_t Prepare_VisualProgramCatalog(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint64_t iCatalogRevision,
+		const std::vector<EFFECT_RENDER_PREWARM_TARGET>& Targets,
+		std::string& strOutError);
 	static std::shared_ptr<const PREPARED_DOCUMENT> Find_Prepared(
 		uint64_t iCatalogRevision,
 		const std::string& strEffectAssetId,
-		const EFFECT_DOCUMENT_DESC& Document);
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection = nullptr);
 	static std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
 		Get_PlaybackResources(
 			const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared);
@@ -290,6 +400,34 @@ public:
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
 		std::string& strOutError);
+	static bool_t Prepare_VisualProgramDocument(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
+		std::string& strOutError);
+	static bool_t Prepare_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
+		std::string& strOutError);
+	/* One-way authoring bridge.  It executes the existing immutable Track A
+	   preparation once, then returns self-contained per-Element material
+	   snapshots.  Runtime Stage_Document consumes only those snapshots. */
+	static bool_t Bake_ReconstructedMaterialExecutionSnapshots(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const EFFECT_DOCUMENT_DESC& SourceDocument,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::unordered_map<std::string, EFFECT_MATERIAL_EXECUTION_DESC>&
+			OutSnapshots,
+		std::string& strOutError);
 
 	HRESULT Initialize();
 	bool_t Stage_Prepared(
@@ -303,8 +441,20 @@ public:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
 		std::string& strOutError);
+	bool_t Stage_PrevalidatedVisualProgramDocument(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
+		std::string& strOutError);
 	bool_t Stage_ReconstructedSourceRuntime(
 		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
+	bool_t Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
 		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -316,6 +466,15 @@ public:
 	HRESULT Render_ReconstructedDiagnostic(
 		const float4x4_t& RootWorld,
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
+	bool_t Set_PreviewSubmissionIsolation(
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+		std::string& strOutError);
+	void Reset_PreviewSubmissionIsolation();
+	const EFFECT_PREVIEW_SUBMISSION_ISOLATION&
+		Get_PreviewSubmissionIsolation() const
+	{
+		return m_PreviewSubmissionIsolation;
+	}
 	void Clear();
 	const std::string& Get_Status() const { return m_strStatus; }
 	bool_t Is_LastRenderFailureObjectLocal() const
@@ -353,6 +512,31 @@ private:
 		std::string& strOutError,
 		PREWARM_ASSET_CACHE* pSharedAssets = nullptr,
 		f32_t fModelPreScale = 1.f) const;
+	bool_t Stage_AuthoredMaterialExecution(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_RESOURCE& InOutResource,
+		std::string& strOutError,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
+	bool_t Capture_MaterialExecutionLane(
+		ELEMENT_RESOURCE& InOutResource,
+		size_t iLane,
+		std::string strAssetId,
+		std::string strRole,
+		std::string strSourceChannel,
+		EFFECT_TEXTURE_COLOR_SPACE eColorSpace,
+		const ComPtr<ID3D11SamplerState>& pSampler,
+		std::string& strOutError) const;
+	bool_t Build_MaterialExecutionSnapshot(
+		const EFFECT_ELEMENT_DESC& Element,
+		const ELEMENT_RESOURCE& Resource,
+		EFFECT_MATERIAL_EXECUTION_DESC& OutSnapshot,
+		std::string& strOutError) const;
+	bool_t Stage_VisualProgramAdapter(
+		const EFFECT_VISUAL_PROGRAM_ROW& Row,
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_RESOURCE& InOutResource,
+		std::string& strOutError,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
 	HRESULT Stage_ModelCueResource(
 		const EFFECT_MODEL_CUE_DESC& Cue,
 		MODEL_CUE_RESOURCE& OutResource,
@@ -366,14 +550,17 @@ private:
 		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
 		std::string& strOutError,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
-			pPreparation = nullptr) const;
+			pPreparation = nullptr,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection = nullptr) const;
 	bool_t Clone_ModelCueResources(
 		const PREPARED_DOCUMENT& Prepared,
 		std::unordered_map<std::string, MODEL_CUE_RESOURCE>& OutResources,
 		std::string& strOutError) const;
-	bool_t Ensure_MutableInstanceBuffers(
+	bool_t Validate_PreparedInstanceBuffers(
 		const EFFECT_DOCUMENT_DESC& Document,
-		std::string& strOutError);
+		const PREPARED_DOCUMENT& Prepared,
+		std::string& strOutError) const;
 	HRESULT Load_Texture(
 		const std::string& strAssetId,
 		ComPtr<ID3D11ShaderResourceView>& OutSRV,
@@ -434,8 +621,27 @@ private:
 		std::string strOperation,
 		HRESULT hResult = E_FAIL,
 		bool_t bObjectLocal = false);
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	void Record_TestMaterialBinding();
+	void Record_TestSamplerBinding();
+	void Record_TestShaderPassApplication();
+	void Record_TestGeometryUpload();
+	void Record_TestTrailGeometryUpload(
+		std::span<const Engine::VTXEFFECT_TRAIL> Vertices);
+	void Record_TestVIBufferBinding();
+	void Record_TestDrawSelection(
+		EFFECT_GPU_RENDER_CARRIER eCarrier,
+		uint32_t iSelectedPassIndex);
+	void Record_TestIssuedDraw(const float4x4_t& World);
+	void Record_TestIssuedDraw(
+		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);
+	void Record_TestIssuedDraw(std::span<const Engine::VTXEFFECT_TRAIL> Vertices);
+#endif
 	uint32_t Select_Pass(EFFECT_RENDER_PROFILE eProfile) const;
 	const ELEMENT_RESOURCE* Find_Resource(const std::string& strElementId) const;
+	bool_t Should_SubmitPreviewOccurrence(
+		const EFFECT_ELEMENT_DESC& Element,
+		EFFECT_GPU_RENDER_FAMILY eFamily) const;
 
 private:
 	ComPtr<ID3D11Device> m_pDevice;
@@ -458,8 +664,17 @@ private:
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
+	bool_t m_bSourceVisualProgramActive = false;
+	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;
 	EFFECT_GPU_RENDER_SUBMISSION_STATS m_LastRenderSubmissionStats;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	EFFECT_GPU_RENDER_OCCURRENCE_STATS* m_pActiveOccurrenceStats = nullptr;
+#endif
 	std::string m_strStatus;
+	uint64_t m_iStatusEvaluated = (std::numeric_limits<uint64_t>::max)();
+	uint64_t m_iStatusActive = (std::numeric_limits<uint64_t>::max)();
+	uint64_t m_iStatusSubmitted = (std::numeric_limits<uint64_t>::max)();
+	uint64_t m_iStatusSuppressed = (std::numeric_limits<uint64_t>::max)();
 	std::string m_strRenderFailureDetail;
 	bool_t m_bLastRenderFailureObjectLocal = false;
 };

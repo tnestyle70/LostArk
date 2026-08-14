@@ -45,7 +45,13 @@
       "effectAssetId": "effect.artist.skill.31470",
       "payloadKind": "IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM",
       "reconstructedRuntimeProgramPath": "Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json",
-      "reconstructedRenderResourceAuthorityPath": "Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json"
+      "reconstructedRenderResourceAuthorityPath": "Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json",
+      "occurrenceTuningPath": "Effects/AuthoredCorrections/Artist/effect.artist.skill.31470.occurrence-tuning.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31470.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31480.authored-baseline",

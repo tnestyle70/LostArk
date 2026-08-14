@@ -15,6 +15,11 @@
 
 NS_BEGIN(Client)
 
+struct EFFECT_OCCURRENCE_TUNING_DOCUMENT;
+struct EFFECT_VISUAL_PROGRAM;
+struct EFFECT_VISUAL_PROGRAM_CORPUS;
+struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
+
 struct EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY final
 {
 	uint64_t iCatalogRevision = 0u;
@@ -43,6 +48,9 @@ struct EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY final
 	std::string strRenderResourceSidecarRawSha256;
 	std::string strRenderResourceAuthorityLinkSha256;
 	std::string strRenderResourcePublishReceiptSha256;
+	uint32_t iOccurrenceTuningEntryCount = 0u;
+	std::string strOccurrenceTuningSourcePath;
+	std::string strOccurrenceTuningSha256;
 };
 
 struct EFFECT_RECONSTRUCTED_DDS_SRV_IDENTITY final
@@ -232,6 +240,11 @@ public:
 	{
 		return m_pRenderResourceAuthority;
 	}
+	std::shared_ptr<const EFFECT_OCCURRENCE_TUNING_DOCUMENT>
+		Get_OccurrenceTuning() const
+	{
+		return m_pOccurrenceTuning;
+	}
 
 private:
 	friend class CEffectCatalog;
@@ -243,9 +256,12 @@ private:
 		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY Identity,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> pProgram,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
-			pRenderResourceAuthority)
+			pRenderResourceAuthority,
+		std::shared_ptr<const EFFECT_OCCURRENCE_TUNING_DOCUMENT>
+			pOccurrenceTuning)
 		: m_Identity(std::move(Identity)), m_pProgram(std::move(pProgram)),
-		  m_pRenderResourceAuthority(std::move(pRenderResourceAuthority))
+		  m_pRenderResourceAuthority(std::move(pRenderResourceAuthority)),
+		  m_pOccurrenceTuning(std::move(pOccurrenceTuning))
 	{
 	}
 
@@ -254,6 +270,8 @@ private:
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM> m_pProgram;
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY>
 		m_pRenderResourceAuthority;
+	std::shared_ptr<const EFFECT_OCCURRENCE_TUNING_DOCUMENT>
+		m_pOccurrenceTuning;
 };
 
 struct EFFECT_RECONSTRUCTED_ANCHOR_BINDING final
@@ -387,6 +405,12 @@ public:
 		Find_RuntimeProgramEntry(const std::string& strEffectAssetId);
 	static std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
 		Find_ReconstructedRuntimeProgram(const std::string& strEffectAssetId);
+	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS>
+		Find_VisualProgramCorpus();
+	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM>
+		Find_VisualProgram(const std::string& strEffectAssetId);
+	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		Find_VisualProjection(const std::string& strEffectAssetId);
 	static bool_t Prepare_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
@@ -403,6 +427,7 @@ public:
     static std::vector<std::string> Get_ComponentAssetIds();
 	static std::vector<std::string> Get_RuntimeAuthorityAssetIds();
 	static std::vector<std::string> Get_ReconstructedRuntimeProgramAssetIds();
+	static std::vector<std::string> Get_VisualProgramAssetIds();
     static uint64_t Get_RuntimeRevision();
     static const std::string& Get_Status();
     static void Clear();

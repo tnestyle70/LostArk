@@ -29,6 +29,7 @@ namespace LostArk::Server
 		std::string strArchetypeId;
 		std::string strEncounterId;
 		std::string strPatternId;
+		std::string strPatternStageId;
 		std::string strActionId;
 		std::string strDamageProfileId;
 		std::string strSpawnGroupId;
@@ -41,6 +42,20 @@ namespace LostArk::Server
 		float fActionElapsedSeconds = 0.f;
 		float fPatternMinimumRange = 0.f;
 		float fPatternMaximumRange = 0.f;
+		float fPatternForcedMotionSpeed = 0.f;
+		/* The authored placement this entity spawned at. The 109 phase
+		transition lands Valtan back on it, so the landing point stays authored
+		data rather than a constant recomputed inside the brain. */
+		float fSpawnPositionX = 0.f;
+		float fSpawnPositionY = 0.f;
+		float fSpawnPositionZ = 0.f;
+		/* Where the current authored leap started. No jump clip exists in the
+		converted Valtan model, so the Server owns the whole arc and the Client
+		only presents the replicated transform. */
+		float fLeapOriginX = 0.f;
+		float fLeapOriginY = 0.f;
+		float fLeapOriginZ = 0.f;
+		float fLeapApexHeight = 0.f;
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;

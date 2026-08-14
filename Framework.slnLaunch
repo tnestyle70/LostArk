@@ -11,5 +11,14 @@
         "Action": "Start"
       }
     ]
+  },
+  {
+    "Name": "Client Only (Server Already Running)",
+    "Projects": [
+      {
+        "Path": "Client\\Default\\Client.vcxproj",
+        "Action": "Start"
+      }
+    ]
   }
 ]

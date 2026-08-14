@@ -90,9 +90,9 @@ namespace
 	constexpr std::string_view ARTIST_PROGRAM_ID =
 		"effect.artist.skill.31470.reconstructed-approved-v1";
 	constexpr std::string_view ARTIST_PROGRAM_SHA256 =
-		"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8";
+		"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802";
 	constexpr std::string_view ARTIST_CANDIDATE_SHA256 =
-		"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6";
+		"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6";
 	constexpr std::string_view ARTIST_RANDOM_POLICY =
 		"DETERMINISTIC_OCCURRENCE_RNG_FROM_SOURCE_CANDIDATE_V1";
 	constexpr std::string_view ARTIST_SEED_EVALUATOR =
@@ -102,7 +102,7 @@ namespace
 	constexpr std::string_view FROZEN_DISTRIBUTION_OWNER_PROJECTION_SHA256 =
 		"35b0977b106c003b2542327959dd1ee11ea326dd17324c5dbc242153b086bd88";
 	constexpr std::string_view FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
-		"3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5";
+		"2697c3dc7e929f9e25e4d667dc0d7287dba6e4969b68a8237ce5ec8c6125123e";
 	constexpr std::string_view FROZEN_SEEDED_EMITTER_ID =
 		"fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01::"
 		"action-31470/stage-000/notify-028::FX_CM_01.distortion_onelayer."
@@ -154,7 +154,7 @@ namespace
 	constexpr std::string_view FROZEN_SEEDED_CAPABILITY_ACTION_CUE_SHA256 =
 		"4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945";
 	constexpr std::string_view FROZEN_SEEDED_MODULE_ROW_SHA256 =
-		"2d988e0da3cc6c9db7ab2eba7a41545a5eb3aed046f924372d347cb47e270bd4";
+		"1eec53947e626922ad5a7f4d8377fe8167bbdbd2fa5618684ddf198160a43bb5";
 	constexpr std::string_view FROZEN_SEEDED_PROPERTY_ROW_SHA256 =
 		"bd9b6e05cf6f055016dcaf4bdc16728f33ffda94d245897383e7b0802b46a21d";
 	constexpr std::string_view FROZEN_SEEDED_DISTRIBUTION_ROW_SHA256 =
@@ -445,16 +445,16 @@ namespace
 			Identity.iArtifactRevision != 1u ||
 			Identity.iProgramVersion != 1u ||
 			Identity.iInputArtifactCount != 13u ||
-			Identity.iCandidateByteCount != 15'117'436u ||
+			Identity.iCandidateByteCount != 15'121'873u ||
 			Identity.strProgramId != ARTIST_PROGRAM_ID ||
 			Identity.strProgramSha256 != ARTIST_PROGRAM_SHA256 ||
 			Identity.strCandidateRawSha256 != ARTIST_CANDIDATE_SHA256 ||
 			Identity.strCompilerRevision !=
 				"artist31470.reconstructed-runtime-program-link-v1" ||
 			Identity.strCandidateBuilderCommitId !=
-				"31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
+				"ddef21a5314eb8c3db891d36f702cfeda3149f20" ||
 			Identity.strCandidateBuilderTreeId !=
-				"6d8853d989bd71a988eaebf254398ae08599ad0d")
+				"36a36b889dae7be092e0d2f6f3c3aee2c28bc462")
 		{
 			return Reject(strOutError,
 				"Reconstructed execution plan Catalog identity is not frozen.");
@@ -471,9 +471,9 @@ namespace
 			Program.Identity.strProgramSha256 != ARTIST_PROGRAM_SHA256 ||
 			Program.Identity.strCandidateRawSha256 != ARTIST_CANDIDATE_SHA256 ||
 			Program.Identity.strBuilderAuthorityCommitId !=
-				"31ecc2edc328347ac6e3bf6fe444c270d463ef40" ||
+				"ddef21a5314eb8c3db891d36f702cfeda3149f20" ||
 			Program.Identity.strBuilderAuthorityTreeId !=
-				"6d8853d989bd71a988eaebf254398ae08599ad0d" ||
+				"36a36b889dae7be092e0d2f6f3c3aee2c28bc462" ||
 			Program.strCharacterClass != "ARTIST" || Program.iSkillId != 31470u ||
 			Program.strInputSlot != "F" ||
 			Program.strRuntimeCatalogAssetId != ARTIST_EFFECT_ID ||
@@ -2007,8 +2007,11 @@ namespace
 			Data.Identity.strSemanticProjectionSha256 !=
 				FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256)
 		{
-			return Reject(strOutError,
-				"Reconstructed execution frozen semantic projection authority is invalid.");
+			const std::string strAuthorityError =
+				"Reconstructed execution frozen semantic projection authority is invalid: expected=" +
+				std::string(FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256) +
+				" actual=" + Data.Identity.strSemanticProjectionSha256 + ".";
+			return Reject(strOutError, strAuthorityError.c_str());
 		}
 		OutData = std::move(Data);
 		strOutError.clear();
@@ -4701,6 +4704,7 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 		(eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ADMITTED_ONLY &&
 		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::V3_MAIN_REVIEW &&
 		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CONDITIONAL_REVIEW &&
+		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CORE_RENDERERS &&
 		 eVisualScope != EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ALL_DIAGNOSTIC) ||
 		Program->Admission.bRuntimeExecution ||
 		Program->Admission.bProduct || Program->Emitters.size() != 35u ||
@@ -5187,8 +5191,25 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 			Emitter.Row.iOrder == 32u || Emitter.Row.iOrder == 34u;
 		const bool_t bV3MainReview = Emitter.Row.iOrder == 9u ||
 			Emitter.Row.iOrder == 10u || Emitter.Row.iOrder == 11u;
+		const bool_t bCoreRenderer = [&Emitter]()
+		{
+			switch (Emitter.eRenderer)
+			{
+			case EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE:
+			case EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE:
+			case EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE:
+			case EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON:
+				return true;
+			case EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE:
+			case EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST:
+			default:
+				return false;
+			}
+		}();
 		Element.bVisible = Emitter.bVisible &&
 			(eVisualScope == EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ALL_DIAGNOSTIC ||
+			 (eVisualScope == EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CORE_RENDERERS &&
+			  bCoreRenderer) ||
 			 (eVisualScope ==
 				 EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CONDITIONAL_REVIEW &&
 			  bConditionalReview) ||
@@ -5535,8 +5556,16 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 				Source.bEmissiveIntensity;
 		}
 		if (Renderer.Mesh.has_value())
+		{
 			Element.Detail.Mesh.bUseModelMaterial =
 				Renderer.Mesh->bUseModelMaterial;
+			if (!AssignF3(Renderer.Mesh->vSourceTypeDataRotationDegrees,
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees,
+				"renderer source TypeDataMesh rotation"))
+			{
+				return false;
+			}
+		}
 		if (Renderer.Sprite.has_value())
 		{
 			Element.Detail.Sprite.bBillboard = Renderer.Sprite->bBillboard;
@@ -5642,7 +5671,11 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 			Emitter.ActionCueAttachment.strRuntimeAnchorSlotId;
 		Element.ActionCueAttachment.strRuntimeBoneName =
 			Emitter.ActionCueAttachment.strRuntimeBoneName;
-		if (!AssignF3(Emitter.ActionCueAttachment.SocketLocalTransform.vPosition,
+		if (!AssignF32(
+				Emitter.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees,
+				Element.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees,
+				"snapshot root source basis yaw") ||
+			!AssignF3(Emitter.ActionCueAttachment.SocketLocalTransform.vPosition,
 				Element.ActionCueAttachment.SocketLocalTransform.vPosition,
 				"attachment position") ||
 			!AssignF3(
@@ -6050,16 +6083,27 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 					(Occurrence->Row.iOrder >= 7u &&
 						Occurrence->Row.iOrder <= 18u);
 				const bool_t bRuntimeMaterialV2 =
+					Occurrence->Row.iOrder == 2u ||
 					Occurrence->Row.iOrder == 3u ||
 					Occurrence->Row.iOrder == 4u ||
 					Occurrence->Row.iOrder == 9u ||
 					Occurrence->Row.iOrder == 10u ||
 					Occurrence->Row.iOrder == 11u ||
 					Occurrence->Row.iOrder == 16u ||
+					Occurrence->Row.iOrder == 19u ||
+					Occurrence->Row.iOrder == 20u ||
+					Occurrence->Row.iOrder == 21u ||
 					Occurrence->Row.iOrder == 22u ||
 					Occurrence->Row.iOrder == 23u ||
+					Occurrence->Row.iOrder == 24u ||
+					Occurrence->Row.iOrder == 27u ||
+					Occurrence->Row.iOrder == 28u ||
 					Occurrence->Row.iOrder == 30u ||
 					Occurrence->Row.iOrder == 31u;
+				const bool_t bArtistVisualV4 =
+					Occurrence->Row.iOrder == 0u ||
+					Occurrence->Row.iOrder == 25u ||
+					Occurrence->Row.iOrder == 29u;
 				if (bMainCompositeMaterial)
 					++iMainCompositeMaterialProjectionCount;
 
@@ -6212,10 +6256,12 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 						"missile_noise_pan", "missile_dissolve" };
 					++iMissileTrailFiniteProfileProjectionCount;
 				}
-				else if (bMainCompositeMaterial || bRuntimeMaterialV2)
+				else if (bMainCompositeMaterial || bRuntimeMaterialV2 ||
+					bArtistVisualV4)
 				{
-					/* Runtime Material v2 owns the complete shader packet for these
-					   occurrences.  Keep their source-material carrier on the neutral
+					/* Runtime Material v2 or the stable Artist visual registry owns the
+					   complete shader packet for these occurrences.  Keep their
+					   source-material carrier on the neutral
 					   reconstructed-standard profile even when newly admitted texture
 					   providers would also satisfy the legacy grouped-translucent
 					   heuristic.  Prepared-resource staging then starts from one canonical
@@ -6226,6 +6272,8 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 						++iReconstructedEvaluatorMaterialProjectionCount;
 					if (bRuntimeMaterialV2)
 						++iRuntimeMaterialV2ProfileProjectionCount;
+					if (bArtistVisualV4)
+						++iReconstructedEvaluatorMaterialProjectionCount;
 				}
 				else
 				{
@@ -6661,8 +6709,8 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 		iMaterialSubUVProjectionCount != 5u ||
 		iMainCompositeMaterialProjectionCount != 13u ||
 		iMissileTrailFiniteProfileProjectionCount != 1u ||
-		iReconstructedEvaluatorMaterialProjectionCount != 12u ||
-		iRuntimeMaterialV2ProfileProjectionCount != 10u ||
+		iReconstructedEvaluatorMaterialProjectionCount != 15u ||
+		iRuntimeMaterialV2ProfileProjectionCount != 17u ||
 		iTypedRibbonGeometryProjectionCount != 1u ||
 		iTypedLightParticleInputProjectionCount != 1u ||
 		iTypedRendererProjectionCount != Program->Emitters.size())

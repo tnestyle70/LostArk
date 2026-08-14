@@ -41,6 +41,22 @@ public:
 		bool_t suppressSource = false;
 	};
 
+	/* Product destruction uses the same admitted static CModel presentation
+	   seam as MapTool, but has an explicit API so it can never enter the
+	   preview clock/state restore path. These resources are transient only;
+	   beginning or ending them does not read or write DEPLOY_PROP_STATE. */
+	struct DESTRUCTION_DEBRIS_INSTANCE_DESC
+	{
+		std::wstring modelPrototypeTag;
+		f32_t uniformScale = 1.f;
+	};
+
+	struct DESTRUCTION_DEBRIS_PRESENTATION_DESC
+	{
+		std::vector<DESTRUCTION_DEBRIS_INSTANCE_DESC> instances;
+		bool_t suppressSource = false;
+	};
+
 private:
 	CDeployPropObject(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
@@ -120,10 +136,42 @@ public:
 	void End_DebrisPreview();
 	bool_t Is_DebrisPreviewActive() const
 	{
-		return m_bDebrisPreviewActive;
+		return m_bDebrisPreviewActive &&
+			DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW ==
+			m_eDebrisPresentationOwner;
+	}
+	bool_t Begin_DestructionDebrisPresentation(
+		const DESTRUCTION_DEBRIS_PRESENTATION_DESC& desc,
+		std::string& outError);
+	uint32_t Get_DestructionDebrisPresentationInstanceCount() const;
+	bool_t Get_DestructionDebrisPresentationLocalBounds(
+		uint32_t instanceIndex,
+		float3_t& outCenter,
+		float3_t& outHalfExtents) const;
+	bool_t Apply_DestructionDebrisPresentationPose(
+		uint32_t instanceIndex,
+		const float3_t& position,
+		const float4_t& rotationQuaternion,
+		bool_t visible);
+	void End_DestructionDebrisPresentation();
+	bool_t Is_DestructionDebrisPresentationActive() const;
+	/* Suppression aliases hide only this object's base Deploy mesh. They do
+	   not change its persistent state, transform, animation, or map data. */
+	bool_t Begin_TransientDestructionSuppression(std::string& outError);
+	void End_TransientDestructionSuppression();
+	bool_t Is_TransientDestructionSuppressed() const
+	{
+		return m_bTransientDestructionSuppressed;
 	}
 
 private:
+	enum class DEBRIS_PRESENTATION_OWNER : uint8_t
+	{
+		NONE,
+		MAPTOOL_PREVIEW,
+		PRODUCT_DESTRUCTION,
+	};
+
 	struct DEBRIS_PREVIEW_RESOURCE
 	{
 		std::wstring modelPrototypeTag;
@@ -152,6 +200,26 @@ private:
 	HRESULT Render_Animated(uint32_t passIndex);
 	HRESULT Render_DebrisPreview(bool_t shadowPass);
 	bool_t Has_VisibleDebrisPreviewInstance() const;
+	bool_t Is_BasePresentationSuppressed() const;
+	bool_t Begin_DebrisPresentation(
+		const std::vector<DEBRIS_PREVIEW_INSTANCE_DESC>& instances,
+		bool_t suppressSource,
+		DEBRIS_PRESENTATION_OWNER owner,
+		std::string& outError);
+	uint32_t Get_DebrisPresentationInstanceCount(
+		DEBRIS_PRESENTATION_OWNER owner) const;
+	bool_t Get_DebrisPresentationLocalBounds(
+		DEBRIS_PRESENTATION_OWNER owner,
+		uint32_t instanceIndex,
+		float3_t& outCenter,
+		float3_t& outHalfExtents) const;
+	bool_t Apply_DebrisPresentationPose(
+		DEBRIS_PRESENTATION_OWNER owner,
+		uint32_t instanceIndex,
+		const float3_t& position,
+		const float4_t& rotationQuaternion,
+		bool_t visible);
+	void End_DebrisPresentation(DEBRIS_PRESENTATION_OWNER owner);
 	void Apply_Transform();
 
 private:
@@ -167,6 +235,9 @@ private:
 	uint32_t m_iPrototypeLevelIndex = ETOUI(LEVEL::END);
 	bool_t m_bDebrisPreviewActive = false;
 	bool_t m_bDebrisSuppressSource = false;
+	bool_t m_bTransientDestructionSuppressed = false;
+	DEBRIS_PRESENTATION_OWNER m_eDebrisPresentationOwner =
+		DEBRIS_PRESENTATION_OWNER::NONE;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CShader> m_pDebrisShaderCom = { nullptr };
 	shared_ptr<CModel> m_pIntactModelCom = { nullptr };

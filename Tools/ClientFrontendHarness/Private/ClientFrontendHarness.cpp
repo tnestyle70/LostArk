@@ -1,4 +1,5 @@
 #include "Client_Defines.h"
+#include "FourClassTrackAAuthoredMaterializer.h"
 #include "ActionPresentationTimeline.h"
 #include "LobbyCommandService.h"
 #include "Model.h"
@@ -7,20 +8,35 @@
 #include "CharacterSelectionState.h"
 #include "DataJson.h"
 #include "Effect_CascadeCompiler.h"
+#include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Object.h"
+#include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
+#include "Effect_Tool.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "PlayerSkillCatalog.h"
+#include "Presentation_Manager.h"
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
+#include "EncounterPatternReference.h"
+#include "ValtanCinematicCameraController.h"
+#include "ValtanCinematicCameraDocument.h"
+#include "WorldDestructionDebrisPresentationDocument.h"
+#include "WorldDestructionDebrisPresentationRuntime.h"
+#include "WorldDestructionProjectionDocument.h"
+#include "WorldDestructionProjectionRuntime.h"
+#include "NetworkManager.h"
+
+#include "Network/PacketWriter.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
 
@@ -48,6 +64,9 @@
 #include <vector>
 #include <Windows.h>
 #include <d3d11.h>
+#if defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 
 #if defined(LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS)
 namespace Client
@@ -819,6 +838,366 @@ namespace
 			" committed=" << Stats.bCommitted << std::endl;
 	}
 
+	struct ARTIST_CORE_REGISTRY_ROW final
+	{
+		std::string_view strElementId;
+		Client::EFFECT_RUNTIME_RENDERER_KIND eRenderer;
+		Client::EFFECT_GPU_RENDER_FAMILY eFamily;
+	};
+
+	constexpr std::array<ARTIST_CORE_REGISTRY_ROW, 35u>
+		ARTIST_CORE_REGISTRY = {{
+		{ "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_21", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_6", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_0", Client::EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON, Client::EFFECT_GPU_RENDER_FAMILY::RIBBON },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_23", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_26", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_4", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_2", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_30", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_3", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_15", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_9", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_17", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43", Client::EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::DECAL },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_6", Client::EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::DECAL },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15", Client::EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::DECAL },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_9", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_7", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17", Client::EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::MESH },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_4", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_18", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_post.fx_par.par_c_zoomblur_03.particlespriteemitter_0", Client::EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST, Client::EFFECT_GPU_RENDER_FAMILY::END },
+		{ "fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushi.particlespriteemitter_21", Client::EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::SPRITE },
+		{ "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2", Client::EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE, Client::EFFECT_GPU_RENDER_FAMILY::END }
+	}};
+
+	Client::EFFECT_RENDERER_TYPE Expected_ArtistCoreDocumentRenderer(
+		const Client::EFFECT_RUNTIME_RENDERER_KIND eRenderer)
+	{
+		using namespace Client;
+		switch (eRenderer)
+		{
+		case EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE:
+			return EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE:
+			return EFFECT_RENDERER_TYPE::SPRITE_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE:
+			return EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON:
+			return EFFECT_RENDERER_TYPE::CASCADE_RIBBON;
+		case EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE:
+			return EFFECT_RENDERER_TYPE::LIGHT_PARTICLE;
+		case EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST:
+			return EFFECT_RENDERER_TYPE::SCREEN_POST;
+		default:
+			return EFFECT_RENDERER_TYPE::END;
+		}
+	}
+
+	bool_t Validate_ArtistCoreRegistry(
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& Preparation,
+		const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		if (nullptr == Preparation || nullptr == Preparation->Get_Program() ||
+			Preparation->Get_Program()->Emitters.size() !=
+				ARTIST_CORE_REGISTRY.size() ||
+			Document.Elements.size() != ARTIST_CORE_REGISTRY.size())
+		{
+			return false;
+		}
+		std::unordered_map<std::string_view, const Client::EFFECT_ELEMENT_DESC*>
+			Elements;
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (!Elements.emplace(Element.strElementId, &Element).second)
+				return false;
+		}
+		for (size_t iRow = 0u; iRow < ARTIST_CORE_REGISTRY.size(); ++iRow)
+		{
+			const ARTIST_CORE_REGISTRY_ROW& Expected =
+				ARTIST_CORE_REGISTRY[iRow];
+			const Client::EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter =
+				Preparation->Get_Program()->Emitters[iRow];
+			const auto Element = Elements.find(Expected.strElementId);
+			if (Emitter.Row.iOrder != iRow || !Emitter.bVisible ||
+				Emitter.strSourceElementId != Expected.strElementId ||
+				Emitter.eRenderer != Expected.eRenderer ||
+				Element == Elements.end() || nullptr == Element->second ||
+				Element->second->Renderer.eType !=
+					Expected_ArtistCoreDocumentRenderer(Expected.eRenderer) ||
+				Element->second->bVisible !=
+					(Expected.eFamily != Client::EFFECT_GPU_RENDER_FAMILY::END))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	struct ARTIST_CORE_OCCURRENCE_EXPECTATION final
+	{
+		uint32_t iOrder = UINT32_MAX;
+		Client::EFFECT_GPU_RENDER_FAMILY eFamily =
+			Client::EFFECT_GPU_RENDER_FAMILY::END;
+		Client::EFFECT_GPU_RENDER_CARRIER eCarrier =
+			Client::EFFECT_GPU_RENDER_CARRIER::END;
+		uint32_t iSelectedPassIndex = UINT32_MAX;
+		bool_t bDrawAdmitted = false;
+		bool_t bAnchorAttached = false;
+		f32_t fSnapshotRootSourceBasisYawDegrees = 0.f;
+		float3_t vCueLocalPosition{};
+		float3_t vCueLocalScale{ 1.f, 1.f, 1.f };
+		float3_t vDeterministicCarrierLocalPosition{};
+	};
+
+	uint32_t Expected_ArtistCorePass(
+		const Client::EFFECT_RENDER_PROFILE eProfile)
+	{
+		using namespace Client;
+		switch (eProfile)
+		{
+		case EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE: return 0u;
+		case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ: return 1u;
+		case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ: return 2u;
+		case EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ: return 3u;
+		case EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ: return 4u;
+		case EFFECT_RENDER_PROFILE::END:
+		default: return UINT32_MAX;
+		}
+	}
+
+	bool_t Nearly_Equal(const f32_t fLeft, const f32_t fRight,
+		const f32_t fTolerance = 0.002f)
+	{
+		return std::isfinite(fLeft) && std::isfinite(fRight) &&
+			std::abs(fLeft - fRight) <= fTolerance;
+	}
+
+	bool_t Nearly_Equal(const float2_t& Left, const float2_t& Right)
+	{
+		return Nearly_Equal(Left.x, Right.x) &&
+			Nearly_Equal(Left.y, Right.y);
+	}
+
+	bool_t Nearly_Equal(const float3_t& Left, const float3_t& Right)
+	{
+		return Nearly_Equal(Left.x, Right.x) &&
+			Nearly_Equal(Left.y, Right.y) &&
+			Nearly_Equal(Left.z, Right.z);
+	}
+
+	bool_t Nearly_Equal(const float4_t& Left, const float4_t& Right)
+	{
+		return Nearly_Equal(Left.x, Right.x) &&
+			Nearly_Equal(Left.y, Right.y) &&
+			Nearly_Equal(Left.z, Right.z) &&
+			Nearly_Equal(Left.w, Right.w);
+	}
+
+	bool_t Is_TranslatedMatrix(const float4x4_t& Control,
+		const float4x4_t& Canary, const float3_t& ExpectedDelta)
+	{
+		/* Sprite/mesh billboard bases legitimately rotate when the same geometry
+		   is translated relative to the fixed test camera.  The source-space
+		   canary is a position contract, so compare the affine position while the
+		   caller independently compares particle/trail payload and cardinality. */
+		return Nearly_Equal(Canary._41,
+			Control._41 + ExpectedDelta.x) &&
+			Nearly_Equal(Canary._42,
+				Control._42 + ExpectedDelta.y) &&
+			Nearly_Equal(Canary._43,
+				Control._43 + ExpectedDelta.z) &&
+			Nearly_Equal(Canary._44, Control._44);
+	}
+
+	bool_t Compare_ArtistCoreTranslatedFrames(
+		const Client::EFFECT_EVALUATED_FRAME& Control,
+		const Client::EFFECT_EVALUATED_FRAME& Canary,
+		const std::unordered_map<std::string,
+			ARTIST_CORE_OCCURRENCE_EXPECTATION>& Expectations,
+		const float3_t& RootDelta,
+		const float3_t& AnchorDelta,
+		std::set<std::string>& ComparedGeometryUnion,
+		std::set<std::string>& ComparedTrailUnion)
+	{
+		using namespace Client;
+		const auto FindDelta = [&](const EFFECT_ELEMENT_DESC* pElement,
+			float3_t& OutDelta)
+		{
+			if (nullptr == pElement)
+				return false;
+			const auto Expected = Expectations.find(pElement->strElementId);
+			if (Expected == Expectations.end())
+				return false;
+			OutDelta = Expected->second.bAnchorAttached ? AnchorDelta : RootDelta;
+			return true;
+		};
+		const auto CompareWorld = [&](const EFFECT_ELEMENT_DESC* pControlElement,
+			const EFFECT_ELEMENT_DESC* pCanaryElement,
+			const float4x4_t& ControlWorld, const float4x4_t& CanaryWorld)
+		{
+			float3_t ExpectedDelta{};
+			if (nullptr == pControlElement || nullptr == pCanaryElement ||
+				pControlElement->strElementId != pCanaryElement->strElementId ||
+				!FindDelta(pControlElement, ExpectedDelta) ||
+				!Is_TranslatedMatrix(ControlWorld, CanaryWorld, ExpectedDelta))
+			{
+				return false;
+			}
+			ComparedGeometryUnion.emplace(pControlElement->strElementId);
+			return true;
+		};
+
+		if (!Nearly_Equal(Control.fSampleTimeSeconds, Canary.fSampleTimeSeconds) ||
+			!Is_TranslatedMatrix(Control.RootWorld, Canary.RootWorld, RootDelta) ||
+			Control.GpuOccurrences.size() != Expectations.size() ||
+			Canary.GpuOccurrences.size() != Expectations.size() ||
+			Control.GpuOccurrences.size() != Canary.GpuOccurrences.size() ||
+			Control.Elements.size() != Canary.Elements.size() ||
+			Control.Particles.size() != Canary.Particles.size() ||
+			Control.Trails.size() != Canary.Trails.size() ||
+			Control.AfterImages.size() != Canary.AfterImages.size() ||
+			!Control.Lights.empty() || !Canary.Lights.empty() ||
+			!Control.ScreenPosts.empty() || !Canary.ScreenPosts.empty())
+		{
+			return false;
+		}
+
+		std::set<std::string> FrameGpuIds;
+		for (size_t iRow = 0u; iRow < Control.GpuOccurrences.size(); ++iRow)
+		{
+			const EFFECT_EVALUATED_GPU_OCCURRENCE& Left =
+				Control.GpuOccurrences[iRow];
+			const EFFECT_EVALUATED_GPU_OCCURRENCE& Right =
+				Canary.GpuOccurrences[iRow];
+			if (nullptr == Left.pElement || nullptr == Right.pElement ||
+				Left.pElement->strElementId != Right.pElement->strElementId ||
+				Expectations.find(Left.pElement->strElementId) == Expectations.end() ||
+				!FrameGpuIds.emplace(Left.pElement->strElementId).second ||
+				Left.bActive != Right.bActive ||
+				Left.iCandidateRowCount != Right.iCandidateRowCount)
+			{
+				return false;
+			}
+		}
+
+		for (size_t iElement = 0u; iElement < Control.Elements.size(); ++iElement)
+		{
+			const EFFECT_EVALUATED_ELEMENT& Left = Control.Elements[iElement];
+			const EFFECT_EVALUATED_ELEMENT& Right = Canary.Elements[iElement];
+			if (!CompareWorld(Left.pElement, Right.pElement,
+					Left.World, Right.World) ||
+				!Nearly_Equal(Left.Color.vColorOffset, Right.Color.vColorOffset) ||
+				!Nearly_Equal(Left.Color.vColorMultiply,
+					Right.Color.vColorMultiply) ||
+				!Nearly_Equal(Left.Color.fEmissiveIntensity,
+					Right.Color.fEmissiveIntensity) ||
+				!Nearly_Equal(Left.fLocalTimeSeconds, Right.fLocalTimeSeconds) ||
+				!Nearly_Equal(Left.fNormalizedLife, Right.fNormalizedLife) ||
+				Left.bWorldOwnsDecalProjectionVolume !=
+					Right.bWorldOwnsDecalProjectionVolume)
+			{
+				return false;
+			}
+		}
+
+		for (size_t iParticle = 0u;
+			iParticle < Control.Particles.size(); ++iParticle)
+		{
+			const EFFECT_EVALUATED_PARTICLE& Left = Control.Particles[iParticle];
+			const EFFECT_EVALUATED_PARTICLE& Right = Canary.Particles[iParticle];
+			if (!CompareWorld(Left.pElement, Right.pElement,
+					Left.World, Right.World) ||
+				!Nearly_Equal(Left.Color, Right.Color) ||
+				!Nearly_Equal(Left.vDynamicParameter, Right.vDynamicParameter) ||
+				!Nearly_Equal(Left.vWorldVelocity, Right.vWorldVelocity) ||
+				!Nearly_Equal(Left.vSpritePivot, Right.vSpritePivot) ||
+				!Nearly_Equal(Left.vSourceImageFlipSign,
+					Right.vSourceImageFlipSign) ||
+				Left.eSpriteAlignment != Right.eSpriteAlignment ||
+				Left.bSourceImageFlipping != Right.bSourceImageFlipping ||
+				!Nearly_Equal(Left.fSpriteRotationDegrees,
+					Right.fSpriteRotationDegrees) ||
+				!Nearly_Equal(Left.fCameraOffset, Right.fCameraOffset) ||
+				!Nearly_Equal(Left.fSubImageIndex, Right.fSubImageIndex) ||
+				!Nearly_Equal(Left.fDistributionRandom,
+					Right.fDistributionRandom) ||
+				!Nearly_Equal(Left.fNormalizedLife, Right.fNormalizedLife))
+			{
+				return false;
+			}
+		}
+
+		for (size_t iTrail = 0u; iTrail < Control.Trails.size(); ++iTrail)
+		{
+			const EFFECT_EVALUATED_TRAIL& Left = Control.Trails[iTrail];
+			const EFFECT_EVALUATED_TRAIL& Right = Canary.Trails[iTrail];
+			float3_t ExpectedDelta{};
+			if (nullptr == Left.pElement || nullptr == Right.pElement ||
+				Left.pElement->strElementId != Right.pElement->strElementId ||
+				!FindDelta(Left.pElement, ExpectedDelta) ||
+				Left.Points.size() != Right.Points.size())
+			{
+				return false;
+			}
+			ComparedGeometryUnion.emplace(Left.pElement->strElementId);
+			ComparedTrailUnion.emplace(Left.pElement->strElementId);
+			for (size_t iPoint = 0u; iPoint < Left.Points.size(); ++iPoint)
+			{
+				const EFFECT_EVALUATED_TRAIL_POINT& LeftPoint = Left.Points[iPoint];
+				const EFFECT_EVALUATED_TRAIL_POINT& RightPoint = Right.Points[iPoint];
+				const float3_t ExpectedPosition = {
+					LeftPoint.vWorldPosition.x + ExpectedDelta.x,
+					LeftPoint.vWorldPosition.y + ExpectedDelta.y,
+					LeftPoint.vWorldPosition.z + ExpectedDelta.z };
+				if (!Nearly_Equal(RightPoint.vWorldPosition, ExpectedPosition) ||
+					!Nearly_Equal(LeftPoint.fNormalizedAge,
+						RightPoint.fNormalizedAge) ||
+					!Nearly_Equal(LeftPoint.fCumulativeDistance,
+						RightPoint.fCumulativeDistance) ||
+					!Nearly_Equal(LeftPoint.vSourceColor,
+						RightPoint.vSourceColor) ||
+					!Nearly_Equal(LeftPoint.vDynamicParameter,
+						RightPoint.vDynamicParameter) ||
+					LeftPoint.iSourceColorComponentMask !=
+						RightPoint.iSourceColorComponentMask ||
+					LeftPoint.iDynamicParameterComponentMask !=
+						RightPoint.iDynamicParameterComponentMask)
+				{
+					return false;
+				}
+			}
+		}
+
+		for (size_t iImage = 0u;
+			iImage < Control.AfterImages.size(); ++iImage)
+		{
+			const EFFECT_EVALUATED_AFTERIMAGE& Left = Control.AfterImages[iImage];
+			const EFFECT_EVALUATED_AFTERIMAGE& Right = Canary.AfterImages[iImage];
+			if (!CompareWorld(Left.pElement, Right.pElement,
+					Left.World, Right.World) ||
+				!Nearly_Equal(Left.fAlpha, Right.fAlpha))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	void Test_ActualEffectObjectFirstRender(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& ExactCatalogPath,
@@ -827,6 +1206,212 @@ namespace
 		const Client::EFFECT_DOCUMENT_DESC& ArtistDocument)
 	{
 		using namespace Client;
+		const std::span<const EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			ShaderRegistryRows = Get_Artist31470ShaderRegistry();
+		const size_t iExactReplayIdentityCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eFidelity == EFFECT_ARTIST31470_SHADER_FIDELITY::
+					EXACT_CACHE_DXBC_SEMANTIC_REPLAY &&
+					!Row.strEngineEqualityStaticSetSha256.empty() &&
+					!Row.strRecoveredPixelShaderId.empty() &&
+					!Row.strRecoveredPixelDxbcSha256.empty();
+			}));
+		const size_t iArtistV4MaskCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eBackend == EFFECT_ARTIST31470_SHADER_BACKEND::ARTIST_V4 &&
+					Row.bDrawAdmitted &&
+					Row.iExpectedArtistVisualV4TextureMask != 0u;
+			}));
+		const size_t iBoundedCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eFidelity ==
+					EFFECT_ARTIST31470_SHADER_FIDELITY::BOUNDED_EXPLICIT;
+			}));
+		const size_t iUnresolvedCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eFidelity == EFFECT_ARTIST31470_SHADER_FIDELITY::
+					UNRESOLVED_FAIL_CLOSED;
+			}));
+		const size_t iForbiddenCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eFidelity ==
+					EFFECT_ARTIST31470_SHADER_FIDELITY::NON_CORE_FORBIDDEN;
+			}));
+		const size_t iDrawCount = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{ return Row.bDrawAdmitted; }));
+		const size_t iRuntimeV2Count = static_cast<size_t>(std::count_if(
+			ShaderRegistryRows.begin(), ShaderRegistryRows.end(), [](const auto& Row)
+			{
+				return Row.eBackend ==
+					EFFECT_ARTIST31470_SHADER_BACKEND::RUNTIME_V2;
+			}));
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active000Registry = Find_Artist31470ShaderRegistry(
+				0u, "source-active-000");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active005Registry = Find_Artist31470ShaderRegistry(
+				5u, "source-active-005");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active006Registry = Find_Artist31470ShaderRegistry(
+				6u, "source-active-006");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active016Registry = Find_Artist31470ShaderRegistry(
+				16u, "source-active-016");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active020Registry = Find_Artist31470ShaderRegistry(
+				20u, "source-active-020");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active021Registry = Find_Artist31470ShaderRegistry(
+				21u, "source-active-021");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active027Registry = Find_Artist31470ShaderRegistry(
+				27u, "source-active-027");
+		runner.Require(Validate_Artist31470ShaderRegistry() &&
+			iExactReplayIdentityCount == 7u,
+			"Artist Core33 Exact Replay Rows Pin Static-Set, Pixel-Shader, And DXBC Identity");
+		runner.Require(iArtistV4MaskCount == 10u && iBoundedCount == 22u &&
+			iUnresolvedCount == 4u && iForbiddenCount == 2u &&
+			iDrawCount == 29u && iRuntimeV2Count == 18u,
+			"Artist Core33 Registry Pins Exact Bounded Unresolved And Draw Admission Denominators");
+		runner.Require(Active000Registry.has_value() &&
+			Active000Registry->eFidelity ==
+				EFFECT_ARTIST31470_SHADER_FIDELITY::BOUNDED_EXPLICIT &&
+			Active000Registry->eBackend ==
+				EFFECT_ARTIST31470_SHADER_BACKEND::ARTIST_V4 &&
+			Active000Registry->iOpcode == 8u &&
+			Active000Registry->iExpectedArtistVisualV4TextureMask == 0x07u &&
+			!Active000Registry->bNativeSelectionAdmitted &&
+			Active000Registry->bDrawAdmitted &&
+			Active000Registry->strEngineEqualityStaticSetSha256 ==
+				"45f9f31688792848e09af99f5a64410bef1bac4520e1f2c9707f5c31e5b7fdc4" &&
+			Active000Registry->strRecoveredPixelShaderId ==
+				"456fc57bd455014b93b97e18c9390a4f" &&
+			Active000Registry->strRecoveredPixelDxbcSha256 ==
+				"4181e26cdef6e7b9a6839e13d393305bec43460a91c9d5878a5ba975885a1700" &&
+			Active000Registry->eSceneColorOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::SCENE_COLOR_RT0 &&
+			Active000Registry->eDistortionOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE,
+			"Artist Core0 Pins Bounded V4 RT0 Equation And Three Exact DDS Lanes");
+		const auto IsExactSingleSampleSmoke = [](const auto& Registry)
+		{
+			return Registry.has_value() &&
+				Registry->eFidelity == EFFECT_ARTIST31470_SHADER_FIDELITY::
+					EXACT_CACHE_DXBC_SEMANTIC_REPLAY &&
+				Registry->eBackend == EFFECT_ARTIST31470_SHADER_BACKEND::RUNTIME_V2 &&
+				Registry->iOpcode == 10u && Registry->iCurrentPassIndex == 3u &&
+				!Registry->bNativeSelectionAdmitted && Registry->bDrawAdmitted &&
+				Registry->strEngineEqualityStaticSetSha256 ==
+					"5c01a1d9213bccf1ba8c9c02e1059f9dc834eeb5e60200f805b9a59f9026d573" &&
+				Registry->strRecoveredPixelShaderId ==
+					"3e38be239225c7498a67fd9d3d400d24" &&
+				Registry->strRecoveredPixelDxbcSha256 ==
+					"85ca55fab3b87dfb72a7fbbac841d52fff6eec2c526c4457608c7366af5673b5" &&
+				Registry->strRecoveredVertexShaderId ==
+					"881a765fbf1c764fa5263eecacb0d5fc" &&
+				Registry->strRecoveredVertexDxbcSha256 ==
+					"15b96080570506a854225adbc87b119123b6dea40901a8ce3dd8d3f9505de7aa" &&
+				Registry->eSceneColorOutput ==
+					EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::SCENE_COLOR_RT0 &&
+				Registry->eDistortionOutput ==
+					EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE;
+		};
+		runner.Require(IsExactSingleSampleSmoke(Active005Registry) &&
+			IsExactSingleSampleSmoke(Active006Registry),
+			"Artist Core5 And Core6 Pin One-Sample PS And Shared SubUV No-Density VS Identities");
+		runner.Require(Active016Registry.has_value() &&
+			Active016Registry->eFidelity ==
+				EFFECT_ARTIST31470_SHADER_FIDELITY::UNRESOLVED_FAIL_CLOSED &&
+			Active016Registry->eBackend ==
+				EFFECT_ARTIST31470_SHADER_BACKEND::NONE &&
+			Active016Registry->iOpcode == 0u &&
+			!Active016Registry->bNativeSelectionAdmitted &&
+			!Active016Registry->bDrawAdmitted &&
+			Active016Registry->strEngineEqualityStaticSetSha256 ==
+				"733e602dee649c6770d977bf315a489c1cb76ea9fabba625febb6870da34f33c" &&
+			Active016Registry->strRecoveredPixelShaderId ==
+				"13e34fcdce789f4eb7b751a705a350f9" &&
+			Active016Registry->strRecoveredPixelDxbcSha256 ==
+				"4f8d149d2e497bb481cb642e0d486d9560e14dca23359f568c4e6c5f272c3c5e" &&
+			Active016Registry->strRecoveredVertexShaderId ==
+				"fece8af6605ef5448261e47aa5699af9" &&
+			Active016Registry->strRecoveredVertexDxbcSha256 ==
+				"072befb401440d697aeb140384c30e8f2c4ea788789b30825112c0c1a7852dff" &&
+			Active016Registry->eSceneColorOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE &&
+			Active016Registry->eDistortionOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE,
+			"Artist Core16 Preserves Exact Shader Evidence But Fails Closed Without SceneDepth Fog And Auxiliary MRT Inputs");
+		const auto IsRecoveredLocalDecalBoundedReplay = [](const auto& Registry)
+		{
+			return Registry.has_value() &&
+				Registry->eRenderer == EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE &&
+				Registry->eFidelity == EFFECT_ARTIST31470_SHADER_FIDELITY::
+					BOUNDED_EXPLICIT &&
+				Registry->eBackend == EFFECT_ARTIST31470_SHADER_BACKEND::RUNTIME_V2 &&
+				Registry->iOpcode == 14u && Registry->iCurrentPassIndex == 3u &&
+				Registry->strSourceVertexFactoryCandidate ==
+					"flocaldecalvertexfactory" &&
+				!Registry->bNativeSelectionAdmitted && Registry->bDrawAdmitted &&
+				Registry->strEngineEqualityStaticSetSha256 ==
+					"1f5c24844e2464446898632467277aa236fd04957def5b78c17cb0f63af80106" &&
+				Registry->strRecoveredPixelShaderId ==
+					"ef68ae7aec8f94458ef2cbb3c6bafd2d" &&
+				Registry->strRecoveredPixelDxbcSha256 ==
+					"d5a1d55021ff7e2a06e4de978e6850da56b9ff3ba6c7f68321f04852bd28ff1c" &&
+				Registry->strRecoveredVertexShaderId ==
+					"5d79421dc8571c45aa49790f50274f51" &&
+				Registry->strRecoveredVertexDxbcSha256 ==
+					"94072a22ef44ce0319bc9bd7915bded5f7ce94d9a5badde32def4fc01a4bff4d" &&
+				Registry->eSceneColorOutput ==
+					EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::SCENE_COLOR_RT0 &&
+				Registry->eDistortionOutput ==
+					EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE;
+		};
+		runner.Require(
+			IsRecoveredLocalDecalBoundedReplay(Active020Registry) &&
+			IsRecoveredLocalDecalBoundedReplay(Active021Registry),
+			"Artist Core20 And Core21 Pin Six-Lane RT0 Replay While Keeping Native LocalDecal Admission False");
+		runner.Require(Active027Registry.has_value() &&
+			Active027Registry->eFidelity ==
+				EFFECT_ARTIST31470_SHADER_FIDELITY::BOUNDED_EXPLICIT &&
+			Active027Registry->eBackend ==
+				EFFECT_ARTIST31470_SHADER_BACKEND::RUNTIME_V2 &&
+			Active027Registry->iOpcode == 13u &&
+			!Active027Registry->bNativeSelectionAdmitted &&
+			Active027Registry->bDrawAdmitted &&
+			Active027Registry->strEngineEqualityStaticSetSha256 ==
+				"49cc0c15999c691875f7198b309c3f1f74ef57b0bbfd8f063d74d9c9648eda05" &&
+			Active027Registry->strRecoveredPixelShaderId ==
+				"67ed51e00d8a4247a540ccf8a05a6c8c" &&
+			Active027Registry->strRecoveredPixelDxbcSha256 ==
+				"7253dacbe9d1bf3b9410b0beeb341b8a4dfc47e8726b267c23c2eba8366189d3" &&
+			Active027Registry->eSceneColorOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::SCENE_COLOR_RT0 &&
+			Active027Registry->eDistortionOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE,
+			"Artist Core27 Pins Bounded RT0 PS Evidence Without Claiming Native VF Or Pass");
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			DistortionRegistry = Find_Artist31470ShaderRegistry(
+				33u, "source-active-033");
+		runner.Require(
+			DistortionRegistry.has_value() &&
+			DistortionRegistry->eFidelity ==
+				EFFECT_ARTIST31470_SHADER_FIDELITY::UNRESOLVED_FAIL_CLOSED &&
+			DistortionRegistry->eBackend ==
+				EFFECT_ARTIST31470_SHADER_BACKEND::NONE &&
+			!DistortionRegistry->bDrawAdmitted &&
+			DistortionRegistry->eSceneColorOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE &&
+			DistortionRegistry->eDistortionOutput ==
+				EFFECT_ARTIST31470_SHADER_OUTPUT_ROLE::NONE,
+			"Artist Core33 One-Layer Distortion Stays Fail-Closed Until Its Exact Scene-Copy Pass Is Implemented");
 		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
 		std::string Status;
 		std::cout << "[PROGRESS] headless Engine initialization begin" << std::endl;
@@ -890,10 +1475,122 @@ namespace
 			ArtistObject->Set_SampleTime(0.f);
 		}
 		if (!bArtistStaged)
-			std::cout << "[INFO] Artist Full35 actual first-render stage: " <<
+			std::cout << "[INFO] Artist Core33 actual first-render stage: " <<
 				Status << '\n';
 		runner.Require(bArtistStaged,
-			"Artist Full35 First Render Gate Clones And Stages The Production EffectObject");
+			"Artist Core33 First Render Gate Clones And Stages The Production EffectObject");
+		const bool_t bArtistCoreRegistryExact =
+			Validate_ArtistCoreRegistry(Preparation, ArtistDocument);
+		runner.Require(bArtistCoreRegistryExact,
+			"Artist Core Registry Maps Orders Zero Through Thirty Four To Exact Stable Element IDs And Renderer Families");
+		const std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM>
+			ArtistCoreProgram = nullptr == ArtistObject ? nullptr :
+				ArtistObject->Get_ReconstructedRuntimeProgram();
+		runner.Require(bArtistStaged && nullptr != ArtistObject &&
+			ArtistObject->Is_ReconstructedSourceRuntimeActive() &&
+			!ArtistObject->Is_ReconstructedDiagnosticActive(),
+			"Artist Core Preview Uses The Shared Source Runtime And Leaves The Generic Diagnostic Disabled");
+
+		const auto SameIsolation = [](
+			const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Left,
+			const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Right)
+		{
+			return Left.eKind == Right.eKind && Left.eFamily == Right.eFamily &&
+				Left.strElementId == Right.strElementId;
+		};
+		bool_t bIsolationRejectsUnsupported = bArtistStaged;
+		bool_t bIsolationRegistryExact = bArtistStaged && bArtistCoreRegistryExact;
+		if (bArtistStaged)
+		{
+			const auto RejectWithoutMutation = [&](const
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION& Rejected)
+			{
+				const EFFECT_PREVIEW_SUBMISSION_ISOLATION Before =
+					ArtistObject->Get_PreviewSubmissionIsolation();
+				std::string Error;
+				const bool_t bAccepted =
+					ArtistObject->Set_PreviewSubmissionIsolation(Rejected, Error);
+				return !bAccepted && !Error.empty() && SameIsolation(
+					Before, ArtistObject->Get_PreviewSubmissionIsolation());
+			};
+
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION Invalid;
+			Invalid.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::END;
+			bIsolationRejectsUnsupported &= RejectWithoutMutation(Invalid);
+			Invalid = {};
+			Invalid.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::FAMILY;
+			Invalid.eFamily = EFFECT_GPU_RENDER_FAMILY::END;
+			bIsolationRejectsUnsupported &= RejectWithoutMutation(Invalid);
+			Invalid = {};
+			Invalid.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+			Invalid.eFamily = EFFECT_GPU_RENDER_FAMILY::SPRITE;
+			Invalid.strElementId = "artist.core.unknown";
+			bIsolationRejectsUnsupported &= RejectWithoutMutation(Invalid);
+			for (const size_t iDeferred : { 32u, 34u })
+			{
+				Invalid = {};
+				Invalid.eKind =
+					EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+				Invalid.eFamily = EFFECT_GPU_RENDER_FAMILY::END;
+				Invalid.strElementId =
+					ARTIST_CORE_REGISTRY[iDeferred].strElementId;
+				bIsolationRejectsUnsupported &= RejectWithoutMutation(Invalid);
+			}
+			Invalid = {};
+			Invalid.eKind =
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+			Invalid.eFamily = EFFECT_GPU_RENDER_FAMILY::MESH;
+			Invalid.strElementId = ARTIST_CORE_REGISTRY[3u].strElementId;
+			bIsolationRejectsUnsupported &= RejectWithoutMutation(Invalid);
+
+			constexpr std::array<EFFECT_GPU_RENDER_FAMILY, 4u> CoreFamilies = {
+				EFFECT_GPU_RENDER_FAMILY::MESH,
+				EFFECT_GPU_RENDER_FAMILY::SPRITE,
+				EFFECT_GPU_RENDER_FAMILY::DECAL,
+				EFFECT_GPU_RENDER_FAMILY::RIBBON };
+			for (const EFFECT_GPU_RENDER_FAMILY eFamily : CoreFamilies)
+			{
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION Family;
+				Family.eKind =
+					EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::FAMILY;
+				Family.eFamily = eFamily;
+				std::string Error;
+				const bool_t bSet = ArtistObject->Set_PreviewSubmissionIsolation(
+					Family, Error);
+				bIsolationRegistryExact &= bSet && Error.empty() && SameIsolation(
+					Family, ArtistObject->Get_PreviewSubmissionIsolation());
+			}
+			for (const ARTIST_CORE_REGISTRY_ROW& Row : ARTIST_CORE_REGISTRY)
+			{
+				if (Row.eFamily == EFFECT_GPU_RENDER_FAMILY::END)
+					continue;
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION Occurrence;
+				Occurrence.eKind =
+					EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+				Occurrence.eFamily = Row.eFamily;
+				Occurrence.strElementId = Row.strElementId;
+				std::string Error;
+				const bool_t bSet = ArtistObject->Set_PreviewSubmissionIsolation(
+					Occurrence, Error);
+				bIsolationRegistryExact &= bSet && Error.empty() && SameIsolation(
+					Occurrence, ArtistObject->Get_PreviewSubmissionIsolation());
+			}
+			ArtistObject->Reset_PreviewSubmissionIsolation();
+			const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Reset =
+				ArtistObject->Get_PreviewSubmissionIsolation();
+			bIsolationRegistryExact = bIsolationRegistryExact &&
+				Reset.eKind == EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ALL &&
+				Reset.eFamily == EFFECT_GPU_RENDER_FAMILY::END &&
+				Reset.strElementId.empty() &&
+				ArtistObject->Get_ReconstructedRuntimeProgram() ==
+					ArtistCoreProgram &&
+				ArtistObject->Is_ReconstructedSourceRuntimeActive() &&
+				!ArtistObject->Is_ReconstructedDiagnosticActive();
+		}
+		runner.Require(bIsolationRejectsUnsupported,
+			"Artist Core Isolation Rejects Unknown Deferred Mismatched And Unsupported Rows Without Mutating The Prior Filter");
+		runner.Require(bIsolationRegistryExact,
+			"Artist Core Isolation Selects All Four Families And Every Exact Stable Core33 Occurrence Without Restaging The Shared Program");
 
 		HRESULT hArtistRender = E_FAIL;
 		HRESULT hArtistDevice = E_FAIL;
@@ -909,7 +1606,7 @@ namespace
 			ArtistObject, hArtistRender, hArtistDevice);
 		if (!bArtistRendered)
 		{
-			std::cout << "[INFO] Artist Full35 actual first-render HRESULT=0x" <<
+			std::cout << "[INFO] Artist Core33 actual first-render HRESULT=0x" <<
 				std::hex << static_cast<uint32_t>(hArtistRender) <<
 				" device=0x" << static_cast<uint32_t>(hArtistDevice) <<
 				std::dec << " status=" <<
@@ -917,7 +1614,7 @@ namespace
 					ArtistObject->Get_Status()) << '\n';
 		}
 		runner.Require(bArtistRendered,
-			"Artist Full35 Zero-Time EffectObject Render Completes And Commits Without Isolation");
+			"Artist Core33 Zero-Time EffectObject Render Completes And Commits Without Isolation");
 
 		// Zero-time can legally contain no submitted rows. The visible first-draw
 		// seam must also execute a frame with real candidate and submitted rows.
@@ -937,12 +1634,12 @@ namespace
 		}
 		std::cout << "[PROGRESS] Artist 1.5-second submitted draw complete" <<
 			std::endl;
-		PrintGpuSubmissionStats("Artist Full35 1.5s total GPU rows", ArtistObject);
+		PrintGpuSubmissionStats("Artist Core33 1.5s total GPU rows", ArtistObject);
 		const bool_t bArtistDrawSubmitted = Has_SubmittedGpuDraw(
 			ArtistObject, hArtistDraw, hArtistDrawDevice);
 		if (!bArtistDrawSubmitted)
 		{
-			std::cout << "[INFO] Artist Full35 1.5s draw HRESULT=0x" <<
+			std::cout << "[INFO] Artist Core33 1.5s draw HRESULT=0x" <<
 				std::hex << static_cast<uint32_t>(hArtistDraw) <<
 				" device=0x" << static_cast<uint32_t>(hArtistDrawDevice) <<
 				std::dec << " status=" <<
@@ -950,7 +1647,1053 @@ namespace
 					ArtistObject->Get_Status()) << '\n';
 		}
 		runner.Require(bArtistDrawSubmitted,
-			"Artist Full35 1.5-Second EffectObject Frame Attempts And Submits A Real GPU Draw");
+			"Artist Core33 1.5-Second EffectObject Frame Attempts And Submits A Real GPU Draw");
+
+		/* Exercise the complete Core33 renderer timeline twice from the same
+		   immutable program and seeds.  The control stays at identity; the canary
+		   uses large, exactly representable translations for the actor root and the
+		   one prepared WP_SDM_R_Battle slot.  Every fixed step therefore has an
+		   unambiguous source-space/root-or-anchor position oracle. */
+		constexpr float3_t CORE_ROOT_DELTA = { 1024.f, 2048.f, -4096.f };
+		constexpr float3_t CORE_ANCHOR_DELTA = { -8192.f, 16384.f, 32768.f };
+		std::unordered_map<std::string, ARTIST_CORE_OCCURRENCE_EXPECTATION>
+			ExpectedCoreOccurrences;
+		std::unordered_map<std::string, const EFFECT_ELEMENT_DESC*>
+			CoreDocumentElements;
+		for (const EFFECT_ELEMENT_DESC& Element : ArtistDocument.Elements)
+			CoreDocumentElements.emplace(Element.strElementId, &Element);
+		std::set<uint32_t> CoreOrders;
+		std::set<std::string> DeferredOccurrenceIds;
+		std::set<std::string> ExpectedDrawAdmittedOccurrenceIds;
+		std::set<std::string> ExpectedSuppressedOccurrenceIds;
+		std::set<std::string> PrintedRowDenominatorFailures;
+		uint32_t iFollowSourceBasisIdentityCount = 0u;
+		uint32_t iSnapshotRootSourceBasisCount = 0u;
+		std::array<size_t,
+			static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)>
+			ExpectedSubmittedFamilyCounts{};
+		std::string ExpectedRibbonId;
+		std::array<std::string,
+			static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)>
+			AbsoluteRepresentativeIds{};
+		std::array<uint32_t,
+			static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)>
+			AbsoluteRepresentativeSampleIndices{ 83u, 1u, 91u, 6u };
+		bool_t bAbsoluteRepresentativeSchedulesExact = true;
+		bool_t bCoreSourcePositionOracleExact = nullptr != Preparation &&
+			nullptr != Preparation->Get_Program() &&
+			Validate_Artist31470ShaderRegistry() &&
+			Get_Artist31470ShaderRegistry().size() == 35u &&
+			Preparation->Get_Program()->Emitters.size() == 35u &&
+			ArtistDocument.Elements.size() == 35u &&
+			CoreDocumentElements.size() == 35u &&
+			Preparation->Get_AnchorRequests().size() == 5u;
+		if (bCoreSourcePositionOracleExact)
+		{
+			for (const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding :
+				Preparation->Get_AnchorRequests())
+			{
+				bCoreSourcePositionOracleExact =
+					bCoreSourcePositionOracleExact && Binding.Request.bFollow &&
+					Binding.Request.strRuntimeAnchorSlotId ==
+						"WP_SDM_R_Battle" &&
+					Binding.Request.strRuntimeBoneName == "b_wp_1";
+			}
+		}
+		if (nullptr != Preparation && nullptr != Preparation->Get_Program())
+		{
+			for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter :
+				Preparation->Get_Program()->Emitters)
+			{
+				const bool_t bExpectedFollowAttachment = Emitter.Row.iOrder <= 4u;
+				const f32_t fExpectedSourceBasisYaw =
+					bExpectedFollowAttachment ? 0.f : -90.f;
+				const auto AttachmentElement = CoreDocumentElements.find(
+					Emitter.strSourceElementId);
+				float3_t SourcePositiveX{};
+				XMStoreFloat3(&SourcePositiveX, XMVector3TransformNormal(
+					XMVectorSet(1.f, 0.f, 0.f, 0.f),
+					XMMatrixRotationY(XMConvertToRadians(fExpectedSourceBasisYaw))));
+				const bool_t bSourceBasisContractExact =
+					Emitter.ActionCueAttachment.bEnabled &&
+					Emitter.ActionCueAttachment.bFollow == bExpectedFollowAttachment &&
+					Nearly_Equal(static_cast<f32_t>(
+						Emitter.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees),
+						fExpectedSourceBasisYaw) &&
+					Emitter.TransformCompositionOrder == std::vector<std::string>{
+						"carrierGeometryPreScale", "signedParticleScaleRotationLocation",
+						"emitterElementTransform", "cueLocalTransform",
+						"snapshotRootSourceBasis", "attachmentSocketOrRoot", "actorWorld" } &&
+					AttachmentElement != CoreDocumentElements.end() &&
+					AttachmentElement->second->ActionCueAttachment.bEnabled &&
+					AttachmentElement->second->ActionCueAttachment.bFollow ==
+						bExpectedFollowAttachment &&
+					Nearly_Equal(AttachmentElement->second->ActionCueAttachment.
+						fSnapshotRootSourceBasisYawDegrees, fExpectedSourceBasisYaw) &&
+					Nearly_Equal(SourcePositiveX, bExpectedFollowAttachment ?
+						float3_t{ 1.f, 0.f, 0.f } : float3_t{ 0.f, 0.f, 1.f });
+				bCoreSourcePositionOracleExact =
+					bCoreSourcePositionOracleExact && bSourceBasisContractExact;
+				if (bExpectedFollowAttachment)
+					++iFollowSourceBasisIdentityCount;
+				else
+					++iSnapshotRootSourceBasisCount;
+				const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+					ShaderRegistry = Find_Artist31470ShaderRegistry(
+						Emitter.Row.iOrder, Emitter.strEvidenceId);
+				const bool_t bShaderRegistryEmitterExact =
+					ShaderRegistry.has_value() &&
+					ShaderRegistry->eRenderer == Emitter.eRenderer &&
+					Validate_Artist31470ShaderRegistryEmitterIdentity(
+						Emitter.Row.iOrder, Emitter.strEvidenceId,
+						Emitter.strSourceElementId, Emitter.strSourceEmitterPath);
+				bCoreSourcePositionOracleExact =
+					bCoreSourcePositionOracleExact && bShaderRegistryEmitterExact;
+				EFFECT_GPU_RENDER_FAMILY Family = EFFECT_GPU_RENDER_FAMILY::END;
+				EFFECT_GPU_RENDER_CARRIER Carrier =
+					EFFECT_GPU_RENDER_CARRIER::END;
+				bool_t bCoreFamily = true;
+				switch (Emitter.eRenderer)
+				{
+				case EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE:
+					Family = EFFECT_GPU_RENDER_FAMILY::MESH;
+					Carrier = EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL;
+					break;
+				case EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE:
+					Family = EFFECT_GPU_RENDER_FAMILY::SPRITE;
+					Carrier = EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE;
+					break;
+				case EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE:
+					Family = EFFECT_GPU_RENDER_FAMILY::DECAL;
+					Carrier = EFFECT_GPU_RENDER_CARRIER::DECAL_RECT;
+					break;
+				case EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON:
+					Family = EFFECT_GPU_RENDER_FAMILY::RIBBON;
+					Carrier = EFFECT_GPU_RENDER_CARRIER::RIBBON_DYNAMIC_TRAIL;
+					break;
+				case EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE:
+					bCoreFamily = false;
+					bCoreSourcePositionOracleExact =
+						bCoreSourcePositionOracleExact && 34u == Emitter.Row.iOrder;
+					DeferredOccurrenceIds.emplace(Emitter.strSourceElementId);
+					break;
+				case EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST:
+					bCoreFamily = false;
+					bCoreSourcePositionOracleExact =
+						bCoreSourcePositionOracleExact && 32u == Emitter.Row.iOrder;
+					DeferredOccurrenceIds.emplace(Emitter.strSourceElementId);
+					break;
+				default:
+					bCoreFamily = false;
+					bCoreSourcePositionOracleExact = false;
+					break;
+				}
+				if (!bCoreFamily)
+					continue;
+
+				std::array<double, 3u> ExpectedSourcePosition{};
+				if (Emitter.Row.iOrder <= 3u)
+					ExpectedSourcePosition = { 30.0, 0.0, 0.0 };
+				else if (4u == Emitter.Row.iOrder)
+					ExpectedSourcePosition = { 0.0, 0.0, 0.0 };
+				else if (Emitter.Row.iOrder <= 19u)
+					ExpectedSourcePosition = { 100.0, -100.0, 0.0 };
+				else if (Emitter.Row.iOrder <= 31u)
+					ExpectedSourcePosition = { 60.0, 0.0, 0.0 };
+				else if (33u == Emitter.Row.iOrder)
+					ExpectedSourcePosition = { 0.0, 0.0, 60.0 };
+				else
+					bCoreSourcePositionOracleExact = false;
+				const float3_t ExpectedRuntimePosition = {
+					static_cast<f32_t>(ExpectedSourcePosition[0] * 0.01),
+					static_cast<f32_t>(ExpectedSourcePosition[2] * 0.01),
+					static_cast<f32_t>(-ExpectedSourcePosition[1] * 0.01) };
+				const float3_t ExpectedRuntimeScale = {
+					static_cast<f32_t>(Emitter.CueLocalTransform.vScale[0]),
+					static_cast<f32_t>(Emitter.CueLocalTransform.vScale[1]),
+					static_cast<f32_t>(Emitter.CueLocalTransform.vScale[2]) };
+				const float3_t DeterministicCarrierLocalPosition =
+					20u == Emitter.Row.iOrder ? float3_t{ 1.6f, 0.f, 0.f } :
+					float3_t{};
+				const bool_t bAnchorAttached = Emitter.Row.iOrder <= 4u;
+				const auto Element = CoreDocumentElements.find(
+					Emitter.strSourceElementId);
+				const bool_t bAttachmentExact = bAnchorAttached ?
+					(Emitter.ActionCueAttachment.bEnabled &&
+					 Emitter.ActionCueAttachment.bFollow &&
+					 Emitter.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees == 0.0 &&
+					 Emitter.ActionCueAttachment.strSourceAnchorSlotId ==
+						"WP_SDM_R_Battle" &&
+					 Emitter.ActionCueAttachment.strRuntimeAnchorSlotId ==
+						"WP_SDM_R_Battle" &&
+					 Emitter.ActionCueAttachment.strRuntimeBoneName == "b_wp_1") :
+					(Emitter.ActionCueAttachment.bEnabled &&
+					 !Emitter.ActionCueAttachment.bFollow &&
+					 Emitter.ActionCueAttachment.fSnapshotRootSourceBasisYawDegrees == -90.0 &&
+					 Emitter.ActionCueAttachment.strSourceAnchorSlotId == "root" &&
+					 Emitter.ActionCueAttachment.strRuntimeAnchorSlotId == "root" &&
+					 Emitter.ActionCueAttachment.strRuntimeBoneName.empty());
+				const bool_t bProgramEmitterOracleExact = Emitter.bVisible &&
+					Element != CoreDocumentElements.end() &&
+					Emitter.CueLocalTransform.vSourcePositionUeUnits ==
+						ExpectedSourcePosition && bAttachmentExact &&
+					Nearly_Equal(static_cast<f32_t>(
+						Emitter.CueLocalTransform.vPosition[0]),
+						ExpectedRuntimePosition.x) &&
+					Nearly_Equal(static_cast<f32_t>(
+						Emitter.CueLocalTransform.vPosition[1]),
+						ExpectedRuntimePosition.y) &&
+					Nearly_Equal(static_cast<f32_t>(
+						Emitter.CueLocalTransform.vPosition[2]),
+						ExpectedRuntimePosition.z);
+				bool_t bProjectedEmitterOracleExact = false;
+				if (Element != CoreDocumentElements.end())
+				{
+					const EFFECT_ELEMENT_DESC& Projected = *Element->second;
+					const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& StrippedEvidence =
+						Projected.SourceRecipe.CompilerEvidence;
+					bProjectedEmitterOracleExact = Projected.bVisible &&
+						Carrier != EFFECT_GPU_RENDER_CARRIER::END &&
+						ShaderRegistry.has_value() &&
+						Expected_ArtistCorePass(Projected.Material.eRenderProfile) ==
+							ShaderRegistry->iCurrentPassIndex &&
+						Nearly_Equal(Projected.Detail.Transform.vPosition,
+							ExpectedRuntimePosition) &&
+						Nearly_Equal(StrippedEvidence.vCueSourcePositionUeUnits,
+							float3_t{}) &&
+						Nearly_Equal(StrippedEvidence.CueLocalTransform.vPosition,
+							float3_t{}) &&
+						Nearly_Equal(
+							StrippedEvidence.CueLocalTransform.vRotationDegrees,
+							float3_t{}) &&
+						Nearly_Equal(StrippedEvidence.CueLocalTransform.vScale,
+							float3_t{ 1.f, 1.f, 1.f }) &&
+						Projected.ActionCueAttachment.bFollow == bAnchorAttached &&
+						Nearly_Equal(Projected.ActionCueAttachment.
+							fSnapshotRootSourceBasisYawDegrees,
+							bAnchorAttached ? 0.f : -90.f) &&
+						Projected.ActionCueAttachment.strSourceAnchorSlotId ==
+							(bAnchorAttached ? "WP_SDM_R_Battle" : "root") &&
+						Projected.ActionCueAttachment.strRuntimeAnchorSlotId ==
+							(bAnchorAttached ? "WP_SDM_R_Battle" : "root") &&
+						Projected.ActionCueAttachment.strRuntimeBoneName ==
+							(bAnchorAttached ? "b_wp_1" : "");
+				}
+				if (!bProgramEmitterOracleExact || !bProjectedEmitterOracleExact)
+				{
+					std::cout << "[DETAIL] Core33 source row " <<
+						Emitter.Row.iOrder << " program=" <<
+						bProgramEmitterOracleExact << " projected=" <<
+						bProjectedEmitterOracleExact << " attachment=" <<
+						bAttachmentExact << '\n';
+				}
+				const bool_t bInserted = ExpectedCoreOccurrences.emplace(
+					Emitter.strSourceElementId,
+					ARTIST_CORE_OCCURRENCE_EXPECTATION{
+						Emitter.Row.iOrder, Family, Carrier,
+						ShaderRegistry.has_value() ?
+							ShaderRegistry->iCurrentPassIndex : UINT32_MAX,
+						ShaderRegistry.has_value() &&
+							ShaderRegistry->bDrawAdmitted,
+						bAnchorAttached, bAnchorAttached ? 0.f : -90.f,
+						ExpectedRuntimePosition,
+						ExpectedRuntimeScale,
+						DeterministicCarrierLocalPosition }).second;
+				if (ShaderRegistry.has_value() && ShaderRegistry->bDrawAdmitted)
+				{
+					ExpectedDrawAdmittedOccurrenceIds.emplace(
+						Emitter.strSourceElementId);
+					++ExpectedSubmittedFamilyCounts[
+						static_cast<size_t>(Family)];
+				}
+				else
+				{
+					ExpectedSuppressedOccurrenceIds.emplace(
+						Emitter.strSourceElementId);
+				}
+				const bool_t bOrderInserted =
+					CoreOrders.emplace(Emitter.Row.iOrder).second;
+				bCoreSourcePositionOracleExact = bCoreSourcePositionOracleExact &&
+					bProgramEmitterOracleExact && bProjectedEmitterOracleExact &&
+					bInserted && bOrderInserted;
+				if (EFFECT_GPU_RENDER_FAMILY::RIBBON == Family)
+					ExpectedRibbonId = Emitter.strSourceElementId;
+				const bool_t bAbsoluteRepresentative =
+					(EFFECT_GPU_RENDER_FAMILY::SPRITE == Family &&
+						2u == Emitter.Row.iOrder) ||
+					(EFFECT_GPU_RENDER_FAMILY::RIBBON == Family &&
+						3u == Emitter.Row.iOrder) ||
+					(EFFECT_GPU_RENDER_FAMILY::MESH == Family &&
+						9u == Emitter.Row.iOrder) ||
+					(EFFECT_GPU_RENDER_FAMILY::DECAL == Family &&
+						20u == Emitter.Row.iOrder);
+				if (bAbsoluteRepresentative)
+				{
+					AbsoluteRepresentativeIds[static_cast<size_t>(Family)] =
+						Emitter.strSourceElementId;
+					if (9u == Emitter.Row.iOrder || 20u == Emitter.Row.iOrder)
+					{
+						const auto Schedule = std::find_if(
+							Preparation->Get_Program()->ActionSchedules.begin(),
+							Preparation->Get_Program()->ActionSchedules.end(),
+							[&](const EFFECT_RUNTIME_PROGRAM_ACTION_SCHEDULE& Value)
+							{
+								return Value.Row.strId == Emitter.strScheduleId;
+							});
+						const double fExpectedSchedule = 9u == Emitter.Row.iOrder ?
+							1.3803969621658325 : 1.4506419897079468;
+						const double fExpectedDelay = 9u == Emitter.Row.iOrder ?
+							0.0 : 0.05000000074505806;
+						bAbsoluteRepresentativeSchedulesExact =
+							bAbsoluteRepresentativeSchedulesExact &&
+							Schedule != Preparation->Get_Program()->ActionSchedules.end() &&
+							Schedule->fGlobalTimeSeconds == fExpectedSchedule &&
+							Emitter.Timing.fEmitterDelaySeconds == fExpectedDelay &&
+							static_cast<uint32_t>(std::ceil(
+								(fExpectedSchedule + fExpectedDelay) * 60.0)) ==
+								AbsoluteRepresentativeSampleIndices[
+									static_cast<size_t>(Family)];
+					}
+				}
+			}
+		}
+		std::set<uint32_t> ExactCoreOrders;
+		for (uint32_t iOrder = 0u; iOrder < 35u; ++iOrder)
+		{
+			if (32u != iOrder && 34u != iOrder)
+				ExactCoreOrders.emplace(iOrder);
+		}
+		bCoreSourcePositionOracleExact = bCoreSourcePositionOracleExact &&
+			ExpectedCoreOccurrences.size() == 33u &&
+			ExpectedDrawAdmittedOccurrenceIds.size() == 29u &&
+			ExpectedSuppressedOccurrenceIds.size() == 4u &&
+			ExpectedDrawAdmittedOccurrenceIds.size() +
+				ExpectedSuppressedOccurrenceIds.size() == 33u &&
+			std::none_of(ExpectedDrawAdmittedOccurrenceIds.begin(),
+				ExpectedDrawAdmittedOccurrenceIds.end(),
+				[&](const std::string& strElementId)
+				{
+					return ExpectedSuppressedOccurrenceIds.contains(strElementId);
+				}) &&
+			CoreOrders == ExactCoreOrders && DeferredOccurrenceIds.size() == 2u &&
+			iFollowSourceBasisIdentityCount == 5u &&
+			iSnapshotRootSourceBasisCount == 30u &&
+			!ExpectedRibbonId.empty() &&
+			bAbsoluteRepresentativeSchedulesExact &&
+			std::all_of(AbsoluteRepresentativeIds.begin(),
+				AbsoluteRepresentativeIds.end(), [](const std::string& strElementId)
+				{
+					return !strElementId.empty();
+				}) &&
+			std::all_of(DeferredOccurrenceIds.begin(),
+				DeferredOccurrenceIds.end(), [&](const std::string& strElementId)
+				{
+					const auto Element = CoreDocumentElements.find(strElementId);
+					return Element != CoreDocumentElements.end() &&
+						nullptr != Element->second && !Element->second->bVisible;
+				});
+		if (!bCoreSourcePositionOracleExact)
+		{
+			std::cout << "[DETAIL] Core33 source oracle program=" <<
+				(nullptr != Preparation && nullptr != Preparation->Get_Program()) <<
+				" docElements=" << ArtistDocument.Elements.size() <<
+				" docMap=" << CoreDocumentElements.size() <<
+				" expected=" << ExpectedCoreOccurrences.size() <<
+				" orders=" << CoreOrders.size() <<
+				" deferred=" << DeferredOccurrenceIds.size() <<
+				" ribbon=" << ExpectedRibbonId << '\n';
+		}
+		runner.Require(bCoreSourcePositionOracleExact,
+			"Artist Core33 Source UE Position Converts XZY At 0P01 And Selects Five Weapon Anchors Or Root Exactly");
+
+		CEffectObject::EFFECT_OBJECT_DESC CanaryBlankDesc{};
+		std::shared_ptr<Engine::CGameObject> CanaryBaseObject;
+		const bool_t bCanaryLayerAdded = bArtistPrepared && SUCCEEDED(
+			Engine::CGameInstance::Get().Add_GameObject_to_Layer(
+				ETOUI(LEVEL::STATIC), EffectPrototypeTag,
+				ETOUI(LEVEL::DEVELOPMENT), EffectLayerTag, &CanaryBlankDesc,
+				&CanaryBaseObject));
+		std::shared_ptr<CEffectObject> CanaryObject =
+			std::dynamic_pointer_cast<CEffectObject>(CanaryBaseObject);
+		const bool_t bCanaryStaged = bCanaryLayerAdded && nullptr != CanaryObject &&
+			CanaryObject->Stage_ReconstructedSourceRuntime(
+				ArtistDocument, ArtistPrepared, Preparation, Status);
+		runner.Require(bCanaryStaged,
+			"Artist Core33 Position Canary Stages A Second Identical Seeded EffectObject");
+
+		std::vector<uint32_t> ControlHistorySampleBits;
+		std::vector<uint32_t> CanaryHistorySampleBits;
+		const auto MakeMovingTransformProvider = [](
+			const float3_t RootDelta, const float3_t AnchorDelta,
+			std::vector<uint32_t>& SampleBits)
+		{
+			return [RootDelta, AnchorDelta, &SampleBits](
+				const f32_t fSampleTimeSeconds,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& strOutError)
+			{
+				SampleBits.push_back(std::bit_cast<uint32_t>(fSampleTimeSeconds));
+				const f32_t fSampleIndex = std::round(
+					fSampleTimeSeconds * 60.f);
+				XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixTranslation(
+					RootDelta.x + 0.125f * fSampleIndex,
+					RootDelta.y + 0.0625f * fSampleIndex,
+					RootDelta.z - 0.03125f * fSampleIndex));
+				float4x4_t AnchorWorld{};
+				XMStoreFloat4x4(&AnchorWorld, XMMatrixTranslation(
+					AnchorDelta.x + 0.25f * fSampleIndex,
+					AnchorDelta.y + 0.125f * fSampleIndex,
+					AnchorDelta.z - 0.0625f * fSampleIndex));
+				OutSample.SourceAnchorWorlds = {
+					{ "WP_SDM_R_Battle", AnchorWorld } };
+				strOutError.clear();
+				return true;
+			};
+		};
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ControlTransformProvider =
+			MakeMovingTransformProvider(
+				{}, {}, ControlHistorySampleBits);
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER CanaryTransformProvider =
+			MakeMovingTransformProvider(
+				CORE_ROOT_DELTA, CORE_ANCHOR_DELTA, CanaryHistorySampleBits);
+		std::string ControlHistoryStatus;
+		std::string CanaryHistoryStatus;
+		bool_t bCoreHistoryExact = bArtistDrawSubmitted && bCanaryStaged &&
+			ExpectedCoreOccurrences.size() == 33u &&
+			ArtistObject->Set_SampleTimeWithTransformHistory(
+				0.f, ControlTransformProvider, ControlHistoryStatus) &&
+			CanaryObject->Set_SampleTimeWithTransformHistory(
+				0.f, CanaryTransformProvider, CanaryHistoryStatus);
+
+		std::set<std::string> ActiveUnion;
+		std::set<std::string> CandidateUnion;
+		std::set<std::string> MaterialUnion;
+		std::set<std::string> TextureSrvUnion;
+		std::set<std::string> SamplerUnion;
+		std::set<std::string> ShaderPassUnion;
+		std::set<std::string> VIBufferUnion;
+		std::set<std::string> DrawUnion;
+		std::set<std::string> ExactCarrierPassUnion;
+		std::set<std::string> SubmittedUnion;
+		std::set<std::string> SuppressedUnion;
+		std::set<std::string> PositionedUnion;
+		std::set<std::string> SubmittedPositionDeltaUnion;
+		std::set<std::string> ComparedGeometryUnion;
+		std::set<std::string> ComparedTrailUnion;
+		std::array<size_t,
+			static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)>
+			SubmittedFamilyCounts{};
+		bool_t bCoreSweepCommitted = bCoreHistoryExact;
+		bool_t bCoreSweepCoverageComplete = false;
+		bool_t bCoreSweepTimelineComplete = false;
+		bool_t bCoreSweepLightPostNeverEvaluated = true;
+		bool_t bCoreSweepFrameDenominatorsExact = true;
+		bool_t bCoreSweepPositionExact = true;
+		std::set<uint32_t> AbsoluteVisitedSamples;
+		std::set<EFFECT_GPU_RENDER_FAMILY> AbsoluteFamilyUnion;
+		constexpr f32_t CORE_SWEEP_STEP_SECONDS = 1.f / 60.f;
+		constexpr uint32_t CORE_SWEEP_MAX_FRAMES = 600u;
+		uint32_t iCoreAdvancedStepCount = 0u;
+		const auto GetAbsolutePosition = [](const EFFECT_EVALUATED_FRAME& Frame,
+			const EFFECT_GPU_RENDER_FAMILY eFamily,
+			const std::string& strElementId) -> std::optional<float3_t>
+		{
+			const auto MatrixPosition = [](const float4x4_t& World)
+			{
+				return float3_t{ World._41, World._42, World._43 };
+			};
+			if (EFFECT_GPU_RENDER_FAMILY::MESH == eFamily ||
+				EFFECT_GPU_RENDER_FAMILY::SPRITE == eFamily)
+			{
+				const auto Particle = std::find_if(
+					Frame.Particles.begin(), Frame.Particles.end(),
+					[&](const EFFECT_EVALUATED_PARTICLE& Value)
+					{
+						return nullptr != Value.pElement &&
+							Value.pElement->strElementId == strElementId;
+					});
+				return Particle == Frame.Particles.end() ? std::nullopt :
+					std::optional<float3_t>{ MatrixPosition(Particle->World) };
+			}
+			if (EFFECT_GPU_RENDER_FAMILY::DECAL == eFamily)
+			{
+				const auto Element = std::find_if(
+					Frame.Elements.begin(), Frame.Elements.end(),
+					[&](const EFFECT_EVALUATED_ELEMENT& Value)
+					{
+						return nullptr != Value.pElement &&
+							Value.pElement->strElementId == strElementId;
+					});
+				return Element == Frame.Elements.end() ? std::nullopt :
+					std::optional<float3_t>{ MatrixPosition(Element->World) };
+			}
+			if (EFFECT_GPU_RENDER_FAMILY::RIBBON == eFamily)
+			{
+				const auto Trail = std::find_if(
+					Frame.Trails.begin(), Frame.Trails.end(),
+					[&](const EFFECT_EVALUATED_TRAIL& Value)
+					{
+						return nullptr != Value.pElement &&
+							Value.pElement->strElementId == strElementId &&
+							!Value.Points.empty();
+					});
+				return Trail == Frame.Trails.end() ? std::nullopt :
+					std::optional<float3_t>{ Trail->Points.back().vWorldPosition };
+			}
+			return std::nullopt;
+		};
+		const auto ExpectedAbsolutePosition = [&](const auto& Expected,
+			const uint32_t iHistorySample, const bool_t bCanary)
+		{
+			/* Follow attachments sample their anchor at the representative frame.
+			   Root occurrences preserve the root at their exact action-schedule start:
+			   Mesh #9 starts on step 83; Decal #20 starts on step 88 and emits on
+			   step 91 after its 0.05-second delay. Decal #20 additionally has exact
+			   source local X=160 UE (1.6), transformed by its authored cue scale. */
+			uint32_t iTransformSample = iHistorySample;
+			if (!Expected.bAnchorAttached)
+				iTransformSample = 20u == Expected.iOrder ? 88u : 83u;
+			const f32_t fSampleIndex = static_cast<f32_t>(iTransformSample);
+			float3_t ParentPosition = Expected.bAnchorAttached ?
+				float3_t{ 0.25f * fSampleIndex, 0.125f * fSampleIndex,
+					-0.0625f * fSampleIndex } :
+				float3_t{ 0.125f * fSampleIndex, 0.0625f * fSampleIndex,
+					-0.03125f * fSampleIndex };
+			if (bCanary)
+			{
+				const float3_t Delta = Expected.bAnchorAttached ?
+					CORE_ANCHOR_DELTA : CORE_ROOT_DELTA;
+				ParentPosition.x += Delta.x;
+				ParentPosition.y += Delta.y;
+				ParentPosition.z += Delta.z;
+			}
+			const float3_t LocalPosition = {
+				Expected.vCueLocalPosition.x +
+					Expected.vDeterministicCarrierLocalPosition.x *
+					Expected.vCueLocalScale.x,
+				Expected.vCueLocalPosition.y +
+					Expected.vDeterministicCarrierLocalPosition.y *
+					Expected.vCueLocalScale.y,
+				Expected.vCueLocalPosition.z +
+					Expected.vDeterministicCarrierLocalPosition.z *
+					Expected.vCueLocalScale.z };
+			float3_t SourceBasisPosition{};
+			XMStoreFloat3(&SourceBasisPosition, XMVector3TransformCoord(
+				XMLoadFloat3(&LocalPosition), XMMatrixRotationY(XMConvertToRadians(
+					Expected.fSnapshotRootSourceBasisYawDegrees))));
+			return float3_t{
+				ParentPosition.x + SourceBasisPosition.x,
+				ParentPosition.y + SourceBasisPosition.y,
+				ParentPosition.z + SourceBasisPosition.z };
+		};
+		const auto ConsumeZeroPresentationTransaction = [](
+			const std::shared_ptr<CEffectObject>& pControl,
+			const std::shared_ptr<CEffectObject>& pCanary)
+		{
+			if (nullptr == pControl || nullptr == pCanary)
+				return false;
+			const auto IsZeroChannel = [](const auto& Channel)
+			{
+				return 0u == Channel.iConfigured && 0u == Channel.iExpected &&
+					0u == Channel.iAttempted && 0u == Channel.iAccepted &&
+					0u == Channel.iSuppressed && 0u == Channel.iFailed;
+			};
+			const auto IsZeroSubmission = [&](const auto& Stats)
+			{
+				return Stats.bCompleted && Stats.bCommitted &&
+					0u == Stats.iProviderFailures && IsZeroChannel(Stats.Lights) &&
+					IsZeroChannel(Stats.ScreenPosts);
+			};
+			Engine::CPresentation_Manager& Presentation =
+				Engine::CPresentation_Manager::Get();
+			Presentation.Clear_Frame();
+			const HRESULT hControlAdd = Presentation.Add_FrameProvider(
+				std::static_pointer_cast<Engine::IPresentationProvider>(pControl));
+			const HRESULT hCanaryAdd = Presentation.Add_FrameProvider(
+				std::static_pointer_cast<Engine::IPresentationProvider>(pCanary));
+			const HRESULT hSubmission = Presentation.Submit_FrameProviders();
+			return S_OK == hControlAdd && S_OK == hCanaryAdd &&
+				S_OK == hSubmission &&
+				IsZeroSubmission(Presentation.Get_LastSubmissionStats()) &&
+				IsZeroSubmission(pControl->Get_LastPresentationSubmissionStats()) &&
+				IsZeroSubmission(pCanary->Get_LastPresentationSubmissionStats()) &&
+				Presentation.Get_TransientLights().empty() &&
+				Presentation.Get_ScreenPosts().empty() &&
+				0u == Presentation.Get_LastTransientLightCount() &&
+				0u == Presentation.Get_LastScreenPostCount();
+		};
+		for (uint32_t iFrame = 0u;
+			bCoreSweepCommitted && iFrame < CORE_SWEEP_MAX_FRAMES; ++iFrame)
+		{
+			const EFFECT_EVALUATED_FRAME& ControlFrame =
+				ArtistObject->Get_ReconstructedTestFrame();
+			const EFFECT_EVALUATED_FRAME& CanaryFrame =
+				CanaryObject->Get_ReconstructedTestFrame();
+			bCoreSweepPositionExact = bCoreSweepPositionExact &&
+				Compare_ArtistCoreTranslatedFrames(
+					ControlFrame, CanaryFrame, ExpectedCoreOccurrences,
+					CORE_ROOT_DELTA, CORE_ANCHOR_DELTA,
+					ComparedGeometryUnion, ComparedTrailUnion);
+			for (size_t iFamily = 0u;
+				iFamily < AbsoluteRepresentativeIds.size(); ++iFamily)
+			{
+				const uint32_t iSampleIndex =
+					AbsoluteRepresentativeSampleIndices[iFamily];
+				if (iSampleIndex != iFrame)
+					continue;
+				const bool_t bFixedSampleExact = Nearly_Equal(
+					ControlFrame.fSampleTimeSeconds,
+					static_cast<f32_t>(iSampleIndex) / 60.f) &&
+					Nearly_Equal(ControlFrame.fSampleTimeSeconds,
+						CanaryFrame.fSampleTimeSeconds);
+				if (!bFixedSampleExact)
+					continue;
+				AbsoluteVisitedSamples.emplace(iSampleIndex);
+				const EFFECT_GPU_RENDER_FAMILY eFamily =
+					static_cast<EFFECT_GPU_RENDER_FAMILY>(iFamily);
+				const std::string& strElementId =
+					AbsoluteRepresentativeIds[iFamily];
+				const auto Expected =
+					ExpectedCoreOccurrences.find(strElementId);
+				if (Expected == ExpectedCoreOccurrences.end() ||
+					Expected->second.eFamily != eFamily)
+				{
+					continue;
+				}
+					const std::optional<float3_t> ControlPosition =
+						GetAbsolutePosition(ControlFrame, eFamily, strElementId);
+					const std::optional<float3_t> CanaryPosition =
+						GetAbsolutePosition(CanaryFrame, eFamily, strElementId);
+					const float3_t ExpectedControlPosition =
+						ExpectedAbsolutePosition(
+							Expected->second, iSampleIndex, false);
+					const float3_t ExpectedCanaryPosition =
+						ExpectedAbsolutePosition(
+							Expected->second, iSampleIndex, true);
+					if (ControlPosition.has_value() && CanaryPosition.has_value() &&
+						Nearly_Equal(*ControlPosition, ExpectedControlPosition) &&
+						Nearly_Equal(*CanaryPosition, ExpectedCanaryPosition))
+					{
+						AbsoluteFamilyUnion.emplace(eFamily);
+					}
+					else
+					{
+						std::cout << "[DETAIL] Core33 absolute family=" << iFamily <<
+							" order=" << Expected->second.iOrder << " control=";
+						if (ControlPosition.has_value())
+							std::cout << ControlPosition->x << ',' << ControlPosition->y <<
+								',' << ControlPosition->z;
+						else
+							std::cout << "missing";
+						std::cout << " expected=" << ExpectedControlPosition.x << ',' <<
+							ExpectedControlPosition.y << ',' << ExpectedControlPosition.z <<
+							" canary=";
+						if (CanaryPosition.has_value())
+							std::cout << CanaryPosition->x << ',' << CanaryPosition->y <<
+								',' << CanaryPosition->z;
+						else
+							std::cout << "missing";
+						std::cout << " expected=" << ExpectedCanaryPosition.x << ',' <<
+							ExpectedCanaryPosition.y << ',' << ExpectedCanaryPosition.z << '\n';
+					}
+			}
+			const bool_t bZeroPresentationTransaction =
+				ConsumeZeroPresentationTransaction(ArtistObject, CanaryObject);
+			if (!bZeroPresentationTransaction ||
+				!EngineScope.Begin_Frame(Status))
+			{
+				bCoreSweepCommitted = false;
+				break;
+			}
+			const HRESULT hControlRender = ArtistObject->Render();
+			const HRESULT hCanaryRender = CanaryObject->Render();
+			const HRESULT hSweepDevice = Device->GetDeviceRemovedReason();
+			if (!Is_CommittedFirstRender(
+					ArtistObject, hControlRender, hSweepDevice) ||
+				!Is_CommittedFirstRender(
+					CanaryObject, hCanaryRender, hSweepDevice))
+			{
+				bCoreSweepCommitted = false;
+				break;
+			}
+			bCoreSweepLightPostNeverEvaluated =
+				bCoreSweepLightPostNeverEvaluated &&
+				ControlFrame.Lights.empty() && ControlFrame.ScreenPosts.empty() &&
+				CanaryFrame.Lights.empty() && CanaryFrame.ScreenPosts.empty() &&
+				bZeroPresentationTransaction;
+			const EFFECT_GPU_RENDER_SUBMISSION_STATS& ControlStats =
+				ArtistObject->Get_LastRenderSubmissionStats();
+			const EFFECT_GPU_RENDER_SUBMISSION_STATS& CanaryStats =
+				CanaryObject->Get_LastRenderSubmissionStats();
+			std::set<std::string> FrameIds;
+			bCoreSweepFrameDenominatorsExact =
+				bCoreSweepFrameDenominatorsExact &&
+				ControlStats.Occurrences.size() ==
+					ExpectedCoreOccurrences.size() &&
+				CanaryStats.Occurrences.size() ==
+					ExpectedCoreOccurrences.size();
+			for (size_t iRow = 0u;
+				iRow < ControlStats.Occurrences.size() &&
+				iRow < CanaryStats.Occurrences.size(); ++iRow)
+			{
+				const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row =
+					ControlStats.Occurrences[iRow];
+				const EFFECT_GPU_RENDER_OCCURRENCE_STATS& CanaryRow =
+					CanaryStats.Occurrences[iRow];
+				const auto Expected = ExpectedCoreOccurrences.find(Row.strElementId);
+				const bool_t bKnownFamily =
+					Expected != ExpectedCoreOccurrences.end() &&
+					Expected->second.eFamily != EFFECT_GPU_RENDER_FAMILY::END &&
+					Expected->second.eCarrier != EFFECT_GPU_RENDER_CARRIER::END &&
+					Expected->second.iSelectedPassIndex != UINT32_MAX &&
+					static_cast<size_t>(Expected->second.eFamily) <
+						SubmittedFamilyCounts.size();
+				const bool_t bDrawAdmitted = bKnownFamily &&
+					Expected->second.bDrawAdmitted;
+				const bool_t bExactDrawSelection = bDrawAdmitted &&
+					Row.iDrawSelectionCount == Row.iIssuedDrawCallCount &&
+					CanaryRow.iDrawSelectionCount ==
+						CanaryRow.iIssuedDrawCallCount &&
+					!Row.bDrawSelectionDiverged &&
+					!CanaryRow.bDrawSelectionDiverged &&
+					Row.eCarrier == CanaryRow.eCarrier &&
+					Row.iSelectedPassIndex == CanaryRow.iSelectedPassIndex &&
+					(0u < Row.iSubmitted ?
+						(Row.eCarrier == Expected->second.eCarrier &&
+						 Row.iSelectedPassIndex ==
+							Expected->second.iSelectedPassIndex) :
+						(Row.eCarrier == EFFECT_GPU_RENDER_CARRIER::END &&
+						 Row.iSelectedPassIndex == UINT32_MAX &&
+						 0u == Row.iDrawSelectionCount));
+				const auto IsFailClosedWithoutDraw = [](const auto& Value)
+				{
+					return 0u == Value.iMaterialBindCount &&
+						0u == Value.iTextureSrvBindCount &&
+						0u == Value.iSamplerBindCount &&
+						0u == Value.iShaderPassApplyCount &&
+						0u == Value.iVIBufferBindCount &&
+						0u == Value.iVIBufferDrawCount &&
+						0u == Value.iGeometryUploadCount &&
+						0u == Value.iIssuedDrawCallCount &&
+						0u == Value.iDrawSelectionCount &&
+						0u == Value.iSubmitted &&
+						Value.iSuppressed == Value.iActive &&
+						EFFECT_GPU_RENDER_CARRIER::END == Value.eCarrier &&
+						UINT32_MAX == Value.iSelectedPassIndex &&
+						!Value.bDrawSelectionDiverged &&
+						!Value.bHasSubmittedPosition;
+				};
+				const bool_t bExactFailClosedSuppression = bKnownFamily &&
+					!Expected->second.bDrawAdmitted &&
+					IsFailClosedWithoutDraw(Row) &&
+					IsFailClosedWithoutDraw(CanaryRow);
+				const bool_t bInactiveDrawAdmitted = bDrawAdmitted &&
+					0u == Row.iCandidateRowCount && 0u == Row.iSubmitted &&
+					Row.iSuppressed == Row.iActive &&
+					IsFailClosedWithoutDraw(Row) &&
+					IsFailClosedWithoutDraw(CanaryRow);
+				const bool_t bTypedZeroOutputDrawAdmitted = bDrawAdmitted &&
+					0u < Row.iCandidateRowCount && 0u < Row.iActive &&
+					0u == Row.iSubmitted &&
+					IsFailClosedWithoutDraw(Row) &&
+					IsFailClosedWithoutDraw(CanaryRow);
+				const bool_t bExactRow = bKnownFamily &&
+					Expected->second.eFamily == Row.eFamily &&
+					CanaryRow.strElementId == Row.strElementId &&
+					CanaryRow.eFamily == Row.eFamily &&
+					FrameIds.insert(Row.strElementId).second &&
+					1u == Row.iConfigured && 1u == Row.iEvaluated &&
+					Row.iActive <= 1u && Row.iAttempted == Row.iActive &&
+					Row.iSubmitted + Row.iSuppressed == Row.iAttempted &&
+					0u == Row.iFailed &&
+					CanaryRow.iConfigured == Row.iConfigured &&
+					CanaryRow.iEvaluated == Row.iEvaluated &&
+					CanaryRow.iActive == Row.iActive &&
+					CanaryRow.iCandidateRowCount == Row.iCandidateRowCount &&
+					CanaryRow.iAttempted == Row.iAttempted &&
+					CanaryRow.iMaterialBindCount == Row.iMaterialBindCount &&
+					CanaryRow.iTextureSrvBindCount == Row.iTextureSrvBindCount &&
+					CanaryRow.iSamplerBindCount == Row.iSamplerBindCount &&
+					CanaryRow.iShaderPassApplyCount == Row.iShaderPassApplyCount &&
+					CanaryRow.iVIBufferBindCount == Row.iVIBufferBindCount &&
+					CanaryRow.iVIBufferDrawCount == Row.iVIBufferDrawCount &&
+					CanaryRow.iGeometryUploadCount == Row.iGeometryUploadCount &&
+					CanaryRow.iIssuedDrawCallCount == Row.iIssuedDrawCallCount &&
+					CanaryRow.iDrawSelectionCount == Row.iDrawSelectionCount &&
+					CanaryRow.iSubmitted == Row.iSubmitted &&
+					CanaryRow.iSuppressed == Row.iSuppressed &&
+					CanaryRow.iFailed == Row.iFailed &&
+					CanaryRow.bHasSubmittedPosition == Row.bHasSubmittedPosition &&
+					(bDrawAdmitted ?
+						(0u == Row.iSuppressed &&
+						 0u == CanaryRow.iSuppressed &&
+						 Row.iVIBufferBindCount == Row.iVIBufferDrawCount &&
+						 Row.iVIBufferDrawCount == Row.iIssuedDrawCallCount &&
+						 Row.iSubmitted ==
+							(0u < Row.iIssuedDrawCallCount ? 1u : 0u) &&
+							 bExactDrawSelection) || bInactiveDrawAdmitted ||
+						bTypedZeroOutputDrawAdmitted :
+						bExactFailClosedSuppression);
+				bCoreSweepFrameDenominatorsExact =
+					bCoreSweepFrameDenominatorsExact && bExactRow;
+				if (!bExactRow)
+				{
+					if (PrintedRowDenominatorFailures.emplace(
+							Row.strElementId).second)
+					{
+						std::cout << "[DETAIL] Core33 row denominator id=" <<
+							Row.strElementId << " known=" << bKnownFamily <<
+							" admitted=" << bDrawAdmitted << " active=" <<
+							Row.iActive << " attempted=" << Row.iAttempted <<
+							" candidate=" << Row.iCandidateRowCount <<
+							" material=" << Row.iMaterialBindCount << " srv=" <<
+							Row.iTextureSrvBindCount << " sampler=" <<
+							Row.iSamplerBindCount << " pass=" <<
+							Row.iShaderPassApplyCount << " vi=" <<
+							Row.iVIBufferDrawCount << " issued=" <<
+							Row.iIssuedDrawCallCount << " submitted=" <<
+							Row.iSubmitted << " suppressed=" << Row.iSuppressed <<
+							" failed=" << Row.iFailed << " carrier=" <<
+							static_cast<uint32_t>(Row.eCarrier) << " selectedPass=" <<
+							Row.iSelectedPassIndex << '\n';
+					}
+					continue;
+				}
+				if (0u < Row.iActive && 0u < CanaryRow.iActive)
+					ActiveUnion.emplace(Row.strElementId);
+				if (0u < Row.iCandidateRowCount &&
+					0u < CanaryRow.iCandidateRowCount)
+					CandidateUnion.emplace(Row.strElementId);
+				if (0u < Row.iMaterialBindCount &&
+					0u < CanaryRow.iMaterialBindCount)
+					MaterialUnion.emplace(Row.strElementId);
+				if (0u < Row.iTextureSrvBindCount &&
+					0u < CanaryRow.iTextureSrvBindCount)
+					TextureSrvUnion.emplace(Row.strElementId);
+				if (0u < Row.iSamplerBindCount &&
+					0u < CanaryRow.iSamplerBindCount)
+					SamplerUnion.emplace(Row.strElementId);
+				if (0u < Row.iShaderPassApplyCount &&
+					0u < CanaryRow.iShaderPassApplyCount)
+					ShaderPassUnion.emplace(Row.strElementId);
+				if (0u < Row.iVIBufferBindCount &&
+					0u < CanaryRow.iVIBufferBindCount &&
+					0u < Row.iVIBufferDrawCount &&
+					0u < CanaryRow.iVIBufferDrawCount)
+					VIBufferUnion.emplace(Row.strElementId);
+				if (0u < Row.iIssuedDrawCallCount &&
+					0u < CanaryRow.iIssuedDrawCallCount)
+					DrawUnion.emplace(Row.strElementId);
+				if (0u < Row.iSubmitted && 0u < CanaryRow.iSubmitted &&
+					bExactDrawSelection)
+					ExactCarrierPassUnion.emplace(Row.strElementId);
+				if (!Expected->second.bDrawAdmitted &&
+					0u < Row.iActive && 0u < CanaryRow.iActive &&
+					bExactFailClosedSuppression)
+				{
+					SuppressedUnion.emplace(Row.strElementId);
+				}
+				if (Row.bHasSubmittedPosition && CanaryRow.bHasSubmittedPosition)
+				{
+					PositionedUnion.emplace(Row.strElementId);
+					const float3_t PositionDelta =
+						Expected->second.bAnchorAttached ?
+						CORE_ANCHOR_DELTA : CORE_ROOT_DELTA;
+					bool_t bPositionDeltaExact = false;
+					if (EFFECT_GPU_RENDER_FAMILY::RIBBON == Row.eFamily)
+					{
+						const float3_t ExpectedPairCenterMin = {
+							Row.vFinalTrailPairCenterMin.x + PositionDelta.x,
+							Row.vFinalTrailPairCenterMin.y + PositionDelta.y,
+							Row.vFinalTrailPairCenterMin.z + PositionDelta.z };
+						const float3_t ExpectedPairCenterMax = {
+							Row.vFinalTrailPairCenterMax.x + PositionDelta.x,
+							Row.vFinalTrailPairCenterMax.y + PositionDelta.y,
+							Row.vFinalTrailPairCenterMax.z + PositionDelta.z };
+						bPositionDeltaExact = Row.bHasFinalTrailPairCenter &&
+							CanaryRow.bHasFinalTrailPairCenter &&
+							Row.iFinalTrailUploadedVertexCount >= 4u &&
+							0u == Row.iFinalTrailUploadedVertexCount % 2u &&
+							CanaryRow.iFinalTrailUploadedVertexCount ==
+								Row.iFinalTrailUploadedVertexCount &&
+							Nearly_Equal(CanaryRow.vFinalTrailPairCenterMin,
+								ExpectedPairCenterMin) &&
+							Nearly_Equal(CanaryRow.vFinalTrailPairCenterMax,
+								ExpectedPairCenterMax) &&
+							Nearly_Equal(CanaryRow.fFinalTrailPairWidthMin,
+								Row.fFinalTrailPairWidthMin) &&
+							Nearly_Equal(CanaryRow.fFinalTrailPairWidthMax,
+								Row.fFinalTrailPairWidthMax);
+					}
+					else
+					{
+						const float3_t ExpectedMin = {
+							Row.vSubmittedPositionMin.x + PositionDelta.x,
+							Row.vSubmittedPositionMin.y + PositionDelta.y,
+							Row.vSubmittedPositionMin.z + PositionDelta.z };
+						const float3_t ExpectedMax = {
+							Row.vSubmittedPositionMax.x + PositionDelta.x,
+							Row.vSubmittedPositionMax.y + PositionDelta.y,
+							Row.vSubmittedPositionMax.z + PositionDelta.z };
+						bPositionDeltaExact = Nearly_Equal(
+							CanaryRow.vSubmittedPositionMin, ExpectedMin) &&
+							Nearly_Equal(CanaryRow.vSubmittedPositionMax, ExpectedMax);
+					}
+					bCoreSweepPositionExact =
+						bCoreSweepPositionExact && bPositionDeltaExact;
+					if (bPositionDeltaExact)
+						SubmittedPositionDeltaUnion.emplace(Row.strElementId);
+				}
+				if (0u < Row.iSubmitted && 0u < CanaryRow.iSubmitted)
+				{
+					if (SubmittedUnion.emplace(Row.strElementId).second)
+					{
+						++SubmittedFamilyCounts[
+							static_cast<size_t>(Expected->second.eFamily)];
+					}
+				}
+			}
+			if (ArtistObject->Is_Finished() || CanaryObject->Is_Finished())
+			{
+				bCoreSweepTimelineComplete = ArtistObject->Is_Finished() &&
+					CanaryObject->Is_Finished();
+				break;
+			}
+			if (!ArtistObject->Advance_PreviewWithTransformHistory(
+					CORE_SWEEP_STEP_SECONDS, ControlTransformProvider,
+					ControlHistoryStatus) ||
+				!CanaryObject->Advance_PreviewWithTransformHistory(
+					CORE_SWEEP_STEP_SECONDS, CanaryTransformProvider,
+					CanaryHistoryStatus))
+			{
+				bCoreSweepCommitted = false;
+				break;
+			}
+			++iCoreAdvancedStepCount;
+			bCoreHistoryExact = bCoreHistoryExact &&
+				std::abs(ArtistObject->Get_PreviewFixedStepClockSeconds() -
+					CanaryObject->Get_PreviewFixedStepClockSeconds()) <= 1.0e-8;
+		}
+		Context->Flush();
+		const bool_t bCoreSweepDeviceAlive =
+			S_OK == Device->GetDeviceRemovedReason();
+		const auto IsCompleteUnion = [&ExpectedCoreOccurrences](
+			const std::set<std::string>& Values)
+		{
+			return Values.size() == ExpectedCoreOccurrences.size() &&
+				std::all_of(ExpectedCoreOccurrences.begin(),
+					ExpectedCoreOccurrences.end(), [&](const auto& Expected)
+					{
+						return Values.find(Expected.first) != Values.end();
+					});
+		};
+		bCoreSweepCoverageComplete = IsCompleteUnion(ActiveUnion) &&
+			IsCompleteUnion(CandidateUnion) &&
+			MaterialUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			TextureSrvUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			SamplerUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			ShaderPassUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			VIBufferUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			DrawUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			ExactCarrierPassUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			SubmittedUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			PositionedUnion == ExpectedDrawAdmittedOccurrenceIds &&
+			SuppressedUnion == ExpectedSuppressedOccurrenceIds;
+		bool_t bHistorySampleTimesExact = bCoreHistoryExact &&
+			ControlHistorySampleBits == CanaryHistorySampleBits &&
+			ControlHistorySampleBits.size() ==
+				static_cast<size_t>(iCoreAdvancedStepCount) + 1u &&
+			!ControlHistorySampleBits.empty() &&
+			ControlHistorySampleBits.front() == std::bit_cast<uint32_t>(0.f);
+		for (size_t iSample = 1u;
+			bHistorySampleTimesExact && iSample < ControlHistorySampleBits.size();
+			++iSample)
+		{
+			const f32_t fExpectedSampleTime = static_cast<f32_t>(
+				static_cast<f64_t>(iSample) / 60.0);
+			bHistorySampleTimesExact = ControlHistorySampleBits[iSample] ==
+				std::bit_cast<uint32_t>(fExpectedSampleTime);
+		}
+		const bool_t bAdmittedRendererPositionsTranslated =
+			SubmittedPositionDeltaUnion == ExpectedDrawAdmittedOccurrenceIds;
+		const bool_t bAbsoluteFamilyPositionsExact =
+			AbsoluteVisitedSamples == std::set<uint32_t>{ 1u, 6u, 83u, 91u } &&
+			AbsoluteFamilyUnion.size() ==
+				static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END);
+		const auto PrintMissing = [](
+			const std::string_view strLabel,
+			const std::set<std::string>& ExpectedValues,
+			const std::set<std::string>& ActualValues)
+		{
+			if (ActualValues == ExpectedValues)
+				return;
+			std::cout << "[DETAIL] Core33 missing " << strLabel << ':';
+			for (const std::string& strElementId : ExpectedValues)
+			{
+				if (!ActualValues.contains(strElementId))
+					std::cout << ' ' << strElementId;
+			}
+			std::cout << " unexpected:";
+			for (const std::string& strElementId : ActualValues)
+			{
+				if (!ExpectedValues.contains(strElementId))
+					std::cout << ' ' << strElementId;
+			}
+			std::cout << '\n';
+		};
+		std::set<std::string> ExpectedCoreOccurrenceIds;
+		for (const auto& [strElementId, Expected] : ExpectedCoreOccurrences)
+		{
+			(void)Expected;
+			ExpectedCoreOccurrenceIds.emplace(strElementId);
+		}
+		if (!bCoreSweepCommitted || !bCoreSweepTimelineComplete ||
+			!bCoreSweepCoverageComplete || !bHistorySampleTimesExact ||
+			!bCoreSweepFrameDenominatorsExact || !bCoreSweepPositionExact ||
+			!bAbsoluteFamilyPositionsExact)
+		{
+			std::cout << "[DETAIL] Core33 sweep committed=" << bCoreSweepCommitted <<
+				" timeline=" << bCoreSweepTimelineComplete <<
+				" coverage=" << bCoreSweepCoverageComplete <<
+				" history=" << bHistorySampleTimesExact <<
+				" rows=" << bCoreSweepFrameDenominatorsExact <<
+				" position=" << bCoreSweepPositionExact <<
+				" absolute=" << bAbsoluteFamilyPositionsExact <<
+				" controlStatus=" << ControlHistoryStatus <<
+				" canaryStatus=" << CanaryHistoryStatus << '\n';
+			PrintMissing("active", ExpectedCoreOccurrenceIds, ActiveUnion);
+			PrintMissing("candidate", ExpectedCoreOccurrenceIds, CandidateUnion);
+			PrintMissing("material", ExpectedDrawAdmittedOccurrenceIds, MaterialUnion);
+			PrintMissing("srv", ExpectedDrawAdmittedOccurrenceIds, TextureSrvUnion);
+			PrintMissing("sampler", ExpectedDrawAdmittedOccurrenceIds, SamplerUnion);
+			PrintMissing("pass", ExpectedDrawAdmittedOccurrenceIds, ShaderPassUnion);
+			PrintMissing("vi", ExpectedDrawAdmittedOccurrenceIds, VIBufferUnion);
+			PrintMissing("draw", ExpectedDrawAdmittedOccurrenceIds, DrawUnion);
+			PrintMissing("carrierPass", ExpectedDrawAdmittedOccurrenceIds,
+				ExactCarrierPassUnion);
+			PrintMissing("submitted", ExpectedDrawAdmittedOccurrenceIds,
+				SubmittedUnion);
+			PrintMissing("positioned", ExpectedDrawAdmittedOccurrenceIds,
+				PositionedUnion);
+			PrintMissing("suppressed", ExpectedSuppressedOccurrenceIds,
+				SuppressedUnion);
+			PrintMissing("geometry", ExpectedCoreOccurrenceIds,
+				ComparedGeometryUnion);
+			PrintMissing("renderPositionDelta",
+				ExpectedDrawAdmittedOccurrenceIds, SubmittedPositionDeltaUnion);
+		}
+		runner.Require(bCoreSweepCommitted && bCoreSweepTimelineComplete &&
+			bCoreSweepCoverageComplete && bHistorySampleTimesExact &&
+			bCoreSweepDeviceAlive && bCoreSweepFrameDenominatorsExact &&
+			SubmittedFamilyCounts == ExpectedSubmittedFamilyCounts,
+			"Artist Core33 60Hz Sweep Evaluates All Rows Draws Only Registry-Admitted Programs And Fail-Closes Every Other Core Row Without Material Or GPU Work");
+		runner.Require(bCoreSweepPositionExact &&
+			IsCompleteUnion(ComparedGeometryUnion) &&
+			ComparedTrailUnion == std::set<std::string>{ ExpectedRibbonId } &&
+			bAdmittedRendererPositionsTranslated && bAbsoluteFamilyPositionsExact,
+			"Artist Core33 Position Canary Preserves All Evaluated Transforms And Exact Absolute Positions While Limiting Uploaded Geometry To Registry-Admitted Draws");
+		runner.Require(bCoreSweepLightPostNeverEvaluated,
+			"Artist Core33 Executes Presentation Consumers With Zero Deferred ScreenPost32 And PointLight34 Rows");
 
 		// Lance BA1 is an assembly-backed product document. Load only the exact
 		// effect plus its referenced component rows so unrelated catalog entries
@@ -985,24 +2728,26 @@ namespace
 			bFullCatalogLoaded << std::endl;
 		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> LanceDocument =
 			bFullCatalogLoaded ? CEffectCatalog::Find(LanceEffectId) : nullptr;
-		std::vector<std::pair<std::string,
-			std::shared_ptr<const EFFECT_DOCUMENT_DESC>>> LanceDocuments;
-		if (nullptr != LanceDocument)
-			LanceDocuments.emplace_back(LanceEffectId, LanceDocument);
+		const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			LanceProjection = bFullCatalogLoaded ?
+				CEffectCatalog::Find_VisualProjection(LanceEffectId) : nullptr;
+		std::vector<EFFECT_RENDER_PREWARM_TARGET> LanceTargets;
+		if (nullptr != LanceDocument && nullptr != LanceProjection)
+			LanceTargets.push_back({ LanceEffectId, LanceDocument, LanceProjection });
 		std::cout << "[PROGRESS] Lance BA1 prewarm begin" << std::endl;
-		const bool_t bLancePrepared = nullptr != LanceDocument &&
-			CEffectDocumentRenderer::Prepare_Catalog(
+		const bool_t bLancePrepared = 1u == LanceTargets.size() &&
+			CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 				Device, Context, CEffectCatalog::Get_RuntimeRevision(),
-				LanceDocuments, Status);
+				LanceTargets, Status);
 		const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 			LancePrepared = bLancePrepared ?
 				CEffectDocumentRenderer::Find_Prepared(
 					CEffectCatalog::Get_RuntimeRevision(), LanceEffectId,
-					*LanceDocument) : nullptr;
+					*LanceDocument, LanceProjection) : nullptr;
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
 		CEffectObject::EFFECT_OBJECT_DESC LanceDesc{};
-		LanceDesc.pDocument = LanceDocument.get();
+		LanceDesc.pVisualProgramProjection = LanceProjection;
 		LanceDesc.pPreparedResources = LancePrepared;
 		LanceDesc.RootWorld = Identity;
 		LanceDesc.bAutoPlay = false;
@@ -1069,10 +2814,19 @@ namespace
 			std::endl;
 		PrintGpuSubmissionStats("Lance BA1 0.5207s Mesh rows", LanceObject,
 			EFFECT_GPU_RENDER_FAMILY::MESH);
-		const bool_t bLanceStartSubmitted = Has_SubmittedGpuDraw(
-			LanceObject, hLanceStartDraw, hLanceStartDevice,
-			EFFECT_GPU_RENDER_FAMILY::MESH);
-		if (!bLanceStartSubmitted)
+		bool_t bLanceStartSuppressedAtFloor = false;
+		if (Is_CommittedFirstRender(
+				LanceObject, hLanceStartDraw, hLanceStartDevice))
+		{
+			const EFFECT_GPU_RENDER_FAMILY_STATS& Mesh =
+				LanceObject->Get_LastRenderSubmissionStats().Families[
+					static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::MESH)];
+			bLanceStartSuppressedAtFloor = Mesh.iActive == 1u &&
+				Mesh.iCandidate == 0u && Mesh.iAttempted == 1u &&
+				Mesh.iSubmitted == 0u && Mesh.iSuppressed == 1u &&
+				Mesh.iFailed == 0u;
+		}
+		if (!bLanceStartSuppressedAtFloor)
 		{
 			std::cout << "[INFO] Lance BA1 0.5207s Mesh draw HRESULT=0x" <<
 				std::hex << static_cast<uint32_t>(hLanceStartDraw) <<
@@ -1081,16 +2835,17 @@ namespace
 				(nullptr == LanceObject ? std::string("object missing") :
 					LanceObject->Get_Status()) << '\n';
 		}
-		runner.Require(bLanceStartSubmitted,
-			"Lance BA1 0.5207-Second Frame Attempts And Submits Its Mesh Family");
+		runner.Require(bLanceStartSuppressedAtFloor,
+			"Lance BA1 Component Boundary Floors To Tick 31 And Suppresses Its Mesh Burst Before Tick 32");
 
 		HRESULT hLanceNextDraw = E_FAIL;
 		HRESULT hLanceNextDevice = E_FAIL;
-		std::cout << "[PROGRESS] Lance BA1 next fixed-step Mesh draw begin" <<
+		constexpr f32_t LanceFirstSimulationTickSeconds = 32.f / 60.f;
+		std::cout << "[PROGRESS] Lance BA1 tick-32 Mesh draw begin" <<
 			std::endl;
-		if (bLanceStartSubmitted)
+		if (bLanceRendered)
 		{
-			LanceObject->Advance_Preview(1.f / 60.f);
+			LanceObject->Set_SampleTime(LanceFirstSimulationTickSeconds);
 			if (EngineScope.Begin_Frame(Status))
 			{
 				hLanceNextDraw = LanceObject->Render();
@@ -1098,16 +2853,16 @@ namespace
 				hLanceNextDevice = Device->GetDeviceRemovedReason();
 			}
 		}
-		std::cout << "[PROGRESS] Lance BA1 next fixed-step Mesh draw complete" <<
+		std::cout << "[PROGRESS] Lance BA1 tick-32 Mesh draw complete" <<
 			std::endl;
-		PrintGpuSubmissionStats("Lance BA1 next fixed-step Mesh rows", LanceObject,
+		PrintGpuSubmissionStats("Lance BA1 tick-32 Mesh rows", LanceObject,
 			EFFECT_GPU_RENDER_FAMILY::MESH);
 		const bool_t bLanceNextSubmitted = Has_SubmittedGpuDraw(
 			LanceObject, hLanceNextDraw, hLanceNextDevice,
 			EFFECT_GPU_RENDER_FAMILY::MESH);
 		if (!bLanceNextSubmitted)
 		{
-			std::cout << "[INFO] Lance BA1 next fixed-step Mesh draw HRESULT=0x" <<
+			std::cout << "[INFO] Lance BA1 tick-32 Mesh draw HRESULT=0x" <<
 				std::hex << static_cast<uint32_t>(hLanceNextDraw) <<
 				" device=0x" << static_cast<uint32_t>(hLanceNextDevice) <<
 				std::dec << " status=" <<
@@ -1115,7 +2870,7 @@ namespace
 					LanceObject->Get_Status()) << '\n';
 		}
 		runner.Require(bLanceNextSubmitted,
-			"Lance BA1 Next Fixed-Step Frame Keeps Attempting And Submitting Its Mesh Family");
+			"Lance BA1 Tick 32 Attempts And Submits Its Mesh Family After The Quantized Component Boundary");
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
 		CEffectCatalog::Clear();
 	}
@@ -1180,8 +2935,150 @@ namespace
 		float3_t BindPoseScale{};
 		const bool_t bBindPoseAnchor = ProbeAnchor(
 			ArtistModel.get(), BindPoseScale);
+		/* Gameplay changes from locomotion to this clip with a 0.12 second blend.
+		   Prepare all three historical partitions while the live blend clock is
+		   still behind them, then advance the live palette to the same time.  An
+		   explicit historical sample must match that live result without changing
+		   the cursor or palette during the sample itself. */
+		constexpr f32_t ARTIST_ACTION_BLEND_SECONDS = 0.12f;
+		constexpr std::array<f32_t, 3u> BLEND_SAMPLE_TIMES =
+			{ 0.f, 0.06f, ARTIST_ACTION_BLEND_SECONDS };
+		std::array<float4x4_t, BLEND_SAMPLE_TIMES.size()> HistoricalBones{};
+		std::array<float4x4_t, BLEND_SAMPLE_TIMES.size()> HistoricalAnchors{};
+		const int32_t iWeaponBone = nullptr == ArtistModel ? -1 :
+			ArtistModel->Find_BoneIndex("b_wp_1");
 		const bool_t bArtist31470Started = nullptr != ArtistModel &&
-			ArtistModel->Start_Animation("sdm_sk_onestroke", false);
+			iWeaponBone >= 0 &&
+			ArtistModel->Start_Animation("sdm_idle_battle_1", true) &&
+			ArtistModel->Set_Animation(
+				"sdm_sk_onestroke", false, ARTIST_ACTION_BLEND_SECONDS);
+		const uint32_t iArtistAnimation = nullptr == ArtistModel ? UINT32_MAX :
+			ArtistModel->Get_CurrentAnimIndex();
+		const f32_t fArtistTicksPerSecond = nullptr == ArtistModel ? 0.f :
+			ArtistModel->Get_AnimationTickPerSecond(iArtistAnimation);
+		bool_t bBlendPartitionExact = bArtist31470Started &&
+			std::isfinite(fArtistTicksPerSecond) && fArtistTicksPerSecond > 0.f &&
+			ArtistModel->Set_AnimTrackPosition(iArtistAnimation, 0.f) &&
+			!ArtistModel->Play_Animation(0.f);
+		float4x4_t IdentityOwner{};
+		float4x4_t TranslatedOwner{};
+		XMStoreFloat4x4(&IdentityOwner, XMMatrixIdentity());
+		constexpr float3_t BLEND_ANCHOR_DELTA = { 128.f, 256.f, -512.f };
+		XMStoreFloat4x4(&TranslatedOwner, XMMatrixTranslation(
+			BLEND_ANCHOR_DELTA.x, BLEND_ANCHOR_DELTA.y,
+			BLEND_ANCHOR_DELTA.z));
+		const std::array<uint32_t, 1u> WeaponBoneIndex = {
+			static_cast<uint32_t>((std::max)(iWeaponBone, 0)) };
+		const auto MatricesNear = [](const float4x4_t& Left,
+			const float4x4_t& Right)
+		{
+			const f32_t* pLeft = &Left._11;
+			const f32_t* pRight = &Right._11;
+			for (size_t i = 0u; i < 16u; ++i)
+			{
+				if (!std::isfinite(pLeft[i]) || !std::isfinite(pRight[i]) ||
+					std::abs(pLeft[i] - pRight[i]) > 0.00002f)
+				{
+					return false;
+				}
+			}
+			return true;
+		};
+		const auto BuildHistoricalAnchor = [](const float4x4_t& RawBone,
+			const float4x4_t& OwnerWorld, float4x4_t& OutAnchor)
+		{
+			/* The admitted Artist rig contributes a uniform 0.01 combined import
+			   scale.  This is the same normalization used by gameplay before the
+			   captured action-start owner world is applied. */
+			float4x4_t BoneWithoutImportScale = RawBone;
+			constexpr f32_t COMBINED_SCALE_RECIPROCAL = 100.f;
+			BoneWithoutImportScale._11 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._12 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._13 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._21 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._22 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._23 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._31 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._32 *= COMBINED_SCALE_RECIPROCAL;
+			BoneWithoutImportScale._33 *= COMBINED_SCALE_RECIPROCAL;
+			XMStoreFloat4x4(&OutAnchor,
+				XMLoadFloat4x4(&BoneWithoutImportScale) *
+				XMLoadFloat4x4(&OwnerWorld));
+		};
+		f32_t fPreviousBlendSampleTime = 0.f;
+		for (size_t iSample = 0u;
+			bBlendPartitionExact && iSample < BLEND_SAMPLE_TIMES.size(); ++iSample)
+		{
+			const f32_t fSampleTime = BLEND_SAMPLE_TIMES[iSample];
+			f32_t fCursorBefore = 0.f;
+			f32_t fDurationBefore = 0.f;
+			float4x4_t LiveBoneBefore{};
+			matrix_t LiveBoneMatrixBefore{};
+			std::array<float4x4_t, 1u> Sampled{};
+			bBlendPartitionExact = ArtistModel->Get_AnimationProgress(
+				iArtistAnimation, fCursorBefore, fDurationBefore) &&
+				ArtistModel->Get_BoneCombinedMatrix(
+					WeaponBoneIndex.front(), LiveBoneMatrixBefore) &&
+				ArtistModel->Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
+					iArtistAnimation, fSampleTime * fArtistTicksPerSecond,
+					fSampleTime, WeaponBoneIndex, Sampled);
+			if (!bBlendPartitionExact)
+				break;
+			XMStoreFloat4x4(&LiveBoneBefore, LiveBoneMatrixBefore);
+			f32_t fCursorAfter = 0.f;
+			f32_t fDurationAfter = 0.f;
+			float4x4_t LiveBoneAfter{};
+			matrix_t LiveBoneMatrixAfter{};
+			bBlendPartitionExact = ArtistModel->Get_AnimationProgress(
+				iArtistAnimation, fCursorAfter, fDurationAfter) &&
+				ArtistModel->Get_BoneCombinedMatrix(
+					WeaponBoneIndex.front(), LiveBoneMatrixAfter) &&
+				fCursorBefore == fCursorAfter &&
+				fDurationBefore == fDurationAfter;
+			if (!bBlendPartitionExact)
+				break;
+			XMStoreFloat4x4(&LiveBoneAfter, LiveBoneMatrixAfter);
+			bBlendPartitionExact = 0 == std::memcmp(
+				&LiveBoneBefore, &LiveBoneAfter, sizeof(float4x4_t));
+			if (!bBlendPartitionExact)
+				break;
+
+			const f32_t fAdvance = fSampleTime - fPreviousBlendSampleTime;
+			ArtistModel->Play_Animation(fAdvance);
+			float4x4_t LiveAtSample{};
+			matrix_t LiveAtSampleMatrix{};
+			bBlendPartitionExact = ArtistModel->Get_BoneCombinedMatrix(
+				WeaponBoneIndex.front(), LiveAtSampleMatrix);
+			if (!bBlendPartitionExact)
+				break;
+			XMStoreFloat4x4(&LiveAtSample, LiveAtSampleMatrix);
+			bBlendPartitionExact = MatricesNear(Sampled.front(), LiveAtSample);
+			if (!bBlendPartitionExact)
+				break;
+
+			float4x4_t ControlAnchor{};
+			float4x4_t CanaryAnchor{};
+			BuildHistoricalAnchor(
+				Sampled.front(), IdentityOwner, ControlAnchor);
+			BuildHistoricalAnchor(
+				Sampled.front(), TranslatedOwner, CanaryAnchor);
+			bBlendPartitionExact = Is_TranslatedMatrix(
+					ControlAnchor, CanaryAnchor, BLEND_ANCHOR_DELTA);
+			HistoricalBones[iSample] = Sampled.front();
+			HistoricalAnchors[iSample] = ControlAnchor;
+			fPreviousBlendSampleTime = fSampleTime;
+		}
+		const bool_t bBlendPartitionsDistinct = bBlendPartitionExact &&
+			0 != std::memcmp(&HistoricalBones[0u], &HistoricalBones[1u],
+				sizeof(float4x4_t)) &&
+			0 != std::memcmp(&HistoricalBones[1u], &HistoricalBones[2u],
+				sizeof(float4x4_t)) &&
+			0 != std::memcmp(&HistoricalAnchors[0u], &HistoricalAnchors[1u],
+				sizeof(float4x4_t)) &&
+			0 != std::memcmp(&HistoricalAnchors[1u], &HistoricalAnchors[2u],
+				sizeof(float4x4_t));
+		runner.Require(bBlendPartitionExact && bBlendPartitionsDistinct,
+			"Artist 31470 Historical Anchor Uses Exact Zero Half And Complete 0P12 Blend Partitions Without Mutating The Live Model");
 		float3_t AnimatedPoseScale{};
 		const bool_t bAnimatedPoseAnchor = ProbeAnchor(
 			ArtistModel.get(), AnimatedPoseScale);
@@ -1239,7 +3136,7 @@ namespace
 				PrewarmStatus << '\n';
 		}
 		runner.Require(bPrepared,
-			"Artist 31470 GPU Prepared Cache Stages Full35 With Exact 0 Neutral 1 One-Layer 17 Evaluator And 10 Runtime-V2 Denominators");
+			"Artist 31470 GPU Prepared Cache Stages The Registry-Derived Core33 Evaluator Runtime-V2 Artist-V4 And Fail-Closed Denominators");
 
 		Client::EFFECT_DOCUMENT_DESC MutatedDocument = Document;
 		bool_t bMutatedRibbonProfile = false;
@@ -1444,6 +3341,53 @@ namespace
 		Require_NoPendingCommand(
 			runner,
 			"Consumed Handoff Leaves No Stale Command");
+	}
+
+	void Test_CanonicalLobbyServerEndpoint(TEST_RUNNER& runner)
+	{
+		SCOPED_ENVIRONMENT_VARIABLE serverHostEnvironment(
+			L"LOSTARK_SERVER_HOST");
+		SCOPED_ENVIRONMENT_VARIABLE legacyMapEditorHostEnvironment(
+			L"LOSTARK_MAPEDITOR_SERVER_HOST");
+		const bool_t environmentConfigured =
+			serverHostEnvironment.Set(L"192.168.200.103") &&
+			legacyMapEditorHostEnvironment.Set(L"127.0.0.1");
+
+		runner.Require(
+			environmentConfigured &&
+			CNetworkManager::Resolve_ServerHost() == "192.168.200.103" &&
+			CNetworkManager::Resolve_MapEditorServerHost() ==
+				CNetworkManager::Resolve_ServerHost(),
+			"Lobby Test And Product Worlds Share Canonical Server Endpoint");
+	}
+
+	void Test_EnterAcceptancePreservesRequestedCharacterClass(
+		TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+
+		CNetworkManager& network = CNetworkManager::Get();
+		network.Harness_Reset();
+		network.Harness_SetRequestedCharacterClass(
+			CHARACTER_CLASS_ID::LANCE_MASTER);
+
+		S2C_ENTER_ACCEPTED accepted{};
+		accepted.eWorldId = WORLD_ID::BERN;
+		accepted.iPlayerId = 1u;
+		accepted.iNetEntityId = 101u;
+		CPacketWriter writer;
+		Write_Message(writer, accepted);
+		PACKET_FRAME frame{};
+		frame.ePacketType = PACKET_TYPE::S2C_ENTER_ACCEPTED;
+		frame.Payload = writer.Get_Buffer();
+		network.Harness_HandleFrame(frame);
+
+		runner.Require(
+			network.Get_LocalCharacterClass() ==
+				CHARACTER_CLASS_ID::LANCE_MASTER,
+			"Bern Acceptance Preserves Requested Character For Target Loader");
+		network.Harness_Reset();
 	}
 
 	void Test_EntryPurpose(TEST_RUNNER& runner)
@@ -1778,6 +3722,138 @@ namespace
 			"Skill Binding Failed Staged Load Preserves Prior Output");
 	}
 
+	void Test_ValtanPatternBindingSchema(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE runtimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!runtimeResourceRoot.Was_Defined() ||
+			runtimeResourceRoot.Get_OriginalValue().empty())
+		{
+			const std::filesystem::path resourceRoot =
+				(CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				 L"Resources").lexically_normal();
+			runtimeResourceRoot.Set(resourceRoot.c_str());
+		}
+		const std::vector<std::string> clips = {
+			"mesh_att_battle_20_02",
+			"mesh_att_battle_20_03",
+			"mesh_att_battle_20_04" };
+		const std::string valid =
+			"{\"schema\":\"lostark.valtan-pattern-bindings\","
+			"\"formatVersion\":1,\"bossArchetypeId\":\"BOSS_VALTAN\","
+			"\"bindings\":["
+			"{\"actionId\":\"valtan.attack.whirlwind.windup\","
+			"\"clip\":\"mesh_att_battle_20_02\"},"
+			"{\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clip\":\"mesh_att_battle_20_03\"},"
+			"{\"actionId\":\"valtan.attack.whirlwind.recovery\","
+			"\"clip\":\"mesh_att_battle_20_04\"}]}";
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
+		std::string status;
+		runner.Require(
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				valid, document, status) &&
+			CValtanPatternAnimationBindingDocument::Validate(
+				document, "BOSS_VALTAN", clips, status) &&
+			3u == document.Bindings.size() &&
+			"mesh_att_battle_20_03" == document.Bindings[1].strClipName,
+			"Valtan Pattern Binding Parses And Joins Exact Model Clips");
+
+		auto invalid = document;
+		invalid.Bindings[2].strActionId = invalid.Bindings[1].strActionId;
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Validate(
+				invalid, "BOSS_VALTAN", clips, status),
+			"Valtan Pattern Binding Rejects Duplicate Action Identity");
+		invalid = document;
+		invalid.Bindings[1].strClipName = "missing_clip";
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Validate(
+				invalid, "BOSS_VALTAN", clips, status),
+			"Valtan Pattern Binding Rejects Missing Model Clip");
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Validate(
+				document, "BOSS_OTHER", clips, status),
+			"Valtan Pattern Binding Rejects Wrong Boss Owner");
+
+		const std::string extraField = valid.substr(0u, valid.size() - 1u) +
+			",\"unexpected\":true}";
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT preserved = document;
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Parse_Text(
+				extraField, preserved, status) &&
+			preserved == document,
+			"Valtan Pattern Binding Parse Failure Preserves Prior Output");
+
+		BOSS_PATTERN_EFFECT_BINDING_DOCUMENT effectDocument;
+		const bool_t bLoadedEffectDocument =
+			CValtanPatternEffectBindingDocument::Load(
+				"Valtan", "BOSS_VALTAN", clips, effectDocument, status);
+		const bool_t bHasOneEffectBinding =
+			bLoadedEffectDocument && 1u == effectDocument.Bindings.size();
+		const BOSS_PATTERN_EFFECT_BINDING* effectBinding =
+			bHasOneEffectBinding ? &effectDocument.Bindings.front() : nullptr;
+		runner.Require(
+			nullptr != effectBinding &&
+			"VALTAN_WHIRLWIND" == effectBinding->strPatternId &&
+			"valtan.attack.whirlwind.active" == effectBinding->strActionId &&
+			"mesh_att_battle_20_03" == effectBinding->strRuntimeClipName &&
+			"b_effectroot" == effectBinding->strRuntimeBoneName &&
+			!effectBinding->bProductCatalogMapped &&
+			!effectBinding->bAnimationEventMapped,
+			"Valtan Pattern Effect Parses Action Qualified Canary Mapping");
+
+		EFFECT_DOCUMENT_DESC valtanWhirlwindDocument;
+		CEffectPlayback valtanWhirlwindPlayback;
+		const std::string dataPrefix = "Data/";
+		const bool_t bValtanWhirlwindStagesOrdinaryDocument =
+			nullptr != effectBinding &&
+			effectBinding->strEffectDocument.rfind(dataPrefix, 0u) == 0u &&
+			CEffectDocumentCodec::Load(
+				CProjectDataRoot::Resolve(
+					effectBinding->strEffectDocument.substr(dataPrefix.size())),
+				valtanWhirlwindDocument, status) &&
+			valtanWhirlwindDocument.strEffectAssetId ==
+				effectBinding->strEffectAssetId &&
+			CEffectDocumentCodec::Validate_Drawable(
+				valtanWhirlwindDocument, status) &&
+			valtanWhirlwindPlayback.Stage_Document(
+				valtanWhirlwindDocument, status);
+		if (!bValtanWhirlwindStagesOrdinaryDocument)
+		{
+			std::cout << "[DETAIL] Valtan Whirlwind authored v13 stage: " <<
+				status << '\n';
+		}
+		runner.Require(bValtanWhirlwindStagesOrdinaryDocument,
+			"Valtan Whirlwind Canary Loads And Stages Through Ordinary Authored V13 Playback");
+
+		if (bHasOneEffectBinding)
+		{
+			BOSS_PATTERN_EFFECT_BINDING_DOCUMENT invalidEffects = effectDocument;
+			invalidEffects.Bindings.front().strRuntimeClipName = "missing_clip";
+			runner.Require(
+				!CValtanPatternEffectBindingDocument::Validate(
+					invalidEffects, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Effect Rejects Missing Model Clip");
+			invalidEffects = effectDocument;
+			invalidEffects.Bindings.front().strProductAdmissionStatus =
+				"ADMITTED_PRODUCT";
+			runner.Require(
+				!CValtanPatternEffectBindingDocument::Validate(
+					invalidEffects, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Effect Rejects False Product Admission");
+		}
+		else
+		{
+			runner.Require(false,
+				"Valtan Pattern Effect Rejects Missing Model Clip");
+			runner.Require(false,
+				"Valtan Pattern Effect Rejects False Product Admission");
+		}
+
+	}
+
 	void Test_ActionPresentationTimeline(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -1892,6 +3968,1127 @@ namespace
 		runner.Require(exactBinding && exactPriorClipProductCue &&
 			delayedPriorClipCue,
 			"DimensionMaster 2050240 Delayed First Snapshot Retains Prior Clip Product Cue");
+	}
+
+	std::string Make_ValtanCameraFixture(
+		const uint32_t formatVersion = 2u,
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateTuple = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.encounter-cinematic-camera\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"encounterId\":\"ENCOUNTER_VALTAN\",";
+		text << "\"provenance\":\"PROJECT_AUTHORED\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"cues\":[";
+		const auto appendCue = [&text](const char_t* cueId)
+		{
+			text << "{\"cueId\":\"" << cueId << "\",";
+			text << "\"patternId\":\"VALTAN_ARENA_BREAK_109\",";
+			/* WIDE_REVEAL is the one authored stage long enough to hold this
+			2000ms fixture, so the tick arithmetic below stays exact. */
+			text << "\"stageId\":\"WIDE_REVEAL\",\"durationMs\":2000,";
+			text << "\"easing\":\"LINEAR\",";
+			text << "\"shakeAmplitude\":0,\"shakeDurationMs\":0,";
+			text << "\"keyframes\":[";
+			text << "{\"timeMs\":0,\"eye\":[0,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":60},";
+			text << "{\"timeMs\":1000,\"eye\":[10,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":40},";
+			text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}";
+		};
+		appendCue("fixture.valtan.109");
+		if (duplicateTuple)
+		{
+			text << ',';
+			appendCue("fixture.valtan.109.duplicate");
+		}
+		text << "]}";
+		return text.str();
+	}
+
+	std::string Make_ValtanCameraEasingFixture(
+		const char_t* easing,
+		const f32_t shakeAmplitude,
+		const uint32_t shakeDurationMs)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.encounter-cinematic-camera\",";
+		text << "\"formatVersion\":2,";
+		text << "\"encounterId\":\"ENCOUNTER_VALTAN\",";
+		text << "\"provenance\":\"PROJECT_AUTHORED\",";
+		text << "\"cues\":[{\"cueId\":\"fixture.valtan.easing\",";
+		text << "\"patternId\":\"VALTAN_ARENA_BREAK_109\",";
+		text << "\"stageId\":\"WIDE_REVEAL\",\"durationMs\":2000,";
+		text << "\"easing\":\"" << easing << "\",";
+		text << "\"shakeAmplitude\":" << shakeAmplitude << ',';
+		text << "\"shakeDurationMs\":" << shakeDurationMs << ',';
+		text << "\"keyframes\":[";
+		text << "{\"timeMs\":0,\"eye\":[0,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":60},";
+		text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}]}";
+		return text.str();
+	}
+
+	void Test_ValtanCinematicCameraEasing(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		CEncounterPatternReference encounter;
+		std::string status;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"), status);
+
+		const auto sampleEyeX = [&](const char_t* easing, const f32_t seconds)
+		{
+			CValtanCinematicCameraDocument document;
+			std::string error;
+			if (!encounterLoaded ||
+				!CValtanCinematicCameraDocument::Parse_Text(
+					Make_ValtanCameraEasingFixture(easing, 0.f, 0u),
+					encounter, document, error))
+			{
+				return std::numeric_limits<f32_t>::quiet_NaN();
+			}
+			CValtanCinematicCameraController controller;
+			VALTAN_CINEMATIC_CAMERA_INPUT input{};
+			input.isValid = true;
+			input.iNetEntityId = 77u;
+			input.strPatternId = "VALTAN_ARENA_BREAK_109";
+			input.strStageActionId =
+				"valtan.mechanic.arena-break-109.wide-reveal";
+			input.iPatternSequence = 1u;
+			input.iStageIndex = 4u;
+			input.iActionStartTick = 100u;
+			input.iServerTick =
+				100u + static_cast<uint32_t>(seconds * 30.f + 0.5f);
+			VALTAN_CINEMATIC_CAMERA_POSE pose{};
+			if (!controller.Initialize(&document, encounter.Get_FixedTickHz()) ||
+				!controller.Update(input, 0.f, pose))
+			{
+				return std::numeric_limits<f32_t>::quiet_NaN();
+			}
+			return pose.vEye.x;
+		};
+
+		/* A quarter through the cue, smoothstep must still be behind the linear
+		   ramp and hold must not have moved at all. */
+		const f32_t linearX = sampleEyeX("LINEAR", 0.5f);
+		const f32_t smoothX = sampleEyeX("SMOOTHSTEP", 0.5f);
+		const f32_t holdX = sampleEyeX("HOLD", 0.5f);
+		runner.Require(
+			std::abs(linearX - 5.f) < 0.001f &&
+			smoothX < linearX - 0.5f && smoothX > 0.f &&
+			std::abs(holdX) < 0.001f,
+			"Valtan Camera Applies Authored Keyframe Easing");
+
+		CValtanCinematicCameraDocument shakeDocument;
+		std::string shakeError;
+		const bool_t shakeParsed = encounterLoaded &&
+			CValtanCinematicCameraDocument::Parse_Text(
+				Make_ValtanCameraEasingFixture("HOLD", 0.5f, 200u),
+				encounter, shakeDocument, shakeError);
+		CValtanCinematicCameraController shakeController;
+		VALTAN_CINEMATIC_CAMERA_INPUT shakeInput{};
+		shakeInput.isValid = true;
+		shakeInput.iNetEntityId = 77u;
+		shakeInput.strPatternId = "VALTAN_ARENA_BREAK_109";
+		shakeInput.strStageActionId =
+			"valtan.mechanic.arena-break-109.wide-reveal";
+		shakeInput.iPatternSequence = 1u;
+		shakeInput.iStageIndex = 4u;
+		shakeInput.iActionStartTick = 100u;
+		shakeInput.iServerTick = 101u;
+		VALTAN_CINEMATIC_CAMERA_POSE earlyPose{};
+		VALTAN_CINEMATIC_CAMERA_POSE latePose{};
+		const bool_t shakeSampled = shakeParsed &&
+			shakeController.Initialize(
+				&shakeDocument, encounter.Get_FixedTickHz()) &&
+			shakeController.Update(shakeInput, 0.f, earlyPose);
+		shakeInput.iServerTick = 130u;
+		const bool_t settled = shakeSampled &&
+			shakeController.Update(shakeInput, 0.f, latePose);
+		/* HOLD pins the pose to the first keyframe, so any offset is the shake
+		   itself: bounded while it runs and exactly gone once it expires. */
+		runner.Require(
+			settled &&
+			std::abs(earlyPose.vEye.x) > 0.0001f &&
+			std::abs(earlyPose.vEye.x) <= 0.5f &&
+			std::abs(latePose.vEye.x) < 0.0001f &&
+			std::abs(latePose.vEye.y - 2.f) < 0.0001f,
+			"Valtan Camera Impact Shake Is Bounded And Expires");
+
+		const auto rejects = [&](const std::string& text)
+		{
+			CValtanCinematicCameraDocument rejected;
+			std::string error;
+			return encounterLoaded &&
+				!CValtanCinematicCameraDocument::Parse_Text(
+					text, encounter, rejected, error) && !error.empty();
+		};
+		runner.Require(
+			rejects(Make_ValtanCameraEasingFixture("EASE_IN", 0.f, 0u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.5f, 0u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.f, 200u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.5f, 2500u)),
+			"Valtan Camera Rejects Unknown Easing And Half-Authored Shake");
+	}
+
+	void Test_ValtanCinematicCamera(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		CEncounterPatternReference encounter;
+		std::string status;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"), status);
+		CValtanCinematicCameraDocument actual;
+		const bool_t actualLoaded = encounterLoaded && actual.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanCinematicCamera.json"),
+			encounter, status);
+		/* The 109 phase transition owns one cue per authored stage, so the
+		document carries those six plus the two single-stage cues. */
+		runner.Require(actualLoaded && actual.Get_Cues().size() == 8u &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 0u,
+				"valtan.mechanic.arena-break-109.takeoff") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 1u,
+				"valtan.mechanic.arena-break-109.drop") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 2u,
+				"valtan.mechanic.arena-break-109.impact") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 3u,
+				"valtan.mechanic.arena-break-109.impact-hold") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 4u,
+				"valtan.mechanic.arena-break-109.wide-reveal") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 5u,
+				"valtan.mechanic.arena-break-109.recovery") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_33", 0u,
+				"valtan.mechanic.arena-break-33.cutscene") &&
+			nullptr != actual.Find_Cue("VALTAN_GHOST_TRANSITION_15", 0u,
+				"valtan.mechanic.ghost-transition-15.portal"),
+			"Valtan Camera Loads Every Exact Encounter Tuple");
+
+		CValtanCinematicCameraDocument preserved;
+		const bool_t baseline = encounterLoaded &&
+			CValtanCinematicCameraDocument::Parse_Text(
+				Make_ValtanCameraFixture(), encounter, preserved, status);
+		const auto rejectsAndPreserves = [&encounter, &preserved](
+			const std::string& candidate)
+		{
+			std::string error;
+			const std::string before = preserved.Get_Cues().empty() ?
+				std::string{} : preserved.Get_Cues().front().strCueId;
+			return !CValtanCinematicCameraDocument::Parse_Text(
+				candidate, encounter, preserved, error) && !error.empty() &&
+				preserved.Is_Ready() && preserved.Get_Cues().size() == 1u &&
+				preserved.Get_Cues().front().strCueId == before;
+		};
+		runner.Require(baseline &&
+			rejectsAndPreserves(Make_ValtanCameraFixture(3u)),
+			"Valtan Camera Rejects Unknown Version Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_ValtanCameraFixture(2u, true)),
+			"Valtan Camera Rejects Unknown Key Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_ValtanCameraFixture(2u, false, true)),
+			"Valtan Camera Rejects Duplicate Encounter Tuple Transactionally");
+
+		CValtanCinematicCameraController controller;
+		VALTAN_CINEMATIC_CAMERA_INPUT input{};
+		input.isValid = true;
+		input.iNetEntityId = 77u;
+		input.iServerTick = 130u;
+		input.strPatternId = "VALTAN_ARENA_BREAK_109";
+		input.strStageActionId =
+			"valtan.mechanic.arena-break-109.wide-reveal";
+		input.iPatternSequence = 4u;
+		input.iStageIndex = 4u;
+		input.iActionStartTick = 100u;
+		VALTAN_CINEMATIC_CAMERA_POSE pose{};
+		const bool_t lateSeek = baseline && controller.Initialize(
+			&preserved, encounter.Get_FixedTickHz()) &&
+			controller.Update(input, 0.f, pose) &&
+			std::abs(controller.Get_ElapsedSeconds() - 1.f) < 0.000001f &&
+			std::abs(pose.vEye.x - 10.f) < 0.000001f;
+		runner.Require(lateSeek,
+			"Valtan Camera Late Snapshot Seeks Authoritative Stage Age");
+		const bool_t duplicateProgressesWithoutRestart =
+			controller.Update(input, 0.05f, pose) &&
+			controller.Get_ElapsedSeconds() > 1.f;
+		runner.Require(duplicateProgressesWithoutRestart,
+			"Valtan Camera Duplicate Snapshot Does Not Restart Cue");
+		input.iServerTick = 161u;
+		runner.Require(!controller.Update(input, 0.f, pose) &&
+			!controller.Is_Active() &&
+			!controller.Update(input, 0.f, pose),
+			"Valtan Camera Completed Tuple Does Not Replay From Duplicate Snapshot");
+		input.iPatternSequence = 5u;
+		input.iActionStartTick = 161u;
+		runner.Require(controller.Update(input, 0.f, pose) &&
+			controller.Is_Active() &&
+			std::abs(controller.Get_ElapsedSeconds()) < 0.000001f,
+			"Valtan Camera New Pattern Sequence Starts A New Cue");
+		controller.Reset();
+		runner.Require(!controller.Is_Active(),
+			"Valtan Camera Reset Ends Presentation State");
+	}
+
+	std::string Make_WorldDestructionProjectionFixture(
+		const uint32_t formatVersion = 2u,
+		const std::string_view revision =
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const std::string_view firstPlacementId = "9335938568718910930",
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateMember = false,
+		const std::string_view suppressionAliasPlacementId =
+			"18177041425620847396",
+		const bool_t duplicateSuppressionAlias = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.world-destruction-client-projection\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"areaId\":\"LV_LUT_HEARTRB_ED\",";
+		text << "\"combatRuntimeRevision\":\"" << revision << "\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"groups\":[{";
+		text << "\"groupId\":\"destroyable.group.valtan.wall.3705102\",";
+		text << "\"mutationId\":\"mutation.valtan.wall.3705102.break\",";
+		text << "\"suppressionAliasPlacementIds\":[\"";
+		text << suppressionAliasPlacementId << '"';
+		if (duplicateSuppressionAlias)
+			text << ",\"" << suppressionAliasPlacementId << '"';
+		text << "],";
+		text << "\"memberPlacementIds\":[\"" << firstPlacementId << "\",";
+		text << "\"9681544306002658031\",";
+		text << "\"12037145985028191659\",";
+		text << "\"17280669848983777578\",";
+		text << "\"18177041425620847396\"";
+		if (duplicateMember)
+			text << ",\"18177041425620847396\"";
+		text << "]}]}";
+		return text.str();
+	}
+
+	std::string Make_WorldDestructionDebrisPresentationFixture(
+		const uint32_t formatVersion = 1u,
+		const std::string_view revision =
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const std::string_view sourcePlacementId = "9335938568718910930",
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateProjectedPlacement = false,
+		const bool_t zeroDirection = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.world-destruction-debris-presentation\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"areaId\":\"LV_LUT_HEARTRB_ED\",";
+		text << "\"combatRuntimeRevision\":\"" << revision << "\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"profiles\":[{";
+		text << "\"groupId\":\"destroyable.group.valtan.wall.3705102\",";
+		text << "\"mutationId\":\"mutation.valtan.wall.3705102.break\",";
+		text << "\"bindingId\":\"binding.valtan.wall.3705102.break\",";
+		text << "\"emitters\":[";
+		const std::array<std::string_view, 4u> placementIds = {
+			sourcePlacementId,
+			duplicateProjectedPlacement ? sourcePlacementId : "9681544306002658031",
+			"12037145985028191659", "17280669848983777578"
+		};
+		for (size_t index = 0u; index < placementIds.size(); ++index)
+		{
+			if (0u != index)
+				text << ',';
+			text << "{\"sourceRuntimePlacementId\":\"" << placementIds[index];
+			text << "\",\"suppressionAliasPlacementIds\":";
+			text << (index + 1u == placementIds.size() ?
+				"[\"18177041425620847396\"]" : "[]");
+			text << ',';
+			text << "\"spawnOffset\":[0,0,0],\"direction\":";
+			text << (zeroDirection && 0u == index ? "[0,0,0]" : "[0,1,0]");
+			text << ",\"speedMetersPerSecond\":5,";
+			text << "\"gravityScale\":2,\"lifetimeSeconds\":4}";
+		}
+		text << "]}]}";
+		return text.str();
+	}
+
+	void Test_WorldDestructionDebrisPresentation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+
+		CWorldDestructionProjectionDocument projection;
+		CWorldDestructionDebrisPresentationDocument presentation;
+		std::string status;
+		const bool_t projectionReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(), projection, status);
+		const bool_t presentationReady =
+			CWorldDestructionDebrisPresentationDocument::Parse_Text(
+				Make_WorldDestructionDebrisPresentationFixture(),
+				presentation, status);
+		runner.Require(projectionReady && presentationReady &&
+			presentation.Is_Ready() && presentation.Get_Profiles().size() == 1u &&
+			presentation.Get_Profiles().front().Emitters.size() == 4u &&
+			projection.Get_Groups().front().SuppressionAliasPlacementIds.size() == 1u &&
+			presentation.Get_Profiles().front().strMutationId ==
+				"mutation.valtan.wall.3705102.break" &&
+			presentation.Get_Profiles().front().strBindingId ==
+				"binding.valtan.wall.3705102.break" &&
+			nullptr != presentation.Find_Group(
+				"destroyable.group.valtan.wall.3705102") &&
+			presentation.Validate_Against(projection, status),
+			"World Destruction Debris Presentation Parses And Joins Projection");
+
+		LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE liveEvent{};
+		liveEvent.strGroupId = "destroyable.group.valtan.wall.3705102";
+		liveEvent.strMutationId = "mutation.valtan.wall.3705102.break";
+		liveEvent.strBindingId = "binding.valtan.wall.3705102.break";
+		const WORLD_DESTRUCTION_DEBRIS_PROFILE* joinedProfile =
+			presentation.Find_Group(liveEvent.strGroupId);
+		const bool_t exactLiveEventJoin = nullptr != joinedProfile &&
+			joinedProfile->strMutationId == liveEvent.strMutationId &&
+			joinedProfile->strBindingId == liveEvent.strBindingId;
+		liveEvent.strBindingId = "binding.valtan.wall.3705102.wrong";
+		runner.Require(exactLiveEventJoin && nullptr != joinedProfile &&
+			joinedProfile->strBindingId != liveEvent.strBindingId,
+			"World Destruction Debris Presentation Joins Live Event Binding Exactly");
+
+		const auto rejectsAndPreserves = [&presentation](const std::string& candidate)
+		{
+			std::string error;
+			return !CWorldDestructionDebrisPresentationDocument::Parse_Text(
+				candidate, presentation, error) && !error.empty() &&
+				presentation.Is_Ready() &&
+				presentation.Get_Profiles().size() == 1u &&
+				presentation.Get_Profiles().front().Emitters.size() == 4u;
+		};
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(2u)),
+			"World Destruction Debris Presentation Rejects Version Transactionally");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", true)),
+			"World Destruction Debris Presentation Rejects Unknown Property Transactionally");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"09335938568718910930")),
+			"World Destruction Debris Presentation Rejects Noncanonical Placement ID");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, true)),
+			"World Destruction Debris Presentation Rejects Duplicate Coverage");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false, true)),
+			"World Destruction Debris Presentation Rejects Non-Normalized Direction");
+
+		CWorldDestructionProjectionDocument wrongRevisionProjection;
+		const bool_t wrongRevisionReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+				wrongRevisionProjection, status);
+		runner.Require(wrongRevisionReady &&
+			!presentation.Validate_Against(wrongRevisionProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Revision Mismatch");
+
+		CWorldDestructionProjectionDocument coverageMismatchProjection;
+		const bool_t coverageMismatchReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"9335938568718910931"),
+				coverageMismatchProjection, status);
+		runner.Require(coverageMismatchReady &&
+			!presentation.Validate_Against(coverageMismatchProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Coverage Mismatch");
+
+		CWorldDestructionProjectionDocument aliasMismatchProjection;
+		const bool_t aliasMismatchReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"9335938568718910930", false, false,
+					"17280669848983777578"),
+				aliasMismatchProjection, status);
+		runner.Require(aliasMismatchReady &&
+			!presentation.Validate_Against(aliasMismatchProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Alias Mismatch");
+	}
+
+	struct WORLD_DESTRUCTION_TEST_SINK final
+	{
+		std::vector<std::pair<uint64_t, Client::DEPLOY_PROP_STATE>> States;
+		bool_t reject = false;
+		size_t iApplyCount = 0u;
+
+		bool_t Set_States(const std::vector<
+			std::pair<uint64_t, Client::DEPLOY_PROP_STATE>>& states)
+		{
+			if (reject)
+				return false;
+			States = states;
+			++iApplyCount;
+			return true;
+		}
+	};
+
+	Client::WORLD_DESTRUCTION_DEBRIS_CUE Make_DebrisCue(
+		const std::string& groupId,
+		const uint64_t eventSequence,
+		const uint64_t firstPlacementId,
+		const size_t emitterCount)
+	{
+		Client::WORLD_DESTRUCTION_DEBRIS_CUE cue;
+		cue.groupId = groupId;
+		cue.eventSequence = eventSequence;
+		cue.randomSeed = eventSequence * 7u + 1u;
+		for (size_t index = 0; index < emitterCount; ++index)
+		{
+			Client::WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE emitter;
+			emitter.sourceRuntimePlacementId =
+				firstPlacementId + static_cast<uint64_t>(index);
+			emitter.direction = float3_t(0.f, 1.f, 0.f);
+			emitter.speedMetersPerSecond = 5.f;
+			emitter.gravityScale = 2.f;
+			emitter.lifetimeSeconds = 4.f;
+			cue.emitters.push_back(std::move(emitter));
+		}
+		return cue;
+	}
+
+	void Test_WorldDestructionDebrisBudget(TEST_RUNNER& runner)
+	{
+		using Runtime = Client::CWorldDestructionDebrisPresentationRuntime;
+
+		/* The 109 impact drains all 21 authored groups on one frame. Every one
+		of them has to keep a complete recipe, so the share must be exactly one
+		emitter and the budget must cover all of them. */
+		runner.Require(
+			21u * Runtime::ACTORS_PER_EMITTER == Runtime::MAX_ACTIVE_ACTORS &&
+			1u == Runtime::Resolve_CueEmitterShare(0u, 21u),
+			"Destruction Debris Budget Gives Every 109 Group One Full Recipe");
+
+		/* A frame that drains a single group keeps the old behaviour: it may
+		use the whole remaining budget. */
+		runner.Require(
+			21u == Runtime::Resolve_CueEmitterShare(0u, 1u) &&
+			10u == Runtime::Resolve_CueEmitterShare(
+				11u * Runtime::ACTORS_PER_EMITTER, 1u),
+			"Destruction Debris Budget Lets A Lone Cue Use The Remainder");
+
+		/* An exhausted budget still reports a legal share; admission itself is
+		what refuses, so the caller never divides by zero. */
+		runner.Require(
+			1u == Runtime::Resolve_CueEmitterShare(
+				Runtime::MAX_ACTIVE_ACTORS, 4u) &&
+			1u == Runtime::Resolve_CueEmitterShare(0u, 0u),
+			"Destruction Debris Budget Never Resolves A Zero Share");
+
+		std::vector<uint64_t> admitted;
+		std::string error;
+		const bool_t sharedPlan = Runtime::Build_DeterministicAdmissionPlan(
+			Make_DebrisCue("destroyable.group.valtan.outerwall109.sector00",
+				9u, 1090000000000001ull, 3u),
+			0u, 1u, admitted, error);
+		runner.Require(
+			sharedPlan && 1u == admitted.size() &&
+			1090000000000001ull == admitted.front(),
+			"Destruction Debris Admission Honours The Per-Cue Share");
+
+		const bool_t fullPlan = Runtime::Build_DeterministicAdmissionPlan(
+			Make_DebrisCue("destroyable.group.valtan.wall.3705102",
+				10u, 9335938568718910930ull, 5u),
+			0u, 21u, admitted, error);
+		runner.Require(
+			fullPlan && 5u == admitted.size(),
+			"Destruction Debris Admission Takes Every Emitter Under A Wide Share");
+
+		runner.Require(
+			!Runtime::Build_DeterministicAdmissionPlan(
+				Make_DebrisCue("destroyable.group.valtan.wall.3705102",
+					11u, 9335938568718910930ull, 5u),
+				0u, 0u, admitted, error) && !error.empty() &&
+			admitted.empty(),
+			"Destruction Debris Admission Rejects A Zero Share");
+	}
+
+	void Test_WorldDestructionProjection(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+
+		CWorldDestructionProjectionDocument document;
+		std::string status;
+		const bool_t baseline =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(), document, status);
+		runner.Require(baseline && document.Is_Ready() &&
+			document.Get_AreaId() == "LV_LUT_HEARTRB_ED" &&
+			document.Get_Groups().size() == 1u &&
+			document.Get_Groups().front().MemberPlacementIds.size() == 5u &&
+			nullptr != document.Find_Group(
+				"destroyable.group.valtan.wall.3705102"),
+			"World Destruction Projection Parses Canonical First Five Wall Group");
+
+		const auto rejectsAndPreserves = [&document](const std::string& candidate)
+		{
+			std::string error;
+			return !CWorldDestructionProjectionDocument::Parse_Text(
+				candidate, document, error) && !error.empty() &&
+				document.Is_Ready() && document.Get_Groups().size() == 1u &&
+				document.Get_Groups().front().MemberPlacementIds.size() == 5u;
+		};
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(1u)),
+			"World Destruction Projection Rejects Version Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", true)),
+			"World Destruction Projection Rejects Unknown Property Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")),
+			"World Destruction Projection Rejects Non-Lowercase Revision");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"0000000000000000000000000000000000000000000000000000000000000000")),
+			"World Destruction Projection Rejects Zero Revision");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"09335938568718910930")),
+			"World Destruction Projection Rejects Noncanonical Decimal Placement ID");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, true)),
+			"World Destruction Projection Rejects Duplicate Placement Member");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false,
+				"18446744073709551615")),
+			"World Destruction Projection Rejects Alias Outside Group Members");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false,
+				"18177041425620847396", true)),
+			"World Destruction Projection Rejects Duplicate Suppression Alias");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
+		full.strCombatRuntimeRevision = document.Get_CombatRuntimeRevision();
+		full.iServerTick = 100u;
+		full.iEncounterEpoch = 1u;
+		WORLD_DESTRUCTION_STATE_WIRE fractured{};
+		fractured.strGroupId = "destroyable.group.valtan.wall.3705102";
+		fractured.eState = WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED;
+		fractured.iStateVersion = 2u;
+		fractured.iStateStartTick = 90u;
+		full.GroupStates.push_back(fractured);
+
+		CWorldDestructionProjectionRuntime runtime;
+		WORLD_DESTRUCTION_TEST_SINK sink;
+		const bool_t lateJoinApplied = runtime.Apply_Full(
+			document, full, sink, status);
+		const size_t fracturedSources = static_cast<size_t>(std::count_if(
+			sink.States.begin(), sink.States.end(), [](const auto& row)
+			{
+				return row.second == DEPLOY_PROP_STATE::FRACTURED;
+			}));
+		const auto suppressedAlias = std::find_if(
+			sink.States.begin(), sink.States.end(), [](const auto& row)
+			{
+				return row.first == 18177041425620847396ull &&
+					row.second == DEPLOY_PROP_STATE::DESPAWNED;
+			});
+		runner.Require(lateJoinApplied && runtime.Is_Synchronized() &&
+			runtime.Get_EncounterEpoch() == 1u &&
+			runtime.Get_ServerTick() == 100u && sink.States.size() == 5u &&
+			fracturedSources == 4u && suppressedAlias != sink.States.end() &&
+			1u == sink.iApplyCount,
+			"Late Join Full Sync Fractures Sources And Suppresses Alias Without Live Cue");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC intactFull{};
+		intactFull.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		intactFull.iServerTick = 200u;
+		intactFull.iEncounterEpoch = 5u;
+		WORLD_DESTRUCTION_STATE_WIRE intact = fractured;
+		intact.eState = WORLD_DESTRUCTION_RUNTIME_STATE::INTACT;
+		intact.iStateVersion = 1u;
+		intact.iStateStartTick = 200u;
+		intactFull.GroupStates.push_back(intact);
+		CWorldDestructionProjectionRuntime deltaRuntime;
+		WORLD_DESTRUCTION_TEST_SINK deltaSink;
+		const bool_t deltaBaseline = deltaRuntime.Apply_Full(
+			document, intactFull, deltaSink, status);
+
+		S2C_WORLD_DESTRUCTION_DELTA delta{};
+		delta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		delta.iServerTick = 201u;
+		delta.iEncounterEpoch = 5u;
+		WORLD_DESTRUCTION_STATE_WIRE deltaFractured = fractured;
+		deltaFractured.iStateStartTick = 201u;
+		delta.ChangedStates.push_back(deltaFractured);
+		const bool_t fracturedDeltaApplied = deltaBaseline &&
+			deltaRuntime.Apply_Delta(document, delta, deltaSink, status);
+		const size_t deltaFracturedSources = static_cast<size_t>(std::count_if(
+			deltaSink.States.begin(), deltaSink.States.end(), [](const auto& row)
+			{
+				return row.second == DEPLOY_PROP_STATE::FRACTURED;
+			}));
+		const auto deltaSuppressedAlias = std::find_if(
+			deltaSink.States.begin(), deltaSink.States.end(), [](const auto& row)
+			{
+				return row.first == 18177041425620847396ull &&
+					row.second == DEPLOY_PROP_STATE::DESPAWNED;
+			});
+		runner.Require(fracturedDeltaApplied &&
+			deltaRuntime.Get_ServerTick() == 201u &&
+			deltaRuntime.Get_GroupStates().size() == 1u &&
+			deltaRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			deltaSink.States.size() == 5u && deltaFracturedSources == 4u &&
+			deltaSuppressedAlias != deltaSink.States.end() &&
+			deltaSink.iApplyCount == 2u,
+			"Delta Fractures Sources And Suppresses Projection Alias");
+
+		const auto committedDeltaStates = deltaSink.States;
+		const size_t applyCountBeforeDuplicate = deltaSink.iApplyCount;
+		delta.iServerTick = 202u;
+		runner.Require(deltaRuntime.Apply_Delta(
+			document, delta, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Exact Duplicate Delta Advances Tick Without Reapplying Presentation");
+
+		S2C_WORLD_DESTRUCTION_DELTA differentSameVersion = delta;
+		differentSameVersion.iServerTick = 203u;
+		differentSameVersion.ChangedStates.front().eState =
+			WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			differentSameVersion, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Same Delta Version With Different Content Fails Transactionally");
+
+		S2C_WORLD_DESTRUCTION_DELTA skippedVersion = delta;
+		skippedVersion.iServerTick = 203u;
+		skippedVersion.ChangedStates.front().eState =
+			WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+		skippedVersion.ChangedStates.front().iStateVersion = 4u;
+		skippedVersion.ChangedStates.front().iStateStartTick = 203u;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			skippedVersion, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates,
+			"Skipped Delta State Version Fails Transactionally");
+
+		S2C_WORLD_DESTRUCTION_DELTA sinkRejected = skippedVersion;
+		sinkRejected.ChangedStates.front().iStateVersion = 3u;
+		deltaSink.reject = true;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			sinkRejected, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Rejected Delta Sink Preserves Prior Runtime And Presentation");
+		deltaSink.reject = false;
+
+		S2C_WORLD_DESTRUCTION_DELTA wrongEpoch = sinkRejected;
+		wrongEpoch.iEncounterEpoch = 6u;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			wrongEpoch, deltaSink, status) &&
+			deltaRuntime.Get_EncounterEpoch() == 5u &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates,
+			"Delta Encounter Epoch Mismatch Fails Before Presentation Mutation");
+
+		const auto priorSinkStates = sink.States;
+		full.iEncounterEpoch = 2u;
+		full.iServerTick = 101u;
+		sink.reject = true;
+		runner.Require(!runtime.Apply_Full(document, full, sink, status) &&
+			runtime.Is_Synchronized() && runtime.Get_EncounterEpoch() == 1u &&
+			runtime.Get_ServerTick() == 100u && sink.States == priorSinkStates,
+			"Rejected Projection Sink Preserves Prior Persistent Commit");
+
+		full.strCombatRuntimeRevision =
+			"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+		sink.reject = false;
+		runner.Require(!runtime.Apply_Full(document, full, sink, status) &&
+			runtime.Get_EncounterEpoch() == 1u && sink.States == priorSinkStates,
+			"Revision Mismatch Fails Closed Before Presentation Mutation");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC liveFull{};
+		liveFull.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		liveFull.iServerTick = 300u;
+		liveFull.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE liveIntact = intact;
+		liveIntact.iStateStartTick = 300u;
+		liveFull.GroupStates.push_back(liveIntact);
+		CWorldDestructionProjectionRuntime liveRuntime;
+		WORLD_DESTRUCTION_TEST_SINK liveSink;
+		const bool_t liveBaseline = liveRuntime.Apply_Full(
+			document, liveFull, liveSink, status);
+
+		S2C_WORLD_DESTRUCTION_DELTA breakingDelta{};
+		breakingDelta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		breakingDelta.iServerTick = 301u;
+		breakingDelta.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE breaking = liveIntact;
+		breaking.eState = WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING;
+		breaking.iStateVersion = 2u;
+		breaking.iStateStartTick = 301u;
+		breaking.iCommitTick = 330u;
+		breakingDelta.ChangedStates.push_back(breaking);
+		WORLD_DESTRUCTION_EVENT_WIRE breakingEvent{};
+		breakingEvent.iEventSequence = 1u;
+		breakingEvent.strGroupId = breaking.strGroupId;
+		breakingEvent.strMutationId =
+			"mutation.valtan.wall.3705102.break";
+		breakingEvent.strBindingId =
+			"binding.valtan.wall.3705102.break";
+		breakingEvent.iPatternSequence = 7u;
+		breakingEvent.iSourceNetEntityId = 17u;
+		breakingEvent.iServerTick = 301u;
+		breakingEvent.fImpactDirectionY = 1.f;
+		breakingEvent.iRandomSeed = 1234u;
+		breakingDelta.LiveEvents.push_back(breakingEvent);
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> emittedLiveEvents;
+		const bool_t breakingApplied = liveBaseline &&
+			liveRuntime.Apply_Delta(document, breakingDelta, liveSink, status,
+				&emittedLiveEvents);
+		runner.Require(breakingApplied && emittedLiveEvents.size() == 1u &&
+			emittedLiveEvents.front().iEventSequence == 1u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().eState ==
+				WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING &&
+			liveSink.iApplyCount == 2u,
+			"Breaking Delta Emits One Revision-Joined Live Event");
+
+		const auto liveCommittedStates = liveSink.States;
+		const size_t liveApplyCount = liveSink.iApplyCount;
+		S2C_WORLD_DESTRUCTION_DELTA duplicateEventDelta = breakingDelta;
+		duplicateEventDelta.iServerTick = 302u;
+		emittedLiveEvents.push_back(breakingEvent);
+		runner.Require(liveRuntime.Apply_Delta(document, duplicateEventDelta,
+			liveSink, status, &emittedLiveEvents) && emittedLiveEvents.empty() &&
+			liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Duplicate Live Event Is Ignored Without Reapplying State");
+
+		S2C_WORLD_DESTRUCTION_DELTA wrongMutationDelta{};
+		wrongMutationDelta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		wrongMutationDelta.iServerTick = 303u;
+		wrongMutationDelta.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE stagedBreaking = breaking;
+		stagedBreaking.iStateVersion = 3u;
+		stagedBreaking.iStateStartTick = 303u;
+		stagedBreaking.iCommitTick = 332u;
+		wrongMutationDelta.ChangedStates.push_back(stagedBreaking);
+		WORLD_DESTRUCTION_EVENT_WIRE wrongMutationEvent = breakingEvent;
+		wrongMutationEvent.iEventSequence = 2u;
+		wrongMutationEvent.strMutationId =
+			"mutation.valtan.wall.3705102.wrong";
+		wrongMutationEvent.iServerTick = 303u;
+		wrongMutationDelta.LiveEvents.push_back(wrongMutationEvent);
+		runner.Require(!liveRuntime.Apply_Delta(document, wrongMutationDelta,
+			liveSink, status, &emittedLiveEvents) && emittedLiveEvents.empty() &&
+			liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Wrong-Mutation Live Event Rejects Transactionally");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC staleLiveFull = liveFull;
+		staleLiveFull.iServerTick = 350u;
+		runner.Require(!liveRuntime.Apply_Full(document, staleLiveFull,
+			liveSink, status) && liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_EncounterEpoch() == 9u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Stale Full Sync Preserves State And Live Event Watermark");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC nextLiveFull = liveFull;
+		nextLiveFull.iServerTick = 400u;
+		nextLiveFull.iEncounterEpoch = 10u;
+		nextLiveFull.GroupStates.front().iStateStartTick = 400u;
+		runner.Require(liveRuntime.Apply_Full(document, nextLiveFull,
+			liveSink, status) && liveRuntime.Get_ServerTick() == 400u &&
+			liveRuntime.Get_EncounterEpoch() == 10u &&
+			liveRuntime.Get_LastEventSequence() == 0u &&
+			emittedLiveEvents.empty() && liveSink.iApplyCount == liveApplyCount + 1u,
+			"New Full Sync Resets Live Event Sequence Without Replaying Cue");
+	}
+
+	LostArk::Shared::PACKET_FRAME Make_MessageFrame(
+		const LostArk::Shared::PACKET_TYPE packetType,
+		const auto& message,
+		const bool_t appendTrailingByte = false)
+	{
+		LostArk::Shared::CPacketWriter writer;
+		LostArk::Shared::Write_Message(writer, message);
+		LostArk::Shared::PACKET_FRAME frame{};
+		frame.ePacketType = packetType;
+		frame.Payload = writer.Get_Buffer();
+		if (appendTrailingByte)
+			frame.Payload.push_back(0xA5u);
+		return frame;
+	}
+
+	LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC
+		Make_WorldDestructionFullSync()
+	{
+		using namespace LostArk::Shared;
+		S2C_WORLD_DESTRUCTION_FULL_SYNC message{};
+		message.strCombatRuntimeRevision = std::string(64u, 'a');
+		message.iServerTick = 100u;
+		message.iEncounterEpoch = 3u;
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		state.strGroupId = "destroyable.group.valtan.wall.3705102";
+		state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::INTACT;
+		state.iStateVersion = 1u;
+		state.iStateStartTick = 1u;
+		message.GroupStates.push_back(std::move(state));
+		return message;
+	}
+
+	LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA
+		Make_WorldDestructionDelta()
+	{
+		using namespace LostArk::Shared;
+		S2C_WORLD_DESTRUCTION_DELTA message{};
+		message.strCombatRuntimeRevision = std::string(64u, 'a');
+		message.iServerTick = 101u;
+		message.iEncounterEpoch = 3u;
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		state.strGroupId = "destroyable.group.valtan.wall.3705102";
+		state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED;
+		state.iStateVersion = 2u;
+		state.iStateStartTick = 101u;
+		message.ChangedStates.push_back(std::move(state));
+		return message;
+	}
+
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT Make_ValtanAuditionResult(
+		const std::uint32_t requestSequence,
+		const LostArk::Shared::VALTAN_AUDITION_RESULT verdict,
+		const std::uint32_t currentHealthBar)
+	{
+		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT message{};
+		message.iRequestSequence = requestSequence;
+		message.eOperation =
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::CROSS_HEALTH_BAR;
+		message.iTargetHealthBar = 80u;
+		message.eResult = verdict;
+		message.iCurrentHealthBar = currentHealthBar;
+		return message;
+	}
+
+	void Test_ValtanAuditionNetworkInbound(TEST_RUNNER& runner)
+	{
+		using namespace LostArk::Shared;
+		CNetworkManager& network = CNetworkManager::Get();
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				4u, VALTAN_AUDITION_RESULT::ARMED, 81u)));
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				5u, VALTAN_AUDITION_RESULT::QUEUED, 80u)));
+		S2C_VALTAN_AUDITION_RESULT first{};
+		S2C_VALTAN_AUDITION_RESULT second{};
+		S2C_VALTAN_AUDITION_RESULT drained{};
+		runner.Require(
+			network.Try_Consume_ValtanAuditionResult(first) &&
+			network.Try_Consume_ValtanAuditionResult(second) &&
+			!network.Try_Consume_ValtanAuditionResult(drained) &&
+			4u == first.iRequestSequence &&
+			VALTAN_AUDITION_RESULT::ARMED == first.eResult &&
+			81u == first.iCurrentHealthBar &&
+			5u == second.iRequestSequence &&
+			VALTAN_AUDITION_RESULT::QUEUED == second.eResult &&
+			80u == second.iCurrentHealthBar,
+			"Valtan Audition Network Preserves Arm Then Cross Verdict Order");
+
+		/* A Release Server answers rather than dropping the connection, so the
+		verdict has to survive the same inbound path as an accepted one. */
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				6u, VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD, 0u)));
+		S2C_VALTAN_AUDITION_RESULT rejection{};
+		runner.Require(
+			network.Try_Consume_ValtanAuditionResult(rejection) &&
+			VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
+				rejection.eResult &&
+			0u == rejection.iCurrentHealthBar,
+			"Valtan Audition Network Delivers A Release Rejection Verdict");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				7u, VALTAN_AUDITION_RESULT::QUEUED, 80u),
+			true));
+		S2C_VALTAN_AUDITION_RESULT unchanged{};
+		runner.Require(
+			WSAEINVAL == network.Get_LastErrorCode() &&
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Rejects Trailing Payload Bytes");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		auto truncated = Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				8u, VALTAN_AUDITION_RESULT::QUEUED, 80u));
+		truncated.Payload.pop_back();
+		network.Harness_HandleFrame(truncated);
+		runner.Require(
+			WSAEINVAL == network.Get_LastErrorCode() &&
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Rejects Truncated Payload");
+
+		/* Re-entering a world must not leave a stale verdict behind for the
+		next encounter's panel to read as its own. */
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				9u, VALTAN_AUDITION_RESULT::QUEUED, 80u)));
+		network.Harness_Reset();
+		runner.Require(
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Drops Verdicts On World Inbound Reset");
+	}
+
+	void Test_WorldDestructionNetworkInbound(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		CNetworkManager& network = CNetworkManager::Get();
+		const auto full = Make_WorldDestructionFullSync();
+		const auto delta = Make_WorldDestructionDelta();
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full));
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA, delta));
+		CLIENT_REPLICATION_EVENT first{};
+		CLIENT_REPLICATION_EVENT second{};
+		runner.Require(network.Try_Consume_ReplicationEvent(first) &&
+			network.Try_Consume_ReplicationEvent(second) &&
+			!network.Try_Consume_ReplicationEvent(second) &&
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_FULL_SYNC ==
+				first.eType &&
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA ==
+				second.eType &&
+			100u == first.WorldDestructionFullSync.iServerTick &&
+			101u == second.WorldDestructionDelta.iServerTick,
+			"World Destruction Network Preserves Full Then Delta TCP Order");
+
+		network.Harness_SetAcceptedWorld(WORLD_ID::BERN);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full));
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Non-Valtan Accepted World");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA, delta, true));
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Trailing Payload Bytes");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		auto malformed = Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full);
+		malformed.Payload.pop_back();
+		network.Harness_HandleFrame(malformed);
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Truncated Payload");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		CLIENT_REPLICATION_EVENT queued{};
+		queued.eType = CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+		queued.WorldDestructionDelta = delta;
+		runner.Require(network.Harness_EnqueueReplicationEvent(
+			static_cast<CLIENT_REPLICATION_EVENT&&>(queued)) &&
+			1u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Harness Stages Prior Generation Event");
+		S2C_ENTER_ACCEPTED accepted{};
+		accepted.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		accepted.eWorldId = WORLD_ID::VALTAN_ARENA;
+		accepted.iPlayerId = 5u;
+		accepted.iNetEntityId = 55u;
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_ENTER_ACCEPTED, accepted));
+		runner.Require(0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Acceptance Clears Prior Generation Queue");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		bool_t filledToCapacity = true;
+		for (size_t index = 0u;
+			index < CNetworkManager::MAX_REPLICATION_EVENT_QUEUE;
+			++index)
+		{
+			CLIENT_REPLICATION_EVENT event{};
+			event.eType =
+				CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+			if (!network.Harness_EnqueueReplicationEvent(
+				static_cast<CLIENT_REPLICATION_EVENT&&>(event)))
+			{
+				filledToCapacity = false;
+				break;
+			}
+		}
+		CLIENT_REPLICATION_EVENT overflow{};
+		overflow.eType =
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+		runner.Require(filledToCapacity &&
+			!network.Harness_EnqueueReplicationEvent(
+				static_cast<CLIENT_REPLICATION_EVENT&&>(overflow)) &&
+			WSAENOBUFS == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Queue Overflow Fails Closed");
+		network.Harness_Reset();
 	}
 
 	void Test_RealSkillBindingDocuments(TEST_RUNNER& runner)
@@ -2113,6 +5310,438 @@ namespace
 			output << image.fAlpha << '|';
 		}
 		return output.str();
+	}
+
+	void Test_SourceVisualProgramPlaybackAdmission(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& CorpusPath,
+		const std::filesystem::path& BaseDocumentPath)
+	{
+		using namespace Client;
+		std::error_code PathError;
+		const std::filesystem::path AbsoluteCorpusPath =
+			std::filesystem::absolute(CorpusPath, PathError);
+		const std::filesystem::path RepositoryRoot = PathError ?
+			std::filesystem::path{} : AbsoluteCorpusPath.parent_path().
+				parent_path().parent_path().parent_path();
+		const std::filesystem::path ResourceRoot =
+			RepositoryRoot / "Client" / "Bin" / "Resources";
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (RepositoryRoot.empty() || !std::filesystem::is_directory(ResourceRoot) ||
+			!RuntimeResourceRoot.Set(ResourceRoot.c_str()))
+		{
+			runner.Require(false,
+				"Source Visual Program Harness Resolves The Client Runtime Resource Root");
+			return;
+		}
+		std::string Status;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> Corpus;
+		EFFECT_DOCUMENT_DESC BaseDocument;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection;
+		const bool_t bProjectionCreated =
+			CEffectVisualProgramCorpusCodec::Load(CorpusPath, Corpus, Status) &&
+			nullptr != Corpus &&
+			CEffectDocumentCodec::Load(BaseDocumentPath, BaseDocument, Status) &&
+			CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*Corpus, BaseDocument, Projection, Status) &&
+			nullptr != Projection && Projection->Is_Valid();
+		runner.Require(bProjectionCreated,
+			"Source Visual Program Parser Issues One Immutable Document Projection Token");
+		if (!bProjectionCreated)
+		{
+			std::cout << "[DETAIL] source visual-program projection: " <<
+				Status << '\n';
+			return;
+		}
+
+		const EFFECT_DOCUMENT_DESC& ProjectedDocument = Projection->Get_Document();
+		const auto IsSourceParticleCarrier = [](const EFFECT_ELEMENT_DESC* pElement)
+		{
+			return nullptr != pElement && pElement->SourceRecipe.bEnabled &&
+				((pElement->eKind == EFFECT_ELEMENT_KIND::MESH &&
+					pElement->SourceRecipe.strRendererShape == "mesh") ||
+				 (pElement->eKind == EFFECT_ELEMENT_KIND::SPRITE &&
+					pElement->SourceRecipe.strRendererShape == "sprite"));
+		};
+		const bool_t bTokenClosureExact =
+			Projection->Get_EffectAssetId() == ProjectedDocument.strEffectAssetId &&
+			!Projection->Get_AdmittedSelectors().empty() &&
+			std::all_of(Projection->Get_AdmittedSelectors().begin(),
+				Projection->Get_AdmittedSelectors().end(),
+				[&Projection](const EFFECT_VISUAL_PROGRAM_SELECTOR& Selector)
+				{
+					return Selector.strEffectAssetId ==
+						Projection->Get_EffectAssetId() &&
+						!Selector.strOccurrenceId.empty();
+				}) &&
+			std::any_of(ProjectedDocument.Elements.begin(),
+				ProjectedDocument.Elements.end(),
+				[&IsSourceParticleCarrier](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return IsSourceParticleCarrier(&Element);
+				});
+		runner.Require(bTokenClosureExact,
+			"Source Visual Program Token Owns Exact Asset Selector And Particle Carrier Closure");
+
+		const auto FindProjectedElement = [&ProjectedDocument](
+			const std::string_view ElementId) -> const EFFECT_ELEMENT_DESC*
+		{
+			const auto Iterator = std::find_if(ProjectedDocument.Elements.begin(),
+				ProjectedDocument.Elements.end(),
+				[ElementId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == ElementId;
+				});
+			return Iterator == ProjectedDocument.Elements.end() ? nullptr :
+				&*Iterator;
+		};
+		std::vector<std::string> CascadeRibbonElementIds;
+		std::vector<std::string> AnimationTrailElementIds;
+		bool_t bTrailTokenClosureExact = true;
+		for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
+			Projection->Get_AdmittedRows())
+		{
+			if (Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
+				continue;
+			const EFFECT_ELEMENT_DESC* const pTarget =
+				Row.TargetIdentity.has_value() ?
+					FindProjectedElement(
+						Row.TargetIdentity->strTargetElementId) : nullptr;
+			bTrailTokenClosureExact = bTrailTokenClosureExact &&
+				nullptr != pTarget && pTarget->eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+				pTarget->SourceRecipe.bEnabled &&
+				pTarget->SourceRecipe.strRendererShape == "ribbon";
+			if (nullptr != pTarget)
+				CascadeRibbonElementIds.push_back(pTarget->strElementId);
+		}
+		for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+			Projection->Get_AdmittedSupplementalElements())
+		{
+			const EFFECT_ELEMENT_DESC* const pTarget = FindProjectedElement(
+				Supplemental.TargetIdentity.strTargetElementId);
+			if (Supplemental.eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL)
+			{
+				bTrailTokenClosureExact = bTrailTokenClosureExact &&
+					nullptr != pTarget &&
+					pTarget->eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+					!pTarget->SourceRecipe.bEnabled &&
+					pTarget->SourceRecipe.Modules.empty() &&
+					Supplemental.AnimationTrailPacket.has_value() &&
+					!Supplemental.CascadeRibbonPacket.has_value();
+				if (nullptr != pTarget)
+					AnimationTrailElementIds.push_back(pTarget->strElementId);
+			}
+		}
+		runner.Require(bTrailTokenClosureExact,
+			"Visual Program Trail Families Own Exact Projected Trail Targets And Immutable Packets");
+
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			ProjectedResources;
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			BaseResources;
+		const bool_t bResourcesPrepared =
+			CEffectPlayback::Prepare_DocumentResources(
+				ProjectedDocument, ProjectedResources, Status) &&
+			CEffectPlayback::Prepare_DocumentResources(
+				BaseDocument, BaseResources, Status);
+		runner.Require(bResourcesPrepared,
+			"Source Visual Program Harness Prepares Projected And Base Document Resources");
+		if (!bResourcesPrepared)
+			return;
+
+		CEffectPlayback VisualPlayback;
+		const bool_t bVisualStaged =
+			VisualPlayback.Stage_PrevalidatedVisualProgramDocument(
+				Projection, ProjectedResources, Status);
+		if (!bVisualStaged)
+		{
+			std::cout << "[DETAIL] source visual-program playback stage: " <<
+				Status << '\n';
+		}
+		float4x4_t Root{};
+		XMStoreFloat4x4(&Root, XMMatrixIdentity());
+		std::string SourceParticleElementId;
+		f32_t fParticleSampleTime = 0.f;
+		for (uint32_t iStep = 0u;
+			bVisualStaged && SourceParticleElementId.empty() && iStep < 600u;
+			++iStep)
+		{
+			VisualPlayback.Update(1.f / 60.f, Root);
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				VisualPlayback.Get_Frame().Particles)
+			{
+				if (IsSourceParticleCarrier(Particle.pElement))
+				{
+					SourceParticleElementId = Particle.pElement->strElementId;
+					fParticleSampleTime =
+						VisualPlayback.Get_Frame().fSampleTimeSeconds;
+					break;
+				}
+			}
+		}
+		const bool_t bVisualUsesSourceSimulation = bVisualStaged &&
+			VisualPlayback.Is_SourceVisualProgramActive() &&
+			!VisualPlayback.Is_ReconstructedSourceRuntimeActive() &&
+			!SourceParticleElementId.empty() &&
+			std::none_of(VisualPlayback.Get_Frame().Elements.begin(),
+				VisualPlayback.Get_Frame().Elements.end(),
+				[&SourceParticleElementId](const EFFECT_EVALUATED_ELEMENT& Element)
+				{
+					return nullptr != Element.pElement &&
+						Element.pElement->strElementId == SourceParticleElementId;
+				});
+		runner.Require(bVisualUsesSourceSimulation,
+			"Admitted Visual Program Runs Matching Mesh Sprite Source Recipe On Existing Playback Path");
+		if (bVisualStaged && !bVisualUsesSourceSimulation)
+		{
+			std::cout << "[DETAIL] source visual-program playback active=" <<
+				VisualPlayback.Is_SourceVisualProgramActive() <<
+				", sourceParticleElementId=" << SourceParticleElementId <<
+				", sampleTime=" << fParticleSampleTime <<
+				", particleRows=" << VisualPlayback.Get_Frame().Particles.size() <<
+				", staticRows=" << VisualPlayback.Get_Frame().Elements.size() << '\n';
+		}
+
+		const auto CountTrailPoints = [](const EFFECT_EVALUATED_FRAME& Frame,
+			const std::vector<std::string>& ElementIds, const size_t iMinimumPoints)
+		{
+			size_t iMatched = 0u;
+			for (const std::string& ElementId : ElementIds)
+			{
+				const auto Trail = std::find_if(Frame.Trails.begin(),
+					Frame.Trails.end(), [&ElementId](const auto& Evaluated)
+					{
+						return nullptr != Evaluated.pElement &&
+							Evaluated.pElement->strElementId == ElementId;
+					});
+				iMatched += Trail != Frame.Trails.end() &&
+					Trail->Points.size() >= iMinimumPoints ? 1u : 0u;
+			}
+			return iMatched;
+		};
+		if (bVisualStaged &&
+			(!CascadeRibbonElementIds.empty() ||
+			 !AnimationTrailElementIds.empty()))
+		{
+			std::vector<std::string> RequiredAnchorIds;
+			for (const EFFECT_ELEMENT_DESC& Element : ProjectedDocument.Elements)
+			{
+				if (Element.bVisible && Element.ActionCueAttachment.bEnabled &&
+					Element.ActionCueAttachment.bFollow)
+				{
+					RequiredAnchorIds.push_back(
+						Element.ActionCueAttachment.strRuntimeAnchorSlotId);
+				}
+			}
+			std::ranges::sort(RequiredAnchorIds);
+			RequiredAnchorIds.erase(std::unique(RequiredAnchorIds.begin(),
+				RequiredAnchorIds.end()), RequiredAnchorIds.end());
+			CEffectPlayback TrailPlayback;
+			const bool_t bTrailStaged =
+				TrailPlayback.Stage_PrevalidatedVisualProgramDocument(
+					Projection, ProjectedResources, Status);
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingRoot =
+				[RequiredAnchorIds](
+				const f32_t fSampleTime,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& OutError)
+			{
+				XMStoreFloat4x4(&OutSample.RootWorld,
+					XMMatrixTranslation(fSampleTime * 120.f, 0.f, 0.f));
+				OutSample.SourceAnchorWorlds.clear();
+				for (const std::string& AnchorId : RequiredAnchorIds)
+					OutSample.SourceAnchorWorlds.emplace(
+						AnchorId, OutSample.RootWorld);
+				OutError.clear();
+				return true;
+			};
+			bool_t bMovingTrailExecuted = bTrailStaged;
+			std::unordered_set<std::string> SawInitialOnePoint;
+			std::unordered_map<std::string, size_t> MaximumTrailPoints;
+			for (uint32_t iStep = 0u; bMovingTrailExecuted && iStep < 600u;
+				++iStep)
+			{
+				bMovingTrailExecuted = TrailPlayback.Update_WithTransformHistory(
+					1.f / 60.f, MovingRoot, Status);
+				for (const EFFECT_EVALUATED_TRAIL& Trail :
+					TrailPlayback.Get_Frame().Trails)
+				{
+					if (nullptr != Trail.pElement && 1u == Trail.Points.size())
+						SawInitialOnePoint.emplace(
+							Trail.pElement->strElementId);
+					if (nullptr != Trail.pElement)
+					{
+						size_t& Maximum = MaximumTrailPoints[
+							Trail.pElement->strElementId];
+						Maximum = (std::max)(Maximum, Trail.Points.size());
+					}
+				}
+				if (CountTrailPoints(TrailPlayback.Get_Frame(),
+						CascadeRibbonElementIds, 2u) ==
+						CascadeRibbonElementIds.size() &&
+					CountTrailPoints(TrailPlayback.Get_Frame(),
+						AnimationTrailElementIds, 2u) ==
+						AnimationTrailElementIds.size())
+				{
+					break;
+				}
+			}
+			bMovingTrailExecuted = bMovingTrailExecuted &&
+				std::ranges::all_of(CascadeRibbonElementIds,
+					[&SawInitialOnePoint](const std::string& ElementId)
+					{
+						return SawInitialOnePoint.contains(ElementId);
+					}) &&
+				std::ranges::all_of(AnimationTrailElementIds,
+					[&SawInitialOnePoint](const std::string& ElementId)
+					{
+						return SawInitialOnePoint.contains(ElementId);
+					}) &&
+				CountTrailPoints(TrailPlayback.Get_Frame(),
+					CascadeRibbonElementIds, 2u) ==
+					CascadeRibbonElementIds.size() &&
+				CountTrailPoints(TrailPlayback.Get_Frame(),
+					AnimationTrailElementIds, 2u) ==
+					AnimationTrailElementIds.size();
+			runner.Require(bMovingTrailExecuted,
+				"Admitted CascadeRibbon And AnimationTrail Suppress One Point Then Execute Two Point Moving Trails");
+			if (!bMovingTrailExecuted)
+			{
+				std::cout << "[DETAIL] source visual Trail execution: " <<
+					Status << ", CascadeRibbon targets=" <<
+					CascadeRibbonElementIds.size() << ", AnimationTrail targets=" <<
+					AnimationTrailElementIds.size();
+				for (const auto& [ElementId, Maximum] : MaximumTrailPoints)
+				{
+					std::cout << ", " << ElementId << " max=" << Maximum <<
+						" sawOne=" << SawInitialOnePoint.contains(ElementId);
+				}
+				std::cout << '\n';
+			}
+			HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+			std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+				TrailPrepared;
+			bool_t bTrailSubmitted = bMovingTrailExecuted &&
+				EngineScope.Initialize(Status) &&
+				CEffectDocumentRenderer::Prepare_VisualProgramDocument(
+					EngineScope.Get_Device(), EngineScope.Get_Context(),
+					Projection, TrailPrepared, Status) &&
+				nullptr != TrailPrepared;
+			CEffectDocumentRenderer TrailRenderer(
+				EngineScope.Get_Device(), EngineScope.Get_Context());
+			bTrailSubmitted = bTrailSubmitted &&
+				SUCCEEDED(TrailRenderer.Initialize()) &&
+				TrailRenderer.Stage_PrevalidatedVisualProgramDocument(
+					Projection, TrailPrepared, Status) &&
+				EngineScope.Begin_Frame(Status);
+			HRESULT hTrailRender = E_FAIL;
+			if (bTrailSubmitted)
+			{
+				hTrailRender = TrailRenderer.Render(
+					TrailPlayback.Get_Frame());
+				EngineScope.Get_Context()->Flush();
+			}
+			const EFFECT_GPU_RENDER_FAMILY_STATS& RibbonStats =
+				TrailRenderer.Get_LastRenderSubmissionStats().Families[
+					static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::RIBBON)];
+			bTrailSubmitted = bTrailSubmitted && SUCCEEDED(hTrailRender) &&
+				S_OK == EngineScope.Get_Device()->GetDeviceRemovedReason() &&
+				RibbonStats.iActive >= CascadeRibbonElementIds.size() +
+					AnimationTrailElementIds.size() &&
+				RibbonStats.iAttempted >= CascadeRibbonElementIds.size() +
+					AnimationTrailElementIds.size() &&
+				RibbonStats.iSubmitted >= CascadeRibbonElementIds.size() +
+					AnimationTrailElementIds.size();
+			runner.Require(bTrailSubmitted,
+				"Two Point CascadeRibbon And AnimationTrail Submit Through The Shared Headless WARP Ribbon Carrier");
+			if (!bTrailSubmitted)
+			{
+				std::cout << "[DETAIL] source visual Trail WARP submission: " <<
+					Status << ", HRESULT=0x" << std::hex <<
+					static_cast<uint32_t>(hTrailRender) << std::dec <<
+					", active=" << RibbonStats.iActive << ", attempted=" <<
+					RibbonStats.iAttempted << ", submitted=" <<
+					RibbonStats.iSubmitted << '\n';
+			}
+			CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		}
+
+		CEffectPlayback NormalPlayback;
+		const bool_t bNormalStaged =
+			NormalPlayback.Stage_PrevalidatedDocument(
+				ProjectedDocument, ProjectedResources, Status);
+		if (!bNormalStaged)
+			std::cout << "[DETAIL] normal projected document stage: " << Status << '\n';
+		if (bNormalStaged)
+			NormalPlayback.Seek(fParticleSampleTime, Root);
+		const bool_t bNormalPreservesLegacyCarrier = bNormalStaged &&
+			!NormalPlayback.Is_SourceVisualProgramActive() &&
+			!NormalPlayback.Is_ReconstructedSourceRuntimeActive() &&
+			std::any_of(NormalPlayback.Get_Frame().Elements.begin(),
+				NormalPlayback.Get_Frame().Elements.end(),
+				[&SourceParticleElementId](const EFFECT_EVALUATED_ELEMENT& Element)
+				{
+					return nullptr != Element.pElement &&
+						Element.pElement->strElementId == SourceParticleElementId;
+				}) &&
+			std::none_of(NormalPlayback.Get_Frame().Particles.begin(),
+				NormalPlayback.Get_Frame().Particles.end(),
+				[&SourceParticleElementId](const EFFECT_EVALUATED_PARTICLE& Particle)
+				{
+					return nullptr != Particle.pElement &&
+						Particle.pElement->strElementId == SourceParticleElementId;
+				});
+		runner.Require(bNormalPreservesLegacyCarrier,
+			"Normal Authored Stage Preserves Legacy Mesh Sprite Behavior Without Visual Admission");
+		if (bNormalStaged && !bNormalPreservesLegacyCarrier)
+		{
+			std::cout << "[DETAIL] normal projected playback sourceElement=" <<
+				SourceParticleElementId << ", sampleTime=" << fParticleSampleTime <<
+				", particleRows=" << NormalPlayback.Get_Frame().Particles.size() <<
+				", staticRows=" << NormalPlayback.Get_Frame().Elements.size() << '\n';
+		}
+
+		const std::string PreservedFrame =
+			Snapshot_EffectFrame(VisualPlayback.Get_Frame());
+		const f32_t fPreservedDuration = VisualPlayback.Get_DurationSeconds();
+		Status.clear();
+		const bool_t bMismatchRejected =
+			!VisualPlayback.Stage_PrevalidatedVisualProgramDocument(
+				Projection, BaseResources, Status) && !Status.empty() &&
+			VisualPlayback.Is_SourceVisualProgramActive() &&
+			!VisualPlayback.Is_ReconstructedSourceRuntimeActive() &&
+			VisualPlayback.Get_DurationSeconds() == fPreservedDuration &&
+			Snapshot_EffectFrame(VisualPlayback.Get_Frame()) == PreservedFrame;
+		runner.Require(bMismatchRejected,
+			"Visual Program Prepared Identity Mismatch Rolls Back Playback Frame And Admission");
+
+		const auto AdapterProgram = std::find_if(
+			Corpus->Programs.begin(), Corpus->Programs.end(),
+			[](const EFFECT_VISUAL_PROGRAM& Program)
+			{
+				return Program.eProjectionKind ==
+					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
+			});
+		EFFECT_DOCUMENT_DESC AdapterBaseDocument = BaseDocument;
+		if (AdapterProgram != Corpus->Programs.end())
+			AdapterBaseDocument.strEffectAssetId = AdapterProgram->strEffectAssetId;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			AdapterProjection;
+		Status.clear();
+		const bool_t bAdapterRejectsForeignBase =
+			AdapterProgram != Corpus->Programs.end() &&
+			!CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*Corpus, AdapterBaseDocument, AdapterProjection, Status) &&
+			nullptr == AdapterProjection && !Status.empty();
+		runner.Require(bAdapterRejectsForeignBase,
+			"Adapter Packet Rejects A Foreign Base Missing Its Stable Targets");
+		if (!bAdapterRejectsForeignBase)
+		{
+			std::cout << "[DETAIL] adapter packet foreign-base rejection: " <<
+				Status << '\n';
+		}
 	}
 
 	void Test_EffectPlaybackDeterminism(TEST_RUNNER& runner)
@@ -2468,6 +6097,171 @@ namespace
 			"Effect Slash Occurrences Snapshot Player Root At Their Own Start Times");
 		runner.Require(bSnapshotStaged && bExpiredInAuthoredOrder,
 			"Effect Slash Occurrences Expire From Their Authored Start And Lifetime");
+
+		EFFECT_DOCUMENT_DESC sourceBasisDocument;
+		sourceBasisDocument.strEffectAssetId =
+			"effect.player.root.snapshot.source-basis.harness";
+		sourceBasisDocument.strDisplayName =
+			"Player Root Snapshot Source Basis Harness";
+		EFFECT_ELEMENT_DESC sourceBasisElement;
+		sourceBasisElement.strElementId = "source-basis.mesh";
+		sourceBasisElement.strDisplayName = "source-basis.mesh";
+		sourceBasisElement.eKind = EFFECT_ELEMENT_KIND::MESH;
+		sourceBasisElement.Detail.Timing.fLifeTimeSeconds = 1.f;
+		sourceBasisElement.Detail.Transform.vPosition = { 1.f, 2.f, 3.f };
+		sourceBasisElement.Detail.Transform.vRotationDegrees = { 5.f, 15.f, 25.f };
+		sourceBasisElement.Detail.Transform.vScale = { 0.75f, 1.25f, 2.f };
+		sourceBasisElement.ActionCueAttachment.bEnabled = true;
+		sourceBasisElement.ActionCueAttachment.bFollow = false;
+		sourceBasisElement.ActionCueAttachment.strSourceAnchorSlotId = "root";
+		sourceBasisElement.ActionCueAttachment.strRuntimeAnchorSlotId = "root";
+		sourceBasisElement.ActionCueAttachment.
+			fSnapshotRootSourceBasisYawDegrees = -90.f;
+		sourceBasisDocument.Elements.push_back(sourceBasisElement);
+		float4x4_t rotatedRoot{};
+		XMStoreFloat4x4(&rotatedRoot,
+			XMMatrixRotationY(XMConvertToRadians(37.f)) *
+			XMMatrixTranslation(7.f, 11.f, 13.f));
+		CEffectPlayback sourceBasisPlayback;
+		const bool_t bSourceBasisStaged =
+			sourceBasisPlayback.Stage_Document(sourceBasisDocument, status);
+		sourceBasisPlayback.Seek(0.25f, rotatedRoot);
+		float4x4_t expectedSourceBasisWorld{};
+		XMStoreFloat4x4(&expectedSourceBasisWorld,
+			XMMatrixScaling(0.75f, 1.25f, 2.f) *
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(5.f), XMConvertToRadians(15.f),
+				XMConvertToRadians(25.f)) *
+			XMMatrixTranslation(1.f, 2.f, 3.f) *
+			XMMatrixRotationY(XMConvertToRadians(-90.f)) *
+			XMLoadFloat4x4(&rotatedRoot));
+		const auto MatrixNearlyEqual = [](const float4x4_t& Left,
+			const float4x4_t& Right)
+		{
+			const f32_t* pLeft = &Left._11;
+			const f32_t* pRight = &Right._11;
+			for (size_t i = 0u; i < 16u; ++i)
+			{
+				if (!Nearly_Equal(pLeft[i], pRight[i], 0.0001f))
+					return false;
+			}
+			return true;
+		};
+		const bool_t bSourceBasisWorldExact = bSourceBasisStaged &&
+			sourceBasisPlayback.Get_Frame().Elements.size() == 1u &&
+			MatrixNearlyEqual(
+				sourceBasisPlayback.Get_Frame().Elements.front().World,
+				expectedSourceBasisWorld);
+		runner.Require(bSourceBasisWorldExact,
+			"Effect Snapshot Root Applies Typed Source Basis To Position Orientation And Rotated Actor Root");
+
+		EFFECT_DOCUMENT_DESC invalidFollowBasis = sourceBasisDocument;
+		invalidFollowBasis.Elements.front().ActionCueAttachment.bFollow = true;
+		invalidFollowBasis.Elements.front().ActionCueAttachment.strSourceAnchorSlotId =
+			"WP_SDM_R_Battle";
+		invalidFollowBasis.Elements.front().ActionCueAttachment.strRuntimeAnchorSlotId =
+			"WP_SDM_R_Battle";
+		invalidFollowBasis.Elements.front().ActionCueAttachment.strRuntimeBoneName =
+			"b_wp_1";
+		const float4x4_t sourceBasisBeforeInvalid =
+			sourceBasisPlayback.Get_Frame().Elements.front().World;
+		runner.Require(!sourceBasisPlayback.Stage_Document(invalidFollowBasis, status) &&
+			sourceBasisPlayback.Get_Frame().Elements.size() == 1u &&
+			MatrixNearlyEqual(
+				sourceBasisPlayback.Get_Frame().Elements.front().World,
+				sourceBasisBeforeInvalid),
+			"Effect Follow Attachment Rejects Snapshot Root Source Basis And Preserves Staged Frame");
+
+		EFFECT_DOCUMENT_DESC typeDataMeshDocument;
+		typeDataMeshDocument.strEffectAssetId =
+			"effect.typedata.mesh.rotation.harness";
+		typeDataMeshDocument.strDisplayName =
+			"TypeDataMesh Rotation Harness";
+		EFFECT_ELEMENT_DESC typeDataMesh;
+		typeDataMesh.strElementId = "typedata.mesh";
+		typeDataMesh.strDisplayName = "typedata.mesh";
+		typeDataMesh.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		typeDataMesh.Detail.Timing.fLifeTimeSeconds = 1.f;
+		typeDataMesh.Detail.Particle.iMaxParticles = 1u;
+		typeDataMesh.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		typeDataMesh.Detail.Particle.iBurstCount = 1u;
+		typeDataMesh.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+		typeDataMesh.Detail.Particle.vInitialVelocityMin = {};
+		typeDataMesh.Detail.Particle.vInitialVelocityMax = {};
+		typeDataMesh.Detail.Particle.vAcceleration = {};
+		typeDataMesh.Detail.Particle.vStartSize = { 2.f, 3.f };
+		typeDataMesh.Detail.Particle.vEndSize =
+			typeDataMesh.Detail.Particle.vStartSize;
+		typeDataMesh.ResourceBindings.push_back({
+			"meshModel", "Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" });
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST typeDataMeshBakeRequest;
+		typeDataMeshBakeRequest.CueLocalTransform.vPosition =
+			{ 12.3f, 4.5f, -6.7f };
+		// UE TypeDataMesh source order is roll(X), pitch(Y), yaw(Z).
+		typeDataMeshBakeRequest.vSourceTypeDataRotationDegrees =
+			{ 0.f, 0.f, 90.f };
+		EFFECT_ELEMENT_DESC typeDataMeshBaked;
+		const bool_t bTypeDataMeshBaked =
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				typeDataMesh, typeDataMeshBakeRequest,
+				typeDataMeshBaked, status);
+		typeDataMeshDocument.Elements.push_back(typeDataMeshBaked);
+		CEffectPlayback typeDataMeshPlayback;
+		const bool_t bTypeDataMeshStaged =
+			typeDataMeshPlayback.Stage_Document(typeDataMeshDocument, status);
+		typeDataMeshPlayback.Seek(1.f / 60.f, root);
+		const EFFECT_EVALUATED_FRAME& typeDataMeshFrame =
+			typeDataMeshPlayback.Get_Frame();
+		float4x4_t expectedTypeDataMeshWorld{};
+		const matrix_t expectedTypeDataMeshRotation = XMMatrixSet(
+			0.f, 0.f, -1.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 0.f, 0.f, 1.f);
+		XMStoreFloat4x4(&expectedTypeDataMeshWorld,
+			XMMatrixScaling(2.f, 3.f, 2.5f) *
+			expectedTypeDataMeshRotation *
+			XMMatrixTranslation(12.3f, 4.5f, -6.7f));
+		const bool_t bTypeDataMeshWorldExact = bTypeDataMeshBaked &&
+			Nearly_Equal(typeDataMeshBaked.Detail.Transform.vPosition,
+				float3_t(12.3f, 4.5f, -6.7f)) &&
+			Nearly_Equal(typeDataMeshBaked.Detail.Transform.vRotationDegrees,
+				float3_t(0.f, 90.f, 0.f)) &&
+			Nearly_Equal(typeDataMeshBaked.Detail.Mesh.
+				vSourceTypeDataRotationDegrees, float3_t{}) &&
+			bTypeDataMeshStaged &&
+			typeDataMeshFrame.Particles.size() == 1u &&
+			MatrixNearlyEqual(
+				typeDataMeshFrame.Particles.front().World,
+				expectedTypeDataMeshWorld) &&
+			Nearly_Equal(typeDataMeshFrame.Particles.front().World._41,
+				12.3f, 0.0001f) &&
+			Nearly_Equal(typeDataMeshFrame.Particles.front().World._42,
+				4.5f, 0.0001f) &&
+			Nearly_Equal(typeDataMeshFrame.Particles.front().World._43,
+				-6.7f, 0.0001f);
+		runner.Require(bTypeDataMeshWorldExact,
+			"Ordinary Authored TypeDataMesh Bake Applies Source Yaw Exactly Once And Preserves Position Scale");
+
+		EFFECT_DOCUMENT_DESC invalidSpriteTypeData = typeDataMeshDocument;
+		invalidSpriteTypeData.Elements.front().ResourceBindings.clear();
+		invalidSpriteTypeData.Elements.front().Detail.Mesh.
+			vSourceTypeDataRotationDegrees = { 0.f, 0.f, 90.f };
+		const bool_t bTypeDataMeshFrameReady = bTypeDataMeshWorldExact;
+		float4x4_t typeDataMeshBeforeInvalid{};
+		if (bTypeDataMeshFrameReady)
+		{
+			typeDataMeshBeforeInvalid =
+				typeDataMeshPlayback.Get_Frame().Particles.front().World;
+		}
+		runner.Require(
+			bTypeDataMeshFrameReady &&
+			!typeDataMeshPlayback.Stage_Document(invalidSpriteTypeData, status) &&
+			typeDataMeshPlayback.Get_Frame().Particles.size() == 1u &&
+			MatrixNearlyEqual(
+				typeDataMeshPlayback.Get_Frame().Particles.front().World,
+				typeDataMeshBeforeInvalid),
+			"Ordinary Authored TypeDataMesh Rejects Raw Sprite Leakage And Preserves Staged Frame");
 	}
 
 	void Test_EffectFixedStepTransformHistory(TEST_RUNNER& runner)
@@ -3641,7 +7435,22 @@ namespace
 		generator.SourceRecipe.Modules.push_back(eventGenerator);
 		eventDocument.Elements.push_back(generator);
 		EFFECT_ELEMENT_DESC receiver = sourceElement("receiver");
-		receiver.SourceRecipe.Modules.push_back(lifetime());
+		constexpr f32_t eventTickSeconds = 1.f / 60.f;
+		constexpr f32_t eventParticleLifeSeconds = 3.f * eventTickSeconds;
+		EFFECT_SOURCE_MODULE_DESC eventLifetime = lifetime();
+		eventLifetime.strStableId = "event.receiver.lifetime";
+		eventLifetime.Distributions.front() = distribution(
+			"lifetime", { eventParticleLifeSeconds, 0.f, 0.f, 0.f },
+			{ eventParticleLifeSeconds, 0.f, 0.f, 0.f }, 1u);
+		receiver.SourceRecipe.Modules.push_back(eventLifetime);
+		EFFECT_SOURCE_MODULE_DESC eventVelocity;
+		eventVelocity.strStableId = "event.receiver.velocity";
+		eventVelocity.strClassName = "particlemodulevelocity";
+		eventVelocity.strObjectPath = "Harness.EventReceiverVelocity";
+		eventVelocity.Distributions.push_back(distribution(
+			"startvelocity", { 60.f, 0.f, 0.f, 0.f },
+			{ 60.f, 0.f, 0.f, 0.f }, 3u));
+		receiver.SourceRecipe.Modules.push_back(eventVelocity);
 		EFFECT_SOURCE_MODULE_DESC eventReceiver;
 		eventReceiver.strStableId = "event.receiver";
 		eventReceiver.strClassName = "particlemoduleeventreceiverspawn";
@@ -3652,20 +7461,87 @@ namespace
 			"spawncount", { 2.f, 0.f, 0.f, 0.f },
 			{ 2.f, 0.f, 0.f, 0.f }, 1u));
 		receiver.SourceRecipe.Modules.push_back(eventReceiver);
+		EFFECT_SOURCE_MODULE_DESC eventDynamic;
+		eventDynamic.strStableId = "event.receiver.dynamic";
+		eventDynamic.strClassName = "particlemoduleparameterdynamic";
+		eventDynamic.strObjectPath = "Harness.EventReceiverDynamic";
+		eventDynamic.Literals.push_back(literalBoolean(
+			"dynamicparams[0].bspawntimeonly", false));
+		eventDynamic.Literals.push_back(literalBoolean(
+			"dynamicparams[0].buseemittertime", false));
+		EFFECT_DISTRIBUTION_DESC eventDynamicValue = distribution(
+			"dynamicparams[0].paramvalue", { 0.f, 0.f, 0.f, 0.f },
+			{ 0.f, 0.f, 0.f, 0.f }, 1u);
+		EFFECT_DISTRIBUTION_KEY_DESC eventDynamicStart;
+		eventDynamicStart.fTime = 0.f;
+		eventDynamicStart.vMinimum = { 0.f, 0.f, 0.f, 0.f };
+		eventDynamicStart.vMaximum = eventDynamicStart.vMinimum;
+		EFFECT_DISTRIBUTION_KEY_DESC eventDynamicEnd;
+		eventDynamicEnd.fTime = 1.f;
+		eventDynamicEnd.vMinimum = { 1.f, 0.f, 0.f, 0.f };
+		eventDynamicEnd.vMaximum = eventDynamicEnd.vMinimum;
+		eventDynamicValue.Keys = { eventDynamicStart, eventDynamicEnd };
+		eventDynamic.Distributions.push_back(std::move(eventDynamicValue));
+		EFFECT_ELEMENT_DESC directLifecycle = sourceElement("direct.lifecycle");
+		directLifecycle.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		directLifecycle.SourceRecipe.Modules.push_back(eventLifetime);
+		directLifecycle.SourceRecipe.Modules.push_back(eventVelocity);
+		directLifecycle.SourceRecipe.Modules.push_back(eventDynamic);
+		eventDocument.Elements.push_back(std::move(directLifecycle));
+		receiver.SourceRecipe.Modules.push_back(std::move(eventDynamic));
 		eventDocument.Elements.push_back(receiver);
 		CEffectPlayback eventPlayback;
 		runner.Require(eventPlayback.Stage_Document(eventDocument, status),
 			"Effect Event Source Document Stages");
-		eventPlayback.Seek(1.f / 60.f, identity);
-		const size_t receiverCount = std::count_if(
+		auto particleSampleMatches = [&eventPlayback](
+			const std::string_view elementId,
+			const size_t expectedCount,
+			const f32_t expectedNormalizedAge,
+			const f32_t expectedPositionX)
+		{
+			size_t particleCount = 0u;
+			bool_t matches = true;
+			for (const EFFECT_EVALUATED_PARTICLE& particle :
+				eventPlayback.Get_Frame().Particles)
+			{
+				if (particle.pElement->strElementId != elementId)
+					continue;
+				++particleCount;
+				matches = matches &&
+					std::abs(particle.fNormalizedLife -
+						expectedNormalizedAge) < 0.00001f &&
+					std::abs(particle.vDynamicParameter.x -
+						expectedNormalizedAge) < 0.00001f &&
+					std::abs(particle.World._41 - expectedPositionX) < 0.00001f;
+			}
+			return particleCount == expectedCount && matches;
+		};
+		eventPlayback.Update(eventTickSeconds, identity);
+		const bool_t spawnAgeZero =
+			particleSampleMatches("direct.lifecycle", 1u, 0.f, 0.01f) &&
+			particleSampleMatches("receiver", 2u, 0.f, 0.01f);
+		eventPlayback.Update(eventTickSeconds, identity);
+		const bool_t ageOneThird =
+			particleSampleMatches(
+				"direct.lifecycle", 1u, 1.f / 3.f, 0.02f) &&
+			particleSampleMatches("receiver", 2u, 1.f / 3.f, 0.02f);
+		eventPlayback.Update(eventTickSeconds, identity);
+		const bool_t ageTwoThirds =
+			particleSampleMatches(
+				"direct.lifecycle", 1u, 2.f / 3.f, 0.03f) &&
+			particleSampleMatches("receiver", 2u, 2.f / 3.f, 0.03f);
+		eventPlayback.Update(eventTickSeconds, identity);
+		const bool_t terminalAbsent = std::none_of(
 			eventPlayback.Get_Frame().Particles.begin(),
 			eventPlayback.Get_Frame().Particles.end(),
 			[](const EFFECT_EVALUATED_PARTICLE& particle)
 			{
-				return particle.pElement->strElementId == "receiver";
+				return particle.pElement->strElementId == "direct.lifecycle" ||
+					particle.pElement->strElementId == "receiver";
 			});
-		runner.Require(receiverCount == 2u,
-			"Effect Spawn Event Routes By Name And Type Into Receiver Spawn Count");
+		runner.Require(spawnAgeZero && ageOneThird && ageTwoThirds &&
+			terminalAbsent,
+			"Effect Direct And Event Spawn Keep Age Zero Then Match Dynamic Age And Remove Terminal Before Update");
 
 		const std::filesystem::path vectorRoot =
 			std::filesystem::temp_directory_path() /
@@ -4321,6 +8197,308 @@ namespace
 		}
 	}
 
+	void Test_DimensionMasterTUnifiedMigration(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
+			CProjectDataRoot::Get().parent_path() /
+				L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
+
+		const std::filesystem::path baselinePath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
+			L"authored-baseline.effect.json");
+		const std::filesystem::path sourcePath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json");
+		std::string status;
+		EFFECT_DOCUMENT_DESC baseline;
+		EFFECT_DOCUMENT_DESC source;
+		const bool_t baselineLoaded = !baselinePath.empty() &&
+			CEffectDocumentCodec::Load(baselinePath, baseline, status);
+		if (!baselineLoaded)
+		{
+			std::cout << "[DETAIL] DimensionMaster T baseline load: " <<
+				status << '\n';
+		}
+		status.clear();
+		const bool_t sourceLoaded = !sourcePath.empty() &&
+			CEffectDocumentCodec::Load(sourcePath, source, status);
+		if (!sourceLoaded)
+		{
+			std::cout << "[DETAIL] DimensionMaster T summon source load: " <<
+				status << '\n';
+		}
+
+		const std::string baselineCanonicalBefore = baselineLoaded ?
+			CEffectDocumentCodec::Serialize(baseline) : std::string{};
+		const std::string sourceCanonicalBefore = sourceLoaded ?
+			CEffectDocumentCodec::Serialize(source) : std::string{};
+		const EFFECT_MODEL_CUE_DESC* pSummon = sourceLoaded &&
+			source.ModelCues.size() == 1u ? &source.ModelCues.front() : nullptr;
+		const bool_t inputsExact = baselineLoaded && sourceLoaded &&
+			baseline.strEffectAssetId ==
+				"effect.dimensionmaster.skill.2050500.authored-baseline" &&
+			baseline.Elements.size() == 35u && baseline.ModelCues.empty() &&
+			source.strEffectAssetId == "effect.dimensionmaster.skill.2050500" &&
+			nullptr != pSummon && pSummon->strCueId == "dimension_summon" &&
+			pSummon->strModelAssetId ==
+				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
+			pSummon->strClipName ==
+				"sk_swp_dms_00_sk_sk_dimensionprison";
+		runner.Require(inputsExact,
+			"Track C DimensionMaster T Loads Exact Baseline And Summon Migration Inputs");
+
+		EFFECT_DOCUMENT_DESC candidate;
+		if (inputsExact)
+		{
+			candidate = baseline;
+			candidate.strEffectAssetId =
+				"effect.dimensionmaster.skill.2050500.unified";
+			candidate.strDisplayName = "DimensionMaster T Unified";
+			candidate.ModelCues.assign(1u, *pSummon);
+		}
+
+		status.clear();
+		const bool_t candidateDrawable = inputsExact &&
+			CEffectDocumentCodec::Validate_Drawable(candidate, status);
+		if (!candidateDrawable && inputsExact)
+		{
+			std::cout << "[DETAIL] DimensionMaster T unified validation: " <<
+				status << '\n';
+		}
+		const std::string candidateCanonical = candidateDrawable ?
+			CEffectDocumentCodec::Serialize(candidate) : std::string{};
+		EFFECT_DOCUMENT_DESC roundTrip;
+		status.clear();
+		const bool_t canonicalRoundTrip = candidateDrawable &&
+			CEffectDocumentCodec::Parse(candidateCanonical, roundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(roundTrip, status) &&
+			CEffectDocumentCodec::Serialize(roundTrip) == candidateCanonical;
+		const std::filesystem::path materializedPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
+			L"unified.effect.json");
+		EFFECT_DOCUMENT_DESC materialized;
+		status.clear();
+		const bool_t materializedExact = canonicalRoundTrip &&
+			!materializedPath.empty() &&
+			CEffectDocumentCodec::Load(materializedPath, materialized, status) &&
+			CEffectDocumentCodec::Validate_Drawable(materialized, status) &&
+			CEffectDocumentCodec::Serialize(materialized) == candidateCanonical;
+		runner.Require(materializedExact,
+			"Track C DimensionMaster T Materialized Unified Document Is Exact Canonical Candidate");
+		if (!materializedExact && canonicalRoundTrip)
+		{
+			std::cout << "[DETAIL] DimensionMaster T materialized unified: " <<
+				status << " path=" << materializedPath.string() << '\n';
+		}
+
+		std::vector<std::string> baselineResources;
+		std::vector<std::string> unifiedResources;
+		if (inputsExact)
+			CEffectDocumentCodec::Collect_ResourceAssetIds(
+				baseline, baselineResources);
+		if (canonicalRoundTrip)
+			CEffectDocumentCodec::Collect_ResourceAssetIds(
+				roundTrip, unifiedResources);
+		const auto SortUnique = [](std::vector<std::string>& Values)
+		{
+			std::sort(Values.begin(), Values.end());
+			Values.erase(std::unique(Values.begin(), Values.end()), Values.end());
+		};
+		SortUnique(baselineResources);
+		SortUnique(unifiedResources);
+		std::vector<std::string> expectedUnifiedResources = baselineResources;
+		if (nullptr != pSummon)
+			expectedUnifiedResources.push_back(pSummon->strModelAssetId);
+		SortUnique(expectedUnifiedResources);
+
+		CEffectPlayback committedPlayback;
+		status.clear();
+		const bool_t playbackStaged = canonicalRoundTrip &&
+			committedPlayback.Stage_Document(roundTrip, status);
+		float4x4_t root{};
+		XMStoreFloat4x4(&root, XMMatrixIdentity());
+		if (playbackStaged)
+			committedPlayback.Seek(0.5f, root);
+		const std::string committedFrame = playbackStaged ?
+			Snapshot_EffectFrame(committedPlayback.Get_Frame()) : std::string{};
+		const f32_t committedDuration = playbackStaged ?
+			committedPlayback.Get_DurationSeconds() : 0.f;
+		const bool_t unifiedContract = canonicalRoundTrip && playbackStaged &&
+			roundTrip.strEffectAssetId ==
+				"effect.dimensionmaster.skill.2050500.unified" &&
+			roundTrip.Elements.size() == 35u &&
+			roundTrip.ModelCues.size() == 1u &&
+			roundTrip.ModelCues.front().strCueId == "dimension_summon" &&
+			unifiedResources == expectedUnifiedResources &&
+			committedDuration >=
+				roundTrip.ModelCues.front().fStartDelaySeconds +
+				roundTrip.ModelCues.front().fDurationSeconds;
+		runner.Require(unifiedContract,
+			"Track C DimensionMaster T Builds One Canonical Unified Drawable With Exact Resources And Playback");
+		if (!unifiedContract && inputsExact)
+		{
+			std::cout << "[DETAIL] DimensionMaster T unified playback: " <<
+				status << " resources=" << unifiedResources.size() << '/' <<
+				expectedUnifiedResources.size() << " duration=" <<
+				committedDuration << '\n';
+		}
+
+		const auto RejectsAndPreserves = [&](EFFECT_DOCUMENT_DESC Invalid)
+		{
+			std::string validationStatus;
+			std::string playbackStatus;
+			const bool_t validationRejected =
+				!CEffectDocumentCodec::Validate_Drawable(
+					Invalid, validationStatus);
+			const bool_t playbackRejected =
+				!committedPlayback.Stage_Document(Invalid, playbackStatus);
+			return validationRejected && playbackRejected && playbackStaged &&
+				candidateCanonical == CEffectDocumentCodec::Serialize(roundTrip) &&
+				committedFrame ==
+					Snapshot_EffectFrame(committedPlayback.Get_Frame()) &&
+				committedDuration == committedPlayback.Get_DurationSeconds() &&
+				baselineCanonicalBefore ==
+					CEffectDocumentCodec::Serialize(baseline) &&
+				sourceCanonicalBefore == CEffectDocumentCodec::Serialize(source);
+		};
+
+		EFFECT_DOCUMENT_DESC duplicateCue = roundTrip;
+		if (canonicalRoundTrip)
+			duplicateCue.ModelCues.push_back(duplicateCue.ModelCues.front());
+		runner.Require(canonicalRoundTrip &&
+			RejectsAndPreserves(std::move(duplicateCue)),
+			"Track C DimensionMaster T Duplicate Cue Rejection Preserves Committed Playback And Documents");
+
+		EFFECT_DOCUMENT_DESC missingSummonWModel = roundTrip;
+		if (canonicalRoundTrip)
+			missingSummonWModel.ModelCues.front().strModelAssetId.clear();
+		runner.Require(canonicalRoundTrip &&
+			RejectsAndPreserves(std::move(missingSummonWModel)),
+			"Track C DimensionMaster T Missing Summon WModel Rejection Preserves Committed Playback And Documents");
+		runner.Require(inputsExact &&
+			baselineCanonicalBefore == CEffectDocumentCodec::Serialize(baseline) &&
+			sourceCanonicalBefore == CEffectDocumentCodec::Serialize(source),
+			"Track C DimensionMaster T Migration Leaves Both Input Documents Unchanged");
+		resourceRootEnvironment.Restore();
+	}
+
+	bool_t Materialize_DimensionMasterTUnifiedDocument(
+		std::filesystem::path& OutPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		OutPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
+			L"unified.effect.json");
+		const std::filesystem::path baselinePath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
+			L"authored-baseline.effect.json");
+		const std::filesystem::path sourcePath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json");
+		if (OutPath.empty() || baselinePath.empty() || sourcePath.empty())
+		{
+			strOutError = "DimensionMaster T Track C paths could not be resolved.";
+			return false;
+		}
+
+		std::error_code FileError;
+		if (std::filesystem::exists(OutPath, FileError) || FileError)
+		{
+			strOutError = FileError ?
+				"DimensionMaster T Unified destination state could not be checked." :
+				"DimensionMaster T Unified destination already exists; refusing overwrite.";
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC baseline;
+		EFFECT_DOCUMENT_DESC source;
+		if (!CEffectDocumentCodec::Load(baselinePath, baseline, strOutError) ||
+			!CEffectDocumentCodec::Load(sourcePath, source, strOutError))
+		{
+			return false;
+		}
+		if (baseline.strEffectAssetId !=
+				"effect.dimensionmaster.skill.2050500.authored-baseline" ||
+			baseline.Elements.size() != 35u || !baseline.ModelCues.empty())
+		{
+			strOutError =
+				"DimensionMaster T baseline is not the exact 35-Element migration input.";
+			return false;
+		}
+		if (source.strEffectAssetId !=
+				"effect.dimensionmaster.skill.2050500" ||
+			source.ModelCues.size() != 1u ||
+			source.ModelCues.front().strCueId != "dimension_summon" ||
+			source.ModelCues.front().strModelAssetId !=
+				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" ||
+			source.ModelCues.front().strClipName !=
+				"sk_swp_dms_00_sk_sk_dimensionprison")
+		{
+			strOutError =
+				"DimensionMaster T source does not contain the exact summon ModelCue.";
+			return false;
+		}
+
+		const std::string baselineCanonical =
+			CEffectDocumentCodec::Serialize(baseline);
+		EFFECT_DOCUMENT_DESC candidate = baseline;
+		candidate.strEffectAssetId =
+			"effect.dimensionmaster.skill.2050500.unified";
+		candidate.strDisplayName = "DimensionMaster T Unified";
+		candidate.ModelCues.assign(1u, source.ModelCues.front());
+		if (!CEffectDocumentCodec::Validate_Drawable(candidate, strOutError))
+			return false;
+
+		const std::string candidateCanonical =
+			CEffectDocumentCodec::Serialize(candidate);
+		EFFECT_DOCUMENT_DESC roundTrip;
+		if (!CEffectDocumentCodec::Parse(
+				candidateCanonical, roundTrip, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(roundTrip, strOutError) ||
+			CEffectDocumentCodec::Serialize(roundTrip) != candidateCanonical)
+		{
+			strOutError =
+				"DimensionMaster T Unified canonical round-trip changed the candidate.";
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC baselineProjection = roundTrip;
+		baselineProjection.strEffectAssetId = baseline.strEffectAssetId;
+		baselineProjection.strDisplayName = baseline.strDisplayName;
+		baselineProjection.ModelCues.clear();
+		if (CEffectDocumentCodec::Serialize(baselineProjection) !=
+			baselineCanonical)
+		{
+			strOutError =
+				"DimensionMaster T Unified changed baseline fields or Elements.";
+			return false;
+		}
+
+		if (!CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				OutPath, roundTrip, {}, strOutError))
+		{
+			return false;
+		}
+		EFFECT_DOCUMENT_DESC saved;
+		if (!CEffectDocumentCodec::Load(OutPath, saved, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(saved, strOutError) ||
+			CEffectDocumentCodec::Serialize(saved) != candidateCanonical)
+		{
+			strOutError =
+				"DimensionMaster T Unified saved document failed exact verification.";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
 	void Test_EffectAllEffectsAuthoringJoin(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -4487,6 +8665,877 @@ namespace
 				EFFECT_MANUAL_MESH_DEFAULT_SCALE &&
 			manualMeshRoundTrip.Elements.front().ResourceBindings.size() == 2u,
 			"Manual Mesh Create Contract Round Trips One Percent Scale Carrier Layer");
+
+		constexpr std::string_view starterMeshAssetId =
+			"Effect/Artist/Meshes/fm_d_bendplane_014.wmodel";
+		constexpr std::string_view starterBaseAssetId =
+			"Effect/Artist/Textures/fx_b_fluid_007.dds";
+		struct AUTHORING_STARTER_CASE final
+		{
+			const char_t* pElementId;
+			const char_t* pDisplayName;
+			EFFECT_ELEMENT_KIND eKind;
+			bool_t bMeshBacked;
+		};
+		const std::array<AUTHORING_STARTER_CASE, 6u> starterCases = {{
+			{ "manual_mesh_1", "Mesh 1", EFFECT_ELEMENT_KIND::MESH, true },
+			{ "manual_sprite_1", "Sprite 1", EFFECT_ELEMENT_KIND::SPRITE, false },
+			{ "manual_mesh_particle_1", "Mesh Particle 1",
+				EFFECT_ELEMENT_KIND::PARTICLE, true },
+			{ "manual_sprite_particle_1", "Sprite Particle 1",
+				EFFECT_ELEMENT_KIND::PARTICLE, false },
+			{ "manual_decal_1", "Decal 1", EFFECT_ELEMENT_KIND::DECAL, false },
+			{ "manual_trail_ribbon_1", "Trail Ribbon 1",
+				EFFECT_ELEMENT_KIND::TRAIL, false }
+		}};
+		const std::string starterGroupId =
+			"manual.effect_authoring_six_family";
+		const auto BuildStarter = [&](const AUTHORING_STARTER_CASE& Starter)
+		{
+			EFFECT_ELEMENT_DESC element;
+			element.strElementId = Starter.pElementId;
+			element.strDisplayName = Starter.pDisplayName;
+			element.strGroupId = starterGroupId;
+			element.eKind = Starter.eKind;
+			element.Material.strTemplateId =
+				std::string(EFFECT_STANDARD_MATERIAL_TEMPLATE_ID);
+			element.Material.eRenderProfile =
+				EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ;
+			element.ResourceBindings.push_back({ "base",
+				std::string(starterBaseAssetId) });
+			if (Starter.bMeshBacked)
+			{
+				element.ResourceBindings.insert(
+					element.ResourceBindings.begin(),
+					{ std::string(EFFECT_MESH_SHAPE_SLOT_ID),
+						std::string(starterMeshAssetId) });
+				element.Detail.Mesh.bUseModelMaterial = false;
+			}
+			if (Starter.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+				element.Detail.Particle.bBillboard = !Starter.bMeshBacked;
+			return element;
+		};
+		EFFECT_DOCUMENT_DESC sixFamilyDocument;
+		sixFamilyDocument.strEffectAssetId =
+			"effect.manual.six_family.harness";
+		sixFamilyDocument.strDisplayName = "Six Family Harness";
+		for (const AUTHORING_STARTER_CASE& Starter : starterCases)
+			sixFamilyDocument.Elements.push_back(BuildStarter(Starter));
+
+		const auto HasBinding = [](const EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strSlotId)
+		{
+			return std::any_of(Element.ResourceBindings.begin(),
+				Element.ResourceBindings.end(),
+				[strSlotId](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == strSlotId;
+				});
+		};
+		const auto SourceAndNativeLanesAreClear = [](
+			const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strSourceNode.empty() &&
+				Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+				Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::END &&
+				Element.Material.strSourceMaterialPath.empty() &&
+				!Element.Material.SourceMaterial.bEnabled &&
+				!Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strSourceContractProfileId.empty() &&
+				Element.SourceRecipe.CompilerEvidence.strEvidenceId.empty() &&
+				!Element.SourcePresentation.bEnabled &&
+				Element.SourcePresentation.Parameters.empty() &&
+				!Element.ActionCueAttachment.bEnabled &&
+				Element.ActionCueAttachment.strSourceAnchorSlotId.empty() &&
+				!Element.TransformInheritance.bEnabled &&
+				Element.TransformInheritance.strMasterElementId.empty();
+		};
+		std::set<std::string> starterElementIds;
+		bool_t sixFamilyShapeExact =
+			sixFamilyDocument.Elements.size() == starterCases.size();
+		for (size_t i = 0u; i < sixFamilyDocument.Elements.size(); ++i)
+		{
+			const EFFECT_ELEMENT_DESC& Element =
+				sixFamilyDocument.Elements[i];
+			const AUTHORING_STARTER_CASE& Starter = starterCases[i];
+			sixFamilyShapeExact = sixFamilyShapeExact &&
+				Element.strElementId == Starter.pElementId &&
+				starterElementIds.insert(Element.strElementId).second &&
+				Element.strGroupId == starterGroupId &&
+				Element.eKind == Starter.eKind &&
+				HasBinding(Element, "base") &&
+				HasBinding(Element, EFFECT_MESH_SHAPE_SLOT_ID) ==
+					Starter.bMeshBacked &&
+				SourceAndNativeLanesAreClear(Element);
+		}
+		const std::string sixFamilyCanonical =
+			CEffectDocumentCodec::Serialize(sixFamilyDocument);
+		EFFECT_DOCUMENT_DESC sixFamilyRoundTrip;
+		const bool_t sixFamilyRoundTripExact =
+			sixFamilyShapeExact &&
+			!Is_UnsafeEffectBaseTextureAssetId(starterBaseAssetId) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				sixFamilyDocument, status) &&
+			CEffectDocumentCodec::Parse(sixFamilyCanonical,
+				sixFamilyRoundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				sixFamilyRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(sixFamilyRoundTrip) ==
+				sixFamilyCanonical;
+		runner.Require(sixFamilyRoundTripExact,
+			"Effect Authoring Six Family Starters Form One Canonical Drawable Document With Stable Element Groups");
+
+		for (size_t i = 0u; i < sixFamilyDocument.Elements.size(); ++i)
+		{
+			EFFECT_DOCUMENT_DESC missingBase = sixFamilyDocument;
+			auto& resources = missingBase.Elements[i].ResourceBindings;
+			resources.erase(std::remove_if(resources.begin(), resources.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == "base";
+				}), resources.end());
+			const std::string missingBaseLabel =
+				std::string("Effect Authoring ") +
+				starterCases[i].pDisplayName + " Requires A Safe Base Binding";
+			runner.Require(
+				!CEffectDocumentCodec::Validate_Drawable(missingBase, status),
+				missingBaseLabel.c_str());
+		}
+		EFFECT_DOCUMENT_DESC missingStandaloneMesh = sixFamilyDocument;
+		auto& standaloneMeshResources =
+			missingStandaloneMesh.Elements.front().ResourceBindings;
+		standaloneMeshResources.erase(std::remove_if(
+			standaloneMeshResources.begin(), standaloneMeshResources.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+			}), standaloneMeshResources.end());
+		EFFECT_DOCUMENT_DESC missingMeshParticle = sixFamilyDocument;
+		auto& meshParticleResources =
+			missingMeshParticle.Elements[2u].ResourceBindings;
+		meshParticleResources.erase(std::remove_if(
+			meshParticleResources.begin(), meshParticleResources.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+			}), meshParticleResources.end());
+		runner.Require(!CEffectDocumentCodec::Validate_Drawable(
+				missingStandaloneMesh, status),
+			"Effect Authoring Mesh Requires A Mesh Model Binding");
+		runner.Require(CEffectDocumentCodec::Validate_Drawable(
+				missingMeshParticle, status) &&
+			!HasBinding(missingMeshParticle.Elements[2u],
+				EFFECT_MESH_SHAPE_SLOT_ID),
+			"Effect Authoring Particle Without A Mesh Model Is Canonically A Sprite Particle");
+
+		EFFECT_DOCUMENT_DESC adapterSource;
+		adapterSource.strEffectAssetId = "effect.artist.skill.31470";
+		adapterSource.strDisplayName = "Adapter Source";
+		EFFECT_ELEMENT_DESC adapterDecal;
+		adapterDecal.strElementId = "source-active-020";
+		adapterDecal.strDisplayName = "LocalDecal 20";
+		adapterDecal.strSourceNode =
+			"Artist/31470/LocalDecal/source-active-020";
+		adapterDecal.eKind = EFFECT_ELEMENT_KIND::DECAL;
+		adapterDecal.Renderer.eType = EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
+		adapterDecal.Renderer.eSourceSpace = EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		adapterDecal.Material.strTemplateId = "effect.standard";
+		adapterDecal.Material.eRenderProfile =
+			EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+		adapterDecal.Detail.Transform.vPosition = { 1.f, 2.f, 3.f };
+		adapterDecal.ResourceBindings = {
+			{ "base",
+				"Effect/Artist/Textures/fx_b_fluid_007.dds" }
+		};
+		EFFECT_SOURCE_MATERIAL_DESC& adapterSourceMaterial =
+			adapterDecal.Material.SourceMaterial;
+		adapterSourceMaterial.bEnabled = true;
+		adapterSourceMaterial.strProfileId =
+			"artist.localdecal.shader_cache_slots";
+		adapterSourceMaterial.strRuntimeShaderProfileId =
+			"effect.ue3.reconstructed-standard.v1";
+		adapterSourceMaterial.strParentMaterialPath =
+			"Artist.LocalDecal.Material";
+		adapterSourceMaterial.eStatus =
+			EFFECT_SOURCE_MATERIAL_STATUS::RUNTIME_EXACT;
+		adapterSourceMaterial.Textures = {
+			{ "height_tex", "t0.B",
+				"Texture2D'FX_TEX_01.fx_c_decal_002_2'",
+				"Effect/Artist/Textures/fx_c_decal_002_2.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::CLAMP,
+				EFFECT_TEXTURE_ADDRESS_MODE::CLAMP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				"shader_cache_t0_b" },
+			{ "diffuse_tex", "t1.RGBA",
+				"Texture2D'FX_TEX_00.fx_b_fluid_007'",
+				"Effect/Artist/Textures/fx_b_fluid_007.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+				"shader_cache_t1_rgba" },
+			{ "dissolve_tex", "t2.G",
+				"Texture2D'FX_TEX_01.fx_c_decal_002_1'",
+				"Effect/Artist/Textures/fx_c_decal_002_1.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				"shader_cache_t2_g" },
+			{ "normal_tex", "t3.BA",
+				"Texture2D'FX_TEX_02.fx_d_normal_078'",
+				"Effect/Artist/Textures/fx_d_normal_078.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				"shader_cache_t3_ba" },
+			{ "specular_tex", "t4.RGB",
+				"Texture2D'FX_TEX_02.fx_d_environ_018'",
+				"Effect/Artist/Textures/fx_d_environ_018.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				"shader_cache_t4_rgb" },
+			{ "emissive_tex", "t5.R",
+				"Texture2D'FX_TEX_00.fx_bg_dustpanner_01'",
+				"Effect/Artist/Textures/fx_bg_dustpanner_01.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				"shader_cache_t5_r" }
+		};
+		adapterDecal.SourceRecipe.bEnabled = true;
+		adapterDecal.SourceRecipe.strRendererShape = "decal";
+		adapterDecal.SourceRecipe.strSourceContractProfileId =
+			"ue3-cascade-source-v1";
+		adapterDecal.SourceRecipe.CompilerEvidence.strEvidenceId =
+			"adapter.native.evidence";
+		adapterDecal.SourcePresentation.bEnabled = true;
+		adapterDecal.SourcePresentation.strSchema =
+			"lostark.effect-source-presentation";
+		adapterDecal.SourcePresentation.iVersion = 1u;
+		adapterDecal.SourcePresentation.strProfileId =
+			"artist.localdecal.presentation.v1";
+		adapterDecal.SourcePresentation.eStatus =
+			EFFECT_SOURCE_PRESENTATION_STATUS::SOURCE_EXACT;
+		adapterDecal.SourcePresentation.strSourceObjectPath =
+			"Artist.LocalDecal.SourceActive020";
+		adapterDecal.SourcePresentation.strSourceActionCueId = "artist.31470";
+		adapterDecal.SourcePresentation.strSourceEventId = "source-active-020";
+		adapterDecal.SourcePresentation.iSourceOccurrenceIndex = 20u;
+		adapterDecal.ActionCueAttachment.bEnabled = true;
+		adapterDecal.ActionCueAttachment.strSourceAnchorSlotId = "source.root";
+		adapterDecal.ActionCueAttachment.strRuntimeAnchorSlotId = "runtime.root";
+		adapterDecal.ActionCueAttachment.
+			fSnapshotRootSourceBasisYawDegrees = 90.f;
+		adapterDecal.TransformInheritance.bEnabled = true;
+		adapterDecal.TransformInheritance.strMasterElementId = "source-master";
+		adapterSource.Elements.push_back(adapterDecal);
+		const std::string adapterSourceCanonicalBefore =
+			CEffectDocumentCodec::Serialize(adapterSource);
+		EFFECT_DOCUMENT_DESC adapterGenericCopy;
+		const std::string adapterTargetId =
+			"effect.artist.skill.31470.localdecal20.generic";
+		const bool_t adapterGenericBuilt =
+			CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				adapterSource, adapterDecal.strElementId, adapterTargetId,
+				adapterGenericCopy, status);
+		const auto SameSourceTexture = [](
+			const EFFECT_NAMED_TEXTURE_DESC& Left,
+			const EFFECT_NAMED_TEXTURE_DESC& Right)
+		{
+			return Left.strName == Right.strName &&
+				Left.strGroup == Right.strGroup &&
+				Left.strSourceObjectPath == Right.strSourceObjectPath &&
+				Left.strAssetId == Right.strAssetId &&
+				Left.eAddressU == Right.eAddressU &&
+				Left.eAddressV == Right.eAddressV &&
+				Left.eColorSpace == Right.eColorSpace &&
+				Left.strSamplingEvidence == Right.strSamplingEvidence;
+		};
+		bool_t exactSourceTexturesPreserved = adapterGenericBuilt &&
+			adapterGenericCopy.Elements.size() == 1u &&
+			adapterGenericCopy.Elements.front().Material.SourceMaterial.
+				Textures.size() == adapterSourceMaterial.Textures.size();
+		if (exactSourceTexturesPreserved)
+		{
+			for (size_t i = 0u; i < adapterSourceMaterial.Textures.size(); ++i)
+			{
+				exactSourceTexturesPreserved =
+					exactSourceTexturesPreserved && SameSourceTexture(
+						adapterGenericCopy.Elements.front().Material.
+							SourceMaterial.Textures[i],
+						adapterSourceMaterial.Textures[i]);
+			}
+		}
+		const std::string adapterGenericCanonical = adapterGenericBuilt ?
+			CEffectDocumentCodec::Serialize(adapterGenericCopy) : std::string{};
+		EFFECT_DOCUMENT_DESC adapterGenericRoundTrip;
+		runner.Require(adapterGenericBuilt &&
+			adapterGenericCopy.strEffectAssetId == adapterTargetId &&
+			adapterGenericCopy.Elements.size() == 1u &&
+			adapterGenericCopy.Elements.front().eKind ==
+				EFFECT_ELEMENT_KIND::DECAL &&
+			adapterGenericCopy.Elements.front().Renderer.eType ==
+				EFFECT_RENDERER_TYPE::END &&
+			adapterGenericCopy.Elements.front().Renderer.eSourceSpace ==
+				EFFECT_SOURCE_SPACE::END &&
+			adapterGenericCopy.Elements.front().ResourceBindings.size() == 1u &&
+			adapterGenericCopy.Elements.front().ResourceBindings.front().strSlotId ==
+				adapterDecal.ResourceBindings.front().strSlotId &&
+			adapterGenericCopy.Elements.front().ResourceBindings.front().strAssetId ==
+				adapterDecal.ResourceBindings.front().strAssetId &&
+			adapterGenericCopy.Elements.front().Detail.Transform.vPosition.x == 1.f &&
+			adapterGenericCopy.Elements.front().strSourceNode.empty() &&
+			!adapterGenericCopy.Elements.front().SourceRecipe.bEnabled &&
+			adapterGenericCopy.Elements.front().SourceRecipe.
+				strSourceContractProfileId.empty() &&
+			adapterGenericCopy.Elements.front().SourceRecipe.CompilerEvidence.
+				strEvidenceId.empty() &&
+			!adapterGenericCopy.Elements.front().SourcePresentation.bEnabled &&
+			adapterGenericCopy.Elements.front().SourcePresentation.Parameters.empty() &&
+			!adapterGenericCopy.Elements.front().ActionCueAttachment.bEnabled &&
+			adapterGenericCopy.Elements.front().ActionCueAttachment.
+				strSourceAnchorSlotId.empty() &&
+			!adapterGenericCopy.Elements.front().TransformInheritance.bEnabled &&
+			adapterGenericCopy.Elements.front().TransformInheritance.
+				strMasterElementId.empty() &&
+			adapterGenericCopy.Elements.front().Material.SourceMaterial.bEnabled &&
+			exactSourceTexturesPreserved &&
+			CEffectDocumentCodec::Parse(adapterGenericCanonical,
+				adapterGenericRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(adapterGenericRoundTrip) ==
+				adapterGenericCanonical &&
+			CEffectDocumentCodec::Validate_Drawable(adapterGenericCopy, status),
+			"Adapter Selected Decal Preserves Exact DDS Slot Evidence In Canonical Generic Copy While Clearing Native Occurrence Lanes");
+		runner.Require(adapterSourceCanonicalBefore ==
+				CEffectDocumentCodec::Serialize(adapterSource) &&
+			adapterSource.Elements.front().Renderer.eType ==
+				EFFECT_RENDERER_TYPE::DECAL_PARTICLE &&
+			adapterSource.Elements.front().SourceRecipe.CompilerEvidence.
+				strEvidenceId == "adapter.native.evidence" &&
+			adapterSource.Elements.front().Material.SourceMaterial.Textures.size() ==
+				adapterSourceMaterial.Textures.size(),
+			"Adapter Generic Starting Copy Treats Source DDS Descriptors As Read Only Evidence");
+
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST rootBakeRequest;
+		rootBakeRequest.CueLocalTransform.vPosition = { 0.6f, 0.f, 0.f };
+		rootBakeRequest.CueLocalTransform.vScale = { 1.3f, 1.3f, 1.3f };
+		rootBakeRequest.fScheduleStartDelaySeconds = 1.45f;
+		rootBakeRequest.fScheduleLifeTimeSeconds = 1.f;
+		rootBakeRequest.fEmitterDelaySeconds = 0.05f;
+		rootBakeRequest.fEmitterDurationSeconds = 0.2f;
+		rootBakeRequest.iEmitterLoopCount = 3u;
+		rootBakeRequest.bAttachmentEnabled = true;
+		rootBakeRequest.fSnapshotRootSourceBasisYawDegrees = -90.f;
+		EFFECT_ELEMENT_DESC rootBakedElement;
+		const bool_t rootBakeSucceeded = adapterGenericBuilt &&
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), rootBakeRequest,
+				rootBakedElement, status);
+		EFFECT_DOCUMENT_DESC rootBakedDocument = adapterGenericCopy;
+		if (rootBakeSucceeded)
+			rootBakedDocument.Elements.front() = rootBakedElement;
+		const std::string rootBakedCanonical = rootBakeSucceeded ?
+			CEffectDocumentCodec::Serialize(rootBakedDocument) : std::string{};
+		EFFECT_DOCUMENT_DESC rootBakedRoundTrip;
+		runner.Require(rootBakeSucceeded &&
+			Nearly_Equal(rootBakedElement.Detail.Transform.vPosition,
+				float3_t(0.f, 0.f, 0.6f)) &&
+			Nearly_Equal(rootBakedElement.Detail.Transform.vRotationDegrees,
+				float3_t(0.f, -90.f, 0.f)) &&
+			Nearly_Equal(rootBakedElement.Detail.Transform.vScale,
+				float3_t(1.3f, 1.3f, 1.3f)) &&
+			Nearly_Equal(
+				rootBakedElement.Detail.Timing.fStartDelaySeconds, 1.5f) &&
+			Nearly_Equal(
+				rootBakedElement.Detail.Timing.fLifeTimeSeconds, 0.6f) &&
+			!rootBakedElement.ActionCueAttachment.bEnabled &&
+			!rootBakedElement.SourceRecipe.bEnabled &&
+			CEffectDocumentCodec::Parse(
+				rootBakedCanonical, rootBakedRoundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				rootBakedRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(rootBakedRoundTrip) ==
+				rootBakedCanonical,
+			"Generic Starting-State Bake Flattens Snapshot Root Basis And Emitter Timing Into Ordinary Detail");
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST timingFallbackRequest =
+			rootBakeRequest;
+		timingFallbackRequest.fScheduleLifeTimeSeconds = 2.5f;
+		timingFallbackRequest.fEmitterDurationSeconds = 0.2f;
+		timingFallbackRequest.iEmitterLoopCount = 0u;
+		EFFECT_ELEMENT_DESC timingFallbackElement;
+		const bool_t timingFallbackSucceeded = adapterGenericBuilt &&
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), timingFallbackRequest,
+				timingFallbackElement, status);
+		runner.Require(timingFallbackSucceeded &&
+			Nearly_Equal(
+				timingFallbackElement.Detail.Timing.fLifeTimeSeconds, 2.5f),
+			"Generic Starting-State Bake Uses Schedule Lifetime When Emitter Looping Is Unbounded");
+
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST typeDataBakeRequest;
+		typeDataBakeRequest.vSourceTypeDataRotationDegrees = { 0.f, 0.f, 90.f };
+		EFFECT_ELEMENT_DESC typeDataBakedElement;
+		const bool_t typeDataBakeSucceeded = adapterGenericBuilt &&
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), typeDataBakeRequest,
+				typeDataBakedElement, status);
+		runner.Require(typeDataBakeSucceeded &&
+			Nearly_Equal(
+				typeDataBakedElement.Detail.Transform.vRotationDegrees,
+				float3_t(0.f, 90.f, 0.f)) &&
+			Nearly_Equal(typeDataBakedElement.Detail.Mesh.
+				vSourceTypeDataRotationDegrees, float3_t{}),
+			"Generic Starting-State Bake Converts UE3 TypeData Rotation Once Before Clearing Its Native Lane");
+
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST emitterLocalBakeRequest;
+		emitterLocalBakeRequest.EmitterLocalTransform.vPosition =
+			{ 0.2f, 0.f, 0.f };
+		emitterLocalBakeRequest.EmitterLocalTransform.vScale =
+			{ 2.f, 2.f, 2.f };
+		emitterLocalBakeRequest.CueLocalTransform.vPosition =
+			{ 0.6f, 0.f, 0.f };
+		emitterLocalBakeRequest.CueLocalTransform.vScale =
+			{ 1.3f, 1.3f, 1.3f };
+		EFFECT_ELEMENT_DESC emitterLocalBakedElement;
+		const bool_t emitterLocalBakeSucceeded = adapterGenericBuilt &&
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), emitterLocalBakeRequest,
+				emitterLocalBakedElement, status);
+		runner.Require(emitterLocalBakeSucceeded &&
+			Nearly_Equal(emitterLocalBakedElement.Detail.Transform.vPosition,
+				float3_t(0.86f, 0.f, 0.f)) &&
+			Nearly_Equal(emitterLocalBakedElement.Detail.Transform.vScale,
+				float3_t(2.6f, 2.6f, 2.6f)),
+			"Generic Starting-State Bake Composes Emitter Local Static Transform Before Cue Local Transform");
+
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST followBakeRequest;
+		followBakeRequest.CueLocalTransform.vPosition = { 1.f, 0.f, 0.f };
+		followBakeRequest.bAttachmentEnabled = true;
+		followBakeRequest.bFollowAttachment = true;
+		followBakeRequest.bHasFollowParentLocalTransform = true;
+		XMStoreFloat4x4(&followBakeRequest.FollowParentLocalTransform,
+			XMMatrixRotationY(XMConvertToRadians(90.f)) *
+			XMMatrixTranslation(4.f, 5.f, 6.f));
+		EFFECT_ELEMENT_DESC followBakedElement;
+		const bool_t followBakeSucceeded = adapterGenericBuilt &&
+			CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), followBakeRequest,
+				followBakedElement, status);
+		runner.Require(followBakeSucceeded &&
+			Nearly_Equal(followBakedElement.Detail.Transform.vPosition,
+				float3_t(4.f, 5.f, 5.f)) &&
+			Nearly_Equal(followBakedElement.Detail.Transform.vRotationDegrees,
+				float3_t(0.f, 90.f, 0.f)),
+			"Generic Starting-State Bake Requires And Flattens Exact Emit-Start Follow Parent Local Transform");
+
+		EFFECT_ELEMENT_DESC preservedBakeOutput = rootBakedElement;
+		preservedBakeOutput.strDisplayName = "preserved-bake-output";
+		const std::string preservedBakeElementId =
+			preservedBakeOutput.strElementId;
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST missingFollowRequest =
+			followBakeRequest;
+		missingFollowRequest.bHasFollowParentLocalTransform = false;
+		const bool_t missingFollowRejected = adapterGenericBuilt &&
+			!CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), missingFollowRequest,
+				preservedBakeOutput, status);
+		const bool_t missingFollowPreserved = missingFollowRejected &&
+			preservedBakeOutput.strDisplayName == "preserved-bake-output" &&
+			preservedBakeOutput.strElementId == preservedBakeElementId;
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST nonFiniteRequest =
+			rootBakeRequest;
+		nonFiniteRequest.fEmitterDelaySeconds =
+			(std::numeric_limits<f32_t>::infinity)();
+		const bool_t nonFiniteRejected = adapterGenericBuilt &&
+			!CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), nonFiniteRequest,
+				preservedBakeOutput, status);
+		runner.Require(missingFollowPreserved && nonFiniteRejected &&
+			preservedBakeOutput.strDisplayName == "preserved-bake-output" &&
+			preservedBakeOutput.strElementId == preservedBakeElementId,
+			"Generic Starting-State Bake Fails Closed And Preserves Output For Missing Follow Pose Or Nonfinite Timing");
+
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST shearRequest =
+			followBakeRequest;
+		XMStoreFloat4x4(&shearRequest.FollowParentLocalTransform,
+			XMMatrixIdentity());
+		shearRequest.FollowParentLocalTransform._12 = 0.5f;
+		const bool_t shearRejected = adapterGenericBuilt &&
+			!CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), shearRequest,
+				preservedBakeOutput, status);
+		EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST reflectionRequest =
+			followBakeRequest;
+		XMStoreFloat4x4(&reflectionRequest.FollowParentLocalTransform,
+			XMMatrixScaling(-1.f, 1.f, 1.f));
+		const bool_t reflectionRejected = adapterGenericBuilt &&
+			!CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+				adapterGenericCopy.Elements.front(), reflectionRequest,
+				preservedBakeOutput, status);
+		runner.Require(shearRejected && reflectionRejected &&
+			preservedBakeOutput.strDisplayName == "preserved-bake-output" &&
+			preservedBakeOutput.strElementId == preservedBakeElementId,
+			"Generic Starting-State Bake Rejects Shear And Reflection Transactionally");
+
+		EFFECT_DOCUMENT_DESC adapterTrailSource = adapterSource;
+		EFFECT_ELEMENT_DESC& adapterTrail = adapterTrailSource.Elements.front();
+		adapterTrail.eKind = EFFECT_ELEMENT_KIND::TRAIL;
+		adapterTrail.Renderer.eType = EFFECT_RENDERER_TYPE::CASCADE_RIBBON;
+		adapterTrail.Renderer.eSourceSpace =
+			EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		adapterTrail.Detail.Transform.vVelocityPerSecond = {};
+		adapterTrail.Detail.Transform.vRevolutionDegreesPerSecond = {};
+		adapterTrail.Detail.LinearLerp.bPosition = false;
+		adapterTrail.Detail.LinearLerp.bRotation = false;
+		adapterTrail.Detail.LinearLerp.bRevolution = false;
+		adapterTrail.Detail.LinearLerp.bScale = false;
+		adapterTrail.Detail.LinearLerp.bVelocity = false;
+		EFFECT_DOCUMENT_DESC adapterTrailGenericCopy;
+		const bool_t adapterTrailGenericBuilt =
+			CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				adapterTrailSource, adapterTrail.strElementId,
+				"effect.authoring.trail.motion-seed.harness",
+				adapterTrailGenericCopy, status);
+		const std::string adapterTrailCanonical = adapterTrailGenericBuilt ?
+			CEffectDocumentCodec::Serialize(adapterTrailGenericCopy) :
+			std::string{};
+		EFFECT_DOCUMENT_DESC adapterTrailRoundTrip;
+		runner.Require(adapterTrailGenericBuilt &&
+			adapterTrailGenericCopy.Elements.size() == 1u &&
+			adapterTrailGenericCopy.Elements.front().eKind ==
+				EFFECT_ELEMENT_KIND::TRAIL &&
+			adapterTrailGenericCopy.Elements.front().Detail.Transform.
+				vVelocityPerSecond.x == 0.f &&
+			adapterTrailGenericCopy.Elements.front().Detail.Transform.
+				vVelocityPerSecond.y == 0.f &&
+			adapterTrailGenericCopy.Elements.front().Detail.Transform.
+				vVelocityPerSecond.z == 1.f &&
+			CEffectDocumentCodec::Parse(adapterTrailCanonical,
+				adapterTrailRoundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				adapterTrailRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(adapterTrailRoundTrip) ==
+				adapterTrailCanonical,
+			"Adapter Trail Generic Starting Copy Seeds Bounded Carrier Motion And Round Trips Canonically");
+		EFFECT_DOCUMENT_DESC preservedGeneric = adapterGenericCopy;
+		preservedGeneric.strEffectAssetId = "preserved.generic.copy";
+		EFFECT_DOCUMENT_DESC rejectedFamily = adapterSource;
+		rejectedFamily.Elements.front().eKind = EFFECT_ELEMENT_KIND::LIGHT;
+		runner.Require(
+			!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				rejectedFamily, adapterDecal.strElementId,
+				"effect.rejected.adapter.mesh", preservedGeneric, status) &&
+			preservedGeneric.strEffectAssetId == "preserved.generic.copy",
+			"Adapter Generic Starting Copy Rejects Unsupported Family And Preserves Prior Output");
+
+		bool_t unifiedMergeSucceeded = false;
+		bool_t unifiedMergeRollbackExact = false;
+		if (adapterGenericBuilt && adapterTrailGenericBuilt &&
+			adapterGenericCopy.Elements.size() == 1u &&
+			adapterTrailGenericCopy.Elements.size() == 1u)
+		{
+			EFFECT_DOCUMENT_DESC unifiedTarget = adapterGenericCopy;
+			unifiedTarget.strEffectAssetId =
+				"effect.artist.skill.31470.unified.harness";
+			unifiedTarget.strDisplayName = "Artist F Unified Harness";
+			unifiedTarget.Elements.clear();
+			EFFECT_ELEMENT_DESC mergedDecal =
+				adapterGenericCopy.Elements.front();
+			mergedDecal.strElementId = "artist.f.localdecal.01";
+			mergedDecal.strGroupId = "artist.f.localdecal";
+			mergedDecal.strDisplayName = "Local Decal 01";
+			EFFECT_ELEMENT_DESC mergedTrail =
+				adapterTrailGenericCopy.Elements.front();
+			mergedTrail.strElementId = "artist.f.ribbon.01";
+			mergedTrail.strGroupId = "artist.f.ribbon";
+			mergedTrail.strDisplayName = "Ribbon 01";
+			const std::vector<EFFECT_ELEMENT_DESC> mergedElements = {
+				mergedDecal, mergedTrail
+			};
+			const std::string unifiedTargetBefore =
+				CEffectDocumentCodec::Serialize(unifiedTarget);
+			EFFECT_DOCUMENT_DESC unifiedOutput = preservedGeneric;
+			const bool_t bMerged =
+				CEffectDocumentCodec::Merge_GenericAuthoredElements(
+					unifiedTarget, mergedElements, unifiedOutput, status);
+			const std::string unifiedCanonical = bMerged ?
+				CEffectDocumentCodec::Serialize(unifiedOutput) : std::string{};
+			EFFECT_DOCUMENT_DESC unifiedRoundTrip;
+			unifiedMergeSucceeded = bMerged &&
+				unifiedOutput.strEffectAssetId ==
+					unifiedTarget.strEffectAssetId &&
+				unifiedOutput.Elements.size() == 2u &&
+				unifiedOutput.Elements[0u].strElementId ==
+					mergedDecal.strElementId &&
+				unifiedOutput.Elements[0u].strGroupId ==
+					mergedDecal.strGroupId &&
+				unifiedOutput.Elements[0u].strDisplayName ==
+					mergedDecal.strDisplayName &&
+				unifiedOutput.Elements[1u].strElementId ==
+					mergedTrail.strElementId &&
+				unifiedOutput.Elements[1u].strGroupId ==
+					mergedTrail.strGroupId &&
+				unifiedOutput.Elements[1u].strDisplayName ==
+					mergedTrail.strDisplayName &&
+				CEffectDocumentCodec::Serialize(unifiedTarget) ==
+					unifiedTargetBefore &&
+				CEffectDocumentCodec::Serialize(adapterGenericCopy) ==
+					adapterGenericCanonical &&
+				CEffectDocumentCodec::Serialize(adapterTrailGenericCopy) ==
+					adapterTrailCanonical &&
+				CEffectDocumentCodec::Parse(unifiedCanonical,
+					unifiedRoundTrip, status) &&
+				CEffectDocumentCodec::Validate_Drawable(
+					unifiedRoundTrip, status) &&
+				CEffectDocumentCodec::Serialize(unifiedRoundTrip) ==
+					unifiedCanonical;
+
+			EFFECT_DOCUMENT_DESC preservedOutput = bMerged ?
+				unifiedOutput : preservedGeneric;
+			const std::string preservedOutputCanonical =
+				CEffectDocumentCodec::Serialize(preservedOutput);
+			const auto RejectsWithoutMutation = [&preservedOutput,
+				&preservedOutputCanonical, &status](
+				const EFFECT_DOCUMENT_DESC& RejectTarget,
+				const std::vector<EFFECT_ELEMENT_DESC>& RejectElements)
+			{
+				const std::string TargetBefore =
+					CEffectDocumentCodec::Serialize(RejectTarget);
+				return !CEffectDocumentCodec::Merge_GenericAuthoredElements(
+						RejectTarget, RejectElements, preservedOutput, status) &&
+					CEffectDocumentCodec::Serialize(RejectTarget) == TargetBefore &&
+					CEffectDocumentCodec::Serialize(preservedOutput) ==
+						preservedOutputCanonical;
+			};
+			std::vector<EFFECT_ELEMENT_DESC> duplicateBatch = {
+				mergedDecal, mergedDecal
+			};
+			EFFECT_DOCUMENT_DESC collisionTarget = unifiedTarget;
+			collisionTarget.Elements.push_back(mergedDecal);
+			EFFECT_ELEMENT_DESC unsupported = mergedTrail;
+			unsupported.strElementId = "artist.f.unsupported.01";
+			unsupported.eKind = EFFECT_ELEMENT_KIND::LIGHT;
+			EFFECT_ELEMENT_DESC missingResource = mergedTrail;
+			missingResource.strElementId = "artist.f.missing-resource.01";
+			missingResource.ResourceBindings.front().strAssetId =
+				"Effect/TrackC/__missing__.dds";
+			EFFECT_ELEMENT_DESC provenanceLeak = mergedTrail;
+			provenanceLeak.strElementId = "artist.f.provenance-leak.01";
+			provenanceLeak.strSourceNode = "immutable.source.row";
+			EFFECT_ELEMENT_DESC missingId = mergedTrail;
+			missingId.strElementId.clear();
+			unifiedMergeRollbackExact =
+				RejectsWithoutMutation(unifiedTarget, duplicateBatch) &&
+				RejectsWithoutMutation(collisionTarget, { mergedDecal }) &&
+				RejectsWithoutMutation(unifiedTarget, { unsupported }) &&
+				RejectsWithoutMutation(unifiedTarget, { missingResource }) &&
+				RejectsWithoutMutation(unifiedTarget, { provenanceLeak }) &&
+				RejectsWithoutMutation(unifiedTarget, { missingId });
+		}
+		runner.Require(unifiedMergeSucceeded,
+			"Track C Generic Elements Merge Into One Canonical Unified Document With Caller Owned Names");
+		runner.Require(unifiedMergeRollbackExact,
+			"Track C Unified Merge Rejects Duplicate Unsupported Missing Resource Provenance And Missing Id Without Mutation");
+
+		const auto MakePortableDistribution = [](
+			const char_t* pPropertyPath,
+			const uint32_t iComponentCount,
+			const float4_t& Value)
+		{
+			EFFECT_DISTRIBUTION_DESC Distribution;
+			Distribution.strPropertyPath = pPropertyPath;
+			Distribution.iComponentCount = iComponentCount;
+			Distribution.vDefaultMinimum = Value;
+			Distribution.vDefaultMaximum = Value;
+			return Distribution;
+		};
+		const auto MakePortableModule = [](
+			const char_t* pStableId,
+			const char_t* pClassName,
+			std::vector<EFFECT_DISTRIBUTION_DESC> Distributions)
+		{
+			EFFECT_SOURCE_MODULE_DESC Module;
+			Module.strStableId = pStableId;
+			Module.strClassName = pClassName;
+			Module.strObjectPath = std::string("harness.") + pClassName;
+			Module.Distributions = std::move(Distributions);
+			return Module;
+		};
+		EFFECT_DOCUMENT_DESC portableParticleSource;
+		portableParticleSource.strEffectAssetId =
+			"effect.track_a.portable.source.harness";
+		portableParticleSource.strDisplayName = "Portable Source Harness";
+		portableParticleSource.Elements.assign(
+			1u, sixFamilyDocument.Elements[3u]);
+		EFFECT_ELEMENT_DESC& portableSourceElement =
+			portableParticleSource.Elements.front();
+		portableSourceElement.strElementId = "source.particle.sprite.001";
+		portableSourceElement.strSourceNode =
+			"TrackA/Harness/SpriteParticle001";
+		portableSourceElement.Renderer.eType =
+			EFFECT_RENDERER_TYPE::SPRITE_PARTICLE;
+		portableSourceElement.Renderer.eSourceSpace =
+			EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+		portableSourceElement.Detail.Timing.fStartDelaySeconds = 0.2f;
+		portableSourceElement.Detail.Timing.fLifeTimeSeconds = 2.f;
+		portableSourceElement.SourceRecipe.bEnabled = true;
+		portableSourceElement.SourceRecipe.strRendererShape = "sprite";
+		portableSourceElement.SourceRecipe.strSourceContractProfileId =
+			"ue3-cascade-source-v1";
+		portableSourceElement.SourceRecipe.strSourceContractSha256 =
+			std::string(64u, 'a');
+		portableSourceElement.SourceRecipe.strSourceGraphSha256 =
+			std::string(64u, 'b');
+		portableSourceElement.SourceRecipe.iSourcePeakActiveParticles = 7u;
+		portableSourceElement.SourceRecipe.fEmitterDelaySeconds = 0.25f;
+		portableSourceElement.SourceRecipe.fEmitterDurationSeconds = 1.f;
+		portableSourceElement.SourceRecipe.iEmitterLoopCount = 1u;
+		portableSourceElement.SourceRecipe.CompilerEvidence.strEvidenceId =
+			"native.harness.evidence";
+		portableSourceElement.SourceRecipe.Modules = {
+			MakePortableModule("required.001", "particlemodulerequired", {
+				MakePortableDistribution("spawnrate", 1u, {}) }),
+			MakePortableModule("lifetime.001", "particlemodulelifetime", {
+				MakePortableDistribution("lifetime", 1u,
+					{ 1.f, 0.f, 0.f, 0.f }) }),
+			MakePortableModule("size.001", "particlemodulesize", {
+				MakePortableDistribution("startsize", 3u,
+					{ 1.f, 1.f, 1.f, 0.f }) }),
+			MakePortableModule("spawn.001", "particlemodulespawn", {
+				MakePortableDistribution("rate", 1u,
+					{ 1.f, 0.f, 0.f, 0.f }),
+				MakePortableDistribution("ratescale", 1u, {}) })
+		};
+		portableSourceElement.SourceRecipe.Modules[1u].Distributions[0u].
+			strReferenceId = "native.distribution.reference";
+		portableSourceElement.SourceRecipe.Modules[1u].Distributions[0u].
+			strOccurrenceId = "native.distribution.occurrence";
+		portableSourceElement.SourceRecipe.Modules[1u].Distributions[0u].
+			strPayloadStatus = "SOURCE_EXACT";
+		portableSourceElement.SourceRecipe.Modules[1u].Distributions[0u].
+			ExecutionAdmission.bAllowed = true;
+
+		EFFECT_DOCUMENT_DESC portableImportTarget = sixFamilyDocument;
+		portableImportTarget.strEffectAssetId =
+			"effect.authored.portable.import.harness";
+		portableImportTarget.strDisplayName = "Portable Import Harness";
+		EFFECT_GENERIC_AUTHORED_ELEMENT_IMPORT_REQUEST portableImportRequest;
+		portableImportRequest.strSourceElementId =
+			portableSourceElement.strElementId;
+		portableImportRequest.strTargetElementId =
+			"authored.particle.sprite.001";
+		portableImportRequest.strTargetGroupId = "family.sprite";
+		portableImportRequest.strTargetDisplayName = "Sprite Particle 01";
+		portableImportRequest.StartingState.fScheduleStartDelaySeconds = 0.2f;
+		portableImportRequest.StartingState.fScheduleLifeTimeSeconds = 2.f;
+		portableImportRequest.StartingState.fEmitterDelaySeconds = 0.25f;
+		portableImportRequest.StartingState.fEmitterDurationSeconds = 1.f;
+		portableImportRequest.StartingState.iEmitterLoopCount = 1u;
+		const std::string portableSourceBefore =
+			CEffectDocumentCodec::Serialize(portableParticleSource);
+		const std::string portableTargetBefore =
+			CEffectDocumentCodec::Serialize(portableImportTarget);
+		EFFECT_DOCUMENT_DESC portableImported;
+		const bool_t portableImportedSuccessfully =
+			CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
+				portableParticleSource, portableImportTarget,
+				portableImportRequest, portableImported, status);
+		const auto portableElement = std::find_if(
+			portableImported.Elements.begin(), portableImported.Elements.end(),
+			[&portableImportRequest](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId ==
+					portableImportRequest.strTargetElementId;
+			});
+		bool_t portableEvidenceCleared = portableImportedSuccessfully &&
+			portableElement != portableImported.Elements.end() &&
+			portableElement->SourceRecipe.bEnabled &&
+			portableElement->SourceRecipe.strSourceContractProfileId.empty() &&
+			portableElement->SourceRecipe.strSourceContractSha256.empty() &&
+			portableElement->SourceRecipe.strSourceGraphSha256.empty() &&
+			portableElement->SourceRecipe.iSourcePeakActiveParticles == 0u &&
+			portableElement->SourceRecipe.CompilerEvidence.strEvidenceId.empty();
+		if (portableEvidenceCleared)
+		{
+			for (const EFFECT_SOURCE_MODULE_DESC& Module :
+				portableElement->SourceRecipe.Modules)
+			{
+				for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+					Module.Distributions)
+				{
+					portableEvidenceCleared = portableEvidenceCleared &&
+						Distribution.strReferenceId.empty() &&
+						Distribution.strOccurrenceId.empty() &&
+						Distribution.strPayloadStatus.empty() &&
+						!Distribution.ExecutionAdmission.bAllowed;
+				}
+			}
+		}
+		const std::string portableImportedCanonical =
+			portableImportedSuccessfully ?
+			CEffectDocumentCodec::Serialize(portableImported) : std::string{};
+		EFFECT_DOCUMENT_DESC portableImportedRoundTrip;
+		runner.Require(portableImportedSuccessfully &&
+			portableElement != portableImported.Elements.end() &&
+			portableImported.Elements.size() ==
+				portableImportTarget.Elements.size() + 1u &&
+			portableElement->strGroupId == "family.sprite" &&
+			portableElement->strDisplayName == "Sprite Particle 01" &&
+			portableElement->SourceRecipe.fEmitterDelaySeconds == 0.f &&
+			Nearly_Equal(portableElement->Detail.Timing.fStartDelaySeconds,
+				0.45f) &&
+			Nearly_Equal(portableElement->Detail.Timing.fLifeTimeSeconds, 1.f) &&
+			portableEvidenceCleared &&
+			CEffectDocumentCodec::Serialize(portableParticleSource) ==
+				portableSourceBefore &&
+			CEffectDocumentCodec::Serialize(portableImportTarget) ==
+				portableTargetBefore &&
+			CEffectDocumentCodec::Parse(portableImportedCanonical,
+				portableImportedRoundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				portableImportedRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(portableImportedRoundTrip) ==
+				portableImportedCanonical,
+			"Generic Track A Import Preserves Portable Particle Execution With Exactly Once Delay And No Native Evidence");
+
+		EFFECT_DOCUMENT_DESC preservedPortableImport = portableImported;
+		const std::string preservedPortableCanonical =
+			CEffectDocumentCodec::Serialize(preservedPortableImport);
+		EFFECT_DOCUMENT_DESC parameterBoundSource = portableParticleSource;
+		parameterBoundSource.Elements.front().SourceRecipe.Modules[1u].
+			Distributions[0u].strParameterName = "action.speed";
+		parameterBoundSource.Elements.front().SourceRecipe.Modules[1u].
+			Distributions[0u].eParameterBinding =
+			EFFECT_DISTRIBUTION_PARAMETER_BINDING::ACTION_CUE;
+		EFFECT_DOCUMENT_DESC unsupportedPortableSource = portableParticleSource;
+		unsupportedPortableSource.Elements.front().SourceRecipe.Modules[1u].
+			strClassName = "particlemodulecollision";
+		EFFECT_GENERIC_AUTHORED_ELEMENT_IMPORT_REQUEST mismatchedTimingRequest =
+			portableImportRequest;
+		mismatchedTimingRequest.StartingState.fEmitterDelaySeconds = 0.5f;
+		const bool_t portableImportFailuresRollback =
+			!CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
+				parameterBoundSource, portableImportTarget,
+				portableImportRequest, preservedPortableImport, status) &&
+			CEffectDocumentCodec::Serialize(preservedPortableImport) ==
+				preservedPortableCanonical &&
+			!CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
+				unsupportedPortableSource, portableImportTarget,
+				portableImportRequest, preservedPortableImport, status) &&
+			CEffectDocumentCodec::Serialize(preservedPortableImport) ==
+				preservedPortableCanonical &&
+			!CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
+				portableParticleSource, portableImportTarget,
+				mismatchedTimingRequest, preservedPortableImport, status) &&
+			CEffectDocumentCodec::Serialize(preservedPortableImport) ==
+				preservedPortableCanonical &&
+			!CEffectDocumentCodec::Build_GenericAuthoredElementImportStage(
+				portableParticleSource, portableImported,
+				portableImportRequest, preservedPortableImport, status) &&
+			CEffectDocumentCodec::Serialize(preservedPortableImport) ==
+				preservedPortableCanonical;
+		runner.Require(portableImportFailuresRollback,
+			"Generic Track A Import Rejects Parameter Binding Unsupported Module Timing Drift And Duplicate Target Without Mutation");
 
 		EFFECT_DOCUMENT_DESC sourceMaterialDocument = document;
 		EFFECT_MATERIAL_DESC& sourceMaterial =
@@ -4883,6 +9932,491 @@ namespace
 		std::filesystem::remove(qDraftPath, error);
 	}
 
+	void Test_EffectOccurrenceTuningCodec(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr const char* EffectId = "effect.harness.occurrence";
+		constexpr const char* OccurrenceId = "harness.system::cue::emitter_0";
+		const std::string RowSha(64u, 'a');
+
+		EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM Program;
+		Program.strRuntimeCatalogAssetId = EffectId;
+		Program.Identity.strProgramSha256 = std::string(64u, 'c');
+		EFFECT_RUNTIME_PROGRAM_EMITTER Emitter;
+		Emitter.Row.strId = OccurrenceId;
+		Emitter.Row.strRowSha256 = RowSha;
+		Emitter.strSourceElementId = "harness.projected.element";
+		Emitter.DetailTransform.vPosition = { 1.0, 2.0, 3.0 };
+		Emitter.DetailTransform.vRotationDegrees = { 4.0, 5.0, 6.0 };
+		Emitter.DetailTransform.vScale = { 1.0, 1.0, 1.0 };
+		Emitter.CueLocalTransform.vPosition = { 41.0, 42.0, 43.0 };
+		Emitter.CueLocalTransform.vRotationDegrees = { 44.0, 45.0, 46.0 };
+		Emitter.CueLocalTransform.vScale = { 1.4, 1.5, 1.6 };
+		Program.Emitters.push_back(Emitter);
+
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT Tuning;
+		Tuning.strEffectAssetId = EffectId;
+		EFFECT_OCCURRENCE_TUNING_ENTRY Entry;
+		Entry.strOccurrenceId = OccurrenceId;
+		Entry.strSourceOccurrenceRowSha256 = RowSha;
+		Entry.EffectiveLocalTransform.vPosition = { 7.f, 8.f, 9.f };
+		Entry.EffectiveLocalTransform.vRotationDegrees = { 10.f, 20.f, 30.f };
+		Entry.EffectiveLocalTransform.vScale = { 2.f, 3.f, 4.f };
+		Tuning.Entries.push_back(Entry);
+
+		std::string Status;
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT RoundTrip;
+		const std::string Canonical =
+			CEffectOccurrenceTuningCodec::Serialize(Tuning);
+		const bool_t StrictRoundTrip =
+			CEffectOccurrenceTuningCodec::Parse(Canonical, RoundTrip, Status) &&
+			CEffectOccurrenceTuningCodec::Validate_AgainstProgram(
+				RoundTrip, Program, Status) &&
+			CEffectOccurrenceTuningCodec::Serialize(RoundTrip) == Canonical;
+		runner.Require(StrictRoundTrip,
+			"Effect Occurrence Tuning Strict Codec Round Trips Stable Row Identity");
+
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT Preserved = RoundTrip;
+		Preserved.strEffectAssetId = "preserved.before.failed.parse";
+		const bool_t ParseRollback =
+			!CEffectOccurrenceTuningCodec::Parse("{", Preserved, Status) &&
+			Preserved.strEffectAssetId == "preserved.before.failed.parse";
+		runner.Require(ParseRollback,
+			"Effect Occurrence Tuning Failed Parse Preserves Prior Document");
+
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT Duplicate = Tuning;
+		Duplicate.Entries.push_back(Entry);
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT Stale = Tuning;
+		Stale.Entries.front().strSourceOccurrenceRowSha256 = std::string(64u, 'b');
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT Unknown = Tuning;
+		Unknown.Entries.front().strOccurrenceId = "harness.system::cue::missing";
+		runner.Require(
+			!CEffectOccurrenceTuningCodec::Validate_AgainstProgram(
+				Duplicate, Program, Status) &&
+			!CEffectOccurrenceTuningCodec::Validate_AgainstProgram(
+				Stale, Program, Status) &&
+			!CEffectOccurrenceTuningCodec::Validate_AgainstProgram(
+				Unknown, Program, Status),
+			"Effect Occurrence Tuning Rejects Duplicate Stale And Unknown Rows");
+
+		EFFECT_DOCUMENT_DESC Projected;
+		Projected.strEffectAssetId = EffectId;
+		EFFECT_ELEMENT_DESC Element;
+		Element.strElementId = Emitter.strSourceElementId;
+		Element.Detail.Transform.vPosition = { -1.f, -1.f, -1.f };
+		Projected.Elements.push_back(Element);
+		const bool_t Applied =
+			CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+				Projected, Program, Tuning, Status) &&
+			Projected.Elements.front().Detail.Transform.vPosition.x == 7.f &&
+			Projected.Elements.front().Detail.Transform.vRotationDegrees.y == 20.f &&
+			Projected.Elements.front().Detail.Transform.vScale.z == 4.f;
+		runner.Require(Applied,
+			"Effect Occurrence Tuning Applies Absolute Effective Local Transform");
+
+		EFFECT_DOCUMENT_DESC MissingProjection = Projected;
+		MissingProjection.Elements.clear();
+		const std::string MissingBefore =
+			CEffectDocumentCodec::Serialize(MissingProjection);
+		const bool_t ApplyRollback =
+			!CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+				MissingProjection, Program, Tuning, Status) &&
+			CEffectDocumentCodec::Serialize(MissingProjection) == MissingBefore;
+		runner.Require(ApplyRollback,
+			"Effect Occurrence Tuning Failed Projection Preserves Prior Document");
+
+		struct PREVIEW_TRANSACTION_STATE final
+		{
+			std::string strRuntimeArtifact = "previous";
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION Isolation;
+		};
+		const auto ApplyIsolation = [](
+			PREVIEW_TRANSACTION_STATE& State,
+			const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+			std::string& strOutError)
+		{
+			State.Isolation = Isolation;
+			strOutError.clear();
+			return true;
+		};
+
+		PREVIEW_TRANSACTION_STATE AllState;
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION PreviousAll =
+			AllState.Isolation;
+		const bool_t AllRestaged =
+			CEffectPresentationService::Restage_ObjectLocalOccurrencePreview(
+				PreviousAll,
+				[&AllState](std::string& strOutError)
+				{
+					AllState.strRuntimeArtifact = "next";
+					AllState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&AllState](std::string& strOutError)
+				{
+					AllState.strRuntimeArtifact = "previous";
+					AllState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&AllState, &ApplyIsolation](
+					const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+					std::string& strOutError)
+				{
+					return ApplyIsolation(AllState, Isolation, strOutError);
+				}, Status);
+		EFFECT_PREVIEW_SUBMISSION_ISOLATION HistoricalOccurrence;
+		HistoricalOccurrence.eKind =
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+		HistoricalOccurrence.eFamily = EFFECT_GPU_RENDER_FAMILY::SPRITE;
+		HistoricalOccurrence.strElementId = "historical.element";
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION NormalizedHistorical =
+			CEffectPresentationService::Normalize_OccurrencePreviewIsolation(
+				HistoricalOccurrence);
+		EFFECT_PREVIEW_SUBMISSION_ISOLATION ExplicitSolo;
+		ExplicitSolo.eKind =
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+		ExplicitSolo.strElementId = "visual.element.solo";
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION NormalizedSolo =
+			CEffectPresentationService::Normalize_OccurrencePreviewIsolation(
+				ExplicitSolo);
+		runner.Require(
+			AllRestaged && AllState.strRuntimeArtifact == "next" &&
+			AllState.Isolation.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ALL &&
+			NormalizedHistorical.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ALL &&
+			NormalizedHistorical.eFamily == EFFECT_GPU_RENDER_FAMILY::END &&
+			NormalizedHistorical.strElementId.empty() &&
+			NormalizedSolo.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE &&
+			NormalizedSolo.strElementId == ExplicitSolo.strElementId,
+			"Effect Occurrence Selection Preserves All And Explicit Solo While Normalizing Invalid Historical Scope");
+
+		PREVIEW_TRANSACTION_STATE FamilyState;
+		FamilyState.Isolation.eKind =
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::FAMILY;
+		FamilyState.Isolation.eFamily = EFFECT_GPU_RENDER_FAMILY::DECAL;
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION PreviousFamily =
+			FamilyState.Isolation;
+		const bool_t FamilyRestaged =
+			CEffectPresentationService::Restage_ObjectLocalOccurrencePreview(
+				PreviousFamily,
+				[&FamilyState](std::string& strOutError)
+				{
+					FamilyState.strRuntimeArtifact = "next";
+					FamilyState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&FamilyState](std::string& strOutError)
+				{
+					FamilyState.strRuntimeArtifact = "previous";
+					FamilyState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&FamilyState, &ApplyIsolation](
+					const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+					std::string& strOutError)
+				{
+					return ApplyIsolation(FamilyState, Isolation, strOutError);
+				}, Status);
+		runner.Require(
+			FamilyRestaged && FamilyState.strRuntimeArtifact == "next" &&
+			FamilyState.Isolation.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::FAMILY &&
+			FamilyState.Isolation.eFamily == EFFECT_GPU_RENDER_FAMILY::DECAL &&
+			FamilyState.Isolation.strElementId.empty(),
+			"Effect Occurrence Selection Restage Preserves Family Scope");
+
+		PREVIEW_TRANSACTION_STATE CanonicalFamilyState;
+		CanonicalFamilyState.Isolation.eKind =
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+		CanonicalFamilyState.Isolation.ElementIds = {
+			"visual.family.element.a", "visual.family.element.b" };
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION PreviousCanonicalFamily =
+			CanonicalFamilyState.Isolation;
+		const bool_t CanonicalFamilyRestaged =
+			CEffectPresentationService::Restage_ObjectLocalOccurrencePreview(
+				PreviousCanonicalFamily,
+				[&CanonicalFamilyState](std::string& strOutError)
+				{
+					CanonicalFamilyState.strRuntimeArtifact = "next";
+					CanonicalFamilyState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&CanonicalFamilyState](std::string& strOutError)
+				{
+					CanonicalFamilyState.strRuntimeArtifact = "previous";
+					CanonicalFamilyState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&CanonicalFamilyState, &ApplyIsolation](
+					const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+					std::string& strOutError)
+				{
+					return ApplyIsolation(
+						CanonicalFamilyState, Isolation, strOutError);
+				}, Status);
+		runner.Require(CanonicalFamilyRestaged &&
+			CanonicalFamilyState.strRuntimeArtifact == "next" &&
+			CanonicalFamilyState.Isolation.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET &&
+			CanonicalFamilyState.Isolation.ElementIds ==
+				PreviousCanonicalFamily.ElementIds,
+			"Effect Occurrence Restage Preserves Canonical Visual Family Element Set");
+
+		PREVIEW_TRANSACTION_STATE FailedState;
+		FailedState.Isolation.eKind =
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+		FailedState.Isolation.ElementIds = {
+			"visual.rollback.element.a", "visual.rollback.element.b" };
+		const EFFECT_PREVIEW_SUBMISSION_ISOLATION FailedPrevious =
+			FailedState.Isolation;
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT CommittedDraft = RoundTrip;
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT PendingDraft = CommittedDraft;
+		PendingDraft.Entries.front().EffectiveLocalTransform.vPosition.x = 123.f;
+		const std::string CommittedBefore =
+			CEffectOccurrenceTuningCodec::Serialize(CommittedDraft);
+		const std::string PendingBefore =
+			CEffectOccurrenceTuningCodec::Serialize(PendingDraft);
+		const bool_t FailedRestage =
+			CEffectPresentationService::Restage_ObjectLocalOccurrencePreview(
+				FailedPrevious,
+				[&FailedState](std::string& strOutError)
+				{
+					FailedState.strRuntimeArtifact = "partial-next";
+					FailedState.Isolation = {};
+					strOutError = "Injected restage failure.";
+					return false;
+				},
+				[&FailedState](std::string& strOutError)
+				{
+					FailedState.strRuntimeArtifact = "previous";
+					FailedState.Isolation = {};
+					strOutError.clear();
+					return true;
+				},
+				[&FailedState, &ApplyIsolation](
+					const EFFECT_PREVIEW_SUBMISSION_ISOLATION& Isolation,
+					std::string& strOutError)
+				{
+					return ApplyIsolation(FailedState, Isolation, strOutError);
+				}, Status);
+		if (FailedRestage)
+			CommittedDraft = PendingDraft;
+		runner.Require(
+			!FailedRestage && FailedState.strRuntimeArtifact == "previous" &&
+			FailedState.Isolation.eKind ==
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET &&
+			FailedState.Isolation.ElementIds == FailedPrevious.ElementIds &&
+			CEffectOccurrenceTuningCodec::Serialize(CommittedDraft) ==
+				CommittedBefore &&
+			CEffectOccurrenceTuningCodec::Serialize(PendingDraft) == PendingBefore,
+			"Effect Occurrence Failed Restage Rolls Back Scope And Preserves Draft");
+
+		const std::filesystem::path Path =
+			std::filesystem::temp_directory_path() /
+			"lostark-effect-occurrence-tuning-harness.json";
+		std::error_code Error;
+		std::filesystem::remove(Path, Error);
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT InitialLoaded;
+		const bool_t InitialSaved =
+			CEffectOccurrenceTuningCodec::Save_AtomicIfUnchanged(
+				Path, Tuning, Program, {}, Status) &&
+			CEffectOccurrenceTuningCodec::Load(Path, InitialLoaded, Status);
+		const std::string InitialBaseline = InitialSaved ?
+			CEffectOccurrenceTuningCodec::Serialize(InitialLoaded) : std::string{};
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT External = InitialLoaded;
+		if (!External.Entries.empty())
+			External.Entries.front().EffectiveLocalTransform.vPosition.x = 90.f;
+		const bool_t ExternalSaved = InitialSaved &&
+			CEffectOccurrenceTuningCodec::Save_AtomicIfUnchanged(
+				Path, External, Program, InitialBaseline, Status);
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT StaleWriter = InitialLoaded;
+		if (!StaleWriter.Entries.empty())
+			StaleWriter.Entries.front().EffectiveLocalTransform.vPosition.x = 40.f;
+		const bool_t StaleRejected = ExternalSaved &&
+			!CEffectOccurrenceTuningCodec::Save_AtomicIfUnchanged(
+				Path, StaleWriter, Program, InitialBaseline, Status);
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT PreservedExternal;
+		const bool_t ExternalPreserved = StaleRejected &&
+			CEffectOccurrenceTuningCodec::Load(Path, PreservedExternal, Status) &&
+			!PreservedExternal.Entries.empty() &&
+			PreservedExternal.Entries.front().EffectiveLocalTransform.vPosition.x ==
+				90.f;
+		runner.Require(ExternalPreserved,
+			"Effect Occurrence Tuning Rejects Stale Save And Preserves External Writer");
+		std::filesystem::remove(Path, Error);
+
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT SourceOverlay;
+		SourceOverlay.strEffectAssetId = EffectId;
+		SourceOverlay.strSourceProgramSha256 = Program.Identity.strProgramSha256;
+		EFFECT_SOURCE_AUTHORING_OVERLAY_ENTRY SourceEntry;
+		SourceEntry.strOccurrenceId = OccurrenceId;
+		SourceEntry.strSourceOccurrenceRowSha256 = RowSha;
+		SourceEntry.strSourceElementId = Emitter.strSourceElementId;
+		SourceEntry.EffectiveLocalTransform.vPosition = { 11.f, 12.f, 13.f };
+		SourceEntry.EffectiveLocalTransform.vRotationDegrees = { 14.f, 15.f, 16.f };
+		SourceEntry.EffectiveLocalTransform.vScale = { 5.f, 6.f, 7.f };
+		SourceOverlay.Entries.push_back(SourceEntry);
+		const std::string SourceCanonical =
+			CEffectSourceAuthoringOverlayCodec::Serialize(SourceOverlay);
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT SourceRoundTrip;
+		const bool_t SourceStrictRoundTrip =
+			CEffectSourceAuthoringOverlayCodec::Parse(
+				SourceCanonical, SourceRoundTrip, Status) &&
+			CEffectSourceAuthoringOverlayCodec::Validate_AgainstProgram(
+				SourceRoundTrip, Program, Status) &&
+			CEffectSourceAuthoringOverlayCodec::Serialize(SourceRoundTrip) ==
+				SourceCanonical;
+		runner.Require(SourceStrictRoundTrip,
+			"Source Authoring Overlay Strict Codec Pins Row SHA And Source Element ID");
+
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT StaleElement = SourceOverlay;
+		StaleElement.Entries.front().strSourceElementId =
+			"harness.projected.stale-element";
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT StaleRow = SourceOverlay;
+		StaleRow.Entries.front().strSourceOccurrenceRowSha256 =
+			std::string(64u, 'b');
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT StaleProgram = SourceOverlay;
+		StaleProgram.strSourceProgramSha256 = std::string(64u, 'd');
+		const bool_t SourceTripleJoinRejected =
+			!CEffectSourceAuthoringOverlayCodec::Validate_AgainstProgram(
+				StaleElement, Program, Status) &&
+			!CEffectSourceAuthoringOverlayCodec::Validate_AgainstProgram(
+				StaleRow, Program, Status) &&
+			!CEffectSourceAuthoringOverlayCodec::Validate_AgainstProgram(
+				StaleProgram, Program, Status);
+		runner.Require(SourceTripleJoinRejected,
+			"Source Authoring Overlay Rejects Stale Program Row And Element Identity");
+
+		EFFECT_DOCUMENT_DESC SourceProjected;
+		SourceProjected.strEffectAssetId = EffectId;
+		EFFECT_ELEMENT_DESC SourceElement;
+		SourceElement.strElementId = Emitter.strSourceElementId;
+		SourceElement.Detail.Transform.vPosition = { 41.f, 42.f, 43.f };
+		SourceElement.Detail.Transform.vRotationDegrees = { 44.f, 45.f, 46.f };
+		SourceElement.Detail.Transform.vScale = { 1.4f, 1.5f, 1.6f };
+		SourceElement.Detail.Transform.vRevolutionDegreesPerSecond =
+			{ 21.f, 22.f, 23.f };
+		SourceElement.Detail.Transform.vVelocityPerSecond =
+			{ 24.f, 25.f, 26.f };
+		SourceElement.ActionCueAttachment.strRuntimeBoneName = "immutable.anchor";
+		SourceElement.SourceRecipe.bEnabled = true;
+		SourceElement.SourceRecipe.strSourceContractProfileId = "immutable.recipe";
+		SourceProjected.Elements.push_back(SourceElement);
+		const EFFECT_TRANSFORM_DESC ImmutableTransform =
+			SourceProjected.Elements.front().Detail.Transform;
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC ImmutableAttachment =
+			SourceProjected.Elements.front().ActionCueAttachment;
+		const EFFECT_CASCADE_RECIPE_DESC ImmutableRecipe =
+			SourceProjected.Elements.front().SourceRecipe;
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT EmptySourceOverlay;
+		EmptySourceOverlay.strEffectAssetId = EffectId;
+		EmptySourceOverlay.strSourceProgramSha256 =
+			Program.Identity.strProgramSha256;
+		const std::string NoOpBefore =
+			CEffectDocumentCodec::Serialize(SourceProjected);
+		const bool_t SourceNoOpParity =
+			CEffectSourceAuthoringOverlayCodec::Apply_ToProjectedDocument(
+				SourceProjected, Program, EmptySourceOverlay, Status) &&
+			CEffectDocumentCodec::Serialize(SourceProjected) == NoOpBefore;
+		runner.Require(SourceNoOpParity,
+			"Source Authoring Empty Overlay Preserves Canonical Cue Local Projection");
+		const bool_t SourceResetMatchesOccurrenceInfoContract =
+			SourceProjected.Elements.front().Detail.Transform.vPosition.x ==
+				static_cast<float>(Emitter.CueLocalTransform.vPosition[0]) &&
+			SourceProjected.Elements.front().Detail.Transform.vRotationDegrees.y ==
+				static_cast<float>(Emitter.CueLocalTransform.vRotationDegrees[1]) &&
+			SourceProjected.Elements.front().Detail.Transform.vScale.z ==
+				static_cast<float>(Emitter.CueLocalTransform.vScale[2]);
+		runner.Require(SourceResetMatchesOccurrenceInfoContract,
+			"Source Authoring Reset And Occurrence Info Share Cue Local Transform Authority");
+
+		const bool_t SourceApplied =
+			CEffectSourceAuthoringOverlayCodec::Apply_ToProjectedDocument(
+				SourceProjected, Program, SourceOverlay, Status) &&
+			SourceProjected.Elements.front().Detail.Transform.vPosition.x == 11.f &&
+			SourceProjected.Elements.front().Detail.Transform.vRotationDegrees.y ==
+				15.f &&
+			SourceProjected.Elements.front().Detail.Transform.vScale.z == 7.f &&
+			SourceProjected.Elements.front().Detail.Transform.
+				vRevolutionDegreesPerSecond.x ==
+				ImmutableTransform.vRevolutionDegreesPerSecond.x &&
+			SourceProjected.Elements.front().Detail.Transform.vVelocityPerSecond.z ==
+				ImmutableTransform.vVelocityPerSecond.z &&
+			SourceProjected.Elements.front().ActionCueAttachment.strRuntimeBoneName ==
+				ImmutableAttachment.strRuntimeBoneName &&
+			SourceProjected.Elements.front().SourceRecipe.
+				strSourceContractProfileId ==
+				ImmutableRecipe.strSourceContractProfileId;
+		runner.Require(SourceApplied,
+			"Source Authoring Overlay Changes Only P R S And Preserves Source Authority Fields");
+
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT MigratedSourceOverlay;
+		const bool_t LegacyMigratedOnce =
+			CEffectSourceAuthoringOverlayCodec::Migrate_FromOccurrenceTuning(
+				Program, Tuning, MigratedSourceOverlay, Status) &&
+			MigratedSourceOverlay.strSourceProgramSha256 ==
+				Program.Identity.strProgramSha256 &&
+			!MigratedSourceOverlay.Entries.empty() &&
+			MigratedSourceOverlay.Entries.front().strSourceElementId ==
+				Emitter.strSourceElementId;
+		runner.Require(LegacyMigratedOnce,
+			"Legacy Occurrence Tuning Migrates Once Into Source Overlay Triple Identity");
+
+		EFFECT_DOCUMENT_DESC SourceRollback = SourceProjected;
+		SourceRollback.Elements.clear();
+		const std::string SourceRollbackBefore =
+			CEffectDocumentCodec::Serialize(SourceRollback);
+		const bool_t SourceApplyRollback =
+			!CEffectSourceAuthoringOverlayCodec::Apply_ToProjectedDocument(
+				SourceRollback, Program, SourceOverlay, Status) &&
+			CEffectDocumentCodec::Serialize(SourceRollback) == SourceRollbackBefore;
+		runner.Require(SourceApplyRollback,
+			"Source Authoring Overlay Failed Apply Preserves Prior Projection");
+
+		const std::filesystem::path SourcePath =
+			std::filesystem::temp_directory_path() /
+			"lostark-effect-source-authoring-overlay-harness.json";
+		std::filesystem::remove(SourcePath, Error);
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT SourceInitial;
+		const bool_t SourceInitialSaved =
+			CEffectSourceAuthoringOverlayCodec::Save_AtomicIfUnchanged(
+				SourcePath, SourceOverlay, Program, {}, Status) &&
+			CEffectSourceAuthoringOverlayCodec::Load(
+				SourcePath, SourceInitial, Status);
+		const std::string SourceInitialCanonical = SourceInitialSaved ?
+			CEffectSourceAuthoringOverlayCodec::Serialize(SourceInitial) :
+			std::string{};
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT SourceExternal = SourceInitial;
+		if (!SourceExternal.Entries.empty())
+			SourceExternal.Entries.front().EffectiveLocalTransform.vPosition.x = 31.f;
+		const bool_t SourceExternalSaved = SourceInitialSaved &&
+			CEffectSourceAuthoringOverlayCodec::Save_AtomicIfUnchanged(
+				SourcePath, SourceExternal, Program,
+				SourceInitialCanonical, Status);
+		const bool_t SourceStaleRejected = SourceExternalSaved &&
+			!CEffectSourceAuthoringOverlayCodec::Save_AtomicIfUnchanged(
+				SourcePath, SourceInitial, Program,
+				SourceInitialCanonical, Status);
+		EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT SourcePreserved;
+		const bool_t SourceExternalPreserved = SourceStaleRejected &&
+			CEffectSourceAuthoringOverlayCodec::Load(
+				SourcePath, SourcePreserved, Status) &&
+			!SourcePreserved.Entries.empty() &&
+			SourcePreserved.Entries.front().EffectiveLocalTransform.vPosition.x ==
+				31.f;
+		runner.Require(SourceExternalPreserved,
+			"Source Authoring Overlay CAS Rejects Stale Save And Preserves External Writer");
+		std::filesystem::remove(SourcePath, Error);
+	}
+
 	void Test_EffectAssemblyRuntimeCatalog(
 		TEST_RUNNER& runner,
 		const bool_t bCheckFailedReloadRollback = true)
@@ -4904,11 +10438,21 @@ namespace
 			L"EffectCatalog.runtime.json";
 		const std::filesystem::path stagedCatalog = moduleDirectory /
 			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		const std::filesystem::path sourceVisualPrograms = repositoryRoot /
+			L"Data" / L"Effects" / L"VisualPrograms" /
+			L"effect-visual-program-runtime.v1.json";
+		const std::filesystem::path stagedVisualPrograms =
+			stagedCatalog.parent_path() / L"EffectVisualPrograms.runtime.json";
 		std::error_code error;
 		std::filesystem::create_directories(stagedCatalog.parent_path(), error);
 		error.clear();
 		std::filesystem::copy_file(sourceCatalog, stagedCatalog,
 			std::filesystem::copy_options::overwrite_existing, error);
+		if (!error)
+		{
+			std::filesystem::copy_file(sourceVisualPrograms, stagedVisualPrograms,
+				std::filesystem::copy_options::overwrite_existing, error);
+		}
 		const std::filesystem::path resourceRoot =
 			resourceRootEnvironment.Was_Defined() &&
 			!resourceRootEnvironment.Get_OriginalValue().empty() ?
@@ -4928,14 +10472,497 @@ namespace
 			std::cout << "[DETAIL] Effect runtime catalog: " << status << '\n';
 		const std::vector<std::string> effectIds =
 			CEffectCatalog::Get_EffectAssetIds();
+		constexpr std::string_view DirectAuthoredArtistFId =
+			"effect.artist.skill.31470.unified";
+		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> directAuthoredArtistF =
+			CEffectCatalog::Find(std::string(DirectAuthoredArtistFId));
+		runner.Require(loaded && nullptr != directAuthoredArtistF &&
+			nullptr == CEffectCatalog::Find_Assembly(
+				std::string(DirectAuthoredArtistFId)) &&
+			directAuthoredArtistF->iLoadedFormatVersion == 13u &&
+			directAuthoredArtistF->strEffectAssetId == DirectAuthoredArtistFId &&
+			directAuthoredArtistF->Elements.size() == 33u &&
+			CEffectDocumentCodec::Validate_Drawable(*directAuthoredArtistF, status),
+			"Artist F Direct Authored V13 Catalog Commits The Drawable Ordinary Document Without An Assembly Authority");
+		const std::vector<std::string> visualProgramIds =
+			CEffectCatalog::Get_VisualProgramAssetIds();
+		size_t iVisualProjectionCount = 0u;
+		size_t iAdapterOnlyProgramCount = 0u;
+		bool_t bVisualProgramJoinExact = loaded &&
+			visualProgramIds.size() == 13u;
+		for (const std::string& visualEffectId : visualProgramIds)
+		{
+			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM> visualProgram =
+				CEffectCatalog::Find_VisualProgram(visualEffectId);
+			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+				visualProjection =
+					CEffectCatalog::Find_VisualProjection(visualEffectId);
+			if (nullptr != visualProjection)
+			{
+				const std::shared_ptr<const EFFECT_DOCUMENT_DESC> visualDocument =
+					CEffectCatalog::Find(visualEffectId);
+				++iVisualProjectionCount;
+				bVisualProgramJoinExact = bVisualProgramJoinExact &&
+					nullptr != visualProgram && visualProjection->Is_Valid() &&
+					visualProjection->Get_DocumentShared().get() ==
+						visualDocument.get() &&
+					visualProjection->Get_ProgramSha256() ==
+						visualProgram->strProgramSha256;
+			}
+			else
+			{
+				const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
+					reconstructed =
+						CEffectCatalog::Find_RuntimeProgramEntry(visualEffectId);
+				const bool_t bAdapterOnly = nullptr != visualProgram &&
+					visualProgram->eProjectionKind ==
+						EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 &&
+					nullptr != reconstructed;
+				if (bAdapterOnly)
+					++iAdapterOnlyProgramCount;
+				bVisualProgramJoinExact =
+					bVisualProgramJoinExact && bAdapterOnly;
+			}
+		}
+		runner.Require(bVisualProgramJoinExact &&
+			iVisualProjectionCount == 12u && iAdapterOnlyProgramCount == 1u,
+			"Effect Runtime Atomically Joins Thirteen Visual Programs As Twelve BA Projections And One Reconstructed Adapter");
+		const std::shared_ptr<const
+			EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> lanceBaProjection =
+			CEffectCatalog::Find_VisualProjection(
+				"effect.lancemaster.skill.34010.ba1");
+		runner.Require(nullptr != lanceBaProjection &&
+			Resolve_ProductCueDocumentSource(
+				nullptr != lanceBaProjection) ==
+				EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM &&
+			Resolve_ProductCueDocumentSource(false) ==
+				EFFECT_DOCUMENT_SOURCE::AUTHORED,
+			"Effect Tool Product Cue Selects The Exact BA Visual Projection And Retains Authored Fallback Without A Program");
+
+		struct ELEMENT_PRESET_CASE final
+		{
+			std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+				pProjection;
+			EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST Request;
+			EFFECT_ELEMENT_KIND eTargetKind = EFFECT_ELEMENT_KIND::END;
+			bool_t bSupplemental = false;
+		};
+		std::optional<ELEMENT_PRESET_CASE> firstVisualPreset;
+		std::optional<ELEMENT_PRESET_CASE> secondPreset;
+		std::optional<ELEMENT_PRESET_CASE> unsupportedPreset;
+		const auto IsGenericPresetKind = [](const EFFECT_ELEMENT_KIND eKind)
+		{
+			return eKind == EFFECT_ELEMENT_KIND::MESH ||
+				eKind == EFFECT_ELEMENT_KIND::SPRITE ||
+				eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
+				eKind == EFFECT_ELEMENT_KIND::DECAL ||
+				eKind == EFFECT_ELEMENT_KIND::TRAIL;
+		};
+		const auto FindExactTarget = [](const EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view ElementId) -> const EFFECT_ELEMENT_DESC*
+		{
+			const EFFECT_ELEMENT_DESC* pFound = nullptr;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (Element.strElementId != ElementId)
+					continue;
+				if (nullptr != pFound)
+					return nullptr;
+				pFound = &Element;
+			}
+			return pFound;
+		};
+		for (const std::string& visualEffectId : visualProgramIds)
+		{
+			const auto projection =
+				CEffectCatalog::Find_VisualProjection(visualEffectId);
+			if (nullptr == projection)
+				continue;
+			const auto visualProgram =
+				CEffectCatalog::Find_VisualProgram(visualEffectId);
+			if (nullptr != visualProgram && !unsupportedPreset.has_value())
+			{
+				for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
+					visualProgram->VisualRows)
+				{
+					if (Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE &&
+						Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::SCREEN_POST)
+					{
+						continue;
+					}
+					ELEMENT_PRESET_CASE Candidate;
+					Candidate.pProjection = projection;
+					Candidate.Request.strEffectAssetId =
+						Row.Selector.strEffectAssetId;
+					Candidate.Request.strOccurrenceId =
+						Row.Selector.strOccurrenceId;
+					Candidate.Request.strRowSha256 = Row.strRowSha256;
+					Candidate.Request.strTargetElementId =
+						Row.TargetIdentity.has_value() ?
+							Row.TargetIdentity->strTargetElementId :
+							"unsupported.target.element.harness";
+					Candidate.Request.strSourceRecordId =
+						Row.SourceIdentity.strSourceRecordId;
+					unsupportedPreset = std::move(Candidate);
+					break;
+				}
+			}
+			for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
+				projection->Get_AdmittedRows())
+			{
+				if (!Row.TargetIdentity.has_value())
+					continue;
+				const EFFECT_ELEMENT_DESC* pTarget = FindExactTarget(
+					projection->Get_Document(),
+					Row.TargetIdentity->strTargetElementId);
+				if (nullptr == pTarget)
+					continue;
+				ELEMENT_PRESET_CASE Candidate;
+				Candidate.pProjection = projection;
+				Candidate.Request.strEffectAssetId =
+					Row.Selector.strEffectAssetId;
+				Candidate.Request.strOccurrenceId =
+					Row.Selector.strOccurrenceId;
+				Candidate.Request.strRowSha256 = Row.strRowSha256;
+				Candidate.Request.strTargetElementId =
+					Row.TargetIdentity->strTargetElementId;
+				Candidate.Request.strSourceRecordId =
+					Row.SourceIdentity.strSourceRecordId;
+				Candidate.eTargetKind = pTarget->eKind;
+				if (IsGenericPresetKind(pTarget->eKind))
+				{
+					if (!firstVisualPreset.has_value())
+						firstVisualPreset = Candidate;
+					else if (!secondPreset.has_value() &&
+						Candidate.Request.strTargetElementId !=
+							firstVisualPreset->Request.strTargetElementId)
+					{
+						secondPreset = Candidate;
+					}
+				}
+			}
+			for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+				projection->Get_AdmittedSupplementalElements())
+			{
+				const EFFECT_ELEMENT_DESC* pTarget = FindExactTarget(
+					projection->Get_Document(),
+					Supplemental.TargetIdentity.strTargetElementId);
+				if (nullptr == pTarget)
+					continue;
+				ELEMENT_PRESET_CASE Candidate;
+				Candidate.pProjection = projection;
+				Candidate.Request.strEffectAssetId =
+					Supplemental.Selector.strEffectAssetId;
+				Candidate.Request.strOccurrenceId =
+					Supplemental.Selector.strOccurrenceId;
+				Candidate.Request.strRowSha256 = Supplemental.strRowSha256;
+				Candidate.Request.strTargetElementId =
+					Supplemental.TargetIdentity.strTargetElementId;
+				Candidate.Request.strSourceRecordId =
+					Supplemental.strSourceRecordId;
+				Candidate.eTargetKind = pTarget->eKind;
+				Candidate.bSupplemental = true;
+				if (IsGenericPresetKind(pTarget->eKind) &&
+					(!firstVisualPreset.has_value() ||
+					 Candidate.Request.strTargetElementId !=
+						 firstVisualPreset->Request.strTargetElementId))
+				{
+					secondPreset = Candidate;
+				}
+			}
+		}
+
+		const auto PresetStageSnapshot = [](
+			const EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE& Stage)
+		{
+			EFFECT_DOCUMENT_DESC SnapshotDocument;
+			SnapshotDocument.strEffectAssetId =
+				"effect.harness.element-preset.snapshot";
+			SnapshotDocument.strDisplayName = "Element preset snapshot";
+			SnapshotDocument.Elements.push_back(Stage.Element);
+			return Stage.Identity.strEffectAssetId + "\n" +
+				Stage.Identity.strOccurrenceId + "\n" +
+				Stage.Identity.strRowSha256 + "\n" +
+				Stage.Identity.strTargetElementId + "\n" +
+				Stage.Identity.strSourceRecordId + "\n" +
+				std::to_string(static_cast<uint32_t>(Stage.eSourceFamily)) + "\n" +
+				(Stage.bSupplemental ? "supplemental\n" : "visual\n") +
+				(nullptr == Stage.pProjection ? std::string{} :
+				 Stage.pProjection->Get_AdmissionTokenSha256()) + "\n" +
+				CEffectDocumentCodec::Serialize(SnapshotDocument);
+		};
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE presetStage;
+		const bool_t bNormalPresetBuilt = firstVisualPreset.has_value() &&
+			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				firstVisualPreset->pProjection, firstVisualPreset->Request,
+				presetStage, status) && presetStage.Is_Valid() &&
+			!presetStage.bSupplemental &&
+			presetStage.Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			!presetStage.Element.SourceRecipe.bEnabled &&
+			presetStage.Identity.strTargetElementId ==
+				firstVisualPreset->Request.strTargetElementId;
+		const std::string firstPresetSnapshot = bNormalPresetBuilt ?
+			PresetStageSnapshot(presetStage) : std::string{};
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST staleRequest =
+			firstVisualPreset.has_value() ? firstVisualPreset->Request :
+				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
+		staleRequest.strRowSha256 = staleRequest.strRowSha256 ==
+			std::string(64u, '0') ? std::string(64u, '1') :
+				std::string(64u, '0');
+		const bool_t bStaleShaPreserved = bNormalPresetBuilt &&
+			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				firstVisualPreset->pProjection, staleRequest, presetStage, status) &&
+			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST wrongSourceRequest =
+			firstVisualPreset.has_value() ? firstVisualPreset->Request :
+				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
+		wrongSourceRequest.strSourceRecordId =
+			"wrong.source.record.harness";
+		const bool_t bWrongSourcePreserved = bStaleShaPreserved &&
+			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				firstVisualPreset->pProjection, wrongSourceRequest,
+				presetStage, status) &&
+			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST missingTargetRequest =
+			firstVisualPreset.has_value() ? firstVisualPreset->Request :
+				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
+		missingTargetRequest.strTargetElementId =
+			"missing.target.element.harness";
+		const bool_t bMissingTargetPreserved = bWrongSourcePreserved &&
+			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				firstVisualPreset->pProjection, missingTargetRequest,
+				presetStage, status) &&
+			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
+		const bool_t bUnsupportedPreserved = bMissingTargetPreserved &&
+			unsupportedPreset.has_value() &&
+			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				unsupportedPreset->pProjection, unsupportedPreset->Request,
+				presetStage, status) &&
+			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
+		const bool_t bSecondValidReplaced = bUnsupportedPreserved &&
+			secondPreset.has_value() &&
+			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				secondPreset->pProjection, secondPreset->Request,
+				presetStage, status) && presetStage.Is_Valid() &&
+			presetStage.bSupplemental == secondPreset->bSupplemental &&
+			presetStage.Identity.strTargetElementId ==
+				secondPreset->Request.strTargetElementId &&
+			PresetStageSnapshot(presetStage) != firstPresetSnapshot;
+		const std::string secondPresetSnapshot = bSecondValidReplaced ?
+			PresetStageSnapshot(presetStage) : std::string{};
+		const bool_t bSecondStagePreserved = bSecondValidReplaced &&
+			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				secondPreset->pProjection, staleRequest, presetStage, status) &&
+			PresetStageSnapshot(presetStage) == secondPresetSnapshot;
+		if (!(bNormalPresetBuilt && bStaleShaPreserved &&
+			bWrongSourcePreserved && bMissingTargetPreserved &&
+			bUnsupportedPreserved && bSecondValidReplaced &&
+			bSecondStagePreserved))
+		{
+			std::cout << "[DETAIL] Element preset stage normal=" <<
+				bNormalPresetBuilt << " stale=" << bStaleShaPreserved <<
+				" source=" << bWrongSourcePreserved << " target=" <<
+				bMissingTargetPreserved << " unsupported=" <<
+				bUnsupportedPreserved << " second=" << bSecondValidReplaced <<
+				" second-preserved=" << bSecondStagePreserved <<
+				" status=" << status << '\n';
+		}
+		runner.Require(bNormalPresetBuilt && bStaleShaPreserved &&
+			bWrongSourcePreserved && bMissingTargetPreserved &&
+			bUnsupportedPreserved && bSecondValidReplaced &&
+			bSecondStagePreserved,
+			"Element Preset Stage Validates Exact Visual And Supplemental Identity And Preserves Prior Output On Every Rejection");
+
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			authoringProjection;
+		const EFFECT_VISUAL_PROGRAM_ROW* pAuthoringRow = nullptr;
+		const EFFECT_ELEMENT_DESC* pAuthoringElement = nullptr;
+		for (const std::string& visualEffectId : visualProgramIds)
+		{
+			const auto candidate =
+				CEffectCatalog::Find_VisualProjection(visualEffectId);
+			if (nullptr == candidate)
+				continue;
+			for (const EFFECT_VISUAL_PROGRAM_ROW& row :
+				candidate->Get_AdmittedRows())
+			{
+				if (!row.bTuningEligibleTransform ||
+					!row.TargetIdentity.has_value())
+				{
+					continue;
+				}
+				const auto element = std::find_if(
+					candidate->Get_Document().Elements.begin(),
+					candidate->Get_Document().Elements.end(),
+					[&row](const EFFECT_ELEMENT_DESC& value)
+					{
+						return value.strElementId ==
+							row.TargetIdentity->strTargetElementId;
+					});
+				if (element == candidate->Get_Document().Elements.end())
+					continue;
+				authoringProjection = candidate;
+				pAuthoringRow = &row;
+				pAuthoringElement = &*element;
+				break;
+			}
+			if (nullptr != pAuthoringRow)
+				break;
+		}
+
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT visualTuning;
+		if (nullptr != authoringProjection && nullptr != pAuthoringRow &&
+			nullptr != pAuthoringElement)
+		{
+			visualTuning.strEffectAssetId =
+				authoringProjection->Get_EffectAssetId();
+			EFFECT_OCCURRENCE_TUNING_ENTRY visualEntry;
+			visualEntry.strOccurrenceId =
+				pAuthoringRow->Selector.strOccurrenceId;
+			visualEntry.strSourceOccurrenceRowSha256 =
+				pAuthoringRow->strRowSha256;
+			visualEntry.EffectiveLocalTransform.vPosition =
+				pAuthoringElement->Detail.Transform.vPosition;
+			visualEntry.EffectiveLocalTransform.vRotationDegrees =
+				pAuthoringElement->Detail.Transform.vRotationDegrees;
+			visualEntry.EffectiveLocalTransform.vScale =
+				pAuthoringElement->Detail.Transform.vScale;
+			visualEntry.EffectiveLocalTransform.vPosition.x +=
+				visualEntry.EffectiveLocalTransform.vPosition.x < 999.f ?
+					0.125f : -0.125f;
+			visualTuning.Entries.push_back(std::move(visualEntry));
+		}
+		EFFECT_DOCUMENT_DESC tunedVisualDocument = nullptr == authoringProjection ?
+			EFFECT_DOCUMENT_DESC{} : authoringProjection->Get_Document();
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			tunedVisualProjection;
+		const bool_t bVisualTuningResealed = nullptr != authoringProjection &&
+			CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
+				visualTuning, *authoringProjection, status) &&
+			CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+				tunedVisualDocument, *authoringProjection, visualTuning, status) &&
+			CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
+				*authoringProjection, tunedVisualDocument,
+				tunedVisualProjection, status) &&
+			nullptr != tunedVisualProjection && tunedVisualProjection->Is_Valid() &&
+			tunedVisualProjection->Get_AdmissionTokenSha256() !=
+				authoringProjection->Get_AdmissionTokenSha256();
+		auto preservedVisualProjection = tunedVisualProjection;
+		EFFECT_DOCUMENT_DESC nonTransformMutation = tunedVisualDocument;
+		nonTransformMutation.strDisplayName += " forbidden";
+		const bool_t bNonTransformRejected = bVisualTuningResealed &&
+			!CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
+				*authoringProjection, nonTransformMutation,
+				preservedVisualProjection, status) &&
+			preservedVisualProjection.get() == tunedVisualProjection.get();
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT staleVisualTuning = visualTuning;
+		if (!staleVisualTuning.Entries.empty())
+		{
+			staleVisualTuning.Entries.front().strSourceOccurrenceRowSha256 =
+				std::string(64u, '0');
+		}
+		const bool_t bStaleVisualRejected = nullptr != authoringProjection &&
+			!CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
+				staleVisualTuning, *authoringProjection, status);
+		const std::filesystem::path visualTuningPath =
+			std::filesystem::temp_directory_path() /
+			("lostark-visual-occurrence-tuning-" +
+			 std::to_string(GetCurrentProcessId()) + ".json");
+		std::error_code visualTuningError;
+		std::filesystem::remove(visualTuningPath, visualTuningError);
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT loadedVisualTuning;
+		const bool_t bVisualTuningSaved = nullptr != authoringProjection &&
+			CEffectOccurrenceTuningCodec::Save_AtomicIfUnchanged(
+				visualTuningPath, visualTuning, *authoringProjection, {}, status) &&
+			CEffectOccurrenceTuningCodec::Load(
+				visualTuningPath, loadedVisualTuning, status) &&
+			CEffectOccurrenceTuningCodec::Serialize(loadedVisualTuning) ==
+				CEffectOccurrenceTuningCodec::Serialize(visualTuning);
+		std::filesystem::remove(visualTuningPath, visualTuningError);
+		runner.Require(bVisualTuningResealed && bNonTransformRejected &&
+			bStaleVisualRejected && bVisualTuningSaved,
+			"Stable Visual Occurrence Transform Tuning Reseals Immutable Token Rejects Other Fields And Saves Atomically");
+
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			supplementalProjection;
+		const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* pSupplementalRow = nullptr;
+		const EFFECT_ELEMENT_DESC* pSupplementalElement = nullptr;
+		for (const std::string& visualEffectId : visualProgramIds)
+		{
+			const auto candidate =
+				CEffectCatalog::Find_VisualProjection(visualEffectId);
+			if (nullptr == candidate)
+				continue;
+			for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& row :
+				candidate->Get_AdmittedSupplementalElements())
+			{
+				if (!row.bTuningEligibleTransform)
+					continue;
+				const auto element = std::find_if(
+					candidate->Get_Document().Elements.begin(),
+					candidate->Get_Document().Elements.end(),
+					[&row](const EFFECT_ELEMENT_DESC& value)
+					{
+						return value.strElementId ==
+							row.TargetIdentity.strTargetElementId;
+					});
+				if (element == candidate->Get_Document().Elements.end())
+					continue;
+				supplementalProjection = candidate;
+				pSupplementalRow = &row;
+				pSupplementalElement = &*element;
+				break;
+			}
+			if (nullptr != pSupplementalRow)
+				break;
+		}
+		EFFECT_OCCURRENCE_TUNING_DOCUMENT supplementalTuning;
+		if (nullptr != supplementalProjection && nullptr != pSupplementalRow &&
+			nullptr != pSupplementalElement)
+		{
+			supplementalTuning.strEffectAssetId =
+				supplementalProjection->Get_EffectAssetId();
+			EFFECT_OCCURRENCE_TUNING_ENTRY entry;
+			entry.strOccurrenceId = pSupplementalRow->Selector.strOccurrenceId;
+			entry.strSourceOccurrenceRowSha256 = pSupplementalRow->strRowSha256;
+			entry.EffectiveLocalTransform.vPosition =
+				pSupplementalElement->Detail.Transform.vPosition;
+			entry.EffectiveLocalTransform.vRotationDegrees =
+				pSupplementalElement->Detail.Transform.vRotationDegrees;
+			entry.EffectiveLocalTransform.vScale =
+				pSupplementalElement->Detail.Transform.vScale;
+			entry.EffectiveLocalTransform.vPosition.y +=
+				entry.EffectiveLocalTransform.vPosition.y < 999.f ? 0.125f : -0.125f;
+			supplementalTuning.Entries.push_back(std::move(entry));
+		}
+		EFFECT_DOCUMENT_DESC supplementalTunedDocument =
+			nullptr == supplementalProjection ? EFFECT_DOCUMENT_DESC{} :
+				supplementalProjection->Get_Document();
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			supplementalTunedProjection;
+		const bool_t bSupplementalTuningResealed =
+			nullptr != supplementalProjection &&
+			CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
+				supplementalTuning, *supplementalProjection, status) &&
+			CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+				supplementalTunedDocument, *supplementalProjection,
+				supplementalTuning, status) &&
+			CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
+				*supplementalProjection, supplementalTunedDocument,
+				supplementalTunedProjection, status) &&
+			nullptr != supplementalTunedProjection &&
+			supplementalTunedProjection->Is_Valid();
+		runner.Require(bSupplementalTuningResealed,
+			"AnimationTrail Supplemental Stable Occurrence Uses The Same Transform Override And Immutable Reseal Contract");
 		const std::set<std::string> actualEffectIdSet(
 			effectIds.begin(), effectIds.end());
 		std::set<std::string> contractEffectIds;
 		for (const auto& entry : buildContract.Effects)
 			contractEffectIds.insert(entry.first);
+		contractEffectIds.insert(std::string(DirectAuthoredArtistFId));
 		bool_t hierarchyComplete = loaded && buildContractLoaded &&
 			actualEffectIdSet == contractEffectIds &&
-			effectIds.size() == buildContract.iEffectCount;
+			effectIds.size() == buildContract.iEffectCount + 1u;
 		bool_t playbackStageComplete = loaded;
 		size_t stagedEffectCount = 0u;
 		size_t assemblyEmitterCount = 0u;
@@ -4946,21 +10973,36 @@ namespace
 				CEffectCatalog::Find_Assembly(effectId);
 			const std::shared_ptr<const EFFECT_DOCUMENT_DESC> document =
 				CEffectCatalog::Find(effectId);
-			hierarchyComplete = hierarchyComplete && nullptr != assembly &&
-				nullptr != document && !assembly->ComponentCues.empty();
+			const bool_t bDirectAuthored = effectId == DirectAuthoredArtistFId;
+			hierarchyComplete = hierarchyComplete && nullptr != document &&
+				(bDirectAuthored ?
+					nullptr == assembly && document->iLoadedFormatVersion == 13u :
+					nullptr != assembly && !assembly->ComponentCues.empty());
 			const auto expectedBuild = buildContract.Effects.find(effectId);
-			hierarchyComplete = hierarchyComplete &&
-				expectedBuild != buildContract.Effects.end() &&
-				nullptr != assembly && expectedBuild != buildContract.Effects.end() &&
-				assembly->ComponentCues.size() ==
-					expectedBuild->second.iComponentCount;
+			if (!bDirectAuthored)
+			{
+				hierarchyComplete = hierarchyComplete &&
+					expectedBuild != buildContract.Effects.end() &&
+					nullptr != assembly &&
+					assembly->ComponentCues.size() ==
+						expectedBuild->second.iComponentCount;
+			}
 			size_t effectEmitterCount = 0u;
 			if (nullptr != document)
 			{
 				CEffectPlayback playback;
 				std::string playbackStatus;
-				const bool_t staged =
-					playback.Stage_Document(*document, playbackStatus);
+				const std::shared_ptr<const
+					EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection =
+						CEffectCatalog::Find_VisualProjection(effectId);
+				std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+					prepared;
+				const bool_t staged = nullptr == projection ?
+					playback.Stage_Document(*document, playbackStatus) :
+					(CEffectPlayback::Prepare_DocumentResources(
+						projection->Get_Document(), prepared, playbackStatus) &&
+					 playback.Stage_PrevalidatedVisualProgramDocument(
+						projection, prepared, playbackStatus));
 				playbackStageComplete = playbackStageComplete && staged;
 				if (staged)
 					++stagedEffectCount;
@@ -4968,6 +11010,8 @@ namespace
 					std::cout << "[DETAIL] Runtime playback stage " << effectId
 						<< ": " << playbackStatus << '\n';
 			}
+			if (bDirectAuthored)
+				continue;
 			if (nullptr == assembly)
 				continue;
 			for (const EFFECT_COMPONENT_CUE_DESC& cue : assembly->ComponentCues)
@@ -4993,7 +11037,7 @@ namespace
 		const std::set<std::string> catalogComponentIdSet(
 			catalogComponentIds.begin(), catalogComponentIds.end());
 		if (!buildContractLoaded ||
-			effectIds.size() != buildContract.iEffectCount ||
+			effectIds.size() != buildContract.iEffectCount + 1u ||
 			catalogComponentIds.size() != buildContract.iComponentCount ||
 			assemblyEmitterCount != buildContract.iEmitterCount)
 		{
@@ -5010,8 +11054,8 @@ namespace
 			assemblyEmitterCount == buildContract.iEmitterCount,
 			"Four-Class Effect Runtime Matches Generated Assembly Component Emitter Contract");
 		runner.Require(playbackStageComplete &&
-			stagedEffectCount == buildContract.iEffectCount,
-			"Effect Runtime Stages Every Four-Class Product Document");
+			stagedEffectCount == buildContract.iEffectCount + 1u,
+			"Effect Runtime Stages Every Four-Class Product Document And The Approved Artist F Direct V13 Document");
 		bool_t componentStageComplete = true;
 		size_t stagedComponentCount = 0u;
 		for (const std::string& componentId : catalogComponentIds)
@@ -5041,6 +11085,48 @@ namespace
 			the authored rollout happens to call that skill. */
 			const std::string committedId = effectIds.empty() ?
 				std::string{} : effectIds.front();
+			const std::string committedVisualId = visualProgramIds.empty() ?
+				std::string{} : visualProgramIds.front();
+			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM>
+				committedVisualProgram = committedVisualId.empty() ? nullptr :
+					CEffectCatalog::Find_VisualProgram(committedVisualId);
+			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+				committedVisualProjection = committedVisualId.empty() ? nullptr :
+					CEffectCatalog::Find_VisualProjection(committedVisualId);
+			const std::string ValidVisualProgramText =
+				Read_Text(stagedVisualPrograms);
+			std::filesystem::remove(stagedVisualPrograms, error);
+			const bool_t bMissingVisualRejected =
+				!CEffectCatalog::Load(status) &&
+				revision == CEffectCatalog::Get_RuntimeRevision() &&
+				CEffectCatalog::Find_VisualProgram(committedVisualId).get() ==
+					committedVisualProgram.get() &&
+				CEffectCatalog::Find_VisualProjection(committedVisualId).get() ==
+					committedVisualProjection.get();
+			{
+				std::ofstream invalidVisual(stagedVisualPrograms,
+					std::ios::binary | std::ios::trunc);
+				invalidVisual << "{";
+			}
+			const bool_t bInvalidVisualRejected =
+				!CEffectCatalog::Load(status) &&
+				revision == CEffectCatalog::Get_RuntimeRevision() &&
+				CEffectCatalog::Find_VisualProgram(committedVisualId).get() ==
+					committedVisualProgram.get() &&
+				CEffectCatalog::Find_VisualProjection(committedVisualId).get() ==
+					committedVisualProjection.get();
+			bool_t bVisualRestored = false;
+			{
+				std::ofstream restoreVisual(stagedVisualPrograms,
+					std::ios::binary | std::ios::trunc);
+				restoreVisual.write(ValidVisualProgramText.data(),
+					static_cast<std::streamsize>(ValidVisualProgramText.size()));
+				bVisualRestored = restoreVisual.good();
+			}
+			runner.Require(!committedVisualId.empty() &&
+				!ValidVisualProgramText.empty() && bMissingVisualRejected &&
+				bInvalidVisualRejected && bVisualRestored,
+				"Effect Runtime Missing Or Invalid Required Visual Sidecar Preserves Prior Atomic Snapshot");
 			std::ifstream input(stagedCatalog, std::ios::binary);
 			std::string invalid{
 				std::istreambuf_iterator<char>(input),
@@ -5067,6 +11153,8 @@ namespace
 		CEffectCatalog::Clear();
 		error.clear();
 		std::filesystem::remove(stagedCatalog, error);
+		error.clear();
+		std::filesystem::remove(stagedVisualPrograms, error);
 		resourceRootEnvironment.Restore();
 	}
 
@@ -5324,28 +11412,32 @@ namespace
 			"\"formatVersion\":1,\"encoding\":\"UTF8_JSON_EXACT\","
 			"\"effectAssetId\":\"effect.artist.skill.31470\","
 			"\"candidateBuilderCommitId\":"
-			"\"31ecc2edc328347ac6e3bf6fe444c270d463ef40\","
+			"\"ddef21a5314eb8c3db891d36f702cfeda3149f20\","
 			"\"candidateBuilderTreeId\":"
-			"\"6d8853d989bd71a988eaebf254398ae08599ad0d\","
+			"\"36a36b889dae7be092e0d2f6f3c3aee2c28bc462\","
 			"\"candidateBlobId\":"
-			"\"a9655729578d847d323a32c904c70d10baee9102\","
+			"\"4b090268b95ea590587276c8048c3b235ee33571\","
 			"\"resourceBindingHash\":"
 			"\"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c\","
 			"\"inputArtifactCount\":13,\"inputArtifactsOrderedSha256\":"
-			"\"da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6\","
+			"\"bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f\","
 			"\"programId\":\"" + Frozen.strProgramId +
 			"\",\"programVersion\":1,\"programSha256\":\"" +
 			Frozen.strProgramSha256 + "\",\"candidateRawSha256\":\"" +
 			Frozen.strCandidateRawSha256 +
-			"\",\"candidateByteCount\":15117436,\"candidateUtf8Json\":" +
+			"\",\"candidateByteCount\":" + std::to_string(Candidate.size()) +
+			",\"candidateUtf8Json\":" +
 			Encode_JsonString(Candidate) + "}";
 	}
 
 	std::string Build_Artist31470ReconstructedCatalog(
-		const std::string& Candidate,
+	const std::string& Candidate,
 		const std::string& CandidateBuilderToolSha =
-			"5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e")
+			"5421a989573aed54e24e98f3d5dc55874475332e3446bf966541800ab6db4c65")
 	{
+		using namespace Client;
+		const EFFECT_RECONSTRUCTED_RUNTIME_PROGRAM_IDENTITY Frozen =
+			CEffectRuntimeAuthorityCodec::Get_FrozenArtist31470FProgramIdentity();
 		const std::string Link =
 			Build_Artist31470ReconstructedProgramLink(Candidate);
 		const std::string LinkSha = Compute_CanonicalJsonSha(Link);
@@ -5374,20 +11466,19 @@ namespace
 			"\"compilerRevision\":\"artist31470.reconstructed-runtime-program-link-v1\","
 			"\"sourceExact\":false,\"runtimeExecutionAdmission\":false,"
 			"\"productAdmission\":false,"
-			"\"candidateBuilderCommitId\":\"31ecc2edc328347ac6e3bf6fe444c270d463ef40\","
-			"\"candidateBuilderTreeId\":\"6d8853d989bd71a988eaebf254398ae08599ad0d\","
-			"\"candidateBlobId\":\"a9655729578d847d323a32c904c70d10baee9102\","
+			"\"candidateBuilderCommitId\":\"ddef21a5314eb8c3db891d36f702cfeda3149f20\","
+			"\"candidateBuilderTreeId\":\"36a36b889dae7be092e0d2f6f3c3aee2c28bc462\","
+			"\"candidateBlobId\":\"4b090268b95ea590587276c8048c3b235ee33571\","
 			"\"resourceBindingHash\":"
 			"\"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c\","
 			"\"inputArtifactCount\":13,"
 			"\"inputArtifactsOrderedSha256\":"
-			"\"da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6\","
+			"\"bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f\","
 			"\"programId\":\"effect.artist.skill.31470.reconstructed-approved-v1\","
 			"\"programVersion\":1,"
-			"\"programSha256\":\"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8\","
-			"\"candidateRawSha256\":"
-			"\"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6\","
-			"\"candidateByteCount\":15117436,"
+			"\"programSha256\":\"" + Frozen.strProgramSha256 + "\","
+			"\"candidateRawSha256\":\"" + Frozen.strCandidateRawSha256 + "\","
+			"\"candidateByteCount\":" + std::to_string(Candidate.size()) + ","
 			"\"reconstructedRuntimeProgramSha256\":\"" + LinkSha + "\","
 			"\"toolDependencies\":" + ToolDependencies + ","
 			"\"receiptSha256Domain\":\"CANONICAL_JSON_EXCLUDING_RECEIPT_SHA256\"}";
@@ -5595,7 +11686,7 @@ namespace
 
 	constexpr std::string_view
 		ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 =
-		"3fb61b064a8da67d37871f98dbac84181f36acc44b4e46dc5131f7a924e96dc5";
+		"2697c3dc7e929f9e25e4d667dc0d7287dba6e4969b68a8237ce5ec8c6125123e";
 
 	void Test_Artist31470TypedExecutionPlan(
 		TEST_RUNNER& runner,
@@ -5685,7 +11776,7 @@ namespace
 				Seeded.strCapabilityImplementationSha256 ==
 					"ec8c504d703204aa783e8e7271b2b723fbd0e192e28d851ec017946758c79c01" &&
 				Seeded.strModuleRowSha256 ==
-					"2d988e0da3cc6c9db7ab2eba7a41545a5eb3aed046f924372d347cb47e270bd4" &&
+					"1eec53947e626922ad5a7f4d8377fe8167bbdbd2fa5618684ddf198160a43bb5" &&
 				Seeded.strPropertyRowSha256 ==
 					"bd9b6e05cf6f055016dcaf4bdc16728f33ffda94d245897383e7b0802b46a21d" &&
 				Seeded.strDistributionRowSha256 ==
@@ -5702,9 +11793,9 @@ namespace
 			Plan->Get_Identity().iCatalogRevision ==
 				CatalogIdentity.iCatalogRevision &&
 			Plan->Get_Identity().strProgramSha256 ==
-				"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" &&
+				"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802" &&
 			Plan->Get_Identity().strCandidateRawSha256 ==
-				"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" &&
+				"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6" &&
 			Plan->Get_Identity().strSemanticProjectionSha256 ==
 				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
 			Summary->iScheduleCount == 7u && Summary->iEmitterCount == 35u &&
@@ -6034,7 +12125,7 @@ namespace
 			ProjectionMutationPlan->Get_Identity().strSemanticProjectionSha256 ==
 				ARTIST_31470_FROZEN_EXECUTION_PLAN_SEMANTIC_PROJECTION_SHA256 &&
 			ProjectionMutationStatus ==
-				"Reconstructed execution frozen semantic projection authority is invalid.",
+				"Reconstructed execution frozen semantic projection authority is invalid: expected=2697c3dc7e929f9e25e4d667dc0d7287dba6e4969b68a8237ce5ec8c6125123e actual=65d1e8ad9946eb0737c909ce785565122e7ffb919e039e7a9a20586d298221c1.",
 			"Artist 31470 Typed Plan Rejects Coordinated Canonical Projection Mutation And Preserves Old Plan");
 
 		auto SwappedLifetimeAuthority =
@@ -6316,10 +12407,10 @@ namespace
 		const DATA_JSON_VALUE* PublishedEffects = PublishedCatalogParsed ?
 			PublishedCatalogRoot.Find("effects") : nullptr;
 		const bool_t PublishedCatalogStructure =
-			PublishedCatalogText.size() == 27'144'447u &&
+			PublishedCatalogText.size() == 28'634'124u &&
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
 				PublishedCatalogText) ==
-				"e8412973025b01510e3a81ac7c119ac58994ab126aa8cf624afa8c126d342f8d" &&
+				"c7bc2f743ee9e4774725e6db41b5626461a579828dbb5a7e534fedc4917a2633" &&
 			nullptr != PublishedSchema && PublishedSchema->Is_String() &&
 			PublishedSchema->Get_String() == "lostark.effect-runtime-catalog" &&
 			nullptr != PublishedVersion && PublishedVersion->Is_Number() &&
@@ -6328,7 +12419,7 @@ namespace
 			nullptr != PublishedComponents && PublishedComponents->Is_Array() &&
 			PublishedComponents->Get_Array().size() == 555u &&
 			nullptr != PublishedEffects && PublishedEffects->Is_Array() &&
-			PublishedEffects->Get_Array().size() == 102u;
+			PublishedEffects->Get_Array().size() == 103u;
 		wchar_t ModuleBuffer[32768]{};
 		const DWORD ModuleLength = GetModuleFileNameW(
 			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
@@ -6398,7 +12489,7 @@ namespace
 			CEffectCatalog::Get_EffectAssetIds().size() +
 				CEffectCatalog::Get_RuntimeAuthorityAssetIds().size() +
 				CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds().size() ==
-				102u &&
+				103u &&
 			CEffectCatalog::Get_ReconstructedRuntimeProgramAssetIds() ==
 				std::vector<std::string>{ EffectId } &&
 			nullptr != EntryA && nullptr != ProgramA &&
@@ -6409,30 +12500,30 @@ namespace
 			EntryIdentityA->iArtifactRevision == 1u &&
 			EntryIdentityA->iProgramVersion == 1u &&
 			EntryIdentityA->iInputArtifactCount == 13u &&
-			EntryIdentityA->iCandidateByteCount == 15'117'436u &&
+			EntryIdentityA->iCandidateByteCount == 15'121'873u &&
 			EntryIdentityA->strEffectAssetId == EffectId &&
 			EntryIdentityA->strCompilerRevision ==
 				"artist31470.reconstructed-runtime-program-link-v1" &&
 			EntryIdentityA->strCandidateBuilderCommitId ==
-				"31ecc2edc328347ac6e3bf6fe444c270d463ef40" &&
+				"ddef21a5314eb8c3db891d36f702cfeda3149f20" &&
 			EntryIdentityA->strCandidateBuilderTreeId ==
-				"6d8853d989bd71a988eaebf254398ae08599ad0d" &&
+				"36a36b889dae7be092e0d2f6f3c3aee2c28bc462" &&
 			EntryIdentityA->strCandidateBlobId ==
-				"a9655729578d847d323a32c904c70d10baee9102" &&
+				"4b090268b95ea590587276c8048c3b235ee33571" &&
 			EntryIdentityA->strProgramId ==
 				"effect.artist.skill.31470.reconstructed-approved-v1" &&
 			EntryIdentityA->strProgramSha256 ==
-				"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8" &&
+				"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802" &&
 			EntryIdentityA->strCandidateRawSha256 ==
-				"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6" &&
+				"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6" &&
 			EntryIdentityA->strResourceBindingHash ==
 				"df15009e41b6c1fe9161af873b96dfc428771944786c14f9435f7c0ffa4d869c" &&
 			EntryIdentityA->strInputArtifactsOrderedSha256 ==
-				"da83b7d05b8d97357fa379b3a5c48bdb4296883647e455babc55adaff09b8ef6" &&
+				"bcf87806b3635019442f6787c2ca6aed15d7012f2dd4c04d33b448f80814415f" &&
 			EntryIdentityA->strReconstructedRuntimeProgramSha256 ==
-				"a60613cdbef3db5ee2bf660f947bf809309e551193c5b8e53e6908729916c9c2" &&
+				"282f450d95ae283acf91047fe6b293eb93fddaea9f4bde4cff9671e7aa27c523" &&
 			EntryIdentityA->strPublishReceiptSha256 ==
-				"5812cbc6794705e2644853db596e3c55ebace8faf4079a4a0b3f374b1c203836" &&
+				"413c34440ee82b9511d1de4bbd31af282dce2e65204fd5cda0d75d8e4e58650b" &&
 			ProgramA->Emitters.size() == 35u &&
 			ProgramA->ActionSchedules.size() == 7u &&
 			ProgramA->Modules.size() == 399u &&
@@ -6463,9 +12554,9 @@ namespace
 		std::string Candidate;
 		const bool_t ExactFixture = Read_FrozenReconstructedProgramFixture(
 			ProgramPath, Candidate, Status);
-		runner.Require(ExactFixture && Candidate.size() == 15'117'436u &&
+		runner.Require(ExactFixture && Candidate.size() == 15'121'873u &&
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Candidate) ==
-				"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6",
+				"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6",
 			"Artist 31470 Synthetic Attack Fixture Uses Exact Frozen LF Candidate Bytes");
 		if (!ExactFixture)
 		{
@@ -6924,7 +13015,7 @@ namespace
 			"JSON parse failed");
 		std::string IdentityMutation = CatalogText;
 		const std::string RawIdentity =
-			"\"candidateRawSha256\":\"bdeccba5b204ffae0bc88469b90158ff3479da0a113c437c2842f1f91f5f04f6\"";
+			"\"candidateRawSha256\":\"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6\"";
 		const size_t IdentityOffset = IdentityMutation.rfind(RawIdentity);
 		if (IdentityOffset != std::string::npos)
 			IdentityMutation[IdentityOffset + RawIdentity.size() - 2u] = '0';
@@ -6952,7 +13043,7 @@ namespace
 
 		std::string ProgramShaMutation = CatalogText;
 		const std::string ProgramShaField =
-			"\"programSha256\":\"8e618a53242fb2fee9b13528d9696182038ded977454d98ff49ff500570ebeb8\"";
+			"\"programSha256\":\"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802\"";
 		const size_t ProgramShaOffset = ProgramShaMutation.rfind(ProgramShaField);
 		if (ProgramShaOffset != std::string::npos)
 			ProgramShaMutation[ProgramShaOffset + ProgramShaField.size() - 2u] = '0';
@@ -7068,7 +13159,7 @@ namespace
 			"outer identity or admission");
 		std::string UnsealedToolMutation = CatalogText;
 		const std::string BuilderToolSha =
-			"5c207e04952971adb553249540e336ba3ad065719e438a9892c6850d2c989c4e";
+			"5421a989573aed54e24e98f3d5dc55874475332e3446bf966541800ab6db4c65";
 		const size_t BuilderToolShaOffset =
 			UnsealedToolMutation.find(BuilderToolSha);
 		if (BuilderToolShaOffset != std::string::npos)
@@ -7472,7 +13563,7 @@ namespace
 			"16b0a093820dd7eee442dfd646c242fa11f5040e94d7f3b970fc47e211f4d731");
 		Mesh.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
 			"render-state-descriptor-12",
-			"509ae63d6e8d5b2453a13ec08a4a0df2996a406bb726c43f9a4357bfbc189097");
+			"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a");
 		Mesh.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
 			"material-recipe-4b4c59364690a66d::render:twosided",
 			"f46fa0717f2eaa0df3e7387763191fe2f59cf1dd876f4a7fc01ff91aa7c55d87");
@@ -7638,7 +13729,7 @@ namespace
 			"547922292a185d873c7622ef48e539bfd3d7a90b764a21555a86f6e68dd1bd0c");
 		Sprite.Material.BlendState.SidecarDecision = Artist31470_SelectedRow(
 			"render-state-descriptor-02",
-			"70641f3d63987b89f4352970528f8a2ed87ca985bf4164a07afb51166a084651");
+			"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa");
 		Sprite.Material.RasterizerState.ProgramBinding = Artist31470_SelectedRow(
 			"material-recipe-2073fb45e643d1d5::render:twosided",
 			"73d582c643b6cfbe899bc649cb391ac6f2aaa6e4ff4862401d10e9368d854d01");
@@ -8121,6 +14212,1136 @@ namespace
 			"Artist 31470 nonProduct Debug M0 Prepare And Evaluate Ignore Cleared Or Poisoned RendererRuntimeConfig Fallback");
 	}
 
+	bool_t Try_ResolveArtistUnifiedFamily(
+		const Client::EFFECT_RUNTIME_RENDERER_KIND eRenderer,
+		Client::EFFECT_GPU_RENDER_FAMILY& eOutFamily)
+	{
+		using namespace Client;
+		switch (eRenderer)
+		{
+		case EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE:
+			eOutFamily = EFFECT_GPU_RENDER_FAMILY::MESH;
+			return true;
+		case EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE:
+			eOutFamily = EFFECT_GPU_RENDER_FAMILY::SPRITE;
+			return true;
+		case EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE:
+			eOutFamily = EFFECT_GPU_RENDER_FAMILY::DECAL;
+			return true;
+		case EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON:
+			eOutFamily = EFFECT_GPU_RENDER_FAMILY::RIBBON;
+			return true;
+		default:
+			eOutFamily = EFFECT_GPU_RENDER_FAMILY::END;
+			return false;
+		}
+	}
+
+	const char* ArtistUnifiedFamilyLabel(
+		const Client::EFFECT_GPU_RENDER_FAMILY eFamily)
+	{
+		using namespace Client;
+		switch (eFamily)
+		{
+		case EFFECT_GPU_RENDER_FAMILY::MESH: return "MeshParticle";
+		case EFFECT_GPU_RENDER_FAMILY::SPRITE: return "SpriteParticle";
+		case EFFECT_GPU_RENDER_FAMILY::DECAL: return "LocalDecal";
+		case EFFECT_GPU_RENDER_FAMILY::RIBBON: return "CascadeRibbon";
+		default: return "Invalid";
+		}
+	}
+
+	std::string ArtistUnifiedPrimaryResourceLeaf(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		static constexpr std::array<std::string_view, 6u> SlotPriority{
+			"meshModel", "base", "emissive", "mask", "noise", "dissolve" };
+		for (const std::string_view Slot : SlotPriority)
+		{
+			const auto Found = std::find_if(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[Slot](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == Slot &&
+						!Binding.strAssetId.empty();
+				});
+			if (Found != Element.ResourceBindings.end())
+				return std::filesystem::path(
+					Found->strAssetId).filename().string();
+		}
+		const auto Found = std::find_if(
+			Element.Material.SourceMaterial.Textures.begin(),
+			Element.Material.SourceMaterial.Textures.end(),
+			[](const Client::EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{ return !Texture.strAssetId.empty(); });
+		return Found == Element.Material.SourceMaterial.Textures.end() ?
+			std::string("unbound") :
+			std::filesystem::path(Found->strAssetId).filename().string();
+	}
+
+	std::string ArtistUnifiedStableElementId(
+		const Client::EFFECT_GPU_RENDER_FAMILY eFamily,
+		const std::string_view SourceIdentity)
+	{
+		using namespace Client;
+		const std::string Digest =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				std::string(ArtistUnifiedFamilyLabel(eFamily)) + "\n" +
+				std::string(SourceIdentity));
+		const char* Prefix = nullptr;
+		switch (eFamily)
+		{
+		case EFFECT_GPU_RENDER_FAMILY::MESH: Prefix = "mesh"; break;
+		case EFFECT_GPU_RENDER_FAMILY::SPRITE: Prefix = "sprite"; break;
+		case EFFECT_GPU_RENDER_FAMILY::DECAL: Prefix = "decal"; break;
+		case EFFECT_GPU_RENDER_FAMILY::RIBBON: Prefix = "ribbon"; break;
+		default: return {};
+		}
+		return std::string(Prefix) + "." + Digest.substr(0u, 16u);
+	}
+
+	bool_t Build_ArtistUnifiedFollowParentLocal(
+		Engine::CModel& Model,
+		const Client::EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST& Request,
+		const f32_t fAnimationDurationSeconds,
+		const f32_t fEffectSampleTimeSeconds,
+		float4x4_t& OutParentLocal,
+		std::string& strOutError)
+	{
+		OutParentLocal = {};
+		if (!Request.bFollow || Request.strRuntimeAnchorSlotId.empty() ||
+			Request.strRuntimeBoneName.empty() ||
+			!std::isfinite(fAnimationDurationSeconds) ||
+			fAnimationDurationSeconds <= 0.f ||
+			!std::isfinite(fEffectSampleTimeSeconds) ||
+			fEffectSampleTimeSeconds < 0.f)
+		{
+			strOutError = "Artist F follow request or sample time is invalid.";
+			return false;
+		}
+		const int32_t iBone = Model.Find_BoneIndex(
+			Request.strRuntimeBoneName.c_str());
+		const uint32_t iAnimation = Model.Get_CurrentAnimIndex();
+		f32_t fTrackPosition = 0.f;
+		f32_t fDurationTicks = 0.f;
+		const f32_t fTickRate = Model.Get_AnimationTickPerSecond(iAnimation);
+		if (iBone < 0 || !std::isfinite(fTickRate) || fTickRate <= 0.f ||
+			!Model.Get_AnimationProgress(
+				iAnimation, fTrackPosition, fDurationTicks) ||
+			!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f)
+		{
+			strOutError = "Artist F follow animation binding is unavailable.";
+			return false;
+		}
+
+		const f32_t fSampleSeconds = std::clamp(
+			fEffectSampleTimeSeconds, 0.f,
+			(std::min)(fAnimationDurationSeconds, fDurationTicks / fTickRate));
+		const std::array<uint32_t, 1u> BoneIndices{
+			static_cast<uint32_t>(iBone) };
+		std::array<float4x4_t, 1u> SampledBones{};
+		if (!Model.Sample_CurrentAnimationBoneCombinedMatrices(
+				iAnimation, fSampleSeconds * fTickRate,
+				BoneIndices, SampledBones))
+		{
+			strOutError = "Artist F follow animation pose sampling failed.";
+			return false;
+		}
+
+		const auto AxisLength = [](const f32_t X, const f32_t Y, const f32_t Z)
+		{
+			return std::sqrt(X * X + Y * Y + Z * Z);
+		};
+		const float4x4_t& RawBone = SampledBones.front();
+		constexpr f32_t ExpectedCombinedScale = 0.01f;
+		constexpr f32_t CombinedScaleTolerance = 0.00005f;
+		const f32_t ScaleX = AxisLength(RawBone._11, RawBone._12, RawBone._13);
+		const f32_t ScaleY = AxisLength(RawBone._21, RawBone._22, RawBone._23);
+		const f32_t ScaleZ = AxisLength(RawBone._31, RawBone._32, RawBone._33);
+		if (!std::isfinite(ScaleX) || !std::isfinite(ScaleY) ||
+			!std::isfinite(ScaleZ) ||
+			std::abs(ScaleX - ExpectedCombinedScale) >
+				CombinedScaleTolerance ||
+			std::abs(ScaleY - ExpectedCombinedScale) >
+				CombinedScaleTolerance ||
+			std::abs(ScaleZ - ExpectedCombinedScale) >
+				CombinedScaleTolerance)
+		{
+			strOutError =
+				"Artist F follow bone changed its admitted 0.01 combined scale.";
+			return false;
+		}
+
+		float4x4_t BoneWithoutImportScale = RawBone;
+		constexpr f32_t CombinedScaleReciprocal =
+			1.f / ExpectedCombinedScale;
+		BoneWithoutImportScale._11 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._12 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._13 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._21 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._22 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._23 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._31 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._32 *= CombinedScaleReciprocal;
+		BoneWithoutImportScale._33 *= CombinedScaleReciprocal;
+
+		const auto& Local = Request.SocketLocalTransform;
+		const matrix_t SocketLocal = XMMatrixScaling(
+			static_cast<f32_t>(Local.vScale[0]),
+			static_cast<f32_t>(Local.vScale[1]),
+			static_cast<f32_t>(Local.vScale[2])) *
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(
+					static_cast<f32_t>(Local.vRotationDegrees[0])),
+				XMConvertToRadians(
+					static_cast<f32_t>(Local.vRotationDegrees[1])),
+				XMConvertToRadians(
+					static_cast<f32_t>(Local.vRotationDegrees[2]))) *
+			XMMatrixTranslation(
+				static_cast<f32_t>(Local.vPosition[0]),
+				static_cast<f32_t>(Local.vPosition[1]),
+				static_cast<f32_t>(Local.vPosition[2]));
+		XMStoreFloat4x4(&OutParentLocal,
+			SocketLocal * XMLoadFloat4x4(&BoneWithoutImportScale));
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Try_NarrowRuntimeFloat3(
+		const std::array<double, 3u>& Source,
+		float3_t& OutValue)
+	{
+		constexpr double MAX_FLOAT =
+			static_cast<double>((std::numeric_limits<f32_t>::max)());
+		for (const double Value : Source)
+		{
+			if (!std::isfinite(Value) || std::abs(Value) > MAX_FLOAT)
+				return false;
+		}
+		OutValue = {
+			static_cast<f32_t>(Source[0]),
+			static_cast<f32_t>(Source[1]),
+			static_cast<f32_t>(Source[2])
+		};
+		return true;
+	}
+
+	bool_t Materialize_ArtistFUnifiedDocument(
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& Preparation,
+		const Client::EFFECT_DOCUMENT_DESC& CoreRendererDocument,
+		const std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_CORPUS>& Corpus,
+		const std::filesystem::path& ResourcesRoot,
+		std::filesystem::path& OutPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr const char* SourceEffectId = "effect.artist.skill.31470";
+		constexpr const char* UnifiedEffectId =
+			"effect.artist.skill.31470.unified";
+		OutPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31470.unified.effect.json");
+		if (nullptr == Preparation || nullptr == Preparation->Get_Program() ||
+			nullptr == Preparation->Get_CatalogEntry() || nullptr == Corpus ||
+			CoreRendererDocument.strEffectAssetId != SourceEffectId ||
+			OutPath.empty() || ResourcesRoot.empty())
+		{
+			strOutError = "Artist F Track C materialization inputs are invalid.";
+			return false;
+		}
+		std::error_code FileError;
+		if (!std::filesystem::is_directory(ResourcesRoot, FileError) || FileError ||
+			std::filesystem::exists(OutPath, FileError) || FileError)
+		{
+			strOutError = FileError ?
+				"Artist F Unified destination or resource state could not be checked." :
+				"Artist F Unified destination already exists; refusing overwrite.";
+			return false;
+		}
+
+		const std::string CoreCanonicalBefore =
+			CEffectDocumentCodec::Serialize(CoreRendererDocument);
+		EFFECT_DOCUMENT_DESC TunedSource = CoreRendererDocument;
+		const auto Tuning =
+			Preparation->Get_CatalogEntry()->Get_OccurrenceTuning();
+		if (nullptr != Tuning &&
+			!CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+				TunedSource, *Preparation->Get_Program(), *Tuning, strOutError))
+		{
+			return false;
+		}
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			Projection;
+		if (!CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*Corpus, TunedSource, Projection, strOutError) ||
+			nullptr == Projection || !Projection->Is_Valid() ||
+			Projection->Get_EffectAssetId() != SourceEffectId ||
+			Projection->Get_ProjectionKind() !=
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+		{
+			strOutError = strOutError.empty() ?
+				"Artist F tuned source projection is invalid." : strOutError;
+			return false;
+		}
+
+		struct PENDING_ELEMENT final
+		{
+			EFFECT_ELEMENT_DESC Lowered;
+			EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST Bake;
+			std::string strSourceElementId;
+			std::optional<EFFECT_RUNTIME_PROGRAM_ANCHOR_REQUEST> FollowRequest;
+		};
+		const EFFECT_DOCUMENT_DESC& Source = Projection->Get_Document();
+		const auto Program = Preparation->Get_Program();
+		std::vector<PENDING_ELEMENT> Pending;
+		Pending.reserve(33u);
+		std::array<size_t, 4u> FamilyOrdinals{};
+		std::set<std::string, std::less<>> TargetIds;
+		size_t iFollowCount = 0u;
+		size_t iStrictCount = 0u;
+		std::string strFirstSourceElementId;
+		for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter : Program->Emitters)
+		{
+			EFFECT_GPU_RENDER_FAMILY Family = EFFECT_GPU_RENDER_FAMILY::END;
+			if (!Emitter.bVisible ||
+				!Try_ResolveArtistUnifiedFamily(Emitter.eRenderer, Family))
+			{
+				continue;
+			}
+			const auto SourceElement = std::find_if(
+				Source.Elements.begin(), Source.Elements.end(),
+				[&Emitter](const EFFECT_ELEMENT_DESC& Element)
+				{ return Element.strElementId == Emitter.strSourceElementId; });
+			if (SourceElement == Source.Elements.end() || !SourceElement->bVisible)
+			{
+				strOutError = "Artist F Core33 source Element is missing: " +
+					Emitter.strSourceElementId;
+				return false;
+			}
+
+			PENDING_ELEMENT Staged;
+			Staged.strSourceElementId = Emitter.strSourceElementId;
+			if (!Try_NarrowRuntimeFloat3(
+					Emitter.CueLocalTransform.vPosition,
+					Staged.Bake.CueLocalTransform.vPosition) ||
+				!Try_NarrowRuntimeFloat3(
+					Emitter.CueLocalTransform.vRotationDegrees,
+					Staged.Bake.CueLocalTransform.vRotationDegrees) ||
+				!Try_NarrowRuntimeFloat3(
+					Emitter.CueLocalTransform.vScale,
+					Staged.Bake.CueLocalTransform.vScale) ||
+				!Try_NarrowRuntimeFloat3(
+					Emitter.DetailTransform.vPosition,
+					Staged.Bake.EmitterLocalTransform.vPosition) ||
+				!Try_NarrowRuntimeFloat3(
+					Emitter.DetailTransform.vRotationDegrees,
+					Staged.Bake.EmitterLocalTransform.vRotationDegrees) ||
+				!Try_NarrowRuntimeFloat3(
+					Emitter.DetailTransform.vScale,
+					Staged.Bake.EmitterLocalTransform.vScale) ||
+				(Emitter.RendererRuntimeConfig.Mesh.has_value() &&
+				 !Try_NarrowRuntimeFloat3(
+					 Emitter.RendererRuntimeConfig.Mesh->
+						 vSourceTypeDataRotationDegrees,
+					 Staged.Bake.vSourceTypeDataRotationDegrees)))
+			{
+				strOutError =
+					"Artist F runtime emitter transform is not representable: " +
+					Emitter.strSourceElementId;
+				return false;
+			}
+			Staged.Bake.fScheduleStartDelaySeconds =
+				SourceElement->Detail.Timing.fStartDelaySeconds;
+			Staged.Bake.fScheduleLifeTimeSeconds =
+				SourceElement->Detail.Timing.fLifeTimeSeconds;
+			Staged.Bake.fEmitterDelaySeconds =
+				SourceElement->SourceRecipe.fEmitterDelaySeconds;
+			Staged.Bake.fEmitterDurationSeconds =
+				SourceElement->SourceRecipe.fEmitterDurationSeconds;
+			Staged.Bake.iEmitterLoopCount =
+				SourceElement->SourceRecipe.iEmitterLoopCount;
+			Staged.Bake.bAttachmentEnabled =
+				SourceElement->ActionCueAttachment.bEnabled;
+			Staged.Bake.bFollowAttachment =
+				SourceElement->ActionCueAttachment.bFollow;
+			Staged.Bake.fSnapshotRootSourceBasisYawDegrees =
+				SourceElement->ActionCueAttachment.
+					fSnapshotRootSourceBasisYawDegrees;
+			Staged.Bake.bTransformInheritanceEnabled =
+				SourceElement->TransformInheritance.bEnabled;
+			if (Staged.Bake.bFollowAttachment)
+			{
+				const auto Anchor = std::find_if(
+					Preparation->Get_AnchorRequests().begin(),
+					Preparation->Get_AnchorRequests().end(),
+					[&Emitter](const EFFECT_RECONSTRUCTED_ANCHOR_BINDING& Binding)
+					{ return Binding.strOwnerEmitterId == Emitter.Row.strId; });
+				if (!Staged.Bake.bAttachmentEnabled ||
+					SourceElement->ActionCueAttachment.
+						strRuntimeAnchorSlotId.empty() ||
+					Anchor == Preparation->Get_AnchorRequests().end() ||
+					!Anchor->Request.bFollow ||
+					Anchor->Request.strRuntimeAnchorSlotId !=
+						SourceElement->ActionCueAttachment.
+							strRuntimeAnchorSlotId ||
+					Anchor->Request.strRuntimeBoneName !=
+						SourceElement->ActionCueAttachment.strRuntimeBoneName)
+				{
+					strOutError =
+						"Artist F follow Element lost its exact typed anchor: " +
+						Emitter.strSourceElementId;
+					return false;
+				}
+				Staged.FollowRequest = Anchor->Request;
+				++iFollowCount;
+			}
+
+			EFFECT_DOCUMENT_DESC OneElement;
+			const std::string OccurrenceId =
+				Emitter.strMaterialOccurrenceId.value_or(std::string{});
+			const EFFECT_VISUAL_PROGRAM_ROW* VisualRow = OccurrenceId.empty() ?
+				nullptr : Projection->Find_RowByOccurrenceId(OccurrenceId);
+			const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* Supplemental =
+				OccurrenceId.empty() ? nullptr :
+				Projection->Find_SupplementalElementByOccurrenceId(OccurrenceId);
+			const bool_t bRequiresStrict =
+				OccurrenceId == "source-active-003" ||
+				OccurrenceId == "source-active-020" ||
+				OccurrenceId == "source-active-021";
+			if ((bRequiresStrict && nullptr == VisualRow && nullptr == Supplemental) ||
+				(nullptr != VisualRow && nullptr != Supplemental))
+			{
+				strOutError =
+					"Artist F strict preset identity is missing or ambiguous: " +
+					OccurrenceId;
+				return false;
+			}
+			if (nullptr == VisualRow && nullptr == Supplemental)
+			{
+				if (!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+						Source, Emitter.strSourceElementId, UnifiedEffectId,
+						OneElement, strOutError))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				if (nullptr != VisualRow && !VisualRow->TargetIdentity.has_value())
+				{
+					strOutError =
+						"Artist F admitted source row has no target identity.";
+					return false;
+				}
+				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST Request;
+				Request.strEffectAssetId = SourceEffectId;
+				Request.strOccurrenceId = OccurrenceId;
+				Request.strRowSha256 = nullptr != VisualRow ?
+					VisualRow->strRowSha256 : Supplemental->strRowSha256;
+				Request.strTargetElementId = nullptr != VisualRow ?
+					VisualRow->TargetIdentity->strTargetElementId :
+					Supplemental->TargetIdentity.strTargetElementId;
+				Request.strSourceRecordId = nullptr != VisualRow ?
+					VisualRow->SourceIdentity.strSourceRecordId :
+					Supplemental->strSourceRecordId;
+				if (Request.strTargetElementId != Emitter.strSourceElementId)
+				{
+					strOutError =
+						"Artist F strict preset target changed from its Core Element.";
+					return false;
+				}
+				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE Preset;
+				if (!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+						Projection, Request, Preset, strOutError))
+				{
+					return false;
+				}
+				OneElement.strEffectAssetId = UnifiedEffectId;
+				OneElement.strDisplayName =
+					"Artist F Unified starting Element";
+				OneElement.Elements.push_back(std::move(Preset.Element));
+				++iStrictCount;
+			}
+			if (OneElement.Elements.size() != 1u)
+			{
+				strOutError = "Artist F lowering did not return exactly one Element.";
+				return false;
+			}
+
+			Staged.Lowered = std::move(OneElement.Elements.front());
+			const std::string StableId =
+				ArtistUnifiedStableElementId(Family, Emitter.Row.strId);
+			if (StableId.empty() || !TargetIds.insert(StableId).second)
+			{
+				strOutError = "Artist F Unified stable Element ID collision.";
+				return false;
+			}
+			const size_t iFamily = Family == EFFECT_GPU_RENDER_FAMILY::MESH ? 0u :
+				Family == EFFECT_GPU_RENDER_FAMILY::SPRITE ? 1u :
+				Family == EFFECT_GPU_RENDER_FAMILY::DECAL ? 2u : 3u;
+			const size_t iOrdinal = ++FamilyOrdinals[iFamily];
+			Staged.Lowered.strElementId = StableId;
+			Staged.Lowered.strGroupId = std::string("family.") +
+				(Family == EFFECT_GPU_RENDER_FAMILY::MESH ? "mesh" :
+				 Family == EFFECT_GPU_RENDER_FAMILY::SPRITE ? "sprite" :
+				 Family == EFFECT_GPU_RENDER_FAMILY::DECAL ? "decal" : "ribbon");
+			Staged.Lowered.strDisplayName =
+				std::string(ArtistUnifiedFamilyLabel(Family)) + " " +
+				(iOrdinal < 10u ? "0" : "") + std::to_string(iOrdinal) +
+				" | " + ArtistUnifiedPrimaryResourceLeaf(Staged.Lowered);
+			if (Pending.empty())
+				strFirstSourceElementId = Emitter.strSourceElementId;
+			Pending.push_back(std::move(Staged));
+		}
+		if (Pending.size() != 33u || iFollowCount != 5u || iStrictCount != 3u ||
+			FamilyOrdinals != std::array<size_t, 4u>{ 13u, 16u, 3u, 1u })
+		{
+			strOutError =
+				"Artist F Unified requires Core33 13/16/3/1, strict 3, follow 5.";
+			return false;
+		}
+
+		ComPtr<ID3D11Device> Device;
+		ComPtr<ID3D11DeviceContext> Context;
+		D3D_FEATURE_LEVEL FeatureLevel{};
+		if (FAILED(D3D11CreateDevice(
+			nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u, nullptr, 0u,
+			D3D11_SDK_VERSION, &Device, &FeatureLevel, &Context)) ||
+			nullptr == Device || nullptr == Context)
+		{
+			strOutError = "Artist F Unified could not create a WARP sampling device.";
+			return false;
+		}
+		const std::filesystem::path ModelPath =
+			ResourcesRoot / L"Character" / L"Artist" / L"Artist.wmodel";
+		unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
+			Device, Context, Engine::MODEL::ANIM, ModelPath.string().c_str(),
+			XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+			XMMatrixRotationY(XMConvertToRadians(-90.f)));
+		if (nullptr == Model)
+		{
+			strOutError = "Artist F Unified could not load Artist.wmodel.";
+			return false;
+		}
+		std::vector<std::string> ClipNames;
+		ClipNames.reserve(Model->Get_NumAnimations());
+		for (uint32_t iAnimation = 0u;
+			iAnimation < Model->Get_NumAnimations(); ++iAnimation)
+		{
+			const char_t* pName = Model->Get_AnimationName(iAnimation);
+			if (nullptr != pName)
+				ClipNames.emplace_back(pName);
+		}
+		if (!CPlayerSkillCatalog::Load(strOutError))
+			return false;
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		if (!CAnimationSkillBindingDocument::Load(
+				"Artist", LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+				CPlayerSkillCatalog::Get_Skills(), ClipNames,
+				Bindings, strOutError))
+		{
+			return false;
+		}
+		const auto SkillBinding = std::find_if(
+			Bindings.Bindings.begin(), Bindings.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& Binding)
+			{ return Binding.iSkillId == 31470u; });
+		std::vector<ANIMATION_SKILL_CLIP> Clips;
+		if (SkillBinding != Bindings.Bindings.end())
+		{
+			for (const ANIMATION_SKILL_STAGE& Stage : SkillBinding->Stages)
+				Clips.insert(Clips.end(), Stage.Clips.begin(), Stage.Clips.end());
+		}
+		if (Clips.size() != 1u || Clips.front().strClipName !=
+				"sdm_sk_onestroke" ||
+			!std::isfinite(Clips.front().fPlayRate) ||
+			Clips.front().fPlayRate <= 0.f ||
+			!Model->Start_Animation(Clips.front().strClipName.c_str(), false))
+		{
+			strOutError =
+				"Artist F Unified requires the exact one sdm_sk_onestroke binding.";
+			return false;
+		}
+		const uint32_t iAnimation = Model->Get_CurrentAnimIndex();
+		f32_t fPositionTicks = 0.f;
+		f32_t fDurationTicks = 0.f;
+		const f32_t fTickRate = Model->Get_AnimationTickPerSecond(iAnimation);
+		if (!Model->Get_AnimationProgress(
+				iAnimation, fPositionTicks, fDurationTicks) ||
+			!std::isfinite(fTickRate) || fTickRate <= 0.f ||
+			!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f)
+		{
+			strOutError = "Artist F Unified animation duration is invalid.";
+			return false;
+		}
+		f32_t fAnimationDurationSeconds = fDurationTicks / fTickRate;
+		if (0u != Clips.front().iPlayMs)
+		{
+			fAnimationDurationSeconds = (std::min)(
+				fAnimationDurationSeconds,
+				static_cast<f32_t>(Clips.front().iPlayMs) * 0.001f);
+		}
+
+		std::vector<EFFECT_ELEMENT_DESC> Baked;
+		Baked.reserve(Pending.size());
+		for (PENDING_ELEMENT& Element : Pending)
+		{
+			if (Element.FollowRequest.has_value())
+			{
+				const f32_t fEmitStart =
+					Element.Bake.fScheduleStartDelaySeconds +
+					Element.Bake.fEmitterDelaySeconds;
+				if (!Build_ArtistUnifiedFollowParentLocal(
+						*Model, *Element.FollowRequest,
+						fAnimationDurationSeconds, fEmitStart,
+						Element.Bake.FollowParentLocalTransform,
+						strOutError))
+				{
+					return false;
+				}
+				Element.Bake.bHasFollowParentLocalTransform = true;
+			}
+			EFFECT_ELEMENT_DESC BakedElement;
+			if (!CEffectDocumentCodec::Bake_GenericAuthoredElementStartingState(
+					Element.Lowered, Element.Bake, BakedElement, strOutError))
+			{
+				return false;
+			}
+			Baked.push_back(std::move(BakedElement));
+		}
+
+		EFFECT_DOCUMENT_DESC Candidate;
+		if (Baked.empty() ||
+			!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				Source, strFirstSourceElementId, UnifiedEffectId,
+				Candidate, strOutError))
+		{
+			return false;
+		}
+		Candidate.strEffectAssetId = UnifiedEffectId;
+		Candidate.strDisplayName = "Artist F Unified Effect";
+		Candidate.ModelCues.clear();
+		Candidate.Elements.assign(1u, Baked.front());
+		std::vector<EFFECT_ELEMENT_DESC> Remaining(
+			std::next(Baked.begin()), Baked.end());
+		EFFECT_DOCUMENT_DESC Merged;
+		if (!CEffectDocumentCodec::Merge_GenericAuthoredElements(
+				Candidate, Remaining, Merged, strOutError) ||
+			Merged.Elements.size() != 33u || !Merged.ModelCues.empty() ||
+			!CEffectDocumentCodec::Validate_Drawable(Merged, strOutError))
+		{
+			return false;
+		}
+
+		bool_t bObservedWModel = false;
+		bool_t bObservedDds = false;
+		std::array<size_t, 4u> SavedFamilies{};
+		for (const EFFECT_ELEMENT_DESC& Element : Merged.Elements)
+		{
+			if (Element.strGroupId == "family.mesh") ++SavedFamilies[0u];
+			else if (Element.strGroupId == "family.sprite") ++SavedFamilies[1u];
+			else if (Element.strGroupId == "family.decal") ++SavedFamilies[2u];
+			else if (Element.strGroupId == "family.ribbon") ++SavedFamilies[3u];
+			else
+			{
+				strOutError = "Artist F Unified contains an unknown family group.";
+				return false;
+			}
+			for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+				Element.ResourceBindings)
+			{
+				EFFECT_RESOURCE_FILE_KIND FileKind =
+					EFFECT_RESOURCE_FILE_KIND::END;
+				if (CEffectDocumentCodec::Is_SafeResourceAssetId(
+						Binding.strAssetId, &FileKind))
+				{
+					bObservedWModel = bObservedWModel ||
+						FileKind == EFFECT_RESOURCE_FILE_KIND::MODEL;
+					bObservedDds = bObservedDds ||
+						FileKind == EFFECT_RESOURCE_FILE_KIND::TEXTURE;
+				}
+			}
+		}
+		if (SavedFamilies != std::array<size_t, 4u>{ 13u, 16u, 3u, 1u } ||
+			!bObservedWModel || !bObservedDds ||
+			CoreCanonicalBefore !=
+				CEffectDocumentCodec::Serialize(CoreRendererDocument))
+		{
+			strOutError =
+				"Artist F Unified final family/resource/source invariants failed.";
+			return false;
+		}
+
+		const std::string Canonical = CEffectDocumentCodec::Serialize(Merged);
+		EFFECT_DOCUMENT_DESC RoundTrip;
+		if (!CEffectDocumentCodec::Parse(Canonical, RoundTrip, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(RoundTrip, strOutError) ||
+			CEffectDocumentCodec::Serialize(RoundTrip) != Canonical ||
+			!CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				OutPath, RoundTrip, {}, strOutError))
+		{
+			return false;
+		}
+		EFFECT_DOCUMENT_DESC Saved;
+		if (!CEffectDocumentCodec::Load(OutPath, Saved, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(Saved, strOutError) ||
+			CEffectDocumentCodec::Serialize(Saved) != Canonical)
+		{
+			strOutError =
+				"Artist F Unified saved document failed exact verification.";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Upgrade_ArtistFUnifiedDocument(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<const
+			Client::EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>& Preparation,
+		const Client::EFFECT_DOCUMENT_DESC& SourceDocument,
+		std::filesystem::path& OutPath,
+		Client::EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS& OutStats,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		OutPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31470.unified.effect.json");
+		if (nullptr == pDevice || nullptr == pContext || nullptr == Preparation ||
+			nullptr == Preparation->Get_Program() || OutPath.empty() ||
+			SourceDocument.strEffectAssetId != "effect.artist.skill.31470")
+		{
+			strOutError = "Artist F offline upgrade inputs are invalid.";
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC Existing;
+		if (!CEffectDocumentCodec::Load(OutPath, Existing, strOutError))
+			return false;
+		const std::string ExistingCanonical =
+			CEffectDocumentCodec::Serialize(Existing);
+		const auto PreservesArtistOwnedState = [&Existing](
+			const EFFECT_DOCUMENT_DESC& Candidate,
+			std::string& strError)
+		{
+			const auto SameFloat3 = [](const float3_t& Left, const float3_t& Right)
+			{
+				return Left.x == Right.x && Left.y == Right.y && Left.z == Right.z;
+			};
+			const auto SameTransform = [&SameFloat3](
+				const EFFECT_TRANSFORM_DESC& Left,
+				const EFFECT_TRANSFORM_DESC& Right)
+			{
+				return SameFloat3(Left.vPosition, Right.vPosition) &&
+					SameFloat3(Left.vRotationDegrees, Right.vRotationDegrees) &&
+					SameFloat3(Left.vRevolutionDegreesPerSecond,
+						Right.vRevolutionDegreesPerSecond) &&
+					SameFloat3(Left.vScale, Right.vScale) &&
+					SameFloat3(Left.vVelocityPerSecond,
+						Right.vVelocityPerSecond);
+			};
+			if (Candidate.Elements.size() != Existing.Elements.size())
+			{
+				strError = "Artist F offline upgrade changed the authored Element set.";
+				return false;
+			}
+			size_t iLocalDecalBaseSentinels = 0u;
+			for (const EFFECT_ELEMENT_DESC& ExistingElement : Existing.Elements)
+			{
+				const auto SavedElement = std::find_if(
+					Candidate.Elements.begin(), Candidate.Elements.end(),
+					[&ExistingElement](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == ExistingElement.strElementId;
+					});
+				if (SavedElement == Candidate.Elements.end() ||
+					!SameTransform(ExistingElement.Detail.Transform,
+						SavedElement->Detail.Transform) ||
+					SavedElement->ResourceBindings.size() !=
+						ExistingElement.ResourceBindings.size())
+				{
+					strError =
+						"Artist F offline upgrade changed an artist-owned Transform/resource set: " +
+						ExistingElement.strElementId + ".";
+					return false;
+				}
+				for (const EFFECT_RESOURCE_BINDING_DESC& ExistingBinding :
+					ExistingElement.ResourceBindings)
+				{
+					const auto SavedBinding = std::find_if(
+						SavedElement->ResourceBindings.begin(),
+						SavedElement->ResourceBindings.end(),
+						[&ExistingBinding](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+						{
+							return Binding.strSlotId == ExistingBinding.strSlotId &&
+								Binding.strAssetId == ExistingBinding.strAssetId;
+						});
+					if (SavedBinding == SavedElement->ResourceBindings.end())
+					{
+						strError =
+							"Artist F offline upgrade changed a generic resource override: " +
+							ExistingElement.strElementId + "/" +
+							ExistingBinding.strSlotId + ".";
+						return false;
+					}
+				}
+				if (ExistingElement.bVisible != SavedElement->bVisible &&
+					!(ExistingElement.bVisible && !SavedElement->bVisible &&
+					  SavedElement->Material.Execution.bFailClosed))
+				{
+					strError =
+						"Artist F offline upgrade changed an admitted visibility override: " +
+						ExistingElement.strElementId + ".";
+					return false;
+				}
+
+				if (ExistingElement.eKind != EFFECT_ELEMENT_KIND::DECAL ||
+					!SavedElement->Material.Execution.bEnabled ||
+					SavedElement->Material.Execution.eBackend !=
+						EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL)
+				{
+					continue;
+				}
+				const auto ExistingBase = std::find_if(
+					ExistingElement.ResourceBindings.begin(),
+					ExistingElement.ResourceBindings.end(),
+					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+					{
+						return Binding.strSlotId == "base";
+					});
+				if (ExistingBase == ExistingElement.ResourceBindings.end() ||
+					ExistingBase->strAssetId !=
+						"Effect/Artist/Textures/fx_b_fluid_007.dds")
+				{
+					continue;
+				}
+				const auto DiffuseLane = std::find_if(
+					SavedElement->Material.Execution.TextureLanes.begin(),
+					SavedElement->Material.Execution.TextureLanes.end(),
+					[](const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane)
+					{
+						return Lane.strRole == "DIFFUSE" ||
+							Lane.strRole == "diffuse";
+					});
+				if (DiffuseLane ==
+						SavedElement->Material.Execution.TextureLanes.end() ||
+					DiffuseLane->strAssetId != ExistingBase->strAssetId)
+				{
+					strError =
+						"Artist F LocalDecal Base override was not promoted to DIFFUSE.";
+					return false;
+				}
+				++iLocalDecalBaseSentinels;
+			}
+			if (iLocalDecalBaseSentinels != 2u)
+			{
+				strError =
+					"Artist F LocalDecal generic Base preservation denominator changed.";
+				return false;
+			}
+			return true;
+		};
+
+		std::unordered_map<std::string, EFFECT_MATERIAL_EXECUTION_DESC>
+			MaterialSnapshots;
+		if (!CEffectDocumentRenderer::Bake_ReconstructedMaterialExecutionSnapshots(
+				pDevice, pContext, SourceDocument, Preparation,
+				MaterialSnapshots, strOutError))
+		{
+			return false;
+		}
+
+		/* Prove that migration preserves an actual user DDS replacement rather
+		   than merely matching the Track A default.  This copy is never saved. */
+		constexpr std::string_view LOCAL_DECAL_OVERRIDE_SENTINEL =
+			"Effect/Artist/Textures/fx_d_noise_014.dds";
+		EFFECT_DOCUMENT_DESC SentinelExisting = Existing;
+		size_t iSentinelInputCount = 0u;
+		for (EFFECT_ELEMENT_DESC& Element : SentinelExisting.Elements)
+		{
+			if (Element.eKind != EFFECT_ELEMENT_KIND::DECAL)
+				continue;
+			const auto Base = std::find_if(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == "base" &&
+						Binding.strAssetId ==
+							"Effect/Artist/Textures/fx_b_fluid_007.dds";
+				});
+			if (Base == Element.ResourceBindings.end())
+				continue;
+			Base->strAssetId = std::string(LOCAL_DECAL_OVERRIDE_SENTINEL);
+			Element.Material.Execution = {};
+			++iSentinelInputCount;
+		}
+		EFFECT_DOCUMENT_DESC SentinelUpgraded;
+		EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS SentinelStats;
+		if (iSentinelInputCount != 2u ||
+			!CEffectDocumentCodec::Build_Artist31470UnifiedTrackAUpgrade(
+				*Preparation->Get_Program(), SourceDocument, MaterialSnapshots,
+				SentinelExisting, SentinelUpgraded, SentinelStats, strOutError))
+		{
+			if (strOutError.empty())
+				strOutError =
+					"Artist F LocalDecal override sentinel input denominator changed.";
+			return false;
+		}
+		size_t iSentinelOutputCount = 0u;
+		for (const EFFECT_ELEMENT_DESC& Element : SentinelUpgraded.Elements)
+		{
+			if (Element.eKind != EFFECT_ELEMENT_KIND::DECAL ||
+				!Element.Material.Execution.bEnabled ||
+				Element.Material.Execution.eBackend !=
+					EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL)
+			{
+				continue;
+			}
+			const auto DiffuseLane = std::find_if(
+				Element.Material.Execution.TextureLanes.begin(),
+				Element.Material.Execution.TextureLanes.end(),
+				[](const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane)
+				{
+					return Lane.strRole == "DIFFUSE" ||
+						Lane.strRole == "diffuse";
+				});
+			if (DiffuseLane != Element.Material.Execution.TextureLanes.end() &&
+				DiffuseLane->strAssetId == LOCAL_DECAL_OVERRIDE_SENTINEL)
+			{
+				++iSentinelOutputCount;
+			}
+		}
+		if (iSentinelOutputCount != 2u)
+		{
+			strOutError =
+				"Artist F LocalDecal Base override sentinel did not reach DIFFUSE.";
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC Upgraded;
+		EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS UpgradeStats;
+		if (!CEffectDocumentCodec::Build_Artist31470UnifiedTrackAUpgrade(
+				*Preparation->Get_Program(), SourceDocument, MaterialSnapshots,
+				Existing, Upgraded, UpgradeStats, strOutError) ||
+			!PreservesArtistOwnedState(Upgraded, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(Upgraded, strOutError))
+		{
+			return false;
+		}
+
+		const std::string Canonical = CEffectDocumentCodec::Serialize(Upgraded);
+		EFFECT_DOCUMENT_DESC RoundTrip;
+		EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS RoundTripStats;
+		if (!CEffectDocumentCodec::Parse(Canonical, RoundTrip, strOutError) ||
+			!PreservesArtistOwnedState(RoundTrip, strOutError) ||
+			!CEffectDocumentCodec::Validate_Artist31470UnifiedTrackAUpgrade(
+				*Preparation->Get_Program(), SourceDocument, RoundTrip,
+				RoundTripStats, strOutError) ||
+			CEffectDocumentCodec::Serialize(RoundTrip) != Canonical ||
+			!CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				OutPath, RoundTrip, ExistingCanonical, strOutError))
+		{
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC Saved;
+		EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS SavedStats;
+		if (!CEffectDocumentCodec::Load(OutPath, Saved, strOutError) ||
+			!CEffectDocumentCodec::Validate_Artist31470UnifiedTrackAUpgrade(
+				*Preparation->Get_Program(), SourceDocument, Saved,
+				SavedStats, strOutError) ||
+			CEffectDocumentCodec::Serialize(Saved) != Canonical)
+		{
+			strOutError = strOutError.empty() ?
+				"Artist F offline upgrade failed saved-document verification." :
+				strOutError;
+			return false;
+		}
+		OutStats = SavedStats;
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Run_ArtistFUnifiedOfflineUpgrade(
+		const std::filesystem::path& RuntimeCatalogInput,
+		std::filesystem::path& OutPath,
+		Client::EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS& OutStats,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		std::cout << "[PROGRESS] Artist F offline upgrade input validation\n";
+		std::error_code ErrorCode;
+		const std::filesystem::path CatalogInput =
+			std::filesystem::absolute(RuntimeCatalogInput, ErrorCode);
+		const std::filesystem::path VisualProgramInput =
+			CatalogInput.parent_path() / L"EffectVisualPrograms.runtime.json";
+		const std::filesystem::path ResourcesRoot =
+			CatalogInput.parent_path().parent_path().parent_path() / L"Resources";
+		if (ErrorCode || !std::filesystem::is_regular_file(CatalogInput) ||
+			!std::filesystem::is_regular_file(VisualProgramInput) ||
+			!std::filesystem::is_directory(ResourcesRoot))
+		{
+			strOutError =
+				"Artist F offline upgrade requires the current runtime catalog, visual-program sidecar, and Resources directory.";
+			return false;
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+				Resolve_ClientWorkingDirectory(), strOutError))
+		{
+			return false;
+		}
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!RuntimeResourceRoot.Set(ResourcesRoot.c_str()))
+		{
+			strOutError = "Artist F offline upgrade could not set Resources root.";
+			return false;
+		}
+
+		wchar_t ModuleBuffer[32768]{};
+		const DWORD ModuleLength = GetModuleFileNameW(
+			nullptr, ModuleBuffer, static_cast<DWORD>(std::size(ModuleBuffer)));
+		if (0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer))
+		{
+			strOutError = "Artist F offline upgrade could not resolve harness path.";
+			return false;
+		}
+		const std::filesystem::path RuntimeDirectory =
+			std::filesystem::path(ModuleBuffer).parent_path() /
+			L"DataFiles" / L"Effect";
+		const std::filesystem::path CatalogRuntime =
+			RuntimeDirectory / L"EffectCatalog.runtime.json";
+		const std::filesystem::path VisualProgramRuntime =
+			RuntimeDirectory / L"EffectVisualPrograms.runtime.json";
+
+		const auto ReadBytes = [](const std::filesystem::path& Path)
+		{
+			std::ifstream Input(Path, std::ios::binary);
+			return std::vector<char>(
+				std::istreambuf_iterator<char>(Input),
+				std::istreambuf_iterator<char>());
+		};
+		const auto WriteBytes = [](const std::filesystem::path& Path,
+			const std::vector<char>& Bytes)
+		{
+			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+			Output.write(Bytes.data(), static_cast<std::streamsize>(Bytes.size()));
+			return Output.good();
+		};
+		const bool_t bHadCatalog =
+			std::filesystem::is_regular_file(CatalogRuntime);
+		const bool_t bHadVisualProgram =
+			std::filesystem::is_regular_file(VisualProgramRuntime);
+		const std::vector<char> PriorCatalog =
+			bHadCatalog ? ReadBytes(CatalogRuntime) : std::vector<char>{};
+		const std::vector<char> PriorVisualProgram = bHadVisualProgram ?
+			ReadBytes(VisualProgramRuntime) : std::vector<char>{};
+		const auto RestoreRuntimeFiles = [&]()
+		{
+			std::error_code RestoreError;
+			if (bHadCatalog)
+				WriteBytes(CatalogRuntime, PriorCatalog);
+			else
+				std::filesystem::remove(CatalogRuntime, RestoreError);
+			if (bHadVisualProgram)
+				WriteBytes(VisualProgramRuntime, PriorVisualProgram);
+			else
+				std::filesystem::remove(VisualProgramRuntime, RestoreError);
+		};
+
+		bool_t bSucceeded = false;
+		do
+		{
+			std::cout << "[PROGRESS] Artist F offline upgrade runtime staging\n";
+			std::filesystem::create_directories(RuntimeDirectory, ErrorCode);
+			if (ErrorCode || !std::filesystem::copy_file(
+					CatalogInput, CatalogRuntime,
+					std::filesystem::copy_options::overwrite_existing, ErrorCode) ||
+				ErrorCode || !std::filesystem::copy_file(
+					VisualProgramInput, VisualProgramRuntime,
+					std::filesystem::copy_options::overwrite_existing, ErrorCode) ||
+				ErrorCode)
+			{
+				strOutError =
+					"Artist F offline upgrade could not stage runtime catalog inputs.";
+				break;
+			}
+
+			CEffectCatalog::Clear();
+			std::cout << "[PROGRESS] Artist F offline upgrade catalog load\n";
+			if (!CEffectCatalog::Load(strOutError))
+				break;
+			std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+				Preparation;
+			if (!CEffectCatalog::Prepare_ReconstructedRuntimeProgram(
+					"effect.artist.skill.31470", Preparation, strOutError) ||
+				nullptr == Preparation || nullptr == Preparation->Get_Program() ||
+				nullptr == Preparation->Get_CatalogEntry())
+			{
+				break;
+			}
+			std::cout << "[PROGRESS] Artist F offline upgrade source projection\n";
+
+			EFFECT_DOCUMENT_DESC CoreDocument;
+			if (!CEffectReconstructedSourceRuntimeFactory::Build_Document(
+					Preparation, CoreDocument, strOutError,
+					EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CORE_RENDERERS))
+			{
+				break;
+			}
+			const auto Tuning =
+				Preparation->Get_CatalogEntry()->Get_OccurrenceTuning();
+			if (nullptr != Tuning &&
+				!CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
+					CoreDocument, *Preparation->Get_Program(), *Tuning,
+					strOutError))
+			{
+				break;
+			}
+			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> Corpus =
+				CEffectCatalog::Find_VisualProgramCorpus();
+			std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+				Projection;
+			if (nullptr == Corpus ||
+				!CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+					*Corpus, CoreDocument, Projection, strOutError) ||
+				nullptr == Projection || !Projection->Is_Valid() ||
+				Projection->Get_ProjectionKind() !=
+					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Artist F offline upgrade could not create its adapter projection.";
+				break;
+			}
+
+			ComPtr<ID3D11Device> Device;
+			ComPtr<ID3D11DeviceContext> Context;
+			D3D_FEATURE_LEVEL FeatureLevel{};
+			if (FAILED(D3D11CreateDevice(
+				nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u, nullptr, 0u,
+				D3D11_SDK_VERSION, &Device, &FeatureLevel, &Context)) ||
+				nullptr == Device || nullptr == Context)
+			{
+				strOutError =
+					"Artist F offline upgrade could not create its WARP device.";
+				break;
+			}
+			std::cout << "[PROGRESS] Artist F offline upgrade material bake/save\n";
+			bSucceeded = Upgrade_ArtistFUnifiedDocument(
+				Device, Context, Preparation, Projection->Get_Document(),
+				OutPath, OutStats, strOutError);
+		} while (false);
+
+		CEffectCatalog::Clear();
+		RestoreRuntimeFiles();
+		return bSucceeded;
+	}
+
 	void Test_Artist31470CatalogRenderResourceAuthority(
 		TEST_RUNNER& runner,
 		const std::filesystem::path& Exact13CatalogPath,
@@ -8130,13 +15351,14 @@ namespace
 		const bool_t bDecalOnly = false,
 		const bool_t bSpriteFlipOnly = false,
 		const bool_t bPresentationOnly = false,
-		const bool_t bGpuMaterialOnly = false)
+		const bool_t bGpuMaterialOnly = false,
+		const bool_t bMaterializeArtistUnified = false)
 	{
 		using namespace Client;
 		constexpr const char* EffectId = "effect.artist.skill.31470";
 		const bool_t bIsolatedArtistMode = bSubUVOnly || bMaterialOnly ||
 			bDecalOnly || bSpriteFlipOnly || bPresentationOnly ||
-			bGpuMaterialOnly;
+			bGpuMaterialOnly || bMaterializeArtistUnified;
 		std::unique_ptr<SCOPED_ENVIRONMENT_VARIABLE> RuntimeResourceRoot;
 		if (bIsolatedArtistMode)
 		{
@@ -8154,9 +15376,9 @@ namespace
 			}
 		}
 		const std::string CatalogText = Read_Text(Exact13CatalogPath);
-		const bool_t ExactCatalog = CatalogText.size() == 27'144'447u &&
+		const bool_t ExactCatalog = CatalogText.size() == 27'149'532u &&
 			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CatalogText) ==
-				"e8412973025b01510e3a81ac7c119ac58994ab126aa8cf624afa8c126d342f8d";
+				"9638e18838abe4f80cee4adcfba52a61a775862d8ba9365e597c3073cc513a3d";
 		runner.Require(ExactCatalog,
 			"Artist 31470 Exact13 Harness Input Has Frozen Catalog Identity");
 		if (!ExactCatalog)
@@ -8171,14 +15393,28 @@ namespace
 			std::filesystem::path(ModuleBuffer).parent_path();
 		const std::filesystem::path CatalogPath = ModuleDirectory /
 			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		const std::filesystem::path VisualProgramPath =
+			CatalogPath.parent_path() / L"EffectVisualPrograms.runtime.json";
+		const std::filesystem::path ExactVisualProgramPath =
+			Exact13CatalogPath.parent_path() / L"EffectVisualPrograms.runtime.json";
 		std::error_code FileError;
 		std::filesystem::create_directories(CatalogPath.parent_path(), FileError);
 		std::vector<char> PriorBytes;
+		std::vector<char> PriorVisualProgramBytes;
 		const bool_t HadPrior = std::filesystem::is_regular_file(CatalogPath);
+		const bool_t HadPriorVisualProgram =
+			std::filesystem::is_regular_file(VisualProgramPath);
 		if (HadPrior)
 		{
 			std::ifstream Prior(CatalogPath, std::ios::binary);
 			PriorBytes.assign(std::istreambuf_iterator<char>(Prior),
+				std::istreambuf_iterator<char>());
+		}
+		if (HadPriorVisualProgram)
+		{
+			std::ifstream Prior(VisualProgramPath, std::ios::binary);
+			PriorVisualProgramBytes.assign(
+				std::istreambuf_iterator<char>(Prior),
 				std::istreambuf_iterator<char>());
 		}
 		const auto WriteCatalog = [&CatalogPath](const std::string& Text)
@@ -8187,6 +15423,14 @@ namespace
 				CatalogPath, std::ios::binary | std::ios::trunc);
 			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
 			return Output.good();
+		};
+		const auto WriteVisualProgram = [&]()
+		{
+			const std::string Text = Read_Text(ExactVisualProgramPath);
+			std::ofstream Output(
+				VisualProgramPath, std::ios::binary | std::ios::trunc);
+			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
+			return !Text.empty() && Output.good();
 		};
 		const auto RestorePriorCatalogFile = [&]()
 		{
@@ -8201,6 +15445,17 @@ namespace
 			{
 				std::filesystem::remove(CatalogPath, FileError);
 			}
+			if (HadPriorVisualProgram)
+			{
+				std::ofstream Output(
+					VisualProgramPath, std::ios::binary | std::ios::trunc);
+				Output.write(PriorVisualProgramBytes.data(),
+					static_cast<std::streamsize>(PriorVisualProgramBytes.size()));
+			}
+			else
+			{
+				std::filesystem::remove(VisualProgramPath, FileError);
+			}
 		};
 
 		CEffectCatalog::Clear();
@@ -8208,6 +15463,7 @@ namespace
 		const std::string CatalogToLoad = bIsolatedArtistMode ?
 			Build_IsolatedEffectCatalog(CatalogText, EffectId) : CatalogText;
 		const bool_t Loaded = !CatalogToLoad.empty() && WriteCatalog(CatalogToLoad) &&
+			WriteVisualProgram() &&
 			CEffectCatalog::Load(Status);
 		if (!Loaded)
 		{
@@ -8236,15 +15492,15 @@ namespace
 			Identity->strRenderResourceAuthorityId ==
 				"ARTIST_31470_RECONSTRUCTED_RENDER_RESOURCE_AUTHORITY_V1" &&
 			Identity->strRenderResourceSidecarDecisionProjectionSha256 ==
-				"fcef9bb95c5412f1d25f206e207b6eccd8198a26a8994a6ee5ac179498b001de" &&
+				"e3b19c2c8102746d8e9ba5b5494ec0b194baeb7bd9df61979c6fade2e5dc70eb" &&
 			Identity->strRenderResourceSidecarReceiptSha256 ==
-				"6f4ed12c7c5b6499ece7cf520436f747e4877a4a89a1584ba57de7324adf8ac4" &&
+				"5af0e5e7b7882644ad6c3371bf888b191a6591684c4ac7a42f29b8c1e2a5a98e" &&
 			Identity->strRenderResourceSidecarRawSha256 ==
-				"1567c622876f74018ac9a21a4ba9e04dd8a3fd08f0bfe934698a65b8185d2660" &&
+				"d69e262b7841f831f6e5d479fd588ff9fc52e4b72c896544d3c3ec178516139e" &&
 			Identity->strRenderResourceAuthorityLinkSha256 ==
-				"1706bb76180d3650c043db59b4eb09291fde3b7c3a5884675270a4f887bbb16b" &&
+				"2eb98fb864d5ba3c3e13c6eb2cbbec903e26341c7345e0e24a1eccd06878b56b" &&
 			Identity->strRenderResourcePublishReceiptSha256 ==
-				"01cd26412754ffd8e7acb4e7c1fe4280ec2dfab65077a664c86eac6a415b8541" &&
+				"18eadecf168f4698a67a242572627b5c647f71abae81365ebe3f47f8bc4a5cc7" &&
 			Authority->Identity.strProgramId == Identity->strProgramId &&
 			Authority->Identity.strProgramSha256 == Identity->strProgramSha256 &&
 			Authority->TextureResourcesById.size() == 52u &&
@@ -8313,33 +15569,33 @@ namespace
 			MeshRecipe->second.strRecipeId ==
 				"material-recipe-4b4c59364690a66d" &&
 			MeshRecipe->second.strRowSha256 ==
-				"67615d170bd67fa6e7183dd9989189b1e6f88680c36cf278b1cd560f065c3688" &&
+				"1b55aa86087ddbfa67670ff691b5925eef299f25ee3afc990a2e1d39b9782cab" &&
 			SpriteRecipe->second.strRecipeId ==
 				"material-recipe-2073fb45e643d1d5" &&
 			SpriteRecipe->second.strRowSha256 ==
-				"b5cb9e2318da7bc9ea1c712178c2234a2f6f1903ffcc28f18d0f5fc71d4ff647" &&
+				"e21082f925f6b6d235c051a80d4c3a29df2a61b461e59da30398404489cb8bff" &&
 			MeshTexture0->second.strRuntimeAssetId ==
 				"Effect/Artist/Textures/fx_a_environ_002.dds" &&
 			MeshTexture0->second.strRowSha256 ==
-				"1369985602881047850a5819ea5e161a4ed78fafaa59bf7900fd46dfe91c2ca6" &&
+				"c61537c7e26308d18193e25abe9b4d6cbd18111e3212760cb8ef623806b50efa" &&
 			MeshTexture0->second.strActualDdsRawSha256 ==
 				"cff398ace89a994c044fcce3736beaa3215cb54b99b1acc105c0c2304ce55962" &&
 			MeshTexture1->second.strRuntimeAssetId ==
 				"Effect/Artist/Textures/fx_a_environ_002_n.dds" &&
 			MeshTexture1->second.strRowSha256 ==
-				"c8807eff7373e1c10d592ec6f84efcc8ffcf894c88a62ea59d21de07b554ad15" &&
+				"3885a518b5119f22d820b2e23658086fd1e86f29fba18a3d56571f653e781f23" &&
 			MeshTexture1->second.strActualDdsRawSha256 ==
 				"62f18a7c49165a62a04525f5954b9c5f494a48ae68b6ce0b9ecc57803ebe63c6" &&
 			SpriteTexture0->second.strRuntimeAssetId ==
 				"Effect/Artist/Textures/fx_a_decal_013.dds" &&
 			SpriteTexture0->second.strRowSha256 ==
-				"443f724f1d6931a5c3397f3bfa5af2104f08a7770ee02852baca1a13b6a6b6a7" &&
+				"9fdfd0be1e8a776afbe6c684b4e591579bc106a31fd13c26109d325678c60fca" &&
 			SpriteTexture0->second.strActualDdsRawSha256 ==
 				"c37194e45c9dea1b1f897c150ae0fae113431c90cd8161494f716bc705ac368e" &&
 			SpriteTexture1->second.strRuntimeAssetId ==
 				"Effect/Artist/Textures/fx_e_fluid_021.dds" &&
 			SpriteTexture1->second.strRowSha256 ==
-				"f6ec4114aaadee67277a14fbd9f555ac2dda661cbf6a4cda8f2090cc9d9e2b12" &&
+				"05fa12ef7d79c4e2636c4c864ddb157f507e29fd85174c6e6e6405f84ed71f13" &&
 			SpriteTexture1->second.strActualDdsRawSha256 ==
 				"1cf86038645760963d6a6db584283795f09fc5078b94ffe8e204ca44ed8bdc75" &&
 			ExactSampler(MeshTexture0->second) &&
@@ -8348,23 +15604,23 @@ namespace
 			ExactSampler(SpriteTexture1->second) &&
 			MeshRenderer->second.iCandidateCount == 1u &&
 			MeshRenderer->second.strRowSha256 ==
-				"e0c7083458e2b69475fd0b0c0065ae4bac3f38bfa8ce088c423e9fd4cd46827c" &&
+				"cac012bce4c91c55753787c1ca24caa8d6d988231a022e79ee490b026ed9fc17" &&
 			SpriteMaskRenderer->second.iCandidateCount == 1u &&
 			SpriteMaskRenderer->second.strRowSha256 ==
-				"661c87bc1815fbd24f470a7542a529a6bb70498356c06251b3827c5ff7f423d0" &&
+				"580fdf0d6fabb45dbae56e521328f56ba6979d0b77f62575077bb741fbd6f94a" &&
 			SpriteBaseRenderer->second.iCandidateCount == 1u &&
 			SpriteBaseRenderer->second.strRowSha256 ==
-				"9d1d6e7a2645b7cf32b506c1b6c5b5bdfa3cb576a714f23aa0999effbcff7369" &&
+				"ac52524fa5d85b6bf0ee18e77a25c71249eb7d60647db3811c3b88c101e97679" &&
 			MeshBlend->second.eKind ==
 				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
 			MeshBlend->second.strImplementationStateName == "BS_EffectOpaque" &&
 			MeshBlend->second.strRowSha256 ==
-				"509ae63d6e8d5b2453a13ec08a4a0df2996a406bb726c43f9a4357bfbc189097" &&
+				"01899f7d6e0d260d1282589a2e324d8e26ad151a69e8e62b5436da1e40ab682a" &&
 			SpriteBlend->second.eKind ==
 				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::BLEND &&
 			SpriteBlend->second.strImplementationStateName == "BS_EffectAlpha" &&
 			SpriteBlend->second.strRowSha256 ==
-				"70641f3d63987b89f4352970528f8a2ed87ca985bf4164a07afb51166a084651" &&
+				"252697e0f0b2a21990b5a4dea15666f6df03a9156935186bf67388c13c849aaa" &&
 			SpriteRaster->second.eKind ==
 				EFFECT_RECONSTRUCTED_RENDER_STATE_KIND::RASTERIZER &&
 			SpriteRaster->second.strImplementationStateName == "RS_Cull_None" &&
@@ -8387,12 +15643,903 @@ namespace
 		runner.Require(OnePointer,
 			"Artist 31470 Exact13 Preparation And Renderer Boundary Preserve Authority Pointer");
 		EFFECT_DOCUMENT_DESC ReconstructedSourceDocument;
+		EFFECT_DOCUMENT_DESC CoreRendererDocument;
 		std::string ReconstructedSourceStatus;
 		const bool_t ReconstructedSourceBuilt = OnePointer &&
 			CEffectReconstructedSourceRuntimeFactory::Build_Document(
 				Preparation, ReconstructedSourceDocument,
 				ReconstructedSourceStatus,
 				EFFECT_RECONSTRUCTED_VISUAL_SCOPE::ALL_DIAGNOSTIC);
+		const bool_t bCoreRendererBuilt = ReconstructedSourceBuilt &&
+			CEffectReconstructedSourceRuntimeFactory::Build_Document(
+				Preparation, CoreRendererDocument,
+				ReconstructedSourceStatus,
+				EFFECT_RECONSTRUCTED_VISUAL_SCOPE::CORE_RENDERERS);
+		const std::filesystem::path VisualProgramCorpusPath =
+			CProjectDataRoot::Resolve(
+				L"Effects/VisualPrograms/effect-visual-program-runtime.v1.json");
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> VisualCorpus;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			AdapterProjection;
+		std::string AdapterStatus;
+		const bool_t bAdapterProjectionBuilt = bCoreRendererBuilt &&
+			!VisualProgramCorpusPath.empty() &&
+			CEffectVisualProgramCorpusCodec::Load(
+				VisualProgramCorpusPath, VisualCorpus, AdapterStatus) &&
+			nullptr != VisualCorpus &&
+			CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*VisualCorpus, CoreRendererDocument,
+				AdapterProjection, AdapterStatus) &&
+			nullptr != AdapterProjection &&
+			AdapterProjection->Get_ProjectionKind() ==
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
+		bool_t bGenericAdapterValidation = false;
+		if (bAdapterProjectionBuilt)
+		{
+			EFFECT_DOCUMENT_DESC CrossDomainAdapter =
+				AdapterProjection->Get_Document();
+			CrossDomainAdapter.strEffectAssetId =
+				"effect.valtan.adapter.generic-validation-harness";
+			std::string GenericValidationStatus;
+			const bool_t bCrossDomainAccepted =
+				CEffectDocumentCodec::Validate_ReconstructedRuntimeDrawable(
+					CrossDomainAdapter, GenericValidationStatus);
+			const bool_t bArtistIdentityRejectsCrossDomain =
+				!CEffectDocumentCodec::
+					Validate_Artist31470ReconstructedRuntimeDrawable(
+						CrossDomainAdapter, GenericValidationStatus);
+			EFFECT_DOCUMENT_DESC UnsafeRendererAdapter = CrossDomainAdapter;
+			UnsafeRendererAdapter.Elements.front().Renderer.eSourceSpace =
+				UnsafeRendererAdapter.Elements.front().Renderer.eSourceSpace ==
+					EFFECT_SOURCE_SPACE::UE3_CASCADE_V1 ?
+					EFFECT_SOURCE_SPACE::SCREEN_SPACE_V1 :
+					EFFECT_SOURCE_SPACE::UE3_CASCADE_V1;
+			const bool_t bUnsafeRendererRejected =
+				!CEffectDocumentCodec::Validate_ReconstructedRuntimeDrawable(
+					UnsafeRendererAdapter, GenericValidationStatus);
+			bGenericAdapterValidation = bCrossDomainAccepted &&
+				bArtistIdentityRejectsCrossDomain && bUnsafeRendererRejected;
+		}
+		runner.Require(bAdapterProjectionBuilt && bGenericAdapterValidation,
+			"Typed Adapter Projection Validation Is Effect Id Agnostic And Rejects Unsafe Renderer Source Space");
+		EFFECT_DOCUMENT_DESC GenericDecalStartingCopy;
+		EFFECT_DOCUMENT_DESC GenericRibbonStartingCopy;
+		const bool_t bActualAdapterStartingCopies = bAdapterProjectionBuilt &&
+			CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				AdapterProjection->Get_Document(),
+				"fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
+				"effect.artist.skill.31470.localdecal20.generic-harness",
+				GenericDecalStartingCopy, AdapterStatus) &&
+			CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+				AdapterProjection->Get_Document(),
+				"fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_0",
+				"effect.artist.skill.31470.ribbon03.generic-harness",
+				GenericRibbonStartingCopy, AdapterStatus) &&
+			GenericDecalStartingCopy.Elements.size() == 1u &&
+			GenericDecalStartingCopy.Elements.front().eKind ==
+				EFFECT_ELEMENT_KIND::DECAL &&
+			GenericRibbonStartingCopy.Elements.size() == 1u &&
+			GenericRibbonStartingCopy.Elements.front().eKind ==
+				EFFECT_ELEMENT_KIND::TRAIL;
+		runner.Require(bActualAdapterStartingCopies,
+			"Artist Exact Adapter Decal20 And Ribbon03 Lower To Independently Drawable Generic Authored Starting Copies");
+		if (!bActualAdapterStartingCopies)
+		{
+			std::cout << "[DETAIL] Artist adapter generic starting copy: " <<
+				AdapterStatus << '\n';
+		}
+		if (bMaterializeArtistUnified)
+		{
+			std::filesystem::path OutputPath;
+			std::string MaterializeStatus;
+			if (0u != runner.iFailureCount)
+			{
+				MaterializeStatus =
+					"Artist F source preflight failed; no authored file was written.";
+			}
+			const std::filesystem::path ResourcesRoot =
+				Exact13CatalogPath.parent_path().parent_path().parent_path() /
+				L"Resources";
+			const bool_t bMaterialized = 0u == runner.iFailureCount &&
+				Materialize_ArtistFUnifiedDocument(
+					Preparation, CoreRendererDocument, VisualCorpus,
+					ResourcesRoot, OutputPath, MaterializeStatus);
+			runner.Require(bMaterialized,
+				"Track C Artist F Materializes One Verified Core33 Unified Authored Document Without Product Mapping Changes");
+			std::cout << (bMaterialized ? "[PASS] " : "[FAILURE] ") <<
+				"Artist F Unified materialization: " <<
+				(bMaterialized ? OutputPath.string() : MaterializeStatus) << '\n';
+			CEffectCatalog::Clear();
+			RestorePriorCatalogFile();
+			return;
+		}
+
+		/* Track C treats the immutable Artist F projection as migration input,
+		   never as the authored product.  Pin the real 33-family denominator,
+		   the three strict adapter rows, and the generic fallback boundary in
+		   one CPU-only transaction test. */
+		const std::string TrackCSourceCanonicalBefore = bAdapterProjectionBuilt ?
+			CEffectDocumentCodec::Serialize(AdapterProjection->Get_Document()) :
+			std::string{};
+		const auto IsTrackCCoreRenderer = [](const EFFECT_ELEMENT_DESC& Element)
+		{
+			switch (Element.Renderer.eType)
+			{
+			case EFFECT_RENDERER_TYPE::MESH_PARTICLE:
+			case EFFECT_RENDERER_TYPE::SPRITE_PARTICLE:
+			case EFFECT_RENDERER_TYPE::DECAL_PARTICLE:
+			case EFFECT_RENDERER_TYPE::CASCADE_RIBBON:
+				return true;
+			default:
+				return false;
+			}
+		};
+		std::array<size_t, 4u> TrackCFamilyCounts{};
+		if (bAdapterProjectionBuilt)
+		{
+			for (const EFFECT_ELEMENT_DESC& Element :
+				AdapterProjection->Get_Document().Elements)
+			{
+				switch (Element.Renderer.eType)
+				{
+				case EFFECT_RENDERER_TYPE::MESH_PARTICLE:
+					++TrackCFamilyCounts[0u];
+					break;
+				case EFFECT_RENDERER_TYPE::SPRITE_PARTICLE:
+					++TrackCFamilyCounts[1u];
+					break;
+				case EFFECT_RENDERER_TYPE::DECAL_PARTICLE:
+					++TrackCFamilyCounts[2u];
+					break;
+				case EFFECT_RENDERER_TYPE::CASCADE_RIBBON:
+					++TrackCFamilyCounts[3u];
+					break;
+				default:
+					break;
+				}
+			}
+		}
+		runner.Require(bAdapterProjectionBuilt &&
+			TrackCFamilyCounts[0u] + TrackCFamilyCounts[1u] +
+				TrackCFamilyCounts[2u] + TrackCFamilyCounts[3u] == 33u &&
+			TrackCFamilyCounts == std::array<size_t, 4u>{ 13u, 16u, 3u, 1u },
+			"Track C Artist F Migration Input Pins Mesh Sprite Decal Ribbon Denominator 13 16 3 1");
+
+		const EFFECT_VISUAL_PROGRAM_ROW* pTrackCDecal20 =
+			bAdapterProjectionBuilt ?
+				AdapterProjection->Find_RowByOccurrenceId("source-active-020") :
+				nullptr;
+		const EFFECT_VISUAL_PROGRAM_ROW* pTrackCDecal21 =
+			bAdapterProjectionBuilt ?
+				AdapterProjection->Find_RowByOccurrenceId("source-active-021") :
+				nullptr;
+		const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* pTrackCRibbon03 =
+			bAdapterProjectionBuilt ?
+				AdapterProjection->Find_SupplementalElementByOccurrenceId(
+					"source-active-003") : nullptr;
+		const auto RequestForVisual = [](const EFFECT_VISUAL_PROGRAM_ROW& Row)
+		{
+			EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST Request;
+			Request.strEffectAssetId = Row.Selector.strEffectAssetId;
+			Request.strOccurrenceId = Row.Selector.strOccurrenceId;
+			Request.strRowSha256 = Row.strRowSha256;
+			Request.strTargetElementId = Row.TargetIdentity.has_value() ?
+				Row.TargetIdentity->strTargetElementId : std::string{};
+			Request.strSourceRecordId = Row.SourceIdentity.strSourceRecordId;
+			return Request;
+		};
+		const auto RequestForSupplemental = [](
+			const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental)
+		{
+			EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST Request;
+			Request.strEffectAssetId = Supplemental.Selector.strEffectAssetId;
+			Request.strOccurrenceId = Supplemental.Selector.strOccurrenceId;
+			Request.strRowSha256 = Supplemental.strRowSha256;
+			Request.strTargetElementId =
+				Supplemental.TargetIdentity.strTargetElementId;
+			Request.strSourceRecordId = Supplemental.strSourceRecordId;
+			return Request;
+		};
+		const auto PresetStageCanonical = [](
+			const EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE& Stage)
+		{
+			EFFECT_DOCUMENT_DESC Snapshot;
+			Snapshot.strEffectAssetId = "effect.track-c.artist-f.stage-snapshot";
+			Snapshot.strDisplayName = "Track C Artist F stage snapshot";
+			Snapshot.Elements.push_back(Stage.Element);
+			return Stage.Identity.strEffectAssetId + "\n" +
+				Stage.Identity.strOccurrenceId + "\n" +
+				Stage.Identity.strRowSha256 + "\n" +
+				Stage.Identity.strTargetElementId + "\n" +
+				Stage.Identity.strSourceRecordId + "\n" +
+				std::to_string(static_cast<uint32_t>(Stage.eSourceFamily)) + "\n" +
+				(Stage.bSupplemental ? "supplemental\n" : "visual\n") +
+				CEffectDocumentCodec::Serialize(Snapshot);
+		};
+		const auto IsOrdinaryStartingElement = [](
+			const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+				Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::END &&
+				Element.strSourceNode.empty() &&
+				!Element.ActionCueAttachment.bEnabled &&
+				!Element.TransformInheritance.bEnabled &&
+				!Element.SourceRecipe.bEnabled &&
+				!Element.SourcePresentation.bEnabled &&
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees.x == 0.f &&
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees.y == 0.f &&
+				Element.Detail.Mesh.vSourceTypeDataRotationDegrees.z == 0.f;
+		};
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE TrackCDecal20Stage;
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE TrackCDecal21Stage;
+		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE TrackCRibbon03Stage;
+		const bool_t bTrackCStrictRowsExact = bAdapterProjectionBuilt &&
+			AdapterProjection->Get_AdmittedRows().size() == 2u &&
+			AdapterProjection->Get_AdmittedSupplementalElements().size() == 1u &&
+			nullptr != pTrackCDecal20 && nullptr != pTrackCDecal21 &&
+			nullptr != pTrackCRibbon03 &&
+			pTrackCDecal20->eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::DECAL_PARTICLE &&
+			pTrackCDecal21->eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::DECAL_PARTICLE &&
+			pTrackCRibbon03->eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
+			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				AdapterProjection, RequestForVisual(*pTrackCDecal20),
+				TrackCDecal20Stage, AdapterStatus) &&
+			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				AdapterProjection, RequestForVisual(*pTrackCDecal21),
+				TrackCDecal21Stage, AdapterStatus) &&
+			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+				AdapterProjection, RequestForSupplemental(*pTrackCRibbon03),
+				TrackCRibbon03Stage, AdapterStatus) &&
+			TrackCDecal20Stage.Is_Valid() && TrackCDecal21Stage.Is_Valid() &&
+			TrackCRibbon03Stage.Is_Valid() &&
+			!TrackCDecal20Stage.bSupplemental &&
+			!TrackCDecal21Stage.bSupplemental &&
+			TrackCRibbon03Stage.bSupplemental &&
+			TrackCDecal20Stage.Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+			TrackCDecal21Stage.Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+			TrackCRibbon03Stage.Element.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+			IsOrdinaryStartingElement(TrackCDecal20Stage.Element) &&
+			IsOrdinaryStartingElement(TrackCDecal21Stage.Element) &&
+			IsOrdinaryStartingElement(TrackCRibbon03Stage.Element);
+		runner.Require(bTrackCStrictRowsExact,
+			"Track C Artist F Strict Bridge Admits Only LocalDecal 20 21 And CascadeRibbon 03 As Ordinary Starting Elements");
+
+		const auto IsZeroFloat3 = [](const float3_t& Value)
+		{
+			return Value.x == 0.f && Value.y == 0.f && Value.z == 0.f;
+		};
+		const auto BuildExpectedOrdinary = [&IsZeroFloat3](
+			const EFFECT_DOCUMENT_DESC& Source,
+			const EFFECT_ELEMENT_DESC& SourceElement,
+			const std::string& TargetEffectAssetId)
+		{
+			EFFECT_DOCUMENT_DESC Expected;
+			Expected.strEffectAssetId = TargetEffectAssetId;
+			Expected.strDisplayName = SourceElement.strDisplayName;
+			Expected.ParticleSystem = Source.ParticleSystem;
+			Expected.Elements.push_back(SourceElement);
+			EFFECT_ELEMENT_DESC& Lowered = Expected.Elements.front();
+			Lowered.strGroupId = "manual.authoring";
+			Lowered.strSourceNode.clear();
+			Lowered.Renderer = {};
+			Lowered.ActionCueAttachment = {};
+			Lowered.TransformInheritance = {};
+			Lowered.SourceRecipe = {};
+			Lowered.SourcePresentation = {};
+			Lowered.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
+			const EFFECT_LINEAR_LERP_DESC& Lerp = Lowered.Detail.LinearLerp;
+			if (Lowered.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+				IsZeroFloat3(Lowered.Detail.Transform.vVelocityPerSecond) &&
+				IsZeroFloat3(
+					Lowered.Detail.Transform.vRevolutionDegreesPerSecond) &&
+				!Lerp.bPosition && !Lerp.bRotation && !Lerp.bRevolution &&
+				!Lerp.bScale && !Lerp.bVelocity)
+			{
+				Lowered.Detail.Transform.vVelocityPerSecond = { 0.f, 0.f, 1.f };
+			}
+			return Expected;
+		};
+		const auto SameResources = [](
+			const std::vector<EFFECT_RESOURCE_BINDING_DESC>& Left,
+			const std::vector<EFFECT_RESOURCE_BINDING_DESC>& Right)
+		{
+			if (Left.size() != Right.size())
+				return false;
+			for (size_t i = 0u; i < Left.size(); ++i)
+			{
+				if (Left[i].strSlotId != Right[i].strSlotId ||
+					Left[i].strAssetId != Right[i].strAssetId)
+				{
+					return false;
+				}
+			}
+			return true;
+		};
+		static constexpr std::array<
+			std::pair<std::string_view, std::string_view>, 6u>
+			TrackCLocalDecalRoleTextures = {{
+				{ "Track A LocalDecal | HEIGHT",
+					"Effect/Artist/Textures/fx_c_decal_002_2.dds" },
+				{ "Track A LocalDecal | DIFFUSE",
+					"Effect/Artist/Textures/fx_b_fluid_007.dds" },
+				{ "Track A LocalDecal | DISSOLVE",
+					"Effect/Artist/Textures/fx_c_decal_002_1.dds" },
+				{ "Track A LocalDecal | NORMAL",
+					"Effect/Artist/Textures/fx_d_normal_078.dds" },
+				{ "Track A LocalDecal | SPECULAR",
+					"Effect/Artist/Textures/fx_d_environ_018.dds" },
+				{ "Track A LocalDecal | EMISSIVE",
+					"Effect/Artist/Textures/fx_bg_dustpanner_01.dds" }
+			}};
+		static constexpr std::array<bool_t, 6u>
+			TrackCLocalDecalRoleSrgb = {
+				false, true, false, false, true, true };
+		const auto HasExactTrackCLocalDecalRoleEvidence = [](
+			const EFFECT_ELEMENT_DESC& Element)
+		{
+			const EFFECT_SOURCE_MATERIAL_DESC& Source =
+				Element.Material.SourceMaterial;
+			const size_t iAliasCount = static_cast<size_t>(std::count_if(
+				Source.Textures.begin(), Source.Textures.end(),
+				[](const EFFECT_NAMED_TEXTURE_DESC& Texture)
+				{
+					return Texture.strGroup ==
+						"Track A LocalDecal DDS Roles";
+				}));
+			if (Element.eKind != EFFECT_ELEMENT_KIND::DECAL ||
+				!Source.bEnabled || iAliasCount !=
+					TrackCLocalDecalRoleTextures.size())
+			{
+				return false;
+			}
+			for (size_t iRole = 0u;
+				iRole < TrackCLocalDecalRoleTextures.size(); ++iRole)
+			{
+				const std::string_view Name =
+					TrackCLocalDecalRoleTextures[iRole].first;
+				const std::string_view AssetId =
+					TrackCLocalDecalRoleTextures[iRole].second;
+				const size_t iExactCount = static_cast<size_t>(std::count_if(
+					Source.Textures.begin(), Source.Textures.end(),
+					[Name, AssetId, iRole](
+						const EFFECT_NAMED_TEXTURE_DESC& Texture)
+					{
+						return Texture.strName == Name &&
+							Texture.strGroup ==
+								"Track A LocalDecal DDS Roles" &&
+							Texture.strSourceObjectPath == AssetId &&
+							Texture.strAssetId == AssetId &&
+							Texture.eAddressU ==
+								EFFECT_TEXTURE_ADDRESS_MODE::CLAMP &&
+							Texture.eAddressV ==
+								EFFECT_TEXTURE_ADDRESS_MODE::CLAMP &&
+							Texture.eColorSpace ==
+								(TrackCLocalDecalRoleSrgb[iRole] ?
+									EFFECT_TEXTURE_COLOR_SPACE::SRGB :
+									EFFECT_TEXTURE_COLOR_SPACE::LINEAR) &&
+							Texture.strSamplingEvidence ==
+								"track-a-local-decal-six-role-v1";
+					}));
+				if (iExactCount != 1u)
+					return false;
+			}
+			return true;
+		};
+		const auto RoleEvidenceSurvivesCanonicalRoundTrip =
+			[&HasExactTrackCLocalDecalRoleEvidence](
+				const EFFECT_ELEMENT_DESC& Element)
+		{
+			EFFECT_DOCUMENT_DESC Snapshot;
+			Snapshot.strEffectAssetId =
+				"effect.track-c.artist-f.local-decal-role-evidence";
+			Snapshot.strDisplayName =
+				"Track C LocalDecal role evidence";
+			Snapshot.Elements.push_back(Element);
+			const std::string Canonical =
+				CEffectDocumentCodec::Serialize(Snapshot);
+			EFFECT_DOCUMENT_DESC Parsed;
+			std::string RoundTripStatus;
+			return CEffectDocumentCodec::Parse(
+					Canonical, Parsed, RoundTripStatus) &&
+				CEffectDocumentCodec::Validate_Drawable(
+					Parsed, RoundTripStatus) &&
+				CEffectDocumentCodec::Serialize(Parsed) == Canonical &&
+				Parsed.Elements.size() == 1u &&
+				HasExactTrackCLocalDecalRoleEvidence(
+					Parsed.Elements.front());
+		};
+		const auto FindTrackCExactTarget = [](
+			const EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view ElementId) -> const EFFECT_ELEMENT_DESC*
+		{
+			const EFFECT_ELEMENT_DESC* pFound = nullptr;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (Element.strElementId != ElementId)
+					continue;
+				if (nullptr != pFound)
+					return nullptr;
+				pFound = &Element;
+			}
+			return pFound;
+		};
+		const EFFECT_ELEMENT_DESC* pTrackCDecal20Source =
+			bTrackCStrictRowsExact ? FindTrackCExactTarget(
+				AdapterProjection->Get_Document(),
+				TrackCDecal20Stage.Element.strElementId) : nullptr;
+		const EFFECT_ELEMENT_DESC* pTrackCDecal21Source =
+			bTrackCStrictRowsExact ? FindTrackCExactTarget(
+				AdapterProjection->Get_Document(),
+				TrackCDecal21Stage.Element.strElementId) : nullptr;
+		const bool_t bTrackCLocalDecalRoleEvidenceExact =
+			bTrackCStrictRowsExact && nullptr != pTrackCDecal20Source &&
+			nullptr != pTrackCDecal21Source &&
+			HasExactTrackCLocalDecalRoleEvidence(
+				TrackCDecal20Stage.Element) &&
+			HasExactTrackCLocalDecalRoleEvidence(
+				TrackCDecal21Stage.Element) &&
+			RoleEvidenceSurvivesCanonicalRoundTrip(
+				TrackCDecal20Stage.Element) &&
+			RoleEvidenceSurvivesCanonicalRoundTrip(
+				TrackCDecal21Stage.Element) &&
+			SameResources(TrackCDecal20Stage.Element.ResourceBindings,
+				pTrackCDecal20Source->ResourceBindings) &&
+			SameResources(TrackCDecal21Stage.Element.ResourceBindings,
+				pTrackCDecal21Source->ResourceBindings) &&
+			TrackCDecal20Stage.Element.Material.SourceMaterial.
+				strRuntimeShaderProfileId ==
+				pTrackCDecal20Source->Material.SourceMaterial.
+					strRuntimeShaderProfileId &&
+			TrackCDecal21Stage.Element.Material.SourceMaterial.
+				strRuntimeShaderProfileId ==
+				pTrackCDecal21Source->Material.SourceMaterial.
+					strRuntimeShaderProfileId &&
+			TrackCSourceCanonicalBefore ==
+				CEffectDocumentCodec::Serialize(
+					AdapterProjection->Get_Document());
+		runner.Require(bTrackCLocalDecalRoleEvidenceExact,
+			"Track C Artist F LocalDecal 20 21 Preserve Exact Six DDS Roles In Read Only Source Cards Without Changing Generic Bindings Or Runtime Profile");
+		const std::set<std::string> TrackCStrictTargetIds =
+			bTrackCStrictRowsExact ? std::set<std::string>{
+				TrackCDecal20Stage.Element.strElementId,
+				TrackCDecal21Stage.Element.strElementId,
+				TrackCRibbon03Stage.Element.strElementId } : std::set<std::string>{};
+		size_t iTrackCExpectedDrawableCount = 0u;
+		size_t iTrackCGenericBuiltCount = 0u;
+		bool_t bTrackCGenericFallbackOutsideStrict = false;
+		bool_t bTrackCGenericExact = bActualAdapterStartingCopies &&
+			bTrackCStrictRowsExact;
+		bool_t bTrackCObservedWModel = false;
+		bool_t bTrackCObservedDds = false;
+		if (bTrackCGenericExact)
+		{
+			const EFFECT_DOCUMENT_DESC& Source = AdapterProjection->Get_Document();
+			for (size_t iElement = 0u; iElement < Source.Elements.size();
+				++iElement)
+			{
+				const EFFECT_ELEMENT_DESC& SourceElement =
+					Source.Elements[iElement];
+				if (!IsTrackCCoreRenderer(SourceElement))
+					continue;
+				const std::string TargetId =
+					"effect.artist.skill.31470.track-c.element-" +
+					std::to_string(iElement);
+				const EFFECT_DOCUMENT_DESC ExpectedCandidate =
+					BuildExpectedOrdinary(Source, SourceElement, TargetId);
+				const std::string ExpectedCanonical =
+					CEffectDocumentCodec::Serialize(ExpectedCandidate);
+				EFFECT_DOCUMENT_DESC ExpectedRoundTrip;
+				std::string ExpectedStatus;
+				const bool_t bExpectedDrawable =
+					CEffectDocumentCodec::Parse(ExpectedCanonical,
+						ExpectedRoundTrip, ExpectedStatus) &&
+					CEffectDocumentCodec::Validate_Drawable(
+						ExpectedRoundTrip, ExpectedStatus) &&
+					CEffectDocumentCodec::Serialize(ExpectedRoundTrip) ==
+						ExpectedCanonical;
+				if (bExpectedDrawable)
+					++iTrackCExpectedDrawableCount;
+
+				EFFECT_DOCUMENT_DESC Attempt = GenericDecalStartingCopy;
+				Attempt.strEffectAssetId =
+					"effect.track-c.artist-f.transaction-sentinel";
+				const std::string AttemptBefore =
+					CEffectDocumentCodec::Serialize(Attempt);
+				std::string AttemptStatus;
+				const bool_t bBuilt =
+					CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+						Source, SourceElement.strElementId, TargetId, Attempt,
+						AttemptStatus);
+				if (bBuilt)
+				{
+					++iTrackCGenericBuiltCount;
+					bTrackCGenericFallbackOutsideStrict =
+						bTrackCGenericFallbackOutsideStrict ||
+						TrackCStrictTargetIds.find(SourceElement.strElementId) ==
+							TrackCStrictTargetIds.end();
+					if (Attempt.Elements.size() == 1u)
+					{
+						const EFFECT_ELEMENT_DESC& Lowered =
+							Attempt.Elements.front();
+						bTrackCGenericExact = bTrackCGenericExact &&
+							Lowered.eKind == SourceElement.eKind &&
+							SameResources(Lowered.ResourceBindings,
+								SourceElement.ResourceBindings) &&
+							IsOrdinaryStartingElement(Lowered) &&
+							CEffectDocumentCodec::Serialize(Attempt) ==
+								ExpectedCanonical;
+						for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+							Lowered.ResourceBindings)
+						{
+							EFFECT_RESOURCE_FILE_KIND FileKind =
+								EFFECT_RESOURCE_FILE_KIND::END;
+							if (CEffectDocumentCodec::Is_SafeResourceAssetId(
+									Binding.strAssetId, &FileKind))
+							{
+								bTrackCObservedWModel = bTrackCObservedWModel ||
+									FileKind == EFFECT_RESOURCE_FILE_KIND::MODEL;
+								bTrackCObservedDds = bTrackCObservedDds ||
+									FileKind == EFFECT_RESOURCE_FILE_KIND::TEXTURE;
+							}
+						}
+					}
+					else
+					{
+						bTrackCGenericExact = false;
+					}
+				}
+				else
+				{
+					bTrackCGenericExact = bTrackCGenericExact &&
+						!bExpectedDrawable && !AttemptStatus.empty() &&
+						CEffectDocumentCodec::Serialize(Attempt) == AttemptBefore;
+				}
+				bTrackCGenericExact = bTrackCGenericExact &&
+					bBuilt == bExpectedDrawable;
+			}
+		}
+		runner.Require(bTrackCGenericExact &&
+			iTrackCGenericBuiltCount == iTrackCExpectedDrawableCount &&
+			iTrackCGenericBuiltCount >= 3u &&
+			bTrackCGenericFallbackOutsideStrict && bTrackCObservedWModel &&
+			bTrackCObservedDds,
+			"Track C Artist F Generic Migration Preserves Family WModel DDS Material And Finite Detail For Every Ordinary Drawable Element");
+		if (!bTrackCGenericExact ||
+			iTrackCGenericBuiltCount != iTrackCExpectedDrawableCount)
+		{
+			std::cout << "[DETAIL] Track C Artist F generic built=" <<
+				iTrackCGenericBuiltCount << " expected-drawable=" <<
+				iTrackCExpectedDrawableCount << " status=" << AdapterStatus << '\n';
+		}
+
+		/* The Tool performs animation sampling for the five follow rows.  The
+		   codec can still pin every real Core33 input before that boundary: all
+		   28 root-snapshot rows must flatten from their source Detail, emitter
+		   timing, source-basis yaw, and TypeData rotation; all five follow rows
+		   must reject transactionally when no sampled parent-local pose is
+		   supplied. */
+		const auto ElementCanonical = [](const EFFECT_ELEMENT_DESC& Element)
+		{
+			EFFECT_DOCUMENT_DESC Snapshot;
+			Snapshot.strEffectAssetId =
+				"effect.track-c.artist-f.bake-element-snapshot";
+			Snapshot.strDisplayName = "Track C Artist F bake element snapshot";
+			Snapshot.Elements.push_back(Element);
+			return CEffectDocumentCodec::Serialize(Snapshot);
+		};
+		size_t iTrackCBakeLoweredCount = 0u;
+		size_t iTrackCRootInputCount = 0u;
+		size_t iTrackCRootBakeSuccessCount = 0u;
+		size_t iTrackCFollowInputCount = 0u;
+		size_t iTrackCFollowTransactionalRejectCount = 0u;
+		size_t iTrackCSnapshotYawInputCount = 0u;
+		size_t iTrackCRuntimeCueNonZeroPositionCount = 0u;
+		size_t iTrackCRuntimeCueScaleThreeCount = 0u;
+		size_t iTrackCRuntimeCueScaleOnePointThreeCount = 0u;
+		size_t iTrackCRuntimeTypeDataRotationCount = 0u;
+		size_t iTrackCEmitterDetailIdentityCount = 0u;
+		size_t iTrackCRootTransformMatchCount = 0u;
+		bool_t bTrackCRootBakeExact = bAdapterProjectionBuilt;
+		bool_t bTrackCFollowBakeExact = bAdapterProjectionBuilt;
+		if (bAdapterProjectionBuilt)
+		{
+			const EFFECT_DOCUMENT_DESC& Source =
+				AdapterProjection->Get_Document();
+			for (size_t iElement = 0u; iElement < Source.Elements.size();
+				++iElement)
+			{
+				const EFFECT_ELEMENT_DESC& SourceElement =
+					Source.Elements[iElement];
+				if (!IsTrackCCoreRenderer(SourceElement))
+					continue;
+				EFFECT_DOCUMENT_DESC LoweredDocument;
+				std::string BakeStatus;
+				const bool_t bLowered =
+					CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+						Source, SourceElement.strElementId,
+						"effect.artist.skill.31470.track-c.bake-" +
+							std::to_string(iElement),
+						LoweredDocument, BakeStatus) &&
+					LoweredDocument.Elements.size() == 1u;
+				if (!bLowered)
+				{
+					bTrackCRootBakeExact = false;
+					bTrackCFollowBakeExact = false;
+					continue;
+				}
+				++iTrackCBakeLoweredCount;
+
+				const auto RuntimeEmitter = std::find_if(
+					Program->Emitters.begin(), Program->Emitters.end(),
+					[&SourceElement](const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter)
+					{
+						EFFECT_GPU_RENDER_FAMILY Family =
+							EFFECT_GPU_RENDER_FAMILY::END;
+						return Emitter.bVisible &&
+							Emitter.strSourceElementId == SourceElement.strElementId &&
+							Try_ResolveArtistUnifiedFamily(Emitter.eRenderer, Family);
+					});
+				if (RuntimeEmitter == Program->Emitters.end())
+				{
+					bTrackCRootBakeExact = false;
+					bTrackCFollowBakeExact = false;
+					continue;
+				}
+
+				EFFECT_GENERIC_AUTHORED_STARTING_BAKE_REQUEST Request;
+				const bool_t bRuntimeTransformRepresentable =
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->CueLocalTransform.vPosition,
+						Request.CueLocalTransform.vPosition) &&
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->CueLocalTransform.vRotationDegrees,
+						Request.CueLocalTransform.vRotationDegrees) &&
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->CueLocalTransform.vScale,
+						Request.CueLocalTransform.vScale) &&
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->DetailTransform.vPosition,
+						Request.EmitterLocalTransform.vPosition) &&
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->DetailTransform.vRotationDegrees,
+						Request.EmitterLocalTransform.vRotationDegrees) &&
+					Try_NarrowRuntimeFloat3(
+						RuntimeEmitter->DetailTransform.vScale,
+						Request.EmitterLocalTransform.vScale) &&
+					(!RuntimeEmitter->RendererRuntimeConfig.Mesh.has_value() ||
+					 Try_NarrowRuntimeFloat3(
+						 RuntimeEmitter->RendererRuntimeConfig.Mesh->
+							 vSourceTypeDataRotationDegrees,
+						 Request.vSourceTypeDataRotationDegrees));
+				if (!bRuntimeTransformRepresentable)
+				{
+					bTrackCRootBakeExact = false;
+					bTrackCFollowBakeExact = false;
+					continue;
+				}
+				Request.fScheduleStartDelaySeconds =
+					SourceElement.Detail.Timing.fStartDelaySeconds;
+				Request.fScheduleLifeTimeSeconds =
+					SourceElement.Detail.Timing.fLifeTimeSeconds;
+				Request.fEmitterDelaySeconds =
+					SourceElement.SourceRecipe.fEmitterDelaySeconds;
+				Request.fEmitterDurationSeconds =
+					SourceElement.SourceRecipe.fEmitterDurationSeconds;
+				Request.iEmitterLoopCount =
+					SourceElement.SourceRecipe.iEmitterLoopCount;
+				Request.bAttachmentEnabled =
+					SourceElement.ActionCueAttachment.bEnabled;
+				Request.bFollowAttachment =
+					SourceElement.ActionCueAttachment.bFollow;
+				Request.fSnapshotRootSourceBasisYawDegrees =
+					SourceElement.ActionCueAttachment.
+						fSnapshotRootSourceBasisYawDegrees;
+				Request.bTransformInheritanceEnabled =
+					SourceElement.TransformInheritance.bEnabled;
+				if (!Nearly_Equal(Request.CueLocalTransform.vPosition, float3_t{}))
+					++iTrackCRuntimeCueNonZeroPositionCount;
+				if (Nearly_Equal(Request.CueLocalTransform.vScale,
+						float3_t(3.f, 3.f, 3.f)))
+					++iTrackCRuntimeCueScaleThreeCount;
+				if (Nearly_Equal(Request.CueLocalTransform.vScale,
+						float3_t(1.3f, 1.3f, 1.3f)))
+					++iTrackCRuntimeCueScaleOnePointThreeCount;
+				if (!Nearly_Equal(Request.vSourceTypeDataRotationDegrees,
+						float3_t{}))
+					++iTrackCRuntimeTypeDataRotationCount;
+				if (Nearly_Equal(Request.EmitterLocalTransform.vPosition,
+						float3_t{}) &&
+					Nearly_Equal(Request.EmitterLocalTransform.vRotationDegrees,
+						float3_t{}) &&
+					Nearly_Equal(Request.EmitterLocalTransform.vScale,
+						float3_t(1.f, 1.f, 1.f)))
+				{
+					++iTrackCEmitterDetailIdentityCount;
+				}
+
+				if (Request.bFollowAttachment)
+				{
+					++iTrackCFollowInputCount;
+					EFFECT_ELEMENT_DESC Preserved =
+						LoweredDocument.Elements.front();
+					Preserved.strElementId =
+						"track-c-follow-transaction-sentinel-" +
+						std::to_string(iElement);
+					Preserved.strDisplayName =
+						"Track C follow transaction sentinel";
+					const std::string PreservedBefore =
+						ElementCanonical(Preserved);
+					const bool_t bRejected =
+						!CEffectDocumentCodec::
+							Bake_GenericAuthoredElementStartingState(
+								LoweredDocument.Elements.front(), Request,
+								Preserved, BakeStatus) &&
+						!BakeStatus.empty() &&
+						ElementCanonical(Preserved) == PreservedBefore;
+					if (bRejected)
+						++iTrackCFollowTransactionalRejectCount;
+					bTrackCFollowBakeExact =
+						bTrackCFollowBakeExact && bRejected;
+					continue;
+				}
+
+				++iTrackCRootInputCount;
+				if (Request.bAttachmentEnabled &&
+					Nearly_Equal(
+						Request.fSnapshotRootSourceBasisYawDegrees, -90.f))
+				{
+					++iTrackCSnapshotYawInputCount;
+				}
+				EFFECT_ELEMENT_DESC BakedElement;
+				const bool_t bBaked = CEffectDocumentCodec::
+					Bake_GenericAuthoredElementStartingState(
+						LoweredDocument.Elements.front(), Request,
+						BakedElement, BakeStatus);
+				if (bBaked)
+					++iTrackCRootBakeSuccessCount;
+
+				const f32_t fExpectedStartDelay =
+					Request.fScheduleStartDelaySeconds +
+					Request.fEmitterDelaySeconds;
+				const f32_t fExpectedLifeTime =
+					Request.fEmitterDurationSeconds > 0.f &&
+					Request.iEmitterLoopCount != 0u ?
+					Request.fEmitterDurationSeconds *
+						static_cast<f32_t>(Request.iEmitterLoopCount) :
+					Request.fScheduleLifeTimeSeconds;
+				EFFECT_DOCUMENT_DESC BakedDocument = LoweredDocument;
+				if (bBaked)
+					BakedDocument.Elements.front() = BakedElement;
+				std::string DrawableStatus;
+				float3_t ExpectedPosition{};
+				XMStoreFloat3(&ExpectedPosition, XMVector3TransformCoord(
+					XMLoadFloat3(&Request.CueLocalTransform.vPosition),
+					Request.bAttachmentEnabled ?
+						XMMatrixRotationY(XMConvertToRadians(
+							Request.fSnapshotRootSourceBasisYawDegrees)) :
+						XMMatrixIdentity()));
+				const float3_t ExpectedScale = {
+					Request.EmitterLocalTransform.vScale.x *
+						Request.CueLocalTransform.vScale.x,
+					Request.EmitterLocalTransform.vScale.y *
+						Request.CueLocalTransform.vScale.y,
+					Request.EmitterLocalTransform.vScale.z *
+						Request.CueLocalTransform.vScale.z
+				};
+				const bool_t bTransformMatched = bBaked &&
+					Nearly_Equal(BakedElement.Detail.Transform.vPosition,
+						ExpectedPosition) &&
+					Nearly_Equal(BakedElement.Detail.Transform.vScale,
+						ExpectedScale) &&
+					Nearly_Equal(
+						BakedElement.Detail.Transform.vRevolutionDegreesPerSecond,
+						LoweredDocument.Elements.front().Detail.Transform.
+							vRevolutionDegreesPerSecond) &&
+					Nearly_Equal(
+						BakedElement.Detail.Transform.vVelocityPerSecond,
+						LoweredDocument.Elements.front().Detail.Transform.
+							vVelocityPerSecond);
+				if (bTransformMatched)
+					++iTrackCRootTransformMatchCount;
+				bTrackCRootBakeExact = bTrackCRootBakeExact && bBaked &&
+					bTransformMatched &&
+					Nearly_Equal(
+						BakedElement.Detail.Timing.fStartDelaySeconds,
+						fExpectedStartDelay) &&
+					Nearly_Equal(
+						BakedElement.Detail.Timing.fLifeTimeSeconds,
+						fExpectedLifeTime) &&
+					IsOrdinaryStartingElement(BakedElement) &&
+					CEffectDocumentCodec::Validate_Drawable(
+						BakedDocument, DrawableStatus);
+			}
+		}
+		runner.Require(bTrackCRootBakeExact &&
+			iTrackCBakeLoweredCount == 33u &&
+			iTrackCRootInputCount == 28u &&
+			iTrackCRootBakeSuccessCount == 28u &&
+			iTrackCSnapshotYawInputCount == 28u &&
+			iTrackCRuntimeCueNonZeroPositionCount == 32u &&
+			iTrackCRuntimeCueScaleThreeCount == 16u &&
+			iTrackCRuntimeCueScaleOnePointThreeCount == 12u &&
+			iTrackCRuntimeTypeDataRotationCount == 1u &&
+			iTrackCEmitterDetailIdentityCount == 33u &&
+			iTrackCRootTransformMatchCount == 28u,
+			"Track C Artist F Real Core33 Bakes Runtime Emitter Cue Scale Position TypeData And Timing Into Ordinary Elements");
+		runner.Require(bTrackCFollowBakeExact &&
+			iTrackCFollowInputCount == 5u &&
+			iTrackCFollowTransactionalRejectCount == 5u,
+			"Track C Artist F Real Core33 Rejects Exactly Five Follow Rows Without A Caller Sampled Pose And Preserves Output");
+		if (!bTrackCRootBakeExact || !bTrackCFollowBakeExact ||
+			iTrackCBakeLoweredCount != 33u || iTrackCRootInputCount != 28u ||
+			iTrackCRootBakeSuccessCount != 28u ||
+			iTrackCRuntimeCueNonZeroPositionCount != 32u ||
+			iTrackCRuntimeCueScaleThreeCount != 16u ||
+			iTrackCRuntimeCueScaleOnePointThreeCount != 12u ||
+			iTrackCRuntimeTypeDataRotationCount != 1u ||
+			iTrackCEmitterDetailIdentityCount != 33u ||
+			iTrackCRootTransformMatchCount != 28u ||
+			iTrackCFollowInputCount != 5u ||
+			iTrackCFollowTransactionalRejectCount != 5u)
+		{
+			std::cout << "[DETAIL] Track C Artist F real bake lowered=" <<
+				iTrackCBakeLoweredCount << " root-input=" <<
+				iTrackCRootInputCount << " root-baked=" <<
+				iTrackCRootBakeSuccessCount << " root-yaw=" <<
+				iTrackCSnapshotYawInputCount << " cue-position=" <<
+				iTrackCRuntimeCueNonZeroPositionCount << " cue-scale-3=" <<
+				iTrackCRuntimeCueScaleThreeCount << " cue-scale-1.3=" <<
+				iTrackCRuntimeCueScaleOnePointThreeCount << " type-data=" <<
+				iTrackCRuntimeTypeDataRotationCount << " detail-identity=" <<
+				iTrackCEmitterDetailIdentityCount << " transform-matched=" <<
+				iTrackCRootTransformMatchCount << " follow-input=" <<
+				iTrackCFollowInputCount << " follow-rejected=" <<
+				iTrackCFollowTransactionalRejectCount << " status=" <<
+				AdapterStatus << '\n';
+		}
+
+		bool_t bTrackCFailuresTransactional = bTrackCStrictRowsExact &&
+			bActualAdapterStartingCopies;
+		if (bTrackCFailuresTransactional)
+		{
+			const std::string StrictBefore =
+				PresetStageCanonical(TrackCDecal20Stage);
+			EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST StaleRequest =
+				RequestForVisual(*pTrackCDecal20);
+			StaleRequest.strRowSha256 = std::string(64u, '0');
+			std::string FailureStatus;
+			bTrackCFailuresTransactional =
+				!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
+					AdapterProjection, StaleRequest, TrackCDecal20Stage,
+					FailureStatus) && !FailureStatus.empty() &&
+				PresetStageCanonical(TrackCDecal20Stage) == StrictBefore;
+
+			EFFECT_DOCUMENT_DESC PoisonedSource =
+				AdapterProjection->Get_Document();
+			PoisonedSource.Elements.front().Detail.Transform.vPosition.x =
+				std::numeric_limits<float>::quiet_NaN();
+			EFFECT_DOCUMENT_DESC Preserved = GenericDecalStartingCopy;
+			Preserved.strEffectAssetId =
+				"effect.track-c.artist-f.failure-sentinel";
+			const std::string PreservedBefore =
+				CEffectDocumentCodec::Serialize(Preserved);
+			bTrackCFailuresTransactional = bTrackCFailuresTransactional &&
+				!CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
+					PoisonedSource,
+					PoisonedSource.Elements.front().strElementId,
+					"effect.artist.skill.31470.track-c.nonfinite-reject",
+					Preserved, FailureStatus) && !FailureStatus.empty() &&
+				CEffectDocumentCodec::Serialize(Preserved) == PreservedBefore;
+		}
+		runner.Require(bTrackCFailuresTransactional,
+			"Track C Artist F Strict Identity And Generic Nonfinite Rejections Preserve Prior Output Transactionally");
+		runner.Require(bAdapterProjectionBuilt &&
+			TrackCSourceCanonicalBefore ==
+				CEffectDocumentCodec::Serialize(AdapterProjection->Get_Document()),
+			"Track C Artist F Migration Preflight Leaves Immutable Source Projection Bytes Unchanged");
 		if (!ReconstructedSourceBuilt)
 		{
 			std::cerr << "[DIAGNOSTIC] Artist 31470 Exact13 full source document: "
@@ -8463,8 +16610,8 @@ namespace
 			"Artist 31470 Build Document Preserves All 35 Visible Program Renderer Kinds Types And Source Spaces");
 		if (bGpuMaterialOnly)
 		{
-			constexpr std::array<uint32_t, 10u> RuntimeMaterialV2Orders = {
-				3u, 4u, 9u, 10u, 11u, 16u, 22u, 23u, 30u, 31u
+			constexpr std::array<uint32_t, 16u> RuntimeMaterialV2Orders = {
+				2u, 3u, 4u, 5u, 6u, 9u, 10u, 11u, 19u, 22u, 23u, 24u, 27u, 28u, 30u, 31u
 			};
 			size_t iProfileCount = 0u;
 			bool_t bExactProfiles = ReconstructedSourceBuilt &&
@@ -8479,23 +16626,26 @@ namespace
 				const auto Element = Emitter == Program->Emitters.end() ?
 					ReconstructedElements.end() :
 					ReconstructedElements.find(Emitter->strSourceElementId);
-				const bool_t bExact = Emitter != Program->Emitters.end() &&
-					Element != ReconstructedElements.end() &&
-					Element->second->Material.SourceMaterial.
+				const bool_t bDirectSmoke = 5u == iOrder || 6u == iOrder;
+				const bool_t bExactProfile = Element != ReconstructedElements.end() &&
+					(bDirectSmoke || Element->second->Material.SourceMaterial.
 						strRuntimeShaderProfileId ==
-						"effect.ue3.reconstructed-standard.v1" &&
+						"effect.ue3.reconstructed-standard.v1");
+				const bool_t bExact = Emitter != Program->Emitters.end() &&
+					Element != ReconstructedElements.end() && bExactProfile &&
 					(3u != iOrder ||
 						Element->second->eKind == EFFECT_ELEMENT_KIND::TRAIL);
 				bExactProfiles = bExactProfiles && bExact;
 				iProfileCount += bExact ? 1u : 0u;
 			}
-			runner.Require(bExactProfiles && iProfileCount == 10u,
-				"Artist 31470 Full35 Builds Ten Runtime Material V2 Elements On The Canonical Standard Profile");
+			runner.Require(bExactProfiles &&
+				iProfileCount == RuntimeMaterialV2Orders.size(),
+				"Artist 31470 Full35 Builds Sixteen Registry-Selected Runtime Material V2 Elements");
 			if (nullptr != Authority)
 			{
 				Test_Artist31470GpuMaterialResourceStage(
 					runner, Exact13CatalogPath, *Authority,
-					Preparation, ReconstructedSourceDocument);
+					Preparation, CoreRendererDocument);
 			}
 			else
 			{
@@ -8526,7 +16676,7 @@ namespace
 		EFFECT_DOCUMENT_DESC MainReviewDocument;
 		EFFECT_DOCUMENT_DESC ConditionalReviewDocument;
 		std::string AdmissionStatus;
-		const bool_t bAdmissionScopesBuilt = ReconstructedSourceBuilt &&
+		const bool_t bAdmissionScopesBuilt = bCoreRendererBuilt &&
 			CEffectReconstructedSourceRuntimeFactory::Build_Document(
 				Preparation, AdmittedDocument, AdmissionStatus) &&
 			CEffectReconstructedSourceRuntimeFactory::Build_Document(
@@ -8541,12 +16691,41 @@ namespace
 			CollectVisibleOrders(MainReviewDocument) : std::set<uint32_t>{};
 		const std::set<uint32_t> ConditionalReviewOrders = bAdmissionScopesBuilt ?
 			CollectVisibleOrders(ConditionalReviewDocument) : std::set<uint32_t>{};
+		const std::set<uint32_t> CoreRendererOrders = bAdmissionScopesBuilt ?
+			CollectVisibleOrders(CoreRendererDocument) : std::set<uint32_t>{};
+		std::set<uint32_t> ExpectedCoreRendererOrders;
+		for (uint32_t iOrder = 0u; iOrder < 35u; ++iOrder)
+		{
+			if (iOrder != 32u && iOrder != 34u)
+				ExpectedCoreRendererOrders.emplace(iOrder);
+		}
+		std::array<size_t, 6u> CoreRendererFamilyCounts{};
+		for (const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter : Program->Emitters)
+		{
+			if (CoreRendererOrders.find(Emitter.Row.iOrder) !=
+				CoreRendererOrders.end())
+				++CoreRendererFamilyCounts[static_cast<size_t>(Emitter.eRenderer)];
+		}
 		runner.Require(bAdmissionScopesBuilt && AdmittedOrders.empty() &&
 			MainReviewOrders == std::set<uint32_t>{ 9u, 10u, 11u } &&
 			ConditionalReviewOrders == std::set<uint32_t>{
 				3u, 4u, 9u, 10u, 11u, 16u, 17u, 22u, 23u, 30u, 31u,
 				32u, 34u },
 			"Artist 31470 Admission Is Fail Closed With Zero Admitted Three V3 Main Review And Thirteen Conditional Orders");
+		runner.Require(CoreRendererOrders == ExpectedCoreRendererOrders &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::MESH_PARTICLE)] == 13u &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::SPRITE_PARTICLE)] == 16u &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::DECAL_PARTICLE)] == 3u &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::CASCADE_RIBBON)] == 1u &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::LIGHT_PARTICLE)] == 0u &&
+			CoreRendererFamilyCounts[static_cast<size_t>(
+				EFFECT_RUNTIME_RENDERER_KIND::SCREEN_POST)] == 0u,
+			"Artist 31470 Core33 Scope Exposes 13 Mesh 16 Sprite 3 Decal And 1 Ribbon While Deferring Light And Post");
 
 		if (bGpuMaterialOnly)
 		{
@@ -8711,13 +16890,27 @@ namespace
 		runner.Require(bRandomStepExecutionExact &&
 			iRandomStepSampleCount == 9u,
 			"Artist 31470 Random SubUV No-Blend Projection Uses Cooked Indices Without Claiming Random Cadence");
+		/* The reconstructed drawable deliberately retains its typed renderer and
+		   source-space identity behind the dedicated Artist runtime validator.
+		   The ordinary format-13 codec rejects those native-v14 carrier fields, so
+		   project only that non-codec identity away before testing the SubUV and
+		   material fields owned by the legacy codec. */
+		EFFECT_DOCUMENT_DESC ReconstructedCodecProjection =
+			ReconstructedSourceDocument;
+		for (EFFECT_ELEMENT_DESC& Element :
+			ReconstructedCodecProjection.Elements)
+		{
+			Element.Renderer = {};
+			Element.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
+		}
 		const std::string ReconstructedSourceSerialized =
-			CEffectDocumentCodec::Serialize(ReconstructedSourceDocument);
+			CEffectDocumentCodec::Serialize(ReconstructedCodecProjection);
 		EFFECT_DOCUMENT_DESC ReconstructedSourceRoundTrip;
 		std::string ReconstructedSourceRoundTripStatus;
 		bool_t bTypedSubUVRoundTrip = ReconstructedSourceBuilt &&
 			CEffectDocumentCodec::Validate(
-				ReconstructedSourceDocument, ReconstructedSourceRoundTripStatus) &&
+				ReconstructedCodecProjection,
+				ReconstructedSourceRoundTripStatus) &&
 			CEffectDocumentCodec::Parse(ReconstructedSourceSerialized,
 				ReconstructedSourceRoundTrip, ReconstructedSourceRoundTripStatus) &&
 			CEffectDocumentCodec::Serialize(ReconstructedSourceRoundTrip) ==
@@ -8736,6 +16929,9 @@ namespace
 				RoundTrip != RoundTripSubUVModes.end() &&
 				RoundTrip->second == pElement->Material.SourceMaterial.strSubUVMode;
 		}
+		if (!bTypedSubUVRoundTrip)
+			std::cout << "[DETAIL] reconstructed codec round trip: " <<
+				ReconstructedSourceRoundTripStatus << '\n';
 		if (!bDecalOnly && !bSpriteFlipOnly && !bPresentationOnly)
 		{
 			runner.Require(bTypedSubUVRoundTrip &&
@@ -8760,6 +16956,10 @@ namespace
 			DecalPlayback.Stage_ReconstructedSourceRuntime(
 				ReconstructedSourceDocument, DecalPlaybackResources, Preparation,
 				DecalPlaybackStatus);
+		runner.Require(bDecalPlaybackStaged &&
+			DecalPlayback.Is_SourceVisualProgramActive() &&
+			DecalPlayback.Is_ReconstructedSourceRuntimeActive(),
+			"Reconstructed Artist Runtime Shares Common Source Visual Family Gate And Keeps Boundary Admission");
 		float4x4_t DecalRoot{};
 		XMStoreFloat4x4(&DecalRoot, XMMatrixIdentity());
 		if (bDecalPlaybackStaged)
@@ -8902,11 +17102,10 @@ namespace
 				}
 			}
 		}
-		/* The active016 ColorOverLife RGB row is a null cooked default.  The
-		   current typed Playback must expose that unresolved zero honestly; the
-		   bounded material opcode suppresses this lane instead of silently
-		   inventing RGB identity or multiplying the five admitted candidates to
-		   black. */
+		/* Playback still evaluates active016's source particles for schedule and
+		   transform diagnostics.  The registry suppresses their GPU submission:
+		   the recovered PS needs SceneDepth, projected depth, fog and auxiliary MRT
+		   carriers that the current particle ABI cannot provide honestly. */
 		const auto Active016Emitter = std::find_if(
 			Program->Emitters.begin(), Program->Emitters.end(), [](const auto& Emitter)
 			{
@@ -8916,6 +17115,9 @@ namespace
 		bool_t bActive016PlaybackRgbIsUnresolvedZero =
 			bDecalPlaybackStaged && Active016Emitter != Program->Emitters.end();
 		bool_t bActive016PlaybackAlphaRemainsLive = false;
+		const std::optional<EFFECT_ARTIST31470_SHADER_REGISTRY_ROW>
+			Active016FailClosedRegistry = Find_Artist31470ShaderRegistry(
+				16u, "source-active-016");
 		for (const EFFECT_EVALUATED_PARTICLE& Particle :
 			DecalPlayback.Get_Frame().Particles)
 		{
@@ -8938,8 +17140,12 @@ namespace
 		}
 		runner.Require(bActive016PlaybackRgbIsUnresolvedZero &&
 			iActive016ParticleCount == 50u &&
-			bActive016PlaybackAlphaRemainsLive,
-			"Artist 31470 Active016 Playback Exposes Null Color RGB While Material Policy Suppresses Only That Unresolved Lane");
+			bActive016PlaybackAlphaRemainsLive &&
+			Active016FailClosedRegistry.has_value() &&
+			!Active016FailClosedRegistry->bDrawAdmitted &&
+			Active016FailClosedRegistry->eBackend ==
+				EFFECT_ARTIST31470_SHADER_BACKEND::NONE,
+			"Artist 31470 Active016 Keeps Fifty Diagnostic Particles But Suppresses Their Unresolved GPU Material Before Draw");
 
 		struct DECAL_ORACLE final
 		{
@@ -8948,10 +17154,11 @@ namespace
 			f32_t fSizeZ = 0.f;
 			f32_t fYawDegrees = 0.f;
 			f32_t fPositionX = 0.f;
-			f32_t fExpectedCenterX = 0.f;
+			f32_t fExpectedCenterZ = 0.f;
 		};
 		constexpr f32_t DecalCueScale = 1.2999999523162842f;
 		constexpr f32_t DecalCuePositionX = 0.6f;
+		constexpr f32_t DecalSnapshotRootSourceBasisYawDegrees = -90.f;
 		constexpr f32_t DecalDepth = 6.f;
 		constexpr std::array<DECAL_ORACLE, 3u> DecalOracles{{
 			{ 20u, 3.5f, 5.f, 180.f, 1.6f, 2.6799999237060547f },
@@ -9012,10 +17219,13 @@ namespace
 				XMMatrixRotationY(XMConvertToRadians(Oracle->fYawDegrees)) *
 				XMMatrixTranslation(Oracle->fPositionX, 0.f, 0.f) *
 				XMMatrixScaling(DecalCueScale, DecalCueScale, DecalCueScale) *
-				XMMatrixTranslation(DecalCuePositionX, 0.f, 0.f));
+				XMMatrixTranslation(DecalCuePositionX, 0.f, 0.f) *
+				XMMatrixRotationY(XMConvertToRadians(
+					DecalSnapshotRootSourceBasisYawDegrees)));
 			if (MatrixNear(Element.World, ExpectedWorld) &&
+				std::abs(Element.World._41) < 0.0002f &&
 				std::abs(Element.World._42) < 0.0002f &&
-				std::abs(Element.World._41 - Oracle->fExpectedCenterX) < 0.0002f &&
+				std::abs(Element.World._43 - Oracle->fExpectedCenterZ) < 0.0002f &&
 				S_OK == CEffectDocumentRenderer::Validate_DecalProjectionWorld(
 					Element))
 			{
@@ -9060,7 +17270,7 @@ namespace
 		runner.Require(bDecalPlaybackStaged && iEvaluatedDecalCount == 3u &&
 			iExactDecalWorldCount == 3u &&
 			iUnityShaderProjectionCount == 3u,
-			"Artist 31470 Decal20To22 Own Size Depth And Client Yaw Exactly Once At Fixed Step 91");
+			"Artist 31470 Decal20To22 Own Size Depth Client Yaw And Snapshot Root Source Basis Exactly Once At Fixed Step 91");
 
 		bool_t bDecalBoundaryContract = nullptr != pFirstEvaluatedDecal;
 		if (nullptr != pFirstEvaluatedDecal)
@@ -9159,11 +17369,11 @@ namespace
 		bSpriteFlipFieldsExact = bSpriteFlipFieldsExact &&
 			SpriteFlipParticleCounts[0u] == 4u &&
 			SpriteFlipParticleCounts[1u] == 4u &&
-			/* The frozen emitter seed selects order27's max vector and order28's
-			   min vector for all four initial burst particles.  The synthetic
-			   boundary probes below exercise the opposite operation-3 branch. */
-			SpriteFlipNegativeXCounts[0u] == 0u &&
-			SpriteFlipNegativeXCounts[1u] == 4u &&
+			/* The frozen per-particle operation-3 sequence is pinned after the
+			   phantom deterministic Rate RNG draw was removed.  The synthetic
+			   boundary probes below still exercise both vector branches. */
+			SpriteFlipNegativeXCounts[0u] == 2u &&
+			SpriteFlipNegativeXCounts[1u] == 1u &&
 			SpriteFlipNegativeYCounts[0u] == 0u &&
 			SpriteFlipNegativeYCounts[1u] == 4u;
 		if (!bSpriteFlipFieldsExact)
@@ -9300,9 +17510,9 @@ namespace
 			DecalPlayback.Get_Frame().Lights.size() == 1u ?
 			&DecalPlayback.Get_Frame().Lights.front() : nullptr;
 		const bool_t bLightQuarterExact = nullptr != LightAtQuarter &&
-			std::abs(LightAtQuarter->vWorldPosition.x - 2.01f) < 0.0002f &&
+			std::abs(LightAtQuarter->vWorldPosition.x - 0.01f) < 0.0002f &&
 			std::abs(LightAtQuarter->vWorldPosition.y - 1.01f) < 0.0002f &&
-			std::abs(LightAtQuarter->vWorldPosition.z + 0.01f) < 0.0002f &&
+			std::abs(LightAtQuarter->vWorldPosition.z - 2.01f) < 0.0002f &&
 			std::abs(LightAtQuarter->vColor.x - 2.f) < 0.0002f &&
 			std::abs(LightAtQuarter->vColor.y - 2.f) < 0.0002f &&
 			std::abs(LightAtQuarter->vColor.z - 2.f) < 0.0002f &&
@@ -9318,7 +17528,7 @@ namespace
 		const bool_t bLightEndEmpty = DecalPlayback.Get_Frame().Lights.empty();
 		runner.Require(bLightQuarterExact && bLightBeforeEmpty &&
 			bLightBeforeEndPresent && bLightEndEmpty,
-			"Artist 31470 Light34 Applies Local Particle Offset StartColor And Typed PointTwoSecond Lifetime");
+			"Artist 31470 Light34 Applies Local Particle Offset Snapshot Root Source Basis StartColor And Typed PointTwoSecond Lifetime");
 
 		constexpr f32_t PostStart = 1.4511719942092896f;
 		constexpr f32_t PostLifetime = 0.6000000238418579f;
@@ -12571,8 +20781,195 @@ namespace
 
 int main(const int argc, char* argv[])
 {
+#if defined(_DEBUG)
+	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+#endif
+	SetErrorMode(SetErrorMode(0u) | SEM_FAILCRITICALERRORS |
+		SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
 	TEST_RUNNER runner{};
 	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--effect-document-codec-sha")
+	{
+		if (argc <= 2)
+		{
+			std::cerr <<
+				"--effect-document-codec-sha requires at least one document path.\n";
+			return 1;
+		}
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!RuntimeResourceRoot.Was_Defined() ||
+			RuntimeResourceRoot.Get_OriginalValue().empty())
+		{
+			wchar_t ModuleBuffer[32768]{};
+			const DWORD ModuleLength = GetModuleFileNameW(
+				nullptr, ModuleBuffer,
+				static_cast<DWORD>(std::size(ModuleBuffer)));
+			std::filesystem::path Candidate =
+				0u == ModuleLength || ModuleLength >= std::size(ModuleBuffer) ?
+					std::filesystem::path{} :
+					std::filesystem::path(ModuleBuffer).parent_path();
+			std::filesystem::path ResourceRoot;
+			for (uint32_t iDepth = 0u; iDepth < 8u && !Candidate.empty();
+				++iDepth)
+			{
+				const std::filesystem::path Probe =
+					Candidate / L"Client" / L"Bin" / L"Resources";
+				std::error_code ProbeError;
+				if (std::filesystem::is_directory(Probe, ProbeError) && !ProbeError)
+				{
+					ResourceRoot = Probe;
+					break;
+				}
+				Candidate = Candidate.parent_path();
+			}
+			if (ResourceRoot.empty() ||
+				!RuntimeResourceRoot.Set(ResourceRoot.c_str()))
+			{
+				std::cerr <<
+					"Unable to resolve the Client runtime resource root.\n";
+				return 1;
+			}
+		}
+		bool_t bAllDocumentsHashed = true;
+		for (int iArgument = 2; iArgument < argc; ++iArgument)
+		{
+			if (nullptr == argv[iArgument])
+			{
+				std::cerr << "Effect document path argument is null.\n";
+				bAllDocumentsHashed = false;
+				continue;
+			}
+			Client::EFFECT_DOCUMENT_DESC Document;
+			std::string Error;
+			if (!Client::CEffectDocumentCodec::Load(
+					std::filesystem::path(argv[iArgument]), Document, Error))
+			{
+				std::cerr << argv[iArgument] << ": " << Error << '\n';
+				bAllDocumentsHashed = false;
+				continue;
+			}
+			std::string Sha256 =
+				Client::CEffectVisualProgramCorpusCodec::
+					Compute_DocumentCanonicalSha256(Document, Error);
+			std::transform(Sha256.begin(), Sha256.end(), Sha256.begin(),
+				[](const unsigned char Character)
+				{
+					return static_cast<char_t>(std::tolower(Character));
+				});
+			if (64u != Sha256.size() || !std::all_of(
+					Sha256.begin(), Sha256.end(), [](const unsigned char Character)
+					{
+						return std::isdigit(Character) ||
+							(Character >= 'a' && Character <= 'f');
+					}))
+			{
+				std::cerr << argv[iArgument] << ": " <<
+					(Error.empty() ?
+						"Typed Effect document codec SHA-256 is invalid." : Error) <<
+					'\n';
+				bAllDocumentsHashed = false;
+				continue;
+			}
+			std::cout << argv[iArgument] << '\t' << Sha256 << '\n';
+		}
+		return bAllDocumentsHashed ? 0 : 1;
+	}
+	if (Mode == "--materialize-four-class-track-a")
+	{
+		if (argc < 3 || argc > 5 || nullptr == argv[2])
+		{
+			std::cerr << "--materialize-four-class-track-a requires a batch path and accepts --check, or --apply --approve-candidate-write.\n";
+			return 1;
+		}
+		bool bApply = false;
+		bool bApprovedCandidateWrite = false;
+		if (argc == 4)
+		{
+			if (nullptr == argv[3] ||
+				(std::string_view(argv[3]) != "--check" &&
+				 std::string_view(argv[3]) != "--apply"))
+			{
+				std::cerr << "Four-class Track A materializer accepts only --check or --apply.\n";
+				return 1;
+			}
+			bApply = std::string_view(argv[3]) == "--apply";
+		}
+		else if (argc == 5)
+		{
+			if (nullptr == argv[3] || nullptr == argv[4] ||
+				std::string_view(argv[3]) != "--apply" ||
+				std::string_view(argv[4]) != "--approve-candidate-write")
+			{
+				std::cerr << "Candidate writes require exact arguments: --apply --approve-candidate-write.\n";
+				return 1;
+			}
+			bApply = true;
+			bApprovedCandidateWrite = true;
+		}
+		ClientFrontendHarness::FOUR_CLASS_TRACK_A_MATERIALIZER_RESULT Result;
+		std::string Status;
+		const bool bSucceeded =
+			ClientFrontendHarness::Run_FourClassTrackAAuthoredMaterializer(
+				std::filesystem::path(argv[2]), bApply,
+				bApprovedCandidateWrite, Result, Status);
+		std::cout << (bSucceeded ? "[PASS] " : "[FAILURE] ") <<
+			"Four-class Track A authored materializer " <<
+			(bApply ? "apply" : "dry-run") << ": " <<
+			(bSucceeded ? "validated" : Status) << '\n';
+		if (bSucceeded)
+		{
+			std::cout << "trackAStages=" << Result.iStageCount <<
+				" legacyStages=" << Result.iLegacyStarterStageCount <<
+				" legacyClipOccurrences=" <<
+					Result.iLegacyStarterClipOccurrenceCount <<
+				" legacyVisualOccurrences=" <<
+					Result.iLegacyStarterVisualClipOccurrenceCount <<
+				" legacySilentOccurrences=" <<
+					Result.iLegacyStarterSilentClipOccurrenceCount <<
+				" legacyCandidates=" <<
+					Result.iLegacyStarterCandidateDocumentCount <<
+				" totalCandidates=" << Result.iTotalCandidateDocumentCount <<
+				" plans=" << Result.iElementPlanCount <<
+				" genericAttempted=" <<
+					Result.iGenericImportAttemptCount <<
+				" genericValidated=" <<
+					Result.iGenericImportValidationCount <<
+				" genericRejected=" <<
+					Result.GenericImportRejections.size() <<
+				" portableCommitted=" <<
+					Result.iPortableCarrierCommitCount <<
+				" preserved=" << Result.iPreservedElementCount <<
+				" quarantined=" << Result.QuarantinedElements.size() <<
+				" dm2050500SemanticSha256=" <<
+					Result.strDimensionMaster2050500PreservedSemanticSha256 <<
+				" applied=" << Result.bApplied << '\n';
+			for (const std::string& Rejection :
+				 Result.GenericImportRejections)
+			{
+				std::cout << "[ISOLATED] " << Rejection << '\n';
+			}
+			for (const std::string& Quarantine : Result.QuarantinedElements)
+			{
+				std::cout << "[QUARANTINED] " << Quarantine << '\n';
+			}
+		}
+		return bSucceeded ? 0 : 1;
+	}
+	if (Mode == "--four-class-track-a-materializer-fast")
+	{
+		std::string Status;
+		const bool bSucceeded =
+			ClientFrontendHarness::
+				Test_FourClassTrackAAuthoredMaterializerTransaction(Status);
+		std::cout << (bSucceeded ? "[PASS] " : "[FAILURE] ") <<
+			"Four-class Track A baseline drift and batch rollback: " <<
+			(bSucceeded ? "validated" : Status) << '\n';
+		return bSucceeded ? 0 : 1;
+	}
 	if (Mode == "--effect-document" && argc > 2 && nullptr != argv[2])
 	{
 		Client::EFFECT_DOCUMENT_DESC document;
@@ -12592,14 +20989,51 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--skill-binding-fast")
 	{
+		Test_ValtanPatternBindingSchema(runner);
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-camera-fast")
+	{
+		Test_ValtanCinematicCamera(runner);
+		Test_ValtanCinematicCameraEasing(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--world-destruction-projection-fast")
+	{
+		Test_WorldDestructionProjection(runner);
+		Test_WorldDestructionDebrisBudget(runner);
+		Test_WorldDestructionDebrisPresentation(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--world-destruction-network-fast")
+	{
+		Test_WorldDestructionNetworkInbound(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-audition-network-fast")
+	{
+		Test_ValtanAuditionNetworkInbound(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
 	if (Mode == "--effect-transform-history")
 	{
 		Test_EffectFixedStepTransformHistory(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-source-visual-program" &&
+		argc > 3 && nullptr != argv[2] && nullptr != argv[3])
+	{
+		Test_SourceVisualProgramPlaybackAdmission(
+			runner, std::filesystem::path(argv[2]),
+			std::filesystem::path(argv[3]));
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -12644,6 +21078,39 @@ int main(const int argc, char* argv[])
 			runner, std::filesystem::path(argv[2]),
 			argc > 3 && nullptr != argv[3] ? std::filesystem::path(argv[3]) :
 				std::filesystem::path{});
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--upgrade-artist-f-unified" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		std::filesystem::path OutputPath;
+		Client::EFFECT_ARTIST31470_UNIFIED_UPGRADE_STATS Stats;
+		std::string Status;
+		const bool_t bUpgraded = Run_ArtistFUnifiedOfflineUpgrade(
+			std::filesystem::path(argv[2]), OutputPath, Stats, Status);
+		std::cout << (bUpgraded ? "[PASS] " : "[FAILURE] ") <<
+			"Artist F authored data upgrade: " <<
+			(bUpgraded ? OutputPath.string() : Status) << '\n';
+		if (bUpgraded)
+		{
+			std::cout << "typed=" << Stats.iTypedMaterialCount <<
+				" finite=" << Stats.iFiniteCommonCount <<
+				" failClosed=" << Stats.iFailClosedCount <<
+				" burstRows=" << Stats.iFixedBurstEmitterCount <<
+				" burstTotal=" << Stats.iFixedBurstTotal <<
+				" meshPreScale=" << Stats.iMeshPreScaleCount << '\n';
+		}
+		return bUpgraded ? 0 : 1;
+	}
+	if (Mode == "--materialize-artist-f-unified" &&
+		argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470CatalogRenderResourceAuthority(
+			runner, std::filesystem::path(argv[2]), {},
+			false, false, false, false, false, false, true);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -12738,6 +21205,30 @@ int main(const int argc, char* argv[])
 		const bool_t Baseline = !Text.empty() &&
 			CEffectRuntimeAuthorityCodec::Parse_ReconstructedRuntimeProgram(
 				Text, Frozen, Parsed, Status);
+		EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY CatalogIdentity;
+		CatalogIdentity.iCatalogRevision = 1u;
+		CatalogIdentity.iArtifactRevision = 1u;
+		CatalogIdentity.iProgramVersion = 1u;
+		CatalogIdentity.iInputArtifactCount = 13u;
+		CatalogIdentity.iCandidateByteCount = 15'121'873u;
+		CatalogIdentity.strEffectAssetId = "effect.artist.skill.31470";
+		CatalogIdentity.strCompilerRevision =
+			"artist31470.reconstructed-runtime-program-link-v1";
+		CatalogIdentity.strCandidateBuilderCommitId =
+			"ddef21a5314eb8c3db891d36f702cfeda3149f20";
+		CatalogIdentity.strCandidateBuilderTreeId =
+			"36a36b889dae7be092e0d2f6f3c3aee2c28bc462";
+		CatalogIdentity.strProgramId =
+			"effect.artist.skill.31470.reconstructed-approved-v1";
+		CatalogIdentity.strProgramSha256 =
+			"0666164bce946fd3b7e72dd92422b21a13e58d3388a3e3264ab30b8065e9c802";
+		CatalogIdentity.strCandidateRawSha256 =
+			"430ed1aa42a34e23d1f216a69c6f51e81a8cbcdbb03318930894e0dfe16cd6c6";
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN> FastPlan;
+		std::string FastPlanStatus;
+		const bool_t FastPlanCompiled = Baseline &&
+			CEffectReconstructedExecutionPlanCompiler::Compile_ProgramForTests(
+				CatalogIdentity, Parsed, FastPlan, FastPlanStatus);
 		runner.Require(Baseline && nullptr != Parsed &&
 			Parsed->InputArtifacts.size() == 13u &&
 			Parsed->Emitters.size() == 35u &&
@@ -12745,6 +21236,8 @@ int main(const int argc, char* argv[])
 			Parsed->MaterialTextureBindings.size() == 77u &&
 			Parsed->RendererTextureResources.size() == 57u,
 			"Artist 31470 Fast Runtime Program Parses New 77-Binding Authority");
+		runner.Require(FastPlanCompiled && nullptr != FastPlan,
+			"Artist 31470 Fast Runtime Program Compiles Frozen Execution Plan Identity");
 
 		const auto RejectsAndPreserves = [&Parsed](
 			const std::string& Candidate,
@@ -12772,6 +21265,9 @@ int main(const int argc, char* argv[])
 			"Artist 31470 Fast Runtime Program Rejects Identity Swap Transactionally");
 		if (!Baseline)
 			std::cout << "[INFO] fast runtime program parse status: " << Status << '\n';
+		if (!FastPlanCompiled)
+			std::cout << "[INFO] fast execution plan compile status: " <<
+				FastPlanStatus << '\n';
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -12789,15 +21285,56 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--materialize-dimensionmaster-t-unified")
+	{
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path resourceRoot =
+			Client::CProjectDataRoot::Get().parent_path() /
+				L"Client" / L"Bin" / L"Resources";
+		std::error_code resourceError;
+		if (!std::filesystem::is_directory(resourceRoot, resourceError) ||
+			resourceError || !resourceRootEnvironment.Set(resourceRoot.c_str()))
+		{
+			std::cerr <<
+				"[FAILURE] DimensionMaster T runtime resource root is unavailable.\n";
+			return 1;
+		}
+		std::filesystem::path outputPath;
+		std::string status;
+		const bool_t materialized =
+			Materialize_DimensionMasterTUnifiedDocument(outputPath, status);
+		std::cout << (materialized ? "[PASS] " : "[FAILURE] ") <<
+			"DimensionMaster T Unified materialization: " <<
+			(materialized ? outputPath.string() : status) << '\n';
+		return materialized ? 0 : 1;
+	}
 	if (Mode == "--effect-authoring-fast")
 	{
+		Test_DimensionMasterTUnifiedMigration(runner);
 		Test_EffectDraftAtomicSave(runner);
+		Test_EffectOccurrenceTuningCodec(runner);
 		Test_EffectTypedPresentation(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--lobby-endpoint-fast")
+	{
+		Test_CanonicalLobbyServerEndpoint(runner);
+		Test_EnterAcceptancePreservesRequestedCharacterClass(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-occurrence-tuning")
+	{
+		Test_EffectOccurrenceTuningCodec(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
 
 	Test_NormalHandoff(runner);
+	Test_CanonicalLobbyServerEndpoint(runner);
+	Test_EnterAcceptancePreservesRequestedCharacterClass(runner);
 	Test_CharacterSelectAuthorizedSelection(runner);
 	Test_NetObjectRegistryClassReplacement(runner);
 	Test_EntryPurpose(runner);
@@ -12805,7 +21342,14 @@ int main(const int argc, char* argv[])
 	Test_StaleTokenCannotCancelNewCommand(runner);
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
+	Test_ValtanPatternBindingSchema(runner);
 	Test_ActionPresentationTimeline(runner);
+	Test_ValtanCinematicCameraEasing(runner);
+	Test_ValtanCinematicCamera(runner);
+	Test_WorldDestructionProjection(runner);
+	Test_WorldDestructionDebrisBudget(runner);
+	Test_WorldDestructionDebrisPresentation(runner);
+	Test_WorldDestructionNetworkInbound(runner);
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
 	Test_EffectPlaybackDeterminism(runner);
@@ -12817,6 +21361,7 @@ int main(const int argc, char* argv[])
 	Test_DimensionMasterImportedPortalDraft(runner);
 	Test_EffectAllEffectsAuthoringJoin(runner);
 	Test_EffectDraftAtomicSave(runner);
+	Test_EffectOccurrenceTuningCodec(runner);
 	Test_EffectAssemblyRuntimeCatalog(runner);
 
 	std::cout << "failures : " << runner.iFailureCount << '\n';

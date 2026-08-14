@@ -321,6 +321,7 @@ struct EFFECT_RUNTIME_PROGRAM_ATTACHMENT final
 	std::string strSourceAnchorSlotId;
 	std::string strRuntimeAnchorSlotId;
 	std::string strRuntimeBoneName;
+	double fSnapshotRootSourceBasisYawDegrees = 0.0;
 	EFFECT_RUNTIME_PROGRAM_SOCKET_TRANSFORM SocketLocalTransform;
 };
 
@@ -396,6 +397,7 @@ struct EFFECT_RUNTIME_PROGRAM_RENDERER_LINEAR_LERP final
 struct EFFECT_RUNTIME_PROGRAM_RENDERER_MESH final
 {
 	bool_t bUseModelMaterial = false;
+	std::array<double, 3u> vSourceTypeDataRotationDegrees{};
 };
 
 struct EFFECT_RUNTIME_PROGRAM_RENDERER_SPRITE final

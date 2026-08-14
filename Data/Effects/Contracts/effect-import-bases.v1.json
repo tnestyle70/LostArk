@@ -1,0 +1,134 @@
+{
+  "schema": "lostark.effect-import-basis-contract",
+  "formatVersion": 1,
+  "contractId": "effect.import-bases.ue3-cascade.v1",
+  "contractRole": "ASSET_SCOPED_EVIDENCE_NOT_RUNTIME_AUTHORITY",
+  "runtimeAdmission": false,
+  "coordinateSourceContract": {
+    "path": "Data/Effects/Contracts/ue3-cascade-source-v1.registry.json",
+    "sha256": "996d0b6c6e7bdaecaf3ab59f2c24f2f7e768e2442631c797a246cdc4d01385a6",
+    "profileId": "ue3CascadeSourceContractV1"
+  },
+  "commonCoordinateBasis": {
+    "position": {
+      "sourceUnit": "centimeter",
+      "targetUnit": "meter",
+      "unitScale": 0.01,
+      "axisMatrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0, 0.0]
+      ]
+    },
+    "velocity": {
+      "sourceUnit": "centimeter_per_second",
+      "targetUnit": "meter_per_second",
+      "unitScale": 0.01,
+      "axisMatrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0, 0.0]
+      ]
+    },
+    "acceleration": {
+      "sourceUnit": "centimeter_per_second_squared",
+      "targetUnit": "meter_per_second_squared",
+      "unitScale": 0.01,
+      "axisMatrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0, 0.0]
+      ]
+    },
+    "spriteAndDecalSize": {
+      "sourceUnit": "centimeter",
+      "targetUnit": "meter",
+      "unitScale": 0.01,
+      "axisMatrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0]
+      ]
+    },
+    "meshParticleDimension": {
+      "sourceUnit": "dimensionless_multiplier",
+      "targetUnit": "dimensionless_multiplier",
+      "unitScale": 1.0,
+      "axisMatrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 0.0]
+      ],
+      "carrierGeometryPreScale": 0.01
+    }
+  },
+  "profiles": [
+    {
+      "basisId": "effect.import-basis.dimensionmaster.ue3-cascade.v1",
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "sourceRevision": {
+        "path": "Data/Effects/Imported/DimensionMaster/Converted/effect.dimensionmaster.skill.2050010.imported.effect.json",
+        "sha256": "2ab049db7809df548e5df3bc69f38019d7188ed00dc8aab20e781228396a6eb0"
+      },
+      "assetBasis": {
+        "status": "UNRESOLVED_FAIL_CLOSED",
+        "sourceToRuntimeRotationDegrees": null,
+        "meshCarrierAxisRotationDegrees": null,
+        "attachmentRootRotationDegrees": null,
+        "evidenceArtifacts": [],
+        "blockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN"
+        ]
+      },
+      "runtimeAdmission": false
+    },
+    {
+      "basisId": "effect.import-basis.artist.ue3-cascade.v1",
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "sourceRevision": {
+        "path": "Data/Effects/Imported/Artist/Converted/effect.artist.skill.31000.imported.effect.json",
+        "sha256": "85c511f7b793120ce324f8650aca22eee6a9eafda443d5a364ac1f22d8c44e6d"
+      },
+      "assetBasis": {
+        "status": "UNRESOLVED_FAIL_CLOSED",
+        "sourceToRuntimeRotationDegrees": null,
+        "meshCarrierAxisRotationDegrees": null,
+        "attachmentRootRotationDegrees": null,
+        "evidenceArtifacts": [],
+        "blockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN"
+        ]
+      },
+      "runtimeAdmission": false
+    },
+    {
+      "basisId": "effect.import-basis.lancemaster.ue3-cascade.v1",
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "sourceRevision": {
+        "path": "Data/Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+        "sha256": "1759765544d2b7e8fb316a3abf81a8c72588db56beaccc0212e556c6673a5dd2"
+      },
+      "assetBasis": {
+        "status": "UNRESOLVED_FAIL_CLOSED",
+        "sourceToRuntimeRotationDegrees": null,
+        "meshCarrierAxisRotationDegrees": null,
+        "attachmentRootRotationDegrees": null,
+        "evidenceArtifacts": [],
+        "blockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN"
+        ]
+      },
+      "runtimeAdmission": false
+    }
+  ],
+  "contractSha256": "c9101277148ab8f55914987642adc0d0c3ba7fe17cd643762cae3faefd233856"
+}

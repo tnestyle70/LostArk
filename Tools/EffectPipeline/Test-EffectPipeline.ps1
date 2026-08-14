@@ -171,6 +171,15 @@ function Assert-RuntimeResourceHashes(
 
 try {
     [IO.Directory]::CreateDirectory($authored) | Out-Null
+    $visualProgramSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot `
+        '..\..\Data\Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
+    $fixtureVisualProgramSource = Join-Path $dataRoot `
+        'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'
+    [IO.Directory]::CreateDirectory(
+        (Split-Path -Parent $fixtureVisualProgramSource)) | Out-Null
+    [IO.File]::WriteAllBytes(
+        $fixtureVisualProgramSource,
+        [IO.File]::ReadAllBytes($visualProgramSource))
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))

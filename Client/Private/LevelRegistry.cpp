@@ -101,7 +101,12 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"world.bern",
 			"LV_BER_BERNCASTLE",
 			"scene.bern.neutral-day.v1",
-			MakeFullMapScope("landscape"),
+			// The 42 landscape components are the ground under the whole walkable
+			// approach, so excluding them left the player on static-mesh paving with
+			// void everywhere else. The Map Editor keeps its own reversible
+			// "Show Bern Landscape" toggle for authoring; the product level loads
+			// the full area.
+			MakeFullMapScope(),
 			CreateBern,
 			&CLoader::Ready_For_Bern
 		},

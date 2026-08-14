@@ -1,5 +1,6 @@
 #include "ServerGameplayContractTests.h"
 
+#include "ClientSession.h"
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
@@ -11,17 +12,29 @@
 #include "SpawnGroupBootstrap.h"
 #include "SpawnGroupRuntime.h"
 #include "ValtanBrain.h"
+#include "WinSockContext.h"
 #include "WorldBootstrap.h"
+#include "WorldDestructionRuntime.h"
+#include "WorldDestructionBootstrapContractTests.h"
 
 #include <Windows.h>
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
+#include <memory>
+#include <span>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace
 {
@@ -35,6 +48,170 @@ namespace
 		}
 		int failures = 0;
 	};
+
+	struct RECEIVED_TEST_FRAME final
+	{
+		LostArk::Shared::PACKET_TYPE packetType =
+			LostArk::Shared::PACKET_TYPE::INVALID;
+		std::vector<std::uint8_t> payload;
+	};
+
+	void Close_TestSocket(SOCKET& socket)
+	{
+		if (INVALID_SOCKET == socket)
+			return;
+		::shutdown(socket, SD_BOTH);
+		::closesocket(socket);
+		socket = INVALID_SOCKET;
+	}
+
+	void Abort_TestSocket(SOCKET& socket)
+	{
+		if (INVALID_SOCKET == socket)
+			return;
+		linger abortiveClose{};
+		abortiveClose.l_onoff = 1u;
+		abortiveClose.l_linger = 0u;
+		(void)::setsockopt(
+			socket,
+			SOL_SOCKET,
+			SO_LINGER,
+			reinterpret_cast<const char*>(&abortiveClose),
+			static_cast<int>(sizeof(abortiveClose)));
+		::closesocket(socket);
+		socket = INVALID_SOCKET;
+	}
+
+	bool Create_LoopbackSocketPair(
+		SOCKET& outSessionSocket,
+		SOCKET& outPeerSocket)
+	{
+		outSessionSocket = INVALID_SOCKET;
+		outPeerSocket = INVALID_SOCKET;
+		SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (INVALID_SOCKET == listener)
+			return false;
+
+		sockaddr_in address{};
+		address.sin_family = AF_INET;
+		address.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+		address.sin_port = 0u;
+		if (SOCKET_ERROR == ::bind(
+			listener,
+			reinterpret_cast<const sockaddr*>(&address),
+			static_cast<int>(sizeof(address))) ||
+			SOCKET_ERROR == ::listen(listener, 1))
+		{
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		int addressBytes = static_cast<int>(sizeof(address));
+		if (SOCKET_ERROR == ::getsockname(
+			listener,
+			reinterpret_cast<sockaddr*>(&address),
+			&addressBytes))
+		{
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		SOCKET peer = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (INVALID_SOCKET == peer ||
+			SOCKET_ERROR == ::connect(
+				peer,
+				reinterpret_cast<const sockaddr*>(&address),
+				static_cast<int>(sizeof(address))))
+		{
+			Close_TestSocket(peer);
+			Close_TestSocket(listener);
+			return false;
+		}
+
+		SOCKET session = ::accept(listener, nullptr, nullptr);
+		Close_TestSocket(listener);
+		if (INVALID_SOCKET == session)
+		{
+			Close_TestSocket(peer);
+			return false;
+		}
+
+		const DWORD receiveTimeoutMilliseconds = 1500u;
+		if (SOCKET_ERROR == ::setsockopt(
+			peer,
+			SOL_SOCKET,
+			SO_RCVTIMEO,
+			reinterpret_cast<const char*>(&receiveTimeoutMilliseconds),
+			static_cast<int>(sizeof(receiveTimeoutMilliseconds))))
+		{
+			Close_TestSocket(session);
+			Close_TestSocket(peer);
+			return false;
+		}
+
+		outSessionSocket = session;
+		outPeerSocket = peer;
+		return true;
+	}
+
+	bool Receive_Exact(
+		const SOCKET socket,
+		std::span<std::uint8_t> bytes)
+	{
+		std::size_t receivedBytes = 0u;
+		while (receivedBytes < bytes.size())
+		{
+			const int result = ::recv(
+				socket,
+				reinterpret_cast<char*>(bytes.data() + receivedBytes),
+				static_cast<int>(bytes.size() - receivedBytes),
+				0);
+			if (result <= 0)
+				return false;
+			receivedBytes += static_cast<std::size_t>(result);
+		}
+		return true;
+	}
+
+	bool Receive_TestFrame(
+		const SOCKET socket,
+		RECEIVED_TEST_FRAME& outFrame)
+	{
+		using namespace LostArk::Shared;
+		std::array<std::uint8_t, PACKET_HEADER_BYTES> headerBytes{};
+		if (!Receive_Exact(socket, headerBytes))
+			return false;
+		PACKET_HEADER header{};
+		if (!Read_Packet_Header(headerBytes, header))
+			return false;
+
+		RECEIVED_TEST_FRAME decoded{};
+		decoded.packetType = header.ePacketType;
+		decoded.payload.resize(
+			static_cast<std::size_t>(header.iTotalSize) - PACKET_HEADER_BYTES);
+		if (!decoded.payload.empty() &&
+			!Receive_Exact(socket, decoded.payload))
+		{
+			return false;
+		}
+		outFrame = std::move(decoded);
+		return true;
+	}
+
+	template <typename PREDICATE>
+	bool Wait_Until(
+		const std::chrono::milliseconds timeout,
+		PREDICATE&& predicate)
+	{
+		const auto deadline = std::chrono::steady_clock::now() + timeout;
+		do
+		{
+			if (predicate())
+				return true;
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		} while (std::chrono::steady_clock::now() < deadline);
+		return predicate();
+	}
 
 	struct QUICK_SKILL_CONTRACT final
 	{
@@ -239,6 +416,627 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	{
+		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		const auto firstSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 1u });
+		const auto firstReliable = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_CHAT, { 10u });
+		const auto secondSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 2u });
+		const auto secondReliable = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_PLAYER_DESPAWNED, { 11u });
+		const auto thirdSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 3u });
+		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
+			session.Get_OutboundMetrics();
+		const bool latestWinsAndReliableOrder =
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == firstSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == firstReliable &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::COALESCED == secondSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED == secondReliable &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::COALESCED == thirdSnapshot &&
+			3u == session.m_OutboundFrames.size() &&
+			PACKET_TYPE::S2C_CHAT ==
+				session.m_OutboundFrames[0u].ePacketType &&
+			10u == session.m_OutboundFrames[0u].Bytes.front() &&
+			PACKET_TYPE::S2C_PLAYER_DESPAWNED ==
+				session.m_OutboundFrames[1u].ePacketType &&
+			11u == session.m_OutboundFrames[1u].Bytes.front() &&
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT ==
+				session.m_OutboundFrames[2u].ePacketType &&
+			3u == session.m_OutboundFrames[2u].Bytes.front() &&
+			3u == metrics.iSnapshotEnqueuedFrameCount &&
+			2u == metrics.iSnapshotCoalescedFrameCount &&
+			2u == metrics.iReliableEnqueuedFrameCount;
+		session.Request_Close();
+		tests.Require(
+			latestWinsAndReliableOrder,
+			"Coalesce queued snapshots to latest-wins without reordering reliable frames");
+	}
+	{
+		CClientSession session{ 90002u, INVALID_SOCKET, {}, {} };
+		session.m_isSendRunning.store(true);
+		constexpr std::size_t SNAPSHOT_FRAME_LIMIT =
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT -
+			CClientSession::RELIABLE_FRAME_RESERVE;
+		bool admittedSnapshotBand = true;
+		for (std::size_t index = 0u; index < SNAPSHOT_FRAME_LIMIT; ++index)
+		{
+			admittedSnapshotBand = admittedSnapshotBand &&
+				CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(
+					PACKET_TYPE::S2C_CHAT,
+					{ static_cast<std::uint8_t>(index) });
+		}
+		const auto droppedSnapshot = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_WORLD_SNAPSHOT, { 1u });
+		bool admittedReliableReserve = true;
+		while (session.m_OutboundFrames.size() <
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT)
+		{
+			admittedReliableReserve = admittedReliableReserve &&
+				CClientSession::OUTBOUND_ENQUEUE_RESULT::QUEUED ==
+				session.Queue_OutboundFrame(
+					PACKET_TYPE::S2C_CHAT, { 2u });
+		}
+		const auto overflow = session.Queue_OutboundFrame(
+			PACKET_TYPE::S2C_CHAT, { 3u });
+		const bool queuePreservedOnOverflow =
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
+				session.m_OutboundFrames.size();
+		const std::array<std::uint8_t, 1u> payload{ 4u };
+		const bool publicOverflowFailedClosed =
+			!session.Send_Frame(PACKET_TYPE::S2C_CHAT, payload) &&
+			!session.m_isSendRunning.load() &&
+			session.m_OutboundFrames.empty();
+		const CLIENT_SESSION_OUTBOUND_METRICS metrics =
+			session.Get_OutboundMetrics();
+		tests.Require(
+			admittedSnapshotBand && admittedReliableReserve &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::DROPPED_SNAPSHOT ==
+				droppedSnapshot &&
+			CClientSession::OUTBOUND_ENQUEUE_RESULT::RELIABLE_OVERFLOW ==
+				overflow &&
+			queuePreservedOnOverflow && publicOverflowFailedClosed &&
+			1u == metrics.iSnapshotDroppedFrameCount &&
+			2u == metrics.iReliableRejectedFrameCount &&
+			CClientSession::MAX_OUTBOUND_FRAME_COUNT ==
+				metrics.iQueuedFrameHighWatermark,
+			"Reserve outbound capacity for reliable FIFO and fail-close only the overflowing session");
+	}
+	{
+		CWinSockContext winSock;
+		const bool initialized = winSock.Initialize();
+		SOCKET slowSessionSocket = INVALID_SOCKET;
+		SOCKET slowPeerSocket = INVALID_SOCKET;
+		SOCKET fastSessionSocket = INVALID_SOCKET;
+		SOCKET fastPeerSocket = INVALID_SOCKET;
+		bool socketsReady = initialized &&
+			Create_LoopbackSocketPair(slowSessionSocket, slowPeerSocket) &&
+			Create_LoopbackSocketPair(fastSessionSocket, fastPeerSocket);
+		if (socketsReady)
+		{
+			const int smallBufferBytes = 1024;
+			socketsReady =
+				SOCKET_ERROR != ::setsockopt(
+					slowSessionSocket,
+					SOL_SOCKET,
+					SO_SNDBUF,
+					reinterpret_cast<const char*>(&smallBufferBytes),
+					static_cast<int>(sizeof(smallBufferBytes))) &&
+				SOCKET_ERROR != ::setsockopt(
+					slowPeerSocket,
+					SOL_SOCKET,
+					SO_RCVBUF,
+					reinterpret_cast<const char*>(&smallBufferBytes),
+					static_cast<int>(sizeof(smallBufferBytes)));
+		}
+
+		std::atomic_uint32_t slowClosedCount{ 0u };
+		std::atomic_uint32_t fastClosedCount{ 0u };
+		std::unique_ptr<CClientSession> slowSession;
+		std::unique_ptr<CClientSession> fastSession;
+		if (socketsReady)
+		{
+			slowSession = std::make_unique<CClientSession>(
+				90003u,
+				slowSessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&slowClosedCount](const SESSION_ID)
+				{
+					++slowClosedCount;
+				});
+			slowSessionSocket = INVALID_SOCKET;
+			fastSession = std::make_unique<CClientSession>(
+				90004u,
+				fastSessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&fastClosedCount](const SESSION_ID)
+				{
+					++fastClosedCount;
+				});
+			fastSessionSocket = INVALID_SOCKET;
+		}
+
+		const bool sessionsStarted = socketsReady &&
+			slowSession->Start() && fastSession->Start();
+		bool slowEnqueueStayedBounded = false;
+		bool slowCoalescedSnapshots = false;
+		bool fastReliableFifo = false;
+		bool slowClosureWasIsolated = false;
+		bool cleanShutdownWasBounded = false;
+		if (sessionsStarted)
+		{
+			std::vector<std::uint8_t> snapshotPayload(
+				static_cast<std::size_t>(MAX_PACKET_BYTES) -
+					PACKET_HEADER_BYTES,
+				0xA5u);
+			const auto enqueueStart = std::chrono::steady_clock::now();
+			std::size_t acceptedSnapshotCount = 0u;
+			for (std::size_t index = 0u; index < 256u; ++index)
+			{
+				snapshotPayload.front() = static_cast<std::uint8_t>(index);
+				if (!slowSession->Send_Frame(
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+					snapshotPayload))
+				{
+					break;
+				}
+				++acceptedSnapshotCount;
+			}
+			const auto enqueueElapsed = std::chrono::steady_clock::now() -
+				enqueueStart;
+			const CLIENT_SESSION_OUTBOUND_METRICS slowMetrics =
+				slowSession->Get_OutboundMetrics();
+			slowEnqueueStayedBounded = acceptedSnapshotCount > 1u &&
+				enqueueElapsed < std::chrono::milliseconds(1500);
+			slowCoalescedSnapshots =
+				0u < slowMetrics.iSnapshotCoalescedFrameCount &&
+				1u >= slowMetrics.iCurrentQueuedFrameCount;
+
+			const std::array<std::uint8_t, 1u> firstPayload{ 21u };
+			const std::array<std::uint8_t, 1u> secondPayload{ 22u };
+			const std::array<std::uint8_t, 1u> thirdPayload{ 23u };
+			const bool queuedFastFrames =
+				fastSession->Send_Frame(PACKET_TYPE::S2C_CHAT, firstPayload) &&
+				fastSession->Send_Frame(
+					PACKET_TYPE::S2C_ENTER_REJECTED, secondPayload) &&
+				fastSession->Send_Frame(
+					PACKET_TYPE::S2C_PLAYER_DESPAWNED, thirdPayload);
+			RECEIVED_TEST_FRAME receivedFirst{};
+			RECEIVED_TEST_FRAME receivedSecond{};
+			RECEIVED_TEST_FRAME receivedThird{};
+			fastReliableFifo = queuedFastFrames &&
+				Receive_TestFrame(fastPeerSocket, receivedFirst) &&
+				Receive_TestFrame(fastPeerSocket, receivedSecond) &&
+				Receive_TestFrame(fastPeerSocket, receivedThird) &&
+				PACKET_TYPE::S2C_CHAT == receivedFirst.packetType &&
+				1u == receivedFirst.payload.size() &&
+				firstPayload.front() == receivedFirst.payload.front() &&
+				PACKET_TYPE::S2C_ENTER_REJECTED == receivedSecond.packetType &&
+				1u == receivedSecond.payload.size() &&
+				secondPayload.front() == receivedSecond.payload.front() &&
+				PACKET_TYPE::S2C_PLAYER_DESPAWNED == receivedThird.packetType &&
+				1u == receivedThird.payload.size() &&
+				thirdPayload.front() == receivedThird.payload.front();
+
+			Close_TestSocket(slowPeerSocket);
+			const bool slowSessionClosed = Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&slowClosedCount]()
+				{
+					return 0u < slowClosedCount.load();
+				});
+			const std::array<std::uint8_t, 1u> survivorPayload{ 24u };
+			RECEIVED_TEST_FRAME survivorFrame{};
+			slowClosureWasIsolated = slowSessionClosed &&
+				fastSession->Send_Frame(PACKET_TYPE::S2C_CHAT, survivorPayload) &&
+				Receive_TestFrame(fastPeerSocket, survivorFrame) &&
+				PACKET_TYPE::S2C_CHAT == survivorFrame.packetType &&
+				1u == survivorFrame.payload.size() &&
+				survivorPayload.front() == survivorFrame.payload.front();
+
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			slowSession->Stop();
+			fastSession->Stop();
+			const auto shutdownElapsed = std::chrono::steady_clock::now() -
+				shutdownStart;
+			cleanShutdownWasBounded =
+				shutdownElapsed < std::chrono::milliseconds(3000) &&
+				1u == slowClosedCount.load() &&
+				1u == fastClosedCount.load();
+		}
+		else
+		{
+			if (slowSession)
+				slowSession->Stop();
+			if (fastSession)
+				fastSession->Stop();
+		}
+
+		slowSession.reset();
+		fastSession.reset();
+		Close_TestSocket(slowSessionSocket);
+		Close_TestSocket(slowPeerSocket);
+		Close_TestSocket(fastSessionSocket);
+		Close_TestSocket(fastPeerSocket);
+		tests.Require(
+			initialized && socketsReady && sessionsStarted &&
+			slowEnqueueStayedBounded && slowCoalescedSnapshots &&
+			fastReliableFifo && slowClosureWasIsolated &&
+			cleanShutdownWasBounded,
+			"Isolate a slow reader while preserving another session FIFO and bounded shutdown");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				90006u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID)
+				{
+					++closedCount;
+				});
+			sessionSocket = INVALID_SOCKET;
+		}
+
+		const bool started = socketReady && session->Start();
+		bool reliableFlushedBeforeClose = false;
+		bool rejectedLateEnqueue = false;
+		bool shutdownWasBounded = false;
+		if (started)
+		{
+			const std::array<std::uint8_t, 1u> payload{ 0x46u };
+			const bool queued = session->Send_Frame(
+				PACKET_TYPE::S2C_ENTER_REJECTED, payload);
+			session->Request_Close_After_Flush();
+			RECEIVED_TEST_FRAME received{};
+			reliableFlushedBeforeClose = queued &&
+				Receive_TestFrame(peerSocket, received) &&
+				PACKET_TYPE::S2C_ENTER_REJECTED == received.packetType &&
+				1u == received.payload.size() &&
+				payload.front() == received.payload.front() &&
+				Wait_Until(
+					std::chrono::milliseconds(1500),
+					[&session, &closedCount]()
+					{
+						return 1u == closedCount.load() &&
+							!session->m_isSendRunning.load();
+					});
+			rejectedLateEnqueue = !session->Send_Frame(
+				PACKET_TYPE::S2C_CHAT, payload);
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			session->Stop();
+			shutdownWasBounded =
+				std::chrono::steady_clock::now() - shutdownStart <
+					std::chrono::milliseconds(3000);
+		}
+		else if (session)
+		{
+			session->Stop();
+		}
+
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			started && reliableFlushedBeforeClose && rejectedLateEnqueue &&
+			shutdownWasBounded && 1u == closedCount.load(),
+			"Flush a terminal reliable frame before sender-owned graceful close");
+	}
+	{
+		std::atomic_uint32_t closedCount{ 0u };
+		CClientSession session{
+			90007u,
+			INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{},
+			[&closedCount](const SESSION_ID)
+			{
+				++closedCount;
+			} };
+		session.m_isSendRunning.store(true);
+		session.Request_Close_After_Flush();
+		session.Request_Close();
+		session.Sender_Loop();
+		session.Notify_Closed();
+		tests.Require(
+			1u == closedCount.load() &&
+			!session.m_isSendRunning.load() &&
+			session.m_hasSenderExited,
+			"Notify close exactly once when a hard stop overtakes graceful flush");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET;
+		SOCKET peerSocket = INVALID_SOCKET;
+		const bool socketReady = winSock.Initialize() &&
+			Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t closedCount{ 0u };
+		std::unique_ptr<CClientSession> session;
+		bool senderStarted = false;
+		if (socketReady)
+		{
+			session = std::make_unique<CClientSession>(
+				90005u,
+				sessionSocket,
+				CClientSession::FRAME_HANDLER{},
+				[&closedCount](const SESSION_ID)
+				{
+					++closedCount;
+				});
+			sessionSocket = INVALID_SOCKET;
+			senderStarted = session->Configure_SendTimeout();
+			if (senderStarted)
+			{
+				{
+					std::scoped_lock lock{ session->m_OutboundMutex };
+					session->m_hasSenderExited = false;
+				}
+				session->m_isSendRunning.store(true);
+				try
+				{
+					session->m_SendThread = std::thread(
+						&CClientSession::Sender_Loop,
+						session.get());
+				}
+				catch (...)
+				{
+					senderStarted = false;
+				}
+			}
+		}
+
+		bool sendFailureWasIsolated = false;
+		bool shutdownWasBounded = false;
+		if (senderStarted)
+		{
+			Abort_TestSocket(peerSocket);
+			const std::array<std::uint8_t, 1u> payload{ 31u };
+			const bool queued = session->Send_Frame(
+				PACKET_TYPE::S2C_CHAT, payload);
+			sendFailureWasIsolated = queued && Wait_Until(
+				std::chrono::milliseconds(1500),
+				[&session, &closedCount]()
+				{
+					return 0u < session->Get_OutboundMetrics().iSendFailureCount &&
+					1u == closedCount.load() &&
+					!session->m_isSendRunning.load();
+				});
+			const auto shutdownStart = std::chrono::steady_clock::now();
+			session->Stop();
+			shutdownWasBounded =
+				std::chrono::steady_clock::now() - shutdownStart <
+					std::chrono::milliseconds(3000);
+		}
+		else if (session)
+		{
+			session->Stop();
+		}
+
+		session.reset();
+		Close_TestSocket(sessionSocket);
+		Close_TestSocket(peerSocket);
+		tests.Require(
+			socketReady && senderStarted && sendFailureWasIsolated &&
+			shutdownWasBounded && 1u == closedCount.load(),
+			"Isolate a sender socket failure to its session and notify close exactly once");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		auto moveCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::MOVE;
+				command.iSessionId = sessionId;
+				command.Move.iClientSequence = sequence;
+				command.Move.fGoalX = static_cast<float>(sequence);
+				return command;
+			};
+		auto skillCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+				command.iSessionId = sessionId;
+				command.UseSkill.iClientSequence = sequence;
+				command.UseSkill.iSkillId = 34010u;
+				return command;
+			};
+		auto aimCommand = [](const SESSION_ID sessionId,
+			const std::uint32_t sequence,
+			const SKILL_ID skillId)
+			{
+				ROOM_COMMAND command{};
+				command.eType = ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM;
+				command.iSessionId = sessionId;
+				command.UpdateSkillAim.iClientSequence = sequence;
+				command.UpdateSkillAim.iSkillId = skillId;
+				return command;
+			};
+
+		const bool enqueued = room.Is_Ready() &&
+			room.Enqueue(moveCommand(1u, 1u)) &&
+			room.Enqueue(skillCommand(2u, 10u)) &&
+			room.Enqueue(moveCommand(1u, 2u)) &&
+			room.Enqueue(skillCommand(1u, 20u)) &&
+			room.Enqueue(moveCommand(1u, 3u)) &&
+			room.Enqueue(aimCommand(1u, 30u, 34590u)) &&
+			room.Enqueue(aimCommand(1u, 31u, 34590u)) &&
+			room.Enqueue(aimCommand(1u, 32u, 34580u));
+		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
+			room.Get_PerformanceMetrics();
+		const bool preservedBarriers =
+			6u == room.m_InboundCommands.size() &&
+			ROOM_COMMAND_TYPE::USE_SKILL ==
+				room.m_InboundCommands[0u].eType &&
+			2u == room.m_InboundCommands[0u].iSessionId &&
+			ROOM_COMMAND_TYPE::MOVE ==
+				room.m_InboundCommands[1u].eType &&
+			2u == room.m_InboundCommands[1u].Move.iClientSequence &&
+			ROOM_COMMAND_TYPE::USE_SKILL ==
+				room.m_InboundCommands[2u].eType &&
+			ROOM_COMMAND_TYPE::MOVE ==
+				room.m_InboundCommands[3u].eType &&
+			3u == room.m_InboundCommands[3u].Move.iClientSequence &&
+			ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM ==
+				room.m_InboundCommands[4u].eType &&
+			31u == room.m_InboundCommands[4u].UpdateSkillAim.iClientSequence &&
+			ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM ==
+				room.m_InboundCommands[5u].eType &&
+			34580u == room.m_InboundCommands[5u].UpdateSkillAim.iSkillId;
+		tests.Require(
+			enqueued && preservedBarriers &&
+			1u == metrics.iCoalescedMoveCommandCount &&
+			1u == metrics.iCoalescedAimCommandCount,
+			"Coalesce only same-stream movement and aim without crossing a same-session reliable barrier");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		bool admittedBestEffort = room.Is_Ready();
+		for (std::size_t index = 0u;
+			index < CGameRoom::MAX_BEST_EFFORT_COMMAND_COUNT; ++index)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::MOVE;
+			command.iSessionId = static_cast<SESSION_ID>(index + 1u);
+			command.Move.iClientSequence = 1u;
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedBestEffort = admittedBestEffort && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND droppedMove{};
+		droppedMove.eType = ROOM_COMMAND_TYPE::MOVE;
+		droppedMove.iSessionId = 5000u;
+		droppedMove.Move.iClientSequence = 1u;
+		const bool bestEffortDropWasNonFatal =
+			room.Enqueue(std::move(droppedMove));
+
+		bool admittedReliableReserve = true;
+		while (room.m_InboundCommands.size() <
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+			command.iSessionId = static_cast<SESSION_ID>(
+				room.m_InboundCommands.size() + 10000u);
+			command.UseSkill.iClientSequence = 1u;
+			command.UseSkill.iSkillId = 34010u;
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedReliableReserve =
+				admittedReliableReserve && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND rejectedReliable{};
+		rejectedReliable.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+		rejectedReliable.iSessionId = 20000u;
+		rejectedReliable.UseSkill.iClientSequence = 1u;
+		rejectedReliable.UseSkill.iSkillId = 34010u;
+		const bool reliableRejectedWithoutMutation =
+			!room.Enqueue(std::move(rejectedReliable)) &&
+			CGameRoom::MAX_RELIABLE_COMMAND_COUNT ==
+				room.m_InboundCommands.size();
+
+		bool admittedCleanupReserve = true;
+		while (room.m_InboundCommands.size() <
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::LEAVE;
+			command.iSessionId = static_cast<SESSION_ID>(
+				room.m_InboundCommands.size() + 20000u);
+			const bool accepted = room.Enqueue(std::move(command));
+			admittedCleanupReserve = admittedCleanupReserve && accepted;
+			if (!accepted)
+				break;
+		}
+		ROOM_COMMAND rejectedCleanup{};
+		rejectedCleanup.eType = ROOM_COMMAND_TYPE::LEAVE;
+		rejectedCleanup.iSessionId = 40000u;
+		const bool cleanupRejectedAtHardCap =
+			!room.Enqueue(std::move(rejectedCleanup)) &&
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
+				room.m_InboundCommands.size();
+		const SERVER_ROOM_PERFORMANCE_METRICS metrics =
+			room.Get_PerformanceMetrics();
+		tests.Require(
+			admittedBestEffort && bestEffortDropWasNonFatal &&
+			admittedReliableReserve && reliableRejectedWithoutMutation &&
+			admittedCleanupReserve && cleanupRejectedAtHardCap &&
+			1u == metrics.iDroppedBestEffortCommandCount &&
+			1u == metrics.iRejectedReliableCommandCount &&
+			1u == metrics.iRejectedCleanupCommandCount &&
+			CGameRoom::MAX_INBOUND_COMMAND_COUNT ==
+				metrics.iIngressHighWatermark,
+			"Bound ingress, reserve reliable and cleanup capacity, and preserve the queue on overflow");
+	}
+	{
+		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
+		const std::size_t commandCount =
+			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK + 5u;
+		bool enqueued = room.Is_Ready();
+		for (std::size_t index = 0u; index < commandCount; ++index)
+		{
+			ROOM_COMMAND command{};
+			command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
+			command.iSessionId = static_cast<SESSION_ID>(50000u + index);
+			command.UseSkill.iClientSequence = 1u;
+			command.UseSkill.iSkillId = 34010u;
+			const bool accepted = room.Enqueue(std::move(command));
+			enqueued = enqueued && accepted;
+			if (!accepted)
+				break;
+		}
+		room.Tick(1.f / 30.f);
+		const SERVER_ROOM_PERFORMANCE_METRICS firstTickMetrics =
+			room.Get_PerformanceMetrics();
+		const bool retainedFifoTail =
+			5u == room.m_InboundCommands.size() &&
+			static_cast<SESSION_ID>(
+				50000u + CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK) ==
+				room.m_InboundCommands.front().iSessionId;
+		room.Tick(1.f / 30.f);
+		const SERVER_ROOM_PERFORMANCE_METRICS secondTickMetrics =
+			room.Get_PerformanceMetrics();
+
+		SERVER_PLAYER player{};
+		player.iSessionId = 60000u;
+		player.iPlayerId = 60000u;
+		player.iNetEntityId = 60000u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		room.m_Players.emplace(player.iPlayerId, player);
+		room.Broadcast_WorldSnapshot();
+		const SERVER_ROOM_PERFORMANCE_METRICS snapshotMetrics =
+			room.Get_PerformanceMetrics();
+		tests.Require(
+			enqueued && retainedFifoTail &&
+			commandCount == firstTickMetrics.iLastIngressDepth &&
+			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK ==
+				firstTickMetrics.iLastDrainedCommandCount &&
+			5u == firstTickMetrics.iLastRemainingCommandCount &&
+			1u == firstTickMetrics.iDrainLimitedTickCount &&
+			5u == secondTickMetrics.iLastIngressDepth &&
+			5u == secondTickMetrics.iLastDrainedCommandCount &&
+			0u == secondTickMetrics.iLastRemainingCommandCount &&
+			2u == secondTickMetrics.iTickCount &&
+			1u == snapshotMetrics.iSnapshotEncodeCount &&
+			0u == snapshotMetrics.iSnapshotEncodeFailureCount &&
+			1u == snapshotMetrics.iSnapshotEnqueueBatchCount &&
+			0u == snapshotMetrics.iSnapshotRecipientCount,
+			"Drain a deterministic FIFO prefix per tick and record tick, ingress, encode, and enqueue metrics");
+	}
 	{
 		using namespace LostArk::Shared::CombatCollision;
 
@@ -602,7 +1400,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(navigation.Load("LV_LUT_HEARTRB_ED"),
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
-	tests.Require(navigation.Find_Path(152.f, -137.f, 151.f, -122.f, path) &&
+	/* Both endpoints are open arena floor on the same connected component. The
+	   old goal sat inside the wall group at the arena centre, which only pathed
+	   because that group carried no blocker region yet. */
+	tests.Require(navigation.Find_Path(144.75f, -115.75f, 156.25f, -122.25f, path) &&
 		!path.empty(), "Find authoritative navigation path");
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
@@ -703,6 +1504,175 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		rootMotionTunnel.x < firstBlockedX,
 		"Refuse root motion that would cross a blocked band in one step");
 
+	constexpr const char* VALTAN_WALL_RECEIVER =
+		"collision.valtan.wallgroup.11047903315509031966.receiver";
+	constexpr const char* VALTAN_WALL_COLLISION_STATE =
+		"collision.valtan.wallgroup.11047903315509031966";
+	constexpr const char* VALTAN_WALL_CONDITION =
+		"condition.valtan.wall.11047903315509031966.destroyed";
+	constexpr float VALTAN_WALL_CENTER_X = 161.402061f;
+	constexpr float VALTAN_WALL_CENTER_Y = 23.04f;
+	constexpr float VALTAN_WALL_CENTER_Z = -133.312236f;
+	constexpr float VALTAN_WALL_APPROACH_X = 163.315478f;
+	constexpr float VALTAN_WALL_APPROACH_Z = -137.931633f;
+	constexpr float VALTAN_WALL_EXIT_X = 159.488644f;
+	constexpr float VALTAN_WALL_EXIT_Z = -128.692839f;
+	std::string dynamicWorldStatus;
+	SERVER_NAVIGATION_CONDITION_STAGE navigationStage{};
+	std::vector<SERVER_NAV_POINT> wallPassagePath;
+	tests.Require(
+		navigation.Has_Condition(VALTAN_WALL_CONDITION) &&
+		!navigation.Is_PointWalkableExact(
+			VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z) &&
+		!navigation.Find_Path(
+			160.25f, -130.75f, 162.25f, -135.75f,
+			wallPassagePath),
+		"Keep the intact Valtan wall footprint and its cross-wall path dynamically blocked");
+	const std::uint64_t navigationRevisionBeforeReject =
+		navigation.Get_Revision();
+	tests.Require(
+		!navigation.Prepare_ConditionChanges(
+			{ { "condition.valtan.wall.unknown", true } },
+			navigationStage, dynamicWorldStatus) &&
+		navigationRevisionBeforeReject == navigation.Get_Revision() &&
+		!navigation.Is_PointWalkableExact(
+			VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z),
+		"Reject an unknown navigation condition without changing the live blocker");
+	tests.Require(
+		navigation.Prepare_ConditionChanges(
+			{ { VALTAN_WALL_CONDITION, true } },
+			navigationStage, dynamicWorldStatus) &&
+		navigationStage.bChanged &&
+		navigationStage.iNextRevision == navigation.Get_Revision() + 1u,
+		"Stage one runtime navigation condition without mutating the live grid");
+	navigation.Commit_ConditionChanges(std::move(navigationStage));
+	tests.Require(
+		navigation.Is_PointWalkableExact(
+			VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z) &&
+		navigation.Find_Path(
+			160.25f, -130.75f, 162.25f, -135.75f,
+			wallPassagePath) && !wallPassagePath.empty(),
+		"Expose the baked floor and a complete cross-wall path after the blocker is removed");
+	navigation.Reset_RuntimeBlockers();
+	tests.Require(
+		!navigation.Is_PointWalkableExact(
+			VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z) &&
+		!navigation.Find_Path(
+			160.25f, -130.75f, 162.25f, -135.75f,
+			wallPassagePath),
+		"Restore the intact Valtan wall blocker and closed path on encounter reset");
+
+	CServerCollisionSystem valtanCollisionSystem;
+	tests.Require(
+		valtanCollisionSystem.Initialize(
+			world.Get_Placements(), dynamicWorldStatus) &&
+		/* 69 interior wall boxes plus the impact receiver, and one box per
+		109 outer ring slab. */
+		94u == valtanCollisionSystem.Get_CollisionBoxCount() &&
+		valtanCollisionSystem.Has_CollisionBox(VALTAN_WALL_RECEIVER),
+		"Load the stable Valtan wall impact receiver and player blocker");
+	SERVER_BOSS_RECEIVER_HIT receiverHit{};
+	tests.Require(
+		valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
+			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			1.f, receiverHit) &&
+		receiverHit.strReceiverPlacementId == VALTAN_WALL_RECEIVER &&
+		receiverHit.fHitRatio > 0.f && receiverHit.fHitRatio < 1.f &&
+		!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
+			145.f, 100.f, VALTAN_WALL_CENTER_Z,
+			175.f, 100.f, VALTAN_WALL_CENTER_Z,
+			1.f, receiverHit),
+		"Sweep a fast Valtan body into the exact receiver without tunneling or high-Y false hits");
+	SERVER_PLAYER valtanWallPlayer{};
+	valtanWallPlayer.fPositionX = VALTAN_WALL_APPROACH_X;
+	valtanWallPlayer.fPositionY = VALTAN_WALL_CENTER_Y;
+	valtanWallPlayer.fPositionZ = VALTAN_WALL_APPROACH_Z;
+	float wallResolvedX = 0.f;
+	float wallResolvedY = 0.f;
+	float wallResolvedZ = 0.f;
+	bool wallMoveBlocked = false;
+	tests.Require(
+		valtanCollisionSystem.Resolve_PlayerMove(
+			valtanWallPlayer, VALTAN_WALL_EXIT_X, VALTAN_WALL_CENTER_Y,
+			VALTAN_WALL_EXIT_Z, wallResolvedX, wallResolvedY,
+			wallResolvedZ, wallMoveBlocked) && wallMoveBlocked,
+		"Block player movement through the intact Valtan wall receiver");
+	SERVER_COLLISION_STATE_STAGE collisionStage{};
+	const std::uint64_t collisionRevisionBeforeReject =
+		valtanCollisionSystem.Get_Revision();
+	tests.Require(
+		!valtanCollisionSystem.Prepare_StateChanges(
+			{ { "receiver.valtan.wall.unknown", false, false } },
+			collisionStage, dynamicWorldStatus) &&
+		collisionRevisionBeforeReject ==
+			valtanCollisionSystem.Get_Revision(),
+		"Reject an unknown collision state target without mutating the receiver");
+	tests.Require(
+		valtanCollisionSystem.Prepare_StateChanges(
+			{ { VALTAN_WALL_COLLISION_STATE, true, false } },
+			collisionStage, dynamicWorldStatus),
+		"Stage BREAKING collision channels with receiver impact disabled");
+	valtanCollisionSystem.Commit_StateChanges(std::move(collisionStage));
+	tests.Require(
+		!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
+			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			1.f, receiverHit) &&
+		valtanCollisionSystem.Resolve_PlayerMove(
+			valtanWallPlayer, VALTAN_WALL_EXIT_X, VALTAN_WALL_CENTER_Y,
+			VALTAN_WALL_EXIT_Z, wallResolvedX, wallResolvedY,
+			wallResolvedZ, wallMoveBlocked) && wallMoveBlocked,
+		"Keep BREAKING player collision while suppressing duplicate boss impacts");
+	tests.Require(
+		valtanCollisionSystem.Prepare_StateChanges(
+			{ { VALTAN_WALL_COLLISION_STATE, false, false } },
+			collisionStage, dynamicWorldStatus),
+		"Stage the persistent FRACTURED collision state");
+	valtanCollisionSystem.Commit_StateChanges(std::move(collisionStage));
+	tests.Require(
+		valtanCollisionSystem.Resolve_PlayerMove(
+			valtanWallPlayer, VALTAN_WALL_EXIT_X, VALTAN_WALL_CENTER_Y,
+			VALTAN_WALL_EXIT_Z, wallResolvedX, wallResolvedY,
+			wallResolvedZ, wallMoveBlocked) && !wallMoveBlocked &&
+		std::abs(wallResolvedX - VALTAN_WALL_EXIT_X) <= 0.001f &&
+		std::abs(wallResolvedZ - VALTAN_WALL_EXIT_Z) <= 0.001f,
+		"Open player collision only after the wall reaches FRACTURED");
+	valtanCollisionSystem.Reset_RuntimeStates();
+	tests.Require(
+		valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
+			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			1.f, receiverHit),
+		"Restore the Valtan impact receiver when the room resets");
+	SERVER_WORLD_ENTITY impactMotionBoss{};
+	impactMotionBoss.strEncounterId = "ENCOUNTER_VALTAN";
+	impactMotionBoss.strPatternId = "VALTAN_ARMOR_BREAK_OPENING";
+	impactMotionBoss.strPatternStageId = "WALL_CHARGE";
+	impactMotionBoss.strActionId =
+		"valtan.mechanic.armor-break-opening.charge";
+	impactMotionBoss.eAction = SERVER_ENTITY_ACTION::PATTERN_WINDUP;
+	impactMotionBoss.fPositionX = 150.f;
+	impactMotionBoss.fPositionZ = -133.f;
+	impactMotionBoss.fYawDegrees = 90.f;
+	impactMotionBoss.fPatternForcedMotionSpeed = 30.f;
+	float impactProposedX = 0.f;
+	float impactProposedZ = 0.f;
+	CValtanBrain impactMotionBrain;
+	tests.Require(
+		impactMotionBrain.Try_BuildImpactMotion(
+			impactMotionBoss, 1.f / 30.f,
+			impactProposedX, impactProposedZ) &&
+		std::abs(impactProposedX - 151.f) <= 0.001f &&
+		std::abs(impactProposedZ + 133.f) <= 0.001f,
+		"Advance the opening charge from Server-authored fixed-tick motion");
+	tests.Require(
+		impactMotionBrain.Complete_ImpactStage(
+			impactMotionBoss, catalog, 500u) &&
+		impactMotionBoss.strPatternStageId == "GROGGY" &&
+		0.f == impactMotionBoss.fPatternForcedMotionSpeed,
+		"Advance the authoritative charge action to GROGGY only after impact");
+
 	CWorldBootstrap bernWorld;
 	const bool bernLoaded = bernWorld.Load(WORLD_ID::BERN);
 	const auto& bernPlacements = bernWorld.Get_Placements();
@@ -780,6 +1750,59 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			wasBlocked) &&
 		!wasBlocked && std::abs(resolvedX - 143.f) < 0.001f,
 		"Preserve movement that passes outside the collision box");
+
+	CServerNavigation bernNavigation;
+	tests.Require(
+		bernNavigation.Load("LV_BER_BERNCASTLE"),
+		"Load Bern server navigation");
+	bool bernSpawnsOnNavigation = bernLoaded;
+	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : bernPlacements)
+	{
+		if (WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn.eKind)
+			continue;
+		SERVER_NAV_POINT projected{};
+		bernSpawnsOnNavigation =
+			bernSpawnsOnNavigation &&
+			bernNavigation.Project_Point(
+				spawn.fPositionX,
+				spawn.fPositionZ,
+				projected) &&
+			std::abs(projected.y - spawn.fPositionY) <= 0.25f;
+	}
+	tests.Require(
+		bernSpawnsOnNavigation,
+		"Project all Bern player spawns to baked navigation");
+	/* The castle approach is why Bern needs a grid at all: without one the room
+	keeps the spawn height for the whole session and straight-line movement walks
+	through the staircase. The authoritative path from the spawn to the top of the
+	baked stair run must therefore carry a real climb, and the stair run itself
+	must stay a walkable slope instead of one vertical jump. */
+	std::vector<SERVER_NAV_POINT> bernStairPath;
+	const bool bernStairPathFound = bernNavigation.Find_Path(
+		137.586334f,
+		-22.4640217f,
+		137.238007f,
+		-116.688004f,
+		bernStairPath);
+	float bernStairClimb = 0.f;
+	float bernStairRunStep = 0.f;
+	if (bernStairPathFound && !bernStairPath.empty())
+	{
+		bernStairClimb = bernStairPath.back().y - bernStairPath.front().y;
+		for (size_t index = 1u; index < bernStairPath.size(); ++index)
+		{
+			if (bernStairPath[index].y <= 47.f)
+				continue;
+			bernStairRunStep = (std::max)(
+				bernStairRunStep,
+				std::abs(bernStairPath[index].y -
+					bernStairPath[index - 1u].y));
+		}
+	}
+	tests.Require(
+		bernStairPathFound && bernStairPath.size() > 100u &&
+		bernStairPath.back().y > 49.f && bernStairClimb > 6.f,
+		"Climb the Bern castle stairs along the authoritative path");
 
 	CWorldBootstrap trainingWorld;
 	CServerNavigation trainingNavigation;
@@ -1147,6 +2170,34 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		valtanDamageEvents);
 	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
 
+	SERVER_WORLD_ENTITY openingChargeBoss{};
+	openingChargeBoss.iNetEntityId = 901u;
+	openingChargeBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+	openingChargeBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+	openingChargeBoss.strArchetypeId = "BOSS_VALTAN";
+	openingChargeBoss.strEncounterId = "ENCOUNTER_VALTAN";
+	openingChargeBoss.iCurrentHp = 59625u;
+	openingChargeBoss.iMaximumHp = 60000u;
+	openingChargeBoss.iMaximumHealthBars = 160u;
+	openingChargeBoss.iLastEvaluatedHealthBar = 160u;
+	openingChargeBoss.iPhaseTwoHpPercent = 50u;
+	openingChargeBoss.fPositionX = 151.f;
+	openingChargeBoss.fPositionY = 22.97f;
+	openingChargeBoss.fPositionZ = -122.f;
+	openingChargeBoss.fEngageDistance = 35.f;
+	openingChargeBoss.fMoveSpeed = 3.f;
+	brain.Update(
+		openingChargeBoss, players, catalog, navigation,
+		1.f / 30.f, 200u, valtanDamageEvents);
+	tests.Require(
+		openingChargeBoss.strPatternId == "VALTAN_ARMOR_BREAK_OPENING" &&
+		openingChargeBoss.strPatternStageId == "WALL_CHARGE" &&
+		openingChargeBoss.strActionId ==
+			"valtan.mechanic.armor-break-opening.charge" &&
+		std::abs(openingChargeBoss.fPatternForcedMotionSpeed -
+			(100.f / 1.5f)) <= 0.001f,
+		"Use authored charge maximum range instead of stopping at the bait player");
+
 	{
 		SERVER_PLAYER meleePlayer{};
 		meleePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -1406,6 +2457,66 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			1u == activationCount,
 			"Do not repeat a triggerOnce spawn-group activation while occupied");
+	}
+
+	{
+		/* The Valtan route has no playable monster damage yet. Debug replaces only
+		the four progression spawn triggers with authored moves; Release must keep
+		the product activation action unchanged. */
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "Stage_1";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.valtan.stage01";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus, true),
+			"Initialize the Debug Valtan stage-route bypass");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iPlayerId = 404u;
+		player.iCurrentHp = 100u;
+		player.iMaximumHp = 100u;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::size_t activationCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players, 41u, transfers,
+			[&activationCount](WORLD_TRIGGER_ACTION_KIND, const std::string&)
+			{
+				++activationCount;
+				return true;
+			});
+#ifdef _DEBUG
+		const SERVER_PLAYER& moving = players.begin()->second;
+		tests.Require(
+			0u == activationCount &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == moving.eAction &&
+			moving.TriggerMove.isActive &&
+			std::abs(moving.TriggerMove.fTargetX - 46.741f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetZ + 61.417f) < 0.001f,
+			"Bypass the unkillable Stage_1 group and move toward the next trigger in Debug");
+		triggerSystem.Update_PlayerMotion(players.begin()->second, 1.f);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
+			std::abs(players.begin()->second.fPositionX - 46.741f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionZ + 61.417f) < 0.001f,
+			"Complete the Debug stage bypass at the authored next-stage approach point");
+#else
+		tests.Require(
+			1u == activationCount &&
+			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
+			"Keep the original Valtan spawn-group trigger unchanged in Release");
+#endif
 	}
 
 	{
@@ -2334,6 +3445,807 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Unlock miniboss group after Stage 1 completion");
 	}
 
+	{
+		auto makeDestructionGraph = [](
+			const std::uint32_t breakingDurationTicks,
+			const WORLD_DESTRUCTION_TRIGGER_KIND triggerKind,
+			const bool hasWorldMutationChannels = true)
+		{
+			WORLD_DESTRUCTION_DESCRIPTOR_GRAPH graph{};
+			graph.Groups.push_back({
+				"destroyable.group.valtan.wall.3705102",
+				{
+					"deploy.valtan.wall.3705102.0",
+					"deploy.valtan.wall.3705102.1",
+					"deploy.valtan.wall.3705102.2",
+					"deploy.valtan.wall.3705102.3",
+					"deploy.valtan.wall.3705102.4"
+				},
+				WORLD_DESTRUCTION_STATE::INTACT });
+			graph.Mutations.push_back({
+				"mutation.valtan.wall.3705102.fracture",
+				"destroyable.group.valtan.wall.3705102",
+				WORLD_DESTRUCTION_STATE::FRACTURED,
+				breakingDurationTicks,
+				hasWorldMutationChannels ?
+					"collision.valtan.wall.3705102.fractured" : "",
+				hasWorldMutationChannels ?
+					"navigation.valtan.wall.3705102.open" : "" });
+			graph.Bindings.push_back({
+				"binding.valtan.wall.3705102.impact",
+				"mutation.valtan.wall.3705102.fracture",
+				triggerKind,
+				"VALTAN_ARMOR_BREAK_OPENING",
+				"WALL_CHARGE",
+				"valtan.armor_break.wall_charge",
+				1u,
+				WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT == triggerKind ?
+					"receiver.valtan.wall.3705102" : "" });
+			return graph;
+		};
+
+		const WORLD_DESTRUCTION_ACTION_TUPLE exactAction{
+			"VALTAN_ARMOR_BREAK_OPENING",
+			"WALL_CHARGE",
+			"valtan.armor_break.wall_charge",
+			1u };
+		constexpr std::uint64_t SOURCE_BOSS_ENTITY_ID = 7001u;
+		CWorldDestructionRuntime runtime;
+		std::string status;
+		WORLD_DESTRUCTION_TRANSACTION transaction{};
+		tests.Require(
+			runtime.Initialize(makeDestructionGraph(
+				3u, WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT), status) &&
+			1u == runtime.Get_EncounterEpoch(),
+			"Initialize a nonzero-epoch world destruction graph transactionally");
+
+		WORLD_DESTRUCTION_ACTION_TUPLE wrongAction = exactAction;
+		wrongAction.strActionId = "valtan.armor_break.wall_charge.wrong";
+		tests.Require(
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_MATCH ==
+				runtime.Prepare_ImpactTrigger(
+					wrongAction, "receiver.valtan.wall.3705102",
+					SOURCE_BOSS_ENTITY_ID, 7u, 10u, transaction, status) &&
+			transaction.Transitions.empty() &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_MATCH ==
+				runtime.Prepare_ImpactTrigger(
+					exactAction, "receiver.valtan.wall.other",
+					SOURCE_BOSS_ENTITY_ID, 7u, 10u, transaction, status),
+			"Reject non-exact action tuples and impact receivers");
+
+		const bool preparedBreaking =
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+			runtime.Prepare_ImpactTrigger(
+				exactAction, "receiver.valtan.wall.3705102",
+				SOURCE_BOSS_ENTITY_ID, 7u, 10u, transaction, status) &&
+			1u == transaction.BindingApplications.size() &&
+			1u == transaction.Transitions.size() &&
+			WORLD_DESTRUCTION_STATE::INTACT ==
+				transaction.Transitions.front().ePreviousState &&
+			WORLD_DESTRUCTION_STATE::BREAKING ==
+				transaction.Transitions.front().eNextState &&
+			13u == transaction.Transitions.front().iCommitTick &&
+			!transaction.Transitions.front().bApplyPersistentMutation &&
+			5u == transaction.Transitions.front().MemberPlacementIds.size() &&
+			transaction.Transitions.front().strCollisionStateId ==
+				"collision.valtan.wall.3705102.fractured" &&
+			transaction.Transitions.front().strNavigationStateId ==
+				"navigation.valtan.wall.3705102.open";
+		tests.Require(
+			preparedBreaking && runtime.Commit(transaction, status),
+			"Prepare and atomically commit one BREAKING transition");
+
+		WORLD_DESTRUCTION_GROUP_STATE groupState{};
+		tests.Require(
+			runtime.Find_GroupState(
+				"destroyable.group.valtan.wall.3705102", groupState) &&
+			WORLD_DESTRUCTION_STATE::BREAKING == groupState.eState &&
+			2u == groupState.iStateVersion && 10u == groupState.iStateStartTick &&
+			13u == groupState.iCommitTick &&
+			groupState.strPendingMutationId ==
+				"mutation.valtan.wall.3705102.fracture",
+			"Persist the BREAKING version and exact final commit tick");
+		tests.Require(
+			WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
+				runtime.Prepare_ImpactTrigger(
+					exactAction, "receiver.valtan.wall.3705102",
+					SOURCE_BOSS_ENTITY_ID, 7u, 11u, transaction, status) &&
+			transaction.Transitions.empty(),
+			"Treat the same pattern-sequence binding request as an idempotent no-op");
+		tests.Require(
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE ==
+				runtime.Prepare_DueStateCommits(12u, transaction, status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				runtime.Prepare_DueStateCommits(13u, transaction, status) &&
+			WORLD_DESTRUCTION_STATE::FRACTURED ==
+				transaction.Transitions.front().eNextState &&
+			transaction.Transitions.front().bApplyPersistentMutation &&
+			runtime.Commit(transaction, status),
+			"Commit the persistent wall, collision, and navigation plan at the exact tick");
+		tests.Require(
+			runtime.Find_GroupState(
+				"destroyable.group.valtan.wall.3705102", groupState) &&
+			WORLD_DESTRUCTION_STATE::FRACTURED == groupState.eState &&
+			3u == groupState.iStateVersion && 13u == groupState.iStateStartTick &&
+			0u == groupState.iCommitTick,
+			"Converge on a persistent FRACTURED state with one final version");
+
+		const std::uint32_t previousEpoch = runtime.Get_EncounterEpoch();
+		tests.Require(
+			runtime.Reset(status) &&
+			previousEpoch + 1u == runtime.Get_EncounterEpoch() &&
+			runtime.Find_GroupState(
+				"destroyable.group.valtan.wall.3705102", groupState) &&
+			WORLD_DESTRUCTION_STATE::INTACT == groupState.eState &&
+			1u == groupState.iStateVersion && 1u == groupState.iStateStartTick &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				runtime.Prepare_ImpactTrigger(
+					exactAction, "receiver.valtan.wall.3705102",
+					SOURCE_BOSS_ENTITY_ID, 7u, 20u, transaction, status),
+			"Reset to a new epoch/version baseline and admit the same sequence in the new encounter");
+		tests.Require(
+			1u == runtime.Get_GroupStates().size() &&
+			"destroyable.group.valtan.wall.3705102" ==
+				runtime.Get_GroupStates().front().strGroupId,
+			"Enumerate persistent group state in canonical stable-ID order");
+
+		CWorldDestructionRuntime zeroDurationRuntime;
+		tests.Require(
+			zeroDurationRuntime.Initialize(makeDestructionGraph(
+				0u, WORLD_DESTRUCTION_TRIGGER_KIND::STAGE, false), status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				zeroDurationRuntime.Prepare_StageTrigger(
+					exactAction, SOURCE_BOSS_ENTITY_ID, 1u, 30u,
+					transaction, status) &&
+			WORLD_DESTRUCTION_STATE::FRACTURED ==
+				transaction.Transitions.front().eNextState &&
+			30u == transaction.Transitions.front().iCommitTick &&
+			transaction.Transitions.front().strCollisionStateId.empty() &&
+			transaction.Transitions.front().strNavigationStateId.empty() &&
+			transaction.Transitions.front().bApplyPersistentMutation &&
+			zeroDurationRuntime.Commit(transaction, status) &&
+			zeroDurationRuntime.Find_GroupState(
+				"destroyable.group.valtan.wall.3705102", groupState) &&
+			WORLD_DESTRUCTION_STATE::FRACTURED == groupState.eState &&
+			2u == groupState.iStateVersion,
+			"Commit a zero-duration stage binding directly in one version");
+
+		CWorldDestructionRuntime wrapRuntime;
+		const std::uint32_t beforeWrap =
+			(std::numeric_limits<std::uint32_t>::max)() - 1u;
+		tests.Require(
+			wrapRuntime.Initialize(makeDestructionGraph(
+				3u, WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT), status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				wrapRuntime.Prepare_ImpactTrigger(
+					exactAction, "receiver.valtan.wall.3705102",
+					SOURCE_BOSS_ENTITY_ID, 1u, beforeWrap,
+					transaction, status) &&
+			2u == transaction.Transitions.front().iCommitTick &&
+			wrapRuntime.Commit(transaction, status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE ==
+				wrapRuntime.Prepare_DueStateCommits(
+					(std::numeric_limits<std::uint32_t>::max)(),
+					transaction, status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE ==
+				wrapRuntime.Prepare_DueStateCommits(1u, transaction, status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				wrapRuntime.Prepare_DueStateCommits(2u, transaction, status) &&
+			wrapRuntime.Commit(transaction, status),
+			"Skip reserved tick zero and commit exactly after uint32 wrap");
+	}
+
+	{
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		SERVER_WORLD_ENTITY boss{};
+		boss.iNetEntityId = 7001u;
+		boss.strPatternId = "VALTAN_ARENA_BREAK_109";
+		boss.strPatternStageId = "IMPACT";
+		boss.strActionId =
+			"valtan.mechanic.arena-break-109.impact";
+		boss.iPatternStageIndex = 2u;
+		boss.iPatternSequence = 15u;
+		boss.fPositionX = 151.25f;
+		boss.fPositionY = 22.97f;
+		boss.fPositionZ = -121.75f;
+		boss.fYawDegrees = 90.f;
+
+		const bool applied = room.Is_Ready() &&
+			room.Apply_WorldDestructionStageEntry(boss, 450u);
+		const auto breakingStates =
+			room.m_WorldDestructionRuntime.Get_GroupStates();
+		const std::size_t breakingCount = static_cast<std::size_t>(
+			std::count_if(breakingStates.begin(), breakingStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
+				}));
+		tests.Require(
+			applied && 21u == breakingCount &&
+			22u == room.m_iNextWorldDestructionEventSequence,
+			"Emit one monotonically sequenced live event for every 109-bar wall group");
+
+		const std::uint64_t sequenceAfterFirstEdge =
+			room.m_iNextWorldDestructionEventSequence;
+		tests.Require(
+			room.Apply_WorldDestructionStageEntry(boss, 451u) &&
+			sequenceAfterFirstEdge ==
+				room.m_iNextWorldDestructionEventSequence,
+			"Do not allocate a live event for a duplicate pattern-stage edge");
+
+		WORLD_DESTRUCTION_ACTION_TUPLE action{};
+		action.strPatternId = boss.strPatternId;
+		action.strStageId = boss.strPatternStageId;
+		action.strActionId = boss.strActionId;
+		action.iStageIndex = boss.iPatternStageIndex;
+		CWorldDestructionRuntime isolatedRuntime;
+		std::string status;
+		WORLD_DESTRUCTION_TRANSACTION transaction{};
+		const bool prepared = isolatedRuntime.Initialize(
+			room.m_WorldDestructionBootstrap.Get_DescriptorGraph(), status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				isolatedRuntime.Prepare_StageTrigger(
+					action, boss.iNetEntityId, boss.iPatternSequence,
+					450u, transaction, status);
+		CWorldDestructionRuntime activeRuntime =
+			std::move(room.m_WorldDestructionRuntime);
+		room.m_WorldDestructionRuntime = std::move(isolatedRuntime);
+		room.m_iNextWorldDestructionEventSequence = 1u;
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> firstEvents;
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> repeatedEvents;
+		const bool builtFirst = prepared &&
+			room.Build_WorldDestructionLiveEvents(
+				transaction, boss, firstEvents, status);
+		const bool builtRepeated =
+			room.Build_WorldDestructionLiveEvents(
+				transaction, boss, repeatedEvents, status);
+		room.m_WorldDestructionRuntime = std::move(activeRuntime);
+		tests.Require(
+			builtFirst && builtRepeated && 21u == firstEvents.size() &&
+			firstEvents.size() == repeatedEvents.size() &&
+			1u == firstEvents.front().iEventSequence &&
+			21u == firstEvents.back().iEventSequence &&
+			firstEvents.front().iRandomSeed ==
+				repeatedEvents.front().iRandomSeed &&
+			firstEvents.front().fImpactOriginX == boss.fPositionX &&
+			firstEvents.front().fImpactOriginY == boss.fPositionY &&
+			firstEvents.front().fImpactOriginZ == boss.fPositionZ &&
+			std::fabs(firstEvents.front().fImpactDirectionX - 1.f) <= 0.001f &&
+			std::fabs(firstEvents.front().fImpactDirectionY) <= 0.001f &&
+			std::fabs(firstEvents.front().fImpactDirectionZ) <= 0.001f,
+			"Build canonical deterministic events from the authoritative boss pose");
+
+		room.m_iNextWorldDestructionEventSequence =
+			(std::numeric_limits<std::uint64_t>::max)() - 9u;
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> exhaustedEvents;
+		CWorldDestructionRuntime exhaustionRuntime;
+		const bool preparedExhaustion = exhaustionRuntime.Initialize(
+			room.m_WorldDestructionBootstrap.Get_DescriptorGraph(), status) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				exhaustionRuntime.Prepare_StageTrigger(
+					action, boss.iNetEntityId, boss.iPatternSequence,
+					450u, transaction, status);
+		activeRuntime = std::move(room.m_WorldDestructionRuntime);
+		room.m_WorldDestructionRuntime = std::move(exhaustionRuntime);
+		tests.Require(
+			preparedExhaustion &&
+			!room.Build_WorldDestructionLiveEvents(
+				transaction, boss, exhaustedEvents, status) &&
+			exhaustedEvents.empty(),
+			"Fail closed before a destruction live-event sequence can wrap");
+		room.m_WorldDestructionRuntime = std::move(activeRuntime);
+
+		room.m_iNextWorldDestructionEventSequence = sequenceAfterFirstEdge;
+		tests.Require(
+			room.Commit_DueWorldDestruction(458u) &&
+			sequenceAfterFirstEdge ==
+				room.m_iNextWorldDestructionEventSequence,
+			"Commit due FRACTURED states without emitting a second live event");
+		const std::uint32_t previousEpoch =
+			room.m_WorldDestructionRuntime.Get_EncounterEpoch();
+		tests.Require(
+			room.Reset_ValtanArenaWhenEmpty() &&
+			previousEpoch + 1u ==
+				room.m_WorldDestructionRuntime.Get_EncounterEpoch() &&
+			1u == room.m_iNextWorldDestructionEventSequence,
+			"Reset the room live-event ledger only with the encounter epoch");
+	}
+
+	{
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		SERVER_WORLD_ENTITY boss{};
+		boss.iNetEntityId = 7002u;
+		boss.strPatternId = "VALTAN_ARMOR_BREAK_OPENING";
+		boss.strPatternStageId = "WALL_CHARGE";
+		boss.strActionId =
+			"valtan.mechanic.armor-break-opening.charge";
+		boss.iPatternStageIndex = 0u;
+		boss.iPatternSequence = 159u;
+		boss.fPositionX = 151.f;
+		boss.fPositionY = 23.04f;
+		boss.fPositionZ = -133.312236f;
+		boss.fYawDegrees = 90.f;
+		bool triggered = false;
+		WORLD_DESTRUCTION_GROUP_STATE groupState{};
+		std::vector<SERVER_NAV_POINT> wallPassagePath;
+		tests.Require(
+			room.Is_Ready() &&
+			!room.m_ServerNavigation.Is_PointWalkableExact(
+				161.402061f, -133.312236f) &&
+			!room.m_ServerNavigation.Find_Path(
+				160.25f, -130.75f, 162.25f, -135.75f,
+				wallPassagePath) &&
+			room.Apply_WorldDestructionImpact(
+				boss, "collision.valtan.wallgroup.11047903315509031966.receiver",
+				500u, triggered) && triggered &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				"destroyable.group.valtan.deploy.11047903315509031966",
+				groupState) &&
+			WORLD_DESTRUCTION_STATE::BREAKING == groupState.eState &&
+			!room.m_ServerNavigation.Is_PointWalkableExact(
+				161.402061f, -133.312236f),
+			"Commit one exact Valtan impact while keeping BREAKING navigation blocked");
+		SERVER_BOSS_RECEIVER_HIT duplicateHit{};
+		tests.Require(
+			!room.m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+				145.f, 23.04f, -133.312236f,
+				175.f, 23.04f, -133.312236f,
+				1.f, duplicateHit) &&
+			room.Commit_DueWorldDestruction(507u) &&
+			!room.m_ServerNavigation.Is_PointWalkableExact(
+				161.402061f, -133.312236f),
+			"Suppress repeated receiver impacts and keep the wall closed before its due tick");
+		tests.Require(
+			room.Commit_DueWorldDestruction(508u) &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				"destroyable.group.valtan.deploy.11047903315509031966",
+				groupState) &&
+			WORLD_DESTRUCTION_STATE::DESPAWNED == groupState.eState &&
+			room.m_ServerNavigation.Is_PointWalkableExact(
+				161.402061f, -133.312236f) &&
+			room.m_ServerNavigation.Find_Path(
+				160.25f, -130.75f, 162.25f, -135.75f,
+				wallPassagePath) && !wallPassagePath.empty(),
+			"Atomically expose the Valtan passage at the persistent DESPAWNED due tick");
+	}
+
+#ifdef _DEBUG
+	{
+		/* Entering Stage_Boss in Debug is the complete manual smoke route: the
+		canonical trigger still activates the boss, the player is placed at the
+		wall-charge bait point, and the next brain tick queues only 159. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		SERVER_PLAYER player{};
+		player.iSessionId = 606u;
+		player.iPlayerId = 607u;
+		player.iNetEntityId = 608u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = 5500u;
+		player.iMaximumHp = 5500u;
+		player.isCombatReady = true;
+		player.fPositionX = 130.181f;
+		player.fPositionY = 23.0607529f;
+		player.fPositionZ = -95.8730011f;
+		room.m_Players.emplace(player.iPlayerId, player);
+		room.Tick(1.f / 30.f);
+		SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
+		const SERVER_PLAYER& baitPlayer = room.m_Players.begin()->second;
+		float baitResolvedX = 0.f;
+		float baitResolvedY = 0.f;
+		float baitResolvedZ = 0.f;
+		bool baitBlocked = false;
+		const bool baitIsCollisionClear =
+			room.m_ServerCollisionSystem.Resolve_PlayerMove(
+				baitPlayer,
+				baitPlayer.fPositionX + 0.01f,
+				baitPlayer.fPositionY,
+				baitPlayer.fPositionZ,
+				baitResolvedX, baitResolvedY, baitResolvedZ, baitBlocked) &&
+			!baitBlocked;
+		tests.Require(
+			room.Is_Ready() && nullptr != boss &&
+			"VALTAN_ARMOR_BREAK_OPENING" ==
+				(nullptr == boss ? std::string{} : boss->strPatternId) &&
+			159u == (nullptr == boss ? 0u :
+				CValtanBrain::Calculate_HealthBar(*boss)) &&
+			std::abs(baitPlayer.fPositionX - 154.296f) < 0.001f &&
+			std::abs(baitPlayer.fPositionZ + 125.219f) < 0.001f &&
+			baitIsCollisionClear,
+			"Enter the real Debug Stage_Boss trigger and immediately run the 159-bar opening");
+	}
+#endif
+
+	{
+		/* Debug Valtan audition. The point of the two-step ARM/CROSS contract is
+		that dropping straight onto a low bar crosses every threshold above it,
+		so this checks the single-crossing property against the real encounter
+		patterns rather than a synthetic pair. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID AUDITION_SESSION = 4242u;
+		constexpr PLAYER_ID AUDITION_PLAYER = 77u;
+		constexpr std::uint32_t TARGET_BAR = 109u;
+
+		const bool activated = room.Is_Ready() &&
+			room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* auditionBoss = room.Find_AuditionBoss();
+		tests.Require(
+			activated && nullptr != auditionBoss &&
+			60000u == (nullptr == auditionBoss ? 0u : auditionBoss->iMaximumHp) &&
+			160u == (nullptr == auditionBoss ?
+				0u : auditionBoss->iMaximumHealthBars),
+			"Activate the audition Valtan with its authored health bar scale");
+
+		tests.Require(
+			nullptr != auditionBoss &&
+			30375u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 81u) &&
+			30000u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 80u) &&
+			0u == CValtanBrain::Resolve_HealthBarHp(*auditionBoss, 161u),
+			"Resolve authored health bar boundaries and reject bars off the scale");
+
+		C2S_VALTAN_AUDITION_REQUEST arm{};
+		arm.iRequestSequence = 1u;
+		arm.eOperation = VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		arm.iTargetHealthBar = TARGET_BAR;
+		std::uint32_t reportedBar = 0u;
+
+		SERVER_PLAYER auditionPlayer{};
+		auditionPlayer.iPlayerId = AUDITION_PLAYER;
+		auditionPlayer.iNetEntityId = 900u;
+		auditionPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		auditionPlayer.iCurrentHp = 1000u;
+		auditionPlayer.iMaximumHp = 1000u;
+		/* SERVER_PLAYER starts combat-ready, so the not-engaged path has to be
+		asked for explicitly rather than left to the default. */
+		auditionPlayer.isCombatReady = false;
+		if (nullptr != auditionBoss)
+		{
+			auditionPlayer.fPositionX = auditionBoss->fPositionX + 2.f;
+			auditionPlayer.fPositionY = auditionBoss->fPositionY;
+			auditionPlayer.fPositionZ = auditionBoss->fPositionZ;
+		}
+		room.m_Players.emplace(AUDITION_PLAYER, auditionPlayer);
+
+#ifndef _DEBUG
+		/* A Release Server never auditions. It still answers, because the packet
+		type stays known so a Debug Client gets a verdict instead of a closed
+		socket, but the boss must not move even for an otherwise valid request. */
+		room.m_PlayerIdBySessionId.emplace(AUDITION_SESSION, AUDITION_PLAYER);
+		room.m_Players.at(AUDITION_PLAYER).isCombatReady = true;
+		const std::uint32_t releaseHpBefore =
+			nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp;
+		reportedBar = 12345u;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, arm, reportedBar) &&
+			0u == reportedBar &&
+			nullptr != auditionBoss &&
+			releaseHpBefore ==
+				(nullptr == auditionBoss ? 1u : auditionBoss->iCurrentHp),
+			"Reject every Valtan audition in a Release Server without moving the boss");
+#else
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD ==
+				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar),
+			"Reject a Valtan audition from a session that never joined the room");
+		room.m_PlayerIdBySessionId.emplace(AUDITION_SESSION, AUDITION_PLAYER);
+
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED ==
+				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar),
+			"Reject a Valtan audition the brain would drop for want of a target");
+		room.m_Players.at(AUDITION_PLAYER).isCombatReady = true;
+
+		C2S_VALTAN_AUDITION_REQUEST cross = arm;
+		cross.iRequestSequence = 2u;
+		cross.eOperation = VALTAN_AUDITION_OPERATION::CROSS_HEALTH_BAR;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, cross, reportedBar),
+			"Reject a Valtan crossing that was never armed at the same bar");
+
+		C2S_VALTAN_AUDITION_REQUEST unknownBar = arm;
+		unknownBar.iRequestSequence = 3u;
+		unknownBar.iTargetHealthBar = 79u;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, unknownBar, reportedBar),
+			"Reject a Valtan audition on a bar that carries no authored pattern");
+
+		C2S_VALTAN_AUDITION_REQUEST play{};
+		play.iRequestSequence = 4u;
+		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
+		play.iTargetHealthBar = 33u;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::QUEUED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, play, reportedBar) &&
+			33u == reportedBar && nullptr != auditionBoss &&
+			34u == (nullptr == auditionBoss ?
+				0u : auditionBoss->iLastEvaluatedHealthBar) &&
+			12375u == (nullptr == auditionBoss ?
+				0u : auditionBoss->iCurrentHp),
+			"Prime and cross one authored bar atomically for one-click audition");
+
+		arm.iRequestSequence = 5u;
+		const VALTAN_AUDITION_RESULT armResult =
+			room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar);
+		tests.Require(
+			VALTAN_AUDITION_RESULT::ARMED == armResult &&
+			110u == reportedBar &&
+			nullptr != auditionBoss &&
+			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			110u == (nullptr == auditionBoss ?
+				0u : auditionBoss->iLastEvaluatedHealthBar),
+			"Arm the audition one bar above the target without crossing it");
+
+		tests.Require(
+			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED ==
+				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar) &&
+			nullptr != auditionBoss &&
+			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp),
+			"Answer a resent Valtan audition sequence without moving the boss");
+
+		cross.iRequestSequence = 6u;
+		const VALTAN_AUDITION_RESULT crossResult =
+			room.Evaluate_ValtanAudition(AUDITION_SESSION, cross, reportedBar);
+		tests.Require(
+			VALTAN_AUDITION_RESULT::QUEUED == crossResult &&
+			TARGET_BAR == reportedBar &&
+			nullptr != auditionBoss &&
+			40875u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			110u == (nullptr == auditionBoss ?
+				0u : auditionBoss->iLastEvaluatedHealthBar) &&
+			(nullptr == auditionBoss || auditionBoss->PendingPatternIds.empty()),
+			"Cross onto the target bar and leave the queueing to CValtanBrain");
+
+		CValtanBrain auditionBrain;
+		std::vector<DAMAGE_EVENT> auditionDamage;
+		if (nullptr != auditionBoss)
+		{
+			auditionBrain.Update(
+				*auditionBoss, room.m_Players, room.m_GameplayCatalog,
+				room.m_ServerNavigation, 1.f / 30.f, 500u, auditionDamage);
+		}
+		const bool queuedOnlyTarget = nullptr != auditionBoss &&
+			1u == auditionBoss->TriggeredPatternIds.size() &&
+			"VALTAN_ARENA_BREAK_109" == auditionBoss->TriggeredPatternIds.front();
+		tests.Require(
+			queuedOnlyTarget,
+			"Queue only the 109-bar pattern from an armed single-bar crossing");
+		tests.Require(
+			nullptr != auditionBoss &&
+			auditionBoss->TriggeredPatternIds.end() == std::find_if(
+				auditionBoss->TriggeredPatternIds.begin(),
+				auditionBoss->TriggeredPatternIds.end(),
+				[](const std::string& patternId)
+				{
+					return "VALTAN_ARMOR_BREAK_OPENING" == patternId ||
+						"VALTAN_FLOOR_WIPE_130" == patternId ||
+						"VALTAN_FOUR_PILLARS_105" == patternId;
+				}),
+			"Leave the 159, 130 and 105 bar patterns unqueued by a 109-bar audition");
+		tests.Require(
+			nullptr != auditionBoss &&
+			"VALTAN_ARENA_BREAK_109" ==
+				(nullptr == auditionBoss ? std::string{} :
+					auditionBoss->strPatternId) &&
+			1u == (nullptr == auditionBoss ? 0u : auditionBoss->iPatternSequence),
+			"Advance the audition pattern sequence exactly once");
+
+		C2S_VALTAN_AUDITION_REQUEST whileRunning = arm;
+		whileRunning.iRequestSequence = 7u;
+		whileRunning.iTargetHealthBar = 33u;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, whileRunning, reportedBar),
+			"Reject a Valtan audition while an authored pattern is still running");
+
+		const std::uint32_t epochBeforeRepeatPlay =
+			room.m_WorldDestructionRuntime.Get_EncounterEpoch();
+		C2S_VALTAN_AUDITION_REQUEST repeatPlay{};
+		repeatPlay.iRequestSequence = 8u;
+		repeatPlay.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
+		repeatPlay.iTargetHealthBar = TARGET_BAR;
+		tests.Require(
+			VALTAN_AUDITION_RESULT::QUEUED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, repeatPlay, reportedBar) &&
+			epochBeforeRepeatPlay + 1u ==
+				room.m_WorldDestructionRuntime.Get_EncounterEpoch() &&
+			TARGET_BAR == reportedBar && nullptr != auditionBoss &&
+			auditionBoss->strPatternId.empty() &&
+			auditionBoss->TriggeredPatternIds.empty() &&
+			110u == auditionBoss->iLastEvaluatedHealthBar &&
+			40875u == auditionBoss->iCurrentHp,
+			"Reset a running audition and queue 109 again from one repeatable Play request");
+#endif
+
+		room.m_Players.clear();
+		room.m_PlayerIdBySessionId.clear();
+		tests.Require(
+			room.Reset_ValtanArenaWhenEmpty() &&
+			0u == room.m_iValtanAuditionArmedHealthBar,
+			"Drop the armed audition bar with the encounter reset");
+	}
+
+	{
+		/* The 109 leap. No jump clip exists in the converted Valtan model, so
+		the arc itself is Server state and has to be checked as authority, not
+		as presentation: it must leave the ground during TAKEOFF and land back
+		exactly on the authored placement by IMPACT. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr PLAYER_ID LEAP_PLAYER = 78u;
+		const bool activated = room.Is_Ready() &&
+			room.Activate_Encounter("boss.valtan.center");
+		SERVER_WORLD_ENTITY* leapBoss = room.Find_AuditionBoss();
+
+		SERVER_PLAYER leapPlayer{};
+		leapPlayer.iPlayerId = LEAP_PLAYER;
+		leapPlayer.iNetEntityId = 901u;
+		leapPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		leapPlayer.iCurrentHp = 1000u;
+		leapPlayer.iMaximumHp = 1000u;
+		leapPlayer.isCombatReady = true;
+		if (nullptr != leapBoss)
+		{
+			leapPlayer.fPositionX = leapBoss->fPositionX + 2.f;
+			leapPlayer.fPositionY = leapBoss->fPositionY;
+			leapPlayer.fPositionZ = leapBoss->fPositionZ;
+		}
+		room.m_Players.emplace(LEAP_PLAYER, leapPlayer);
+
+		const float groundY =
+			nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionY;
+		tests.Require(
+			activated && nullptr != leapBoss &&
+			std::abs(groundY - (nullptr == leapBoss ?
+				1.f : leapBoss->fPositionY)) < 0.001f,
+			"Record the authored Valtan placement as the leap landing point");
+
+		/* Drive the real pattern rather than assigning stages by hand, so the
+		arc is exercised through the same edges the room replicates. */
+		if (nullptr != leapBoss)
+		{
+			leapBoss->fPositionX = leapBoss->fSpawnPositionX + 6.f;
+			leapBoss->fPositionZ = leapBoss->fSpawnPositionZ + 6.f;
+			leapBoss->iCurrentHp =
+				CValtanBrain::Resolve_HealthBarHp(*leapBoss, 109u);
+			leapBoss->iLastEvaluatedHealthBar = 110u;
+		}
+		CValtanBrain leapBrain;
+		std::vector<DAMAGE_EVENT> leapDamage;
+		std::uint32_t leapTick = 600u;
+		const auto tickLeap = [&](const std::uint32_t count)
+		{
+			for (std::uint32_t index = 0u; index < count; ++index)
+			{
+				if (nullptr == leapBoss)
+					return;
+				leapBrain.Update(
+					*leapBoss, room.m_Players, room.m_GameplayCatalog,
+					room.m_ServerNavigation, 1.f / 30.f, leapTick++, leapDamage);
+			}
+		};
+
+		tickLeap(1u);
+		tests.Require(
+			nullptr != leapBoss &&
+			"VALTAN_ARENA_BREAK_109" ==
+				(nullptr == leapBoss ? std::string{} : leapBoss->strPatternId) &&
+			"TAKEOFF" == (nullptr == leapBoss ?
+				std::string{} : leapBoss->strPatternStageId),
+			"Begin the 109 phase transition on the authored crossing");
+
+		/* Half of the 1000ms TAKEOFF stage at 30Hz. */
+		tickLeap(15u);
+		tests.Require(
+			nullptr != leapBoss &&
+			leapBoss->fPositionY > groundY + 1.f,
+			"Lift Valtan off the ground during the authored TAKEOFF stage");
+
+		/* Follow the rest of TAKEOFF and all of DROP one tick at a time so the
+		arc itself is checked, not just its endpoints: it has to reach the
+		authored apex and come all the way back down to the floor. */
+		float peakY = nullptr == leapBoss ? 0.f : leapBoss->fPositionY;
+		float peakPlanarError = 0.f;
+		for (std::uint32_t index = 0u; index < 39u; ++index)
+		{
+			tickLeap(1u);
+			if (nullptr == leapBoss)
+				break;
+			if (leapBoss->fPositionY > peakY)
+				peakY = leapBoss->fPositionY;
+			if ("DROP" == leapBoss->strPatternStageId)
+			{
+				const float dx = leapBoss->fPositionX - leapBoss->fSpawnPositionX;
+				const float dz = leapBoss->fPositionZ - leapBoss->fSpawnPositionZ;
+				peakPlanarError = (std::max)(
+					peakPlanarError, std::sqrt(dx * dx + dz * dz));
+			}
+		}
+		tests.Require(
+			nullptr != leapBoss &&
+			std::abs(peakY - (groundY + 12.f)) < 0.5f &&
+			peakPlanarError > 1.f &&
+			leapBoss->fPositionY <= groundY + 0.001f,
+			"Carry Valtan through the authored apex and back down to the floor");
+
+		/* TAKEOFF (30 ticks) plus DROP (24) lands inside the 12-tick IMPACT. */
+		tickLeap(1u);
+		const bool landedExactly = nullptr != leapBoss &&
+			"IMPACT" == leapBoss->strPatternStageId &&
+			std::abs(leapBoss->fPositionX - leapBoss->fSpawnPositionX) < 0.001f &&
+			std::abs(leapBoss->fPositionY - leapBoss->fSpawnPositionY) < 0.001f &&
+			std::abs(leapBoss->fPositionZ - leapBoss->fSpawnPositionZ) < 0.001f;
+		tests.Require(
+			landedExactly,
+			"Land the 109 leap exactly on the authored placement at IMPACT");
+	}
+
+	{
+		/* The 109 outer ring encloses the arena, but it must not quietly wall
+		off the two floors the level already depends on: the corridor the
+		player walks in through, and the passage the 159-bar wall opens. Both
+		bearings were measured against the published navgrid. */
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr float ARENA_CENTER_X = 156.03f;
+		constexpr float ARENA_CENTER_Z = -122.06f;
+		/* 131 degrees is the mouth of the entrance corridor: no interior
+		collision box reaches past the arena floor there, so the ring alone
+		decides that sweep. The 159 passage is covered by the FRACTURED
+		collision test above, where interior boxes still reach out to 17.5. */
+		const auto sweepAcrossRing = [&](const float bearingDegrees)
+		{
+			const float radians = bearingDegrees * 3.14159265f / 180.f;
+			SERVER_PLAYER walker{};
+			walker.fPositionX = ARENA_CENTER_X + std::cos(radians) * 15.f;
+			walker.fPositionY = 23.04f;
+			walker.fPositionZ = ARENA_CENTER_Z + std::sin(radians) * 15.f;
+			float resolvedX = 0.f;
+			float resolvedY = 0.f;
+			float resolvedZ = 0.f;
+			bool blocked = false;
+			const bool resolved = room.m_ServerCollisionSystem.Resolve_PlayerMove(
+				walker,
+				ARENA_CENTER_X + std::cos(radians) * 21.f,
+				walker.fPositionY,
+				ARENA_CENTER_Z + std::sin(radians) * 21.f,
+				resolvedX, resolvedY, resolvedZ, blocked);
+			return resolved && blocked;
+		};
+		tests.Require(
+			room.Is_Ready() && sweepAcrossRing(0.f) && sweepAcrossRing(60.f) &&
+			sweepAcrossRing(216.f),
+			"Block outward movement through the intact 109 outer ring");
+		tests.Require(
+			room.Is_Ready() && !sweepAcrossRing(131.f),
+			"Leave the authored entrance corridor open through the 109 ring");
+
+		/* Every wall that stands on authored floor now owns a blocker region,
+		so pathfinding stops at it instead of walking through, and the boss
+		spawn stays reachable because its cells were kept out of them. */
+		std::vector<SERVER_NAV_POINT> wallPath;
+		const bool bossActivated = room.Is_Ready() &&
+			room.Activate_Encounter("boss.valtan.center");
+		const SERVER_WORLD_ENTITY* spawnedBoss = room.Find_AuditionBoss();
+		std::vector<SERVER_NAV_POINT> bossPath;
+		tests.Require(
+			bossActivated && nullptr != spawnedBoss &&
+			room.m_ServerNavigation.Find_Path(
+				144.75f, -115.75f, 156.25f, -122.25f, wallPath) &&
+			!wallPath.empty() &&
+			room.m_ServerNavigation.Find_Path(
+				spawnedBoss->fSpawnPositionX, spawnedBoss->fSpawnPositionZ,
+				156.25f, -122.25f, bossPath) &&
+			!bossPath.empty(),
+			"Keep the arena and the Valtan spawn connected under the wall blockers");
+	}
+
+	tests.failures += Run_WorldDestructionBootstrapContractTests();
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
 }

@@ -194,6 +194,48 @@ namespace
 		return true;
 	}
 
+	std::string Make_CombatRuntimeRevision()
+	{
+		return std::string(63u, 'a') + "1";
+	}
+
+	WORLD_DESTRUCTION_STATE_WIRE Make_DestructionState(
+		const char* groupId,
+		const WORLD_DESTRUCTION_RUNTIME_STATE state,
+		const std::uint32_t version)
+	{
+		WORLD_DESTRUCTION_STATE_WIRE result{};
+		result.strGroupId = groupId;
+		result.eState = state;
+		result.iStateVersion = version;
+		result.iStateStartTick = 100u + version;
+		result.iCommitTick =
+			WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING == state ?
+			150u + version : 0u;
+		return result;
+	}
+
+	WORLD_DESTRUCTION_EVENT_WIRE Make_DestructionEvent(
+		const std::uint64_t sequence)
+	{
+		WORLD_DESTRUCTION_EVENT_WIRE result{};
+		result.iEventSequence = sequence;
+		result.strGroupId = "destroyable.group.valtan.wall.3705102";
+		result.strMutationId = "mutation.valtan.wall.3705102.break";
+		result.strBindingId = "bind.valtan.wall.3705102.impact";
+		result.iPatternSequence = 3u;
+		result.iSourceNetEntityId = 900u;
+		result.iServerTick = 120u;
+		result.fImpactOriginX = 163.f;
+		result.fImpactOriginY = 23.f;
+		result.fImpactOriginZ = -129.f;
+		result.fImpactDirectionX = 0.6f;
+		result.fImpactDirectionY = 0.f;
+		result.fImpactDirectionZ = 0.8f;
+		result.iRandomSeed = 12345u;
+		return result;
+	}
+
 	//월드 진입에 대한 테스트
 	void Test_EnterWorldRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -1655,6 +1697,437 @@ namespace
 			"Failed Snapshot Does Not Mutate");
 	}
 
+	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			19u == NETWORK_PROTOCOL_VERSION &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
+			"World Destruction Protocol V19 Packet Types");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
+		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
+		full.iServerTick = 120u;
+		full.iEncounterEpoch = 7u;
+		full.GroupStates.push_back(Make_DestructionState(
+			"destroyable.group.a",
+			WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING,
+			2u));
+		full.GroupStates.push_back(Make_DestructionState(
+			"destroyable.group.b",
+			WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED,
+			3u));
+
+		CPacketWriter fullWriter;
+		testRunner.Require(
+			Write_Message(fullWriter, full),
+			"Writer World Destruction Full Sync");
+		const std::vector<std::uint8_t> validFullPayload =
+			fullWriter.Get_Buffer();
+		CPacketReader fullReader{ validFullPayload };
+		S2C_WORLD_DESTRUCTION_FULL_SYNC decodedFull{};
+		testRunner.Require(
+			Read_Message(fullReader, decodedFull) &&
+			0u == fullReader.Get_RemainingSize() &&
+			decodedFull.strCombatRuntimeRevision ==
+				full.strCombatRuntimeRevision &&
+			decodedFull.iServerTick == full.iServerTick &&
+			decodedFull.iEncounterEpoch == full.iEncounterEpoch &&
+			2u == decodedFull.GroupStates.size() &&
+			decodedFull.GroupStates[0].eState ==
+				WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING &&
+			decodedFull.GroupStates[0].iCommitTick == 152u &&
+			decodedFull.GroupStates[1].strGroupId ==
+				"destroyable.group.b",
+			"World Destruction Full Sync Round Trip");
+
+		{
+			S2C_WORLD_DESTRUCTION_FULL_SYNC invalid = full;
+			invalid.strCombatRuntimeRevision[0] = 'A';
+			CPacketWriter writer;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Uppercase Combat Runtime Revision");
+			invalid = full;
+			invalid.strCombatRuntimeRevision.assign(64u, '0');
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Combat Runtime Revision");
+			invalid = full;
+			invalid.iEncounterEpoch = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction Encounter Epoch");
+			invalid = full;
+			invalid.GroupStates[0].iStateVersion = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction State Version");
+			invalid = full;
+			invalid.GroupStates[0].strGroupId.assign(
+				MAX_STABLE_NETWORK_ID_BYTES + 1u, 'a');
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Oversize Destruction Group Stable ID");
+			invalid = full;
+			invalid.GroupStates[0].strGroupId = "destroyable/group/a";
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Noncanonical Destruction Group Stable ID");
+			invalid = full;
+			invalid.GroupStates[0].iStateStartTick = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction State Start Tick");
+			invalid = full;
+			invalid.GroupStates[0].iCommitTick = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Breaking State Without Commit Tick");
+			invalid = full;
+			invalid.GroupStates[1].iCommitTick = 200u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Final State With Commit Tick");
+			invalid = full;
+			invalid.GroupStates[0].eState =
+				WORLD_DESTRUCTION_RUNTIME_STATE::END;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Invalid Destruction State Enum");
+			invalid = full;
+			std::swap(invalid.GroupStates[0], invalid.GroupStates[1]);
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Noncanonical Destruction Group Order");
+			invalid = full;
+			invalid.GroupStates[1].strGroupId =
+				invalid.GroupStates[0].strGroupId;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Duplicate Destruction Group");
+			invalid = full;
+			invalid.GroupStates.clear();
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Empty Destruction Full Sync");
+			invalid = full;
+			invalid.GroupStates.assign(
+				MAX_WORLD_DESTRUCTION_GROUPS + 1u,
+				full.GroupStates[0]);
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Destruction Full Sync Count Overflow");
+		}
+
+		{
+			std::vector<std::uint8_t> malformed = validFullPayload;
+			malformed.pop_back();
+			CPacketReader reader{ malformed };
+			S2C_WORLD_DESTRUCTION_FULL_SYNC unchanged{};
+			unchanged.iServerTick = 999u;
+			testRunner.Require(!Read_Message(reader, unchanged) &&
+				999u == unchanged.iServerTick,
+				"Reject Truncated Destruction Full Sync Atomically");
+
+			malformed = validFullPayload;
+			malformed[0] = 65u;
+			CPacketReader revisionLengthReader{ malformed };
+			testRunner.Require(!Read_Message(revisionLengthReader, unchanged),
+				"Reject Oversize Combat Runtime Revision On Wire");
+
+			malformed = validFullPayload;
+			// string64 prefix + revision + server tick + epoch
+			malformed[74] = 129u;
+			malformed[75] = 0u;
+			CPacketReader countReader{ malformed };
+			testRunner.Require(!Read_Message(countReader, unchanged),
+				"Reject Destruction Full Sync Wire Count Overflow");
+
+			malformed = validFullPayload;
+			malformed[76] = 129u;
+			malformed[77] = 0u;
+			CPacketReader stableIdLengthReader{ malformed };
+			testRunner.Require(!Read_Message(stableIdLengthReader, unchanged),
+				"Reject Oversize Destruction Stable ID On Wire");
+
+			malformed = validFullPayload;
+			const std::size_t firstStateEnumOffset =
+				76u + 2u + full.GroupStates[0].strGroupId.size();
+			malformed[firstStateEnumOffset] =
+				static_cast<std::uint8_t>(
+					WORLD_DESTRUCTION_RUNTIME_STATE::END);
+			CPacketReader enumReader{ malformed };
+			testRunner.Require(!Read_Message(enumReader, unchanged),
+				"Reject Invalid Destruction State Enum On Wire");
+
+			malformed = validFullPayload;
+			const std::size_t firstStateBytes =
+				2u + full.GroupStates[0].strGroupId.size() + 1u + 12u;
+			const std::size_t secondGroupContentOffset =
+				76u + firstStateBytes + 2u;
+			malformed[secondGroupContentOffset +
+				full.GroupStates[1].strGroupId.size() - 1u] = 'a';
+			CPacketReader duplicateReader{ malformed };
+			testRunner.Require(!Read_Message(duplicateReader, unchanged),
+				"Reject Duplicate Destruction Group On Wire");
+		}
+
+		S2C_WORLD_DESTRUCTION_DELTA delta{};
+		delta.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
+		delta.iServerTick = 121u;
+		delta.iEncounterEpoch = 7u;
+		delta.ChangedStates.push_back(full.GroupStates[0]);
+		delta.LiveEvents.push_back(Make_DestructionEvent(10u));
+		delta.LiveEvents.push_back(Make_DestructionEvent(11u));
+
+		CPacketWriter deltaWriter;
+		testRunner.Require(
+			Write_Message(deltaWriter, delta),
+			"Writer World Destruction Delta");
+		const std::vector<std::uint8_t> validDeltaPayload =
+			deltaWriter.Get_Buffer();
+		CPacketReader deltaReader{ validDeltaPayload };
+		S2C_WORLD_DESTRUCTION_DELTA decodedDelta{};
+		testRunner.Require(
+			Read_Message(deltaReader, decodedDelta) &&
+			0u == deltaReader.Get_RemainingSize() &&
+			1u == decodedDelta.ChangedStates.size() &&
+			2u == decodedDelta.LiveEvents.size() &&
+			10u == decodedDelta.LiveEvents[0].iEventSequence &&
+			11u == decodedDelta.LiveEvents[1].iEventSequence &&
+			decodedDelta.LiveEvents[0].fImpactDirectionX == 0.6f &&
+			decodedDelta.LiveEvents[0].iRandomSeed == 12345u,
+			"World Destruction Delta Round Trip");
+
+		{
+			S2C_WORLD_DESTRUCTION_DELTA invalid = delta;
+			invalid.ChangedStates.clear();
+			invalid.LiveEvents.clear();
+			CPacketWriter writer;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Empty Destruction Delta");
+			invalid = delta;
+			invalid.LiveEvents[0].iEventSequence = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction Event Sequence");
+			invalid = delta;
+			std::swap(invalid.LiveEvents[0], invalid.LiveEvents[1]);
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Noncanonical Destruction Event Order");
+			invalid = delta;
+			invalid.LiveEvents[1].iEventSequence =
+				invalid.LiveEvents[0].iEventSequence;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Duplicate Destruction Event Sequence");
+			invalid = delta;
+			invalid.LiveEvents[0].iSourceNetEntityId = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction Source Entity ID");
+			invalid = delta;
+			invalid.LiveEvents[0].iServerTick = 0u;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction Event Server Tick");
+			invalid = delta;
+			invalid.LiveEvents[0].fImpactOriginX =
+				(std::numeric_limits<float>::quiet_NaN)();
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Nonfinite Destruction Impact Origin");
+			invalid = delta;
+			invalid.LiveEvents[0].fImpactDirectionX = 0.f;
+			invalid.LiveEvents[0].fImpactDirectionZ = 0.f;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Zero Destruction Impact Direction");
+			invalid = delta;
+			invalid.LiveEvents[0].fImpactDirectionX = 1.f;
+			invalid.LiveEvents[0].fImpactDirectionZ = 1.f;
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Nonunit Destruction Impact Direction");
+			invalid = delta;
+			invalid.LiveEvents.assign(
+				MAX_WORLD_DESTRUCTION_EVENTS + 1u,
+				delta.LiveEvents[0]);
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Destruction Delta Event Count Overflow");
+			invalid = delta;
+			invalid.ChangedStates.assign(
+				MAX_WORLD_DESTRUCTION_CHANGED_STATES + 1u,
+				delta.ChangedStates[0]);
+			testRunner.Require(!Write_Message(writer, invalid),
+				"Reject Destruction Delta State Count Overflow");
+		}
+
+		{
+			std::vector<std::uint8_t> malformed = validDeltaPayload;
+			malformed.pop_back();
+			CPacketReader reader{ malformed };
+			S2C_WORLD_DESTRUCTION_DELTA unchanged{};
+			unchanged.iServerTick = 888u;
+			testRunner.Require(!Read_Message(reader, unchanged) &&
+				888u == unchanged.iServerTick,
+				"Reject Truncated Destruction Delta Atomically");
+
+			malformed = validDeltaPayload;
+			malformed[76] = 65u;
+			malformed[77] = 0u;
+			CPacketReader countReader{ malformed };
+			testRunner.Require(!Read_Message(countReader, unchanged),
+				"Reject Destruction Delta Wire Count Overflow");
+
+			S2C_WORLD_DESTRUCTION_DELTA eventOnly = delta;
+			eventOnly.ChangedStates.clear();
+			eventOnly.LiveEvents.resize(1u);
+			CPacketWriter eventOnlyWriter;
+			testRunner.Require(Write_Message(eventOnlyWriter, eventOnly),
+				"Writer Event-only Destruction Delta");
+			malformed = eventOnlyWriter.Get_Buffer();
+			const WORLD_DESTRUCTION_EVENT_WIRE& event =
+				eventOnly.LiveEvents[0];
+			const std::size_t directionOffset =
+				78u + 8u +
+				(2u + event.strGroupId.size()) +
+				(2u + event.strMutationId.size()) +
+				(2u + event.strBindingId.size()) +
+				4u + 8u + 4u + 12u;
+			malformed[directionOffset] = 0u;
+			malformed[directionOffset + 1u] = 0u;
+			malformed[directionOffset + 2u] = 0xc0u;
+			malformed[directionOffset + 3u] = 0x7fu;
+			CPacketReader nanReader{ malformed };
+			testRunner.Require(!Read_Message(nanReader, unchanged),
+				"Reject Nonfinite Destruction Direction On Wire");
+
+			S2C_WORLD_DESTRUCTION_DELTA eventPair = delta;
+			eventPair.ChangedStates.clear();
+			CPacketWriter pairWriter;
+			testRunner.Require(Write_Message(pairWriter, eventPair),
+				"Writer Event-pair Destruction Delta");
+			malformed = pairWriter.Get_Buffer();
+			const std::size_t eventBytes =
+				8u + (2u + event.strGroupId.size()) +
+				(2u + event.strMutationId.size()) +
+				(2u + event.strBindingId.size()) +
+				4u + 8u + 4u + 12u + 12u + 4u;
+			const std::size_t secondSequenceOffset = 78u + eventBytes;
+			for (std::size_t i = 0; i < 8u; ++i)
+				malformed[secondSequenceOffset + i] = 0u;
+			malformed[secondSequenceOffset] = 10u;
+			CPacketReader duplicateReader{ malformed };
+			testRunner.Require(!Read_Message(duplicateReader, unchanged),
+				"Reject Duplicate Destruction Event On Wire");
+		}
+	}
+
+	void Test_ValtanAuditionProtocol(TEST_RUNNER& testRunner)
+	{
+		/* Both configurations must recognise the audition types. A Release
+		Server answers REJECTED_RELEASE_BUILD; only an unknown type closes the
+		session, and that distinction is what keeps a Debug Client's mistake
+		diagnosable instead of a dropped connection. */
+		testRunner.Require(
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT),
+			"Valtan Audition Packet Types Known In Every Configuration");
+
+		C2S_VALTAN_AUDITION_REQUEST request{};
+		request.iRequestSequence = 9u;
+		request.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
+		request.iTargetHealthBar = 80u;
+		CPacketWriter requestWriter;
+		testRunner.Require(
+			Write_Message(requestWriter, request),
+			"Writer Valtan Audition Request");
+		CPacketReader requestReader{ requestWriter.Get_Buffer() };
+		C2S_VALTAN_AUDITION_REQUEST decodedRequest{};
+		testRunner.Require(
+			Read_Message(requestReader, decodedRequest) &&
+			0u == requestReader.Get_RemainingSize() &&
+			decodedRequest.iRequestSequence == request.iRequestSequence &&
+			decodedRequest.eOperation == request.eOperation &&
+			decodedRequest.iTargetHealthBar == request.iTargetHealthBar,
+			"Valtan Audition Request Round Trip");
+
+		{
+			C2S_VALTAN_AUDITION_REQUEST invalid = request;
+			invalid.iRequestSequence = 0u;
+			CPacketWriter writer;
+			testRunner.Require(
+				!Write_Message(writer, invalid),
+				"Reject Valtan Audition Request Without A Sequence");
+
+			invalid = request;
+			invalid.iTargetHealthBar = 0u;
+			testRunner.Require(
+				!Write_Message(writer, invalid),
+				"Reject Valtan Audition Request On The Dead Bar");
+
+			invalid = request;
+			invalid.eOperation = VALTAN_AUDITION_OPERATION::END;
+			testRunner.Require(
+				!Write_Message(writer, invalid),
+				"Reject Valtan Audition Request With An Unknown Operation");
+
+			std::vector<std::uint8_t> malformed = requestWriter.Get_Buffer();
+			malformed[4] = static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::END);
+			CPacketReader operationReader{ malformed };
+			C2S_VALTAN_AUDITION_REQUEST unchanged{};
+			unchanged.iRequestSequence = 123u;
+			testRunner.Require(
+				!Read_Message(operationReader, unchanged) &&
+				123u == unchanged.iRequestSequence,
+				"Reject Unknown Valtan Audition Operation On Wire");
+		}
+
+		S2C_VALTAN_AUDITION_RESULT result{};
+		result.iRequestSequence = 9u;
+		result.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
+		result.iTargetHealthBar = 80u;
+		result.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+		result.iCurrentHealthBar = 80u;
+		CPacketWriter resultWriter;
+		testRunner.Require(
+			Write_Message(resultWriter, result),
+			"Writer Valtan Audition Result");
+		CPacketReader resultReader{ resultWriter.Get_Buffer() };
+		S2C_VALTAN_AUDITION_RESULT decodedResult{};
+		testRunner.Require(
+			Read_Message(resultReader, decodedResult) &&
+			0u == resultReader.Get_RemainingSize() &&
+			decodedResult.iRequestSequence == result.iRequestSequence &&
+			decodedResult.eOperation == result.eOperation &&
+			decodedResult.iTargetHealthBar == result.iTargetHealthBar &&
+			decodedResult.eResult == result.eResult &&
+			decodedResult.iCurrentHealthBar == result.iCurrentHealthBar,
+			"Valtan Audition Result Round Trip");
+
+		{
+			S2C_VALTAN_AUDITION_RESULT rejection = result;
+			rejection.eResult =
+				VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD;
+			rejection.iCurrentHealthBar = 0u;
+			CPacketWriter rejectionWriter;
+			S2C_VALTAN_AUDITION_RESULT decodedRejection{};
+			CPacketReader rejectionReader{
+				(Write_Message(rejectionWriter, rejection),
+					rejectionWriter.Get_Buffer()) };
+			testRunner.Require(
+				Read_Message(rejectionReader, decodedRejection) &&
+				VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
+					decodedRejection.eResult &&
+				0u == decodedRejection.iCurrentHealthBar,
+				"Valtan Audition Release Rejection Round Trip");
+
+			S2C_VALTAN_AUDITION_RESULT invalid = result;
+			invalid.eResult = VALTAN_AUDITION_RESULT::END;
+			CPacketWriter writer;
+			testRunner.Require(
+				!Write_Message(writer, invalid),
+				"Reject Valtan Audition Result With An Unknown Verdict");
+
+			std::vector<std::uint8_t> malformed = resultWriter.Get_Buffer();
+			malformed[9] = static_cast<std::uint8_t>(
+				VALTAN_AUDITION_RESULT::END);
+			CPacketReader verdictReader{ malformed };
+			S2C_VALTAN_AUDITION_RESULT unchanged{};
+			unchanged.iRequestSequence = 321u;
+			testRunner.Require(
+				!Read_Message(verdictReader, unchanged) &&
+				321u == unchanged.iRequestSequence,
+				"Reject Unknown Valtan Audition Verdict On Wire");
+		}
+	}
+
 	void Test_WorldEntitySpawnCommandRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_SPAWN_WORLD_ENTITY request{};
@@ -1757,6 +2230,8 @@ int main()
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
+	Test_WorldDestructionProtocol(testRunner);
+	Test_ValtanAuditionProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);
 

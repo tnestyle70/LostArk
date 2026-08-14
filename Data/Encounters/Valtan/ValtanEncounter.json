@@ -447,20 +447,22 @@
       ]
     },
     {
-      "patternId": "VALTAN_ARENA_BREAK_80",
-      "displayName": "80줄 첫 지형 파괴",
-      "actionId": "valtan.mechanic.arena-break-80",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "displayName": "109줄 아레나 붕괴",
+      "actionId": "valtan.mechanic.arena-break-109",
       "sourceActionIds": [420629],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 80, "triggerOrder": 1,
+      "triggerHealthBar": 109, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "CUTSCENE", "actionId": "valtan.mechanic.arena-break-80.cutscene", "stageKind": "WINDUP", "durationMs": 2500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
-        { "stageId": "LANDING", "actionId": "valtan.mechanic.arena-break-80.landing", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-80" },
-        { "stageId": "SPIN", "actionId": "valtan.mechanic.arena-break-80.spin", "stageKind": "ACTIVE", "durationMs": 1200, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.arena-destroy-80" },
-        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-80.recovery", "stageKind": "RECOVERY", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.arena-break-109.takeoff", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "DROP", "actionId": "valtan.mechanic.arena-break-109.drop", "stageKind": "WINDUP", "durationMs": 800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACT", "actionId": "valtan.mechanic.arena-break-109.impact", "stageKind": "ACTIVE", "durationMs": 400, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-109" },
+        { "stageId": "IMPACT_HOLD", "actionId": "valtan.mechanic.arena-break-109.impact-hold", "stageKind": "ACTIVE", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "WIDE_REVEAL", "actionId": "valtan.mechanic.arena-break-109.wide-reveal", "stageKind": "ACTIVE", "durationMs": 2300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-109.recovery", "stageKind": "RECOVERY", "durationMs": 400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
       ]
     },
     {

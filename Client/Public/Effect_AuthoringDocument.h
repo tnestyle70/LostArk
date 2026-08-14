@@ -135,6 +135,135 @@ enum class EFFECT_TEXTURE_COLOR_SPACE : uint8_t
 	END
 };
 
+enum class EFFECT_MATERIAL_EXECUTION_BACKEND : uint8_t
+{
+	GENERIC,
+	RUNTIME_MATERIAL_V2,
+	ARTIST_VISUAL_V4,
+	LOCAL_DECAL,
+	END
+};
+
+enum class EFFECT_MATERIAL_TEXTURE_FILTER : uint8_t
+{
+	POINT,
+	LINEAR,
+	ANISOTROPIC,
+	END
+};
+
+enum class EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE : uint8_t
+{
+	WRAP,
+	MIRROR,
+	CLAMP,
+	BORDER,
+	END
+};
+
+enum class EFFECT_MATERIAL_COMPARISON_FUNCTION : uint8_t
+{
+	NEVER,
+	LESS,
+	EQUAL,
+	LESS_EQUAL,
+	GREATER,
+	NOT_EQUAL,
+	GREATER_EQUAL,
+	ALWAYS,
+	END
+};
+
+struct EFFECT_MATERIAL_SAMPLER_DESC final
+{
+	EFFECT_MATERIAL_TEXTURE_FILTER eFilter =
+		EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR;
+	EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE eAddressU =
+		EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
+	EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE eAddressV =
+		EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
+	EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE eAddressW =
+		EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP;
+	f32_t fMipLodBias = 0.f;
+	uint32_t iMaxAnisotropy = 1u;
+	EFFECT_MATERIAL_COMPARISON_FUNCTION eComparison =
+		EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER;
+	float4_t vBorderColor = { 0.f, 0.f, 0.f, 0.f };
+	f32_t fMinLod = 0.f;
+	f32_t fMaxLod = 1000.f;
+};
+
+struct EFFECT_MATERIAL_TEXTURE_LANE_DESC final
+{
+	std::string strLaneId;
+	std::string strRole;
+	std::string strAssetId;
+	uint32_t iTextureRegister = 0u;
+	uint32_t iSamplerRegister = 0u;
+	std::string strSourceChannel;
+	EFFECT_TEXTURE_COLOR_SPACE eColorSpace =
+		EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+	EFFECT_MATERIAL_SAMPLER_DESC Sampler;
+};
+
+struct EFFECT_MATERIAL_SCALAR_PARAMETER_DESC final
+{
+	std::string strName;
+	uint32_t iPackedIndex = 0u;
+	f32_t fValue = 0.f;
+};
+
+struct EFFECT_MATERIAL_VECTOR_PARAMETER_DESC final
+{
+	std::string strName;
+	uint32_t iPackedIndex = 0u;
+	float4_t vValue{};
+};
+
+struct EFFECT_MATERIAL_EXECUTION_DESC final
+{
+	bool_t bEnabled = false;
+	/* A disabled recipe normally means ordinary generic rendering. FailClosed
+	   instead means the source pass is unresolved and must never fall back to
+	   generic/white rendering. */
+	bool_t bFailClosed = false;
+	uint32_t iVersion = 1u;
+	EFFECT_MATERIAL_EXECUTION_BACKEND eBackend =
+		EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC;
+	uint32_t iOpcode = 0u;
+	uint32_t iPassIndex = 0u;
+	std::string strRasterizerState;
+	std::string strDepthStencilState;
+	std::string strBlendState;
+	uint32_t iStencilReference = 0u;
+	uint32_t iTextureLaneCount = 0u;
+	uint32_t iTextureMask = 0u;
+	std::vector<EFFECT_MATERIAL_TEXTURE_LANE_DESC> TextureLanes;
+	uint32_t iDynamicConsumedMask = 0u;
+	uint32_t iDynamicSuppressedMask = 0u;
+	uint32_t iParticleColorPolicy = 0u;
+	uint32_t iParticleColorConsumedMask = 0u;
+	uint32_t iParticleColorSuppressedMask = 0u;
+	uint32_t iScalarCount = 0u;
+	uint32_t iVectorCount = 0u;
+	uint32_t iInputCount = 0u;
+	std::array<uint32_t, 2u> InputConsumedMask{};
+	std::array<uint32_t, 2u> InputSuppressedMask{};
+	std::array<uint32_t, 3u> VectorComponentConsumedMask{};
+	std::array<uint32_t, 3u> VectorComponentSuppressedMask{};
+	uint32_t iStaticInputCount = 0u;
+	uint32_t iStaticSelectedMask = 0u;
+	uint32_t iStaticConsumedMask = 0u;
+	uint32_t iStaticSuppressedMask = 0u;
+	uint32_t iRenderInputCount = 0u;
+	uint32_t iRenderConsumedMask = 0u;
+	uint32_t iRenderSuppressedMask = 0u;
+	std::vector<EFFECT_MATERIAL_SCALAR_PARAMETER_DESC> Scalars;
+	std::vector<EFFECT_MATERIAL_VECTOR_PARAMETER_DESC> Vectors;
+	std::vector<EFFECT_MATERIAL_VECTOR_PARAMETER_DESC> ArtistParameters;
+	std::vector<EFFECT_MATERIAL_VECTOR_PARAMETER_DESC> Colors;
+};
+
 struct EFFECT_NAMED_TEXTURE_DESC final
 {
 	std::string strName;
@@ -175,6 +304,7 @@ struct EFFECT_MATERIAL_DESC final
 	EFFECT_RENDER_PROFILE eRenderProfile =
 		EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
 	EFFECT_SOURCE_MATERIAL_DESC SourceMaterial;
+	EFFECT_MATERIAL_EXECUTION_DESC Execution;
 };
 
 struct EFFECT_TRANSFORM_DESC final
@@ -224,6 +354,11 @@ struct EFFECT_TIMING_DESC final
 struct EFFECT_MESH_DETAIL_DESC final
 {
 	bool_t bUseModelMaterial = true;
+	/* Geometry import scale applied by CModel exactly once before particle
+	   StartSize/Element Transform. Track A WModel carriers use 0.01. */
+	f32_t fModelPreScale = 1.f;
+	// UE source order: roll(X), pitch(Y), yaw(Z), in degrees.
+	float3_t vSourceTypeDataRotationDegrees = { 0.f, 0.f, 0.f };
 };
 
 struct EFFECT_SPRITE_DETAIL_DESC final
@@ -274,6 +409,9 @@ struct EFFECT_PARTICLE_DESC final
 	float2_t vEndSize = { 0.f, 0.f };
 	bool_t bLocalSpace = true;
 	bool_t bBillboard = true;
+	uint32_t iDynamicParameterComponentMask = 0u;
+	float4_t vDynamicParameterStart{};
+	float4_t vDynamicParameterEnd{};
 };
 
 enum class EFFECT_SOURCE_LITERAL_KIND : uint8_t
@@ -616,6 +754,10 @@ struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
 	std::string strSourceAnchorSlotId;
 	std::string strRuntimeAnchorSlotId;
 	std::string strRuntimeBoneName;
+	/* Root-snapshot ActionCues are authored in the source character basis.
+	   Bone-follow cues already inherit that basis from the prepared model bone,
+	   so this correction is valid only for enabled, non-follow attachments. */
+	f32_t fSnapshotRootSourceBasisYawDegrees = 0.f;
 	EFFECT_TRANSFORM_DESC SocketLocalTransform;
 };
 
@@ -753,6 +895,8 @@ inline bool_t Try_ApplyEffectMasterGroupTranslation(
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			Left.fSnapshotRootSourceBasisYawDegrees ==
+				Right.fSnapshotRootSourceBasisYawDegrees &&
 			SameTransform(Left.SocketLocalTransform, Right.SocketLocalTransform);
 	};
 	if (!SameAttachment(DraftMaster.ActionCueAttachment,

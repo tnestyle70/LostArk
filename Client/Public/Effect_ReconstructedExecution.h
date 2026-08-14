@@ -37,6 +37,10 @@ enum class EFFECT_RECONSTRUCTED_VISUAL_SCOPE : uint8_t
 	/* All occurrence families with enough typed or versioned evidence to merit
 	   isolated human review.  They remain excluded from Complete output. */
 	CONDITIONAL_REVIEW,
+	/* The requested Artist-F visual slice: every MeshParticle, SpriteParticle,
+	   DecalParticle, and CascadeRibbon occurrence.  PointLight and ScreenPost
+	   stay deferred, and this scope never changes Product admission. */
+	CORE_RENDERERS,
 	/* Keeps all source occurrences available to explicit Solo/diagnostic
 	   tooling without relabelling them as restored or Product-admitted. */
 	ALL_DIAGNOSTIC,

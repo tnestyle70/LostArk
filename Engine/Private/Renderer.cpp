@@ -1,4 +1,36 @@
 #include "Renderer.h"
+
+#include <fstream>
+#include <iomanip>
+#include <typeinfo>
+
+namespace
+{
+	void WriteRendererFailure(
+		const char* stage,
+		const HRESULT result,
+		const char* objectType = nullptr)
+	{
+#ifdef _DEBUG
+		std::ofstream output(
+			"RendererExit.user.log",
+			std::ios::binary | std::ios::app);
+		if (!output)
+			return;
+
+		output << "stage=" << (nullptr == stage ? "unknown" : stage)
+			<< " hr=0x" << std::hex << std::uppercase
+			<< static_cast<unsigned long>(result) << std::dec;
+		if (nullptr != objectType)
+			output << " object=" << objectType;
+		output << '\n';
+#else
+		UNREFERENCED_PARAMETER(stage);
+		UNREFERENCED_PARAMETER(result);
+		UNREFERENCED_PARAMETER(objectType);
+#endif
+	}
+}
 #include "GameInstance.h"
 #include "Presentation_Manager.h"
 
@@ -251,8 +283,10 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 HRESULT CRenderer::Draw()
 {
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
-	auto FailFrame = [this, &Presentation](const HRESULT hResult) -> HRESULT
+	auto FailFrame = [this, &Presentation](
+		const char* stage, const HRESULT hResult) -> HRESULT
 	{
+		WriteRendererFailure(stage, hResult);
 		Presentation.Clear_Frame();
 		for (auto& RenderGroup : m_RenderObjects)
 			RenderGroup.clear();
@@ -260,39 +294,39 @@ HRESULT CRenderer::Draw()
 	};
 	HRESULT hResult = Presentation.Submit_FrameProviders();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Submit_FrameProviders", hResult);
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (vViewportSize.x <= 0.f || vViewportSize.y <= 0.f)
 	{
-		return FailFrame(E_INVALIDARG);
+		return FailFrame("Viewport", E_INVALIDARG);
 	}
 	hResult = Ready_ScenePostTargets(
 		static_cast<uint32_t>(vViewportSize.x),
 		static_cast<uint32_t>(vViewportSize.y));
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Ready_ScenePostTargets", hResult);
 	hResult = Render_Shadow();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_Shadow", hResult);
 	hResult = Render_NonBlend();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_NonBlend", hResult);
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
 		hResult = Render_SSAO();
 		if (FAILED(hResult))
-			return FailFrame(hResult);
+			return FailFrame("Render_SSAO", hResult);
 	}
 	hResult = Render_Lights();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_Lights", hResult);
 
 	/* Scene colour is accumulated in FP16 so lighting and effect values above 1 */
 	/* survive until tone mapping. Sky/background join the same target, or the   */
 	/* final blit would overwrite them with black.                               */
 	hResult = CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"));
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Begin_MRT_SceneHDR", hResult);
 
 	HRESULT hSceneResult = Render_Priority();
 	if (SUCCEEDED(hSceneResult))
@@ -305,33 +339,35 @@ HRESULT CRenderer::Draw()
 	/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
 	const HRESULT hEndSceneResult = CGameInstance::Get().End_MRT();
 	if (FAILED(hSceneResult) || FAILED(hEndSceneResult))
-		return FailFrame(FAILED(hSceneResult) ? hSceneResult : hEndSceneResult);
+		return FailFrame(
+			FAILED(hSceneResult) ? "Render_Scene" : "End_MRT_SceneHDR",
+			FAILED(hSceneResult) ? hSceneResult : hEndSceneResult);
 
 	hResult = Render_ScreenPosts();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_ScreenPosts", hResult);
 
 	if (m_RenderQualitySettings.bBloomEnabled)
 	{
 		hResult = Render_Bloom();
 		if (FAILED(hResult))
-			return FailFrame(hResult);
+			return FailFrame("Render_Bloom", hResult);
 	}
 
 	/* The one and only place tone mapping and gamma are applied. */
 	hResult = Render_Final();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_Final", hResult);
 
 	/* UI is authored in display space, so it stays out of the HDR target. */
 	hResult = Render_UI();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_UI", hResult);
 
 #ifdef _DEBUG
 	hResult = Render_Debug();
 	if (FAILED(hResult))
-		return FailFrame(hResult);
+		return FailFrame("Render_Debug", hResult);
 #endif
 
 	Presentation.Clear_Frame();
@@ -392,6 +428,10 @@ HRESULT CRenderer::Render_Shadow()
 			if (nullptr != pRenderObject &&
 				FAILED(pRenderObject->Render_Shadow()))
 			{
+				WriteRendererFailure(
+					"Render_Shadow_Object",
+					E_FAIL,
+					typeid(*pRenderObject).name());
 				hRenderResult = E_FAIL;
 				break;
 			}
@@ -607,7 +647,13 @@ HRESULT CRenderer::Render_NonLight()
 		{
 			const HRESULT hResult = pRenderObject->Render();
 			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
+			{
+				WriteRendererFailure(
+					"Render_NonLight_Object",
+					hResult,
+					typeid(*pRenderObject).name());
 				hFirstFailure = hResult;
+			}
 		}
 	}
 
@@ -625,7 +671,13 @@ HRESULT CRenderer::Render_Blend()
 		{
 			const HRESULT hResult = pRenderObject->Render();
 			if (FAILED(hResult) && SUCCEEDED(hFirstFailure))
+			{
+				WriteRendererFailure(
+					"Render_Blend_Object",
+					hResult,
+					typeid(*pRenderObject).name());
 				hFirstFailure = hResult;
+			}
 		}
 	}
 

@@ -73,17 +73,17 @@ class MaterialRenderResourceBindingApprovalTests(unittest.TestCase):
         self.assertEqual(len(raw), 378_236)
         self.assertEqual(
             hashlib.sha256(raw).hexdigest(),
-            "bc19ea75c917b5bf73cf4801b5d94cbaeea40760e1717868bd890607388c0e35",
+            "a73a4e36e5860dc37961a236270c4ca3245025711f05e64a56503cd839b6cd74",
         )
         self.assertFalse(raw.startswith(b"\xef\xbb\xbf"))
         self.assertNotIn(b"\r", raw)
         self.assertEqual(
             self.receipt["receiptSha256"],
-            "2e4cf180b1bb00d5ea7bd597e8d832a7b810267023186666d88edcfe348feaab",
+            "9ca692c688c3987746ab811e4f2504d7186b2905efa7fa8b3446e8c4bf053ac6",
         )
         self.assertEqual(
             approval.decision_projection_sha256(self.receipt),
-            "6aa084a0ff5f369a88ffc711a75aeef057ca601c6d06104b70836cc032f813b5",
+            "1b0e8e224b7b1b98b1606f123423ff1bca287271d6f24deda3a16c880c89994d",
         )
         self.validate(self.receipt, require_approval=False)
         rebuilt = binding.build_receipt(

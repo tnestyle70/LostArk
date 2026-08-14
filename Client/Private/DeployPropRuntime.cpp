@@ -180,6 +180,67 @@ bool_t CDeployPropRuntime::Set_State(
 	return true;
 }
 
+bool_t CDeployPropRuntime::Set_States(
+	const std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>>& placementStates)
+{
+	if (placementStates.empty())
+	{
+		m_Status = "DeployProp state transaction is empty";
+		return false;
+	}
+
+	struct STAGED_STATE final
+	{
+		shared_ptr<CDeployPropObject> object;
+		DEPLOY_PROP_STATE previousState = DEPLOY_PROP_STATE::INTACT;
+		DEPLOY_PROP_STATE targetState = DEPLOY_PROP_STATE::INTACT;
+		bool_t applied = false;
+	};
+	std::vector<STAGED_STATE> staged;
+	staged.reserve(placementStates.size());
+	std::unordered_map<uint64_t, bool_t> uniqueIds;
+	uniqueIds.reserve(placementStates.size());
+	for (const auto& [placementId, targetState] : placementStates)
+	{
+		const auto iter = m_EntryIndex.find(placementId);
+		if (0u == placementId || !uniqueIds.emplace(placementId, true).second ||
+			iter == m_EntryIndex.end() || iter->second >= m_Entries.size() ||
+			nullptr == m_Entries[iter->second].object)
+		{
+			m_Status = "DeployProp state transaction has an unknown member";
+			return false;
+		}
+		const shared_ptr<CDeployPropObject>& object = m_Entries[iter->second].object;
+		staged.push_back({ object, object->Get_State(), targetState, false });
+	}
+
+	for (size_t index = 0u; index < staged.size(); ++index)
+	{
+		staged[index].applied =
+			staged[index].previousState != staged[index].targetState;
+		if (staged[index].object->Set_State(staged[index].targetState))
+			continue;
+
+		bool_t rollbackSucceeded = true;
+		for (size_t rollback = index + 1u; rollback-- > 0u;)
+		{
+			if (staged[rollback].applied)
+			{
+				rollbackSucceeded = staged[rollback].object->Set_State(
+					staged[rollback].previousState) && rollbackSucceeded;
+			}
+		}
+		m_Status = rollbackSucceeded ?
+			"DeployProp state transaction rolled back" :
+			"DeployProp state transaction rollback failed";
+		return false;
+	}
+
+	m_Status = "DeployProp state transaction committed: " +
+		std::to_string(staged.size()) + " placements";
+	return true;
+}
+
 bool_t CDeployPropRuntime::Set_State_All(const DEPLOY_PROP_STATE state)
 {
 	std::vector<DEPLOY_PROP_STATE> previousStates;

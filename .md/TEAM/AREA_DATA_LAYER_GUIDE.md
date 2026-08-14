@@ -271,5 +271,5 @@ Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby�
 4. class-neutral player spawn과 필요한 NPC/boss placement
 5. navigation authoring, spawn/boss cell·height 검증
 6. 필요한 actor/encounter/balance stable ID 연결
-7. Loader/registry/publisher/ProjectAudit 등록
+7. Loader/registry/publisher 연결과 해당 domain Validate/실행형 harness 등록
 8. Debug/Release scenario smoke와 process cleanup

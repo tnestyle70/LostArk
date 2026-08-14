@@ -13,8 +13,11 @@
 #include "SpawnGroupRuntime.h"
 #include "MonsterBrain.h"
 #include "ValtanBrain.h"
+#include "WorldDestructionBootstrap.h"
+#include "WorldDestructionRuntime.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <map>
 #include <memory>
@@ -26,6 +29,34 @@
 namespace LostArk::Server
 {
 	class CClientSession;
+
+	struct SERVER_ROOM_PERFORMANCE_METRICS final
+	{
+		std::uint64_t iTickCount = 0;
+		std::uint64_t iLastTickMicroseconds = 0;
+		std::uint64_t iMaximumTickMicroseconds = 0;
+		std::size_t iLastIngressDepth = 0;
+		std::size_t iIngressHighWatermark = 0;
+		std::size_t iLastDrainedCommandCount = 0;
+		std::size_t iLastRemainingCommandCount = 0;
+		std::uint64_t iDrainLimitedTickCount = 0;
+		std::uint64_t iCoalescedMoveCommandCount = 0;
+		std::uint64_t iCoalescedAimCommandCount = 0;
+		std::uint64_t iDroppedBestEffortCommandCount = 0;
+		std::uint64_t iRejectedReliableCommandCount = 0;
+		std::uint64_t iRejectedCleanupCommandCount = 0;
+		std::uint64_t iSnapshotEncodeCount = 0;
+		std::uint64_t iSnapshotEncodeFailureCount = 0;
+		std::uint64_t iLastSnapshotEncodeMicroseconds = 0;
+		std::uint64_t iMaximumSnapshotEncodeMicroseconds = 0;
+		std::uint64_t iSnapshotEnqueueBatchCount = 0;
+		std::uint64_t iSnapshotRecipientCount = 0;
+		std::uint64_t iSnapshotEnqueueFailureCount = 0;
+		std::uint64_t iLastSnapshotEnqueueMicroseconds = 0;
+		std::uint64_t iMaximumSnapshotEnqueueMicroseconds = 0;
+		std::uint64_t iLastMaximumSessionEnqueueMicroseconds = 0;
+		std::uint64_t iMaximumSessionEnqueueMicroseconds = 0;
+	};
 
 	class CGameRoom final
 	{
@@ -48,6 +79,8 @@ namespace LostArk::Server
 		{
 			return m_strStatus;
 		}
+		[[nodiscard]] SERVER_ROOM_PERFORMANCE_METRICS
+			Get_PerformanceMetrics() const;
 
 		// Room thread only. A sealed private arena rejects every later command.
 		[[nodiscard]] bool Try_SealPrivateArenaForRetirement();
@@ -87,6 +120,24 @@ namespace LostArk::Server
 		void Handle_SpawnWorldEntity(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request);
+		/* Debug-only. Moves a live Valtan onto an authored health-bar threshold
+		so CValtanBrain judges the crossing itself on a later fixed tick. The
+		room never starts a pattern, breaks a wall or plays a cue directly.
+		Evaluate owns the decision and the boss mutation and is what the contract
+		tests drive; Handle only resolves the session and answers it. */
+		LostArk::Shared::VALTAN_AUDITION_RESULT Evaluate_ValtanAudition(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			std::uint32_t& outCurrentHealthBar);
+		void Handle_ValtanAudition(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request);
+		SERVER_WORLD_ENTITY* Find_AuditionBoss();
+		bool Has_EngagedAuditionPlayer(const SERVER_WORLD_ENTITY& boss) const;
+		bool Reset_ValtanAuditionState(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t resetTick,
+			std::string& status);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
@@ -108,6 +159,11 @@ namespace LostArk::Server
 			const std::string& placementId,
 			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT result,
 			LostArk::Shared::NET_ENTITY_ID netEntityId);
+		bool Send_ValtanAuditionResult(
+			const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& request,
+			LostArk::Shared::VALTAN_AUDITION_RESULT result,
+			std::uint32_t currentHealthBar);
 		bool Send_CharacterClassChangeResult(
 			const std::shared_ptr<CClientSession>& session,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
@@ -117,6 +173,8 @@ namespace LostArk::Server
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
+		bool Send_WorldDestructionFullSync(
+			const std::shared_ptr<CClientSession>& session);
 		void Broadcast_Spawned(
 			const SERVER_PLAYER& player,
 			SESSION_ID exceptSessionId);
@@ -127,6 +185,11 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& entity);
 		void Broadcast_WorldEntityDespawned(
 			LostArk::Shared::NET_ENTITY_ID netEntityId);
+		bool Broadcast_WorldDestructionDelta(
+			const std::vector<WORLD_DESTRUCTION_STATE_TRANSITION>& transitions,
+			const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>&
+				liveEvents,
+			std::uint32_t serverTick);
 		void Broadcast_WorldSnapshot();
 
 		std::shared_ptr<CClientSession> Find_Session(
@@ -142,6 +205,29 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
 		bool Reset_ReplayableArenaWhenEmpty();
+		bool Reset_ValtanArenaWhenEmpty();
+		bool Apply_WorldDestructionStageEntry(
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		bool Apply_WorldDestructionImpact(
+			SERVER_WORLD_ENTITY& boss,
+			const std::string& receiverPlacementId,
+			std::uint32_t serverTick,
+			bool& outTriggered);
+		bool Commit_WorldDestructionTransaction(
+			const WORLD_DESTRUCTION_TRANSACTION& transaction,
+			const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>&
+				liveEvents,
+			std::uint32_t serverTick,
+			std::string& status);
+		void Invalidate_DynamicNavigationPaths();
+		bool Build_WorldDestructionLiveEvents(
+			const WORLD_DESTRUCTION_TRANSACTION& transaction,
+			const SERVER_WORLD_ENTITY& boss,
+			std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>&
+				liveEvents,
+			std::string& status) const;
+		bool Commit_DueWorldDestruction(std::uint32_t serverTick);
 		bool Activate_Encounter(const std::string& placementId);
 		bool Spawn_Monster(
 			const std::string& spawnGroupId,
@@ -158,8 +244,16 @@ namespace LostArk::Server
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:
+		static constexpr std::size_t MAX_INBOUND_COMMAND_COUNT = 1024u;
+		// Best-effort traffic leaves room for gameplay/control commands. The
+		// final 64 slots stay available to LEAVE and failed-entry rollback.
+		static constexpr std::size_t MAX_BEST_EFFORT_COMMAND_COUNT = 768u;
+		static constexpr std::size_t MAX_RELIABLE_COMMAND_COUNT = 960u;
+		static constexpr std::size_t MAX_COMMANDS_DRAINED_PER_TICK = 256u;
+
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
 		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 
@@ -181,6 +275,8 @@ namespace LostArk::Server
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CMonsterBrain m_MonsterBrain;
 		CValtanBrain m_ValtanBrain;
+		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
+		CWorldDestructionRuntime m_WorldDestructionRuntime;
 		std::vector<SERVER_WORLD_ENTITY> m_WorldEntities;
 		/* One tick's resolved hits. Cleared at the top of every simulation phase
 		and consumed by Broadcast_WorldSnapshot, so an event can only ever ride
@@ -192,5 +288,14 @@ namespace LostArk::Server
 		LostArk::Shared::PLAYER_ID m_iNextPlayerId = 1;
 		LostArk::Shared::NET_ENTITY_ID m_iNextNetEntityId = 100;
 		std::uint32_t m_iServerTick = 0;
+		std::uint64_t m_iNextWorldDestructionEventSequence = 1u;
+		/* Debug Valtan audition. The armed bar is the one an ARM parked the boss
+		above; a CROSS is only honoured for that same bar, so a crossing can
+		never span an unknown number of authored thresholds. Both reset with the
+		encounter, and the handled sequences reject a resent request instead of
+		replaying it. */
+		std::uint32_t m_iValtanAuditionArmedHealthBar = 0;
+		std::unordered_map<SESSION_ID, std::uint32_t>
+			m_ValtanAuditionSequenceBySessionId;
 	};
 }

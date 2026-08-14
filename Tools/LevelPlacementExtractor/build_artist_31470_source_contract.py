@@ -49,6 +49,19 @@ COVERAGE_SEVERITY = {
     "unresolved": 3,
 }
 
+# TypeDataMesh rotation is a UE source-class schema, not an Artist occurrence
+# inventory.  The Artist F corpus happens to contain only an explicit yaw, while
+# other source packages contain explicit pitch/roll values.  Keep all three
+# source literals in the shared registry so a corpus cannot silently narrow the
+# class contract to the axes observed in one skill.
+SOURCE_LITERAL_PROPERTY_SCHEMA = {
+    "particlemoduletypedatamesh": {
+        "pitch": "number",
+        "roll": "number",
+        "yaw": "number",
+    },
+}
+
 
 def load_json(path: Path) -> dict[str, Any]:
     return load_strict_json_object(path)
@@ -984,6 +997,19 @@ def build_registry(
                 source_class = str(distribution.get("sourceClass") or "")
                 if source_class:
                     prop["sourceClasses"].add(source_class)
+
+    for normalized_class, properties in SOURCE_LITERAL_PROPERTY_SCHEMA.items():
+        row = classes.get(normalized_class)
+        if row is None:
+            continue
+        for property_path, expected_kind in properties.items():
+            observed_kinds = row["literalProperties"][property_path]
+            require(
+                not observed_kinds or observed_kinds == {expected_kind},
+                "source literal schema kind conflicts with observed corpus: "
+                f"{normalized_class}.{property_path}",
+            )
+            observed_kinds.add(expected_kind)
 
     module_rows = []
     for normalized, row in sorted(classes.items()):

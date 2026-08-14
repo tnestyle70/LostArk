@@ -325,10 +325,10 @@
   },
   "candidate": {
     "artifactName": "effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json",
-    "sha256": "27cfb2b81ce688b9dd55cdc53afe6e5e709cefee390dab0e9f9c5d3e9e7f244e",
+    "sha256": "75f173b7b03593e50693cc4b062283a0c1993577957f4a3208476f6a27c6e10e",
     "registryArtifactName": "ue3-cascade-source-v1.registry.json",
-    "registrySha256": "f01499af197be6d417a9efcf6a338f6819242ac58a1c4e361e3c4b0dbb7d0174",
-    "contractSha256": "201652eceeaa40258fec5574669b2e873b2305cbe33f859c0f17e58a15b2e553"
+    "registrySha256": "996d0b6c6e7bdaecaf3ab59f2c24f2f7e768e2442631c797a246cdc4d01385a6",
+    "contractSha256": "670b12e280d4b6d03924fd64047208770ce7150605100a4fd573c11f01499b6a"
   },
   "elements": [
     {

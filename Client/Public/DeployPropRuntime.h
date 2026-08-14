@@ -5,6 +5,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -34,6 +35,8 @@ public:
 	void Reset_ClearedLevelTracking();
 
 	bool_t Set_State(uint64_t runtimePlacementId, DEPLOY_PROP_STATE state);
+	bool_t Set_States(const std::vector<
+		std::pair<uint64_t, DEPLOY_PROP_STATE>>& placementStates);
 	bool_t Set_State_All(DEPLOY_PROP_STATE state);
 	shared_ptr<CDeployPropObject> Find(uint64_t runtimePlacementId) const;
 

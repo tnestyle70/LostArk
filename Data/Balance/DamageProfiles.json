@@ -44,7 +44,7 @@
     { "damageProfileId": "damage.valtan.triple-attack", "damageRatePercent": 180 },
     { "damageProfileId": "damage.valtan.six-direction-130", "damageRatePercent": 450 },
     { "damageProfileId": "damage.valtan.omnidirectional-wipe-130", "damageRatePercent": 100000 },
-    { "damageProfileId": "damage.valtan.arena-destroy-80", "damageRatePercent": 700 },
+    { "damageProfileId": "damage.valtan.arena-destroy-109", "damageRatePercent": 700 },
     { "damageProfileId": "damage.valtan.arena-destroy-33", "damageRatePercent": 900 },
     { "damageProfileId": "damage.valtan.swing", "damageRatePercent": 220 },
     { "damageProfileId": "damage.valtan.down-smash", "damageRatePercent": 350 },

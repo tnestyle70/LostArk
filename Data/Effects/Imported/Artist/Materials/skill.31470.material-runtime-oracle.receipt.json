@@ -9,18 +9,18 @@
     "materialContractTrackedTextSha256": "a8728231ae0df26c8e203064712154989f3d42fbe5e7eaafff3db81aecda97a5",
     "renderReceiptSha256": "3c9a455e243f413d9b3621eb37b8cdf31bbf81abf8d41ca3a0204708d8453eaf",
     "renderReceiptTrackedTextSha256": "c6e5a1f82581628e185221a77d1f0a3b8593d3145514998e7f15f3061ab1e824",
-    "shaderCacheReceiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
-    "shaderCacheReceiptTrackedTextSha256": "f1c1b5cb7ffe05a6577327bace8cda48afb78a2e4d6801c81cf3a057b0803d0c",
-    "sourceValueAcquisitionReceiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
-    "sourceValueAcquisitionTrackedTextSha256": "aa94cc621f6031aa38f85a6447e7b2bf4000dbfbd90d46a61e8c1524eb2fa0bc",
+    "shaderCacheReceiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
+    "shaderCacheReceiptTrackedTextSha256": "229672d08ff297f391c8d1c41ba98f365f3f5e438a0673355130007c58998356",
+    "sourceValueAcquisitionReceiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
+    "sourceValueAcquisitionTrackedTextSha256": "2268b9d559a1c0bf27fa2e1b6535b97b7973d43263547f5c119e85ea8cf3fc76",
     "hlslTrackedTextSha256": "66dcc266f68bb6d960214b8ca79472a4c65e5dcda1f5a21e78e2fb7da49d13c7",
     "generatorTrackedTextSha256": "166e325304648c9059986f277733d901c79268a54f79f22211884182979f45c4",
     "materialContractBuilderTrackedTextSha256": "d7882d9cc7af8d80183e96fdebffc7b1a633a1824e5dfe19cf9ab739acc13b8d",
     "shaderCacheOracleTrackedTextSha256": "1738307ff3cdc73b5665d0489d1d408affb8046c793c343d0500a541a5882a47",
-    "ue3PackageParserTrackedTextSha256": "897d1899271450ee6fa0828ddd783737e26f9d9d000a9f6f86f6ff6b8a53edf1",
+    "ue3PackageParserTrackedTextSha256": "ce4198e4d8c8f3dda386b6ef0e79ff2d4acf08f811efc0bdd0343e8e757f9848",
     "hlslVerifierTrackedTextSha256": "02562e758cb8e003136cfd0458804348eacd61f4ab632fbbaed17561203f0704",
     "sourceValueAcquisitionGeneratorTrackedTextSha256": "4f3cb6886c670d8e6a653425101e4bbee1886512320e01a8c3b52fa6e540a35a",
-    "materialEvidenceApprovalTrackedTextSha256": "eb75dc25862a2c8cadef33d5b0735dcd21cb9db302caa8f5838ebaeb2c4454fc"
+    "materialEvidenceApprovalTrackedTextSha256": "ba600adcea14c8ca760ccfa3112ecc51c197cfd3be6348b231e5b726ce7373b2"
   },
   "sourceRevisionShaderCacheAcquisition": {
     "scope": "LOCAL_SOURCE_ARCHIVE_RAW_UPK_NAME_TABLE_INVENTORY",
@@ -26901,7 +26901,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -26996,7 +26996,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27086,7 +27086,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27175,7 +27175,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27269,7 +27269,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27358,7 +27358,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27447,7 +27447,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27541,7 +27541,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27630,7 +27630,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27719,7 +27719,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27813,7 +27813,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27902,7 +27902,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -27996,7 +27996,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28085,7 +28085,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28174,7 +28174,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28268,7 +28268,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28357,7 +28357,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28446,7 +28446,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28535,7 +28535,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28629,7 +28629,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28723,7 +28723,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28812,7 +28812,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28901,7 +28901,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -28995,7 +28995,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29084,7 +29084,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29174,7 +29174,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29269,7 +29269,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29364,7 +29364,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29454,7 +29454,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29543,7 +29543,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29637,7 +29637,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29726,7 +29726,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29815,7 +29815,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29909,7 +29909,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -29998,7 +29998,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30087,7 +30087,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30181,7 +30181,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30270,7 +30270,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30359,7 +30359,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30453,7 +30453,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30542,7 +30542,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30632,7 +30632,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30727,7 +30727,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30822,7 +30822,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -30912,7 +30912,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31001,7 +31001,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31095,7 +31095,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31189,7 +31189,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31278,7 +31278,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31367,7 +31367,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31461,7 +31461,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31550,7 +31550,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31640,7 +31640,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31735,7 +31735,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31830,7 +31830,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -31920,7 +31920,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32009,7 +32009,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32098,7 +32098,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32192,7 +32192,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32286,7 +32286,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32375,7 +32375,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32469,7 +32469,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32558,7 +32558,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32649,7 +32649,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32745,7 +32745,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32836,7 +32836,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -32925,7 +32925,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33019,7 +33019,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33108,7 +33108,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33197,7 +33197,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33291,7 +33291,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33380,7 +33380,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33469,7 +33469,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33563,7 +33563,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33657,7 +33657,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33746,7 +33746,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33835,7 +33835,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -33929,7 +33929,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34018,7 +34018,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34107,7 +34107,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34201,7 +34201,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34295,7 +34295,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34384,7 +34384,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34474,7 +34474,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34569,7 +34569,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34659,7 +34659,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34748,7 +34748,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34842,7 +34842,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -34931,7 +34931,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35057,7 +35057,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35163,7 +35163,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35271,7 +35271,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35399,7 +35399,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35525,7 +35525,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35651,7 +35651,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35777,7 +35777,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -35904,7 +35904,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36011,7 +36011,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36119,7 +36119,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36247,7 +36247,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36373,7 +36373,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36479,7 +36479,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36607,7 +36607,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36733,7 +36733,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36838,7 +36838,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -36945,7 +36945,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37072,7 +37072,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37198,7 +37198,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37324,7 +37324,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37449,7 +37449,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37555,7 +37555,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37682,7 +37682,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37808,7 +37808,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -37935,7 +37935,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38042,7 +38042,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38169,7 +38169,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38295,7 +38295,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38421,7 +38421,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38546,7 +38546,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38652,7 +38652,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38779,7 +38779,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -38905,7 +38905,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39031,7 +39031,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39157,7 +39157,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39283,7 +39283,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39409,7 +39409,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39535,7 +39535,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39661,7 +39661,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39787,7 +39787,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -39912,7 +39912,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40018,7 +40018,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40145,7 +40145,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40271,7 +40271,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40398,7 +40398,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40525,7 +40525,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40651,7 +40651,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40757,7 +40757,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40865,7 +40865,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -40973,7 +40973,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41101,7 +41101,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41207,7 +41207,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41335,7 +41335,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41461,7 +41461,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41588,7 +41588,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41715,7 +41715,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41822,7 +41822,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -41950,7 +41950,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42056,7 +42056,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42164,7 +42164,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42272,7 +42272,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42400,7 +42400,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42526,7 +42526,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42652,7 +42652,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42757,7 +42757,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42884,7 +42884,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -42989,7 +42989,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43116,7 +43116,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43242,7 +43242,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43368,7 +43368,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43494,7 +43494,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43620,7 +43620,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43746,7 +43746,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43872,7 +43872,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -43998,7 +43998,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44123,7 +44123,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44248,7 +44248,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44374,7 +44374,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44479,7 +44479,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44606,7 +44606,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44732,7 +44732,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44858,7 +44858,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -44985,7 +44985,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45112,7 +45112,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45239,7 +45239,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45366,7 +45366,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45472,7 +45472,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45600,7 +45600,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45725,7 +45725,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45831,7 +45831,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -45938,7 +45938,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46045,7 +46045,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46152,7 +46152,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46259,7 +46259,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46359,7 +46359,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46464,7 +46464,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46527,7 +46527,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46632,7 +46632,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46694,7 +46694,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46799,7 +46799,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -46861,7 +46861,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -46966,7 +46966,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47028,7 +47028,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47147,7 +47147,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -47210,7 +47210,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47315,7 +47315,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47377,7 +47377,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47482,7 +47482,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47544,7 +47544,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47649,7 +47649,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47711,7 +47711,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47816,7 +47816,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -47878,7 +47878,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -47983,7 +47983,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48045,7 +48045,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48150,7 +48150,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48212,7 +48212,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48317,7 +48317,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48379,7 +48379,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48484,7 +48484,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48546,7 +48546,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48651,7 +48651,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48713,7 +48713,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48818,7 +48818,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -48880,7 +48880,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -48999,7 +48999,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -49062,7 +49062,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -49167,7 +49167,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49229,7 +49229,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -49334,7 +49334,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49396,7 +49396,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -49501,7 +49501,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49563,7 +49563,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -49696,7 +49696,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -49761,7 +49761,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -49866,7 +49866,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -49928,7 +49928,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50033,7 +50033,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50095,7 +50095,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50200,7 +50200,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50262,7 +50262,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50367,7 +50367,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50429,7 +50429,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50534,7 +50534,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50596,7 +50596,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50729,7 +50729,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -50793,7 +50793,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -50898,7 +50898,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -50960,7 +50960,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51065,7 +51065,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51127,7 +51127,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51260,7 +51260,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51324,7 +51324,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51429,7 +51429,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51491,7 +51491,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51596,7 +51596,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -51658,7 +51658,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51791,7 +51791,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -51855,7 +51855,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -51960,7 +51960,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52022,7 +52022,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52127,7 +52127,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52189,7 +52189,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52294,7 +52294,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52356,7 +52356,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52461,7 +52461,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52524,7 +52524,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52657,7 +52657,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -52722,7 +52722,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52827,7 +52827,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -52889,7 +52889,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -52994,7 +52994,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53056,7 +53056,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53161,7 +53161,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53223,7 +53223,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53328,7 +53328,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53390,7 +53390,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53495,7 +53495,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53557,7 +53557,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53662,7 +53662,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53725,7 +53725,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53830,7 +53830,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -53893,7 +53893,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -53998,7 +53998,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54061,7 +54061,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -54180,7 +54180,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "srgb",
@@ -54244,7 +54244,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -54349,7 +54349,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -54411,7 +54411,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -54516,7 +54516,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54578,7 +54578,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -54697,7 +54697,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54760,7 +54760,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -54865,7 +54865,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [],
           "partialCurrentOnlyFields": [
@@ -54927,7 +54927,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55032,7 +55032,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55094,7 +55094,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55199,7 +55199,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55261,7 +55261,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55366,7 +55366,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55428,7 +55428,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55561,7 +55561,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_ADMITTED_EXACT_REAUDIT",
           "partialSourceExactFields": [
             "addressx",
@@ -55627,7 +55627,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55732,7 +55732,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55796,7 +55796,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -55901,7 +55901,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
           "partialSourceExactFields": [
             "lodgroup"
@@ -55965,7 +55965,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56070,7 +56070,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56132,7 +56132,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56251,7 +56251,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
           "partialSourceExactFields": [
             "addressy",
@@ -56314,7 +56314,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56419,7 +56419,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "NEW_SELF_DEFAULT_UNRESOLVED_5",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56481,7 +56481,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56586,7 +56586,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56648,7 +56648,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56753,7 +56753,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -56815,7 +56815,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -56948,7 +56948,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -57012,7 +57012,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57117,7 +57117,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57179,7 +57179,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57284,7 +57284,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57346,7 +57346,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57451,7 +57451,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57513,7 +57513,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57618,7 +57618,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57680,7 +57680,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57785,7 +57785,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -57847,7 +57847,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -57952,7 +57952,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58014,7 +58014,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58119,7 +58119,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58181,7 +58181,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58314,7 +58314,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -58378,7 +58378,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58483,7 +58483,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58545,7 +58545,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58650,7 +58650,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58712,7 +58712,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58817,7 +58817,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -58879,7 +58879,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -58984,7 +58984,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -59046,7 +59046,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -59151,7 +59151,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -59214,7 +59214,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -59347,7 +59347,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "addressx",
@@ -59412,7 +59412,7 @@
         },
         "shaderCacheIdentity": {
           "available": false,
-          "receiptSha256": "2caa30dcc540c57cfb2ebc66a9dc3a21e414679f61f5be452fe7dc5dbed2901b",
+          "receiptSha256": "ae5803cd924405b6a5911f2f74f72e5cb478ec3aa16c1aecebc443415d0488bd",
           "exactMaterialShaderMapJoinCount": 0,
           "sourceBaseMaterialIdJoinCount": 0,
           "sourceMicStaticParameterSetJoinCount": 0,
@@ -59517,7 +59517,7 @@
           "FINAL_RUNTIME_CONSUMER_NOT_IMPLEMENTED"
         ],
         "sourceValueAcquisitionEvidence": {
-          "receiptSha256": "febd8f400158b0f6916492a0bacfe60f04543601669a8381948ace2c2bd9f802",
+          "receiptSha256": "573ade4469c7345f73e33bbb4262f9b8f9e770e9f51cbeb1d3564e885be2d276",
           "baselineKind": "PREVIOUSLY_BLOCKED_68",
           "partialSourceExactFields": [
             "lodgroup"
@@ -59538,12 +59538,12 @@
       "staticOverrideTrueSourceValueAcquiredCount": 23,
       "staticNonoverrideSemanticsUnverifiedCount": 43,
       "staticNoExactGuidEntryCount": 28,
-      "staticPermutationRowSetSha256": "59a8edb3eb91ac0f2f28ae4d23af8276c9035e4db069cb5dee85a1e532317b2e",
+      "staticPermutationRowSetSha256": "f435c1df208a2c3b78e560c166f314634414e8cfa19f2e058316d634fb1befba",
       "strictSamplerRowCount": 77,
       "strictSamplerReadinessCount": 0,
       "strictSamplerRejectedLegacyExactRowCount": 4,
       "strictSamplerSourceTextureEvidenceRowCount": 77,
-      "strictSamplerRowSetSha256": "cc8d385c5d8a465c55aa7ca25b2f4ad3a7f17996859c92f5cff4049bd63d6abd",
+      "strictSamplerRowSetSha256": "0dfcdc26941294bd55690b4f4912983d2a91451a6e3379817516aa839675ddb9",
       "totalRowCount": 260,
       "executionReadinessCount": 0,
       "blockedRowCount": 260,
@@ -59845,5 +59845,5 @@
     "materialFeasibilityReadyCount": 0,
     "materialFeasibilityBlockedCount": 260
   },
-  "receiptSha256": "8e96b8f725c708d87221fcd9e081122956da1208db09e4982d8483499cf719e1"
+  "receiptSha256": "1691ef6b7328abb1de83bc2841eaa501ff5ba75d67076f8812108c90adb3bfbe"
 }

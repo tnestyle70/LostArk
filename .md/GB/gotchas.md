@@ -149,7 +149,7 @@ git rev-list --left-right --count HEAD...origin/main
 - 물리 C++ 파일, `.vcxproj`, `.vcxproj.filters`의 등록을 세트로 비교한다.
 - 삭제한 manifest나 생성물을 project가 계속 등록하지 않는지 확인한다.
 - Git 관리 `Data` 원본은 Client 프로젝트의 `96.DataFiles` 아래 `None`으로만 노출한다.
-- `Data/AssetPacks.lock.json`과 immutable manifest SHA 계약을 임의로 우회하지 않는다.
+- `Client/Bin/Resources`는 팀장이 관리하는 runtime 입력이다. 존재하지 않는 asset pack lock이나 immutable manifest를 새 완료 조건으로 만들지 않는다.
 
 ## 3. 병합 후 필수 감사
 
@@ -163,7 +163,7 @@ git rev-list --left-right --count HEAD...origin/main
 5. 변경 JSON과 XML parse
 6. 관련 focused harness와 Debug build
 7. 사용자가 직접 수행한 Character Select 재진입 또는 Effect Tool 수동 smoke의 서면 결과
-8. Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+8. 변경 domain publisher의 `Validate`/`Check`와 실행형 focused harness
 9. git diff --check
 10. 잔류 Client/Server process와 listener 확인
 ```

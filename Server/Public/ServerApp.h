@@ -47,7 +47,8 @@ namespace LostArk::Server
 		int Run(
 			std::uint32_t automaticShutdownMilliseconds = 0,
 			std::string_view bindAddress = "0.0.0.0",
-			std::uint16_t port = 7777u);
+			std::uint16_t port = 7777u,
+			bool headless = false);
 
 	private:
 		//접속을 계속 받아 새로운 session을 생성

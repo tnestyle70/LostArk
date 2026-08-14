@@ -3,6 +3,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_Distribution.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_VisualProgramCorpus.h"
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
@@ -128,6 +129,35 @@ namespace
 		// A component-wise scale follows the remapped axes, but does not inherit
 		// the handedness sign used by position/direction vectors.
 		return float3_t(Value.x, Value.z, Value.y);
+	}
+
+	matrix_t UE3_EulerDegreesToClientRotation(const float3_t& SourceDegrees)
+	{
+		// Source MeshRotation vectors are UE roll(X), pitch(Y), yaw(Z).  Rotation
+		// is not a vector: preserve the source Euler composition and conjugate the
+		// resulting row matrix into the Client X-forward/Y-up basis.
+		const f32_t Roll = XMConvertToRadians(SourceDegrees.x);
+		const f32_t Pitch = XMConvertToRadians(SourceDegrees.y);
+		const f32_t Yaw = XMConvertToRadians(SourceDegrees.z);
+		const f32_t SP = std::sin(Pitch);
+		const f32_t CP = std::cos(Pitch);
+		const f32_t SY = std::sin(Yaw);
+		const f32_t CY = std::cos(Yaw);
+		const f32_t SR = std::sin(Roll);
+		const f32_t CR = std::cos(Roll);
+		const matrix_t Source = XMMatrixSet(
+			CP * CY, CP * SY, SP, 0.f,
+			SR * SP * CY - CR * SY,
+			SR * SP * SY + CR * CY, -SR * CP, 0.f,
+			-CR * SP * CY - SR * SY,
+			-CR * SP * SY + SR * CY, CR * CP, 0.f,
+			0.f, 0.f, 0.f, 1.f);
+		const matrix_t Basis = XMMatrixSet(
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 0.f, -1.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 0.f, 1.f);
+		return XMMatrixTranspose(Basis) * Source * Basis;
 	}
 
 	bool_t Is_MeshParticle(const Client::EFFECT_ELEMENT_DESC& Element)
@@ -262,13 +292,198 @@ namespace
 		return Class == BaseClass;
 	}
 
-	bool_t Is_ReconstructedDecalParticle(
-		const Client::EFFECT_ELEMENT_DESC& Element,
-		const bool_t bReconstructedSourceRuntimeActive)
+	const Client::EFFECT_ELEMENT_DESC* Find_ElementById(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const std::string_view strElementId)
 	{
-		return bReconstructedSourceRuntimeActive &&
+		const auto Iterator = std::find_if(
+			Document.Elements.begin(), Document.Elements.end(),
+			[strElementId](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == strElementId;
+			});
+		return Iterator == Document.Elements.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Nearly_EqualTrailValue(const double fLeft, const double fRight)
+	{
+		return std::isfinite(fLeft) && std::isfinite(fRight) &&
+			std::abs(fLeft - fRight) <= 1.0e-5;
+	}
+
+	bool_t Matches_TrailTiming(
+		const Client::EFFECT_VISUAL_PROGRAM_TRAIL_TIMING& Packet,
+		const Client::EFFECT_TIMING_DESC& Target)
+	{
+		return Nearly_EqualTrailValue(
+			Packet.fStartDelaySeconds, Target.fStartDelaySeconds) &&
+			Nearly_EqualTrailValue(
+				Packet.fLifeTimeSeconds, Target.fLifeTimeSeconds) &&
+			Nearly_EqualTrailValue(
+				Packet.fAfterImageSeconds, Target.fAfterImageSeconds) &&
+			Nearly_EqualTrailValue(Packet.fDissolveStartNormalized,
+				Target.fDissolveStartNormalized);
+	}
+
+	bool_t Matches_TrailAttachment(
+		const Client::EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT& Packet,
+		const Client::EFFECT_ACTION_CUE_ATTACHMENT_DESC& Target)
+	{
+		const auto Matches3 = [](const std::array<double, 3u>& Left,
+			const float3_t& Right)
+		{
+			return Nearly_EqualTrailValue(Left[0u], Right.x) &&
+				Nearly_EqualTrailValue(Left[1u], Right.y) &&
+				Nearly_EqualTrailValue(Left[2u], Right.z);
+		};
+		return Packet.bEnabled == Target.bEnabled &&
+			Packet.bFollow == Target.bFollow &&
+			Packet.strSourceAnchorSlotId == Target.strSourceAnchorSlotId &&
+			Packet.strRuntimeAnchorSlotId == Target.strRuntimeAnchorSlotId &&
+			Packet.strRuntimeBoneName == Target.strRuntimeBoneName &&
+			Matches3(Packet.vPosition,
+				Target.SocketLocalTransform.vPosition) &&
+			Matches3(Packet.vRotationDegrees,
+				Target.SocketLocalTransform.vRotationDegrees) &&
+			Matches3(Packet.vScale, Target.SocketLocalTransform.vScale);
+	}
+
+	bool_t Matches_TrailGeometry(
+		const Client::EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY& Packet,
+		const Client::EFFECT_TRAIL_DESC& Target)
+	{
+		return Packet.iMaxPoints == Target.iMaxPoints &&
+			Nearly_EqualTrailValue(
+				Packet.fPointLifeTimeSeconds, Target.fPointLifeTimeSeconds) &&
+			Nearly_EqualTrailValue(
+				Packet.fSampleIntervalSeconds, Target.fSampleIntervalSeconds) &&
+			Nearly_EqualTrailValue(
+				Packet.fMinimumDistance, Target.fMinimumDistance) &&
+			Nearly_EqualTrailValue(Packet.fStartWidth, Target.fStartWidth) &&
+			Nearly_EqualTrailValue(Packet.fEndWidth, Target.fEndWidth) &&
+			Packet.bFaceCamera == Target.bFaceCamera;
+	}
+
+	bool_t Is_CascadeRibbonTarget(
+		const Client::EFFECT_ELEMENT_DESC& Target)
+	{
+		return Target.eKind == Client::EFFECT_ELEMENT_KIND::TRAIL &&
+			Target.SourceRecipe.bEnabled &&
+			Target.SourceRecipe.strRendererShape == "ribbon" &&
+			std::ranges::any_of(Target.SourceRecipe.Modules,
+				[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return SourceClass_Matches(
+						Module, "particlemoduletypedataribbon");
+				});
+	}
+
+	bool_t Validate_CascadeRibbonPacket(
+		const Client::EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental,
+		const Client::EFFECT_ELEMENT_DESC& Target,
+		std::string& strOutError)
+	{
+		if (!Supplemental.CascadeRibbonPacket.has_value() ||
+			Supplemental.AnimationTrailPacket.has_value() ||
+			!Is_CascadeRibbonTarget(Target))
+		{
+			strOutError =
+				"CascadeRibbon supplemental target or immutable packet is invalid.";
+			return false;
+		}
+		const Client::EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET& Packet =
+			*Supplemental.CascadeRibbonPacket;
+		const bool_t bTypeDataExact = std::ranges::any_of(
+			Target.SourceRecipe.Modules,
+			[&Packet](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+			{
+				return SourceClass_Matches(
+						Module, "particlemoduletypedataribbon") &&
+					Module.strStableId == Packet.strTypeDataStableId &&
+					Module.strClassName == Packet.strTypeDataClassName &&
+					Module.strObjectPath == Packet.strTypeDataObjectPath;
+			});
+		if (0u == Packet.iPacketVersion ||
+			Packet.strAdapterId != Supplemental.strAdapterId ||
+			!Packet.bBoundedSemanticReplay || Packet.bNativeExecution ||
+			Packet.strRuntimeCarrier.empty() ||
+			Packet.strTypeDataModuleSha256.empty() ||
+			Packet.strResolvedRendererShape != "ribbon" ||
+			Packet.strSourceRecipeSha256.empty() ||
+			Packet.strModuleClosureSha256.empty() ||
+			Packet.strPacketSha256.empty() || !bTypeDataExact ||
+			Packet.iModuleCount != Target.SourceRecipe.Modules.size() ||
+			Packet.iOperationalMaxPoints != Target.Detail.Trail.iMaxPoints ||
+			!Nearly_EqualTrailValue(Packet.fTilingDistance,
+				Target.Detail.Trail.fTilingDistanceWorldUnits) ||
+			!Nearly_EqualTrailValue(Packet.fDistanceTessellationStepSize,
+				Target.Detail.Trail.fDistanceTessellationStepWorldUnits) ||
+			!Matches_TrailTiming(Packet.Timing, Target.Detail.Timing) ||
+			!Matches_TrailAttachment(Packet.Attachment,
+				Target.ActionCueAttachment) ||
+			!Matches_TrailGeometry(Packet.Trail, Target.Detail.Trail))
+		{
+			strOutError =
+				"CascadeRibbon immutable packet does not match its projected Trail target.";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_AnimationTrailPacket(
+		const Client::EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental,
+		const Client::EFFECT_ELEMENT_DESC& Target,
+		std::string& strOutError)
+	{
+		if (!Supplemental.AnimationTrailPacket.has_value() ||
+			Supplemental.CascadeRibbonPacket.has_value() ||
+			Target.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
+			Target.SourceRecipe.bEnabled || !Target.SourceRecipe.Modules.empty())
+		{
+			strOutError =
+				"AnimationTrail supplemental target or immutable packet is invalid.";
+			return false;
+		}
+		const Client::EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET& Packet =
+			*Supplemental.AnimationTrailPacket;
+		if (0u == Packet.iPacketVersion ||
+			Packet.strAdapterId != Supplemental.strAdapterId ||
+			!Packet.bBoundedSemanticReplay || Packet.bNativeExecution ||
+			Packet.strRuntimeCarrier.empty() ||
+			Packet.strSourceNotifyType.empty() ||
+			Packet.strSourceEventId != Supplemental.strSourceEventId ||
+			Packet.strSourceEventRecordSha256.empty() ||
+			Packet.strSourceAsset.empty() || Packet.strClip.empty() ||
+			Packet.strTargetElementId != Target.strElementId ||
+			Packet.strTargetElementId !=
+				Supplemental.TargetIdentity.strTargetElementId ||
+			Packet.strPacketSha256.empty() ||
+			!Nearly_EqualTrailValue(Packet.fLocalTimeSeconds,
+				Supplemental.fLocalTimeSeconds) ||
+			!Nearly_EqualTrailValue(Packet.fGlobalTimeSeconds,
+				Supplemental.fSourceTimelineSeconds) ||
+			!Nearly_EqualTrailValue(Packet.fDurationSeconds,
+				Supplemental.fDurationSeconds) ||
+			!Matches_TrailTiming(Packet.TargetTiming, Target.Detail.Timing) ||
+			!Matches_TrailAttachment(Packet.Attachment,
+				Target.ActionCueAttachment) ||
+			!Matches_TrailGeometry(Packet.Trail, Target.Detail.Trail))
+		{
+			strOutError =
+				"AnimationTrail immutable notify packet does not match its projected Trail target.";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Is_SourceVisualDecalParticle(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bSourceVisualProgramActive)
+	{
+		return bSourceVisualProgramActive &&
 			Client::EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
 			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "decal" &&
 			std::ranges::any_of(Element.SourceRecipe.Modules,
 				[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
 				{
@@ -277,13 +492,27 @@ namespace
 				});
 	}
 
+	bool_t Is_SourceVisualMeshOrSpriteParticle(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const bool_t bSourceVisualProgramActive)
+	{
+		if (!bSourceVisualProgramActive || !Element.SourceRecipe.bEnabled)
+			return false;
+		return (Client::EFFECT_ELEMENT_KIND::MESH == Element.eKind &&
+				Element.SourceRecipe.strRendererShape == "mesh") ||
+			(Client::EFFECT_ELEMENT_KIND::SPRITE == Element.eKind &&
+				Element.SourceRecipe.strRendererShape == "sprite");
+	}
+
 	bool_t Is_ParticleSimulationElement(
 		const Client::EFFECT_ELEMENT_DESC& Element,
-		const bool_t bReconstructedSourceRuntimeActive)
+		const bool_t bSourceVisualProgramActive)
 	{
 		return Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
-			Is_ReconstructedDecalParticle(
-				Element, bReconstructedSourceRuntimeActive);
+			Is_SourceVisualMeshOrSpriteParticle(
+				Element, bSourceVisualProgramActive) ||
+			Is_SourceVisualDecalParticle(
+				Element, bSourceVisualProgramActive);
 	}
 
 	bool_t Is_GpuVisualOccurrence(
@@ -379,6 +608,17 @@ namespace
 		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
 	{
 		return SourceBool(Module, "benabled", true);
+	}
+
+	bool_t Is_PortableAuthoredParticleCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			Element.SourceRecipe.bEnabled &&
+			(Element.SourceRecipe.strRendererShape == "mesh" ||
+			 Element.SourceRecipe.strRendererShape == "sprite");
 	}
 
 	void Resolve_SourceSpritePresentation(
@@ -966,10 +1206,13 @@ namespace
 		strOutError.clear();
 		return true;
 	}
+
 }
 
 struct Client::CEffectPlayback::PREPARED_RESOURCES final
 {
+	std::string strEffectAssetId;
+	std::string strDocumentCanonicalSha256;
 	std::unordered_map<std::string, std::shared_ptr<const SOURCE_VECTOR_FIELD>>
 		VectorFields;
 };
@@ -977,6 +1220,14 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 uint64_t Client::CEffectPlayback::Get_VectorFieldDiskLoadCount()
 {
 	return g_iVectorFieldDiskLoadCount.load(std::memory_order_relaxed);
+}
+
+bool_t Client::CEffectPlayback::Is_SourceVisualProgramElementAdmitted(
+	const EFFECT_ELEMENT_DESC& Element) const
+{
+	return m_bSourceVisualProgramActive &&
+		(!m_bRequireSourceVisualTargetClosure ||
+			m_SourceVisualTargetElementIds.contains(Element.strElementId));
 }
 
 bool_t Client::CEffectPlayback::Stage_Document(
@@ -998,6 +1249,17 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 	std::string& strOutError)
 {
 	auto Staged = std::make_shared<PREPARED_RESOURCES>();
+	Staged->strEffectAssetId = Document.strEffectAssetId;
+	Staged->strDocumentCanonicalSha256 =
+		CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+			Document, strOutError);
+	if (Staged->strDocumentCanonicalSha256.empty())
+	{
+		if (strOutError.empty())
+			strOutError =
+				"Prepared Effect document canonical identity is unavailable.";
+		return false;
+	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		for (const EFFECT_SOURCE_MODULE_DESC& Module :
@@ -1031,6 +1293,217 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+	std::string& strOutError)
+{
+	/* Existing authored documents may stage value-only edits against a prepared
+	   resource bundle.  Preserve that contract here; the immutable visual-program
+	   entry point below is the only seam that requires exact projected-document
+	   canonical identity. */
+	return Stage_PrevalidatedDocumentInternal(
+		Document, std::move(pPreparedResources), false, false, {}, strOutError);
+}
+
+bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> pProjection,
+	std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+	std::string& strOutError)
+{
+	if (nullptr == pProjection || !pProjection->Is_Valid() ||
+		nullptr == pPreparedResources)
+	{
+		strOutError =
+			"Admitted source visual-program projection or prepared resources are missing.";
+		return false;
+	}
+
+	const EFFECT_DOCUMENT_DESC& Document = pProjection->Get_Document();
+	if (pProjection->Get_EffectAssetId().empty() ||
+		pProjection->Get_EffectAssetId() != Document.strEffectAssetId ||
+		pProjection->Get_AdmittedSelectors().empty())
+	{
+		strOutError =
+			"Admitted source visual-program projection identity is invalid.";
+		return false;
+	}
+	for (const EFFECT_VISUAL_PROGRAM_SELECTOR& Selector :
+		pProjection->Get_AdmittedSelectors())
+	{
+		if (Selector.strEffectAssetId != pProjection->Get_EffectAssetId() ||
+			Selector.strOccurrenceId.empty())
+		{
+			strOutError =
+				"Admitted source visual-program selector closure is invalid.";
+			return false;
+		}
+	}
+
+	std::string IdentityError;
+	const std::string DocumentCanonicalSha256 =
+		CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+			Document, IdentityError);
+	if (DocumentCanonicalSha256.empty() ||
+		pProjection->Get_ProjectedDocumentSha256().empty() ||
+		pPreparedResources->strEffectAssetId != Document.strEffectAssetId ||
+		pPreparedResources->strDocumentCanonicalSha256 !=
+			DocumentCanonicalSha256)
+	{
+		strOutError = IdentityError.empty() ?
+			"Admitted source visual-program document/prepared identity mismatch." :
+			"Admitted source visual-program canonical identity failed: " +
+				IdentityError;
+		return false;
+	}
+
+	std::unordered_set<std::string> SourceVisualTargetElementIds;
+	if (pProjection->Get_ProjectionKind() !=
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1 &&
+		pProjection->Get_ProjectionKind() !=
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+	{
+		strOutError =
+			"Admitted source visual-program projection kind is unsupported.";
+		return false;
+	}
+	for (const EFFECT_VISUAL_PROGRAM_ROW& Row : pProjection->Get_AdmittedRows())
+	{
+		if (pProjection->Get_ProjectionKind() ==
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+		{
+			if (!Row.LocalDecalPacket.has_value())
+			{
+				strOutError =
+					"Admitted adapter visual-program row lacks its immutable packet.";
+				return false;
+			}
+			continue;
+		}
+		if (Row.LocalDecalPacket.has_value())
+		{
+			strOutError =
+				"Source-recipe overlay visual-program row contains an adapter packet.";
+			return false;
+		}
+		if (!Row.TargetIdentity.has_value() ||
+			Row.TargetIdentity->strTargetElementId.empty())
+		{
+			strOutError =
+				"Admitted source visual-program target closure is invalid.";
+			return false;
+		}
+		const EFFECT_ELEMENT_DESC* const pTarget = Find_ElementById(
+			Document, Row.TargetIdentity->strTargetElementId);
+		const bool_t bFamilyTargetMatches = nullptr != pTarget && [&]()
+		{
+			switch (Row.eFamily)
+			{
+			case EFFECT_VISUAL_PROGRAM_FAMILY::MESH_PARTICLE:
+				return pTarget->eKind == EFFECT_ELEMENT_KIND::MESH &&
+					pTarget->SourceRecipe.bEnabled &&
+					pTarget->SourceRecipe.strRendererShape == "mesh";
+			case EFFECT_VISUAL_PROGRAM_FAMILY::SPRITE_PARTICLE:
+				return pTarget->eKind == EFFECT_ELEMENT_KIND::SPRITE &&
+					pTarget->SourceRecipe.bEnabled &&
+					pTarget->SourceRecipe.strRendererShape == "sprite";
+			case EFFECT_VISUAL_PROGRAM_FAMILY::DECAL_PARTICLE:
+				return pTarget->eKind == EFFECT_ELEMENT_KIND::DECAL &&
+					pTarget->SourceRecipe.bEnabled &&
+					pTarget->SourceRecipe.strRendererShape == "decal";
+			case EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON:
+				return Is_CascadeRibbonTarget(*pTarget);
+			case EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE:
+				return pTarget->eKind == EFFECT_ELEMENT_KIND::LIGHT;
+			case EFFECT_VISUAL_PROGRAM_FAMILY::SCREEN_POST:
+				return pTarget->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+			case EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL:
+			case EFFECT_VISUAL_PROGRAM_FAMILY::END:
+			default:
+				return false;
+			}
+		}();
+		if (!bFamilyTargetMatches ||
+			!SourceVisualTargetElementIds.emplace(
+				Row.TargetIdentity->strTargetElementId).second)
+		{
+			strOutError =
+				"Admitted source visual-program family does not match its unique projected target.";
+			return false;
+		}
+	}
+	for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+		pProjection->Get_AdmittedSupplementalElements())
+	{
+		if (Supplemental.Selector.strEffectAssetId !=
+				pProjection->Get_EffectAssetId() ||
+			Supplemental.Selector.strOccurrenceId.empty() ||
+			Supplemental.TargetIdentity.strTargetElementId.empty())
+		{
+			strOutError =
+				"Admitted supplemental visual-program identity is invalid.";
+			return false;
+		}
+		const EFFECT_ELEMENT_DESC* const pTarget = Find_ElementById(
+			Document, Supplemental.TargetIdentity.strTargetElementId);
+		if (nullptr == pTarget)
+		{
+			strOutError =
+				"Admitted supplemental visual-program target is missing.";
+			return false;
+		}
+
+		if (pProjection->Get_ProjectionKind() ==
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
+		{
+			if (Supplemental.eFamily !=
+					EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL ||
+				!Validate_AnimationTrailPacket(
+					Supplemental, *pTarget, strOutError) ||
+				!SourceVisualTargetElementIds.emplace(
+					Supplemental.TargetIdentity.strTargetElementId).second)
+			{
+				if (strOutError.empty())
+				{
+					strOutError =
+						"AnimationTrail supplemental target closure is invalid.";
+				}
+				return false;
+			}
+		}
+		else if (Supplemental.eFamily !=
+				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON ||
+			!Validate_CascadeRibbonPacket(
+				Supplemental, *pTarget, strOutError))
+		{
+			if (strOutError.empty())
+			{
+				strOutError =
+					"CascadeRibbon adapter supplemental identity is invalid.";
+			}
+			return false;
+		}
+	}
+	const bool_t bSourceVisualProgramActive =
+		!SourceVisualTargetElementIds.empty();
+	if (!Stage_PrevalidatedDocumentInternal(Document,
+			std::move(pPreparedResources),
+			bSourceVisualProgramActive, true,
+			std::move(SourceVisualTargetElementIds), strOutError))
+	{
+		return false;
+	}
+	m_strSourceVisualProgramStatus =
+		"Admitted source visual program staged: " +
+		pProjection->Get_AdmissionTokenSha256();
+	m_pSourceVisualProgramProjection = std::move(pProjection);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+	const bool_t bSourceVisualProgramActive,
+	const bool_t bRequireSourceVisualTargetClosure,
+	std::unordered_set<std::string> SourceVisualTargetElementIds,
 	std::string& strOutError)
 {
 	if (nullptr == pPreparedResources)
@@ -1069,6 +1542,10 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	f32_t fStagedDuration = 0.f;
 	for (const EFFECT_ELEMENT_DESC& Element : StagedDocument.Elements)
 	{
+		const bool_t bElementSourceVisualActive =
+			bSourceVisualProgramActive &&
+			(!bRequireSourceVisualTargetClosure ||
+				SourceVisualTargetElementIds.contains(Element.strElementId));
 		if (Element.TransformInheritance.bEnabled)
 		{
 			const auto MasterIterator = ElementIndices.find(
@@ -1099,9 +1576,8 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 		if (!Element.bVisible)
 			continue;
 		f32_t fElementTail = 0.f;
-		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
-			(EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
-				Element.SourceRecipe.bEnabled))
+		if (Is_ParticleSimulationElement(
+			Element, bElementSourceVisualActive))
 			fElementTail = Element.Detail.Particle.vLifeTimeSeconds.y;
 		else if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
 			fElementTail = Element.Detail.Trail.fPointLifeTimeSeconds;
@@ -1137,8 +1613,14 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocument(
 	m_pPreparedResources = std::move(pPreparedResources);
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedExecutionPlan.reset();
+	m_pSourceVisualProgramProjection.reset();
+	m_bSourceVisualProgramActive = bSourceVisualProgramActive;
+	m_bRequireSourceVisualTargetClosure =
+		bRequireSourceVisualTargetClosure;
+	m_SourceVisualTargetElementIds =
+		std::move(SourceVisualTargetElementIds);
 	m_bReconstructedSourceRuntimeActive = false;
-	m_strReconstructedSourceRuntimeStatus.clear();
+	m_strSourceVisualProgramStatus.clear();
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
@@ -1178,18 +1660,98 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedSourceRuntime(
 			strOutError = "Reconstructed source runtime plan is missing.";
 		return false;
 	}
-	if (!Stage_PrevalidatedDocument(
-		StagedDocument, std::move(pPreparedResources), strOutError))
+	if (!Stage_PrevalidatedDocumentInternal(
+		StagedDocument, std::move(pPreparedResources), true, false, {},
+		strOutError))
 	{
 		return false;
 	}
 
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedExecutionPlan = std::move(StagedPlan);
+	m_bSourceVisualProgramActive = true;
+	m_bRequireSourceVisualTargetClosure = false;
+	m_SourceVisualTargetElementIds.clear();
 	m_bReconstructedSourceRuntimeActive = true;
-	m_strReconstructedSourceRuntimeStatus =
+	m_strSourceVisualProgramStatus =
 		"Artist 31470 reconstructed source runtime staged; Product remains false.";
 	Reset();
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::
+	Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError)
+{
+	if (nullptr == pProjection || !pProjection->Is_Valid() ||
+		pProjection->Get_ProjectionKind() !=
+			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 ||
+		nullptr == pPreparedResources || nullptr == pPreparation ||
+		nullptr == pPreparation->Get_Program() ||
+		pProjection->Get_EffectAssetId() !=
+			pPreparation->Get_Program()->strRuntimeCatalogAssetId ||
+		pProjection->Get_EffectAssetId() !=
+			pProjection->Get_Document().strEffectAssetId ||
+		pProjection->Get_AdmittedRows().empty() ||
+		!std::all_of(pProjection->Get_AdmittedRows().begin(),
+			pProjection->Get_AdmittedRows().end(),
+			[](const EFFECT_VISUAL_PROGRAM_ROW& Row)
+			{
+				return Row.LocalDecalPacket.has_value() &&
+					Row.TargetIdentity.has_value() &&
+					!Row.TargetIdentity->strTargetElementId.empty();
+			}))
+	{
+		strOutError =
+			"Reconstructed source runtime visual adapter identity is invalid.";
+		return false;
+	}
+	std::string IdentityError;
+	const std::string DocumentCanonicalSha256 =
+		CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+			pProjection->Get_Document(), IdentityError);
+	if (DocumentCanonicalSha256.empty() ||
+		pPreparedResources->strEffectAssetId !=
+			pProjection->Get_EffectAssetId() ||
+		pPreparedResources->strDocumentCanonicalSha256 !=
+			DocumentCanonicalSha256)
+	{
+		strOutError = IdentityError.empty() ?
+			"Reconstructed source runtime visual adapter prepared identity mismatches." :
+			"Reconstructed source runtime visual adapter identity failed: " +
+				IdentityError;
+		return false;
+	}
+	CEffectPlayback AdapterValidator;
+	if (!AdapterValidator.Stage_PrevalidatedVisualProgramDocument(
+			pProjection, pPreparedResources, strOutError) ||
+		AdapterValidator.Is_SourceVisualProgramActive())
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Reconstructed source runtime visual adapter validation diverged.";
+		}
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pCommittedProjection = pProjection;
+	if (!Stage_ReconstructedSourceRuntime(
+			pProjection->Get_Document(), std::move(pPreparedResources),
+			std::move(pPreparation), strOutError))
+	{
+		return false;
+	}
+	m_pSourceVisualProgramProjection = pCommittedProjection;
+	m_strSourceVisualProgramStatus =
+		"Reconstructed source runtime staged with immutable visual adapter: " +
+		pCommittedProjection->Get_AdmissionTokenSha256();
 	strOutError.clear();
 	return true;
 }
@@ -1221,8 +1783,12 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_iSimulationStep = 0u;
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedExecutionPlan = std::move(StagedPlan);
+	m_pSourceVisualProgramProjection.reset();
+	m_bSourceVisualProgramActive = false;
+	m_bRequireSourceVisualTargetClosure = false;
+	m_SourceVisualTargetElementIds.clear();
 	m_bReconstructedSourceRuntimeActive = false;
-	m_strReconstructedSourceRuntimeStatus.clear();
+	m_strSourceVisualProgramStatus.clear();
 	strOutError.clear();
 	return true;
 }
@@ -1271,6 +1837,7 @@ void Client::CEffectPlayback::Reset()
 {
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_bSourceVisualProgramActive &&
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
@@ -1303,6 +1870,7 @@ void Client::CEffectPlayback::Update(
 {
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_bSourceVisualProgramActive &&
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
@@ -1334,6 +1902,7 @@ void Client::CEffectPlayback::Seek(
 {
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_bSourceVisualProgramActive &&
 		!m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus))
 	{
 		m_Frame = {};
@@ -1455,6 +2024,7 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 {
 	std::string GateStatus;
 	if ((!m_bReconstructedSourceRuntimeActive &&
+		 !m_bSourceVisualProgramActive &&
 		 !m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus)) ||
 		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 	{
@@ -1531,6 +2101,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 {
 	std::string GateStatus;
 	if ((!m_bReconstructedSourceRuntimeActive &&
+		 !m_bSourceVisualProgramActive &&
 		 !m_ReconstructedRuntimeBoundary.Admit_Execution(GateStatus)) ||
 		!std::isfinite(fSampleTimeSeconds))
 	{
@@ -1634,7 +2205,7 @@ void Client::CEffectPlayback::Step(
 						Element.SourceRecipe.iEmitterLoopCount)) :
 			Element.Detail.Timing.fLifeTimeSeconds;
 		if (Is_ParticleSimulationElement(
-				Element, m_bReconstructedSourceRuntimeActive) &&
+				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
 			fEmitterElapsed >= 0.f &&
 			fEmitterElapsed <= fSourceEmissionDuration)
 		{
@@ -1676,11 +2247,19 @@ void Client::CEffectPlayback::Step(
 							(Burst.iCountMaximum - Burst.iCountMinimum + 1u);
 						Spawn_Particles(Element, State, iCount, RootWorld);
 					}
-					const f32_t fRate = Evaluate_SourceFloat(Element,
-						"particlemodulespawn", "rate", fEmitterTime,
-						static_cast<f32_t>(Next_Random(State)) /
-							static_cast<f32_t>(UINT32_MAX),
-						Element.Detail.Particle.fSpawnRatePerSecond);
+					const EFFECT_SOURCE_MODULE_DESC* pSpawnModule =
+						Find_SourceModule(Element, "particlemodulespawn");
+					/* Cascade advances the emitter random stream only when Rate's
+					   distribution operation actually consumes a random value.  An
+					   unconditional draw here shifts every later burst/lifetime/module
+					   sample even for the deterministic operation-1 Rate rows used by
+					   Artist 31470.  Keep RateScale out of this playback seam until the
+					   pinned null CDO row is projected as its reconstructed identity 1. */
+					const f32_t fRate = nullptr == pSpawnModule ?
+						Element.Detail.Particle.fSpawnRatePerSecond :
+						Evaluate_ModuleFloat(State, *pSpawnModule, "rate",
+							fEmitterTime,
+							Element.Detail.Particle.fSpawnRatePerSecond);
 					State.fSpawnAccumulator +=
 						(std::max)(0.f, fRate) * fFixedDelta;
 					const uint32_t iSpawnCount = static_cast<uint32_t>(
@@ -1738,7 +2317,8 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	const f32_t fEmitterTimeSeconds,
 	const float4x4_t& RootWorld)
 {
-	if (!m_bReconstructedSourceRuntimeActive)
+	if (!Is_SourceVisualProgramElementAdmitted(Element) &&
+		!Is_PortableAuthoredParticleCarrier(Element))
 		return 0u;
 
 	std::vector<const EFFECT_SOURCE_MODULE_DESC*> SpawnPerUnitModules;
@@ -1758,7 +2338,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	if (!std::isfinite(CurrentOrigin.x) || !std::isfinite(CurrentOrigin.y) ||
 		!std::isfinite(CurrentOrigin.z))
 	{
-		m_strReconstructedSourceRuntimeStatus =
+		m_strSourceVisualProgramStatus =
 			"SpawnPerUnit rejected a nonfinite emitter origin: " +
 			Element.strElementId;
 		State.bSourceSpawnPerUnitOriginInitialized = false;
@@ -1777,7 +2357,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	State.vSourceSpawnPerUnitPreviousOrigin = CurrentOrigin;
 	if (!std::isfinite(fDistance) || fDistance < 0.f)
 	{
-		m_strReconstructedSourceRuntimeStatus =
+		m_strSourceVisualProgramStatus =
 			"SpawnPerUnit rejected a nonfinite movement distance: " +
 			Element.strElementId;
 		State.fSourceSpawnPerUnitAccumulator = 0.f;
@@ -1795,7 +2375,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 		if (!std::isfinite(fUnitScalarClient) || fUnitScalarClient <= 0.f ||
 			!std::isfinite(fSpawnPerUnit) || fSpawnPerUnit < 0.f)
 		{
-			m_strReconstructedSourceRuntimeStatus =
+			m_strSourceVisualProgramStatus =
 				"SpawnPerUnit rejected invalid rate/unitScalar: " +
 				Element.strElementId;
 			State.fSourceSpawnPerUnitAccumulator = 0.f;
@@ -1813,7 +2393,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 		Accumulated > static_cast<double>(
 			(std::numeric_limits<uint32_t>::max)()))
 	{
-		m_strReconstructedSourceRuntimeStatus =
+		m_strSourceVisualProgramStatus =
 			"SpawnPerUnit rejected an unbounded accumulator: " +
 			Element.strElementId;
 		State.fSourceSpawnPerUnitAccumulator = 0.f;
@@ -1896,6 +2476,17 @@ void Client::CEffectPlayback::Spawn_Particles(
 			Particle.vSize = Particle.vBaseSize;
 			Particle.fLifeTimeSeconds = Random_Range(
 				State, Desc.vLifeTimeSeconds.x, Desc.vLifeTimeSeconds.y);
+			Particle.vDynamicParameter = {};
+			const f32_t* pDynamicStart = &Desc.vDynamicParameterStart.x;
+			f32_t* pParticleDynamic = &Particle.vDynamicParameter.x;
+			for (uint32_t iComponent = 0u; iComponent < 4u; ++iComponent)
+			{
+				if (0u != (Desc.iDynamicParameterComponentMask &
+					(1u << iComponent)))
+				{
+					pParticleDynamic[iComponent] = pDynamicStart[iComponent];
+				}
+			}
 		}
 		Particle.vVelocity = Apply_ParticleEmissionModifier(
 			Particle.vVelocity);
@@ -1905,6 +2496,7 @@ void Client::CEffectPlayback::Spawn_Particles(
 				State, Desc.vLifeTimeSeconds.x, Desc.vLifeTimeSeconds.y);
 		Particle.fLifeTimeSeconds = (std::max)(
 			0.001f, Particle.fLifeTimeSeconds);
+		Particle.iSpawnSimulationStep = m_iSimulationStep;
 		Particle.SpawnRootWorld = ElementWorld;
 		State.Particles.push_back(Particle);
 		Queue_SpawnEvents(Element, State, State.Particles.back(), ElementWorld);
@@ -1979,7 +2571,7 @@ void Client::CEffectPlayback::Dispatch_SourceEvents(
 		for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
 		{
 			if (!Element.bVisible || !Is_ParticleSimulationElement(
-				Element, m_bReconstructedSourceRuntimeActive))
+				Element, Is_SourceVisualProgramElementAdmitted(Element)))
 				continue;
 			ELEMENT_STATE& State = m_States[Element.strElementId];
 			for (const EFFECT_SOURCE_MODULE_DESC& Module :
@@ -2027,6 +2619,14 @@ void Client::CEffectPlayback::Set_SourceAnchorWorlds(
 	m_SourceAnchorWorlds = SourceAnchorWorlds;
 }
 
+void Client::CEffectPlayback::Set_SourceAnchorWorlds(
+	std::unordered_map<std::string, float4x4_t>&& SourceAnchorWorlds)
+{
+	/* Swap returns the previous frame's buckets to the caller scratch map, so
+	   FOLLOW anchor resolution reuses both maps without copying or reallocating. */
+	m_SourceAnchorWorlds.swap(SourceAnchorWorlds);
+}
+
 void Client::CEffectPlayback::Initialize_ModuleRandomStates(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State)
@@ -2040,27 +2640,81 @@ void Client::CEffectPlayback::Initialize_ModuleRandomStates(
 		std::vector<std::pair<uint32_t, int32_t>> IndexedSeeds;
 		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
 		{
-			constexpr std::string_view Prefix =
+			constexpr std::string_view CanonicalPrefix =
 				"randomseedinfo.randomseeds[";
+			constexpr std::string_view SourceStructPrefix =
+				"randomseedinfo.properties.randomseeds[";
+			const std::string_view PropertyPath = Literal.strPropertyPath;
+			const std::string_view Prefix =
+				PropertyPath.starts_with(CanonicalPrefix) ? CanonicalPrefix :
+				PropertyPath.starts_with(SourceStructPrefix) ? SourceStructPrefix :
+				std::string_view{};
 			if (EFFECT_SOURCE_LITERAL_KIND::NUMBER != Literal.eKind ||
-				!Literal.strPropertyPath.starts_with(Prefix))
+				Prefix.empty())
 			{
 				continue;
 			}
-			const size_t iClose = Literal.strPropertyPath.find(']', Prefix.size());
+			const size_t iClose = PropertyPath.find(']', Prefix.size());
 			if (std::string::npos == iClose)
 				continue;
 			try
 			{
 				IndexedSeeds.emplace_back(
 					static_cast<uint32_t>(std::stoul(
-						Literal.strPropertyPath.substr(Prefix.size(),
-							iClose - Prefix.size()))),
+						std::string(PropertyPath.substr(Prefix.size(),
+							iClose - Prefix.size())))),
 					static_cast<int32_t>(Literal.fNumber));
 			}
 			catch (...)
 			{
 				continue;
+			}
+		}
+		if (IndexedSeeds.empty())
+		{
+			const auto HexLiteral = std::find_if(
+				Module.Literals.begin(), Module.Literals.end(),
+				[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+				{
+					return Literal.strPropertyPath == "randomseedinfo.hex" &&
+						Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::STRING;
+				});
+			if (HexLiteral != Module.Literals.end() &&
+				HexLiteral->strString.size() == 64u)
+			{
+				std::array<uint8_t, 32u> Bytes{};
+				const auto HexNibble = [](const char Value) -> int32_t
+				{
+					if (Value >= '0' && Value <= '9')
+						return Value - '0';
+					if (Value >= 'a' && Value <= 'f')
+						return 10 + Value - 'a';
+					if (Value >= 'A' && Value <= 'F')
+						return 10 + Value - 'A';
+					return -1;
+				};
+				bool_t bValidHex = true;
+				for (size_t i = 0u; i < Bytes.size(); ++i)
+				{
+					const int32_t High = HexNibble(HexLiteral->strString[i * 2u]);
+					const int32_t Low = HexNibble(
+						HexLiteral->strString[i * 2u + 1u]);
+					if (High < 0 || Low < 0)
+					{
+						bValidHex = false;
+						break;
+					}
+					Bytes[i] = static_cast<uint8_t>((High << 4) | Low);
+				}
+				if (bValidHex)
+				{
+					const uint32_t Seed =
+						static_cast<uint32_t>(Bytes[28u]) |
+						(static_cast<uint32_t>(Bytes[29u]) << 8u) |
+						(static_cast<uint32_t>(Bytes[30u]) << 16u) |
+						(static_cast<uint32_t>(Bytes[31u]) << 24u);
+					IndexedSeeds.emplace_back(0u, static_cast<int32_t>(Seed));
+				}
 			}
 		}
 		if (IndexedSeeds.empty())
@@ -2174,9 +2828,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 	const float4x4_t& ElementWorld)
 {
 	bool_t bHasSize = false;
-	const bool_t bReconstructedDecalParticle =
-		Is_ReconstructedDecalParticle(
-			Element, m_bReconstructedSourceRuntimeActive);
+	const bool_t bSourceVisualDecalParticle =
+		Is_SourceVisualDecalParticle(
+			Element, Is_SourceVisualProgramElementAdmitted(Element));
 	for (const EFFECT_SOURCE_MODULE_DESC& Module :
 		Element.SourceRecipe.Modules)
 	{
@@ -2218,7 +2872,8 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocationonground"))
 		{
-			if (!m_bReconstructedSourceRuntimeActive)
+			if (!Is_SourceVisualProgramElementAdmitted(Element) &&
+				!Is_PortableAuthoredParticleCarrier(Element))
 				continue;
 			const f32_t fSkipLocation = Evaluate_ModuleFloat(
 				State, Module, "skiplocation", fEmitterTimeSeconds,
@@ -2537,7 +3192,7 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		}
 		else if (SourceClass_Matches(Module, "particlemodulerotation"))
 		{
-			f32_t& fYawOrSpriteRoll = bReconstructedDecalParticle ?
+			f32_t& fYawOrSpriteRoll = bSourceVisualDecalParticle ?
 				Particle.vRotationDegrees.y : Particle.vRotationDegrees.z;
 			fYawOrSpriteRoll += Evaluate_ModuleFloat(
 				State, Module, "startrotation", fEmitterTimeSeconds, 0.f) * 360.f;
@@ -2545,16 +3200,15 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotation"))
 		{
-			Particle.vRotationDegrees = Add3(
-				Particle.vRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "startrotation", fEmitterTimeSeconds,
-					float3_t{})), 360.f));
+			Particle.vSourceMeshRotationDegrees = Add3(
+				Particle.vSourceMeshRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "startrotation",
+					fEmitterTimeSeconds, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationrate"))
 		{
-			f32_t& fYawOrSpriteRollRate = bReconstructedDecalParticle ?
+			f32_t& fYawOrSpriteRollRate = bSourceVisualDecalParticle ?
 				Particle.vRotationRateDegreesPerSecond.y :
 				Particle.vRotationRateDegreesPerSecond.z;
 			fYawOrSpriteRollRate +=
@@ -2564,11 +3218,10 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationrate"))
 		{
-			Particle.vRotationRateDegreesPerSecond = Add3(
-				Particle.vRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "startrotationrate", fEmitterTimeSeconds,
-					float3_t{})), 360.f));
+			Particle.vSourceMeshRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceMeshRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "startrotationrate",
+					fEmitterTimeSeconds, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -2621,16 +3274,14 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "offsetamount", 0.f, float3_t{})));
-			Particle.vOrbitRotationDegrees = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationamount", 0.f, float3_t{})),
-					360.f));
-			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationrateamount", 0.f,
-					float3_t{})), 360.f));
+			Particle.vSourceOrbitRotationDegrees = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
+					0.f, float3_t{}), 360.f));
+			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceOrbitRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
+					0.f, float3_t{}), 360.f));
 		}
 	}
 	if (!bHasSize)
@@ -2669,10 +3320,25 @@ void Client::CEffectPlayback::Update_Particles(
 			std::fmod(fEmitterElapsed, fEmitterDuration);
 	}
 
+	/* A particle's spawn-owning step evaluates age zero.  On later steps,
+	   reject the terminal age before running another module update, then commit
+	   the next age before evaluating distributions.  This keeps the normalized
+	   age exported by Rebuild_Frame identical to the age used by ParameterDynamic
+	   and the other over-life modules without changing the existing per-step
+	   velocity/position integration count. */
+	std::erase_if(State.Particles,
+		[this, fFixedDelta](const PARTICLE_STATE& Particle)
+		{
+			return Particle.iSpawnSimulationStep != m_iSimulationStep &&
+				Particle.fAgeSeconds + fFixedDelta >=
+					Particle.fLifeTimeSeconds;
+		});
 	for (PARTICLE_STATE& Particle : State.Particles)
 	{
 		if (!Can_EvaluateElementWorld(Element))
 			return;
+		if (Particle.iSpawnSimulationStep != m_iSimulationStep)
+			Particle.fAgeSeconds += fFixedDelta;
 		const float4x4_t ElementWorld = Evaluate_ElementWorld(
 			Element, m_fSampleTimeSeconds, RootWorld);
 		const f32_t fNormalizedAge = Clamp01(
@@ -2691,13 +3357,7 @@ void Client::CEffectPlayback::Update_Particles(
 		Particle.vPosition = Add3(Particle.vPosition,
 			Scale3(Multiply3(Particle.vVelocity,
 				Particle.vVelocityScale), fFixedDelta));
-		Particle.fAgeSeconds += fFixedDelta;
 	}
-	std::erase_if(State.Particles,
-		[](const PARTICLE_STATE& Particle)
-		{
-			return Particle.fAgeSeconds >= Particle.fLifeTimeSeconds;
-		});
 }
 
 void Client::CEffectPlayback::Apply_SourceUpdateModules(
@@ -2713,12 +3373,13 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vColor = Particle.vBaseColor;
 	Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 	Particle.vRotationRateScale = { 1.f, 1.f, 1.f };
+	Particle.vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
 	Particle.vOrbitOffset = {};
-	Particle.vOrbitRotationDegrees = {};
-	Particle.vOrbitRotationRateDegreesPerSecond = {};
-	const bool_t bReconstructedDecalParticle =
-		Is_ReconstructedDecalParticle(
-			Element, m_bReconstructedSourceRuntimeActive);
+	Particle.vSourceOrbitRotationDegrees = {};
+	Particle.vSourceOrbitRotationRateDegreesPerSecond = {};
+	const bool_t bSourceVisualDecalParticle =
+		Is_SourceVisualDecalParticle(
+			Element, Is_SourceVisualProgramElementAdmitted(Element));
 
 	for (const EFFECT_SOURCE_MODULE_DESC& Module :
 		Element.SourceRecipe.Modules)
@@ -2938,16 +3599,15 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationratemultiplylife"))
 		{
-			Particle.vRotationRateScale = Multiply3(
-				Particle.vRotationRateScale,
-				UE3_AxisScaleToClient(Evaluate_ModuleVector(
-					State, Module, "lifemultiplier", fNormalizedAge,
-					float3_t(1.f, 1.f, 1.f))));
+			Particle.vSourceMeshRotationRateScale = Multiply3(
+				Particle.vSourceMeshRotationRateScale,
+				Evaluate_ModuleVector(State, Module, "lifemultiplier",
+					fNormalizedAge, float3_t(1.f, 1.f, 1.f)));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationratemultiplylife"))
 		{
-			f32_t& fYawOrSpriteRollRateScale = bReconstructedDecalParticle ?
+			f32_t& fYawOrSpriteRollRateScale = bSourceVisualDecalParticle ?
 				Particle.vRotationRateScale.y : Particle.vRotationRateScale.z;
 			fYawOrSpriteRollRateScale *= Evaluate_ModuleFloat(
 				State, Module, "lifemultiplier", fNormalizedAge, 1.f);
@@ -2955,10 +3615,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(
 			Module, "particlemodulemeshrotationrateoverlife"))
 		{
-			Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotrate", fNormalizedAge, float3_t{})),
-					360.f * fFixedDelta));
+			Particle.vSourceMeshRotationDegrees = Add3(
+				Particle.vSourceMeshRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotrate",
+					fNormalizedAge, float3_t{}), 360.f * fFixedDelta));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -3005,16 +3665,14 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "offsetamount", fNormalizedAge,
 					float3_t{})));
-			Particle.vOrbitRotationDegrees = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationamount", fNormalizedAge,
-					float3_t{})), 360.f));
-			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
-					State, Module, "rotationrateamount", fNormalizedAge,
-					float3_t{})), 360.f));
+			Particle.vSourceOrbitRotationDegrees = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
+					fNormalizedAge, float3_t{}), 360.f));
+			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+				Particle.vSourceOrbitRotationRateDegreesPerSecond,
+				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
+					fNormalizedAge, float3_t{}), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulevortex"))
 		{
@@ -3031,6 +3689,10 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
 		Scale3(Multiply3(Particle.vRotationRateDegreesPerSecond,
 			Particle.vRotationRateScale), fFixedDelta));
+	Particle.vSourceMeshRotationDegrees = Add3(
+		Particle.vSourceMeshRotationDegrees,
+		Scale3(Multiply3(Particle.vSourceMeshRotationRateDegreesPerSecond,
+			Particle.vSourceMeshRotationRateScale), fFixedDelta));
 }
 
 void Client::CEffectPlayback::Sample_Trail(
@@ -3039,11 +3701,37 @@ void Client::CEffectPlayback::Sample_Trail(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
-	const bool_t bReconstructedRibbon =
-		m_bReconstructedSourceRuntimeActive &&
-		Element.SourceRecipe.bEnabled &&
-		nullptr != Find_SourceModule(Element, "particlemoduletypedataribbon");
-	constexpr f32_t RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS = 1e-6f;
+	bool_t bCascadeRibbon = false;
+	bool_t bAnimationTrail = false;
+	if (Is_SourceVisualProgramElementAdmitted(Element))
+	{
+		/* Reconstructed Artist and admitted BA documents share this consumer.
+		   Reconstructed execution owns its already-validated source closure;
+		   generic visual programs additionally require the immutable row/target
+		   family match established during token staging. */
+		if (m_bReconstructedSourceRuntimeActive)
+			bCascadeRibbon = Is_CascadeRibbonTarget(Element);
+		if (nullptr != m_pSourceVisualProgramProjection)
+		{
+			const EFFECT_VISUAL_PROGRAM_ROW* const pRow =
+				m_pSourceVisualProgramProjection->Find_RowByTargetElementId(
+					Element.strElementId);
+			const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* const pSupplemental =
+				m_pSourceVisualProgramProjection->
+					Find_SupplementalElementByTargetElementId(
+						Element.strElementId);
+			bCascadeRibbon = bCascadeRibbon ||
+				(nullptr != pRow && pRow->eFamily ==
+					EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON) ||
+				(nullptr != pSupplemental && pSupplemental->eFamily ==
+					EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON);
+			bAnimationTrail = nullptr != pSupplemental &&
+				pSupplemental->eFamily ==
+					EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL;
+		}
+	}
+	const bool_t bSourceVisualTrail = bCascadeRibbon || bAnimationTrail;
+	constexpr f32_t SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS = 1e-6f;
 	const auto EvaluateDeterministicFloat = [&Element](
 		const char_t* pModuleClass,
 		const std::string_view PropertyPath,
@@ -3066,7 +3754,7 @@ void Client::CEffectPlayback::Sample_Trail(
 		fOutValue = fValue;
 		return true;
 	};
-	const auto UpdatePointPayload = [&Element, &EvaluateDeterministicFloat](
+	const auto UpdatePointPayload = [this, &Element, &EvaluateDeterministicFloat](
 		EFFECT_EVALUATED_TRAIL_POINT& Point)
 	{
 		Point.vSourceColor = { 1.f, 1.f, 1.f, 1.f };
@@ -3084,6 +3772,23 @@ void Client::CEffectPlayback::Sample_Trail(
 		{
 			Point.vSourceColor.w = fStartAlpha * fAlphaScale;
 			Point.iSourceColorComponentMask = 1u << 3u;
+		}
+		else if (!Element.SourceRecipe.bEnabled &&
+			Element.Material.Execution.bEnabled &&
+			Element.Material.Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Element.Material.Execution.iOpcode == 9u &&
+			(Element.Material.Execution.iParticleColorConsumedMask & 0x08u) != 0u)
+		{
+			/* Ordinary authored Ribbon points do not own the reconstructed source
+			   modules.  Supply the bounded generic alpha carrier that opcode 9
+			   consumes without manufacturing any suppressed DynamicParameter lane. */
+			const EFFECT_COLOR_DESC Color = Evaluate_Color(
+				Element, Point.fNormalizedAge);
+			Point.vSourceColor.w = (std::max)(0.f,
+				Color.vColorMultiply.w) *
+				(std::max)(0.f, 1.f - Point.fNormalizedAge);
+			Point.iSourceColorComponentMask |= 0x08u;
 		}
 
 		const EFFECT_SOURCE_MODULE_DESC* pDynamic = Find_SourceModule(
@@ -3120,11 +3825,11 @@ void Client::CEffectPlayback::Sample_Trail(
 			Element.Detail.Trail.fPointLifeTimeSeconds;
 	}
 	std::erase_if(State.TrailPoints,
-		[bReconstructedRibbon](const EFFECT_EVALUATED_TRAIL_POINT& Point)
+		[bSourceVisualTrail](const EFFECT_EVALUATED_TRAIL_POINT& Point)
 		{
 			return Point.fNormalizedAge +
-				(bReconstructedRibbon ?
-					RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS : 0.f) >= 1.f;
+				(bSourceVisualTrail ?
+					SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS : 0.f) >= 1.f;
 		});
 	for (EFFECT_EVALUATED_TRAIL_POINT& Point : State.TrailPoints)
 		UpdatePointPayload(Point);
@@ -3133,9 +3838,10 @@ void Client::CEffectPlayback::Sample_Trail(
 
 	const f32_t fLocalTime = m_fSampleTimeSeconds -
 		Element.Detail.Timing.fStartDelaySeconds;
-	const f32_t fEmitterElapsed = bReconstructedRibbon ?
+	const f32_t fEmitterElapsed = bSourceVisualTrail &&
+		Element.SourceRecipe.bEnabled ?
 		fLocalTime - Element.SourceRecipe.fEmitterDelaySeconds : fLocalTime;
-	const f32_t fEmissionDuration = bReconstructedRibbon &&
+	const f32_t fEmissionDuration = bSourceVisualTrail &&
 		Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
 		(0u == Element.SourceRecipe.iEmitterLoopCount ?
 			Element.Detail.Timing.fLifeTimeSeconds :
@@ -3149,13 +3855,13 @@ void Client::CEffectPlayback::Sample_Trail(
 
 	State.fTrailSampleAccumulator += fFixedDelta;
 	if (State.fTrailSampleAccumulator +
-		(bReconstructedRibbon ?
-			RECONSTRUCTED_RIBBON_TIME_EPSILON_SECONDS : 0.f) <
+		(bSourceVisualTrail ?
+			SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS : 0.f) <
 		Element.Detail.Trail.fSampleIntervalSeconds)
 	{
 		return;
 	}
-	if (bReconstructedRibbon)
+	if (bSourceVisualTrail)
 	{
 		/* Keep the fractional remainder.  Resetting to zero quantizes the
 		   typed 40 Hz Ribbon to 30 Hz on the 60 Hz fixed simulation clock. */
@@ -3165,8 +3871,8 @@ void Client::CEffectPlayback::Sample_Trail(
 	}
 	else
 	{
-		/* Preserve the legacy Trail cadence outside the reconstructed source
-		   runtime until that public contract has its own regression evidence. */
+		/* Preserve the legacy Trail cadence outside source-visual program
+		   admission until that public contract has its own regression evidence. */
 		State.fTrailSampleAccumulator = 0.f;
 	}
 	if (!Can_EvaluateElementWorld(Element))
@@ -3335,7 +4041,7 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 		}
 	}
 	if (Is_ParticleSimulationElement(
-		Element, m_bReconstructedSourceRuntimeActive))
+		Element, Is_SourceVisualProgramElementAdmitted(Element)))
 	{
 		const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
 			m_Document.ParticleSystem;
@@ -3347,8 +4053,14 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 				ParticleSystem.fYawOffsetDegrees)) *
 			Parent;
 	}
+	matrix_t SnapshotRootSourceBasis = XMMatrixIdentity();
+	if (Attachment.bEnabled && !Attachment.bFollow)
+	{
+		SnapshotRootSourceBasis = XMMatrixRotationY(XMConvertToRadians(
+			Attachment.fSnapshotRootSourceBasisYawDegrees));
+	}
 	float4x4_t Result{};
-	XMStoreFloat4x4(&Result, Local * Parent);
+	XMStoreFloat4x4(&Result, Local * SnapshotRootSourceBasis * Parent);
 	return Result;
 }
 
@@ -3461,7 +4173,17 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
 
 void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 {
-	m_Frame = {};
+	/* Rebuild runs for every active Effect.  Keep the retained row storage so
+	   a stable particle/trail population does not free and reallocate all
+	   frame vectors every render frame.  Stage/reset paths still replace the
+	   complete frame when the document lifetime changes. */
+	m_Frame.GpuOccurrences.clear();
+	m_Frame.Elements.clear();
+	m_Frame.Particles.clear();
+	m_Frame.Trails.clear();
+	m_Frame.AfterImages.clear();
+	m_Frame.Lights.clear();
+	m_Frame.ScreenPosts.clear();
 	m_Frame.fSampleTimeSeconds = m_fSampleTimeSeconds;
 	m_Frame.RootWorld = RootWorld;
 	for (size_t iElement = 0u; iElement < m_Document.Elements.size(); ++iElement)
@@ -3480,9 +4202,14 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			static_cast<f32_t>(UINT32_MAX);
 		f32_t fPresentationLifeTimeSeconds =
 			Element.Detail.Timing.fLifeTimeSeconds;
-		if (m_bReconstructedSourceRuntimeActive &&
-			(EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
-			 EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind))
+		const bool_t bSourceVisualLightOrPost =
+			Is_SourceVisualProgramElementAdmitted(Element) &&
+			Element.SourceRecipe.bEnabled &&
+			((EFFECT_ELEMENT_KIND::LIGHT == Element.eKind &&
+				Element.SourceRecipe.strRendererShape == "light") ||
+			 (EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind &&
+				Element.SourceRecipe.strRendererShape == "screenPost"));
+		if (bSourceVisualLightOrPost)
 		{
 			fPresentationLifeTimeSeconds = (std::max)(0.f,
 				Evaluate_SourceFloat(Element, "particlemodulelifetime", "lifetime",
@@ -3507,12 +4234,14 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		if (!Can_EvaluateElementWorld(Element))
 			continue;
 
-		const bool_t bReconstructedDecalParticle =
-			Is_ReconstructedDecalParticle(
-				Element, m_bReconstructedSourceRuntimeActive);
+		const bool_t bSourceVisualDecalParticle =
+			Is_SourceVisualDecalParticle(
+				Element, Is_SourceVisualProgramElementAdmitted(Element));
+		const bool_t bParticleSimulationElement =
+			Is_ParticleSimulationElement(
+				Element, Is_SourceVisualProgramElementAdmitted(Element));
 		if (bPresentationActive &&
-			EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind &&
-			!bReconstructedDecalParticle &&
+			!bParticleSimulationElement &&
 			EFFECT_ELEMENT_KIND::TRAIL != Element.eKind &&
 			EFFECT_ELEMENT_KIND::LIGHT != Element.eKind &&
 			EFFECT_ELEMENT_KIND::SCREEN_POST != Element.eKind)
@@ -3621,6 +4350,12 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			m_Frame.ScreenPosts.push_back(Post);
 		}
 
+		float4x4_t ParticleElementWorld{};
+		if (!State.Particles.empty() && Element.Detail.Particle.bLocalSpace)
+		{
+			ParticleElementWorld = Evaluate_ElementWorld(
+				Element, m_fSampleTimeSeconds, RootWorld);
+		}
 		for (const PARTICLE_STATE& Particle : State.Particles)
 		{
 			const f32_t ParticleT = Clamp01(
@@ -3634,37 +4369,44 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 						(Element.Detail.Particle.vEndSize.y -
 							Element.Detail.Particle.vStartSize.y) * ParticleT,
 					0.f);
-			const float4x4_t CurrentElementWorld = Evaluate_ElementWorld(
-				Element, m_fSampleTimeSeconds, RootWorld);
 			const float4x4_t& ParticleRoot =
 				Element.Detail.Particle.bLocalSpace ?
-				CurrentElementWorld : Particle.SpawnRootWorld;
+					ParticleElementWorld : Particle.SpawnRootWorld;
 			const bool_t bMeshParticle = Is_MeshParticle(Element);
 			const f32_t fDepthScale = bMeshParticle ?
 				(Element.SourceRecipe.bEnabled ? Size.z :
 					0.5f * (Size.x + Size.y)) : 1.f;
-			const float3_t WorldScale = bReconstructedDecalParticle ?
+			const float3_t WorldScale = bSourceVisualDecalParticle ?
 				float3_t(Size.x, Element.Detail.Decal.fDepth, Size.y) :
 				float3_t(Size.x, Size.y, fDepthScale);
-			const float3_t OrbitRotation = Add3(
-				Particle.vOrbitRotationDegrees,
-				Scale3(Particle.vOrbitRotationRateDegreesPerSecond,
+			const float3_t SourceOrbitRotation = Add3(
+				Particle.vSourceOrbitRotationDegrees,
+				Scale3(Particle.vSourceOrbitRotationRateDegreesPerSecond,
 					Particle.fAgeSeconds));
 			float3_t OrbitOffset{};
 			XMStoreFloat3(&OrbitOffset, XMVector3TransformNormal(
 				XMLoadFloat3(&Particle.vOrbitOffset),
-				XMMatrixRotationRollPitchYaw(
-					XMConvertToRadians(OrbitRotation.x),
-					XMConvertToRadians(OrbitRotation.y),
-					XMConvertToRadians(OrbitRotation.z))));
+				UE3_EulerDegreesToClientRotation(SourceOrbitRotation)));
 			const float3_t Position = Add3(
 				Particle.vPosition, OrbitOffset);
-			const matrix_t World = XMMatrixScaling(
-				WorldScale.x, WorldScale.y, WorldScale.z) *
+			const matrix_t ParticleRotation = bMeshParticle ?
+				UE3_EulerDegreesToClientRotation(
+					Particle.vSourceMeshRotationDegrees) *
+					XMMatrixRotationRollPitchYaw(
+						XMConvertToRadians(Particle.vRotationDegrees.x),
+						XMConvertToRadians(Particle.vRotationDegrees.y),
+						XMConvertToRadians(Particle.vRotationDegrees.z)) :
 				XMMatrixRotationRollPitchYaw(
 					XMConvertToRadians(Particle.vRotationDegrees.x),
 					XMConvertToRadians(Particle.vRotationDegrees.y),
-					XMConvertToRadians(Particle.vRotationDegrees.z)) *
+					XMConvertToRadians(Particle.vRotationDegrees.z));
+			const matrix_t TypeDataPreRotation = bMeshParticle ?
+				UE3_EulerDegreesToClientRotation(
+					Element.Detail.Mesh.vSourceTypeDataRotationDegrees) :
+				XMMatrixIdentity();
+			const matrix_t World = TypeDataPreRotation *
+				XMMatrixScaling(WorldScale.x, WorldScale.y, WorldScale.z) *
+				ParticleRotation *
 				XMMatrixTranslation(
 					Position.x,
 					Position.y,
@@ -3690,6 +4432,22 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Evaluated.Color.w *= 1.f - ParticleT;
 			}
 			Evaluated.vDynamicParameter = Particle.vDynamicParameter;
+			if (!Element.SourceRecipe.bEnabled)
+			{
+				const EFFECT_PARTICLE_DESC& ParticleDesc = Element.Detail.Particle;
+				const f32_t* pStart = &ParticleDesc.vDynamicParameterStart.x;
+				const f32_t* pEnd = &ParticleDesc.vDynamicParameterEnd.x;
+				f32_t* pEvaluated = &Evaluated.vDynamicParameter.x;
+				for (uint32_t iComponent = 0u; iComponent < 4u; ++iComponent)
+				{
+					if (0u != (ParticleDesc.iDynamicParameterComponentMask &
+						(1u << iComponent)))
+					{
+						pEvaluated[iComponent] = pStart[iComponent] +
+							(pEnd[iComponent] - pStart[iComponent]) * ParticleT;
+					}
+				}
+			}
 			Evaluated.fSpriteRotationDegrees =
 				Particle.vRotationDegrees.z +
 				Element.Detail.Sprite.fBillboardRollDegrees;
@@ -3713,7 +4471,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			Evaluated.fSubImageIndex = Particle.fSubImageIndex;
 			Evaluated.fDistributionRandom = Particle.fDistributionRandom;
 			Evaluated.fNormalizedLife = ParticleT;
-			if (bReconstructedDecalParticle)
+			if (bSourceVisualDecalParticle)
 			{
 				EFFECT_EVALUATED_ELEMENT DecalParticle;
 				DecalParticle.pElement = &Element;
@@ -3829,21 +4587,29 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 	}
 
 	if (0u == OutProbe.iActiveParticleCount ||
-		!pElement->SourceRecipe.bEnabled ||
-		!pElement->Material.SourceMaterial.bEnabled ||
-		pElement->Material.SourceMaterial.strSubUVMode == "none")
+		!pElement->SourceRecipe.bEnabled)
 	{
 		return true;
 	}
 
 	const EFFECT_SOURCE_MODULE_DESC* pRequired =
 		Find_SourceModule(*pElement, "particlemodulerequired");
+	const std::string_view strSubUVMode = nullptr == pRequired ?
+		std::string_view{} : SourceString(*pRequired, "interpolationmethod");
 	const uint32_t iColumns = static_cast<uint32_t>((std::max)(1.f,
 		nullptr == pRequired ? 1.f :
 			SourceNumber(*pRequired, "subimages_horizontal", 1.f)));
 	const uint32_t iRows = static_cast<uint32_t>((std::max)(1.f,
 		nullptr == pRequired ? 1.f :
 			SourceNumber(*pRequired, "subimages_vertical", 1.f)));
+	const uint64_t iFrameCount =
+		static_cast<uint64_t>(iColumns) * static_cast<uint64_t>(iRows);
+	if (iFrameCount <= 1u || iFrameCount > UINT32_MAX ||
+		strSubUVMode.empty() || strSubUVMode == "none" ||
+		strSubUVMode == "psuvim_none")
+	{
+		return true;
+	}
 	const bool_t bAllowFlip = nullptr != pRequired &&
 		SourceBool(*pRequired, "ballowimageflipping", false);
 	const bool_t bSquareFlip = nullptr != pRequired &&
@@ -3863,8 +4629,7 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 		OutProbe.FirstSubUV = Resolve_SourceSubUVFrame(
 			iColumns, iRows, pFirst->fSubImageIndex,
 			bAllowFlip, bSquareFlip, pFirst->fDistributionRandom,
-			Is_EffectSourceLinearBlendSubUVMode(
-				pElement->Material.SourceMaterial.strSubUVMode));
+			Is_EffectSourceLinearBlendSubUVMode(strSubUVMode));
 	}
 	return true;
 }

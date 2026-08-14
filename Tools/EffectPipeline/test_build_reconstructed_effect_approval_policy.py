@@ -81,7 +81,7 @@ class ReconstructedEffectApprovalPolicyTests(unittest.TestCase):
         )
         self.assertEqual(
             rows["MATERIAL"]["commitId"],
-            "acf6a9949be999952f9c2c6470e7d6d189ba3654",
+            "3ba493de5fde8d058ddee7e0fa0e6c3e466faa43",
         )
         self.assertEqual(
             rows["GEOMETRY"]["commitId"],

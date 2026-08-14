@@ -11,9 +11,12 @@
 #include <string_view>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 NS_BEGIN(Client)
+
+struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
 
 struct EFFECT_EVALUATED_ELEMENT final
 {
@@ -22,7 +25,7 @@ struct EFFECT_EVALUATED_ELEMENT final
 	EFFECT_COLOR_DESC Color{};
 	f32_t fLocalTimeSeconds = 0.f;
 	f32_t fNormalizedLife = 0.f;
-	/* Reconstructed DecalParticle owns its evaluated X/Yaw/Z footprint and
+	/* Source-visual DecalParticle owns its evaluated X/Yaw/Z footprint and
 	   projection depth in World exactly once.  Authored/static decals leave
 	   this false and continue to use Detail.Decal shader constants. */
 	bool_t bWorldOwnsDecalProjectionVolume = false;
@@ -84,9 +87,10 @@ struct EFFECT_EVALUATED_TRAIL_POINT final
 	   current connected trail.  It is independent of point eviction and is
 	   suitable for a later typed tiling-distance consumer. */
 	f32_t fCumulativeDistance = 0.f;
-	/* Only lanes selected by the corresponding mask were evaluated from the
-	   staged source distributions.  Unselected color/dynamic lanes are explicit
-	   identity/zero placeholders and must not be treated as source authority. */
+	/* Only lanes selected by the corresponding mask were evaluated from staged
+	   source distributions or an explicit authored execution carrier. Unselected
+	   color/dynamic lanes are identity/zero placeholders. Source provenance is
+	   still owned by the Element recipe, not inferred from this transient mask. */
 	float4_t vSourceColor = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vDynamicParameter{};
 	uint32_t iSourceColorComponentMask = 0u;
@@ -196,18 +200,22 @@ private:
 		float3_t vRotationDegrees{};
 		float3_t vRotationRateDegreesPerSecond{};
 		float3_t vRotationRateScale = { 1.f, 1.f, 1.f };
+		float3_t vSourceMeshRotationDegrees{};
+		float3_t vSourceMeshRotationRateDegreesPerSecond{};
+		float3_t vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
 		float4_t vBaseColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vDynamicParameter{};
 		float3_t vOrbitOffset{};
-		float3_t vOrbitRotationDegrees{};
-		float3_t vOrbitRotationRateDegreesPerSecond{};
+		float3_t vSourceOrbitRotationDegrees{};
+		float3_t vSourceOrbitRotationRateDegreesPerSecond{};
 		f32_t fCameraOffset = 0.f;
 		f32_t fSubImageIndex = 0.f;
 		f32_t fDistributionRandom = 0.f;
 		f32_t fSpawnEmitterTimeSeconds = 0.f;
 		f32_t fAgeSeconds = 0.f;
 		f32_t fLifeTimeSeconds = 1.f;
+		uint64_t iSpawnSimulationStep = 0u;
 		std::string strSourceAnchorName;
 		float3_t vSourceAnchorOffset{};
 		bool_t bUpdateSourceAnchor = false;
@@ -271,8 +279,20 @@ public:
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
 		std::string& strOutError);
+	bool_t Stage_PrevalidatedVisualProgramDocument(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+		std::string& strOutError);
 	bool_t Stage_ReconstructedSourceRuntime(
 		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
+			pPreparation,
+		std::string& strOutError);
+	bool_t Stage_ReconstructedSourceRuntimeWithVisualProgramAdapter(
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pProjection,
 		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -294,6 +314,8 @@ public:
 		std::string& strOutError);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
+	void Set_SourceAnchorWorlds(
+		std::unordered_map<std::string, float4x4_t>&& SourceAnchorWorlds);
 	const EFFECT_EVALUATED_FRAME& Get_Frame() const { return m_Frame; }
 	bool_t Query_ParticleRuntimeProbe(
 		std::string_view strElementId,
@@ -305,9 +327,22 @@ public:
 	{
 		return m_bReconstructedSourceRuntimeActive;
 	}
+	bool_t Is_SourceVisualProgramActive() const
+	{
+		return m_bSourceVisualProgramActive;
+	}
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Get_SourceVisualProgramProjection() const
+	{
+		return m_pSourceVisualProgramProjection;
+	}
 	const std::string& Get_ReconstructedSourceRuntimeStatus() const
 	{
-		return m_strReconstructedSourceRuntimeStatus;
+		return m_strSourceVisualProgramStatus;
+	}
+	const std::string& Get_SourceVisualProgramStatus() const
+	{
+		return m_strSourceVisualProgramStatus;
 	}
 	static EFFECT_SUBUV_FRAME_DESC Resolve_SourceSubUVFrame(
 		uint32_t iColumns,
@@ -340,6 +375,15 @@ public:
 	}
 
 private:
+	bool_t Stage_PrevalidatedDocumentInternal(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,
+		bool_t bSourceVisualProgramActive,
+		bool_t bRequireSourceVisualTargetClosure,
+		std::unordered_set<std::string> SourceVisualTargetElementIds,
+		std::string& strOutError);
+	bool_t Is_SourceVisualProgramElementAdmitted(
+		const EFFECT_ELEMENT_DESC& Element) const;
 	bool_t Collect_TransformHistorySample(
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
@@ -448,6 +492,8 @@ private:
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_EXECUTION_PLAN>
 		m_pReconstructedExecutionPlan;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pSourceVisualProgramProjection;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
@@ -457,8 +503,11 @@ private:
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;
 	uint64_t m_iSimulationStep = 0u;
+	bool_t m_bSourceVisualProgramActive = false;
+	bool_t m_bRequireSourceVisualTargetClosure = false;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
-	std::string m_strReconstructedSourceRuntimeStatus;
+	std::unordered_set<std::string> m_SourceVisualTargetElementIds;
+	std::string m_strSourceVisualProgramStatus;
 };
 
 NS_END

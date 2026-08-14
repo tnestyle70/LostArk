@@ -4,7 +4,11 @@ param(
     [string]$DataRoot,
     [string]$ResourceRoot,
     [string]$OutputPath,
-    [ValidateSet('None', 'AfterBackupMove', 'AfterCommitMove')]
+    [ValidateSet(
+        'None',
+        'AfterBackupMove',
+        'AfterCommitMove',
+        'AfterSidecarCommitMove')]
     [string]$TestFaultInjection = 'None'
 )
 
@@ -22,6 +26,16 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 $DataRoot = [IO.Path]::GetFullPath($DataRoot)
 $ResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
+$visualProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
+$visualProgramOutputPath = [IO.Path]::GetFullPath((Join-Path `
+    (Split-Path -Parent $OutputPath) 'EffectVisualPrograms.runtime.json'))
+if ($visualProgramSourcePath.Equals(
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
+    $OutputPath.Equals(
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Effect catalog and visual-program publish paths must be distinct.'
+}
 if ($TestFaultInjection -cne 'None') {
     if ($Mode -cne 'Publish') {
         throw 'Publisher fault injection is only valid in Publish mode.'
@@ -29,7 +43,8 @@ if ($TestFaultInjection -cne 'None') {
     $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd(
         [IO.Path]::DirectorySeparatorChar,
         [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-    foreach ($testPath in @($DataRoot, $OutputPath)) {
+    foreach ($testPath in @(
+            $DataRoot, $OutputPath, $visualProgramOutputPath)) {
         $normalizedTestPath = [IO.Path]::GetFullPath($testPath)
         if (-not $normalizedTestPath.StartsWith(
                 $temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
@@ -42,11 +57,17 @@ $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored')
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
 $compiledRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Compiled'))
+$authoredCorrectionRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\AuthoredCorrections'))
 $reconstructedProgramRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\Imported\Artist\Candidates'))
 $reconstructedRenderResourceRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\Imported\Artist\Materials'))
 $derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
+$directAuthoredRuntimeTool = Join-Path $PSScriptRoot `
+    'validate_direct_authored_effect_runtime.py'
+$visualProgramRuntimeTool = Join-Path $PSScriptRoot `
+    'build_effect_visual_program_runtime.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.reconstructed-standard.v1',
@@ -512,6 +533,35 @@ function Invoke-DerivedArtifactTool([string[]]$Arguments) {
     }
 }
 
+function Invoke-EffectRuntimeCatalogValidation([string]$Path) {
+    if (-not [IO.File]::Exists($directAuthoredRuntimeTool)) {
+        throw "Missing direct authored Effect validator: $directAuthoredRuntimeTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate the Effect runtime catalog.'
+    }
+    & $python.Source -B $directAuthoredRuntimeTool --catalog $Path
+    if ($LASTEXITCODE -ne 0) {
+        throw "Effect runtime catalog validation failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Invoke-VisualProgramArtifactCheck([string]$Path) {
+    if (-not [IO.File]::Exists($visualProgramRuntimeTool)) {
+        throw "Missing visual-program runtime validator: $visualProgramRuntimeTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate the Effect visual-program sidecar.'
+    }
+    & $python.Source -B $visualProgramRuntimeTool `
+        --repository-root $repoRoot --output $Path --artifact-check
+    if ($LASTEXITCODE -ne 0) {
+        throw "Effect visual-program sidecar validation failed with exit code $LASTEXITCODE."
+    }
+}
+
 function Get-RequiredProperty(
     [object]$Object,
     [string]$Name,
@@ -758,7 +808,7 @@ function Assert-EffectDetail(
     $startWidth = Get-NumberValue $trail 'startWidth' $Label
     $endWidth = Get-NumberValue $trail 'endWidth' $Label
     [void](Get-RequiredProperty $trail 'faceCamera' Boolean)
-    if ($maxPoints -lt 2 -or $maxPoints -gt 256 -or $pointLife -le 0 -or
+    if ($maxPoints -lt 2 -or $maxPoints -gt 512 -or $pointLife -le 0 -or
         $sampleInterval -le 0 -or $minimumDistance -lt 0 -or
         $startWidth -le 0 -or $endWidth -lt 0) {
         throw "$Label trail budget or range is invalid."
@@ -1033,6 +1083,16 @@ function Compile-EffectAssembly(
     return [pscustomobject]$compiledDocument
 }
 
+$visualProgramSourceDocument = Read-JsonDocument $visualProgramSourcePath
+try {
+    Invoke-VisualProgramArtifactCheck $visualProgramSourcePath
+    $visualProgramSourceBytes = [IO.File]::ReadAllBytes(
+        $visualProgramSourcePath)
+}
+finally {
+    $visualProgramSourceDocument = $null
+}
+
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
     [StringComparer]::Ordinal)
 $assemblyPathById = [Collections.Generic.Dictionary[string,string]]::new(
@@ -1081,23 +1141,30 @@ try {
             throw "Duplicate EffectAssetId: $effectAssetId"
         }
         $payloadKindProperty = $entry.PSObject.Properties['payloadKind']
+        $sourcePayloadKind = if ($null -eq $payloadKindProperty) {
+            ''
+        }
+        else {
+            Get-RequiredProperty $entry 'payloadKind' String
+        }
         if ($effectAssetId -ceq 'effect.artist.skill.31470' -and
-            ($null -eq $payloadKindProperty -or
-                -not ($payloadKindProperty.Value -is [string]) -or
-                [string]$payloadKindProperty.Value -cne
+            ($sourcePayloadKind -cne
                     'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM')) {
             throw 'Reserved Artist 31470 source entry must use the reconstructed payload kind.'
         }
-        if ($null -ne $payloadKindProperty) {
-            $payloadKind = Get-RequiredProperty $entry 'payloadKind' String
-            if ($payloadKind -cne 'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM') {
-                throw "Unsupported source catalog payload kind: $payloadKind"
-            }
-            Assert-ExactPropertyOrder $entry @(
+        if ($sourcePayloadKind -ceq
+                'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM') {
+            $occurrenceTuningProperty =
+                $entry.PSObject.Properties['occurrenceTuningPath']
+            $expectedSourceFields = @(
                 'effectAssetId',
                 'payloadKind',
                 'reconstructedRuntimeProgramPath',
-                'reconstructedRenderResourceAuthorityPath') `
+                'reconstructedRenderResourceAuthorityPath')
+            if ($null -ne $occurrenceTuningProperty) {
+                $expectedSourceFields += 'occurrenceTuningPath'
+            }
+            Assert-ExactPropertyOrder $entry $expectedSourceFields `
                 'Reconstructed source catalog entry'
             if ($effectAssetId -cne 'effect.artist.skill.31470') {
                 throw "Reconstructed source catalog effectAssetId must be effect.artist.skill.31470: $effectAssetId"
@@ -1114,15 +1181,32 @@ try {
                 'Effects/Imported/Artist/Materials/' `
                 $reconstructedRenderResourceRoot `
                 'skill.31470.reconstructed-render-resource-authority.receipt.json'
+            $occurrenceTuningPath = $null
+            $occurrenceTuningFile = $null
+            if ($null -ne $occurrenceTuningProperty) {
+                $occurrenceTuningPath = Get-RequiredProperty $entry `
+                    'occurrenceTuningPath' String
+                $occurrenceTuningFile = Resolve-SafeDataFile `
+                    $occurrenceTuningPath `
+                    'Effects/AuthoredCorrections/' `
+                    $authoredCorrectionRoot `
+                    ($effectAssetId + '.occurrence-tuning.json')
+            }
             $preparedEntryPath = Join-Path ([IO.Path]::GetTempPath()) `
                 ('LostArkReconstructedEffect-' + `
                     [Guid]::NewGuid().ToString('N') + '.json')
             try {
-                Invoke-DerivedArtifactTool @(
+                $prepareArguments = @(
                     'prepare-reconstructed-runtime-entry',
                     '--candidate', $candidateFile,
                     '--render-resource-authority', $renderResourceFile,
                     '--output', $preparedEntryPath)
+                if ($null -ne $occurrenceTuningFile) {
+                    $prepareArguments += @(
+                        '--occurrence-tuning', $occurrenceTuningFile,
+                        '--occurrence-tuning-source-path', $occurrenceTuningPath)
+                }
+                Invoke-DerivedArtifactTool $prepareArguments
                 $preparedEntry = Read-JsonDocument $preparedEntryPath
                 $preparedEffectAssetId = Get-RequiredProperty $preparedEntry `
                     'effectAssetId' String
@@ -1138,6 +1222,14 @@ try {
                 }
             }
             continue
+        }
+        if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+            Assert-ExactPropertyOrder $entry @(
+                'effectAssetId', 'payloadKind', 'authoringPath') `
+                'Direct authored v13 source catalog entry'
+        }
+        elseif (-not [string]::IsNullOrEmpty($sourcePayloadKind)) {
+            throw "Unsupported source catalog payload kind: $sourcePayloadKind"
         }
         $authoringPath = Get-RequiredProperty $entry 'authoringPath' String
         if ([IO.Path]::IsPathRooted($authoringPath) -or
@@ -1181,7 +1273,12 @@ try {
                 @($elements).Count -gt 2048) {
                 throw "Effect authoring display name or Element budget is invalid: $effectAssetId"
             }
-            if ($documentVersion -eq 13) {
+            if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13' -and
+                $documentVersion -ne 13) {
+                throw "Direct authored runtime payload requires authoring version 13: $effectAssetId"
+            }
+            if ($documentVersion -eq 13 -and
+                $sourcePayloadKind -cne 'DIRECT_AUTHORED_DOCUMENT_V13') {
                 $compiledArtifactPath = Get-RequiredProperty $entry `
                     'compiledArtifactPath' String
                 $compiledReceiptPath = Get-RequiredProperty $entry `
@@ -1512,6 +1609,49 @@ try {
                     $dependencies[$assetId] =
                         (Get-FileHash -LiteralPath $resourceFile -Algorithm SHA256).Hash.ToLowerInvariant()
                 }
+                $executionEnabled = $false
+                if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+                    $executionProperty = $material.PSObject.Properties['execution']
+                    $execution = if ($null -eq $executionProperty) {
+                        $null
+                    }
+                    else {
+                        Get-RequiredProperty $material 'execution' Object
+                    }
+                    $executionLanes = @()
+                    if ($null -ne $execution) {
+                        $executionEnabled = [bool](Get-RequiredProperty `
+                            $execution 'enabled' Boolean)
+                        $executionLanesProperty =
+                            $execution.PSObject.Properties['textureLanes']
+                        if ($null -ne $executionLanesProperty) {
+                            $executionLanes = @(Get-RequiredProperty `
+                                $execution 'textureLanes' Array)
+                        }
+                    }
+                    if (-not $executionEnabled -and $executionLanes.Count -ne 0) {
+                        throw "Disabled material execution cannot retain texture lanes in ${effectAssetId}: $elementId"
+                    }
+                    $executionLaneIds =
+                        [Collections.Generic.HashSet[string]]::new(
+                            [StringComparer]::Ordinal)
+                    foreach ($lane in $executionLanes) {
+                        $laneId = Get-RequiredProperty $lane 'laneId' String
+                        $laneAssetId = Get-RequiredProperty $lane 'assetId' String
+                        Assert-StableId $laneId 'Material execution texture lane ID'
+                        if (-not $executionLaneIds.Add($laneId)) {
+                            throw "Duplicate material execution texture lane in ${effectAssetId}: $elementId/$laneId"
+                        }
+                        $laneFile = Resolve-SafeResource $laneAssetId
+                        if ([IO.Path]::GetExtension($laneFile).ToLowerInvariant() `
+                                -ne '.dds') {
+                            throw "Material execution texture lane is not DDS: $laneAssetId"
+                        }
+                        $dependencies[$laneAssetId] =
+                            (Get-FileHash -LiteralPath $laneFile `
+                                -Algorithm SHA256).Hash.ToLowerInvariant()
+                    }
+                }
 				$isMeshParticle = $kind -eq 'particle' -and $claimedSlots.Contains('meshModel')
 				$profileRequiredSlots = @()
 				if ($sourceProfileEnabled) {
@@ -1530,7 +1670,8 @@ try {
 						'effect.ue3.procedural-center-glow.v1' { @() }
 						default { @() }
 					}
-				} elseif ($kind -notin @('mesh','light','screenPost') -and
+				} elseif (-not $executionEnabled -and
+					$kind -notin @('mesh','light','screenPost') -and
 					-not $isMeshParticle -and
 					$materialTemplateId -ne 'effect.source_material') {
 					$profileRequiredSlots = @('base')
@@ -1572,9 +1713,10 @@ try {
 					throw "Grouped emissive profile has no runtime emission carrier in ${effectAssetId}: $elementId"
 				}
                 Assert-EffectDetail $detail $kind "${effectAssetId}/$elementId"
-				if (($kind -eq 'mesh' -or $isMeshParticle) -and
+                if (($kind -eq 'mesh' -or $isMeshParticle) -and
                     -not [bool]$detail.mesh.useModelMaterial -and
 				    -not $claimedSlots.Contains('base') -and
+					-not $executionEnabled -and
 					-not ($sourceProfileEnabled -and
 						$shaderProfileId -in @(
 							'effect.ue3.fallback-blocked.v1',
@@ -1603,6 +1745,24 @@ try {
             $dependencyRows = @($dependencies.GetEnumerator() | ForEach-Object {
                 [ordered]@{ assetId = $_.Key; sha256 = $_.Value }
             })
+            if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+                $authoringBytes = [IO.File]::ReadAllBytes($authoringFile)
+                $authoringText = [Text.UTF8Encoding]::new(
+                    $false, $true).GetString($authoringBytes)
+                $authoringRawSha =
+                    (Get-FileHash -LiteralPath $authoringFile `
+                        -Algorithm SHA256).Hash.ToLowerInvariant()
+                $runtimeEffects.Add([ordered]@{
+                    payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
+                    effectAssetId = $effectAssetId
+                    authoringFormatVersion = $documentVersion
+                    contentSha256 = $authoringRawSha
+                    dependencies = $dependencyRows
+                    authoredDocumentUtf8 = $authoringText
+                })
+                $hasDerivedRuntime = $true
+                continue
+            }
             $assembly = $null
             if (-not $assemblyById.TryGetValue($effectAssetId, [ref]$assembly)) {
                 throw "Missing Effect Assembly: $effectAssetId"
@@ -1685,7 +1845,8 @@ try {
         $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
             if ([string]$_.payloadKind -cin @(
                     'IMMUTABLE_COMPILED_IR',
-                    'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM')) {
+                    'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM',
+                    'DIRECT_AUTHORED_DOCUMENT_V13')) {
                 $_
             }
             else {
@@ -1722,8 +1883,7 @@ try {
             try {
                 [IO.File]::WriteAllText(
                     $validationPath, $json + "`n", $utf8NoBom)
-                Invoke-DerivedArtifactTool @(
-                    'validate-runtime-catalog', '--catalog', $validationPath)
+                Invoke-EffectRuntimeCatalogValidation $validationPath
             }
             finally {
                 if ([IO.File]::Exists($validationPath)) {
@@ -1731,7 +1891,9 @@ try {
                 }
             }
         }
-        Write-Host "PASS: validated $($runtimeEffects.Count) Effect catalog entries."
+        Write-Host (
+            "PASS: validated $($runtimeEffects.Count) Effect catalog entries " +
+            "and $($visualProgramSourcePath) visual-program sidecar.")
         return
     }
 
@@ -1740,12 +1902,24 @@ try {
     $transactionId = [Guid]::NewGuid().ToString('N')
     $temporary = "$OutputPath.$transactionId.tmp"
     $backup = "$OutputPath.$transactionId.bak"
+    $visualProgramTemporary =
+        "$visualProgramOutputPath.$transactionId.tmp"
+    $visualProgramBackup = "$visualProgramOutputPath.$transactionId.bak"
     try {
         [IO.File]::WriteAllText(
             $temporary, $json + "`n", $utf8NoBom)
+        [IO.File]::WriteAllBytes(
+            $visualProgramTemporary, $visualProgramSourceBytes)
+        $stagedVisualProgramDocument = Read-JsonDocument `
+            $visualProgramTemporary
+        try {
+            Invoke-VisualProgramArtifactCheck $visualProgramTemporary
+        }
+        finally {
+            $stagedVisualProgramDocument = $null
+        }
         if ($hasDerivedRuntime) {
-            Invoke-DerivedArtifactTool @(
-                'validate-runtime-catalog', '--catalog', $temporary)
+            Invoke-EffectRuntimeCatalogValidation $temporary
         }
         $roundTrip = Read-JsonDocument $temporary
         try {
@@ -1789,6 +1963,16 @@ try {
                             'renderResourcePublishReceiptSha256' String) -cne
                             [string]$expected.renderResourcePublishReceiptSha256) {
                         throw "Reconstructed runtime catalog entry failed round-trip validation: $id"
+                    }
+                    $expectedTuning =
+                        $expected.PSObject.Properties['occurrenceTuningSha256']
+                    $actualTuning =
+                        $entry.PSObject.Properties['occurrenceTuningSha256']
+                    if (($null -eq $expectedTuning) -ne ($null -eq $actualTuning) -or
+                        ($null -ne $expectedTuning -and
+                         [string]$expectedTuning.Value -cne
+                            [string]$actualTuning.Value)) {
+                        throw "Reconstructed occurrence tuning failed round-trip validation: $id"
                     }
                     $resourceLink = Get-RequiredProperty $entry `
                         'reconstructedRenderResourceAuthority' Object
@@ -1843,6 +2027,17 @@ try {
                         throw "Derived runtime catalog entry failed round-trip validation: $id"
                     }
                 }
+                elseif ($payloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+                    if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
+                            [string]$expected.contentSha256 -or
+                        (Get-RequiredProperty $entry `
+                            'authoredDocumentUtf8' String) -cne
+                            [string]$expected.authoredDocumentUtf8 -or
+                        @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
+                            @($expected.dependencies).Count) {
+                        throw "Direct authored runtime catalog entry failed round-trip validation: $id"
+                    }
+                }
                 elseif ($payloadKind -ceq 'LEGACY_ASSEMBLY_V1') {
                     if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
                             [string]$expected.contentSha256 -or
@@ -1862,42 +2057,120 @@ try {
             $roundTrip = $null
         }
         $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
+        $hadVisualProgramDestination = Test-Path -LiteralPath `
+            $visualProgramOutputPath -PathType Leaf
         $destinationBackedUp = $false
+        $visualProgramDestinationBackedUp = $false
         $newDestinationCommitted = $false
+        $newVisualProgramDestinationCommitted = $false
         try {
             if ($hadDestination) {
                 Move-Item -LiteralPath $OutputPath -Destination $backup
                 $destinationBackedUp = $true
             }
+            if ($hadVisualProgramDestination) {
+                Move-Item -LiteralPath $visualProgramOutputPath `
+                    -Destination $visualProgramBackup
+                $visualProgramDestinationBackedUp = $true
+            }
             if ($TestFaultInjection -ceq 'AfterBackupMove') {
-                throw 'Injected Effect publisher failure after backup move.'
+                throw 'Injected Effect publisher failure after pair backup move.'
             }
             Move-Item -LiteralPath $temporary -Destination $OutputPath
             $newDestinationCommitted = $true
             if ($TestFaultInjection -ceq 'AfterCommitMove') {
-                throw 'Injected Effect publisher failure after commit move.'
+                throw 'Injected Effect publisher failure after catalog commit move.'
             }
-            if (Test-Path -LiteralPath $backup) {
-                Remove-Item -LiteralPath $backup -Force
+            Move-Item -LiteralPath $visualProgramTemporary `
+                -Destination $visualProgramOutputPath
+            $newVisualProgramDestinationCommitted = $true
+            if ($TestFaultInjection -ceq 'AfterSidecarCommitMove') {
+                throw 'Injected Effect publisher failure after sidecar commit move.'
             }
         }
         catch {
-            if ($newDestinationCommitted -and
-                (Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
-                Remove-Item -LiteralPath $OutputPath -Force
+            $publishFailure = $_
+            $rollbackFailures = [Collections.Generic.List[string]]::new()
+            foreach ($committedPath in @(
+                    $(if ($newVisualProgramDestinationCommitted) {
+                        $visualProgramOutputPath
+                    }),
+                    $(if ($newDestinationCommitted) { $OutputPath }))) {
+                if ([string]::IsNullOrWhiteSpace([string]$committedPath) -or
+                    -not (Test-Path -LiteralPath $committedPath `
+                        -PathType Leaf)) {
+                    continue
+                }
+                try {
+                    Remove-Item -LiteralPath $committedPath -Force
+                }
+                catch {
+                    $rollbackFailures.Add(
+                        "remove committed destination '$committedPath': $($_.Exception.Message)")
+                }
             }
-            if ($destinationBackedUp -and (Test-Path -LiteralPath $backup)) {
-                Move-Item -LiteralPath $backup -Destination $OutputPath
+            foreach ($restore in @(
+                    [pscustomobject]@{
+                        BackedUp = $destinationBackedUp
+                        Backup = $backup
+                        Destination = $OutputPath
+                    },
+                    [pscustomobject]@{
+                        BackedUp = $visualProgramDestinationBackedUp
+                        Backup = $visualProgramBackup
+                        Destination = $visualProgramOutputPath
+                    })) {
+                if (-not $restore.BackedUp -or
+                    -not (Test-Path -LiteralPath $restore.Backup `
+                        -PathType Leaf)) {
+                    continue
+                }
+                try {
+                    Move-Item -LiteralPath $restore.Backup `
+                        -Destination $restore.Destination
+                }
+                catch {
+                    $rollbackFailures.Add(
+                        "restore '$($restore.Destination)': $($_.Exception.Message)")
+                }
             }
-            throw
+            if ($rollbackFailures.Count -ne 0) {
+                throw (
+                    "Effect catalog/visual-program publish failed and rollback " +
+                    "was incomplete. Original failure: " +
+                    "$($publishFailure.Exception.Message). Rollback failures: " +
+                    ($rollbackFailures -join '; '))
+            }
+            throw $publishFailure
+        }
+        foreach ($committedBackup in @($backup, $visualProgramBackup)) {
+            if (-not (Test-Path -LiteralPath $committedBackup `
+                    -PathType Leaf)) {
+                continue
+            }
+            try {
+                Remove-Item -LiteralPath $committedBackup -Force
+            }
+            catch {
+                Write-Warning (
+                    "Effect publisher committed the new catalog/sidecar pair " +
+                    "but could not remove backup '$committedBackup': " +
+                    $_.Exception.Message)
+            }
         }
     }
     finally {
         if (Test-Path -LiteralPath $temporary) {
             Remove-Item -LiteralPath $temporary -Force
         }
+        if (Test-Path -LiteralPath $visualProgramTemporary) {
+            Remove-Item -LiteralPath $visualProgramTemporary -Force
+        }
     }
-    Write-Host "PASS: published $($runtimeEffects.Count) Effects and $($runtimeComponents.Count) Components to $OutputPath"
+    Write-Host (
+        "PASS: published $($runtimeEffects.Count) Effects, " +
+        "$($runtimeComponents.Count) Components, and visual-program sidecar " +
+        "to $directory")
 }
 finally {
     $catalog = $null

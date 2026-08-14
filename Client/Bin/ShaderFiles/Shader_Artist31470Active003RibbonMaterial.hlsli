@@ -4,11 +4,11 @@
 /*
  * Bounded reconstructed material for Artist F source-active-003.
  *
- * The cooked parent graph is incomplete.  This function therefore executes
- * only the already-approved two-texture numeric evaluator and keeps all four
- * DynamicParameter lanes explicitly suppressed.  It must be included after
- * Shader_Artist31470RuntimeMaterial.hlsli has declared the immutable packet
- * ABI, source textures, sampler lanes and g_EffectLocalTime.
+ * The cooked parent graph is incomplete.  This function therefore keeps RGB
+ * as an explicitly bounded two-texture carrier, but derives coverage from the
+ * strictly pinned use_gra_r_channel=true lane and gra_pow=1.5 source rows.
+ * Neither opaque DDS container alpha is a coverage source.  All four
+ * DynamicParameter lanes and RT1 remain explicitly suppressed.
  */
 EFFECT_PS_OUT Shade_Artist31470Active003RibbonMaterial(
     float2 sourceUV,
@@ -27,17 +27,17 @@ EFFECT_PS_OUT Shade_Artist31470Active003RibbonMaterial(
         g_RuntimeMaterialV2VectorCount != 1u ||
         g_RuntimeMaterialV2InputCount != 17u ||
         any(g_RuntimeMaterialV2InputConsumedMask !=
-            uint2(0x0001849du, 0u)) ||
+            uint2(0x00010481u, 0u)) ||
         any(g_RuntimeMaterialV2InputSuppressedMask !=
-            uint2(0x00007b62u, 0u)) ||
+            uint2(0x0000fb7eu, 0u)) ||
         any(g_RuntimeMaterialV2VectorComponentConsumedMask !=
             uint3(0x0fu, 0u, 0u)) ||
         any(g_RuntimeMaterialV2VectorComponentSuppressedMask !=
             uint3(0u, 0u, 0u)) ||
         g_RuntimeMaterialV2StaticInputCount != 1u ||
         g_RuntimeMaterialV2StaticSelectedMask != 0x01u ||
-        g_RuntimeMaterialV2StaticConsumedMask != 0u ||
-        g_RuntimeMaterialV2StaticSuppressedMask != 0x01u ||
+        g_RuntimeMaterialV2StaticConsumedMask != 0x01u ||
+        g_RuntimeMaterialV2StaticSuppressedMask != 0u ||
         g_RuntimeMaterialV2RenderInputCount != 6u ||
         g_RuntimeMaterialV2RenderConsumedMask != 0x2fu ||
         g_RuntimeMaterialV2RenderSuppressedMask != 0x10u)
@@ -46,17 +46,11 @@ EFFECT_PS_OUT Shade_Artist31470Active003RibbonMaterial(
         return output;
     }
 
-    const float2 uvScale = float2(
-        g_RuntimeMaterialV2ScalarBlocks[0].y,
-        g_RuntimeMaterialV2ScalarBlocks[0].w);
-    const float2 pan = float2(
-        g_RuntimeMaterialV2ScalarBlocks[0].z,
-        g_RuntimeMaterialV2ScalarBlocks[3].x);
     const float signedPower = g_RuntimeMaterialV2ScalarBlocks[3].y;
     const float4 color = g_RuntimeMaterialV2Vectors[0];
-    if (!all(isfinite(float4(sourceUV, g_EffectLocalTime, signedPower))) ||
-        !all(isfinite(vertexColor)) || !all(isfinite(uvScale)) ||
-        !all(isfinite(pan)) || !all(isfinite(color)))
+    if (!all(isfinite(sourceUV)) || !isfinite(signedPower) ||
+        !all(isfinite(vertexColor)) || !all(isfinite(color)) ||
+        signedPower <= 0.f)
     {
         clip(-1.f);
         return output;
@@ -66,20 +60,24 @@ EFFECT_PS_OUT Shade_Artist31470Active003RibbonMaterial(
         g_RuntimeMaterialV2Sampler0, sourceUV);
     const float4 texture1 = g_SourceTexture1.Sample(
         g_RuntimeMaterialV2Sampler1, sourceUV);
-    float4 result = texture0 * (0.5f + 0.5f * texture1);
+    if (!all(isfinite(texture0)) || !all(isfinite(texture1)))
+    {
+        clip(-1.f);
+        return output;
+    }
 
-    const float2 oracleUV = float2(0.375f, 0.625f) * uvScale +
-        pan * g_EffectLocalTime;
-    result.rgb += (frac(oracleUV.x) + frac(oracleUV.y)) * 0.03125f;
-    result.rgb += frac(g_EffectLocalTime * 0.125f) * 0.015625f;
-    result.rgb *= color.rgb * max(color.a, 0.f);
-    result.rgb = sign(result.rgb) * pow(
-        abs(result.rgb),
-        max(abs(signedPower), 0.001f));
+    /* The missing cooked topology prevents an exact emissive reconstruction.
+       Keep the admitted two source textures as bounded RGB only.  Coverage is
+       the source-selected tex_main red lane shaped by gra_pow; it never reads
+       the opaque BC container alpha. */
+    const float3 boundedRgb = texture0.rgb *
+        (0.5f + 0.5f * texture1.rgb) * color.rgb * max(color.a, 0.f);
+    const float coverage = pow(saturate(texture0.r), signedPower) *
+        max(vertexColor.a, 0.f);
 
-    output.SceneColor = float4(clamp(result.rgb,
+    output.SceneColor = float4(clamp(boundedRgb,
         float3(0.f, 0.f, 0.f), float3(16.f, 16.f, 16.f)),
-        saturate(result.a * max(vertexColor.a, 0.f)));
+        saturate(coverage));
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     return output;
 }

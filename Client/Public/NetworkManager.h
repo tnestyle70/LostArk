@@ -23,6 +23,9 @@
 class CNetworkManager final
 {
 public:
+	static constexpr std::size_t MAX_REPLICATION_EVENT_QUEUE = 4096u;
+	static constexpr std::size_t MAX_INBOUND_FRAME_QUEUE = 4096u;
+
 	CNetworkManager() = default;
 	CNetworkManager(const CNetworkManager&) = delete;
 	CNetworkManager& operator=(const CNetworkManager&) = delete;
@@ -75,6 +78,12 @@ public:
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
+	/* Debug Valtan pattern audition. The Server owns the verdict; this only
+	carries the request and hands back whatever it answered. */
+	bool Send_ValtanAudition(
+		std::uint32_t requestSequence,
+		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
+		std::uint32_t targetHealthBar);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
@@ -84,6 +93,8 @@ public:
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
 	bool Try_Consume_CharacterClassChangeResult(
 		LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
+	bool Try_Consume_ValtanAuditionResult(
+		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -102,9 +113,46 @@ public:
 
 private:
 	bool Send_All(std::span<const std::uint8_t> bytes);
+	bool Enqueue_ReplicationEvent(
+		Client::CLIENT_REPLICATION_EVENT&& event);
+	void Fail_Protocol(int errorCode);
+	void Reset_WorldInboundState();
 	//���� worker �ϳ��� 4096-byte ���� ���۷� Server�� TCP byte stream�� �д´�.
 	void Receive_Loop(SOCKET serverSocket);
 	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
+
+#if defined(LOSTARK_NETWORK_MANAGER_HARNESS)
+public:
+	void Harness_Reset()
+	{
+		Close_ServerConnection();
+		m_iLastErrorCode.store(0);
+	}
+	void Harness_HandleFrame(const LostArk::Shared::PACKET_FRAME& frame)
+	{
+		Handle_Frame(frame);
+	}
+	void Harness_SetAcceptedWorld(const LostArk::Shared::WORLD_ID worldId)
+	{
+		Reset_WorldInboundState();
+		m_eWorldId = worldId;
+	}
+	void Harness_SetRequestedCharacterClass(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		m_eLocalCharacterClass = characterClass;
+	}
+	bool Harness_EnqueueReplicationEvent(
+		Client::CLIENT_REPLICATION_EVENT&& event)
+	{
+		return Enqueue_ReplicationEvent(
+			static_cast<Client::CLIENT_REPLICATION_EVENT&&>(event));
+	}
+	[[nodiscard]] std::size_t Harness_GetReplicationEventCount() const
+	{
+		return m_ReplicationEvents.size();
+	}
+#endif
 
 private:
 	SOCKET m_hServerSocket = INVALID_SOCKET;
@@ -115,6 +163,7 @@ private:
 	std::thread m_ReceiveThread;
 
 	std::atomic_bool m_isReceiveRunning{ false };
+	std::atomic_bool m_hasProtocolFailure{ false };
 
 	LostArk::Shared::CPacketStreamParser m_StreamParser;
 
@@ -127,6 +176,8 @@ private:
 		m_WorldEntitySpawnResults;
 	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>
 		m_CharacterClassChangeResults;
+	std::deque<LostArk::Shared::S2C_VALTAN_AUDITION_RESULT>
+		m_ValtanAuditionResults;
 
 	bool m_hasPendingEnterAccepted = false;
 

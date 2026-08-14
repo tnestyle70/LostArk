@@ -56,7 +56,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 1. 실제 코드와 데이터의 현재 상태를 다시 확인한다.
 2. 바뀐 public 계약만 `AGENTS.md`, `CLAUDE.md`, 팀 사용서에 반영한다.
 3. 구현 완료와 미완료를 RESULT에서 분리하고 실행한 검증만 기록한다.
-4. 관련 harness와 `ProjectAudit`을 실행하고 `git diff --check`를 확인한다.
+4. 관련 domain publisher validation과 실행형 harness를 실행하고 `git diff --check`를 확인한다.
 5. 빌드·중간 산출물을 제외한 하나의 검증 단위만 commit/push한다.
 
 날짜별 진행 로그나 일시적인 오류를 `AGENTS.md`와 `CLAUDE.md`에 누적하지 않는다. 그런 정보는 해당 RESULT에 기록한다. 문서와 코드가 다르면 코드·데이터·실행 결과를 먼저 조사하고 같은 변경에서 문서를 교정한다.
@@ -132,7 +132,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 - Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
 - `CHARACTER_SELECT`는 Lobby가 선택 class로 `WORLD_ID::CHARACTER_SELECT_ARENA` Server 승인을 받은 뒤에만 `LV_LOBBY_CLASSSELECT_SL00` visual map을 연다. offline Preview와 `Preview / Server Play` mode 분기는 없다. 진입한 Level은 승인된 socket을 one-shot handoff로 소비하고 `CClientReplication -> CPlayerController -> IPlayerCommandSink`를 사용해 우클릭 이동과 class quick-slot 스킬을 Server snapshot으로 반영한다. class 썸네일 선택은 별도 Confirm 없이 typed class-change command를 보내며 Server가 같은 `PlayerId/NetEntityId`와 살아 있는 위치를 유지한 채 action/movement/cooldown/combo/HP/resource/stance를 새 profile로 초기화한다. 사망 중 변경은 원래 Server spawn의 navigation-projected 위치에서 부활한다. snapshot의 지속 class state가 Client presentation을 transactionally 교체하고 실패하면 기존 character와 상태 메시지를 유지한다. Character Select가 직접 connect/send/approval을 반복하지 않는다. Server는 필수이며 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고 자동 local fallback은 없다. 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Server Arena의 Debug ImGui는 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 중 하나의 stable placement/group ID만 typed command sink로 제출한다. 일반 몬스터와 Lugaru는 Area `SpawnGroups.world.json`을, Valtan은 disabled world template을 Server가 navigation/profile 검증 후 활성화하며 Client local spawn은 금지한다. 즉시 SpawnGroup은 실제 entity commit이 성공한 뒤에만 활성화 결과를 회신하고, 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화한다. Client는 broadcast presentation만 생성하고 Valtan prototype은 batch lazy-load한다. Bern/Valtan도 마지막 Server 승인 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다.
 - `CHARACTER_SELECT_ARENA`는 Server 권위 전투를 그대로 사용하되 session마다 별도 `CGameRoom` simulation을 소유한다. 다른 Character Select session의 player, world entity, HP, damage event는 서로 broadcast하지 않는다. 해당 session이 퇴장하면 그 private simulation의 queued `LEAVE`를 처리하고 audition 상태를 초기화한 뒤 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 계속 world별 shared simulation을 사용한다.
-- 2026-08-20 23:59 KST까지 팀 LAN 검증 Server listener 기본 bind는 `0.0.0.0`이고 Client 기본 endpoint는 `192.168.200.103:7777`이다. endpoint와 만료일 정본은 `Tools/Network/TeamLanEndpoint.json`이다. `Framework.slnLaunch`의 `Server + Client` profile과 공유 x64 debugger 설정도 같은 계약을 사용한다. `LOSTARK_SERVER_HOST`로 Client endpoint를 명시하면 그 값을 우선하며 `0.0.0.0`은 Client 접속 주소로 사용하지 않는다. 이 주소 계약을 바꿀 때는 Server/Client 기본값, 공유 debugger 설정, 팀 사용서와 ProjectAudit을 같은 변경 단위에서 갱신한다.
+- 2026-08-20 23:59 KST까지 팀 LAN 검증 Server listener 기본 bind는 `0.0.0.0`이고 Client 기본 endpoint는 `192.168.200.103:7777`이다. endpoint와 만료일 정본은 `Tools/Network/TeamLanEndpoint.json`이다. `Framework.slnLaunch`의 `Server + Client` profile과 공유 x64 debugger 설정도 같은 계약을 사용한다. `LOSTARK_SERVER_HOST`로 Client endpoint를 명시하면 그 값을 우선하며 `0.0.0.0`은 Client 접속 주소로 사용하지 않는다. 이 주소 계약을 바꿀 때는 Server/Client 기본값, 공유 debugger 설정, 팀 사용서와 Network/Server 실행 검증을 같은 변경 단위에서 갱신한다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
@@ -195,9 +195,9 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 - 함수는 하나의 의미 단위를 소유하고 이름이 그 단위를 설명해야 한다. `Manager`, `Data`, `Handle`, `Temp` 같은 포괄 이름만으로 새 상태를 숨기지 않는다.
 - 저장 ID에 pointer, Prototype tag, vector index를 쓰지 않는다. switch fallback으로 모르는 enum/ID를 정상값처럼 처리하지 않는다.
 - 파일/네트워크/레벨 로드는 실패 이유를 보존한다. 무한 대기, 부분 commit, silent identity fallback을 금지한다.
-- 새 public 계약에는 정상 사례, 잘못된 version/ID/path, 중복, 중간 실패 rollback을 검증하는 harness 또는 audit check를 함께 추가한다.
+- 새 public 계약에는 정상 사례, 잘못된 version/ID/path, 중복, 중간 실패 rollback을 검증하는 domain validator 또는 실행형 harness를 함께 추가한다.
 - 밸런스 파일을 매 프레임 읽거나 Client만 reload하지 않는다. runtime Hot Reload는 revision, Server stage, room tick commit, 진행 중 action 정책, snapshot revision, Client 동기화와 rollback harness가 한 수직 슬라이스로 닫힐 때만 활성화한다.
-- 완료 전 `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`을 실행한다.
+- 완료 전 변경한 데이터의 domain publisher를 `Validate`/`Check` 모드로 실행하고 관련 실행형 harness를 통과시킨다.
 
 ## Git·문서·완료 보고 계약
 
@@ -208,7 +208,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 - 계획/결과 문서는 `.md/GB/<MM-DD>/`에 보관한다. `.md/계획서작성규칙.local.md`와 local gotcha는 개인 파일이므로 커밋하지 않는다.
 - 완료 보고 전에 `git diff --check`, JSON/XML parse, 관련 harness, 정본 build/regression을 실행한다. Release에서 의도적으로 제외된 Development tool smoke를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.
-- 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 ProjectAudit, protocol harness, smoke의 실행 계약으로 바꾼다.
+- 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 domain validator, protocol harness, smoke의 실행 계약으로 바꾼다.
 - 팀원 인계에는 필요한 `Client/Bin/Resources` 상대 asset ID와 물리 폴더 위치를 함께 적는다. ZIP hash나 Hydrate/Verify 결과를 요구하지 않는다.
 
 ## 빌드·검증
@@ -220,7 +220,7 @@ Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 
 4. Server x64 Debug/Release, `Server.exe --contract-test` 실행
 5. Client x64 Debug/Release
 6. Client smoke: lobby, Bern, Valtan, 각 Development scenario
-7. ProjectAudit + 필요한 deep asset hash
+7. 변경 domain의 publisher validation, focused unit/harness, 필요한 source/asset identity 검사
 ```
 
 - 정본 자동화 명령은 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration <Debug|Release>`다. 수동 smoke에서도 Client 작업 디렉터리는 `Client/Default`여야 한다.

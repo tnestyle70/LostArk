@@ -5,37 +5,7 @@
  * separate so production UV, mask, normal and dynamic-parameter semantics do
  * not silently change the diagnostic baseline.
  */
-uint g_RuntimeMaterialV2Enabled = 0u;
-uint g_RuntimeMaterialV2Opcode = 0u;
-uint g_RuntimeMaterialV2TextureLaneCount = 0u;
-uint g_RuntimeMaterialV2TextureMask = 0u;
-uint g_RuntimeMaterialV2DynamicConsumedMask = 0u;
-uint g_RuntimeMaterialV2DynamicSuppressedMask = 0u;
-uint g_RuntimeMaterialV2ParticleColorPolicy = 0u;
-uint g_RuntimeMaterialV2ParticleColorConsumedMask = 0u;
-uint g_RuntimeMaterialV2ParticleColorSuppressedMask = 0u;
-uint g_RuntimeMaterialV2ScalarCount = 0u;
-uint g_RuntimeMaterialV2VectorCount = 0u;
-uint g_RuntimeMaterialV2InputCount = 0u;
-uint2 g_RuntimeMaterialV2InputConsumedMask = uint2(0u, 0u);
-uint2 g_RuntimeMaterialV2InputSuppressedMask = uint2(0u, 0u);
-uint g_RuntimeMaterialV2StaticInputCount = 0u;
-uint g_RuntimeMaterialV2StaticSelectedMask = 0u;
-uint g_RuntimeMaterialV2StaticConsumedMask = 0u;
-uint g_RuntimeMaterialV2StaticSuppressedMask = 0u;
-uint g_RuntimeMaterialV2RenderInputCount = 0u;
-uint g_RuntimeMaterialV2RenderConsumedMask = 0u;
-uint g_RuntimeMaterialV2RenderSuppressedMask = 0u;
-float4 g_RuntimeMaterialV2ScalarBlocks[13];
-float4 g_RuntimeMaterialV2Vectors[3];
-uint3 g_RuntimeMaterialV2VectorComponentConsumedMask = uint3(0u, 0u, 0u);
-uint3 g_RuntimeMaterialV2VectorComponentSuppressedMask = uint3(0u, 0u, 0u);
-
-SamplerState g_RuntimeMaterialV2Sampler0 : register(s5);
-SamplerState g_RuntimeMaterialV2Sampler1 : register(s6);
-SamplerState g_RuntimeMaterialV2Sampler2 : register(s7);
-SamplerState g_RuntimeMaterialV2Sampler3 : register(s8);
-SamplerState g_RuntimeMaterialV2Sampler4 : register(s9);
+#include "Shader_EffectRuntimeMaterialPacket.hlsli"
 
 static const uint RUNTIME_MATERIAL_V2_ACTIVE004_MASKED_MESH = 1u;
 static const uint RUNTIME_MATERIAL_V2_ACTIVE023_PROCEDURAL_GLOW = 2u;
@@ -46,6 +16,10 @@ static const uint RUNTIME_MATERIAL_V2_ACTIVE031_WIND_SPARKLE = 6u;
 static const uint RUNTIME_MATERIAL_V2_ACTIVE022_DECAL = 7u;
 static const uint RUNTIME_MATERIAL_V2_ACTIVE011_OUTER_MESH = 8u;
 static const uint RUNTIME_MATERIAL_V2_ACTIVE003_RIBBON = 9u;
+static const uint RUNTIME_MATERIAL_V2_ACTIVE005_006_SMOKE_SQUARE = 10u;
+static const uint RUNTIME_MATERIAL_V2_ACTIVE024_NOISE_HIT = 11u;
+static const uint RUNTIME_MATERIAL_V2_ACTIVE028_FLOW_MASK = 12u;
+static const uint RUNTIME_MATERIAL_V2_ACTIVE027_RADIAL_EMISSIVE = 13u;
 static const uint
     RUNTIME_MATERIAL_V2_BLOCKED_COLOROVERLIFE_RGB_SUPPRESSED_V1 = 1u;
 static const uint RUNTIME_MATERIAL_V2_PARTICLE_COLOR_RGBA_CONSUMED_V1 = 2u;
@@ -436,8 +410,13 @@ EFFECT_PS_OUT Shade_RuntimeMaterialV2Active016(
     const float4 baseSample = g_SourceTexture4.Sample(
         g_RuntimeMaterialV2Sampler4, baseUV);
 
-    const float maskMean = dot(maskSample, float4(0.25f, 0.25f, 0.25f, 0.25f));
-    const float maskShape = pow(saturate(maskMean * maskStrength),
+    /* The selected 31.mapch.r branch owns coverage for this recipe.  The
+       source DDS has an opaque container alpha, and averaging RGBA made that
+       storage alpha contribute at least 0.25 coverage to every atlas texel.
+       Keep storage alpha and unselected color channels out of the coverage
+       ABI: only the admitted red mask channel may reveal the sprite. */
+    const float selectedMask = saturate(maskSample.r);
+    const float maskShape = pow(saturate(selectedMask * maskStrength),
         clamp(maskPower, 0.001f, 64.f));
     const float baseLuminance = dot(baseSample.rgb,
         float3(0.299f, 0.587f, 0.114f));
@@ -462,8 +441,10 @@ EFFECT_PS_OUT Shade_RuntimeMaterialV2Active016(
     const float3 rgb = baseShaped * noiseMod +
         emissiveSample.rgb * emissionColor * max(emissionPower, 0.f) +
         specTerm + edge;
-    const float alpha = saturate(baseSample.a * maskShape *
-        saturate(dynamicParameter.x) * max(particleColor.a, 0.f));
+    /* 00.use_mapa is not in the admitted active static slice.  In particular,
+       the base DDS alpha is an opaque storage channel, not source coverage. */
+    const float alpha = saturate(maskShape * saturate(dynamicParameter.x) *
+        max(particleColor.a, 0.f));
 
     output.SceneColor = float4(clamp(rgb,
         float3(0.f, 0.f, 0.f), float3(16.f, 16.f, 16.f)), alpha);
@@ -672,6 +653,247 @@ EFFECT_PS_OUT Shade_RuntimeMaterialV2Active031(
     return output;
 }
 
+EFFECT_PS_OUT Shade_RuntimeMaterialV2Active027(
+    float2 localUV,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (g_RuntimeMaterialV2TextureLaneCount != 6u ||
+        g_RuntimeMaterialV2TextureMask != 0x3fu ||
+        g_RuntimeMaterialV2DynamicConsumedMask != 0x01u ||
+        g_RuntimeMaterialV2DynamicSuppressedMask != 0x0eu ||
+        g_RuntimeMaterialV2ParticleColorPolicy !=
+            RUNTIME_MATERIAL_V2_PARTICLE_COLOR_RGBA_CONSUMED_V1 ||
+        g_RuntimeMaterialV2ParticleColorConsumedMask != 0x0fu ||
+        g_RuntimeMaterialV2ParticleColorSuppressedMask != 0u ||
+        g_RuntimeMaterialV2ScalarCount != 4u ||
+        g_RuntimeMaterialV2VectorCount != 3u ||
+        g_RuntimeMaterialV2InputCount != 14u ||
+        any(g_RuntimeMaterialV2InputConsumedMask != uint2(0x3fdcu, 0u)) ||
+        any(g_RuntimeMaterialV2InputSuppressedMask != uint2(0x0023u, 0u)) ||
+        g_RuntimeMaterialV2StaticInputCount != 3u ||
+        g_RuntimeMaterialV2StaticSelectedMask != 0x06u ||
+        g_RuntimeMaterialV2StaticConsumedMask != 0x07u ||
+        g_RuntimeMaterialV2StaticSuppressedMask != 0u ||
+        g_RuntimeMaterialV2RenderInputCount != 6u ||
+        g_RuntimeMaterialV2RenderConsumedMask != 0x07u ||
+        g_RuntimeMaterialV2RenderSuppressedMask != 0x38u ||
+        any(g_RuntimeMaterialV2VectorComponentConsumedMask !=
+            uint3(0x03u, 0x0fu, 0x0fu)) ||
+        any(g_RuntimeMaterialV2VectorComponentSuppressedMask !=
+            uint3(0x0cu, 0u, 0u)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 materialScalars = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 alphaTex02UVPos = g_RuntimeMaterialV2Vectors[0];
+    const float4 outerColorAndIntensity = g_RuntimeMaterialV2Vectors[1];
+    const float4 innerColorAndIntensity = g_RuntimeMaterialV2Vectors[2];
+    if (!all(isfinite(localUV)) || !all(isfinite(particleColor)) ||
+        !all(isfinite(dynamicParameter)) ||
+        !all(isfinite(materialScalars)) ||
+        !all(isfinite(alphaTex02UVPos)) ||
+        !all(isfinite(outerColorAndIntensity)) ||
+        !all(isfinite(innerColorAndIntensity)) ||
+        any(abs(materialScalars - float4(0.5f, 5.f,
+            0.1000000015f, 0.0099999998f)) > 0.00001f) ||
+        any(abs(alphaTex02UVPos - float4(0.f, 0.f, 0.f, 1.f)) >
+            0.00001f) ||
+        any(abs(outerColorAndIntensity -
+            float4(15.f, 0.1000000015f, 0.f, 1.f)) > 0.00001f) ||
+        any(abs(innerColorAndIntensity -
+            float4(4.f, 0.5f, 0.1000000015f, 0.8500000238f)) >
+            0.00001f))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* Bounded recovered alpha replay. The six staged roles are immutable:
+       t0 noise RG, t1 alpha-01 G, t2 moving alpha G, t3 alpha-02 A,
+       t4 alpha-02 mask G, and t5 emissive RGB. dynamic.x is the age-aligned
+       dissolve carrier; dynamic.yzw are present but explicitly suppressed.
+       The recovered channel/arithmetic chain and cb7 mask pan are preserved,
+       but the unavailable native CB packing for perturbed p keeps this bounded. */
+    const float2 noisePan = float2(frac(g_EffectLocalTime * 0.1f), 0.f);
+    const float2 maskPan = float2(frac(g_EffectLocalTime * -0.25f), 0.f);
+    const float2 noise = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, localUV + noisePan).rg;
+    const float2 flowUV = localUV * float2(0.85f, 1.f) +
+        materialScalars.x * noise;
+    const float alpha01 = g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, flowUV).g;
+    const float alpha02 = g_SourceTexture3.Sample(
+        g_RuntimeMaterialV2Sampler3, flowUV + alphaTex02UVPos.xy).a;
+    const float alpha02Mask = g_SourceTexture4.Sample(
+        g_RuntimeMaterialV2Sampler4, localUV + maskPan).g;
+    const float shift = dynamicParameter.x * 2.8f - 1.9f;
+    const float2 movingAlphaUV = float2(
+        localUV.x * 1.5f + shift, localUV.y * 1.5f);
+    const float movingAlpha = g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, movingAlphaUV).g;
+    const float movingAlphaOffset = g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, movingAlphaUV + alpha01.xx).g;
+    const float secondaryCoverage = 20.f * alpha02 * alpha02Mask *
+        movingAlpha;
+    const float alpha01Gate = saturate(alpha01 * materialScalars.y);
+    const float coverage = saturate(saturate(
+        movingAlphaOffset * alpha01Gate + secondaryCoverage) *
+        particleColor.a);
+
+    /* Bounded RGB replay: recovered radial inner/outer emissive and t5
+       luminance/black-area terms are preserved before the unavailable native
+       normal/spec (t6/t7), selection/fog and auxiliary MRT carriers. No
+       replacement lighting or neutral texture is synthesized. */
+    const float radius = length(localUV - float2(0.5f, 0.5f));
+    const float innerWeight = max(1.f - radius, 0.f);
+    const float3 outerColor = outerColorAndIntensity.rgb *
+        outerColorAndIntensity.a;
+    const float3 innerColor = innerColorAndIntensity.rgb *
+        innerColorAndIntensity.a;
+    const float3 radialColor = (innerWeight * innerColor +
+        radius * outerColor) * materialScalars.z;
+    const float3 emissiveSample = g_SourceTexture5.Sample(
+        g_RuntimeMaterialV2Sampler5, flowUV).rgb;
+    const float emissiveLuminance = dot(emissiveSample,
+        float3(0.3f, 0.59f, 0.11f)) + materialScalars.w;
+
+    output.SceneColor.rgb = radialColor * emissiveLuminance * particleColor.rgb;
+    /* External opacity is unavailable and explicitly held at neutral one. */
+    output.SceneColor.a = coverage;
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+EFFECT_PS_OUT Shade_RuntimeMaterialV2Active028(
+    float2 localUV,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (g_RuntimeMaterialV2TextureLaneCount != 5u ||
+        g_RuntimeMaterialV2TextureMask != 0x1fu ||
+        g_RuntimeMaterialV2DynamicConsumedMask != 0x0fu ||
+        g_RuntimeMaterialV2DynamicSuppressedMask != 0u ||
+        g_RuntimeMaterialV2ParticleColorPolicy !=
+            RUNTIME_MATERIAL_V2_PARTICLE_COLOR_RGBA_CONSUMED_V1 ||
+        g_RuntimeMaterialV2ParticleColorConsumedMask != 0x0fu ||
+        g_RuntimeMaterialV2ParticleColorSuppressedMask != 0u ||
+        g_RuntimeMaterialV2ScalarCount != 18u ||
+        g_RuntimeMaterialV2VectorCount != 1u ||
+        g_RuntimeMaterialV2InputCount != 24u ||
+        any(g_RuntimeMaterialV2InputConsumedMask !=
+            uint2(0x00c7ffffu, 0u)) ||
+        any(g_RuntimeMaterialV2InputSuppressedMask !=
+            uint2(0x00380000u, 0u)) ||
+        g_RuntimeMaterialV2StaticInputCount != 0u ||
+        g_RuntimeMaterialV2StaticSelectedMask != 0u ||
+        g_RuntimeMaterialV2StaticConsumedMask != 0u ||
+        g_RuntimeMaterialV2StaticSuppressedMask != 0u ||
+        g_RuntimeMaterialV2RenderInputCount != 6u ||
+        g_RuntimeMaterialV2RenderConsumedMask != 0x07u ||
+        g_RuntimeMaterialV2RenderSuppressedMask != 0x38u ||
+        any(g_RuntimeMaterialV2VectorComponentConsumedMask !=
+            uint3(0x0fu, 0u, 0u)) ||
+        any(g_RuntimeMaterialV2VectorComponentSuppressedMask !=
+            uint3(0u, 0u, 0u)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 b0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 b1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 b2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 b3 = g_RuntimeMaterialV2ScalarBlocks[3];
+    const float4 b4 = g_RuntimeMaterialV2ScalarBlocks[4];
+    const float4 backColor = g_RuntimeMaterialV2Vectors[0];
+    if (!all(isfinite(localUV)) || !all(isfinite(particleColor)) ||
+        !all(isfinite(dynamicParameter)) || !all(isfinite(b0)) ||
+        !all(isfinite(b1)) || !all(isfinite(b2)) ||
+        !all(isfinite(b3)) || !all(isfinite(b4)) ||
+        !all(isfinite(backColor)) ||
+        any(abs(b0 - float4(1.f, 1.f, 1.f, 2.f)) > 0.00001f) ||
+        any(abs(b1 - float4(0.8000000119f, 1.1000000238f,
+            200.f, 1.f)) > 0.00001f) ||
+        any(abs(b2 - float4(1.f, 20.f, 1.f, 1.f)) > 0.00001f) ||
+        any(abs(b3 - float4(0.5f, 0.200000003f, 2.f, 1.f)) >
+            0.00001f) ||
+        any(abs(b4 - float4(0.8000000119f, 1.f, 1.f,
+            0.0078125f)) > 0.00001f) ||
+        any(abs(backColor - float4(0.f, 0.f, 0.f, 1.f)) > 0.00001f))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* BOUNDED_EXPLICIT recovered base-PS replay for source-active-028.
+       t0 is flow fx_d_noise_002 (R base/Y-gradient, G X-gradient), t1 is
+       smoke mask G, t2 is opacity G, and t3/t4 are the two RGB diffuse
+       roles. The recipe color_tex alias is deliberately suppressed because
+       this equation never reads it. The current particle dynamic.xyzw carrier
+       is sampled on the same particle-age clock by the emitter executor. */
+    const float2 flowTile = float2(b1.w, b2.x);
+    const float2 flowUV = localUV * flowTile;
+    const float flowBase = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, flowUV).r;
+    const float flowNeighborX = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0,
+        flowUV + float2(b4.w, 0.f)).g;
+    const float flowNeighborY = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0,
+        flowUV + float2(0.f, b4.w)).r;
+    float3 flow = normalize(float3(
+        -8.f * (flowNeighborY - flowBase),
+        -8.f * (flowNeighborX - flowBase), 1.f));
+    flow = (flow * 0.5f + 0.5f) * dynamicParameter.x;
+
+    const float2 centered = localUV - float2(0.5f, 0.5f);
+    const float radius = saturate(2.f *
+        (1.f - length(centered) / max(dynamicParameter.z, 1.0e-6f)));
+    flow *= radius;
+    flow.xy *= float2(b3.y, 1.f);
+
+    float mask = g_SourceTexture1.Sample(g_RuntimeMaterialV2Sampler1,
+        localUV + flow.xy * float2(b3.x * b3.y, b3.x)).g;
+    const float3 diffuse1 = g_SourceTexture3.Sample(
+        g_RuntimeMaterialV2Sampler3,
+        localUV * b0.xy + flow.xy + float2(0.f, dynamicParameter.w)).rgb;
+    const float3 diffuse2 = g_SourceTexture4.Sample(
+        g_RuntimeMaterialV2Sampler4,
+        localUV * b0.zw + flow.xy).rgb;
+    const float3 product = diffuse1 * diffuse2;
+    const float luminance = dot(product, float3(0.3f, 0.59f, 0.11f));
+    const float3 colorBase = lerp(product, luminance.xxx, b1.x);
+    const float3 rgbCore = pow(abs(colorBase), b1.y) * b1.z +
+        backColor.rgb;
+
+    const float alphaRadius = saturate(2.f *
+        (1.f - length(centered) / max(dynamicParameter.z + 0.1f,
+            1.0e-6f)));
+    mask *= alphaRadius;
+    const float2 opacityCentered = localUV * b2.zw -
+        float2(0.5f, 0.5f);
+    const float2 opacityUV = opacityCentered +
+        float2(0.f, dynamicParameter.y) + float2(0.5f, 0.5f) +
+        b4.y * flow.xy;
+    const float opacity = g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, opacityUV).g;
+    const float coverage = saturate(
+        pow(abs(opacity * mask), b4.x) * b2.y);
+
+    /* Native selection/fog, auxiliary MRT carriers and the external opacity
+       carrier are unavailable in this ABI. They are explicitly omitted, with
+       external opacity held at the b4.z neutral one. RT1 must remain zero. */
+    output.SceneColor.rgb = particleColor.rgb * radius * rgbCore;
+    output.SceneColor.a = b4.z * particleColor.a * coverage;
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
 EFFECT_PS_OUT Shade_RuntimeMaterialV2Particle(
     float2 localUV,
     float4 subUVTransform,
@@ -681,6 +903,195 @@ EFFECT_PS_OUT Shade_RuntimeMaterialV2Particle(
     float4 dynamicParameter)
 {
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+	if (g_RuntimeMaterialV2Opcode ==
+		RUNTIME_MATERIAL_V2_ACTIVE027_RADIAL_EMISSIVE)
+	{
+		return Shade_RuntimeMaterialV2Active027(
+			localUV, particleColor, dynamicParameter);
+	}
+	if (g_RuntimeMaterialV2Opcode ==
+		RUNTIME_MATERIAL_V2_ACTIVE028_FLOW_MASK)
+    {
+        return Shade_RuntimeMaterialV2Active028(
+            localUV, particleColor, dynamicParameter);
+    }
+    if (g_RuntimeMaterialV2Opcode ==
+        RUNTIME_MATERIAL_V2_ACTIVE024_NOISE_HIT)
+    {
+        if (g_RuntimeMaterialV2TextureLaneCount != 3u ||
+            g_RuntimeMaterialV2TextureMask != 0x07u ||
+            g_RuntimeMaterialV2DynamicConsumedMask != 0x03u ||
+            g_RuntimeMaterialV2DynamicSuppressedMask != 0x0cu ||
+            g_RuntimeMaterialV2ParticleColorPolicy !=
+                RUNTIME_MATERIAL_V2_PARTICLE_COLOR_RGBA_CONSUMED_V1 ||
+            g_RuntimeMaterialV2ParticleColorConsumedMask != 0x0fu ||
+            g_RuntimeMaterialV2ParticleColorSuppressedMask != 0u ||
+            g_RuntimeMaterialV2ScalarCount != 8u ||
+            g_RuntimeMaterialV2VectorCount != 0u ||
+            g_RuntimeMaterialV2InputCount != 29u ||
+            any(g_RuntimeMaterialV2InputConsumedMask !=
+                uint2(0x00000dffu, 0u)) ||
+            any(g_RuntimeMaterialV2InputSuppressedMask !=
+                uint2(0x1ffff200u, 0u)) ||
+            g_RuntimeMaterialV2StaticInputCount != 1u ||
+            g_RuntimeMaterialV2StaticSelectedMask != 0x01u ||
+            g_RuntimeMaterialV2StaticConsumedMask != 0x01u ||
+            g_RuntimeMaterialV2StaticSuppressedMask != 0u ||
+            g_RuntimeMaterialV2RenderInputCount != 6u ||
+            g_RuntimeMaterialV2RenderConsumedMask != 0x07u ||
+            g_RuntimeMaterialV2RenderSuppressedMask != 0x38u ||
+            any(g_RuntimeMaterialV2VectorComponentConsumedMask !=
+                uint3(0u, 0u, 0u)) ||
+            any(g_RuntimeMaterialV2VectorComponentSuppressedMask !=
+                uint3(0u, 0u, 0u)))
+        {
+            clip(-1.f);
+            return output;
+        }
+
+        const float4 noiseTransform = g_RuntimeMaterialV2ScalarBlocks[0];
+        const float4 materialParameters = g_RuntimeMaterialV2ScalarBlocks[1];
+        if (!all(isfinite(float4(localUV, g_EffectLocalTime, subUVBlend))) ||
+            !all(isfinite(subUVTransform)) ||
+            !all(isfinite(subUVTransformNext)) ||
+            !all(isfinite(particleColor)) || !all(isfinite(dynamicParameter)) ||
+            !all(isfinite(noiseTransform)) ||
+            !all(isfinite(materialParameters)))
+        {
+            clip(-1.f);
+            return output;
+        }
+
+        const float2 noiseUV = localUV * noiseTransform.zw +
+            g_EffectLocalTime * noiseTransform.xy;
+        const float2 noise = g_SourceTexture0.Sample(
+            g_RuntimeMaterialV2Sampler0, noiseUV).rg;
+        const float2 warpedUV = localUV + materialParameters.x * noise;
+        const float scale = dynamicParameter.x * materialParameters.y;
+        const float2 mainUV = (warpedUV - float2(0.5f, 0.5f)) * scale +
+            float2(0.5f, 0.5f);
+
+        /* Recovered DXBC swizzle authority: t1 is alpha_tex.R, never G/A;
+           t2 is the duplicate physical noise DDS in its distinct emissive
+           sampler role and contributes RGB. */
+        const float alphaTex = g_SourceTexture1.Sample(
+            g_RuntimeMaterialV2Sampler1, mainUV).r;
+        const float3 emissiveTex = g_SourceTexture2.Sample(
+            g_RuntimeMaterialV2Sampler2, mainUV).rgb;
+        const float emissivePower = materialParameters.w;
+        const float poweredAlpha = abs(alphaTex) < 1.0e-6f ? 0.f :
+            pow(abs(alphaTex), emissivePower);
+        const float coverageBase = poweredAlpha * particleColor.a;
+        const float coverage = abs(coverageBase) < 1.0e-6f ? 0.f :
+            pow(abs(coverageBase), dynamicParameter.y);
+
+        const float3 lit = emissiveTex * materialParameters.z;
+        const float luminance = dot(lit, float3(0.3f, 0.59f, 0.11f));
+        /* emissive_desaturation is the compiled parent default zero. */
+        const float3 desaturated = lerp(lit, luminance.xxx, 0.f);
+        const float3 absDesaturated = abs(desaturated);
+        const float3 rgb = float3(
+            absDesaturated.x < 1.0e-6f ? 0.f :
+                pow(absDesaturated.x, emissivePower),
+            absDesaturated.y < 1.0e-6f ? 0.f :
+                pow(absDesaturated.y, emissivePower),
+            absDesaturated.z < 1.0e-6f ? 0.f :
+                pow(absDesaturated.z, emissivePower));
+
+        /* Native selection/fog and auxiliary MRT2/3 carriers are not exposed
+           by this runtime ABI. External opacity is therefore the explicitly
+           bounded no-fade neutral one; no replacement lighting is invented. */
+        output.SceneColor.rgb = rgb * particleColor.rgb;
+        output.SceneColor.a = min(coverage, 1.f);
+        output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+        return output;
+    }
+    if (g_RuntimeMaterialV2Opcode ==
+        RUNTIME_MATERIAL_V2_ACTIVE005_006_SMOKE_SQUARE)
+    {
+        if (g_RuntimeMaterialV2TextureLaneCount != 1u ||
+            g_RuntimeMaterialV2TextureMask != 0x01u ||
+            g_RuntimeMaterialV2DynamicConsumedMask != 0x02u ||
+            g_RuntimeMaterialV2DynamicSuppressedMask != 0x0du ||
+            g_RuntimeMaterialV2ParticleColorPolicy !=
+                RUNTIME_MATERIAL_V2_PARTICLE_COLOR_RGBA_CONSUMED_V1 ||
+            g_RuntimeMaterialV2ParticleColorConsumedMask != 0x0fu ||
+            g_RuntimeMaterialV2ParticleColorSuppressedMask != 0u ||
+            g_RuntimeMaterialV2ScalarCount != 5u ||
+            g_RuntimeMaterialV2VectorCount != 0u ||
+            g_RuntimeMaterialV2InputCount != 6u ||
+            any(g_RuntimeMaterialV2InputConsumedMask != uint2(0x0fu, 0u)) ||
+            any(g_RuntimeMaterialV2InputSuppressedMask != uint2(0x30u, 0u)) ||
+            g_RuntimeMaterialV2StaticInputCount != 2u ||
+            g_RuntimeMaterialV2StaticSelectedMask != 0x03u ||
+            g_RuntimeMaterialV2StaticConsumedMask != 0x03u ||
+            g_RuntimeMaterialV2StaticSuppressedMask != 0u ||
+            g_RuntimeMaterialV2RenderInputCount != 6u ||
+            g_RuntimeMaterialV2RenderConsumedMask != 0x03u ||
+            g_RuntimeMaterialV2RenderSuppressedMask != 0x3cu ||
+            any(g_RuntimeMaterialV2VectorComponentConsumedMask !=
+                uint3(0u, 0u, 0u)) ||
+            any(g_RuntimeMaterialV2VectorComponentSuppressedMask !=
+                uint3(0u, 0u, 0u)))
+        {
+            clip(-1.f);
+            return output;
+        }
+
+        const float lod = g_RuntimeMaterialV2ScalarBlocks[0].x;
+        const float uvY = g_RuntimeMaterialV2ScalarBlocks[0].y;
+        const float preservedUvX = g_RuntimeMaterialV2ScalarBlocks[0].z;
+        const float shadowStrength = g_RuntimeMaterialV2ScalarBlocks[0].w;
+        const float desaturation = g_RuntimeMaterialV2ScalarBlocks[1].x;
+        const float externalOpacity = g_RuntimeMaterialV2ScalarBlocks[1].y;
+        const float2 currentScale = subUVTransform.xy;
+        const float expectedSubUvScale = 1.f / 6.f;
+        if (!all(isfinite(float4(lod, uvY, preservedUvX, shadowStrength))) ||
+            !all(isfinite(float4(desaturation, externalOpacity,
+                subUVBlend, dynamicParameter.y))) ||
+            !all(isfinite(particleColor)) ||
+            !all(isfinite(subUVTransform)) ||
+            !all(isfinite(subUVTransformNext)) ||
+            abs(lod + 1.f) > 0.00001f || abs(uvY - 6.f) > 0.00001f ||
+            abs(preservedUvX - 6.f) > 0.00001f ||
+            abs(shadowStrength - 0.0299999993f) > 0.00001f ||
+            abs(desaturation - 0.5f) > 0.00001f ||
+            abs(externalOpacity - 1.f) > 0.00001f ||
+            abs(dynamicParameter.y - 1.f) > 0.00001f ||
+            any(abs(abs(currentScale) - expectedSubUvScale.xx) > 0.00001f) ||
+            subUVBlend < 0.f || subUVBlend > 1.f)
+        {
+            clip(-1.f);
+            return output;
+        }
+
+        const float2 currentUV = localUV * currentScale + subUVTransform.zw;
+        const float4 smokeSample = g_SourceTexture0.SampleLevel(
+            g_RuntimeMaterialV2Sampler0, currentUV, lod);
+        /* Recovered PS 3e38be... samples t0 exactly once from TEXCOORD0.
+           The candidate SubUV VFs share recovered no-density VS 881a765f...,
+           which forwards the current atlas coordinate to that semantic; the
+           cache receipt does not yet admit one exact native VF variant.
+           Cascade's linear-blend setting therefore does not authorize a
+           second texture sample or a color cross-fade for these occurrences.
+           The CPU still resolves frame/flip and this core consumes current UV. */
+        const float stripe = 1.f - frac(currentUV.y * uvY);
+        const float3 raw = smokeSample.rgb + shadowStrength * stripe.xxx;
+        const float luminance = dot(raw, float3(0.3f, 0.59f, 0.11f));
+        const float3 smokeRgb = lerp(raw, luminance.xxx, desaturation);
+
+        /* The recovered PS adds selection color and applies the UE3 fog MAD
+           after particle modulation. Those engine carriers are not exposed by
+           this reconstructed particle ABI, so the exact texture/SubUV/color
+           core is replayed and no replacement lighting term is invented. */
+        output.SceneColor.rgb = particleColor.rgb * smokeRgb;
+        const float lifeCut = 1.f - saturate(dynamicParameter.y);
+        const float sourceAlpha = saturate(smokeSample.a - lifeCut);
+        output.SceneColor.a = externalOpacity *
+            saturate(sourceAlpha * particleColor.a);
+        output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+        return output;
+    }
     if (g_RuntimeMaterialV2Opcode ==
         RUNTIME_MATERIAL_V2_ACTIVE031_WIND_SPARKLE)
     {

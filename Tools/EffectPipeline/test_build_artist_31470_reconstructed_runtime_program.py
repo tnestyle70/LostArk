@@ -749,6 +749,59 @@ class Artist31470ReconstructedRuntimeProgramTests(unittest.TestCase):
             with self.subTest(token=token):
                 self._assert_invalid(mutate)
 
+    def test_13_typedata_mesh_rotation_is_source_joined_not_order_tuned(self) -> None:
+        mesh_emitters = [
+            row for row in self.program["emitters"]
+            if row["rendererRuntimeConfig"]["mesh"] is not None
+        ]
+        self.assertEqual(len(mesh_emitters), 13)
+        non_identity = [
+            row for row in mesh_emitters
+            if row["rendererRuntimeConfig"]["mesh"]
+            ["sourceTypeDataRotationDegrees"] != [0.0, 0.0, 0.0]
+        ]
+        self.assertEqual(len(non_identity), 1)
+        weapon = non_identity[0]
+        self.assertEqual(
+            weapon["sourceElementId"],
+            "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01."
+            "particlespriteemitter_6",
+        )
+        self.assertEqual(
+            weapon["rendererRuntimeConfig"]["mesh"],
+            {
+                "useModelMaterial": False,
+                "sourceTypeDataRotationDegrees": [0.0, 0.0, 90.0],
+            },
+        )
+
+        type_data = next(
+            row for row in self.program["modules"]
+            if row["emitterId"] == weapon["emitterId"]
+            and row["exactSourceClass"] == "particlemoduletypedatamesh"
+        )
+        rotation_literals = {
+            row["propertyPath"]: row
+            for row in self.program["literals"]
+            if row["moduleId"] == type_data["moduleId"]
+            and row["propertyPath"] in {"roll", "pitch", "yaw"}
+        }
+        self.assertEqual(set(rotation_literals), {"yaw"})
+        self.assertEqual(rotation_literals["yaw"]["variant"], "F64")
+        self.assertEqual(rotation_literals["yaw"]["f64Value"], 90.0)
+
+        def forge_axis_order(program):
+            index = next(
+                i for i, row in enumerate(program["emitters"])
+                if row["emitterId"] == weapon["emitterId"]
+            )
+            program["emitters"][index]["rendererRuntimeConfig"]["mesh"][
+                "sourceTypeDataRotationDegrees"
+            ] = [90.0, 0.0, 0.0]
+            return [("emitters", index)]
+
+        self._assert_invalid(forge_axis_order)
+
 
 if __name__ == "__main__":
     unittest.main()

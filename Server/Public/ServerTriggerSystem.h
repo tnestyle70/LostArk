@@ -28,7 +28,8 @@ namespace LostArk::Server
 	public:
 		bool Initialize(
 			const std::vector<WORLD_BOOTSTRAP_PLACEMENT>& placements,
-			std::string& outStatus);
+			std::string& outStatus,
+			bool enableDebugValtanStageBypass = false);
 		bool Update_PlayerMotion(
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds) const;
@@ -39,6 +40,11 @@ namespace LostArk::Server
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 				const std::string&)>& activateTarget);
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
+#ifdef _DEBUG
+		bool Place_PlayerAtValtanAuditionBait(
+			SERVER_PLAYER& player,
+			std::uint32_t actionStartTick) const;
+#endif
 
 		[[nodiscard]] std::size_t Get_TriggerCount() const
 		{
@@ -60,6 +66,11 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
 			std::uint32_t actionStartTick);
+#ifdef _DEBUG
+		static bool Build_ValtanStageBypassMove(
+			const std::string& triggerPlacementId,
+			WORLD_TRIGGER_ACTION& outAction);
+#endif
 		static bool Build_WorldTransfer(
 			const SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
@@ -67,5 +78,6 @@ namespace LostArk::Server
 
 	private:
 		std::vector<RUNTIME_TRIGGER> m_Triggers;
+		bool m_bDebugValtanStageBypass = false;
 	};
 }

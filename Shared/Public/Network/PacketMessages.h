@@ -480,4 +480,157 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_WORLD_SNAPSHOT& message);
+
+	// Persistent destroyable state is replicated separately from the 30 Hz
+	// world snapshot. A full sync never contains historical one-shot events;
+	// a delta contains only changed states and events emitted by the live room.
+	inline constexpr std::size_t MAX_COMBAT_RUNTIME_REVISION_BYTES = 64;
+	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_GROUPS = 128;
+	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_CHANGED_STATES = 128;
+	inline constexpr std::size_t MAX_WORLD_DESTRUCTION_EVENTS = 64;
+
+	enum class WORLD_DESTRUCTION_RUNTIME_STATE : std::uint8_t
+	{
+		INTACT,
+		BREAKING,
+		FRACTURED,
+		DESPAWNED,
+		END
+	};
+
+	struct WORLD_DESTRUCTION_STATE_WIRE
+	{
+		std::string strGroupId;
+		WORLD_DESTRUCTION_RUNTIME_STATE eState =
+			WORLD_DESTRUCTION_RUNTIME_STATE::INTACT;
+		std::uint32_t iStateVersion = 0;
+		std::uint32_t iStateStartTick = 0;
+		std::uint32_t iCommitTick = 0;
+	};
+
+	struct WORLD_DESTRUCTION_EVENT_WIRE
+	{
+		std::uint64_t iEventSequence = 0;
+		std::string strGroupId;
+		std::string strMutationId;
+		std::string strBindingId;
+		std::uint32_t iPatternSequence = 0;
+		std::uint64_t iSourceNetEntityId = 0;
+		std::uint32_t iServerTick = 0;
+		float fImpactOriginX = 0.f;
+		float fImpactOriginY = 0.f;
+		float fImpactOriginZ = 0.f;
+		float fImpactDirectionX = 0.f;
+		float fImpactDirectionY = 0.f;
+		float fImpactDirectionZ = 0.f;
+		std::uint32_t iRandomSeed = 0;
+	};
+
+	struct S2C_WORLD_DESTRUCTION_FULL_SYNC
+	{
+		std::string strCombatRuntimeRevision;
+		std::uint32_t iServerTick = 0;
+		std::uint32_t iEncounterEpoch = 0;
+		std::vector<WORLD_DESTRUCTION_STATE_WIRE> GroupStates;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_WORLD_DESTRUCTION_FULL_SYNC& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_WORLD_DESTRUCTION_FULL_SYNC& message);
+
+	struct S2C_WORLD_DESTRUCTION_DELTA
+	{
+		std::string strCombatRuntimeRevision;
+		std::uint32_t iServerTick = 0;
+		std::uint32_t iEncounterEpoch = 0;
+		std::vector<WORLD_DESTRUCTION_STATE_WIRE> ChangedStates;
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> LiveEvents;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_WORLD_DESTRUCTION_DELTA& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_WORLD_DESTRUCTION_DELTA& message);
+
+	// Debug audition of an authored Valtan health-bar pattern.
+	//
+	// The request never names a pattern, a camera cue or a wall group. It names
+	// a health bar the encounter already authors, and the Server reproduces the
+	// real crossing at that bar so the pattern, its cinematic cue and its wall
+	// binding all run through the product path. Dropping straight to the target
+	// bar would cross every threshold above it and queue those patterns too.
+	// PLAY atomically primes the previous bar and moves onto the target in one
+	// Server command, then CValtanBrain judges the single crossing on its own
+	// fixed tick. ARM/CROSS remain available for step-by-step diagnostics.
+	enum class VALTAN_AUDITION_OPERATION : std::uint8_t
+	{
+		ARM_HEALTH_BAR,
+		CROSS_HEALTH_BAR,
+		PLAY_HEALTH_BAR,
+		END
+	};
+
+	enum class VALTAN_AUDITION_RESULT : std::uint8_t
+	{
+		ARMED,
+		QUEUED,
+		// The same request sequence arriving twice is answered, not replayed.
+		DUPLICATE_IGNORED,
+		REJECTED_RELEASE_BUILD,
+		REJECTED_WRONG_WORLD,
+		REJECTED_NO_BOSS,
+		REJECTED_BOSS_DEAD,
+		// The bar carries no authored HEALTH_BAR pattern, so there is nothing
+		// to audition and no reason to move the boss.
+		REJECTED_UNKNOWN_HEALTH_BAR,
+		// That pattern already fired this encounter, or a pattern is running.
+		REJECTED_PATTERN_UNAVAILABLE,
+		// CROSS without a preceding ARM at the same bar would cross an unknown
+		// span of thresholds.
+		REJECTED_NOT_ARMED,
+		// CValtanBrain drops its target when nobody is combat-ready inside the
+		// engage distance, so a pattern queued now would never start.
+		REJECTED_PLAYER_NOT_ENGAGED,
+		END
+	};
+
+	struct C2S_VALTAN_AUDITION_REQUEST
+	{
+		std::uint32_t iRequestSequence = 0;
+		VALTAN_AUDITION_OPERATION eOperation =
+			VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		std::uint32_t iTargetHealthBar = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_VALTAN_AUDITION_REQUEST& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_VALTAN_AUDITION_REQUEST& message);
+
+	struct S2C_VALTAN_AUDITION_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		VALTAN_AUDITION_OPERATION eOperation =
+			VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		std::uint32_t iTargetHealthBar = 0;
+		VALTAN_AUDITION_RESULT eResult =
+			VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD;
+		// The bar the boss actually sits on after the Server handled the
+		// request, so a rejected audition still reports the live state.
+		std::uint32_t iCurrentHealthBar = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_VALTAN_AUDITION_RESULT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_VALTAN_AUDITION_RESULT& message);
 }

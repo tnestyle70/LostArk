@@ -36,7 +36,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [136.235718, 42.3023796, -24.2058201],
+      "position": [136.235718, 42.3000946, -24.2058201],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -45,7 +45,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [139.376724, 42.2554817, -25.0925045],
+      "position": [139.376724, 42.5081787, -25.0925045],
       "yawDegrees": 0,
       "enabled": true
     },
@@ -54,7 +54,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [137.271729, 42.2554741, -20.2455158],
+      "position": [137.271729, 42.2683754, -20.2455158],
       "yawDegrees": 0,
       "enabled": true
     },
