@@ -430,6 +430,30 @@ bool CNetworkManager::Send_ReleaseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_SkillAim(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_UPDATE_SKILL_AIM message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_UPDATE_SKILL_AIM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_RevivePlayer(
 	const std::uint32_t clientSequence)
 {
@@ -525,6 +549,17 @@ bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEP
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_EnterRejected(
+	LostArk::Shared::S2C_ENTER_REJECTED& message)
+{
+	if (!m_hasPendingEnterRejected)
+		return false;
+
+	message = m_PendingEnterRejected;
+	m_hasPendingEnterRejected = false;
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message)
 {
@@ -607,6 +642,8 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_ValtanAuditionResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
+	m_hasPendingEnterRejected = false;
+	m_PendingEnterRejected = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
@@ -809,6 +846,19 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_LocalSpawn = {};
 		m_hasPendingEnterAccepted = true;
 		m_PendingEnterAccepted = accepted;
+		break;
+	}
+	case PACKET_TYPE::S2C_ENTER_REJECTED:
+	{
+		S2C_ENTER_REJECTED rejected{};
+		if (!Read_Message(reader, rejected) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		m_hasPendingEnterRejected = true;
+		m_PendingEnterRejected = rejected;
 		break;
 	}
 	//Player Spawn

@@ -31,6 +31,11 @@ public:
 	bool Request_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId) override;
+	bool Request_SkillAim(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float aimX,
+		float aimZ) override;
 	bool Request_RevivePlayer(
 		std::uint32_t clientSequence) override;
 	bool Request_ChangeCharacterClass(

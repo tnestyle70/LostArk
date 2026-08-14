@@ -68,6 +68,11 @@ public:
 	bool Send_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId);
+	bool Send_SkillAim(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float aimX,
+		float aimZ);
 	bool Send_RevivePlayer(std::uint32_t clientSequence);
 	bool Send_ChangeCharacterClass(
 		std::uint32_t clientSequence,
@@ -82,6 +87,8 @@ public:
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
+	bool Try_Consume_EnterRejected(
+		LostArk::Shared::S2C_ENTER_REJECTED& message);
 	bool Try_Consume_WorldEntitySpawnResult(
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
 	bool Try_Consume_CharacterClassChangeResult(
@@ -175,6 +182,8 @@ private:
 	bool m_hasPendingEnterAccepted = false;
 
 	LostArk::Shared::S2C_ENTER_ACCEPTED m_PendingEnterAccepted{};
+	bool m_hasPendingEnterRejected = false;
+	LostArk::Shared::S2C_ENTER_REJECTED m_PendingEnterRejected{};
 
 	LostArk::Shared::PLAYER_ID m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 

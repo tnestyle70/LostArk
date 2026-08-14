@@ -62,6 +62,7 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	void RenderBossHealthBar();
 	/* LanceMaster's 3-segment identity meter -- drawn procedurally (matching the real
 	LanceMasterProgress.as formula: target.rotation = maxDegree * value/100, cascading through
 	3 segments) rather than from extracted art, since the real asset's moving "target" piece is

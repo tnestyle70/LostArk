@@ -1,0 +1,640 @@
+{
+ "schema": "lostark.identity-keyframe-animation",
+ "formatVersion": 1,
+ "frameRate": 40.0,
+ "frameCount": 28,
+ "labels": {
+  "pop": 0,
+  "empty": 27
+ },
+ "layers": [
+  {
+   "depth": 0,
+   "sourceKey": "base",
+   "keyframes": [
+    {
+     "frame": 0,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_00.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 1,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_01.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 2,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_02.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 3,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_03.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 4,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_04.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 5,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_05.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 6,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_06.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 7,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_07.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 8,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_08.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 9,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_09.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 10,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_10.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 11,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_11.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 12,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_12.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 13,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_13.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 14,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_14.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 15,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_15.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 16,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_16.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 17,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_17.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 18,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_18.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 19,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_19.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 20,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_20.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 21,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_21.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 22,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_22.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 23,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_23.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 24,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_24.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 25,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/base_25.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 26,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/Persistent.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    },
+    {
+     "frame": 27,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/blank.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "sourceKey": "burst",
+   "keyframes": [
+    {
+     "frame": 0,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_00.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 1,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_01.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 2,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_02.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 3,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_03.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 4,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_04.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 5,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_05.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 6,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_06.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 7,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_07.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 8,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_08.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 9,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_09.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 10,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_10.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 11,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_11.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 12,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_12.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 13,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_13.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 14,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_14.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 15,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_15.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 16,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_16.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 17,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_17.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 18,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_18.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 19,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_19.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 20,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_20.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 21,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_21.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 22,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_22.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 23,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_23.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 24,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_24.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 25,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/burst_25.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 26,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/blank.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    },
+    {
+     "frame": 27,
+     "asset": "UI/HUD/Artist/Identity/BubbleUp/blank.png",
+     "x": 0.0,
+     "y": 0.0,
+     "scaleX": 0.75,
+     "scaleY": 0.75,
+     "rotationDeg": 0.0,
+     "alpha": 1.0,
+     "additive": true
+    }
+   ]
+  }
+ ]
+}

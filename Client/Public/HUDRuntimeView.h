@@ -73,6 +73,13 @@ public:
 	document fails to load, or the label is unknown. */
 	bool_t Play_KeyframeAnimation(const string& strSlotId, const string& strLabel);
 
+	/* Overrides a slot's authored "rotation" (degrees, clockwise, about its own rect centre) at
+	runtime -- for continuous data-driven rotation (DimensionMaster's minute hand tracks its real
+	cyclic identity gauge value directly via MovieClip.rotation in the source, not a frame-based
+	clip) that a fixed JSON value or the frame-indexed keyframe system can't express. No-op if the
+	slot doesn't exist. */
+	bool_t Set_SlotRotation(const string& strSlotId, f32_t fDegrees);
+
 private:
 	struct TEXTURE_LAYER
 	{

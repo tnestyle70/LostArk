@@ -14,6 +14,10 @@ $reportRoot = [IO.Path]::GetFullPath(
     (Join-Path $reportParent $Configuration))
 $clientExe = Join-Path $repoRoot "Client\Bin\$Configuration\Client.exe"
 $serverExe = Join-Path $repoRoot "Server\Bin\$Configuration\Server.exe"
+$valtanHarnessExe = Join-Path $repoRoot `
+    "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
+$characterSelectIsolationHarnessExe = Join-Path $repoRoot `
+    "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
 $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     Join-Path $repoRoot 'Client\Bin\Resources'
 }
@@ -52,6 +56,8 @@ function Assert-RuntimeLayout {
     $required = @(
         $clientExe,
         $serverExe,
+        $valtanHarnessExe,
+        $characterSelectIsolationHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
         (Join-Path $runtimeResourceRoot 'Fonts')
@@ -86,6 +92,10 @@ try {
         Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
@@ -131,6 +141,14 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'Server gameplay contract tests failed.'
     }
+
+    & (Join-Path $repoRoot `
+        'Tools\Network\Run-ValtanFourPlayerHarness.ps1') `
+        -Configuration $Configuration
+
+    & (Join-Path $repoRoot `
+        'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
+        -Configuration $Configuration
 
     & (Join-Path $repoRoot `
         'Tools\ProjectAudit\Invoke-ProjectAudit.ps1') `

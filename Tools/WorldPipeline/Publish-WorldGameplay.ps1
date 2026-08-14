@@ -388,6 +388,7 @@ function Convert-WorldDocument {
 			$placementIndex[[string]$placement.placementId] = $placement
 		}
 	}
+	$enabledPlayerSpawnCount = 0
     $rows = [Collections.Generic.List[string]]::new()
     foreach ($placement in @($document.placements)) {
 		Assert-JsonString $placement.placementId "$relativePath placementId"
@@ -562,6 +563,9 @@ function Convert-WorldDocument {
 				-not [string]::IsNullOrEmpty([string]$placement.encounterId)) {
 				throw "Player spawn must not own an encounter: $($placement.placementId)"
 			}
+			if ($placement.enabled) {
+				++$enabledPlayerSpawnCount
+			}
 		}
 		else {
 			Assert-StableId $placement.archetypeId "$relativePath archetypeId"
@@ -591,6 +595,9 @@ function Convert-WorldDocument {
 		$rowFields = $commonFields
         $rows.Add(($rowFields -join "`t"))
     }
+	if ($WorldId -eq 'VALTAN_ARENA' -and $enabledPlayerSpawnCount -ne 4) {
+		throw "Valtan Arena requires exactly four enabled player spawns; got $enabledPlayerSpawnCount."
+	}
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()

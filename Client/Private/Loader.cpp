@@ -936,10 +936,10 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		{
 			return E_FAIL;
 		}
+		const BOSS_ACTOR_ENTRY* pBoss = nullptr;
 		if (nullptr != asset.pBossArchetypeId)
 		{
-			const BOSS_ACTOR_ENTRY* pBoss =
-				CActorCatalog::Find_Boss(asset.pBossArchetypeId);
+			pBoss = CActorCatalog::Find_Boss(asset.pBossArchetypeId);
 			if (nullptr == pBoss || pBoss->bodyModel != asset.pModelAssetId)
 				return E_FAIL;
 		}
@@ -955,7 +955,7 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			XMMatrixRotationY(
 				XMConvertToRadians(asset.fPreviewYawDegrees));
 
-		unique_ptr<CPrototype> model = CModel::Create(
+		unique_ptr<CModel> model = CModel::Create(
 			m_pDevice,
 			m_pContext,
 			MODEL::ANIM,
@@ -963,6 +963,26 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			previewTransform);
 		if (nullptr == model)
 			continue;
+		if (nullptr != pBoss)
+		{
+			const filesystem::path animSetPath =
+				CRuntimeAssetRoot::Resolve(pBoss->animationSetId);
+			if (!animSetPath.empty() &&
+				filesystem::is_regular_file(animSetPath))
+			{
+				const unique_ptr<CModel> animSet = CModel::Create(
+					m_pDevice,
+					m_pContext,
+					MODEL::ANIM,
+					animSetPath.string().c_str(),
+					previewTransform);
+				if (nullptr == animSet ||
+					FAILED(model->Attach_AnimationSet(*animSet)))
+				{
+					return E_FAIL;
+				}
+			}
+		}
 		if (FAILED(CGameInstance::Get().Add_Prototype(
 				iLevelIndex,
 				asset.pPrototypeTag,

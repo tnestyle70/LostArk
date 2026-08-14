@@ -21,6 +21,17 @@ namespace
 	constexpr float MOVE_STOP_DISTANCE = 0.05f;
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
 	constexpr float DEGREES_TO_RADIANS = 0.01745329251994329577f;
+	constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
+	constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
+
+	float Wrap_Degrees(float degrees)
+	{
+		while (degrees > 180.f)
+			degrees -= 360.f;
+		while (degrees < -180.f)
+			degrees += 360.f;
+		return degrees;
+	}
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 
@@ -57,6 +68,49 @@ namespace
 	{
 		return 0u != candidate &&
 			static_cast<std::int32_t>(candidate - previous) > 0;
+	}
+
+	void Smooth_MovePath(
+		const CServerNavigation& navigation,
+		const float startX,
+		const float startZ,
+		const float goalX,
+		const float goalZ,
+		std::vector<SERVER_NAV_POINT>& path)
+	{
+		if (path.empty())
+			return;
+		SERVER_NAV_POINT exactGoal{};
+		if (navigation.Sample_Position(goalX, goalZ, exactGoal) &&
+			navigation.Has_LineOfSight(
+				path.back().x, path.back().z, goalX, goalZ))
+		{
+			path.back() = exactGoal;
+		}
+		std::vector<SERVER_NAV_POINT> smoothed;
+		smoothed.reserve(path.size());
+		float fromX = startX;
+		float fromZ = startZ;
+		std::size_t index = 0;
+		while (index < path.size())
+		{
+			std::size_t visible = index;
+			for (std::size_t candidate = path.size();
+				candidate > index + 1; --candidate)
+			{
+				const SERVER_NAV_POINT& point = path[candidate - 1];
+				if (navigation.Has_LineOfSight(fromX, fromZ, point.x, point.z))
+				{
+					visible = candidate - 1;
+					break;
+				}
+			}
+			smoothed.push_back(path[visible]);
+			fromX = path[visible].x;
+			fromZ = path[visible].z;
+			index = visible + 1;
+		}
+		path = std::move(smoothed);
 	}
 
 	WORLD_ENTITY_KIND To_NetworkKind(const WORLD_BOOTSTRAP_KIND kind)
@@ -266,8 +320,49 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 	}
 
 	std::scoped_lock lock{ m_CommandMutex };
+	if (!m_acceptsCommands)
+		return false;
 	m_InboundCommands.push_back(std::move(command));
 	return true;
+}
+
+bool LostArk::Server::CGameRoom::Try_SealPrivateArenaForRetirement()
+{
+	using LostArk::Shared::WORLD_ID;
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId)
+		return false;
+
+	// Gameplay containers are room-thread-owned. The mutex makes the empty
+	// decision atomic against every receive-thread Enqueue call.
+	std::scoped_lock lock{ m_CommandMutex };
+	if (!m_acceptsCommands)
+		return true;
+	if (!m_InboundCommands.empty() ||
+		!m_PendingWorldTransfers.empty() ||
+		!m_Sessions.empty() ||
+		!m_Players.empty() ||
+		!m_PlayerIdBySessionId.empty() ||
+		!m_PlayerIdByEntityId.empty())
+	{
+		return false;
+	}
+	m_acceptsCommands = false;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Commit_WorldTransferDeparture(
+	const SESSION_ID sessionId)
+{
+	if (!m_isReady || !m_PlayerIdBySessionId.contains(sessionId))
+		return false;
+
+	// CServerApp invokes this on the room thread after staging the target
+	// REGISTER/ENTER commands. The target cannot process them until this call
+	// has cleared the old CClientSession player binding.
+	Leave(
+		sessionId,
+		LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
+	return !m_PlayerIdBySessionId.contains(sessionId);
 }
 
 bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
@@ -309,6 +404,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			break;
 		case ROOM_COMMAND_TYPE::RELEASE_SKILL:
 			Handle_ReleaseSkill(command.iSessionId, command.ReleaseSkill);
+			break;
+		case ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM:
+			Handle_UpdateSkillAim(command.iSessionId, command.UpdateSkillAim);
 			break;
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
@@ -380,10 +478,16 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
 			continue;
-		Leave(
-			transfer.iSessionId,
-			LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
-		m_PendingWorldTransfers.push_back(std::move(transfer));
+		const bool alreadyStaged = std::any_of(
+			m_PendingWorldTransfers.begin(),
+			m_PendingWorldTransfers.end(),
+			[sessionId = transfer.iSessionId](
+				const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == sessionId;
+			});
+		if (!alreadyStaged)
+			m_PendingWorldTransfers.push_back(std::move(transfer));
 	}
 	m_SpawnGroupRuntime.Update(
 		fixedDeltaSeconds,
@@ -429,17 +533,28 @@ bool LostArk::Server::CGameRoom::Join(
 	using namespace LostArk::Shared;
 
 	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
-	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
 	if (nullptr == session || !Is_Valid_EnterWorld(enterWorld) ||
 		enterWorld.eWorldId != m_eWorldId ||
 		m_PlayerIdBySessionId.contains(sessionId) ||
 		m_Players.size() >= MAX_WORLD_SNAPSHOT_PLAYERS ||
-		nullptr == spawn ||
 		m_iNextPlayerId == INVALID_PLAYER_ID ||
 		m_iNextNetEntityId == INVALID_NET_ENTITY_ID)
 	{
 		if (nullptr != session)
 			session->Request_Close();
+		return false;
+	}
+	if (Is_PlayerAdmissionFull())
+	{
+		Send_EnterRejected(
+			session, ENTER_WORLD_REJECTION_REASON::ROOM_FULL);
+		session->Request_Close();
+		return false;
+	}
+	const WORLD_BOOTSTRAP_PLACEMENT* spawn = Find_AvailablePlayerSpawn();
+	if (nullptr == spawn)
+	{
+		session->Request_Close();
 		return false;
 	}
 
@@ -578,9 +693,10 @@ void LostArk::Server::CGameRoom::Leave(
 		<< ", SessionId=" << sessionId
 		<< ", RoomPlayers=" << m_Players.size() << '\n';
 
-	if (!Reset_CharacterSelectArenaWhenEmpty())
+	if (!Reset_ReplayableArenaWhenEmpty())
 	{
-		std::cerr << "Character Select arena reset failed: "
+		std::cerr << "Replayable arena reset failed. World="
+			<< static_cast<unsigned>(m_eWorldId) << ", Status="
 			<< m_strStatus << '\n';
 	}
 	if (!Reset_ValtanArenaWhenEmpty())
@@ -636,6 +752,13 @@ void LostArk::Server::CGameRoom::Handle_Move(
 			player.hasMoveGoal = false;
 			return;
 		}
+		Smooth_MovePath(
+			m_ServerNavigation,
+			player.fPositionX,
+			player.fPositionZ,
+			move.fGoalX,
+			move.fGoalZ,
+			player.MovePath);
 		const SERVER_NAV_POINT& goal = player.MovePath.back();
 		player.fMoveGoalX = goal.x;
 		player.fMoveGoalZ = goal.z;
@@ -773,6 +896,27 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 	m_PlayerSkillSystem.Release(
 		playerIter->second,
 		releaseSkill,
+		m_GameplayCatalog);
+}
+
+void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_UPDATE_SKILL_AIM& updateSkillAim)
+{
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+	{
+		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
+			session->Request_Close();
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	m_PlayerSkillSystem.Update_Aim(
+		playerIter->second,
+		updateSkillAim,
 		m_GameplayCatalog);
 }
 
@@ -1328,6 +1472,20 @@ bool LostArk::Server::CGameRoom::Send_Accepted(
 		session->Send_Frame(PACKET_TYPE::S2C_ENTER_ACCEPTED, writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_EnterRejected(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::ENTER_WORLD_REJECTION_REASON reason)
+{
+	using namespace LostArk::Shared;
+	S2C_ENTER_REJECTED message{};
+	message.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	message.eWorldId = m_eWorldId;
+	message.eReason = reason;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(PACKET_TYPE::S2C_ENTER_REJECTED, writer.Get_Buffer());
+}
+
 bool LostArk::Server::CGameRoom::Send_Spawned(
 	const std::shared_ptr<CClientSession>& session,
 	const SERVER_PLAYER& player)
@@ -1698,6 +1856,11 @@ void LostArk::Server::CGameRoom::Rollback_Join(const SESSION_ID sessionId)
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
 }
 
+bool LostArk::Server::CGameRoom::Is_PlayerAdmissionFull() const
+{
+	return nullptr == Find_AvailablePlayerSpawn();
+}
+
 const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
 LostArk::Server::CGameRoom::Find_AvailablePlayerSpawn() const
 {
@@ -1833,13 +1996,21 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 	return true;
 }
 
-bool LostArk::Server::CGameRoom::Reset_CharacterSelectArenaWhenEmpty()
+bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 {
 	using LostArk::Shared::WORLD_ID;
-	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId || !m_Players.empty())
+	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
+		WORLD_ID::VALTAN_ARENA != m_eWorldId) || !m_Players.empty())
 		return true;
 
 	std::string resetStatus;
+	if (!m_ServerTriggerSystem.Initialize(
+		m_WorldBootstrap.Get_Placements(), resetStatus))
+	{
+		m_strStatus = std::move(resetStatus);
+		m_isReady = false;
+		return false;
+	}
 	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, resetStatus))
 	{
 		m_strStatus = std::move(resetStatus);
@@ -1852,7 +2023,7 @@ bool LostArk::Server::CGameRoom::Reset_CharacterSelectArenaWhenEmpty()
 		return false;
 	}
 	m_TickDamageEvents.clear();
-	m_strStatus = "Character Select arena reset after the room became empty";
+	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
 }
 
@@ -2359,17 +2530,56 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		float proposedZ = targetZ;
 		if (!reachedPathPoint)
 		{
-			player.fYawDegrees =
+			const float desiredYaw =
 				std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+			const float yawDifference =
+				Wrap_Degrees(desiredYaw - player.fYawDegrees);
+			const float maxYawStep =
+				PLAYER_TURN_DEGREES_PER_SECOND * fixedDeltaSeconds;
+			if (distance <= DIRECT_BEARING_DISTANCE ||
+				std::abs(yawDifference) <= maxYawStep)
+			{
+				player.fYawDegrees = desiredYaw;
+			}
+			else
+			{
+				player.fYawDegrees = Wrap_Degrees(player.fYawDegrees +
+					(yawDifference > 0.f ? maxYawStep : -maxYawStep));
+			}
 			const float moveDistance = (std::min)(
 				player.fMoveSpeed * Resolve_StanceMoveSpeedScale(player) *
 					fixedDeltaSeconds,
 				distance);
 			const float moveRatio = moveDistance / distance;
-			proposedX = player.fPositionX + deltaX * moveRatio;
+			float stepX = deltaX * moveRatio;
+			float stepZ = deltaZ * moveRatio;
+			if (player.fYawDegrees != desiredYaw)
+			{
+				const float headingRadians =
+					player.fYawDegrees / RADIANS_TO_DEGREES;
+				const float headingStepX =
+					std::sin(headingRadians) * moveDistance;
+				const float headingStepZ =
+					std::cos(headingRadians) * moveDistance;
+				SERVER_NAV_POINT walkable{};
+				if (!m_ServerNavigation.Is_Loaded() ||
+					m_ServerNavigation.Sample_Position(
+						player.fPositionX + headingStepX,
+						player.fPositionZ + headingStepZ,
+						walkable))
+				{
+					stepX = headingStepX;
+					stepZ = headingStepZ;
+				}
+				else
+				{
+					player.fYawDegrees = desiredYaw;
+				}
+			}
+			proposedX = player.fPositionX + stepX;
 			proposedY = player.fPositionY +
 				(targetY - player.fPositionY) * moveRatio;
-			proposedZ = player.fPositionZ + deltaZ * moveRatio;
+			proposedZ = player.fPositionZ + stepZ;
 		}
 
 		float resolvedX = player.fPositionX;

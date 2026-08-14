@@ -7,7 +7,7 @@
       "visualAssetId": "VALTAN_MN_RPBF_01",
       "bodyModel": "Character/Valtan/MN_RPBF_01.wmodel",
       "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
-      "animationSetId": "ANIM_MN_RPBF_01",
+      "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
       "serverProfileId": "boss.valtan.server.v1",
       "clientPresentationId": "boss.valtan.client.v1",
       "presentationStatus": "complete",

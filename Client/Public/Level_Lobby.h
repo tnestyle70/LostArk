@@ -42,6 +42,7 @@ private:
 		LOBBY_COMMAND_PURPOSE purpose,
 		LostArk::Shared::WORLD_ID& outWorldId,
 		LEVEL& outTargetLevel) const;
+	void Consume_EnterRejected();
 	void Consume_EnterAccepted();
 	void Cancel_PendingEntry(const string& reason);
 	void Render_StagePanel();

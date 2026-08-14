@@ -98,6 +98,17 @@ namespace
 		return true;
 	}
 	//플레이어 스폰
+	bool Build_EnterRejectedPayload(
+		const S2C_ENTER_REJECTED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
+
 	bool Build_PlayerSpawnedPayload(
 		const S2C_PLAYER_SPAWNED& message,
 		std::vector<std::uint8_t>& payload)
@@ -352,6 +363,76 @@ namespace
 			"Consume Entire Accepted Payload");
 	}
 	//플레이어 위치 
+	void Test_EnterRejectedRoundTrip(TEST_RUNNER& testRunner)
+	{
+		S2C_ENTER_REJECTED source{};
+		source.eWorldId = WORLD_ID::VALTAN_ARENA;
+		source.eReason = ENTER_WORLD_REJECTION_REASON::ROOM_FULL;
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_EnterRejectedPayload(source, payload) && 5u == payload.size(),
+			"Writer Enter Rejected Room Full");
+
+		CPacketReader reader{ payload };
+		S2C_ENTER_REJECTED decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
+			decoded.eWorldId == WORLD_ID::VALTAN_ARENA &&
+			decoded.eReason == ENTER_WORLD_REJECTION_REASON::ROOM_FULL &&
+			0u == reader.Get_RemainingSize(),
+			"Enter Rejected Room Full Round Trip");
+		testRunner.Require(
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_ENTER_REJECTED),
+			"Register Enter Rejected Packet Type");
+
+		S2C_ENTER_REJECTED invalid = source;
+		invalid.eReason = ENTER_WORLD_REJECTION_REASON::END;
+		CPacketWriter invalidReasonWriter;
+		testRunner.Require(
+			!Write_Message(invalidReasonWriter, invalid),
+			"Reject Unknown Enter Rejection Reason From Writer");
+		invalid = source;
+		invalid.eWorldId = WORLD_ID::END;
+		CPacketWriter invalidWorldWriter;
+		testRunner.Require(
+			!Write_Message(invalidWorldWriter, invalid),
+			"Reject Unknown Enter Rejection World From Writer");
+		invalid = source;
+		invalid.iProtocolVersion = NETWORK_PROTOCOL_VERSION + 1u;
+		CPacketWriter invalidProtocolWriter;
+		testRunner.Require(
+			!Write_Message(invalidProtocolWriter, invalid),
+			"Reject Enter Rejection Protocol Mismatch From Writer");
+
+		CPacketWriter unknownReasonPayload;
+		unknownReasonPayload.Write_U16(NETWORK_PROTOCOL_VERSION);
+		unknownReasonPayload.Write_U16(
+			static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+		unknownReasonPayload.Write_U8(
+			static_cast<std::uint8_t>(ENTER_WORLD_REJECTION_REASON::END));
+		CPacketReader unknownReasonReader{ unknownReasonPayload.Get_Buffer() };
+		S2C_ENTER_REJECTED unchanged{};
+		unchanged.iProtocolVersion = 77u;
+		unchanged.eWorldId = WORLD_ID::BERN;
+		unchanged.eReason = ENTER_WORLD_REJECTION_REASON::ROOM_FULL;
+		testRunner.Require(
+			!Read_Message(unknownReasonReader, unchanged) &&
+			77u == unchanged.iProtocolVersion &&
+			WORLD_ID::BERN == unchanged.eWorldId &&
+			ENTER_WORLD_REJECTION_REASON::ROOM_FULL == unchanged.eReason,
+			"Reject Unknown Enter Rejection Reason Without Mutation");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			77u == unchanged.iProtocolVersion &&
+			WORLD_ID::BERN == unchanged.eWorldId &&
+			ENTER_WORLD_REJECTION_REASON::ROOM_FULL == unchanged.eReason,
+			"Reject Truncated Enter Rejection Without Mutation");
+	}
+
 	void Test_F32RoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -1285,6 +1366,65 @@ namespace
 			"Failed Release Does Not Mutate");
 	}
 
+	void Test_UpdateSkillAimRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_UPDATE_SKILL_AIM source{};
+		source.iClientSequence = 14;
+		source.iSkillId = 34590;
+		source.fAimX = 148.5f;
+		source.fAimZ = -119.25f;
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source),
+			"Writer Update Skill Aim");
+		std::vector<std::uint8_t> payload = writer.Get_Buffer();
+		testRunner.Require(
+			16 == payload.size(),
+			"Update Skill Aim Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_UPDATE_SKILL_AIM decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSkillId == source.iSkillId &&
+			decoded.fAimX == source.fAimX &&
+			decoded.fAimZ == source.fAimZ &&
+			0 == reader.Get_RemainingSize(),
+			"Update Skill Aim Round Trip");
+
+		C2S_UPDATE_SKILL_AIM invalidSkill = source;
+		invalidSkill.iSkillId = INVALID_SKILL_ID;
+		CPacketWriter invalidSkillWriter;
+		testRunner.Require(
+			!Write_Message(invalidSkillWriter, invalidSkill),
+			"Reject Aim Update Without Skill ID");
+
+		C2S_UPDATE_SKILL_AIM invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter invalidSequenceWriter;
+		testRunner.Require(
+			!Write_Message(invalidSequenceWriter, invalidSequence),
+			"Reject Aim Update Without Sequence");
+
+		C2S_UPDATE_SKILL_AIM invalidAim = source;
+		invalidAim.fAimX = std::numeric_limits<float>::quiet_NaN();
+		CPacketWriter invalidAimWriter;
+		testRunner.Require(
+			!Write_Message(invalidAimWriter, invalidAim),
+			"Reject Aim Update With Non-Finite Aim");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_UPDATE_SKILL_AIM unchanged{};
+		unchanged.iClientSequence = 66;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			66 == unchanged.iClientSequence,
+			"Failed Aim Update Does Not Mutate");
+	}
+
 	void Test_RevivePlayerRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_REVIVE_PLAYER source{};
@@ -1560,12 +1700,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			17u == NETWORK_PROTOCOL_VERSION &&
+			19u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V17 Packet Types");
+			"World Destruction Protocol V19 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2073,6 +2213,7 @@ int main()
 
 	Test_EnterAcceptedRoundTrip(testRunner);
 	Test_InvalidEnterAcceptedPayloads(testRunner);
+	Test_EnterRejectedRoundTrip(testRunner);
 
 	Test_F32RoundTrip(testRunner);
 	Test_PlayerSpawnedRoundTrip(testRunner);
@@ -2084,6 +2225,7 @@ int main()
 	Test_MoveRoundTrip(testRunner);
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
+	Test_UpdateSkillAimRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);

@@ -1762,7 +1762,14 @@ bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 				file << ", ";
 			Write_String(file, slot.AnimationFrames[frameIndex]);
 		}
-		file << "] }\n    }";
+		file << "] }";
+		if (!slot.strKeyframeAnimationPath.empty())
+		{
+			file << ",\n      \"keyframeAnimationPath\": ";
+			Write_String(file, slot.strKeyframeAnimationPath);
+			file << ",\n      \"keyframeAnimationScale\": " << slot.fKeyframeAnimationScale;
+		}
+		file << "\n    }";
 		if (slotIndex + 1u != m_Slots.size())
 			file << ',';
 		file << '\n';
@@ -1888,7 +1895,7 @@ bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 		if (nullptr == pId || !Is_ValidIdentifier(pId->Get_String()) ||
 			!slotSet.insert(pId->Get_String()).second || nullptr == pOwner ||
 			!Read_Integer(slotValue, "type", type, 0,
-				static_cast<int32_t>(SLOT_TYPE::ITEM)) ||
+				static_cast<int32_t>(SLOT_TYPE::KEYFRAME_ANIMATION)) ||
 			nullptr == pRect || nullptr == pStages || nullptr == pLayers ||
 			pLayers->Get_Array().size() > 32u || nullptr == pShine ||
 			nullptr == pAnimation)
@@ -2029,6 +2036,34 @@ bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 			}
 			slot.AnimationFrames.push_back(frame.Get_String());
 		}
+
+		/* Optional: only KEYFRAME_ANIMATION slots carry this. Round-tripped as-is (not required,
+		not defaulted away) so Save() below does not drop it out from under CHUDRuntimeView. */
+		if (const DATA_JSON_VALUE* pKeyframePath = slotValue.Find("keyframeAnimationPath"))
+		{
+			if (pKeyframePath->Is_String())
+			{
+				if (!Is_SafeUIResourceId(pKeyframePath->Get_String()))
+				{
+					m_strDataStatus = "JSON keyframeAnimationPath rejected";
+					return false;
+				}
+				slot.strKeyframeAnimationPath = pKeyframePath->Get_String();
+			}
+			else if (!pKeyframePath->Is_Null())
+			{
+				m_strDataStatus = "JSON keyframeAnimationPath must be string or null";
+				return false;
+			}
+		}
+		if (!slot.strKeyframeAnimationPath.empty() &&
+			!Read_Number(slotValue, "keyframeAnimationScale",
+				slot.fKeyframeAnimationScale, 0.01f, 100.f))
+		{
+			m_strDataStatus = "JSON keyframeAnimationScale rejected";
+			return false;
+		}
+
 		stagedSlots.push_back(move(slot));
 	}
 

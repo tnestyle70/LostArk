@@ -2294,12 +2294,18 @@ try {
 		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
 		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
-		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 15' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 19' -and
+		$packetTypeSource -match 'S2C_ENTER_REJECTED' -and
 		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
 		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
 		$gameRoomSource -match 'Apply_CharacterClassChange' -and
 		$gameRoomSource -match 'snapshot\.eCharacterClass = player\.eCharacterClass' -and
 		$networkManagerSource -match 'S2C_CHARACTER_CLASS_CHANGE_RESULT' -and
+		$networkManagerSource -match 'Try_Consume_EnterRejected' -and
+		$networkManagerSource -match 'case PACKET_TYPE::S2C_ENTER_REJECTED' -and
+		$lobbySource -match 'Consume_EnterRejected\(\);' -and
+		$lobbySource -match 'Try_Consume_EnterRejected' -and
+		$lobbySource -match 'Valtan raid is full \(4/4\)' -and
 		$replicationSource -match 'Replace_CharacterClass' -and
 		$replicationSource -match 'RECOVERED_FAILURE' -and
 		$playerControllerSourceForClassSwitch -match 'Rebind_LocalCharacter' -and
@@ -3071,7 +3077,7 @@ try {
         $spawnGroupPublisherSource -match 'SpawnGroups\.world\.json' -and
 		$spawnGroupPublisherSource -match 'spawngroupsbootstrap' -and
 		$gameRoomSource -match 'WORLD_ENTITY_SPAWN_RESULT::ACTIVATED' -and
-		$gameRoomSource -match 'Reset_CharacterSelectArenaWhenEmpty' -and
+		$gameRoomSource -match 'Reset_ReplayableArenaWhenEmpty' -and
 		$spawnGroupRuntimeSource -match 'Activate_Immediate' -and
 		$replicationSource -match 'Set_CombatColliderDebugVisible') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
     Add-Check 'world.publish-cleanup' ($staleWorldPublishFiles.Count -eq 0) "stale=$($staleWorldPublishFiles.Name -join ',')"
@@ -3185,11 +3191,14 @@ try {
 		'Valtan entry protection and same-position revive remain Server-authoritative and Balance Tool-addressable'
 	Add-Check 'ui.combat-font-hud-contract' (
 		$mainAppSource -match 'RenderCombatHUDText' -and
+		$mainAppSource -match 'RenderBossHealthBar' -and
+		$mainAppSource -match 'AddRectFilled' -and
 		$mainAppSource -match 'Font_YG330' -and
-		$mainAppSource -match 'iMaximumHealthBars' -and
+		$mainAppSource -notmatch 'const wstring name = Utf8ToWide\(boss\.strDisplayName\)' -and
+		$mainAppSource -notmatch 'const wstring bars = std::to_wstring\(currentHealthBar\)' -and
 		$mainAppSource -notmatch 'ImGui::ProgressBar' -and
 		$mainAppSource -notmatch '##RuntimeCombatHUD') `
-		'player HP/Mana and Valtan HP/bar text use Font Manager after the authored HUD without the old ImGui meter window'
+		'player HP/Mana and one Valtan health bar with current/max text render after the authored HUD'
 
     $report = [ordered]@{
         schema = 'lostark.project-audit-report'

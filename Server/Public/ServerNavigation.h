@@ -54,6 +54,15 @@ namespace LostArk::Server
 		bool Has_Condition(const std::string& conditionId) const;
 		bool Is_PointWalkableExact(float x, float z) const;
 		std::uint64_t Get_Revision() const noexcept { return m_iRevision; }
+		bool Sample_Position(
+			float x,
+			float z,
+			SERVER_NAV_POINT& outPoint) const;
+		bool Has_LineOfSight(
+			float startX,
+			float startZ,
+			float endX,
+			float endZ) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
 		const std::string& Get_Status() const { return m_strStatus; }

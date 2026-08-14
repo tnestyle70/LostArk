@@ -99,6 +99,7 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 	if (CLobbyCommandService::Try_Consume(command))
 		Begin_StageRequest(command);
 
+	Consume_EnterRejected();
 	Consume_EnterAccepted();
 
 	if (ENTRY_STATE::WAITING_FOR_APPROVAL == m_eEntryState)
@@ -125,6 +126,32 @@ HRESULT CLevel_Lobby::Render()
 
 	Render_StagePanel();
 	return S_OK;
+}
+
+void CLevel_Lobby::Consume_EnterRejected()
+{
+	using namespace LostArk::Shared;
+	S2C_ENTER_REJECTED rejected{};
+	if (!CNetworkManager::Get().Try_Consume_EnterRejected(rejected))
+		return;
+
+	if (ENTRY_STATE::WAITING_FOR_APPROVAL != m_eEntryState ||
+		NETWORK_PROTOCOL_VERSION != rejected.iProtocolVersion ||
+		rejected.eWorldId != m_ePendingWorldId ||
+		ENTER_WORLD_REJECTION_REASON::ROOM_FULL != rejected.eReason)
+	{
+		Cancel_PendingEntry("Server returned an invalid world-entry rejection.");
+		return;
+	}
+
+	if (WORLD_ID::VALTAN_ARENA == rejected.eWorldId)
+	{
+		Cancel_PendingEntry(
+			"Valtan raid is full (4/4). Lobby remains active.");
+		return;
+	}
+
+	Cancel_PendingEntry("The selected world is full. Lobby remains active.");
 }
 
 bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_COMMAND& command)

@@ -51,6 +51,12 @@ namespace LostArk::Server
 			return m_strStatus;
 		}
 
+		// Room thread only. A sealed private arena rejects every later command.
+		[[nodiscard]] bool Try_SealPrivateArenaForRetirement();
+		// Room thread only. Removes the source player before the target room can
+		// process its queued ENTER_WORLD and bind the same session again.
+		[[nodiscard]] bool Commit_WorldTransferDeparture(SESSION_ID sessionId);
+
 	private:
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
@@ -68,6 +74,9 @@ namespace LostArk::Server
 		void Handle_ReleaseSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RELEASE_SKILL& releaseSkill);
+		void Handle_UpdateSkillAim(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_UPDATE_SKILL_AIM& updateSkillAim);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
@@ -102,6 +111,9 @@ namespace LostArk::Server
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_PLAYER& player);
+		bool Send_EnterRejected(
+			const std::shared_ptr<CClientSession>& session,
+			LostArk::Shared::ENTER_WORLD_REJECTION_REASON reason);
 		bool Send_Spawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_PLAYER& player);
@@ -152,6 +164,7 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> Find_Session(
 			SESSION_ID sessionId) const;
 		void Rollback_Join(SESSION_ID sessionId);
+		[[nodiscard]] bool Is_PlayerAdmissionFull() const;
 		const WORLD_BOOTSTRAP_PLACEMENT* Find_AvailablePlayerSpawn() const;
 		const WORLD_BOOTSTRAP_PLACEMENT* Find_Placement(
 			const std::string& placementId) const;
@@ -160,7 +173,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
-		bool Reset_CharacterSelectArenaWhenEmpty();
+		bool Reset_ReplayableArenaWhenEmpty();
 		bool Reset_ValtanArenaWhenEmpty();
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
@@ -202,6 +215,7 @@ namespace LostArk::Server
 	private:
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
