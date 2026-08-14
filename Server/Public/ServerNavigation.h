@@ -65,6 +65,7 @@ namespace LostArk::Server
 			float endZ) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
+		float Get_CellSize() const { return m_fCellSize; }
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:

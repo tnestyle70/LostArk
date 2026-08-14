@@ -270,11 +270,95 @@ void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 	}
 }
 
+void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
+	const CServerNavigation& navigation,
+	const float startX,
+	const float startZ,
+	const float desiredX,
+	const float desiredZ,
+	SERVER_NAV_POINT& outPoint,
+	bool& outWasClamped)
+{
+	outWasClamped = false;
+	SERVER_NAV_POINT start{};
+	if (!navigation.Sample_Position(startX, startZ, start))
+	{
+		/* Standing off the grid already; refuse the step rather than snap to a
+		cell the player never walked to. */
+		outWasClamped = true;
+		outPoint = { startX, outPoint.y, startZ };
+		return;
+	}
+
+	const float deltaX = desiredX - startX;
+	const float deltaZ = desiredZ - startZ;
+	const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+
+	/* Walk the whole segment in sub-cell increments. Testing the destination
+	alone is what lets a long dash cross a blocked band and call the open floor
+	behind it reachable, so every sample along the way has to answer, and the
+	first refusal is where the player stops. */
+	float reachableRatio = 0.f;
+	float blockedRatio = 1.f;
+	bool wasBlocked = false;
+	SERVER_NAV_POINT reachable = start;
+	const float cellSize = navigation.Get_CellSize();
+	constexpr int MAX_MARCH_SAMPLES = 256;
+	const int marchSamples = (cellSize > 0.f && distance > 0.f) ?
+		(std::min)(MAX_MARCH_SAMPLES,
+			static_cast<int>(distance / (cellSize * 0.5f)) + 1) : 1;
+	for (int sample = 1; sample <= marchSamples; ++sample)
+	{
+		const float ratio =
+			static_cast<float>(sample) / static_cast<float>(marchSamples);
+		const bool isLastSample = sample == marchSamples;
+		const float sampleX = isLastSample ? desiredX : startX + deltaX * ratio;
+		const float sampleZ = isLastSample ? desiredZ : startZ + deltaZ * ratio;
+		SERVER_NAV_POINT sampled{};
+		if (!navigation.Sample_Position(sampleX, sampleZ, sampled))
+		{
+			blockedRatio = ratio;
+			wasBlocked = true;
+			break;
+		}
+		reachableRatio = ratio;
+		reachable = sampled;
+	}
+
+	if (!wasBlocked)
+	{
+		outPoint = reachable;
+		return;
+	}
+
+	outWasClamped = true;
+	/* Bisect the one bracket that straddles the boundary so the stop lands
+	against the wall instead of up to half a cell short of it. */
+	constexpr int CLAMP_BISECTION_STEPS = 12;
+	for (int step = 0; step < CLAMP_BISECTION_STEPS; ++step)
+	{
+		const float midRatio = (reachableRatio + blockedRatio) * 0.5f;
+		SERVER_NAV_POINT sampled{};
+		if (navigation.Sample_Position(
+			startX + deltaX * midRatio, startZ + deltaZ * midRatio, sampled))
+		{
+			reachableRatio = midRatio;
+			reachable = sampled;
+		}
+		else
+		{
+			blockedRatio = midRatio;
+		}
+	}
+	outPoint = reachable;
+}
+
 void LostArk::Server::CPlayerSkillSystem::Update(
 	SERVER_PLAYER& player,
 	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
 	const CGameplayCatalog& catalog,
 	const CServerNavigation* navigation,
+	const CServerCollisionSystem* collision,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
@@ -383,20 +467,40 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.fSkillAimDirectionX * stepForward + rightX * stepLateral;
 		const float nextZ = player.fPositionZ +
 			player.fSkillAimDirectionZ * stepForward + rightZ * stepLateral;
-		SERVER_NAV_POINT projected{};
+		/* The clip keeps producing displacement after the player runs out of
+		floor, so each tick is clamped on its own instead of cancelling the
+		action: a later tick whose curve bends back inside moves again. */
+		SERVER_NAV_POINT reachable{ nextX, player.fPositionY, nextZ };
 		if (nullptr != navigation && navigation->Is_Loaded())
 		{
-			if (navigation->Project_Point(nextX, nextZ, projected))
-			{
-				player.fPositionX = nextX;
-				player.fPositionY = projected.y;
-				player.fPositionZ = nextZ;
-			}
+			bool wasClamped = false;
+			Clamp_StepToWalkable(
+				*navigation,
+				player.fPositionX,
+				player.fPositionZ,
+				nextX,
+				nextZ,
+				reachable,
+				wasClamped);
 		}
-		else
+		float resolvedX = reachable.x;
+		float resolvedY = reachable.y;
+		float resolvedZ = reachable.z;
+		bool wasBlocked = false;
+		if (nullptr == collision ||
+			collision->Resolve_PlayerMove(
+				player,
+				reachable.x,
+				reachable.y,
+				reachable.z,
+				resolvedX,
+				resolvedY,
+				resolvedZ,
+				wasBlocked))
 		{
-			player.fPositionX = nextX;
-			player.fPositionZ = nextZ;
+			player.fPositionX = resolvedX;
+			player.fPositionY = resolvedY;
+			player.fPositionZ = resolvedZ;
 		}
 	}
 
