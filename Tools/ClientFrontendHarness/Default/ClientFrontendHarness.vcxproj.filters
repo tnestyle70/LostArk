@@ -15,6 +15,27 @@
 	<ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraController.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\WorldDestructionProjectionDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\WorldDestructionDebrisPresentationDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\WorldDestructionProjectionRuntime.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\NetworkManager.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>

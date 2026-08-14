@@ -11,6 +11,9 @@
 
 #include "ImGuiLayer.h"
 
+#include <fstream>
+#include <iomanip>
+
 #define MAX_LOADSTRING 100
 
 // 전역 변수:
@@ -24,6 +27,39 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+namespace
+{
+    void WriteExitDiagnostic(const char* reason, const HRESULT result = S_OK)
+    {
+#ifdef _DEBUG
+        std::ofstream output(
+            "ClientExit.user.log",
+            std::ios::binary | std::ios::app);
+        if (!output)
+            return;
+
+        SYSTEMTIME time{};
+        ::GetLocalTime(&time);
+        output << std::setfill('0')
+            << time.wYear << '-'
+            << std::setw(2) << time.wMonth << '-'
+            << std::setw(2) << time.wDay << ' '
+            << std::setw(2) << time.wHour << ':'
+            << std::setw(2) << time.wMinute << ':'
+            << std::setw(2) << time.wSecond
+            << " reason=" << reason
+            << " hr=0x" << std::hex << std::uppercase
+            << static_cast<unsigned long>(result)
+            << std::dec
+            << " level=" << CGameInstance::Get().Get_CurrentLevelID()
+            << '\n';
+#else
+        UNREFERENCED_PARAMETER(reason);
+        UNREFERENCED_PARAMETER(result);
+#endif
+    }
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -47,22 +83,32 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // 애플리케이션 초기화를 수행합니다:
     if (!InitInstance (hInstance, nCmdShow))
     {
+        WriteExitDiagnostic("InitInstance failed", E_FAIL);
         return FALSE;
     }
 
     auto    pMainApp = CMainApp::Create();
     if (nullptr == pMainApp)
+    {
+        WriteExitDiagnostic("MainApp creation failed", E_FAIL);
         return 1;
+    }
 
     if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_Default"))))
+    {
+        WriteExitDiagnostic("Timer_Default creation failed", E_FAIL);
         return FALSE;
+    }
     if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_60"))))
+    {
+        WriteExitDiagnostic("Timer_60 creation failed", E_FAIL);
         return FALSE;
+    }
 
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CLIENT));
 
-    MSG msg;
+    MSG msg{};
 
     f32_t       fTimeAcc = {};
 
@@ -72,7 +118,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             if (WM_QUIT == msg.message)
+            {
+                WriteExitDiagnostic("WM_QUIT", S_OK);
                 break;
+            }
             if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
             {
                 TranslateMessage(&msg);
@@ -107,7 +156,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 pProfiler->End_Frame();
 
             if (FAILED(hRenderResult))
+            {
+                WriteExitDiagnostic("Render failed", hRenderResult);
                 break;
+            }
 
             fTimeAcc = 0.f;
         }        

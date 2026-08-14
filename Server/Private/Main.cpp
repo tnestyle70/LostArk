@@ -26,6 +26,7 @@ int main(const int argumentCount, char** arguments)
 	std::string bindAddress = "0.0.0.0";
 	bool hasSmokeTimeout = false;
 	bool hasBindAddress = false;
+	bool headless = false;
 	for (int index = 1; index < argumentCount; ++index)
 	{
 		const std::string_view argument(arguments[index]);
@@ -67,10 +68,21 @@ int main(const int argumentCount, char** arguments)
 			hasBindAddress = true;
 			continue;
 		}
+		if ("--headless" == argument)
+		{
+			if (headless)
+			{
+				std::cerr << "--headless may be specified only once.\n";
+				return 2;
+			}
+			headless = true;
+			continue;
+		}
 
-		std::cerr << "Usage: Server [--bind-address IPv4] [--smoke-timeout-ms 100..60000]\n";
+		std::cerr << "Usage: Server [--bind-address IPv4] [--headless] "
+			"[--smoke-timeout-ms 100..60000]\n";
 		return 2;
 	}
 	LostArk::Server::CServerApp serverApp;
-	return serverApp.Run(automaticShutdownMilliseconds, bindAddress);
+	return serverApp.Run(automaticShutdownMilliseconds, bindAddress, headless);
 }

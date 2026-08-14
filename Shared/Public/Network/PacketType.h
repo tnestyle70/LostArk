@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 16;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 17;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -92,7 +92,16 @@ namespace LostArk::Shared
 		S2C_CHAT,
 
 		S2C_PLAYER_DESPAWNED,
-		S2C_WORLD_ENTITY_DESPAWNED
+		S2C_WORLD_ENTITY_DESPAWNED,
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC,
+		S2C_WORLD_DESTRUCTION_DELTA,
+
+		// Debug Valtan pattern audition. Both configurations know these types so
+		// a Release Server answers an explicit rejection instead of closing the
+		// session on an unknown frame; only a Debug Server ever accepts one.
+		C2S_VALTAN_AUDITION_REQUEST,
+		S2C_VALTAN_AUDITION_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -129,6 +138,10 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_CHAT:
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
+		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+		case PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST:
+		case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
 			return true;
 		default:
 			return  false;

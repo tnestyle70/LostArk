@@ -1,14 +1,65 @@
 #include "NetworkManager.h"
 
+#include "DataJson.h"
+
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include <array>
 #include <cmath>
 #include <utility>
+
+namespace
+{
+#ifdef _DEBUG
+	std::string Resolve_DebugLocalServerHost()
+	{
+		constexpr char OVERRIDE_PATH[] = "LocalServerEndpoint.user.json";
+		std::ifstream input(OVERRIDE_PATH, std::ios::binary);
+		if (!input)
+			return {};
+
+		const std::string text(
+			(std::istreambuf_iterator<char>(input)),
+			std::istreambuf_iterator<char>());
+		if (text.empty() || text.size() > 1024u)
+			return {};
+
+		Client::DATA_JSON_VALUE root;
+		std::string error;
+		if (!Client::CDataJson::Parse(text, root, error) ||
+			!root.Is_Object() || 4u != root.Get_Object().size())
+		{
+			return {};
+		}
+
+		const Client::DATA_JSON_VALUE* schema = root.Find("schema");
+		const Client::DATA_JSON_VALUE* formatVersion =
+			root.Find("formatVersion");
+		const Client::DATA_JSON_VALUE* enabled = root.Find("enabled");
+		const Client::DATA_JSON_VALUE* host = root.Find("host");
+		if (nullptr == schema || !schema->Is_String() ||
+			"lostark.local-server-endpoint" != schema->Get_String() ||
+			nullptr == formatVersion || !formatVersion->Is_Number() ||
+			formatVersion->Was_FloatingPointToken() ||
+			1.0 != formatVersion->Get_Number() ||
+			nullptr == enabled || !enabled->Is_Boolean() ||
+			!enabled->Get_Boolean() ||
+			nullptr == host || !host->Is_String() ||
+			"127.0.0.1" != host->Get_String())
+		{
+			return {};
+		}
+
+		return host->Get_String();
+	}
+#endif
+}
 
 //Socket worker thread�� client main thread�� �и��ϱ� ���ؼ� �����Ѵ�.
 //workter thread -> byte ���Ű� frame ������ ����
@@ -24,6 +75,13 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	constexpr char DEFAULT_SERVER_HOST[] = "192.168.200.103";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
+#ifdef _DEBUG
+	if (const std::string localHost = Resolve_DebugLocalServerHost();
+		!localHost.empty())
+	{
+		return localHost;
+	}
+#endif
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
 		SERVER_HOST_ENVIRONMENT,
@@ -40,20 +98,10 @@ std::string CNetworkManager::Resolve_ServerHost()
 
 std::string CNetworkManager::Resolve_MapEditorServerHost()
 {
-	constexpr char MAP_EDITOR_HOST_ENVIRONMENT[] =
-		"LOSTARK_MAPEDITOR_SERVER_HOST";
-	char configuredHost[64]{};
-	const DWORD configuredLength = ::GetEnvironmentVariableA(
-		MAP_EDITOR_HOST_ENVIRONMENT,
-		configuredHost,
-		static_cast<DWORD>(std::size(configuredHost)));
-	if (0 == configuredLength ||
-		configuredLength >= std::size(configuredHost) ||
-		"0.0.0.0" == std::string_view{ configuredHost })
-	{
-		return Resolve_ServerHost();
-	}
-	return configuredHost;
+	// Test(Map Editor) and product worlds must enter through the same
+	// authoritative Server endpoint. Keep this compatibility entry point so
+	// existing lobby code cannot reintroduce a private loopback route.
+	return Resolve_ServerHost();
 }
 
 bool CNetworkManager::Initialize()
@@ -98,6 +146,13 @@ void CNetworkManager::Shutdown()
 //�� �����Ӹ��� main thread���� ȣ��
 void CNetworkManager::Update()
 {
+	if (m_hasProtocolFailure.load())
+	{
+		if (INVALID_SOCKET != m_hServerSocket)
+			Fail_Protocol(m_iLastErrorCode.load());
+		return;
+	}
+
 	//Inbound mutex ��� -> Worker�� ���� raw frame queue�� ���� queue�� swap
 	//mutex ���� -> frame�� ���� ������� handle_frame�� ����
 
@@ -117,6 +172,8 @@ void CNetworkManager::Update()
 	for (const auto& frame : receivedFrames)
 	{
 		Handle_Frame(frame);
+		if (m_hasProtocolFailure.load())
+			break;
 	}
 }
 
@@ -248,18 +305,9 @@ bool CNetworkManager::Connect_To_Server(
 	}
 
 	m_StreamParser.Reset();
-	m_ReplicationEvents.clear();
-	m_WorldEntitySpawnResults.clear();
-	m_CharacterClassChangeResults.clear();
-	m_hasPendingEnterAccepted = false;
-	m_PendingEnterAccepted = {};
-	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
-	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
-	m_eWorldId = LostArk::Shared::WORLD_ID::END;
-	m_eLocalCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
-	m_hasLocalSpawn = false;
-	m_LocalSpawn = {};
+	Reset_WorldInboundState();
 	m_iLastErrorCode.store(0);
+	m_hasProtocolFailure.store(false);
 	m_isReceiveRunning.store(true);
 	m_ReceiveThread = std::thread(
 		&CNetworkManager::Receive_Loop,
@@ -299,6 +347,9 @@ bool CNetworkManager::Send_EnterWorld(
 	if (!Send_All(frameBytes))
 		return false;
 
+	// The request is now committed to the socket. From this point only its
+	// future acceptance may establish a world; older room events are stale.
+	Reset_WorldInboundState();
 	m_eLocalCharacterClass = characterClass;
 	return true;
 }
@@ -437,6 +488,30 @@ bool CNetworkManager::Send_SpawnWorldEntity(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ValtanAudition(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
+	const std::uint32_t targetHealthBar)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_VALTAN_AUDITION_REQUEST message{};
+	message.iRequestSequence = requestSequence;
+	message.eOperation = operation;
+	message.iTargetHealthBar = targetHealthBar;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
 {
 	// ���� �ϳ��� �� ���� �Һ��Ͽ� Lobby�� ���� �������� Level�� �ߺ� ��ȯ���� �ʰ� �Ѵ�.
@@ -470,6 +545,16 @@ bool CNetworkManager::Try_Consume_CharacterClassChangeResult(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_ValtanAuditionResult(
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& message)
+{
+	if (m_ValtanAuditionResults.empty())
+		return false;
+	message = m_ValtanAuditionResults.front();
+	m_ValtanAuditionResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EVENT& event)
 {
 	if (m_ReplicationEvents.empty())
@@ -480,6 +565,54 @@ bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EV
 	event = std::move(m_ReplicationEvents.front());
 	m_ReplicationEvents.pop_front();
 	return true;
+}
+
+bool CNetworkManager::Enqueue_ReplicationEvent(
+	Client::CLIENT_REPLICATION_EVENT&& event)
+{
+	if (m_ReplicationEvents.size() >= MAX_REPLICATION_EVENT_QUEUE)
+	{
+		Fail_Protocol(WSAENOBUFS);
+		return false;
+	}
+	m_ReplicationEvents.push_back(std::move(event));
+	return true;
+}
+
+void CNetworkManager::Fail_Protocol(const int errorCode)
+{
+	m_iLastErrorCode.store(errorCode);
+	m_hasProtocolFailure.store(true);
+	m_isReceiveRunning.store(false);
+	const SOCKET socketToClose = m_hServerSocket;
+	m_hServerSocket = INVALID_SOCKET;
+	if (INVALID_SOCKET != socketToClose)
+	{
+		::shutdown(socketToClose, SD_BOTH);
+		::closesocket(socketToClose);
+	}
+	{
+		std::scoped_lock lock{ m_InboundMutex };
+		m_InboundFrames.clear();
+	}
+	m_StreamParser.Reset();
+	Reset_WorldInboundState();
+}
+
+void CNetworkManager::Reset_WorldInboundState()
+{
+	m_ReplicationEvents.clear();
+	m_WorldEntitySpawnResults.clear();
+	m_CharacterClassChangeResults.clear();
+	m_ValtanAuditionResults.clear();
+	m_hasPendingEnterAccepted = false;
+	m_PendingEnterAccepted = {};
+	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eWorldId = LostArk::Shared::WORLD_ID::END;
+	m_eLocalCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasLocalSpawn = false;
+	m_LocalSpawn = {};
 }
 
 void CNetworkManager::Close_ServerConnection()
@@ -503,18 +636,8 @@ void CNetworkManager::Close_ServerConnection()
 	}
 
 	m_StreamParser.Reset();
-	m_ReplicationEvents.clear();
-	m_WorldEntitySpawnResults.clear();
-	m_CharacterClassChangeResults.clear();
-	m_hasPendingEnterAccepted = false;
-	m_PendingEnterAccepted = {};
-	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
-	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
-	m_eWorldId = LostArk::Shared::WORLD_ID::END;
-	m_eLocalCharacterClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	m_hasLocalSpawn = false;
-	m_LocalSpawn = {};
+	Reset_WorldInboundState();
+	m_hasProtocolFailure.store(false);
 }
 
 bool CNetworkManager::Is_Connected() const
@@ -632,7 +755,13 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				std::scoped_lock lock{
 				   m_InboundMutex
 				};
-
+				if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
+				{
+					m_iLastErrorCode.store(WSAENOBUFS);
+					m_hasProtocolFailure.store(true);
+					m_isReceiveRunning.store(false);
+					return;
+				}
 				m_InboundFrames.push_back(
 					std::move(frame));
 			}
@@ -643,6 +772,9 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 
 void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 {
+	if (m_hasProtocolFailure.load())
+		return;
+
 	using namespace LostArk::Shared;
 
 	//frame�� payload ������ �д´�. packet - ������ ��� header�� payload - class,strName �̷��� 2���� ������
@@ -658,10 +790,18 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (!Read_Message(reader, accepted) ||
 			0 != reader.Get_RemainingSize())
 		{
-			m_iLastErrorCode.store(WSAEINVAL);
+			Fail_Protocol(WSAEINVAL);
 			return;
 		}
 
+		// Acceptance is the generation boundary. It intentionally drops every
+		// queued event that may have arrived for the previous room while the
+		// loading transition was pending. The requested class belongs to this
+		// new generation, so preserve it for the target Level loader.
+		const CHARACTER_CLASS_ID requestedCharacterClass =
+			m_eLocalCharacterClass;
+		Reset_WorldInboundState();
+		m_eLocalCharacterClass = requestedCharacterClass;
 		m_iLocalPlayerId = accepted.iPlayerId;
 		m_iLocalNetEntityId = accepted.iNetEntityId;
 		m_eWorldId = accepted.eWorldId;
@@ -696,7 +836,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
 		event.PlayerSpawned = std::move(spawned);
-		m_ReplicationEvents.push_back(std::move(event));
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
@@ -712,7 +852,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED;
 		event.WorldEntitySpawned = std::move(spawned);
-		m_ReplicationEvents.push_back(std::move(event));
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
@@ -728,7 +868,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED;
 		event.WorldEntityDespawned = despawned;
-		m_ReplicationEvents.push_back(std::move(event));
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
@@ -741,6 +881,18 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_WorldEntitySpawnResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
+	{
+		S2C_VALTAN_AUDITION_RESULT result{};
+		if (!Read_Message(reader, result) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		m_ValtanAuditionResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
@@ -778,7 +930,41 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT;
 		event.WorldSnapshot = std::move(snapshot);
-		m_ReplicationEvents.push_back(std::move(event));
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
+	{
+		S2C_WORLD_DESTRUCTION_FULL_SYNC sync{};
+		if (!Read_Message(reader, sync) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			WORLD_DESTRUCTION_FULL_SYNC;
+		event.WorldDestructionFullSync = std::move(sync);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+	{
+		S2C_WORLD_DESTRUCTION_DELTA delta{};
+		if (!Read_Message(reader, delta) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			WORLD_DESTRUCTION_DELTA;
+		event.WorldDestructionDelta = std::move(delta);
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	//player despawn
@@ -800,7 +986,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED;
 		event.PlayerDespawned = despawned;
-		m_ReplicationEvents.push_back(std::move(event));
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	default:

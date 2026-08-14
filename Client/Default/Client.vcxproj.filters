@@ -351,6 +351,24 @@
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ValtanCinematicCameraDocument.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldDestructionProjectionDocument.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldDestructionDebrisPresentationDocument.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldDestructionDebrisPresentationRuntime.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldDestructionProjectionRuntime.cpp">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Part_Body.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -633,6 +651,24 @@
     </ClInclude>
 	<ClInclude Include="..\Public\ActionPresentationTimeline.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ValtanCinematicCameraController.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ValtanCinematicCameraDocument.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldDestructionProjectionDocument.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldDestructionDebrisPresentationDocument.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldDestructionDebrisPresentationRuntime.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldDestructionProjectionRuntime.h">
+	  <Filter>01.Levels\04. ValtanArena</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\CharacterSpec.h">
       <Filter>02.GameObjects\00. Character</Filter>
@@ -985,9 +1021,12 @@
     <None Include="..\..\Data\Balance\PlayerSkills.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
-    <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
-      <Filter>96.DataFiles\Encounters</Filter>
-    </None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
+	  <Filter>96.DataFiles\Encounters</Filter>
+	</None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json">
+	  <Filter>96.DataFiles\Encounters</Filter>
+	</None>
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json">
       <Filter>96.DataFiles\Encounters</Filter>
     </None>
@@ -1043,6 +1082,9 @@
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.renderprofiles.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.shards.receipt.json">

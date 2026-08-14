@@ -338,8 +338,10 @@ bool_t CValtan::Apply_NetworkState(
 		m_pColliderCom->Update(XMMatrixTranslationFromVector(
 			m_pTransformCom->Get_State(STATE::POSITION)));
 	}
+	const bool_t presentationEdge =
+		m_iState != nextState || m_strServerActionId != actionId;
 	m_strServerActionId.assign(actionId);
-	if (m_iState != nextState && nullptr != m_pBodyModelCom)
+	if (presentationEdge && nullptr != m_pBodyModelCom)
 	{
 		const BOSS_ACTOR_ENTRY* pActor =
 			CActorCatalog::Find_Boss("BOSS_VALTAN");
@@ -369,7 +371,10 @@ bool_t CValtan::Apply_NetworkState(
 		default:
 			return false;
 		}
-		if (!m_pBodyModelCom->Set_Animation(pClip->c_str(), true))
+		const bool_t loop =
+			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE == action ||
+			LostArk::Shared::WORLD_ENTITY_ACTION::CHASE == action;
+		if (!m_pBodyModelCom->Set_Animation(pClip->c_str(), loop))
 			return false;
 	}
 	m_iState = nextState;

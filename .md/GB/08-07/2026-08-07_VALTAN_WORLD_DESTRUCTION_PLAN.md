@@ -576,6 +576,9 @@ instance를 연결한다.
       "mutationId": "mutation.valtan.wall.3705102.break",
       "patternId": "VALTAN_ARMOR_BREAK_OPENING",
       "stageId": "WALL_CHARGE",
+      "actionId": "valtan.mechanic.armor-break-opening.charge",
+      "impactSourceKind": "BODY_MOTION",
+      "sourceHitEventId": "",
       "triggerKind": "COLLISION_IMPACT",
       "offsetMs": 0,
       "receiverCollisionId": "collision.valtan.wall.3705102",
@@ -594,6 +597,13 @@ WD-G00은 현재 `DESTRUCTION_GROUP::eInitialState`, `Set_InitialState()`와 Map
 
 `receiverCollisionId`는 enabled `collisionBox`를 참조해야 하고 같은 group의
 `collisionPlacementIds` 안에 있어야 한다. 벽이 깨질 때 끌 collision을 free-text 이름으로 추측하지 않는다.
+`actionId`는 Encounter의 `(patternId, stageId)`가 소유한 action ID와 exact 일치해야 한다. 같은 stage 이름을
+재사용하거나 stale stage/action 조합이 남아도 binding을 발화하지 않는다.
+`impactSourceKind=BODY_MOTION`은 non-`NONE` stage motion과 빈 `sourceHitEventId`를 요구하고
+`BossProfiles.combatBodyCapsule`의 swept 이동만 receiver에 대조한다. `impactSourceKind=HIT_EVENT`는 같은
+stage의 non-empty `sourceHitEventId`를 정확히 하나 resolve하고 v2에서는 full 3D `CAPSULE` 또는
+`CAPSULE_TRACK` event만 receiver OBB에 대조한다. body charge와 weapon hit를 같은 이름의 action으로
+암묵 합치지 않는다.
 
 `.navblockers`의 condition은 arbitrary runtime expression으로 확장하지 않는다. 첫 계약은
 `conditionId == groupId`를 강제하고 `activateWhenConditionTrue`와 `navPolarity`의 의미를 publisher가
@@ -2115,3 +2125,983 @@ proxy 선택, spawn pose, 선속도와 각속도를 재현해야 한다. UI는 s
 향후 recipe를 데이터로 승격할 때는 `recipeId`, Resources-relative fragment asset IDs, piece count,
 spread angle, upward speed, speed/angular/visual scale range와 seed policy를 schema v2 또는 별도
 presentation catalog에 둔다. Prototype tag와 vector index는 저장하지 않는다.
+
+---
+
+## 14. 2026-08-13 발탄 AI 애니메이션·몸통/무기 충돌·벽 파괴 제품 수직 슬라이스
+
+이 절은 2026-08-13 현재 코드와 데이터를 다시 실측한 뒤 확정한 후속 구현 정본이다. 기존
+`WD-G06`, `WD-G07`, `WD-G08`, `WD-G10`의 목표를 폐기하지 않고, 그 목표 사이에서 빠져 있던
+Animation Tool 저작, action 단위 Client 재생, 승인된 Server 무기 궤적, 실제 강제 돌진과 벽 receiver
+충돌을 하나의 제품 경로로 닫는다.
+
+전투 shape/window/damage, Animation Tool writer, reviewed weapon track의 exact schema와 소유권은 더 늦게
+작성된 `.md/GB/08-09/2026-08-09_COMBAT_CAPSULE_COLLISION_F7_DEBUG_IMPLEMENTATION_PLAN.md`의
+14절 및 같은 이름 `DETAIL_PLAN.md`의 G02/G16/G17/G18을 단일 정본으로 따른다. 이 절은 그 계약을 복제하거나
+다른 JSON 이름으로 다시 만들지 않고 WorldDestruction과 연결하는 순서만 확정한다.
+
+이 절은 앞쪽 4.3~4.6과 WD-G05~G08에 남은 옛 파일명 가운데 `ValtanMotionProfiles.json`,
+`ValtanMotion.bootstrap`, `Publish-ValtanMotion.ps1`, `Publish-WorldRuntime.ps1`, 별도 `contentRevision`을
+구현 지시로 사용하지 않는다. 08-09 정본의 `ValtanEncounter.json` v4, `Gameplay.bootstrap`, 유일한 제품
+entry `Publish-BalanceRuntimeSet.ps1`, `RuntimeSet.balance.manifest`, `combatRuntimeRevision`으로 통합한다.
+이 통합 때문에 필요한 stage outcome union, WorldEvents v2 `actionId`, manifest v2 artifact/receipt 확장만
+이 절에서 명시적으로 추가하며 병렬 writer나 두 번째 revision 체계를 만들지 않는다.
+
+### 14.1 목표와 완료의 의미
+
+최종 제품 흐름은 다음 하나뿐이다.
+
+```text
+Server CValtanBrain이 pattern을 선택
+  -> patternSequence와 stage/action/startTick을 확정
+  -> Server가 authored kinematic motion과 몸통/무기 hit-event timeline을 30 Hz로 평가
+  -> Client는 같은 actionId의 authored clip chain을 같은 경과 시간으로 재생
+  -> Server swept body/weapon volume이 player 또는 stable wall receiver와 교차
+  -> player damage 또는 WorldDestruction binding을 Server가 한 번만 확정
+  -> BREAKING live event를 Client가 파편/효과로 표현
+  -> commitTick에 persistent wall state, collision, navigation, fall volume을 원자 전환
+  -> late join은 persistent state만 받고 과거 파편을 다시 재생하지 않음
+```
+
+여기서 `100% 완료`는 “Client 화면에서 도끼 선이 벽에 닿아 보인다”는 뜻이 아니다. 아래가 모두
+자동 검증되고 사용자가 마지막 시각 판정을 승인해야 한다.
+
+- Encounter에 있는 Valtan 31개 pattern, 115개 stage actionId가 빠짐없이 animation binding을 가진다.
+- 공격 판정이 없는 stage는 `hitEvents=[]`이고, 판정이 있는 각 pulse는 v4의 explicit `hitEventId` 하나로만
+  평가된다. legacy shape와 v4 event를 동시에 판정하지 않으며 authored multi-pulse만 여러 event를 갖는다.
+- 몸통/무기 volume의 Server 판정과 Client debug mirror가 같은 authored source revision을 사용한다.
+- `WALL_CHARGE`가 정지 타이머가 아니라 실제 Server 강제 이동이며 impact/no-impact 결과가 갈린다.
+- 잘못된 pattern, stage, action, receiver 조합은 벽을 파괴하지 않는다.
+- 첫 impact만 상태 전이를 만들고 같은 pattern sequence의 중복 충돌은 무시한다.
+- 벽 final state, collision, navigation, fall volume은 같은 `commitTick`에 원자적으로 바뀐다.
+- 두 Client와 late join Client가 같은 action 시간과 같은 벽 상태로 수렴한다.
+- 누락된 clip, bone/anchor, receiver, nav region, group member가 있으면 제품 publisher가 열리지 않는다.
+- 이미 승인·배포된 뒤 Client presentation 파일만 손상된 경우에는 해당 action 표현만 generic fallback으로
+  격리하고 Server boss spawn/gameplay는 유지한다. 반면 destruction core projection/revision 불일치는 보이지
+  않는 Server collision을 만들므로 Valtan Level activation을 fail-closed한다.
+
+### 14.2 현재 실측과 바로잡아야 할 오해
+
+#### 현재 있는 것
+
+- Engine `CCollider`는 AABB/OBB/Sphere의 Client component와 debug render를 제공한다.
+- Shared는 Engine/PhysX와 무관한 XZ circle/ring/cone/forward-box/cross overlap을 제공한다.
+- Server `CValtanBrain`은 pattern 선택, stage 순서, actionId, 정적 hit shape, damage를 30 Hz로 확정한다.
+- Shared `WORLD_ENTITY_SNAPSHOT`은 이미 `patternId`, `actionId`, `patternSequence`,
+  `patternStageIndex`, `actionStartTick`을 가진다.
+- Client Valtan body에는 현재 Server `collisionRadius`를 반영한 debug Sphere가 있다. 제품 전환에서는 08-09
+  G02의 `combatBodyCapsule`로 이관하고 이 legacy sphere/radius를 두 번째 정본으로 남기지 않는다.
+- Valtan weapon visual은 body skeleton의 `b_wp_r_01` socket을 사용한다.
+- `CAnimationTargetService`는 live cursor를 움직이지 않고 clip-local historical bone pose를 sample할 수 있다.
+- MapTool은 wall group과 PhysX debris audition, manual collision fire를 지원한다.
+
+#### 현재 없는 것
+
+- `WALL_CHARGE` 중 Server boss root 이동은 없다. 현재 1500 ms 정지 timer다.
+- Server는 skeleton, WModel, weapon bone을 읽지 않으며 weapon trajectory 데이터도 없다.
+- Shared에는 continuous swept capsule/segment 대 OBB와 Y 범위 계약이 없다.
+- Client는 정확한 actionId가 아니라 generic windup/active/recovery clip 여섯 개만 사용한다.
+- ACTIVE에서 다른 ACTIVE action으로 바뀌어도 generic state가 같으면 clip이 바뀌지 않을 수 있다.
+- Valtan Animation Tool preview는 `playback-only`라 action binding/weapon seed를 저장하거나 reviewed collider를
+  타임라인에 overlay할 수 없다.
+- `Gameplay.world.json`에는 Valtan wall receiver collisionBox가 0개다.
+- `ValtanWorldEvents.json`의 13개 binding은 전부 `STAGE_TIME`, `enabled=false`, receiver가 비어 있다.
+- `.navblockers`는 region count 0이고 Server publisher/runtime는 dynamic blocker를 소비하지 않는다.
+- Server/Shared/Client에는 persistent world destruction state와 full/delta/edge event가 없다.
+
+따라서 Client `CPart_Equipment`에 `CCollider`를 붙이고 `Intersect()` 결과로 벽을 숨기는 구현은 금지한다.
+그 구현은 Server 권위, 빠른 sweep, 두 Client 일치, late join, navigation을 모두 깨뜨린다. Client collider는
+Tool과 Development의 read-only debug mirror이고, 제품 판정은 Shared 수학과 Server runtime만 수행한다.
+
+### 14.3 책임과 데이터 정본
+
+#### `ValtanEncounter.json` v4와 Balance Tool
+
+AI 선택과 pattern stage 순서뿐 아니라 제품 hit/motion의 단일 writer다.
+
+```text
+Data/Encounters/Valtan/ValtanEncounter.json
+Data/Combat/ValtanHitTracks.json
+Data/Combat/ReactionProfiles.json
+```
+
+- pattern 선택 방식, 체력/거리/가중치
+- ordered `stageId`, semantic `actionId`, `durationMs`
+- `motion` discriminated union
+- explicit `hitEvents[]`의 window, anchor policy, shape, damage/reaction, hit budget
+- Balance Tool이 승인한 `AUTHORED_ROOT_LOCAL_TRACK`
+
+현재 v3의 legacy shape를 제품에서 함께 판정하는 fallback은 두지 않는다. explicit one-shot lossless converter와
+frozen parity fixture로 v4를 만들고, `hitShape=NONE`은 `hitEvents=[]`, 기존 multi-pulse는 stable event 여러 개로
+펼친다. converter만 v3를 읽고 final Balance Tool/publisher/Server runtime은 v4만 허용한다. Animation Tool과
+Effect Tool은 이 값을 read-only overlay로만 표시하고 collider 크기, damage, target 정책을 저장하지 않는다.
+
+#### `BossProfiles.json` v4의 몸통 collider
+
+발탄 root-follow 몸통 volume의 단일 writer는 08-09 G02 정본의 다음 object다.
+
+```json
+{
+  "combatBodyCapsule": {
+    "radius": 3.0,
+    "cylinderHalfHeight": 3.0,
+    "centerOffsetY": 6.0
+  }
+}
+```
+
+top-level `collisionRadius`는 schema migration과 함께 제거한다. Server player overlap, static/nav sweep과
+WorldDestruction의 `BODY_MOTION` receiver query가 모두 이 vertical capsule을 사용한다. Client F7/Animation
+Tool은 같은 approved profile의 read-only mirror만 그린다. stage `hitEvents`의 damage shape와 몸통 이동
+collision을 하나로 재해석하지 않는다. 무기 volume은 `ValtanHitTracks.json`의 reviewed capsule track만 쓰므로
+몸통과 무기의 크기·창·권위가 분리된다.
+
+#### `Valtan.patternbindings.json`
+
+Animation Tool이 쓰는 Client presentation 정본은 다음 기존 계획 경로와 schema를 그대로 사용한다.
+
+```text
+Data/Animation/Authored/Valtan/Valtan.patternbindings.json
+schema = lostark.valtan-pattern-bindings, formatVersion = 1
+```
+
+`actionId -> ordered clips + presentation cues`를 저장한다. `patternId`, `stageId`, `durationMs`, damage를 복제하지
+않고 Encounter의 actionId로 join한다. 115개 stage actionId가 정확히 한 번씩 존재해야 제품 publish가 열린다.
+27개 Valtan clip을 여러 action이 재사용할 수 있고 한 action이 여러 clip을 순차 재생할 수 있다. clip의
+`sequenceIndex/clipId/startOffsetMs/playRate/loop`와 cue identity/time은 08-09 G17 exact schema를 따른다.
+
+#### `Valtan.weapontracks.json`과 `ValtanHitTracks.json`
+
+Animation Tool은 실제 `b_wp_r_01` bone을 historical pose로 측정해 gameplay 정답이 아닌 seed만 저장한다.
+
+```text
+Data/Animation/Authored/Valtan/Valtan.weapontracks.json
+schema = lostark.valtan-animation-weapon-tracks, formatVersion = 1
+```
+
+seed는 source model/binding hash, clip/timebase, `boneName=b_wp_r_01`, root-local position sample을 가진다. bone
+index, world transform, collider radius, damage는 저장하지 않는다. Balance Tool만 seed를 import/review해 다음
+승인본을 쓴다.
+
+```text
+Data/Combat/ValtanHitTracks.json
+schema = lostark.valtan-reviewed-hit-tracks, formatVersion = 1
+```
+
+Server publisher와 Server runtime은 승인된 finite root-local capsule track만 소비한다. 검증되지 않은 tip bone을
+발명하지 않는다. source model/binding/clip/bone/timebase hash가 달라지면 review와 publish를 다시 요구한다.
+
+#### Effect binding과 F7
+
+`Data/Effects/Bindings/Valtan.effectbindings.json`은 Effect Tool 단일 writer이고 gameplay hit를 소유하지 않는다.
+F7은 Server-approved occurrence와 reviewed collider의 read-only mirror이며 저장 기능과 Release 토글을 갖지 않는다.
+
+#### Server compiled combat와 motion
+
+`Publish-BalanceRuntimeSet.ps1`만 제품 publish entry다. 내부 staged emitter인 `Publish-GameplayBalance.ps1`이
+Encounter v4, reviewed hit track, reaction/profile reference를 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`
+v6의 `BOSSMOTION/BOSSHITEVENT/BOSSHITTRACK*` row로 compile한다. v6는 08-09 G16의 계획된 v5 row에
+receiver outcome column을 더한 versioned successor다. 별도 Valtan motion source, bootstrap, loader,
+publisher를 추가하지 않는다.
+
+Server artifact에는 model path, bone name, material, animation pointer를 넣지 않는다. stable action/event ID,
+validated tick window, Encounter motion union, analytic primitive 또는 reviewed root-local capsule samples와
+`combatRuntimeRevision`만 둔다. 같은 source에서 반복 publish하면 byte-identical해야 한다.
+
+armor break charge의 단일 writer도 Encounter v4의 `WALL_CHARGE` stage다. 이 stage는 다음 계약을 한 행에
+결합한다.
+
+```text
+(VALTAN_ARMOR_BREAK_OPENING, WALL_CHARGE,
+ valtan.mechanic.armor-break-opening.charge)
+motion.kind                  FORWARD_DISTANCE
+motion.distance              PROJECT_TUNED
+motion.durationMs            1500
+motion.stopOnStaticCollision true
+motion.stopOnNavigationFailure true
+locked direction             stage-open authoritative forward
+wall sweep source            BossProfiles.combatBodyCapsule BODY_MOTION
+```
+
+현재 08-09 G16의 exact motion union에는 receiver impact와 timeout의 다음 stage가 없다. 구현 전에 그 G16
+정본과 v4 exact schema를 같은 변경에서 다음 discriminated union으로 확장한다.
+
+```json
+{
+  "kind": "FORWARD_DISTANCE",
+  "distance": 18.0,
+  "durationMs": 1500,
+  "stopOnStaticCollision": true,
+  "stopOnNavigationFailure": true,
+  "outcomePolicy": {
+    "kind": "RECEIVER_BRANCH",
+    "matchingReceiverStageId": "GROGGY",
+    "blockedOrTimeoutStageId": "RECOVERY"
+  }
+}
+```
+
+`FORWARD_DISTANCE`의 exact key set은 기존 다섯 field와 `outcomePolicy`다. `outcomePolicy`는 항상 존재하고 exact
+key set은 `kind,matchingReceiverStageId,blockedOrTimeoutStageId`다. `kind=SEQUENTIAL`이면 두 ID는 모두 빈 문자열이고
+기존 순차 stage 전이를 사용한다. `kind=RECEIVER_BRANCH`이면 두 ID는 모두 non-empty이고 같은 pattern 안의 서로 다른
+stage에 정확히 한 번 존재해야 한다. `NONE`과 `TARGET_SNAPSHOT_DISTANCE`에는 `outcomePolicy` key 자체를 허용하지 않는다.
+mixed empty, self/cycle, missing/foreign-pattern target, 마지막 stage의 `SEQUENTIAL`을 publisher와 Balance Tool이 거부한다.
+WALL_CHARGE만 위 `RECEIVER_BRANCH` tuple을 사용하고 outcome을 companion이나 Server if문으로 우회하지 않는다.
+
+Shared/Server catalog contract도 같은 변경에서 다음처럼 versioned 확장한다.
+
+```cpp
+enum class STAGE_MOTION_OUTCOME_KIND : std::uint8_t
+{
+    SEQUENTIAL,
+    RECEIVER_BRANCH,
+    END
+};
+
+inline constexpr std::uint16_t NO_STAGE_INDEX = 65535u;
+
+struct STAGE_MOTION final
+{
+    STAGE_MOTION_KIND eKind = STAGE_MOTION_KIND::END;
+    float fDistance = 0.f;
+    std::uint32_t iDurationTickCount = 0;
+    bool bStopOnStaticCollision = false;
+    bool bStopOnNavigationFailure = false;
+    STAGE_MOTION_OUTCOME_KIND eOutcomeKind = STAGE_MOTION_OUTCOME_KIND::END;
+    std::uint16_t iMatchingReceiverStageIndex = NO_STAGE_INDEX;
+    std::uint16_t iBlockedOrTimeoutStageIndex = NO_STAGE_INDEX;
+};
+```
+
+Gameplay bootstrap v6의 exact motion row는 다음이다.
+
+```text
+BOSSMOTION\t<ENCOUNTER>\t<PATTERN>\t<STAGE_INDEX>\t<KIND>\t<DISTANCE>\t<DURATION_TICKS>\t<STOP_STATIC>\t<STOP_NAV>\t<OUTCOME_KIND>\t<MATCH_STAGE_ID_OR_EMPTY>\t<MATCH_STAGE_INDEX_OR_65535>\t<BLOCKED_STAGE_ID_OR_EMPTY>\t<BLOCKED_STAGE_INDEX_OR_65535>
+```
+
+`SEQUENTIAL`은 두 ID가 empty이고 두 index가 65535다. `RECEIVER_BRANCH`는 두 ID가 canonical stable stage ID이고
+두 index가 `[0,stageCount)`이며 ID로 resolve한 index와 byte-for-byte 일치해야 한다. v6 loader는 header/version/column
+count/enum/bool/finite distance/nonzero duration/sentinel/ID-index join을 graph 전체에 대해 parse→validate→stage한 뒤
+commit한다. v5나 column이 짧은 v6을 fallback으로 읽지 않으며 frozen v5→v6 golden이 outcome 외 기존 row parity를
+증명한다.
+
+Animation root translation을 Server 정답으로 사용하지 않는다. Server forced motion이 boss root를 움직이고,
+Client animation은 같은 action clock에 맞춰 시각적으로 따라간다.
+
+### 14.4 Animation Tool 최종 형태
+
+`ANIMATION_PREVIEW_ASSET::bPlaybackOnly` boolean으로 모든 boss를 한데 처리하지 않는다. capability를 다음처럼
+분리한다.
+
+```text
+PLAYABLE_CHARACTER
+PLAYBACK_ONLY
+BOSS_PATTERN_AUTHORING
+```
+
+Valtan만 `BOSS_PATTERN_AUTHORING`이고 generic monster와 아직 저작하지 않는 boss는 계속 playback-only다.
+Valtan 화면에 Player Key→Skill UI를 노출하지 않는다.
+
+Tool의 Boss Action Authoring 화면은 다음 순서를 사용한다.
+
+1. Encounter 31개 pattern과 ordered 115개 stage/action을 read-only tree로 표시한다.
+2. action을 고르면 clip sequence와 stage duration을 같은 타임라인에 표시한다.
+3. clip을 추가·삭제·순서 변경하고 exact G17 field인 startOffsetMs/playRate/loop를 편집한다.
+4. Encounter v4의 Body/Weapon hit event와 reviewed capsule을 read-only overlay로 겹쳐 timing을 비교한다.
+5. weapon measurement는 검증된 `b_wp_r_01`을 선택해 root-local seed를 만들고 실제 bone 존재를 즉시 검증한다.
+6. current volume, previous→current swept volume, 30 Hz Server tick marker를 서로 다른 색으로 그린다.
+7. pattern 전체 preview는 stage 순서를 따라 clip chain을 연속 재생하지만 AI 선택을 바꾸지 않는다.
+8. `Save Valtan Presentation`은 `Valtan.patternbindings.json`, `Measure Weapon Track`은
+   `Valtan.weapontracks.json`만 각각 atomic save한다.
+9. collider dimension/window/damage 편집과 reviewed track 승인은 Balance Tool로 이동하는 typed request/인계만
+   제공하며 Animation Tool이 combat JSON을 쓰지 않는다.
+
+weapon measurement는 `CAnimationTargetService::Prepare_HistoricalPoseBinding`과 `Sample_HistoricalPose`를 사용한다.
+live model cursor를 seek하지 않고 고정 target generation과 clip index를 pin한다. preview root world transform은
+measurement에 포함하지 않으며, 각 sample을 actor/root-local point로 되돌린다. collider start/end/radius는
+Animation Tool이 합성하지 않는다. 같은 source와 같은 tick rate에서 seed output이 byte-identical하지 않으면 실패한다.
+
+Animation Tool은 기존 clip sequence/cue를 저작하고 weapon seed를 측정하는 도구다. WModel에 없는 새로운 bone
+keyframe을 만드는 DCC editor로 확장하지 않는다. 요구 동작이 27개 clip로 표현되지 않으면 source animation을
+별도 추출/제작한 뒤 WModel을 갱신하고 다시 저작한다.
+
+### 14.5 Client exact action presentation
+
+`CClientReplication`은 Valtan entity의 다음 값을 버리지 않고 `CValtan::Apply_NetworkState`에 typed snapshot으로
+전달한다.
+
+```text
+patternId/actionId
+patternSequence/patternStageIndex
+actionStartTick
+serverTick 또는 snapshot tick
+position/yaw/high-level state
+```
+
+Client edge key는 다음이다.
+
+```text
+(patternSequence, patternStageIndex, actionStartTick, actionId)
+```
+
+새 edge에서 `Valtan.patternbindings`를 resolve하고 `ActionPresentationTimeline`의 기존 multi-clip/seek
+계약을 재사용한다. 같은 edge를 다시 받으면 clip을 재시작하지 않는다. ACTIVE→ACTIVE라도 actionId나 stage가
+바뀌면 새 clip chain으로 전환한다. 늦은 snapshot과 late join은 raw subtraction이 아니라
+`Try_GetForwardTickDistanceSkippingZero(actionStartTick,snapshotServerTick)` 결과를 `fixedTickHz`로 나눠 현재
+clip과 local time을 찾는다.
+
+authoring/admission publish는 115/115 coverage, 실제 clip/model, seed provenance를 fail-closed한다. 승인된 runtime에서
+pattern binding만 손상되면 spawn과 Server gameplay를 막지 않고 generic BossCatalog clip로 action 표현만 격리하며
+오류를 한 번 보고한다. Client debug collider는 approved source revision이 일치할 때만 표시하고 damage/벽 파괴를
+제출하지 않는다.
+
+`Valtan.patternbindings.json`은 현재 08-09 required receipt inventory에 없으므로 몰래 runtime 입력으로 읽지 않는다.
+Runtime-set manifest를 v2로 올리고 이 source와 generated Client presentation artifact를 `CLIENT_RUNTIME` role로
+명시적으로 추가한다. gameplay, motion, world destruction과 Client presentation/projection은 모두 같은
+`combatRuntimeRevision`을 사용한다. exact action presentation만 빠지거나 손상되면 visual fallback이지만,
+destruction core projection 또는 revision이 다르면 Valtan Level activation을 실패시킨다. 서로 다른 세대의 clip,
+hit track, wall collision을 겉보기로만 맞춰 실행하지 않는다.
+
+generated 경로와 root contract는 다음으로 고정한다.
+
+```text
+Client/Bin/DataFiles/Gameplay/ValtanPatternPresentation.runtime.json
+schema = lostark.valtan-pattern-presentation-runtime
+formatVersion = 1
+root = schema/formatVersion/combatRuntimeRevision/actorAssetId/fixedTickHz/bindings
+```
+
+generated binding의 exact key set은 `actionId,clips,cues`다. clip exact key set은
+`sequenceIndex,clipId,startOffsetTick,playRate,loop`, cue exact key set은
+`presentationCueId,startTick,effectBindingId`다. millisecond source offset은 exact 30 Hz tick에 떨어질 때만
+`startOffsetTick/startTick`으로 바꾸며 반올림하지 않는다. binding은 Encounter의 pattern/stage/action ordinal, clip은
+`sequenceIndex`, cue는 `(startTick,presentationCueId)` 순으로 canonical sort한다. model pointer, animation index,
+absolute path, wall-clock timestamp는 넣지 않는다.
+
+generated artifact의 단일 writer는 제품 entry를 새로 만들지 않고 `Publish-BalanceRuntimeSet.ps1` 내부의 private staged
+emitter `Write-ValtanPatternPresentationRuntimeArtifact`로 고정한다. 이 emitter만 manifest v2의 staged source receipt graph에서
+`Valtan.patternbindings.json`, `Valtan.effectbindings.json`, Encounter v4와 clip inventory를 읽고, destination이 아닌
+transaction staging root에 UTF-8 no-BOM/LF/invariant-culture bytes를 쓴다. 같은 script의 독립 validator
+`Read-ValtanPatternPresentationRuntimeArtifactStrict`가 staging bytes를 다시 열어 exact keys, revision, fixedTickHz=30,
+115/115 action coverage, clip/cue reference, canonical order, row bounds와 trailing data를 검증한 뒤에만 artifact hash를
+manifest 후보에 추가한다. 쓰기/재검증/receipt 중 하나라도 실패하면 promotion은 0건이고 이전 19 target bytes를 유지한다.
+
+`CBossPatternPresentationCatalog`는 이 generated path만 읽고 authoring source를 runtime에서 직접 열지 않는다. catalog는
+exact key set과 115/115 coverage를 parse→validate→stage→commit한다. reload 실패에서 이전 approved catalog는 요청한
+`combatRuntimeRevision`과 동일할 때만 유지한다. revision이 다르면 이전 catalog를 격리·clear하고
+`GENERIC_BOSS_VISUAL_FALLBACK`을 새 revision disposition으로 commit한다.
+새 Level activation에서 core destruction projection/revision failure는 fail-closed다. pattern presentation artifact만
+missing/corrupt하면 명시적 `GENERIC_BOSS_VISUAL_FALLBACK` catalog를 stage하고 오류를 한 번 보고하되 Server gameplay와
+destruction projection은 막지 않는다. Level-ready 이전에는 core projection과 exact/fallback pattern catalog의 disposition을
+모두 확정한 뒤 network action/destruction queue를 연다. publisher harness는 malformed exact keys, non-30-Hz offset,
+unknown clip/cue, missing/duplicate action, noncanonical order, repeated publish byte identity와 injected pre/post-write rollback을,
+Client harness는 approved load, same-revision corrupt reload의 old-catalog preservation, cross-revision corrupt reload의
+old-catalog 격리+generic fallback, first-load visual fallback을 검증한다.
+
+### 14.6 Shared deterministic collision 계약
+
+`Shared/Gameplay/CombatCollisionContract`에 다음 순수 수학 API를 추가한다.
+
+```text
+SweptCircle vs Circle
+SweptCircle vs Rotated OBB
+SweptCapsule vs Circle
+SweptCapsule vs Rotated OBB
+SweptCapsuleTrack vs Rotated OBB
+Static OBB/Sphere/Capsule overlap with explicit Y interval gate
+```
+
+입력과 출력은 Engine/DirectX/PhysX 타입을 노출하지 않는다. 출력에는 `hit`, normalized time of impact,
+contact point, contact normal이 포함된다. 규칙은 다음으로 고정한다.
+
+- 이전 sample과 현재 sample 사이 전체를 연속 검사해 tunneling을 막는다.
+- zero-length sweep는 static overlap으로 처리한다.
+- start-inside는 TOI 0이다.
+- tangent contact는 hit다.
+- NaN/Inf, 음수 크기, 비정규화 회전은 validation 실패다.
+- Y interval이 겹치지 않으면 XZ가 겹쳐도 miss다.
+- 한 tick에 여러 대상이 맞으면 가장 작은 TOI를 고른다. 동률 class 우선순위는
+  `MATCHING_RECEIVER`, `STATIC_BLOCKER`, `NAV_BLOCK` 순이고 같은 class 안에서는 stable ID lexical order다.
+- reviewed 30 Hz weapon sample의 이전 tick capsule에서 현재 tick capsule까지 continuous sweep한다.
+- Animation seed의 `sampleHz`와 reviewed track의 `sourceSampleHz/fixedTickHz`는 모두 exact 30이어야 한다.
+  다른 Hz를 암묵 resample하지 않으며 지원하려면 G17 schema와 golden부터 versioned 확장한다.
+
+### 14.7 Server Valtan action evaluator
+
+`CValtanBrain`은 선택과 stage 진행을 계속 소유하지만 model/bone을 알지 않는다. stage 진입에서 tuple로
+motion/collision runtime을 resolve하고 다음 action context를 저장한다.
+
+```text
+patternSequence/stageIndex/actionId/actionStartTick
+lockedStageStartYaw/lockedForward
+actionElapsedTicks
+motionRuntimeIndex/collisionRuntimeIndex
+per-event target hit ledger
+```
+
+현재 `CValtanBrain::Update`처럼 entity/player HP/event를 즉시 바꾸지 않는다. Brain은 읽기 전용 snapshot에서
+`VALTAN_TICK_RESULT`를 계산하고 Room이 결과 전체를 검증한 뒤 commit한다. Room tick 순서는 다음으로 고정한다.
+
+```text
+1. pending scripted health pattern과 normal pattern 선택
+2. stage action context 시작 또는 기존 context 경과 시간 계산
+3. forced motion의 previous root -> candidate root 계산
+4. motion lane에서 body capsule을 static world/nav와 `BODY_MOTION` wall receiver에 continuous sweep
+5. motion lane의 earliest impact까지 root를 clamp
+6. hit-event lane에서 action window의 analytic/weapon volume을 previous time -> current time으로 평가
+7. player hit와 명시적 `HIT_EVENT` receiver impact request를 각각 deterministic stable order로 생성
+8. `Try_Counter`도 live player를 mutate하지 않고 player snapshot copy에서 평가해 HP뿐 아니라
+   comboStage/actionElapsed/bufferedCombo/appliedSkillDamage/actionStartTick delta를 산출
+9. player damage와 위 player action-state delta, boss pose/action/outcome, wall BREAKING/final edge,
+   dynamic world next state와 event output을
+   VALTAN_IMPACT_TRANSACTION 하나에 stage
+10. 모든 reference/capacity/next state를 pre-validate하고 성공할 때만 player HP/action state + boss entity/action +
+   destruction + dynamic world + output queue를 한 번 commit
+11. stage outcome/timeout 전환
+12. full world snapshot과 destruction delta/event 생성
+```
+
+motion lane 결과는 `MATCHING_RECEIVER`, `STATIC_BLOCKER`, `NAV_BLOCK`, `NONE`으로 구분한다. 정확한
+`BODY_MOTION` binding receiver만 root를 impact까지 clamp하고 motion stop + BREAKING/event + `GROGGY`를 같은
+transaction에 넣는다. 일반 static/nav blocker는 벽 mutation 없이 clamp하고 reviewed blocked outcome인
+`RECOVERY`로 간다. `NONE`은 authored endpoint/timeout까지 진행한 뒤 `RECOVERY`다. 별도 hit-event lane의
+`HIT_EVENT` receiver는 해당 event window에서 mutation/event만 stage하며 boss root를 되감거나 charge outcome을
+임의 변경하지 않는다. weapon impact가 stage를 분기해야 하는 pattern은 Encounter outcome policy에 별도로
+review되어야 한다.
+
+`WALL_CHARGE`는 stage 시작 시 target이 없어지거나 engage 거리 밖이 되어도 즉시 취소하지 않는다. 시작 시 forward와
+endpoint를 잠그고 authored duration까지 진행한다. outcome stage ID는 같은 pattern에서 unique index로 resolve해
+전환하며 missing/self/cycle은 room activation을 거부한다. stage 중 boss 사망, room reset 같은 명시적 cancel reason만
+action context를 폐기한다. transaction validation이 실패하면 boss root/action, player HP와
+`iComboStage/fActionElapsedSeconds/hasBufferedComboInput/hasAppliedSkillDamage/iActionStartTick`, wall state/version,
+collision/nav/fall, event/damage output 모두 이전 값 그대로다.
+
+### 14.8 wall receiver와 persistent destruction
+
+각 파괴 group에는 `Gameplay.world.json`의 stable `collisionBox` receiver를 둔다. receiver는 visual wall mesh가
+아니라 Server sweep target이며 transform과 OBB shape를 WorldBootstrap이 단독 소유한다. WorldEvents binding은
+다음 네 값이 모두 일치해야 발화한다.
+
+```text
+patternId + stageId + actionId
+impactSourceKind + sourceHitEventId + receiverCollisionId
+```
+
+`triggerKind=COLLISION_IMPACT`, `enabled=true` 전환은 다음 reference가 전부 준비된 마지막 product gate에서만 한다.
+
+- group member Deploy placement가 실제 runtime projection에 존재
+- receiver collisionBox가 Area에 정확히 한 개 존재
+- receiver가 다른 active destruction binding에 중복 소유되지 않음
+- mutation의 final member state가 유효
+- navigationRegionIds가 실제 nonempty blocker region을 참조
+- presentation profile/debris recipe가 published Client projection에 존재
+
+WorldEvents v2 binding의 exact key set에는 `actionId`, `impactSourceKind`, `sourceHitEventId`를 필수로 추가한다. 현재
+`DESTRUCTION_BINDING`, `WorldDestructionDocument` parse/save, MapTool draft/UI/external validation,
+PhysicsContractHarness, authoritative publisher/bootstrap, ProjectAudit를 같은 변경에서 옮긴다. publisher는
+Encounter의 `(patternId,stageId)->actionId`와 exact join하고 `HIT_EVENT`이면 같은 stage의 exact event와 approved
+shape까지 resolve한다. semantic duplicate key에는 action/source/event/receiver를 모두 포함한다. v1 binding은
+action이나 impact source를 추측하지 않고 explicit migration receipt가 있을 때만 v2로 승격한다.
+
+현재 WorldEvents v1 raw uint64 member와 group-level `initialState`를 제품에 직접 publish하지 않는다. 기존 계획의
+v2 migration대로 `Gameplay.world.json` v5에 stable destroyable placement ID, decimal-string
+`deployRuntimePlacementId`, leaf `initialState`를 저작하고, WorldEvents group member는 그 stable placement ID를
+참조한다. group은 `collisionPlacementIds/navigationRegionIds/fallVolumeIds/navPolarity`를 소유하며 initial state를
+중복 저장하지 않는다. v1은 ID를 추측해 자동 이관하지 않고 fail-closed migration tool/receipt를 거친다.
+
+`CWorldDestructionRuntime` idempotency key는 다음이다.
+
+```text
+(bossNetEntityId, patternSequence, bindingId)
+```
+
+상태는 기존 정본을 유지한다.
+
+```text
+INTACT -> BREAKING -> FRACTURED -> DESPAWNED
+```
+
+첫 matching-receiver impact에서 `preBreakState`를 저장하고 `BREAKING + stateVersion++ + one-shot event`를 확정해
+full/delta에서 관측 가능하게 한다. 양수 `breakingDurationMs` 동안 `preBreakState`의 player-blocking/nav/fall
+participation을 유지하고, 같은 receiver가 다시
+boss sweep을 만들지 않도록 `bossReceiverSweepEnabled`만 impact transaction에서 끈다. `commitTick`은 raw 덧셈이
+아니라 zero-skipping tick helper로 `stateStartTick`에서 `ceil(ms * fixedTickHz / 1000)`만큼 전진해 계산한다.
+commitTick에는 `final state + stateVersion++`과 함께 다음을 실패할 수 없는 한 번의 swap으로 바꾼다.
+
+- group persistent state/version
+- 모든 member final state
+- boss receiver sweep enabled bitset
+- player movement blocking enabled bitset
+- navigation blocker overlay/refcount와 revision
+- fall volume polarity
+
+Room은 이를 별도 mutable system setter 순서로 바꾸지 않고 immutable
+`WORLD_DYNAMIC_STATE { bossReceiverBits, playerBlockingBits, navRefcounts, overlayRevision, fallBits }`의 next 값을
+stage해 포인터/값 한 번으로 swap한다. activation 시 모든 stable reference와 next aggregate를 pre-resolve하고,
+하나라도 실패하면 old group/boss/player/collision/nav/fall/event output을 그대로 유지한다.
+`breakingDurationMs=0`이면 BREAKING은 same-tick 내부 상태이고 final state/version 한 번과 event 하나만 publish한다.
+
+상태별 기본 participation은 다음이다. 현재 v2에서 양수 duration transition은 `INTACT -> FRACTURED`만 허용하고
+`FRACTURED -> DESPAWNED`는 duration 0의 final transition으로 제한한다. 따라서 `BREAKING`의 old participation은
+항상 INTACT와 동일하다. 이 제한을 풀 때는 `preBreakState`를 wire/publisher까지 승격해 표를 versioned 확장한다.
+`DESPAWNED`는 gameplay geometry가 이미 사라진 final side라 `FRACTURED`와 같은 polarity를 사용한다.
+
+| state | boss receiver sweep | player blocking | `BLOCK_WHILE_INTACT` nav | `BLOCK_WHILE_FRACTURED` nav | fall bit |
+|---|---:|---:|---:|---:|---:|
+| `INTACT` | on | on | on | off | off |
+| `BREAKING` | off | on | on | off | off |
+| `FRACTURED` | off | off | off | on | on |
+| `DESPAWNED` | off | off | off | on | on |
+
+v2의 `fallVolumeIds` polarity는 `ENABLE_WHILE_FRACTURED` 하나로 고정한다. 반대 polarity가 필요하면 기존
+field를 암묵 재해석하지 않고 schema를 올린다.
+
+overlap region은 stable group별 contribution을 refcount로 합산한다. 같은 transition 중복은 no-op, missing owner와
+refcount underflow/overflow는 pre-commit 실패이며 부분 decrement는 없다. `regionId`만 전역 unique이고 한 group이 같은
+polarity의 여러 region을 소유하는 것은 허용한다. `(conditionGroupId,polarity)` 중복을 loader가 거부하지 않는다.
+반대로 `fallVolumeId`는 v2에서 정확히 한 group만 소유할 수 있으며 publisher가 cross-group 공유를 거부한다.
+
+### 14.9 Server navigation overlay
+
+현재 `.navblockers`의 region count가 0이고 Server publisher가 파일을 읽지 않으므로 product gate를 열 수 없다.
+각 wall group footprint에 실제 cell 목록을 authoring하고 다음을 publish한다.
+
+```text
+regionId
+conditionId = groupId
+activateWhenConditionTrue polarity
+cell indices/count
+source navgrid revision
+```
+
+Server navigation은 immutable base walkable과 dynamic blocker refcount overlay를 분리한다. `Project_Point`와
+`Find_Path`는 둘 다 overlay를 소비한다. destruction commit이 overlay revision을 올리면 player/boss cached path는
+계산 당시 `pathRevision`과 비교해 다음 segment를 재검증하고 막혔으면 폐기·재탐색한다. trigger forced move,
+player root/knockback, boss forced charge도 일반 이동을 우회하지 않고 같은 continuous world collision/nav/fall sweep를
+쓴다. collision만 사라지고 nav가 남거나 그 반대인 tick은 없다.
+
+### 14.10 Shared protocol, late join, reset
+
+protocol을 현재 v16에서 v17로 올리고 모든 reader/writer/harness를 같은
+변경 단위에서 수정한다.
+
+```text
+S2C_WORLD_DESTRUCTION_FULL_SYNC
+  string64 combatRuntimeRevision/u32 serverTick/u32 encounterEpoch/u16 groupCount
+  groupId/string, state/u8, stateVersion/u32, stateStartTick/u32, commitTick/u32[]
+
+S2C_WORLD_DESTRUCTION_DELTA
+  string64 combatRuntimeRevision/u32 serverTick/u32 encounterEpoch
+  u16 changedStateCount/u16 eventCount
+  changed persistent state[]
+  one-shot events[]:
+    eventSequence/u64, groupId/string, mutationId/string, bindingId/string, patternSequence/u32
+    sourceNetEntityId/u64, impactOrigin/float3, impactDirection/float3, randomSeed/u32
+```
+
+모든 float는 IEEE-754 finite `float32`, enum은 정의된 `uint8`, count는 `uint16`, stable string length prefix는
+`uint16`이고 UTF-8 canonical stable ID 최대 128 bytes다. wire 상한은 group 128, changed state 128, event 64로
+고정한다. persistent state는 groupId ascending, event는 현재 packet의 기준 `previousEventSequence`에서
+zero-skipping forward distance ascending으로 encode하며 같은 distance는 허용하지 않는다. 비정규 순서, 중복, 0 sequence,
+초과 count/string, non-finite/zero-length direction을 거부한다. `impactDirection`은 파편이 날아갈 authoritative unit vector이고
+receiver contact normal을 쓴 경우 `impactDirection = -contactNormal`로 Server가 확정한 뒤 normalize한다. Client가 부호를
+다시 해석하지 않는다.
+`combatRuntimeRevision`은 정확히 64 lowercase hex다. Level-ready 전 queue는 latest full sync 하나와 ordered delta
+256개로 제한하고 overflow, epoch/revision 혼합, full보다 앞선 delta는 조용히 버리지 않고 activation을 실패시켜
+leave/Lobby 복귀를 요청한다.
+`encounterEpoch/stateVersion/patternSequence`는 `uint32`, `eventSequence`는 `uint64`이며 모두 0을 sentinel로 둔다.
+uint32는 `UINT32_MAX -> 1`로 진행한다. 같은 epoch에서 eventSequence를 재사용하지 않도록 `eventSequence`가
+`UINT64_MAX`에 닿기 전에 Room이 새 `encounterEpoch` full reset을 원자 commit하고 event ledger를 1부터 시작한다.
+stale/forward 판정,
+action age, `commitTick`, late-join elapsed는 전부 `NextNonZeroTick/Try_GetForwardTickDistanceSkippingZero`를 사용하고
+raw unsigned 덧셈·뺄셈·대소 비교를 금지한다.
+
+join은 `ENTER_ACCEPTED` 뒤 entity spawn/broadcast 전에 destruction full sync를 전송한다. Server는 Client projection의
+준비 여부를 알 수 있는 ACK가 현재 없으므로 “projection 실패 시 Server Rollback_Join”을 주장하지 않는다. Server send
+실패만 기존 join rollback 대상이다. Client는 Valtan Level activation 전에 로컬 core projection을 strict stage하고,
+부재/member/revision mismatch면 activation을 fail-closed해 leave/Lobby 복귀를 요청한다. optional pattern/destruction
+presentation은 `READY_EXACT`, `READY_GENERIC_VISUAL_FALLBACK`, `READY_STATE_ONLY` 중 하나를 명시적으로 stage하면 gate를
+만족한다. 이전 catalog/bundle은 같은 `combatRuntimeRevision`일 때만 유지하며 세대가 다르면 격리·clear한 뒤 해당 fallback을
+commit한다. Level이 준비되기 전에 온
+full/delta는 bounded typed queue에 보관하고 matching `combatRuntimeRevision`의 projection이 commit된 뒤 적용한다.
+
+late join은 persistent state를 적용하지만 과거 event/debris를 재생하지 않는다. BREAKING 중 입장하면 full-sync
+serverTick과 zero-skipping forward distance로 경과 presentation만 맞추고 commit tick이 지났으면 즉시 final state로
+정렬한다. delta는 `encounterEpoch + stateVersion/eventSequence`로 stale/duplicate를 거부한다.
+
+Valtan Arena의 마지막 플레이어 퇴장 정책도 명시한다. 현재 Character Select만 reset하는 비대칭을 없애고 raid reset 시
+boss, pattern sequence, destruction groups, collision, navigation overlay, fall volume, one-shot ledger를 원자 초기화한 뒤
+`encounterEpoch`을 zero-skipping 방식으로 증가시킨다. 새 epoch의 stateVersion/eventSequence는 첫 발행 값 1부터
+시작하고 0은 사용하지 않는다. last-player leave는 수신자가 없어도 room reuse 전에 reset을 끝낸다. admin/contract
+reset처럼 Client가 남아 있으면 새 epoch FULL_SYNC를 먼저 broadcast하고 그 뒤 delta만 허용한다. 이전 epoch packet은
+새 입장에서 적용하지 않는다.
+
+WorldBootstrap, WorldDestruction bootstrap, navgrid/navblockers, gameplay combat bootstrap과 required Client
+presentation/projection은 각각 따로 promote하지 않는다. 다만 아래 v2 산술은 현재 코드 상태가 아니다. 현재
+`Publish-BalanceRuntimeSet.ps1`은 Gameplay + world 4개, 총 5개만 promote하고 manifest/role/navigation/spawn-group/
+Client-root transaction이 아직 없다. 따라서 08-09 G15의 v1 기반인 exact 14 artifact + manifest-last, role 검증,
+Valtan/Character Select spawn과 Server/Client nav 여섯 artifact, Bern/Training expected-absent tombstone, Server startup
+manifest admission을 먼저 실제 구현하고 Debug/Release regression으로 닫는 것을 VA-G03의 hard prerequisite로 둔다.
+이 기반을 건너뛰고 “현재 14개”라고 가정하거나 v2 writer만 얹지 않는다.
+
+그 prerequisite 뒤 기존 유일 entry `Publish-BalanceRuntimeSet.ps1`과 `RuntimeSet.balance.manifest`를 v2로 올려
+exact 14 artifact inventory를 다음 exact 18 artifact로 versioned 확장한다.
+
+```text
+기존 v1 artifact 14개 전부 유지
++ SERVER_REQUIRED World/VALTAN_ARENA.worlddestructionbootstrap
++ CLIENT_RUNTIME  World/LV_LUT_HEARTRB_ED.worlddestruction.json
++ CLIENT_RUNTIME  World/LV_LUT_HEARTRB_ED.worlddestructionpresentation.json
++ CLIENT_RUNTIME  Gameplay/ValtanPatternPresentation.runtime.json
+= SERVER_REQUIRED 11 / CLIENT_RUNTIME 6 / CLIENT_DEBUG 1 / artifact 18
++ Server/Bin/DataFiles/RuntimeSet.balance.manifest (manifest-last)
+```
+
+artifact target은 18개이고 manifest를 포함한 파일은 19개다. mutation/rollback slot은 별도다. exact 순서는
+`18 artifact promote -> Bern expected-absent spawn tombstone -> Training expected-absent spawn tombstone -> manifest-last`이며
+tombstone이 둘 다 존재하는 최댓값은 21 mutation이다. `FailureAfterMutation`은 0부터 실제 mutation count까지 각 경계를
+순회하고 artifact/tombstone/manifest rollback을 역순 검증한다. old v1 `FailureAfterPromote 0..5`를 그대로 재사용하지 않는다.
+강제 종료 fixture는 artifact 중간, 각 tombstone, manifest 직전/직후를 분리하고 old manifest + mixed bytes에서 Server가
+room ready를 거부하는 것과 다음 정상 실행의 complete heal을 검증한다.
+
+manifest header는 다음 exact 형식으로 올리고 v1 reader가 v2를 부분 해석하지 않게 한다.
+
+```text
+LOSTARK_BALANCE_RUNTIME_SET_MANIFEST\t2\t<64-lowercase-hex combatRuntimeRevision>\t18
+ARTIFACT\t<SERVER_REQUIRED|CLIENT_RUNTIME|CLIENT_DEBUG>\t<root-relative path>\t<SHA256>
+```
+
+앞쪽 §4.3~4.4 generated 예시의 `contentRevision`, `sourceContentRevision`과 별도 world promotion manifest는
+§14 구현에서 각각 `combatRuntimeRevision`, `sourceCombatRuntimeRevision`, runtime-set manifest v2로 교체한다.
+numeric revision이나 world 전용 manifest를 병행 생성하지 않는다. Server destruction bootstrap, Client core
+projection, presentation bundle의 header도 동일한 64 lowercase hex revision을 저장한다.
+
+dynamic nav는 별도 parallel artifact를 만들지 않고 기존
+`Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid` 자체를 v2로 올린다. v1 payload를 암묵 prefix로 재사용하지
+않고 아래 little-endian byte layout으로 다시 쓴다. string은 `u16 byteLength + canonical UTF-8 bytes`, bool/cell index는
+각각 `u8/u32`, float는 finite IEEE-754 float32다. `baseWalkableBytes=width*height`, `baseHeightCount=width*height`가
+checked arithmetic로 정확히 성립해야 한다. Client navgrid는 기존 v1 bytes를 유지한다.
+
+```text
+HEADER = bytes[8] "LARKNVG2" / u16 version=2 / string combatRuntimeRevision
+         / u32 width / u32 height / f32 cellSize / f32 originX / f32 originZ
+         / u32 baseWalkableBytes / u32 baseHeightCount / u16 blockerRegionCount
+BASE = u8 walkable[baseWalkableBytes] / f32 heights[baseHeightCount]
+REGION = string regionId / string conditionGroupId / u8 polarity
+         / u32 cellCount / u32 sortedUniqueCellIndices[cellCount]
+TRAILER = bytes[32] SHA256(all preceding v2 bytes)
+```
+
+Server v2 loader는 magic/version/revision, 최대 128 region, region당 최대 1,000,000 cell, canonical stable ID,
+strictly increasing in-range cell, duplicate `regionId`, exact SHA-256 trailer, trailing bytes 0을 검증하고 local stage에 base+region을
+모두 만든 뒤 commit한다. v1 binary를 v2로 추측해 읽지 않으며 non-Valtan navgrid의 v1 admission은 manifest
+inventory에서 명시적으로 유지한다. Valtan room만 manifest v2와 Valtan navgrid v2 revision exact match를 요구한다.
+v2 required receipt에는 기존 inventory에 다음 exact source를 추가한다.
+
+```text
+Data/Encounters/Valtan/Reference/2026-08-13.world-events-v1-to-v2.migration.receipt.json
+Data/Animation/Authored/Valtan/Valtan.patternbindings.json
+Data/Animation/Authored/Valtan/ValtanCombatPresentation.trace.json
+Data/Effects/Bindings/Valtan.effectbindings.json
+Data/Encounters/Valtan/ValtanWorldEvents.json
+Data/Encounters/Valtan/ValtanWorldPresentation.json
+Data/Physics/DestroyableProfiles.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02306.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02307.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02308.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02309.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02310.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02315.debrisrecipe.json
+Data/Maps/Authoring/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02316.debrisrecipe.json
+```
+
+migration receipt의 schema는 `lostark.valtan-world-events-migration-receipt` v1이고 exact root keys는
+`schema,formatVersion,sourceWorldEventsSha256,targetWorldEventsSha256,members,bindings,reviewer,provenance`다.
+`members` 77행은 `rawDeployPlacementId,stableDestroyablePlacementId` exact pair이고 raw와 stable ID가 각각 unique다.
+`bindings` 13행은 `bindingId,actionId,impactSourceKind,sourceHitEventId,receiverCollisionId` exact set이며 BODY_MOTION은
+empty event, HIT_EVENT는 non-empty exact Encounter event를 갖는다. canonical sort, 64 lowercase source/target hash,
+reviewer/provenance non-empty와 target bytes 재계산이 일치해야 ProjectAudit와 publisher가 통과한다. receipt에 없는 v1 row,
+중복 mapping, hash drift는 자동 추측 없이 fail-closed한다.
+
+없는 optional file이나 extra recipe를 directory scan으로 revision에 섞지 않는다. complete product publish에서는
+presentation bundle도 함께 stage/promote해야 하며 실패하면 새 manifest를 내지 않는다. 이미 승인된 Client에서
+pattern presentation만 손상되면 visual fallback,
+destruction presentation만 손상되면 persistent `STATE_ONLY`, core projection 손상이면 Level fail-closed라는 runtime
+격리 정책은 그대로 유지한다.
+
+위 artifact를 명시적 role/receipt로 더하고 `combatRuntimeRevision` 하나로 공통 staging/strict
+reload/promotions rollback을 수행한다.
+Server pre-build에 다른 `-Mode Publish` literal을 추가하지 않는다. Room init도 manifest 승인 revision과 모든 required
+artifact reference를 stage한 뒤 한 번에 ready commit한다. 어느 하나라도 실패하면 이전 세대 전체를 유지한다.
+
+### 14.11 Client wall projection과 debris
+
+제품 runtime은 MapTool controller를 직접 사용하지 않는다. MapTool document/runtime에서 검증된 source suppression,
+alias suppression, debris recipe/PhysX presentation seam만 공용 service로 분리해 재사용한다.
+
+```text
+full state/delta
+  -> published groupId -> stable Deploy placement IDs resolve
+  -> 모든 member next state stage
+  -> 전부 성공하면 atomic batch commit
+  -> 실패하면 batch rollback 뒤 core projection poison
+  -> network sink/queue 해제, typed leave 요청, Lobby 복귀
+
+one-shot event
+  -> (encounterEpoch,eventSequence) dedupe
+  -> event origin/direction/seed로 debris/effect 한 번 재생
+  -> source와 suppression alias는 persistent state projection이 숨김
+```
+
+core persistent apply의 missing member, state resolve, batch commit, revision 실패는 old visible/state를 임시 보존하는 데서
+끝내지 않는다. Server collision/nav와 영구 분기되지 않도록 projection owner를 poisoned로 만들고 더는 delta를 소비하지
+않으며 Valtan Level을 fail-closed leave한다. debris/effect와 optional presentation 실패만 `STATE_ONLY`/visual fallback으로
+격리한다. full sync와 late join은 debris를 생성하지 않는다. event가 누락돼도 persistent final state에는 수렴한다. event가 중복돼도
+actor/effect를 두 번 만들지 않는다. Level clear는 event actors를 회수하고 projection owner를 해제하며 다음 Level의
+Deploy runtime pointer를 보존하지 않는다.
+
+### 14.12 AI pattern 실행과 Development audition
+
+제품 AI는 기존대로 Server가 체력, 거리, selection weight, maximum consecutive use로 pattern을 선택한다. 모든 pattern을
+번호대로 재생하는 코드를 Client나 Animation Tool에 넣지 않는다. pattern 내부 stage는 Encounter 순서대로만 진행한다.
+
+현재 encounter에 `COUNTER_WINDOW`, `TRIPLE_COUNTER`, `STAGGER_WINDOW`가 있다는 이유만으로 성공 시 임의 stage를
+건너뛰는 branch를 추가하지 않는다. 08-09 frozen parity 정본대로 first cut은 기존 `Try_Counter`의 target damage/reaction
+suppression만 보존하고 pattern stage 진행은 그대로 둔다. counter/stagger 성공으로 pattern을 interrupt하거나 outcome을
+분기하려면 별도 reviewed gameplay 계약, stable outcome target, migration fixture와 Server test를 먼저 추가한다. clip 이름이나
+화면 인상으로 branch를 추측하지 않는다.
+
+전체 31 pattern/115 action 검증에는 Server Debug Developer Tools의 typed command 경로를 확장한다.
+
+```text
+Force one pattern by stable patternId
+Run canonical Valtan audition queue once
+Cancel current audition and return to normal AI
+```
+
+command는 Server가 현재 world, boss stable ID, pattern availability, room authority를 검증한 뒤 queue에 넣는다. Client UI가
+packet을 직접 작성하거나 local `CValtan` AI를 실행하지 않는다. 새 기능키를 만들지 않고 기존 F1 Developer Tools에서만
+노출한다.
+
+### 14.13 G별 구현 순서와 종료 증거
+
+앞쪽 WD 단계와의 관계 및 제품 gate는 다음으로 고정한다. `staging`과 `dormant`는 canonical product binding이
+계속 `enabled=false`라는 뜻이다.
+
+| VA 단계 | 기존 WD 대응 | gate 상태 |
+|---|---|---|
+| VA-G00~G03 | WD-G05 입력·wire 준비 | closed |
+| VA-G04~G06 | WD-G06 Server evaluator 기반 | closed |
+| VA-G07 | WD-G06 Server destruction/dynamic world fixture | staging only |
+| VA-G08 | WD-G05 wire + WD-G07 dormant Client | dormant, canonical binding disabled |
+| VA-G09 | WD-G10 authoring/coverage | closed |
+| VA-G10 | WD-G08 product admission | open |
+
+#### VA-G00 — 실측 inventory와 product gate
+
+- Valtan 27 clip의 exact ID/duration/loop, skeleton anchor 존재를 receipt로 생성한다.
+- Encounter의 31 pattern/115 stage actionId exact 집합을 고정한다.
+- 현재 13 wall group/member/receiver/nav/debris reference 현황을 audit에 노출한다.
+- Valtan product publisher는 아직 incomplete 상태를 명확히 fail-closed로 유지한다.
+
+종료 증거: JSON/XML parse, 27 clip/115 action/13 group count, source hash, ProjectAudit. 코드 소비자 없이 inventory 파일만
+제품 runtime에 추가하지 않는다.
+
+#### VA-G01 — Encounter v4와 기존 G17 document
+
+- 08-09 정본대로 `ValtanEncounter.json`을 v4 `motion/hitEvents`로 lossless 전환하고 Balance Tool writer를 구현한다.
+- strict v3 소비자인 `Publish-WorldGameplay.ps1`, `Publish-GameplayBalance.ps1`, `BalanceTool.cpp`,
+  `EncounterPatternReference.cpp`, ProjectAudit와 `Update-BalanceProvenanceReceipt.ps1`을 같은 변경에서 v4로 옮긴다.
+  31 pattern/115 stage/action/duration과 old damage first-fire tick의 frozen v3→v4 parity를 검증한다.
+- G16의 `FORWARD_DISTANCE` exact union과 writer/publisher/bootstrap/runtime/golden에 same-pattern impact/blocked-timeout
+  outcome policy를 추가한다. Gameplay bootstrap은 v6 exact column/sentinel/ID-index join을 사용하고 implicit
+  `nextStageIndex++` fallback으로 receiver branch하지 않는다.
+- `BossPatternPresentationDocument`가 `Valtan.patternbindings.json`과 `Valtan.weapontracks.json`을
+  parse→validate→stage→commit한다. combat/anchor JSON을 중복 생성하지 않는다.
+- valid roundtrip, unknown field/version/action, duplicate/missing 115 action, nonexistent clip/bone, invalid event/shape,
+  중간 save 실패 byte-exact rollback을 해당 publisher/Client harness에 넣는다.
+- 새 C++와 Data는 Client project의 물리 폴더와 `96.DataFiles`에 등록한다.
+
+#### VA-G02 — Animation Tool Boss Pattern Authoring
+
+- Valtan capability를 `BOSS_PATTERN_AUTHORING`으로 바꾼다.
+- pattern/stage browser, clip-chain/cue editor, read-only Body/Weapon event lane, weapon seed measurement,
+  fixed-tick/sweep overlay를 연결한다.
+- Render는 command만 latch하고 다음 Update에서 document 변경/bake를 수행한다.
+- Tool close/asset switch/load 실패에서 preview와 dirty 문서를 정확히 보존·복원한다. collider dimension/damage는
+  Balance Tool로만 저장한다.
+
+종료 증거: Debug build, save/reload/failure rollback 자동 harness, 사용자의 pattern 전체 playback과 collider overlay 수동 판정.
+
+#### VA-G03 — deterministic weapon seed review와 publisher
+
+- historical pose sample로 `b_wp_r_01` actor-local point seed를 정본의 30 Hz로 측정한다.
+- binding/model/clip/bone/timebase hash receipt를 기록하고 Balance Tool이 필요한 event만 finite capsule track으로 승인한다.
+- 먼저 08-09 G15의 RuntimeSet v1 exact 14 artifact/manifest/role/tombstone/Server admission을 현재 5-file orchestrator 위에
+  실제 구현한다. 이 prerequisite가 없으면 v2 inventory 작업을 시작하지 않는다.
+- v2 exact schema/inventory/role/rollback 코드는 dormant staged mode로만 구현한다. 별도 Valtan/world 제품 publisher entry를
+  만들지 않고 pattern binding source receipt, generated Client presentation, 이후 WorldDestruction artifacts가 들어갈
+  slot을 먼저 고정하되, VA-G03~G09 동안 제품 pre-build와 Server admission은 완성된 RuntimeSet v1을 계속 사용한다.
+  v2 manifest/destination promotion은 VA-G10의 18 artifact, 최대 2 tombstone, Server/Client consumers와 positive gate가
+  모두 한 transaction으로 준비된 마지막 변경에서만 원자 전환한다. 중간 단계에서 부분 v2 manifest를 발행하지 않는다.
+- private staged emitter/strict reader가 `ValtanPatternPresentation.runtime.json`을 deterministic하게 생성·재검증하고
+  Client catalog가 generated artifact만 소비하도록 닫는다. authoring source 직접 읽기와 두 번째 writer를 금지한다.
+- publisher가 Encounter tuple, duration, clip/bone, 115 coverage, seed→reviewed track hash, deterministic repeat hash를 검증한다.
+
+종료 증거: repeated seed byte-identical, preview root 변환 독립, unreviewed seed Server 미소비, injected promote failure에서
+기존 Server/Client artifacts byte-exact 유지.
+
+#### VA-G04 — Shared swept collision math
+
+- continuous circle/capsule/OBB/Y-gate primitive를 Shared에 구현한다.
+- Engine/DirectX/PhysX 의존을 추가하지 않는다.
+- tangent, start-inside, zero sweep, high speed, NaN, Y miss, earliest TOI/tie order를 contract test로 고정한다.
+
+종료 증거: Shared Debug/Release와 양 구성 contract test.
+
+#### VA-G05 — Client exact action timeline
+
+- ClientReplication이 full boss action identity/time을 `CValtan`에 전달한다.
+- generic state switch를 exact action edge/timeline resolver로 교체한다.
+- duplicate/stale snapshot no-restart, ACTIVE→ACTIVE switch, late snapshot seek, missing binding visual fallback을 검증한다.
+
+종료 증거: ClientFrontendHarness와 Client Debug/Release, 두 Client에서 동일 tick action 관찰은 사용자 수동 판정.
+
+#### VA-G06 — Server forced motion과 body/weapon evaluator
+
+- Server loader가 manifest 승인 `Gameplay.bootstrap`의 action collision/motion row를 atomic load한다.
+- `CValtanBrain` action context와 forced charge를 연결한다.
+- Shared swept primitive로 player/receiver impact request를 생성한다.
+- `Evaluate -> VALTAN_TICK_RESULT -> Room transaction Validate -> Commit`으로 즉시 entity/HP/event mutation을 제거한다.
+- target disconnect 후 charge 지속, matching receiver GROGGY, static/nav block 및 no-impact RECOVERY, death/reset cancel,
+  same-pattern outcome unique-index resolve와 tick wrap을 검증한다.
+
+종료 증거: Server Debug/Release, `Server.exe --contract-test`, forced armor pattern root 이동과 outcome test.
+
+#### VA-G07 — receiver, destruction, collision, navigation atomic commit
+
+- temporary contract fixture에 Gameplay collisionBox receiver와 nonempty nav blocker region을 저작한다. canonical
+  Data와 product output은 계속 disabled/closed다.
+- staged-emitter mode의 world/destruction/navigation artifact와 runtime validation을 구현하되 제품 destination
+  promotion과 allow-list는 열지 않는다.
+- Server collision ID lookup/dynamic bitset, navigation overlay/refcount/revision, `CWorldDestructionRuntime`을 Room에 연결한다.
+- `WORLD_DYNAMIC_STATE`와 `VALTAN_IMPACT_TRANSACTION`을 연결해 boss/player/wall/collision/nav/fall/output을
+  all-or-nothing commit한다.
+- 첫 vertical slice는 `VALTAN_ARMOR_BREAK_OPENING/WALL_CHARGE` 한 binding을 Development/contract fixture에서만
+  활성화한다. 제품 source/published binding은 VA-G10까지 `enabled=false`다.
+- 첫 대상은 source/member mapping이 이미 검증된 `destroyable.group.valtan.wall.3705102` 5개로 제한한다. 이 한
+  group의 자동 검증과 사용자 판정이 끝나기 전에 나머지 12 group/72 member를 bulk admission하지 않는다.
+
+종료 증거: wrong tuple miss, earliest receiver hit, once-per-sequence, BREAKING/commitTick, collision/nav same-tick, rollback injection.
+
+#### VA-G08 — Shared full/delta와 Client persistent projection
+
+- protocol version, packets, strict validation, caps/stable order를 추가한다.
+- join full sync, live delta/event, Client typed queue/projection/debris를 연결한다.
+- Runtime-set v2 staged graph에 Server/Client required artifact를 함께 넣어 rollback 검증하되 canonical product
+  binding과 ProjectAudit positive gate는 아직 열지 않고 제품 pre-build는 v1을 유지한다.
+- two-client duplicate/stale, late join INTACT/BREAKING/FRACTURED, event no-replay, Level clear를 검증한다.
+
+종료 증거: NetworkProtocolHarness Debug/Release와 Server contract test, 두 Client 수동 smoke.
+
+#### VA-G09 — 전체 pattern coverage와 AI audition
+
+- 115 action binding과 각 stage의 v4 motion/explicit hit event 또는 empty `hitEvents=[]`를 완성한다.
+- Debug typed forced pattern/canonical queue를 Server에 연결한다.
+- 각 pattern의 clip 순서, hit window, 몸통/무기 debug mirror를 사용자가 승인한다.
+- visual tuning 값은 승인된 source 문서에만 반영하고 Server 코드를 pattern별 if로 늘리지 않는다.
+
+#### VA-G10 — product admission과 전체 regression
+
+- 모든 binding reference와 115/115 coverage가 통과한 뒤에만 WorldEvents collision binding을 enabled로 publish한다.
+- dormant v2 staged graph의 exact 18 artifact와 최대 2 tombstone, 모든 Server/Client consumer가 통과한 같은 변경에서
+  manifest를 v1→v2로 manifest-last 전환하고 그때부터만 product pre-build가 v2를 요구한다.
+- `ProjectAudit`의 현재 `world.destroyable-product-gate` 부정 검사를 삭제해 무검사로 만들지 않는다. required Server
+  bootstrap/Client projection/Level sink/full-delta protocol과 matching `combatRuntimeRevision`이 모두 있을 때만 PASS하는
+  positive admission check로 같은 변경에서 교체한다.
+- 현재 Gameplay authoring/parser의 baseline은 이미 v5다. v4로 downgrade하지 않고, destroyable은 VA-G10에서,
+  fallVolume product admission은 기존 WD-G09까지 각각 fail-closed 상태를 유지하다 해당 gate에서만 연다.
+- AGENTS/CLAUDE, Animation Tool handoff, Area layer guide, Map destruction handoff와 RESULT를 실제 구현 상태로 갱신한다.
+- build/regression 전 범위와 ProjectAudit를 실행한다.
+
+### 14.14 자동 검증 매트릭스
+
+```text
+Document
+  valid/roundtrip/unknown version/unknown field/noncanonical ID
+  duplicate/missing action/clip/anchor/event/window overflow
+  parse/load/save/promote 중간 실패 old-state 보존
+
+Bake/Review
+  30 Hz seed/reviewed sample count/boundary/interpolation/quantization
+  same source byte-identical/model or source hash mismatch rejection
+  preview world transform independent/live cursor unchanged
+
+Shared collision
+  static/swept hit and miss/tangent/start-inside/zero-length
+  high-speed no tunneling/Y miss/NaN/tie stable ID order
+
+Server AI
+  normal weighted selection/scripted health order/forced debug queue
+  ordered stage/action edge/locked charge forward/impact and timeout outcome
+  weapon/body player hit policy and damage idempotence
+  BODY_MOTION receiver root clamp/GROGGY, HIT_EVENT receiver mutation without implicit root rewind
+
+World destruction
+  v1->v2 explicit migration/actionId exact join
+  unknown member/receiver/nav/group/action rejection
+  once per boss+patternSequence+binding
+  BREAKING version+event once/final version exact commit tick/duration-zero single version
+  member/collision/nav/fall atomic swap and injected rollback
+  receiver/player channel state table/nav polarity overlap refcount underflow rejection
+
+Network
+  protocol roundtrip/truncated/trailing/invalid enum/count/string/NaN
+  exact uint8/u16/u32/u64/float32 wire, caps, forward canonical order, nonzero sequence
+  uint32 MAX->1 zero-skipping wrap, uint64 event exhaustion before-reuse epoch reset
+  full before projection queue/delta revision/stale epoch/duplicate event
+  late join no historical debris and persistent convergence/admin reset new-epoch full sync
+
+Client
+  exact action resolve/multi-clip boundary/seek/ACTIVE-to-ACTIVE
+  same-revision optional catalog preserve/cross-revision fallback
+  group batch projection rollback+poison+leave/source+alias suppression/event actor cleanup
+
+Publisher
+  115/115 coverage, 13 group cross-reference, receiver ownership,
+  action/source/event/receiver exact join, migration receipt 77 members/13 bindings,
+  nav v2 byte layout/SHA trailer/nonempty regions, RuntimeSet v1 prerequisite,
+  manifest v2 exact 18 artifacts/19 files/max 21 mutations/roles/receipts,
+  one combatRuntimeRevision, project/filter/Data exposure, artifact+tombstone+manifest atomic rollback
+```
+
+### 14.15 최종 실행 검증과 완료 판정
+
+자동 검증 순서는 저장소 정본을 따른다.
+
+```text
+Engine Debug/Release
+UpdateLib Debug/Release
+Shared Debug/Release + NetworkProtocolHarness 실행
+Server Debug/Release + Server.exe --contract-test
+Client Debug/Release
+ClientFrontend/Physics/관련 authoring harness Debug/Release
+ProjectAudit + JSON/XML parse + git diff --check
+```
+
+사용자는 Server를 켜고 Valtan Arena F1 Developer Tools에서 다음을 직접 확인한다.
+
+1. armor break pattern 강제 실행 시 발탄이 실제로 돌진한다.
+2. WINDUP/CHARGE/GROGGY/RECOVERY clip이 exact action clock으로 이어진다.
+3. 몸통 swept volume이 receiver에 닿지 않으면 벽이 부서지지 않는다.
+4. 닿은 첫 tick에만 파괴 cue가 시작되고 연결된 벽 group만 함께 무너진다.
+5. breaking duration 후 벽 source/collision/nav가 같은 tick에 final state가 된다.
+6. 두 Client에서 같은 벽과 같은 pattern sequence가 보인다.
+7. 늦게 들어온 Client는 이미 부서진 벽을 보고 과거 파편은 다시 보지 않는다.
+8. 도끼 pattern은 실제 weapon lane 시간과 위치에만 player/wall hit가 발생한다.
+9. canonical queue로 31 pattern/115 action의 순서·clip·collider를 전부 검사한다.
+
+위 자동 증거와 사용자 수동 시각 승인 전에는 `완벽`, `100% 완료`, `원본과 동일`로 RESULT에 기록하지 않는다.
+특히 첫 `WALL_CHARGE` 수직 슬라이스가 통과했다는 사실만으로 나머지 114 action이 완료됐다고 간주하지 않는다.

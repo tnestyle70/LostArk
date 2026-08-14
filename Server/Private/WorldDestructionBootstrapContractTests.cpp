@@ -1,0 +1,212 @@
+#include "WorldDestructionBootstrapContractTests.h"
+
+#include "WorldDestructionBootstrap.h"
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+namespace
+{
+	const char* VALID_BOOTSTRAP =
+		"LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP\t1\tENCOUNTER_VALTAN\t"
+		"LV_LUT_HEARTRB_ED\tbabc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511\t30\t1\t1\t1\n"
+		"G\tdestroyable.group.valtan.wall.3705102\tINTACT\t5\t"
+		"9335938568718910930\t9681544306002658031\t12037145985028191659\t"
+		"17280669848983777578\t18177041425620847396\n"
+		"M\tmutation.valtan.wall.3705102.break\t"
+		"destroyable.group.valtan.wall.3705102\tFRACTURED\t8\t-\t-\n"
+		"B\tbinding.valtan.wall.3705102.preview\t"
+		"mutation.valtan.wall.3705102.break\tSTAGE\tVALTAN_ARENA_BREAK_109\t"
+		"IMPACT\tvaltan.mechanic.arena-break-109.impact\t2\t-\n";
+
+	void Write_File(
+		const std::filesystem::path& path,
+		const std::string& contents)
+	{
+		std::ofstream output(path, std::ios::binary | std::ios::trunc);
+		output.write(contents.data(),
+			static_cast<std::streamsize>(contents.size()));
+	}
+
+	void Replace_First(
+		std::string& value,
+		const std::string& from,
+		const std::string& to)
+	{
+		const std::size_t position = value.find(from);
+		if (std::string::npos != position)
+			value.replace(position, from.size(), to);
+	}
+}
+
+int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
+{
+	int failures = 0;
+	const auto require = [&failures](const bool condition, const char* name)
+	{
+		std::cout << (condition ? "[PASS] " : "[FAILURE] ") << name << '\n';
+		if (!condition) ++failures;
+	};
+
+	const std::filesystem::path root =
+		std::filesystem::temp_directory_path() /
+		L"LostArkWorldDestructionBootstrapContract";
+	std::error_code error;
+	std::filesystem::remove_all(root, error);
+	std::filesystem::create_directories(root, error);
+	const std::filesystem::path path = root / L"fixture.bootstrap";
+	Write_File(path, VALID_BOOTSTRAP);
+
+	CWorldDestructionBootstrap publishedBootstrap;
+	std::size_t publishedMemberCount = 0u;
+	require(
+		publishedBootstrap.Load_ValtanArena(),
+		"Load the canonical published Valtan destruction product");
+	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& group :
+		publishedBootstrap.Get_DescriptorGraph().Groups)
+	{
+		publishedMemberCount += group.MemberPlacementIds.size();
+	}
+	/* 13 authored interior groups plus the eight 109 outer ring sectors, and
+	the 77 interior members plus the ring's 24 slabs. */
+	require(
+		21u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
+		21u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
+		22u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		101u == publishedMemberCount &&
+		publishedBootstrap.Get_CombatRuntimeRevision().size() == 64u,
+		"Load the exact 21-group and 101-member Valtan destruction product");
+	CWorldDestructionRuntime publishedRuntime;
+	std::string publishedRuntimeStatus;
+	WORLD_DESTRUCTION_TRANSACTION publishedTransaction{};
+	const WORLD_DESTRUCTION_ACTION_TUPLE arenaBreakAction{
+		"VALTAN_ARENA_BREAK_109",
+		"IMPACT",
+		"valtan.mechanic.arena-break-109.impact",
+		2u };
+	require(
+		publishedRuntime.Initialize(
+			publishedBootstrap.Get_DescriptorGraph(), publishedRuntimeStatus) &&
+		WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+			publishedRuntime.Prepare_StageTrigger(
+				arenaBreakAction, 7001u, 80u, 450u,
+				publishedTransaction, publishedRuntimeStatus) &&
+		21u == publishedTransaction.Transitions.size() &&
+		21u == publishedTransaction.BindingApplications.size() &&
+		std::all_of(
+			publishedTransaction.Transitions.begin(),
+			publishedTransaction.Transitions.end(),
+			[](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
+			{
+				return !transition.strCollisionStateId.empty();
+			}) &&
+		publishedRuntime.Commit(
+			publishedTransaction, publishedRuntimeStatus),
+		"Prepare and commit all twenty-one 109-bar arena wall groups in one transaction");
+	require(
+		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
+			publishedRuntime.Prepare_StageTrigger(
+				arenaBreakAction, 7001u, 80u, 451u,
+				publishedTransaction, publishedRuntimeStatus) &&
+		publishedTransaction.Transitions.empty(),
+		"Treat the repeated 109-bar impact edge as one idempotent no-op");
+
+	const WORLD_DESTRUCTION_ACTION_TUPLE openingImpactAction{
+		"VALTAN_ARMOR_BREAK_OPENING",
+		"WALL_CHARGE",
+		"valtan.mechanic.armor-break-opening.charge",
+		0u };
+	CWorldDestructionRuntime impactRuntime;
+	require(
+		impactRuntime.Initialize(
+			publishedBootstrap.Get_DescriptorGraph(), publishedRuntimeStatus) &&
+		WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+			impactRuntime.Prepare_ImpactTrigger(
+				openingImpactAction,
+				"collision.valtan.wallgroup.11047903315509031966.receiver",
+				7001u, 159u, 500u,
+				publishedTransaction, publishedRuntimeStatus) &&
+		1u == publishedTransaction.Transitions.size() &&
+		1u == publishedTransaction.BindingApplications.size() &&
+		publishedTransaction.Transitions.front().strCollisionStateId ==
+			"collision.valtan.wallgroup.11047903315509031966" &&
+		publishedTransaction.Transitions.front().strNavigationStateId ==
+			"condition.valtan.wall.11047903315509031966.destroyed" &&
+		impactRuntime.Commit(
+			publishedTransaction, publishedRuntimeStatus),
+		"Prepare the exact opening charge receiver with collision and navigation channels");
+
+	CWorldDestructionBootstrap bootstrap;
+	require(
+		bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_AreaId() == "LV_LUT_HEARTRB_ED" &&
+		bootstrap.Get_EncounterId() == "ENCOUNTER_VALTAN" &&
+		bootstrap.Get_FixedTickHz() == 30u &&
+		bootstrap.Get_CombatRuntimeRevision() ==
+			"babc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511" &&
+		1u == bootstrap.Get_DescriptorGraph().Groups.size() &&
+		1u == bootstrap.Get_DescriptorGraph().Mutations.size() &&
+		1u == bootstrap.Get_DescriptorGraph().Bindings.size(),
+		"Load the strict first-slice world destruction bootstrap");
+
+	CWorldDestructionRuntime runtime;
+	std::string runtimeStatus;
+	require(
+		runtime.Initialize(bootstrap.Get_DescriptorGraph(), runtimeStatus),
+		"Initialize world destruction runtime from the loaded descriptor graph");
+
+	const std::string preservedRevision =
+		bootstrap.Get_CombatRuntimeRevision();
+	const std::size_t preservedGroupCount =
+		bootstrap.Get_DescriptorGraph().Groups.size();
+	std::string invalidVersion = VALID_BOOTSTRAP;
+	Replace_First(invalidVersion,
+		"WORLD_DESTRUCTION_BOOTSTRAP\t1\t",
+		"WORLD_DESTRUCTION_BOOTSTRAP\t2\t");
+	Write_File(path, invalidVersion);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_CombatRuntimeRevision() == preservedRevision &&
+		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
+		"Reject an unknown version without replacing the last valid graph");
+
+	std::string badRevision = VALID_BOOTSTRAP;
+	Replace_First(badRevision,
+		"babc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511",
+		"cabc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511");
+	Write_File(path, badRevision);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_CombatRuntimeRevision() == preservedRevision,
+		"Reject content whose deterministic revision does not match");
+
+	std::string duplicateGroup = VALID_BOOTSTRAP;
+	Replace_First(duplicateGroup, "\t30\t1\t1\t1\n", "\t30\t2\t1\t1\n");
+	const std::size_t mutationRow = duplicateGroup.find("M\t");
+	const std::size_t groupRow = duplicateGroup.find("G\t");
+	const std::string groupLine = duplicateGroup.substr(
+		groupRow, duplicateGroup.find('\n', groupRow) - groupRow + 1u);
+	duplicateGroup.insert(mutationRow, groupLine);
+	Write_File(path, duplicateGroup);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
+		"Reject duplicate group ownership atomically");
+
+	std::string danglingMutation = VALID_BOOTSTRAP;
+	Replace_First(danglingMutation,
+		"M\tmutation.valtan.wall.3705102.break\t"
+		"destroyable.group.valtan.wall.3705102",
+		"M\tmutation.valtan.wall.3705102.break\t"
+		"destroyable.group.valtan.wall.missing");
+	Write_File(path, danglingMutation);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
+		"Reject a dangling mutation group reference atomically");
+
+	std::filesystem::remove_all(root, error);
+	return failures;
+}

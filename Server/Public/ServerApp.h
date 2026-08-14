@@ -46,7 +46,8 @@ namespace LostArk::Server
 		//서버의 진입점
 		int Run(
 			std::uint32_t automaticShutdownMilliseconds = 0,
-			std::string_view bindAddress = "0.0.0.0");
+			std::string_view bindAddress = "0.0.0.0",
+			bool headless = false);
 
 	private:
 		//접속을 계속 받아 새로운 session을 생성

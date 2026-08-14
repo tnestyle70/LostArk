@@ -7,6 +7,9 @@
 
 #include <WinSock2.h>
 
+#include <cstdio>
+#include <io.h>
+
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -20,7 +23,8 @@ LostArk::Server::CServerApp::~CServerApp()
 
 int LostArk::Server::CServerApp::Run(
 	const std::uint32_t automaticShutdownMilliseconds,
-	const std::string_view bindAddress)
+	const std::string_view bindAddress,
+	const bool headless)
 {
 	using LostArk::Shared::WORLD_ID;
 
@@ -64,10 +68,20 @@ int LostArk::Server::CServerApp::Run(
 	m_isRunning.store(true);
 	m_RoomThread = std::thread(&CServerApp::Room_Loop, this);
 	m_AcceptThread = std::thread(&CServerApp::Accept_Loop, this);
+	const bool useHeadlessMode = headless ||
+		0 == ::_isatty(::_fileno(stdin));
 	std::cout << "Listening on " << bindAddress << ':' << SERVER_PORT
 		<< " with BERN, VALTAN_ARENA, TRAINING_GROUND, and "
 		<< "CHARACTER_SELECT_ARENA.";
-	if (0u == automaticShutdownMilliseconds)
+	if (0u == automaticShutdownMilliseconds && useHeadlessMode)
+	{
+		std::cout << " Headless mode; terminate the process to stop.\n";
+		while (m_isRunning.load())
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(250));
+		}
+	}
+	else if (0u == automaticShutdownMilliseconds)
 	{
 		std::cout << " Press Enter to stop.\n";
 		std::cin.get();
@@ -281,6 +295,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		targetRoom = Find_AssignedRoom(sessionId);
 		command.eType = ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY;
 		command.SpawnWorldEntity = std::move(request);
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST)
+	{
+		C2S_VALTAN_AUDITION_REQUEST request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		targetRoom = Find_AssignedRoom(sessionId);
+		command.eType = ROOM_COMMAND_TYPE::VALTAN_AUDITION;
+		command.ValtanAudition = request;
 	}
 	else
 	{

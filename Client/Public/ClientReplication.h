@@ -4,8 +4,11 @@
 #include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
 #include "NetObjectRegistry.h"
+#include "WorldDestructionProjectionDocument.h"
+#include "WorldDestructionProjectionRuntime.h"
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -18,6 +21,25 @@ namespace Client
 	class CCharacter;
 	class CNpc;
 	class CValtan;
+	class CDeployPropRuntime;
+
+	struct VALTAN_PRESENTATION_STATE final
+	{
+		bool_t isValid = false;
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iServerTick = 0u;
+		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
+			LostArk::Shared::WORLD_ENTITY_ACTION::END;
+		std::string strArchetypeId;
+		std::string strPatternId;
+		std::string strActionId;
+		std::uint32_t iPatternSequence = 0u;
+		std::uint32_t iPatternStageIndex = 0u;
+		std::uint32_t iActionStartTick = 0u;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+	};
 
 	class CClientReplication final
 	{
@@ -32,21 +54,51 @@ namespace Client
 			std::uint32_t iLayerLevelIndex = 0;
 			std::wstring strPlayerLayerTag;
 			std::wstring strWorldEntityLayerTag;
+			CDeployPropRuntime* pDeployPropRuntime = nullptr;
+			const CWorldDestructionProjectionDocument*
+				pWorldDestructionProjection = nullptr;
 		};
 
 	public:
 		bool Initialize(const DESC& desc);
 		bool Update();
 		bool Has_PendingConnectionLoss() const;
+		bool Has_FatalWorldDestructionFailure() const
+		{
+			return m_hasFatalWorldDestructionFailure;
+		}
 		void Acknowledge_ConnectionLoss();
 		void Reset();
 		bool Has_WorldEntity(std::string_view archetypeId) const;
 		bool Try_Consume_PresentationFailure(std::string& outStatus);
+		bool Try_Consume_WorldDestructionLiveEvent(
+			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
 #ifdef _DEBUG
 		void Set_CombatColliderDebugVisible(bool_t isVisible);
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
+		{
+			return m_ValtanPresentationState;
+		}
+		uint64_t Get_WorldDestructionPresentationGeneration() const
+		{
+			return m_iWorldDestructionPresentationGeneration;
+		}
+		bool_t Is_WorldDestructionSynchronized() const
+		{
+			return m_WorldDestructionProjectionRuntime.Is_Synchronized();
+		}
+		uint32_t Get_WorldDestructionEncounterEpoch() const
+		{
+			return m_WorldDestructionProjectionRuntime.Get_EncounterEpoch();
+		}
+		const std::vector<LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE>&
+		Get_WorldDestructionGroupStates() const
+		{
+			return m_WorldDestructionProjectionRuntime.Get_GroupStates();
+		}
 
 	private:
 		bool Create_Character(
@@ -68,6 +120,10 @@ namespace Client
 		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔
 		bool Apply_WorldSnapshot(
 			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
+		bool Apply_WorldDestructionFullSync(
+			const LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC& fullSync);
+		bool Apply_WorldDestructionDelta(
+			const LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA& delta);
 		enum class CHARACTER_REPLACE_RESULT
 		{
 			REPLACED,
@@ -89,9 +145,15 @@ namespace Client
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;
+		bool m_hasFatalWorldDestructionFailure = false;
 		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
 		std::string m_strPendingPresentationFailure;
+		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
+		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
+		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>
+			m_WorldDestructionLiveEvents;
+		uint64_t m_iWorldDestructionPresentationGeneration = 0u;
 #ifdef _DEBUG
 		bool_t m_isCombatColliderDebugVisible = false;
 #endif

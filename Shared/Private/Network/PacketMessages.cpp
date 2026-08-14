@@ -146,6 +146,234 @@ namespace
 			std::isfinite(damage.fPositionY) &&
 			std::isfinite(damage.fPositionZ);
 	}
+
+	bool Is_Valid_CombatRuntimeRevision(const std::string& revision)
+	{
+		if (LostArk::Shared::MAX_COMBAT_RUNTIME_REVISION_BYTES !=
+			revision.size())
+		{
+			return false;
+		}
+
+		bool hasNonZeroDigit = false;
+		for (const unsigned char character : revision)
+		{
+			if (!((character >= '0' && character <= '9') ||
+				(character >= 'a' && character <= 'f')))
+			{
+				return false;
+			}
+			hasNonZeroDigit = hasNonZeroDigit || character != '0';
+		}
+		return hasNonZeroDigit;
+	}
+
+	bool Is_Valid_DestructionState(
+		const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE state)
+	{
+		return static_cast<std::uint8_t>(state) <
+			static_cast<std::uint8_t>(
+				LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::END);
+	}
+
+	bool Is_Valid_DestructionStateWire(
+		const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state)
+	{
+		return Is_Valid_StableId(state.strGroupId, false) &&
+			Is_Valid_DestructionState(state.eState) &&
+			0 != state.iStateVersion &&
+			0 != state.iStateStartTick &&
+			((LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING ==
+				state.eState && 0 != state.iCommitTick) ||
+			 (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING !=
+				state.eState && 0 == state.iCommitTick));
+	}
+
+	bool Are_DestructionStatesCanonical(
+		const std::vector<LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE>& states)
+	{
+		for (std::size_t i = 0; i < states.size(); ++i)
+		{
+			if (!Is_Valid_DestructionStateWire(states[i]) ||
+				(0 != i &&
+					!(states[i - 1].strGroupId < states[i].strGroupId)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Is_Valid_DestructionEventWire(
+		const LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& event)
+	{
+		if (0 == event.iEventSequence ||
+			!Is_Valid_StableId(event.strGroupId, false) ||
+			!Is_Valid_StableId(event.strMutationId, false) ||
+			!Is_Valid_StableId(event.strBindingId, false) ||
+			0 == event.iPatternSequence ||
+			0 == event.iSourceNetEntityId ||
+			0 == event.iServerTick ||
+			!std::isfinite(event.fImpactOriginX) ||
+			!std::isfinite(event.fImpactOriginY) ||
+			!std::isfinite(event.fImpactOriginZ) ||
+			!std::isfinite(event.fImpactDirectionX) ||
+			!std::isfinite(event.fImpactDirectionY) ||
+			!std::isfinite(event.fImpactDirectionZ))
+		{
+			return false;
+		}
+
+		const float directionLengthSquared =
+			event.fImpactDirectionX * event.fImpactDirectionX +
+			event.fImpactDirectionY * event.fImpactDirectionY +
+			event.fImpactDirectionZ * event.fImpactDirectionZ;
+		return directionLengthSquared > 0.f &&
+			std::fabs(directionLengthSquared - 1.f) <= 0.001f;
+	}
+
+	bool Are_DestructionEventsCanonical(
+		const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>& events)
+	{
+		for (std::size_t i = 0; i < events.size(); ++i)
+		{
+			// Event sequences never wrap within an encounter epoch. The room must
+			// reset the epoch before UINT64_MAX can be reused, so raw ascending
+			// order is the canonical zero-reuse order on this wire.
+			if (!Is_Valid_DestructionEventWire(events[i]) ||
+				(0 != i &&
+					!(events[i - 1].iEventSequence < events[i].iEventSequence)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Write_U64(
+		LostArk::Shared::CPacketWriter& writer,
+		const std::uint64_t value)
+	{
+		writer.Write_U32(static_cast<std::uint32_t>(value));
+		writer.Write_U32(static_cast<std::uint32_t>(value >> 32));
+	}
+
+	bool Read_U64(
+		LostArk::Shared::CPacketReader& reader,
+		std::uint64_t& value)
+	{
+		std::uint32_t low = 0;
+		std::uint32_t high = 0;
+		if (!reader.Read_U32(low) || !reader.Read_U32(high))
+			return false;
+		value = static_cast<std::uint64_t>(low) |
+			(static_cast<std::uint64_t>(high) << 32);
+		return true;
+	}
+
+	bool Write_DestructionStateWire(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state)
+	{
+		if (!writer.Write_String(
+			state.strGroupId,
+			LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		writer.Write_U8(static_cast<std::uint8_t>(state.eState));
+		writer.Write_U32(state.iStateVersion);
+		writer.Write_U32(state.iStateStartTick);
+		writer.Write_U32(state.iCommitTick);
+		return true;
+	}
+
+	bool Read_DestructionStateWire(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& state)
+	{
+		LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE decoded{};
+		std::uint8_t rawState = 0;
+		if (!reader.Read_String(
+				decoded.strGroupId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U8(rawState) ||
+			!reader.Read_U32(decoded.iStateVersion) ||
+			!reader.Read_U32(decoded.iStateStartTick) ||
+			!reader.Read_U32(decoded.iCommitTick))
+		{
+			return false;
+		}
+		decoded.eState = static_cast<
+			LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE>(rawState);
+		if (!Is_Valid_DestructionStateWire(decoded))
+			return false;
+		state = std::move(decoded);
+		return true;
+	}
+
+	bool Write_DestructionEventWire(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& event)
+	{
+		Write_U64(writer, event.iEventSequence);
+		if (!writer.Write_String(
+				event.strGroupId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(
+				event.strMutationId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!writer.Write_String(
+				event.strBindingId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		writer.Write_U32(event.iPatternSequence);
+		Write_U64(writer, event.iSourceNetEntityId);
+		writer.Write_U32(event.iServerTick);
+		writer.Write_F32(event.fImpactOriginX);
+		writer.Write_F32(event.fImpactOriginY);
+		writer.Write_F32(event.fImpactOriginZ);
+		writer.Write_F32(event.fImpactDirectionX);
+		writer.Write_F32(event.fImpactDirectionY);
+		writer.Write_F32(event.fImpactDirectionZ);
+		writer.Write_U32(event.iRandomSeed);
+		return true;
+	}
+
+	bool Read_DestructionEventWire(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& event)
+	{
+		LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE decoded{};
+		if (!Read_U64(reader, decoded.iEventSequence) ||
+			!reader.Read_String(
+				decoded.strGroupId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(
+				decoded.strMutationId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(
+				decoded.strBindingId,
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U32(decoded.iPatternSequence) ||
+			!Read_U64(reader, decoded.iSourceNetEntityId) ||
+			!reader.Read_U32(decoded.iServerTick) ||
+			!reader.Read_F32(decoded.fImpactOriginX) ||
+			!reader.Read_F32(decoded.fImpactOriginY) ||
+			!reader.Read_F32(decoded.fImpactOriginZ) ||
+			!reader.Read_F32(decoded.fImpactDirectionX) ||
+			!reader.Read_F32(decoded.fImpactDirectionY) ||
+			!reader.Read_F32(decoded.fImpactDirectionZ) ||
+			!reader.Read_U32(decoded.iRandomSeed) ||
+			!Is_Valid_DestructionEventWire(decoded))
+		{
+			return false;
+		}
+		event = std::move(decoded);
+		return true;
+	}
 }
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
@@ -1180,4 +1408,280 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 
     message = std::move(decoded);
     return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_WORLD_DESTRUCTION_FULL_SYNC& message)
+{
+	if (!Is_Valid_CombatRuntimeRevision(
+			message.strCombatRuntimeRevision) ||
+		0 == message.iServerTick ||
+		0 == message.iEncounterEpoch ||
+		message.GroupStates.empty() ||
+		message.GroupStates.size() > MAX_WORLD_DESTRUCTION_GROUPS ||
+		!Are_DestructionStatesCanonical(message.GroupStates))
+	{
+		return false;
+	}
+
+	if (!writer.Write_String(
+		message.strCombatRuntimeRevision,
+		MAX_COMBAT_RUNTIME_REVISION_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iServerTick);
+	writer.Write_U32(message.iEncounterEpoch);
+	writer.Write_U16(static_cast<std::uint16_t>(
+		message.GroupStates.size()));
+	for (const WORLD_DESTRUCTION_STATE_WIRE& state :
+		message.GroupStates)
+	{
+		if (!Write_DestructionStateWire(writer, state))
+			return false;
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_WORLD_DESTRUCTION_FULL_SYNC& message)
+{
+	S2C_WORLD_DESTRUCTION_FULL_SYNC decoded{};
+	std::uint16_t groupCount = 0;
+	if (!reader.Read_String(
+			decoded.strCombatRuntimeRevision,
+			MAX_COMBAT_RUNTIME_REVISION_BYTES) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_U32(decoded.iEncounterEpoch) ||
+		!reader.Read_U16(groupCount) ||
+		!Is_Valid_CombatRuntimeRevision(
+			decoded.strCombatRuntimeRevision) ||
+		0 == decoded.iServerTick ||
+		0 == decoded.iEncounterEpoch ||
+		0 == groupCount ||
+		groupCount > MAX_WORLD_DESTRUCTION_GROUPS)
+	{
+		return false;
+	}
+
+	decoded.GroupStates.reserve(groupCount);
+	for (std::uint16_t i = 0; i < groupCount; ++i)
+	{
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		if (!Read_DestructionStateWire(reader, state))
+			return false;
+		decoded.GroupStates.push_back(std::move(state));
+	}
+	if (!Are_DestructionStatesCanonical(decoded.GroupStates))
+		return false;
+
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_WORLD_DESTRUCTION_DELTA& message)
+{
+	if (!Is_Valid_CombatRuntimeRevision(
+			message.strCombatRuntimeRevision) ||
+		0 == message.iServerTick ||
+		0 == message.iEncounterEpoch ||
+		(message.ChangedStates.empty() && message.LiveEvents.empty()) ||
+		message.ChangedStates.size() >
+			MAX_WORLD_DESTRUCTION_CHANGED_STATES ||
+		message.LiveEvents.size() > MAX_WORLD_DESTRUCTION_EVENTS ||
+		!Are_DestructionStatesCanonical(message.ChangedStates) ||
+		!Are_DestructionEventsCanonical(message.LiveEvents))
+	{
+		return false;
+	}
+
+	if (!writer.Write_String(
+		message.strCombatRuntimeRevision,
+		MAX_COMBAT_RUNTIME_REVISION_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iServerTick);
+	writer.Write_U32(message.iEncounterEpoch);
+	writer.Write_U16(static_cast<std::uint16_t>(
+		message.ChangedStates.size()));
+	writer.Write_U16(static_cast<std::uint16_t>(
+		message.LiveEvents.size()));
+	for (const WORLD_DESTRUCTION_STATE_WIRE& state :
+		message.ChangedStates)
+	{
+		if (!Write_DestructionStateWire(writer, state))
+			return false;
+	}
+	for (const WORLD_DESTRUCTION_EVENT_WIRE& event :
+		message.LiveEvents)
+	{
+		if (!Write_DestructionEventWire(writer, event))
+			return false;
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_WORLD_DESTRUCTION_DELTA& message)
+{
+	S2C_WORLD_DESTRUCTION_DELTA decoded{};
+	std::uint16_t changedStateCount = 0;
+	std::uint16_t eventCount = 0;
+	if (!reader.Read_String(
+			decoded.strCombatRuntimeRevision,
+			MAX_COMBAT_RUNTIME_REVISION_BYTES) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_U32(decoded.iEncounterEpoch) ||
+		!reader.Read_U16(changedStateCount) ||
+		!reader.Read_U16(eventCount) ||
+		!Is_Valid_CombatRuntimeRevision(
+			decoded.strCombatRuntimeRevision) ||
+		0 == decoded.iServerTick ||
+		0 == decoded.iEncounterEpoch ||
+		(0 == changedStateCount && 0 == eventCount) ||
+		changedStateCount > MAX_WORLD_DESTRUCTION_CHANGED_STATES ||
+		eventCount > MAX_WORLD_DESTRUCTION_EVENTS)
+	{
+		return false;
+	}
+
+	decoded.ChangedStates.reserve(changedStateCount);
+	decoded.LiveEvents.reserve(eventCount);
+	for (std::uint16_t i = 0; i < changedStateCount; ++i)
+	{
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		if (!Read_DestructionStateWire(reader, state))
+			return false;
+		decoded.ChangedStates.push_back(std::move(state));
+	}
+	for (std::uint16_t i = 0; i < eventCount; ++i)
+	{
+		WORLD_DESTRUCTION_EVENT_WIRE event{};
+		if (!Read_DestructionEventWire(reader, event))
+			return false;
+		decoded.LiveEvents.push_back(std::move(event));
+	}
+	if (!Are_DestructionStatesCanonical(decoded.ChangedStates) ||
+		!Are_DestructionEventsCanonical(decoded.LiveEvents))
+	{
+		return false;
+	}
+
+	message = std::move(decoded);
+	return true;
+}
+
+namespace
+{
+	using namespace LostArk::Shared;
+
+	// A request sequence of zero can never be told apart from a default-built
+	// struct, so it is not a usable duplicate key. Health bar zero is the dead
+	// boss and carries no authored pattern.
+	bool Is_Valid_AuditionRequest(
+		const std::uint32_t requestSequence,
+		const std::uint8_t rawOperation,
+		const std::uint32_t targetHealthBar)
+	{
+		return 0u != requestSequence &&
+			rawOperation < static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::END) &&
+			0u != targetHealthBar;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	const std::uint8_t rawOperation =
+		static_cast<std::uint8_t>(message.eOperation);
+	if (!Is_Valid_AuditionRequest(
+		message.iRequestSequence, rawOperation, message.iTargetHealthBar))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(rawOperation);
+	writer.Write_U32(message.iTargetHealthBar);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	C2S_VALTAN_AUDITION_REQUEST decoded{};
+	std::uint8_t rawOperation = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U8(rawOperation) ||
+		!reader.Read_U32(decoded.iTargetHealthBar))
+	{
+		return false;
+	}
+	if (!Is_Valid_AuditionRequest(
+		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar))
+	{
+		return false;
+	}
+	decoded.eOperation =
+		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_VALTAN_AUDITION_RESULT& message)
+{
+	const std::uint8_t rawOperation =
+		static_cast<std::uint8_t>(message.eOperation);
+	const std::uint8_t rawResult =
+		static_cast<std::uint8_t>(message.eResult);
+	if (!Is_Valid_AuditionRequest(
+		message.iRequestSequence, rawOperation, message.iTargetHealthBar) ||
+		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(rawOperation);
+	writer.Write_U32(message.iTargetHealthBar);
+	writer.Write_U8(rawResult);
+	writer.Write_U32(message.iCurrentHealthBar);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_VALTAN_AUDITION_RESULT& message)
+{
+	S2C_VALTAN_AUDITION_RESULT decoded{};
+	std::uint8_t rawOperation = 0;
+	std::uint8_t rawResult = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U8(rawOperation) ||
+		!reader.Read_U32(decoded.iTargetHealthBar) ||
+		!reader.Read_U8(rawResult) ||
+		!reader.Read_U32(decoded.iCurrentHealthBar))
+	{
+		return false;
+	}
+	if (!Is_Valid_AuditionRequest(
+		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar) ||
+		rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
+	{
+		return false;
+	}
+	decoded.eOperation =
+		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
+	decoded.eResult = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
+	message = decoded;
+	return true;
 }

@@ -16,6 +16,63 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
+	constexpr const char* ARMOR_BREAK_PATTERN_ID =
+		"VALTAN_ARMOR_BREAK_OPENING";
+	constexpr const char* ARMOR_BREAK_STAGE_ID = "WALL_CHARGE";
+	constexpr const char* ARMOR_BREAK_ACTION_ID =
+		"valtan.mechanic.armor-break-opening.charge";
+	constexpr const char* ARENA_BREAK_PATTERN_ID = "VALTAN_ARENA_BREAK_109";
+	constexpr const char* ARENA_BREAK_TAKEOFF_STAGE_ID = "TAKEOFF";
+	constexpr const char* ARENA_BREAK_DROP_STAGE_ID = "DROP";
+	/* The converted Valtan model carries no jump clip, so the leap is a Server
+	transform arc instead of root motion. Height is a presentation-scale
+	authored constant; the landing point comes from the boss placement. */
+	constexpr float ARENA_BREAK_LEAP_APEX_HEIGHT = 12.f;
+
+	bool Is_ArenaBreakLeapStage(const SERVER_WORLD_ENTITY& boss)
+	{
+		return boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
+			(boss.strPatternStageId == ARENA_BREAK_TAKEOFF_STAGE_ID ||
+				boss.strPatternStageId == ARENA_BREAK_DROP_STAGE_ID);
+	}
+
+	/* Stage progress in [0,1]. A zero-length stage reads as finished so the
+	arc never divides by it. */
+	float StageRatio(const SERVER_WORLD_ENTITY& boss)
+	{
+		if (0u == boss.iPatternStageDurationMs)
+			return 1.f;
+		const float duration =
+			static_cast<float>(boss.iPatternStageDurationMs) *
+			MILLISECONDS_TO_SECONDS;
+		if (!std::isfinite(boss.fActionElapsedSeconds) || duration <= 0.f)
+			return 1.f;
+		return (std::min)(1.f, (std::max)(0.f,
+			boss.fActionElapsedSeconds / duration));
+	}
+
+	/* TAKEOFF rises in place; DROP carries the boss to its authored placement
+	while it falls, so IMPACT always lands on the arena centre. */
+	void Advance_ArenaBreakLeap(SERVER_WORLD_ENTITY& boss)
+	{
+		if (!Is_ArenaBreakLeapStage(boss))
+			return;
+		const float ratio = StageRatio(boss);
+		const float apex = boss.fLeapApexHeight;
+		if (boss.strPatternStageId == ARENA_BREAK_TAKEOFF_STAGE_ID)
+		{
+			boss.fPositionX = boss.fLeapOriginX;
+			boss.fPositionZ = boss.fLeapOriginZ;
+			boss.fPositionY = boss.fLeapOriginY + apex * ratio;
+			return;
+		}
+		boss.fPositionX = boss.fLeapOriginX +
+			(boss.fSpawnPositionX - boss.fLeapOriginX) * ratio;
+		boss.fPositionZ = boss.fLeapOriginZ +
+			(boss.fSpawnPositionZ - boss.fLeapOriginZ) * ratio;
+		const float apexY = boss.fLeapOriginY + apex;
+		boss.fPositionY = apexY + (boss.fSpawnPositionY - apexY) * ratio * ratio;
+	}
 
 	void Transition(
 		SERVER_WORLD_ENTITY& boss,
@@ -27,19 +84,6 @@ namespace
 		boss.eAction = action;
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-	}
-
-	std::uint32_t CalculateHealthBar(const SERVER_WORLD_ENTITY& boss)
-	{
-		if (0u == boss.iCurrentHp || 0u == boss.iMaximumHp ||
-			0u == boss.iMaximumHealthBars)
-		{
-			return 0u;
-		}
-		const std::uint64_t scaled =
-			static_cast<std::uint64_t>(boss.iCurrentHp) * boss.iMaximumHealthBars;
-		return static_cast<std::uint32_t>((scaled + boss.iMaximumHp - 1u) /
-			boss.iMaximumHp);
 	}
 
 	bool ContainsPatternId(
@@ -188,6 +232,7 @@ namespace
 		const std::uint32_t serverTick)
 	{
 		boss.iPatternStageIndex = stageIndex;
+		boss.strPatternStageId = stage.strStageId;
 		boss.iPatternStageDurationMs = stage.iDurationMs;
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
@@ -203,6 +248,27 @@ namespace
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+		if (boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
+			stage.strStageId == ARENA_BREAK_TAKEOFF_STAGE_ID)
+		{
+			boss.fLeapOriginX = boss.fPositionX;
+			boss.fLeapOriginY = boss.fPositionY;
+			boss.fLeapOriginZ = boss.fPositionZ;
+			boss.fLeapApexHeight = ARENA_BREAK_LEAP_APEX_HEIGHT;
+			boss.MovePath.clear();
+		}
+		else if (boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
+			stage.strStageId != ARENA_BREAK_DROP_STAGE_ID)
+		{
+			/* Everything from IMPACT onward is played from the authored
+			placement, so the landing is exact rather than wherever the last
+			interpolated frame happened to leave the boss. */
+			boss.fPositionX = boss.fSpawnPositionX;
+			boss.fPositionY = boss.fSpawnPositionY;
+			boss.fPositionZ = boss.fSpawnPositionZ;
+			boss.fLeapApexHeight = 0.f;
+		}
+		Advance_ArenaBreakLeap(boss);
 	}
 
 	void BeginPattern(
@@ -230,11 +296,22 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick)
 	{
+		if (boss.fLeapApexHeight > 0.f)
+		{
+			/* An aborted leap must not leave the boss standing in mid-air, so
+			drop it back onto the authored placement it was falling toward. */
+			boss.fPositionX = boss.fSpawnPositionX;
+			boss.fPositionY = boss.fSpawnPositionY;
+			boss.fPositionZ = boss.fSpawnPositionZ;
+			boss.fLeapApexHeight = 0.f;
+		}
 		boss.strPatternId.clear();
+		boss.strPatternStageId.clear();
 		boss.strActionId.clear();
 		boss.strDamageProfileId.clear();
 		boss.iPatternStageIndex = 0u;
 		boss.iPatternStageDurationMs = 0u;
+		boss.fPatternForcedMotionSpeed = 0.f;
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.iPatternHitCount = 0u;
 		boss.iAppliedPatternHitCount = 0u;
@@ -397,6 +474,40 @@ namespace
 	}
 }
 
+std::uint32_t LostArk::Server::CValtanBrain::Calculate_HealthBar(
+	const SERVER_WORLD_ENTITY& boss)
+{
+	if (0u == boss.iCurrentHp || 0u == boss.iMaximumHp ||
+		0u == boss.iMaximumHealthBars)
+	{
+		return 0u;
+	}
+	const std::uint64_t scaled =
+		static_cast<std::uint64_t>(boss.iCurrentHp) * boss.iMaximumHealthBars;
+	return static_cast<std::uint32_t>((scaled + boss.iMaximumHp - 1u) /
+		boss.iMaximumHp);
+}
+
+std::uint32_t LostArk::Server::CValtanBrain::Resolve_HealthBarHp(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t healthBar)
+{
+	if (0u == healthBar || 0u == boss.iMaximumHp ||
+		0u == boss.iMaximumHealthBars ||
+		healthBar > boss.iMaximumHealthBars)
+	{
+		return 0u;
+	}
+	/* Floor of the exact boundary. Calculate_HealthBar rounds up, and the
+	discarded remainder is always smaller than one bar, so this HP reads back as
+	healthBar rather than the bar below it. */
+	const std::uint64_t scaled =
+		static_cast<std::uint64_t>(boss.iMaximumHp) * healthBar;
+	const std::uint32_t resolved =
+		static_cast<std::uint32_t>(scaled / boss.iMaximumHealthBars);
+	return 0u == resolved ? 1u : resolved;
+}
+
 void LostArk::Server::CValtanBrain::Update(
 	SERVER_WORLD_ENTITY& boss,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -411,6 +522,9 @@ void LostArk::Server::CValtanBrain::Update(
 	if (0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
 	{
 		boss.iCurrentHp = 0u;
+		boss.strPatternId.clear();
+		boss.strPatternStageId.clear();
+		boss.strActionId.clear();
 		Transition(boss, SERVER_ENTITY_ACTION::DEAD, serverTick);
 		boss.MovePath.clear();
 		return;
@@ -426,7 +540,7 @@ void LostArk::Server::CValtanBrain::Update(
 	{
 		boss.iPhase = 2;
 	}
-	const std::uint32_t currentHealthBar = CalculateHealthBar(boss);
+	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
 	QueueCrossedHealthBarPatterns(boss, *patterns, currentHealthBar);
 
 	SERVER_PLAYER* target = nullptr;
@@ -492,6 +606,21 @@ void LostArk::Server::CValtanBrain::Update(
 		const float deltaZ = target->fPositionZ - boss.fPositionZ;
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 		BeginPattern(boss, *selected, serverTick);
+		if (boss.strPatternId == ARMOR_BREAK_PATTERN_ID &&
+			boss.strPatternStageId == ARMOR_BREAK_STAGE_ID &&
+			boss.strActionId == ARMOR_BREAK_ACTION_ID &&
+			0u != boss.iPatternStageDurationMs)
+		{
+			const float durationSeconds =
+				static_cast<float>(boss.iPatternStageDurationMs) *
+				MILLISECONDS_TO_SECONDS;
+			/* The target locks the charge heading, but Valtan must continue past
+			   that player until it reaches a receiver. The encounter's authored
+			   maximumRange is therefore the travel distance; using target distance
+			   would stop at the bait player before the wall. */
+			boss.fPatternForcedMotionSpeed = durationSeconds > 0.f ?
+				boss.fPatternMaximumRange / durationSeconds : 0.f;
+		}
 	}
 
 	const BOSS_PATTERN_DEFINITION* currentPattern =
@@ -504,6 +633,7 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 
 	boss.fActionElapsedSeconds += fixedDeltaSeconds;
+	Advance_ArenaBreakLeap(boss);
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount &&
 		boss.fActionElapsedSeconds * 1000.f >=
 			static_cast<float>(boss.iAppliedPatternHitCount *
@@ -527,4 +657,51 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	EnterPatternStage(
 		boss, currentPattern->Stages[nextStageIndex], nextStageIndex, serverTick);
+}
+
+bool LostArk::Server::CValtanBrain::Try_BuildImpactMotion(
+	const SERVER_WORLD_ENTITY& boss,
+	const float fixedDeltaSeconds,
+	float& outProposedX,
+	float& outProposedZ) const
+{
+	if (boss.strPatternId != ARMOR_BREAK_PATTERN_ID ||
+		boss.strPatternStageId != ARMOR_BREAK_STAGE_ID ||
+		boss.strActionId != ARMOR_BREAK_ACTION_ID ||
+		SERVER_ENTITY_ACTION::PATTERN_WINDUP != boss.eAction ||
+		!std::isfinite(boss.fPatternForcedMotionSpeed) ||
+		boss.fPatternForcedMotionSpeed <= 0.f ||
+		!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
+	{
+		return false;
+	}
+	const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+	const float distance = boss.fPatternForcedMotionSpeed * fixedDeltaSeconds;
+	outProposedX = boss.fPositionX + std::sin(yawRadians) * distance;
+	outProposedZ = boss.fPositionZ + std::cos(yawRadians) * distance;
+	return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
+}
+
+bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
+	SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick) const
+{
+	if (boss.strPatternId != ARMOR_BREAK_PATTERN_ID ||
+		boss.strPatternStageId != ARMOR_BREAK_STAGE_ID ||
+		boss.strActionId != ARMOR_BREAK_ACTION_ID)
+	{
+		return false;
+	}
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	const BOSS_PATTERN_DEFINITION* pattern = nullptr;
+	if (nullptr != patterns)
+		pattern = FindPattern(*patterns, boss.strPatternId);
+	const std::uint32_t nextStageIndex = boss.iPatternStageIndex + 1u;
+	if (nullptr == pattern || nextStageIndex >= pattern->Stages.size())
+		return false;
+	EnterPatternStage(
+		boss, pattern->Stages[nextStageIndex], nextStageIndex, serverTick);
+	boss.fPatternForcedMotionSpeed = 0.f;
+	return true;
 }

@@ -21,6 +21,16 @@
 #include "PlayerSkillCatalog.h"
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
+#include "EncounterPatternReference.h"
+#include "ValtanCinematicCameraController.h"
+#include "ValtanCinematicCameraDocument.h"
+#include "WorldDestructionDebrisPresentationDocument.h"
+#include "WorldDestructionDebrisPresentationRuntime.h"
+#include "WorldDestructionProjectionDocument.h"
+#include "WorldDestructionProjectionRuntime.h"
+#include "NetworkManager.h"
+
+#include "Network/PacketWriter.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
 
@@ -1446,6 +1456,53 @@ namespace
 			"Consumed Handoff Leaves No Stale Command");
 	}
 
+	void Test_CanonicalLobbyServerEndpoint(TEST_RUNNER& runner)
+	{
+		SCOPED_ENVIRONMENT_VARIABLE serverHostEnvironment(
+			L"LOSTARK_SERVER_HOST");
+		SCOPED_ENVIRONMENT_VARIABLE legacyMapEditorHostEnvironment(
+			L"LOSTARK_MAPEDITOR_SERVER_HOST");
+		const bool_t environmentConfigured =
+			serverHostEnvironment.Set(L"192.168.200.103") &&
+			legacyMapEditorHostEnvironment.Set(L"127.0.0.1");
+
+		runner.Require(
+			environmentConfigured &&
+			CNetworkManager::Resolve_ServerHost() == "192.168.200.103" &&
+			CNetworkManager::Resolve_MapEditorServerHost() ==
+				CNetworkManager::Resolve_ServerHost(),
+			"Lobby Test And Product Worlds Share Canonical Server Endpoint");
+	}
+
+	void Test_EnterAcceptancePreservesRequestedCharacterClass(
+		TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+
+		CNetworkManager& network = CNetworkManager::Get();
+		network.Harness_Reset();
+		network.Harness_SetRequestedCharacterClass(
+			CHARACTER_CLASS_ID::LANCE_MASTER);
+
+		S2C_ENTER_ACCEPTED accepted{};
+		accepted.eWorldId = WORLD_ID::BERN;
+		accepted.iPlayerId = 1u;
+		accepted.iNetEntityId = 101u;
+		CPacketWriter writer;
+		Write_Message(writer, accepted);
+		PACKET_FRAME frame{};
+		frame.ePacketType = PACKET_TYPE::S2C_ENTER_ACCEPTED;
+		frame.Payload = writer.Get_Buffer();
+		network.Harness_HandleFrame(frame);
+
+		runner.Require(
+			network.Get_LocalCharacterClass() ==
+				CHARACTER_CLASS_ID::LANCE_MASTER,
+			"Bern Acceptance Preserves Requested Character For Target Loader");
+		network.Harness_Reset();
+	}
+
 	void Test_EntryPurpose(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -1892,6 +1949,1127 @@ namespace
 		runner.Require(exactBinding && exactPriorClipProductCue &&
 			delayedPriorClipCue,
 			"DimensionMaster 2050240 Delayed First Snapshot Retains Prior Clip Product Cue");
+	}
+
+	std::string Make_ValtanCameraFixture(
+		const uint32_t formatVersion = 2u,
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateTuple = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.encounter-cinematic-camera\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"encounterId\":\"ENCOUNTER_VALTAN\",";
+		text << "\"provenance\":\"PROJECT_AUTHORED\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"cues\":[";
+		const auto appendCue = [&text](const char_t* cueId)
+		{
+			text << "{\"cueId\":\"" << cueId << "\",";
+			text << "\"patternId\":\"VALTAN_ARENA_BREAK_109\",";
+			/* WIDE_REVEAL is the one authored stage long enough to hold this
+			2000ms fixture, so the tick arithmetic below stays exact. */
+			text << "\"stageId\":\"WIDE_REVEAL\",\"durationMs\":2000,";
+			text << "\"easing\":\"LINEAR\",";
+			text << "\"shakeAmplitude\":0,\"shakeDurationMs\":0,";
+			text << "\"keyframes\":[";
+			text << "{\"timeMs\":0,\"eye\":[0,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":60},";
+			text << "{\"timeMs\":1000,\"eye\":[10,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":40},";
+			text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}";
+		};
+		appendCue("fixture.valtan.109");
+		if (duplicateTuple)
+		{
+			text << ',';
+			appendCue("fixture.valtan.109.duplicate");
+		}
+		text << "]}";
+		return text.str();
+	}
+
+	std::string Make_ValtanCameraEasingFixture(
+		const char_t* easing,
+		const f32_t shakeAmplitude,
+		const uint32_t shakeDurationMs)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.encounter-cinematic-camera\",";
+		text << "\"formatVersion\":2,";
+		text << "\"encounterId\":\"ENCOUNTER_VALTAN\",";
+		text << "\"provenance\":\"PROJECT_AUTHORED\",";
+		text << "\"cues\":[{\"cueId\":\"fixture.valtan.easing\",";
+		text << "\"patternId\":\"VALTAN_ARENA_BREAK_109\",";
+		text << "\"stageId\":\"WIDE_REVEAL\",\"durationMs\":2000,";
+		text << "\"easing\":\"" << easing << "\",";
+		text << "\"shakeAmplitude\":" << shakeAmplitude << ',';
+		text << "\"shakeDurationMs\":" << shakeDurationMs << ',';
+		text << "\"keyframes\":[";
+		text << "{\"timeMs\":0,\"eye\":[0,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":60},";
+		text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}]}";
+		return text.str();
+	}
+
+	void Test_ValtanCinematicCameraEasing(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		CEncounterPatternReference encounter;
+		std::string status;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"), status);
+
+		const auto sampleEyeX = [&](const char_t* easing, const f32_t seconds)
+		{
+			CValtanCinematicCameraDocument document;
+			std::string error;
+			if (!encounterLoaded ||
+				!CValtanCinematicCameraDocument::Parse_Text(
+					Make_ValtanCameraEasingFixture(easing, 0.f, 0u),
+					encounter, document, error))
+			{
+				return std::numeric_limits<f32_t>::quiet_NaN();
+			}
+			CValtanCinematicCameraController controller;
+			VALTAN_CINEMATIC_CAMERA_INPUT input{};
+			input.isValid = true;
+			input.iNetEntityId = 77u;
+			input.strPatternId = "VALTAN_ARENA_BREAK_109";
+			input.strStageActionId =
+				"valtan.mechanic.arena-break-109.wide-reveal";
+			input.iPatternSequence = 1u;
+			input.iStageIndex = 4u;
+			input.iActionStartTick = 100u;
+			input.iServerTick =
+				100u + static_cast<uint32_t>(seconds * 30.f + 0.5f);
+			VALTAN_CINEMATIC_CAMERA_POSE pose{};
+			if (!controller.Initialize(&document, encounter.Get_FixedTickHz()) ||
+				!controller.Update(input, 0.f, pose))
+			{
+				return std::numeric_limits<f32_t>::quiet_NaN();
+			}
+			return pose.vEye.x;
+		};
+
+		/* A quarter through the cue, smoothstep must still be behind the linear
+		   ramp and hold must not have moved at all. */
+		const f32_t linearX = sampleEyeX("LINEAR", 0.5f);
+		const f32_t smoothX = sampleEyeX("SMOOTHSTEP", 0.5f);
+		const f32_t holdX = sampleEyeX("HOLD", 0.5f);
+		runner.Require(
+			std::abs(linearX - 5.f) < 0.001f &&
+			smoothX < linearX - 0.5f && smoothX > 0.f &&
+			std::abs(holdX) < 0.001f,
+			"Valtan Camera Applies Authored Keyframe Easing");
+
+		CValtanCinematicCameraDocument shakeDocument;
+		std::string shakeError;
+		const bool_t shakeParsed = encounterLoaded &&
+			CValtanCinematicCameraDocument::Parse_Text(
+				Make_ValtanCameraEasingFixture("HOLD", 0.5f, 200u),
+				encounter, shakeDocument, shakeError);
+		CValtanCinematicCameraController shakeController;
+		VALTAN_CINEMATIC_CAMERA_INPUT shakeInput{};
+		shakeInput.isValid = true;
+		shakeInput.iNetEntityId = 77u;
+		shakeInput.strPatternId = "VALTAN_ARENA_BREAK_109";
+		shakeInput.strStageActionId =
+			"valtan.mechanic.arena-break-109.wide-reveal";
+		shakeInput.iPatternSequence = 1u;
+		shakeInput.iStageIndex = 4u;
+		shakeInput.iActionStartTick = 100u;
+		shakeInput.iServerTick = 101u;
+		VALTAN_CINEMATIC_CAMERA_POSE earlyPose{};
+		VALTAN_CINEMATIC_CAMERA_POSE latePose{};
+		const bool_t shakeSampled = shakeParsed &&
+			shakeController.Initialize(
+				&shakeDocument, encounter.Get_FixedTickHz()) &&
+			shakeController.Update(shakeInput, 0.f, earlyPose);
+		shakeInput.iServerTick = 130u;
+		const bool_t settled = shakeSampled &&
+			shakeController.Update(shakeInput, 0.f, latePose);
+		/* HOLD pins the pose to the first keyframe, so any offset is the shake
+		   itself: bounded while it runs and exactly gone once it expires. */
+		runner.Require(
+			settled &&
+			std::abs(earlyPose.vEye.x) > 0.0001f &&
+			std::abs(earlyPose.vEye.x) <= 0.5f &&
+			std::abs(latePose.vEye.x) < 0.0001f &&
+			std::abs(latePose.vEye.y - 2.f) < 0.0001f,
+			"Valtan Camera Impact Shake Is Bounded And Expires");
+
+		const auto rejects = [&](const std::string& text)
+		{
+			CValtanCinematicCameraDocument rejected;
+			std::string error;
+			return encounterLoaded &&
+				!CValtanCinematicCameraDocument::Parse_Text(
+					text, encounter, rejected, error) && !error.empty();
+		};
+		runner.Require(
+			rejects(Make_ValtanCameraEasingFixture("EASE_IN", 0.f, 0u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.5f, 0u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.f, 200u)) &&
+			rejects(Make_ValtanCameraEasingFixture("LINEAR", 0.5f, 2500u)),
+			"Valtan Camera Rejects Unknown Easing And Half-Authored Shake");
+	}
+
+	void Test_ValtanCinematicCamera(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		CEncounterPatternReference encounter;
+		std::string status;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"), status);
+		CValtanCinematicCameraDocument actual;
+		const bool_t actualLoaded = encounterLoaded && actual.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanCinematicCamera.json"),
+			encounter, status);
+		/* The 109 phase transition owns one cue per authored stage, so the
+		document carries those six plus the two single-stage cues. */
+		runner.Require(actualLoaded && actual.Get_Cues().size() == 8u &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 0u,
+				"valtan.mechanic.arena-break-109.takeoff") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 1u,
+				"valtan.mechanic.arena-break-109.drop") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 2u,
+				"valtan.mechanic.arena-break-109.impact") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 3u,
+				"valtan.mechanic.arena-break-109.impact-hold") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 4u,
+				"valtan.mechanic.arena-break-109.wide-reveal") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 5u,
+				"valtan.mechanic.arena-break-109.recovery") &&
+			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_33", 0u,
+				"valtan.mechanic.arena-break-33.cutscene") &&
+			nullptr != actual.Find_Cue("VALTAN_GHOST_TRANSITION_15", 0u,
+				"valtan.mechanic.ghost-transition-15.portal"),
+			"Valtan Camera Loads Every Exact Encounter Tuple");
+
+		CValtanCinematicCameraDocument preserved;
+		const bool_t baseline = encounterLoaded &&
+			CValtanCinematicCameraDocument::Parse_Text(
+				Make_ValtanCameraFixture(), encounter, preserved, status);
+		const auto rejectsAndPreserves = [&encounter, &preserved](
+			const std::string& candidate)
+		{
+			std::string error;
+			const std::string before = preserved.Get_Cues().empty() ?
+				std::string{} : preserved.Get_Cues().front().strCueId;
+			return !CValtanCinematicCameraDocument::Parse_Text(
+				candidate, encounter, preserved, error) && !error.empty() &&
+				preserved.Is_Ready() && preserved.Get_Cues().size() == 1u &&
+				preserved.Get_Cues().front().strCueId == before;
+		};
+		runner.Require(baseline &&
+			rejectsAndPreserves(Make_ValtanCameraFixture(3u)),
+			"Valtan Camera Rejects Unknown Version Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_ValtanCameraFixture(2u, true)),
+			"Valtan Camera Rejects Unknown Key Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_ValtanCameraFixture(2u, false, true)),
+			"Valtan Camera Rejects Duplicate Encounter Tuple Transactionally");
+
+		CValtanCinematicCameraController controller;
+		VALTAN_CINEMATIC_CAMERA_INPUT input{};
+		input.isValid = true;
+		input.iNetEntityId = 77u;
+		input.iServerTick = 130u;
+		input.strPatternId = "VALTAN_ARENA_BREAK_109";
+		input.strStageActionId =
+			"valtan.mechanic.arena-break-109.wide-reveal";
+		input.iPatternSequence = 4u;
+		input.iStageIndex = 4u;
+		input.iActionStartTick = 100u;
+		VALTAN_CINEMATIC_CAMERA_POSE pose{};
+		const bool_t lateSeek = baseline && controller.Initialize(
+			&preserved, encounter.Get_FixedTickHz()) &&
+			controller.Update(input, 0.f, pose) &&
+			std::abs(controller.Get_ElapsedSeconds() - 1.f) < 0.000001f &&
+			std::abs(pose.vEye.x - 10.f) < 0.000001f;
+		runner.Require(lateSeek,
+			"Valtan Camera Late Snapshot Seeks Authoritative Stage Age");
+		const bool_t duplicateProgressesWithoutRestart =
+			controller.Update(input, 0.05f, pose) &&
+			controller.Get_ElapsedSeconds() > 1.f;
+		runner.Require(duplicateProgressesWithoutRestart,
+			"Valtan Camera Duplicate Snapshot Does Not Restart Cue");
+		input.iServerTick = 161u;
+		runner.Require(!controller.Update(input, 0.f, pose) &&
+			!controller.Is_Active() &&
+			!controller.Update(input, 0.f, pose),
+			"Valtan Camera Completed Tuple Does Not Replay From Duplicate Snapshot");
+		input.iPatternSequence = 5u;
+		input.iActionStartTick = 161u;
+		runner.Require(controller.Update(input, 0.f, pose) &&
+			controller.Is_Active() &&
+			std::abs(controller.Get_ElapsedSeconds()) < 0.000001f,
+			"Valtan Camera New Pattern Sequence Starts A New Cue");
+		controller.Reset();
+		runner.Require(!controller.Is_Active(),
+			"Valtan Camera Reset Ends Presentation State");
+	}
+
+	std::string Make_WorldDestructionProjectionFixture(
+		const uint32_t formatVersion = 2u,
+		const std::string_view revision =
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const std::string_view firstPlacementId = "9335938568718910930",
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateMember = false,
+		const std::string_view suppressionAliasPlacementId =
+			"18177041425620847396",
+		const bool_t duplicateSuppressionAlias = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.world-destruction-client-projection\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"areaId\":\"LV_LUT_HEARTRB_ED\",";
+		text << "\"combatRuntimeRevision\":\"" << revision << "\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"groups\":[{";
+		text << "\"groupId\":\"destroyable.group.valtan.wall.3705102\",";
+		text << "\"mutationId\":\"mutation.valtan.wall.3705102.break\",";
+		text << "\"suppressionAliasPlacementIds\":[\"";
+		text << suppressionAliasPlacementId << '"';
+		if (duplicateSuppressionAlias)
+			text << ",\"" << suppressionAliasPlacementId << '"';
+		text << "],";
+		text << "\"memberPlacementIds\":[\"" << firstPlacementId << "\",";
+		text << "\"9681544306002658031\",";
+		text << "\"12037145985028191659\",";
+		text << "\"17280669848983777578\",";
+		text << "\"18177041425620847396\"";
+		if (duplicateMember)
+			text << ",\"18177041425620847396\"";
+		text << "]}]}";
+		return text.str();
+	}
+
+	std::string Make_WorldDestructionDebrisPresentationFixture(
+		const uint32_t formatVersion = 1u,
+		const std::string_view revision =
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		const std::string_view sourcePlacementId = "9335938568718910930",
+		const bool_t includeUnknownRootKey = false,
+		const bool_t duplicateProjectedPlacement = false,
+		const bool_t zeroDirection = false)
+	{
+		std::ostringstream text;
+		text << "{\"schema\":\"lostark.world-destruction-debris-presentation\",";
+		text << "\"formatVersion\":" << formatVersion << ',';
+		text << "\"areaId\":\"LV_LUT_HEARTRB_ED\",";
+		text << "\"combatRuntimeRevision\":\"" << revision << "\",";
+		if (includeUnknownRootKey)
+			text << "\"unknown\":true,";
+		text << "\"profiles\":[{";
+		text << "\"groupId\":\"destroyable.group.valtan.wall.3705102\",";
+		text << "\"mutationId\":\"mutation.valtan.wall.3705102.break\",";
+		text << "\"bindingId\":\"binding.valtan.wall.3705102.break\",";
+		text << "\"emitters\":[";
+		const std::array<std::string_view, 4u> placementIds = {
+			sourcePlacementId,
+			duplicateProjectedPlacement ? sourcePlacementId : "9681544306002658031",
+			"12037145985028191659", "17280669848983777578"
+		};
+		for (size_t index = 0u; index < placementIds.size(); ++index)
+		{
+			if (0u != index)
+				text << ',';
+			text << "{\"sourceRuntimePlacementId\":\"" << placementIds[index];
+			text << "\",\"suppressionAliasPlacementIds\":";
+			text << (index + 1u == placementIds.size() ?
+				"[\"18177041425620847396\"]" : "[]");
+			text << ',';
+			text << "\"spawnOffset\":[0,0,0],\"direction\":";
+			text << (zeroDirection && 0u == index ? "[0,0,0]" : "[0,1,0]");
+			text << ",\"speedMetersPerSecond\":5,";
+			text << "\"gravityScale\":2,\"lifetimeSeconds\":4}";
+		}
+		text << "]}]}";
+		return text.str();
+	}
+
+	void Test_WorldDestructionDebrisPresentation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+
+		CWorldDestructionProjectionDocument projection;
+		CWorldDestructionDebrisPresentationDocument presentation;
+		std::string status;
+		const bool_t projectionReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(), projection, status);
+		const bool_t presentationReady =
+			CWorldDestructionDebrisPresentationDocument::Parse_Text(
+				Make_WorldDestructionDebrisPresentationFixture(),
+				presentation, status);
+		runner.Require(projectionReady && presentationReady &&
+			presentation.Is_Ready() && presentation.Get_Profiles().size() == 1u &&
+			presentation.Get_Profiles().front().Emitters.size() == 4u &&
+			projection.Get_Groups().front().SuppressionAliasPlacementIds.size() == 1u &&
+			presentation.Get_Profiles().front().strMutationId ==
+				"mutation.valtan.wall.3705102.break" &&
+			presentation.Get_Profiles().front().strBindingId ==
+				"binding.valtan.wall.3705102.break" &&
+			nullptr != presentation.Find_Group(
+				"destroyable.group.valtan.wall.3705102") &&
+			presentation.Validate_Against(projection, status),
+			"World Destruction Debris Presentation Parses And Joins Projection");
+
+		LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE liveEvent{};
+		liveEvent.strGroupId = "destroyable.group.valtan.wall.3705102";
+		liveEvent.strMutationId = "mutation.valtan.wall.3705102.break";
+		liveEvent.strBindingId = "binding.valtan.wall.3705102.break";
+		const WORLD_DESTRUCTION_DEBRIS_PROFILE* joinedProfile =
+			presentation.Find_Group(liveEvent.strGroupId);
+		const bool_t exactLiveEventJoin = nullptr != joinedProfile &&
+			joinedProfile->strMutationId == liveEvent.strMutationId &&
+			joinedProfile->strBindingId == liveEvent.strBindingId;
+		liveEvent.strBindingId = "binding.valtan.wall.3705102.wrong";
+		runner.Require(exactLiveEventJoin && nullptr != joinedProfile &&
+			joinedProfile->strBindingId != liveEvent.strBindingId,
+			"World Destruction Debris Presentation Joins Live Event Binding Exactly");
+
+		const auto rejectsAndPreserves = [&presentation](const std::string& candidate)
+		{
+			std::string error;
+			return !CWorldDestructionDebrisPresentationDocument::Parse_Text(
+				candidate, presentation, error) && !error.empty() &&
+				presentation.Is_Ready() &&
+				presentation.Get_Profiles().size() == 1u &&
+				presentation.Get_Profiles().front().Emitters.size() == 4u;
+		};
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(2u)),
+			"World Destruction Debris Presentation Rejects Version Transactionally");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", true)),
+			"World Destruction Debris Presentation Rejects Unknown Property Transactionally");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"09335938568718910930")),
+			"World Destruction Debris Presentation Rejects Noncanonical Placement ID");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, true)),
+			"World Destruction Debris Presentation Rejects Duplicate Coverage");
+		runner.Require(presentationReady && rejectsAndPreserves(
+			Make_WorldDestructionDebrisPresentationFixture(1u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false, true)),
+			"World Destruction Debris Presentation Rejects Non-Normalized Direction");
+
+		CWorldDestructionProjectionDocument wrongRevisionProjection;
+		const bool_t wrongRevisionReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+				wrongRevisionProjection, status);
+		runner.Require(wrongRevisionReady &&
+			!presentation.Validate_Against(wrongRevisionProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Revision Mismatch");
+
+		CWorldDestructionProjectionDocument coverageMismatchProjection;
+		const bool_t coverageMismatchReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"9335938568718910931"),
+				coverageMismatchProjection, status);
+		runner.Require(coverageMismatchReady &&
+			!presentation.Validate_Against(coverageMismatchProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Coverage Mismatch");
+
+		CWorldDestructionProjectionDocument aliasMismatchProjection;
+		const bool_t aliasMismatchReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"9335938568718910930", false, false,
+					"17280669848983777578"),
+				aliasMismatchProjection, status);
+		runner.Require(aliasMismatchReady &&
+			!presentation.Validate_Against(aliasMismatchProjection, status),
+			"World Destruction Debris Presentation Rejects Projection Alias Mismatch");
+	}
+
+	struct WORLD_DESTRUCTION_TEST_SINK final
+	{
+		std::vector<std::pair<uint64_t, Client::DEPLOY_PROP_STATE>> States;
+		bool_t reject = false;
+		size_t iApplyCount = 0u;
+
+		bool_t Set_States(const std::vector<
+			std::pair<uint64_t, Client::DEPLOY_PROP_STATE>>& states)
+		{
+			if (reject)
+				return false;
+			States = states;
+			++iApplyCount;
+			return true;
+		}
+	};
+
+	Client::WORLD_DESTRUCTION_DEBRIS_CUE Make_DebrisCue(
+		const std::string& groupId,
+		const uint64_t eventSequence,
+		const uint64_t firstPlacementId,
+		const size_t emitterCount)
+	{
+		Client::WORLD_DESTRUCTION_DEBRIS_CUE cue;
+		cue.groupId = groupId;
+		cue.eventSequence = eventSequence;
+		cue.randomSeed = eventSequence * 7u + 1u;
+		for (size_t index = 0; index < emitterCount; ++index)
+		{
+			Client::WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE emitter;
+			emitter.sourceRuntimePlacementId =
+				firstPlacementId + static_cast<uint64_t>(index);
+			emitter.direction = float3_t(0.f, 1.f, 0.f);
+			emitter.speedMetersPerSecond = 5.f;
+			emitter.gravityScale = 2.f;
+			emitter.lifetimeSeconds = 4.f;
+			cue.emitters.push_back(std::move(emitter));
+		}
+		return cue;
+	}
+
+	void Test_WorldDestructionDebrisBudget(TEST_RUNNER& runner)
+	{
+		using Runtime = Client::CWorldDestructionDebrisPresentationRuntime;
+
+		/* The 109 impact drains all 21 authored groups on one frame. Every one
+		of them has to keep a complete recipe, so the share must be exactly one
+		emitter and the budget must cover all of them. */
+		runner.Require(
+			21u * Runtime::ACTORS_PER_EMITTER == Runtime::MAX_ACTIVE_ACTORS &&
+			1u == Runtime::Resolve_CueEmitterShare(0u, 21u),
+			"Destruction Debris Budget Gives Every 109 Group One Full Recipe");
+
+		/* A frame that drains a single group keeps the old behaviour: it may
+		use the whole remaining budget. */
+		runner.Require(
+			21u == Runtime::Resolve_CueEmitterShare(0u, 1u) &&
+			10u == Runtime::Resolve_CueEmitterShare(
+				11u * Runtime::ACTORS_PER_EMITTER, 1u),
+			"Destruction Debris Budget Lets A Lone Cue Use The Remainder");
+
+		/* An exhausted budget still reports a legal share; admission itself is
+		what refuses, so the caller never divides by zero. */
+		runner.Require(
+			1u == Runtime::Resolve_CueEmitterShare(
+				Runtime::MAX_ACTIVE_ACTORS, 4u) &&
+			1u == Runtime::Resolve_CueEmitterShare(0u, 0u),
+			"Destruction Debris Budget Never Resolves A Zero Share");
+
+		std::vector<uint64_t> admitted;
+		std::string error;
+		const bool_t sharedPlan = Runtime::Build_DeterministicAdmissionPlan(
+			Make_DebrisCue("destroyable.group.valtan.outerwall109.sector00",
+				9u, 1090000000000001ull, 3u),
+			0u, 1u, admitted, error);
+		runner.Require(
+			sharedPlan && 1u == admitted.size() &&
+			1090000000000001ull == admitted.front(),
+			"Destruction Debris Admission Honours The Per-Cue Share");
+
+		const bool_t fullPlan = Runtime::Build_DeterministicAdmissionPlan(
+			Make_DebrisCue("destroyable.group.valtan.wall.3705102",
+				10u, 9335938568718910930ull, 5u),
+			0u, 21u, admitted, error);
+		runner.Require(
+			fullPlan && 5u == admitted.size(),
+			"Destruction Debris Admission Takes Every Emitter Under A Wide Share");
+
+		runner.Require(
+			!Runtime::Build_DeterministicAdmissionPlan(
+				Make_DebrisCue("destroyable.group.valtan.wall.3705102",
+					11u, 9335938568718910930ull, 5u),
+				0u, 0u, admitted, error) && !error.empty() &&
+			admitted.empty(),
+			"Destruction Debris Admission Rejects A Zero Share");
+	}
+
+	void Test_WorldDestructionProjection(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+
+		CWorldDestructionProjectionDocument document;
+		std::string status;
+		const bool_t baseline =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(), document, status);
+		runner.Require(baseline && document.Is_Ready() &&
+			document.Get_AreaId() == "LV_LUT_HEARTRB_ED" &&
+			document.Get_Groups().size() == 1u &&
+			document.Get_Groups().front().MemberPlacementIds.size() == 5u &&
+			nullptr != document.Find_Group(
+				"destroyable.group.valtan.wall.3705102"),
+			"World Destruction Projection Parses Canonical First Five Wall Group");
+
+		const auto rejectsAndPreserves = [&document](const std::string& candidate)
+		{
+			std::string error;
+			return !CWorldDestructionProjectionDocument::Parse_Text(
+				candidate, document, error) && !error.empty() &&
+				document.Is_Ready() && document.Get_Groups().size() == 1u &&
+				document.Get_Groups().front().MemberPlacementIds.size() == 5u;
+		};
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(1u)),
+			"World Destruction Projection Rejects Version Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", true)),
+			"World Destruction Projection Rejects Unknown Property Transactionally");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")),
+			"World Destruction Projection Rejects Non-Lowercase Revision");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"0000000000000000000000000000000000000000000000000000000000000000")),
+			"World Destruction Projection Rejects Zero Revision");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"09335938568718910930")),
+			"World Destruction Projection Rejects Noncanonical Decimal Placement ID");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, true)),
+			"World Destruction Projection Rejects Duplicate Placement Member");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false,
+				"18446744073709551615")),
+			"World Destruction Projection Rejects Alias Outside Group Members");
+		runner.Require(baseline && rejectsAndPreserves(
+			Make_WorldDestructionProjectionFixture(2u,
+				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"9335938568718910930", false, false,
+				"18177041425620847396", true)),
+			"World Destruction Projection Rejects Duplicate Suppression Alias");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
+		full.strCombatRuntimeRevision = document.Get_CombatRuntimeRevision();
+		full.iServerTick = 100u;
+		full.iEncounterEpoch = 1u;
+		WORLD_DESTRUCTION_STATE_WIRE fractured{};
+		fractured.strGroupId = "destroyable.group.valtan.wall.3705102";
+		fractured.eState = WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED;
+		fractured.iStateVersion = 2u;
+		fractured.iStateStartTick = 90u;
+		full.GroupStates.push_back(fractured);
+
+		CWorldDestructionProjectionRuntime runtime;
+		WORLD_DESTRUCTION_TEST_SINK sink;
+		const bool_t lateJoinApplied = runtime.Apply_Full(
+			document, full, sink, status);
+		const size_t fracturedSources = static_cast<size_t>(std::count_if(
+			sink.States.begin(), sink.States.end(), [](const auto& row)
+			{
+				return row.second == DEPLOY_PROP_STATE::FRACTURED;
+			}));
+		const auto suppressedAlias = std::find_if(
+			sink.States.begin(), sink.States.end(), [](const auto& row)
+			{
+				return row.first == 18177041425620847396ull &&
+					row.second == DEPLOY_PROP_STATE::DESPAWNED;
+			});
+		runner.Require(lateJoinApplied && runtime.Is_Synchronized() &&
+			runtime.Get_EncounterEpoch() == 1u &&
+			runtime.Get_ServerTick() == 100u && sink.States.size() == 5u &&
+			fracturedSources == 4u && suppressedAlias != sink.States.end() &&
+			1u == sink.iApplyCount,
+			"Late Join Full Sync Fractures Sources And Suppresses Alias Without Live Cue");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC intactFull{};
+		intactFull.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		intactFull.iServerTick = 200u;
+		intactFull.iEncounterEpoch = 5u;
+		WORLD_DESTRUCTION_STATE_WIRE intact = fractured;
+		intact.eState = WORLD_DESTRUCTION_RUNTIME_STATE::INTACT;
+		intact.iStateVersion = 1u;
+		intact.iStateStartTick = 200u;
+		intactFull.GroupStates.push_back(intact);
+		CWorldDestructionProjectionRuntime deltaRuntime;
+		WORLD_DESTRUCTION_TEST_SINK deltaSink;
+		const bool_t deltaBaseline = deltaRuntime.Apply_Full(
+			document, intactFull, deltaSink, status);
+
+		S2C_WORLD_DESTRUCTION_DELTA delta{};
+		delta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		delta.iServerTick = 201u;
+		delta.iEncounterEpoch = 5u;
+		WORLD_DESTRUCTION_STATE_WIRE deltaFractured = fractured;
+		deltaFractured.iStateStartTick = 201u;
+		delta.ChangedStates.push_back(deltaFractured);
+		const bool_t fracturedDeltaApplied = deltaBaseline &&
+			deltaRuntime.Apply_Delta(document, delta, deltaSink, status);
+		const size_t deltaFracturedSources = static_cast<size_t>(std::count_if(
+			deltaSink.States.begin(), deltaSink.States.end(), [](const auto& row)
+			{
+				return row.second == DEPLOY_PROP_STATE::FRACTURED;
+			}));
+		const auto deltaSuppressedAlias = std::find_if(
+			deltaSink.States.begin(), deltaSink.States.end(), [](const auto& row)
+			{
+				return row.first == 18177041425620847396ull &&
+					row.second == DEPLOY_PROP_STATE::DESPAWNED;
+			});
+		runner.Require(fracturedDeltaApplied &&
+			deltaRuntime.Get_ServerTick() == 201u &&
+			deltaRuntime.Get_GroupStates().size() == 1u &&
+			deltaRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			deltaSink.States.size() == 5u && deltaFracturedSources == 4u &&
+			deltaSuppressedAlias != deltaSink.States.end() &&
+			deltaSink.iApplyCount == 2u,
+			"Delta Fractures Sources And Suppresses Projection Alias");
+
+		const auto committedDeltaStates = deltaSink.States;
+		const size_t applyCountBeforeDuplicate = deltaSink.iApplyCount;
+		delta.iServerTick = 202u;
+		runner.Require(deltaRuntime.Apply_Delta(
+			document, delta, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Exact Duplicate Delta Advances Tick Without Reapplying Presentation");
+
+		S2C_WORLD_DESTRUCTION_DELTA differentSameVersion = delta;
+		differentSameVersion.iServerTick = 203u;
+		differentSameVersion.ChangedStates.front().eState =
+			WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			differentSameVersion, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Same Delta Version With Different Content Fails Transactionally");
+
+		S2C_WORLD_DESTRUCTION_DELTA skippedVersion = delta;
+		skippedVersion.iServerTick = 203u;
+		skippedVersion.ChangedStates.front().eState =
+			WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED;
+		skippedVersion.ChangedStates.front().iStateVersion = 4u;
+		skippedVersion.ChangedStates.front().iStateStartTick = 203u;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			skippedVersion, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates,
+			"Skipped Delta State Version Fails Transactionally");
+
+		S2C_WORLD_DESTRUCTION_DELTA sinkRejected = skippedVersion;
+		sinkRejected.ChangedStates.front().iStateVersion = 3u;
+		deltaSink.reject = true;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			sinkRejected, deltaSink, status) &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			deltaSink.States == committedDeltaStates &&
+			deltaSink.iApplyCount == applyCountBeforeDuplicate,
+			"Rejected Delta Sink Preserves Prior Runtime And Presentation");
+		deltaSink.reject = false;
+
+		S2C_WORLD_DESTRUCTION_DELTA wrongEpoch = sinkRejected;
+		wrongEpoch.iEncounterEpoch = 6u;
+		runner.Require(!deltaRuntime.Apply_Delta(document,
+			wrongEpoch, deltaSink, status) &&
+			deltaRuntime.Get_EncounterEpoch() == 5u &&
+			deltaRuntime.Get_ServerTick() == 202u &&
+			deltaSink.States == committedDeltaStates,
+			"Delta Encounter Epoch Mismatch Fails Before Presentation Mutation");
+
+		const auto priorSinkStates = sink.States;
+		full.iEncounterEpoch = 2u;
+		full.iServerTick = 101u;
+		sink.reject = true;
+		runner.Require(!runtime.Apply_Full(document, full, sink, status) &&
+			runtime.Is_Synchronized() && runtime.Get_EncounterEpoch() == 1u &&
+			runtime.Get_ServerTick() == 100u && sink.States == priorSinkStates,
+			"Rejected Projection Sink Preserves Prior Persistent Commit");
+
+		full.strCombatRuntimeRevision =
+			"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+		sink.reject = false;
+		runner.Require(!runtime.Apply_Full(document, full, sink, status) &&
+			runtime.Get_EncounterEpoch() == 1u && sink.States == priorSinkStates,
+			"Revision Mismatch Fails Closed Before Presentation Mutation");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC liveFull{};
+		liveFull.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		liveFull.iServerTick = 300u;
+		liveFull.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE liveIntact = intact;
+		liveIntact.iStateStartTick = 300u;
+		liveFull.GroupStates.push_back(liveIntact);
+		CWorldDestructionProjectionRuntime liveRuntime;
+		WORLD_DESTRUCTION_TEST_SINK liveSink;
+		const bool_t liveBaseline = liveRuntime.Apply_Full(
+			document, liveFull, liveSink, status);
+
+		S2C_WORLD_DESTRUCTION_DELTA breakingDelta{};
+		breakingDelta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		breakingDelta.iServerTick = 301u;
+		breakingDelta.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE breaking = liveIntact;
+		breaking.eState = WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING;
+		breaking.iStateVersion = 2u;
+		breaking.iStateStartTick = 301u;
+		breaking.iCommitTick = 330u;
+		breakingDelta.ChangedStates.push_back(breaking);
+		WORLD_DESTRUCTION_EVENT_WIRE breakingEvent{};
+		breakingEvent.iEventSequence = 1u;
+		breakingEvent.strGroupId = breaking.strGroupId;
+		breakingEvent.strMutationId =
+			"mutation.valtan.wall.3705102.break";
+		breakingEvent.strBindingId =
+			"binding.valtan.wall.3705102.break";
+		breakingEvent.iPatternSequence = 7u;
+		breakingEvent.iSourceNetEntityId = 17u;
+		breakingEvent.iServerTick = 301u;
+		breakingEvent.fImpactDirectionY = 1.f;
+		breakingEvent.iRandomSeed = 1234u;
+		breakingDelta.LiveEvents.push_back(breakingEvent);
+		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> emittedLiveEvents;
+		const bool_t breakingApplied = liveBaseline &&
+			liveRuntime.Apply_Delta(document, breakingDelta, liveSink, status,
+				&emittedLiveEvents);
+		runner.Require(breakingApplied && emittedLiveEvents.size() == 1u &&
+			emittedLiveEvents.front().iEventSequence == 1u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().eState ==
+				WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING &&
+			liveSink.iApplyCount == 2u,
+			"Breaking Delta Emits One Revision-Joined Live Event");
+
+		const auto liveCommittedStates = liveSink.States;
+		const size_t liveApplyCount = liveSink.iApplyCount;
+		S2C_WORLD_DESTRUCTION_DELTA duplicateEventDelta = breakingDelta;
+		duplicateEventDelta.iServerTick = 302u;
+		emittedLiveEvents.push_back(breakingEvent);
+		runner.Require(liveRuntime.Apply_Delta(document, duplicateEventDelta,
+			liveSink, status, &emittedLiveEvents) && emittedLiveEvents.empty() &&
+			liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Duplicate Live Event Is Ignored Without Reapplying State");
+
+		S2C_WORLD_DESTRUCTION_DELTA wrongMutationDelta{};
+		wrongMutationDelta.strCombatRuntimeRevision =
+			document.Get_CombatRuntimeRevision();
+		wrongMutationDelta.iServerTick = 303u;
+		wrongMutationDelta.iEncounterEpoch = 9u;
+		WORLD_DESTRUCTION_STATE_WIRE stagedBreaking = breaking;
+		stagedBreaking.iStateVersion = 3u;
+		stagedBreaking.iStateStartTick = 303u;
+		stagedBreaking.iCommitTick = 332u;
+		wrongMutationDelta.ChangedStates.push_back(stagedBreaking);
+		WORLD_DESTRUCTION_EVENT_WIRE wrongMutationEvent = breakingEvent;
+		wrongMutationEvent.iEventSequence = 2u;
+		wrongMutationEvent.strMutationId =
+			"mutation.valtan.wall.3705102.wrong";
+		wrongMutationEvent.iServerTick = 303u;
+		wrongMutationDelta.LiveEvents.push_back(wrongMutationEvent);
+		runner.Require(!liveRuntime.Apply_Delta(document, wrongMutationDelta,
+			liveSink, status, &emittedLiveEvents) && emittedLiveEvents.empty() &&
+			liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Wrong-Mutation Live Event Rejects Transactionally");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC staleLiveFull = liveFull;
+		staleLiveFull.iServerTick = 350u;
+		runner.Require(!liveRuntime.Apply_Full(document, staleLiveFull,
+			liveSink, status) && liveRuntime.Get_ServerTick() == 302u &&
+			liveRuntime.Get_EncounterEpoch() == 9u &&
+			liveRuntime.Get_LastEventSequence() == 1u &&
+			liveRuntime.Get_GroupStates().front().iStateVersion == 2u &&
+			liveSink.States == liveCommittedStates &&
+			liveSink.iApplyCount == liveApplyCount,
+			"Stale Full Sync Preserves State And Live Event Watermark");
+
+		S2C_WORLD_DESTRUCTION_FULL_SYNC nextLiveFull = liveFull;
+		nextLiveFull.iServerTick = 400u;
+		nextLiveFull.iEncounterEpoch = 10u;
+		nextLiveFull.GroupStates.front().iStateStartTick = 400u;
+		runner.Require(liveRuntime.Apply_Full(document, nextLiveFull,
+			liveSink, status) && liveRuntime.Get_ServerTick() == 400u &&
+			liveRuntime.Get_EncounterEpoch() == 10u &&
+			liveRuntime.Get_LastEventSequence() == 0u &&
+			emittedLiveEvents.empty() && liveSink.iApplyCount == liveApplyCount + 1u,
+			"New Full Sync Resets Live Event Sequence Without Replaying Cue");
+	}
+
+	LostArk::Shared::PACKET_FRAME Make_MessageFrame(
+		const LostArk::Shared::PACKET_TYPE packetType,
+		const auto& message,
+		const bool_t appendTrailingByte = false)
+	{
+		LostArk::Shared::CPacketWriter writer;
+		LostArk::Shared::Write_Message(writer, message);
+		LostArk::Shared::PACKET_FRAME frame{};
+		frame.ePacketType = packetType;
+		frame.Payload = writer.Get_Buffer();
+		if (appendTrailingByte)
+			frame.Payload.push_back(0xA5u);
+		return frame;
+	}
+
+	LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC
+		Make_WorldDestructionFullSync()
+	{
+		using namespace LostArk::Shared;
+		S2C_WORLD_DESTRUCTION_FULL_SYNC message{};
+		message.strCombatRuntimeRevision = std::string(64u, 'a');
+		message.iServerTick = 100u;
+		message.iEncounterEpoch = 3u;
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		state.strGroupId = "destroyable.group.valtan.wall.3705102";
+		state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::INTACT;
+		state.iStateVersion = 1u;
+		state.iStateStartTick = 1u;
+		message.GroupStates.push_back(std::move(state));
+		return message;
+	}
+
+	LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA
+		Make_WorldDestructionDelta()
+	{
+		using namespace LostArk::Shared;
+		S2C_WORLD_DESTRUCTION_DELTA message{};
+		message.strCombatRuntimeRevision = std::string(64u, 'a');
+		message.iServerTick = 101u;
+		message.iEncounterEpoch = 3u;
+		WORLD_DESTRUCTION_STATE_WIRE state{};
+		state.strGroupId = "destroyable.group.valtan.wall.3705102";
+		state.eState = WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED;
+		state.iStateVersion = 2u;
+		state.iStateStartTick = 101u;
+		message.ChangedStates.push_back(std::move(state));
+		return message;
+	}
+
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT Make_ValtanAuditionResult(
+		const std::uint32_t requestSequence,
+		const LostArk::Shared::VALTAN_AUDITION_RESULT verdict,
+		const std::uint32_t currentHealthBar)
+	{
+		LostArk::Shared::S2C_VALTAN_AUDITION_RESULT message{};
+		message.iRequestSequence = requestSequence;
+		message.eOperation =
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::CROSS_HEALTH_BAR;
+		message.iTargetHealthBar = 80u;
+		message.eResult = verdict;
+		message.iCurrentHealthBar = currentHealthBar;
+		return message;
+	}
+
+	void Test_ValtanAuditionNetworkInbound(TEST_RUNNER& runner)
+	{
+		using namespace LostArk::Shared;
+		CNetworkManager& network = CNetworkManager::Get();
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				4u, VALTAN_AUDITION_RESULT::ARMED, 81u)));
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				5u, VALTAN_AUDITION_RESULT::QUEUED, 80u)));
+		S2C_VALTAN_AUDITION_RESULT first{};
+		S2C_VALTAN_AUDITION_RESULT second{};
+		S2C_VALTAN_AUDITION_RESULT drained{};
+		runner.Require(
+			network.Try_Consume_ValtanAuditionResult(first) &&
+			network.Try_Consume_ValtanAuditionResult(second) &&
+			!network.Try_Consume_ValtanAuditionResult(drained) &&
+			4u == first.iRequestSequence &&
+			VALTAN_AUDITION_RESULT::ARMED == first.eResult &&
+			81u == first.iCurrentHealthBar &&
+			5u == second.iRequestSequence &&
+			VALTAN_AUDITION_RESULT::QUEUED == second.eResult &&
+			80u == second.iCurrentHealthBar,
+			"Valtan Audition Network Preserves Arm Then Cross Verdict Order");
+
+		/* A Release Server answers rather than dropping the connection, so the
+		verdict has to survive the same inbound path as an accepted one. */
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				6u, VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD, 0u)));
+		S2C_VALTAN_AUDITION_RESULT rejection{};
+		runner.Require(
+			network.Try_Consume_ValtanAuditionResult(rejection) &&
+			VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
+				rejection.eResult &&
+			0u == rejection.iCurrentHealthBar,
+			"Valtan Audition Network Delivers A Release Rejection Verdict");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				7u, VALTAN_AUDITION_RESULT::QUEUED, 80u),
+			true));
+		S2C_VALTAN_AUDITION_RESULT unchanged{};
+		runner.Require(
+			WSAEINVAL == network.Get_LastErrorCode() &&
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Rejects Trailing Payload Bytes");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		auto truncated = Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				8u, VALTAN_AUDITION_RESULT::QUEUED, 80u));
+		truncated.Payload.pop_back();
+		network.Harness_HandleFrame(truncated);
+		runner.Require(
+			WSAEINVAL == network.Get_LastErrorCode() &&
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Rejects Truncated Payload");
+
+		/* Re-entering a world must not leave a stale verdict behind for the
+		next encounter's panel to read as its own. */
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT,
+			Make_ValtanAuditionResult(
+				9u, VALTAN_AUDITION_RESULT::QUEUED, 80u)));
+		network.Harness_Reset();
+		runner.Require(
+			!network.Try_Consume_ValtanAuditionResult(unchanged),
+			"Valtan Audition Network Drops Verdicts On World Inbound Reset");
+	}
+
+	void Test_WorldDestructionNetworkInbound(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		CNetworkManager& network = CNetworkManager::Get();
+		const auto full = Make_WorldDestructionFullSync();
+		const auto delta = Make_WorldDestructionDelta();
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full));
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA, delta));
+		CLIENT_REPLICATION_EVENT first{};
+		CLIENT_REPLICATION_EVENT second{};
+		runner.Require(network.Try_Consume_ReplicationEvent(first) &&
+			network.Try_Consume_ReplicationEvent(second) &&
+			!network.Try_Consume_ReplicationEvent(second) &&
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_FULL_SYNC ==
+				first.eType &&
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA ==
+				second.eType &&
+			100u == first.WorldDestructionFullSync.iServerTick &&
+			101u == second.WorldDestructionDelta.iServerTick,
+			"World Destruction Network Preserves Full Then Delta TCP Order");
+
+		network.Harness_SetAcceptedWorld(WORLD_ID::BERN);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full));
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Non-Valtan Accepted World");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA, delta, true));
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Trailing Payload Bytes");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		auto malformed = Make_MessageFrame(
+			PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC, full);
+		malformed.Payload.pop_back();
+		network.Harness_HandleFrame(malformed);
+		runner.Require(WSAEINVAL == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Rejects Truncated Payload");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		CLIENT_REPLICATION_EVENT queued{};
+		queued.eType = CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+		queued.WorldDestructionDelta = delta;
+		runner.Require(network.Harness_EnqueueReplicationEvent(
+			static_cast<CLIENT_REPLICATION_EVENT&&>(queued)) &&
+			1u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Harness Stages Prior Generation Event");
+		S2C_ENTER_ACCEPTED accepted{};
+		accepted.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		accepted.eWorldId = WORLD_ID::VALTAN_ARENA;
+		accepted.iPlayerId = 5u;
+		accepted.iNetEntityId = 55u;
+		network.Harness_HandleFrame(Make_MessageFrame(
+			PACKET_TYPE::S2C_ENTER_ACCEPTED, accepted));
+		runner.Require(0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Acceptance Clears Prior Generation Queue");
+
+		network.Harness_Reset();
+		network.Harness_SetAcceptedWorld(WORLD_ID::VALTAN_ARENA);
+		bool_t filledToCapacity = true;
+		for (size_t index = 0u;
+			index < CNetworkManager::MAX_REPLICATION_EVENT_QUEUE;
+			++index)
+		{
+			CLIENT_REPLICATION_EVENT event{};
+			event.eType =
+				CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+			if (!network.Harness_EnqueueReplicationEvent(
+				static_cast<CLIENT_REPLICATION_EVENT&&>(event)))
+			{
+				filledToCapacity = false;
+				break;
+			}
+		}
+		CLIENT_REPLICATION_EVENT overflow{};
+		overflow.eType =
+			CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA;
+		runner.Require(filledToCapacity &&
+			!network.Harness_EnqueueReplicationEvent(
+				static_cast<CLIENT_REPLICATION_EVENT&&>(overflow)) &&
+			WSAENOBUFS == network.Get_LastErrorCode() &&
+			0u == network.Harness_GetReplicationEventCount(),
+			"World Destruction Network Queue Overflow Fails Closed");
+		network.Harness_Reset();
 	}
 
 	void Test_RealSkillBindingDocuments(TEST_RUNNER& runner)
@@ -12597,6 +13775,33 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--valtan-camera-fast")
+	{
+		Test_ValtanCinematicCamera(runner);
+		Test_ValtanCinematicCameraEasing(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--world-destruction-projection-fast")
+	{
+		Test_WorldDestructionProjection(runner);
+		Test_WorldDestructionDebrisBudget(runner);
+		Test_WorldDestructionDebrisPresentation(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--world-destruction-network-fast")
+	{
+		Test_WorldDestructionNetworkInbound(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-audition-network-fast")
+	{
+		Test_ValtanAuditionNetworkInbound(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-transform-history")
 	{
 		Test_EffectFixedStepTransformHistory(runner);
@@ -12796,8 +14001,17 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--lobby-endpoint-fast")
+	{
+		Test_CanonicalLobbyServerEndpoint(runner);
+		Test_EnterAcceptancePreservesRequestedCharacterClass(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 
 	Test_NormalHandoff(runner);
+	Test_CanonicalLobbyServerEndpoint(runner);
+	Test_EnterAcceptancePreservesRequestedCharacterClass(runner);
 	Test_CharacterSelectAuthorizedSelection(runner);
 	Test_NetObjectRegistryClassReplacement(runner);
 	Test_EntryPurpose(runner);
@@ -12806,6 +14020,12 @@ int main(const int argc, char* argv[])
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
 	Test_ActionPresentationTimeline(runner);
+	Test_ValtanCinematicCameraEasing(runner);
+	Test_ValtanCinematicCamera(runner);
+	Test_WorldDestructionProjection(runner);
+	Test_WorldDestructionDebrisBudget(runner);
+	Test_WorldDestructionDebrisPresentation(runner);
+	Test_WorldDestructionNetworkInbound(runner);
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
 	Test_EffectPlaybackDeterminism(runner);

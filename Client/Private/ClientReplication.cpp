@@ -15,6 +15,7 @@
 #include "Transform.h"
 #include "Valtan.h"
 #include "ValtanPresentationAssetService.h"
+#include "DeployPropRuntime.h"
 
 namespace
 {
@@ -65,12 +66,18 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 		nullptr == desc.pContext ||
 		desc.strPlayerLayerTag.empty() ||
 		desc.strWorldEntityLayerTag.empty() ||
+		((nullptr == desc.pDeployPropRuntime) !=
+			(nullptr == desc.pWorldDestructionProjection)) ||
+		(nullptr != desc.pWorldDestructionProjection &&
+			!desc.pWorldDestructionProjection->Is_Ready()) ||
 		!CCombatHUDViewModel::Get().Initialize_Definitions())
 		return false;
 
 	m_Desc = desc;
 	m_isInitialized = true;
 	m_hasPendingConnectionLoss = false;
+	m_hasFatalWorldDestructionFailure = false;
+	m_WorldDestructionProjectionRuntime.Reset();
 	m_wasConnected =
 		CNetworkManager::Get().Is_Connected();
 
@@ -144,10 +151,84 @@ bool Client::CClientReplication::Update()
 			allSucceeded = Apply_WorldSnapshot(event.WorldSnapshot) &&
 				allSucceeded;
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_FULL_SYNC:
+			allSucceeded = Apply_WorldDestructionFullSync(
+				event.WorldDestructionFullSync) && allSucceeded;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_DESTRUCTION_DELTA:
+			allSucceeded = Apply_WorldDestructionDelta(
+				event.WorldDestructionDelta) && allSucceeded;
+			break;
 		}
 	}
 
 	return allSucceeded;
+}
+
+bool Client::CClientReplication::Apply_WorldDestructionFullSync(
+	const LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC& fullSync)
+{
+	if (nullptr == m_Desc.pWorldDestructionProjection ||
+		nullptr == m_Desc.pDeployPropRuntime)
+	{
+		m_strPendingPresentationFailure =
+			"World destruction projection is not configured for this level.";
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
+	std::string status;
+	if (!m_WorldDestructionProjectionRuntime.Apply_Full(
+		*m_Desc.pWorldDestructionProjection, fullSync,
+		*m_Desc.pDeployPropRuntime, status))
+	{
+		m_strPendingPresentationFailure = std::move(status);
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
+	m_WorldDestructionLiveEvents.clear();
+	++m_iWorldDestructionPresentationGeneration;
+	if (0u == m_iWorldDestructionPresentationGeneration)
+		++m_iWorldDestructionPresentationGeneration;
+	return true;
+}
+
+bool Client::CClientReplication::Apply_WorldDestructionDelta(
+	const LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA& delta)
+{
+	if (nullptr == m_Desc.pWorldDestructionProjection ||
+		nullptr == m_Desc.pDeployPropRuntime)
+	{
+		m_strPendingPresentationFailure =
+			"World destruction projection is not configured for this level.";
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
+	std::string status;
+	std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE> liveEvents;
+	if (!m_WorldDestructionProjectionRuntime.Apply_Delta(
+		*m_Desc.pWorldDestructionProjection, delta,
+		*m_Desc.pDeployPropRuntime, status, &liveEvents))
+	{
+		m_strPendingPresentationFailure = std::move(status);
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
+	constexpr size_t MAX_PENDING_PRESENTATION_EVENTS =
+		LostArk::Shared::MAX_WORLD_DESTRUCTION_EVENTS * 2u;
+	for (LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& event : liveEvents)
+	{
+		if (m_WorldDestructionLiveEvents.size() >=
+			MAX_PENDING_PRESENTATION_EVENTS)
+		{
+			m_strPendingPresentationFailure =
+				"World destruction debris cue queue reached its presentation-only limit.";
+			break;
+		}
+		m_WorldDestructionLiveEvents.push_back(std::move(event));
+	}
+	return true;
 }
 
 bool Client::CClientReplication::Has_PendingConnectionLoss() const
@@ -196,6 +277,16 @@ bool Client::CClientReplication::Try_Consume_PresentationFailure(
 		return false;
 	outStatus = std::move(m_strPendingPresentationFailure);
 	m_strPendingPresentationFailure.clear();
+	return true;
+}
+
+bool Client::CClientReplication::Try_Consume_WorldDestructionLiveEvent(
+	LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent)
+{
+	if (m_WorldDestructionLiveEvents.empty())
+		return false;
+	outEvent = std::move(m_WorldDestructionLiveEvents.front());
+	m_WorldDestructionLiveEvents.pop_front();
 	return true;
 }
 
@@ -661,6 +752,11 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 			m_Desc.strWorldEntityLayerTag,
 			valtan);
 	}
+	if (m_ValtanPresentationState.isValid &&
+		m_ValtanPresentationState.iNetEntityId == despawned.iNetEntityId)
+	{
+		m_ValtanPresentationState = {};
+	}
 	m_WorldEntities.erase(iter);
 	return true;
 }
@@ -827,6 +923,21 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		{
+			VALTAN_PRESENTATION_STATE latest{};
+			latest.isValid = true;
+			latest.iNetEntityId = entity.iNetEntityId;
+			latest.iServerTick = snapshot.iServerTick;
+			latest.eAction = entity.eAction;
+			latest.strArchetypeId = iter->second.strArchetypeId;
+			latest.strPatternId = entity.strPatternId;
+			latest.strActionId = entity.strActionId;
+			latest.iPatternSequence = entity.iPatternSequence;
+			latest.iPatternStageIndex = entity.iPatternStageIndex;
+			latest.iActionStartTick = entity.iActionStartTick;
+			latest.vPosition = position;
+			latest.fYawDegrees = entity.fYawDegrees;
+			m_ValtanPresentationState = std::move(latest);
+
 			const std::shared_ptr<CValtan> valtan =
 				iter->second.pValtan.lock();
 			if (nullptr == valtan || !valtan->Apply_NetworkState(
@@ -973,6 +1084,13 @@ void Client::CClientReplication::Reset_World()
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
 	m_iLastServerTick = 0;
+	m_ValtanPresentationState = {};
+	m_WorldDestructionProjectionRuntime.Reset();
+	m_WorldDestructionLiveEvents.clear();
+	++m_iWorldDestructionPresentationGeneration;
+	if (0u == m_iWorldDestructionPresentationGeneration)
+		++m_iWorldDestructionPresentationGeneration;
+	m_hasFatalWorldDestructionFailure = false;
 	m_strPendingPresentationFailure.clear();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 }

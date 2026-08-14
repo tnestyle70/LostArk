@@ -21,6 +21,7 @@ namespace LostArk::Server
 		REVIVE_PLAYER,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
+		VALTAN_AUDITION,
 		LEAVE
 	};
 
@@ -44,6 +45,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;
+
+		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST ValtanAudition;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;

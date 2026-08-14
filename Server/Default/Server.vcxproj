@@ -39,6 +39,9 @@
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
 	<ClInclude Include="..\Public\ServerCollisionSystem.h" />
+	<ClInclude Include="..\Public\WorldDestructionRuntime.h" />
+	<ClInclude Include="..\Public\WorldDestructionBootstrap.h" />
+	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
@@ -58,6 +61,9 @@
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp" />
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionRuntime.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">
@@ -199,6 +205,7 @@
   </ItemDefinitionGroup>
   <Target Name="PublishWorldGameplay" BeforeTargets="ClCompile">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\WorldPipeline\Publish-WorldGameplay.ps1&quot; -Mode Publish" />
+	<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\WorldPipeline\Publish-ValtanWorldDestruction.ps1&quot; -Mode Publish" />
   </Target>
 	<Target Name="PublishGameplayRuntime" BeforeTargets="ClCompile">
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-GameplayBalance.ps1&quot; -Mode Publish" />

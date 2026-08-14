@@ -66,6 +66,12 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		return E_FAIL;
 	}
 
+	CPresentation_Manager& presentation = CPresentation_Manager::Get();
+	const uint64_t lightCount = static_cast<uint64_t>(
+		m_Document.Get_Lights().size());
+	presentation.Register_ProviderSubmissionExpectation(
+		lightCount, lightCount, 0u, 0u);
+
 	for (const MAP_POINT_LIGHT_RECORD& record : m_Document.Get_Lights())
 	{
 		EFFECT_EVALUATED_LIGHT evaluated{};
@@ -82,8 +88,7 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 			m_Status = "Map point light mapping failed: " + record.lightId;
 			return E_FAIL;
 		}
-		const HRESULT result =
-			CPresentation_Manager::Get().Add_TransientLight(light);
+		const HRESULT result = presentation.Add_TransientLight(light);
 		if (FAILED(result))
 		{
 			m_Status = "Map point light submission failed: " + record.lightId;

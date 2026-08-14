@@ -891,6 +891,350 @@
           "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0, "receiverCollisionId": "" }
         }
       ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector00.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector00",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000001",
+          "sourceRuntimePlacementId": "1090000000000001",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9438584, 0.3303504, 0],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000002",
+          "sourceRuntimePlacementId": "1090000000000002",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9232328, 0.3303504, 0.1962392],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000003",
+          "sourceRuntimePlacementId": "1090000000000003",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8622575, 0.3303504, 0.3839018],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector01.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector01",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000004",
+          "sourceRuntimePlacementId": "1090000000000004",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.7635975, 0.3303504, 0.554786],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000005",
+          "sourceRuntimePlacementId": "1090000000000005",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.6315645, 0.3303504, 0.7014235],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000006",
+          "sourceRuntimePlacementId": "1090000000000006",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.4719292, 0.3303504, 0.8174053],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector02.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector02",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000007",
+          "sourceRuntimePlacementId": "1090000000000007",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.2916683, 0.3303504, 0.8976626],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000008",
+          "sourceRuntimePlacementId": "1090000000000008",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.09866006, 0.3303504, 0.9386878],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000009",
+          "sourceRuntimePlacementId": "1090000000000009",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.09866006, 0.3303504, 0.9386878],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector03.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector03",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000010",
+          "sourceRuntimePlacementId": "1090000000000010",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.2916683, 0.3303504, 0.8976626],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000011",
+          "sourceRuntimePlacementId": "1090000000000011",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.4719292, 0.3303504, 0.8174053],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000012",
+          "sourceRuntimePlacementId": "1090000000000012",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9438584, 0.3303504, 1.155893e-16],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector04.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector04",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000013",
+          "sourceRuntimePlacementId": "1090000000000013",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.9232328, 0.3303504, -0.1962392],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000014",
+          "sourceRuntimePlacementId": "1090000000000014",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.8622575, 0.3303504, -0.3839018],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000015",
+          "sourceRuntimePlacementId": "1090000000000015",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.7635975, 0.3303504, -0.554786],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector05.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector05",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000016",
+          "sourceRuntimePlacementId": "1090000000000016",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.6315645, 0.3303504, -0.7014235],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000017",
+          "sourceRuntimePlacementId": "1090000000000017",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.4719292, 0.3303504, -0.8174053],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000018",
+          "sourceRuntimePlacementId": "1090000000000018",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.2916683, 0.3303504, -0.8976626],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector06.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector06",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000019",
+          "sourceRuntimePlacementId": "1090000000000019",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [-0.09866006, 0.3303504, -0.9386878],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000020",
+          "sourceRuntimePlacementId": "1090000000000020",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.09866006, 0.3303504, -0.9386878],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000021",
+          "sourceRuntimePlacementId": "1090000000000021",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.6315645, 0.3303504, -0.7014235],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    },
+    {
+      "profileId": "destroyable.group.valtan.outerwall109.sector07.preview",
+      "groupId": "destroyable.group.valtan.outerwall109.sector07",
+      "durationSeconds": 5,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20,
+      "previewGroundHalfExtents": [30, 30],
+      "elements": [
+        {
+          "elementId": "debris.1090000000000022",
+          "sourceRuntimePlacementId": "1090000000000022",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.7635975, 0.3303504, -0.554786],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000023",
+          "sourceRuntimePlacementId": "1090000000000023",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.8622575, 0.3303504, -0.3839018],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.1090000000000024",
+          "sourceRuntimePlacementId": "1090000000000024",
+          "suppressionAliasPlacementIds": [],
+          "spawnOffset": [0, 0, 0],
+          "direction": [0.9232328, 0.3303504, -0.1962392],
+          "speedMetersPerSecond": 9,
+          "gravityScale": 2,
+          "lifetimeSeconds": 4,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
     }
   ]
 }
