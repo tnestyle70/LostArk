@@ -76,6 +76,11 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
+		// A LanceMaster-style pair of opposite-direction stance-swap skills (e.g.
+		// 34000/34500) are tracked as separate CooldownEndTickBySkillId entries, so
+		// nothing stops the reverse skill firing the instant the first one lands --
+		// this shared gate is what actually prevents an immediate swap-back.
+		std::uint32_t iStanceSwitchCooldownEndTick = 0;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;

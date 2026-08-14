@@ -112,6 +112,7 @@ private:
 	struct KEYFRAME_ANIM_DOCUMENT
 	{
 		bool_t				isLoaded = false;
+		bool_t				bLoop = false;
 		f32_t				fFrameRate = 40.f;
 		int32_t				iFrameCount = 0;
 		map<string, int32_t>			Labels;

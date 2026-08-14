@@ -460,6 +460,21 @@ void CMainApp::RenderCombatHUD()
 			const char_t* pLabel =
 				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
 					"wild" : "focus";
+			/* TEMP DIAGNOSTIC (2026-08-14): the icon shows nothing at spawn, shows the glaive
+			briefly after a stance press, then silently reverts to the short spear ~1-2s later,
+			with eStance itself never changing -- logging every actual trigger of this edge so the
+			next repro shows, in the VS Output window, whether Play_KeyframeAnimation is really
+			only firing once per real stance change or is somehow re-firing on its own. Remove once
+			the icon is confirmed stable. */
+			{
+				char pDebugLine[256];
+				sprintf_s(pDebugLine,
+					"[LanceIdStance] eStance %d -> %d label=%s time=%.2f\n",
+					static_cast<int32_t>(m_ePreviousHudStance),
+					static_cast<int32_t>(player.eStance),
+					pLabel, ImGui::GetTime());
+				OutputDebugStringA(pDebugLine);
+			}
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
 		}
 		/* Warlord's defense-mode toggle (Z: skill 17800 WARLORD_NORMAL->WARLORD_DEFENSE, 17810
@@ -654,6 +669,21 @@ void CMainApp::RenderCombatHUD()
 				else if (fFrac >= 0.9474f && fFrac < 0.9895f)
 					fDegrees = 6.015f * (1.f - (fFrac - 0.9474f) / (0.9895f - 0.9474f));
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_535", fDegrees);
+			}
+		}
+
+		/* stanceMc's own real timeline (frame labels bubble_0/1/2/3) plays a small idle pulse
+		(depth4/8 pieces breathing/flashing) continuously regardless of gauge state -- baked here
+		as a real 27-frame loop (BrushIdle.json) so Yi_id_brush is never a single static frame.
+		Play_KeyframeAnimation only needs to run once; the engine's own loop wraparound
+		(HUDRuntimeView.cpp) keeps it playing after that. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
+		{
+			static bool_t bBrushLoopStarted = false;
+			if (!bBrushLoopStarted)
+			{
+				m_pHUDRuntimeView->Play_KeyframeAnimation("Yi_id_brush", "idle");
+				bBrushLoopStarted = true;
 			}
 		}
 

@@ -243,15 +243,15 @@
     {
       "id": "Yi_id_brush",
       "ownerClass": "Artist",
-      "type": 5,
-      "rect": { "x": 599.76062, "y": 591.457458, "width": 138.75, "height": 129.75 },
+      "type": 9,
+      "rect": { "x": 599.9106, "y": 590.595, "width": 138.75, "height": 131.25 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/HUD/Artist/Identity/Body.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
+      "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/BrushIdle.json",
+      "keyframeAnimationScale": 1
     },
     {
       "id": "Skill_R",

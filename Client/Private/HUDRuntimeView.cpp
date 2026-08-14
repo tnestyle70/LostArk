@@ -324,6 +324,9 @@ Client::CHUDRuntimeView::Get_Or_Load_KeyframeAnimation(const string& strPath)
 			if (const DATA_JSON_VALUE* pFrameCount = Root.Find("frameCount"))
 				if (pFrameCount->Is_Number())
 					Document.iFrameCount = static_cast<int32_t>(pFrameCount->Get_Number());
+			if (const DATA_JSON_VALUE* pLoop = Root.Find("loop"))
+				if (pLoop->Is_Boolean())
+					Document.bLoop = pLoop->Get_Boolean();
 
 			if (const DATA_JSON_VALUE* pLabels = Root.Find("labels"))
 			{
@@ -418,6 +421,19 @@ bool_t Client::CHUDRuntimeView::Play_KeyframeAnimation(const string& strSlotId, 
 		Slot.iKeyframeAnimWindowStart = iStartFrame;
 		Slot.iKeyframeAnimWindowEnd = iEndFrame;
 		Slot.dKeyframeAnimStartSeconds = ImGui::GetTime();
+
+		/* TEMP DIAGNOSTIC (2026-08-14): confirms which window this call actually resolved to --
+		in particular, whether a later label meant to cap a window early (e.g. LanceMaster's
+		focus_settled) is really being found as the nearest-greater label, or whether iEndFrame is
+		falling back to something else. Remove once the LanceMaster stance icon is confirmed
+		stable. */
+		{
+			char pDebugLine[256];
+			sprintf_s(pDebugLine,
+				"[Play_KeyframeAnimation] slot=%s label=%s window=[%d,%d) frameCount=%d\n",
+				strSlotId.c_str(), strLabel.c_str(), iStartFrame, iEndFrame, pDocument->iFrameCount);
+			OutputDebugStringA(pDebugLine);
+		}
 		return true;
 	}
 
@@ -554,12 +570,21 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 				continue;
 
 			const double dElapsedSeconds = ImGui::GetTime() - Slot.dKeyframeAnimStartSeconds;
+			const int32_t iWindowSpan = Slot.iKeyframeAnimWindowEnd - Slot.iKeyframeAnimWindowStart;
 			int32_t iCurrentFrame = Slot.iKeyframeAnimWindowStart +
 				static_cast<int32_t>(dElapsedSeconds * static_cast<double>(pDocument->fFrameRate));
-			if (iCurrentFrame >= Slot.iKeyframeAnimWindowEnd)
-				iCurrentFrame = Slot.iKeyframeAnimWindowEnd - 1;
-			if (iCurrentFrame < Slot.iKeyframeAnimWindowStart)
-				iCurrentFrame = Slot.iKeyframeAnimWindowStart;
+			if (pDocument->bLoop && iWindowSpan > 0)
+			{
+				iCurrentFrame = Slot.iKeyframeAnimWindowStart +
+					((iCurrentFrame - Slot.iKeyframeAnimWindowStart) % iWindowSpan + iWindowSpan) % iWindowSpan;
+			}
+			else
+			{
+				if (iCurrentFrame >= Slot.iKeyframeAnimWindowEnd)
+					iCurrentFrame = Slot.iKeyframeAnimWindowEnd - 1;
+				if (iCurrentFrame < Slot.iKeyframeAnimWindowStart)
+					iCurrentFrame = Slot.iKeyframeAnimWindowStart;
+			}
 
 			for (const KEYFRAME_ANIM_LAYER& Layer : pDocument->Layers)
 			{
