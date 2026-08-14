@@ -20,6 +20,12 @@
   </ItemGroup>
   <ItemGroup>
 	<ClInclude Include="..\Public\ActionPresentationTimeline.h" />
+	<ClInclude Include="..\Public\ValtanCinematicCameraController.h" />
+	<ClInclude Include="..\Public\ValtanCinematicCameraDocument.h" />
+	<ClInclude Include="..\Public\WorldDestructionProjectionDocument.h" />
+	<ClInclude Include="..\Public\WorldDestructionDebrisPresentationDocument.h" />
+	<ClInclude Include="..\Public\WorldDestructionDebrisPresentationRuntime.h" />
+	<ClInclude Include="..\Public\WorldDestructionProjectionRuntime.h" />
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
@@ -139,6 +145,12 @@
   </ItemGroup>
   <ItemGroup>
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
+	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
+	<ClCompile Include="..\Private\ValtanCinematicCameraDocument.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionProjectionDocument.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionDebrisPresentationDocument.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionDebrisPresentationRuntime.cpp" />
+	<ClCompile Include="..\Private\WorldDestructionProjectionRuntime.cpp" />
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
@@ -302,7 +314,8 @@
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
-    <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
@@ -322,6 +335,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset" />
+    <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.renderprofiles.json" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.shards.receipt.json" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_BASE.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE_BASE.mapplacements" />

@@ -63,6 +63,10 @@ EXPECTED_LEVEL_COUNTS = {
 }
 SL_LEVEL_PATTERN = re.compile(r"^LV_BER_BERNCASTLE_T_(SL\d{2})$")
 UINT64_MAX = (1 << 64) - 1
+DEFAULT_RENDER_PROFILE_MANIFEST = (
+    Path(__file__).resolve().parents[2]
+    / "Data/Maps/Imported/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.renderprofiles.json"
+)
 
 
 class ShardBuildError(RuntimeError):
@@ -737,12 +741,49 @@ def write_child_manifests(
     return asset_path, runtime_path, overlay_path
 
 
-def write_child_visibility_manifest(
+def load_render_profile_source(
+    path: Path | None,
+    known_asset_ids: set[str],
+) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    document = load_json(path)
+    if document.get("schemaVersion") != 1 or document.get("areaId") != AREA_ID:
+        raise ShardBuildError("render profile manifest schema/areaId mismatch")
+    profiles = document.get("profiles", [])
+    if not isinstance(profiles, list):
+        raise ShardBuildError("render profile manifest profiles must be an array")
+    profile_ids = [str(profile.get("assetId", "")) for profile in profiles]
+    if any(not asset_id for asset_id in profile_ids) or len(set(profile_ids)) != len(
+        profile_ids
+    ):
+        raise ShardBuildError("duplicate/empty render profile assetId")
+    unknown = set(profile_ids) - known_asset_ids
+    if unknown:
+        raise ShardBuildError(
+            f"render profiles reference unknown Bern assets: {sorted(unknown)}"
+        )
+    return document
+
+
+def write_child_render_profile_manifest(
     stage: Path,
     shard_id: str,
     static_group: dict[str, Any],
+    overlay_group: dict[str, Any],
     hidden_levels: frozenset[str],
+    render_profile_source: dict[str, Any] | None,
 ) -> Path | None:
+    shard_asset_ids = set(static_group["assetIds"]) | set(overlay_group["assetIds"])
+    profiles = (
+        []
+        if render_profile_source is None
+        else [
+            profile
+            for profile in render_profile_source.get("profiles", [])
+            if str(profile.get("assetId", "")) in shard_asset_ids
+        ]
+    )
     overrides = [
         {
             "sourcePlacementId": str(row["placementId"]),
@@ -751,13 +792,13 @@ def write_child_visibility_manifest(
         for row in static_group["rows"]
         if str(row.get("levelPackage", "")) in hidden_levels
     ]
-    if not overrides:
+    if not profiles and not overrides:
         return None
-    path = stage / ".sources" / shard_id / "visibility.json"
+    path = stage / ".sources" / shard_id / "renderprofiles.json"
     document = {
         "schemaVersion": 1,
         "areaId": AREA_ID,
-        "profiles": [],
+        "profiles": profiles,
         "visibilityOverrides": overrides,
     }
     atomic_write_text(path, json.dumps(document, ensure_ascii=False) + "\n")
@@ -770,6 +811,7 @@ def stage_static_shards(
     inventory: dict[str, Any],
     overlay_inventory: dict[str, Any] | None,
     hidden_levels: frozenset[str],
+    render_profile_source: dict[str, Any] | None,
 ) -> None:
     source_asset_document = None
     source_runtime_document = None
@@ -778,12 +820,22 @@ def stage_static_shards(
         source_runtime_document = load_json(args.runtime_manifest)
     for shard_id in ("BASE", *SL_SHARD_IDS):
         group = inventory["groups"][shard_id]
+        overlay_group = (
+            empty_overlay_group()
+            if overlay_inventory is None
+            else overlay_inventory["groups"][shard_id]
+        )
         source_directory = stage / ".sources" / shard_id
         write_normalized_placements(
             source_directory / f"{shard_id}.placements.json", group["rows"]
         )
-        visibility_path = write_child_visibility_manifest(
-            stage, shard_id, group, hidden_levels
+        render_profile_path = write_child_render_profile_manifest(
+            stage,
+            shard_id,
+            group,
+            overlay_group,
+            hidden_levels,
+            render_profile_source,
         )
         if overlay_inventory is None:
             child_arguments = child_compile_arguments(
@@ -792,10 +844,9 @@ def stage_static_shards(
                 stage,
                 shard_id,
                 group,
-                render_profile_manifest=visibility_path,
+                render_profile_manifest=render_profile_path,
             )
         else:
-            overlay_group = overlay_inventory["groups"][shard_id]
             asset_path, runtime_path, overlay_path = write_child_manifests(
                 stage,
                 shard_id,
@@ -815,7 +866,7 @@ def stage_static_shards(
                 asset_manifest=asset_path,
                 runtime_manifest=runtime_path,
                 overlay_manifest=overlay_path,
-                render_profile_manifest=visibility_path,
+                render_profile_manifest=render_profile_path,
             )
         compile_scene(child_arguments)
 
@@ -1082,6 +1133,13 @@ def build_shards(args: argparse.Namespace) -> dict[str, Any]:
         getattr(args, "expect_overlay_reflected", None),
         hidden_levels,
     )
+    render_profile_manifest = getattr(args, "render_profile_manifest", None)
+    known_asset_ids = set(static_inventory["assetIds"])
+    if overlay_inventory is not None:
+        known_asset_ids.update(overlay_inventory["assetIds"])
+    render_profile_source = load_render_profile_source(
+        render_profile_manifest, known_asset_ids
+    )
     if (
         overlay_inventory is not None
         and overlay_inventory["assetCount"] > 0
@@ -1097,7 +1155,12 @@ def build_shards(args: argparse.Namespace) -> dict[str, Any]:
     stage.mkdir(parents=False, exist_ok=False)
     try:
         stage_static_shards(
-            args, stage, static_inventory, overlay_inventory, hidden_levels
+            args,
+            stage,
+            static_inventory,
+            overlay_inventory,
+            hidden_levels,
+            render_profile_source,
         )
         landscape_source = stage_landscape_shard(args, stage)
 
@@ -1251,6 +1314,11 @@ def build_shards(args: argparse.Namespace) -> dict[str, Any]:
             receipt["inputs"]["runtimeAssetRoot"] = getattr(
                 args, "runtime_asset_root"
             ).as_posix()
+        if render_profile_manifest is not None:
+            receipt["inputs"]["renderProfileManifest"] = {
+                "path": render_profile_manifest.as_posix(),
+                "sha256": sha256(render_profile_manifest),
+            }
         atomic_write_text(
             stage / receipt_name,
             json.dumps(receipt, ensure_ascii=False, indent=2) + "\n",
@@ -1269,6 +1337,11 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--runtime-root", type=Path, required=True)
     parser.add_argument("--runtime-asset-root", type=Path)
     parser.add_argument("--overlay-manifest", type=Path)
+    parser.add_argument(
+        "--render-profile-manifest",
+        type=Path,
+        default=DEFAULT_RENDER_PROFILE_MANIFEST,
+    )
     parser.add_argument("--placements-dir", type=Path, action="append", required=True)
     parser.add_argument("--landscape-catalog", type=Path, required=True)
     parser.add_argument("--landscape-placements", type=Path, required=True)

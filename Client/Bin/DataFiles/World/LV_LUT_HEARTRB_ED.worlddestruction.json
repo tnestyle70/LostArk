@@ -1,0 +1,302 @@
+{
+    "schema":  "lostark.world-destruction-client-projection",
+    "formatVersion":  2,
+    "areaId":  "LV_LUT_HEARTRB_ED",
+    "combatRuntimeRevision":  "10a88907af68239316183eeddd66abf27d60a9cb48de4ca6124f1ccc09d04ddc",
+    "groups":  [
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.11047903315509031966",
+                       "mutationId":  "mutation.valtan.group.11047903315509031966.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "10619331645164562008",
+                                                  "10758879797263276529",
+                                                  "11047903315509031966",
+                                                  "12385961325933108240",
+                                                  "15221142224278623810",
+                                                  "15719065619666776634",
+                                                  "16891123250307634887",
+                                                  "17769051189408857662",
+                                                  "18064647264029106986",
+                                                  "18095941116451824308"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.11170070275064524686",
+                       "mutationId":  "mutation.valtan.group.11170070275064524686.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "11170070275064524686"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.11190594702002930167",
+                       "mutationId":  "mutation.valtan.group.11190594702002930167.fracture",
+                       "suppressionAliasPlacementIds":  [
+                                                            "12150087330863237518",
+                                                            "16879630230908101275"
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "11190594702002930167",
+                                                  "12150087330863237518",
+                                                  "13195423984589183291",
+                                                  "16879630230908101275"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.12135716830026868823",
+                       "mutationId":  "mutation.valtan.group.12135716830026868823.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "10938566942418286882",
+                                                  "12135716830026868823",
+                                                  "12612119053333525111",
+                                                  "12956154234820310428",
+                                                  "13907193421470993692",
+                                                  "14754587218800370239",
+                                                  "15590072441712178822",
+                                                  "15590636842883334976",
+                                                  "16181172586312392552",
+                                                  "18105374220469669789",
+                                                  "18360145892842596691"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.12252498194881956917",
+                       "mutationId":  "mutation.valtan.group.12252498194881956917.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "10435996578153793381",
+                                                  "10912388091405377926",
+                                                  "12252498194881956917",
+                                                  "13154681496987253568",
+                                                  "13837284136111935898",
+                                                  "15148418014021580024",
+                                                  "15393154990485032341",
+                                                  "15736179535184396369",
+                                                  "17296963925068961735",
+                                                  "17404480870746281119",
+                                                  "17788407538468874008",
+                                                  "18362175117092037953"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.13520360247339696445",
+                       "mutationId":  "mutation.valtan.group.13520360247339696445.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "13520360247339696445"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.15495684800954131707",
+                       "mutationId":  "mutation.valtan.group.15495684800954131707.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9671293252162296055",
+                                                  "12804542616476082944",
+                                                  "12819104299115621849",
+                                                  "13290943434399830027",
+                                                  "14210737191027038638",
+                                                  "14345577340107998055",
+                                                  "14439275443581760904",
+                                                  "14520149530921636720",
+                                                  "15358675764127682739",
+                                                  "15423695113667715748",
+                                                  "15495684800954131707",
+                                                  "17359606121069777624",
+                                                  "18100758183075339831"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.15675921917269125843",
+                       "mutationId":  "mutation.valtan.group.15675921917269125843.fracture",
+                       "suppressionAliasPlacementIds":  [
+                                                            "10358956607506909163",
+                                                            "15212127038612238715"
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "10358956607506909163",
+                                                  "13221745590928612509",
+                                                  "15212127038612238715",
+                                                  "15675921917269125843"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.17150846598057876717",
+                       "mutationId":  "mutation.valtan.group.dae1310b110ed26d.fracture",
+                       "suppressionAliasPlacementIds":  [
+                                                            "10426387515393336411",
+                                                            "12598937882346321836"
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9863801195242004116",
+                                                  "10426387515393336411",
+                                                  "12598937882346321836",
+                                                  "17150846598057876717"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.17695249952621776147",
+                       "mutationId":  "mutation.valtan.group.17695249952621776147.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9460380659834835619",
+                                                  "10672658406952543185",
+                                                  "12681913253468198394",
+                                                  "14398285027733086155",
+                                                  "14462438123003083514",
+                                                  "15451422525499780584",
+                                                  "17695249952621776147"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.9522135662464469029",
+                       "mutationId":  "mutation.valtan.group.9522135662464469029.fracture",
+                       "suppressionAliasPlacementIds":  [
+                                                            "9606721395667492840",
+                                                            "15375899663358889626"
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9522135662464469029",
+                                                  "9606721395667492840",
+                                                  "11909088500311713272",
+                                                  "15375899663358889626"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.deploy.9652616057759700150",
+                       "mutationId":  "mutation.valtan.group.9652616057759700150.fracture",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9652616057759700150"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector00",
+                       "mutationId":  "mutation.valtan.outerwall109.sector00.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000001",
+                                                  "1090000000000002",
+                                                  "1090000000000003"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector01",
+                       "mutationId":  "mutation.valtan.outerwall109.sector01.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000004",
+                                                  "1090000000000005",
+                                                  "1090000000000006"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector02",
+                       "mutationId":  "mutation.valtan.outerwall109.sector02.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000007",
+                                                  "1090000000000008",
+                                                  "1090000000000009"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector03",
+                       "mutationId":  "mutation.valtan.outerwall109.sector03.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000010",
+                                                  "1090000000000011",
+                                                  "1090000000000012"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector04",
+                       "mutationId":  "mutation.valtan.outerwall109.sector04.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000013",
+                                                  "1090000000000014",
+                                                  "1090000000000015"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector05",
+                       "mutationId":  "mutation.valtan.outerwall109.sector05.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000016",
+                                                  "1090000000000017",
+                                                  "1090000000000018"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector06",
+                       "mutationId":  "mutation.valtan.outerwall109.sector06.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000019",
+                                                  "1090000000000020",
+                                                  "1090000000000021"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.outerwall109.sector07",
+                       "mutationId":  "mutation.valtan.outerwall109.sector07.despawn",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "1090000000000022",
+                                                  "1090000000000023",
+                                                  "1090000000000024"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.wall.3705102",
+                       "mutationId":  "mutation.valtan.wall.3705102.break",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "9335938568718910930",
+                                                  "9681544306002658031",
+                                                  "12037145985028191659",
+                                                  "17280669848983777578",
+                                                  "18177041425620847396"
+                                              ]
+                   }
+               ]
+}

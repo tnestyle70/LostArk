@@ -120,8 +120,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
-			m_bDebrisSuppressSource);
+		!Is_BasePresentationSuppressed();
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
 	CGameInstance::Get().Add_RenderObject(
@@ -139,8 +138,7 @@ HRESULT CDeployPropObject::Render()
 {
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
-			m_bDebrisSuppressSource);
+		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_CommonShaderResources()))
@@ -169,8 +167,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	const bool_t sourceVisible =
 		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
-		!(m_bPhysicsPreviewActive && m_bDebrisPreviewActive &&
-			m_bDebrisSuppressSource);
+		!Is_BasePresentationSuppressed();
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_ShadowShaderResources(
@@ -455,15 +452,29 @@ bool_t CDeployPropObject::Begin_DebrisPreview(
 	const DEBRIS_PREVIEW_DESC& desc,
 	std::string& outError)
 {
+	return Begin_DebrisPresentation(
+		desc.instances,
+		desc.suppressSource,
+		DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW,
+		outError);
+}
+
+bool_t CDeployPropObject::Begin_DebrisPresentation(
+	const std::vector<DEBRIS_PREVIEW_INSTANCE_DESC>& instances,
+	const bool_t suppressSource,
+	const DEBRIS_PRESENTATION_OWNER owner,
+	std::string& outError)
+{
 	outError.clear();
-	if (m_bDebrisPreviewActive)
+	if (DEBRIS_PRESENTATION_OWNER::NONE == owner ||
+		m_bDebrisPreviewActive)
 	{
-		outError = "Debris preview is already active";
+		outError = "A transient debris presentation is already active";
 		return false;
 	}
-	if (desc.instances.empty())
+	if (instances.empty())
 	{
-		outError = "Debris preview requires at least one instance";
+		outError = "Transient debris requires at least one instance";
 		return false;
 	}
 	if (m_iPrototypeLevelIndex >= ETOUI(LEVEL::END))
@@ -484,11 +495,11 @@ bool_t CDeployPropObject::Begin_DebrisPreview(
 
 	std::vector<DEBRIS_PREVIEW_RESOURCE> stagedResources;
 	std::vector<DEBRIS_PREVIEW_INSTANCE> stagedInstances;
-	stagedInstances.reserve(desc.instances.size());
+	stagedInstances.reserve(instances.size());
 	std::unordered_map<std::wstring, uint32_t> resourceLookup;
-	resourceLookup.reserve(desc.instances.size());
+	resourceLookup.reserve(instances.size());
 
-	for (const DEBRIS_PREVIEW_INSTANCE_DESC& instanceDesc : desc.instances)
+	for (const DEBRIS_PREVIEW_INSTANCE_DESC& instanceDesc : instances)
 	{
 		if (instanceDesc.modelPrototypeTag.empty() ||
 			!std::isfinite(instanceDesc.uniformScale) ||
@@ -538,14 +549,22 @@ bool_t CDeployPropObject::Begin_DebrisPreview(
 	m_pDebrisShaderCom = std::move(stagedShader);
 	m_DebrisPreviewResources = std::move(stagedResources);
 	m_DebrisPreviewInstances = std::move(stagedInstances);
-	m_bDebrisSuppressSource = desc.suppressSource;
+	m_bDebrisSuppressSource = suppressSource;
+	m_eDebrisPresentationOwner = owner;
 	m_bDebrisPreviewActive = true;
 	return true;
 }
 
 uint32_t CDeployPropObject::Get_DebrisPreviewInstanceCount() const
 {
-	return m_bDebrisPreviewActive ?
+	return Get_DebrisPresentationInstanceCount(
+		DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW);
+}
+
+uint32_t CDeployPropObject::Get_DebrisPresentationInstanceCount(
+	const DEBRIS_PRESENTATION_OWNER owner) const
+{
+	return m_bDebrisPreviewActive && owner == m_eDebrisPresentationOwner ?
 		static_cast<uint32_t>(m_DebrisPreviewInstances.size()) : 0u;
 }
 
@@ -554,7 +573,18 @@ bool_t CDeployPropObject::Get_DebrisPreviewLocalBounds(
 	float3_t& outCenter,
 	float3_t& outHalfExtents) const
 {
-	if (!m_bDebrisPreviewActive ||
+	return Get_DebrisPresentationLocalBounds(
+		DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW,
+		instanceIndex, outCenter, outHalfExtents);
+}
+
+bool_t CDeployPropObject::Get_DebrisPresentationLocalBounds(
+	const DEBRIS_PRESENTATION_OWNER owner,
+	const uint32_t instanceIndex,
+	float3_t& outCenter,
+	float3_t& outHalfExtents) const
+{
+	if (!m_bDebrisPreviewActive || owner != m_eDebrisPresentationOwner ||
 		instanceIndex >= m_DebrisPreviewInstances.size())
 	{
 		return false;
@@ -592,7 +622,19 @@ bool_t CDeployPropObject::Apply_DebrisPreviewPose(
 	const float4_t& rotationQuaternion,
 	const bool_t visible)
 {
-	if (!m_bDebrisPreviewActive ||
+	return Apply_DebrisPresentationPose(
+		DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW,
+		instanceIndex, position, rotationQuaternion, visible);
+}
+
+bool_t CDeployPropObject::Apply_DebrisPresentationPose(
+	const DEBRIS_PRESENTATION_OWNER owner,
+	const uint32_t instanceIndex,
+	const float3_t& position,
+	const float4_t& rotationQuaternion,
+	const bool_t visible)
+{
+	if (!m_bDebrisPreviewActive || owner != m_eDebrisPresentationOwner ||
 		instanceIndex >= m_DebrisPreviewInstances.size() ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
 		!std::isfinite(position.z) ||
@@ -619,14 +661,102 @@ bool_t CDeployPropObject::Apply_DebrisPreviewPose(
 
 void CDeployPropObject::End_DebrisPreview()
 {
-	if (!m_bDebrisPreviewActive)
+	End_DebrisPresentation(DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW);
+}
+
+void CDeployPropObject::End_DebrisPresentation(
+	const DEBRIS_PRESENTATION_OWNER owner)
+{
+	if (!m_bDebrisPreviewActive || owner != m_eDebrisPresentationOwner)
 		return;
 
 	m_bDebrisPreviewActive = false;
 	m_bDebrisSuppressSource = false;
+	m_eDebrisPresentationOwner = DEBRIS_PRESENTATION_OWNER::NONE;
 	m_DebrisPreviewInstances.clear();
 	m_DebrisPreviewResources.clear();
 	m_pDebrisShaderCom.reset();
+}
+
+bool_t CDeployPropObject::Begin_DestructionDebrisPresentation(
+	const DESTRUCTION_DEBRIS_PRESENTATION_DESC& desc,
+	std::string& outError)
+{
+	if (m_bPhysicsPreviewActive)
+	{
+		outError = "Product debris cannot overlap a MapTool physics preview";
+		return false;
+	}
+	std::vector<DEBRIS_PREVIEW_INSTANCE_DESC> instances;
+	instances.reserve(desc.instances.size());
+	for (const DESTRUCTION_DEBRIS_INSTANCE_DESC& source : desc.instances)
+		instances.push_back({ source.modelPrototypeTag, source.uniformScale });
+	return Begin_DebrisPresentation(
+		instances,
+		desc.suppressSource,
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION,
+		outError);
+}
+
+uint32_t CDeployPropObject::
+Get_DestructionDebrisPresentationInstanceCount() const
+{
+	return Get_DebrisPresentationInstanceCount(
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION);
+}
+
+bool_t CDeployPropObject::Get_DestructionDebrisPresentationLocalBounds(
+	const uint32_t instanceIndex,
+	float3_t& outCenter,
+	float3_t& outHalfExtents) const
+{
+	return Get_DebrisPresentationLocalBounds(
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION,
+		instanceIndex, outCenter, outHalfExtents);
+}
+
+bool_t CDeployPropObject::Apply_DestructionDebrisPresentationPose(
+	const uint32_t instanceIndex,
+	const float3_t& position,
+	const float4_t& rotationQuaternion,
+	const bool_t visible)
+{
+	return Apply_DebrisPresentationPose(
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION,
+		instanceIndex, position, rotationQuaternion, visible);
+}
+
+void CDeployPropObject::End_DestructionDebrisPresentation()
+{
+	End_DebrisPresentation(
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION);
+}
+
+bool_t CDeployPropObject::
+Is_DestructionDebrisPresentationActive() const
+{
+	return m_bDebrisPreviewActive &&
+		DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION ==
+		m_eDebrisPresentationOwner;
+}
+
+bool_t CDeployPropObject::Begin_TransientDestructionSuppression(
+	std::string& outError)
+{
+	outError.clear();
+	if (m_bTransientDestructionSuppressed || m_bDebrisPreviewActive ||
+		m_bPhysicsPreviewActive)
+	{
+		outError = "Transient destruction suppression conflicts with an active presentation";
+		return false;
+	}
+	m_bTransientDestructionSuppressed = true;
+	return true;
+}
+
+void CDeployPropObject::End_TransientDestructionSuppression()
+{
+	m_bTransientDestructionSuppressed = false;
 }
 
 HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
@@ -836,6 +966,21 @@ bool_t CDeployPropObject::Has_VisibleDebrisPreviewInstance() const
 		{
 			return instance.visible;
 		});
+}
+
+bool_t CDeployPropObject::Is_BasePresentationSuppressed() const
+{
+	if (m_bTransientDestructionSuppressed)
+		return true;
+	if (!m_bDebrisPreviewActive || !m_bDebrisSuppressSource)
+		return false;
+	if (DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION ==
+		m_eDebrisPresentationOwner)
+	{
+		return true;
+	}
+	return DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW ==
+		m_eDebrisPresentationOwner && m_bPhysicsPreviewActive;
 }
 
 void CDeployPropObject::Apply_Transform()

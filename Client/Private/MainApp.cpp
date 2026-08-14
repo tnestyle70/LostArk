@@ -291,18 +291,21 @@ void CMainApp::Update(const f32_t fTimeDelta)
 HRESULT CMainApp::Render()
 {
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
-	if (FAILED(CGameInstance::Get().Render_Begin(&clearColor)))
+	const HRESULT hBeginResult =
+		CGameInstance::Get().Render_Begin(&clearColor);
+	if (FAILED(hBeginResult))
 	{
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
-		return E_FAIL;
+		return hBeginResult;
 	}
 
-	if (FAILED(CGameInstance::Get().Render()))
+	const HRESULT hWorldResult = CGameInstance::Get().Render();
+	if (FAILED(hWorldResult))
 	{
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
-		return E_FAIL;
+		return hWorldResult;
 	}
 
 	if (nullptr != m_pImGuiLayer)

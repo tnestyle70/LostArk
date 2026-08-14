@@ -1,5 +1,6 @@
 import argparse
 import json
+import shlex
 import tempfile
 import unittest
 from pathlib import Path
@@ -188,6 +189,7 @@ class BernCastleShardBuilderTests(unittest.TestCase):
             runtime_root=runtime_root,
             runtime_asset_root=None,
             overlay_manifest=None,
+            render_profile_manifest=None,
             placements_dir=[first_directory, second_directory],
             landscape_catalog=landscape_catalog,
             landscape_placements=landscape_placements,
@@ -209,6 +211,31 @@ class BernCastleShardBuilderTests(unittest.TestCase):
             max_catalog_assets=512,
             expect_level_count=level_specs,
         )
+
+    def attach_render_profile(
+        self,
+        root: Path,
+        arguments: argparse.Namespace,
+        asset_id: str = "asset_base_ps",
+    ) -> None:
+        manifest = root / "bern.renderprofiles.json"
+        self.write_json(
+            manifest,
+            {
+                "schemaVersion": 1,
+                "areaId": AREA_ID,
+                "profiles": [
+                    {
+                        "assetId": asset_id,
+                        "renderMode": "Sky",
+                        "cullMode": "None",
+                        "colorTint": [0.12, 0.14, 0.18, 1.0],
+                    }
+                ],
+                "visibilityOverrides": [],
+            },
+        )
+        arguments.render_profile_manifest = manifest
 
     @staticmethod
     def overlay_placement(
@@ -379,6 +406,43 @@ class BernCastleShardBuilderTests(unittest.TestCase):
                 (arguments.output_dir / f"{AREA_ID}.shards.receipt.json").is_file()
             )
             self.assertFalse(any(arguments.output_dir.glob(f".{AREA_ID}.stage.*")))
+
+    def test_stable_asset_render_profile_survives_shard_regeneration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            arguments = self.create_fixture(root)
+            self.attach_render_profile(root, arguments)
+
+            receipt = build_shards(arguments)
+
+            base_catalog = parse_catalog(
+                arguments.output_dir / shard_file_name("BASE", "mapassets")
+            )
+            matching_rows = [
+                row
+                for row in base_catalog["rows"]
+                if shlex.split(row, posix=True)[0] == "asset_base_ps"
+            ]
+            self.assertEqual(len(matching_rows), 1)
+            fields = shlex.split(matching_rows[0], posix=True)
+            self.assertEqual(fields[11:13], ["Sky", "None"])
+            self.assertEqual(fields[21:25], ["0.12", "0.14", "0.18", "1"])
+            self.assertIn("renderProfileManifest", receipt["inputs"])
+
+    def test_unknown_render_profile_fails_without_replacing_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            arguments = self.create_fixture(root)
+            self.attach_render_profile(root, arguments, "missing_asset")
+            arguments.output_dir.mkdir()
+            existing = arguments.output_dir / shard_file_name("BASE", "mapassets")
+            existing.write_bytes(b"existing-catalog")
+
+            with self.assertRaisesRegex(
+                ShardBuildError, "render profiles reference unknown Bern assets"
+            ):
+                build_shards(arguments)
+            self.assertEqual(existing.read_bytes(), b"existing-catalog")
 
     def test_global_id_collision_fails_without_replacing_existing_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:

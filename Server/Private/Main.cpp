@@ -27,6 +27,7 @@ int main(const int argumentCount, char** arguments)
 	std::string bindAddress = "0.0.0.0";
 	bool hasSmokeTimeout = false;
 	bool hasBindAddress = false;
+	bool headless = false;
 	bool hasPort = false;
 	for (int index = 1; index < argumentCount; ++index)
 	{
@@ -69,6 +70,16 @@ int main(const int argumentCount, char** arguments)
 			hasBindAddress = true;
 			continue;
 		}
+		if ("--headless" == argument)
+		{
+			if (headless)
+			{
+				std::cerr << "--headless may be specified only once.\n";
+				return 2;
+			}
+			headless = true;
+			continue;
+		}
 		if ("--port" == argument)
 		{
 			if (hasPort || index + 1 >= argumentCount)
@@ -98,5 +109,6 @@ int main(const int argumentCount, char** arguments)
 	return serverApp.Run(
 		automaticShutdownMilliseconds,
 		bindAddress,
-		static_cast<std::uint16_t>(serverPort));
+		static_cast<std::uint16_t>(serverPort),
+		headless);
 }

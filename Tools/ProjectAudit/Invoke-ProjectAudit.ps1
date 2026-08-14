@@ -539,11 +539,12 @@ try {
 		$mapLoadScopeHeader -match 'std::string excludedAssetGroupId' -and
 		$mapPlacementRuntimeSource -match 'left\.excludedAssetGroupId == right\.excludedAssetGroupId' -and
 		$mapPlacementRuntimeSource -match 'pAsset->groupId == loadScope\.excludedAssetGroupId' -and
-		$levelRegistryMapScopeSource -match 'MakeFullMapScope\("landscape"\)' -and
+		$levelRegistryMapScopeSource -notmatch 'MakeFullMapScope\("landscape"\)' -and
+		$levelRegistryMapScopeSource -match '"LV_BER_BERNCASTLE",\s*"scene\.bern\.neutral-day\.v1",[\s\S]{0,600}?MakeFullMapScope\(\)' -and
 		$levelRegistryMapScopeSource -match '"LV_LUT_HEARTRB_ED",\s*"scene\.valtan\.cool-low-key\.v1",\s*MakeFullMapScope\(\)' -and
 		$mapToolSource -match 'IsBernLandscapePlacement' -and
 		$mapToolSource -match 'Show Bern Landscape'
-	Add-Check 'maps.product-editor-visual-scope' $productEditorVisualScopeValid 'Bern full published map excluding quarantined landscape; Valtan full published map; MapTool reversible Bern preview'
+	Add-Check 'maps.product-editor-visual-scope' $productEditorVisualScopeValid 'Bern and Valtan product levels load the full published map; MapTool keeps the reversible Bern landscape preview toggle'
 
 	$physicsSdkRoot = Join-Path $repoRoot 'Engine\ThirdPartyLib\PhysX'
 	$physicsSdkRequired = @(
@@ -595,6 +596,7 @@ try {
 	$destructionRuntimeSource = Get-Content 'Client\Private\DestructionSimulationRuntime.cpp' -Raw
 	$destructionControllerSource = Get-Content 'Client\Private\DestructionSimulationController.cpp' -Raw
 	$deployPropObjectSource = Get-Content 'Client\Private\DeployPropObject.cpp' -Raw
+	$productDestructionRuntimeSource = Get-Content 'Client\Private\WorldDestructionDebrisPresentationRuntime.cpp' -Raw
 	$physicsContractValid =
 		$physicsManagerHeader -match 'PHYSICS_ACTOR_HANDLE' -and
 		$physicsManagerHeader -match 'Simulate_DebugSteps\(uint32_t' -and
@@ -845,6 +847,37 @@ try {
 		@(Compare-Object $frontCollapseExpectedMembers $frontCollapseGroupMembers -CaseSensitive).Count -eq 0 -and
 		@(Compare-Object $frontCollapseExpectedMembers $frontCollapseEmitterIds -CaseSensitive).Count -eq 0 -and
 		@($frontCollapseElements | Where-Object { @($_.suppressionAliasPlacementIds).Count -ne 0 }).Count -eq 0
+	$enabledBindings = @($worldEvents.bindings | Where-Object { $_.enabled -is [bool] -and $_.enabled })
+	$arenaBreakBindings = @($enabledBindings | Where-Object {
+		$_.patternId -ceq 'VALTAN_ARENA_BREAK_109' -and
+		$_.stageId -ceq 'IMPACT' -and
+		$_.triggerKind -ceq 'STAGE_ENTER' -and
+		$_.receiverCollisionId -ceq ''
+	})
+	$impactProductBindings = @($enabledBindings | Where-Object {
+		$_.bindingId -ceq 'binding.valtan.group.11047903315509031966.preview' -and
+		$_.mutationId -ceq 'mutation.valtan.group.11047903315509031966.fracture' -and
+		$_.patternId -ceq 'VALTAN_ARMOR_BREAK_OPENING' -and
+		$_.stageId -ceq 'WALL_CHARGE' -and
+		$_.triggerKind -ceq 'COLLISION_IMPACT' -and
+		$_.receiverCollisionId -ceq 'collision.valtan.wallgroup.11047903315509031966.receiver' -and
+		(Test-JsonNumber $_.offsetMs) -and [long]$_.offsetMs -eq 0L
+	})
+	$allEnabledBindingsHaveCanonicalTrigger = @($enabledBindings | Where-Object {
+		$stageEntry = $_.triggerKind -ceq 'STAGE_ENTER' -and
+			$_.receiverCollisionId -ceq ''
+		$impact = $_.triggerKind -ceq 'COLLISION_IMPACT' -and
+			$_.receiverCollisionId -ceq 'collision.valtan.wallgroup.11047903315509031966.receiver'
+		-not ($stageEntry -or $impact) -or
+		-not (Test-JsonNumber $_.offsetMs) -or [long]$_.offsetMs -ne 0L
+	}).Count -eq 0
+	$productBindingsValid =
+		$enabledBindings.Count -eq 14 -and
+		@($worldEvents.bindings).Count -eq 14 -and
+		$arenaBreakBindings.Count -eq 13 -and
+		$impactProductBindings.Count -eq 1 -and
+		@($worldEvents.mutations | Where-Object { $_.targetState -cne 'DESPAWNED' }).Count -eq 0 -and
+		$allEnabledBindingsHaveCanonicalTrigger
 	$simulationAuthoringValid =
 		$simulation.schema -ceq 'lostark.destruction-simulation' -and (Test-JsonNumber $simulation.formatVersion) -and
 		[double]$simulation.formatVersion -eq 2.0 -and $simulation.areaId -ceq 'LV_LUT_HEARTRB_ED' -and
@@ -852,7 +885,8 @@ try {
 		$eligibleWallPlacementIds.Count -eq 77 -and $allProjectedPlacementIds.Count -eq 77 -and
 		@(Compare-Object @($eligibleWallPlacementIds) @($allProjectedPlacementIds) -CaseSensitive).Count -eq 0 -and
 		$inwardEmitterCount -eq 69 -and
-		@($worldEvents.bindings | Where-Object { $_.enabled -isnot [bool] -or $_.enabled }).Count -eq 0 -and
+		@($worldEvents.bindings | Where-Object { $_.enabled -isnot [bool] }).Count -eq 0 -and
+		$productBindingsValid -and
 		$selectedProfile.Count -eq 1 -and $selectedEmittersValid -and
 		$selectedGroup.Count -eq 1 -and
 		$selectedGroupMembers.Count -eq $expectedGroupMembers.Count -and
@@ -861,7 +895,7 @@ try {
 		$singleClickGroupValid -and $frontCollapseGroupValid
 	Add-Check 'maps.valtan-destruction-simulation-authoring' `
 		$simulationAuthoringValid `
-		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) inward=$inwardEmitterCount/69 coverage=$($allProjectedPlacementIds.Count)/$($eligibleWallPlacementIds.Count) emitters=$($selectedElements.Count) groupMembers=$($selectedGroupMembers.Count) collapse=$($collapseElements.Count)/$($collapseGroupMembers.Count) singleClick=$($singleClickElements.Count)/$($singleClickGroupMembers.Count) frontCollapse=$($frontCollapseElements.Count)/$($frontCollapseGroupMembers.Count) deployRows=$matchedDeployRows"
+		"profiles=$($profiles.Count) errors=$($simulationErrors.Count) inward=$inwardEmitterCount/69 coverage=$($allProjectedPlacementIds.Count)/$($eligibleWallPlacementIds.Count) enabledBindings=$($enabledBindings.Count)/14 schedule80=$($arenaBreakBindings.Count)/13 impact=$($impactProductBindings.Count)/1 emitters=$($selectedElements.Count) groupMembers=$($selectedGroupMembers.Count) collapse=$($collapseElements.Count)/$($collapseGroupMembers.Count) singleClick=$($singleClickElements.Count)/$($singleClickGroupMembers.Count) frontCollapse=$($frontCollapseElements.Count)/$($frontCollapseGroupMembers.Count) deployRows=$matchedDeployRows"
 
 	# One exact 12-shard recipe per source Deploy wall asset. Runtime admission keys
 	# on sourceDeployAssetId, so every cooked asset must stay 1:1 with its receipt.
@@ -950,7 +984,19 @@ try {
 		$runtimeCode, 'Restore_SuppressionAliases\(runtime')).Count
 	$sourceSuppressionPredicates = @([regex]::Matches(
 		$deployPropObjectSource,
-		'm_bPhysicsPreviewActive\s*&&\s*m_bDebrisPreviewActive\s*&&\s*m_bDebrisSuppressSource')).Count
+		'!Is_BasePresentationSuppressed\(\)')).Count
+	$centralizedSuppressionContract =
+		$deployPropObjectSource -match 'bool_t\s+CDeployPropObject::Is_BasePresentationSuppressed\(\)\s+const' -and
+		$deployPropObjectSource -match 'if\s*\(m_bTransientDestructionSuppressed\)' -and
+		$deployPropObjectSource -match '!m_bDebrisPreviewActive\s*\|\|\s*!m_bDebrisSuppressSource' -and
+		$deployPropObjectSource -match 'DEBRIS_PRESENTATION_OWNER::PRODUCT_DESTRUCTION' -and
+		$deployPropObjectSource -match 'DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW[\s\S]*m_bPhysicsPreviewActive'
+	$productSuppressionLifecycle =
+		$productDestructionRuntimeSource -match 'Begin_DestructionDebrisPresentation\(' -and
+		$productDestructionRuntimeSource -match 'End_DestructionDebrisPresentation\(' -and
+		$productDestructionRuntimeSource -match 'Begin_TransientDestructionSuppression\(' -and
+		$productDestructionRuntimeSource -match 'End_TransientDestructionSuppression\(' -and
+		$productDestructionRuntimeSource -notmatch 'Simulate_DebugSteps|Begin_PhysicsPreview|End_PhysicsPreview'
 	$aliasLifecycleValid =
 		$runtimeCode -match 'aliasObject->Is_StaticDeployModel\(\)' -and
 		$runtimeCode -match 'alias\.ePreviousState\s*=\s*alias\.pObject->Get_State\(\)' -and
@@ -959,10 +1005,11 @@ try {
 		$runtimeCode -match 'if\s*\(!Destroy_Actors\(&restoreStatus\)\)' -and
 		$runtimeCode -match 'if\s*\(!Destroy_Actors\(&outStatus\)\)' -and
 		$runtimeCode -match 'runtime\.eState\s*=\s*DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED' -and
-		$aliasRestoreCalls -ge 3 -and $sourceSuppressionPredicates -eq 3
+		$aliasRestoreCalls -ge 3 -and $sourceSuppressionPredicates -eq 3 -and
+		$centralizedSuppressionContract -and $productSuppressionLifecycle
 	Add-Check 'maps.valtan-destruction-suppression-alias-lifecycle' `
 		$aliasLifecycleValid `
-		"restoreCalls=$aliasRestoreCalls sourcePredicates=$sourceSuppressionPredicates"
+		"mapToolRestoreCalls=$aliasRestoreCalls sourcePredicates=$sourceSuppressionPredicates productLifecycle=$productSuppressionLifecycle"
 
 	$worldPublisherSource = Get-Content 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
 	$destroyableProductGateClosed =
@@ -2247,7 +2294,7 @@ try {
 		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
 		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
-		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 18' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 19' -and
 		$packetTypeSource -match 'S2C_ENTER_REJECTED' -and
 		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
 		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
@@ -2819,9 +2866,9 @@ try {
 		'Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json')
 	$invalidWorldAuthoring = @($worldAuthoringDocuments | Where-Object {
 		$document = Read-Json $_
-		$document.schema -ne 'lostark.world-gameplay' -or [int]$document.formatVersion -ne 4
+		$document.schema -ne 'lostark.world-gameplay' -or [int]$document.formatVersion -ne 5
 	})
-	Add-Check 'world.authoring-format-v4' ($invalidWorldAuthoring.Count -eq 0) `
+	Add-Check 'world.authoring-format-v5' ($invalidWorldAuthoring.Count -eq 0) `
 		"invalid=$($invalidWorldAuthoring -join ',')"
 
 	$bernWorldDocument = Read-Json 'Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json'
@@ -3121,7 +3168,7 @@ try {
 		$valtanPatternIds.Count -eq 31 -and
 		$valtanPatternIds -contains 'VALTAN_FLOOR_WIPE_130' -and
 		$valtanPatternIds -contains 'VALTAN_FOUR_PILLARS_105' -and
-		$valtanPatternIds -contains 'VALTAN_ARENA_BREAK_80' -and
+		$valtanPatternIds -contains 'VALTAN_ARENA_BREAK_109' -and
 		$valtanPatternIds -contains 'VALTAN_MAGIC_ORB_STAGGER_76' -and
 		$valtanPatternIds -contains 'VALTAN_CENTER_GRAB_COUNTER_64' -and
 		$valtanPatternIds -contains 'VALTAN_ARENA_BREAK_33' -and

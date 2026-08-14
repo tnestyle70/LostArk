@@ -1,0 +1,1922 @@
+{
+    "schema":  "lostark.world-destruction-debris-presentation",
+    "formatVersion":  1,
+    "areaId":  "LV_LUT_HEARTRB_ED",
+    "combatRuntimeRevision":  "10a88907af68239316183eeddd66abf27d60a9cb48de4ca6124f1ccc09d04ddc",
+    "profiles":  [
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.11047903315509031966",
+                         "mutationId":  "mutation.valtan.group.11047903315509031966.fracture",
+                         "bindingId":  "binding.valtan.group.11047903315509031966.arena-break-109",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "10619331645164562008",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8545045,
+                                                                0.12,
+                                                                0.505393
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "10758879797263276529",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9629761,
+                                                                0.12,
+                                                                0.2414062
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "11047903315509031966",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8656769,
+                                                                0.12,
+                                                                0.4860077
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12385961325933108240",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.6664858,
+                                                                0.12,
+                                                                0.7357967
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15221142224278623810",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9895256,
+                                                                0.12,
+                                                                -0.0802445
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15719065619666776634",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.4313317,
+                                                                0.12,
+                                                                0.8941773
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "16891123250307634887",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8023112,
+                                                                0.12,
+                                                                0.5847194
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17769051189408857662",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.4126627,
+                                                                0.12,
+                                                                0.9029449
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18064647264029106986",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.0896188,
+                                                                0.12,
+                                                                0.9887206
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18095941116451824308",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.0393086,
+                                                                0.12,
+                                                                0.9919954
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.11170070275064524686",
+                         "mutationId":  "mutation.valtan.group.11170070275064524686.fracture",
+                         "bindingId":  "binding.valtan.group.11170070275064524686.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "11170070275064524686",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9921213,
+                                                                0.12,
+                                                                -0.0359915
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.11190594702002930167",
+                         "mutationId":  "mutation.valtan.group.11190594702002930167.fracture",
+                         "bindingId":  "binding.valtan.group.11190594702002930167.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "11190594702002930167",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "12150087330863237518"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9925203,
+                                                                0.12,
+                                                                0.0224381
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "13195423984589183291",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "16879630230908101275"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9914867,
+                                                                0.12,
+                                                                -0.0505385
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.12135716830026868823",
+                         "mutationId":  "mutation.valtan.group.12135716830026868823.fracture",
+                         "bindingId":  "binding.valtan.group.12135716830026868823.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "10938566942418286882",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.880291,
+                                                                0.12,
+                                                                -0.4590073
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12135716830026868823",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.6883593,
+                                                                0.12,
+                                                                -0.715375
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12612119053333525111",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8695603,
+                                                                0.12,
+                                                                -0.4790248
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12956154234820310428",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.3560711,
+                                                                0.12,
+                                                                -0.9267218
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "13907193421470993692",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.6267686,
+                                                                0.12,
+                                                                -0.7699098
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14754587218800370239",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9178542,
+                                                                0.12,
+                                                                -0.3783434
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15590072441712178822",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8076958,
+                                                                0.12,
+                                                                -0.5772587
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15590636842883334976",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.5865005,
+                                                                0.12,
+                                                                -0.8010101
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "16181172586312392552",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.1532961,
+                                                                0.12,
+                                                                -0.9808671
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18105374220469669789",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.3859886,
+                                                                0.12,
+                                                                -0.9146654
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18360145892842596691",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.7827965,
+                                                                0.12,
+                                                                -0.6105977
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.12252498194881956917",
+                         "mutationId":  "mutation.valtan.group.12252498194881956917.fracture",
+                         "bindingId":  "binding.valtan.group.12252498194881956917.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "10435996578153793381",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9286367,
+                                                                0.12,
+                                                                -0.3510469
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "10912388091405377926",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.899835,
+                                                                0.12,
+                                                                -0.4194007
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12252498194881956917",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.8391103,
+                                                                0.12,
+                                                                -0.53056
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "13154681496987253568",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9487938,
+                                                                0.12,
+                                                                -0.2922162
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "13837284136111935898",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9657031,
+                                                                0.12,
+                                                                -0.2302554
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15148418014021580024",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9906371,
+                                                                0.12,
+                                                                -0.0651008
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15393154990485032341",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9915619,
+                                                                0.12,
+                                                                0.0490409
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15736179535184396369",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9397913,
+                                                                0.12,
+                                                                0.3199881
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17296963925068961735",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.8688997,
+                                                                0.12,
+                                                                0.4802221
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17404480870746281119",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.823738,
+                                                                0.12,
+                                                                -0.5541261
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17788407538468874008",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9468446,
+                                                                0.12,
+                                                                0.2984717
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18362175117092037953",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9869254,
+                                                                0.12,
+                                                                -0.1076019
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.13520360247339696445",
+                         "mutationId":  "mutation.valtan.group.13520360247339696445.fracture",
+                         "bindingId":  "binding.valtan.group.13520360247339696445.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "13520360247339696445",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.6824574,
+                                                                0.12,
+                                                                0.7210076
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.15495684800954131707",
+                         "mutationId":  "mutation.valtan.group.15495684800954131707.fracture",
+                         "bindingId":  "binding.valtan.group.15495684800954131707.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9671293252162296055",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.7172599,
+                                                                0.12,
+                                                                0.6863951
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12804542616476082944",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.5583712,
+                                                                0.12,
+                                                                0.8208664
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12819104299115621849",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.65295,
+                                                                0.12,
+                                                                0.7478344
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "13290943434399830027",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.1571069,
+                                                                0.12,
+                                                                0.980264
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14210737191027038638",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.7960272,
+                                                                0.12,
+                                                                0.5932459
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14345577340107998055",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.3633768,
+                                                                0.12,
+                                                                0.9238816
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14439275443581760904",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.223499,
+                                                                0.12,
+                                                                0.9672891
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14520149530921636720",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.8321367,
+                                                                0.12,
+                                                                0.541432
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15358675764127682739",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.0163093,
+                                                                0.12,
+                                                                0.9926399
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15423695113667715748",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.2657583,
+                                                                0.12,
+                                                                0.956542
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15495684800954131707",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.5341243,
+                                                                0.12,
+                                                                0.836846
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17359606121069777624",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.415313,
+                                                                0.12,
+                                                                0.901729
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18100758183075339831",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.7297721,
+                                                                0.12,
+                                                                0.673077
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.15675921917269125843",
+                         "mutationId":  "mutation.valtan.group.15675921917269125843.fracture",
+                         "bindingId":  "binding.valtan.group.15675921917269125843.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "13221745590928612509",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "10358956607506909163"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9858182,
+                                                                0.12,
+                                                                0.1173132
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15675921917269125843",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "15212127038612238715"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9869303,
+                                                                0.12,
+                                                                -0.1075577
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.17150846598057876717",
+                         "mutationId":  "mutation.valtan.group.dae1310b110ed26d.fracture",
+                         "bindingId":  "binding.valtan.group.dae1310b110ed26d.1cb1b2d6a7cdf5e7",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9863801195242004116",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "12598937882346321836"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.1233438,
+                                                                0.12,
+                                                                0.9850819
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17150846598057876717",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "10426387515393336411"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.0652118,
+                                                                0.12,
+                                                                0.9906298
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.17695249952621776147",
+                         "mutationId":  "mutation.valtan.group.17695249952621776147.fracture",
+                         "bindingId":  "binding.valtan.group.17695249952621776147.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9460380659834835619",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.3770198,
+                                                                0.12,
+                                                                -0.9183986
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "10672658406952543185",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.0788953,
+                                                                0.12,
+                                                                -0.989634
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12681913253468198394",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.1561332,
+                                                                0.12,
+                                                                -0.9804195
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14398285027733086155",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.0074741,
+                                                                0.12,
+                                                                -0.9927458
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "14462438123003083514",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.2664088,
+                                                                0.12,
+                                                                -0.956361
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "15451422525499780584",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.0248709,
+                                                                0.12,
+                                                                -0.9924623
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17695249952621776147",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.4888783,
+                                                                0.12,
+                                                                -0.8640591
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.9522135662464469029",
+                         "mutationId":  "mutation.valtan.group.9522135662464469029.fracture",
+                         "bindingId":  "binding.valtan.group.9522135662464469029.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9522135662464469029",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "9606721395667492840"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.0421792,
+                                                                0.12,
+                                                                -0.9918775
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "11909088500311713272",
+                                              "suppressionAliasPlacementIds":  [
+                                                                                   "15375899663358889626"
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.0752425,
+                                                                0.12,
+                                                                -0.9899185
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.deploy.9652616057759700150",
+                         "mutationId":  "mutation.valtan.group.9652616057759700150.fracture",
+                         "bindingId":  "binding.valtan.group.9652616057759700150.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9652616057759700150",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.3793832,
+                                                                0.12,
+                                                                0.9174249
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector00",
+                         "mutationId":  "mutation.valtan.outerwall109.sector00.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector00.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000001",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9438584,
+                                                                0.3303504,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000002",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9232328,
+                                                                0.3303504,
+                                                                0.1962392
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000003",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.8622575,
+                                                                0.3303504,
+                                                                0.3839018
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector01",
+                         "mutationId":  "mutation.valtan.outerwall109.sector01.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector01.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000004",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.7635975,
+                                                                0.3303504,
+                                                                0.554786
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000005",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.6315645,
+                                                                0.3303504,
+                                                                0.7014235
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000006",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.4719292,
+                                                                0.3303504,
+                                                                0.8174053
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector02",
+                         "mutationId":  "mutation.valtan.outerwall109.sector02.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector02.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000007",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.2916683,
+                                                                0.3303504,
+                                                                0.8976626
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000008",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.09866006,
+                                                                0.3303504,
+                                                                0.9386878
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000009",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.09866006,
+                                                                0.3303504,
+                                                                0.9386878
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector03",
+                         "mutationId":  "mutation.valtan.outerwall109.sector03.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector03.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000010",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.2916683,
+                                                                0.3303504,
+                                                                0.8976626
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000011",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.4719292,
+                                                                0.3303504,
+                                                                0.8174053
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000012",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9438584,
+                                                                0.3303504,
+                                                                1.155893E-16
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector04",
+                         "mutationId":  "mutation.valtan.outerwall109.sector04.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector04.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000013",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9232328,
+                                                                0.3303504,
+                                                                -0.1962392
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000014",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.8622575,
+                                                                0.3303504,
+                                                                -0.3839018
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000015",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.7635975,
+                                                                0.3303504,
+                                                                -0.554786
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector05",
+                         "mutationId":  "mutation.valtan.outerwall109.sector05.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector05.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000016",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.6315645,
+                                                                0.3303504,
+                                                                -0.7014235
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000017",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.4719292,
+                                                                0.3303504,
+                                                                -0.8174053
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000018",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.2916683,
+                                                                0.3303504,
+                                                                -0.8976626
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector06",
+                         "mutationId":  "mutation.valtan.outerwall109.sector06.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector06.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000019",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.09866006,
+                                                                0.3303504,
+                                                                -0.9386878
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000020",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.09866006,
+                                                                0.3303504,
+                                                                -0.9386878
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000021",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.6315645,
+                                                                0.3303504,
+                                                                -0.7014235
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.outerwall109.sector07",
+                         "mutationId":  "mutation.valtan.outerwall109.sector07.despawn",
+                         "bindingId":  "binding.valtan.outerwall109.sector07.impact",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000022",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.7635975,
+                                                                0.3303504,
+                                                                -0.554786
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000023",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.8622575,
+                                                                0.3303504,
+                                                                -0.3839018
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "1090000000000024",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9232328,
+                                                                0.3303504,
+                                                                -0.1962392
+                                                            ],
+                                              "speedMetersPerSecond":  9,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.wall.3705102",
+                         "mutationId":  "mutation.valtan.wall.3705102.break",
+                         "bindingId":  "binding.valtan.wall.3705102.preview",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "9335938568718910930",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.6917609,
+                                                                0.12,
+                                                                0.7120862
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "9681544306002658031",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.4303523,
+                                                                0.12,
+                                                                0.894649
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "12037145985028191659",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.9260072,
+                                                                0.12,
+                                                                -0.3579256
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "17280669848983777578",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0.9925904,
+                                                                0.12,
+                                                                0.0190873
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          },
+                                          {
+                                              "sourceRuntimePlacementId":  "18177041425620847396",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                -0.1147712,
+                                                                0.12,
+                                                                -0.9861174
+                                                            ],
+                                              "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     }
+                 ]
+}

@@ -67,6 +67,79 @@ function Split-NavigationTokens {
     })
 }
 
+function Convert-NavigationRuntimeBlockers {
+    param(
+        [string]$AreaId,
+        [byte[]]$GridBytes,
+        [string]$AuthoringRoot = $repoRoot
+    )
+
+    $width = [BitConverter]::ToUInt32($GridBytes, 0)
+    $height = [BitConverter]::ToUInt32($GridBytes, 4)
+    $cellSize = [BitConverter]::ToSingle($GridBytes, 8)
+    $originX = [BitConverter]::ToSingle($GridBytes, 12)
+    $originZ = [BitConverter]::ToSingle($GridBytes, 16)
+    $cellSizeText = $cellSize.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+    $originXText = $originX.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+    $originZText = $originZ.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+    $cellCount = [uint64]$width * [uint64]$height
+    $path = [IO.Path]::GetFullPath((Join-Path $AuthoringRoot "Data/Navigation/$AreaId.navblockers"))
+    if (-not [IO.File]::Exists($path)) {
+        return [string[]]@("LOSTARK_NAVGRID_BLOCKERS 1 `"$AreaId`" $width $height $cellSizeText $originXText $originZText 0")
+    }
+
+    $lines = @([IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8))
+    if ($lines.Count -lt 1) { throw "Navigation blockers are empty: $path" }
+    $header = @(Split-NavigationTokens $lines[0])
+    if ($header.Count -ne 9 -or $header[0] -ne 'LOSTARK_NAVGRID_BLOCKERS' -or
+        $header[1] -ne '1' -or $header[2] -cne $AreaId -or
+        [uint32]$header[3] -ne $width -or [uint32]$header[4] -ne $height -or
+        [single]$header[5] -ne $cellSize -or [single]$header[6] -ne $originX -or
+        [single]$header[7] -ne $originZ -or [uint32]$header[8] -gt 256) {
+        throw "Navigation blocker header does not match the published grid: $path"
+    }
+    $regionCount = [uint32]$header[8]
+    $cursor = 1
+    $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
+    $regionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $normalized = [Collections.Generic.List[string]]::new()
+    $normalized.Add("LOSTARK_NAVGRID_BLOCKERS 1 `"$AreaId`" $width $height $cellSizeText $originXText $originZText $regionCount")
+    for ($regionIndex = 0; $regionIndex -lt $regionCount; ++$regionIndex) {
+        if ($cursor -ge $lines.Count) { throw "Navigation blocker region is truncated: $path" }
+        $tokens = @(Split-NavigationTokens $lines[$cursor++])
+        if ($tokens.Count -ne 5 -or $tokens[0] -ne 'REGION' -or
+            $tokens[1] -cnotmatch $stableIdPattern -or $tokens[2] -cnotmatch $stableIdPattern -or
+            $tokens[3] -notin @('0','1') -or [uint32]$tokens[4] -eq 0 -or
+            [uint32]$tokens[4] -gt $cellCount -or -not $regionIds.Add([string]$tokens[1])) {
+            throw "Navigation blocker region is invalid: $path row=$regionIndex"
+        }
+        $regionCellCount = [uint32]$tokens[4]
+        $cells = [Collections.Generic.HashSet[uint32]]::new()
+        $cellRows = [Collections.Generic.List[object]]::new()
+        for ($cellRow = 0; $cellRow -lt $regionCellCount; ++$cellRow) {
+            if ($cursor -ge $lines.Count) { throw "Navigation blocker cells are truncated: $path" }
+            $cellTokens = @(Split-NavigationTokens $lines[$cursor++])
+            if ($cellTokens.Count -ne 2) { throw "Navigation blocker cell is invalid: $path" }
+            $cellX = [int32]$cellTokens[0]
+            $cellZ = [int32]$cellTokens[1]
+            if ($cellX -lt 0 -or $cellZ -lt 0 -or $cellX -ge $width -or $cellZ -ge $height) {
+                throw "Navigation blocker cell is outside the grid: $path"
+            }
+            $cellIndex = [uint32]($cellZ * $width + $cellX)
+            if (-not $cells.Add($cellIndex) -or $GridBytes[20 + $cellIndex] -ne 1) {
+                throw "Navigation blocker cell is duplicate or not base walkable: $path"
+            }
+            $cellRows.Add([pscustomobject]@{ X=$cellX; Z=$cellZ; Index=$cellIndex })
+        }
+        $normalized.Add("REGION `"$($tokens[1])`" `"$($tokens[2])`" $($tokens[3]) $regionCellCount")
+        foreach ($cell in @($cellRows | Sort-Object Index)) {
+            $normalized.Add("$($cell.X) $($cell.Z)")
+        }
+    }
+    if ($cursor -ne $lines.Count) { throw "Navigation blockers have trailing rows: $path" }
+    return [string[]]$normalized.ToArray()
+}
+
 function Convert-NavigationAuthoringGrid {
     param(
         [string]$RelativeSourcePath,
@@ -366,6 +439,7 @@ function Invoke-NavigationPaintContractTest {
     [IO.Directory]::CreateDirectory($navigationRoot) | Out-Null
     $sourcePath = Join-Path $navigationRoot 'TEST_NAV_PAINT.navsource'
     $paintPath = Join-Path $navigationRoot 'TEST_NAV_PAINT.navpaint'
+    $blockerPath = Join-Path $navigationRoot 'TEST_NAV_PAINT.navblockers'
     $sourceText = @(
         'LOSTARK_NAVGRID_SOURCE 2 "TEST_NAV_PAINT" 2 1 1 0 0 0 0 0 2 2 2 0 50 1 2',
         '0 0 1 1 0',
@@ -386,6 +460,54 @@ function Invoke-NavigationPaintContractTest {
             -AuthoringRoot $fixtureRoot
         if ($grid.Bytes[20] -ne 0 -or $grid.Bytes[21] -ne 1) {
             throw 'Navigation paint v2 did not override baked walkability'
+        }
+
+        $validBlocker = @(
+            'LOSTARK_NAVGRID_BLOCKERS 1 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+            'REGION "navregion.test.wall" "condition.test.wall.destroyed" 0 1',
+            '1 0'
+        ) -join "`n"
+        [IO.File]::WriteAllText($blockerPath, $validBlocker, [Text.Encoding]::UTF8)
+        $normalizedBlockers = @(Convert-NavigationRuntimeBlockers `
+            -AreaId 'TEST_NAV_PAINT' -GridBytes $grid.Bytes `
+            -AuthoringRoot $fixtureRoot)
+        if ($normalizedBlockers.Count -ne 3 -or
+            $normalizedBlockers[1] -notmatch 'navregion\.test\.wall') {
+            throw 'Navigation runtime blocker did not compile canonically'
+        }
+
+        $invalidBlockers = @(
+            @(
+                'LOSTARK_NAVGRID_BLOCKERS 1 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                'REGION "navregion.test.wall" "condition.test.wall.destroyed" 0 2',
+                '1 0',
+                '1 0'),
+            @(
+                'LOSTARK_NAVGRID_BLOCKERS 1 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                'REGION "navregion.test.wall" "condition.test.wall.destroyed" 0 1',
+                '0 0'),
+            @(
+                'LOSTARK_NAVGRID_BLOCKERS 1 "WRONG_AREA" 2 1 1 0 0 1',
+                'REGION "navregion.test.wall" "condition.test.wall.destroyed" 0 1',
+                '1 0')
+        )
+        foreach ($invalidBlocker in $invalidBlockers) {
+            [IO.File]::WriteAllText(
+                $blockerPath,
+                ($invalidBlocker -join "`n"),
+                [Text.Encoding]::UTF8)
+            $rejected = $false
+            try {
+                Convert-NavigationRuntimeBlockers `
+                    -AreaId 'TEST_NAV_PAINT' -GridBytes $grid.Bytes `
+                    -AuthoringRoot $fixtureRoot | Out-Null
+            }
+            catch {
+                $rejected = $true
+            }
+            if (-not $rejected) {
+                throw 'Navigation blocker invalid contract was accepted'
+            }
         }
 
         $invalidCases = @(
@@ -429,7 +551,7 @@ function Invoke-NavigationPaintContractTest {
 
 if ($Mode -eq 'ContractTest') {
     Invoke-NavigationPaintContractTest
-    Write-Host 'Server navigation ContractTest succeeded: navpaint v2 overrides and rejection cases.'
+    Write-Host 'Server navigation ContractTest succeeded: navpaint and runtime blocker acceptance/rejection cases.'
     return
 }
 
@@ -443,13 +565,25 @@ $grids = @(
         -RelativeSourcePath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' `
         -MaximumStepHeight 0.6 `
-        -RequireSingleComponent)
+        -RequireSingleComponent),
+    # Bern bakes a single height per XZ cell over a multi-level castle: bridges,
+    # terraces and archways sit above the ground walkway, so adjacent cells differ
+    # by up to 17.03 where two levels meet. That is authored geometry, not an
+    # unsafe step, and the walkable set is 107 disjoint regions. Neither guard can
+    # express that, so both stay off here and the staircase heights are published
+    # as baked. See the 08-14 Bern navigation RESULT for the ridge cells that still
+    # need re-authoring in MapTool.
+    (Convert-NavigationAuthoringGrid `
+        -RelativeSourcePath 'Data/Navigation/LV_BER_BERNCASTLE.navsource' `
+        -RelativePaintPath 'Data/Navigation/LV_BER_BERNCASTLE.navpaint')
 )
 
 $validated = foreach ($grid in $grids) {
     [pscustomobject]@{
         Grid = $grid
         Detail = Assert-NavigationGrid $grid
+        BlockerLines = @(Convert-NavigationRuntimeBlockers `
+            -AreaId $grid.AreaId -GridBytes ([byte[]]$grid.Bytes))
     }
 }
 
@@ -457,29 +591,53 @@ if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
     [IO.Directory]::CreateDirectory($root) | Out-Null
     foreach ($entry in $validated) {
-        $destinations = @(
-            (Join-Path $root "$($entry.Grid.AreaId).navgrid")
-        )
         $clientRoot = Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation'
         [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
-        $destinations += Join-Path $clientRoot "$($entry.Grid.AreaId).navgrid"
-        foreach ($destination in $destinations) {
-            $destinationRoot = [IO.Path]::GetDirectoryName($destination)
-            $token = [Guid]::NewGuid().ToString('N')
-            $staged = Join-Path $destinationRoot ".$($entry.Grid.AreaId).staging.$token"
-            $rollback = Join-Path $destinationRoot ".$($entry.Grid.AreaId).rollback.$token"
-            try {
-                [IO.File]::WriteAllBytes($staged, [byte[]]$entry.Grid.Bytes)
-                if ([IO.File]::Exists($destination)) { [IO.File]::Move($destination, $rollback) }
-                [IO.File]::Move($staged, $destination)
-                if ([IO.File]::Exists($rollback)) { [IO.File]::Delete($rollback) }
+        $token = [Guid]::NewGuid().ToString('N')
+        $targets = @(
+            @{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes },
+            @{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines },
+            @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes },
+            @{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines }
+        )
+        $promotions = [Collections.Generic.List[object]]::new()
+        try {
+            foreach ($target in $targets) {
+                $destinationRoot = [IO.Path]::GetDirectoryName($target.Destination)
+                $staged = Join-Path $destinationRoot ".$([IO.Path]::GetFileName($target.Destination)).staging.$token"
+                if ($null -ne $target.Bytes) {
+                    [IO.File]::WriteAllBytes($staged, [byte[]]$target.Bytes)
+                } else {
+                    [IO.File]::WriteAllLines($staged, [string[]]$target.Lines, [Text.UTF8Encoding]::new($false))
+                }
+                $promotions.Add([pscustomobject]@{
+                    Staged=$staged; Destination=$target.Destination;
+                    Rollback="$($target.Destination).rollback.$token"; HadPrevious=$false; Promoted=$false })
             }
-            catch {
-                if ([IO.File]::Exists($destination)) { [IO.File]::Delete($destination) }
-                if ([IO.File]::Exists($rollback)) { [IO.File]::Move($rollback, $destination) }
-                if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
-                throw
+            foreach ($promotion in $promotions) {
+                if ([IO.File]::Exists($promotion.Destination)) {
+                    [IO.File]::Move($promotion.Destination, $promotion.Rollback)
+                    $promotion.HadPrevious = $true
+                }
+                [IO.File]::Move($promotion.Staged, $promotion.Destination)
+                $promotion.Promoted = $true
             }
+            foreach ($promotion in $promotions) {
+                if ([IO.File]::Exists($promotion.Rollback)) { [IO.File]::Delete($promotion.Rollback) }
+            }
+        }
+        catch {
+            for ($index = $promotions.Count - 1; $index -ge 0; --$index) {
+                $promotion = $promotions[$index]
+                if ($promotion.Promoted -and [IO.File]::Exists($promotion.Destination)) {
+                    [IO.File]::Delete($promotion.Destination)
+                }
+                if ($promotion.HadPrevious -and [IO.File]::Exists($promotion.Rollback)) {
+                    [IO.File]::Move($promotion.Rollback, $promotion.Destination)
+                }
+                if ([IO.File]::Exists($promotion.Staged)) { [IO.File]::Delete($promotion.Staged) }
+            }
+            throw
         }
     }
 }

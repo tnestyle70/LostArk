@@ -1,0 +1,114 @@
+{
+  "schema": "lostark.encounter-cinematic-camera",
+  "formatVersion": 2,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "provenance": "PROJECT_AUTHORED",
+  "cues": [
+    {
+      "cueId": "camera.valtan.arena-break-109.takeoff",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "TAKEOFF",
+      "durationMs": 1000,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [135.00, 32.00, -100.00], "lookAt": [151.25, 24.00, -121.75], "fovYDegrees": 48.0 },
+        { "timeMs": 1000, "eye": [138.00, 40.00, -103.00], "lookAt": [151.25, 29.00, -121.75], "fovYDegrees": 46.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-109.drop",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "DROP",
+      "durationMs": 800,
+      "easing": "LINEAR",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [138.00, 40.00, -103.00], "lookAt": [151.25, 29.00, -121.75], "fovYDegrees": 46.0 },
+        { "timeMs": 800, "eye": [141.00, 36.00, -106.00], "lookAt": [151.25, 24.00, -121.75], "fovYDegrees": 43.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-109.impact",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "IMPACT",
+      "durationMs": 400,
+      "easing": "LINEAR",
+      "shakeAmplitude": 0.45,
+      "shakeDurationMs": 220,
+      "keyframes": [
+        { "timeMs": 0, "eye": [141.00, 36.00, -106.00], "lookAt": [151.25, 24.00, -121.75], "fovYDegrees": 43.0 },
+        { "timeMs": 400, "eye": [143.00, 33.00, -108.00], "lookAt": [151.25, 23.50, -121.75], "fovYDegrees": 41.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-109.impact-hold",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "IMPACT_HOLD",
+      "durationMs": 1100,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [143.00, 33.00, -108.00], "lookAt": [151.25, 23.50, -121.75], "fovYDegrees": 41.0 },
+        { "timeMs": 1100, "eye": [145.00, 30.00, -111.00], "lookAt": [151.25, 24.50, -121.75], "fovYDegrees": 39.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-109.wide-reveal",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "WIDE_REVEAL",
+      "durationMs": 2300,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [156.00, 55.00, -88.00], "lookAt": [156.00, 23.00, -122.00], "fovYDegrees": 55.0 },
+        { "timeMs": 2300, "eye": [156.00, 62.00, -80.00], "lookAt": [156.00, 23.00, -122.00], "fovYDegrees": 60.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-109.recovery",
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "stageId": "RECOVERY",
+      "durationMs": 400,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [156.00, 62.00, -80.00], "lookAt": [156.00, 23.00, -122.00], "fovYDegrees": 60.0 },
+        { "timeMs": 400, "eye": [156.00, 64.00, -78.00], "lookAt": [156.00, 23.00, -122.00], "fovYDegrees": 60.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.arena-break-33.cutscene",
+      "patternId": "VALTAN_ARENA_BREAK_33",
+      "stageId": "CUTSCENE",
+      "durationMs": 2500,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [178.00, 43.00, -91.00], "lookAt": [151.25, 24.50, -121.75], "fovYDegrees": 51.0 },
+        { "timeMs": 1250, "eye": [171.00, 38.00, -99.00], "lookAt": [151.25, 24.00, -121.75], "fovYDegrees": 47.0 },
+        { "timeMs": 2500, "eye": [165.00, 33.00, -106.00], "lookAt": [151.25, 23.50, -121.75], "fovYDegrees": 43.0 }
+      ]
+    },
+    {
+      "cueId": "camera.valtan.ghost-transition-15.portal",
+      "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "stageId": "PORTAL",
+      "durationMs": 1800,
+      "easing": "SMOOTHSTEP",
+      "shakeAmplitude": 0.00,
+      "shakeDurationMs": 0,
+      "keyframes": [
+        { "timeMs": 0, "eye": [151.25, 57.00, -91.00], "lookAt": [151.25, 23.00, -121.75], "fovYDegrees": 55.0 },
+        { "timeMs": 900, "eye": [151.25, 51.00, -98.00], "lookAt": [151.25, 23.00, -121.75], "fovYDegrees": 49.0 },
+        { "timeMs": 1800, "eye": [151.25, 44.00, -104.00], "lookAt": [151.25, 23.00, -121.75], "fovYDegrees": 44.0 }
+      ]
+    }
+  ]
+}
