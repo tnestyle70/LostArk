@@ -905,6 +905,30 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				!npc->Apply_NetworkState(position, entity.fYawDegrees))
 			{
 				allSucceeded = false;
+				continue;
+			}
+			/* Server-driven NPC actions (raid Esther summons). An action the
+			catalog maps plays once; anything else stands in the idle clip, so
+			a plain placement NPC without actionClips never switches at all. */
+			const NPC_ACTOR_ENTRY* actor =
+				CActorCatalog::Find_Npc(iter->second.strArchetypeId);
+			if (nullptr == actor || actor->actionClips.empty())
+				continue;
+			const std::string* clip = &actor->idleClip;
+			bool_t loop = true;
+			const auto actionClip =
+				actor->actionClips.find(entity.strActionId);
+			if (actionClip != actor->actionClips.end())
+			{
+				clip = &actionClip->second;
+				loop = false;
+			}
+			if (iter->second.strCurrentClip != *clip)
+			{
+				if (!npc->Set_Animation(clip->c_str(), loop))
+					allSucceeded = false;
+				else
+					iter->second.strCurrentClip = *clip;
 			}
 		}
 		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)
@@ -992,6 +1016,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
 		snapshot.DamageEvents);
+	CCombatHUDViewModel::Get().Apply_EstherGauge(
+		snapshot.iEstherGauge,
+		snapshot.iEstherGaugeMaximum);
 
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;

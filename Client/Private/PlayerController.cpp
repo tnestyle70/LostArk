@@ -237,6 +237,37 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 		}
 	}
 
+	const std::uint8_t estherSlot = Poll_EstherSlot(
+		suppressKeyboard || !gameplayCommandsEnabled, useRawKeyboard);
+	if (0 != estherSlot && nullptr != character && nullptr != commandSink)
+	{
+		const shared_ptr<CTransform> transform = character->Get_Transform();
+		if (nullptr != transform)
+		{
+			const vector_t position = transform->Get_State(STATE::POSITION);
+			float3_t aim{};
+			const f32_t groundY = XMVectorGetY(position);
+			if (!Try_PickGroundPlane(groundY, aim))
+			{
+				const vector_t look = XMVector3Normalize(
+					transform->Get_State(STATE::LOOK));
+				aim.x = XMVectorGetX(position) + XMVectorGetX(look) * 5.f;
+				aim.y = groundY;
+				aim.z = XMVectorGetZ(position) + XMVectorGetZ(look) * 5.f;
+			}
+			if (commandSink->Request_EstherSkill(
+				m_iNextActionSequence,
+				estherSlot,
+				aim.x,
+				aim.z))
+			{
+				++m_iNextActionSequence;
+				if (0 == m_iNextActionSequence)
+					m_iNextActionSequence = 1;
+			}
+		}
+	}
+
 	m_wasRightMouseDown = isRightMouseDown;
 }
 
@@ -256,6 +287,11 @@ void Client::CPlayerController::Poll_SkillSlots(
 	const bool_t isAltDown =
 		(0 != (readKeyState(DIK_LMENU) & 0x80) ||
 			0 != (readKeyState(DIK_RMENU) & 0x80));
+	/* A Ctrl frame belongs to the Esther slots. Ruling the whole table out here
+	keeps Warlord's plain Z/X stance keys from firing under Ctrl+Z / Ctrl+X. */
+	const bool_t isCtrlDown =
+		(0 != (readKeyState(DIK_LCONTROL) & 0x80) ||
+			0 != (readKeyState(DIK_RCONTROL) & 0x80));
 
 	const CHARACTER_SPEC* pSpec =
 		nullptr != character ? character->Get_Spec() : nullptr;
@@ -276,7 +312,8 @@ void Client::CPlayerController::Poll_SkillSlots(
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 	{
 		const SLOT_KEY& slot = SlotKeys[index];
-		if (isKeyboardBlocked || slot.requiresAlt != isAltDown ||
+		if (isKeyboardBlocked || isCtrlDown ||
+			slot.requiresAlt != isAltDown ||
 			!isDown[index] || m_wasKeyDown[slot.byKeyCode] ||
 			nullptr == pSpec ||
 			LostArk::Shared::INVALID_SKILL_ID != outSkillId)
@@ -359,6 +396,38 @@ void Client::CPlayerController::Poll_BasicAttack(
 
 	m_LastBasicAttackSentAt = now;
 	outSkillId = pSkill->iSkillId;
+}
+
+std::uint8_t Client::CPlayerController::Poll_EstherSlot(
+	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard)
+{
+	const auto readKeyState = [useRawKeyboard](const uint8_t keyCode)
+	{
+		return useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
+			CGameInstance::Get().Get_DIKeyState(keyCode);
+	};
+	const bool_t isCtrlDown =
+		(0 != (readKeyState(DIK_LCONTROL) & 0x80) ||
+			0 != (readKeyState(DIK_RCONTROL) & 0x80));
+	constexpr uint8_t EstherKeys[3] = { DIK_Z, DIK_X, DIK_C };
+
+	std::uint8_t pressedSlot = 0;
+	for (size_t index = 0; index < 3; ++index)
+	{
+		const bool_t isDown =
+			0 != (readKeyState(EstherKeys[index]) & 0x80);
+		if (!isKeyboardBlocked && isCtrlDown && isDown &&
+			!m_wasEstherKeyDown[index] && 0 == pressedSlot)
+		{
+			pressedSlot = static_cast<std::uint8_t>(index + 1);
+		}
+		/* Committed whether or not Ctrl was down, so pressing Ctrl while Z is
+		already held does not read as a fresh Esther press. */
+		m_wasEstherKeyDown[index] = isDown;
+	}
+	return pressedSlot;
 }
 
 void Client::CPlayerController::Set_CommandSink(

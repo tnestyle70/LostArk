@@ -311,6 +311,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 	}
 	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, m_strStatus))
 		return;
+	m_EstherSkillSystem.Initialize(worldId);
 	/* Bern joins the areas that require navigation. Without a grid the room keeps
 	the spawn height for the whole session and straight-line XZ movement walks
 	through the castle stairs, so a missing or malformed grid fails admission here
@@ -566,6 +567,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM:
 			Handle_UpdateSkillAim(command.iSessionId, command.UpdateSkillAim);
 			break;
+		case ROOM_COMMAND_TYPE::USE_ESTHER_SKILL:
+			Handle_UseEstherSkill(command.iSessionId, command.UseEstherSkill);
+			break;
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;
@@ -666,6 +670,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			return Spawn_Monster(
 				spawnGroupId, entry, anchor, profile, ordinal);
 		});
+	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
 	Update_WorldEntities(fixedDeltaSeconds);
 	if (!m_isReady)
 	{
@@ -1158,6 +1163,94 @@ void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
 		playerIter->second,
 		updateSkillAim,
 		m_GameplayCatalog);
+}
+
+void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill)
+{
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+	{
+		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
+			session->Request_Close();
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	if (LostArk::Shared::PLAYER_ACTION_STATE::DEAD ==
+		playerIter->second.eAction)
+	{
+		return;
+	}
+	/* The entity id is checked before the gauge so a consume can never be
+	followed by a failed spawn: rejecting here leaves the gauge untouched and
+	the snapshot keeps telling every party member it is still full. */
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
+		return;
+
+	std::string archetypeId;
+	if (ESTHER_USE_REJECTION::NONE != m_EstherSkillSystem.Try_Consume(
+		useEstherSkill.iSlotIndex, archetypeId))
+	{
+		return;
+	}
+	Spawn_EstherSummon(
+		archetypeId,
+		playerIter->second,
+		useEstherSkill.fAimX,
+		useEstherSkill.fAimZ);
+}
+
+bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
+	const std::string& archetypeId,
+	const SERVER_PLAYER& caster,
+	const float aimX,
+	const float aimZ)
+{
+	if (archetypeId.empty() ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
+	{
+		return false;
+	}
+
+	// The summon stands where the caster stands and looks where the caster
+	// aimed. A degenerate aim (cursor on the caster) keeps the caster's yaw.
+	float yawDegrees = caster.fYawDegrees;
+	const float directionX = aimX - caster.fPositionX;
+	const float directionZ = aimZ - caster.fPositionZ;
+	if (std::isfinite(directionX) && std::isfinite(directionZ) &&
+		(directionX * directionX + directionZ * directionZ) > 0.0001f)
+	{
+		yawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
+	}
+
+	const std::uint32_t startTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
+		1u : m_iServerTick + 1u;
+
+	SERVER_WORLD_ENTITY staged{};
+	staged.iNetEntityId = m_iNextNetEntityId;
+	staged.strPlacementId =
+		"esther." + archetypeId + "." + std::to_string(staged.iNetEntityId);
+	staged.strArchetypeId = archetypeId;
+	staged.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+	staged.eAction = SERVER_ENTITY_ACTION::IDLE;
+	staged.strActionId = ESTHER_ACTION_APPEAR;
+	staged.isEstherSummon = true;
+	staged.fPositionX = caster.fPositionX;
+	staged.fPositionY = caster.fPositionY;
+	staged.fPositionZ = caster.fPositionZ;
+	staged.fYawDegrees = yawDegrees;
+	staged.iActionStartTick = startTick;
+	staged.iCurrentHp = 1u;
+	staged.iMaximumHp = 1u;
+
+	++m_iNextNetEntityId;
+	m_WorldEntities.push_back(std::move(staged));
+	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	return true;
 }
 
 LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT
@@ -2262,6 +2355,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 	S2C_WORLD_SNAPSHOT message{};
 	message.iServerTick = m_iServerTick;
 	message.eWorldId = m_eWorldId;
+	message.iEstherGauge = m_EstherSkillSystem.Get_Gauge();
+	message.iEstherGaugeMaximum = m_EstherSkillSystem.Get_GaugeMaximum();
 	message.Players.reserve(m_Players.size());
 	message.Entities.reserve(m_WorldEntities.size());
 	for (const auto& [playerId, player] : m_Players)
@@ -2634,6 +2729,9 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	/* The encounter is fresh, so a bar armed by the previous occupants no
 	longer describes any live boss. Leave already dropped their sequences. */
 	m_iValtanAuditionArmedHealthBar = 0u;
+	// The next party charges its Esther gauge from zero; any live summon was
+	// already discarded with the entity rebuild above.
+	m_EstherSkillSystem.Reset();
 	m_strStatus = "Valtan arena reset after the room became empty";
 	return true;
 }
@@ -3418,6 +3516,36 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		1u : m_iServerTick + 1u;
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
+		if (entity.isEstherSummon)
+		{
+			/* Room-owned appear -> strike -> leave timeline. Stage exits are
+			duration-driven; the leave stage additionally rises straight up so
+			the summon departs skyward before the sweep below despawns it. */
+			entity.fActionElapsedSeconds += fixedDeltaSeconds;
+			const float elapsedMs = entity.fActionElapsedSeconds * 1000.f;
+			if (ESTHER_ACTION_APPEAR == entity.strActionId &&
+				elapsedMs >= static_cast<float>(ESTHER_APPEAR_MS))
+			{
+				entity.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+				entity.strActionId = ESTHER_ACTION_STRIKE;
+				entity.fActionElapsedSeconds = 0.f;
+				entity.iActionStartTick = updateTick;
+			}
+			else if (ESTHER_ACTION_STRIKE == entity.strActionId &&
+				elapsedMs >= static_cast<float>(ESTHER_STRIKE_MS))
+			{
+				entity.eAction = SERVER_ENTITY_ACTION::IDLE;
+				entity.strActionId = ESTHER_ACTION_LEAVE;
+				entity.fActionElapsedSeconds = 0.f;
+				entity.iActionStartTick = updateTick;
+			}
+			else if (ESTHER_ACTION_LEAVE == entity.strActionId)
+			{
+				entity.fPositionY +=
+					ESTHER_LEAVE_RISE_PER_SECOND * fixedDeltaSeconds;
+			}
+			continue;
+		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 			m_ServerNavigation.Is_Loaded())
 		{
@@ -3543,10 +3671,14 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	for (auto iter = m_WorldEntities.begin(); iter != m_WorldEntities.end();)
 	{
 		const bool shouldDespawn =
-			WORLD_BOOTSTRAP_KIND::MONSTER == iter->eKind &&
-			SERVER_ENTITY_ACTION::DEAD == iter->eAction &&
-			iter->fActionElapsedSeconds * 1000.f >=
-				static_cast<float>(iter->iDeadDespawnMs);
+			(WORLD_BOOTSTRAP_KIND::MONSTER == iter->eKind &&
+				SERVER_ENTITY_ACTION::DEAD == iter->eAction &&
+				iter->fActionElapsedSeconds * 1000.f >=
+					static_cast<float>(iter->iDeadDespawnMs)) ||
+			(iter->isEstherSummon &&
+				ESTHER_ACTION_LEAVE == iter->strActionId &&
+				iter->fActionElapsedSeconds * 1000.f >=
+					static_cast<float>(ESTHER_LEAVE_MS));
 		if (!shouldDespawn)
 		{
 			++iter;

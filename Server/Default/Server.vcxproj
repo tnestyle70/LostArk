@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -36,6 +36,7 @@
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerNavigation.h" />
 	<ClInclude Include="..\Public\ValtanBrain.h" />
+	<ClInclude Include="..\Public\EstherSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
 	<ClInclude Include="..\Public\ServerCollisionSystem.h" />
@@ -59,6 +60,7 @@
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
+	<ClCompile Include="..\Private\EstherSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp" />
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp" />

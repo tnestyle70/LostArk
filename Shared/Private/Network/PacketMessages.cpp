@@ -1179,6 +1179,48 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_USE_ESTHER_SKILL& message)
+{
+	if (0 == message.iClientSequence ||
+		message.iSlotIndex < MIN_ESTHER_SLOT_INDEX ||
+		message.iSlotIndex > MAX_ESTHER_SLOT_INDEX ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U8(message.iSlotIndex);
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_USE_ESTHER_SKILL& message)
+{
+	C2S_USE_ESTHER_SKILL decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U8(decoded.iSlotIndex) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		0 == decoded.iClientSequence ||
+		decoded.iSlotIndex < MIN_ESTHER_SLOT_INDEX ||
+		decoded.iSlotIndex > MAX_ESTHER_SLOT_INDEX ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Read_Message(
 	CPacketReader& reader,
 	C2S_REVIVE_PLAYER& message)
@@ -1291,7 +1333,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
         message.Players.size() >
         MAX_WORLD_SNAPSHOT_PLAYERS ||
 		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES ||
-		message.DamageEvents.size() > MAX_DAMAGE_EVENTS)
+		message.DamageEvents.size() > MAX_DAMAGE_EVENTS ||
+		// maximum 0 means "no Esther in this world" and then the level must be
+		// 0 too; a live gauge can never exceed its maximum.
+		(0 == message.iEstherGaugeMaximum && 0 != message.iEstherGauge) ||
+		message.iEstherGauge > message.iEstherGaugeMaximum)
     {
         return false;
     }
@@ -1323,6 +1369,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 	// U8 is enough: MAX_DAMAGE_EVENTS bounds one tick, far under 255.
 	writer.Write_U8(
 		static_cast<std::uint8_t>(message.DamageEvents.size()));
+	writer.Write_U32(message.iEstherGauge);
+	writer.Write_U32(message.iEstherGaugeMaximum);
 
     for (const PLAYER_SNAPSHOT& player : message.Players)
     {
@@ -1399,12 +1447,16 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	std::uint16_t playerCount = 0;
 	std::uint16_t entityCount = 0;
 	std::uint8_t damageEventCount = 0;
+	std::uint32_t estherGauge = 0;
+	std::uint32_t estherGaugeMaximum = 0;
 
 	if (!reader.Read_U32(serverTick) ||
 		!reader.Read_U16(rawWorldId) ||
 		!reader.Read_U16(playerCount) ||
 		!reader.Read_U16(entityCount) ||
-		!reader.Read_U8(damageEventCount))
+		!reader.Read_U8(damageEventCount) ||
+		!reader.Read_U32(estherGauge) ||
+		!reader.Read_U32(estherGaugeMaximum))
     {
         return false;
     }
@@ -1414,7 +1466,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         0 == playerCount ||
         playerCount > MAX_WORLD_SNAPSHOT_PLAYERS ||
 		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES ||
-		damageEventCount > MAX_DAMAGE_EVENTS)
+		damageEventCount > MAX_DAMAGE_EVENTS ||
+		(0 == estherGaugeMaximum && 0 != estherGauge) ||
+		estherGauge > estherGaugeMaximum)
     {
         return false;
     }
@@ -1422,6 +1476,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	S2C_WORLD_SNAPSHOT decoded{};
 	decoded.iServerTick = serverTick;
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.iEstherGauge = estherGauge;
+	decoded.iEstherGaugeMaximum = estherGaugeMaximum;
     decoded.Players.reserve(playerCount);
 	decoded.Entities.reserve(entityCount);
 	decoded.DamageEvents.reserve(damageEventCount);

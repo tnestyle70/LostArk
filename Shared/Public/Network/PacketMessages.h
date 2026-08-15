@@ -321,6 +321,28 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_UPDATE_SKILL_AIM& message);
 
+	// The raid Esther roster is positional: slot 1..3 maps to the world's
+	// authored summon order (Valtan: Sillian, Wei, Bahuntur). The server owns
+	// which slots are usable; the client never sends an archetype or skill id.
+	inline constexpr std::uint8_t MIN_ESTHER_SLOT_INDEX = 1;
+	inline constexpr std::uint8_t MAX_ESTHER_SLOT_INDEX = 3;
+
+	struct C2S_USE_ESTHER_SKILL
+	{
+		std::uint32_t iClientSequence = 0;
+		std::uint8_t iSlotIndex = 0;
+		float fAimX = 0.f;
+		float fAimZ = 0.f;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_USE_ESTHER_SKILL& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_USE_ESTHER_SKILL& message);
+
 	bool Write_Message(
 		CPacketWriter& writer,
 		const C2S_REVIVE_PLAYER& message);
@@ -471,6 +493,10 @@ namespace LostArk::Shared
 		std::vector<PLAYER_SNAPSHOT> Players;
 		std::vector<WORLD_ENTITY_SNAPSHOT> Entities;
 		std::vector<DAMAGE_EVENT> DamageEvents;
+		// Room-shared raid Esther gauge. A maximum of 0 says this world has no
+		// Esther roster and the HUD then has nothing to draw.
+		std::uint32_t iEstherGauge = 0;
+		std::uint32_t iEstherGaugeMaximum = 0;
 	};
 
 	bool Write_Message(

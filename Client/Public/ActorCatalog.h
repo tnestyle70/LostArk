@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "Network/PacketType.h"
 
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -54,6 +55,10 @@ struct NPC_ACTOR_ENTRY final
 	std::string animationSetId;
 	std::string idleClip;
 	std::string runtimeStatus;
+	/* Optional server action id -> clip name mapping for NPC entities the
+	server drives through snapshot actions (raid Esther summons). Actions not
+	listed here present with idleClip. */
+	std::map<std::string, std::string, std::less<>> actionClips;
 };
 
 struct MONSTER_ACTOR_ENTRY final

@@ -14,6 +14,7 @@
 #include "MonsterBrain.h"
 #include "ValtanBrain.h"
 #include "EncounterPropRuntime.h"
+#include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
 
@@ -109,6 +110,14 @@ namespace LostArk::Server
 		void Handle_UpdateSkillAim(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_UPDATE_SKILL_AIM& updateSkillAim);
+		void Handle_UseEstherSkill(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
+		bool Spawn_EstherSummon(
+			const std::string& archetypeId,
+			const SERVER_PLAYER& caster,
+			float aimX,
+			float aimZ);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
@@ -307,6 +316,7 @@ namespace LostArk::Server
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CMonsterBrain m_MonsterBrain;
 		CValtanBrain m_ValtanBrain;
+		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
 		CWorldDestructionRuntime m_WorldDestructionRuntime;
 		/* The four pillars come back four times in one fight, so they live in a

@@ -239,3 +239,40 @@ protocol version을 19에서 20으로 올렸으므로 Server와 Client를 **함�
 - 기둥 shatter의 제품 trigger가 아직 식별되지 않았다. 현재는 Debug audition만 cycle을 구동한다.
 - 105 하늘 레이어의 asset ID가 비어 있다. 이펙트 담당자 작업이 남아 있다.
 - `PointLight` 계열 조명 작업은 이번 변경에 포함하지 않았다.
+
+## 7. origin/main 병합 (2026-08-16)
+
+`origin/main`이 `bf95a47`(PR #105 LanceMaster identity gauge, PR #106 Esther gauge/Sillian summon)로
+앞서 나가면서 이 브랜치와 충돌했다. `git merge origin/main`을 실행해 브랜치 위에서 해결했다.
+
+실제 conflict는 두 파일이다. 나머지는 auto-merge됐다.
+
+| 파일 | 충돌 내용 | 해결 |
+|---|---|---|
+| `Server/Public/GameRoom.h` | 같은 위치에 `EncounterPropRuntime.h`와 `EstherSkillSystem.h` include 추가 | 두 include 모두 유지 |
+| `Server/Private/ServerGameplayContractTests.cpp` | 같은 위치에 서로 독립적인 test block 추가 | 각각 별도 `{ }` scope로 분리해 둘 다 유지 |
+
+`NETWORK_PROTOCOL_VERSION`은 양쪽이 모두 `19 -> 20`으로 올려 auto-merge가 `20`을 남겼다. 병합
+결과의 `PACKET_TYPE` 나열은 `C2S_USE_ESTHER_SKILL`과 `S2C_ENCOUNTER_PROP_SYNC`를 함께 가지므로
+어느 쪽 `20`과도 다른 세 번째 wire 형태다. 같은 번호를 두면 main만 가진 v20 Server와 이 병합
+Client가 handshake를 통과한 뒤 packet ordinal이 어긋나므로 `21`로 올렸다.
+`NetworkProtocolHarness`의 `World Destruction Protocol V20 Packet Types` 검사도 `21`로 맞췄다.
+
+병합 후 실제로 실행한 검증은 다음과 같다.
+
+| 검증 | 결과 |
+|---|---|
+| `Shared` x64 Debug 빌드 | PASS |
+| `Server` x64 Debug 빌드 (pre-build publisher 4종 포함) | PASS |
+| Debug `Server.exe --contract-test` | PASS, `failures : 0` (기둥 cycle과 Esther gauge test 모두 포함) |
+| `NetworkProtocolHarness` x64 Debug 빌드·실행 | PASS, `failures : 0` |
+| `Client` x64 Debug 빌드 | PASS (기존 C4819 / LNK4099 경고만) |
+| `git diff --check` | PASS |
+
+`ClientFrontendHarness`는 `failures : 9`로 실패했다. 실패 항목은 전부 Effect 저작/Source Authoring
+Overlay 계열이고, `git diff 33c0371` 기준으로 이번 병합이 `ClientFrontendHarness.cpp`와 Effect 소스를
+한 줄도 바꾸지 않았다. 병합 이전부터 존재하던 실패이며 이번 변경의 회귀가 아니다. 원인 조사는
+Effect 담당 작업으로 남는다.
+
+Engine은 양쪽 모두 건드리지 않아 기존 `EngineSDK`로 빌드했다. Release 구성과 실제 Server/Client
+동시 실행 smoke는 여전히 사용자가 수행한다.

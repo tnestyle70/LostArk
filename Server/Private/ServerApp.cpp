@@ -304,6 +304,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::UPDATE_SKILL_AIM;
 		command.UpdateSkillAim = updateSkillAim;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_USE_ESTHER_SKILL)
+	{
+		C2S_USE_ESTHER_SKILL useEstherSkill{};
+		if (!Read_Message(reader, useEstherSkill) ||
+			0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::USE_ESTHER_SKILL;
+		command.UseEstherSkill = useEstherSkill;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_REVIVE_PLAYER)
 	{
 		C2S_REVIVE_PLAYER revivePlayer{};
