@@ -79,6 +79,7 @@ public:
 	clip) that a fixed JSON value or the frame-indexed keyframe system can't express. No-op if the
 	slot doesn't exist. */
 	bool_t Set_SlotRotation(const string& strSlotId, f32_t fDegrees);
+	bool_t Set_SlotVisible(const string& strSlotId, bool_t bVisible);
 
 private:
 	struct TEXTURE_LAYER
@@ -102,6 +103,7 @@ private:
 		authored expecting this; drawing them with normal alpha blend instead shows their baked
 		black backing as an opaque box. */
 		bool_t	bAdditive = false;
+		bool_t	bFlipX = false;
 	};
 
 	struct KEYFRAME_ANIM_LAYER
@@ -161,6 +163,10 @@ private:
 		f64_t					dKeyframeAnimStartSeconds = -1.0;
 		int32_t					iKeyframeAnimWindowStart = 0;
 		int32_t					iKeyframeAnimWindowEnd = 0;
+
+		/* Runtime on/off for slots that only make sense conditionally (LanceMaster's gauge glow,
+		visible only while that segment is full) -- set via Set_SlotVisible(), defaults shown. */
+		bool_t					bForceHidden = false;
 	};
 
 private:
