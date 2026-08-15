@@ -90,10 +90,24 @@ namespace Client
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);
+		/* Room-shared raid Esther gauge straight from the world snapshot. A
+		maximum of 0 means this world has no Esther and the HUD draws nothing. */
+		void Apply_EstherGauge(
+			std::uint32_t gauge,
+			std::uint32_t gaugeMaximum)
+		{
+			m_iEstherGauge = gauge;
+			m_iEstherGaugeMaximum = gaugeMaximum;
+		}
 		void Reset_RuntimeState();
 
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
+		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }
+		std::uint32_t Get_EstherGaugeMaximum() const
+		{
+			return m_iEstherGaugeMaximum;
+		}
 		const std::vector<HUD_DAMAGE_EVENT>& Get_DamageEvents() const
 		{
 			return m_DamageEvents;
@@ -131,6 +145,8 @@ namespace Client
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
+		std::uint32_t m_iEstherGauge = 0;
+		std::uint32_t m_iEstherGaugeMaximum = 0;
 		std::string m_strStatus;
 	};
 }

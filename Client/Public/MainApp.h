@@ -63,6 +63,9 @@ private:
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
 	void RenderBossHealthBar();
+	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
+	the world has no Esther roster (maximum 0). */
+	void RenderEstherGauge();
 	/* LanceMaster's 3-segment identity meter -- drawn procedurally (matching the real
 	LanceMasterProgress.as formula: target.rotation = maxDegree * value/100, cascading through
 	3 segments) rather than from extracted art, since the real asset's moving "target" piece is

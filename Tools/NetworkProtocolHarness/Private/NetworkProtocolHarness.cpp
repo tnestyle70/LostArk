@@ -1425,6 +1425,72 @@ namespace
 			"Failed Aim Update Does Not Mutate");
 	}
 
+	void Test_UseEstherSkillRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_USE_ESTHER_SKILL source{};
+		source.iClientSequence = 21;
+		source.iSlotIndex = 1;
+		source.fAimX = 42.75f;
+		source.fAimZ = -87.5f;
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source),
+			"Writer Use Esther Skill");
+		std::vector<std::uint8_t> payload = writer.Get_Buffer();
+		testRunner.Require(
+			13 == payload.size(),
+			"Use Esther Skill Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_USE_ESTHER_SKILL decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSlotIndex == source.iSlotIndex &&
+			decoded.fAimX == source.fAimX &&
+			decoded.fAimZ == source.fAimZ &&
+			0 == reader.Get_RemainingSize(),
+			"Use Esther Skill Round Trip");
+
+		C2S_USE_ESTHER_SKILL invalidSlotLow = source;
+		invalidSlotLow.iSlotIndex = 0;
+		CPacketWriter invalidSlotLowWriter;
+		testRunner.Require(
+			!Write_Message(invalidSlotLowWriter, invalidSlotLow),
+			"Reject Esther Slot Zero");
+
+		C2S_USE_ESTHER_SKILL invalidSlotHigh = source;
+		invalidSlotHigh.iSlotIndex = 4;
+		CPacketWriter invalidSlotHighWriter;
+		testRunner.Require(
+			!Write_Message(invalidSlotHighWriter, invalidSlotHigh),
+			"Reject Esther Slot Above Roster");
+
+		C2S_USE_ESTHER_SKILL invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter invalidSequenceWriter;
+		testRunner.Require(
+			!Write_Message(invalidSequenceWriter, invalidSequence),
+			"Reject Esther Skill Without Sequence");
+
+		C2S_USE_ESTHER_SKILL invalidAim = source;
+		invalidAim.fAimZ = std::numeric_limits<float>::infinity();
+		CPacketWriter invalidAimWriter;
+		testRunner.Require(
+			!Write_Message(invalidAimWriter, invalidAim),
+			"Reject Esther Skill With Non-Finite Aim");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_USE_ESTHER_SKILL unchanged{};
+		unchanged.iClientSequence = 77;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			77 == unchanged.iClientSequence,
+			"Failed Esther Skill Read Does Not Mutate");
+	}
+
 	void Test_RevivePlayerRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_REVIVE_PLAYER source{};
@@ -1503,6 +1569,8 @@ namespace
 	{
 		S2C_WORLD_SNAPSHOT source{};
 		source.iServerTick = 30;
+		source.iEstherGauge = 640;
+		source.iEstherGaugeMaximum = 1000;
 
 		PLAYER_SNAPSHOT first{};
 		first.iNetEntityId = 100;
@@ -1564,7 +1632,7 @@ namespace
 			"Writer World Snapshot");
 
 		constexpr std::size_t snapshotHeaderBytes =
-			4 + 2 + 2 + 2 + 1;
+			4 + 2 + 2 + 2 + 1 + 4 + 4;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
@@ -1592,8 +1660,25 @@ namespace
 			decoded.iServerTick == 30 &&
 			decoded.eWorldId == WORLD_ID::BERN &&
 			decoded.Players.size() == 2 &&
-			decoded.Entities.size() == 1,
+			decoded.Entities.size() == 1 &&
+			decoded.iEstherGauge == 640 &&
+			decoded.iEstherGaugeMaximum == 1000,
 			"World Snapshot Header Round Trip");
+
+		S2C_WORLD_SNAPSHOT overfullGauge = source;
+		overfullGauge.iEstherGauge = 1001;
+		std::vector<std::uint8_t> overfullPayload;
+		testRunner.Require(
+			!Build_WorldSnapshotPayload(overfullGauge, overfullPayload),
+			"Reject Esther Gauge Above Maximum");
+
+		S2C_WORLD_SNAPSHOT gaugeWithoutRoster = source;
+		gaugeWithoutRoster.iEstherGaugeMaximum = 0;
+		gaugeWithoutRoster.iEstherGauge = 1;
+		std::vector<std::uint8_t> rosterlessPayload;
+		testRunner.Require(
+			!Build_WorldSnapshotPayload(gaugeWithoutRoster, rosterlessPayload),
+			"Reject Esther Gauge Without Roster");
 		if (2u != decoded.Players.size() || 1u != decoded.Entities.size())
 			return;
 
@@ -1700,12 +1785,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			19u == NETWORK_PROTOCOL_VERSION &&
+			20u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V19 Packet Types");
+			"World Destruction Protocol V20 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2226,6 +2311,7 @@ int main()
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
 	Test_UpdateSkillAimRoundTrip(testRunner);
+	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);

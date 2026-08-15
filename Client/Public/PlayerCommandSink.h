@@ -37,6 +37,13 @@ public:
 		float aimZ) = 0;
 	virtual bool Request_RevivePlayer(
 		std::uint32_t clientSequence) = 0;
+	// Raid Esther roster slot (1..3), aimed at a world-space point. The slot
+	// is positional; the server owns which archetype it summons.
+	virtual bool Request_EstherSkill(
+		std::uint32_t clientSequence,
+		std::uint8_t slotIndex,
+		float aimX,
+		float aimZ) = 0;
 	virtual bool Request_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass) = 0;

@@ -84,6 +84,10 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* A raid Esther summon runs the room-owned appear/strike/leave timeline
+		in Update_WorldEntities instead of a brain, and despawns when the leave
+		stage ends rather than through the MONSTER dead sweep. */
+		bool isEstherSummon = false;
 		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		bool hasAppliedPatternDamage = false;

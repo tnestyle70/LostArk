@@ -71,6 +71,16 @@ bool Client::CNetworkPlayerCommandSink::Request_RevivePlayer(
 	return CNetworkManager::Get().Send_RevivePlayer(clientSequence);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_EstherSkill(
+	const std::uint32_t clientSequence,
+	const std::uint8_t slotIndex,
+	const float aimX,
+	const float aimZ)
+{
+	return CNetworkManager::Get().Send_EstherSkill(
+		clientSequence, slotIndex, aimX, aimZ);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ChangeCharacterClass(
 	const std::uint32_t clientSequence,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
