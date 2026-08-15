@@ -339,6 +339,7 @@ HRESULT CMainApp::Render()
 	#endif
 		RenderCombatHUD();
 		RenderBossHealthBar();
+		RenderEstherGauge();
 		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
 		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
@@ -1041,6 +1042,62 @@ void CMainApp::RenderBossHealthBar()
 	pDrawList->AddRect(
 		barMin, barMax, IM_COL32(224, 208, 176, 255),
 		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+}
+
+void CMainApp::RenderEstherGauge()
+{
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	if (0u == maximum)
+		return;
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	const float uiScale = (std::min)(scaleX, scaleY);
+	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
+	const float fillRatio = (std::clamp)(
+		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
+
+	const ImVec2 barMin{
+		pViewport->WorkPos.x + 20.f * scaleX,
+		pViewport->WorkPos.y + 56.f * scaleY };
+	const ImVec2 barMax{
+		pViewport->WorkPos.x + 280.f * scaleX,
+		pViewport->WorkPos.y + 68.f * scaleY };
+	const float fillRight = barMin.x + (barMax.x - barMin.x) * fillRatio;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	pDrawList->AddRectFilled(
+		barMin, barMax, IM_COL32(20, 24, 34, 230), 3.f * uiScale);
+	if (fillRight > barMin.x)
+	{
+		const bool_t isFull = gauge >= maximum;
+		pDrawList->AddRectFilled(
+			barMin,
+			ImVec2(fillRight, barMax.y),
+			isFull ? IM_COL32(120, 214, 255, 255) : IM_COL32(58, 128, 196, 255),
+			3.f * uiScale);
+	}
+	pDrawList->AddRect(
+		barMin, barMax, IM_COL32(180, 220, 244, 255),
+		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+	const char* pLabel = gauge >= maximum ?
+		"ESTHER READY  Ctrl+Z" : "ESTHER";
+	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
+	const ImVec2 labelPos(
+		(barMin.x + barMax.x - labelSize.x) * 0.5f,
+		barMin.y - labelSize.y - 2.f * uiScale);
+	pDrawList->AddText(
+		ImVec2(labelPos.x + 1.f, labelPos.y + 1.f),
+		IM_COL32(0, 0, 0, 220), pLabel);
+	pDrawList->AddText(labelPos, IM_COL32(214, 238, 255, 255), pLabel);
 }
 
 void CMainApp::RenderSkillIcons()

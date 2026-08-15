@@ -64,6 +64,13 @@ namespace Client
 			LostArk::Shared::SKILL_ID& outSkillId,
 			bool_t commandSuppressed);
 
+		/* Ctrl+Z/X/C are the raid Esther slots (1..3). Returns 0 when no slot
+		was newly pressed this frame. Ctrl frames never reach the quick-slot
+		table, so Warlord's plain Z/X stance keys stay unaffected. */
+		std::uint8_t Poll_EstherSlot(
+			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard);
+
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
@@ -88,5 +95,9 @@ namespace Client
 		bool_t m_wasLeftMouseDown = false;
 		std::chrono::steady_clock::time_point m_LastBasicAttackSentAt{};
 		bool_t m_allowCapturedKeyboardInput = false;
+		/* Esther edges are tracked apart from m_wasKeyDown: the quick-slot
+		table commits Z and X every frame, and a Ctrl press must not read as
+		fresh just because the plain-slot pass was ruled out that frame. */
+		std::array<bool_t, 3> m_wasEstherKeyDown{};
 	};
 }

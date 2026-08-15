@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Public">
@@ -46,6 +46,7 @@
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanBrain.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\EstherSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerTriggerSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerCollisionSystem.h"><Filter>Public</Filter></ClInclude>
@@ -82,6 +83,7 @@
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ValtanBrain.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\EstherSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp"><Filter>Private</Filter></ClCompile>

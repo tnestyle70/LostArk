@@ -4245,6 +4245,147 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Keep the arena and the Valtan spawn connected under the wall blockers");
 	}
 
+	{
+		CGameRoom valtanRoom{ WORLD_ID::VALTAN_ARENA };
+		CGameRoom bernRoom{ WORLD_ID::BERN };
+		tests.Require(
+			valtanRoom.Is_Ready() && bernRoom.Is_Ready() &&
+			valtanRoom.m_EstherSkillSystem.Is_Enabled() &&
+			1000u == valtanRoom.m_EstherSkillSystem.Get_GaugeMaximum() &&
+			!bernRoom.m_EstherSkillSystem.Is_Enabled() &&
+			0u == bernRoom.m_EstherSkillSystem.Get_GaugeMaximum(),
+			"Own a shared Esther gauge only in the Valtan raid room");
+
+		valtanRoom.m_EstherSkillSystem.Update(2.f, false);
+		const std::uint32_t emptyRoomGauge =
+			valtanRoom.m_EstherSkillSystem.Get_Gauge();
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		tests.Require(
+			0u == emptyRoomGauge &&
+			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Charge the shared gauge to full only while players occupy the room");
+
+		std::string archetypeId;
+		const ESTHER_USE_REJECTION wrongSlot =
+			valtanRoom.m_EstherSkillSystem.Try_Consume(2u, archetypeId);
+		tests.Require(
+			ESTHER_USE_REJECTION::UNSUPPORTED_SLOT == wrongSlot &&
+			archetypeId.empty() &&
+			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Reject the unextracted Esther slots without touching the gauge");
+
+		const ESTHER_USE_REJECTION disabledWorld =
+			bernRoom.m_EstherSkillSystem.Try_Consume(1u, archetypeId);
+		tests.Require(
+			ESTHER_USE_REJECTION::DISABLED_WORLD == disabledWorld,
+			"Reject an Esther use outside the raid world");
+
+		/* Handler path: an authenticated caster with a full gauge summons at
+		its own feet, aimed east, and the gauge drains to zero atomically. */
+		constexpr SESSION_ID casterSessionId = 41u;
+		constexpr LostArk::Shared::PLAYER_ID casterPlayerId = 9u;
+		SERVER_PLAYER caster{};
+		caster.iNetEntityId = 4100u;
+		caster.fPositionX = 150.f;
+		caster.fPositionY = 22.97f;
+		caster.fPositionZ = -120.f;
+		caster.fYawDegrees = 0.f;
+		valtanRoom.m_Players.emplace(casterPlayerId, caster);
+		valtanRoom.m_PlayerIdBySessionId.emplace(
+			casterSessionId, casterPlayerId);
+
+		const std::size_t entitiesBeforeSummon =
+			valtanRoom.m_WorldEntities.size();
+		LostArk::Shared::C2S_USE_ESTHER_SKILL notFullUse{};
+		notFullUse.iClientSequence = 1u;
+		notFullUse.iSlotIndex = 1u;
+		notFullUse.fAimX = 160.f;
+		notFullUse.fAimZ = -120.f;
+		valtanRoom.m_EstherSkillSystem.Reset();
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
+		tests.Require(
+			entitiesBeforeSummon == valtanRoom.m_WorldEntities.size(),
+			"Reject an Esther use before the gauge is full");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
+		const auto findSummon = [&valtanRoom]() -> SERVER_WORLD_ENTITY*
+		{
+			for (SERVER_WORLD_ENTITY& entity : valtanRoom.m_WorldEntities)
+			{
+				if (entity.isEstherSummon)
+					return &entity;
+			}
+			return nullptr;
+		};
+		SERVER_WORLD_ENTITY* summon = findSummon();
+		tests.Require(
+			nullptr != summon &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
+			"NPC_59030" == summon->strArchetypeId &&
+			WORLD_BOOTSTRAP_KIND::NPC == summon->eKind &&
+			std::string(ESTHER_ACTION_APPEAR) == summon->strActionId &&
+			std::abs(summon->fPositionX - caster.fPositionX) < 0.001f &&
+			std::abs(summon->fPositionZ - caster.fPositionZ) < 0.001f &&
+			std::abs(summon->fYawDegrees - 90.f) < 0.01f,
+			"Summon Sillian at the caster aimed at the cursor and drain the gauge");
+
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
+		std::size_t summonCount = 0u;
+		for (const SERVER_WORLD_ENTITY& entity : valtanRoom.m_WorldEntities)
+		{
+			if (entity.isEstherSummon)
+				++summonCount;
+		}
+		tests.Require(
+			1u == summonCount,
+			"Reject a second Esther use on the emptied gauge");
+
+		for (int tick = 0; tick < 25; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		summon = findSummon();
+		tests.Require(
+			nullptr != summon &&
+			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction,
+			"Advance the summon from appear into the authored strike");
+
+		for (int tick = 0; tick < 97; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		summon = findSummon();
+		const float leaveStartY =
+			nullptr != summon ? summon->fPositionY : 0.f;
+		tests.Require(
+			nullptr != summon &&
+			std::string(ESTHER_ACTION_LEAVE) == summon->strActionId &&
+			SERVER_ENTITY_ACTION::IDLE == summon->eAction,
+			"Advance the summon from the strike into the leave stage");
+
+		for (int tick = 0; tick < 30; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		summon = findSummon();
+		tests.Require(
+			nullptr != summon && summon->fPositionY > leaveStartY + 2.f,
+			"Rise the summon skyward through the leave stage");
+
+		for (int tick = 0; tick < 20; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Despawn the summon when the leave stage ends");
+
+		valtanRoom.m_Players.clear();
+		valtanRoom.m_PlayerIdBySessionId.clear();
+		for (int tick = 0; tick < 30; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		tests.Require(
+			valtanRoom.Reset_ValtanArenaWhenEmpty() &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Re-arm the Esther gauge from zero when the arena empties");
+	}
+
 	tests.failures += Run_WorldDestructionBootstrapContractTests();
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
