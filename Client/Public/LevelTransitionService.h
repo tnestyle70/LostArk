@@ -5,6 +5,7 @@
 #include "LobbyCommandService.h"
 
 #include <string>
+#include <string_view>
 
 NS_BEGIN(Client)
 
@@ -46,8 +47,14 @@ public:
 	static bool_t Try_Consume(LEVEL_TRANSITION_REQUEST& outRequest);
 	static bool_t Is_Pending();
 	static std::string Get_Status();
-	static void Report_LoadFailure(HRESULT result);
-	static bool_t Try_ConsumeLoadFailure(HRESULT& outResult);
+	/* detail names the stage that refused. Reporting an empty detail keeps the
+	one already recorded, so the generic activation failure cannot erase it. */
+	static void Report_LoadFailure(
+		HRESULT result,
+		std::string_view detail = {});
+	static bool_t Try_ConsumeLoadFailure(
+		HRESULT& outResult,
+		std::string& outDetail);
 	static SERVER_WORLD_TRANSFER_PUMP_RESULT
 		Pump_ServerApprovedWorldTransfer(LEVEL currentLevel);
 

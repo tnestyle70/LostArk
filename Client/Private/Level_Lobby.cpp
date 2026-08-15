@@ -95,6 +95,19 @@ HRESULT CLevel_Lobby::Initialize()
 
 void CLevel_Lobby::Update(const f32_t fTimeDelta)
 {
+	/* A refused load or activation drops back here with the socket already
+	closed, so without this the bounce is indistinguishable from a dropped
+	connection and the reason is thrown away. */
+	HRESULT loadFailure = S_OK;
+	std::string loadFailureDetail;
+	if (CLevelTransitionService::Try_ConsumeLoadFailure(
+		loadFailure, loadFailureDetail))
+	{
+		m_strStatus = loadFailureDetail.empty() ?
+			"Stage loading failed. Lobby remains active." :
+			"Stage loading failed: " + loadFailureDetail;
+	}
+
 	LOBBY_COMMAND command{};
 	if (CLobbyCommandService::Try_Consume(command))
 		Begin_StageRequest(command);
