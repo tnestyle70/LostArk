@@ -552,12 +552,25 @@ namespace LostArk::Shared
 		std::uint32_t iRandomSeed = 0;
 	};
 
+	// Server-owned collision and navigation counters. The Debug audition panel
+	// reports what the Server actually holds instead of inferring passage from
+	// the replicated wall states, so a wall that is gone while its blocker is
+	// still active stays visible as a defect rather than as a matching number.
+	struct WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS
+	{
+		std::uint32_t iActiveWallCollisionCount = 0;
+		std::uint32_t iActiveNavBlockerRegionCount = 0;
+		std::uint64_t iNavigationRevision = 0;
+		std::uint64_t iLastEventSequence = 0;
+	};
+
 	struct S2C_WORLD_DESTRUCTION_FULL_SYNC
 	{
 		std::string strCombatRuntimeRevision;
 		std::uint32_t iServerTick = 0;
 		std::uint32_t iEncounterEpoch = 0;
 		std::vector<WORLD_DESTRUCTION_STATE_WIRE> GroupStates;
+		WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS Diagnostics;
 	};
 
 	bool Write_Message(
@@ -574,6 +587,7 @@ namespace LostArk::Shared
 		std::uint32_t iEncounterEpoch = 0;
 		std::vector<WORLD_DESTRUCTION_STATE_WIRE> ChangedStates;
 		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> LiveEvents;
+		WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS Diagnostics;
 	};
 
 	bool Write_Message(
@@ -582,6 +596,46 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_WORLD_DESTRUCTION_DELTA& message);
+
+	// Repeatable encounter props, replicated separately from one-way wall
+	// destruction. The four pillars come back four times in one fight, so their
+	// slots cycle HIDDEN -> SPAWNING -> INTACT -> BREAKING -> HIDDEN instead of
+	// being consumed once. A late joiner receives the current slot states only;
+	// it never replays a past spawn or shatter.
+	inline constexpr std::size_t MAX_ENCOUNTER_PROP_SLOTS = 16;
+
+	enum class ENCOUNTER_PROP_STATE : std::uint8_t
+	{
+		HIDDEN,
+		SPAWNING,
+		INTACT,
+		BREAKING,
+		END
+	};
+
+	struct ENCOUNTER_PROP_SLOT_WIRE
+	{
+		std::string strSlotId;
+		ENCOUNTER_PROP_STATE eState = ENCOUNTER_PROP_STATE::HIDDEN;
+		std::uint32_t iStateVersion = 0;
+		std::uint32_t iStateStartTick = 0;
+		std::uint32_t iOccurrenceSequence = 0;
+	};
+
+	struct S2C_ENCOUNTER_PROP_SYNC
+	{
+		std::string strPropSetId;
+		std::uint32_t iServerTick = 0;
+		std::uint32_t iEncounterEpoch = 0;
+		std::vector<ENCOUNTER_PROP_SLOT_WIRE> Slots;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_ENCOUNTER_PROP_SYNC& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_ENCOUNTER_PROP_SYNC& message);
 
 	// Debug audition of an authored Valtan health-bar pattern.
 	//
@@ -593,11 +647,26 @@ namespace LostArk::Shared
 	// PLAY atomically primes the previous bar and moves onto the target in one
 	// Server command, then CValtanBrain judges the single crossing on its own
 	// fixed tick. ARM/CROSS remain available for step-by-step diagnostics.
+	// PLAY_ENTRANCE is the one operation that puts the encounter intro ledger
+	// back, so the first-appearance sweep runs again on a reset boss. Every other
+	// operation stages the intro as consumed and auditions its own pattern first.
 	enum class VALTAN_AUDITION_OPERATION : std::uint8_t
 	{
 		ARM_HEALTH_BAR,
 		CROSS_HEALTH_BAR,
 		PLAY_HEALTH_BAR,
+		PLAY_ENTRANCE,
+		// One whole pillar cycle: the encounter's own pillar pattern raises the
+		// four slots through the product path, and because no product trigger
+		// for the shatter is identified yet, this Debug operation is what closes
+		// INTACT -> BREAKING -> HIDDEN so the reusable runtime is verifiable.
+		PLAY_PILLAR_CYCLE,
+		// Debug-only product-path checks. PLAY_WALL_ATTACK queues the real
+		// VALTAN_DOWN_SMASH action against one ordinary wall. SHOW_FINAL_ARENA
+		// stages every independent wall through the Server destruction runtime
+		// so the fully opened arena can be inspected without replaying 99 hits.
+		PLAY_WALL_ATTACK,
+		SHOW_FINAL_ARENA,
 		END
 	};
 

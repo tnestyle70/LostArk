@@ -8,6 +8,7 @@
 #include "Valtan.h"
 
 #include <mutex>
+#include <system_error>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -55,6 +56,28 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		CRuntimeAssetRoot::Resolve(pActor->animationSetId);
 	if (bodyPath.empty() || weaponPath.empty() || animSetPath.empty())
 		return E_FAIL;
+	std::error_code animSetFileError;
+	const bool_t hasAnimSetFile = std::filesystem::is_regular_file(
+		animSetPath, animSetFileError);
+	const bool_t isMissingAnimSetFile = !hasAnimSetFile &&
+		(ERROR_FILE_NOT_FOUND == animSetFileError.value() ||
+			ERROR_PATH_NOT_FOUND == animSetFileError.value());
+	if (!hasAnimSetFile && !isMissingAnimSetFile)
+		return E_FAIL;
+
+#ifndef _DEBUG
+	if (isMissingAnimSetFile)
+		return E_FAIL;
+#else
+	if (!hasAnimSetFile)
+	{
+		::OutputDebugStringA(
+			"[ValtanPresentation] The authored 146-clip animation set is missing. "
+			"Debug will continue with the clips embedded in the Valtan body model; "
+			"Release remains fail-closed. Missing asset: "
+			"Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel\n");
+	}
+#endif
 
 	unique_ptr<CModel> bodyModel = CModel::Create(
 		pDevice,
@@ -64,16 +87,19 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
 	if (nullptr == bodyModel)
 		return E_FAIL;
-	const unique_ptr<CModel> animSetModel = CModel::Create(
-		pDevice,
-		pContext,
-		MODEL::ANIM,
-		animSetPath.string().c_str(),
-		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
-	if (nullptr == animSetModel ||
-		FAILED(bodyModel->Attach_AnimationSet(*animSetModel)))
+	if (hasAnimSetFile)
 	{
-		return E_FAIL;
+		const unique_ptr<CModel> animSetModel = CModel::Create(
+			pDevice,
+			pContext,
+			MODEL::ANIM,
+			animSetPath.string().c_str(),
+			XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
+		if (nullptr == animSetModel ||
+			FAILED(bodyModel->Attach_AnimationSet(*animSetModel)))
+		{
+			return E_FAIL;
+		}
 	}
 
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;

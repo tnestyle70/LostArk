@@ -99,6 +99,20 @@ namespace Client
 		{
 			return m_WorldDestructionProjectionRuntime.Get_GroupStates();
 		}
+		/* Last Server-owned collision/navigation counters. Read-only; the Debug
+		   panel reports them instead of deriving passage from wall states. */
+		const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS&
+		Get_WorldDestructionDiagnostics() const
+		{
+			return m_WorldDestructionDiagnostics;
+		}
+		/* Live pillar slot states as the Server last published them. The four
+		   slots repeat, so this is a replace-in-full state, never a log. */
+		const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC&
+		Get_EncounterPropState() const
+		{
+			return m_EncounterPropState;
+		}
 
 	private:
 		bool Create_Character(
@@ -124,6 +138,8 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_DESTRUCTION_FULL_SYNC& fullSync);
 		bool Apply_WorldDestructionDelta(
 			const LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA& delta);
+		bool Apply_EncounterPropSync(
+			const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& sync);
 		enum class CHARACTER_REPLACE_RESULT
 		{
 			REPLACED,
@@ -138,7 +154,8 @@ namespace Client
 	private:
 		//?대뼡 layer怨?prototype???앹꽦?섏뼱???섎뒗吏
 		DESC m_Desc;
-		//slot怨?freeslotindex, handlebyentityid瑜?留ㅺ컻蹂?섎줈 ?ㅺ퀬 ?덈뒗 net 媛앹껜
+		// Stable net objects: slot table, free-slot index and the
+		// handle-by-entity-id lookup, kept across frames.
 		CNetObjectRegistry m_Registry;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
@@ -154,6 +171,9 @@ namespace Client
 		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>
 			m_WorldDestructionLiveEvents;
 		uint64_t m_iWorldDestructionPresentationGeneration = 0u;
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS
+			m_WorldDestructionDiagnostics{};
+		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC m_EncounterPropState{};
 #ifdef _DEBUG
 		bool_t m_isCombatColliderDebugVisible = false;
 #endif

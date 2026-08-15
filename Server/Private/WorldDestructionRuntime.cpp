@@ -192,17 +192,25 @@ bool LostArk::Server::CWorldDestructionRuntime::Initialize(
 	for (const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding :
 		descriptorGraph.Bindings)
 	{
+		const bool isContactBinding =
+			WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT ==
+			binding.eTriggerKind;
 		const bool receiverIsValid =
 			(WORLD_DESTRUCTION_TRIGGER_KIND::STAGE == binding.eTriggerKind &&
 				binding.strImpactReceiverId.empty()) ||
-			(WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT == binding.eTriggerKind &&
+			((WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT ==
+				binding.eTriggerKind || isContactBinding) &&
 				Is_StableId(binding.strImpactReceiverId));
+		const bool scheduleIsValid = isContactBinding ?
+			(binding.strPatternId.empty() && binding.strStageId.empty() &&
+				binding.strActionId.empty() && 0u == binding.iStageIndex) :
+			(Is_StableId(binding.strPatternId) &&
+				Is_StableId(binding.strStageId) &&
+				Is_StableId(binding.strActionId));
 		if (!Is_StableId(binding.strBindingId) ||
 			!Is_StableId(binding.strMutationId) ||
 			WORLD_DESTRUCTION_TRIGGER_KIND::END == binding.eTriggerKind ||
-			!Is_StableId(binding.strPatternId) ||
-			!Is_StableId(binding.strStageId) ||
-			!Is_StableId(binding.strActionId) || !receiverIsValid ||
+			!scheduleIsValid || !receiverIsValid ||
 			stagedMutations.end() ==
 				stagedMutations.find(binding.strMutationId))
 		{
@@ -295,6 +303,20 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_ImpactTrigger(
 }
 
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
+LostArk::Server::CWorldDestructionRuntime::Prepare_ContactTrigger(
+	const std::string& contactCollisionId,
+	const std::uint64_t sourceNetEntityId,
+	const std::uint32_t contactSequence,
+	const std::uint32_t serverTick,
+	WORLD_DESTRUCTION_TRANSACTION& transaction,
+	std::string& status) const
+{
+	return Prepare_Trigger(WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT,
+		{}, contactCollisionId, sourceNetEntityId, contactSequence, serverTick,
+		transaction, status);
+}
+
+LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 	const WORLD_DESTRUCTION_TRIGGER_KIND triggerKind,
 	const WORLD_DESTRUCTION_ACTION_TUPLE& action,
@@ -306,13 +328,19 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 	std::string& status) const
 {
 	Clear_Transaction(transaction);
+	/* A contact break can happen while the boss is idle, between patterns and
+	   during any animation, so it is the one trigger that carries no action
+	   tuple to validate or to match. */
+	const bool isContactTrigger =
+		WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT == triggerKind;
 	if (!m_bInitialized || 0u == sourceNetEntityId ||
 		0u == patternSequence || 0u == serverTick ||
 		WORLD_DESTRUCTION_TRIGGER_KIND::END == triggerKind ||
-		!Is_StableId(action.strPatternId) ||
-		!Is_StableId(action.strStageId) ||
-		!Is_StableId(action.strActionId) ||
-		(WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT == triggerKind &&
+		(!isContactTrigger && (
+			!Is_StableId(action.strPatternId) ||
+			!Is_StableId(action.strStageId) ||
+			!Is_StableId(action.strActionId))) ||
+		(WORLD_DESTRUCTION_TRIGGER_KIND::STAGE != triggerKind &&
 			!Is_StableId(impactReceiverId)))
 	{
 		status = "World destruction trigger request is invalid";
@@ -328,7 +356,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 	for (const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding : m_Bindings)
 	{
 		if (binding.eTriggerKind != triggerKind ||
-			!Is_ExactActionTuple(binding, action) ||
+			(!isContactTrigger && !Is_ExactActionTuple(binding, action)) ||
 			binding.strImpactReceiverId != impactReceiverId)
 		{
 			continue;
@@ -379,7 +407,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 			commitTick, immediate));
 		transaction.BindingApplications.push_back({
 			binding.strBindingId, binding.strMutationId,
-			sourceNetEntityId, patternSequence });
+			sourceNetEntityId, patternSequence, binding.eTriggerKind });
 	}
 
 	if (!transaction.Transitions.empty())
@@ -544,6 +572,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Commit(
 				0u == application.iPatternSequence ||
 				application.strMutationId != transition.strMutationId ||
 				bindingIt->second.strMutationId != transition.strMutationId ||
+				application.eTriggerKind != bindingIt->second.eTriggerKind ||
 				!stagedApplications.emplace(applicationKey).second ||
 				completesBreaking)
 			{

@@ -13,6 +13,7 @@
 #include "SpawnGroupRuntime.h"
 #include "MonsterBrain.h"
 #include "ValtanBrain.h"
+#include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
@@ -184,6 +185,11 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
 		bool Send_WorldDestructionFullSync(
 			const std::shared_ptr<CClientSession>& session);
+		// Server-owned collision/navigation counters carried by every
+		// destruction message so the Debug audition panel never has to infer
+		// passage from the replicated wall states.
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS
+			Build_WorldDestructionDiagnostics() const;
 		void Broadcast_Spawned(
 			const SERVER_PLAYER& player,
 			SESSION_ID exceptSessionId);
@@ -217,6 +223,32 @@ namespace LostArk::Server
 		bool Reset_ValtanArenaWhenEmpty();
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		/* Raise the pillar slots on the authored stage edge of the pattern that
+		owns them. The shatter has no identified product owner yet. */
+		bool Apply_EncounterPropStageEntry(
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		bool Commit_DueEncounterProps(std::uint32_t serverTick);
+		bool Send_EncounterPropSync(
+			const std::shared_ptr<CClientSession>& session);
+		void Broadcast_EncounterPropSync();
+		/* Break whatever the boss body physically reached between its previous
+		and current position. No pattern, stage or receiver whitelist gates it;
+		only geometry decides, which is what makes an ordinary charge or even a
+		walk into a wall bring that one wall down. */
+		bool Apply_WorldDestructionBodyContact(
+			SERVER_WORLD_ENTITY& boss,
+			float previousX,
+			float previousY,
+			float previousZ,
+			std::uint32_t serverTick);
+		bool Apply_WorldDestructionPatternHitContact(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t serverTick);
+		bool Apply_WorldDestructionContacts(
+			SERVER_WORLD_ENTITY& boss,
+			const std::vector<std::string>& contactPlacementIds,
 			std::uint32_t serverTick);
 		bool Apply_WorldDestructionImpact(
 			SERVER_WORLD_ENTITY& boss,
@@ -287,6 +319,14 @@ namespace LostArk::Server
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
 		CWorldDestructionRuntime m_WorldDestructionRuntime;
+		/* The four pillars come back four times in one fight, so they live in a
+		reversible prop runtime instead of a one-way destruction group. */
+		CEncounterPropRuntime m_EncounterPropRuntime;
+		/* Debug audition only: the tick a whole pillar cycle shatters on, and
+		the flag the next raise turns into that tick. No product trigger for the
+		shatter is identified yet, so nothing else writes these. */
+		std::uint32_t m_iPillarAuditionBreakTick = 0u;
+		bool m_bPillarAuditionCycleArmed = false;
 		std::vector<SERVER_WORLD_ENTITY> m_WorldEntities;
 		/* One tick's resolved hits. Cleared at the top of every simulation phase
 		and consumed by Broadcast_WorldSnapshot, so an event can only ever ride

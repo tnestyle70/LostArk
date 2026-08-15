@@ -45,12 +45,14 @@ class CWorldDestructionDebrisPresentationRuntime final
 {
 public:
 	static constexpr uint32_t ACTORS_PER_EMITTER = 12u;
-	/* The 109 phase transition breaks all 21 authored groups on one tick. The
-	budget holds one complete recipe for each of them, because admitting a
-	partial recipe would visibly delete two thirds of a wall instead of
-	fracturing it, and starving later groups would leave whole ring sectors
-	vanishing with no debris at all. */
-	static constexpr uint32_t MAX_ACTIVE_ACTORS = 21u * ACTORS_PER_EMITTER;
+	/* The 109 phase transition breaks the complete outer ring on one tick:
+	thirty independent wall groups. The budget holds one complete
+	recipe for every slab, because admitting a partial recipe would visibly
+	delete two thirds of a wall instead of fracturing it, and starving later
+	slabs would leave whole ring sectors vanishing with no debris at all. */
+	static constexpr uint32_t OUTER_RING_EMITTERS = 30u;
+	static constexpr uint32_t MAX_ACTIVE_ACTORS =
+		OUTER_RING_EMITTERS * ACTORS_PER_EMITTER;
 
 public:
 	CWorldDestructionDebrisPresentationRuntime() = default;
@@ -127,16 +129,23 @@ public:
 			orderedIds.begin(), orderedIds.begin() + selectedCount);
 		return true;
 	}
-	/* Even split of the remaining emitter slots across a drained batch, with
-	   at least one slot each so a large batch still shows every group. */
+	/* A batch that fits in the remaining budget gets an unclipped share, so the
+	   109 collapse fractures all thirty ring slabs even though each wall owns an
+	   independent cue. Only an oversubscribed batch
+	   falls back to an even split, with at least one slot each so every group
+	   still shows debris. The share never depends on camera distance or frame
+	   rate; the pending batch alone decides it. */
 	static uint32_t Resolve_CueEmitterShare(
 		const uint32_t activeActorCount,
-		const size_t pendingCueCount)
+		const size_t pendingCueCount,
+		const size_t pendingEmitterCount)
 	{
 		if (0u == pendingCueCount || activeActorCount >= MAX_ACTIVE_ACTORS)
 			return 1u;
 		const uint32_t freeEmitters =
 			(MAX_ACTIVE_ACTORS - activeActorCount) / ACTORS_PER_EMITTER;
+		if (0u != pendingEmitterCount && pendingEmitterCount <= freeEmitters)
+			return static_cast<uint32_t>(pendingEmitterCount);
 		const uint32_t share =
 			freeEmitters / static_cast<uint32_t>(pendingCueCount);
 		return 0u == share ? 1u : share;

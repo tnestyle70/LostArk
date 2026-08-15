@@ -686,7 +686,9 @@ foreach ($boss in @($bossDocument.bosses)) {
 
 $encounterDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
 Assert-ExactProperties $encounterDocument @(
-	'schema','formatVersion','encounterId','bossArchetypeId','authority','fixedTickHz','states','patterns') 'encounter document'
+	'schema','formatVersion','encounterId','bossArchetypeId','authority','fixedTickHz',
+	'introPatternId','states','patterns') 'encounter document'
+Assert-StableId $encounterDocument.introPatternId 'encounter introPatternId'
 Assert-JsonString $encounterDocument.schema 'encounter schema'
 Assert-JsonInteger $encounterDocument.formatVersion 'encounter formatVersion' 3 3
 Assert-JsonString $encounterDocument.encounterId 'encounterId'
@@ -713,12 +715,19 @@ $patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordin
 $actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $coveredSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
 $patternRows = [Collections.Generic.List[string]]::new()
+$serverMotionAnchorIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$serverMotionByPatternId = @{}
 foreach ($pattern in @($encounterDocument.patterns)) {
-	Assert-ExactProperties $pattern @(
+	# serverMotion is optional. Only a pattern whose boss motion the Server has to
+	# compute itself, like the 109 leap to its landing anchor, carries one.
+	$patternProperties = @(
 		'patternId','displayName','actionId','sourceActionIds','selectionMode',
 		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
-		'stages') 'encounter pattern'
+		'stages')
+	$hasServerMotion = $null -ne $pattern.PSObject.Properties['serverMotion']
+	if ($hasServerMotion) { $patternProperties += 'serverMotion' }
+	Assert-ExactProperties $pattern $patternProperties 'encounter pattern'
 	foreach ($field in @('patternId','displayName','actionId','selectionMode')) {
 		Assert-JsonString $pattern.$field "pattern $($pattern.patternId) $field"
 	}
@@ -778,6 +787,51 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		(Format-InvariantFloat $pattern.minimumRange "pattern minimumRange"),
 		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
 		@($pattern.stages).Count) -join "`t"))
+	if ($hasServerMotion) {
+		# One compiled anchor is the single source for the Server leap landing,
+		# the camera lookAt and the radial wall launch directions, so none of the
+		# three can drift into its own copy of the coordinate.
+		$motion = $pattern.serverMotion
+		Assert-ExactProperties $motion @(
+			'kind','anchorId','landingPosition','apexHeight') "pattern $($pattern.patternId) serverMotion"
+		Assert-JsonString $motion.kind "pattern $($pattern.patternId) serverMotion kind"
+		Assert-StableId $motion.anchorId "pattern $($pattern.patternId) serverMotion anchorId"
+		if ([string]$motion.kind -cne 'LEAP_TO_ANCHOR') {
+			throw "Unknown serverMotion kind: $($pattern.patternId)"
+		}
+		if ($motion.landingPosition -isnot [Array] -or
+			@($motion.landingPosition).Count -ne 3) {
+			throw "serverMotion landingPosition must contain three numbers: $($pattern.patternId)"
+		}
+		foreach ($component in @($motion.landingPosition)) {
+			Assert-JsonNumber $component "pattern $($pattern.patternId) serverMotion landingPosition"
+			if ([double]::IsNaN([double]$component) -or
+				[double]::IsInfinity([double]$component) -or
+				[Math]::Abs([double]$component) -gt 100000.0) {
+				throw "serverMotion landingPosition is out of range: $($pattern.patternId)"
+			}
+		}
+		Assert-JsonNumber $motion.apexHeight "pattern $($pattern.patternId) serverMotion apexHeight"
+		if ([double]$motion.apexHeight -le 0.0 -or [double]$motion.apexHeight -gt 200.0) {
+			throw "serverMotion apexHeight is out of range: $($pattern.patternId)"
+		}
+		if (-not $serverMotionAnchorIds.Add([string]$motion.anchorId)) {
+			throw "Duplicate serverMotion anchorId: $($motion.anchorId)"
+		}
+		$serverMotionByPatternId[[string]$pattern.patternId] = [pscustomobject]@{
+			AnchorId = [string]$motion.anchorId
+			X = [double]$motion.landingPosition[0]
+			Y = [double]$motion.landingPosition[1]
+			Z = [double]$motion.landingPosition[2]
+		}
+		$patternRows.Add((@(
+			'PATTERNMOTION', $encounterDocument.encounterId, $pattern.patternId,
+			[string]$motion.kind, [string]$motion.anchorId,
+			(Format-InvariantSignedFloat $motion.landingPosition[0] 'serverMotion landing x'),
+			(Format-InvariantSignedFloat $motion.landingPosition[1] 'serverMotion landing y'),
+			(Format-InvariantSignedFloat $motion.landingPosition[2] 'serverMotion landing z'),
+			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight')) -join "`t"))
+	}
 	$stageIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	for ($stageIndex = 0; $stageIndex -lt @($pattern.stages).Count; $stageIndex++) {
 		$stage = $pattern.stages[$stageIndex]
@@ -843,6 +897,121 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 	}
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
+
+# Only an explicitly authored physical axe action may project its Server hit
+# volume onto breakable walls. Player damage shapes also describe roars, magic,
+# delayed waves and floor mechanics, so treating every ACTIVE hit as a weapon
+# contact would destroy unrelated walls.
+$wallContactDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanWallContactActions.json'
+Assert-ExactProperties $wallContactDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','actions') `
+	'Valtan wall contact document'
+Assert-JsonString $wallContactDocument.schema 'Valtan wall contact schema'
+Assert-JsonInteger $wallContactDocument.formatVersion `
+	'Valtan wall contact formatVersion' 1 1
+Assert-JsonString $wallContactDocument.encounterId `
+	'Valtan wall contact encounterId'
+Assert-JsonString $wallContactDocument.bossArchetypeId `
+	'Valtan wall contact bossArchetypeId'
+if ([string]$wallContactDocument.schema -cne `
+	'lostark.valtan-wall-contact-actions' -or
+	[uint32]$wallContactDocument.formatVersion -ne 1 -or
+	[string]$wallContactDocument.encounterId -cne `
+		[string]$encounterDocument.encounterId -or
+	[string]$wallContactDocument.bossArchetypeId -cne `
+		[string]$encounterDocument.bossArchetypeId -or
+	$wallContactDocument.actions -isnot [Array] -or
+	@($wallContactDocument.actions).Count -eq 0 -or
+	@($wallContactDocument.actions).Count -gt 64) {
+	throw 'Valtan wall contact document header is invalid.'
+}
+$wallContactActionIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$previousWallContactActionId = ''
+foreach ($wallContact in @($wallContactDocument.actions)) {
+	Assert-ExactProperties $wallContact @('patternId','stageId','actionId') `
+		'Valtan wall contact action'
+	foreach ($field in @('patternId','stageId','actionId')) {
+		Assert-JsonString $wallContact.$field "Valtan wall contact $field"
+		Assert-StableId ([string]$wallContact.$field) "Valtan wall contact $field"
+	}
+	$wallActionId = [string]$wallContact.actionId
+	if (-not $wallContactActionIds.Add($wallActionId) -or
+		($previousWallContactActionId.Length -ne 0 -and
+		 [StringComparer]::Ordinal.Compare(
+			$previousWallContactActionId, $wallActionId) -ge 0)) {
+		throw "Valtan wall contact actions are duplicated or not ordinal: $wallActionId"
+	}
+	$previousWallContactActionId = $wallActionId
+	$ownerPatterns = @($encounterDocument.patterns | Where-Object {
+		[string]$_.patternId -ceq [string]$wallContact.patternId })
+	if ($ownerPatterns.Count -ne 1) {
+		throw "Valtan wall contact pattern is missing: $($wallContact.patternId)"
+	}
+	$ownerPattern = $ownerPatterns[0]
+	$stageIndex = -1
+	for ($candidateIndex = 0;
+		$candidateIndex -lt @($ownerPattern.stages).Count; ++$candidateIndex) {
+		$candidate = $ownerPattern.stages[$candidateIndex]
+		if ([string]$candidate.stageId -ceq [string]$wallContact.stageId -and
+			[string]$candidate.actionId -ceq $wallActionId) {
+			if ($stageIndex -ne -1) {
+				throw "Valtan wall contact stage is duplicated: $wallActionId"
+			}
+			$stageIndex = $candidateIndex
+		}
+	}
+	if ($stageIndex -lt 0) {
+		throw "Valtan wall contact stage/action join failed: $wallActionId"
+	}
+	$contactStage = $ownerPattern.stages[$stageIndex]
+	if ([string]$contactStage.stageKind -cne 'ACTIVE' -or
+		[string]$contactStage.hitShape -ceq 'NONE' -or
+		[uint32]$contactStage.hitCount -eq 0) {
+		throw "Valtan wall contact action has no physical Server hit pulse: $wallActionId"
+	}
+	$patternRows.Add((@(
+		'PATTERNWALLCONTACT', $encounterDocument.encounterId,
+		$ownerPattern.patternId, [uint32]$stageIndex,
+		$contactStage.stageId, $contactStage.actionId) -join "`t"))
+}
+
+# The intro pattern runs exactly once per encounter epoch, before normal
+# selection starts, so the first-appearance sweep cannot be rolled again later.
+if (-not $patternIds.Contains([string]$encounterDocument.introPatternId)) {
+	throw "Encounter introPatternId names no pattern: $($encounterDocument.introPatternId)"
+}
+$patternRows.Add((@(
+	'ENCOUNTERINTRO', $encounterDocument.encounterId,
+	$encounterDocument.introPatternId) -join "`t"))
+
+# A pattern that owns a landing anchor also owns every cinematic camera cue bound
+# to it, so the shot cannot frame a different point than the one the boss lands
+# on. Only the horizontal position is joined: the cues deliberately raise their
+# lookAt height to follow the boss while it is still in the air.
+if ($serverMotionByPatternId.Count -ne 0) {
+	$cameraDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanCinematicCamera.json'
+	$anchoredCueCount = 0
+	foreach ($cue in @($cameraDocument.cues)) {
+		$cuePatternId = [string]$cue.patternId
+		if (-not $serverMotionByPatternId.ContainsKey($cuePatternId)) { continue }
+		$anchor = $serverMotionByPatternId[$cuePatternId]
+		foreach ($keyframe in @($cue.keyframes)) {
+			if (@($keyframe.lookAt).Count -ne 3) {
+				throw "Cinematic keyframe lookAt is malformed: $($cue.cueId)"
+			}
+			if ([Math]::Abs([double]$keyframe.lookAt[0] - $anchor.X) -gt 0.05 -or
+				[Math]::Abs([double]$keyframe.lookAt[2] - $anchor.Z) -gt 0.05) {
+				throw "Cinematic cue does not look at its pattern landing anchor $($anchor.AnchorId): $($cue.cueId)"
+			}
+		}
+		$anchoredCueCount++
+	}
+	if ($anchoredCueCount -eq 0) {
+		throw 'A pattern declares a landing anchor but owns no cinematic camera cue.'
+	}
+}
 
 $expectedNormalActionIds = @((420601..420647) + (420651..420666)) |
 	Where-Object { $_ -notin @(420648,420649,420650) }
@@ -947,7 +1116,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t4`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t5`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

@@ -17,13 +17,62 @@ bool_t Client::CValtanCinematicCameraController::Initialize(
 	return true;
 }
 
+Client::VALTAN_CINEMATIC_SKY_STATE
+Client::CValtanCinematicCameraController::Resolve_SkyState(
+	const VALTAN_CINEMATIC_CAMERA_INPUT& input) const
+{
+	VALTAN_CINEMATIC_SKY_STATE state;
+	m_LastSkyState = state;
+	if (nullptr == m_pDocument || !input.isValid || 0u == m_iFixedTickHz ||
+		0u == input.iServerTick || 0u == input.iActionStartTick)
+	{
+		return state;
+	}
+	const VALTAN_CINEMATIC_SKY_CUE* cue = m_pDocument->Find_SkyCue(
+		input.strPatternId, input.iStageIndex, input.strStageActionId);
+	if (nullptr == cue || (!input.strStageId.empty() &&
+		cue->strStageId != input.strStageId))
+	{
+		return state;
+	}
+	f32_t ageSeconds = 0.f;
+	if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+		input.iServerTick, input.iActionStartTick, m_iFixedTickHz, ageSeconds))
+	{
+		return state;
+	}
+	const f32_t startSeconds =
+		static_cast<f32_t>(cue->iStageLocalStartMs) * 0.001f;
+	const f32_t endSeconds = static_cast<f32_t>(cue->iStageLocalEndMs) * 0.001f;
+	if (ageSeconds < startSeconds || ageSeconds > endSeconds)
+		return state;
+	const f32_t span = endSeconds - startSeconds;
+	const f32_t ratio = span <= 0.f ? 1.f :
+		std::clamp((ageSeconds - startSeconds) / span, 0.f, 1.f);
+	state.isActive = true;
+	state.strCueId = cue->strCueId;
+	state.strRedCloudAssetId = cue->strRedCloudAssetId;
+	state.strBlackApertureAssetId = cue->strBlackApertureAssetId;
+	state.fCloudOpacity = cue->fCloudOpacityStart +
+		(cue->fCloudOpacityEnd - cue->fCloudOpacityStart) * ratio;
+	state.fApertureScale = cue->fApertureScaleStart +
+		(cue->fApertureScaleEnd - cue->fApertureScaleStart) * ratio;
+	state.fCloudRotationDegrees =
+		cue->fCloudRotationDegreesPerSecond * (ageSeconds - startSeconds);
+	m_LastSkyState = state;
+	return state;
+}
+
 bool_t Client::CValtanCinematicCameraController::Update(
 	const VALTAN_CINEMATIC_CAMERA_INPUT& input,
 	const f32_t timeDelta,
 	VALTAN_CINEMATIC_CAMERA_POSE& outPose)
 {
+	/* A dead boss carries no pattern sequence, so the clear shot is the one cue
+	   that does not require one. Everything else still does. */
 	if (nullptr == m_pDocument || !input.isValid || 0u == input.iNetEntityId ||
-		0u == input.iServerTick || 0u == input.iPatternSequence ||
+		0u == input.iServerTick ||
+		(0u == input.iPatternSequence && !input.isBossDead) ||
 		0u == input.iActionStartTick || !std::isfinite(timeDelta) ||
 		timeDelta < 0.f)
 	{
@@ -34,9 +83,11 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		return false;
 	}
 
-	const VALTAN_CINEMATIC_CAMERA_CUE* cue = m_pDocument->Find_Cue(
-		input.strPatternId, input.iStageIndex, input.strStageActionId);
-	if (nullptr == cue || (!input.strStageId.empty() &&
+	const VALTAN_CINEMATIC_CAMERA_CUE* cue = input.isBossDead ?
+		m_pDocument->Find_DeathCue() :
+		m_pDocument->Find_Cue(
+			input.strPatternId, input.iStageIndex, input.strStageActionId);
+	if (nullptr == cue || (!input.isBossDead && !input.strStageId.empty() &&
 		cue->strStageId != input.strStageId))
 	{
 		m_pActiveCue = nullptr;
@@ -110,6 +161,7 @@ void Client::CValtanCinematicCameraController::Reset()
 	m_strCueId.clear();
 	m_hasCueKey = false;
 	m_isCueFinished = false;
+	m_LastSkyState = VALTAN_CINEMATIC_SKY_STATE{};
 }
 
 bool_t Client::CValtanCinematicCameraController::Sample_ActiveCue(

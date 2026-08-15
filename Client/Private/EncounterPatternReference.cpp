@@ -46,6 +46,31 @@ namespace
 			});
 	}
 
+	/* Server-only fields the Client reference deliberately does not model. It
+	   still refuses anything it has not been told about, so a typo is rejected
+	   rather than silently ignored. */
+	bool_t Is_ExactObjectWithOptional(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> requiredKeys,
+		const std::initializer_list<const char_t*> optionalKeys)
+	{
+		if (!value.Is_Object())
+			return false;
+		size_t present = requiredKeys.size();
+		for (const char_t* key : optionalKeys)
+		{
+			if (nullptr != value.Find(key))
+				++present;
+		}
+		if (value.Get_Object().size() != present)
+			return false;
+		return std::all_of(requiredKeys.begin(), requiredKeys.end(),
+			[&value](const char_t* key)
+			{
+				return nullptr != value.Find(key);
+			});
+	}
+
 	bool_t Read_String(
 		const DATA_JSON_VALUE& parent,
 		const char_t* key,
@@ -125,9 +150,10 @@ bool_t Client::CEncounterPatternReference::Load(
 		outStatus = "Encounter reference parse failed: " + parseError;
 		return false;
 	}
-	if (!Is_ExactObject(root, {
+	if (!Is_ExactObjectWithOptional(root, {
 			"schema", "formatVersion", "encounterId", "bossArchetypeId",
-			"authority", "fixedTickHz", "states", "patterns" }))
+			"authority", "fixedTickHz", "states", "patterns" },
+			{ "introPatternId" }))
 	{
 		outStatus = "Encounter reference root has unexpected properties";
 		return false;
@@ -169,12 +195,13 @@ bool_t Client::CEncounterPatternReference::Load(
 
 	for (const DATA_JSON_VALUE& entry : patterns->Get_Array())
 	{
-		if (!Is_ExactObject(entry, {
+		if (!Is_ExactObjectWithOptional(entry, {
 				"patternId", "displayName", "actionId", "sourceActionIds",
 				"selectionMode", "minimumHealthBar", "maximumHealthBar",
 				"triggerHealthBar", "triggerOrder", "selectionWeight",
 				"maximumConsecutiveUses", "minimumRange", "maximumRange",
-				"stages" }))
+				"stages" },
+				{ "serverMotion" }))
 		{
 			outStatus = "Encounter pattern has unexpected properties";
 			return false;

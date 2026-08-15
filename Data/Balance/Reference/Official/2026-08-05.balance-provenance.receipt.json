@@ -47,8 +47,8 @@
                      "skillDefinitionCount":  90,
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
-                     "encounterPatternCount":  31,
-                     "fieldEntryCount":  2559
+                     "encounterPatternCount":  32,
+                     "fieldEntryCount":  2574
                  },
     "entries":  [
                     {
@@ -29506,9 +29506,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  31,
+                        "sourceValue":  32,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  31,
+                        "resultValue":  32,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -29800,7 +29800,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].actionId",
+                        "targetField":  "patterns[27].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29814,7 +29814,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].displayName",
+                        "targetField":  "patterns[27].displayName",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29828,7 +29828,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].maximumConsecutiveUses",
+                        "targetField":  "patterns[27].maximumConsecutiveUses",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29842,7 +29842,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].maximumHealthBar",
+                        "targetField":  "patterns[27].maximumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29856,7 +29856,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].maximumRange",
+                        "targetField":  "patterns[27].maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29870,7 +29870,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].minimumHealthBar",
+                        "targetField":  "patterns[27].minimumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29884,7 +29884,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].minimumRange",
+                        "targetField":  "patterns[27].minimumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29898,7 +29898,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].patternId",
+                        "targetField":  "patterns[27].patternId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29912,7 +29912,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].selectionMode",
+                        "targetField":  "patterns[27].selectionMode",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29926,7 +29926,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].selectionWeight",
+                        "targetField":  "patterns[27].selectionWeight",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29940,7 +29940,39 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].sourceActionIds",
+                        "targetField":  "patterns[27].serverMotion",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  {
+                                            "kind":  "LEAP_TO_ANCHOR",
+                                            "anchorId":  "anchor.valtan.arena-break-109.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  12.0
+                                        },
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  {
+                                            "kind":  "LEAP_TO_ANCHOR",
+                                            "anchorId":  "anchor.valtan.arena-break-109.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  12.0
+                                        },
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
+                        "targetField":  "patterns[27].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29958,7 +29990,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].stages",
+                        "targetField":  "patterns[27].stages",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -29969,7 +30001,7 @@
                                                 "stageId":  "TAKEOFF",
                                                 "actionId":  "valtan.mechanic.arena-break-109.takeoff",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1000,
+                                                "durationMs":  900,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -29984,7 +30016,7 @@
                                                 "stageId":  "DROP",
                                                 "actionId":  "valtan.mechanic.arena-break-109.drop",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  800,
+                                                "durationMs":  700,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -30044,7 +30076,7 @@
                                                 "stageId":  "RECOVERY",
                                                 "actionId":  "valtan.mechanic.arena-break-109.recovery",
                                                 "stageKind":  "RECOVERY",
-                                                "durationMs":  400,
+                                                "durationMs":  870,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -30062,7 +30094,7 @@
                                                 "stageId":  "TAKEOFF",
                                                 "actionId":  "valtan.mechanic.arena-break-109.takeoff",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1000,
+                                                "durationMs":  900,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -30077,7 +30109,7 @@
                                                 "stageId":  "DROP",
                                                 "actionId":  "valtan.mechanic.arena-break-109.drop",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  800,
+                                                "durationMs":  700,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -30137,7 +30169,7 @@
                                                 "stageId":  "RECOVERY",
                                                 "actionId":  "valtan.mechanic.arena-break-109.recovery",
                                                 "stageKind":  "RECOVERY",
-                                                "durationMs":  400,
+                                                "durationMs":  870,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -30154,7 +30186,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].triggerHealthBar",
+                        "targetField":  "patterns[27].triggerHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30168,7 +30200,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
-                        "targetField":  "patterns[26].triggerOrder",
+                        "targetField":  "patterns[27].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30182,7 +30214,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].actionId",
+                        "targetField":  "patterns[30].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30196,7 +30228,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].displayName",
+                        "targetField":  "patterns[30].displayName",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30210,7 +30242,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].maximumConsecutiveUses",
+                        "targetField":  "patterns[30].maximumConsecutiveUses",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30224,7 +30256,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].maximumHealthBar",
+                        "targetField":  "patterns[30].maximumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30238,7 +30270,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].maximumRange",
+                        "targetField":  "patterns[30].maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30252,7 +30284,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].minimumHealthBar",
+                        "targetField":  "patterns[30].minimumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30266,7 +30298,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].minimumRange",
+                        "targetField":  "patterns[30].minimumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30280,7 +30312,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].patternId",
+                        "targetField":  "patterns[30].patternId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30294,7 +30326,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].selectionMode",
+                        "targetField":  "patterns[30].selectionMode",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30308,7 +30340,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].selectionWeight",
+                        "targetField":  "patterns[30].selectionWeight",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30322,7 +30354,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].sourceActionIds",
+                        "targetField":  "patterns[30].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30340,7 +30372,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].stages",
+                        "targetField":  "patterns[30].stages",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30476,7 +30508,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].triggerHealthBar",
+                        "targetField":  "patterns[30].triggerHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -30490,7 +30522,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
-                        "targetField":  "patterns[29].triggerOrder",
+                        "targetField":  "patterns[30].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31422,7 +31454,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].actionId",
+                        "targetField":  "patterns[29].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31436,7 +31468,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].displayName",
+                        "targetField":  "patterns[29].displayName",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31450,7 +31482,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].maximumConsecutiveUses",
+                        "targetField":  "patterns[29].maximumConsecutiveUses",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31464,7 +31496,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].maximumHealthBar",
+                        "targetField":  "patterns[29].maximumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31478,7 +31510,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].maximumRange",
+                        "targetField":  "patterns[29].maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31492,7 +31524,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].minimumHealthBar",
+                        "targetField":  "patterns[29].minimumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31506,7 +31538,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].minimumRange",
+                        "targetField":  "patterns[29].minimumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31520,7 +31552,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].patternId",
+                        "targetField":  "patterns[29].patternId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31534,7 +31566,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].selectionMode",
+                        "targetField":  "patterns[29].selectionMode",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31548,7 +31580,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].selectionWeight",
+                        "targetField":  "patterns[29].selectionWeight",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31562,7 +31594,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].sourceActionIds",
+                        "targetField":  "patterns[29].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31582,7 +31614,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].stages",
+                        "targetField":  "patterns[29].stages",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31748,7 +31780,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].triggerHealthBar",
+                        "targetField":  "patterns[29].triggerHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -31762,7 +31794,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
-                        "targetField":  "patterns[28].triggerOrder",
+                        "targetField":  "patterns[29].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -32999,6 +33031,298 @@
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_EARTHQUAKE_SMASH",
                         "targetField":  "patterns[4].triggerOrder",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "valtan.mechanic.entrance-whirlwind",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "valtan.mechanic.entrance-whirlwind",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "첫 등장 회전 돌진",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "첫 등장 회전 돌진",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].maximumConsecutiveUses",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].maximumHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  160,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  160,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  100.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  100.0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].minimumHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].minimumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].patternId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "VALTAN_ENTRANCE_WHIRLWIND",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "VALTAN_ENTRANCE_WHIRLWIND",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].selectionMode",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NORMAL",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NORMAL",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].selectionWeight",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].sourceActionIds",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  [
+                                            420633
+                                        ],
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  [
+                                            420633
+                                        ],
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].stages",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  [
+                                            {
+                                                "stageId":  "WINDUP",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.windup",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  1070,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            },
+                                            {
+                                                "stageId":  "SWEEP",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.sweep",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  1930,
+                                                "hitShape":  "CIRCLE",
+                                                "hitOuterRadius":  7.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  2,
+                                                "hitIntervalMs":  700,
+                                                "serverDamageProfileId":  "damage.valtan.circular-spin"
+                                            },
+                                            {
+                                                "stageId":  "RECOVERY",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.recovery",
+                                                "stageKind":  "RECOVERY",
+                                                "durationMs":  3160,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            }
+                                        ],
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  [
+                                            {
+                                                "stageId":  "WINDUP",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.windup",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  1070,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            },
+                                            {
+                                                "stageId":  "SWEEP",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.sweep",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  1930,
+                                                "hitShape":  "CIRCLE",
+                                                "hitOuterRadius":  7.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  2,
+                                                "hitIntervalMs":  700,
+                                                "serverDamageProfileId":  "damage.valtan.circular-spin"
+                                            },
+                                            {
+                                                "stageId":  "RECOVERY",
+                                                "actionId":  "valtan.mechanic.entrance-whirlwind.recovery",
+                                                "stageKind":  "RECOVERY",
+                                                "durationMs":  3160,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            }
+                                        ],
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].triggerHealthBar",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34594,7 +34918,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].actionId",
+                        "targetField":  "patterns[31].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34608,7 +34932,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].displayName",
+                        "targetField":  "patterns[31].displayName",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34622,7 +34946,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].maximumConsecutiveUses",
+                        "targetField":  "patterns[31].maximumConsecutiveUses",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34636,7 +34960,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].maximumHealthBar",
+                        "targetField":  "patterns[31].maximumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34650,7 +34974,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].maximumRange",
+                        "targetField":  "patterns[31].maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34664,7 +34988,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].minimumHealthBar",
+                        "targetField":  "patterns[31].minimumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34678,7 +35002,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].minimumRange",
+                        "targetField":  "patterns[31].minimumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34692,7 +35016,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].patternId",
+                        "targetField":  "patterns[31].patternId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34706,7 +35030,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].selectionMode",
+                        "targetField":  "patterns[31].selectionMode",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34720,7 +35044,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].selectionWeight",
+                        "targetField":  "patterns[31].selectionWeight",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34734,7 +35058,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].sourceActionIds",
+                        "targetField":  "patterns[31].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34772,7 +35096,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].stages",
+                        "targetField":  "patterns[31].stages",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34780,10 +35104,25 @@
                                    },
                         "sourceValue":  [
                                             {
-                                                "stageId":  "PORTAL",
-                                                "actionId":  "valtan.mechanic.ghost-transition-15.portal",
+                                                "stageId":  "PORTAL_OPEN",
+                                                "actionId":  "valtan.mechanic.ghost-transition-15.portal-open",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1800,
+                                                "durationMs":  1180,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            },
+                                            {
+                                                "stageId":  "GHOST_APPEAR",
+                                                "actionId":  "valtan.mechanic.ghost-transition-15.ghost-appear",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  620,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -34873,10 +35212,25 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  [
                                             {
-                                                "stageId":  "PORTAL",
-                                                "actionId":  "valtan.mechanic.ghost-transition-15.portal",
+                                                "stageId":  "PORTAL_OPEN",
+                                                "actionId":  "valtan.mechanic.ghost-transition-15.portal-open",
                                                 "stageKind":  "WINDUP",
-                                                "durationMs":  1800,
+                                                "durationMs":  1180,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  ""
+                                            },
+                                            {
+                                                "stageId":  "GHOST_APPEAR",
+                                                "actionId":  "valtan.mechanic.ghost-transition-15.ghost-appear",
+                                                "stageKind":  "WINDUP",
+                                                "durationMs":  620,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -34963,12 +35317,12 @@
                                                 "serverDamageProfileId":  ""
                                             }
                                         ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].triggerHealthBar",
+                        "targetField":  "patterns[31].triggerHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -34982,7 +35336,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
-                        "targetField":  "patterns[30].triggerOrder",
+                        "targetField":  "patterns[31].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36840,7 +37194,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].actionId",
+                        "targetField":  "patterns[28].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36854,7 +37208,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].displayName",
+                        "targetField":  "patterns[28].displayName",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36868,7 +37222,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].maximumConsecutiveUses",
+                        "targetField":  "patterns[28].maximumConsecutiveUses",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36882,7 +37236,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].maximumHealthBar",
+                        "targetField":  "patterns[28].maximumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36896,7 +37250,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].maximumRange",
+                        "targetField":  "patterns[28].maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36910,7 +37264,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].minimumHealthBar",
+                        "targetField":  "patterns[28].minimumHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36924,7 +37278,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].minimumRange",
+                        "targetField":  "patterns[28].minimumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36938,7 +37292,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].patternId",
+                        "targetField":  "patterns[28].patternId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36952,7 +37306,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].selectionMode",
+                        "targetField":  "patterns[28].selectionMode",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36966,7 +37320,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].selectionWeight",
+                        "targetField":  "patterns[28].selectionWeight",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -36980,7 +37334,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].sourceActionIds",
+                        "targetField":  "patterns[28].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -37000,7 +37354,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].stages",
+                        "targetField":  "patterns[28].stages",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -37106,7 +37460,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].triggerHealthBar",
+                        "targetField":  "patterns[28].triggerHealthBar",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
@@ -37120,7 +37474,7 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
-                        "targetField":  "patterns[27].triggerOrder",
+                        "targetField":  "patterns[28].triggerOrder",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",

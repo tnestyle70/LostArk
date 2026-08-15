@@ -7,6 +7,9 @@ param(
     [string]$SimulationPath = 'Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json',
     [string]$GameplayWorldPath = 'Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json',
     [string]$NavigationBlockersPath = 'Data/Navigation/LV_LUT_HEARTRB_ED.navblockers',
+    [string]$DeployPlacementsPath = 'Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.deployplacements',
+    [string]$DebrisRecipeRoot = 'Data/Maps/Authoring/LV_LUT_HEARTRB_ED',
+    [string]$CinematicCameraPath = 'Data/Encounters/Valtan/ValtanCinematicCamera.json',
     [string]$ServerOutputRoot = 'Server/Bin/DataFiles/World',
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
     [ValidateRange(0, 3)]
@@ -20,26 +23,39 @@ $revisionPattern = '^[0-9a-f]{64}$'
 $placementIdPattern = '^[1-9][0-9]{0,19}$'
 $expectedAreaId = 'LV_LUT_HEARTRB_ED'
 $expectedEncounterId = 'ENCOUNTER_VALTAN'
-$firstGroupId = 'destroyable.group.valtan.wall.3705102'
-$firstMutationId = 'mutation.valtan.wall.3705102.break'
+$firstGroupId = 'destroyable.group.valtan.wall.9335938568718910930'
+$firstMutationId = 'mutation.valtan.wall.9335938568718910930.despawn'
 $firstPatternId = 'VALTAN_ARENA_BREAK_109'
 $firstStageId = 'IMPACT'
 $firstActionId = 'valtan.mechanic.arena-break-109.impact'
 $firstStageIndex = 2
-$impactGroupId = 'destroyable.group.valtan.deploy.11047903315509031966'
+$impactGroupIdPrefix = 'destroyable.group.valtan.wall159.'
+$expectedImpactGroupCount = 10
 $impactPatternId = 'VALTAN_ARMOR_BREAK_OPENING'
 $impactStageId = 'WALL_CHARGE'
 $impactActionId = 'valtan.mechanic.armor-break-opening.charge'
 $impactStageIndex = 0
-$impactReceiverId = 'collision.valtan.wallgroup.11047903315509031966.receiver'
-# 13 authored interior groups plus the eight 109 outer ring sectors, and the
-# 77 interior members plus the ring's 24 slabs.
-$expectedProductGroupCount = 21
-$expectedProductBindingCount = 22
-$expectedProductMemberCount = 101
-# Every ring slab is its own emitter; only the interior keeps duplicate walls.
-$expectedProductEmitterCount = 93
-$expectedProductSuppressionAliasCount = 8
+# The first-appearance sweep owns two single-wall groups of its own, so it can
+# never share a group, a member or a receiver with the 159 charge wall.
+$entranceGroupIdPrefix = 'destroyable.group.valtan.entrance.'
+$entrancePatternId = 'VALTAN_ENTRANCE_WHIRLWIND'
+$entranceStageId = 'SWEEP'
+$entranceActionId = 'valtan.mechanic.entrance-whirlwind.sweep'
+$entranceStageIndex = 1
+$expectedEntranceGroupCount = 2
+# The 109 collapse is the outer ring alone. Interior groups stay authored but
+# dormant until the earlier pattern that actually destroys them is identified,
+# so the product contract is expressed as the exact shape of the enabled binding
+# graph rather than as a total row count of the source document.
+$outerGroupIdPrefix = 'destroyable.group.valtan.outerwall109.'
+$expectedOuterGroupCount = 30
+$expectedOuterMemberCount = 30
+$expectedIndependentContactWallCount = 69
+$expectedProductGroupCount = 99
+# Every ring slab is its own emitter and the runtime derives this many rigid
+# fragments from the slab's authored debris recipe.
+$expectedFragmentsPerEmitter = 12
+$expectedOuterSuppressionAliasCount = 0
 
 function Resolve-RepoPath {
     param([string]$Path)
@@ -99,6 +115,113 @@ function Read-NavigationBlockerCatalog {
     }
     if ($cursor -ne $lines.Count) { throw 'Navigation blocker document has trailing rows.' }
     return [pscustomobject]@{ Regions=$regions }
+}
+
+# A wall placement only fractures into pieces if its deploy asset owns a debris
+# recipe, so the publisher joins placement -> asset -> recipe here instead of
+# letting the Client discover a missing recipe at the moment of the collapse.
+function Get-DeployPlacementAssetIds {
+    if ($null -ne $script:DeployPlacementAssetIds) {
+        return $script:DeployPlacementAssetIds
+    }
+    $resolved = Resolve-RepoPath $DeployPlacementsPath
+    if (-not [IO.File]::Exists($resolved)) {
+        throw "Required deploy placement document is missing: $DeployPlacementsPath"
+    }
+    $lines = @([IO.File]::ReadAllLines($resolved, [Text.Encoding]::UTF8))
+    if ($lines.Count -lt 1) { throw 'Deploy placement document is empty.' }
+    $split = { param([string]$line) @([regex]::Matches($line, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') }) }
+    $header = @(& $split $lines[0])
+    if ($header.Count -ne 4 -or $header[0] -ne 'LOSTARK_DEPLOY_PROP_PLACEMENTS' -or
+        $header[1] -ne '1' -or $header[2] -cne $expectedAreaId) {
+        throw 'Deploy placement header is invalid.'
+    }
+    $rowCount = [uint32]$header[3]
+    if ($lines.Count -ne $rowCount + 1) {
+        throw "Deploy placement row count does not match its header: $DeployPlacementsPath"
+    }
+    $assets = @{}
+    for ($rowIndex = 1; $rowIndex -le $rowCount; ++$rowIndex) {
+        $tokens = @(& $split $lines[$rowIndex])
+        if ($tokens.Count -lt 5) { throw 'Deploy placement row is invalid.' }
+        $placementId = [string]$tokens[0]
+        if ($assets.ContainsKey($placementId)) {
+            throw "Duplicate deploy placementId: $placementId"
+        }
+        Assert-StableId $tokens[4] "$placementId deploy assetId"
+        $assets[$placementId] = [string]$tokens[4]
+    }
+    $script:DeployPlacementAssetIds = $assets
+    return $assets
+}
+
+# Each ring slab flies straight away from the one point the boss lands on, so the
+# collapse reads as a single radial shock instead of a directional sweep. The
+# anchor is the pattern's compiled serverMotion landing, never a copy of it.
+function Get-ArenaBreakLandingAnchor {
+    param([object]$Encounter)
+    $anchored = @($Encounter.patterns | Where-Object {
+        $_.patternId -ceq $firstPatternId -and
+        $null -ne $_.PSObject.Properties['serverMotion']
+    })
+    if ($anchored.Count -ne 1) {
+        throw "Exactly one $firstPatternId pattern must declare a serverMotion landing anchor."
+    }
+    $motion = $anchored[0].serverMotion
+    if ([string]$motion.kind -cne 'LEAP_TO_ANCHOR' -or
+        @($motion.landingPosition).Count -ne 3) {
+        throw 'Arena break serverMotion is not a well-formed LEAP_TO_ANCHOR.'
+    }
+    Assert-StableId $motion.anchorId 'serverMotion anchorId'
+    return [pscustomobject]@{
+        AnchorId = [string]$motion.anchorId
+        X = Assert-JsonNumber $motion.landingPosition[0] 'anchor x' -100000.0 100000.0
+        Y = Assert-JsonNumber $motion.landingPosition[1] 'anchor y' -100000.0 100000.0
+        Z = Assert-JsonNumber $motion.landingPosition[2] 'anchor z' -100000.0 100000.0
+    }
+}
+
+function Get-DeployPlacementPositions {
+    if ($null -ne $script:DeployPlacementPositions) {
+        return $script:DeployPlacementPositions
+    }
+    $resolved = Resolve-RepoPath $DeployPlacementsPath
+    $lines = @([IO.File]::ReadAllLines($resolved, [Text.Encoding]::UTF8))
+    $split = { param([string]$line) @([regex]::Matches($line, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') }) }
+    $positions = @{}
+    for ($rowIndex = 1; $rowIndex -lt $lines.Count; ++$rowIndex) {
+        $tokens = @(& $split $lines[$rowIndex])
+        if ($tokens.Count -lt 8) { throw 'Deploy placement row is too short for a transform.' }
+        $positions[[string]$tokens[0]] = [pscustomobject]@{
+            X = [double]$tokens[5]
+            Y = [double]$tokens[6]
+            Z = [double]$tokens[7]
+        }
+    }
+    $script:DeployPlacementPositions = $positions
+    return $positions
+}
+
+function Get-DebrisRecipePieceCount {
+    param([string]$AssetId)
+    if ($null -eq $script:DebrisRecipePieceCounts) {
+        $script:DebrisRecipePieceCounts = @{}
+    }
+    if ($script:DebrisRecipePieceCounts.ContainsKey($AssetId)) {
+        return [int]$script:DebrisRecipePieceCounts[$AssetId]
+    }
+    $resolved = Resolve-RepoPath (Join-Path $DebrisRecipeRoot "$AssetId.debrisrecipe.json")
+    if (-not [IO.File]::Exists($resolved)) {
+        throw "Destruction source asset has no authored debris recipe: $AssetId"
+    }
+    $recipe = Get-Content -LiteralPath $resolved -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($recipe.schema -cne 'lostark.deploy-wall-debris-recipe' -or
+        [string]$recipe.sourceAssetId -cne $AssetId) {
+        throw "Debris recipe identity is invalid: $AssetId"
+    }
+    $pieceCount = @($recipe.pieces).Count
+    $script:DebrisRecipePieceCounts[$AssetId] = $pieceCount
+    return [int]$pieceCount
 }
 
 function Assert-ExactProperties {
@@ -377,7 +500,7 @@ function Compile-ValtanWorldDestruction {
 
     Assert-ExactProperties $Encounter @(
         'schema','formatVersion','encounterId','bossArchetypeId','authority',
-        'fixedTickHz','states','patterns') 'encounter root'
+        'fixedTickHz','introPatternId','states','patterns') 'encounter root'
     Assert-JsonInteger $Encounter.formatVersion 'encounter formatVersion' 3 3
     Assert-JsonInteger $Encounter.fixedTickHz 'encounter fixedTickHz' 30 30
     if ($Encounter.schema -cne 'lostark.encounter-profile' -or
@@ -466,14 +589,27 @@ function Compile-ValtanWorldDestruction {
     foreach ($profile in @($Simulation.profiles)) {
         $profileGroupId = [string]$profile.groupId
         if (-not $groupById.ContainsKey($profileGroupId)) { continue }
-        $groupKey = ($profileGroupId -split '\.')[-1]
         $sourceCollisionIds = [Collections.Generic.List[string]]::new()
         foreach ($element in @($profile.elements)) {
             $sourceId = [string]$element.sourceRuntimePlacementId
             if ($sourceId -cnotmatch $placementIdPattern) {
                 throw "Invalid collision source placement ID: $sourceId"
             }
-            $sourceCollisionIds.Add("collision.valtan.wallgroup.$groupKey.$sourceId")
+            # Group IDs are presentation ownership, not collision identity.
+            # Once every wall is its own group the collision box keeps its
+            # authored stable ID, so resolve it by the exact placement suffix.
+            $sourceSuffix = ".$sourceId"
+            $matches = @($collisionById.Keys | Where-Object {
+                ([string]$_).EndsWith($sourceSuffix, [StringComparison]::Ordinal)
+            })
+            if ($matches.Count -gt 1) {
+                throw "More than one collision box owns source placement $sourceId."
+            }
+            $resolvedSourceCollisionId = ''
+            if ($matches.Count -eq 1) {
+                $resolvedSourceCollisionId = [string]$matches[0]
+            }
+            $sourceCollisionIds.Add($resolvedSourceCollisionId)
         }
         $sourceCollisionIdsByGroup[$profileGroupId] = @($sourceCollisionIds)
     }
@@ -502,32 +638,46 @@ function Compile-ValtanWorldDestruction {
             'offsetMs','receiverCollisionId','enabled') 'world destruction binding'
         Assert-StableId $binding.bindingId 'bindingId'
         Assert-StableId $binding.mutationId "$($binding.bindingId) mutationId"
-        Assert-StableId $binding.patternId "$($binding.bindingId) patternId"
-        Assert-StableId $binding.stageId "$($binding.bindingId) stageId"
         Assert-StableId $binding.receiverCollisionId "$($binding.bindingId) receiverCollisionId" -AllowEmpty
         Assert-UniqueId $bindingIds ([string]$binding.bindingId) 'bindingId'
         Assert-JsonInteger $binding.offsetMs "$($binding.bindingId) offsetMs" 0 60000
         if ($binding.enabled -isnot [bool]) { throw "$($binding.bindingId) enabled must be boolean." }
-        if ($binding.triggerKind -cnotin @('STAGE_TIME','STAGE_ENTER','COLLISION_IMPACT')) {
+        if ($binding.triggerKind -cnotin @(
+            'STAGE_TIME','STAGE_ENTER','COLLISION_IMPACT','COLLIDER_CONTACT')) {
             throw "Unknown triggerKind: $($binding.triggerKind)"
+        }
+        # A contact break answers geometry, not a schedule. It names no pattern
+        # and no stage on purpose, so the same wall falls to whichever animation
+        # actually reaches it.
+        $isContactBinding = $binding.triggerKind -ceq 'COLLIDER_CONTACT'
+        if ($isContactBinding) {
+            if ([string]$binding.patternId -cne '' -or [string]$binding.stageId -cne '') {
+                throw "COLLIDER_CONTACT binding must carry no pattern or stage: $($binding.bindingId)"
+            }
+            if ([string]$binding.receiverCollisionId -ceq '') {
+                throw "COLLIDER_CONTACT binding needs a receiverCollisionId: $($binding.bindingId)"
+            }
+            if (0 -ne [int]$binding.offsetMs) {
+                throw "COLLIDER_CONTACT binding cannot delay a contact: $($binding.bindingId)"
+            }
+        } else {
+            Assert-StableId $binding.patternId "$($binding.bindingId) patternId"
+            Assert-StableId $binding.stageId "$($binding.bindingId) stageId"
         }
         if (-not $mutationById.ContainsKey([string]$binding.mutationId)) {
             throw "Binding references an unknown mutation: $($binding.bindingId)"
         }
-        if (-not $patterns.ContainsKey([string]$binding.patternId) -or
-            -not $patterns[[string]$binding.patternId].ContainsKey([string]$binding.stageId)) {
+        if (-not $isContactBinding -and (
+            -not $patterns.ContainsKey([string]$binding.patternId) -or
+            -not $patterns[[string]$binding.patternId].ContainsKey([string]$binding.stageId))) {
             throw "Binding references an unknown encounter action tuple: $($binding.bindingId)"
         }
         if ([bool]$binding.enabled) { $enabledBindings.Add($binding) }
     }
 
-    if ($enabledBindings.Count -notin @(0, 1, $expectedProductBindingCount)) {
-        throw "Enabled destruction bindings must be dormant, the one-group slice, or the exact $expectedProductBindingCount-binding product set."
-    }
-    if ($enabledBindings.Count -eq $expectedProductBindingCount -and
-        @($WorldEvents.bindings).Count -ne $expectedProductBindingCount) {
-        throw "The product set must enable every one of the exact $expectedProductBindingCount canonical bindings."
-    }
+    # Dormant and the single-group authoring slice stay available; anything else
+    # has to satisfy the exact 109 product contract asserted after compilation.
+    $isProductCandidate = $enabledBindings.Count -gt 1
 
     $serverGroups = [Collections.Generic.List[object]]::new()
     $serverMutations = [Collections.Generic.List[object]]::new()
@@ -537,10 +687,28 @@ function Compile-ValtanWorldDestruction {
     foreach ($binding in @(Sort-OrdinalByProperty @($enabledBindings) 'bindingId')) {
         $mutation = $mutationById[[string]$binding.mutationId]
         $group = $groupById[[string]$mutation.groupId]
-        $resolvedStage = $patterns[[string]$binding.patternId][[string]$binding.stageId]
-        $isImpactGroup = $group.groupId -ceq $impactGroupId
+        $isContactBinding = $binding.triggerKind -ceq 'COLLIDER_CONTACT'
+        $resolvedStage = if ($isContactBinding) { $null } else {
+            $patterns[[string]$binding.patternId][[string]$binding.stageId]
+        }
+        $isImpactGroup = ([string]$group.groupId).StartsWith(
+            $impactGroupIdPrefix, [StringComparison]::Ordinal)
+        $isEntranceGroup = ([string]$group.groupId).StartsWith(
+            $entranceGroupIdPrefix, [StringComparison]::Ordinal)
         $isImpactBinding = $binding.triggerKind -ceq 'COLLISION_IMPACT'
-        $hasExpectedSchedule = if ($isImpactBinding) {
+        $hasExpectedSchedule = if ($isContactBinding) {
+            # A contact break owns no schedule at all. Its whole contract is that
+            # the receiver is one of this group's own authored collision boxes,
+            # which is asserted below against the resolved source box list.
+            $true
+        } elseif ($isImpactBinding -and $isEntranceGroup) {
+            # The first-appearance sweep breaks its own two walls through their
+            # own receivers, never through the 159 charge wall's receiver.
+            $binding.patternId -ceq $entrancePatternId -and
+            $binding.stageId -ceq $entranceStageId -and
+            $resolvedStage.ActionId -ceq $entranceActionId -and
+            [uint32]$resolvedStage.StageIndex -eq [uint32]$entranceStageIndex
+        } elseif ($isImpactBinding) {
             $isImpactGroup -and
             $binding.patternId -ceq $impactPatternId -and
             $binding.stageId -ceq $impactStageId -and
@@ -554,27 +722,60 @@ function Compile-ValtanWorldDestruction {
             [uint32]$resolvedStage.StageIndex -eq [uint32]$firstStageIndex
         }
         $groupKey = ([string]$group.groupId -split '\.')[-1]
-        $collisionStateId = "collision.valtan.wallgroup.$groupKey"
         $navigationStateId = '-'
         if (-not $sourceCollisionIdsByGroup.ContainsKey([string]$group.groupId) -or
             @($sourceCollisionIdsByGroup[[string]$group.groupId]).Count -eq 0) {
             throw "Destruction group has no authored source collision boxes: $($group.groupId)"
         }
         foreach ($sourceCollisionId in @($sourceCollisionIdsByGroup[[string]$group.groupId])) {
-            if (-not $collisionById.ContainsKey([string]$sourceCollisionId) -or
+            if ([string]::IsNullOrEmpty([string]$sourceCollisionId) -or
+                -not $collisionById.ContainsKey([string]$sourceCollisionId) -or
                 -not [bool]$collisionById[[string]$sourceCollisionId].enabled) {
                 throw "Destruction source collision box is missing or disabled: $sourceCollisionId"
             }
         }
-        if ($isImpactGroup) {
+        $sourceCollisionIds = @($sourceCollisionIdsByGroup[[string]$group.groupId])
+        if ($sourceCollisionIds.Count -eq 1) {
+            # Exact leaf ownership also reaches its `.receiver` child when the
+            # wall commits, so the receiver cannot remain after the mesh goes.
+            $collisionStateId = [string]$sourceCollisionIds[0]
+        } else {
+            $collisionParents = @($sourceCollisionIds | ForEach-Object {
+                $lastDot = ([string]$_).LastIndexOf('.')
+                if ($lastDot -le 0) { throw "Collision source has no stable parent: $_" }
+                ([string]$_).Substring(0, $lastDot)
+            } | Select-Object -Unique)
+            if ($collisionParents.Count -ne 1) {
+                throw "Multi-member destruction group does not own one collision parent: $($group.groupId)"
+            }
+            $collisionStateId = [string]$collisionParents[0]
+        }
+        if ($isContactBinding) {
+            # The receiver has to be one of this group's own authored collision
+            # boxes, so a collider touching one wall can never break another.
+            if ([string]$binding.receiverCollisionId -cnotin $sourceCollisionIds) {
+                throw "Contact destruction binding does not receive on its own wall: $($binding.bindingId)"
+            }
+        } elseif ($isEntranceGroup) {
+            # Each entrance wall owns exactly one receiver named after its own
+            # group, so one contact can never resolve to the other wall.
+            $expectedReceiverId = "collision.valtan.wallgroup.$groupKey.receiver"
+            if (-not $isImpactBinding -or
+                [string]$binding.receiverCollisionId -cne $expectedReceiverId -or
+                -not $collisionById.ContainsKey($expectedReceiverId) -or
+                -not [bool]$collisionById[$expectedReceiverId].enabled) {
+                throw "Entrance destruction binding is missing its own receiver: $($binding.bindingId)"
+            }
+        } elseif ($isImpactGroup) {
+            $expectedReceiverId = $collisionStateId + '.receiver'
             $receiverContractValid = if ($isImpactBinding) {
-                [string]$binding.receiverCollisionId -ceq $impactReceiverId
+                [string]$binding.receiverCollisionId -ceq $expectedReceiverId
             } else {
                 [string]::IsNullOrEmpty([string]$binding.receiverCollisionId)
             }
             if (-not $receiverContractValid -or
-                -not $collisionById.ContainsKey($impactReceiverId) -or
-                -not [bool]$collisionById[$impactReceiverId].enabled) {
+                -not $collisionById.ContainsKey($expectedReceiverId) -or
+                -not [bool]$collisionById[$expectedReceiverId].enabled) {
                 throw "Impact destruction binding is missing its receiver: $($binding.bindingId)"
             }
         } elseif ($isImpactBinding -or
@@ -588,9 +789,6 @@ function Compile-ValtanWorldDestruction {
         $navRegionIds = @($group.navigationRegionIds)
         if ($navRegionIds.Count -gt 1) {
             throw "Destruction group declares more than one navigation region: $($group.groupId)"
-        }
-        if ($isImpactGroup -and $navRegionIds.Count -ne 1) {
-            throw "Impact destruction binding is missing its navigation region: $($binding.bindingId)"
         }
         if ($navRegionIds.Count -eq 1) {
             $navRegionId = [string]$navRegionIds[0]
@@ -625,14 +823,21 @@ function Compile-ValtanWorldDestruction {
                 NavigationStateId = $navigationStateId
             })
         }
+        # A contact binding compiles with the empty marker in every schedule
+        # column, which is what tells the Server to match on geometry alone.
+        $compiledTriggerKind = switch ([string]$binding.triggerKind) {
+            'COLLISION_IMPACT' { 'BOSS_IMPACT' }
+            'COLLIDER_CONTACT' { 'COLLIDER_CONTACT' }
+            default { 'STAGE' }
+        }
         $serverBindings.Add([ordered]@{
             BindingId = [string]$binding.bindingId
             MutationId = [string]$binding.mutationId
-            TriggerKind = if ($binding.triggerKind -ceq 'COLLISION_IMPACT') { 'BOSS_IMPACT' } else { 'STAGE' }
-            PatternId = [string]$binding.patternId
-            StageId = [string]$binding.stageId
-            ActionId = [string]$resolvedStage.ActionId
-            StageIndex = [uint32]$resolvedStage.StageIndex
+            TriggerKind = $compiledTriggerKind
+            PatternId = if ($isContactBinding) { '-' } else { [string]$binding.patternId }
+            StageId = if ($isContactBinding) { '-' } else { [string]$binding.stageId }
+            ActionId = if ($isContactBinding) { '-' } else { [string]$resolvedStage.ActionId }
+            StageIndex = if ($isContactBinding) { [uint32]0 } else { [uint32]$resolvedStage.StageIndex }
             ReceiverId = if ([string]::IsNullOrEmpty([string]$binding.receiverCollisionId)) { '-' } else { [string]$binding.receiverCollisionId }
         })
     }
@@ -642,26 +847,134 @@ function Compile-ValtanWorldDestruction {
         ($serverGroups.Count -ne 1 -or $serverGroups[0].GroupId -cne $firstGroupId)) {
         throw 'The one-group destruction slice must be the exact 3705102 group.'
     }
-    if ($enabledBindings.Count -eq $expectedProductBindingCount -and
-        ($serverGroups.Count -ne $expectedProductGroupCount -or
-         $serverMutations.Count -ne $expectedProductGroupCount -or
-         $compiledMemberCount -ne $expectedProductMemberCount)) {
-        throw "The final-phase destruction set must compile exactly $expectedProductGroupCount groups and $expectedProductMemberCount unique members."
+
+    # The 109 collapse and the 159 wall charge are two different contracts and
+    # are validated as two disjoint reachable sub-graphs of the enabled bindings.
+    $arenaBreakBindings = @($serverBindings | Where-Object {
+        $_.PatternId -ceq $firstPatternId -and $_.StageId -ceq $firstStageId -and
+        $_.ActionId -ceq $firstActionId -and [uint32]$_.StageIndex -eq [uint32]$firstStageIndex -and
+        $_.TriggerKind -ceq 'STAGE' -and $_.ReceiverId -ceq '-'
+    })
+    $impactBindings = @($serverBindings | Where-Object {
+        $_.PatternId -ceq $impactPatternId -and $_.StageId -ceq $impactStageId -and
+        $_.ActionId -ceq $impactActionId -and [uint32]$_.StageIndex -eq [uint32]$impactStageIndex -and
+        $_.TriggerKind -ceq 'BOSS_IMPACT' -and $_.ReceiverId -cne '-'
+    })
+    $entranceBindings = @($serverBindings | Where-Object {
+        $_.PatternId -ceq $entrancePatternId -and $_.StageId -ceq $entranceStageId -and
+        $_.ActionId -ceq $entranceActionId -and
+        [uint32]$_.StageIndex -eq [uint32]$entranceStageIndex -and
+        $_.TriggerKind -ceq 'BOSS_IMPACT'
+    })
+    $entranceGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $entranceReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $entranceMemberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($binding in $entranceBindings) {
+        $reachedGroupId = [string]$mutationById[[string]$binding.MutationId].groupId
+        if (-not $reachedGroupId.StartsWith($entranceGroupIdPrefix, [StringComparison]::Ordinal)) {
+            throw "The entrance sweep reaches a group outside its own pair: $reachedGroupId"
+        }
+        if (-not $entranceGroupIds.Add($reachedGroupId)) {
+            throw "Two entrance bindings reach the same wall: $reachedGroupId"
+        }
+        if (-not $entranceReceiverIds.Add([string]$binding.ReceiverId)) {
+            throw "Two entrance walls share one receiver: $($binding.ReceiverId)"
+        }
+        foreach ($memberId in @($groupById[$reachedGroupId].memberPlacementIds)) {
+            if (-not $entranceMemberIds.Add([string]$memberId)) {
+                throw "Entrance member is claimed twice: $memberId"
+            }
+        }
     }
-    if ($enabledBindings.Count -eq $expectedProductBindingCount) {
-        $arenaBreakBindings = @($serverBindings | Where-Object {
-            $_.PatternId -ceq $firstPatternId -and $_.StageId -ceq $firstStageId -and
-            $_.ActionId -ceq $firstActionId -and [uint32]$_.StageIndex -eq [uint32]$firstStageIndex -and
-            $_.TriggerKind -ceq 'STAGE' -and $_.ReceiverId -ceq '-'
-        })
-        $impactBindings = @($serverBindings | Where-Object {
-            $_.PatternId -ceq $impactPatternId -and $_.StageId -ceq $impactStageId -and
-            $_.ActionId -ceq $impactActionId -and [uint32]$_.StageIndex -eq [uint32]$impactStageIndex -and
-            $_.TriggerKind -ceq 'BOSS_IMPACT' -and $_.ReceiverId -ceq $impactReceiverId
-        })
-        if ($arenaBreakBindings.Count -ne $expectedProductGroupCount -or
-            $impactBindings.Count -ne 1) {
-            throw 'The destruction schedule must contain thirteen 80-bar landing bindings and one opening impact binding.'
+    # Every ordinary destructible source wall owns exactly one contact binding,
+    # receiving on its own collision box. The thirty additional 109 outer walls
+    # are stage-only and must not enter this set. A leaf group may additionally
+    # own suppress-only duplicate placements but still has one source collision.
+    $contactBindings = @($serverBindings | Where-Object {
+        $_.TriggerKind -ceq 'COLLIDER_CONTACT'
+    })
+    $contactGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $contactReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($binding in $contactBindings) {
+        $reachedGroupId = [string]$mutationById[[string]$binding.MutationId].groupId
+        if (-not $contactGroupIds.Add($reachedGroupId)) {
+            throw "Two contact bindings reach the same wall: $reachedGroupId"
+        }
+        if (-not $contactReceiverIds.Add([string]$binding.ReceiverId)) {
+            throw "Two walls share one contact receiver: $($binding.ReceiverId)"
+        }
+        $ownedSourceCollisionIds = @($sourceCollisionIdsByGroup[$reachedGroupId])
+        if ($ownedSourceCollisionIds.Count -ne 1 -or
+            [string]$binding.ReceiverId -cne [string]$ownedSourceCollisionIds[0]) {
+            throw "A contact binding must receive on its own wall collision box: $($binding.BindingId)"
+        }
+    }
+    $outerFragmentActorCount = 0
+    $outerGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $outerMemberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $interior109BindingCount = 0
+    foreach ($binding in $arenaBreakBindings) {
+        $reachedGroupId = [string]$mutationById[[string]$binding.MutationId].groupId
+        if (-not $reachedGroupId.StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)) {
+            $interior109BindingCount++
+            continue
+        }
+        if (-not $outerGroupIds.Add($reachedGroupId)) {
+            throw "Two enabled 109 bindings reach the same outer ring group: $reachedGroupId"
+        }
+        foreach ($memberId in @($groupById[$reachedGroupId].memberPlacementIds)) {
+            if (-not $outerMemberIds.Add([string]$memberId)) {
+                throw "Outer ring member is claimed twice: $memberId"
+            }
+        }
+    }
+
+    if ($isProductCandidate) {
+        if ($arenaBreakBindings.Count + $impactBindings.Count +
+            $entranceBindings.Count + $contactBindings.Count -ne
+            $enabledBindings.Count) {
+            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage or 159 impact contract.'
+        }
+        if ($entranceBindings.Count -ne $expectedEntranceGroupCount -or
+            $entranceGroupIds.Count -ne $expectedEntranceGroupCount -or
+            $entranceMemberIds.Count -ne $expectedEntranceGroupCount) {
+            throw "The first-appearance sweep must break exactly $expectedEntranceGroupCount separate front walls."
+        }
+        foreach ($entranceMemberId in $entranceMemberIds) {
+            if ($outerMemberIds.Contains($entranceMemberId)) {
+                throw "An entrance wall is also a 109 ring slab: $entranceMemberId"
+            }
+        }
+        if ($interior109BindingCount -ne 0) {
+            throw "The 109 collapse must reach the outer ring only, but $interior109BindingCount interior binding(s) are still enabled."
+        }
+        if ($outerGroupIds.Count -ne $expectedOuterGroupCount) {
+            throw "The 109 collapse must reach exactly $expectedOuterGroupCount outer ring groups, not $($outerGroupIds.Count)."
+        }
+        if ($outerMemberIds.Count -ne $expectedOuterMemberCount) {
+            throw "The 109 outer ring must own exactly $expectedOuterMemberCount wall placements, not $($outerMemberIds.Count)."
+        }
+        $impactGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $impactReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($impactBinding in $impactBindings) {
+            $impactReachedGroupId = [string]$mutationById[[string]$impactBinding.MutationId].groupId
+            if (-not $impactReachedGroupId.StartsWith(
+                $impactGroupIdPrefix, [StringComparison]::Ordinal) -or
+                -not $impactGroupIds.Add($impactReachedGroupId) -or
+                -not $impactReceiverIds.Add([string]$impactBinding.ReceiverId)) {
+                throw "The 159 impact walls must own unique groups and receivers: $($impactBinding.BindingId)"
+            }
+        }
+        if ($impactBindings.Count -ne $expectedImpactGroupCount -or
+            $impactGroupIds.Count -ne $expectedImpactGroupCount -or
+            $impactReceiverIds.Count -ne $expectedImpactGroupCount) {
+            throw "The destruction schedule must contain exactly $expectedImpactGroupCount independent 159 wall-charge bindings."
+        }
+        $expectedContactBindingCount = $expectedIndependentContactWallCount
+        if ($contactBindings.Count -ne $expectedContactBindingCount -or
+            $contactGroupIds.Count -ne $expectedContactBindingCount -or
+            $contactReceiverIds.Count -ne $expectedContactBindingCount) {
+            throw "Every ordinary wall must own exactly one independent contact binding."
         }
     }
 
@@ -702,6 +1015,75 @@ function Compile-ValtanWorldDestruction {
         }
         $debrisProfileByGroupId[[string]$profile.groupId] = $profile
     }
+
+    # One emitter per ring slab, and every slab must own a complete 12-piece
+    # recipe. A wall that cannot fracture would otherwise simply disappear at
+    # the moment of the collapse, which the runtime rejects far too late.
+    if ($isProductCandidate) {
+        $deployAssetIds = Get-DeployPlacementAssetIds
+        $anchor = Get-ArenaBreakLandingAnchor $Encounter
+        $placementPositions = Get-DeployPlacementPositions
+        $outerEmitterIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($groupId in @($outerGroupIds | Sort-Object -CaseSensitive)) {
+            $outerProfile = $debrisProfileByGroupId[$groupId]
+            if ($null -eq $outerProfile) {
+                throw "Outer ring group has no debris presentation profile: $groupId"
+            }
+            foreach ($emitter in @($outerProfile.emitters)) {
+                $sourceId = [string]$emitter.sourceRuntimePlacementId
+                if (-not $outerMemberIds.Contains($sourceId) -or
+                    -not $outerEmitterIds.Add($sourceId)) {
+                    throw "Outer ring emitter is outside its group or duplicated: $groupId/$sourceId"
+                }
+                if (@($emitter.suppressionAliasPlacementIds).Count -ne
+                    $expectedOuterSuppressionAliasCount) {
+                    throw "Outer ring wall must be its own emitter without suppression aliases: $sourceId"
+                }
+                if (-not $deployAssetIds.ContainsKey($sourceId)) {
+                    throw "Outer ring wall has no deploy placement row: $sourceId"
+                }
+                $pieceCount = Get-DebrisRecipePieceCount $deployAssetIds[$sourceId]
+                if ($pieceCount -ne $expectedFragmentsPerEmitter) {
+                    throw "Outer ring wall $sourceId fractures into $pieceCount pieces instead of $expectedFragmentsPerEmitter."
+                }
+                $outerFragmentActorCount += $pieceCount
+
+                if (-not $placementPositions.ContainsKey($sourceId)) {
+                    throw "Outer ring wall has no deploy transform: $sourceId"
+                }
+                $wall = $placementPositions[$sourceId]
+                $radialX = $wall.X - $anchor.X
+                $radialZ = $wall.Z - $anchor.Z
+                $radialLength = [Math]::Sqrt($radialX * $radialX + $radialZ * $radialZ)
+                if ($radialLength -lt 0.001) {
+                    throw "Outer ring wall sits on the landing anchor: $sourceId"
+                }
+                $emitterX = [double]$emitter.direction[0]
+                $emitterZ = [double]$emitter.direction[2]
+                $emitterLength = [Math]::Sqrt(
+                    $emitterX * $emitterX + $emitterZ * $emitterZ)
+                if ($emitterLength -lt 0.001) {
+                    throw "Outer ring debris has no horizontal direction: $sourceId"
+                }
+                $alignment = (($radialX / $radialLength) * ($emitterX / $emitterLength)) +
+                    (($radialZ / $radialLength) * ($emitterZ / $emitterLength))
+                if ($alignment -lt 0.999) {
+                    throw "Outer ring wall $sourceId does not launch radially outward from $($anchor.AnchorId) (alignment $alignment)."
+                }
+                if ([double]$emitter.direction[1] -le 0.0) {
+                    throw "Outer ring wall $sourceId has no upward lift."
+                }
+            }
+        }
+        if ($outerEmitterIds.Count -ne $expectedOuterMemberCount) {
+            throw "The 109 outer ring must compile exactly $expectedOuterMemberCount debris emitters, not $($outerEmitterIds.Count)."
+        }
+        if ($outerFragmentActorCount -ne
+            $expectedOuterMemberCount * $expectedFragmentsPerEmitter) {
+            throw "The 109 collapse must stage exactly $($expectedOuterMemberCount * $expectedFragmentsPerEmitter) debris actors, not $outerFragmentActorCount."
+        }
+    }
+
     $projectionGroups = @(Sort-OrdinalByProperty @($serverGroups) 'GroupId' | ForEach-Object {
         $profile = $debrisProfileByGroupId[[string]$_.GroupId]
         if ($null -eq $profile) {
@@ -764,6 +1146,12 @@ function Compile-ValtanWorldDestruction {
         SuppressionAliasCount = @($projectionGroups | ForEach-Object {
             $_.suppressionAliasPlacementIds
         }).Count
+        OuterGroupCount = $outerGroupIds.Count
+        OuterMemberCount = $outerMemberIds.Count
+        OuterFragmentActorCount = $outerFragmentActorCount
+        Interior109BindingCount = $interior109BindingCount
+        ImpactBindingCount = $impactBindings.Count
+        ContactBindingCount = $contactBindings.Count
     }
 }
 
@@ -845,21 +1233,42 @@ function Invoke-ContractTests {
     $encounter = Read-JsonDocument $EncounterPath
     $simulation = Read-JsonDocument $SimulationPath
     $canonical = Compile-ValtanWorldDestruction $source $encounter $simulation
-    if ($canonical.GroupCount -ne $expectedProductGroupCount -or
-        $canonical.BindingCount -ne $expectedProductBindingCount -or
-        $canonical.MemberCount -ne $expectedProductMemberCount -or
-        $canonical.EmitterCount -ne $expectedProductEmitterCount -or
-        $canonical.SuppressionAliasCount -ne $expectedProductSuppressionAliasCount -or
+    $expectedFragmentActorCount =
+        $expectedOuterMemberCount * $expectedFragmentsPerEmitter
+    # Every source wall is an independent group. The sixty-nine ordinary walls
+    # own contact bindings; the thirty 109 outer walls are stage-only. The graph
+    # also carries ten 159 impact bindings and two first-appearance bindings.
+    $expectedCanonicalGroupCount = $expectedProductGroupCount
+    $expectedCanonicalBindingCount =
+        $expectedIndependentContactWallCount + $expectedOuterGroupCount +
+        $expectedImpactGroupCount + $expectedEntranceGroupCount
+    if ($canonical.OuterGroupCount -ne $expectedOuterGroupCount -or
+        $canonical.OuterMemberCount -ne $expectedOuterMemberCount -or
+        $canonical.OuterFragmentActorCount -ne $expectedFragmentActorCount -or
+        $canonical.Interior109BindingCount -ne 0 -or
+        $canonical.ImpactBindingCount -ne $expectedImpactGroupCount -or
+        $canonical.ContactBindingCount -ne $expectedIndependentContactWallCount -or
+        $canonical.GroupCount -ne $expectedCanonicalGroupCount -or
+        $canonical.BindingCount -ne $expectedCanonicalBindingCount -or
         $canonical.Revision -cnotmatch $revisionPattern) {
-        throw "Canonical source did not compile the exact $expectedProductGroupCount-group/$expectedProductBindingCount-binding/$expectedProductMemberCount-member/$expectedProductSuppressionAliasCount-alias product set."
+        throw "Canonical source did not compile $expectedProductGroupCount independent walls, $expectedIndependentContactWallCount ordinary contact bindings and the exact 109/entrance/159 schedules."
     }
     $canonicalProjection = $canonical.ClientJson | ConvertFrom-Json
     if ($canonicalProjection.formatVersion -ne 2 -or
-        @($canonicalProjection.groups).Count -ne $expectedProductGroupCount -or
-        @($canonicalProjection.groups | ForEach-Object {
+        @($canonicalProjection.groups).Count -ne $expectedCanonicalGroupCount) {
+        throw 'Canonical projection did not compile the exact formatVersion 2 group contract.'
+    }
+    $canonicalOuterGroups = @($canonicalProjection.groups | Where-Object {
+        ([string]$_.groupId).StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)
+    })
+    if ($canonicalOuterGroups.Count -ne $expectedOuterGroupCount -or
+        @($canonicalOuterGroups | ForEach-Object {
             $_.suppressionAliasPlacementIds
-        }).Count -ne 8) {
-        throw 'Canonical projection did not compile the exact formatVersion 2 suppression contract.'
+        }).Count -ne 0 -or
+        @($canonicalOuterGroups | ForEach-Object {
+            $_.memberPlacementIds
+        }).Count -ne $expectedOuterMemberCount) {
+        throw 'Canonical projection did not compile the exact outer ring suppression contract.'
     }
     $dormantSource = Copy-JsonObject $source
     foreach ($binding in @($dormantSource.bindings)) { $binding.enabled = $false }
@@ -879,7 +1288,7 @@ function Invoke-ContractTests {
     $first.enabled = $true
     $compiled = Compile-ValtanWorldDestruction $enabled $encounter $simulation
     if ($compiled.GroupCount -ne 1 -or $compiled.BindingCount -ne 1 -or
-        $compiled.MemberCount -ne 5 -or $compiled.Revision -cnotmatch $revisionPattern) {
+        $compiled.MemberCount -ne 1 -or $compiled.Revision -cnotmatch $revisionPattern) {
         throw 'Enabled first-slice fixture did not compile exactly one group.'
     }
 
@@ -892,6 +1301,61 @@ function Invoke-ContractTests {
     $partialBinding.receiverCollisionId = ''
     $partialBinding.enabled = $true
     Assert-Throws { Compile-ValtanWorldDestruction $partial $encounter $simulation } 'partial product set'
+
+    # An interior group re-joining the 109 batch is the exact regression the
+    # outer-ring contract exists to stop.
+    $interiorRejoin = Copy-JsonObject $source
+    $interiorBinding = $interiorRejoin.bindings | Where-Object {
+        $_.mutationId -CEQ $firstMutationId } | Select-Object -First 1
+    $interiorBinding.enabled = $true
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $interiorRejoin $encounter $simulation
+    } 'interior group rejoining the 109 batch'
+
+    # A ring wall dropped from the batch leaves a permanent hole in the wall.
+    $missingSector = Copy-JsonObject $source
+    $droppedSector = $missingSector.bindings | Where-Object {
+        $_.bindingId -CEQ 'binding.valtan.outerwall109.1090000000000016.impact'
+    } | Select-Object -First 1
+    $droppedSector.enabled = $false
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $missingSector $encounter $simulation
+    } 'missing independent outer ring wall'
+
+    # Removing one leaf from all three source collections is still a 29-wall
+    # ring and must not publish as the product set.
+    $missingWall = Copy-JsonObject $source
+    $missingGroupId = 'destroyable.group.valtan.outerwall109.1090000000000027'
+    $missingMutationId = 'mutation.valtan.outerwall109.1090000000000027.despawn'
+    $missingWall.groups = @($missingWall.groups | Where-Object {
+        $_.groupId -cne $missingGroupId })
+    $missingWall.mutations = @($missingWall.mutations | Where-Object {
+        $_.mutationId -cne $missingMutationId })
+    $missingWall.bindings = @($missingWall.bindings | Where-Object {
+        $_.mutationId -cne $missingMutationId })
+    $missingWallSimulation = Copy-JsonObject $simulation
+    $missingWallSimulation.profiles = @(
+        $missingWallSimulation.profiles | Where-Object {
+            $_.groupId -cne $missingGroupId })
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $missingWall $encounter $missingWallSimulation
+    } 'outer ring wall removed from its sector'
+
+    # A ring slab whose deploy asset owns no 12-piece recipe would vanish rather
+    # than fracture, so the publisher rejects it before the Client ever sees it.
+    $preservedAssetIds = $script:DeployPlacementAssetIds
+    try {
+        $injectedAssetIds = @{}
+        foreach ($entry in (Get-DeployPlacementAssetIds).GetEnumerator()) {
+            $injectedAssetIds[$entry.Key] = $entry.Value
+        }
+        $injectedAssetIds['1090000000000025'] = 'DEPLOY_ITR_02326'
+        $script:DeployPlacementAssetIds = $injectedAssetIds
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $source $encounter $simulation
+        } 'outer ring wall without a debris recipe'
+    }
+    finally { $script:DeployPlacementAssetIds = $preservedAssetIds }
 
     $invalidVersion = Copy-JsonObject $enabled
     $invalidVersion.formatVersion = 2
@@ -987,4 +1451,4 @@ $result = Compile-ValtanWorldDestruction $worldEvents $encounter $simulation
 if ($Mode -eq 'Publish') {
     Publish-CompiledArtifacts $result $ServerOutputRoot $ClientOutputRoot $FailureAfterPromote
 }
-Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) revision=$($result.Revision)"
+Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)walls/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) impact159=$($result.ImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"

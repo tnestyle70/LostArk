@@ -112,6 +112,29 @@ namespace LostArk::Server
 		float fHitHalfWidth = 0.f;
 		std::uint32_t iHitCount = 0;
 		std::uint32_t iHitIntervalMs = 0;
+		/* This ACTIVE hit is a physical axe contact candidate. Damage hits that
+		are roars, magic, waves or floor mechanics deliberately leave this false. */
+		bool bWallContact = false;
+	};
+
+	enum class BOSS_PATTERN_MOTION_KIND : std::uint8_t
+	{
+		NONE,
+		LEAP_TO_ANCHOR
+	};
+
+	/* A pattern whose boss motion the Server computes itself carries one
+	compiled anchor. The leap landing, the cinematic camera lookAt and the radial
+	wall launch directions all read this one position, so none of them can drift
+	into a private copy of the coordinate. */
+	struct BOSS_PATTERN_MOTION
+	{
+		BOSS_PATTERN_MOTION_KIND eKind = BOSS_PATTERN_MOTION_KIND::NONE;
+		std::string strAnchorId;
+		float fLandingX = 0.f;
+		float fLandingY = 0.f;
+		float fLandingZ = 0.f;
+		float fApexHeight = 0.f;
 	};
 
 	struct BOSS_PATTERN_DEFINITION
@@ -119,6 +142,7 @@ namespace LostArk::Server
 		std::string strEncounterId;
 		std::string strPatternId;
 		std::string strActionId;
+		BOSS_PATTERN_MOTION Motion;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
 		std::uint32_t iMinimumHealthBar = 0;
 		std::uint32_t iMaximumHealthBar = 0;
@@ -179,6 +203,10 @@ namespace LostArk::Server
 			const std::string& archetypeId) const;
 		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
 			const std::string& encounterId) const;
+		/* Pattern the encounter plays exactly once when the boss first engages,
+		before any health-bar or weighted selection runs. Empty when unknown. */
+		const std::string& Find_IntroPatternId(
+			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
 		/* Percent of the caster's attack power, straight from the official
@@ -213,6 +241,7 @@ namespace LostArk::Server
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;
 		std::unordered_map<std::string, std::vector<BOSS_PATTERN_DEFINITION>>
 			m_BossPatterns;
+		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

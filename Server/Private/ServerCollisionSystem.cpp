@@ -3,6 +3,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <set>
@@ -21,6 +22,21 @@ namespace
 	{
 		float x = 0.f;
 		float z = 0.f;
+	};
+
+	struct WORLD_POINT final
+	{
+		float x = 0.f;
+		float z = 0.f;
+	};
+
+	struct OBB_2D final
+	{
+		WORLD_POINT center{};
+		WORLD_POINT right{};
+		WORLD_POINT forward{};
+		float halfRight = 0.f;
+		float halfForward = 0.f;
 	};
 
 	LOCAL_POINT To_BoxLocal(
@@ -56,6 +72,214 @@ namespace
 		inOutEnter = (std::max)(inOutEnter, first);
 		inOutExit = (std::min)(inOutExit, second);
 		return inOutEnter <= inOutExit;
+	}
+
+	float Dot(const WORLD_POINT& left, const WORLD_POINT& right)
+	{
+		return left.x * right.x + left.z * right.z;
+	}
+
+	WORLD_POINT Subtract(const WORLD_POINT& left, const WORLD_POINT& right)
+	{
+		return { left.x - right.x, left.z - right.z };
+	}
+
+	OBB_2D To_Obb(const WORLD_BOOTSTRAP_PLACEMENT& box)
+	{
+		const float yaw = box.fYawDegrees * DEGREES_TO_RADIANS;
+		const float cosine = std::cos(yaw);
+		const float sine = std::sin(yaw);
+		return
+		{
+			{ box.fPositionX, box.fPositionZ },
+			{ cosine, -sine },
+			{ sine, cosine },
+			box.fHalfExtentX,
+			box.fHalfExtentZ
+		};
+	}
+
+	OBB_2D Make_AttackObb(
+		const float centerX,
+		const float centerZ,
+		const float yawDegrees,
+		const float halfRight,
+		const float halfForward)
+	{
+		const float yaw = yawDegrees * DEGREES_TO_RADIANS;
+		const float cosine = std::cos(yaw);
+		const float sine = std::sin(yaw);
+		return
+		{
+			{ centerX, centerZ },
+			{ cosine, -sine },
+			{ sine, cosine },
+			halfRight,
+			halfForward
+		};
+	}
+
+	std::array<WORLD_POINT, 4u> Get_Corners(const OBB_2D& box)
+	{
+		const auto corner = [&box](
+			const float rightSign, const float forwardSign)
+		{
+			return WORLD_POINT
+			{
+				box.center.x + box.right.x * box.halfRight * rightSign +
+					box.forward.x * box.halfForward * forwardSign,
+				box.center.z + box.right.z * box.halfRight * rightSign +
+					box.forward.z * box.halfForward * forwardSign
+			};
+		};
+		return
+		{
+			corner(-1.f, -1.f),
+			corner(1.f, -1.f),
+			corner(1.f, 1.f),
+			corner(-1.f, 1.f)
+		};
+	}
+
+	bool Overlaps_OnAxis(
+		const OBB_2D& left,
+		const OBB_2D& right,
+		const WORLD_POINT& axis)
+	{
+		const float centerDistance = std::abs(Dot(
+			Subtract(right.center, left.center), axis));
+		const float leftRadius =
+			left.halfRight * std::abs(Dot(left.right, axis)) +
+			left.halfForward * std::abs(Dot(left.forward, axis));
+		const float rightRadius =
+			right.halfRight * std::abs(Dot(right.right, axis)) +
+			right.halfForward * std::abs(Dot(right.forward, axis));
+		return centerDistance <= leftRadius + rightRadius + CONTACT_MARGIN;
+	}
+
+	bool Obbs_Intersect(const OBB_2D& left, const OBB_2D& right)
+	{
+		return Overlaps_OnAxis(left, right, left.right) &&
+			Overlaps_OnAxis(left, right, left.forward) &&
+			Overlaps_OnAxis(left, right, right.right) &&
+			Overlaps_OnAxis(left, right, right.forward);
+	}
+
+	bool Circle_IntersectsObb(
+		const float centerX,
+		const float centerZ,
+		const float radius,
+		const WORLD_BOOTSTRAP_PLACEMENT& box)
+	{
+		const LOCAL_POINT local = To_BoxLocal(centerX, centerZ, box);
+		const float closestX = (std::clamp)(
+			local.x, -box.fHalfExtentX, box.fHalfExtentX);
+		const float closestZ = (std::clamp)(
+			local.z, -box.fHalfExtentZ, box.fHalfExtentZ);
+		const float deltaX = local.x - closestX;
+		const float deltaZ = local.z - closestZ;
+		return deltaX * deltaX + deltaZ * deltaZ <=
+			(radius + CONTACT_MARGIN) * (radius + CONTACT_MARGIN);
+	}
+
+	bool Ring_IntersectsObb(
+		const float centerX,
+		const float centerZ,
+		const float innerRadius,
+		const float outerRadius,
+		const WORLD_BOOTSTRAP_PLACEMENT& box)
+	{
+		if (!Circle_IntersectsObb(centerX, centerZ, outerRadius, box))
+			return false;
+		const auto corners = Get_Corners(To_Obb(box));
+		float farthestSquared = 0.f;
+		for (const WORLD_POINT& corner : corners)
+		{
+			const float deltaX = corner.x - centerX;
+			const float deltaZ = corner.z - centerZ;
+			farthestSquared = (std::max)(
+				farthestSquared, deltaX * deltaX + deltaZ * deltaZ);
+		}
+		return farthestSquared + CONTACT_MARGIN >= innerRadius * innerRadius;
+	}
+
+	void Project_Polygon(
+		const std::vector<WORLD_POINT>& polygon,
+		const WORLD_POINT& axis,
+		float& outMinimum,
+		float& outMaximum)
+	{
+		outMinimum = Dot(polygon.front(), axis);
+		outMaximum = outMinimum;
+		for (std::size_t index = 1u; index < polygon.size(); ++index)
+		{
+			const float projection = Dot(polygon[index], axis);
+			outMinimum = (std::min)(outMinimum, projection);
+			outMaximum = (std::max)(outMaximum, projection);
+		}
+	}
+
+	bool Convex_PolygonsIntersect(
+		const std::vector<WORLD_POINT>& left,
+		const std::vector<WORLD_POINT>& right)
+	{
+		const auto separatedOnAnyEdge = [&left, &right](
+			const std::vector<WORLD_POINT>& polygon)
+		{
+			for (std::size_t index = 0u; index < polygon.size(); ++index)
+			{
+				const WORLD_POINT edge = Subtract(
+					polygon[(index + 1u) % polygon.size()], polygon[index]);
+				const WORLD_POINT axis{ -edge.z, edge.x };
+				const float lengthSquared = Dot(axis, axis);
+				if (lengthSquared <= SWEEP_EPSILON)
+					continue;
+				float leftMinimum = 0.f;
+				float leftMaximum = 0.f;
+				float rightMinimum = 0.f;
+				float rightMaximum = 0.f;
+				Project_Polygon(left, axis, leftMinimum, leftMaximum);
+				Project_Polygon(right, axis, rightMinimum, rightMaximum);
+				if (leftMaximum + CONTACT_MARGIN < rightMinimum ||
+					rightMaximum + CONTACT_MARGIN < leftMinimum)
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+		return !separatedOnAnyEdge(left) && !separatedOnAnyEdge(right);
+	}
+
+	bool Cone_IntersectsObb(
+		const float originX,
+		const float originZ,
+		const float yawDegrees,
+		const float angleDegrees,
+		const float length,
+		const WORLD_BOOTSTRAP_PLACEMENT& box)
+	{
+		constexpr std::size_t ARC_SEGMENTS = 24u;
+		std::vector<WORLD_POINT> cone;
+		cone.reserve(ARC_SEGMENTS + 2u);
+		cone.push_back({ originX, originZ });
+		const float halfAngle = angleDegrees * 0.5f;
+		for (std::size_t index = 0u; index <= ARC_SEGMENTS; ++index)
+		{
+			const float ratio = static_cast<float>(index) /
+				static_cast<float>(ARC_SEGMENTS);
+			const float angle = (yawDegrees - halfAngle +
+				angleDegrees * ratio) * DEGREES_TO_RADIANS;
+			cone.push_back(
+			{
+				originX + std::sin(angle) * length,
+				originZ + std::cos(angle) * length
+			});
+		}
+		const auto boxCorners = Get_Corners(To_Obb(box));
+		const std::vector<WORLD_POINT> boxPolygon(
+			boxCorners.begin(), boxCorners.end());
+		return Convex_PolygonsIntersect(cone, boxPolygon);
 	}
 }
 
@@ -243,6 +467,43 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstReceivers(
 	return found;
 }
 
+void LostArk::Server::CServerCollisionSystem::Collect_BossCircleContacts(
+	const float startX,
+	const float startY,
+	const float startZ,
+	const float proposedX,
+	const float proposedY,
+	const float proposedZ,
+	const float radius,
+	std::vector<std::string>& outContactPlacementIds) const
+{
+	outContactPlacementIds.clear();
+	if (!std::isfinite(startX) || !std::isfinite(startY) ||
+		!std::isfinite(startZ) || !std::isfinite(proposedX) ||
+		!std::isfinite(proposedY) || !std::isfinite(proposedZ) ||
+		!std::isfinite(radius) || radius <= 0.f || radius > 1000.f)
+	{
+		return;
+	}
+
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		/* A box that no longer blocks is a wall that already fell, so it is not
+		   a surface anything can hit again. */
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
+			continue;
+		float hitRatio = 0.f;
+		if (Sweep_CircleAgainstBox(
+			startX, startY, startZ,
+			proposedX, proposedY, proposedZ, radius,
+			m_CollisionBoxes[index], hitRatio))
+		{
+			outContactPlacementIds.push_back(
+				m_CollisionBoxes[index].strPlacementId);
+		}
+	}
+}
+
 bool LostArk::Server::CServerCollisionSystem::Prepare_StateChanges(
 	const std::vector<SERVER_COLLISION_STATE_CHANGE>& changes,
 	SERVER_COLLISION_STATE_STAGE& outStage,
@@ -353,6 +614,127 @@ bool LostArk::Server::CServerCollisionSystem::Has_CollisionBox(
 		m_CollisionBoxes.begin(), m_CollisionBoxes.end(),
 		[&placementId](const WORLD_BOOTSTRAP_PLACEMENT& box)
 		{ return box.strPlacementId == placementId; });
+}
+
+void LostArk::Server::CServerCollisionSystem::Collect_BossPatternHitContacts(
+	const BOSS_PATTERN_HIT_SHAPE hitShape,
+	const float originX,
+	const float originY,
+	const float originZ,
+	const float yawDegrees,
+	const float verticalReach,
+	const float outerRadius,
+	const float innerRadius,
+	const float angleDegrees,
+	const float length,
+	const float halfWidth,
+	std::vector<std::string>& outContactPlacementIds) const
+{
+	outContactPlacementIds.clear();
+	if (BOSS_PATTERN_HIT_SHAPE::NONE == hitShape ||
+		!std::isfinite(originX) || !std::isfinite(originY) ||
+		!std::isfinite(originZ) || !std::isfinite(yawDegrees) ||
+		!std::isfinite(verticalReach) || !std::isfinite(outerRadius) ||
+		!std::isfinite(innerRadius) || !std::isfinite(angleDegrees) ||
+		!std::isfinite(length) || !std::isfinite(halfWidth) ||
+		verticalReach <= 0.f || verticalReach > 1000.f)
+	{
+		return;
+	}
+
+	const float yaw = yawDegrees * DEGREES_TO_RADIANS;
+	const float forwardX = std::sin(yaw);
+	const float forwardZ = std::cos(yaw);
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index] ||
+			(index < m_ImpactReceiverEnabled.size() &&
+			 m_ImpactReceiverEnabled[index]))
+		{
+			continue;
+		}
+		const WORLD_BOOTSTRAP_PLACEMENT& box = m_CollisionBoxes[index];
+		const float attackCenterY = originY + verticalReach;
+		if (std::abs(attackCenterY - box.fPositionY) >
+			verticalReach + box.fHalfExtentY)
+		{
+			continue;
+		}
+
+		bool intersects = false;
+		switch (hitShape)
+		{
+		case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
+			intersects = outerRadius > 0.f &&
+				Circle_IntersectsObb(
+					originX, originZ, outerRadius, box);
+			break;
+		case BOSS_PATTERN_HIT_SHAPE::RING:
+			intersects = innerRadius > 0.f && outerRadius > innerRadius &&
+				Ring_IntersectsObb(
+					originX, originZ, innerRadius, outerRadius, box);
+			break;
+		case BOSS_PATTERN_HIT_SHAPE::CONE:
+			intersects = angleDegrees > 0.f && angleDegrees <= 180.f &&
+				length > 0.f && Cone_IntersectsObb(
+					originX, originZ, yawDegrees, angleDegrees, length, box);
+			break;
+		case BOSS_PATTERN_HIT_SHAPE::BOX:
+			if (length > 0.f && halfWidth > 0.f)
+			{
+				const OBB_2D attack = Make_AttackObb(
+					originX + forwardX * length * 0.5f,
+					originZ + forwardZ * length * 0.5f,
+					yawDegrees, halfWidth, length * 0.5f);
+				intersects = Obbs_Intersect(attack, To_Obb(box));
+			}
+			break;
+		case BOSS_PATTERN_HIT_SHAPE::CROSS:
+			if (length > 0.f && halfWidth > 0.f)
+			{
+				const OBB_2D forwardAttack = Make_AttackObb(
+					originX, originZ, yawDegrees, halfWidth, length);
+				const OBB_2D lateralAttack = Make_AttackObb(
+					originX, originZ, yawDegrees, length, halfWidth);
+				const OBB_2D wall = To_Obb(box);
+				intersects = Obbs_Intersect(forwardAttack, wall) ||
+					Obbs_Intersect(lateralAttack, wall);
+			}
+			break;
+		case BOSS_PATTERN_HIT_SHAPE::NONE:
+		default:
+			break;
+		}
+		if (intersects)
+			outContactPlacementIds.push_back(box.strPlacementId);
+	}
+}
+
+bool LostArk::Server::CServerCollisionSystem::Is_PlayerBlocking(
+	const std::string& placementId) const
+{
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (m_CollisionBoxes[index].strPlacementId == placementId)
+		{
+			return index < m_PlayerBlocking.size() && m_PlayerBlocking[index];
+		}
+	}
+	return false;
+}
+
+bool LostArk::Server::CServerCollisionSystem::Is_ImpactReceiverEnabled(
+	const std::string& placementId) const
+{
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (m_CollisionBoxes[index].strPlacementId == placementId)
+		{
+			return index < m_ImpactReceiverEnabled.size() &&
+				m_ImpactReceiverEnabled[index];
+		}
+	}
+	return false;
 }
 
 bool LostArk::Server::CServerCollisionSystem::Has_CollisionStateTarget(

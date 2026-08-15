@@ -374,6 +374,54 @@ namespace
 		event = std::move(decoded);
 		return true;
 	}
+
+	bool Is_Valid_EncounterPropSlots(
+		const std::vector<LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE>& slots)
+	{
+		// Slot IDs arrive in one canonical ascending order so two servers cannot
+		// disagree about the same set, and duplicates are a hard reject.
+		for (std::size_t index = 0; index < slots.size(); ++index)
+		{
+			const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot = slots[index];
+			if (slot.strSlotId.empty() ||
+				slot.strSlotId.size() >
+					LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES ||
+				slot.eState >= LostArk::Shared::ENCOUNTER_PROP_STATE::END ||
+				0u == slot.iStateVersion)
+			{
+				return false;
+			}
+			if (index > 0 && slots[index - 1].strSlotId >= slot.strSlotId)
+				return false;
+		}
+		return true;
+	}
+
+	void Write_DestructionDiagnostics(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics)
+	{
+		writer.Write_U32(diagnostics.iActiveWallCollisionCount);
+		writer.Write_U32(diagnostics.iActiveNavBlockerRegionCount);
+		Write_U64(writer, diagnostics.iNavigationRevision);
+		Write_U64(writer, diagnostics.iLastEventSequence);
+	}
+
+	bool Read_DestructionDiagnostics(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics)
+	{
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS decoded{};
+		if (!reader.Read_U32(decoded.iActiveWallCollisionCount) ||
+			!reader.Read_U32(decoded.iActiveNavBlockerRegionCount) ||
+			!Read_U64(reader, decoded.iNavigationRevision) ||
+			!Read_U64(reader, decoded.iLastEventSequence))
+		{
+			return false;
+		}
+		diagnostics = decoded;
+		return true;
+	}
 }
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
@@ -1580,6 +1628,7 @@ bool LostArk::Shared::Write_Message(
 		if (!Write_DestructionStateWire(writer, state))
 			return false;
 	}
+	Write_DestructionDiagnostics(writer, message.Diagnostics);
 	return true;
 }
 
@@ -1613,8 +1662,11 @@ bool LostArk::Shared::Read_Message(
 			return false;
 		decoded.GroupStates.push_back(std::move(state));
 	}
-	if (!Are_DestructionStatesCanonical(decoded.GroupStates))
+	if (!Are_DestructionStatesCanonical(decoded.GroupStates) ||
+		!Read_DestructionDiagnostics(reader, decoded.Diagnostics))
+	{
 		return false;
+	}
 
 	message = std::move(decoded);
 	return true;
@@ -1662,6 +1714,7 @@ bool LostArk::Shared::Write_Message(
 		if (!Write_DestructionEventWire(writer, event))
 			return false;
 	}
+	Write_DestructionDiagnostics(writer, message.Diagnostics);
 	return true;
 }
 
@@ -1707,11 +1760,81 @@ bool LostArk::Shared::Read_Message(
 		decoded.LiveEvents.push_back(std::move(event));
 	}
 	if (!Are_DestructionStatesCanonical(decoded.ChangedStates) ||
-		!Are_DestructionEventsCanonical(decoded.LiveEvents))
+		!Are_DestructionEventsCanonical(decoded.LiveEvents) ||
+		!Read_DestructionDiagnostics(reader, decoded.Diagnostics))
 	{
 		return false;
 	}
 
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_ENCOUNTER_PROP_SYNC& message)
+{
+	if (message.strPropSetId.empty() ||
+		message.strPropSetId.size() > MAX_STABLE_NETWORK_ID_BYTES ||
+		0 == message.iServerTick || 0 == message.iEncounterEpoch ||
+		message.Slots.empty() ||
+		message.Slots.size() > MAX_ENCOUNTER_PROP_SLOTS ||
+		!Is_Valid_EncounterPropSlots(message.Slots))
+	{
+		return false;
+	}
+	if (!writer.Write_String(message.strPropSetId, MAX_STABLE_NETWORK_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iServerTick);
+	writer.Write_U32(message.iEncounterEpoch);
+	writer.Write_U16(static_cast<std::uint16_t>(message.Slots.size()));
+	for (const ENCOUNTER_PROP_SLOT_WIRE& slot : message.Slots)
+	{
+		if (!writer.Write_String(slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(slot.eState));
+		writer.Write_U32(slot.iStateVersion);
+		writer.Write_U32(slot.iStateStartTick);
+		writer.Write_U32(slot.iOccurrenceSequence);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_ENCOUNTER_PROP_SYNC& message)
+{
+	S2C_ENCOUNTER_PROP_SYNC decoded{};
+	std::uint16_t slotCount = 0;
+	if (!reader.Read_String(decoded.strPropSetId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_U32(decoded.iEncounterEpoch) ||
+		!reader.Read_U16(slotCount) ||
+		decoded.strPropSetId.empty() ||
+		0 == decoded.iServerTick || 0 == decoded.iEncounterEpoch ||
+		0 == slotCount || slotCount > MAX_ENCOUNTER_PROP_SLOTS)
+	{
+		return false;
+	}
+	decoded.Slots.reserve(slotCount);
+	for (std::uint16_t index = 0; index < slotCount; ++index)
+	{
+		ENCOUNTER_PROP_SLOT_WIRE slot{};
+		std::uint8_t rawState = 0;
+		if (!reader.Read_String(slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U8(rawState) ||
+			!reader.Read_U32(slot.iStateVersion) ||
+			!reader.Read_U32(slot.iStateStartTick) ||
+			!reader.Read_U32(slot.iOccurrenceSequence) ||
+			rawState >= static_cast<std::uint8_t>(ENCOUNTER_PROP_STATE::END))
+		{
+			return false;
+		}
+		slot.eState = static_cast<ENCOUNTER_PROP_STATE>(rawState);
+		decoded.Slots.push_back(std::move(slot));
+	}
+	if (!Is_Valid_EncounterPropSlots(decoded.Slots))
+		return false;
 	message = std::move(decoded);
 	return true;
 }
@@ -1728,10 +1851,26 @@ namespace
 		const std::uint8_t rawOperation,
 		const std::uint32_t targetHealthBar)
 	{
-		return 0u != requestSequence &&
-			rawOperation < static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::END) &&
-			0u != targetHealthBar;
+		if (0u == requestSequence ||
+			rawOperation >= static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::END))
+		{
+			return false;
+		}
+		// These operations name an authored mechanic or a Debug view directly,
+		// rather than a health-bar crossing, so they carry exactly zero.
+		if (static_cast<std::uint8_t>(VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE) ==
+			rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation)
+		{
+			return 0u == targetHealthBar;
+		}
+		return 0u != targetHealthBar;
 	}
 }
 

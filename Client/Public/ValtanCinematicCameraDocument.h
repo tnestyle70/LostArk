@@ -50,6 +50,28 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	std::vector<VALTAN_CINEMATIC_CAMERA_KEYFRAME> Keyframes;
 };
 
+/* The 105 sky is a timed presentation layer, never a skybox swap and never a
+   gameplay state: it turns on and off inside one authored stage and touches no
+   collision or navigation. Asset IDs stay empty here until the effect owner
+   supplies them, and an empty ID simply means that layer stays hidden. */
+struct VALTAN_CINEMATIC_SKY_CUE final
+{
+	std::string strCueId;
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strStageActionId;
+	uint32_t iStageIndex = 0u;
+	uint32_t iStageLocalStartMs = 0u;
+	uint32_t iStageLocalEndMs = 0u;
+	std::string strRedCloudAssetId;
+	std::string strBlackApertureAssetId;
+	f32_t fCloudOpacityStart = 0.f;
+	f32_t fCloudOpacityEnd = 0.f;
+	f32_t fApertureScaleStart = 0.f;
+	f32_t fApertureScaleEnd = 0.f;
+	f32_t fCloudRotationDegreesPerSecond = 0.f;
+};
+
 class CValtanCinematicCameraDocument final
 {
 public:
@@ -74,10 +96,27 @@ public:
 		std::string_view patternId,
 		uint32_t stageIndex,
 		std::string_view stageActionId) const;
+	const std::vector<VALTAN_CINEMATIC_SKY_CUE>& Get_SkyCues() const
+	{
+		return m_SkyCues;
+	}
+	const VALTAN_CINEMATIC_SKY_CUE* Find_SkyCue(
+		std::string_view patternId,
+		uint32_t stageIndex,
+		std::string_view stageActionId) const;
+	/* The clear shot has no pattern to key on, so it is looked up by the boss
+	   death action instead. Null when the encounter authors none. */
+	const VALTAN_CINEMATIC_CAMERA_CUE* Find_DeathCue() const
+	{
+		return m_hasDeathCue ? &m_DeathCue : nullptr;
+	}
 
 private:
 	std::string m_strEncounterId;
 	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> m_Cues;
+	std::vector<VALTAN_CINEMATIC_SKY_CUE> m_SkyCues;
+	VALTAN_CINEMATIC_CAMERA_CUE m_DeathCue;
+	bool_t m_hasDeathCue = false;
 	bool_t m_isReady = false;
 };
 
