@@ -4,7 +4,7 @@
  "frameRate": 24.0,
  "frameCount": 46,
  "labels": {
-  "burn": 9
+  "burn": 22
  },
  "layers": [
   {
@@ -633,5 +633,6 @@
     }
    ]
   }
- ]
+ ],
+ "loop": true
 }

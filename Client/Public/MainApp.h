@@ -109,6 +109,12 @@ private:
 	trigger the real extracted gauge0/1/2 highLightMc "burn" flourish (Lance_Id_GaugeBurn0/1/2)
 	exactly once per fill, not every frame it stays full. */
 	bool_t m_bLanceGaugeSegmentWasFull[3] = { false, false, false };
+	/* Real time (ImGui::GetTime()) each segment's burn ignite flourish started, so RenderLance-
+	MasterIdentityGauge can swap Lance_Id_GaugeBurn -> Lance_Id_GaugeBurnLoop once the one-shot
+	ignite has actually finished playing, instead of restarting the dim->bright ignite clip on
+	every loop iteration. Negative = not currently igniting/looping. */
+	f64_t m_dLanceGaugeIgniteStartSeconds[3] = { -1.0, -1.0, -1.0 };
+	bool_t m_bLanceGaugeLoopStarted[3] = { false, false, false };
 	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
 	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
 	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };
