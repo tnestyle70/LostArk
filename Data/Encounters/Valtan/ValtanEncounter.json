@@ -5,6 +5,7 @@
   "bossArchetypeId": "BOSS_VALTAN",
   "authority": "server",
   "fixedTickHz": 30,
+  "introPatternId": "VALTAN_ENTRANCE_WHIRLWIND",
   "states": [
     { "id": "IDLE", "actionId": "valtan.idle", "next": "ACQUIRE_TARGET" },
     { "id": "ACQUIRE_TARGET", "actionId": "valtan.acquire", "next": "CHASE" },
@@ -447,6 +448,22 @@
       ]
     },
     {
+      "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
+      "displayName": "첫 등장 회전 돌진",
+      "actionId": "valtan.mechanic.entrance-whirlwind",
+      "sourceActionIds": [420633],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 1, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.mechanic.entrance-whirlwind.windup", "stageKind": "WINDUP", "durationMs": 1070, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SWEEP", "actionId": "valtan.mechanic.entrance-whirlwind.sweep", "stageKind": "ACTIVE", "durationMs": 1930, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 2, "hitIntervalMs": 700, "serverDamageProfileId": "damage.valtan.circular-spin" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.entrance-whirlwind.recovery", "stageKind": "RECOVERY", "durationMs": 3160, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
       "patternId": "VALTAN_ARENA_BREAK_109",
       "displayName": "109줄 아레나 붕괴",
       "actionId": "valtan.mechanic.arena-break-109",
@@ -456,13 +473,14 @@
       "triggerHealthBar": 109, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
+      "serverMotion": { "kind": "LEAP_TO_ANCHOR", "anchorId": "anchor.valtan.arena-break-109.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 12.0 },
       "stages": [
-        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.arena-break-109.takeoff", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
-        { "stageId": "DROP", "actionId": "valtan.mechanic.arena-break-109.drop", "stageKind": "WINDUP", "durationMs": 800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.arena-break-109.takeoff", "stageKind": "WINDUP", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "DROP", "actionId": "valtan.mechanic.arena-break-109.drop", "stageKind": "WINDUP", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "IMPACT", "actionId": "valtan.mechanic.arena-break-109.impact", "stageKind": "ACTIVE", "durationMs": 400, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-109" },
         { "stageId": "IMPACT_HOLD", "actionId": "valtan.mechanic.arena-break-109.impact-hold", "stageKind": "ACTIVE", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "WIDE_REVEAL", "actionId": "valtan.mechanic.arena-break-109.wide-reveal", "stageKind": "ACTIVE", "durationMs": 2300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
-        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-109.recovery", "stageKind": "RECOVERY", "durationMs": 400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-109.recovery", "stageKind": "RECOVERY", "durationMs": 870, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
       ]
     },
     {
@@ -527,7 +545,8 @@
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "PORTAL", "actionId": "valtan.mechanic.ghost-transition-15.portal", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "PORTAL_OPEN", "actionId": "valtan.mechanic.ghost-transition-15.portal-open", "stageKind": "WINDUP", "durationMs": 1180, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "GHOST_APPEAR", "actionId": "valtan.mechanic.ghost-transition-15.ghost-appear", "stageKind": "WINDUP", "durationMs": 620, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "FOUR_DIRECTIONS", "actionId": "valtan.mechanic.ghost-transition-15.four-directions", "stageKind": "ACTIVE", "durationMs": 1800, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 20.0, "hitHalfWidth": 3.0, "hitCount": 4, "hitIntervalMs": 400, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
         { "stageId": "TRACKING_EXPLOSIONS", "actionId": "valtan.mechanic.ghost-transition-15.tracking", "stageKind": "ACTIVE", "durationMs": 2000, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 450, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
         { "stageId": "INNER", "actionId": "valtan.mechanic.ghost-transition-15.inner", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },

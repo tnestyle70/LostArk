@@ -316,7 +316,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 4u != version ||
+		!ParseNumber(header[1], version) || 5u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -563,6 +563,60 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 			patterns.push_back(std::move(pattern));
 		}
+		else if (!fields.empty() && "ENCOUNTERINTRO" == fields[0])
+		{
+			if (3u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]))
+			{
+				m_strStatus = "Encounter intro row is invalid";
+				return false;
+			}
+			const std::string introEncounterId(fields[1]);
+			if (!m_IntroPatternIdByEncounter.emplace(
+				introEncounterId, std::string(fields[2])).second)
+			{
+				m_strStatus = "Duplicate encounter intro row";
+				return false;
+			}
+		}
+		else if (!fields.empty() && "PATTERNMOTION" == fields[0])
+		{
+			BOSS_PATTERN_MOTION motion{};
+			if (9u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || "LEAP_TO_ANCHOR" != fields[3] ||
+				!IsStableId(fields[4]) ||
+				!ParseNumber(fields[5], motion.fLandingX) ||
+				!ParseNumber(fields[6], motion.fLandingY) ||
+				!ParseNumber(fields[7], motion.fLandingZ) ||
+				!ParseNumber(fields[8], motion.fApexHeight) ||
+				!std::isfinite(motion.fLandingX) ||
+				!std::isfinite(motion.fLandingY) ||
+				!std::isfinite(motion.fLandingZ) ||
+				!std::isfinite(motion.fApexHeight) ||
+				motion.fApexHeight <= 0.f || motion.fApexHeight > 200.f)
+			{
+				m_strStatus = "Boss pattern motion row is invalid";
+				return false;
+			}
+			motion.eKind = BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR;
+			motion.strAnchorId = std::string(fields[4]);
+			const std::string motionEncounterId(fields[1]);
+			auto& motionPatterns = m_BossPatterns[motionEncounterId];
+			const auto owner = std::find_if(
+				motionPatterns.begin(), motionPatterns.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& candidate)
+				{
+					return candidate.strPatternId == fields[2];
+				});
+			if (owner == motionPatterns.end() ||
+				BOSS_PATTERN_MOTION_KIND::NONE != owner->Motion.eKind)
+			{
+				m_strStatus =
+					"Boss pattern motion has no owner or is duplicated";
+				return false;
+			}
+			owner->Motion = std::move(motion);
+		}
 		else if (!fields.empty() && "PATTERNSTAGE" == fields[0])
 		{
 			BOSS_PATTERN_STAGE_DEFINITION stage{};
@@ -614,6 +668,44 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			stage.strDamageProfileId =
 				"-" == fields[16] ? "" : std::string(fields[16]);
 			owner->Stages.push_back(std::move(stage));
+		}
+		else if (!fields.empty() && "PATTERNWALLCONTACT" == fields[0])
+		{
+			std::uint32_t stageIndex = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], stageIndex) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss pattern wall-contact row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern wall-contact has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				stageIndex >= owner->Stages.size())
+			{
+				m_strStatus = "Boss pattern wall-contact has no stage owner";
+				return false;
+			}
+			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
+			if (stage.strStageId != fields[4] ||
+				stage.strActionId != fields[5] || stage.bWallContact ||
+				BOSS_PATTERN_STAGE_KIND::ACTIVE != stage.eStageKind ||
+				BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
+				0u == stage.iHitCount)
+			{
+				m_strStatus = "Boss pattern wall-contact join is invalid";
+				return false;
+			}
+			stage.bWallContact = true;
 		}
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
@@ -812,6 +904,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 						0u != Find_DamageRatePercent(stage.strDamageProfileId);
 				}
 				if (!validShape ||
+					(stage.bWallContact &&
+						(BOSS_PATTERN_STAGE_KIND::ACTIVE != stage.eStageKind ||
+						 BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
+						 0u == stage.iHitCount)) ||
 					std::any_of(pattern.Stages.begin() + stageIndex + 1u,
 						pattern.Stages.end(),
 						[&stage](const BOSS_PATTERN_STAGE_DEFINITION& other)
@@ -861,6 +957,14 @@ LostArk::Server::CGameplayCatalog::Find_BossPatterns(
 {
 	const auto iter = m_BossPatterns.find(encounterId);
 	return m_BossPatterns.end() == iter ? nullptr : &iter->second;
+}
+
+const std::string& LostArk::Server::CGameplayCatalog::Find_IntroPatternId(
+	const std::string& encounterId) const
+{
+	static const std::string EMPTY;
+	const auto iter = m_IntroPatternIdByEncounter.find(encounterId);
+	return m_IntroPatternIdByEncounter.end() == iter ? EMPTY : iter->second;
 }
 
 std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(

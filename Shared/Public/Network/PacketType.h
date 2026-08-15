@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 19;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 20;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -99,6 +99,11 @@ namespace LostArk::Shared
 		S2C_WORLD_DESTRUCTION_FULL_SYNC,
 		S2C_WORLD_DESTRUCTION_DELTA,
 
+		// Repeatable encounter props such as the four pillars. One message
+		// carries the whole current slot set, so a late joiner is correct
+		// without replaying any past spawn or shatter.
+		S2C_ENCOUNTER_PROP_SYNC,
+
 		// Debug Valtan pattern audition. Both configurations know these types so
 		// a Release Server answers an explicit rejection instead of closing the
 		// session on an unknown frame; only a Debug Server ever accepts one.
@@ -144,6 +149,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+		case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
 		case PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST:
 		case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
 			return true;

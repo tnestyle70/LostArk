@@ -335,10 +335,17 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 		semanticPayload += line + "\n";
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		WORLD_DESTRUCTION_BINDING_DESCRIPTOR binding;
+		/* A contact binding answers geometry, so its pattern, stage and action
+		columns carry the empty marker instead of a schedule to match. */
+		const bool isContactRow = "COLLIDER_CONTACT" == fields[3];
+		const bool hasActionColumns = isContactRow ?
+			("-" == fields[4] && "-" == fields[5] && "-" == fields[6] &&
+				"0" == fields[7]) :
+			(Is_StableId(fields[4]) && Is_StableId(fields[5]) &&
+				Is_StableId(fields[6]));
 		if (9u != fields.size() || "B" != fields[0] ||
 			!Is_StableId(fields[1]) || !Is_StableId(fields[2]) ||
-			!Is_StableId(fields[4]) || !Is_StableId(fields[5]) ||
-			!Is_StableId(fields[6]) ||
+			!hasActionColumns ||
 			!ParseNumber(fields[7], binding.iStageIndex) ||
 			("-" != fields[8] && !Is_StableId(fields[8])))
 		{
@@ -349,6 +356,11 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 			binding.eTriggerKind = WORLD_DESTRUCTION_TRIGGER_KIND::STAGE;
 		else if ("BOSS_IMPACT" == fields[3])
 			binding.eTriggerKind = WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT;
+		else if (isContactRow)
+		{
+			binding.eTriggerKind =
+				WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT;
+		}
 		else
 		{
 			m_strStatus = "World destruction trigger kind is invalid";
@@ -356,9 +368,12 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 		}
 		binding.strBindingId = fields[1];
 		binding.strMutationId = fields[2];
-		binding.strPatternId = fields[4];
-		binding.strStageId = fields[5];
-		binding.strActionId = fields[6];
+		if (!isContactRow)
+		{
+			binding.strPatternId = fields[4];
+			binding.strStageId = fields[5];
+			binding.strActionId = fields[6];
+		}
 		if ("-" != fields[8]) binding.strImpactReceiverId = fields[8];
 		if ((!previousBindingId.empty() &&
 			previousBindingId >= binding.strBindingId) ||
@@ -366,7 +381,7 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 			!mutationIds.contains(binding.strMutationId) ||
 			(WORLD_DESTRUCTION_TRIGGER_KIND::STAGE == binding.eTriggerKind &&
 				!binding.strImpactReceiverId.empty()) ||
-			(WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT == binding.eTriggerKind &&
+			(WORLD_DESTRUCTION_TRIGGER_KIND::STAGE != binding.eTriggerKind &&
 				binding.strImpactReceiverId.empty()))
 		{
 			m_strStatus = "World destruction binding reference is invalid";

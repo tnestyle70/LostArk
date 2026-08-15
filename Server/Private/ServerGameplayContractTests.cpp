@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests.h"
 
 #include "ClientSession.h"
+#include "EncounterPropRuntime.h"
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "GameplayCatalog.h"
@@ -416,6 +417,43 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	{
+		const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto findStage = [patterns](
+			const std::string& patternId,
+			const std::string& stageId) -> const BOSS_PATTERN_STAGE_DEFINITION*
+		{
+			if (nullptr == patterns)
+				return nullptr;
+			for (const BOSS_PATTERN_DEFINITION& pattern : *patterns)
+			{
+				if (pattern.strPatternId != patternId)
+					continue;
+				const auto stage = std::find_if(
+					pattern.Stages.begin(), pattern.Stages.end(),
+					[&stageId](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+					{ return candidate.strStageId == stageId; });
+				return stage == pattern.Stages.end() ? nullptr : &*stage;
+			}
+			return nullptr;
+		};
+		const BOSS_PATTERN_STAGE_DEFINITION* swing =
+			findStage("VALTAN_SWING", "SWEEP");
+		const BOSS_PATTERN_STAGE_DEFINITION* downSmash =
+			findStage("VALTAN_DOWN_SMASH", "IMPACT");
+		const BOSS_PATTERN_STAGE_DEFINITION* roar =
+			findStage("VALTAN_IMPRISON_ROAR", "ROAR");
+		tests.Require(
+			nullptr != swing && swing->bWallContact &&
+			BOSS_PATTERN_HIT_SHAPE::CONE == swing->eHitShape &&
+			nullptr != downSmash && downSmash->bWallContact &&
+			BOSS_PATTERN_HIT_SHAPE::CROSS == downSmash->eHitShape &&
+			downSmash->fHitLength >= 9.9f &&
+			downSmash->fHitHalfWidth >= 1.7f &&
+			nullptr != roar && !roar->bWallContact,
+			"Compile the down-smash and other allowlisted physical axe stages as wall contacts");
+	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
 		session.m_isSendRunning.store(true);
@@ -1401,9 +1439,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
 	/* Both endpoints are open arena floor on the same connected component. The
-	   old goal sat inside the wall group at the arena centre, which only pathed
-	   because that group carried no blocker region yet. */
-	tests.Require(navigation.Find_Path(144.75f, -115.75f, 156.25f, -122.25f, path) &&
+	   old start sat outside the completed 109 ring, which only pathed while the
+	   ring still had its six-slab gap; the arena interior is now sealed until
+	   the 109 collapse, so the test walks a route that stays inside it. */
+	tests.Require(navigation.Find_Path(147.75f, -117.25f, 156.25f, -122.25f, path) &&
 		!path.empty(), "Find authoritative navigation path");
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
@@ -1505,16 +1544,21 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Refuse root motion that would cross a blocked band in one step");
 
 	constexpr const char* VALTAN_WALL_RECEIVER =
-		"collision.valtan.wallgroup.11047903315509031966.receiver";
+		"collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver";
 	constexpr const char* VALTAN_WALL_COLLISION_STATE =
-		"collision.valtan.wallgroup.11047903315509031966";
+		"collision.valtan.wallgroup.11047903315509031966.15719065619666776634";
 	constexpr const char* VALTAN_WALL_CONDITION =
-		"condition.valtan.wall.11047903315509031966.destroyed";
+		"condition.valtan.wall159.15719065619666776634.destroyed";
 	constexpr float VALTAN_WALL_CENTER_X = 161.402061f;
 	constexpr float VALTAN_WALL_CENTER_Y = 23.04f;
 	constexpr float VALTAN_WALL_CENTER_Z = -133.312236f;
-	constexpr float VALTAN_WALL_APPROACH_X = 163.315478f;
-	constexpr float VALTAN_WALL_APPROACH_Z = -137.931633f;
+	/* The approach used to stand outside the ring and reach the charge wall
+	through the six-slab gap. The completed 109 ring seals that gap until the
+	collapse, so the sweep now starts inside the arena: it still crosses the
+	charge wall's boxes and touches no ring slab, which keeps this test about
+	the 159 wall's own collision state instead of the ring's. */
+	constexpr float VALTAN_WALL_APPROACH_X = 164.25f;
+	constexpr float VALTAN_WALL_APPROACH_Z = -125.25f;
 	constexpr float VALTAN_WALL_EXIT_X = 159.488644f;
 	constexpr float VALTAN_WALL_EXIT_Z = -128.692839f;
 	std::string dynamicWorldStatus;
@@ -1549,10 +1593,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(
 		navigation.Is_PointWalkableExact(
 			VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z) &&
-		navigation.Find_Path(
+		!navigation.Find_Path(
 			160.25f, -130.75f, 162.25f, -135.75f,
-			wallPassagePath) && !wallPassagePath.empty(),
-		"Expose the baked floor and a complete cross-wall path after the blocker is removed");
+			wallPassagePath),
+		"Expose only the selected wall cells while adjacent independent walls keep the full barrier closed");
 	navigation.Reset_RuntimeBlockers();
 	tests.Require(
 		!navigation.Is_PointWalkableExact(
@@ -1566,24 +1610,66 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(
 		valtanCollisionSystem.Initialize(
 			world.Get_Placements(), dynamicWorldStatus) &&
-		/* 69 interior wall boxes plus the impact receiver, and one box per
-		109 outer ring slab. */
-		94u == valtanCollisionSystem.Get_CollisionBoxCount() &&
+		/* 69 interior wall boxes plus ten independent 159 impact receivers,
+		one box per 109
+		outer ring slab now that the ring is complete at thirty, and the two
+		entrance front walls' own receivers. */
+		111u == valtanCollisionSystem.Get_CollisionBoxCount() &&
 		valtanCollisionSystem.Has_CollisionBox(VALTAN_WALL_RECEIVER),
 		"Load the stable Valtan wall impact receiver and player blocker");
+	{
+		WORLD_BOOTSTRAP_PLACEMENT wall{};
+		wall.strPlacementId = "collision.contract.axe.wall";
+		wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+		wall.isEnabled = true;
+		wall.fPositionX = 0.f;
+		wall.fPositionY = 2.f;
+		wall.fPositionZ = 5.f;
+		wall.fYawDegrees = 30.f;
+		wall.fHalfExtentX = 1.f;
+		wall.fHalfExtentY = 2.f;
+		wall.fHalfExtentZ = 0.5f;
+		WORLD_BOOTSTRAP_PLACEMENT receiver = wall;
+		receiver.strPlacementId = "collision.contract.axe.wall.receiver";
+		CServerCollisionSystem axeCollision;
+		std::vector<std::string> axeContacts;
+		std::string axeStatus;
+		const bool axeInitialized = axeCollision.Initialize(
+			{ wall, receiver }, axeStatus);
+		axeCollision.Collect_BossPatternHitContacts(
+			BOSS_PATTERN_HIT_SHAPE::CONE,
+			0.f, 0.f, 0.f, 0.f, 1.5f,
+			0.f, 0.f, 80.f, 7.f, 0.f, axeContacts);
+		const bool coneHit = 1u == axeContacts.size() &&
+			axeContacts.front() == wall.strPlacementId;
+		axeCollision.Collect_BossPatternHitContacts(
+			BOSS_PATTERN_HIT_SHAPE::CONE,
+			0.f, 0.f, 0.f, 180.f, 1.5f,
+			0.f, 0.f, 80.f, 7.f, 0.f, axeContacts);
+		const bool rearMiss = axeContacts.empty();
+		axeCollision.Collect_BossPatternHitContacts(
+			BOSS_PATTERN_HIT_SHAPE::CONE,
+			0.f, 20.f, 0.f, 0.f, 1.5f,
+			0.f, 0.f, 80.f, 7.f, 0.f, axeContacts);
+		const bool highMiss = axeContacts.empty();
+		tests.Require(
+			axeInitialized && coneHit && rearMiss && highMiss,
+			"Intersect a rotated wall with the Server axe cone while rejecting receiver, rear and high-Y false contacts");
+	}
 	SERVER_BOSS_RECEIVER_HIT receiverHit{};
 	tests.Require(
 		valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
 			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
 			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
 			1.f, receiverHit) &&
-		receiverHit.strReceiverPlacementId == VALTAN_WALL_RECEIVER &&
+		0u == receiverHit.strReceiverPlacementId.rfind(
+			"collision.valtan.wallgroup.11047903315509031966.", 0u) &&
 		receiverHit.fHitRatio > 0.f && receiverHit.fHitRatio < 1.f &&
 		!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
 			145.f, 100.f, VALTAN_WALL_CENTER_Z,
 			175.f, 100.f, VALTAN_WALL_CENTER_Z,
 			1.f, receiverHit),
-		"Sweep a fast Valtan body into the exact receiver without tunneling or high-Y false hits");
+		"Sweep a fast Valtan body into the deterministic earliest independent receiver without tunneling or high-Y false hits");
 	SERVER_PLAYER valtanWallPlayer{};
 	valtanWallPlayer.fPositionX = VALTAN_WALL_APPROACH_X;
 	valtanWallPlayer.fPositionY = VALTAN_WALL_CENTER_Y;
@@ -1614,16 +1700,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			collisionStage, dynamicWorldStatus),
 		"Stage BREAKING collision channels with receiver impact disabled");
 	valtanCollisionSystem.Commit_StateChanges(std::move(collisionStage));
+	SERVER_BOSS_RECEIVER_HIT remainingReceiverHit{};
 	tests.Require(
-		!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
+		(!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
 			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
 			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
-			1.f, receiverHit) &&
+			1.f, remainingReceiverHit) ||
+		 remainingReceiverHit.strReceiverPlacementId != VALTAN_WALL_RECEIVER) &&
+		!valtanCollisionSystem.Is_ImpactReceiverEnabled(VALTAN_WALL_RECEIVER) &&
+		valtanCollisionSystem.Is_PlayerBlocking(VALTAN_WALL_COLLISION_STATE) &&
 		valtanCollisionSystem.Resolve_PlayerMove(
 			valtanWallPlayer, VALTAN_WALL_EXIT_X, VALTAN_WALL_CENTER_Y,
 			VALTAN_WALL_EXIT_Z, wallResolvedX, wallResolvedY,
 			wallResolvedZ, wallMoveBlocked) && wallMoveBlocked,
-		"Keep BREAKING player collision while suppressing duplicate boss impacts");
+		"Keep the selected BREAKING wall blocking while suppressing only its receiver");
 	tests.Require(
 		valtanCollisionSystem.Prepare_StateChanges(
 			{ { VALTAN_WALL_COLLISION_STATE, false, false } },
@@ -1631,13 +1721,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Stage the persistent FRACTURED collision state");
 	valtanCollisionSystem.Commit_StateChanges(std::move(collisionStage));
 	tests.Require(
+		!valtanCollisionSystem.Is_PlayerBlocking(VALTAN_WALL_COLLISION_STATE) &&
+		!valtanCollisionSystem.Is_PlayerBlocking(VALTAN_WALL_RECEIVER) &&
 		valtanCollisionSystem.Resolve_PlayerMove(
 			valtanWallPlayer, VALTAN_WALL_EXIT_X, VALTAN_WALL_CENTER_Y,
 			VALTAN_WALL_EXIT_Z, wallResolvedX, wallResolvedY,
-			wallResolvedZ, wallMoveBlocked) && !wallMoveBlocked &&
-		std::abs(wallResolvedX - VALTAN_WALL_EXIT_X) <= 0.001f &&
-		std::abs(wallResolvedZ - VALTAN_WALL_EXIT_Z) <= 0.001f,
-		"Open player collision only after the wall reaches FRACTURED");
+			wallResolvedZ, wallMoveBlocked) && wallMoveBlocked,
+		"Disable only the selected wall collision while adjacent independent walls remain solid");
 	valtanCollisionSystem.Reset_RuntimeStates();
 	tests.Require(
 		valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
@@ -2136,6 +2226,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	valtan.fPositionZ = -122.f;
 	valtan.fEngageDistance = 35.f;
 	valtan.fMoveSpeed = 3.f;
+	/* This fixture asserts the 130-bar mechanic, so the encounter intro is
+	staged as already consumed exactly as a Debug audition reset does. */
+	valtan.bIntroPatternConsumed = true;
 	CValtanBrain brain;
 	std::vector<DAMAGE_EVENT> valtanDamageEvents;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 99,
@@ -2186,6 +2279,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	openingChargeBoss.fPositionZ = -122.f;
 	openingChargeBoss.fEngageDistance = 35.f;
 	openingChargeBoss.fMoveSpeed = 3.f;
+	openingChargeBoss.bIntroPatternConsumed = true;
 	brain.Update(
 		openingChargeBoss, players, catalog, navigation,
 		1.f / 30.f, 200u, valtanDamageEvents);
@@ -2582,7 +2676,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t6\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -2607,7 +2701,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			!rollbackCatalog.Load() &&
 			nullptr != rollbackCatalog.Find_Skill(34010) &&
 			nullptr != rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN") &&
-			31u == rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN")->size(),
+			32u == rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN")->size(),
 			"Preserve the committed catalog after a corrupt replacement fails");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
@@ -2634,7 +2728,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t6\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -2665,6 +2759,68 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Reject a damageless skill that still claims a hit time");
 		std::error_code noDamageCleanupError;
 		fs::remove_all(noDamageRoot, noDamageCleanupError);
+	}
+
+	{
+		/* Wall-contact admission is separate from player damage admission: a
+		   malformed or duplicated allowlist row must fail before a room can use
+		   the hit as an axe collider. */
+		namespace fs = std::filesystem;
+		const fs::path wallContactRoot =
+			fs::temp_directory_path() / L"LostArkWallContactCatalogContractTest";
+		const auto loadWithWallContactRows = [
+			&wallContactRoot](
+				const std::uint32_t version,
+				const std::vector<std::string>& wallRows)
+		{
+			std::error_code prepareError;
+			fs::remove_all(wallContactRoot, prepareError);
+			fs::create_directories(wallContactRoot / L"Gameplay");
+			{
+				std::ofstream bootstrap(
+					wallContactRoot / L"Gameplay" / L"Gameplay.bootstrap",
+					std::ios::binary);
+				bootstrap << "LOSTARK_GAMEPLAY_BOOTSTRAP\t" << version << "\t" <<
+					(6u + wallRows.size()) << "\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"DAMAGE\tdamage.player.34120\t361\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
+					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
+				for (const std::string& row : wallRows)
+					bootstrap << row << '\n';
+			}
+			wchar_t previous[32768]{};
+			const DWORD previousLength = GetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				static_cast<DWORD>(std::size(previous)));
+			SetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", wallContactRoot.c_str());
+			CGameplayCatalog wallCatalog;
+			const bool loaded = wallCatalog.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+				0u == previousLength || previousLength >= std::size(previous) ?
+					nullptr : previous);
+			return loaded;
+		};
+		const std::string validWallRow =
+			"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active";
+		tests.Require(
+			loadWithWallContactRows(5u, { validWallRow }),
+			"Accept one exact ACTIVE axe wall-contact row");
+		tests.Require(
+			!loadWithWallContactRows(4u, { validWallRow }),
+			"Reject the obsolete gameplay bootstrap version before wall-contact load");
+		tests.Require(
+			!loadWithWallContactRows(5u, {
+				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
+			"Reject a wall-contact row whose action does not exactly join its stage");
+		tests.Require(
+			!loadWithWallContactRows(5u, { validWallRow, validWallRow }),
+			"Reject duplicate axe wall-contact ownership atomically");
+		std::error_code cleanupError;
+		fs::remove_all(wallContactRoot, cleanupError);
 	}
 
 	{
@@ -2703,7 +2859,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t8\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t8\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3660,10 +3816,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				{
 					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
 				}));
+		/* The 109 batch is thirty independent outer ring walls. Interior groups
+		are authored but dormant, so none of them may break on this edge. */
+		const std::size_t interiorBreakingCount = static_cast<std::size_t>(
+			std::count_if(breakingStates.begin(), breakingStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::INTACT != state.eState &&
+						0u != state.strGroupId.rfind(
+							"destroyable.group.valtan.outerwall109.", 0u);
+				}));
 		tests.Require(
-			applied && 21u == breakingCount &&
-			22u == room.m_iNextWorldDestructionEventSequence,
-			"Emit one monotonically sequenced live event for every 109-bar wall group");
+			applied && 30u == breakingCount && 0u == interiorBreakingCount &&
+			31u == room.m_iNextWorldDestructionEventSequence,
+			"Emit one monotonically sequenced live event for every independent 109-bar wall");
 
 		const std::uint64_t sequenceAfterFirstEdge =
 			room.m_iNextWorldDestructionEventSequence;
@@ -3701,10 +3867,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				transaction, boss, repeatedEvents, status);
 		room.m_WorldDestructionRuntime = std::move(activeRuntime);
 		tests.Require(
-			builtFirst && builtRepeated && 21u == firstEvents.size() &&
+			builtFirst && builtRepeated && 30u == firstEvents.size() &&
 			firstEvents.size() == repeatedEvents.size() &&
 			1u == firstEvents.front().iEventSequence &&
-			21u == firstEvents.back().iEventSequence &&
+			30u == firstEvents.back().iEventSequence &&
 			firstEvents.front().iRandomSeed ==
 				repeatedEvents.front().iRandomSeed &&
 			firstEvents.front().fImpactOriginX == boss.fPositionX &&
@@ -3715,8 +3881,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			std::fabs(firstEvents.front().fImpactDirectionZ) <= 0.001f,
 			"Build canonical deterministic events from the authoritative boss pose");
 
+		/* One sequence short of what this batch needs, derived from the batch
+		itself so the ledger guard stays covered if the ring ever changes size. */
 		room.m_iNextWorldDestructionEventSequence =
-			(std::numeric_limits<std::uint64_t>::max)() - 9u;
+			(std::numeric_limits<std::uint64_t>::max)() -
+			(static_cast<std::uint64_t>(transaction.Transitions.size()) - 2u);
 		std::vector<WORLD_DESTRUCTION_EVENT_WIRE> exhaustedEvents;
 		CWorldDestructionRuntime exhaustionRuntime;
 		const bool preparedExhaustion = exhaustionRuntime.Initialize(
@@ -3776,10 +3945,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				160.25f, -130.75f, 162.25f, -135.75f,
 				wallPassagePath) &&
 			room.Apply_WorldDestructionImpact(
-				boss, "collision.valtan.wallgroup.11047903315509031966.receiver",
+				boss, "collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver",
 				500u, triggered) && triggered &&
 			room.m_WorldDestructionRuntime.Find_GroupState(
-				"destroyable.group.valtan.deploy.11047903315509031966",
+				"destroyable.group.valtan.wall159.15719065619666776634",
 				groupState) &&
 			WORLD_DESTRUCTION_STATE::BREAKING == groupState.eState &&
 			!room.m_ServerNavigation.Is_PointWalkableExact(
@@ -3787,26 +3956,99 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Commit one exact Valtan impact while keeping BREAKING navigation blocked");
 		SERVER_BOSS_RECEIVER_HIT duplicateHit{};
 		tests.Require(
-			!room.m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
+			(!room.m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
 				145.f, 23.04f, -133.312236f,
 				175.f, 23.04f, -133.312236f,
-				1.f, duplicateHit) &&
+				1.f, duplicateHit) ||
+			 duplicateHit.strReceiverPlacementId !=
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver") &&
+			!room.m_ServerCollisionSystem.Is_ImpactReceiverEnabled(
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver") &&
 			room.Commit_DueWorldDestruction(507u) &&
 			!room.m_ServerNavigation.Is_PointWalkableExact(
 				161.402061f, -133.312236f),
-			"Suppress repeated receiver impacts and keep the wall closed before its due tick");
+			"Suppress only the struck receiver and keep its wall closed before the due tick");
 		tests.Require(
 			room.Commit_DueWorldDestruction(508u) &&
 			room.m_WorldDestructionRuntime.Find_GroupState(
-				"destroyable.group.valtan.deploy.11047903315509031966",
+				"destroyable.group.valtan.wall159.15719065619666776634",
 				groupState) &&
 			WORLD_DESTRUCTION_STATE::DESPAWNED == groupState.eState &&
 			room.m_ServerNavigation.Is_PointWalkableExact(
 				161.402061f, -133.312236f) &&
-			room.m_ServerNavigation.Find_Path(
+			!room.m_ServerNavigation.Find_Path(
 				160.25f, -130.75f, 162.25f, -135.75f,
-				wallPassagePath) && !wallPassagePath.empty(),
-			"Atomically expose the Valtan passage at the persistent DESPAWNED due tick");
+				wallPassagePath) &&
+			!room.m_ServerCollisionSystem.Is_PlayerBlocking(
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634"),
+			"Atomically open only the struck wall cells and collision at the DESPAWNED due tick");
+	}
+
+	{
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		SERVER_WORLD_ENTITY boss{};
+		boss.iNetEntityId = 7003u;
+		/* Stand in front of the wall instead of inside it.  These are the exact
+		   DOWN_SMASH authored proxy semantics compiled above: a ten-metre cross
+		   with a 1.8-metre half-width. */
+		boss.fPositionX = VALTAN_WALL_CENTER_X;
+		boss.fPositionY = VALTAN_WALL_CENTER_Y;
+		boss.fPositionZ = VALTAN_WALL_CENTER_Z - 4.f;
+		boss.fYawDegrees = 0.f;
+		boss.fCollisionRadius = 1.f;
+		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::CROSS;
+		boss.fPatternHitLength = 10.f;
+		boss.fPatternHitHalfWidth = 1.8f;
+		WORLD_DESTRUCTION_GROUP_STATE groupState{};
+		const std::string groupId =
+			"destroyable.group.valtan.wall159.15719065619666776634";
+		const bool initiallyIntact = room.Is_Ready() &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				groupId, groupState) &&
+			WORLD_DESTRUCTION_STATE::INTACT == groupState.eState;
+		boss.bPatternWallContact = false;
+		const bool refusedUnmarkedHit =
+			room.Apply_WorldDestructionPatternHitContact(boss, 700u) &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				groupId, groupState) &&
+			WORLD_DESTRUCTION_STATE::INTACT == groupState.eState;
+		boss.bPatternWallContact = true;
+		std::vector<std::string> observedAxeContacts;
+		room.m_ServerCollisionSystem.Collect_BossPatternHitContacts(
+			boss.ePatternHitShape,
+			boss.fPositionX, boss.fPositionY, boss.fPositionZ,
+			boss.fYawDegrees, boss.fCollisionRadius,
+			boss.fPatternHitOuterRadius, boss.fPatternHitInnerRadius,
+			boss.fPatternHitAngleDegrees, boss.fPatternHitLength,
+			boss.fPatternHitHalfWidth, observedAxeContacts);
+		const bool foundTargetContact = observedAxeContacts.end() != std::find(
+			observedAxeContacts.begin(), observedAxeContacts.end(),
+			VALTAN_WALL_COLLISION_STATE);
+		const bool acceptedAxeHit =
+			room.Apply_WorldDestructionPatternHitContact(boss, 701u) &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				groupId, groupState) &&
+			WORLD_DESTRUCTION_STATE::BREAKING == groupState.eState &&
+			room.m_ServerCollisionSystem.Is_PlayerBlocking(
+				VALTAN_WALL_COLLISION_STATE);
+		tests.Require(initiallyIntact,
+			"Start the axe-contact wall integration from INTACT");
+		tests.Require(refusedUnmarkedHit,
+			"Keep a physical hit volume harmless when its action is not wall-contact authored");
+		tests.Require(foundTargetContact,
+			"Resolve the authored down-smash axe proxy against the wall in front of Valtan");
+		tests.Require(acceptedAxeHit,
+			"Commit BREAKING when an authored axe hit volume touches one wall collider");
+		const bool committedAxeHit = room.Commit_DueWorldDestruction(709u) &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				groupId, groupState) &&
+			WORLD_DESTRUCTION_STATE::DESPAWNED == groupState.eState &&
+			!room.m_ServerCollisionSystem.Is_PlayerBlocking(
+				VALTAN_WALL_COLLISION_STATE) &&
+			room.m_ServerNavigation.Is_PointWalkableExact(
+				VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z);
+		tests.Require(committedAxeHit,
+			"Gate axe wall contact by authored action and atomically open its collision and navigation at the due tick");
 	}
 
 #ifdef _DEBUG
@@ -3842,16 +4084,38 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				baitPlayer.fPositionZ,
 				baitResolvedX, baitResolvedY, baitResolvedZ, baitBlocked) &&
 			!baitBlocked;
+		/* The first thing a fresh Valtan does is its one entrance sweep, exactly
+		as in the original: the 159 charge only follows it. */
 		tests.Require(
 			room.Is_Ready() && nullptr != boss &&
-			"VALTAN_ARMOR_BREAK_OPENING" ==
+			"VALTAN_ENTRANCE_WHIRLWIND" ==
 				(nullptr == boss ? std::string{} : boss->strPatternId) &&
 			159u == (nullptr == boss ? 0u :
 				CValtanBrain::Calculate_HealthBar(*boss)) &&
 			std::abs(baitPlayer.fPositionX - 154.296f) < 0.001f &&
 			std::abs(baitPlayer.fPositionZ + 125.219f) < 0.001f &&
 			baitIsCollisionClear,
-			"Enter the real Debug Stage_Boss trigger and immediately run the 159-bar opening");
+			"Enter the real Debug Stage_Boss trigger and run the entrance sweep first");
+
+		/* The entrance pattern is 6160ms; drive past it and the 159 opening is
+		the next authored crossing, still exactly once. */
+		std::string openingPatternId;
+		for (std::uint32_t index = 0u; index < 260u; ++index)
+		{
+			room.Tick(1.f / 30.f);
+			boss = room.Find_AuditionBoss();
+			if (nullptr == boss)
+				break;
+			if ("VALTAN_ARMOR_BREAK_OPENING" == boss->strPatternId)
+			{
+				openingPatternId = boss->strPatternId;
+				break;
+			}
+		}
+		tests.Require(
+			"VALTAN_ARMOR_BREAK_OPENING" == openingPatternId &&
+			nullptr != boss && boss->bIntroPatternConsumed,
+			"Follow the consumed entrance sweep with the 159-bar opening exactly once");
 	}
 #endif
 
@@ -3868,6 +4132,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
 		SERVER_WORLD_ENTITY* auditionBoss = room.Find_AuditionBoss();
+		/* Drive one exact pattern: stage the encounter intro as already
+		consumed so the first-appearance sweep is not the first sequence. */
+		if (nullptr != auditionBoss)
+			auditionBoss->bIntroPatternConsumed = true;
 		tests.Require(
 			activated && nullptr != auditionBoss &&
 			60000u == (nullptr == auditionBoss ? 0u : auditionBoss->iMaximumHp) &&
@@ -4062,6 +4330,93 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			110u == auditionBoss->iLastEvaluatedHealthBar &&
 			40875u == auditionBoss->iCurrentHp,
 			"Reset a running audition and queue 109 again from one repeatable Play request");
+
+		C2S_VALTAN_AUDITION_REQUEST wallAttack{};
+		wallAttack.iRequestSequence = 9u;
+		wallAttack.eOperation = VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK;
+		wallAttack.iTargetHealthBar = 0u;
+		room.m_Players.at(AUDITION_PLAYER).iCurrentHp = 5500u;
+		room.m_Players.at(AUDITION_PLAYER).iMaximumHp = 5500u;
+		const bool queuedWallAttack =
+			VALTAN_AUDITION_RESULT::QUEUED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, wallAttack, reportedBar) &&
+			nullptr != auditionBoss &&
+			1u == auditionBoss->PendingPatternIds.size() &&
+			"VALTAN_DOWN_SMASH" == auditionBoss->PendingPatternIds.front();
+		tests.Require(
+			queuedWallAttack,
+			"Queue the exact authored down-smash from the Debug wall-attack button");
+
+		WORLD_DESTRUCTION_GROUP_STATE attackWallState{};
+		const std::string attackWallGroup =
+			"destroyable.group.valtan.wall159.15719065619666776634";
+		room.Tick(1.f / 30.f);
+		const bool attackStartedBeforeContact = nullptr != auditionBoss &&
+			"VALTAN_DOWN_SMASH" == auditionBoss->strPatternId &&
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				attackWallGroup, attackWallState) &&
+			WORLD_DESTRUCTION_STATE::INTACT == attackWallState.eState;
+		tests.Require(
+			attackStartedBeforeContact,
+			"Keep the target wall intact during down-smash windup instead of breaking it from boss placement");
+		for (std::uint32_t tick = 0u; tick < 79u; ++tick)
+			room.Tick(1.f / 30.f);
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE> postAttackStates =
+			room.m_WorldDestructionRuntime.Get_GroupStates();
+		const bool outerStayedIntact = std::all_of(
+			postAttackStates.begin(), postAttackStates.end(),
+			[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+			{
+				return 0u != state.strGroupId.rfind(
+					"destroyable.group.valtan.outerwall109.", 0u) ||
+					WORLD_DESTRUCTION_STATE::INTACT == state.eState;
+			});
+		const bool attackOpenedTarget =
+			room.m_WorldDestructionRuntime.Find_GroupState(
+				attackWallGroup, attackWallState) &&
+			WORLD_DESTRUCTION_STATE::DESPAWNED == attackWallState.eState &&
+			!room.m_ServerCollisionSystem.Is_PlayerBlocking(
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634") &&
+			room.m_ServerNavigation.Is_PointWalkableExact(
+				VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Z);
+		tests.Require(
+			attackOpenedTarget && outerStayedIntact,
+			"Break and remove an ordinary attack-contact wall while all thirty 109 outer walls remain intact");
+
+		C2S_VALTAN_AUDITION_REQUEST finalArena{};
+		finalArena.iRequestSequence = 10u;
+		finalArena.eOperation = VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA;
+		finalArena.iTargetHealthBar = 0u;
+		const bool acceptedFinalArena =
+			VALTAN_AUDITION_RESULT::QUEUED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, finalArena, reportedBar);
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE> stagedFinalStates =
+			room.m_WorldDestructionRuntime.Get_GroupStates();
+		const bool stagedFinalArena = acceptedFinalArena &&
+			std::all_of(
+				stagedFinalStates.begin(), stagedFinalStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
+				});
+		tests.Require(
+			stagedFinalArena,
+			"Stage every independent wall as one Server-authoritative final-arena Debug transaction");
+		for (std::uint32_t tick = 0u; tick < 9u; ++tick)
+			room.Tick(1.f / 30.f);
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE> finalArenaStates =
+			room.m_WorldDestructionRuntime.Get_GroupStates();
+		tests.Require(
+			99u == finalArenaStates.size() &&
+			std::all_of(
+				finalArenaStates.begin(), finalArenaStates.end(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
+				{
+					return WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState;
+				}),
+			"Commit all ninety-nine wall units to the disappeared final-arena state");
 #endif
 
 		room.m_Players.clear();
@@ -4082,6 +4437,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const bool activated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
 		SERVER_WORLD_ENTITY* leapBoss = room.Find_AuditionBoss();
+		/* Drive one exact pattern: stage the encounter intro as already
+		consumed so the first-appearance sweep is not the first sequence. */
+		if (nullptr != leapBoss)
+			leapBoss->bIntroPatternConsumed = true;
 
 		SERVER_PLAYER leapPlayer{};
 		leapPlayer.iPlayerId = LEAP_PLAYER;
@@ -4098,13 +4457,37 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		}
 		room.m_Players.emplace(LEAP_PLAYER, leapPlayer);
 
-		const float groundY =
-			nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionY;
+		/* The 109 leap lands on the pattern's compiled anchor, which is the
+		measured centre of the outer ring and deliberately not the boss
+		placement: the two sit about 4.8m apart. */
+		const BOSS_PATTERN_MOTION* leapMotion = nullptr;
+		if (const std::vector<BOSS_PATTERN_DEFINITION>* leapPatterns =
+			room.m_GameplayCatalog.Find_BossPatterns("ENCOUNTER_VALTAN"))
+		{
+			for (const BOSS_PATTERN_DEFINITION& candidate : *leapPatterns)
+			{
+				if ("VALTAN_ARENA_BREAK_109" == candidate.strPatternId)
+				{
+					leapMotion = &candidate.Motion;
+					break;
+				}
+			}
+		}
+		const float anchorX = nullptr == leapMotion ? 0.f : leapMotion->fLandingX;
+		const float anchorY = nullptr == leapMotion ? 0.f : leapMotion->fLandingY;
+		const float anchorZ = nullptr == leapMotion ? 0.f : leapMotion->fLandingZ;
+		const float groundY = anchorY;
 		tests.Require(
-			activated && nullptr != leapBoss &&
-			std::abs(groundY - (nullptr == leapBoss ?
-				1.f : leapBoss->fPositionY)) < 0.001f,
-			"Record the authored Valtan placement as the leap landing point");
+			activated && nullptr != leapBoss && nullptr != leapMotion &&
+			BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == leapMotion->eKind &&
+			"anchor.valtan.arena-break-109.landing" == leapMotion->strAnchorId &&
+			leapMotion->fApexHeight > 0.f &&
+			std::sqrt(
+				(anchorX - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionX)) *
+				(anchorX - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionX)) +
+				(anchorZ - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionZ)) *
+				(anchorZ - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionZ))) > 1.f,
+			"Compile a 109 landing anchor that is separate from the boss placement");
 
 		/* Drive the real pattern rather than assigning stages by hand, so the
 		arc is exercised through the same edges the room replicates. */
@@ -4140,8 +4523,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				std::string{} : leapBoss->strPatternStageId),
 			"Begin the 109 phase transition on the authored crossing");
 
-		/* Half of the 1000ms TAKEOFF stage at 30Hz. */
-		tickLeap(15u);
+		/* Half of the 900ms TAKEOFF stage at 30Hz. */
+		tickLeap(13u);
 		tests.Require(
 			nullptr != leapBoss &&
 			leapBoss->fPositionY > groundY + 1.f,
@@ -4152,7 +4535,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		authored apex and come all the way back down to the floor. */
 		float peakY = nullptr == leapBoss ? 0.f : leapBoss->fPositionY;
 		float peakPlanarError = 0.f;
-		for (std::uint32_t index = 0u; index < 39u; ++index)
+		for (std::uint32_t index = 0u; index < 35u; ++index)
 		{
 			tickLeap(1u);
 			if (nullptr == leapBoss)
@@ -4161,43 +4544,44 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				peakY = leapBoss->fPositionY;
 			if ("DROP" == leapBoss->strPatternStageId)
 			{
-				const float dx = leapBoss->fPositionX - leapBoss->fSpawnPositionX;
-				const float dz = leapBoss->fPositionZ - leapBoss->fSpawnPositionZ;
+				const float dx = leapBoss->fPositionX - anchorX;
+				const float dz = leapBoss->fPositionZ - anchorZ;
 				peakPlanarError = (std::max)(
 					peakPlanarError, std::sqrt(dx * dx + dz * dz));
 			}
 		}
 		tests.Require(
-			nullptr != leapBoss &&
-			std::abs(peakY - (groundY + 12.f)) < 0.5f &&
+			nullptr != leapBoss && nullptr != leapMotion &&
+			std::abs(peakY - (groundY + leapMotion->fApexHeight)) < 0.5f &&
 			peakPlanarError > 1.f &&
 			leapBoss->fPositionY <= groundY + 0.001f,
 			"Carry Valtan through the authored apex and back down to the floor");
 
-		/* TAKEOFF (30 ticks) plus DROP (24) lands inside the 12-tick IMPACT. */
+		/* TAKEOFF (27 ticks) plus DROP (21) lands inside the 12-tick IMPACT. */
 		tickLeap(1u);
 		const bool landedExactly = nullptr != leapBoss &&
 			"IMPACT" == leapBoss->strPatternStageId &&
-			std::abs(leapBoss->fPositionX - leapBoss->fSpawnPositionX) < 0.001f &&
-			std::abs(leapBoss->fPositionY - leapBoss->fSpawnPositionY) < 0.001f &&
-			std::abs(leapBoss->fPositionZ - leapBoss->fSpawnPositionZ) < 0.001f;
+			std::abs(leapBoss->fPositionX - anchorX) < 0.001f &&
+			std::abs(leapBoss->fPositionY - anchorY) < 0.001f &&
+			std::abs(leapBoss->fPositionZ - anchorZ) < 0.001f;
 		tests.Require(
 			landedExactly,
-			"Land the 109 leap exactly on the authored placement at IMPACT");
+			"Land the 109 leap exactly on the compiled anchor at IMPACT");
 	}
 
 	{
-		/* The 109 outer ring encloses the arena, but it must not quietly wall
-		off the two floors the level already depends on: the corridor the
-		player walks in through, and the passage the 159-bar wall opens. Both
-		bearings were measured against the published navgrid. */
+		/* The completed 109 outer ring encloses the arena on every bearing, so
+		nothing walks in or out of it until the collapse. The player reaches the
+		arena through Stage_Boss_ArenaEntry instead, and the 159 wall's own
+		passage is proved inside the ring by the FRACTURED collision test above.
+		All bearings here were measured against the published navgrid. */
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		constexpr float ARENA_CENTER_X = 156.03f;
 		constexpr float ARENA_CENTER_Z = -122.06f;
-		/* 131 degrees is the mouth of the entrance corridor: no interior
-		collision box reaches past the arena floor there, so the ring alone
-		decides that sweep. The 159 passage is covered by the FRACTURED
-		collision test above, where interior boxes still reach out to 17.5. */
+		/* 131 degrees used to be the mouth of the walk-in corridor, back when
+		the ring was still missing six slabs. The completed ring seals every
+		bearing until the 109 collapse, and Stage_Boss_ArenaEntry now carries
+		the player across it, so this bearing must block like the rest. */
 		const auto sweepAcrossRing = [&](const float bearingDegrees)
 		{
 			const float radians = bearingDegrees * 3.14159265f / 180.f;
@@ -4222,12 +4606,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			sweepAcrossRing(216.f),
 			"Block outward movement through the intact 109 outer ring");
 		tests.Require(
-			room.Is_Ready() && !sweepAcrossRing(131.f),
-			"Leave the authored entrance corridor open through the 109 ring");
+			room.Is_Ready() && sweepAcrossRing(131.f) &&
+			sweepAcrossRing(150.f) && sweepAcrossRing(294.f),
+			"Seal the former entrance and 159 gaps with the completed 109 ring");
 
 		/* Every wall that stands on authored floor now owns a blocker region,
-		so pathfinding stops at it instead of walking through, and the boss
-		spawn stays reachable because its cells were kept out of them. */
+		so pathfinding stops at it instead of walking through, and both the
+		Stage_Boss_ArenaEntry landing point and the boss spawn stay reachable
+		inside the sealed ring because their cells were kept out of them. */
 		std::vector<SERVER_NAV_POINT> wallPath;
 		const bool bossActivated = room.Is_Ready() &&
 			room.Activate_Encounter("boss.valtan.center");
@@ -4236,13 +4622,139 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			bossActivated && nullptr != spawnedBoss &&
 			room.m_ServerNavigation.Find_Path(
-				144.75f, -115.75f, 156.25f, -122.25f, wallPath) &&
+				147.75f, -117.25f, 156.25f, -122.25f, wallPath) &&
 			!wallPath.empty() &&
 			room.m_ServerNavigation.Find_Path(
 				spawnedBoss->fSpawnPositionX, spawnedBoss->fSpawnPositionZ,
 				156.25f, -122.25f, bossPath) &&
 			!bossPath.empty(),
 			"Keep the arena and the Valtan spawn connected under the wall blockers");
+	}
+
+	{
+		/* The pillars are the one encounter prop that has to come back. Wall
+		groups leave INTACT once and never return, so this runtime is checked
+		on exactly that difference: the same four slots must cycle. */
+		ENCOUNTER_PROP_SET_DESCRIPTOR descriptor{};
+		descriptor.strPropSetId = "encounterprop.valtan.four-pillars";
+		descriptor.strEncounterId = "ENCOUNTER_VALTAN";
+		descriptor.SlotIds = {
+			"pillar.valtan.slot03", "pillar.valtan.slot00",
+			"pillar.valtan.slot02", "pillar.valtan.slot01" };
+
+		std::string status;
+		CEncounterPropRuntime runtime;
+		const bool initialized = runtime.Initialize(descriptor, status, 1u);
+		const std::vector<ENCOUNTER_PROP_SLOT_STATE>& slots =
+			runtime.Get_SlotStates();
+		tests.Require(
+			initialized && 4u == slots.size() &&
+			std::is_sorted(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& left,
+					const ENCOUNTER_PROP_SLOT_STATE& right)
+				{
+					return left.strSlotId < right.strSlotId;
+				}) &&
+			std::all_of(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::HIDDEN == slot.eState &&
+						0u == slot.iOccurrenceSequence;
+				}),
+			"Initialize the four pillar slots hidden in canonical slot order");
+
+		ENCOUNTER_PROP_SET_DESCRIPTOR duplicated = descriptor;
+		duplicated.SlotIds.push_back("pillar.valtan.slot00");
+		CEncounterPropRuntime rejected;
+		ENCOUNTER_PROP_SET_DESCRIPTOR nameless = descriptor;
+		nameless.SlotIds[1u].clear();
+		CEncounterPropRuntime alsoRejected;
+		tests.Require(
+			!rejected.Initialize(duplicated, status, 1u) &&
+			!rejected.Is_Initialized() &&
+			!alsoRejected.Initialize(nameless, status, 1u) &&
+			!alsoRejected.Is_Initialized(),
+			"Reject a duplicate or nameless pillar slot without a partial set");
+
+		ENCOUNTER_PROP_TRANSACTION raise{};
+		const bool raised =
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == runtime.Prepare_Spawn(
+				7u, 100u, raise, status) &&
+			4u == raise.Slots.size() &&
+			runtime.Commit(raise, status);
+		ENCOUNTER_PROP_TRANSACTION repeated{};
+		const ENCOUNTER_PROP_PREPARE_RESULT repeatedResult =
+			runtime.Prepare_Spawn(7u, 104u, repeated, status);
+		tests.Require(
+			raised && 7u == runtime.Get_OccurrenceSequence() &&
+			std::all_of(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::INTACT == slot.eState &&
+						7u == slot.iOccurrenceSequence &&
+						100u == slot.iStateStartTick;
+				}) &&
+			ENCOUNTER_PROP_PREPARE_RESULT::NO_CHANGE == repeatedResult &&
+			repeated.Slots.empty(),
+			"Raise the four pillars once and ignore the repeated raise edge");
+
+		ENCOUNTER_PROP_TRANSACTION stale = raise;
+		ENCOUNTER_PROP_TRANSACTION shatter{};
+		const bool shattered =
+			!runtime.Commit(stale, status) &&
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == runtime.Prepare_Break(
+				7u, 200u, shatter, status) &&
+			runtime.Commit(shatter, status);
+		ENCOUNTER_PROP_TRANSACTION early{};
+		ENCOUNTER_PROP_TRANSACTION due{};
+		const ENCOUNTER_PROP_PREPARE_RESULT earlyResult =
+			runtime.Prepare_DueRemoval(207u, 8u, early, status);
+		const bool retired =
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == runtime.Prepare_DueRemoval(
+				208u, 8u, due, status) &&
+			runtime.Commit(due, status);
+		tests.Require(
+			shattered && ENCOUNTER_PROP_PREPARE_RESULT::NO_CHANGE ==
+				earlyResult && early.Slots.empty() && retired &&
+			std::all_of(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::HIDDEN == slot.eState;
+				}),
+			"Shatter the pillars and retire them only on the authored due tick");
+
+		ENCOUNTER_PROP_TRANSACTION nextCycle{};
+		const bool cycled =
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == runtime.Prepare_Spawn(
+				8u, 300u, nextCycle, status) &&
+			runtime.Commit(nextCycle, status);
+		tests.Require(
+			cycled && 8u == runtime.Get_OccurrenceSequence() &&
+			std::all_of(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::INTACT == slot.eState &&
+						8u == slot.iOccurrenceSequence;
+				}),
+			"Raise the same four slots again on the next pattern occurrence");
+
+		ENCOUNTER_PROP_TRANSACTION crossEpoch{};
+		const bool preparedBeforeReset =
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == runtime.Prepare_Break(
+				8u, 320u, crossEpoch, status);
+		const std::uint32_t epochBeforeReset = runtime.Get_EncounterEpoch();
+		tests.Require(
+			preparedBeforeReset && runtime.Reset(status, 400u) &&
+			epochBeforeReset != runtime.Get_EncounterEpoch() &&
+			0u == runtime.Get_OccurrenceSequence() &&
+			!runtime.Commit(crossEpoch, status) &&
+			std::all_of(slots.begin(), slots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return ENCOUNTER_PROP_STATE::HIDDEN == slot.eState &&
+						0u == slot.iOccurrenceSequence;
+				}),
+			"Reset the pillars to hidden and refuse a transaction from the old epoch");
 	}
 
 	tests.failures += Run_WorldDestructionBootstrapContractTests();

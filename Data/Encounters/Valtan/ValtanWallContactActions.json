@@ -1,0 +1,19 @@
+{
+  "schema": "lostark.valtan-wall-contact-actions",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "actions": [
+    { "patternId": "VALTAN_BACKSTEP_ATTACK", "stageId": "SWEEP", "actionId": "valtan.attack.backstep.active" },
+    { "patternId": "VALTAN_BIND_CHARGE_SMASH", "stageId": "SMASH", "actionId": "valtan.attack.bind-charge-smash.smash" },
+    { "patternId": "VALTAN_DOWN_SMASH", "stageId": "IMPACT", "actionId": "valtan.attack.down-smash.active" },
+    { "patternId": "VALTAN_EARTHQUAKE_SMASH", "stageId": "IMPACT", "actionId": "valtan.attack.earthquake-smash.impact" },
+    { "patternId": "VALTAN_FOUR_SLASH", "stageId": "SLASHES", "actionId": "valtan.attack.four-slash.active" },
+    { "patternId": "VALTAN_FRONT_BACK_FRONT", "stageId": "SMASHES", "actionId": "valtan.attack.front-back-front.active" },
+    { "patternId": "VALTAN_JUMP_SPIN", "stageId": "SPIN", "actionId": "valtan.attack.jump-spin.spin" },
+    { "patternId": "VALTAN_SUPER_SMASH", "stageId": "IMPACTS", "actionId": "valtan.attack.super-smash.active" },
+    { "patternId": "VALTAN_SWING", "stageId": "SWEEP", "actionId": "valtan.attack.swing.active" },
+    { "patternId": "VALTAN_WHIRLWIND", "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active" },
+    { "patternId": "VALTAN_PARRY", "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash" }
+  ]
+}

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 
 namespace
 {
@@ -69,15 +70,31 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	{
 		publishedMemberCount += group.MemberPlacementIds.size();
 	}
-	/* 13 authored interior groups plus the eight 109 outer ring sectors, and
-	the 77 interior members plus the ring's 24 slabs. */
+	/* The enabled product graph is thirty independent 109 outer-ring walls and
+	sixty-nine ordinary contact walls. The outer ring owns only its 109 stage
+	binding; attack/body contact must never remove it. */
+	std::size_t publishedOuterGroupCount = 0u;
+	std::size_t publishedOuterMemberCount = 0u;
+	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& group :
+		publishedBootstrap.Get_DescriptorGraph().Groups)
+	{
+		if (0u != group.strGroupId.rfind(
+			"destroyable.group.valtan.outerwall109.", 0u))
+		{
+			continue;
+		}
+		++publishedOuterGroupCount;
+		publishedOuterMemberCount += group.MemberPlacementIds.size();
+	}
 	require(
-		21u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
-		21u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		22u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
-		101u == publishedMemberCount &&
+		99u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
+		99u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
+		111u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		107u == publishedMemberCount &&
+		30u == publishedOuterGroupCount &&
+		30u == publishedOuterMemberCount &&
 		publishedBootstrap.Get_CombatRuntimeRevision().size() == 64u,
-		"Load the exact 21-group and 101-member Valtan destruction product");
+		"Load ninety-nine independent Valtan source-wall destruction units");
 	CWorldDestructionRuntime publishedRuntime;
 	std::string publishedRuntimeStatus;
 	WORLD_DESTRUCTION_TRANSACTION publishedTransaction{};
@@ -93,18 +110,32 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			publishedRuntime.Prepare_StageTrigger(
 				arenaBreakAction, 7001u, 80u, 450u,
 				publishedTransaction, publishedRuntimeStatus) &&
-		21u == publishedTransaction.Transitions.size() &&
-		21u == publishedTransaction.BindingApplications.size() &&
+		30u == publishedTransaction.Transitions.size() &&
+		30u == publishedTransaction.BindingApplications.size() &&
 		std::all_of(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			[](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
 			{
-				return !transition.strCollisionStateId.empty();
+				/* The 109 batch is the outer ring alone. An interior group
+				reaching this transaction is the exact regression that made the
+				whole arena collapse at once. */
+				return !transition.strCollisionStateId.empty() &&
+					0u == transition.strGroupId.rfind(
+						"destroyable.group.valtan.outerwall109.", 0u);
+			}) &&
+		30u == std::accumulate(
+			publishedTransaction.Transitions.begin(),
+			publishedTransaction.Transitions.end(),
+			std::size_t{ 0u },
+			[](const std::size_t total,
+				const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
+			{
+				return total + transition.MemberPlacementIds.size();
 			}) &&
 		publishedRuntime.Commit(
 			publishedTransaction, publishedRuntimeStatus),
-		"Prepare and commit all twenty-one 109-bar arena wall groups in one transaction");
+		"Prepare and commit thirty independent 109-bar outer ring walls in one batch");
 	require(
 		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
 			publishedRuntime.Prepare_StageTrigger(
@@ -112,6 +143,35 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 				publishedTransaction, publishedRuntimeStatus) &&
 		publishedTransaction.Transitions.empty(),
 		"Treat the repeated 109-bar impact edge as one idempotent no-op");
+
+	CWorldDestructionRuntime contactRuntime;
+	require(
+		contactRuntime.Initialize(
+			publishedBootstrap.Get_DescriptorGraph(), publishedRuntimeStatus) &&
+		WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+			contactRuntime.Prepare_ContactTrigger(
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634",
+				7001u, 1u, 499u,
+				publishedTransaction, publishedRuntimeStatus) &&
+		1u == publishedTransaction.Transitions.size() &&
+		1u == publishedTransaction.BindingApplications.size() &&
+		publishedTransaction.Transitions.front().strGroupId ==
+			"destroyable.group.valtan.wall159.15719065619666776634" &&
+		contactRuntime.Commit(
+			publishedTransaction, publishedRuntimeStatus),
+		"Prepare one exact wall from its independent direct collider contact");
+
+	CWorldDestructionRuntime protectedOuterRuntime;
+	require(
+		protectedOuterRuntime.Initialize(
+			publishedBootstrap.Get_DescriptorGraph(), publishedRuntimeStatus) &&
+		WORLD_DESTRUCTION_PREPARE_RESULT::NO_MATCH ==
+			protectedOuterRuntime.Prepare_ContactTrigger(
+				"collision.valtan.wallgroup.sector00.1090000000000001",
+				7001u, 2u, 499u,
+				publishedTransaction, publishedRuntimeStatus) &&
+		publishedTransaction.Transitions.empty(),
+		"Protect every 109 outer wall from ordinary collider contact");
 
 	const WORLD_DESTRUCTION_ACTION_TUPLE openingImpactAction{
 		"VALTAN_ARMOR_BREAK_OPENING",
@@ -125,15 +185,15 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
 			impactRuntime.Prepare_ImpactTrigger(
 				openingImpactAction,
-				"collision.valtan.wallgroup.11047903315509031966.receiver",
+				"collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver",
 				7001u, 159u, 500u,
 				publishedTransaction, publishedRuntimeStatus) &&
 		1u == publishedTransaction.Transitions.size() &&
 		1u == publishedTransaction.BindingApplications.size() &&
 		publishedTransaction.Transitions.front().strCollisionStateId ==
-			"collision.valtan.wallgroup.11047903315509031966" &&
+			"collision.valtan.wallgroup.11047903315509031966.15719065619666776634" &&
 		publishedTransaction.Transitions.front().strNavigationStateId ==
-			"condition.valtan.wall.11047903315509031966.destroyed" &&
+			"condition.valtan.wall159.15719065619666776634.destroyed" &&
 		impactRuntime.Commit(
 			publishedTransaction, publishedRuntimeStatus),
 		"Prepare the exact opening charge receiver with collision and navigation channels");

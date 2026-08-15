@@ -1045,6 +1045,9 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
+    <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json">
+      <Filter>96.DataFiles\Encounters</Filter>
+    </None>
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json">
       <Filter>96.DataFiles\Encounters</Filter>
     </None>

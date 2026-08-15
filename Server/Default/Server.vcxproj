@@ -39,6 +39,7 @@
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
 	<ClInclude Include="..\Public\ServerCollisionSystem.h" />
+	<ClInclude Include="..\Public\EncounterPropRuntime.h" />
 	<ClInclude Include="..\Public\WorldDestructionRuntime.h" />
 	<ClInclude Include="..\Public\WorldDestructionBootstrap.h" />
 	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h" />
@@ -61,6 +62,7 @@
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp" />
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp" />
+	<ClCompile Include="..\Private\EncounterPropRuntime.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionRuntime.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp" />

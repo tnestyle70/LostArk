@@ -49,7 +49,8 @@
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerTriggerSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerCollisionSystem.h"><Filter>Public</Filter></ClInclude>
-	<ClInclude Include="..\Public\WorldDestructionRuntime.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\EncounterPropRuntime.h"><Filter>Public</Filter></ClInclude>
+    <ClInclude Include="..\Public\WorldDestructionRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\WorldDestructionBootstrap.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h"><Filter>Public</Filter></ClInclude>
   </ItemGroup>
@@ -85,7 +86,8 @@
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp"><Filter>Private</Filter></ClCompile>
-	<ClCompile Include="..\Private\WorldDestructionRuntime.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\EncounterPropRuntime.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\WorldDestructionRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp"><Filter>Private</Filter></ClCompile>
   </ItemGroup>

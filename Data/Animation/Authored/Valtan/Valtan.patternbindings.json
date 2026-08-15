@@ -288,6 +288,18 @@
       "clip": "mesh_att_battle_1_01"
     },
     {
+      "actionId": "valtan.attack.ledge-roar.windup",
+      "clip": "mesh_evt1_att_battle_5_01_start"
+    },
+    {
+      "actionId": "valtan.attack.ledge-roar.active",
+      "clip": "mesh_evt1_att_battle_5_01_loop"
+    },
+    {
+      "actionId": "valtan.attack.ledge-roar.recovery",
+      "clip": "mesh_evt1_att_battle_5_01_end"
+    },
+    {
       "actionId": "valtan.reactive.triple-counter.first",
       "clip": "mesh_abn_groggy_1_start"
     },
@@ -364,19 +376,39 @@
       "clip": "mesh_att_battle_8_01_loop"
     },
     {
-      "actionId": "valtan.mechanic.arena-break-80.cutscene",
+      "actionId": "valtan.mechanic.entrance-whirlwind.windup",
+      "clip": "mesh_att_battle_20_02"
+    },
+    {
+      "actionId": "valtan.mechanic.entrance-whirlwind.sweep",
+      "clip": "mesh_att_battle_20_03"
+    },
+    {
+      "actionId": "valtan.mechanic.entrance-whirlwind.recovery",
+      "clip": "mesh_att_battle_20_04"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-break-109.takeoff",
       "clip": "mesh_att_battle_12_01"
     },
     {
-      "actionId": "valtan.mechanic.arena-break-80.landing",
+      "actionId": "valtan.mechanic.arena-break-109.drop",
       "clip": "mesh_att_battle_12_02"
     },
     {
-      "actionId": "valtan.mechanic.arena-break-80.spin",
-      "clip": "mesh_att_battle_12_02"
+      "actionId": "valtan.mechanic.arena-break-109.impact",
+      "clip": "mesh_att_battle_12_03"
     },
     {
-      "actionId": "valtan.mechanic.arena-break-80.recovery",
+      "actionId": "valtan.mechanic.arena-break-109.impact-hold",
+      "clip": "mesh_att_battle_12_03"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
+      "clip": "mesh_att_battle_12_03"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-break-109.recovery",
       "clip": "mesh_att_battle_12_03"
     },
     {
@@ -428,8 +460,12 @@
       "clip": "mesh_att_battle_12_03"
     },
     {
-      "actionId": "valtan.mechanic.ghost-transition-15.portal",
+      "actionId": "valtan.mechanic.ghost-transition-15.portal-open",
       "clip": "mesh_abn_groggy_1_start"
+    },
+    {
+      "actionId": "valtan.mechanic.ghost-transition-15.ghost-appear",
+      "clip": "mesh_abn_groggy_1_loop"
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.four-directions",
