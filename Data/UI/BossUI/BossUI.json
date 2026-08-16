@@ -1,0 +1,99 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "Boss_Frame",
+      "ownerClass": null,
+      "type": 3,
+      "rect": { "x": 366.053589, "y": 8.71301365, "width": 594, "height": 73 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_bar_ornate_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_Fill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 455.625397, "y": 38.5624771, "width": 488, "height": 22 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_bar_fill_orange.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_HPText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 602.025397, "y": 45.9624771, "width": 195.2, "height": 13.2 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_text_placeholder.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_BarCountText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 862.625397, "y": 45.9624771, "width": 72, "height": 13.2 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_text_placeholder.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_TitleText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 612.625397, "y": 17.722477, "width": 174, "height": 15.84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_text_placeholder.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_StaggerBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 445.649017, "y": 68.3170013, "width": 496, "height": 14 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_stagger_bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Boss_StaggerTrack",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 448.818604, "y": 72.3025131, "width": 493, "height": 7 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_stagger_track.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
+}
