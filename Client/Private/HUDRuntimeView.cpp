@@ -324,6 +324,9 @@ Client::CHUDRuntimeView::Get_Or_Load_KeyframeAnimation(const string& strPath)
 			if (const DATA_JSON_VALUE* pFrameCount = Root.Find("frameCount"))
 				if (pFrameCount->Is_Number())
 					Document.iFrameCount = static_cast<int32_t>(pFrameCount->Get_Number());
+			if (const DATA_JSON_VALUE* pLoop = Root.Find("loop"))
+				if (pLoop->Is_Boolean())
+					Document.bLoop = pLoop->Get_Boolean();
 
 			if (const DATA_JSON_VALUE* pLabels = Root.Find("labels"))
 			{
@@ -376,6 +379,9 @@ Client::CHUDRuntimeView::Get_Or_Load_KeyframeAnimation(const string& strPath)
 							if (const DATA_JSON_VALUE* pAdditive = KeyValue.Find("additive"))
 								if (pAdditive->Is_Boolean())
 									Key.bAdditive = pAdditive->Get_Boolean();
+							if (const DATA_JSON_VALUE* pFlipX = KeyValue.Find("flipX"))
+								if (pFlipX->Is_Boolean())
+									Key.bFlipX = pFlipX->Get_Boolean();
 							Layer.Keys.push_back(move(Key));
 						}
 						Document.Layers.push_back(move(Layer));
@@ -418,6 +424,19 @@ bool_t Client::CHUDRuntimeView::Play_KeyframeAnimation(const string& strSlotId, 
 		Slot.iKeyframeAnimWindowStart = iStartFrame;
 		Slot.iKeyframeAnimWindowEnd = iEndFrame;
 		Slot.dKeyframeAnimStartSeconds = ImGui::GetTime();
+
+		/* TEMP DIAGNOSTIC (2026-08-14): confirms which window this call actually resolved to --
+		in particular, whether a later label meant to cap a window early (e.g. LanceMaster's
+		focus_settled) is really being found as the nearest-greater label, or whether iEndFrame is
+		falling back to something else. Remove once the LanceMaster stance icon is confirmed
+		stable. */
+		{
+			char pDebugLine[256];
+			sprintf_s(pDebugLine,
+				"[Play_KeyframeAnimation] slot=%s label=%s window=[%d,%d) frameCount=%d\n",
+				strSlotId.c_str(), strLabel.c_str(), iStartFrame, iEndFrame, pDocument->iFrameCount);
+			OutputDebugStringA(pDebugLine);
+		}
 		return true;
 	}
 
@@ -432,6 +451,20 @@ bool_t Client::CHUDRuntimeView::Set_SlotRotation(const string& strSlotId, f32_t 
 			continue;
 
 		Slot.fRotation = fDegrees;
+		return true;
+	}
+
+	return false;
+}
+
+bool_t Client::CHUDRuntimeView::Set_SlotVisible(const string& strSlotId, bool_t bVisible)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId)
+			continue;
+
+		Slot.bForceHidden = !bVisible;
 		return true;
 	}
 
@@ -491,6 +524,8 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 			continue;
 		if (iStage < Slot.iBaseFromStage)
 			continue;
+		if (Slot.bForceHidden)
+			continue;
 
 		const ImVec2 vTopLeft(
 			pViewport->WorkPos.x + Slot.fX * fScaleX,
@@ -501,6 +536,21 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 
 		ImVec2 Corners[4];
 		Get_Rotated_Rect_Corners(vTopLeft, vBotRight, Slot.fRotation, Corners);
+
+		// TEMP DIAGNOSTIC: dump resolved slot rect for the LanceMaster gauge slots once/sec.
+		if (Slot.strId.rfind("Lance_Id_Gauge", 0) == 0)
+		{
+			static double s_dLastGaugeLog = -1.0;
+			const double dNow = ImGui::GetTime();
+			if (dNow - s_dLastGaugeLog > 1.0)
+			{
+				char szBuf[256];
+				sprintf_s(szBuf, "[GAUGE-DIAG] %s slotX=%.2f slotY=%.2f sizeX=%.2f sizeY=%.2f rot=%.2f -> topLeft=(%.1f,%.1f) botRight=(%.1f,%.1f)\n",
+					Slot.strId.c_str(), Slot.fX, Slot.fY, Slot.fSizeX, Slot.fSizeY, Slot.fRotation,
+					vTopLeft.x, vTopLeft.y, vBotRight.x, vBotRight.y);
+				OutputDebugStringA(szBuf);
+			}
+		}
 
 		/* A flipbook slot (login/lobby background frame sequences, ...) plays instead of
 		drawing Layers. Playback is timed from this slot's own first Render() call (stamped
@@ -554,12 +604,21 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 				continue;
 
 			const double dElapsedSeconds = ImGui::GetTime() - Slot.dKeyframeAnimStartSeconds;
+			const int32_t iWindowSpan = Slot.iKeyframeAnimWindowEnd - Slot.iKeyframeAnimWindowStart;
 			int32_t iCurrentFrame = Slot.iKeyframeAnimWindowStart +
 				static_cast<int32_t>(dElapsedSeconds * static_cast<double>(pDocument->fFrameRate));
-			if (iCurrentFrame >= Slot.iKeyframeAnimWindowEnd)
-				iCurrentFrame = Slot.iKeyframeAnimWindowEnd - 1;
-			if (iCurrentFrame < Slot.iKeyframeAnimWindowStart)
-				iCurrentFrame = Slot.iKeyframeAnimWindowStart;
+			if (pDocument->bLoop && iWindowSpan > 0)
+			{
+				iCurrentFrame = Slot.iKeyframeAnimWindowStart +
+					((iCurrentFrame - Slot.iKeyframeAnimWindowStart) % iWindowSpan + iWindowSpan) % iWindowSpan;
+			}
+			else
+			{
+				if (iCurrentFrame >= Slot.iKeyframeAnimWindowEnd)
+					iCurrentFrame = Slot.iKeyframeAnimWindowEnd - 1;
+				if (iCurrentFrame < Slot.iKeyframeAnimWindowStart)
+					iCurrentFrame = Slot.iKeyframeAnimWindowStart;
+			}
 
 			for (const KEYFRAME_ANIM_LAYER& Layer : pDocument->Layers)
 			{
@@ -591,8 +650,24 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 				ImVec2 KeyCorners[4];
 				Get_Rotated_Rect_Corners(vKeyTopLeft, vKeyBotRight, pActiveKey->fRotationDeg, KeyCorners);
 
+				// TEMP DIAGNOSTIC: dump the resolved key rect for the LanceMaster gauge slots once/sec.
+				if (Slot.strId.rfind("Lance_Id_Gauge", 0) == 0)
+				{
+					static double s_dLastGaugeKeyLog = -1.0;
+					const double dNow2 = ImGui::GetTime();
+					if (dNow2 - s_dLastGaugeKeyLog > 1.0)
+					{
+						s_dLastGaugeKeyLog = dNow2;
+						char szBuf[320];
+						sprintf_s(szBuf, "[GAUGE-KEY-DIAG] %s asset=%s keyX=%.2f keyY=%.2f keyScaleX=%.2f keyRot=%.2f localScale=%.2f texSize=(%.0f,%.0f) -> keyTopLeft=(%.1f,%.1f) keyBotRight=(%.1f,%.1f)\n",
+							Slot.strId.c_str(), pActiveKey->strAsset.c_str(), pActiveKey->fX, pActiveKey->fY, pActiveKey->fScaleX, pActiveKey->fRotationDeg, fLocalScale,
+							KeySize.fWidth, KeySize.fHeight, vKeyTopLeft.x, vKeyTopLeft.y, vKeyBotRight.x, vKeyBotRight.y);
+						OutputDebugStringA(szBuf);
+					}
+				}
+
 				const ImU32 iKeyTint = ImGui::ColorConvertFloat4ToU32(ImVec4(1.f, 1.f, 1.f, pActiveKey->fAlpha));
-				Draw_Image_Quad(pDrawList, pKeySRV, KeyCorners, iKeyTint, pActiveKey->bAdditive, false);
+				Draw_Image_Quad(pDrawList, pKeySRV, KeyCorners, iKeyTint, pActiveKey->bAdditive, pActiveKey->bFlipX);
 			}
 			continue;
 		}

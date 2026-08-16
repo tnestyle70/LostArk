@@ -385,6 +385,54 @@ namespace
 		event = std::move(decoded);
 		return true;
 	}
+
+	bool Is_Valid_EncounterPropSlots(
+		const std::vector<LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE>& slots)
+	{
+		// Slot IDs arrive in one canonical ascending order so two servers cannot
+		// disagree about the same set, and duplicates are a hard reject.
+		for (std::size_t index = 0; index < slots.size(); ++index)
+		{
+			const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot = slots[index];
+			if (slot.strSlotId.empty() ||
+				slot.strSlotId.size() >
+					LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES ||
+				slot.eState >= LostArk::Shared::ENCOUNTER_PROP_STATE::END ||
+				0u == slot.iStateVersion)
+			{
+				return false;
+			}
+			if (index > 0 && slots[index - 1].strSlotId >= slot.strSlotId)
+				return false;
+		}
+		return true;
+	}
+
+	void Write_DestructionDiagnostics(
+		LostArk::Shared::CPacketWriter& writer,
+		const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics)
+	{
+		writer.Write_U32(diagnostics.iActiveWallCollisionCount);
+		writer.Write_U32(diagnostics.iActiveNavBlockerRegionCount);
+		Write_U64(writer, diagnostics.iNavigationRevision);
+		Write_U64(writer, diagnostics.iLastEventSequence);
+	}
+
+	bool Read_DestructionDiagnostics(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics)
+	{
+		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS decoded{};
+		if (!reader.Read_U32(decoded.iActiveWallCollisionCount) ||
+			!reader.Read_U32(decoded.iActiveNavBlockerRegionCount) ||
+			!Read_U64(reader, decoded.iNavigationRevision) ||
+			!Read_U64(reader, decoded.iLastEventSequence))
+		{
+			return false;
+		}
+		diagnostics = decoded;
+		return true;
+	}
 }
 
 bool LostArk::Shared::Is_Valid_PlayerNickname(
@@ -1219,6 +1267,48 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_USE_ESTHER_SKILL& message)
+{
+	if (0 == message.iClientSequence ||
+		message.iSlotIndex < MIN_ESTHER_SLOT_INDEX ||
+		message.iSlotIndex > MAX_ESTHER_SLOT_INDEX ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U8(message.iSlotIndex);
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_USE_ESTHER_SKILL& message)
+{
+	C2S_USE_ESTHER_SKILL decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U8(decoded.iSlotIndex) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		0 == decoded.iClientSequence ||
+		decoded.iSlotIndex < MIN_ESTHER_SLOT_INDEX ||
+		decoded.iSlotIndex > MAX_ESTHER_SLOT_INDEX ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Read_Message(
 	CPacketReader& reader,
 	C2S_REVIVE_PLAYER& message)
@@ -1331,7 +1421,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
         message.Players.size() >
         MAX_WORLD_SNAPSHOT_PLAYERS ||
 		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES ||
-		message.DamageEvents.size() > MAX_DAMAGE_EVENTS)
+		message.DamageEvents.size() > MAX_DAMAGE_EVENTS ||
+		// maximum 0 means "no Esther in this world" and then the level must be
+		// 0 too; a live gauge can never exceed its maximum.
+		(0 == message.iEstherGaugeMaximum && 0 != message.iEstherGauge) ||
+		message.iEstherGauge > message.iEstherGaugeMaximum)
     {
         return false;
     }
@@ -1363,6 +1457,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 	// U8 is enough: MAX_DAMAGE_EVENTS bounds one tick, far under 255.
 	writer.Write_U8(
 		static_cast<std::uint8_t>(message.DamageEvents.size()));
+	writer.Write_U32(message.iEstherGauge);
+	writer.Write_U32(message.iEstherGaugeMaximum);
 
     for (const PLAYER_SNAPSHOT& player : message.Players)
     {
@@ -1439,12 +1535,16 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	std::uint16_t playerCount = 0;
 	std::uint16_t entityCount = 0;
 	std::uint8_t damageEventCount = 0;
+	std::uint32_t estherGauge = 0;
+	std::uint32_t estherGaugeMaximum = 0;
 
 	if (!reader.Read_U32(serverTick) ||
 		!reader.Read_U16(rawWorldId) ||
 		!reader.Read_U16(playerCount) ||
 		!reader.Read_U16(entityCount) ||
-		!reader.Read_U8(damageEventCount))
+		!reader.Read_U8(damageEventCount) ||
+		!reader.Read_U32(estherGauge) ||
+		!reader.Read_U32(estherGaugeMaximum))
     {
         return false;
     }
@@ -1454,7 +1554,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         0 == playerCount ||
         playerCount > MAX_WORLD_SNAPSHOT_PLAYERS ||
 		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES ||
-		damageEventCount > MAX_DAMAGE_EVENTS)
+		damageEventCount > MAX_DAMAGE_EVENTS ||
+		(0 == estherGaugeMaximum && 0 != estherGauge) ||
+		estherGauge > estherGaugeMaximum)
     {
         return false;
     }
@@ -1462,6 +1564,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	S2C_WORLD_SNAPSHOT decoded{};
 	decoded.iServerTick = serverTick;
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.iEstherGauge = estherGauge;
+	decoded.iEstherGaugeMaximum = estherGaugeMaximum;
     decoded.Players.reserve(playerCount);
 	decoded.Entities.reserve(entityCount);
 	decoded.DamageEvents.reserve(damageEventCount);
@@ -1612,6 +1716,7 @@ bool LostArk::Shared::Write_Message(
 		if (!Write_DestructionStateWire(writer, state))
 			return false;
 	}
+	Write_DestructionDiagnostics(writer, message.Diagnostics);
 	return true;
 }
 
@@ -1645,8 +1750,11 @@ bool LostArk::Shared::Read_Message(
 			return false;
 		decoded.GroupStates.push_back(std::move(state));
 	}
-	if (!Are_DestructionStatesCanonical(decoded.GroupStates))
+	if (!Are_DestructionStatesCanonical(decoded.GroupStates) ||
+		!Read_DestructionDiagnostics(reader, decoded.Diagnostics))
+	{
 		return false;
+	}
 
 	message = std::move(decoded);
 	return true;
@@ -1694,6 +1802,7 @@ bool LostArk::Shared::Write_Message(
 		if (!Write_DestructionEventWire(writer, event))
 			return false;
 	}
+	Write_DestructionDiagnostics(writer, message.Diagnostics);
 	return true;
 }
 
@@ -1739,11 +1848,81 @@ bool LostArk::Shared::Read_Message(
 		decoded.LiveEvents.push_back(std::move(event));
 	}
 	if (!Are_DestructionStatesCanonical(decoded.ChangedStates) ||
-		!Are_DestructionEventsCanonical(decoded.LiveEvents))
+		!Are_DestructionEventsCanonical(decoded.LiveEvents) ||
+		!Read_DestructionDiagnostics(reader, decoded.Diagnostics))
 	{
 		return false;
 	}
 
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_ENCOUNTER_PROP_SYNC& message)
+{
+	if (message.strPropSetId.empty() ||
+		message.strPropSetId.size() > MAX_STABLE_NETWORK_ID_BYTES ||
+		0 == message.iServerTick || 0 == message.iEncounterEpoch ||
+		message.Slots.empty() ||
+		message.Slots.size() > MAX_ENCOUNTER_PROP_SLOTS ||
+		!Is_Valid_EncounterPropSlots(message.Slots))
+	{
+		return false;
+	}
+	if (!writer.Write_String(message.strPropSetId, MAX_STABLE_NETWORK_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iServerTick);
+	writer.Write_U32(message.iEncounterEpoch);
+	writer.Write_U16(static_cast<std::uint16_t>(message.Slots.size()));
+	for (const ENCOUNTER_PROP_SLOT_WIRE& slot : message.Slots)
+	{
+		if (!writer.Write_String(slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(slot.eState));
+		writer.Write_U32(slot.iStateVersion);
+		writer.Write_U32(slot.iStateStartTick);
+		writer.Write_U32(slot.iOccurrenceSequence);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_ENCOUNTER_PROP_SYNC& message)
+{
+	S2C_ENCOUNTER_PROP_SYNC decoded{};
+	std::uint16_t slotCount = 0;
+	if (!reader.Read_String(decoded.strPropSetId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_U32(decoded.iEncounterEpoch) ||
+		!reader.Read_U16(slotCount) ||
+		decoded.strPropSetId.empty() ||
+		0 == decoded.iServerTick || 0 == decoded.iEncounterEpoch ||
+		0 == slotCount || slotCount > MAX_ENCOUNTER_PROP_SLOTS)
+	{
+		return false;
+	}
+	decoded.Slots.reserve(slotCount);
+	for (std::uint16_t index = 0; index < slotCount; ++index)
+	{
+		ENCOUNTER_PROP_SLOT_WIRE slot{};
+		std::uint8_t rawState = 0;
+		if (!reader.Read_String(slot.strSlotId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U8(rawState) ||
+			!reader.Read_U32(slot.iStateVersion) ||
+			!reader.Read_U32(slot.iStateStartTick) ||
+			!reader.Read_U32(slot.iOccurrenceSequence) ||
+			rawState >= static_cast<std::uint8_t>(ENCOUNTER_PROP_STATE::END))
+		{
+			return false;
+		}
+		slot.eState = static_cast<ENCOUNTER_PROP_STATE>(rawState);
+		decoded.Slots.push_back(std::move(slot));
+	}
+	if (!Is_Valid_EncounterPropSlots(decoded.Slots))
+		return false;
 	message = std::move(decoded);
 	return true;
 }
@@ -1760,10 +1939,26 @@ namespace
 		const std::uint8_t rawOperation,
 		const std::uint32_t targetHealthBar)
 	{
-		return 0u != requestSequence &&
-			rawOperation < static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::END) &&
-			0u != targetHealthBar;
+		if (0u == requestSequence ||
+			rawOperation >= static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::END))
+		{
+			return false;
+		}
+		// These operations name an authored mechanic or a Debug view directly,
+		// rather than a health-bar crossing, so they carry exactly zero.
+		if (static_cast<std::uint8_t>(VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE) ==
+			rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation)
+		{
+			return 0u == targetHealthBar;
+		}
+		return 0u != targetHealthBar;
 	}
 }
 

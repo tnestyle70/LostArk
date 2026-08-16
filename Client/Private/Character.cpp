@@ -5,6 +5,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#include "HitAreaWire.h"
 #include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
@@ -233,6 +234,7 @@ bool_t CCharacter::Load_EffectCues()
 			status + "\n").c_str());
 		return false;
 	}
+
 	const bool_t bHasManagedProductCue = std::any_of(
 		staged.Cues.begin(), staged.Cues.end(),
 		[](const ANIMATION_EFFECT_CUE& Cue)
@@ -292,6 +294,7 @@ bool_t CCharacter::Load_EffectCues()
 			return false;
 		}
 	}
+
 	for (const ANIMATION_EFFECT_CUE& cue : staged.Cues)
 	{
 		if ("root" != cue.strAnchorSlotId &&
@@ -1254,8 +1257,48 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+	if (m_isSkillHitAreaDebugVisible)
+		Draw_SkillHitAreaDebug();
 #endif
 }
+
+#ifdef _DEBUG
+void CCharacter::Draw_SkillHitAreaDebug() const
+{
+	if (nullptr == m_pBodyModel || nullptr == m_pTransformCom ||
+		m_EffectCueDocument.Hits.empty())
+		return;
+	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
+	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+	if (nullptr == pClipName || fTicksPerSecond <= 0.f ||
+		!m_pBodyModel->Get_AnimationProgress(iAnimation, fPosition, fDuration))
+		return;
+	const f32_t fNowMs = fPosition * 1000.f / fTicksPerSecond;
+	constexpr uint32_t ACTIVE_HIT_COLOR_RGBA =
+		255u | (70u << 8) | (60u << 16) | (255u << 24);
+	for (const ANIMATION_HIT_CUE& Hit : m_EffectCueDocument.Hits)
+	{
+		if (Hit.Shape.iAreaType <= 0 || Hit.strClipName != pClipName)
+			continue;
+		const f32_t fWidthMs = static_cast<f32_t>(Hit.iEndMs - Hit.iStartMs);
+		for (uint32_t iTick = 0u; iTick < Hit.iRepeatCount; ++iTick)
+		{
+			const f32_t fTickMs =
+				static_cast<f32_t>(Hit.iStartMs + Hit.iRepeatMs * iTick);
+			if (fNowMs >= fTickMs && fNowMs <= fTickMs + fWidthMs)
+			{
+				CHitAreaWire::Draw(*m_pTransformCom->Get_WorldMatrixPtr(),
+					Hit.Shape, ACTIVE_HIT_COLOR_RGBA);
+				break;
+			}
+		}
+	}
+}
+#endif
 
 HRESULT CCharacter::Render()
 {

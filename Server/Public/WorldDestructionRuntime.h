@@ -22,6 +22,10 @@ namespace LostArk::Server
 	{
 		STAGE,
 		BOSS_IMPACT,
+		/* Geometry, not schedule. The wall falls to whichever collider actually
+		   reaches it, so this binding names a receiver and deliberately carries
+		   no pattern, stage or action to match against. */
+		COLLIDER_CONTACT,
 		END
 	};
 
@@ -87,6 +91,8 @@ namespace LostArk::Server
 		std::string strMutationId;
 		std::uint64_t iSourceNetEntityId = 0u;
 		std::uint32_t iPatternSequence = 0u;
+		WORLD_DESTRUCTION_TRIGGER_KIND eTriggerKind =
+			WORLD_DESTRUCTION_TRIGGER_KIND::END;
 	};
 
 	struct WORLD_DESTRUCTION_STATE_TRANSITION final
@@ -152,6 +158,17 @@ namespace LostArk::Server
 			const std::string& impactReceiverId,
 			std::uint64_t sourceNetEntityId,
 			std::uint32_t patternSequence,
+			std::uint32_t serverTick,
+			WORLD_DESTRUCTION_TRANSACTION& transaction,
+			std::string& status) const;
+
+		/* One collider actually reached one wall. The contact sequence only has
+		to move forward so the same contact is not applied twice; destruction is
+		one-way, so a repeat on an already broken wall answers NO_CHANGE. */
+		WORLD_DESTRUCTION_PREPARE_RESULT Prepare_ContactTrigger(
+			const std::string& contactCollisionId,
+			std::uint64_t sourceNetEntityId,
+			std::uint32_t contactSequence,
 			std::uint32_t serverTick,
 			WORLD_DESTRUCTION_TRANSACTION& transaction,
 			std::string& status) const;

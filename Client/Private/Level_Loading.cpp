@@ -188,7 +188,10 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	m_isFailureReported = true;
 	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
-	CLevelTransitionService::Report_LoadFailure(result);
+	/* The loader's live progress line names the stage that refused, and it is
+	the only record of it once the loading Level is torn down. */
+	CLevelTransitionService::Report_LoadFailure(
+		result, "[Loader] " + CLoader::Get_ActiveStatus());
 	CNetworkManager::Get().Close_ServerConnection();
 
 	if (FAILED(CGameInstance::Get().Clear_Resources(

@@ -145,8 +145,8 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan",
-		"[Boss] Valtan - MN_RPBF_01 (27 clips)",
-		"Boss_Valtan",
+		"[Boss] Valtan - MN_RPBF_01 + AnimSet (173 clips)",
+		"Valtan",
 		"Character/Valtan/MN_RPBF_01.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan",
 		false,

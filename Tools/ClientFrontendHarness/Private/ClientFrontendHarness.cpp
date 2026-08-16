@@ -5360,7 +5360,9 @@ namespace
 			text << ',';
 			appendCue("fixture.valtan.109.duplicate");
 		}
-		text << "]}";
+		/* The sky layer shares this document so both presentations read one
+		   authoritative time axis. An empty array is a valid authored state. */
+		text << "],\"skyCues\":[],\"deathCue\":{}}";
 		return text.str();
 	}
 
@@ -5382,8 +5384,86 @@ namespace
 		text << "\"shakeDurationMs\":" << shakeDurationMs << ',';
 		text << "\"keyframes\":[";
 		text << "{\"timeMs\":0,\"eye\":[0,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":60},";
-		text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}]}";
+		text << "{\"timeMs\":2000,\"eye\":[20,2,-4],\"lookAt\":[0,0,0],\"fovYDegrees\":30}]}]";
+		text << ",\"skyCues\":[],\"deathCue\":{}}";
 		return text.str();
+	}
+
+	void Test_ValtanCinematicSkyCue(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		CEncounterPatternReference encounter;
+		std::string status;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"), status);
+
+		CValtanCinematicCameraDocument document;
+		std::string error;
+		const bool_t documentLoaded = encounterLoaded &&
+			document.Load(
+				CProjectDataRoot::Resolve(
+					"Encounters/Valtan/ValtanCinematicCamera.json"),
+				encounter, error);
+		runner.Require(
+			documentLoaded && !document.Get_SkyCues().empty(),
+			"Valtan Sky Cues Load From The Camera Document");
+
+		CValtanCinematicCameraController controller;
+		const bool_t initialized = documentLoaded &&
+			controller.Initialize(&document, encounter.Get_FixedTickHz());
+
+		const auto sampleSky = [&](
+			const char_t* stageActionId,
+			const uint32_t stageIndex,
+			const f32_t seconds)
+		{
+			VALTAN_CINEMATIC_CAMERA_INPUT input{};
+			input.isValid = true;
+			input.iNetEntityId = 91u;
+			input.strPatternId = "VALTAN_FOUR_PILLARS_105";
+			input.strStageActionId = stageActionId;
+			input.iPatternSequence = 1u;
+			input.iStageIndex = stageIndex;
+			input.iActionStartTick = 100u;
+			input.iServerTick =
+				100u + static_cast<uint32_t>(seconds * 30.f + 0.5f);
+			return controller.Resolve_SkyState(input);
+		};
+
+		/* Before its authored window the layer is simply not on. */
+		const VALTAN_CINEMATIC_SKY_STATE early = sampleSky(
+			"valtan.mechanic.four-pillars-105.takeoff", 0u, 0.1f);
+		const VALTAN_CINEMATIC_SKY_STATE rising = sampleSky(
+			"valtan.mechanic.four-pillars-105.takeoff", 0u, 1.5f);
+		runner.Require(
+			initialized && !early.isActive && rising.isActive &&
+			rising.fCloudOpacity > 0.5f,
+			"Valtan Sky Cloud Rises Only Inside Its Authored Stage Window");
+
+		const VALTAN_CINEMATIC_SKY_STATE aperture = sampleSky(
+			"valtan.mechanic.four-pillars-105.yellow-zone", 1u, 0.85f);
+		runner.Require(
+			aperture.isActive && aperture.fApertureScale > 0.8f &&
+			aperture.fCloudRotationDegrees > 0.f,
+			"Valtan Sky Aperture Opens On The Authored Stage");
+
+		const VALTAN_CINEMATIC_SKY_STATE cleared = sampleSky(
+			"valtan.mechanic.four-pillars-105.recovery", 3u, 0.99f);
+		runner.Require(
+			cleared.isActive && cleared.fCloudOpacity < 0.1f &&
+			cleared.fApertureScale < 0.1f,
+			"Valtan Sky Clears Back To The Storm Sky");
+
+		/* A pattern that authors no sky window must leave the layer off, and a
+		   reset must not keep the last state alive. */
+		const VALTAN_CINEMATIC_SKY_STATE wrongPattern = sampleSky(
+			"valtan.mechanic.arena-break-109.impact", 2u, 0.1f);
+		controller.Reset();
+		runner.Require(
+			!wrongPattern.isActive &&
+			!controller.Get_LastSkyState().isActive,
+			"Valtan Sky Stays Off For Unauthored Stages And After Reset");
 	}
 
 	void Test_ValtanCinematicCameraEasing(TEST_RUNNER& runner)
@@ -5504,8 +5584,13 @@ namespace
 				"Encounters/Valtan/ValtanCinematicCamera.json"),
 			encounter, status);
 		/* The 109 phase transition owns one cue per authored stage, so the
-		document carries those six plus the two single-stage cues. */
-		runner.Require(actualLoaded && actual.Get_Cues().size() == 8u &&
+		document carries those six plus the 33 cutscene. The ghost transition
+		plays in the ordinary top-down view in the original, so it deliberately
+		owns no override, and the clear shot lives in its own death cue. */
+		runner.Require(actualLoaded && actual.Get_Cues().size() == 7u &&
+			nullptr != actual.Find_DeathCue() &&
+			nullptr == actual.Find_Cue("VALTAN_GHOST_TRANSITION_15", 0u,
+				"valtan.mechanic.ghost-transition-15.portal-open") &&
 			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 0u,
 				"valtan.mechanic.arena-break-109.takeoff") &&
 			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 1u,
@@ -5519,9 +5604,7 @@ namespace
 			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_109", 5u,
 				"valtan.mechanic.arena-break-109.recovery") &&
 			nullptr != actual.Find_Cue("VALTAN_ARENA_BREAK_33", 0u,
-				"valtan.mechanic.arena-break-33.cutscene") &&
-			nullptr != actual.Find_Cue("VALTAN_GHOST_TRANSITION_15", 0u,
-				"valtan.mechanic.ghost-transition-15.portal"),
+				"valtan.mechanic.arena-break-33.cutscene"),
 			"Valtan Camera Loads Every Exact Encounter Tuple");
 
 		CValtanCinematicCameraDocument preserved;
@@ -5823,28 +5906,36 @@ namespace
 	{
 		using Runtime = Client::CWorldDestructionDebrisPresentationRuntime;
 
-		/* The 109 impact drains all 21 authored groups on one frame. Every one
-		of them has to keep a complete recipe, so the share must be exactly one
-		emitter and the budget must cover all of them. */
+		/* The 109 impact drains the whole outer ring on one frame: thirty
+		independent wall cues. The budget has to hold one complete
+		twelve-piece recipe for every slab. */
 		runner.Require(
-			21u * Runtime::ACTORS_PER_EMITTER == Runtime::MAX_ACTIVE_ACTORS &&
-			1u == Runtime::Resolve_CueEmitterShare(0u, 21u),
-			"Destruction Debris Budget Gives Every 109 Group One Full Recipe");
+			30u == Runtime::OUTER_RING_EMITTERS &&
+			360u == Runtime::MAX_ACTIVE_ACTORS &&
+			Runtime::OUTER_RING_EMITTERS * Runtime::ACTORS_PER_EMITTER ==
+				Runtime::MAX_ACTIVE_ACTORS,
+			"Destruction Debris Budget Holds Thirty Complete Ring Recipes");
 
-		/* A frame that drains a single group keeps the old behaviour: it may
-		use the whole remaining budget. */
+		/* A product batch that fits must never be clipped even though the wall
+		states arrive as thirty independent cues. */
 		runner.Require(
-			21u == Runtime::Resolve_CueEmitterShare(0u, 1u) &&
-			10u == Runtime::Resolve_CueEmitterShare(
-				11u * Runtime::ACTORS_PER_EMITTER, 1u),
-			"Destruction Debris Budget Lets A Lone Cue Use The Remainder");
+			30u == Runtime::Resolve_CueEmitterShare(0u, 30u, 30u) &&
+			7u == Runtime::Resolve_CueEmitterShare(0u, 30u, 7u),
+			"Destruction Debris Budget Never Clips A Batch That Fits");
+
+		/* An oversubscribed batch still falls back to the even split so no cue
+		can spend what its peers need. */
+		runner.Require(
+			1u == Runtime::Resolve_CueEmitterShare(0u, 40u, 400u) &&
+			7u == Runtime::Resolve_CueEmitterShare(0u, 4u, 400u),
+			"Destruction Debris Budget Splits An Oversubscribed Batch Evenly");
 
 		/* An exhausted budget still reports a legal share; admission itself is
 		what refuses, so the caller never divides by zero. */
 		runner.Require(
 			1u == Runtime::Resolve_CueEmitterShare(
-				Runtime::MAX_ACTIVE_ACTORS, 4u) &&
-			1u == Runtime::Resolve_CueEmitterShare(0u, 0u),
+				Runtime::MAX_ACTIVE_ACTORS, 4u, 12u) &&
+			1u == Runtime::Resolve_CueEmitterShare(0u, 0u, 0u),
 			"Destruction Debris Budget Never Resolves A Zero Share");
 
 		std::vector<uint64_t> admitted;
@@ -5858,13 +5949,45 @@ namespace
 			1090000000000001ull == admitted.front(),
 			"Destruction Debris Admission Honours The Per-Cue Share");
 
-		const bool_t fullPlan = Runtime::Build_DeterministicAdmissionPlan(
-			Make_DebrisCue("destroyable.group.valtan.wall.3705102",
-				10u, 9335938568718910930ull, 5u),
-			0u, 21u, admitted, error);
+		/* The widest ring sector owns seven slabs; under the whole-batch share
+		every one of them is admitted. */
+		const bool_t widestSector = Runtime::Build_DeterministicAdmissionPlan(
+			Make_DebrisCue("destroyable.group.valtan.outerwall109.sector03",
+				10u, 1090000000000010ull, 7u),
+			0u, 30u, admitted, error);
 		runner.Require(
-			fullPlan && 5u == admitted.size(),
+			widestSector && 7u == admitted.size(),
 			"Destruction Debris Admission Takes Every Emitter Under A Wide Share");
+
+		/* Draining thirty leaf cues still reaches exactly thirty admitted slabs,
+		because each cue owns one complete wall recipe. */
+		const uint32_t wallSizes[30]{
+			1u,1u,1u,1u,1u,1u,1u,1u,1u,1u,
+			1u,1u,1u,1u,1u,1u,1u,1u,1u,1u,
+			1u,1u,1u,1u,1u,1u,1u,1u,1u,1u };
+		uint32_t activeActorCount = 0u;
+		size_t admittedRingSlabs = 0u;
+		uint64_t nextPlacementId = 1090000000000001ull;
+		const uint32_t ringShare = Runtime::Resolve_CueEmitterShare(0u, 30u, 30u);
+		for (const uint32_t wallSize : wallSizes)
+		{
+			const bool_t wallPlan = Runtime::Build_DeterministicAdmissionPlan(
+				Make_DebrisCue("destroyable.group.valtan.outerwall109.wall",
+					11u + admittedRingSlabs, nextPlacementId, wallSize),
+				activeActorCount, ringShare, admitted, error);
+			if (!wallPlan || admitted.size() != static_cast<size_t>(wallSize))
+			{
+				admittedRingSlabs = 0u;
+				break;
+			}
+			admittedRingSlabs += admitted.size();
+			activeActorCount += wallSize * Runtime::ACTORS_PER_EMITTER;
+			nextPlacementId += wallSize;
+		}
+		runner.Require(
+			30u == admittedRingSlabs &&
+			Runtime::MAX_ACTIVE_ACTORS == activeActorCount,
+			"Destruction Debris Admission Fractures All Thirty Ring Slabs");
 
 		runner.Require(
 			!Runtime::Build_DeterministicAdmissionPlan(
@@ -27795,6 +27918,7 @@ int main(const int argc, char* argv[])
 	{
 		Test_ValtanCinematicCamera(runner);
 		Test_ValtanCinematicCameraEasing(runner);
+		Test_ValtanCinematicSkyCue(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -28216,6 +28340,7 @@ int main(const int argc, char* argv[])
 	Test_ValtanPatternBindingSchema(runner);
 	Test_ActionPresentationTimeline(runner);
 	Test_ValtanCinematicCameraEasing(runner);
+	Test_ValtanCinematicSkyCue(runner);
 	Test_ValtanCinematicCamera(runner);
 	Test_WorldDestructionProjection(runner);
 	Test_WorldDestructionDebrisBudget(runner);

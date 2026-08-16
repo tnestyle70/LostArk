@@ -340,6 +340,7 @@ HRESULT CMainApp::Render()
 	#endif
 		RenderCombatHUD();
 		RenderBossHealthBar();
+		RenderEstherGauge();
 		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
 		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
@@ -461,6 +462,21 @@ void CMainApp::RenderCombatHUD()
 			const char_t* pLabel =
 				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
 					"wild" : "focus";
+			/* TEMP DIAGNOSTIC (2026-08-14): the icon shows nothing at spawn, shows the glaive
+			briefly after a stance press, then silently reverts to the short spear ~1-2s later,
+			with eStance itself never changing -- logging every actual trigger of this edge so the
+			next repro shows, in the VS Output window, whether Play_KeyframeAnimation is really
+			only firing once per real stance change or is somehow re-firing on its own. Remove once
+			the icon is confirmed stable. */
+			{
+				char pDebugLine[256];
+				sprintf_s(pDebugLine,
+					"[LanceIdStance] eStance %d -> %d label=%s time=%.2f\n",
+					static_cast<int32_t>(m_ePreviousHudStance),
+					static_cast<int32_t>(player.eStance),
+					pLabel, ImGui::GetTime());
+				OutputDebugStringA(pDebugLine);
+			}
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
 		}
 		/* Warlord's defense-mode toggle (Z: skill 17800 WARLORD_NORMAL->WARLORD_DEFENSE, 17810
@@ -658,6 +674,21 @@ void CMainApp::RenderCombatHUD()
 			}
 		}
 
+		/* stanceMc's own real timeline (frame labels bubble_0/1/2/3) plays a small idle pulse
+		(depth4/8 pieces breathing/flashing) continuously regardless of gauge state -- baked here
+		as a real 27-frame loop (BrushIdle.json) so Yi_id_brush is never a single static frame.
+		Play_KeyframeAnimation only needs to run once; the engine's own loop wraparound
+		(HUDRuntimeView.cpp) keeps it playing after that. */
+		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
+		{
+			static bool_t bBrushLoopStarted = false;
+			if (!bBrushLoopStarted)
+			{
+				m_pHUDRuntimeView->Play_KeyframeAnimation("Yi_id_brush", "idle");
+				bBrushLoopStarted = true;
+			}
+		}
+
 		/* Artist's (yinyangshi) real 0..100 identity gauge (identityCyclic=0, holds at max --
 		Server has no separate bubble/stance counter, confirmed absent from PLAYER_STANCE_ID and
 		PLAYER_SNAPSHOT) is split into 3 equal thirds on the client to drive the 3 real
@@ -760,12 +791,12 @@ void CMainApp::RenderCombatHUD()
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
 
-	/* Disabled for now -- every attempt at the 3-segment gauge visual (procedural arcs, then the
-	real track art) has landed wrong (bad radius/position, missing tint) and needs a proper
-	in-game reference to get right rather than another guess. RenderLanceMasterIdentityGauge stays
-	defined, unchanged, for whenever that reference is available. */
-	// if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
-	//	RenderLanceMasterIdentityGauge();
+	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
+	the 3 segments' screen position (Lance_Id_GaugeBg/Fill/Burn0/1/2 rect in HUD_Layout.json) is
+	still a placeholder shared with Lance_Id_Stance's own rect -- needs live in-game tuning to
+	place left/bottom/right segments at their real offsets. */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
+		RenderLanceMasterIdentityGauge();
 
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
@@ -792,28 +823,62 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 		fRemaining -= SEGMENT_MAX;
 	}
 
-	/* No procedural track/fill arc here anymore -- a prior pass drew one using each track piece's
-	own long-axis pixel length (44.25/48) as an ImGui PathArcTo *radius*, which is wrong: those
-	pieces are thin curved strips (their real footprint is 12.75x44.25 / 48x12 reference px, drawn
-	as-is by the real Lance_Id_GaugeTrack0/1/2 slots below), not a description of some much larger
-	circle. Using that length as a radius instead drew a circle nearly as wide as the whole icon --
-	the "two huge curves" this replaced. The AS3-driven fill ("target", the piece that actually
-	moves as value climbs 0->100) is confirmed vector-only, no extractable bitmap and no baked
-	track/fill *color* data either, so it is not redrawn here at all rather than guessed again;
-	real reference footage is needed to fill this back in correctly. */
+	// TEMP DIAGNOSTIC: raw identity + resolved per-segment values, once/sec.
+	{
+		static double s_dLastLog = -1.0;
+		const double dNow = ImGui::GetTime();
+		if (dNow - s_dLastLog > 1.0)
+		{
+			s_dLastLog = dNow;
+			char szBuf[192];
+			sprintf_s(szBuf, "[GAUGE-VALUE-DIAG] iCurrentIdentity=%u iMaximumIdentity=%u seg0=%.1f seg1=%.1f seg2=%.1f\n",
+				player.iCurrentIdentity, player.iMaximumIdentity, fSegmentValue[0], fSegmentValue[1], fSegmentValue[2]);
+			OutputDebugStringA(szBuf);
+		}
+	}
+
+	/* target.rotation = maxDegree * (value/100) confirmed straight from the decompiled
+	ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress() -- target (depth3, clipDepth=7)
+	is a rotating mask that reveals track (depth5, the real white fill bitmap) as it turns. Rather
+	than reproduce that mask at runtime, Gauge0/1/2Fill.json bakes the real target-rotated-mask x
+	track composite for every integer percentage (same pattern as Warlord's GaugeL/R 100-frame
+	reveal), so this only has to pick the frame for the current percentage. */
 	for (int32_t i = 0; i < 3; ++i)
 	{
-		/* Real extracted gauge0/1/2 highLightMc flourish (Data/.../Gauge0/1/2Burn.json, baked from
-		lancemaster_identity.xml sprite386/438/368) -- the orange/yellow "this segment just filled"
-		burn, not an invented effect. Triggered once on the empty->full edge, same pattern as
-		RenderQuickSlot's on-use flash. */
+		const int32_t iFillFrame = std::clamp(static_cast<int32_t>(fSegmentValue[i]), 0, 99);
+		m_pHUDRuntimeView->Play_KeyframeAnimation(
+			string("Lance_Id_GaugeFill") + std::to_string(i), std::to_string(iFillFrame));
+
+		/* Real extracted gauge0/1/2 highLightMc flourish -- a one-shot dim->bright ignite
+		(Lance_Id_GaugeBurn0/1/2, Gauge0/1/2Burn.json) followed by a continuous sustain loop
+		(Lance_Id_GaugeBurnLoop0/1/2, Gauge0/1/2BurnLoop.json) once ignite finishes, so the flame
+		keeps burning instead of restarting its dim intro every loop. Each ignite doc's own
+		[startFrame,frameCount) span at 40fps gives its real playback duration. */
+		constexpr f32_t BURN_IGNITE_SECONDS[3] = { 36.f / 40.f, 32.f / 40.f, 36.f / 40.f };
 		const bool_t bIsFull = fSegmentValue[i] >= SEGMENT_MAX;
 		if (bIsFull && !m_bLanceGaugeSegmentWasFull[i])
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
 				string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
+			m_dLanceGaugeIgniteStartSeconds[i] = ImGui::GetTime();
+			m_bLanceGaugeLoopStarted[i] = false;
 		}
 		m_bLanceGaugeSegmentWasFull[i] = bIsFull;
+
+		const bool_t bIgniteDone = bIsFull && m_dLanceGaugeIgniteStartSeconds[i] >= 0.0 &&
+			(ImGui::GetTime() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
+		if (bIgniteDone && !m_bLanceGaugeLoopStarted[i])
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(
+				string("Lance_Id_GaugeBurnLoop") + std::to_string(i), "burn");
+			m_bLanceGaugeLoopStarted[i] = true;
+		}
+
+		/* The burn flourish only makes sense while a segment is actually full -- Fill's own
+		frame 99 already swaps to the orange "charged" art once full, so no separate glow
+		slot is needed on top of it. */
+		m_pHUDRuntimeView->Set_SlotVisible(string("Lance_Id_GaugeBurn") + std::to_string(i), bIsFull && !bIgniteDone);
+		m_pHUDRuntimeView->Set_SlotVisible(string("Lance_Id_GaugeBurnLoop") + std::to_string(i), bIsFull && bIgniteDone);
 	}
 }
 
@@ -1012,6 +1077,62 @@ void CMainApp::RenderBossHealthBar()
 	pDrawList->AddRect(
 		barMin, barMax, IM_COL32(224, 208, 176, 255),
 		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+}
+
+void CMainApp::RenderEstherGauge()
+{
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	if (0u == maximum)
+		return;
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	const float uiScale = (std::min)(scaleX, scaleY);
+	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
+	const float fillRatio = (std::clamp)(
+		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
+
+	const ImVec2 barMin{
+		pViewport->WorkPos.x + 20.f * scaleX,
+		pViewport->WorkPos.y + 56.f * scaleY };
+	const ImVec2 barMax{
+		pViewport->WorkPos.x + 280.f * scaleX,
+		pViewport->WorkPos.y + 68.f * scaleY };
+	const float fillRight = barMin.x + (barMax.x - barMin.x) * fillRatio;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	pDrawList->AddRectFilled(
+		barMin, barMax, IM_COL32(20, 24, 34, 230), 3.f * uiScale);
+	if (fillRight > barMin.x)
+	{
+		const bool_t isFull = gauge >= maximum;
+		pDrawList->AddRectFilled(
+			barMin,
+			ImVec2(fillRight, barMax.y),
+			isFull ? IM_COL32(120, 214, 255, 255) : IM_COL32(58, 128, 196, 255),
+			3.f * uiScale);
+	}
+	pDrawList->AddRect(
+		barMin, barMax, IM_COL32(180, 220, 244, 255),
+		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+	const char* pLabel = gauge >= maximum ?
+		"ESTHER READY  Ctrl+Z" : "ESTHER";
+	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
+	const ImVec2 labelPos(
+		(barMin.x + barMax.x - labelSize.x) * 0.5f,
+		barMin.y - labelSize.y - 2.f * uiScale);
+	pDrawList->AddText(
+		ImVec2(labelPos.x + 1.f, labelPos.y + 1.f),
+		IM_COL32(0, 0, 0, 220), pLabel);
+	pDrawList->AddText(labelPos, IM_COL32(214, 238, 255, 255), pLabel);
 }
 
 void CMainApp::RenderSkillIcons()

@@ -7,6 +7,7 @@
 #include "CharacterPreviewPanel.h"
 
 #include <filesystem>
+#include <unordered_set>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -31,10 +32,12 @@ private:
 		SUPERARMOR,
 		INVULN,
 		MOVE,
+		COUNTER,
 		/* Point kinds. */
 		SOUND,
 		EFFECT,
 		SHAKE,
+		STAGE,
 		END,
 	};
 
@@ -134,6 +137,7 @@ private:
 		int32_t iTimeMs = {};
 		int32_t iWidthMs = {};
 		bool_t bTimed = { true };
+		std::string sSourceKeys;
 		HIT_PARAMS hit;
 	};
 
@@ -178,18 +182,20 @@ private:
 	void Render_TargetConflict();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
+	void Render_NotifyReference(const shared_ptr<Engine::CModel>& pModel);
+	void Bind_ReferenceWire(const std::string& sourceKey);
 	void Render_HitEvents(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitDetail(ANIM_EVENT& evt);
 	/* Wire overlay of the selected and playhead-active HIT areas, drawn on the
 	scene character so an authored box/fan/circle can be judged against the
 	pose. Reads the same ANIM_EVENT rows the list edits; nothing new is
 	stored. */
-	void Render_HitAreaWires(
-		const shared_ptr<Engine::CModel>& pModel,
-		const shared_ptr<CCharacter>& pCharacter) const;
+	void Render_HitAreaWires(const shared_ptr<Engine::CModel>& pModel) const;
 	void Render_AnimationList(const shared_ptr<Engine::CModel>& pModel);
 	void Consume_EffectTransfer(const shared_ptr<Engine::CModel>& pModel);
-	void Render_SkillReference(const shared_ptr<Engine::CModel>& pModel);
+	void Render_SkillReference(
+		const shared_ptr<Engine::CModel>& pModel,
+		bool_t bReadOnly);
 	void Render_SkillBindings(
 		const shared_ptr<Engine::CModel>& pModel,
 		const shared_ptr<CCharacter>& pCharacter);
@@ -241,7 +247,11 @@ private:
 	int32_t Get_ChainOffsetMs(const CLIP_SEQ& seq, int32_t iIndex) const;
 	/* Replaces this clip's previously imported events with the original notifies
 	of the kinds currently ticked. Returns how many were added. */
-	int32_t Import_Notifies(const char_t* pClipName, f32_t fTickRate);
+	int32_t Import_Notifies(const char_t* pClipName, f32_t fTickRate,
+		int32_t& iShapedHits);
+	const SKILL_TIMING* Find_ReferenceRow(const char_t* pClipName) const;
+	int32_t Count_PrecedingChainHits(const char_t* pClipName) const;
+	static int32_t Count_DistinctHitNotifies(const std::vector<NOTIFY_ROW>& rows);
 	/* Korean skill name owning the clip, or nullptr when it is unmapped. */
 	const CLIP_INFO* Find_ClipInfo(const char_t* pClipName) const;
 	/* Selects the named clip in the model, or does nothing if it has no such clip. */
@@ -291,6 +301,8 @@ private:
 	std::vector<SKILL_TIMING> m_SkillRef;
 	bool_t m_bRefLoadAttempted = false;
 	char m_RefFilter[128]{};
+	int32_t m_iRefWireSkillId = 0;
+	int32_t m_iRefWireHitIndex = -1;
 
 	std::map<std::string, CLIP_INFO> m_ClipMap;
 	bool_t m_bClipMapLoadAttempted = false;
@@ -303,6 +315,9 @@ private:
 
 	std::vector<CLIP_SEQ> m_ClipSeqs;
 	bool_t m_bClipSeqLoadAttempted = false;
+	std::unordered_map<std::string, int32_t> m_ClipChainCounts;
+	std::unordered_set<std::string> m_DuplicateBodyClips;
+	bool_t m_bDuplicateScanDone = false;
 
 	ANIMATION_SKILL_BINDING_DOCUMENT m_SkillBindingDocument;
 	bool_t m_bSkillBindingLoadAttempted = false;

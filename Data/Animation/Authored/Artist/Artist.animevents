@@ -346,7 +346,7 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1031
 "sdm_sk_flyinheaven_custom_8" EFFECT startms=1000 payload="" src=orig
 "sdm_sk_flyinheaven_custom_8" CANCEL startms=1350 endms=1767 payload="이동캔슬" src=orig
 "sdm_sk_flyinheaven_custom_8" CANCEL startms=1450 endms=1767 payload="스킬캔슬" src=orig
-"sdm_sk_fourgentlemen" HIT startms=0 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_fourgentlemen" HIT startms=0 endms=1500 rep=1 repms=0 fz=70 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=700 aa=300 ah=150 ax=0 arem=0 maxt=0 src=orig
 "sdm_sk_fourgentlemen" SUPERARMOR startms=0 endms=1320 payload="" src=orig
 "sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_Vox1_1" src=orig
 "sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_FX000_1" src=orig

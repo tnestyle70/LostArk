@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -52,6 +53,9 @@ namespace LostArk::Server
 		void Reset_RuntimeBlockers() noexcept;
 
 		bool Has_Condition(const std::string& conditionId) const;
+		// Diagnostic counter for the Debug audition panel: how many authored
+		// blocker regions are still holding cells closed right now.
+		std::size_t Get_ActiveBlockerRegionCount() const;
 		bool Is_PointWalkableExact(float x, float z) const;
 		std::uint64_t Get_Revision() const noexcept { return m_iRevision; }
 		bool Sample_Position(
@@ -65,6 +69,7 @@ namespace LostArk::Server
 			float endZ) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
+		float Get_CellSize() const { return m_fCellSize; }
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:

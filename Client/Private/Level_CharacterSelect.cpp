@@ -847,6 +847,13 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 			m_Replication.Set_CombatColliderDebugVisible(
 				m_isCombatColliderDebugVisible);
 		}
+		if (ImGui::Checkbox(
+			"Show Skill Hit Areas",
+			&m_isSkillHitAreaDebugVisible))
+		{
+			m_Replication.Set_SkillHitAreaDebugVisible(
+				m_isSkillHitAreaDebugVisible);
+		}
 #endif
 	}
 

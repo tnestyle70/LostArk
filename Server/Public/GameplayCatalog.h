@@ -16,6 +16,20 @@ namespace LostArk::Server
 		float fLateral = 0.f;
 	};
 
+	struct PLAYER_SKILL_HIT final
+	{
+		std::uint32_t iTimeMs = 0;
+		std::uint32_t iRepeatCount = 1;
+		std::uint32_t iRepeatMs = 0;
+		std::uint32_t iAreaType = 0;
+		float fRange = 0.f;
+		float fAngleDegrees = 0.f;
+		float fHeight = 0.f;
+		float fOffset = 0.f;
+		float fInner = 0.f;
+		std::uint32_t iMaxTargets = 0;
+	};
+
 	struct PLAYER_COMBO_STAGE final
 	{
 		std::uint32_t iActionDurationMs = 0;
@@ -25,6 +39,7 @@ namespace LostArk::Server
 		/* A stage advance resets the action clock, so a staged skill owns its
 		movement per stage instead of on one action-long curve. */
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<PLAYER_SKILL_HIT> Hits;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -54,6 +69,7 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<PLAYER_SKILL_HIT> Hits;
 	};
 
 	struct BOSS_RUNTIME_PROFILE
@@ -112,6 +128,29 @@ namespace LostArk::Server
 		float fHitHalfWidth = 0.f;
 		std::uint32_t iHitCount = 0;
 		std::uint32_t iHitIntervalMs = 0;
+		/* This ACTIVE hit is a physical axe contact candidate. Damage hits that
+		are roars, magic, waves or floor mechanics deliberately leave this false. */
+		bool bWallContact = false;
+	};
+
+	enum class BOSS_PATTERN_MOTION_KIND : std::uint8_t
+	{
+		NONE,
+		LEAP_TO_ANCHOR
+	};
+
+	/* A pattern whose boss motion the Server computes itself carries one
+	compiled anchor. The leap landing, the cinematic camera lookAt and the radial
+	wall launch directions all read this one position, so none of them can drift
+	into a private copy of the coordinate. */
+	struct BOSS_PATTERN_MOTION
+	{
+		BOSS_PATTERN_MOTION_KIND eKind = BOSS_PATTERN_MOTION_KIND::NONE;
+		std::string strAnchorId;
+		float fLandingX = 0.f;
+		float fLandingY = 0.f;
+		float fLandingZ = 0.f;
+		float fApexHeight = 0.f;
 	};
 
 	struct BOSS_PATTERN_DEFINITION
@@ -119,6 +158,7 @@ namespace LostArk::Server
 		std::string strEncounterId;
 		std::string strPatternId;
 		std::string strActionId;
+		BOSS_PATTERN_MOTION Motion;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
 		std::uint32_t iMinimumHealthBar = 0;
 		std::uint32_t iMaximumHealthBar = 0;
@@ -128,6 +168,16 @@ namespace LostArk::Server
 		std::uint32_t iMaximumConsecutiveUses = 0;
 		float fMinimumRange = 0.f;
 		float fMaximumRange = 0.f;
+		/* Read from the first sourceActionId in Valtan.skilltiming. These raw
+		values preserve the original skill metadata; gameplay metre ranges above
+		remain the separately tuned Server selection contract. */
+		std::uint32_t iSourcePrimaryActionId = 0;
+		std::uint32_t iSourceShapeCount = 0;
+		std::uint32_t iSourceCooldownMs = 0;
+		std::uint32_t iSourceCooldownTicks = 0;
+		std::uint32_t iSourceRangeUnits = 0;
+		std::uint32_t iSourceApproachUnits = 0;
+		std::uint32_t iSourceTurnDegrees = 0;
 		std::uint32_t iExpectedStageCount = 0;
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
 	};
@@ -179,6 +229,10 @@ namespace LostArk::Server
 			const std::string& archetypeId) const;
 		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
 			const std::string& encounterId) const;
+		/* Pattern the encounter plays exactly once when the boss first engages,
+		before any health-bar or weighted selection runs. Empty when unknown. */
+		const std::string& Find_IntroPatternId(
+			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
 		/* Percent of the caster's attack power, straight from the official
@@ -207,12 +261,18 @@ namespace LostArk::Server
 			std::uint32_t sampleCount,
 			std::uint32_t limitMs,
 			std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples);
+		bool Parse_SkillHits(
+			std::string_view packed,
+			std::uint32_t hitCount,
+			std::uint32_t limitMs,
+			std::vector<PLAYER_SKILL_HIT>& outHits);
 
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;
 		std::unordered_map<std::string, std::vector<BOSS_PATTERN_DEFINITION>>
 			m_BossPatterns;
+		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

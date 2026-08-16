@@ -46,6 +46,7 @@ private:
 	void Update_CinematicCamera(f32_t fTimeDelta);
 	void End_CinematicCamera();
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
+	bool_t Apply_EncounterPropPresentation();
 #ifdef _DEBUG
 	/* Debug audition of an authored health-bar pattern. The panel only submits
 	typed requests and reports what the Server answered; it never starts a
@@ -53,6 +54,18 @@ private:
 	void Render_AuditionPanel();
 	void Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation);
+	/* One ordered chapter run over the existing audition operations. It resets
+	once at the entrance and then only crosses the authored bars, so the
+	environment stays cumulative the way the recording shows it. */
+	struct ENVIRONMENT_TIMELINE_STEP final
+	{
+		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		uint32_t iTargetHealthBar = 0u;
+		bool_t waitForPattern = false;
+	};
+	void Start_EnvironmentTimeline();
+	void Advance_EnvironmentTimeline(bool_t isBossPatternRunning);
 #endif
 
 private:
@@ -69,12 +82,17 @@ private:
 	CEncounterPatternReference m_ValtanEncounterReference;
 	CValtanCinematicCameraDocument m_ValtanCinematicCameraDocument;
 	CValtanCinematicCameraController m_ValtanCinematicCameraController;
+	/* Presentation-only 105 sky layer state. It never reaches collision or
+	   navigation; the asset slots stay empty until the effect owner fills them. */
+	VALTAN_CINEMATIC_SKY_STATE m_ValtanSkyState;
 	CWorldDestructionProjectionDocument m_WorldDestructionProjectionDocument;
 	CWorldDestructionDebrisPresentationDocument
 		m_WorldDestructionDebrisPresentationDocument;
 	CWorldDestructionDebrisPresentationRuntime
 		m_WorldDestructionDebrisPresentationRuntime;
 	uint64_t m_iObservedWorldDestructionPresentationGeneration = 0u;
+	uint32_t m_iObservedEncounterPropEpoch = 0u;
+	uint32_t m_iObservedEncounterPropServerTick = 0u;
 	CClientReplication m_Replication;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
@@ -85,6 +103,10 @@ private:
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	uint32_t m_iPendingAuditionRequestSequence = 0u;
 	std::string m_strAuditionStatus;
+	std::vector<ENVIRONMENT_TIMELINE_STEP> m_EnvironmentTimeline;
+	size_t m_iEnvironmentTimelineStep = 0u;
+	bool_t m_bEnvironmentTimelineWaiting = false;
+	bool_t m_bEnvironmentTimelinePatternStarted = false;
 #endif
 
 public:

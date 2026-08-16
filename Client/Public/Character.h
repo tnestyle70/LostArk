@@ -136,6 +136,9 @@ public:
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
 	}
+	void Set_SkillHitAreaDebugVisible(bool_t isVisible) {
+		m_isSkillHitAreaDebugVisible = isVisible;
+	}
 #endif
 
 	/* Applies an approved skill action to presentation. Input code must never call
@@ -181,6 +184,7 @@ private:
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
+	bool_t m_isSkillHitAreaDebugVisible = { true };
 #endif
 
 	std::vector<CLIP_CHAIN> m_Chains;
@@ -259,6 +263,9 @@ private:
 
 	//server snapshot interpolation
 	void Update_NetworkTransform(f32_t fTimeDelta);
+#ifdef _DEBUG
+	void Draw_SkillHitAreaDebug() const;
+#endif
 	bool_t Load_EffectCues();
 	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);
 	void Update_EffectCues();

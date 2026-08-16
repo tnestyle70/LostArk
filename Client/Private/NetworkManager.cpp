@@ -75,25 +75,28 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	constexpr char DEFAULT_SERVER_HOST[] = "192.168.200.103";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
+	char configuredHost[64]{};
+	const DWORD configuredLength = ::GetEnvironmentVariableA(
+		SERVER_HOST_ENVIRONMENT,
+		configuredHost,
+		static_cast<DWORD>(std::size(configuredHost)));
+	if (0u != configuredLength &&
+		configuredLength < std::size(configuredHost) &&
+		"0.0.0.0" != std::string_view{ configuredHost })
+	{
+		return configuredHost;
+	}
 #ifdef _DEBUG
+	/* The VS debugger environment is the team endpoint authority. A developer
+	   may still opt into a loopback Server when launching outside VS, but that
+	   local convenience file must never silently override an explicit host. */
 	if (const std::string localHost = Resolve_DebugLocalServerHost();
 		!localHost.empty())
 	{
 		return localHost;
 	}
 #endif
-	char configuredHost[64]{};
-	const DWORD configuredLength = ::GetEnvironmentVariableA(
-		SERVER_HOST_ENVIRONMENT,
-		configuredHost,
-		static_cast<DWORD>(std::size(configuredHost)));
-	if (0 == configuredLength ||
-		configuredLength >= std::size(configuredHost) ||
-		"0.0.0.0" == std::string_view{ configuredHost })
-	{
-		return DEFAULT_SERVER_HOST;
-	}
-	return configuredHost;
+	return DEFAULT_SERVER_HOST;
 }
 
 std::string CNetworkManager::Resolve_MapEditorServerHost()
@@ -450,6 +453,30 @@ bool CNetworkManager::Send_SkillAim(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_UPDATE_SKILL_AIM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_EstherSkill(
+	const std::uint32_t clientSequence,
+	const std::uint8_t slotIndex,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_ESTHER_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSlotIndex = slotIndex;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_ESTHER_SKILL,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -1023,6 +1050,23 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
 			WORLD_DESTRUCTION_FULL_SYNC;
 		event.WorldDestructionFullSync = std::move(sync);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
+	{
+		S2C_ENCOUNTER_PROP_SYNC sync{};
+		if (!Read_Message(reader, sync) ||
+			0 != reader.Get_RemainingSize() ||
+			WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		{
+			Fail_Protocol(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			ENCOUNTER_PROP_SYNC;
+		event.EncounterPropSync = std::move(sync);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}

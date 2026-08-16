@@ -8,6 +8,7 @@
 #include "Effect_Catalog.h"
 #include "EffectAuthoringTransfer.h"
 #include "GameInstance.h"
+#include "HitAreaWire.h"
 #include "Model.h"
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
@@ -226,8 +227,13 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ClipNotify.clear();
 	m_ClipLength.clear();
 	m_ClipSeqs.clear();
+	m_ClipChainCounts.clear();
+	m_DuplicateBodyClips.clear();
+	m_bDuplicateScanDone = false;
 	m_SkillBindingDocument = {};
 	m_iSelectedEvent = -1;
+	m_iRefWireSkillId = 0;
+	m_iRefWireHitIndex = -1;
 	m_bDirty = false;
 	m_bSkillBindingDirty = false;
 	m_iSelectedSkillBinding = -1;
@@ -275,9 +281,11 @@ const char_t* Client::CAnimation_Tool::Kind_Name(EVENT_KIND eKind)
 	case EVENT_KIND::SUPERARMOR: return "SUPERARMOR";
 	case EVENT_KIND::INVULN:     return "INVULN";
 	case EVENT_KIND::MOVE:       return "MOVE";
+	case EVENT_KIND::COUNTER:    return "COUNTER";
 	case EVENT_KIND::SOUND:      return "SOUND";
 	case EVENT_KIND::EFFECT:     return "EFFECT";
 	case EVENT_KIND::SHAKE:      return "SHAKE";
+	case EVENT_KIND::STAGE:      return "STAGE";
 	case EVENT_KIND::HIT:
 	default:                     return "HIT";
 	}
@@ -490,6 +498,26 @@ void Client::CAnimation_Tool::Render()
 	if (previewAsset != ANIMATION_PREVIEW_ASSETS.end() &&
 		previewAsset->bPlaybackOnly)
 	{
+		if (!m_bClipMapLoadAttempted)
+		{
+			m_bClipMapLoadAttempted = true;
+			Load_ClipMap();
+		}
+		if (!m_bClipSeqLoadAttempted)
+		{
+			m_bClipSeqLoadAttempted = true;
+			Load_ClipSeq();
+		}
+		if (!m_bClipNotifyLoadAttempted)
+		{
+			m_bClipNotifyLoadAttempted = true;
+			Load_ClipNotify();
+		}
+		if (!m_bRefLoadAttempted)
+		{
+			m_bRefLoadAttempted = true;
+			Load_SkillReference();
+		}
 		ImGui::Text(
 			"Asset: %s   Animations: %u",
 			m_AssetName.c_str(),
@@ -497,6 +525,12 @@ void Client::CAnimation_Tool::Render()
 		ImGui::TextDisabled(
 			"Playback-only preview: authored events and gameplay skill bindings are disabled.");
 		Render_Playback(pModel);
+		Render_ClipChain(pModel);
+		Render_NotifyReference(pModel);
+		Render_HitAreaWires(pModel);
+		Render_SkillReference(pModel, true);
+		if (!m_Status.empty())
+			ImGui::TextWrapped("%s", m_Status.c_str());
 		ImGui::SeparatorText("Clips");
 		ImGui::SetNextItemWidth(-1.f);
 		ImGui::InputTextWithHint(
@@ -558,8 +592,8 @@ void Client::CAnimation_Tool::Render()
 	Render_ClipChain(pModel);
 	Render_SkillBindings(pModel, Resolve_Character());
 	Render_HitEvents(pModel);
-	Render_HitAreaWires(pModel, Resolve_Character());
-	Render_SkillReference(pModel);
+	Render_HitAreaWires(pModel);
+	Render_SkillReference(pModel, false);
 
 	ImGui::SeparatorText("Clips");
 	ImGui::SetNextItemWidth(-1.f);
@@ -787,6 +821,105 @@ void Client::CAnimation_Tool::Render_ClipChain(const shared_ptr<Engine::CModel>&
 
 		ImGui::PopID();
 	}
+}
+
+void Client::CAnimation_Tool::Render_NotifyReference(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* pCurrentName = pModel->Get_AnimationName(iCurrentIndex);
+	if (nullptr == pCurrentName)
+		return;
+
+	const auto it = m_ClipNotify.find(pCurrentName);
+	if (m_ClipNotify.end() == it || it->second.empty())
+		return;
+
+	char_t szHeader[64]{};
+	snprintf(szHeader, sizeof(szHeader), "Original Notifies (%d)",
+		static_cast<int32_t>(it->second.size()));
+	ImGui::SeparatorText(szHeader);
+
+	const f32_t fRate = Get_ClipTickRate(pModel, pCurrentName);
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const bool_t bHasTrack = pModel->Get_AnimationProgress(
+		iCurrentIndex, fPosition, fDuration) && fDuration > 0.f;
+	const f32_t fNowSec =
+		bHasTrack && fRate > 0.f ? fPosition / fRate : -1.f;
+
+	if (!ImGui::BeginChild("##notifyref", ImVec2(0.f, 180.f),
+		ImGuiChildFlags_Borders))
+	{
+		ImGui::EndChild();
+		return;
+	}
+
+	int32_t iRow = 0;
+	for (const NOTIFY_ROW& row : it->second)
+	{
+		const bool_t bActive = fNowSec >= 0.f && fNowSec >= row.fTime &&
+			fNowSec <= row.fTime + (std::max)(row.fDuration, 0.05f);
+		const char_t* pText = !row.sAsset.empty() ?
+			row.sAsset.c_str() : row.sLabel.c_str();
+
+		char_t szRow[256]{};
+		const int32_t iFrame =
+			static_cast<int32_t>(row.fTime * fRate + 0.5f);
+		if (row.fDuration > 0.f)
+			snprintf(szRow, sizeof(szRow), "f%-4d %-6s %.2f-%.2fs  %s",
+				iFrame, Kind_Name(row.eKind), row.fTime,
+				row.fTime + row.fDuration, pText);
+		else
+			snprintf(szRow, sizeof(szRow), "f%-4d %-6s %.2fs  %s",
+				iFrame, Kind_Name(row.eKind), row.fTime, pText);
+
+		ImGui::PushID(iRow++);
+		if (ImGui::Selectable(szRow, bActive))
+		{
+			pModel->Set_AnimPaused(true);
+			pModel->Set_AnimTrackPosition(iCurrentIndex, row.fTime * fRate);
+			if (EVENT_KIND::HIT == row.eKind && !row.sAsset.empty())
+				Bind_ReferenceWire(row.sAsset);
+		}
+		ImGui::PopID();
+	}
+
+	ImGui::EndChild();
+}
+
+void Client::CAnimation_Tool::Bind_ReferenceWire(const std::string& sourceKey)
+{
+	for (const SKILL_TIMING& ref : m_SkillRef)
+	{
+		for (size_t h = 0; h < ref.hits.size(); ++h)
+		{
+			const std::string& keys = ref.hits[h].sSourceKeys;
+			size_t pos = 0;
+			bool_t bMatch = false;
+			while (std::string::npos != (pos = keys.find(sourceKey, pos)))
+			{
+				const size_t end = pos + sourceKey.size();
+				if ((0 == pos || ',' == keys[pos - 1]) &&
+					(keys.size() == end || ',' == keys[end]))
+				{
+					bMatch = true;
+					break;
+				}
+				pos = end;
+			}
+			if (!bMatch)
+				continue;
+
+			m_iRefWireSkillId = ref.iSkillId;
+			m_iRefWireHitIndex = static_cast<int32_t>(h);
+			m_Status = "Reference wire bound to SkillEffect " + sourceKey +
+				" of " + ref.name;
+			return;
+		}
+	}
+	m_Status = "SkillEffect " + sourceKey +
+		" has no judgement shape in the skill timing reference.";
 }
 
 std::vector<std::string> Client::CAnimation_Tool::Collect_ClipNames(
@@ -1356,9 +1489,13 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 
 		if (ImGui::Button(szImport))
 		{
-			const int32_t iAdded = Import_Notifies(pCurrentName, fRate);
+			int32_t iShapedHits = 0;
+			const int32_t iAdded = Import_Notifies(pCurrentName, fRate, iShapedHits);
 			m_Status = "Imported " + std::to_string(iAdded) +
 				" original notify event(s) onto " + pCurrentName;
+			if (iShapedHits > 0)
+				m_Status += ", " + std::to_string(iShapedHits) +
+					" HIT shape(s) from skill timing reference";
 		}
 
 		ImGui::SameLine();
@@ -1731,25 +1868,16 @@ void Client::CAnimation_Tool::Render_HitDetail(ANIM_EVENT& evt)
 }
 
 void Client::CAnimation_Tool::Render_HitAreaWires(
-	const shared_ptr<Engine::CModel>& pModel,
-	const shared_ptr<CCharacter>& pCharacter) const
+	const shared_ptr<Engine::CModel>& pModel) const
 {
-	/* The reference rows keep the game's own centimetre-ish units; our world is
-	metres. 100 units to the metre lines skill 34040's ar=250 up with its
-	balance maximumRange of 3.0. */
-	constexpr f32_t UNITS_TO_METERS = 0.01f;
-
-	if (!m_bShowHitAreas || nullptr == pModel || nullptr == pCharacter)
+	if (!m_bShowHitAreas || nullptr == pModel)
 		return;
 	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
 	const char_t* pCurrentName = pModel->Get_AnimationName(iCurrentIndex);
 	if (nullptr == pCurrentName)
 		return;
-	/* The container overload wants a part tag; the character's own transform
-	sits on the base object. */
-	const auto pTransform = dynamic_pointer_cast<Engine::CTransform>(
-		pCharacter->Engine::CGameObject::Get_Component(TEXT("Com_Transform")));
-	if (nullptr == pTransform)
+	float4x4_t Root{};
+	if (!CAnimationTargetService::Resolve_RootTransform(&Root))
 		return;
 
 	f32_t fPosition = 0.f;
@@ -1759,64 +1887,10 @@ void Client::CAnimation_Tool::Render_HitAreaWires(
 	const f32_t fRate = Get_ClipTickRate(pModel, pCurrentName);
 	const int32_t iNowMs = Frame_To_Ms(static_cast<int32_t>(fPosition), fRate);
 
-	auto& GameInstance = CGameInstance::Get();
-	const matrix_t View =
-		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::VIEW));
-	const matrix_t Proj =
-		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::PROJ));
-	/* ImGui screen coordinates carry the viewport origin, so NDC maps through
-	the viewport rect and not a (0,0)-based one -- the same convention the
-	Character Select overlay uses. Background list: the wires belong to the
-	scene, so tool windows keep drawing over them. */
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImDrawList* pDrawList = ImGui::GetBackgroundDrawList(pViewport);
-
-	const vector_t vPosition = pTransform->Get_State(STATE::POSITION);
-	const vector_t vLook = XMVector3Normalize(
-		XMVectorSetY(pTransform->Get_State(STATE::LOOK), 0.f));
-	const vector_t vRight = XMVector3Normalize(XMVector3Cross(
-		XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
-	const f32_t fGroundY = XMVectorGetY(vPosition) + 0.03f;
-
-	auto Project = [&](fvector_t vWorld, ImVec2& vOut) -> bool_t
+	auto Draw_Area = [&](const HIT_PARAMS& p, ImU32 iColor)
 	{
-		const vector_t vView = XMVector3TransformCoord(vWorld, View);
-		if (XMVectorGetZ(vView) < 0.1f)
-			return false;
-		const vector_t vClip = XMVector3TransformCoord(vView, Proj);
-		vOut.x = pViewport->Pos.x +
-			(XMVectorGetX(vClip) * 0.5f + 0.5f) * pViewport->Size.x;
-		vOut.y = pViewport->Pos.y +
-			(0.5f - XMVectorGetY(vClip) * 0.5f) * pViewport->Size.y;
-		return true;
-	};
-	auto Draw_Segment = [&](fvector_t vFrom, fvector_t vTo, ImU32 iColor)
-	{
-		ImVec2 vA{}, vB{};
-		if (Project(vFrom, vA) && Project(vTo, vB))
-			pDrawList->AddLine(vA, vB, iColor, 2.f);
-	};
-	/* Ground point at a polar offset around the area centre: fForward metres
-	along the facing plus a swing of fDegrees to the right of it. */
-	auto At = [&](f32_t fCenterForward, f32_t fRadius, f32_t fDegrees)
-	{
-		const f32_t fRadians = XMConvertToRadians(fDegrees);
-		return XMVectorSetY(
-			vPosition + vLook * (fCenterForward + fRadius * cosf(fRadians)) +
-			vRight * (fRadius * sinf(fRadians)),
-			fGroundY);
-	};
-	auto Draw_Arc = [&](f32_t fCenterForward, f32_t fRadius,
-		f32_t fFromDeg, f32_t fToDeg, ImU32 iColor)
-	{
-		constexpr int32_t SEGMENTS = 48;
-		for (int32_t s = 0; s < SEGMENTS; ++s)
-		{
-			const f32_t fA = fFromDeg + (fToDeg - fFromDeg) * s / SEGMENTS;
-			const f32_t fB = fFromDeg + (fToDeg - fFromDeg) * (s + 1) / SEGMENTS;
-			Draw_Segment(At(fCenterForward, fRadius, fA),
-				At(fCenterForward, fRadius, fB), iColor);
-		}
+		CHitAreaWire::Draw(Root, { p.iAreaType, p.iAreaRange, p.iAreaAngle,
+			p.iAreaHeight, p.iAreaOffsetX, p.iAreaInner }, iColor);
 	};
 
 	for (int32_t i = 0; i < static_cast<int32_t>(m_Events.size()); ++i)
@@ -1829,59 +1903,19 @@ void Client::CAnimation_Tool::Render_HitAreaWires(
 		const bool_t bSelected = i == m_iSelectedEvent;
 		if (!bActive && !bSelected)
 			continue;
-		const ImU32 iColor = bActive ?
-			IM_COL32(255, 70, 60, 255) : IM_COL32(255, 210, 90, 170);
+		Draw_Area(evt.hit, bActive ?
+			IM_COL32(255, 70, 60, 255) : IM_COL32(255, 210, 90, 170));
+	}
 
-		const HIT_PARAMS& p = evt.hit;
-		const f32_t fOffset = p.iAreaOffsetX * UNITS_TO_METERS;
-		const f32_t fRange = p.iAreaRange * UNITS_TO_METERS;
-		switch (p.iAreaType)
+	if (m_iRefWireHitIndex >= 0)
+	{
+		for (const SKILL_TIMING& row : m_SkillRef)
 		{
-		case 1:
-		{
-			/* Forward strike box: ar is the length, ah the full width --
-			the 12m x 3m spear thrusts read no other way. */
-			const f32_t fHalfWidth = p.iAreaHeight * UNITS_TO_METERS * 0.5f;
-			const vector_t vNearL = XMVectorSetY(
-				vPosition + vLook * fOffset - vRight * fHalfWidth, fGroundY);
-			const vector_t vNearR = XMVectorSetY(
-				vPosition + vLook * fOffset + vRight * fHalfWidth, fGroundY);
-			const vector_t vFarL = XMVectorSetY(
-				vPosition + vLook * (fOffset + fRange) - vRight * fHalfWidth,
-				fGroundY);
-			const vector_t vFarR = XMVectorSetY(
-				vPosition + vLook * (fOffset + fRange) + vRight * fHalfWidth,
-				fGroundY);
-			Draw_Segment(vNearL, vNearR, iColor);
-			Draw_Segment(vNearR, vFarR, iColor);
-			Draw_Segment(vFarR, vFarL, iColor);
-			Draw_Segment(vFarL, vNearL, iColor);
-			break;
-		}
-		case 2:
-		case 3:
-		{
-			/* Fan, circle, ring, and the angle-limited ring sector all share
-			the arc path; what differs is the hole and the sweep. */
-			const bool_t bFullSweep =
-				p.iAreaAngle <= 0 || p.iAreaAngle >= 360;
-			const f32_t fHalfSweep =
-				bFullSweep ? 180.f : p.iAreaAngle * 0.5f;
-			const f32_t fInner = 3 == p.iAreaType ?
-				p.iAreaInner * UNITS_TO_METERS : 0.f;
-			Draw_Arc(fOffset, fRange, -fHalfSweep, fHalfSweep, iColor);
-			if (fInner > 0.f)
-				Draw_Arc(fOffset, fInner, -fHalfSweep, fHalfSweep, iColor);
-			if (!bFullSweep)
-			{
-				Draw_Segment(At(fOffset, fInner, -fHalfSweep),
-					At(fOffset, fRange, -fHalfSweep), iColor);
-				Draw_Segment(At(fOffset, fInner, fHalfSweep),
-					At(fOffset, fRange, fHalfSweep), iColor);
-			}
-			break;
-		}
-		default:
+			if (row.iSkillId != m_iRefWireSkillId)
+				continue;
+			if (m_iRefWireHitIndex < static_cast<int32_t>(row.hits.size()))
+				Draw_Area(row.hits[m_iRefWireHitIndex].hit,
+					IM_COL32(80, 200, 255, 255));
 			break;
 		}
 	}
@@ -1899,10 +1933,37 @@ void Client::CAnimation_Tool::Render_AnimationList(const shared_ptr<Engine::CMod
 	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
 	uint32_t iShown = 0;
 
+	if (!m_bDuplicateScanDone)
+	{
+		m_bDuplicateScanDone = true;
+		std::unordered_set<std::string> names;
+		names.reserve(iNumAnimations);
+		for (uint32_t i = 0; i < iNumAnimations; ++i)
+		{
+			const char_t* pName = pModel->Get_AnimationName(i);
+			if (nullptr != pName)
+				names.insert(pName);
+		}
+		for (const std::string& name : names)
+		{
+			if (0 == name.rfind("mesh_", 0))
+				continue;
+			if (0 < names.count("mesh_" + name))
+				m_DuplicateBodyClips.insert(name);
+		}
+	}
+
+	if (!m_DuplicateBodyClips.empty())
+		ImGui::TextDisabled("%zu body clips hidden (same motion listed as mesh_*)",
+			m_DuplicateBodyClips.size());
+
 	for (uint32_t i = 0; i < iNumAnimations; ++i)
 	{
 		const char_t* pName = pModel->Get_AnimationName(i);
 		if (nullptr == pName)
+			continue;
+
+		if (0 < m_DuplicateBodyClips.count(pName))
 			continue;
 
 		/* The clip names are English and the skill names Korean, so the filter has
@@ -1931,6 +1992,14 @@ void Client::CAnimation_Tool::Render_AnimationList(const shared_ptr<Engine::CMod
 			snprintf(szSkill, sizeof(szSkill), "   %s (%d)",
 				pInfo->name.c_str(), pInfo->iSkillId);
 			strcat_s(szLabel, szSkill);
+		}
+
+		const auto chain = m_ClipChainCounts.find(pName);
+		if (m_ClipChainCounts.end() != chain)
+		{
+			char_t szChain[24]{};
+			snprintf(szChain, sizeof(szChain), "  <chain x%d>", chain->second);
+			strcat_s(szLabel, szChain);
 		}
 
 		if (iEventCount > 0)
@@ -2353,6 +2422,10 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 		}
 		else if ("SHAKE" == kindName)
 			event.eKind = EVENT_KIND::SHAKE;
+		else if ("COUNTER" == kindName)
+			event.eKind = EVENT_KIND::COUNTER;
+		else if ("STAGE" == kindName)
+			event.eKind = EVENT_KIND::STAGE;
 		else
 			return fail("Unknown Animation event kind.");
 
@@ -2928,12 +3001,16 @@ bool_t Client::CAnimation_Tool::Load_ClipNotify()
 					row.eKind = EVENT_KIND::CANCEL;
 				else if ("SUPERARMOR" == value)
 					row.eKind = EVENT_KIND::SUPERARMOR;
+				else if ("COUNTER" == value)
+					row.eKind = EVENT_KIND::COUNTER;
 				else if ("SOUND" == value)
 					row.eKind = EVENT_KIND::SOUND;
 				else if ("EFFECT" == value)
 					row.eKind = EVENT_KIND::EFFECT;
 				else if ("SHAKE" == value)
 					row.eKind = EVENT_KIND::SHAKE;
+				else if ("STAGE" == value)
+					row.eKind = EVENT_KIND::STAGE;
 				else
 					bKnown = false;
 			}
@@ -2950,6 +3027,7 @@ bool_t Client::CAnimation_Tool::Load_ClipNotify()
 bool_t Client::CAnimation_Tool::Load_ClipSeq()
 {
 	m_ClipSeqs.clear();
+	m_ClipChainCounts.clear();
 
 	const std::string path = Get_ClipSeqPath();
 
@@ -3017,12 +3095,21 @@ bool_t Client::CAnimation_Tool::Load_ClipSeq()
 			m_ClipSeqs.push_back(seq);
 	}
 
+	for (const CLIP_SEQ& seq : m_ClipSeqs)
+	{
+		for (const std::string& clip : seq.clips)
+			++m_ClipChainCounts[clip];
+	}
+
 	fclose(pFile);
 	return true;
 }
 
-int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t fTickRate)
+int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t fTickRate,
+	int32_t& iShapedHits)
 {
+	iShapedHits = 0;
+
 	const auto it = m_ClipNotify.find(pClipName);
 	if (m_ClipNotify.end() == it)
 		return 0;
@@ -3030,6 +3117,10 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 	/* Drop only what a previous import put here so hand-authored rows survive. */
 	for (auto e = m_Events.begin(); e != m_Events.end(); )
 		e = (e->bImported && e->clipName == pClipName) ? m_Events.erase(e) : e + 1;
+
+	const SKILL_TIMING* pRef = m_bImportKind[ETOI(EVENT_KIND::HIT)]
+		? Find_ReferenceRow(pClipName) : nullptr;
+	int32_t iHitOrdinal = nullptr != pRef ? Count_PrecedingChainHits(pClipName) : 0;
 
 	int32_t iAdded = 0;
 	for (const NOTIFY_ROW& row : it->second)
@@ -3069,6 +3160,18 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 		if (bDuplicate)
 			continue;
 
+		if (EVENT_KIND::HIT == evt.eKind && nullptr != pRef)
+		{
+			const int32_t iLast = static_cast<int32_t>(pRef->hits.size()) - 1;
+			const SKILL_HIT& src = pRef->hits[iHitOrdinal < iLast ? iHitOrdinal : iLast];
+			++iHitOrdinal;
+			if (src.hit.iAreaType > 0)
+			{
+				evt.hit = src.hit;
+				++iShapedHits;
+			}
+		}
+
 		m_Events.push_back(evt);
 		++iAdded;
 	}
@@ -3076,6 +3179,67 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 	m_iSelectedEvent = -1;
 	m_bDirty = true;
 	return iAdded;
+}
+
+const Client::CAnimation_Tool::SKILL_TIMING* Client::CAnimation_Tool::Find_ReferenceRow(
+	const char_t* pClipName) const
+{
+	const CLIP_INFO* pInfo = Find_ClipInfo(pClipName);
+	if (nullptr == pInfo || pInfo->iSkillId <= 0)
+		return nullptr;
+
+	const SKILL_TIMING* pVariant = nullptr;
+	for (const SKILL_TIMING& row : m_SkillRef)
+	{
+		if (row.hits.empty())
+			continue;
+		if (row.iSkillId == pInfo->iSkillId)
+			return &row;
+		if (nullptr == pVariant && row.iBaseSkillId == pInfo->iSkillId)
+			pVariant = &row;
+	}
+	return pVariant;
+}
+
+int32_t Client::CAnimation_Tool::Count_PrecedingChainHits(const char_t* pClipName) const
+{
+	for (const CLIP_SEQ& seq : m_ClipSeqs)
+	{
+		int32_t iCount = 0;
+		for (const std::string& clip : seq.clips)
+		{
+			if (clip == pClipName)
+				return iCount;
+			const auto it = m_ClipNotify.find(clip);
+			if (m_ClipNotify.end() != it)
+				iCount += Count_DistinctHitNotifies(it->second);
+		}
+	}
+	return 0;
+}
+
+int32_t Client::CAnimation_Tool::Count_DistinctHitNotifies(const std::vector<NOTIFY_ROW>& rows)
+{
+	int32_t iCount = 0;
+	for (size_t i = 0; i < rows.size(); ++i)
+	{
+		if (EVENT_KIND::HIT != rows[i].eKind)
+			continue;
+		bool_t bDuplicate = false;
+		for (size_t j = 0; j < i; ++j)
+		{
+			if (EVENT_KIND::HIT == rows[j].eKind &&
+				rows[j].fTime == rows[i].fTime && rows[j].fDuration == rows[i].fDuration &&
+				rows[j].sLabel == rows[i].sLabel)
+			{
+				bDuplicate = true;
+				break;
+			}
+		}
+		if (!bDuplicate)
+			++iCount;
+	}
+	return iCount;
 }
 
 bool_t Client::CAnimation_Tool::Load_SkillReference()
@@ -3120,8 +3284,10 @@ bool_t Client::CAnimation_Tool::Load_SkillReference()
 		/* A v2 "hit" continuation line details the skill line above it. v1 files
 		have none, and an older build drops them because they carry no quoted
 		name where it expects one. */
-		if ("hit" == idToken && !m_SkillRef.empty())
+		if (("hit" == idToken || "shape" == idToken) && !m_SkillRef.empty())
 		{
+			const bool_t bShape = "shape" == idToken;
+
 			if (!bCurrentHasDetail)
 			{
 				bCurrentHasDetail = true;
@@ -3129,6 +3295,7 @@ bool_t Client::CAnimation_Tool::Load_SkillReference()
 			}
 
 			SKILL_HIT hit{};
+			hit.bTimed = !bShape;
 			HIT_PARAMS& hp = hit.hit;
 
 			std::string key, value;
@@ -3170,10 +3337,42 @@ bool_t Client::CAnimation_Tool::Load_SkillReference()
 					hp.iAreaInner = v;
 				else if ("maxt" == key)
 					hp.iMaxTargets = v;
+				else if ("pks" == key)
+					hit.sSourceKeys = value;
 			}
 
 			if (hp.iRepeatCount < 1)
 				hp.iRepeatCount = 1;
+
+			if (bShape)
+			{
+				bool_t bDuplicate = false;
+				for (const SKILL_HIT& other : m_SkillRef.back().hits)
+				{
+					const HIT_PARAMS& op = other.hit;
+					if (!other.bTimed &&
+						op.iAreaType == hp.iAreaType &&
+						op.iAreaRange == hp.iAreaRange &&
+						op.iAreaAngle == hp.iAreaAngle &&
+						op.iAreaHeight == hp.iAreaHeight &&
+						op.iAreaOffsetX == hp.iAreaOffsetX &&
+						op.iAreaInner == hp.iAreaInner &&
+						op.iMaxTargets == hp.iMaxTargets &&
+						op.iRepeatCount == hp.iRepeatCount &&
+						op.iRepeatMs == hp.iRepeatMs &&
+						op.iFreezeMs == hp.iFreezeMs &&
+						op.iFreezeInMs == hp.iFreezeInMs &&
+						op.iFreezeOutMs == hp.iFreezeOutMs &&
+						op.iPushMs == hp.iPushMs &&
+						op.iPushRange == hp.iPushRange)
+					{
+						bDuplicate = true;
+						break;
+					}
+				}
+				if (bDuplicate)
+					continue;
+			}
 
 			m_SkillRef.back().hits.push_back(hit);
 			continue;
@@ -3234,7 +3433,9 @@ bool_t Client::CAnimation_Tool::Load_SkillReference()
 	return true;
 }
 
-void Client::CAnimation_Tool::Render_SkillReference(const shared_ptr<Engine::CModel>& pModel)
+void Client::CAnimation_Tool::Render_SkillReference(
+	const shared_ptr<Engine::CModel>& pModel,
+	bool_t bReadOnly)
 {
 	if (m_SkillRef.empty())
 		return;
@@ -3320,6 +3521,32 @@ void Client::CAnimation_Tool::Render_SkillReference(const shared_ptr<Engine::CMo
 			const int32_t iEndMs = iStartMs + src.iWidthMs;
 
 			ImGui::PushID(static_cast<int32_t>(h));
+
+			if (bReadOnly)
+			{
+				if (src.hit.iAreaType > 0)
+				{
+					const bool_t bWired = row.iSkillId == m_iRefWireSkillId &&
+						static_cast<int32_t>(h) == m_iRefWireHitIndex;
+					const std::string firstKey = src.sSourceKeys.substr(
+						0, src.sSourceKeys.find(','));
+					char_t szWire[160]{};
+					snprintf(szWire, sizeof(szWire),
+						"wire  %s%d  angle %d  offset %d  hole %d  [%s]",
+						Area_Name(src.hit.iAreaType), src.hit.iAreaRange,
+						src.hit.iAreaAngle, src.hit.iAreaOffsetX,
+						src.hit.iAreaInner,
+						firstKey.empty() ? "-" : firstKey.c_str());
+					if (ImGui::Selectable(szWire, bWired))
+					{
+						m_iRefWireSkillId = bWired ? 0 : row.iSkillId;
+						m_iRefWireHitIndex =
+							bWired ? -1 : static_cast<int32_t>(h);
+					}
+				}
+				ImGui::PopID();
+				continue;
+			}
 
 			char_t szBtn[192]{};
 			if (src.bTimed)

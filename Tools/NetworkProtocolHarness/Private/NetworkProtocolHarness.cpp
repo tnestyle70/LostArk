@@ -4,6 +4,7 @@
 #include "Network/PacketStreamParser.h"
 #include "Network/PacketWriter.h"
 
+#include <array>
 #include <cstdint>
 //이 manip -> 콘솔 출력 형식을 제어한다.
 //std::hex        // 이후 숫자를 16진수로 출력
@@ -1561,6 +1562,72 @@ namespace
 			"Failed Aim Update Does Not Mutate");
 	}
 
+	void Test_UseEstherSkillRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_USE_ESTHER_SKILL source{};
+		source.iClientSequence = 21;
+		source.iSlotIndex = 1;
+		source.fAimX = 42.75f;
+		source.fAimZ = -87.5f;
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source),
+			"Writer Use Esther Skill");
+		std::vector<std::uint8_t> payload = writer.Get_Buffer();
+		testRunner.Require(
+			13 == payload.size(),
+			"Use Esther Skill Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_USE_ESTHER_SKILL decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSlotIndex == source.iSlotIndex &&
+			decoded.fAimX == source.fAimX &&
+			decoded.fAimZ == source.fAimZ &&
+			0 == reader.Get_RemainingSize(),
+			"Use Esther Skill Round Trip");
+
+		C2S_USE_ESTHER_SKILL invalidSlotLow = source;
+		invalidSlotLow.iSlotIndex = 0;
+		CPacketWriter invalidSlotLowWriter;
+		testRunner.Require(
+			!Write_Message(invalidSlotLowWriter, invalidSlotLow),
+			"Reject Esther Slot Zero");
+
+		C2S_USE_ESTHER_SKILL invalidSlotHigh = source;
+		invalidSlotHigh.iSlotIndex = 4;
+		CPacketWriter invalidSlotHighWriter;
+		testRunner.Require(
+			!Write_Message(invalidSlotHighWriter, invalidSlotHigh),
+			"Reject Esther Slot Above Roster");
+
+		C2S_USE_ESTHER_SKILL invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter invalidSequenceWriter;
+		testRunner.Require(
+			!Write_Message(invalidSequenceWriter, invalidSequence),
+			"Reject Esther Skill Without Sequence");
+
+		C2S_USE_ESTHER_SKILL invalidAim = source;
+		invalidAim.fAimZ = std::numeric_limits<float>::infinity();
+		CPacketWriter invalidAimWriter;
+		testRunner.Require(
+			!Write_Message(invalidAimWriter, invalidAim),
+			"Reject Esther Skill With Non-Finite Aim");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_USE_ESTHER_SKILL unchanged{};
+		unchanged.iClientSequence = 77;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			77 == unchanged.iClientSequence,
+			"Failed Esther Skill Read Does Not Mutate");
+	}
+
 	void Test_RevivePlayerRoundTrip(TEST_RUNNER& testRunner)
 	{
 		C2S_REVIVE_PLAYER source{};
@@ -1639,6 +1706,8 @@ namespace
 	{
 		S2C_WORLD_SNAPSHOT source{};
 		source.iServerTick = 30;
+		source.iEstherGauge = 640;
+		source.iEstherGaugeMaximum = 1000;
 
 		PLAYER_SNAPSHOT first{};
 		first.iNetEntityId = 100;
@@ -1700,7 +1769,7 @@ namespace
 			"Writer World Snapshot");
 
 		constexpr std::size_t snapshotHeaderBytes =
-			4 + 2 + 2 + 2 + 1;
+			4 + 2 + 2 + 2 + 1 + 4 + 4;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
@@ -1728,8 +1797,25 @@ namespace
 			decoded.iServerTick == 30 &&
 			decoded.eWorldId == WORLD_ID::BERN &&
 			decoded.Players.size() == 2 &&
-			decoded.Entities.size() == 1,
+			decoded.Entities.size() == 1 &&
+			decoded.iEstherGauge == 640 &&
+			decoded.iEstherGaugeMaximum == 1000,
 			"World Snapshot Header Round Trip");
+
+		S2C_WORLD_SNAPSHOT overfullGauge = source;
+		overfullGauge.iEstherGauge = 1001;
+		std::vector<std::uint8_t> overfullPayload;
+		testRunner.Require(
+			!Build_WorldSnapshotPayload(overfullGauge, overfullPayload),
+			"Reject Esther Gauge Above Maximum");
+
+		S2C_WORLD_SNAPSHOT gaugeWithoutRoster = source;
+		gaugeWithoutRoster.iEstherGaugeMaximum = 0;
+		gaugeWithoutRoster.iEstherGauge = 1;
+		std::vector<std::uint8_t> rosterlessPayload;
+		testRunner.Require(
+			!Build_WorldSnapshotPayload(gaugeWithoutRoster, rosterlessPayload),
+			"Reject Esther Gauge Without Roster");
 		if (2u != decoded.Players.size() || 1u != decoded.Entities.size())
 			return;
 
@@ -1836,12 +1922,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			19u == NETWORK_PROTOCOL_VERSION &&
+			21u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V19 Packet Types");
+			"World Destruction Protocol V21 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -1855,6 +1941,10 @@ namespace
 			"destroyable.group.b",
 			WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED,
 			3u));
+		full.Diagnostics.iActiveWallCollisionCount = 30u;
+		full.Diagnostics.iActiveNavBlockerRegionCount = 8u;
+		full.Diagnostics.iNavigationRevision = 41u;
+		full.Diagnostics.iLastEventSequence = 0u;
 
 		CPacketWriter fullWriter;
 		testRunner.Require(
@@ -1876,7 +1966,11 @@ namespace
 				WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING &&
 			decodedFull.GroupStates[0].iCommitTick == 152u &&
 			decodedFull.GroupStates[1].strGroupId ==
-				"destroyable.group.b",
+				"destroyable.group.b" &&
+			decodedFull.Diagnostics.iActiveWallCollisionCount == 30u &&
+			decodedFull.Diagnostics.iActiveNavBlockerRegionCount == 8u &&
+			decodedFull.Diagnostics.iNavigationRevision == 41u &&
+			decodedFull.Diagnostics.iLastEventSequence == 0u,
 			"World Destruction Full Sync Round Trip");
 
 		{
@@ -2004,6 +2098,10 @@ namespace
 		delta.ChangedStates.push_back(full.GroupStates[0]);
 		delta.LiveEvents.push_back(Make_DestructionEvent(10u));
 		delta.LiveEvents.push_back(Make_DestructionEvent(11u));
+		delta.Diagnostics.iActiveWallCollisionCount = 0u;
+		delta.Diagnostics.iActiveNavBlockerRegionCount = 0u;
+		delta.Diagnostics.iNavigationRevision = 42u;
+		delta.Diagnostics.iLastEventSequence = 11u;
 
 		CPacketWriter deltaWriter;
 		testRunner.Require(
@@ -2021,7 +2119,11 @@ namespace
 			10u == decodedDelta.LiveEvents[0].iEventSequence &&
 			11u == decodedDelta.LiveEvents[1].iEventSequence &&
 			decodedDelta.LiveEvents[0].fImpactDirectionX == 0.6f &&
-			decodedDelta.LiveEvents[0].iRandomSeed == 12345u,
+			decodedDelta.LiveEvents[0].iRandomSeed == 12345u &&
+			decodedDelta.Diagnostics.iActiveWallCollisionCount == 0u &&
+			decodedDelta.Diagnostics.iActiveNavBlockerRegionCount == 0u &&
+			decodedDelta.Diagnostics.iNavigationRevision == 42u &&
+			decodedDelta.Diagnostics.iLastEventSequence == 11u,
 			"World Destruction Delta Round Trip");
 
 		{
@@ -2142,6 +2244,73 @@ namespace
 		}
 	}
 
+	void Test_EncounterPropSyncProtocol(TEST_RUNNER& testRunner)
+	{
+		/* The pillars are the one encounter prop that repeats, so the wire has
+		to carry a state that can go back to HIDDEN and an occurrence that says
+		which cycle it belongs to. */
+		S2C_ENCOUNTER_PROP_SYNC sync{};
+		sync.strPropSetId = "encounterprop.valtan.four-pillars";
+		sync.iServerTick = 4210u;
+		sync.iEncounterEpoch = 3u;
+		sync.Slots = {
+			{ "pillar.valtan.slot00", ENCOUNTER_PROP_STATE::INTACT, 5u, 4100u, 8u },
+			{ "pillar.valtan.slot01", ENCOUNTER_PROP_STATE::BREAKING, 6u, 4200u, 8u },
+			{ "pillar.valtan.slot02", ENCOUNTER_PROP_STATE::HIDDEN, 7u, 4205u, 8u },
+			{ "pillar.valtan.slot03", ENCOUNTER_PROP_STATE::SPAWNING, 1u, 4209u, 8u } };
+		CPacketWriter writer;
+		S2C_ENCOUNTER_PROP_SYNC decoded{};
+		const bool wrote = Write_Message(writer, sync);
+		CPacketReader reader{ writer.Get_Buffer() };
+		testRunner.Require(
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC) && wrote &&
+			Read_Message(reader, decoded) &&
+			0u == reader.Get_RemainingSize() &&
+			decoded.strPropSetId == sync.strPropSetId &&
+			decoded.iServerTick == sync.iServerTick &&
+			decoded.iEncounterEpoch == sync.iEncounterEpoch &&
+			4u == decoded.Slots.size() &&
+			ENCOUNTER_PROP_STATE::BREAKING == decoded.Slots[1].eState &&
+			4205u == decoded.Slots[2].iStateStartTick &&
+			8u == decoded.Slots[3].iOccurrenceSequence,
+			"Encounter Prop Sync Round Trip Across Every Slot State");
+
+		S2C_ENCOUNTER_PROP_SYNC empty = sync;
+		empty.Slots.clear();
+		S2C_ENCOUNTER_PROP_SYNC epochless = sync;
+		epochless.iEncounterEpoch = 0u;
+		S2C_ENCOUNTER_PROP_SYNC versionless = sync;
+		versionless.Slots[2].iStateVersion = 0u;
+		CPacketWriter rejectWriter;
+		testRunner.Require(
+			!Write_Message(rejectWriter, empty) &&
+			!Write_Message(rejectWriter, epochless) &&
+			!Write_Message(rejectWriter, versionless),
+			"Reject An Empty Epochless Or Unversioned Encounter Prop Sync");
+
+		S2C_ENCOUNTER_PROP_SYNC unordered = sync;
+		std::swap(unordered.Slots[0], unordered.Slots[1]);
+		S2C_ENCOUNTER_PROP_SYNC duplicated = sync;
+		duplicated.Slots[1].strSlotId = duplicated.Slots[0].strSlotId;
+		CPacketWriter orderWriter;
+		testRunner.Require(
+			!Write_Message(orderWriter, unordered) &&
+			!Write_Message(orderWriter, duplicated),
+			"Reject Encounter Prop Slots That Are Unordered Or Duplicated");
+
+		std::vector<std::uint8_t> malformed = writer.Get_Buffer();
+		const std::size_t stateOffset = malformed.size() - 13u;
+		malformed[stateOffset] =
+			static_cast<std::uint8_t>(ENCOUNTER_PROP_STATE::END);
+		CPacketReader malformedReader{ malformed };
+		S2C_ENCOUNTER_PROP_SYNC untouched{};
+		untouched.strPropSetId = "kept";
+		testRunner.Require(
+			!Read_Message(malformedReader, untouched) &&
+			"kept" == untouched.strPropSetId,
+			"Reject An Unknown Encounter Prop State On Wire");
+	}
+
 	void Test_ValtanAuditionProtocol(TEST_RUNNER& testRunner)
 	{
 		/* Both configurations must recognise the audition types. A Release
@@ -2172,6 +2341,95 @@ namespace
 			decodedRequest.eOperation == request.eOperation &&
 			decodedRequest.iTargetHealthBar == request.iTargetHealthBar,
 			"Valtan Audition Request Round Trip");
+
+		{
+			/* The entrance sweep is the encounter intro, not a health-bar
+			crossing, so it carries exactly zero and a bar makes it invalid. */
+			C2S_VALTAN_AUDITION_REQUEST entrance{};
+			entrance.iRequestSequence = 11u;
+			entrance.eOperation = VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE;
+			entrance.iTargetHealthBar = 0u;
+			CPacketWriter entranceWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedEntrance{};
+			const bool wroteEntrance = Write_Message(entranceWriter, entrance);
+			CPacketReader entranceReader{ entranceWriter.Get_Buffer() };
+			testRunner.Require(
+				wroteEntrance &&
+				Read_Message(entranceReader, decodedEntrance) &&
+				0u == entranceReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE ==
+					decodedEntrance.eOperation &&
+				0u == decodedEntrance.iTargetHealthBar,
+				"Valtan Entrance Audition Request Round Trip Without A Bar");
+
+			C2S_VALTAN_AUDITION_REQUEST barredEntrance = entrance;
+			barredEntrance.iTargetHealthBar = 159u;
+			CPacketWriter barredWriter;
+			testRunner.Require(
+				!Write_Message(barredWriter, barredEntrance),
+				"Reject A Valtan Entrance Audition Request That Carries A Bar");
+		}
+
+		{
+			/* The pillar cycle names the mechanic. Its own authored pattern owns
+			the bar, so the request carries none for the same reason. */
+			C2S_VALTAN_AUDITION_REQUEST pillar{};
+			pillar.iRequestSequence = 12u;
+			pillar.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE;
+			pillar.iTargetHealthBar = 0u;
+			CPacketWriter pillarWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedPillar{};
+			const bool wrotePillar = Write_Message(pillarWriter, pillar);
+			CPacketReader pillarReader{ pillarWriter.Get_Buffer() };
+			testRunner.Require(
+				wrotePillar &&
+				Read_Message(pillarReader, decodedPillar) &&
+				0u == pillarReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE ==
+					decodedPillar.eOperation &&
+				0u == decodedPillar.iTargetHealthBar,
+				"Valtan Pillar Cycle Audition Request Round Trip Without A Bar");
+
+			C2S_VALTAN_AUDITION_REQUEST barredPillar = pillar;
+			barredPillar.iTargetHealthBar = 100u;
+			CPacketWriter barredPillarWriter;
+			testRunner.Require(
+				!Write_Message(barredPillarWriter, barredPillar),
+				"Reject A Valtan Pillar Cycle Audition Request That Carries A Bar");
+		}
+
+		{
+			/* Wall attack and final-arena view are named Debug operations rather
+			than health-bar crossings. Both must round-trip with an empty bar and
+			reject any accidental health-bar payload. */
+			const std::array<VALTAN_AUDITION_OPERATION, 2u> barlessOperations{
+				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK,
+				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA };
+			for (std::size_t index = 0u; index < barlessOperations.size(); ++index)
+			{
+				C2S_VALTAN_AUDITION_REQUEST barless{};
+				barless.iRequestSequence = 20u +
+					static_cast<std::uint32_t>(index);
+				barless.eOperation = barlessOperations[index];
+				barless.iTargetHealthBar = 0u;
+				CPacketWriter barlessWriter;
+				C2S_VALTAN_AUDITION_REQUEST decodedBarless{};
+				const bool wrote = Write_Message(barlessWriter, barless);
+				CPacketReader barlessReader{ barlessWriter.Get_Buffer() };
+				testRunner.Require(
+					wrote && Read_Message(barlessReader, decodedBarless) &&
+					0u == barlessReader.Get_RemainingSize() &&
+					decodedBarless.eOperation == barless.eOperation &&
+					0u == decodedBarless.iTargetHealthBar,
+					"Valtan Wall And Final-View Auditions Round Trip Without A Bar");
+
+				barless.iTargetHealthBar = 109u;
+				CPacketWriter barredWriter;
+				testRunner.Require(
+					!Write_Message(barredWriter, barless),
+					"Reject Valtan Wall And Final-View Auditions That Carry A Bar");
+			}
+		}
 
 		{
 			C2S_VALTAN_AUDITION_REQUEST invalid = request;
@@ -2363,11 +2621,13 @@ int main()
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
 	Test_UpdateSkillAimRoundTrip(testRunner);
+	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 	Test_WorldDestructionProtocol(testRunner);
+	Test_EncounterPropSyncProtocol(testRunner);
 	Test_ValtanAuditionProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);

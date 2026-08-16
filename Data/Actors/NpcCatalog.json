@@ -537,6 +537,17 @@
       "animationSetId": "Character/NPC/AnimSets/HM_FE03/HM_FE03.wmodel",
       "idleClip": "npc_idle_normal_1",
       "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_59030",
+      "clientPresentationId": "npc.59030.client.v1",
+      "modelAssetId": "Character/NPC/Npc_59030/Npc_59030.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/NP_LRSA_00/NP_LRSA_00.wmodel",
+      "idleClip": "npc_idle_battle_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "esther.strike": "npc_att_battle_7_01"
+      }
     }
   ]
 }

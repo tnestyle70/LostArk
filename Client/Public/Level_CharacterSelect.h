@@ -104,6 +104,7 @@ private:
 	bool_t m_isCreateCharacterModalOpen = false;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
+	bool_t m_isSkillHitAreaDebugVisible = true;
 #endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";

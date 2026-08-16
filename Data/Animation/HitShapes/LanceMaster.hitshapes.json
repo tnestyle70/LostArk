@@ -1,0 +1,832 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 1,
+  "animationAssetId": "LanceMaster",
+  "characterClass": "LANCE_MASTER",
+  "skills": [
+    {
+      "skillId": 34010,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 470,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.8,
+              "angle": 230,
+              "height": 1.5,
+              "offset": 0.3,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 356,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.8,
+              "angle": 230,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "hits": [
+            {
+              "timeMs": 451,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.8,
+              "angle": 230,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 3,
+          "hits": [
+            {
+              "timeMs": 500,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.2,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.6,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34040,
+      "hits": [
+        {
+          "timeMs": 300,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.2,
+          "angle": 180,
+          "height": 1.5,
+          "offset": 0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 800,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.5,
+          "angle": 120,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34090,
+      "hits": [
+        {
+          "timeMs": 250,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.8,
+          "angle": 180,
+          "height": 2.3,
+          "offset": -0.7,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34100,
+      "hits": [
+        {
+          "timeMs": 300,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.2,
+          "angle": 270,
+          "height": 2.0,
+          "offset": -0.9,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 751,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 1.9,
+          "angle": 230,
+          "height": 2.0,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 901,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.2,
+          "angle": 270,
+          "height": 2.0,
+          "offset": -0.9,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1201,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 200,
+          "height": 2.0,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1351,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 200,
+          "height": 2.0,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34110,
+      "hits": [
+        {
+          "timeMs": 167,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.0,
+          "angle": 300,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 292,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 1.5,
+          "angle": 250,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 583,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.8,
+          "angle": 250,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34120,
+      "hits": [
+        {
+          "timeMs": 333,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.2,
+          "angle": 160,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1250,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.2,
+          "angle": 160,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1696,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.2,
+          "angle": 220,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34140,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 450,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.1,
+              "angle": 240,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 601,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 2.2,
+              "angle": 190,
+              "height": 1.5,
+              "offset": -0.1,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 400,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 240,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 650,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 240,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 850,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 1.6,
+              "angle": 140,
+              "height": 1.5,
+              "offset": -0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 1200,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 1,
+              "range": 1.25,
+              "angle": 0,
+              "height": 1.5,
+              "offset": 0.5,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34150,
+      "hits": [
+        {
+          "timeMs": 1167,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.8,
+          "angle": 360,
+          "height": 1.5,
+          "offset": 0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34160,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 500,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.5,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 1.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 750,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.5,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 950,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 1.7,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 1200,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 210,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 1350,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 250,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            },
+            {
+              "timeMs": 550,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 3,
+              "range": 2.2,
+              "angle": 360,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34510,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 0,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 2.0,
+              "angle": 75,
+              "height": 1.5,
+              "offset": 0.1,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 0,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 1.0,
+              "angle": 75,
+              "height": 1.5,
+              "offset": 2.1,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "hits": [
+            {
+              "timeMs": 250,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 1.0,
+              "angle": 75,
+              "height": 1.5,
+              "offset": 2.1,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34540,
+      "hits": [
+        {
+          "timeMs": 304,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.2,
+          "angle": 140,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34550,
+      "hits": [
+        {
+          "timeMs": 500,
+          "repeatCount": 2,
+          "repeatMs": 200,
+          "areaType": 2,
+          "range": 3.5,
+          "angle": 180,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 700,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.7,
+          "angle": 180,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 900,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.7,
+          "angle": 180,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1400,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.7,
+          "angle": 180,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34560,
+      "hits": [
+        {
+          "timeMs": 999,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 5.3,
+          "angle": 160,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1082,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 5.0,
+          "angle": 160,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1249,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 1.6,
+          "angle": 160,
+          "height": 1.5,
+          "offset": -0.05,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34570,
+      "hits": [
+        {
+          "timeMs": 1400,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.8,
+          "angle": 360,
+          "height": 1.5,
+          "offset": 1.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 34580,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 350,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 3.0,
+              "angle": 160,
+              "height": 1.5,
+              "offset": -0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34610,
+      "hits": [
+        {
+          "timeMs": 900,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.8,
+          "angle": 180,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1700,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.8,
+          "angle": 310,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1900,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.0,
+          "angle": 330,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 2300,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.2,
+          "angle": 340,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 2500,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.4,
+          "angle": 340,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 2850,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.4,
+          "angle": 360,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 3300,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.6,
+          "angle": 220,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 3500,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 3800,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 4200,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 4400,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 5367,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    }
+  ]
+}

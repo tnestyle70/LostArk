@@ -1,0 +1,154 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 1,
+  "animationAssetId": "Warlord",
+  "characterClass": "WARLORD",
+  "skills": [
+    {
+      "skillId": 17000,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 300,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 2.8,
+              "angle": 150,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "hits": [
+            {
+              "timeMs": 200,
+              "repeatCount": 3,
+              "repeatMs": 200,
+              "areaType": 2,
+              "range": 3.0,
+              "angle": 180,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "hits": [
+            {
+              "timeMs": 300,
+              "repeatCount": 3,
+              "repeatMs": 200,
+              "areaType": 2,
+              "range": 3.0,
+              "angle": 180,
+              "height": 1.5,
+              "offset": 0.2,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 17030,
+      "hits": [
+        {
+          "timeMs": 500,
+          "repeatCount": 3,
+          "repeatMs": 200,
+          "areaType": 2,
+          "range": 3.5,
+          "angle": 170,
+          "height": 1.5,
+          "offset": 0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 17040,
+      "hits": [
+        {
+          "timeMs": 300,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 2.0,
+          "angle": 120,
+          "height": 1.5,
+          "offset": 0.3,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 17080,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 250,
+              "repeatCount": 1,
+              "repeatMs": 0,
+              "areaType": 2,
+              "range": 3.0,
+              "angle": 140,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 17090,
+      "hits": [
+        {
+          "timeMs": 400,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 4.5,
+          "angle": 60,
+          "height": 1.5,
+          "offset": -0.1,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    },
+    {
+      "skillId": 17110,
+      "hits": [
+        {
+          "timeMs": 967,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 3.0,
+          "angle": 0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    }
+  ]
+}

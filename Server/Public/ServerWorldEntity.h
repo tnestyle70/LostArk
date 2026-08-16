@@ -11,6 +11,12 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_BOSS_PATTERN_COOLDOWN final
+	{
+		std::string strPatternId;
+		std::uint32_t iReadyTick = 0;
+	};
+
 	enum class SERVER_ENTITY_ACTION
 	{
 		IDLE,
@@ -56,6 +62,18 @@ namespace LostArk::Server
 		float fLeapOriginY = 0.f;
 		float fLeapOriginZ = 0.f;
 		float fLeapApexHeight = 0.f;
+		/* Where the current authored leap lands. Copied from the pattern's one
+		compiled anchor, never from the boss placement, so the landing, the
+		cinematic lookAt and the radial wall directions stay on one point. */
+		float fLeapLandingX = 0.f;
+		float fLeapLandingY = 0.f;
+		float fLeapLandingZ = 0.f;
+		/* Apex the current pattern authored, zero when it owns no leap. */
+		float fPatternLeapApexHeight = 0.f;
+		/* The encounter's intro pattern runs once per encounter epoch, on the
+		first engage. A late joiner never replays it, and only a room-empty or
+		Debug reset clears the ledger. */
+		bool bIntroPatternConsumed = false;
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
@@ -71,6 +89,7 @@ namespace LostArk::Server
 		std::uint32_t iPatternHitCount = 0;
 		std::uint32_t iPatternHitIntervalMs = 0;
 		std::uint32_t iAppliedPatternHitCount = 0;
+		bool bPatternWallContact = false;
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
@@ -84,11 +103,16 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* A raid Esther summon runs the room-owned appear/strike/leave timeline
+		in Update_WorldEntities instead of a brain, and despawns when the leave
+		stage ends rather than through the MONSTER dead sweep. */
+		bool isEstherSummon = false;
 		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
 		std::uint32_t iConsecutivePatternUses = 0;
+		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
 		std::vector<std::string> PendingPatternIds;
 		std::vector<std::string> TriggeredPatternIds;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =

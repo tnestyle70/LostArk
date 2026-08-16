@@ -11,6 +11,10 @@ namespace
 	std::mutex g_TransitionMutex;
 	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
 	std::optional<HRESULT> g_LoadFailure;
+	/* The stage that actually refused, kept next to the HRESULT. A bare
+	   E_FAIL cannot tell a missing map model from a rejected encounter
+	   document, and the Lobby is the only place the user ever sees it. */
+	std::string g_LoadFailureDetail;
 	std::string g_Status = "No level transition is pending.";
 }
 
@@ -64,22 +68,33 @@ std::string Client::CLevelTransitionService::Get_Status()
 }
 
 void Client::CLevelTransitionService::Report_LoadFailure(
-	const HRESULT result)
+	const HRESULT result,
+	const std::string_view detail)
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	g_LoadFailure = result;
+	/* The stage that refused reports first and the generic activation failure
+	   follows it, so a later empty report must not erase the only line that
+	   names what went wrong. */
+	if (!detail.empty())
+		g_LoadFailureDetail.assign(detail);
 	g_Status = "Level loading failed with HRESULT " +
 		std::to_string(static_cast<long>(result)) + ".";
+	if (!g_LoadFailureDetail.empty())
+		g_Status += " " + g_LoadFailureDetail;
 }
 
 bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
-	HRESULT& outResult)
+	HRESULT& outResult,
+	std::string& outDetail)
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	if (!g_LoadFailure.has_value())
 		return false;
 
 	outResult = *g_LoadFailure;
+	outDetail = std::move(g_LoadFailureDetail);
+	g_LoadFailureDetail.clear();
 	g_LoadFailure.reset();
 	return true;
 }
@@ -154,8 +169,17 @@ bool_t Client::CLevelTransitionService::Request(
 		pSource,
 		lobbyCommandToken
 	};
-	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase)
+	/* A target-level failure is reported before the recovery load back to the
+	   Lobby is staged.  Clearing the report for that recovery request erased
+	   the only actionable reason before CLevel_Lobby could consume it.  A new
+	   non-Lobby load starts a fresh attempt and may clear the previous report;
+	   the Lobby recovery itself must preserve it. */
+	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase &&
+		LEVEL::LOBBY != eTargetLevel)
+	{
 		g_LoadFailure.reset();
+		g_LoadFailureDetail.clear();
+	}
 	g_Status = "Level transition request staged by " +
 		g_PendingRequest->strSource + ".";
 	return true;

@@ -375,6 +375,19 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	{
 		return E_FAIL;
 	}
+	/* The raid Esther summons spawn mid-fight, so their models must already be
+	prototypes when the arena opens: the lazy admission on first spawn stalls
+	the frame the caster presses the key. This list mirrors the server's
+	CEstherSkillSystem roster and moves into a data contract with it. */
+	Set_Status(TEXT("VALTAN: esther summon presentation"));
+	if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+		m_pDevice,
+		m_pContext,
+		ETOUI(LEVEL::VALTAN_ARENA),
+		"NPC_59030")))
+	{
+		return E_FAIL;
+	}
 	Set_Status(TEXT("VALTAN: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(
 		ETOUI(LEVEL::VALTAN_ARENA),

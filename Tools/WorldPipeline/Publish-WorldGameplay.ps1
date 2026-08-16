@@ -111,7 +111,7 @@ function Get-EncounterProfiles {
     foreach ($document in $documents) {
         Assert-ExactProperties $document @(
             'schema','formatVersion','encounterId','bossArchetypeId',
-            'authority','fixedTickHz','states','patterns') 'encounter profile'
+            'authority','fixedTickHz','introPatternId','states','patterns') 'encounter profile'
 		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 3 3
 		Assert-JsonInteger $document.fixedTickHz "$($document.encounterId) fixedTickHz" 30 30
         Assert-StableId $document.encounterId 'encounterId'
@@ -147,13 +147,22 @@ function Get-EncounterProfiles {
         if ($patterns.Count -eq 0) {
             throw "Encounter requires at least one pattern: $($document.encounterId)"
         }
+		# introPatternId is owned and strictly validated by the gameplay balance
+		# publisher; this document only needs to tolerate its presence.
+		$null = $document.PSObject.Properties['introPatternId']
 		$patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		foreach ($pattern in $patterns) {
-			Assert-ExactProperties $pattern @(
+			# serverMotion is owned and strictly validated by the gameplay balance
+			# publisher; this document only needs to tolerate its presence.
+			$patternProperties = @(
 				'patternId','displayName','actionId','sourceActionIds','selectionMode',
 				'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 				'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
-				'stages') "$($document.encounterId) pattern"
+				'stages')
+			if ($null -ne $pattern.PSObject.Properties['serverMotion']) {
+				$patternProperties += 'serverMotion'
+			}
+			Assert-ExactProperties $pattern $patternProperties "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"
 			Assert-JsonNumber $pattern.maximumRange "$($document.encounterId) maximumRange"
 			Assert-StableId $pattern.patternId "$($document.encounterId) patternId"

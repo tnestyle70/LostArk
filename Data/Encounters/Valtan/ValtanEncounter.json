@@ -5,6 +5,7 @@
   "bossArchetypeId": "BOSS_VALTAN",
   "authority": "server",
   "fixedTickHz": 30,
+  "introPatternId": "VALTAN_ENTRANCE_WHIRLWIND",
   "states": [
     { "id": "IDLE", "actionId": "valtan.idle", "next": "ACQUIRE_TARGET" },
     { "id": "ACQUIRE_TARGET", "actionId": "valtan.acquire", "next": "CHASE" },
@@ -413,12 +414,12 @@
     },
     {
       "patternId": "VALTAN_FLOOR_WIPE_130",
-      "displayName": "130줄 2연속 지면 강타 전멸기",
+      "displayName": "115줄 6방향 충격파 후 전방향 충격파",
       "actionId": "valtan.mechanic.floor-wipe-130",
       "sourceActionIds": [420630],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 130, "triggerOrder": 1,
+      "triggerHealthBar": 115, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -431,12 +432,12 @@
     },
     {
       "patternId": "VALTAN_FOUR_PILLARS_105",
-      "displayName": "105줄 4기둥 추적 원뿔",
+      "displayName": "100줄 중앙 착지와 4기둥 추적 원뿔",
       "actionId": "valtan.mechanic.four-pillars-105",
       "sourceActionIds": [420610],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 105, "triggerOrder": 1,
+      "triggerHealthBar": 100, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -444,6 +445,22 @@
         { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105" },
         { "stageId": "TARGET_CONE", "actionId": "valtan.mechanic.four-pillars-105.target-cone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 45.0, "hitLength": 30.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105" },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.four-pillars-105.recovery", "stageKind": "RECOVERY", "durationMs": 1300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
+      "displayName": "첫 등장 회전 돌진",
+      "actionId": "valtan.mechanic.entrance-whirlwind",
+      "sourceActionIds": [420633],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 1, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.mechanic.entrance-whirlwind.windup", "stageKind": "WINDUP", "durationMs": 1070, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SWEEP", "actionId": "valtan.mechanic.entrance-whirlwind.sweep", "stageKind": "ACTIVE", "durationMs": 1930, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 2, "hitIntervalMs": 700, "serverDamageProfileId": "damage.valtan.circular-spin" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.entrance-whirlwind.recovery", "stageKind": "RECOVERY", "durationMs": 3160, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
       ]
     },
     {
@@ -456,23 +473,24 @@
       "triggerHealthBar": 109, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
+      "serverMotion": { "kind": "LEAP_TO_ANCHOR", "anchorId": "anchor.valtan.arena-break-109.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 12.0 },
       "stages": [
-        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.arena-break-109.takeoff", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
-        { "stageId": "DROP", "actionId": "valtan.mechanic.arena-break-109.drop", "stageKind": "WINDUP", "durationMs": 800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.arena-break-109.takeoff", "stageKind": "WINDUP", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "DROP", "actionId": "valtan.mechanic.arena-break-109.drop", "stageKind": "WINDUP", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "IMPACT", "actionId": "valtan.mechanic.arena-break-109.impact", "stageKind": "ACTIVE", "durationMs": 400, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-109" },
         { "stageId": "IMPACT_HOLD", "actionId": "valtan.mechanic.arena-break-109.impact-hold", "stageKind": "ACTIVE", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "WIDE_REVEAL", "actionId": "valtan.mechanic.arena-break-109.wide-reveal", "stageKind": "ACTIVE", "durationMs": 2300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
-        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-109.recovery", "stageKind": "RECOVERY", "durationMs": 400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-109.recovery", "stageKind": "RECOVERY", "durationMs": 870, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
       ]
     },
     {
       "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
-      "displayName": "76줄 마력구 방어막 무력화",
+      "displayName": "73줄 남북·동서 마력구 폭발",
       "actionId": "valtan.mechanic.magic-orb-stagger-76",
       "sourceActionIds": [420617, 420618],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 76, "triggerOrder": 1,
+      "triggerHealthBar": 73, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -483,12 +501,12 @@
     },
     {
       "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
-      "displayName": "64줄 중앙 표적 폭발과 잡기 카운터",
+      "displayName": "62줄 3페이즈 중앙 표적 폭발과 잡기 카운터",
       "actionId": "valtan.mechanic.center-grab-counter-64",
       "sourceActionIds": [420623, 420631],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 64, "triggerOrder": 1,
+      "triggerHealthBar": 62, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -501,12 +519,12 @@
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_33",
-      "displayName": "33줄 두 번째 지형 파괴",
+      "displayName": "30줄 두 번째 지형 절반 파괴",
       "actionId": "valtan.mechanic.arena-break-33",
       "sourceActionIds": [420629],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 33, "triggerOrder": 1,
+      "triggerHealthBar": 30, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -518,16 +536,17 @@
     },
     {
       "patternId": "VALTAN_GHOST_TRANSITION_15",
-      "displayName": "15줄 최종 지면파괴와 망령화",
+      "displayName": "14줄 포탈·최종 지면파괴와 망령화",
       "actionId": "valtan.mechanic.ghost-transition-15",
       "sourceActionIds": [420616, 420624, 420625, 420626, 420634, 420651, 420652, 420653, 420658, 420659, 420665],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 15, "triggerOrder": 1,
+      "triggerHealthBar": 14, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "PORTAL", "actionId": "valtan.mechanic.ghost-transition-15.portal", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "PORTAL_OPEN", "actionId": "valtan.mechanic.ghost-transition-15.portal-open", "stageKind": "WINDUP", "durationMs": 1180, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "GHOST_APPEAR", "actionId": "valtan.mechanic.ghost-transition-15.ghost-appear", "stageKind": "WINDUP", "durationMs": 620, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
         { "stageId": "FOUR_DIRECTIONS", "actionId": "valtan.mechanic.ghost-transition-15.four-directions", "stageKind": "ACTIVE", "durationMs": 1800, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 20.0, "hitHalfWidth": 3.0, "hitCount": 4, "hitIntervalMs": 400, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
         { "stageId": "TRACKING_EXPLOSIONS", "actionId": "valtan.mechanic.ghost-transition-15.tracking", "stageKind": "ACTIVE", "durationMs": 2000, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 450, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
         { "stageId": "INNER", "actionId": "valtan.mechanic.ghost-transition-15.inner", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },

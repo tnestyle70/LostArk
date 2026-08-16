@@ -74,6 +74,11 @@ public:
 		float aimX,
 		float aimZ);
 	bool Send_RevivePlayer(std::uint32_t clientSequence);
+	bool Send_EstherSkill(
+		std::uint32_t clientSequence,
+		std::uint8_t slotIndex,
+		float aimX,
+		float aimZ);
 	bool Send_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);

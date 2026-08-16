@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameplayCatalog.h"
+#include "ServerCollisionSystem.h"
 #include "ServerNavigation.h"
 #include "ServerPlayer.h"
 #include "ServerWorldEntity.h"
@@ -60,8 +61,22 @@ namespace LostArk::Server
 			std::vector<SERVER_WORLD_ENTITY>& worldEntities,
 			const CGameplayCatalog& catalog,
 			const CServerNavigation* navigation,
+			const CServerCollisionSystem* collision,
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
+
+		/* Root motion advances by clip delta, so it has to answer the same
+		question a walk step does: how far along this tick's displacement can the
+		player actually stand. Returns the reachable point, which is the start
+		itself when the very first sample off the start is already blocked. */
+		static void Clamp_StepToWalkable(
+			const CServerNavigation& navigation,
+			float startX,
+			float startZ,
+			float desiredX,
+			float desiredZ,
+			SERVER_NAV_POINT& outPoint,
+			bool& outWasClamped);
 	};
 }

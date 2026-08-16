@@ -579,6 +579,21 @@ bool LostArk::Server::CServerNavigation::Has_Condition(
 	return m_ConditionValues.contains(conditionId);
 }
 
+std::size_t
+LostArk::Server::CServerNavigation::Get_ActiveBlockerRegionCount() const
+{
+	std::size_t active = 0u;
+	for (const RUNTIME_BLOCKER_REGION& region : m_RuntimeBlockerRegions)
+	{
+		const auto condition = m_ConditionValues.find(region.strConditionId);
+		const bool conditionValue =
+			condition != m_ConditionValues.end() && condition->second;
+		if (conditionValue == region.bActivateWhenConditionTrue)
+			++active;
+	}
+	return active;
+}
+
 bool LostArk::Server::CServerNavigation::Is_PointWalkableExact(
 	const float x,
 	const float z) const

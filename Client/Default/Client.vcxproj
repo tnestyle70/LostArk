@@ -33,6 +33,7 @@
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
+    <ClInclude Include="..\Public\HitAreaWire.h" />
     <ClInclude Include="..\Public\CharacterCatalog.h" />
     <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
@@ -162,6 +163,7 @@
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
+    <ClCompile Include="..\Private\HitAreaWire.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
@@ -298,6 +300,10 @@
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\DimensionMaster.rootmotion.json" />
+    <None Include="..\..\Data\Animation\HitShapes\LanceMaster.hitshapes.json" />
+    <None Include="..\..\Data\Animation\HitShapes\Warlord.hitshapes.json" />
+    <None Include="..\..\Data\Animation\HitShapes\Artist.hitshapes.json" />
+    <None Include="..\..\Data\Animation\HitShapes\DimensionMaster.hitshapes.json" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipmap" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipseq" />
@@ -326,6 +332,7 @@
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
+    <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />

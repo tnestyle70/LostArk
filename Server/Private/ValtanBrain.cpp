@@ -25,9 +25,9 @@ namespace
 	constexpr const char* ARENA_BREAK_TAKEOFF_STAGE_ID = "TAKEOFF";
 	constexpr const char* ARENA_BREAK_DROP_STAGE_ID = "DROP";
 	/* The converted Valtan model carries no jump clip, so the leap is a Server
-	transform arc instead of root motion. Height is a presentation-scale
-	authored constant; the landing point comes from the boss placement. */
-	constexpr float ARENA_BREAK_LEAP_APEX_HEIGHT = 12.f;
+	transform arc instead of root motion. Both the apex and the landing point
+	come from the pattern's compiled serverMotion anchor, never from a constant
+	here and never from the boss placement. */
 
 	bool Is_ArenaBreakLeapStage(const SERVER_WORLD_ENTITY& boss)
 	{
@@ -51,8 +51,9 @@ namespace
 			boss.fActionElapsedSeconds / duration));
 	}
 
-	/* TAKEOFF rises in place; DROP carries the boss to its authored placement
-	while it falls, so IMPACT always lands on the arena centre. */
+	/* TAKEOFF rises in place; DROP carries the boss to the pattern's compiled
+	landing anchor while it falls, so IMPACT always lands on the same point the
+	camera frames and the walls fly away from. */
 	void Advance_ArenaBreakLeap(SERVER_WORLD_ENTITY& boss)
 	{
 		if (!Is_ArenaBreakLeapStage(boss))
@@ -67,11 +68,11 @@ namespace
 			return;
 		}
 		boss.fPositionX = boss.fLeapOriginX +
-			(boss.fSpawnPositionX - boss.fLeapOriginX) * ratio;
+			(boss.fLeapLandingX - boss.fLeapOriginX) * ratio;
 		boss.fPositionZ = boss.fLeapOriginZ +
-			(boss.fSpawnPositionZ - boss.fLeapOriginZ) * ratio;
+			(boss.fLeapLandingZ - boss.fLeapOriginZ) * ratio;
 		const float apexY = boss.fLeapOriginY + apex;
-		boss.fPositionY = apexY + (boss.fSpawnPositionY - apexY) * ratio * ratio;
+		boss.fPositionY = apexY + (boss.fLeapLandingY - apexY) * ratio * ratio;
 	}
 
 	void Transition(
@@ -91,6 +92,41 @@ namespace
 		const std::string& patternId)
 	{
 		return ids.end() != std::find(ids.begin(), ids.end(), patternId);
+	}
+
+	bool IsPatternCooldownReady(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId,
+		const std::uint32_t serverTick)
+	{
+		const auto found = std::find_if(
+			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
+			[&patternId](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
+			{ return cooldown.strPatternId == patternId; });
+		return boss.PatternCooldowns.end() == found ||
+			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0;
+	}
+
+	void StartPatternCooldown(
+		SERVER_WORLD_ENTITY& boss,
+		const BOSS_PATTERN_DEFINITION& pattern,
+		const std::uint32_t serverTick)
+	{
+		if (0u == pattern.iSourceCooldownTicks)
+			return;
+		const std::uint32_t readyTick =
+			serverTick + pattern.iSourceCooldownTicks;
+		auto found = std::find_if(
+			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
+			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
+			{ return cooldown.strPatternId == pattern.strPatternId; });
+		if (boss.PatternCooldowns.end() == found)
+		{
+			boss.PatternCooldowns.push_back(
+				SERVER_BOSS_PATTERN_COOLDOWN{ pattern.strPatternId, readyTick });
+			return;
+		}
+		found->iReadyTick = readyTick;
 	}
 
 	const BOSS_PATTERN_DEFINITION* FindPattern(
@@ -141,6 +177,7 @@ namespace
 	const BOSS_PATTERN_DEFINITION* SelectNormalPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
+		const std::string& introPatternId,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick)
@@ -150,10 +187,13 @@ namespace
 		for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
 		{
 			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
+				pattern.strPatternId == introPatternId ||
 				currentHealthBar < pattern.iMinimumHealthBar ||
 				currentHealthBar > pattern.iMaximumHealthBar ||
 				targetDistance < pattern.fMinimumRange ||
-				targetDistance > pattern.fMaximumRange)
+				targetDistance > pattern.fMaximumRange ||
+				!IsPatternCooldownReady(
+					boss, pattern.strPatternId, serverTick))
 			{
 				continue;
 			}
@@ -192,10 +232,27 @@ namespace
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
+		const std::string& introPatternId,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick)
 	{
+		/* The first appearance runs before the health-bar queue and before any
+		weighted roll, so the entrance sweep can never come up again later. It is
+		consumed even if the pattern is missing, so a broken catalog cannot stall
+		the boss on every tick. */
+		if (!boss.bIntroPatternConsumed)
+		{
+			boss.bIntroPatternConsumed = true;
+			if (!introPatternId.empty())
+			{
+				if (const BOSS_PATTERN_DEFINITION* intro =
+					FindPattern(patterns, introPatternId))
+				{
+					return intro;
+				}
+			}
+		}
 		while (!boss.PendingPatternIds.empty())
 		{
 			const std::string patternId = boss.PendingPatternIds.front();
@@ -207,7 +264,8 @@ namespace
 			}
 		}
 		return SelectNormalPattern(
-			boss, patterns, currentHealthBar, targetDistance, serverTick);
+			boss, patterns, introPatternId,
+			currentHealthBar, targetDistance, serverTick);
 	}
 
 	SERVER_ENTITY_ACTION ToServerAction(const BOSS_PATTERN_STAGE_KIND kind)
@@ -245,6 +303,7 @@ namespace
 		boss.iPatternHitCount = stage.iHitCount;
 		boss.iPatternHitIntervalMs = stage.iHitIntervalMs;
 		boss.iAppliedPatternHitCount = 0u;
+		boss.bPatternWallContact = stage.bWallContact;
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -254,18 +313,18 @@ namespace
 			boss.fLeapOriginX = boss.fPositionX;
 			boss.fLeapOriginY = boss.fPositionY;
 			boss.fLeapOriginZ = boss.fPositionZ;
-			boss.fLeapApexHeight = ARENA_BREAK_LEAP_APEX_HEIGHT;
+			boss.fLeapApexHeight = boss.fPatternLeapApexHeight;
 			boss.MovePath.clear();
 		}
 		else if (boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
 			stage.strStageId != ARENA_BREAK_DROP_STAGE_ID)
 		{
-			/* Everything from IMPACT onward is played from the authored
-			placement, so the landing is exact rather than wherever the last
+			/* Everything from IMPACT onward is played from the compiled landing
+			anchor, so the landing is exact rather than wherever the last
 			interpolated frame happened to leave the boss. */
-			boss.fPositionX = boss.fSpawnPositionX;
-			boss.fPositionY = boss.fSpawnPositionY;
-			boss.fPositionZ = boss.fSpawnPositionZ;
+			boss.fPositionX = boss.fLeapLandingX;
+			boss.fPositionY = boss.fLeapLandingY;
+			boss.fPositionZ = boss.fLeapLandingZ;
 			boss.fLeapApexHeight = 0.f;
 		}
 		Advance_ArenaBreakLeap(boss);
@@ -279,6 +338,7 @@ namespace
 		boss.strPatternId = pattern.strPatternId;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
 		boss.fPatternMaximumRange = pattern.fMaximumRange;
+		StartPatternCooldown(boss, pattern, serverTick);
 		boss.iPatternSequence = boss.iPatternSequence ==
 			(std::numeric_limits<std::uint32_t>::max)() ?
 			1u : boss.iPatternSequence + 1u;
@@ -288,6 +348,22 @@ namespace
 		{
 			boss.strLastPatternId = pattern.strPatternId;
 			boss.iConsecutivePatternUses = 1u;
+		}
+		/* A pattern that owns a compiled landing anchor lands on it. Everything
+		else keeps standing on its authored placement. */
+		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind)
+		{
+			boss.fLeapLandingX = pattern.Motion.fLandingX;
+			boss.fLeapLandingY = pattern.Motion.fLandingY;
+			boss.fLeapLandingZ = pattern.Motion.fLandingZ;
+			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
+		}
+		else
+		{
+			boss.fLeapLandingX = boss.fSpawnPositionX;
+			boss.fLeapLandingY = boss.fSpawnPositionY;
+			boss.fLeapLandingZ = boss.fSpawnPositionZ;
+			boss.fPatternLeapApexHeight = 0.f;
 		}
 		EnterPatternStage(boss, pattern.Stages.front(), 0u, serverTick);
 	}
@@ -299,10 +375,10 @@ namespace
 		if (boss.fLeapApexHeight > 0.f)
 		{
 			/* An aborted leap must not leave the boss standing in mid-air, so
-			drop it back onto the authored placement it was falling toward. */
-			boss.fPositionX = boss.fSpawnPositionX;
-			boss.fPositionY = boss.fSpawnPositionY;
-			boss.fPositionZ = boss.fSpawnPositionZ;
+			drop it back onto the anchor it was falling toward. */
+			boss.fPositionX = boss.fLeapLandingX;
+			boss.fPositionY = boss.fLeapLandingY;
+			boss.fPositionZ = boss.fLeapLandingZ;
 			boss.fLeapApexHeight = 0.f;
 		}
 		boss.strPatternId.clear();
@@ -315,6 +391,7 @@ namespace
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.iPatternHitCount = 0u;
 		boss.iAppliedPatternHitCount = 0u;
+		boss.bPatternWallContact = false;
 		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 	}
 
@@ -578,7 +655,8 @@ void LostArk::Server::CValtanBrain::Update(
 		SERVER_ENTITY_ACTION::CHASE == boss.eAction)
 	{
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
-			boss, *patterns, currentHealthBar, distance, serverTick);
+			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
+			currentHealthBar, distance, serverTick);
 		if (nullptr == selected)
 		{
 			Transition(boss, SERVER_ENTITY_ACTION::CHASE, serverTick);

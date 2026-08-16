@@ -245,8 +245,14 @@ namespace
 		std::vector<NPC_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 6u != value.Get_Object().size())
+			const DATA_JSON_VALUE* pActionClips =
+				value.Is_Object() ? value.Find("actionClips") : nullptr;
+			const size_t expectedFields = nullptr != pActionClips ? 7u : 6u;
+			if (!value.Is_Object() ||
+				expectedFields != value.Get_Object().size())
+			{
 				return false;
+			}
 			NPC_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pAnimSet = value.Find("animationSetId");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
@@ -269,6 +275,25 @@ namespace
 				entry.animationSetId = pAnimSet->Get_String();
 				if (!IsResourceId(entry.animationSetId))
 					return false;
+			}
+			if (nullptr != pActionClips)
+			{
+				if (!pActionClips->Is_Object() ||
+					pActionClips->Get_Object().empty())
+				{
+					return false;
+				}
+				for (const auto& [actionId, clip] :
+					pActionClips->Get_Object())
+				{
+					if (actionId.empty() ||
+						!clip.Is_String() || clip.Get_String().empty() ||
+						!entry.actionClips.emplace(
+							actionId, clip.Get_String()).second)
+					{
+						return false;
+					}
+				}
 			}
 			staged.push_back(std::move(entry));
 		}

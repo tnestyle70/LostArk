@@ -163,6 +163,11 @@ bool Client::CClientReplication::Update()
 			allSucceeded = Apply_WorldDestructionDelta(
 				event.WorldDestructionDelta) && allSucceeded;
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::ENCOUNTER_PROP_SYNC:
+			allSucceeded = Apply_EncounterPropSync(
+				event.EncounterPropSync) && allSucceeded;
+			break;
 		}
 	}
 
@@ -190,9 +195,26 @@ bool Client::CClientReplication::Apply_WorldDestructionFullSync(
 		return false;
 	}
 	m_WorldDestructionLiveEvents.clear();
+	m_WorldDestructionDiagnostics = fullSync.Diagnostics;
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;
+	return true;
+}
+
+bool Client::CClientReplication::Apply_EncounterPropSync(
+	const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& sync)
+{
+	/* Replace-in-full. A slot only ever holds its current state, so a late
+	   joiner and a player who watched the whole cycle read the same thing, and
+	   an out-of-order epoch cannot resurrect a retired pillar. */
+	if (sync.iEncounterEpoch < m_EncounterPropState.iEncounterEpoch ||
+		(sync.iEncounterEpoch == m_EncounterPropState.iEncounterEpoch &&
+		 sync.iServerTick < m_EncounterPropState.iServerTick))
+	{
+		return true;
+	}
+	m_EncounterPropState = sync;
 	return true;
 }
 
@@ -230,6 +252,7 @@ bool Client::CClientReplication::Apply_WorldDestructionDelta(
 		}
 		m_WorldDestructionLiveEvents.push_back(std::move(event));
 	}
+	m_WorldDestructionDiagnostics = delta.Diagnostics;
 	return true;
 }
 
@@ -349,6 +372,18 @@ void Client::CClientReplication::Set_CombatColliderDebugVisible(
 			valtan->Set_CombatColliderDebugVisible(isVisible);
 	}
 }
+
+void Client::CClientReplication::Set_SkillHitAreaDebugVisible(
+	const bool_t isVisible)
+{
+	m_isSkillHitAreaDebugVisible = isVisible;
+	for (const std::shared_ptr<CCharacter>& character :
+		m_Registry.Get_LiveObjects())
+	{
+		if (nullptr != character)
+			character->Set_SkillHitAreaDebugVisible(isVisible);
+	}
+}
 #endif
 
 bool Client::CClientReplication::Create_Character(
@@ -411,6 +446,8 @@ bool Client::CClientReplication::Create_Character(
 #ifdef _DEBUG
 	character->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
+	character->Set_SkillHitAreaDebugVisible(
+		m_isSkillHitAreaDebugVisible);
 #endif
 	outCharacter = character;
 	return true;
@@ -916,6 +953,30 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				!npc->Apply_NetworkState(position, entity.fYawDegrees))
 			{
 				allSucceeded = false;
+				continue;
+			}
+			/* Server-driven NPC actions (raid Esther summons). An action the
+			catalog maps plays once; anything else stands in the idle clip, so
+			a plain placement NPC without actionClips never switches at all. */
+			const NPC_ACTOR_ENTRY* actor =
+				CActorCatalog::Find_Npc(iter->second.strArchetypeId);
+			if (nullptr == actor || actor->actionClips.empty())
+				continue;
+			const std::string* clip = &actor->idleClip;
+			bool_t loop = true;
+			const auto actionClip =
+				actor->actionClips.find(entity.strActionId);
+			if (actionClip != actor->actionClips.end())
+			{
+				clip = &actionClip->second;
+				loop = false;
+			}
+			if (iter->second.strCurrentClip != *clip)
+			{
+				if (!npc->Set_Animation(clip->c_str(), loop))
+					allSucceeded = false;
+				else
+					iter->second.strCurrentClip = *clip;
 			}
 		}
 		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)
@@ -1003,6 +1064,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
 		snapshot.DamageEvents);
+	CCombatHUDViewModel::Get().Apply_EstherGauge(
+		snapshot.iEstherGauge,
+		snapshot.iEstherGaugeMaximum);
 
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;
@@ -1127,6 +1191,7 @@ void Client::CClientReplication::Reset_World()
 	m_ValtanPresentationState = {};
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
+	m_EncounterPropState = {};
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;

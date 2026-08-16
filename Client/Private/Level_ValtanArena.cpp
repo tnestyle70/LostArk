@@ -17,10 +17,38 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include "Transform.h"
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
+#include <string_view>
 
 namespace
 {
+	constexpr std::string_view VALTAN_PILLAR_SET_ID =
+		"encounterprop.valtan.four-pillars";
+	constexpr std::array<std::string_view, 4> VALTAN_PILLAR_SLOT_IDS = {
+		"pillar.valtan.slot00", "pillar.valtan.slot01",
+		"pillar.valtan.slot02", "pillar.valtan.slot03" };
+	/* The Server currently owns the four inner repeatable slots. Keep this
+	   slot-to-placement mapping stable when applying an encounter-prop sync. */
+	constexpr std::array<uint64_t, 4> VALTAN_PILLAR_SLOT_PLACEMENT_IDS = {
+		14226635865317864635ull,
+		14753860598629869201ull,
+		16421721927631310369ull,
+		13580356114054111471ull };
+	/* All eight DEPLOY_ITR_02326 occurrences are encounter props, not permanent
+	   arena dressing. Suppress every occurrence before the first rendered frame;
+	   later authored trigger work can assign the remaining four stable IDs to
+	   their own slots without restoring them at level load. */
+	constexpr std::array<uint64_t, 8> VALTAN_ALL_PILLAR_PLACEMENT_IDS = {
+		9528847514271106184ull,
+		13580356114054111471ull,
+		14224868475885080166ull,
+		14226635865317864635ull,
+		14351557328510348857ull,
+		14753860598629869201ull,
+		16068006371995901944ull,
+		16421721927631310369ull };
+
 	std::filesystem::path Find_ValtanWorldDataFile(
 		const std::filesystem::path& fileName)
 	{
@@ -40,6 +68,20 @@ namespace
 		const std::filesystem::path parent = moduleDirectory.parent_path() /
 			L"DataFiles" / L"World" / fileName;
 		return std::filesystem::is_regular_file(parent) ? parent : adjacent;
+	}
+
+	/* A refused level activation drops the player back to the Lobby with the
+	   socket already closed, which looks exactly like a dropped connection.
+	   Every refusal therefore hands the Lobby the stage that actually said no,
+	   not just E_FAIL. */
+	HRESULT Report_InitFailure(
+		const char_t* pStage,
+		const std::string& status)
+	{
+		const std::string detail = std::string(pStage) + " " + status;
+		OutputDebugStringA((detail + "\n").c_str());
+		Client::CLevelTransitionService::Report_LoadFailure(E_FAIL, detail);
+		return E_FAIL;
 	}
 }
 
@@ -72,18 +114,33 @@ HRESULT CLevel_ValtanArena::Initialize()
 			pEntry->pMapAreaId,
 			pEntry->MapLoadScope))
 	{
-		OutputDebugStringA(("[Level_ValtanArena] " +
-			m_MapRuntime.Get_Status() + "\n").c_str());
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][MapArea]",
+			nullptr == pEntry || nullptr == pEntry->pMapAreaId ?
+				"Valtan level descriptor has no map area" :
+				m_MapRuntime.Get_Status());
 	}
 	if (!m_DeployRuntime.Load_Area(
 		ETOUI(LEVEL::VALTAN_ARENA),
 		pEntry->pMapAreaId))
 	{
-		OutputDebugStringA(("[Level_ValtanArena][DeployProp] " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][DeployProp]",
+			m_DeployRuntime.Get_Status());
+	}
+	/* The authored deploy catalog contains all eight reusable pillars so later
+	   triggers can raise the intended set. Their product initial state is
+	   HIDDEN, therefore suppress every occurrence before the first rendered
+	   Valtan frame rather than waiting for a Server sync to arrive. */
+	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenPillars;
+	hiddenPillars.reserve(VALTAN_ALL_PILLAR_PLACEMENT_IDS.size());
+	for (const uint64_t placementId : VALTAN_ALL_PILLAR_PLACEMENT_IDS)
+		hiddenPillars.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
+	if (!m_DeployRuntime.Set_States(hiddenPillars))
+	{
+		m_DeployRuntime.Clear();
+		m_MapRuntime.Clear();
+		return Report_InitFailure("[Level_ValtanArena][EncounterProps]",
+			m_DeployRuntime.Get_Status());
 	}
 	std::string destructionStatus;
 	if (!m_WorldDestructionProjectionDocument.Load(
@@ -92,12 +149,11 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_WorldDestructionProjectionDocument.Get_AreaId() !=
 			pEntry->pMapAreaId)
 	{
-		OutputDebugStringA(("[Level_ValtanArena][WorldDestruction] " +
-			destructionStatus + "\n").c_str());
 		m_WorldDestructionProjectionDocument.Clear();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][WorldDestruction]",
+			destructionStatus);
 	}
 	if (!m_WorldDestructionDebrisPresentationDocument.Load(
 		Find_ValtanWorldDataFile(
@@ -108,38 +164,37 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_WorldDestructionDebrisPresentationDocument.Get_AreaId() !=
 			pEntry->pMapAreaId)
 	{
-		OutputDebugStringA(("[Level_ValtanArena][DestructionDebris] " +
-			destructionStatus + "\n").c_str());
 		m_WorldDestructionDebrisPresentationDocument.Clear();
 		m_WorldDestructionProjectionDocument.Clear();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return Report_InitFailure(
+			"[Level_ValtanArena][DestructionDebrisDocument]",
+			destructionStatus);
 	}
 	if (!m_WorldDestructionDebrisPresentationRuntime.Initialize(
 		ETOUI(LEVEL::VALTAN_ARENA), m_pDevice, m_pContext,
 		m_DeployRuntime, destructionStatus))
 	{
-		OutputDebugStringA(("[Level_ValtanArena][DestructionDebris] " +
-			destructionStatus + "\n").c_str());
 		m_WorldDestructionDebrisPresentationRuntime.Clear();
 		m_WorldDestructionDebrisPresentationDocument.Clear();
 		m_WorldDestructionProjectionDocument.Clear();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
-		return E_FAIL;
+		return Report_InitFailure(
+			"[Level_ValtanArena][DestructionDebrisRuntime]",
+			destructionStatus);
 	}
 	auto mapLightPresentation = make_shared<CMapLightPresentationRuntime>();
 	if (!mapLightPresentation->Load_Runtime(pEntry->pMapAreaId))
 	{
-		OutputDebugStringA(("[Level_ValtanArena][MapLight] " +
-			mapLightPresentation->Get_Status() + "\n").c_str());
 		m_WorldDestructionDebrisPresentationRuntime.Clear();
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
 		m_WorldDestructionDebrisPresentationDocument.Clear();
 		m_WorldDestructionProjectionDocument.Clear();
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][MapLight]",
+			mapLightPresentation->Get_Status());
 	}
 	m_pMapLightPresentation = std::move(mapLightPresentation);
 	if (!Ready_CinematicCamera())
@@ -163,7 +218,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_MapRuntime.Clear();
 		m_WorldDestructionDebrisPresentationDocument.Clear();
 		m_WorldDestructionProjectionDocument.Clear();
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][Camera]",
+			"Camera layer could not be created");
 	}
 
 	CClientReplication::DESC replicationDesc{};
@@ -189,7 +245,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_MapRuntime.Clear();
 		m_WorldDestructionDebrisPresentationDocument.Clear();
 		m_WorldDestructionProjectionDocument.Clear();
-		return E_FAIL;
+		return Report_InitFailure("[Level_ValtanArena][Replication]",
+			"Client replication could not be initialized");
 	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
@@ -223,6 +280,20 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 			"[Level_ValtanArena] Failed to apply replication event.\n");
 		if (m_Replication.Has_FatalWorldDestructionFailure())
 		{
+			/* This bounce closes the socket and returns to the Lobby without
+			going through the load-failure path, so the reason has to be handed
+			over explicitly or the Lobby shows nothing at all. */
+			std::string presentationStatus;
+			if (!m_Replication.Try_Consume_PresentationFailure(
+				presentationStatus))
+			{
+				presentationStatus =
+					"World destruction projection rejected the Server sync.";
+			}
+			CLevelTransitionService::Report_LoadFailure(
+				E_FAIL,
+				"[Level_ValtanArena][WorldDestructionSync] " +
+					presentationStatus);
 			End_CinematicCamera();
 			CNetworkManager::Get().Close_ServerConnection();
 			if (!CLevelTransitionService::Request_Load(
@@ -248,9 +319,29 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_ValtanArena] Lobby recovery request was rejected; retrying.\n");
 	}
+	if (!Apply_EncounterPropPresentation())
+	{
+		CLevelTransitionService::Report_LoadFailure(
+			E_FAIL,
+			"[Level_ValtanArena][EncounterPropSync] " +
+				m_DeployRuntime.Get_Status());
+		End_CinematicCamera();
+		CNetworkManager::Get().Close_ServerConnection();
+		(void)CLevelTransitionService::Request_Load(
+			LEVEL::LOBBY, "encounter-prop-projection-failed");
+		return;
+	}
 
 #ifdef _DEBUG
 	Render_AuditionPanel();
+	/* Driven outside the panel body so a collapsed window cannot stall a
+	chapter run that is already in flight. */
+	{
+		const VALTAN_PRESENTATION_STATE& timelineBoss =
+			m_Replication.Get_ValtanPresentationState();
+		Advance_EnvironmentTimeline(
+			timelineBoss.isValid && !timelineBoss.strPatternId.empty());
+	}
 #endif
 	Update_WorldDestructionPresentation(fTimeDelta);
 	Bind_CameraToLocalCharacter();
@@ -297,7 +388,7 @@ namespace
 		case VALTAN_AUDITION_RESULT::ARMED:
 			return "Armed one bar above the target. Press Cross to play it.";
 		case VALTAN_AUDITION_RESULT::QUEUED:
-			return "Reset complete. The Server will start the selected real pattern on its next tick.";
+			return "Reset complete. The Server queued the requested pattern or final-arena state.";
 		case VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED:
 			return "Already handled that request; the boss did not move.";
 		case VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
@@ -325,9 +416,19 @@ namespace
 void CLevel_ValtanArena::Submit_Audition(
 	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation)
 {
+	/* These operations name an authored mechanic or a Debug state directly,
+	rather than a health-bar crossing, so they carry no target bar. */
+	const bool_t isBarless =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE ==
+			operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK ==
+			operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA ==
+			operation;
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
-	if (m_iSelectedAuditionBarIndex >= bars.size())
+	if (!isBarless && m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
 		return;
@@ -335,7 +436,8 @@ void CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = m_iNextAuditionRequestSequence;
 	if (!CNetworkManager::Get().Send_ValtanAudition(
-		sequence, operation, bars[m_iSelectedAuditionBarIndex]))
+		sequence, operation,
+		isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]))
 	{
 		m_strAuditionStatus = "Could not send the audition request.";
 		return;
@@ -343,6 +445,94 @@ void CLevel_ValtanArena::Submit_Audition(
 	++m_iNextAuditionRequestSequence;
 	m_iPendingAuditionRequestSequence = sequence;
 	m_strAuditionStatus = "Waiting for the Server verdict...";
+}
+
+void CLevel_ValtanArena::Start_EnvironmentTimeline()
+{
+	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
+	/* Only the first step resets. Every later chapter is an ARM/CROSS pair, so
+	the walls the previous chapter broke stay broken exactly as the recording
+	shows them accumulating. */
+	m_EnvironmentTimeline = {
+		{ OPERATION::PLAY_ENTRANCE, 0u, true },
+		{ OPERATION::ARM_HEALTH_BAR, 159u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 159u, true },
+		{ OPERATION::ARM_HEALTH_BAR, 109u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 109u, true },
+		{ OPERATION::ARM_HEALTH_BAR, 100u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 100u, true },
+		{ OPERATION::ARM_HEALTH_BAR, 14u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 14u, true } };
+	m_iEnvironmentTimelineStep = 0u;
+	m_bEnvironmentTimelineWaiting = false;
+	m_bEnvironmentTimelinePatternStarted = false;
+}
+
+void CLevel_ValtanArena::Advance_EnvironmentTimeline(
+	const bool_t isBossPatternRunning)
+{
+	if (m_EnvironmentTimeline.empty() ||
+		0u != m_iPendingAuditionRequestSequence)
+	{
+		return;
+	}
+	if (m_bEnvironmentTimelineWaiting)
+	{
+		/* A queued pattern needs a tick to start, so the step is only finished
+		once the Server actually showed it running and then went idle. */
+		if (isBossPatternRunning)
+		{
+			m_bEnvironmentTimelinePatternStarted = true;
+			return;
+		}
+		if (!m_bEnvironmentTimelinePatternStarted)
+			return;
+		m_bEnvironmentTimelineWaiting = false;
+		m_bEnvironmentTimelinePatternStarted = false;
+		++m_iEnvironmentTimelineStep;
+	}
+	if (m_iEnvironmentTimelineStep >= m_EnvironmentTimeline.size())
+	{
+		m_EnvironmentTimeline.clear();
+		m_iEnvironmentTimelineStep = 0u;
+		m_strAuditionStatus =
+			"Full environment timeline finished. Pillars stay raised: the shatter has no product trigger yet.";
+		return;
+	}
+
+	const ENVIRONMENT_TIMELINE_STEP& step =
+		m_EnvironmentTimeline[m_iEnvironmentTimelineStep];
+	if (0u != step.iTargetHealthBar)
+	{
+		const std::vector<uint32_t> bars =
+			Collect_AuditionHealthBars(m_ValtanEncounterReference);
+		const auto selected =
+			std::find(bars.begin(), bars.end(), step.iTargetHealthBar);
+		if (bars.end() == selected)
+		{
+			m_EnvironmentTimeline.clear();
+			m_iEnvironmentTimelineStep = 0u;
+			m_strAuditionStatus =
+				"Full environment timeline stopped: an authored bar is missing.";
+			return;
+		}
+		m_iSelectedAuditionBarIndex =
+			static_cast<size_t>(std::distance(bars.begin(), selected));
+	}
+	const uint32_t submitted = m_iNextAuditionRequestSequence;
+	Submit_Audition(step.eOperation);
+	if (submitted == m_iNextAuditionRequestSequence)
+	{
+		/* The request never left, so the chapter run stops instead of silently
+		skipping the rest of the timeline. */
+		m_EnvironmentTimeline.clear();
+		m_iEnvironmentTimelineStep = 0u;
+		return;
+	}
+	if (step.waitForPattern)
+		m_bEnvironmentTimelineWaiting = true;
+	else
+		++m_iEnvironmentTimelineStep;
 }
 
 void CLevel_ValtanArena::Render_AuditionPanel()
@@ -354,6 +544,18 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 			continue;
 		m_iPendingAuditionRequestSequence = 0u;
 		m_strAuditionStatus = Describe_AuditionResult(result.eResult);
+		if (LostArk::Shared::VALTAN_AUDITION_RESULT::ARMED != result.eResult &&
+			LostArk::Shared::VALTAN_AUDITION_RESULT::QUEUED != result.eResult &&
+			!m_EnvironmentTimeline.empty())
+		{
+			/* One refused chapter stops the run. Continuing would audition the
+			later bars against an environment the Server never produced. */
+			m_EnvironmentTimeline.clear();
+			m_iEnvironmentTimelineStep = 0u;
+			m_bEnvironmentTimelineWaiting = false;
+			m_bEnvironmentTimelinePatternStarted = false;
+			m_strAuditionStatus += " Full environment timeline stopped.";
+		}
 	}
 
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -392,19 +594,22 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"Each Play resets boss + walls + collision/nav, then runs the real pattern.");
 	ImGui::TextColored(
 		ImVec4(1.f, 0.55f, 0.25f, 1.f),
-		"First entry only: walk through the Debug stage triggers to Stage_Boss. No monster kill is required.");
+		"One click: every Reset + Play activates the boss, places you at the authored bait point and resets walls/collision/nav.");
 	ImGui::TextDisabled(
-		"Stage_Boss places you at the authored bait point; then either Reset + Play button is repeatable.");
+		"No Stage_Boss walk-through and no monster kill is required first.");
 	ImGui::TextColored(
 		ImVec4(1.f, 0.82f, 0.2f, 1.f),
-		"109: TAKEOFF -> DROP -> IMPACT -> full arena wall collapse.");
+		"109: completed outer ring only, 30 walls x 12 fragments.");
 	ImGui::TextDisabled(
-		"The 13 interior groups and the authored 8-sector outer ring break together;");
+		"TAKEOFF -> DROP -> IMPACT breaks the 8 outer sectors; interior groups stay dormant;");
 	ImGui::TextDisabled(
 		"collision and nav blockers open on the persistent commit, not on the cue.");
 	ImGui::TextColored(
 		ImVec4(0.4f, 0.85f, 1.f, 1.f),
-		"159: body charge -> receiver impact -> collision/nav passage opens.");
+		"Attack/159 charge: ordinary walls only; collision/nav opens after the wall disappears.");
+	ImGui::TextColored(
+		ImVec4(1.f, 0.82f, 0.2f, 1.f),
+		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
 
@@ -419,6 +624,21 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 			boss.iPatternStageIndex);
 		ImGui::TextWrapped("Pattern: %s",
 			boss.strPatternId.empty() ? "(idle)" : boss.strPatternId.c_str());
+		/* The snapshot carries the stage index, not the stage name, so the
+		authored encounter resolves the readable stage ID for the panel. */
+		const char_t* stageId = "(idle)";
+		if (!boss.strPatternId.empty())
+		{
+			const ENCOUNTER_PATTERN_REFERENCE* pattern =
+				m_ValtanEncounterReference.Find_Pattern(boss.strPatternId);
+			if (nullptr != pattern &&
+				boss.iPatternStageIndex < pattern->stages.size())
+			{
+				stageId =
+					pattern->stages[boss.iPatternStageIndex].stageId.c_str();
+			}
+		}
+		ImGui::TextWrapped("Stage: %s", stageId);
 		ImGui::TextWrapped("Action: %s",
 			boss.strActionId.empty() ? "(idle)" : boss.strActionId.c_str());
 	}
@@ -427,13 +647,43 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		ImGui::TextDisabled("Waiting for the authoritative Valtan snapshot...");
 	}
 
+	/* The 109 collapse owns the outer ring alone, so the panel counts the ring
+	separately from the interior groups that must not react to it. The prefix is
+	the authored group naming contract in ValtanWorldEvents.json. */
+	static constexpr std::string_view OUTER_RING_GROUP_PREFIX =
+		"destroyable.group.valtan.outerwall109.";
+	size_t outerGroupCount = 0u;
+	size_t outerPlacementCount = 0u;
+	for (const WORLD_DESTRUCTION_PROJECTION_GROUP& group :
+		m_WorldDestructionProjectionDocument.Get_Groups())
+	{
+		if (!std::string_view(group.strGroupId).starts_with(
+			OUTER_RING_GROUP_PREFIX))
+		{
+			continue;
+		}
+		++outerGroupCount;
+		outerPlacementCount += group.MemberPlacementIds.size();
+	}
+
 	size_t intactCount = 0u;
 	size_t breakingCount = 0u;
 	size_t fracturedCount = 0u;
 	size_t despawnedCount = 0u;
+	size_t interiorReactedCount = 0u;
 	for (const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& group :
 		m_Replication.Get_WorldDestructionGroupStates())
 	{
+		if (!std::string_view(group.strGroupId).starts_with(
+			OUTER_RING_GROUP_PREFIX))
+		{
+			if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT !=
+				group.eState)
+			{
+				++interiorReactedCount;
+			}
+			continue;
+		}
 		switch (group.eState)
 		{
 		case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT:
@@ -453,19 +703,101 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		}
 	}
 	ImGui::Text(
-		"Walls: INTACT %zu | BREAKING %zu | FRACTURED %zu | GONE %zu",
+		"Outer walls: INTACT %zu | BREAKING %zu | FRACTURED %zu | GONE %zu",
 		intactCount,
 		breakingCount,
 		fracturedCount,
 		despawnedCount);
+	ImGui::Text("109 outer enabled group count: %zu   Outer placement count: %zu",
+		outerGroupCount,
+		outerPlacementCount);
+	if (0u != interiorReactedCount)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.35f, 0.35f, 1.f),
+			"Interior groups that left INTACT: %zu (the 109 batch must not touch them)",
+			interiorReactedCount);
+	}
 	ImGui::Text("Destruction sync: %s  Epoch: %u  Debris actors: %u/%u",
 		m_Replication.Is_WorldDestructionSynchronized() ? "READY" : "WAITING",
 		m_Replication.Get_WorldDestructionEncounterEpoch(),
 		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount(),
 		CWorldDestructionDebrisPresentationRuntime::MAX_ACTIVE_ACTORS);
+	/* Server-owned counters. The Client never derives passage from wall states;
+	a wall that is gone while its blocker is still active must stay visible. */
+	const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics =
+		m_Replication.Get_WorldDestructionDiagnostics();
+	ImGui::Text("Active player-blocking collision boxes: %u   Active nav regions: %u",
+		diagnostics.iActiveWallCollisionCount,
+		diagnostics.iActiveNavBlockerRegionCount);
+	ImGui::Text("Nav revision: %llu   Last destruction event: %llu",
+		static_cast<unsigned long long>(diagnostics.iNavigationRevision),
+		static_cast<unsigned long long>(diagnostics.iLastEventSequence));
+	ImGui::Text("Camera cue: %s   Sky cue: %s",
+		m_ValtanCinematicCameraController.Is_Active() ? "ACTIVE" : "none",
+		m_ValtanSkyState.isActive ?
+			m_ValtanSkyState.strCueId.c_str() : "none");
+	if (m_ValtanSkyState.isActive)
+	{
+		ImGui::Text("  cloud opacity %.2f   aperture %.2f   spin %.1f deg",
+			m_ValtanSkyState.fCloudOpacity,
+			m_ValtanSkyState.fApertureScale,
+			m_ValtanSkyState.fCloudRotationDegrees);
+		if (m_ValtanSkyState.strRedCloudAssetId.empty() &&
+			m_ValtanSkyState.strBlackApertureAssetId.empty())
+		{
+			ImGui::TextDisabled(
+				"  sky layer assets are not authored yet (effect owner)");
+		}
+	}
+	/* The pillars are the one repeatable encounter prop, so the panel reports
+	the live slot states and the occurrence they belong to. */
+	const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& props =
+		m_Replication.Get_EncounterPropState();
+	if (props.Slots.empty())
+	{
+		ImGui::TextDisabled("Pillars: no encounter prop state received yet.");
+	}
+	else
+	{
+		size_t hiddenSlots = 0u;
+		size_t intactSlots = 0u;
+		size_t breakingSlots = 0u;
+		uint32_t occurrence = 0u;
+		for (const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot : props.Slots)
+		{
+			occurrence = (std::max)(occurrence, slot.iOccurrenceSequence);
+			switch (slot.eState)
+			{
+			case LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT:
+				++intactSlots;
+				break;
+			case LostArk::Shared::ENCOUNTER_PROP_STATE::BREAKING:
+				++breakingSlots;
+				break;
+			case LostArk::Shared::ENCOUNTER_PROP_STATE::HIDDEN:
+				++hiddenSlots;
+				break;
+			default:
+				break;
+			}
+		}
+		ImGui::Text(
+			"Pillars: %zu slots | HIDDEN %zu | INTACT %zu | BREAKING %zu",
+			props.Slots.size(), hiddenSlots, intactSlots, breakingSlots);
+		ImGui::Text("  occurrence %u   epoch %u   set %s",
+			occurrence, props.iEncounterEpoch, props.strPropSetId.c_str());
+	}
 	const bool_t isBusy = 0u != m_iPendingAuditionRequestSequence;
 	ImGui::BeginDisabled(isBusy);
-	if (ImGui::Button("Reset + Play 109 (Arena Collapse)", ImVec2(260.f, 0.f)))
+	if (ImGui::Button(
+		"Reset + Play Entrance Whirlwind (Front Walls A/B)", ImVec2(300.f, 0.f)))
+	{
+		Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE);
+	}
+	if (ImGui::Button(
+		"Reset + Play 109 Only (Outer Wall 30 x 12)", ImVec2(330.f, 0.f)))
 	{
 		const auto selected = std::find(bars.begin(), bars.end(), 109u);
 		if (selected != bars.end())
@@ -476,7 +808,15 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
 		}
 	}
-	if (ImGui::Button("Reset + Play 159 (Impact/Nav)", ImVec2(260.f, 0.f)))
+	if (ImGui::Button(
+		"Reset + Play Attack (Down Smash / Ordinary Wall)",
+		ImVec2(330.f, 0.f)))
+	{
+		Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK);
+	}
+	if (ImGui::Button(
+		"Reset + Play Charge (159 Impact / Nav)", ImVec2(330.f, 0.f)))
 	{
 		const auto selected = std::find(bars.begin(), bars.end(), 159u);
 		if (selected != bars.end())
@@ -487,7 +827,38 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
 		}
 	}
+	if (ImGui::Button(
+		"Reset + Remove All Walls (Final Arena View)", ImVec2(330.f, 0.f)))
+	{
+		Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA);
+	}
+	ImGui::TextDisabled(
+		"Final Arena View uses the Server destruction transaction; wait about 0.3 seconds for BREAKING -> GONE.");
+	if (ImGui::Button(
+		"Reset + Play Sky + Pillar Cycle", ImVec2(300.f, 0.f)))
+	{
+		Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE);
+	}
+	if (ImGui::Button(
+		"Reset + Play Full Environment Timeline", ImVec2(300.f, 0.f)))
+	{
+		Start_EnvironmentTimeline();
+	}
 	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Pillar Cycle runs the authored 100-bar pattern: sky cues, the product raise,");
+	ImGui::TextDisabled(
+		"then the Debug shatter and removal. Press it again for the next cycle.");
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.3f, 1.f),
+		"Cycles 2-4 have no product trigger yet: no pattern, stage or binding is authored for them.");
+	if (!m_EnvironmentTimeline.empty())
+	{
+		ImGui::Text("Timeline chapter %zu / %zu",
+			m_iEnvironmentTimelineStep + 1u, m_EnvironmentTimeline.size());
+	}
 	ImGui::SeparatorText("Advanced authored health bar");
 	ImGui::SeparatorText("Authored health bar");
 	for (size_t index = 0; index < bars.size(); ++index)
@@ -571,10 +942,14 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 	}
 
 	/* Server event order stays canonical; only the per-cue share is derived. */
+	size_t pendingEmitterCount = 0u;
+	for (const WORLD_DESTRUCTION_DEBRIS_CUE& pendingCue : pendingCues)
+		pendingEmitterCount += pendingCue.emitters.size();
 	const uint32_t emitterShare =
 		CWorldDestructionDebrisPresentationRuntime::Resolve_CueEmitterShare(
 			m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount(),
-			pendingCues.size());
+			pendingCues.size(),
+			pendingEmitterCount);
 	for (const WORLD_DESTRUCTION_DEBRIS_CUE& pendingCue : pendingCues)
 	{
 		std::string cueStatus;
@@ -596,6 +971,61 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 	}
 }
 
+bool_t CLevel_ValtanArena::Apply_EncounterPropPresentation()
+{
+	const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& props =
+		m_Replication.Get_EncounterPropState();
+	if (props.Slots.empty())
+		return true;
+	if (props.strPropSetId != VALTAN_PILLAR_SET_ID ||
+		props.Slots.size() != VALTAN_PILLAR_SLOT_IDS.size())
+	{
+		OutputDebugStringA(
+			"[Level_ValtanArena][EncounterProps] Unknown prop set or slot count.\n");
+		return false;
+	}
+	if (props.iEncounterEpoch == m_iObservedEncounterPropEpoch &&
+		props.iServerTick == m_iObservedEncounterPropServerTick)
+	{
+		return true;
+	}
+
+	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> states;
+	states.reserve(props.Slots.size());
+	for (size_t index = 0u; index < props.Slots.size(); ++index)
+	{
+		const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot =
+			props.Slots[index];
+		if (slot.strSlotId != VALTAN_PILLAR_SLOT_IDS[index])
+		{
+			OutputDebugStringA(
+				"[Level_ValtanArena][EncounterProps] Slot order or identity is invalid.\n");
+			return false;
+		}
+		DEPLOY_PROP_STATE deployState = DEPLOY_PROP_STATE::INTACT;
+		switch (slot.eState)
+		{
+		case LostArk::Shared::ENCOUNTER_PROP_STATE::HIDDEN:
+			deployState = DEPLOY_PROP_STATE::DESPAWNED;
+			break;
+		case LostArk::Shared::ENCOUNTER_PROP_STATE::SPAWNING:
+		case LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT:
+		case LostArk::Shared::ENCOUNTER_PROP_STATE::BREAKING:
+			deployState = DEPLOY_PROP_STATE::INTACT;
+			break;
+		default:
+			return false;
+		}
+		states.emplace_back(
+			VALTAN_PILLAR_SLOT_PLACEMENT_IDS[index], deployState);
+	}
+	if (!m_DeployRuntime.Set_States(states))
+		return false;
+	m_iObservedEncounterPropEpoch = props.iEncounterEpoch;
+	m_iObservedEncounterPropServerTick = props.iServerTick;
+	return true;
+}
+
 bool_t CLevel_ValtanArena::Ready_CinematicCamera()
 {
 	std::string status;
@@ -603,8 +1033,8 @@ bool_t CLevel_ValtanArena::Ready_CinematicCamera()
 		CProjectDataRoot::Resolve(
 			L"Encounters/Valtan/ValtanEncounter.json"), status))
 	{
-		OutputDebugStringA(("[Level_ValtanArena][CinematicCamera] " +
-			status + "\n").c_str());
+		(void)Report_InitFailure(
+			"[Level_ValtanArena][EncounterReference]", status);
 		return false;
 	}
 	if (!m_ValtanCinematicCameraDocument.Load(
@@ -615,10 +1045,10 @@ bool_t CLevel_ValtanArena::Ready_CinematicCamera()
 			&m_ValtanCinematicCameraDocument,
 			m_ValtanEncounterReference.Get_FixedTickHz()))
 	{
-		OutputDebugStringA(("[Level_ValtanArena][CinematicCamera] " +
-			status + "\n").c_str());
 		m_ValtanCinematicCameraDocument.Clear();
 		m_ValtanEncounterReference.Clear();
+		(void)Report_InitFailure(
+			"[Level_ValtanArena][CinematicCamera]", status);
 		return false;
 	}
 	return true;
@@ -631,8 +1061,12 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	const VALTAN_PRESENTATION_STATE& boss =
 		m_Replication.Get_ValtanPresentationState();
 	VALTAN_CINEMATIC_CAMERA_INPUT input{};
-	input.isValid = boss.isValid &&
-		LostArk::Shared::WORLD_ENTITY_ACTION::DEAD != boss.eAction;
+	/* Death is no longer a reason to stop: it selects the clear shot instead,
+	   and the same restore path still runs when that cue finishes, on level exit
+	   and on disconnect. */
+	input.isBossDead = boss.isValid &&
+		LostArk::Shared::WORLD_ENTITY_ACTION::DEAD == boss.eAction;
+	input.isValid = boss.isValid;
 	input.iNetEntityId = boss.iNetEntityId;
 	input.iServerTick = boss.iServerTick;
 	input.strPatternId = boss.strPatternId;
@@ -640,6 +1074,11 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	input.iPatternSequence = boss.iPatternSequence;
 	input.iStageIndex = boss.iPatternStageIndex;
 	input.iActionStartTick = boss.iActionStartTick;
+
+	/* One authoritative tuple drives both layers, so the sky can never run on a
+	   clock of its own. It is resolved before the camera early-outs because the
+	   sky is authored on stages that carry no camera cue. */
+	m_ValtanSkyState = m_ValtanCinematicCameraController.Resolve_SkyState(input);
 
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
 	if (!m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose))
@@ -689,6 +1128,9 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 
 void CLevel_ValtanArena::End_CinematicCamera()
 {
+	/* Death, disconnect and level exit all land here, and every one of them has
+	   to leave the sky exactly as it was found. */
+	m_ValtanSkyState = VALTAN_CINEMATIC_SKY_STATE{};
 	if (!m_bCinematicCameraApplied || nullptr == m_pCamera)
 		return;
 	if (0u != m_iCinematicCameraOwnerId)
