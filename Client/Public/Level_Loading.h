@@ -4,6 +4,9 @@
 #include "Level.h"
 #include "LobbyCommandService.h"
 
+#include <string>
+#include <vector>
+
 NS_BEGIN(Client)
 
 class CLevel_Loading final : public CLevel
@@ -28,6 +31,7 @@ private:
 	void Cancel_LobbyCommand(const char_t* pReason);
 	void Retry_LobbyLoad();
 	HRESULT Ready_Layer_Chrome();
+	bool_t Advance_CharacterSelectEffectPreparation();
 
 private:
 	LEVEL m_eNextLevelID = LEVEL::END;
@@ -37,6 +41,15 @@ private:
 	bool_t m_isActivationRequested = { false };
 	bool_t m_isFailureReported = { false };
 	bool_t m_isRetryRequested = { false };
+	bool_t m_isEffectPreparationRegistered = { false };
+	bool_t m_isEffectPreparationComplete = { false };
+	std::vector<std::string> m_EffectPreparationTargets;
+	std::string m_strEffectPreparationStatus;
+	std::string m_strEffectPreparationRegistrationFailure;
+	uint32_t m_iEffectPreparationTargetCount = 0u;
+	uint32_t m_iEffectPreparationPendingCount = 0u;
+	uint32_t m_iEffectPreparationPreparedCount = 0u;
+	uint32_t m_iEffectPreparationFailedCount = 0u;
 
 	/* The progress fill/glow are repositioned every frame, so they are kept separately from the
 	rest of the (static, place-once) chrome pieces. */

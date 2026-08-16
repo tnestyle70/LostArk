@@ -278,7 +278,8 @@ public:
 	static bool_t Prepare_DocumentResources(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
-		std::string& strOutError);
+		std::string& strOutError,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument = nullptr);
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
@@ -386,6 +387,7 @@ public:
 	}
 
 private:
+	const EFFECT_DOCUMENT_DESC& Get_StagedDocument() const;
 	bool_t Stage_PrevalidatedDocumentInternal(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES> pPreparedResources,

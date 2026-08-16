@@ -267,6 +267,10 @@ F1의 `Effect Tool`은 `Data/Balance/PlayerSkills.json`의 class/input slot과
 해당 clip의 실제 `effectref=asset` animevent가 가리키는 Authored Effect만 All Effects의
 `Active Product Cue`로 재생한다. `PlayerSkills.effectId`나 Imported source 이름을 제품 Effect로
 추측하지 않는다. cue가 없는 행은 fail-closed하며 Source/Imported는 별도 진단 정보로만 표시한다.
+All Effects의 `Saved Unified Effects` 목록 정본은 폐기된 Track-A import batch나 runtime Product tree가
+아니라 source `Data/Effects/EffectCatalog.json`의 `DIRECT_AUTHORED_DOCUMENT_V13` row와
+`PlayerSkills.json` owner join이다. 목록 렌더는 ID/path와 이미 로드된 projection만 조회하고, JSON
+decode는 사용자가 해당 문서의 Open 또는 Play를 명시했을 때만 수행한다.
 저작 문서는 `lostark.effect-authoring` v12로 저장하며 Element display/group/source/visible,
 Material Template ID, stable resource slot ID를 소유한다. 원본 추출 근거와 HLSL 구현이 없는 custom
 Template/slot은 등록하지 않는다. All Effects의 Product 행과 Data Files의 Authored 행은 같은 완성
@@ -304,6 +308,15 @@ catalog revision에서 fail-closed하며 이미 준비한 target과 다음 targe
 Spawn은 cache-only catalog lookup과 준비된 bundle만 사용하고 shader compile, model/DDS/vector-field
 로드를 수행하지 않는다. prepared miss는 동기 fallback 없이 거부한다. Effect Tool의 명시적
 Publish/Reload는 기존 전체 target batch transaction과 rollback을 계속 사용한다.
+Character Select는 Loader worker가 일반 resource load를 끝낸 뒤 선택 class cue를 queue 앞에 등록하고,
+선택 class 및 기존 background pending이 모두 terminal 상태가 될 때까지 Loading Level에 머문다.
+따라서 Character Select 활성화 뒤에는 incremental JSON/GPU 준비가 계속되지 않는다. Product prepared
+record는 catalog document를 immutable shared ownership으로 유지하며 Playback/Renderer attach는 exact
+revision/document/projection pointer identity를 재사용한다. Tool의 revision 0 editable stage는 기존
+owned-copy와 signature validation을 유지한다.
+Character Select 내부의 Server 승인 class 변경도 local snapshot을 stable generation으로 stage하고 새 class
+Product cue와 global queue가 settle된 뒤에만 기존 character replacement transaction을 commit한다. 준비 중
+gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입력 정지 대신 Lobby 복귀로 격리한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 

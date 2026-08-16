@@ -2002,6 +2002,7 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 	uint64_t iResourceSignature = 0u;
 	std::string strEffectAssetId;
 	const EFFECT_DOCUMENT_DESC* pCatalogDocumentIdentity = nullptr;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument;
 	EFFECT_DOCUMENT_DESC ResourceDocument;
 	std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
 		pPlaybackResources;
@@ -2022,6 +2023,14 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 		ModelCuePrototypes;
 	std::shared_ptr<Engine::CVIBuffer_DynamicTrail> pTrailBuffer;
 };
+
+const Client::EFFECT_DOCUMENT_DESC&
+Client::CEffectDocumentRenderer::Get_StagedDocument() const
+{
+	return nullptr != m_pPreparedDocument &&
+		nullptr != m_pPreparedDocument->pImmutableDocument ?
+		*m_pPreparedDocument->pImmutableDocument : m_Document;
+}
 
 struct Client::CEffectDocumentRenderer::PRODUCT_PREWARM_SESSION final
 {
@@ -4267,8 +4276,18 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 		pPreparation,
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-		pVisualProgramProjection) const
+		pVisualProgramProjection,
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument) const
 {
+	if ((0u == iCatalogRevision && nullptr != pImmutableDocument) ||
+		(0u != iCatalogRevision &&
+			(nullptr == pImmutableDocument ||
+			 pImmutableDocument.get() != &Document)))
+	{
+		strOutError =
+			"Prepared Effect catalog immutable document identity is invalid.";
+		return false;
+	}
 	if (nullptr != pVisualProgramProjection &&
 		(!pVisualProgramProjection->Is_Valid() ||
 		 pVisualProgramProjection->Get_EffectAssetId() != strEffectAssetId ||
@@ -4302,7 +4321,10 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	Staged->strEffectAssetId = strEffectAssetId;
 	Staged->pCatalogDocumentIdentity =
 		0u == iCatalogRevision ? nullptr : &Document;
-	Staged->ResourceDocument = Document;
+	if (0u == iCatalogRevision)
+		Staged->ResourceDocument = Document;
+	else
+		Staged->pImmutableDocument = std::move(pImmutableDocument);
 	Staged->pReconstructedRuntimePreparation = pPreparation;
 	Staged->pVisualProgramProjection = pVisualProgramProjection;
 	uint32_t iTrailBufferPointCapacity = 0u;
@@ -4326,7 +4348,8 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 		++g_EffectRenderPrewarmProbe.iMutableInstanceBufferBuildCount;
 	}
 	if (!CEffectPlayback::Prepare_DocumentResources(
-		Document, Staged->pPlaybackResources, strOutError))
+		Document, Staged->pPlaybackResources, strOutError,
+		Staged->pImmutableDocument))
 	{
 		return false;
 	}
@@ -11368,8 +11391,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		if (Reusable != Existing.end() && nullptr != Reusable->second &&
 			Reusable->second->pCatalogDocumentIdentity == Document.get() &&
 			Reusable->second->pVisualProgramProjection.get() == Projection.get() &&
-			Resource_SignatureMatches(
-				Reusable->second->ResourceDocument, *Document))
+			Reusable->second->pImmutableDocument.get() == Document.get())
 		{
 			Staged.emplace(Key, Reusable->second);
 			if (!StagedByIdentity.emplace(
@@ -11384,7 +11406,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
 		if (!Loader.Build_PreparedDocument(
 			iCatalogRevision, EffectId, *Document, &SharedAssets,
-			Prepared, strOutError, nullptr, Projection))
+			Prepared, strOutError, nullptr, Projection, Document))
 		{
 			return false;
 		}
@@ -11487,8 +11509,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 					Existing->second->pCatalogDocumentIdentity != Document.get() ||
 					Existing->second->pVisualProgramProjection.get() !=
 						Projection.get() ||
-					!Resource_SignatureMatches(
-						Existing->second->ResourceDocument, *Document))
+					Existing->second->pImmutableDocument.get() != Document.get())
 				{
 					strOutError =
 						"Effect incremental Product prewarm duplicate identity diverged.";
@@ -11520,7 +11541,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 	std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
 	if (!Loader.Build_PreparedDocument(
 			iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
-			Prepared, strOutError, nullptr, Projection))
+			Prepared, strOutError, nullptr, Projection, Document))
 	{
 		return false;
 	}
@@ -11849,6 +11870,7 @@ Client::CEffectDocumentRenderer::Find_Prepared(
 		Iterator->second->iCatalogRevision != iCatalogRevision ||
 		Iterator->second->strEffectAssetId != strEffectAssetId ||
 		Iterator->second->pCatalogDocumentIdentity != &Document ||
+		Iterator->second->pImmutableDocument.get() != &Document ||
 		Iterator->second->pVisualProgramProjection.get() !=
 			pVisualProgramProjection.get())
 	{
@@ -11896,13 +11918,24 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 {
 	const bool_t bCatalogPrepared = nullptr != pPrepared &&
 		0u != pPrepared->iCatalogRevision;
+	bool_t bCatalogIdentityCurrent = true;
+	if (bCatalogPrepared)
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		const auto Current = g_PreparedEffectDocumentsByIdentity.find(&Document);
+		bCatalogIdentityCurrent =
+			g_iPreparedCatalogRevision == pPrepared->iCatalogRevision &&
+			Current != g_PreparedEffectDocumentsByIdentity.end() &&
+			Current->second.get() == pPrepared.get();
+	}
 	const bool_t bIdentityMatches = bCatalogPrepared ?
-		pPrepared->pCatalogDocumentIdentity == &Document :
+		(pPrepared->pCatalogDocumentIdentity == &Document &&
+		 pPrepared->pImmutableDocument.get() == &Document) :
 		(nullptr != pPrepared &&
 			pPrepared->iResourceSignature == Build_ResourceSignature(Document) &&
 			Resource_SignatureMatches(
 				pPrepared->ResourceDocument, Document));
-	if (nullptr == pPrepared || !bIdentityMatches ||
+	if (nullptr == pPrepared || !bCatalogIdentityCurrent || !bIdentityMatches ||
 		pPrepared->strEffectAssetId != Document.strEffectAssetId ||
 		(!bCatalogPrepared &&
 			!CEffectDocumentCodec::Validate_Drawable(Document, strOutError)))
@@ -11923,7 +11956,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 	{
 		return false;
 	}
-	m_Document = Document;
+	m_Document = bCatalogPrepared ? EFFECT_DOCUMENT_DESC{} : Document;
 	m_pPreparedDocument = std::move(pPrepared);
 	m_pTrailBuffer = pStagedTrailBuffer;
 	m_pReconstructedDiagnostic.reset();
@@ -11951,11 +11984,37 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 	if (nullptr == pProjection || !pProjection->Is_Valid() ||
 		nullptr == pPrepared ||
 		pPrepared->pVisualProgramProjection.get() != pProjection.get() ||
-		pPrepared->strEffectAssetId != pProjection->Get_EffectAssetId() ||
-		pPrepared->iResourceSignature !=
-			Build_ResourceSignature(pProjection->Get_Document()) ||
-		!Resource_SignatureMatches(
-			pPrepared->ResourceDocument, pProjection->Get_Document()))
+		pPrepared->strEffectAssetId != pProjection->Get_EffectAssetId())
+	{
+		strOutError =
+			"Visual-program renderer resources or immutable token do not match.";
+		return false;
+	}
+	const bool_t bCatalogPrepared = nullptr != pPrepared &&
+		0u != pPrepared->iCatalogRevision;
+	bool_t bCatalogIdentityCurrent = true;
+	if (bCatalogPrepared)
+	{
+		const EFFECT_DOCUMENT_DESC& Document = pProjection->Get_Document();
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		const auto Current = g_PreparedEffectDocumentsByIdentity.find(&Document);
+		bCatalogIdentityCurrent =
+			g_iPreparedCatalogRevision == pPrepared->iCatalogRevision &&
+			Current != g_PreparedEffectDocumentsByIdentity.end() &&
+			Current->second.get() == pPrepared.get();
+	}
+	const bool_t bDocumentIdentityMatches = bCatalogPrepared ?
+		(nullptr != pPrepared->pImmutableDocument &&
+		 pPrepared->pImmutableDocument.get() ==
+			&pProjection->Get_Document() &&
+		 pPrepared->pCatalogDocumentIdentity ==
+			&pProjection->Get_Document()) :
+		(nullptr != pPrepared &&
+		 pPrepared->iResourceSignature ==
+			Build_ResourceSignature(pProjection->Get_Document()) &&
+		 Resource_SignatureMatches(
+			pPrepared->ResourceDocument, pProjection->Get_Document()));
+	if (!bCatalogIdentityCurrent || !bDocumentIdentityMatches)
 	{
 		strOutError =
 			"Visual-program renderer resources or immutable token do not match.";
@@ -11971,7 +12030,8 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 	{
 		return false;
 	}
-	m_Document = pProjection->Get_Document();
+	m_Document = bCatalogPrepared ? EFFECT_DOCUMENT_DESC{} :
+		pProjection->Get_Document();
 	m_pPreparedDocument = std::move(pPrepared);
 	m_pTrailBuffer = pStagedTrailBuffer;
 	m_pReconstructedDiagnostic.reset();
@@ -12007,6 +12067,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
 		return false;
 	if (nullptr != m_pPreparedDocument &&
+		0u == m_pPreparedDocument->iCatalogRevision &&
 		Resource_SignatureMatches(m_Document, Document))
 	{
 		m_Document = Document;
@@ -12649,12 +12710,13 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 	const bool_t bGenericVisual = m_bSourceVisualProgramActive &&
 		nullptr != m_pPreparedDocument &&
 		nullptr != m_pPreparedDocument->pVisualProgramProjection;
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	if ((!bReconstructedArtist && !bGenericVisual) ||
 		(bReconstructedArtist &&
 		 (Program->iSkillId != 31470u || Program->Admission.bRuntimeExecution ||
 		  Program->Admission.bProduct ||
 		  !CEffectDocumentCodec::Validate_Artist31470ReconstructedRuntimeDrawable(
-			  m_Document, DocumentError))))
+			  Document, DocumentError))))
 	{
 		strOutError =
 			"Preview submission isolation requires an admitted source visual program.";
@@ -12665,7 +12727,7 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 
 	std::array<uint32_t,
 		static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::END)> VisibleFamilies{};
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		const EFFECT_GPU_RENDER_FAMILY eFamily =
 			Resolve_GpuRenderFamily(Element);
@@ -12743,7 +12805,7 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 			return false;
 		}
 		const EFFECT_ELEMENT_DESC* pSelected = nullptr;
-		for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 		{
 			if (Element.strElementId != Isolation.strElementId)
 				continue;
@@ -12788,12 +12850,12 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 					"ELEMENT_SET preview isolation ID is empty or duplicated.";
 				return false;
 			}
-			const auto Element = std::find_if(m_Document.Elements.begin(),
-				m_Document.Elements.end(), [&ElementId](const auto& Candidate)
+			const auto Element = std::find_if(Document.Elements.begin(),
+				Document.Elements.end(), [&ElementId](const auto& Candidate)
 				{
 					return Candidate.strElementId == ElementId;
 				});
-			if (Element == m_Document.Elements.end() || !Element->bVisible)
+			if (Element == Document.Elements.end() || !Element->bVisible)
 			{
 				strOutError =
 					"ELEMENT_SET preview isolation names a missing or hidden row.";
@@ -14448,7 +14510,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame)
 {
-	for (const EFFECT_MODEL_CUE_DESC& Cue : m_Document.ModelCues)
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
+	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{
 		const f32_t fLocalTime =
 			Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
@@ -14485,7 +14548,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		float4x4_t World{};
 		XMStoreFloat4x4(&World, Local * XMLoadFloat4x4(&Frame.RootWorld));
 		const bool_t bUseDimensionSummonExactMask =
-			m_Document.strEffectAssetId ==
+			Document.strEffectAssetId ==
 				"effect.dimensionmaster.skill.2050500.unified" &&
 			Cue.strCueId == "dimension_summon" &&
 			Cue.strModelAssetId ==
@@ -15056,15 +15119,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_ReconstructedDiagnostic(
 HRESULT Client::CEffectDocumentRenderer::Render(
 	const EFFECT_EVALUATED_FRAME& Frame)
 {
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	m_LastRenderSubmissionStats = {};
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	m_pActiveOccurrenceStats = nullptr;
-	m_LastRenderSubmissionStats.Occurrences.reserve(m_Document.Elements.size());
+	m_LastRenderSubmissionStats.Occurrences.reserve(Document.Elements.size());
 #endif
 	m_strRenderFailureDetail.clear();
 	m_bLastRenderFailureObjectLocal = false;
 	size_t iConfiguredGpuOccurrenceCount = 0u;
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		if (!Element.bVisible)
 			continue;
@@ -15163,7 +15227,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 	};
 	size_t iOccurrenceStats = 0u;
 #endif
-	for (const EFFECT_ELEMENT_DESC& DocumentElement : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& DocumentElement : Document.Elements)
 	{
 		const std::string& strElementId = DocumentElement.strElementId;
 		const EFFECT_GPU_RENDER_FAMILY eFamily = DocumentElement.bVisible ?

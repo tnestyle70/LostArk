@@ -11,6 +11,7 @@
 #include <array>
 #include <chrono>
 #include <optional>
+#include <vector>
 
 NS_BEGIN(Client)
 
@@ -28,6 +29,13 @@ private:
 		CONNECTING,
 		SERVER_ARENA,
 		RETURNING_TO_LOBBY
+	};
+
+	enum class CLASS_PRESENTATION_PREPARATION_STATE
+	{
+		IDLE,
+		WAITING_FOR_PRODUCT_EFFECTS,
+		REGISTRATION_FAILURE_ISOLATED
 	};
 
 private:
@@ -52,6 +60,9 @@ private:
 		const float3_t& positionOffset);
 	bool_t Request_ClassChange(size_t index);
 	void Consume_ClassChangeResults();
+	bool_t Advance_DeferredClassPresentation();
+	bool_t Is_ClassPresentationPreparationPending() const;
+	void Reset_ClassPresentationPreparation();
 	bool_t Synchronize_LocalCharacter();
 	void Fail_ServerArena(const string& reason);
 	void Update_Connecting();
@@ -86,6 +97,18 @@ private:
 	std::optional<size_t> m_iPendingClassIndex;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iPendingClassChangeSequence = 0u;
+	CLASS_PRESENTATION_PREPARATION_STATE
+		m_eClassPresentationPreparationState =
+			CLASS_PRESENTATION_PREPARATION_STATE::IDLE;
+	std::uint64_t m_iClassPresentationPreparationGeneration = 0u;
+	LostArk::Shared::NET_ENTITY_ID m_iClassPresentationNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	LostArk::Shared::CHARACTER_CLASS_ID m_eClassPresentationTargetClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	bool_t m_hasClassPresentationCommitAttempted = false;
+	std::vector<std::string> m_ClassPresentationEffectTargets;
+	std::string m_strClassPresentationPreparationFailure;
+	std::string m_strClassPresentationCommitWarning;
 	shared_ptr<CCharacter> m_pActiveCharacter = { nullptr };
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;

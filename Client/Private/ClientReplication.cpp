@@ -80,6 +80,8 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	m_hasPendingConnectionLoss = false;
 	m_hasFatalWorldDestructionFailure = false;
 	m_WorldDestructionProjectionRuntime.Reset();
+	Clear_DeferredLocalCharacterClassReplacement();
+	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_wasConnected =
 		CNetworkManager::Get().Is_Connected();
 
@@ -320,6 +322,99 @@ std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() con
 	return m_Registry.Resolve(m_LocalCharacterHandle);
 }
 
+bool_t Client::CClientReplication::Try_Get_DeferredLocalCharacterClassReplacement(
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const
+{
+	OutView = {};
+	if (!m_DeferredLocalCharacterClassReplacement.isPending)
+		return false;
+
+	OutView.iGeneration =
+		m_DeferredLocalCharacterClassReplacement.iGeneration;
+	OutView.iNetEntityId =
+		m_DeferredLocalCharacterClassReplacement.Snapshot.iNetEntityId;
+	OutView.eCharacterClass =
+		m_DeferredLocalCharacterClassReplacement.Snapshot.eCharacterClass;
+	OutView.iServerTick =
+		m_DeferredLocalCharacterClassReplacement.iServerTick;
+	return true;
+}
+
+Client::DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
+Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
+{
+	using namespace LostArk::Shared;
+	if (!m_DeferredLocalCharacterClassReplacement.isPending)
+	{
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::NO_PENDING;
+	}
+
+	const DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT Pending =
+		m_DeferredLocalCharacterClassReplacement;
+	const NET_ENTITY_ID iLocalEntityId =
+		CNetworkManager::Get().Get_LocalEntityId();
+	const NET_PLAYER_RECORD* pCurrentRecord =
+		m_Registry.Find_Record(Pending.Snapshot.iNetEntityId);
+	if (INVALID_NET_ENTITY_ID == iLocalEntityId ||
+		Pending.Snapshot.iNetEntityId != iLocalEntityId ||
+		nullptr == pCurrentRecord)
+	{
+		Clear_DeferredLocalCharacterClassReplacement();
+		m_strPendingPresentationFailure =
+			"Deferred local class replacement lost its stable player identity.";
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE;
+	}
+	if (pCurrentRecord->eCharacterClass == Pending.Snapshot.eCharacterClass)
+	{
+		Clear_DeferredLocalCharacterClassReplacement();
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED;
+	}
+
+	const CHARACTER_REPLACE_RESULT ReplaceResult =
+		Replace_CharacterClass(Pending.Snapshot);
+	if (CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE == ReplaceResult)
+	{
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::RECOVERED_FAILURE;
+	}
+	if (CHARACTER_REPLACE_RESULT::FATAL_FAILURE == ReplaceResult)
+	{
+		Clear_DeferredLocalCharacterClassReplacement();
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE;
+	}
+
+	const std::shared_ptr<CCharacter> pCharacter = Get_LocalCharacter();
+	const float3_t Position(
+		Pending.Snapshot.fPositionX,
+		Pending.Snapshot.fPositionY,
+		Pending.Snapshot.fPositionZ);
+	const bool_t isMoving = Pending.Snapshot.eLocomotionState ==
+		PLAYER_LOCOMOTION_STATE::MOVING;
+	if (nullptr == pCharacter || !pCharacter->Apply_NetworkState(
+			Position,
+			Pending.Snapshot.fYawDegrees,
+			isMoving,
+			Pending.iServerTick) ||
+		!pCharacter->Apply_NetworkAction(
+			Pending.Snapshot.eAction,
+			Pending.Snapshot.iSkillId,
+			Pending.iServerTick,
+			Pending.Snapshot.iActionStartTick,
+			Pending.Snapshot.iComboStage))
+	{
+		Clear_DeferredLocalCharacterClassReplacement();
+		m_strPendingPresentationFailure =
+			"Deferred local class replacement could not apply its latest snapshot.";
+		return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE;
+	}
+	pCharacter->Apply_NetworkStance(Pending.Snapshot.eStance);
+	CCombatHUDViewModel::Get().Apply_LocalPlayer(
+		Pending.iServerTick,
+		Pending.Snapshot.eCharacterClass,
+		Pending.Snapshot);
+	Clear_DeferredLocalCharacterClassReplacement();
+	return DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED;
+}
+
 void Client::CClientReplication::Collect_PlayerViews(
 	std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const
 {
@@ -543,6 +638,12 @@ bool Client::CClientReplication::Apply_Despawn(
 		m_LocalCharacterHandle.iGeneration == handle.iGeneration)
 	{
 		m_LocalCharacterHandle = {};
+		if (m_DeferredLocalCharacterClassReplacement.isPending &&
+			m_DeferredLocalCharacterClassReplacement.Snapshot.iNetEntityId ==
+				despawned.iNetEntityId)
+		{
+			Clear_DeferredLocalCharacterClassReplacement();
+		}
 	}
 
 	return true;
@@ -860,9 +961,18 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	{
 		const NET_PLAYER_RECORD* record =
 			m_Registry.Find_Record(player.iNetEntityId);
+		const bool_t isLocallyControlled = player.iNetEntityId ==
+			CNetworkManager::Get().Get_LocalEntityId();
 		if (nullptr != record &&
 			record->eCharacterClass != player.eCharacterClass)
 		{
+			if (isLocallyControlled &&
+				m_Desc.bDeferLocalCharacterClassReplacement)
+			{
+				Stage_LocalCharacterClassReplacement(
+					player, snapshot.iServerTick);
+				continue;
+			}
 			const CHARACTER_REPLACE_RESULT replaceResult =
 				Replace_CharacterClass(player);
 			if (CHARACTER_REPLACE_RESULT::FATAL_FAILURE == replaceResult)
@@ -872,6 +982,13 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			}
 			if (CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE == replaceResult)
 				continue;
+		}
+		else if (isLocallyControlled &&
+			m_DeferredLocalCharacterClassReplacement.isPending)
+		{
+			/* A newer authoritative snapshot returned to the currently committed
+			   class before presentation commit.  Drop the superseded generation. */
+			Clear_DeferredLocalCharacterClassReplacement();
 		}
 		OBJECT_HANDLE handle{};
 
@@ -916,8 +1033,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 		}
 		character->Apply_NetworkStance(player.eStance);
-		if (player.iNetEntityId ==
-			CNetworkManager::Get().Get_LocalEntityId())
+		if (isLocallyControlled)
 		{
 			const NET_PLAYER_RECORD* localRecord =
 				m_Registry.Find_Record(player.iNetEntityId);
@@ -1145,6 +1261,31 @@ Client::CClientReplication::Replace_CharacterClass(
 	return CHARACTER_REPLACE_RESULT::REPLACED;
 }
 
+void Client::CClientReplication::Stage_LocalCharacterClassReplacement(
+	const LostArk::Shared::PLAYER_SNAPSHOT& Snapshot,
+	const std::uint32_t iServerTick)
+{
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT& Pending =
+		m_DeferredLocalCharacterClassReplacement;
+	if (!Pending.isPending ||
+		Pending.Snapshot.iNetEntityId != Snapshot.iNetEntityId ||
+		Pending.Snapshot.eCharacterClass != Snapshot.eCharacterClass)
+	{
+		Pending.iGeneration =
+			m_iNextDeferredLocalCharacterClassReplacementGeneration++;
+		if (0u == m_iNextDeferredLocalCharacterClassReplacementGeneration)
+			m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
+	}
+	Pending.isPending = true;
+	Pending.iServerTick = iServerTick;
+	Pending.Snapshot = Snapshot;
+}
+
+void Client::CClientReplication::Clear_DeferredLocalCharacterClassReplacement()
+{
+	m_DeferredLocalCharacterClassReplacement = {};
+}
+
 void Client::CClientReplication::Reset_World()
 {
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
@@ -1187,6 +1328,8 @@ void Client::CClientReplication::Reset_World()
 	m_WorldEntities.clear();
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
+	Clear_DeferredLocalCharacterClassReplacement();
+	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 	m_iLastServerTick = 0;
 	m_ValtanPresentationState = {};
 	m_WorldDestructionProjectionRuntime.Reset();

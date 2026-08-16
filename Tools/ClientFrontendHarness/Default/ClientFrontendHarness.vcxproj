@@ -156,8 +156,14 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
 	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
 	  <Link>Client\Effect_ProductPrewarmQueue.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\AnimationEffectCueDocument.cpp">
+	  <Link>Client\AnimationEffectCueDocument.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
 	  <Link>Client\Effect_LightPresentation.cpp</Link>
@@ -216,6 +222,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
+	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.h</Link>
+	</ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\Default\Shared.vcxproj">

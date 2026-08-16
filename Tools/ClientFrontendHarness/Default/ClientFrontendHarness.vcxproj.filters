@@ -102,6 +102,12 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\AnimationEffectCueDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Filter>Client</Filter>
     </ClCompile>
@@ -122,5 +128,8 @@
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h">
       <Filter>Private</Filter>
     </ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+	  <Filter>Client</Filter>
+	</ClInclude>
   </ItemGroup>
 </Project>

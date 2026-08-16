@@ -125,6 +125,64 @@ namespace
     }
 }
 
+bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(
+    const std::string& strAnimationAssetId,
+    ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
+    std::string& strOutStatus)
+{
+    if (strAnimationAssetId.empty())
+    {
+        strOutStatus = "Animation asset ID is empty.";
+        return false;
+    }
+
+    const std::filesystem::path Relative =
+        std::filesystem::path(L"Animation") / L"Authored" /
+        std::filesystem::path(strAnimationAssetId) /
+        (std::filesystem::path(strAnimationAssetId).wstring() + L".animevents");
+    const std::filesystem::path Path = CProjectDataRoot::Resolve(Relative);
+    std::ifstream Input(Path, std::ios::binary);
+    if (Path.empty() || !Input)
+    {
+        strOutStatus = "Missing animation event document: " + Path.string();
+        return false;
+    }
+
+    std::string Line;
+    if (!std::getline(Input, Line))
+    {
+        strOutStatus = "Animation event document is empty.";
+        return false;
+    }
+
+    std::unordered_set<std::string> ReferencedClipSet;
+    std::vector<std::string> Tokens;
+    std::string Error;
+    while (std::getline(Input, Line))
+    {
+        if (Line.empty())
+            continue;
+        if (!Tokenize(Line, Tokens, Error) || Tokens.size() < 2u)
+        {
+            strOutStatus = Error.empty() ?
+                "Invalid animation event row while collecting referenced clips." :
+                Error;
+            return false;
+        }
+        if ("EFFECT" == Tokens[1] || "HIT" == Tokens[1])
+            ReferencedClipSet.insert(Tokens[0]);
+    }
+
+    std::vector<std::string> ReferencedClips(
+        ReferencedClipSet.begin(), ReferencedClipSet.end());
+    if (!Load(strAnimationAssetId, ReferencedClips, OutDocument, strOutStatus))
+        return false;
+
+    strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
+        " admitted animation Effect cues for Product prewarm without a live model.";
+    return true;
+}
+
 bool_t Client::CAnimationEffectCueDocument::Load(
     const std::string& strAnimationAssetId,
     const std::vector<std::string>& AvailableClips,
