@@ -414,12 +414,12 @@
     },
     {
       "patternId": "VALTAN_FLOOR_WIPE_130",
-      "displayName": "130줄 2연속 지면 강타 전멸기",
+      "displayName": "115줄 6방향 충격파 후 전방향 충격파",
       "actionId": "valtan.mechanic.floor-wipe-130",
       "sourceActionIds": [420630],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 130, "triggerOrder": 1,
+      "triggerHealthBar": 115, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -432,12 +432,12 @@
     },
     {
       "patternId": "VALTAN_FOUR_PILLARS_105",
-      "displayName": "105줄 4기둥 추적 원뿔",
+      "displayName": "100줄 중앙 착지와 4기둥 추적 원뿔",
       "actionId": "valtan.mechanic.four-pillars-105",
       "sourceActionIds": [420610],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 105, "triggerOrder": 1,
+      "triggerHealthBar": 100, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -485,12 +485,12 @@
     },
     {
       "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
-      "displayName": "76줄 마력구 방어막 무력화",
+      "displayName": "73줄 남북·동서 마력구 폭발",
       "actionId": "valtan.mechanic.magic-orb-stagger-76",
       "sourceActionIds": [420617, 420618],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 76, "triggerOrder": 1,
+      "triggerHealthBar": 73, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -501,12 +501,12 @@
     },
     {
       "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
-      "displayName": "64줄 중앙 표적 폭발과 잡기 카운터",
+      "displayName": "62줄 3페이즈 중앙 표적 폭발과 잡기 카운터",
       "actionId": "valtan.mechanic.center-grab-counter-64",
       "sourceActionIds": [420623, 420631],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 64, "triggerOrder": 1,
+      "triggerHealthBar": 62, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -519,12 +519,12 @@
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_33",
-      "displayName": "33줄 두 번째 지형 파괴",
+      "displayName": "30줄 두 번째 지형 절반 파괴",
       "actionId": "valtan.mechanic.arena-break-33",
       "sourceActionIds": [420629],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 33, "triggerOrder": 1,
+      "triggerHealthBar": 30, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -536,12 +536,12 @@
     },
     {
       "patternId": "VALTAN_GHOST_TRANSITION_15",
-      "displayName": "15줄 최종 지면파괴와 망령화",
+      "displayName": "14줄 포탈·최종 지면파괴와 망령화",
       "actionId": "valtan.mechanic.ghost-transition-15",
       "sourceActionIds": [420616, 420624, 420625, 420626, 420634, 420651, 420652, 420653, 420658, 420659, 420665],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 15, "triggerOrder": 1,
+      "triggerHealthBar": 14, "triggerOrder": 1,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [

@@ -459,10 +459,10 @@ void CLevel_ValtanArena::Start_EnvironmentTimeline()
 		{ OPERATION::CROSS_HEALTH_BAR, 159u, true },
 		{ OPERATION::ARM_HEALTH_BAR, 109u, false },
 		{ OPERATION::CROSS_HEALTH_BAR, 109u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 105u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 105u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 15u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 15u, true } };
+		{ OPERATION::ARM_HEALTH_BAR, 100u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 100u, true },
+		{ OPERATION::ARM_HEALTH_BAR, 14u, false },
+		{ OPERATION::CROSS_HEALTH_BAR, 14u, true } };
 	m_iEnvironmentTimelineStep = 0u;
 	m_bEnvironmentTimelineWaiting = false;
 	m_bEnvironmentTimelinePatternStarted = false;
@@ -848,7 +848,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	}
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
-		"Pillar Cycle runs the authored 105 pattern: sky cues, the product raise,");
+		"Pillar Cycle runs the authored 100-bar pattern: sky cues, the product raise,");
 	ImGui::TextDisabled(
 		"then the Debug shatter and removal. Press it again for the next cycle.");
 	ImGui::TextColored(

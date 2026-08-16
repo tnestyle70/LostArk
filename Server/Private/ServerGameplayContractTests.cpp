@@ -444,6 +444,34 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			findStage("VALTAN_DOWN_SMASH", "IMPACT");
 		const BOSS_PATTERN_STAGE_DEFINITION* roar =
 			findStage("VALTAN_IMPRISON_ROAR", "ROAR");
+		const auto findPattern = [patterns](
+			const std::string& patternId) -> const BOSS_PATTERN_DEFINITION*
+		{
+			if (nullptr == patterns)
+				return nullptr;
+			const auto found = std::find_if(
+				patterns->begin(), patterns->end(),
+				[&patternId](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == patternId; });
+			return patterns->end() == found ? nullptr : &*found;
+		};
+		const BOSS_PATTERN_DEFINITION* swingPattern =
+			findPattern("VALTAN_SWING");
+		const BOSS_PATTERN_DEFINITION* arenaBreakPattern =
+			findPattern("VALTAN_ARENA_BREAK_109");
+		const bool everyPatternHasSourceTiming = nullptr != patterns &&
+			std::all_of(
+				patterns->begin(), patterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return 0u != pattern.iSourcePrimaryActionId &&
+						pattern.iSourceShapeCount <= 256u &&
+						pattern.iSourceCooldownTicks ==
+						static_cast<std::uint32_t>(
+							(static_cast<std::uint64_t>(
+								pattern.iSourceCooldownMs) * 30u + 999u) /
+							1000u);
+				});
 		tests.Require(
 			nullptr != swing && swing->bWallContact &&
 			BOSS_PATTERN_HIT_SHAPE::CONE == swing->eHitShape &&
@@ -453,6 +481,50 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			downSmash->fHitHalfWidth >= 1.7f &&
 			nullptr != roar && !roar->bWallContact,
 			"Compile the down-smash and other allowlisted physical axe stages as wall contacts");
+		tests.Require(
+			everyPatternHasSourceTiming && nullptr != swingPattern &&
+			420601u == swingPattern->iSourcePrimaryActionId &&
+			12u == swingPattern->iSourceShapeCount &&
+			5000u == swingPattern->iSourceCooldownMs &&
+			150u == swingPattern->iSourceCooldownTicks &&
+			350u == swingPattern->iSourceRangeUnits &&
+			300u == swingPattern->iSourceApproachUnits &&
+			180u == swingPattern->iSourceTurnDegrees &&
+			nullptr != arenaBreakPattern &&
+			420629u == arenaBreakPattern->iSourcePrimaryActionId &&
+			0u == arenaBreakPattern->iSourceCooldownTicks &&
+			10000u == arenaBreakPattern->iSourceRangeUnits,
+			"Compile all 32 Valtan entry-action timing records from Valtan.skilltiming");
+		std::uint32_t damagingStageCount = 0u;
+		std::uint32_t authoredHitPulseCount = 0u;
+		bool everyDamagingStageResolves = nullptr != patterns;
+		if (nullptr != patterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *patterns)
+			{
+				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+				{
+					if (BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape)
+						continue;
+					++damagingStageCount;
+					authoredHitPulseCount += stage.iHitCount;
+					everyDamagingStageResolves = everyDamagingStageResolves &&
+						!stage.strDamageProfileId.empty() &&
+						0u != catalog.Find_DamageRatePercent(
+							stage.strDamageProfileId);
+				}
+			}
+		}
+		tests.Require(
+			everyDamagingStageResolves && 46u == damagingStageCount &&
+			72u == authoredHitPulseCount &&
+			700u == catalog.Find_DamageRatePercent(
+				"damage.valtan.arena-destroy-109") &&
+			450u == catalog.Find_DamageRatePercent(
+				"damage.valtan.six-direction-130") &&
+			900u == catalog.Find_DamageRatePercent(
+				"damage.valtan.ghost-transition-15"),
+			"Resolve all 46 Valtan hit stages and 72 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -2249,10 +2321,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	test entity carries the archetype the room would have stamped on it. */
 	valtan.strArchetypeId = "BOSS_VALTAN";
 	valtan.strEncounterId = "ENCOUNTER_VALTAN";
-	valtan.iCurrentHp = 48750;
+	valtan.iCurrentHp = 43125;
 	valtan.iMaximumHp = 60000;
 	valtan.iMaximumHealthBars = 160;
-	valtan.iLastEvaluatedHealthBar = 131;
+	valtan.iLastEvaluatedHealthBar = 116;
 	valtan.iPhaseTwoHpPercent = 50;
 	valtan.iPhase = 1;
 	valtan.fPositionX = 151.f;
@@ -2260,7 +2332,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	valtan.fPositionZ = -122.f;
 	valtan.fEngageDistance = 35.f;
 	valtan.fMoveSpeed = 3.f;
-	/* This fixture asserts the 130-bar mechanic, so the encounter intro is
+	/* This fixture asserts the observed 115-bar mechanic, so the encounter intro is
 	staged as already consumed exactly as a Debug audition reset does. */
 	valtan.bIntroPatternConsumed = true;
 	CValtanBrain brain;
@@ -2277,25 +2349,110 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
 			valtanDamageEvents);
 	tests.Require(781u == players.begin()->second.iCurrentHp,
-		"Apply the queued 130-bar Valtan circle hit once");
+		"Apply the queued 115-bar Valtan circle hit once");
 	tests.Require(
 		1u == valtanDamageEvents.size() &&
 		219u == valtanDamageEvents[0].iAmount &&
 		!valtanDamageEvents[0].isOutgoing &&
 		players.begin()->second.iNetEntityId ==
 			valtanDamageEvents[0].iTargetNetEntityId,
-		"Emit one incoming damage event for the 130-bar boss hit");
+		"Emit one incoming damage event for the 115-bar boss hit");
 	tests.Require(
 		"VALTAN_FLOOR_WIPE_130" == valtan.strPatternId &&
 		valtan.PendingPatternIds.empty() &&
 		1u == valtan.TriggeredPatternIds.size() &&
 		1u == valtan.iPatternSequence &&
 		1u == valtan.iPatternStageIndex,
-		"Queue and advance the staged 130-bar scripted mechanic");
+		"Queue and advance the staged 115-bar scripted mechanic");
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 141,
 		valtanDamageEvents);
 	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
+
+	{
+		/* Source cooldowns are selection gates, not display-only metadata. Run a
+		deterministic normal-pattern simulation long enough to see positive-
+		cooldown patterns repeat and reject any early repeat. */
+		std::map<PLAYER_ID, SERVER_PLAYER> cooldownPlayers;
+		SERVER_PLAYER cooldownTarget{};
+		cooldownTarget.iPlayerId = 77u;
+		cooldownTarget.iNetEntityId = 177u;
+		cooldownTarget.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		cooldownTarget.iCurrentHp = 1000000u;
+		cooldownTarget.iMaximumHp = 1000000u;
+		cooldownTarget.fPositionX = 6.f;
+		cooldownTarget.fPositionY = 22.97f;
+		cooldownTarget.fPositionZ = 0.f;
+		cooldownTarget.isCombatReady = true;
+		cooldownPlayers.emplace(cooldownTarget.iPlayerId, cooldownTarget);
+		SERVER_WORLD_ENTITY cooldownBoss{};
+		cooldownBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		cooldownBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		cooldownBoss.strArchetypeId = "BOSS_VALTAN";
+		cooldownBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		cooldownBoss.iCurrentHp = 60000u;
+		cooldownBoss.iMaximumHp = 60000u;
+		cooldownBoss.iMaximumHealthBars = 160u;
+		cooldownBoss.iLastEvaluatedHealthBar = 160u;
+		cooldownBoss.iPhaseTwoHpPercent = 50u;
+		cooldownBoss.fPositionY = 22.97f;
+		cooldownBoss.fSpawnPositionY = 22.97f;
+		cooldownBoss.fEngageDistance = 35.f;
+		cooldownBoss.fMoveSpeed = 3.f;
+		cooldownBoss.bIntroPatternConsumed = true;
+		std::map<std::string, std::uint32_t> lastStartTickByPattern;
+		std::uint32_t previousSequence = 0u;
+		bool respectedCooldowns = true;
+		bool observedPositiveCooldownRepeat = false;
+		bool replayedIntro = false;
+		std::vector<DAMAGE_EVENT> cooldownDamageEvents;
+		const std::vector<BOSS_PATTERN_DEFINITION>* cooldownPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		for (std::uint32_t tick = 1000u; tick < 11000u; ++tick)
+		{
+			SERVER_PLAYER& liveTarget = cooldownPlayers.begin()->second;
+			liveTarget.iCurrentHp = liveTarget.iMaximumHp;
+			liveTarget.eAction = PLAYER_ACTION_STATE::NONE;
+			cooldownDamageEvents.clear();
+			brain.Update(
+				cooldownBoss, cooldownPlayers, catalog, navigation,
+				1.f / 30.f, tick, cooldownDamageEvents);
+			if (cooldownBoss.iPatternSequence == previousSequence)
+				continue;
+			previousSequence = cooldownBoss.iPatternSequence;
+			replayedIntro = replayedIntro ||
+				cooldownBoss.strPatternId == "VALTAN_ENTRANCE_WHIRLWIND";
+			if (nullptr == cooldownPatterns)
+			{
+				respectedCooldowns = false;
+				break;
+			}
+			const auto definition = std::find_if(
+				cooldownPatterns->begin(), cooldownPatterns->end(),
+				[&cooldownBoss](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == cooldownBoss.strPatternId; });
+			if (cooldownPatterns->end() == definition)
+			{
+				respectedCooldowns = false;
+				break;
+			}
+			const auto previous =
+				lastStartTickByPattern.find(definition->strPatternId);
+			if (lastStartTickByPattern.end() != previous &&
+				0u != definition->iSourceCooldownTicks)
+			{
+				observedPositiveCooldownRepeat = true;
+				respectedCooldowns = respectedCooldowns &&
+					static_cast<std::uint32_t>(tick - previous->second) >=
+					definition->iSourceCooldownTicks;
+			}
+			lastStartTickByPattern[definition->strPatternId] = tick;
+		}
+		tests.Require(
+			respectedCooldowns && observedPositiveCooldownRepeat &&
+			!replayedIntro && !cooldownBoss.PatternCooldowns.empty(),
+			"Gate normal Valtan reselection by source cooldown and never reroll the intro");
+	}
 
 	SERVER_WORLD_ENTITY openingChargeBoss{};
 	openingChargeBoss.iNetEntityId = 901u;
@@ -2710,10 +2867,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t6\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t7\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
 				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
@@ -2762,10 +2920,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t6\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t7\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
 					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
@@ -2805,6 +2964,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const auto loadWithWallContactRows = [
 			&wallContactRoot](
 				const std::uint32_t version,
+				const std::vector<std::string>& sourceRows,
 				const std::vector<std::string>& wallRows)
 		{
 			std::error_code prepareError;
@@ -2815,13 +2975,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					wallContactRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap << "LOSTARK_GAMEPLAY_BOOTSTRAP\t" << version << "\t" <<
-					(6u + wallRows.size()) << "\n"
+					(6u + sourceRows.size() + wallRows.size()) << "\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
+				for (const std::string& row : sourceRows)
+					bootstrap << row << '\n';
 				for (const std::string& row : wallRows)
 					bootstrap << row << '\n';
 			}
@@ -2840,19 +3002,33 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		};
 		const std::string validWallRow =
 			"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active";
+		const std::string validSourceRow =
+			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(5u, { validWallRow }),
+			loadWithWallContactRows(6u, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(4u, { validWallRow }),
+			!loadWithWallContactRows(5u, { validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(5u, {
+			!loadWithWallContactRows(6u, { validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
-			!loadWithWallContactRows(5u, { validWallRow, validWallRow }),
+			!loadWithWallContactRows(
+				6u, { validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
+		tests.Require(
+			!loadWithWallContactRows(6u, {}, {}),
+			"Reject a boss pattern with no compiled source timing row");
+		tests.Require(
+			!loadWithWallContactRows(
+				6u, { validSourceRow, validSourceRow }, {}),
+			"Reject duplicate source timing ownership atomically");
+		tests.Require(
+			!loadWithWallContactRows(6u, {
+				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
+			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 		std::error_code cleanupError;
 		fs::remove_all(wallContactRoot, cleanupError);
 	}
@@ -2893,10 +3069,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t5\t8\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t9\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
 					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
@@ -4259,15 +4436,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		C2S_VALTAN_AUDITION_REQUEST play{};
 		play.iRequestSequence = 4u;
 		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
-		play.iTargetHealthBar = 33u;
+		play.iTargetHealthBar = 30u;
 		tests.Require(
 			VALTAN_AUDITION_RESULT::QUEUED ==
 				room.Evaluate_ValtanAudition(
 					AUDITION_SESSION, play, reportedBar) &&
-			33u == reportedBar && nullptr != auditionBoss &&
-			34u == (nullptr == auditionBoss ?
+			30u == reportedBar && nullptr != auditionBoss &&
+			31u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar) &&
-			12375u == (nullptr == auditionBoss ?
+			11250u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iCurrentHp),
 			"Prime and cross one authored bar atomically for one-click audition");
 
@@ -4328,7 +4505,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 						"VALTAN_FLOOR_WIPE_130" == patternId ||
 						"VALTAN_FOUR_PILLARS_105" == patternId;
 				}),
-			"Leave the 159, 130 and 105 bar patterns unqueued by a 109-bar audition");
+			"Leave the 159, 115 and 100 bar patterns unqueued by a 109-bar audition");
 		tests.Require(
 			nullptr != auditionBoss &&
 			"VALTAN_ARENA_BREAK_109" ==
@@ -4339,7 +4516,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		C2S_VALTAN_AUDITION_REQUEST whileRunning = arm;
 		whileRunning.iRequestSequence = 7u;
-		whileRunning.iTargetHealthBar = 33u;
+		whileRunning.iTargetHealthBar = 30u;
 		tests.Require(
 			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
 				room.Evaluate_ValtanAudition(

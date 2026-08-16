@@ -94,6 +94,41 @@ namespace
 		return ids.end() != std::find(ids.begin(), ids.end(), patternId);
 	}
 
+	bool IsPatternCooldownReady(
+		const SERVER_WORLD_ENTITY& boss,
+		const std::string& patternId,
+		const std::uint32_t serverTick)
+	{
+		const auto found = std::find_if(
+			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
+			[&patternId](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
+			{ return cooldown.strPatternId == patternId; });
+		return boss.PatternCooldowns.end() == found ||
+			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0;
+	}
+
+	void StartPatternCooldown(
+		SERVER_WORLD_ENTITY& boss,
+		const BOSS_PATTERN_DEFINITION& pattern,
+		const std::uint32_t serverTick)
+	{
+		if (0u == pattern.iSourceCooldownTicks)
+			return;
+		const std::uint32_t readyTick =
+			serverTick + pattern.iSourceCooldownTicks;
+		auto found = std::find_if(
+			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
+			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
+			{ return cooldown.strPatternId == pattern.strPatternId; });
+		if (boss.PatternCooldowns.end() == found)
+		{
+			boss.PatternCooldowns.push_back(
+				SERVER_BOSS_PATTERN_COOLDOWN{ pattern.strPatternId, readyTick });
+			return;
+		}
+		found->iReadyTick = readyTick;
+	}
+
 	const BOSS_PATTERN_DEFINITION* FindPattern(
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
 		const std::string& patternId)
@@ -142,6 +177,7 @@ namespace
 	const BOSS_PATTERN_DEFINITION* SelectNormalPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
+		const std::string& introPatternId,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick)
@@ -151,10 +187,13 @@ namespace
 		for (const BOSS_PATTERN_DEFINITION& pattern : patterns)
 		{
 			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
+				pattern.strPatternId == introPatternId ||
 				currentHealthBar < pattern.iMinimumHealthBar ||
 				currentHealthBar > pattern.iMaximumHealthBar ||
 				targetDistance < pattern.fMinimumRange ||
-				targetDistance > pattern.fMaximumRange)
+				targetDistance > pattern.fMaximumRange ||
+				!IsPatternCooldownReady(
+					boss, pattern.strPatternId, serverTick))
 			{
 				continue;
 			}
@@ -225,7 +264,8 @@ namespace
 			}
 		}
 		return SelectNormalPattern(
-			boss, patterns, currentHealthBar, targetDistance, serverTick);
+			boss, patterns, introPatternId,
+			currentHealthBar, targetDistance, serverTick);
 	}
 
 	SERVER_ENTITY_ACTION ToServerAction(const BOSS_PATTERN_STAGE_KIND kind)
@@ -298,6 +338,7 @@ namespace
 		boss.strPatternId = pattern.strPatternId;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
 		boss.fPatternMaximumRange = pattern.fMaximumRange;
+		StartPatternCooldown(boss, pattern, serverTick);
 		boss.iPatternSequence = boss.iPatternSequence ==
 			(std::numeric_limits<std::uint32_t>::max)() ?
 			1u : boss.iPatternSequence + 1u;
