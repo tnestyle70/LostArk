@@ -159,6 +159,10 @@ private:
 	/* Which charge stage the canvas is previewing; one control drives every slot at once. */
 	int32_t				m_iPreviewStage = 0;
 
+	/* "Boss UI" document only: stamps sample data into CCombatHUDViewModel so the boss bar renders
+	here without a live Valtan encounter. Debug-only; never written to the cfg. */
+	bool				m_bPreviewBossData = false;
+
 	bool_t				m_bMarqueeActive = false;
 	float				m_fMarqueeStartX = 0.f;
 	float				m_fMarqueeStartY = 0.f;

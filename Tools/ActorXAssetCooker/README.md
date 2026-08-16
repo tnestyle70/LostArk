@@ -94,6 +94,41 @@ PowerShell wrapper는 결과를 런타임 폴더가 아닌 별도 staging 패키
 이상의 명시적 remap을 사용하면 `--no-auto-textures`도 함께 전달해 다른 슬롯의
 자동 오매칭을 막는다. 이때 원본 재질이 사용하는 모든 슬롯을 명시해야 한다.
 
+## 멀티 rate·bone 순서·노드 이름 옵션
+
+기본 동작은 바뀌지 않는다. 아래 네 옵션은 명시적으로 지정할 때만 켜지며, 지정하지 않으면
+기존 자산의 Cook 결과는 그대로다. 2026-08-16 발탄 146클립 AnimSet 복원에서 추가했다.
+
+```powershell
+-BakeFrameRate 30.0 `
+-AllowBoneOrderRemap `
+-ArmatureExportName 'mesh' `
+-MeshExportName 'mesh.001'
+```
+
+`-BakeFrameRate`는 `모든 PSA sequence가 하나의 AnimRate를 공유해야 한다`는 검사를 대신해
+지정한 rate 하나로 굽는다. frame span은 그대로 보존되므로 clip별 원본 rate는 반드시
+`Tools/ModelAssetConverter/retime_wmodel_from_psa.py`로 되돌린다. 이 도구는 `--psa`를 여러 번
+받아 여러 PSA로 조립한 AnimSet도 처리한다. 옵션을 쓰지 않으면 multi-rate PSA는 지금처럼 실패한다.
+
+`-AllowBoneOrderRemap`은 PSA `BONENAMES`가 PSK bone의 순열일 때만 통과시킨다. 이름 집합과
+개수가 정확히 같아야 하며 누락·추가·중복이 하나라도 있으면 기존처럼 실패한다. PSA importer와
+scale curve 주입이 이미 이름으로 bone을 찾으므로 순서만 다른 것은 같은 애니메이션이다.
+
+`-ArmatureExportName`과 `-MeshExportName`은 FBX export 직전 Blender object 이름을 고정한다.
+Converter가 Armature 이름을 runtime clip 접두사로 쓰고, Armature와 Mesh object가 둘 다
+skeleton node가 되며, runtime `skeletonHash`가 그 node 이름까지 포함한다. 따라서 body model에
+Attach할 AnimSet은 body와 같은 node 이름을 재현해야 한다. Blender는 이름이 겹치면 조용히
+`.001`을 붙이므로 도구가 적용 결과를 다시 확인하고 다르면 실패한다.
+
+Attach 대상 body model의 실제 node 이름은 추측하지 말고 body `.wmodel`의 skeleton section에서
+읽어 확인한다. 발탄의 경우 `RootNode` / `mesh`(Armature) / PSK bone 84개 / `mesh.001`(Mesh)로
+87개였다.
+
+또한 scale key 수 검사는 `원본과 정확히 같은 수`가 아니라 `원본보다 적으면 실패`다. Assimp가
+곡선을 재샘플해 fractional tick에 key를 몇 개 더 쓰는 경우가 있는데 이는 데이터 손실이 아니며,
+bone별 min/max 극값 비교가 원본 값 보존을 계속 증명한다.
+
 PSA가 여러 개면 배열로 전달한다.
 
 ```powershell
@@ -219,7 +254,7 @@ Armature에 실제 parent/modifier로 연결돼 있지 않으면 미리보기 �
 
 1. 스켈레탈 FBX에는 `--pretransform`을 사용하지 않는다.
 2. PSK와 PSA에는 동일한 `bScaleDown` 설정을 적용한다. 기본값은 검증 사례와 같은 `true`다.
-3. Blender 기본 24fps를 그대로 사용하지 않는다. PSA `ANIMINFO`의 `AnimRate`로 scene FPS를 설정하며, 하나의 FBX 안에서 서로 다른 rate가 발견되면 조용히 리샘플하지 않고 실패한다.
+3. Blender 기본 24fps를 그대로 사용하지 않는다. PSA `ANIMINFO`의 `AnimRate`로 scene FPS를 설정하며, 하나의 FBX 안에서 서로 다른 rate가 발견되면 조용히 리샘플하지 않고 실패한다. clip마다 rate가 다른 자산은 `-BakeFrameRate`로 굽는 rate를 명시하고 반드시 `retime_wmodel_from_psa.py`로 clip별 원본 rate를 되돌린다.
 4. FBX exporter는 `add_leaf_bones=false`, `bake_anim_use_all_actions=true`로 고정한다.
 5. Action 하나를 Armature에 실제로 할당한 뒤 export한다. 할당하지 않으면 FBX take가 빠지는 Blender/Assimp 조합이 있다.
 6. clip 순서를 저장 계약으로 사용하지 않는다. 런타임 연결은 `.wmodel.info.txt`에서 검증한 최종 WModel animation 이름을 사용한다.

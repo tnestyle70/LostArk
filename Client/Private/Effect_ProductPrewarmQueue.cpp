@@ -2,6 +2,15 @@
 
 #include <algorithm>
 
+bool Client::Is_ProductPrewarmActivationReady(
+	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE& Probe,
+	const bool bTargetRegistrationFailureIsolated)
+{
+	return Probe.bCatalogRevisionCurrent &&
+		0u == Probe.iQueuePendingCount &&
+		(Probe.bSettled || bTargetRegistrationFailureIsolated);
+}
+
 void Client::CEffectProductPrewarmQueue::Reset_ForCatalogRevision(
 	const uint64_t iCatalogRevision)
 {
@@ -44,6 +53,58 @@ bool Client::CEffectProductPrewarmQueue::Enqueue(
 		m_bYieldNextFrame = true;
 	strOutStatus = "Queued " + std::to_string(iQueuedCount) +
 		" new Product Effect targets for incremental prewarm.";
+	return true;
+}
+
+bool Client::CEffectProductPrewarmQueue::Enqueue_Priority(
+	const std::vector<std::string>& EffectAssetIds,
+	std::string& strOutStatus)
+{
+	if (0u == m_iCatalogRevision || std::any_of(
+			EffectAssetIds.begin(), EffectAssetIds.end(),
+			[](const std::string& EffectAssetId)
+			{
+				return EffectAssetId.empty();
+			}))
+	{
+		strOutStatus =
+			"Effect Product priority prewarm queue revision or target is invalid.";
+		return false;
+	}
+
+	std::vector<std::string> PriorityPending;
+	PriorityPending.reserve(EffectAssetIds.size());
+	std::set<std::string, std::less<>> PriorityIds;
+	uint32_t iQueuedCount = 0u;
+	for (const std::string& EffectAssetId : EffectAssetIds)
+	{
+		m_Targets.insert(EffectAssetId);
+		if (m_PreparedIds.contains(EffectAssetId) ||
+			m_FailedIds.contains(EffectAssetId) ||
+			!PriorityIds.insert(EffectAssetId).second)
+		{
+			continue;
+		}
+		if (m_PendingIds.insert(EffectAssetId).second)
+			++iQueuedCount;
+		PriorityPending.push_back(EffectAssetId);
+	}
+
+	std::deque<std::string> Reordered;
+	for (const std::string& EffectAssetId : PriorityPending)
+		Reordered.push_back(EffectAssetId);
+	for (const std::string& EffectAssetId : m_Pending)
+	{
+		if (!PriorityIds.contains(EffectAssetId))
+			Reordered.push_back(EffectAssetId);
+	}
+	m_Pending = std::move(Reordered);
+
+	if (0u != iQueuedCount)
+		m_bYieldNextFrame = true;
+	strOutStatus = "Queued " + std::to_string(iQueuedCount) +
+		" new and prioritized " + std::to_string(PriorityPending.size()) +
+		" pending Product Effect targets.";
 	return true;
 }
 
@@ -141,6 +202,44 @@ Client::CEffectProductPrewarmQueue::Get_Probe() const
 	Probe.iPreparedCount = static_cast<uint32_t>(m_PreparedIds.size());
 	Probe.iFailedCount = static_cast<uint32_t>(m_FailedIds.size());
 	Probe.bYieldNextFrame = m_bYieldNextFrame;
+	return Probe;
+}
+
+Client::EFFECT_PRODUCT_PREWARM_TARGET_PROBE
+Client::CEffectProductPrewarmQueue::Get_TargetProbe(
+	const std::vector<std::string>& EffectAssetIds,
+	const uint64_t iExpectedCatalogRevision) const
+{
+	EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe;
+	Probe.iCatalogRevision = m_iCatalogRevision;
+	Probe.iQueuePendingCount = static_cast<uint32_t>(m_Pending.size());
+	Probe.bCatalogRevisionCurrent = 0u != iExpectedCatalogRevision &&
+		m_iCatalogRevision == iExpectedCatalogRevision;
+
+	std::set<std::string, std::less<>> UniqueTargets;
+	for (const std::string& EffectAssetId : EffectAssetIds)
+	{
+		if (!UniqueTargets.insert(EffectAssetId).second)
+			continue;
+		++Probe.iTargetCount;
+		if (m_PendingIds.contains(EffectAssetId))
+			++Probe.iPendingCount;
+		else if (m_PreparedIds.contains(EffectAssetId))
+			++Probe.iPreparedCount;
+		else if (m_FailedIds.contains(EffectAssetId))
+			++Probe.iFailedCount;
+		else
+			++Probe.iUnavailableCount;
+	}
+
+	/* Unavailable targets are terminal presentation failures for the current
+	   revision. They must be visible in the probe, but must not hold a Level
+	   transition forever. bSettled describes only the requested target set;
+	   loading callers must also require iQueuePendingCount == 0 before activation.
+	   A stale queue revision is not terminal because the regular main-frame
+	   advance will rebase it before the next probe. */
+	Probe.bSettled = Probe.bCatalogRevisionCurrent &&
+		0u == Probe.iPendingCount;
 	return Probe;
 }
 

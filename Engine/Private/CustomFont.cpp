@@ -76,6 +76,15 @@ void CCustomFont::Draw(const tchar_t* pText, const float2_t& vPosition, fvector_
 
 }
 
+float2_t CCustomFont::Measure(const tchar_t* pText) const
+{
+    if (nullptr == m_pFont)
+        return float2_t(0.f, 0.f);
+
+    const XMVECTOR vMeasured = m_pFont->MeasureString(pText);
+    return float2_t(XMVectorGetX(vMeasured), XMVectorGetY(vMeasured));
+}
+
 unique_ptr<CCustomFont> CCustomFont::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const tchar_t* pFontFilePath)
 {
     auto pInstance = unique_ptr<CCustomFont>(new CCustomFont(pDevice, pContext));

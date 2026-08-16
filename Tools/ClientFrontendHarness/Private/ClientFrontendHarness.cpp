@@ -3,6 +3,7 @@
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
+#include "AnimationEffectCueDocument.h"
 #include "LobbyCommandService.h"
 #include "Model.h"
 #include "NetObjectRegistry.h"
@@ -16,6 +17,7 @@
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
@@ -16334,21 +16336,249 @@ namespace
 			resetProbe.iFailedCount == 0u,
 			"Product Prewarm Queue Yields Registration Frame, Coalesces IDs, Commits One Front, Isolates Failure, And Resets By Revision");
 
+		CEffectProductPrewarmQueue priorityQueue;
+		priorityQueue.Reset_ForCatalogRevision(71u);
+		const bool_t staleTargetsQueued = priorityQueue.Enqueue(
+			{ "stale.a", "current.b", "stale.c" }, status) &&
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
+		const bool_t currentTargetsPrioritized = staleTargetsQueued &&
+			priorityQueue.Enqueue_Priority(
+				{ "current.b", "current.a", "current.b" }, status) &&
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED &&
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "current.b" &&
+			priorityQueue.Complete_Front(queuedId, true, status) &&
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "current.a" &&
+			priorityQueue.Complete_Front(queuedId, false, status);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE currentTargetProbe =
+			priorityQueue.Get_TargetProbe(
+				{ "current.a", "current.b", "current.a" }, 71u);
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE backgroundProbe =
+			priorityQueue.Get_Probe();
+		const bool_t activationBlockedByBackground =
+			!Is_ProductPrewarmActivationReady(currentTargetProbe);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE isolatedFailureProbe =
+			priorityQueue.Get_TargetProbe({}, 71u);
+		const bool_t isolatedFailureBlockedByBackground =
+			!Is_ProductPrewarmActivationReady(
+				isolatedFailureProbe, true);
+		const bool_t staleWorkPreservedBehindCurrent =
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "stale.a" &&
+			priorityQueue.Complete_Front(queuedId, true, status) &&
+			priorityQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "stale.c" &&
+			priorityQueue.Complete_Front(queuedId, true, status);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE drainedTargetProbe =
+			priorityQueue.Get_TargetProbe(
+				{ "current.a", "current.b" }, 71u);
+		const bool_t activationReadyAfterQueueDrain =
+			Is_ProductPrewarmActivationReady(drainedTargetProbe);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE
+			drainedIsolatedFailureProbe =
+				priorityQueue.Get_TargetProbe({}, 71u);
+		const bool_t isolatedFailureReadyAfterQueueDrain =
+			Is_ProductPrewarmActivationReady(
+				drainedIsolatedFailureProbe, true);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE staleRevisionProbe =
+			priorityQueue.Get_TargetProbe(
+				{ "current.a", "current.b" }, 72u);
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE beforeInvalidPriority =
+			priorityQueue.Get_Probe();
+		const bool_t invalidPriorityPreserved =
+			!priorityQueue.Enqueue_Priority({ "" }, status) &&
+			priorityQueue.Get_Probe().iTargetCount ==
+				beforeInvalidPriority.iTargetCount &&
+			priorityQueue.Get_Probe().iPendingCount ==
+				beforeInvalidPriority.iPendingCount;
+		runner.Require(currentTargetsPrioritized &&
+			currentTargetProbe.bCatalogRevisionCurrent &&
+			currentTargetProbe.bSettled &&
+			currentTargetProbe.iTargetCount == 2u &&
+			currentTargetProbe.iPendingCount == 0u &&
+			currentTargetProbe.iPreparedCount == 1u &&
+			currentTargetProbe.iFailedCount == 1u &&
+			currentTargetProbe.iUnavailableCount == 0u &&
+			currentTargetProbe.iQueuePendingCount == 2u &&
+			backgroundProbe.iPendingCount == 2u &&
+			activationBlockedByBackground &&
+			isolatedFailureBlockedByBackground &&
+			staleWorkPreservedBehindCurrent &&
+			activationReadyAfterQueueDrain &&
+			isolatedFailureReadyAfterQueueDrain &&
+			!staleRevisionProbe.bCatalogRevisionCurrent &&
+			!staleRevisionProbe.bSettled &&
+			!Is_ProductPrewarmActivationReady(staleRevisionProbe, true) &&
+			invalidPriorityPreserved,
+			"Product Prewarm Priority Moves Current Class Ahead Of Stale Work And Shared Activation Gate Drains All Pending Work Before Normal Or Isolated-Failure Commit");
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
-		wchar_t moduleBuffer[32768]{};
-		const DWORD moduleLength = GetModuleFileNameW(
-			nullptr, moduleBuffer, static_cast<DWORD>(std::size(moduleBuffer)));
-		const std::filesystem::path moduleDirectory =
-			0u == moduleLength || moduleLength >= std::size(moduleBuffer) ?
-			std::filesystem::path{} :
-			std::filesystem::path(moduleBuffer).parent_path();
+		SCOPED_ENVIRONMENT_VARIABLE runtimeCatalogFixtureEnvironment(
+			L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE");
 		const std::filesystem::path repositoryRoot =
 			CProjectDataRoot::Get().parent_path();
+
+		/* All Effects authoring is indexed from the source catalog rather than
+		   the retired Track-A batch or the runtime Product tree.  Keep this
+		   fixture metadata-only so opening the list does not decode 101 documents. */
+		std::string sourceIndexStatus;
+		const bool_t playerSkillsLoaded =
+			CPlayerSkillCatalog::Load(sourceIndexStatus);
+		EFFECT_DIRECT_AUTHORED_OWNER_SET playerSkillOwners;
+		for (const PLAYER_SKILL_DEFINITION& skill :
+			CPlayerSkillCatalog::Get_Skills())
+		{
+			playerSkillOwners.emplace(skill.eCharacterClass, skill.iSkillId);
+		}
+		const std::filesystem::path sourceCatalogPath = repositoryRoot /
+			L"Data" / L"Effects" / L"EffectCatalog.json";
+		const std::filesystem::path authoredRoot = repositoryRoot /
+			L"Data" / L"Effects" / L"Authored";
+		std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> scannedSourceFiles;
+		std::error_code sourceScanError;
+		for (std::filesystem::recursive_directory_iterator iterator(
+				authoredRoot, sourceScanError), end;
+			!sourceScanError && iterator != end;
+			iterator.increment(sourceScanError))
+		{
+			if (!iterator->is_regular_file(sourceScanError) || sourceScanError)
+				continue;
+			constexpr std::string_view effectSuffix = ".effect.json";
+			const std::string filename = iterator->path().filename().string();
+			if (!filename.ends_with(effectSuffix))
+				continue;
+			scannedSourceFiles.push_back({
+				filename.substr(0u, filename.size() - effectSuffix.size()),
+				iterator->path()
+			});
+		}
+		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX sourceIndex;
+		const bool_t sourceIndexValid = playerSkillsLoaded && !sourceScanError &&
+			CEffectDirectAuthoredSourceIndex::Build(
+				sourceCatalogPath, authoredRoot, scannedSourceFiles,
+				playerSkillOwners, sourceIndex, sourceIndexStatus);
+		std::set<std::string, std::less<>> directSourceIds;
+		bool_t sourceEntriesExact = sourceIndexValid &&
+			sourceIndex.iCatalogDirectCount == 101u &&
+			sourceIndex.iUnavailableCount == 0u &&
+			sourceIndex.Entries.size() == 101u;
+		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& entry :
+			sourceIndex.Entries)
+		{
+			std::error_code physicalError;
+			sourceEntriesExact = sourceEntriesExact &&
+				playerSkillOwners.contains(std::make_pair(
+					entry.eCharacterClass, entry.iSkillId)) &&
+				directSourceIds.insert(entry.strEffectAssetId).second &&
+				std::filesystem::is_regular_file(entry.Path, physicalError) &&
+				!physicalError;
+		}
+		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX preservedIndex;
+		preservedIndex.iCatalogDirectCount = 77u;
+		preservedIndex.Entries.push_back({});
+		std::string rejectedIndexStatus;
+		const bool_t malformedTopLevelPreserved =
+			!CEffectDirectAuthoredSourceIndex::Build(
+				sourceCatalogPath / L"missing", authoredRoot,
+				scannedSourceFiles, playerSkillOwners, preservedIndex,
+				rejectedIndexStatus) &&
+			preservedIndex.iCatalogDirectCount == 77u &&
+			preservedIndex.Entries.size() == 1u &&
+			!rejectedIndexStatus.empty();
+		const std::filesystem::path sourceIndexFixturePath =
+			std::filesystem::temp_directory_path() /
+			(L"LostArkEffectSourceIndex-" +
+			 std::to_wstring(GetCurrentProcessId()) + L".json");
+		const auto writeSourceIndexFixture = [](
+			const std::filesystem::path& path, const std::string& text)
+		{
+			std::ofstream output(path, std::ios::binary | std::ios::trunc);
+			output.write(text.data(), static_cast<std::streamsize>(text.size()));
+			return output.good();
+		};
+		const auto sourceIndexRow = [](const std::string& assetId,
+			const std::string& authoringPath)
+		{
+			return std::string("{\"effectAssetId\":\"") +
+				CDataJson::Escape(assetId) +
+				"\",\"payloadKind\":\"DIRECT_AUTHORED_DOCUMENT_V13\","
+				"\"authoringPath\":\"" +
+				CDataJson::Escape(authoringPath) + "\"}";
+		};
+		bool_t isolatedRowPreservedValidCommit = false;
+		bool_t duplicateTopLevelPreserved = false;
+		if (sourceIndexValid && !sourceIndex.Entries.empty())
+		{
+			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& validEntry =
+				sourceIndex.Entries.front();
+			const std::string validRelativePath = validEntry.Path.lexically_relative(
+				repositoryRoot / L"Data").generic_string();
+			std::string isolatedAssetId = validEntry.strEffectAssetId;
+			isolatedAssetId.erase(isolatedAssetId.size() -
+				std::string_view(".unified").size());
+			isolatedAssetId += ".escape.unified";
+			const std::string validRow = sourceIndexRow(
+				validEntry.strEffectAssetId, validRelativePath);
+			const std::string isolatedRow = sourceIndexRow(
+				isolatedAssetId,
+				"Effects/Authored/../escape/" + isolatedAssetId +
+					".effect.json");
+			const std::string isolatedCatalog =
+				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
+				isolatedRow + "]}";
+			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX isolatedIndex;
+			std::string isolatedStatus;
+			isolatedRowPreservedValidCommit =
+				writeSourceIndexFixture(sourceIndexFixturePath, isolatedCatalog) &&
+				CEffectDirectAuthoredSourceIndex::Build(
+					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
+					playerSkillOwners, isolatedIndex, isolatedStatus) &&
+				isolatedIndex.iCatalogDirectCount == 2u &&
+				isolatedIndex.iUnavailableCount == 1u &&
+				isolatedIndex.Entries.size() == 1u &&
+				isolatedIndex.Entries.front().strEffectAssetId ==
+					validEntry.strEffectAssetId;
+
+			const std::string duplicateCatalog =
+				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
+				validRow + "]}";
+			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX duplicatePreserved;
+			duplicatePreserved.iCatalogDirectCount = 88u;
+			duplicatePreserved.Entries.push_back({});
+			std::string duplicateStatus;
+			duplicateTopLevelPreserved =
+				writeSourceIndexFixture(sourceIndexFixturePath, duplicateCatalog) &&
+				!CEffectDirectAuthoredSourceIndex::Build(
+					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
+					playerSkillOwners, duplicatePreserved, duplicateStatus) &&
+				duplicatePreserved.iCatalogDirectCount == 88u &&
+				duplicatePreserved.Entries.size() == 1u &&
+				!duplicateStatus.empty();
+		}
+		std::error_code sourceIndexFixtureError;
+		std::filesystem::remove(
+			sourceIndexFixturePath, sourceIndexFixtureError);
+		runner.Require(sourceEntriesExact &&
+			directSourceIds.size() == sourceIndex.Entries.size() &&
+			malformedTopLevelPreserved && isolatedRowPreservedValidCommit &&
+			duplicateTopLevelPreserved,
+			"All Effects Production Source Index Has 101 Unique Physical PlayerSkills-Owned Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
+
 		const std::filesystem::path sourceCatalog = repositoryRoot /
 			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
 			L"EffectCatalog.runtime.json";
-		const std::filesystem::path stagedCatalog = moduleDirectory /
+		const std::filesystem::path fixtureRoot =
+			std::filesystem::temp_directory_path() /
+			(L"LostArkEffectIncrementalPrewarm-" +
+			 std::to_wstring(GetCurrentProcessId()));
+		const std::filesystem::path stagedCatalog = fixtureRoot /
 			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
 		const std::filesystem::path sourceVisualPrograms = repositoryRoot /
 			L"Data" / L"Effects" / L"VisualPrograms" /
@@ -16359,7 +16589,17 @@ namespace
 			sourceCatalog.parent_path() / L"Authored";
 		const std::filesystem::path stagedSealedAuthoredDocuments =
 			stagedCatalog.parent_path() / L"Authored";
+		const auto extendedWindowsPath = [](const std::filesystem::path& path)
+		{
+			const std::wstring absolute =
+				std::filesystem::absolute(path).lexically_normal().native();
+			return absolute.starts_with(L"\\\\?\\") ?
+				std::filesystem::path(absolute) :
+				std::filesystem::path(L"\\\\?\\" + absolute);
+		};
 		std::error_code error;
+		std::filesystem::remove_all(fixtureRoot, error);
+		error.clear();
 		std::filesystem::create_directories(stagedCatalog.parent_path(), error);
 		if (!error)
 		{
@@ -16373,15 +16613,62 @@ namespace
 		}
 		if (!error)
 		{
-			std::filesystem::create_directories(
-				stagedSealedAuthoredDocuments, error);
+			std::filesystem::remove_all(
+				extendedWindowsPath(stagedSealedAuthoredDocuments), error);
 		}
 		if (!error)
 		{
-			std::filesystem::copy(sourceSealedAuthoredDocuments,
-				stagedSealedAuthoredDocuments,
-				std::filesystem::copy_options::recursive |
-					std::filesystem::copy_options::overwrite_existing, error);
+			std::filesystem::create_directories(
+				extendedWindowsPath(stagedSealedAuthoredDocuments), error);
+		}
+		if (!error)
+		{
+			for (std::filesystem::recursive_directory_iterator Iterator(
+					sourceSealedAuthoredDocuments, error), End;
+				!error && Iterator != End; Iterator.increment(error))
+			{
+				const std::filesystem::directory_entry& Entry = *Iterator;
+				const std::filesystem::path Relative =
+					std::filesystem::relative(
+						Entry.path(), sourceSealedAuthoredDocuments, error);
+				if (error)
+					break;
+				const std::filesystem::path Destination = extendedWindowsPath(
+					stagedSealedAuthoredDocuments / Relative);
+				if (Entry.is_directory(error))
+				{
+					std::filesystem::create_directories(Destination, error);
+				}
+				else if (!error && Entry.is_regular_file(error))
+				{
+					std::filesystem::create_directories(
+						Destination.parent_path(), error);
+					if (!error)
+					{
+						const std::string checkedOutText = Read_Text(
+							extendedWindowsPath(Entry.path()));
+						std::string publishedBytes;
+						publishedBytes.reserve(checkedOutText.size());
+						for (size_t index = 0u; index < checkedOutText.size(); ++index)
+						{
+							if ('\r' == checkedOutText[index] &&
+								index + 1u < checkedOutText.size() &&
+								'\n' == checkedOutText[index + 1u])
+							{
+								continue;
+							}
+							publishedBytes.push_back(checkedOutText[index]);
+						}
+						std::ofstream Output(
+							Destination, std::ios::binary | std::ios::trunc);
+						Output.write(publishedBytes.data(),
+							static_cast<std::streamsize>(publishedBytes.size()));
+						Output.close();
+						if (!Output.good())
+							error = std::make_error_code(std::errc::io_error);
+					}
+				}
+			}
 		}
 		const std::filesystem::path resourceRoot =
 			resourceRootEnvironment.Was_Defined() &&
@@ -16389,11 +16676,67 @@ namespace
 			std::filesystem::path(
 				resourceRootEnvironment.Get_OriginalValue()) :
 			repositoryRoot / L"Client" / L"Bin" / L"Resources";
-		resourceRootEnvironment.Set(resourceRoot.c_str());
+		std::error_code resourceRootError;
+		const bool_t resourceRootReady =
+			std::filesystem::is_directory(resourceRoot, resourceRootError) &&
+			!resourceRootError;
+		const bool_t resourceRootSet =
+			resourceRootEnvironment.Set(resourceRoot.c_str());
+		const bool_t runtimeCatalogFixtureSet =
+			runtimeCatalogFixtureEnvironment.Set(stagedCatalog.c_str());
 
 		CEffectCatalog::Clear();
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
-		const bool_t catalogLoaded = !error && CEffectCatalog::Load(status);
+		const bool_t catalogLoaded = !error && resourceRootReady &&
+			resourceRootSet && runtimeCatalogFixtureSet &&
+			CEffectCatalog::Load(status);
+		if (!catalogLoaded)
+		{
+			std::cout << "[DETAIL] incremental catalog fixture error=" <<
+				error.message() << " status=" << status << '\n';
+		}
+		ANIMATION_EFFECT_CUE_DOCUMENT lanceCueDocument;
+		std::string lanceCueStatus;
+		const bool_t lanceCuesLoaded = catalogLoaded &&
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"LanceMaster", lanceCueDocument, lanceCueStatus);
+		if (!lanceCuesLoaded)
+			std::cout << "[DETAIL] Lance loading scanner: " <<
+				lanceCueStatus << '\n';
+		std::set<std::string, std::less<>> lanceCueIds;
+		size_t lanceManagedTokenCount = 0u;
+		size_t lanceNullTokenCount = 0u;
+		bool_t lanceSpawnAdmissionsValid = lanceCuesLoaded;
+		for (const ANIMATION_EFFECT_CUE& cue : lanceCueDocument.Cues)
+		{
+			lanceCueIds.insert(cue.strEffectAssetId);
+			if (nullptr == cue.pProductAdmissionToken)
+				++lanceNullTokenCount;
+			else
+				++lanceManagedTokenCount;
+			std::string admissionStatus;
+			lanceSpawnAdmissionsValid = lanceSpawnAdmissionsValid &&
+				CEffectCatalog::Admit_ProductSpawn(
+					cue.strEffectAssetId, cue.pProductAdmissionToken,
+					admissionStatus);
+		}
+		const bool_t lanceCueContractExact = lanceCuesLoaded &&
+			lanceCueDocument.Cues.size() == 41u &&
+			lanceCueIds.size() == 41u &&
+			lanceManagedTokenCount == 0u &&
+			lanceNullTokenCount == 41u &&
+			lanceSpawnAdmissionsValid;
+		if (!lanceCueContractExact)
+		{
+			std::cout << "[DETAIL] Lance cue contract loaded=" <<
+				lanceCuesLoaded << " cues=" << lanceCueDocument.Cues.size() <<
+				" unique=" << lanceCueIds.size() << " managed=" <<
+				lanceManagedTokenCount << " null=" << lanceNullTokenCount <<
+				" spawnAdmissions=" << lanceSpawnAdmissionsValid <<
+				" status=" << lanceCueStatus << '\n';
+		}
+		runner.Require(lanceCueContractExact,
+			"Loading Scanner Registers And Admits All 41 Unique Lance Product Cues Under The Current Null-Token Contract");
 		const std::vector<std::string> runtimeEffectIds =
 			CEffectCatalog::Get_EffectAssetIds();
 		constexpr std::string_view inactiveAuthoringOnlyId =
@@ -16403,15 +16746,22 @@ namespace
 		constexpr std::string_view secondId =
 			"effect.lancemaster.skill.34010.ba2.unified";
 		const bool_t firstWasLazy = catalogLoaded &&
+			nullptr == CEffectCatalog::Find_VisualProjection_Loaded(
+				std::string(firstId)) &&
 			nullptr == CEffectCatalog::Find_Loaded(std::string(firstId)) &&
 			nullptr == CEffectCatalog::Find_Loaded(std::string(firstId));
 		const auto firstDocument = catalogLoaded ?
 			CEffectCatalog::Find(std::string(firstId)) : nullptr;
+		if (catalogLoaded && nullptr == firstDocument)
+			std::cout << "[DETAIL] first direct document load: " <<
+				CEffectCatalog::Get_Status() << '\n';
 		const auto firstProjection = nullptr == firstDocument ? nullptr :
 			CEffectCatalog::Find_VisualProjection(std::string(firstId));
 		const bool_t cacheOnlyIdentity = firstWasLazy &&
 			CEffectCatalog::Find_Loaded(std::string(firstId)).get() ==
-				firstDocument.get();
+				firstDocument.get() &&
+			CEffectCatalog::Find_VisualProjection_Loaded(
+				std::string(firstId)).get() == firstProjection.get();
 		runner.Require(catalogLoaded && runtimeEffectIds.size() == 99u &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
@@ -16440,12 +16790,89 @@ namespace
 			 firstProjection->Get_DocumentShared().get() == firstDocument.get()) &&
 			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 				device, context, revision, firstTarget, status);
+		if (!firstPrepared)
+		{
+			std::cout << "[DETAIL] first incremental prepare device=" <<
+				deviceReady << " document=" << (nullptr != firstDocument) <<
+				" projection=" << (nullptr != firstProjection) <<
+				" status=" << status << '\n';
+		}
 		const auto firstPreparedIdentity = firstPrepared ?
 			CEffectDocumentRenderer::Find_Prepared(
 				revision, std::string(firstId), *firstDocument, firstProjection) :
 			nullptr;
 		const EFFECT_RENDER_PREWARM_PROBE afterFirst =
 			CEffectDocumentRenderer::Get_PrewarmProbe();
+
+		const std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			immutablePlaybackResources =
+				CEffectDocumentRenderer::Get_PlaybackResources(
+					firstPreparedIdentity);
+		CEffectPlayback immutablePlayback;
+		const bool_t immutablePlaybackPrepared = firstPrepared &&
+			nullptr != immutablePlaybackResources;
+		const bool_t immutablePlaybackAttached =
+			immutablePlaybackPrepared && (nullptr != firstProjection ?
+				immutablePlayback.Stage_PrevalidatedVisualProgramDocument(
+					firstProjection, immutablePlaybackResources, status) :
+				immutablePlayback.Stage_PrevalidatedDocument(
+					*firstDocument, immutablePlaybackResources, status));
+		CEffectDocumentRenderer immutableRenderer(device, context);
+		const bool_t immutableRendererInitialized = deviceReady &&
+			SUCCEEDED(immutableRenderer.Initialize());
+		const EFFECT_RENDER_PREWARM_PROBE beforeImmutableAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t immutableRendererAttached =
+			immutableRendererInitialized && nullptr != firstPreparedIdentity &&
+			(nullptr != firstProjection ?
+				immutableRenderer.Stage_PrevalidatedVisualProgramDocument(
+					firstProjection, firstPreparedIdentity, status) :
+				immutableRenderer.Stage_Prepared(
+					*firstDocument, firstPreparedIdentity, status));
+		const EFFECT_RENDER_PREWARM_PROBE afterImmutableAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		EFFECT_DOCUMENT_DESC equalValueCopy = nullptr != firstDocument ?
+			*firstDocument : EFFECT_DOCUMENT_DESC{};
+		const f32_t immutableDuration = immutablePlayback.Get_DurationSeconds();
+		const bool_t copiedPlaybackIdentityRejected =
+			!immutablePlayback.Stage_PrevalidatedDocument(
+				equalValueCopy, immutablePlaybackResources, status) &&
+			immutablePlayback.Get_DurationSeconds() == immutableDuration;
+		const EFFECT_RENDER_PREWARM_PROBE beforeCopiedAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t copiedRendererIdentityRejected =
+			!immutableRenderer.Stage_Prepared(
+				equalValueCopy, firstPreparedIdentity, status);
+		const EFFECT_RENDER_PREWARM_PROBE afterCopiedAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		runner.Require(immutablePlaybackAttached && immutableRendererAttached &&
+			copiedPlaybackIdentityRejected && copiedRendererIdentityRejected &&
+			afterImmutableAttach.iPreparedAttachCount ==
+				beforeImmutableAttach.iPreparedAttachCount + 1u &&
+			afterImmutableAttach.iSynchronousDocumentStageCount ==
+				beforeImmutableAttach.iSynchronousDocumentStageCount &&
+			afterImmutableAttach.iPreparedDocumentBuildCount ==
+				beforeImmutableAttach.iPreparedDocumentBuildCount &&
+			afterImmutableAttach.iModelDiskLoadCount ==
+				beforeImmutableAttach.iModelDiskLoadCount &&
+			afterImmutableAttach.iTextureDiskLoadCount ==
+				beforeImmutableAttach.iTextureDiskLoadCount &&
+			afterImmutableAttach.iVectorFieldDiskLoadCount ==
+				beforeImmutableAttach.iVectorFieldDiskLoadCount &&
+			afterCopiedAttach.iPreparedAttachCount ==
+				beforeCopiedAttach.iPreparedAttachCount &&
+			afterCopiedAttach.iPreparedDocumentBuildCount ==
+				beforeCopiedAttach.iPreparedDocumentBuildCount &&
+			afterCopiedAttach.iModelDiskLoadCount ==
+				beforeCopiedAttach.iModelDiskLoadCount &&
+			afterCopiedAttach.iTextureDiskLoadCount ==
+				beforeCopiedAttach.iTextureDiskLoadCount &&
+			afterCopiedAttach.iVectorFieldDiskLoadCount ==
+				beforeCopiedAttach.iVectorFieldDiskLoadCount &&
+			afterCopiedAttach.iSynchronousDocumentStageCount ==
+				beforeCopiedAttach.iSynchronousDocumentStageCount,
+			"Prepared Product Playback And Renderer Attach The Shared Immutable Document Without A Synchronous Stage And Reject An Equal-Value Foreign Identity");
+
 		const bool_t duplicatePrepared = firstPrepared &&
 			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 				device, context, revision, firstTarget, status);
@@ -16519,11 +16946,31 @@ namespace
 			"Incremental Renderer Preserves Prior Identity, Reuses Duplicate, Rolls Back Invalid Target, And Commits One New Document");
 
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		const EFFECT_RENDER_PREWARM_PROBE beforeStaleAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t stalePreparedIdentityRejected =
+			nullptr != firstDocument && !immutableRenderer.Stage_Prepared(
+				*firstDocument, firstPreparedIdentity, status);
+		const EFFECT_RENDER_PREWARM_PROBE afterStaleAttach =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		runner.Require(stalePreparedIdentityRejected &&
+			afterStaleAttach.iPreparedAttachCount ==
+				beforeStaleAttach.iPreparedAttachCount &&
+			afterStaleAttach.iPreparedDocumentBuildCount ==
+				beforeStaleAttach.iPreparedDocumentBuildCount &&
+			afterStaleAttach.iModelDiskLoadCount ==
+				beforeStaleAttach.iModelDiskLoadCount &&
+			afterStaleAttach.iTextureDiskLoadCount ==
+				beforeStaleAttach.iTextureDiskLoadCount &&
+			afterStaleAttach.iVectorFieldDiskLoadCount ==
+				beforeStaleAttach.iVectorFieldDiskLoadCount &&
+			afterStaleAttach.iSynchronousDocumentStageCount ==
+				beforeStaleAttach.iSynchronousDocumentStageCount,
+			"Prepared Product Renderer Rejects A Stale Handle After The Global Catalog Is Cleared Without Rebuilding Or Loading Resources");
 		CEffectCatalog::Clear();
 		error.clear();
-		std::filesystem::remove(stagedCatalog, error);
-		error.clear();
-		std::filesystem::remove(stagedVisualPrograms, error);
+		std::filesystem::remove_all(fixtureRoot, error);
+		runtimeCatalogFixtureEnvironment.Restore();
 		resourceRootEnvironment.Restore();
 	}
 
@@ -28274,7 +28721,8 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
-	if (Mode == "--effect-incremental-prewarm-fast")
+	if (Mode == "--effect-incremental-prewarm-fast" ||
+		Mode == "--effect-loading-prewarm-fast")
 	{
 		Test_EffectIncrementalProductPrewarm(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';

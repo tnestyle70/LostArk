@@ -74,6 +74,22 @@ namespace
 
     std::filesystem::path Find_RuntimeCatalog()
     {
+#if defined(LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS)
+		SetLastError(ERROR_SUCCESS);
+		const DWORD FixtureRequired = GetEnvironmentVariableW(
+			L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE", nullptr, 0u);
+		if (0u != FixtureRequired)
+		{
+			std::vector<wchar_t> FixtureBuffer(FixtureRequired);
+			const DWORD FixtureLength = GetEnvironmentVariableW(
+				L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE",
+				FixtureBuffer.data(), FixtureRequired);
+			if (0u == FixtureLength || FixtureLength >= FixtureRequired)
+				return std::filesystem::path(
+					L"__invalid_effect_runtime_catalog_fixture__");
+			return std::filesystem::path(FixtureBuffer.data());
+		}
+#endif
         const std::filesystem::path Module = Get_ModuleDirectory();
         const std::filesystem::path Adjacent =
             Module / L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
@@ -4914,6 +4930,14 @@ Client::CEffectCatalog::Find_VisualProjection(
 	{
 		(void)Find(strEffectAssetId);
 	}
+	const auto Iterator = g_VisualProjections.find(strEffectAssetId);
+	return g_VisualProjections.end() == Iterator ? nullptr : Iterator->second;
+}
+
+std::shared_ptr<const Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+Client::CEffectCatalog::Find_VisualProjection_Loaded(
+	const std::string& strEffectAssetId)
+{
 	const auto Iterator = g_VisualProjections.find(strEffectAssetId);
 	return g_VisualProjections.end() == Iterator ? nullptr : Iterator->second;
 }

@@ -51,6 +51,7 @@
     <ClInclude Include="..\Public\Effect_Playback.h" />
     <ClInclude Include="..\Public\Effect_LightPresentation.h" />
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
+    <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h" />
     <ClInclude Include="..\Public\Effect_Object.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
@@ -177,6 +178,7 @@
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
+    <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
@@ -401,6 +403,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navblockers" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
+    <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />

@@ -16,6 +16,7 @@ import math
 import os
 import struct
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any
 
 
@@ -159,12 +160,28 @@ def read_wmodel_animation_sections(data: bytes) -> list[dict[str, Any]]:
 
 def retime_wmodel(
     wmodel_path: Path,
-    psa_path: Path,
+    psa_paths: Sequence[Path],
     receipt_path: Path,
     runtime_prefix: str = "pc_sp_m_00_sk_",
     source_logical_path: str | None = None,
 ) -> dict[str, Any]:
-    source = read_psa_animation_infos(psa_path)
+    if isinstance(psa_paths, Path):
+        psa_paths = [psa_paths]
+    psa_paths = list(psa_paths)
+    if not psa_paths:
+        raise ValueError("At least one PSA is required")
+    # An AnimSet can be assembled from several PSA files. Their sequences are
+    # concatenated and renumbered so one clip keeps one stable source index.
+    source: list[dict[str, Any]] = []
+    for path in psa_paths:
+        for entry in read_psa_animation_infos(path):
+            entry = dict(entry)
+            entry["index"] = len(source)
+            entry["sourcePsa"] = str(path)
+            source.append(entry)
+    names = [str(entry["name"]) for entry in source]
+    if len(set(names)) != len(names):
+        raise ValueError("PSA sequence names collide across the supplied PSA files")
     before = wmodel_path.read_bytes()
     runtime = read_wmodel_animation_sections(before)
     if len(source) != len(runtime):
@@ -205,6 +222,7 @@ def retime_wmodel(
                 "index": int(psa["index"]),
                 "runtimeIndex": int(wmodel["index"]),
                 "sourceClip": str(psa["name"]),
+                "sourcePsa": str(psa["sourcePsa"]),
                 "runtimeClip": str(wmodel["name"]),
                 "durationTicks": float(wmodel["durationTicks"]),
                 "sourceAnimRate": float(psa["animRate"]),
@@ -229,8 +247,15 @@ def retime_wmodel(
         "schema": "lostark.wmodel-animation-retime-receipt",
         "formatVersion": 1,
         "sourceContract": "PSA_ANIMINFO_ANIMRATE",
-        "sourcePsa": source_logical_path or str(psa_path),
-        "sourcePsaSha256": hashlib.sha256(psa_path.read_bytes()).hexdigest(),
+        "sourcePsa": source_logical_path or str(psa_paths[0]),
+        "sourcePsaSha256": hashlib.sha256(psa_paths[0].read_bytes()).hexdigest(),
+        "sourcePsaFiles": [
+            {
+                "path": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for path in psa_paths
+        ],
         "runtimeWModel": str(wmodel_path),
         "beforeSha256": sha256_bytes(before),
         "afterSha256": sha256_bytes(after),
@@ -357,7 +382,13 @@ def validate_retime_receipt(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wmodel", required=True, type=Path)
-    parser.add_argument("--psa", required=True, type=Path)
+    parser.add_argument(
+        "--psa",
+        required=True,
+        type=Path,
+        action="append",
+        help="Source PSA; repeat for an AnimSet assembled from several PSA files",
+    )
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--runtime-prefix", default="pc_sp_m_00_sk_")
     parser.add_argument("--source-logical-path")

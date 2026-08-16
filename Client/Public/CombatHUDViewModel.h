@@ -101,6 +101,12 @@ namespace Client
 		}
 		void Reset_RuntimeState();
 
+		/* Debug-only: lets the HUD Layout Tool preview the boss bar with sample numbers without
+		requiring a live Valtan encounter (real Server snapshot). Enabling stamps fixed sample data
+		into m_Boss every call; disabling drops back to isValid=false so real Apply_Boss() snapshots
+		take over normally the next time one arrives. Never touches Server truth. */
+		void Debug_Set_Boss_Preview(bool enable);
+
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
 		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }

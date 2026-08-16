@@ -5,6 +5,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_OccurrenceTuning.h"
+#include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 
 #include <cstdint>
@@ -141,6 +142,13 @@ public:
     static bool_t Queue_ProductCues(
         const std::vector<ANIMATION_EFFECT_CUE>& Cues,
         std::string& strOutStatus);
+	static bool_t Queue_ProductCues_Priority(
+		const std::vector<ANIMATION_EFFECT_CUE>& Cues,
+		std::vector<std::string>& OutEffectAssetIds,
+		std::string& strOutStatus);
+	static EFFECT_PRODUCT_PREWARM_TARGET_PROBE
+		Get_ProductCuePreparationProbe(
+			const std::vector<std::string>& EffectAssetIds);
 	/* Called once from the main thread.  It consumes at most one queued
 	   document and performs no work on the registration frame. */
 	static void Advance_ProductCuePreparation(

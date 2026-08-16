@@ -419,8 +419,6 @@ private:
 		UNIFIED_EFFECT_CACHE& Cache,
 		const std::filesystem::path& Path,
 		const std::string& strExpectedEffectAssetId);
-	bool_t Refresh_UnifiedCandidateBindings(
-		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
 	bool_t Refresh_DirectAuthoredEditableIndex(
 		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
 	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
@@ -441,6 +439,8 @@ private:
 		const std::string& strEffectAssetId,
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
+	bool_t Try_PlaySavedUnifiedEffect(
+		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
 	bool_t Try_PlayUnifiedModelCues(
 		const std::string& strEffectAssetId);
 	bool_t Try_CreateArtistFUnifiedDraft();
@@ -637,7 +637,6 @@ private:
 	optional<EFFECT_SOURCE_AUTHORING_OVERLAY_DOCUMENT>
 		m_SourceAuthoringOverlayDocument;
 	optional<EFFECT_OCCURRENCE_LOCAL_TRANSFORM> m_OccurrenceTransformDraft;
-	UNIFIED_EFFECT_CACHE m_ArtistFUnifiedCache;
 	std::vector<UNIFIED_EFFECT_CANDIDATE_BINDING>
 		m_UnifiedCandidateBindings;
 	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE>
@@ -801,9 +800,6 @@ private:
 	size_t m_iSynchronizedAnimationClipIndex = 0u;
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
-	double m_fNextUnifiedCachePollSeconds = 0.0;
-	double m_fNextUnifiedCandidateCachePollSeconds = 0.0;
-
 	string m_strDocumentStatus;
 	string m_strDirectAuthoredEditableStatus;
 	string m_strActiveDocumentDrawableError;
