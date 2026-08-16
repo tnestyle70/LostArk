@@ -138,11 +138,14 @@ public:
 	static bool_t Build_SourceBoneAnchorWorld(
 		const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 		float4x4_t& OutWorld);
-    static bool_t Prepare_ProductCues(
-        ComPtr<ID3D11Device> pDevice,
-        ComPtr<ID3D11DeviceContext> pContext,
+    static bool_t Queue_ProductCues(
         const std::vector<ANIMATION_EFFECT_CUE>& Cues,
         std::string& strOutStatus);
+	/* Called once from the main thread.  It consumes at most one queued
+	   document and performs no work on the registration frame. */
+	static void Advance_ProductCuePreparation(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
     static bool_t Reprepare_ProductTargets(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,

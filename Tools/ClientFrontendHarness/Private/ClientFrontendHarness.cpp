@@ -23,6 +23,7 @@
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
+#include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
 #include "Effect_Tool.h"
@@ -16281,6 +16282,251 @@ namespace
 		std::filesystem::remove(SourcePath, Error);
 	}
 
+	void Test_EffectIncrementalProductPrewarm(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		std::string status;
+		CEffectProductPrewarmQueue queue;
+		queue.Reset_ForCatalogRevision(41u);
+		const bool_t queueRegistered = queue.Enqueue(
+			{ "effect.a", "effect.a", "effect.bad", "effect.c" }, status);
+		std::string queuedId;
+		const bool_t firstFrameYielded =
+			queue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED &&
+			queuedId.empty();
+		const bool_t firstReady = queue.Begin_Frame(queuedId) ==
+			EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "effect.a" &&
+			queue.Complete_Front(queuedId, true, status);
+		const bool_t failedReady = queue.Begin_Frame(queuedId) ==
+			EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "effect.bad" &&
+			queue.Complete_Front(queuedId, false, status);
+		const bool_t nextReady = queue.Begin_Frame(queuedId) ==
+			EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "effect.c" &&
+			queue.Complete_Front(queuedId, true, status);
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE completedProbe =
+			queue.Get_Probe();
+		const bool_t duplicateCoalesced = queue.Enqueue(
+			{ "effect.a", "effect.bad", "effect.c" }, status) &&
+			queue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::IDLE;
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE beforeInvalid =
+			queue.Get_Probe();
+		const bool_t emptyRejected =
+			!queue.Enqueue({ "" }, status) &&
+			queue.Get_Probe().iTargetCount == beforeInvalid.iTargetCount &&
+			queue.Get_Probe().iPendingCount == beforeInvalid.iPendingCount;
+		queue.Reset_ForCatalogRevision(42u);
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE resetProbe = queue.Get_Probe();
+		runner.Require(queueRegistered && firstFrameYielded && firstReady &&
+			failedReady && nextReady && duplicateCoalesced && emptyRejected &&
+			completedProbe.iCatalogRevision == 41u &&
+			completedProbe.iTargetCount == 3u &&
+			completedProbe.iPendingCount == 0u &&
+			completedProbe.iPreparedCount == 2u &&
+			completedProbe.iFailedCount == 1u &&
+			resetProbe.iCatalogRevision == 42u &&
+			resetProbe.iTargetCount == 0u &&
+			resetProbe.iPreparedCount == 0u &&
+			resetProbe.iFailedCount == 0u,
+			"Product Prewarm Queue Yields Registration Frame, Coalesces IDs, Commits One Front, Isolates Failure, And Resets By Revision");
+
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		wchar_t moduleBuffer[32768]{};
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr, moduleBuffer, static_cast<DWORD>(std::size(moduleBuffer)));
+		const std::filesystem::path moduleDirectory =
+			0u == moduleLength || moduleLength >= std::size(moduleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(moduleBuffer).parent_path();
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path sourceCatalog = repositoryRoot /
+			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
+			L"EffectCatalog.runtime.json";
+		const std::filesystem::path stagedCatalog = moduleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		const std::filesystem::path sourceVisualPrograms = repositoryRoot /
+			L"Data" / L"Effects" / L"VisualPrograms" /
+			L"effect-visual-program-runtime.v1.json";
+		const std::filesystem::path stagedVisualPrograms =
+			stagedCatalog.parent_path() / L"EffectVisualPrograms.runtime.json";
+		const std::filesystem::path sourceSealedAuthoredDocuments =
+			sourceCatalog.parent_path() / L"Authored";
+		const std::filesystem::path stagedSealedAuthoredDocuments =
+			stagedCatalog.parent_path() / L"Authored";
+		std::error_code error;
+		std::filesystem::create_directories(stagedCatalog.parent_path(), error);
+		if (!error)
+		{
+			std::filesystem::copy_file(sourceCatalog, stagedCatalog,
+				std::filesystem::copy_options::overwrite_existing, error);
+		}
+		if (!error)
+		{
+			std::filesystem::copy_file(sourceVisualPrograms, stagedVisualPrograms,
+				std::filesystem::copy_options::overwrite_existing, error);
+		}
+		if (!error)
+		{
+			std::filesystem::create_directories(
+				stagedSealedAuthoredDocuments, error);
+		}
+		if (!error)
+		{
+			std::filesystem::copy(sourceSealedAuthoredDocuments,
+				stagedSealedAuthoredDocuments,
+				std::filesystem::copy_options::recursive |
+					std::filesystem::copy_options::overwrite_existing, error);
+		}
+		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(
+				resourceRootEnvironment.Get_OriginalValue()) :
+			repositoryRoot / L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
+
+		CEffectCatalog::Clear();
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		const bool_t catalogLoaded = !error && CEffectCatalog::Load(status);
+		const std::vector<std::string> runtimeEffectIds =
+			CEffectCatalog::Get_EffectAssetIds();
+		constexpr std::string_view inactiveAuthoringOnlyId =
+			"effect.artist.skill.31210.ba4.unified";
+		constexpr std::string_view firstId =
+			"effect.lancemaster.skill.34010.ba1.unified";
+		constexpr std::string_view secondId =
+			"effect.lancemaster.skill.34010.ba2.unified";
+		const bool_t firstWasLazy = catalogLoaded &&
+			nullptr == CEffectCatalog::Find_Loaded(std::string(firstId)) &&
+			nullptr == CEffectCatalog::Find_Loaded(std::string(firstId));
+		const auto firstDocument = catalogLoaded ?
+			CEffectCatalog::Find(std::string(firstId)) : nullptr;
+		const auto firstProjection = nullptr == firstDocument ? nullptr :
+			CEffectCatalog::Find_VisualProjection(std::string(firstId));
+		const bool_t cacheOnlyIdentity = firstWasLazy &&
+			CEffectCatalog::Find_Loaded(std::string(firstId)).get() ==
+				firstDocument.get();
+		runner.Require(catalogLoaded && runtimeEffectIds.size() == 99u &&
+			CEffectCatalog::Contains(std::string(firstId)) &&
+			CEffectCatalog::Contains(std::string(secondId)) &&
+			!CEffectCatalog::Contains(std::string(inactiveAuthoringOnlyId)) &&
+			cacheOnlyIdentity,
+			"Published Animevent Product Set Has 99 Runtime Members, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
+
+		SCOPED_WORKING_DIRECTORY workingDirectory;
+		const bool_t workingDirectoryReady = workingDirectory.Initialize(
+			Resolve_ClientWorkingDirectory(), status);
+		ComPtr<ID3D11Device> device;
+		ComPtr<ID3D11DeviceContext> context;
+		D3D_FEATURE_LEVEL featureLevel{};
+		const bool_t deviceReady = workingDirectoryReady &&
+			SUCCEEDED(D3D11CreateDevice(
+				nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u, nullptr, 0u,
+				D3D11_SDK_VERSION, &device, &featureLevel, &context)) &&
+			nullptr != device && nullptr != context;
+		const uint64_t revision = CEffectCatalog::Get_RuntimeRevision();
+		const EFFECT_RENDER_PREWARM_TARGET firstTarget{
+			std::string(firstId), firstDocument, firstProjection };
+		const EFFECT_RENDER_PREWARM_PROBE beforeFirst =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t firstPrepared = deviceReady && nullptr != firstDocument &&
+			(nullptr == firstProjection ||
+			 firstProjection->Get_DocumentShared().get() == firstDocument.get()) &&
+			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				device, context, revision, firstTarget, status);
+		const auto firstPreparedIdentity = firstPrepared ?
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(firstId), *firstDocument, firstProjection) :
+			nullptr;
+		const EFFECT_RENDER_PREWARM_PROBE afterFirst =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t duplicatePrepared = firstPrepared &&
+			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				device, context, revision, firstTarget, status);
+		const EFFECT_RENDER_PREWARM_PROBE afterDuplicate =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+
+		auto invalidDocument = nullptr == firstDocument ? nullptr :
+			std::make_shared<EFFECT_DOCUMENT_DESC>(*firstDocument);
+		if (nullptr != invalidDocument)
+		{
+			invalidDocument->strEffectAssetId = "effect.harness.invalid";
+			invalidDocument->Elements.clear();
+			invalidDocument->ModelCues.clear();
+		}
+		const bool_t invalidRejected = nullptr != invalidDocument &&
+			!CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				device, context, revision,
+				{ invalidDocument->strEffectAssetId, invalidDocument, nullptr },
+				status);
+		const EFFECT_RENDER_PREWARM_PROBE afterInvalid =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const auto firstAfterInvalid = nullptr == firstDocument ? nullptr :
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(firstId), *firstDocument, firstProjection);
+
+		const bool_t secondWasLazy =
+			nullptr == CEffectCatalog::Find_Loaded(std::string(secondId));
+		const auto secondDocument = CEffectCatalog::Find(std::string(secondId));
+		const auto secondProjection = nullptr == secondDocument ? nullptr :
+			CEffectCatalog::Find_VisualProjection(std::string(secondId));
+		const bool_t secondPrepared = nullptr != secondDocument &&
+			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				device, context, revision,
+				{ std::string(secondId), secondDocument, secondProjection },
+				status);
+		const auto firstAfterSecond = nullptr == firstDocument ? nullptr :
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(firstId), *firstDocument, firstProjection);
+		const auto secondPreparedIdentity = nullptr == secondDocument ? nullptr :
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(secondId), *secondDocument, secondProjection);
+		const EFFECT_RENDER_PREWARM_PROBE afterSecond =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t zeroRevisionRejected =
+			!CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				device, context, 0u, firstTarget, status);
+		const EFFECT_RENDER_PREWARM_PROBE afterZeroRevision =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		runner.Require(firstPrepared && nullptr != firstPreparedIdentity &&
+			duplicatePrepared && invalidRejected && secondWasLazy &&
+			secondPrepared && nullptr != secondPreparedIdentity &&
+			firstAfterInvalid.get() == firstPreparedIdentity.get() &&
+			firstAfterSecond.get() == firstPreparedIdentity.get() &&
+			afterFirst.iCatalogCommitCount ==
+				beforeFirst.iCatalogCommitCount + 1u &&
+			afterFirst.iPreparedDocumentCount == 1u &&
+			afterDuplicate.iCatalogCommitCount ==
+				afterFirst.iCatalogCommitCount &&
+			afterDuplicate.iPreparedDocumentBuildCount ==
+				afterFirst.iPreparedDocumentBuildCount &&
+			afterInvalid.iCatalogCommitCount ==
+				afterDuplicate.iCatalogCommitCount &&
+			afterInvalid.iPreparedDocumentCount == 1u &&
+			afterSecond.iCatalogCommitCount ==
+				afterInvalid.iCatalogCommitCount + 1u &&
+			afterSecond.iPreparedDocumentCount == 2u &&
+			zeroRevisionRejected &&
+			afterZeroRevision.iCatalogCommitCount ==
+				afterSecond.iCatalogCommitCount &&
+			afterZeroRevision.iPreparedDocumentCount == 2u,
+			"Incremental Renderer Preserves Prior Identity, Reuses Duplicate, Rolls Back Invalid Target, And Commits One New Document");
+
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		CEffectCatalog::Clear();
+		error.clear();
+		std::filesystem::remove(stagedCatalog, error);
+		error.clear();
+		std::filesystem::remove(stagedVisualPrograms, error);
+		resourceRootEnvironment.Restore();
+	}
+
 	void Test_EffectAssemblyRuntimeCatalog(
 		TEST_RUNNER& runner,
 		const bool_t bCheckFailedReloadRollback = true,
@@ -28025,6 +28271,12 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-g3-authoring-fast")
 	{
 		Test_AuthoringOverrideOwnership(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-incremental-prewarm-fast")
+	{
+		Test_EffectIncrementalProductPrewarm(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

@@ -348,6 +348,9 @@
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Animation_Tool.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -884,6 +887,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_PresentationService.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
   </ItemGroup>

@@ -479,6 +479,10 @@ public:
         std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
         const std::string& strEffectAssetId);
+	/* Cache-only lookup used by Product spawn.  It never parses a sealed
+	   direct-authored document or mutates catalog status. */
+	static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find_Loaded(
+		const std::string& strEffectAssetId);
     static std::shared_ptr<const EFFECT_ASSEMBLY_DESC> Find_Assembly(
         const std::string& strEffectAssetId);
     static std::shared_ptr<const EFFECT_COMPONENT_DESC> Find_Component(

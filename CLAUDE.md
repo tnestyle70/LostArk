@@ -293,10 +293,17 @@ CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
 
 연속 clip을 가진 스킬의 Product Effect는 stage 첫 clip 하나에 합치지 않는다. 각 시각 clip의
 `effectref=asset` cue가 clip-local Authored 문서를 가리키며 Character가 이미 적용하는 `playMs`,
-`playRate`, loop와 late snapshot catch-up을 그대로 사용한다. Character gameplay 준비는 승인된
-animevent cue target 집합을 catalog revision 단위로 transactional prewarm한다. 전투 중 Product
-Spawn은 준비된 bundle만 사용하고 shader compile, model/DDS/vector-field 로드를 수행하지 않으며,
-prepared miss는 동기 fallback 없이 fail-closed한다.
+`playRate`, loop와 late snapshot catch-up을 그대로 사용한다. Product target 정본은 publisher가 네
+class animevent에서 선택해 runtime catalog에 실은 `effectref=asset` ID membership이다. authoring-only
+문서는 Effect Tool에서 편집할 수 있지만 runtime catalog와 Character 준비 queue에는 들어오지 않는다.
+
+Character 초기화는 cue/anchor/HIT metadata를 검증·commit하고 target ID만 process-global queue에
+등록한다. 등록 frame은 resource 작업을 양보하고, 이후 `CMainApp` main-thread frame seam이 target을
+최대 하나씩 JSON parse/drawable validation/budget/GPU prepared-cache commit한다. 실패 target만 같은
+catalog revision에서 fail-closed하며 이미 준비한 target과 다음 target은 보존한다. 전투 중 Product
+Spawn은 cache-only catalog lookup과 준비된 bundle만 사용하고 shader compile, model/DDS/vector-field
+로드를 수행하지 않는다. prepared miss는 동기 fallback 없이 거부한다. Effect Tool의 명시적
+Publish/Reload는 기존 전체 target batch transaction과 rollback을 계속 사용한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 

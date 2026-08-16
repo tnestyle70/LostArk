@@ -3,6 +3,7 @@
 #include "Character.h"
 #include "Effect_Catalog.h"
 #include "Effect_Object.h"
+#include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
@@ -193,9 +194,9 @@ namespace
 		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
 	};
 
-    std::vector<ACTIVE_EFFECT> g_ActiveEffects;
+	std::vector<ACTIVE_EFFECT> g_ActiveEffects;
 	std::vector<PENDING_EFFECT_SPAWN> g_PendingEffectSpawns;
-	std::set<std::string, std::less<>> g_ProductEffectTargets;
+	Client::CEffectProductPrewarmQueue g_ProductPrewarmQueue;
 	std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
 		g_ProductEffectBudgetCosts;
 	uint64_t g_iSceneBudgetRejectedSpawnCount = 0u;
@@ -1516,21 +1517,28 @@ Client::CEffectPresentationService::Get_SceneBudgetProbe()
 	return Probe;
 }
 
-bool_t Client::CEffectPresentationService::Prepare_ProductCues(
-    ComPtr<ID3D11Device> pDevice,
-    ComPtr<ID3D11DeviceContext> pContext,
+bool_t Client::CEffectPresentationService::Queue_ProductCues(
     const std::vector<ANIMATION_EFFECT_CUE>& Cues,
     std::string& strOutStatus)
 {
-    std::set<std::string, std::less<>> StagedTargets =
-        g_ProductEffectTargets;
+	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	if (0u == iCatalogRevision)
+	{
+		strOutStatus =
+			"Animation Effect cue registration has no runtime catalog revision.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::vector<std::string> StagedTargets;
+	StagedTargets.reserve(Cues.size());
     for (const ANIMATION_EFFECT_CUE& Cue : Cues)
     {
         if (Cue.strEffectAssetId.empty() ||
             !CEffectCatalog::Contains(Cue.strEffectAssetId))
-        {
+		{
 			strOutStatus =
-				"Animation Effect cue target is not admitted by the catalog.";
+				"Animation Effect cue target is not admitted by the catalog: " +
+				Cue.strEffectAssetId;
             g_strStatus = strOutStatus;
             return false;
         }
@@ -1540,25 +1548,133 @@ bool_t Client::CEffectPresentationService::Prepare_ProductCues(
 			g_strStatus = strOutStatus;
 			return false;
 		}
-        StagedTargets.insert(Cue.strEffectAssetId);
+		StagedTargets.push_back(Cue.strEffectAssetId);
     }
-    if (StagedTargets == g_ProductEffectTargets)
-    {
-        strOutStatus = "Animation Effect cue targets are already prepared.";
-        g_strStatus = strOutStatus;
-        return true;
-    }
-    if (!Prepare_TargetSet(
-        std::move(pDevice), std::move(pContext), StagedTargets, strOutStatus))
-    {
-        g_strStatus = "Animation Effect prewarm failed; previous cache preserved: " +
-            strOutStatus;
-        strOutStatus = g_strStatus;
-        return false;
-    }
-    g_ProductEffectTargets = std::move(StagedTargets);
-    g_strStatus = strOutStatus;
-    return true;
+	if (g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision)
+	{
+		const std::vector<std::string> PreviousTargets(
+			g_ProductPrewarmQueue.Get_Targets().begin(),
+			g_ProductPrewarmQueue.Get_Targets().end());
+		for (const std::string& EffectId : PreviousTargets)
+		{
+			if (CEffectCatalog::Contains(EffectId))
+				StagedTargets.push_back(EffectId);
+		}
+		g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
+		g_ProductEffectBudgetCosts.clear();
+	}
+	if (!g_ProductPrewarmQueue.Enqueue(StagedTargets, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+void Client::CEffectPresentationService::Advance_ProductCuePreparation(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision)
+	{
+		g_strStatus =
+			"Product Effect incremental prewarm has invalid frame arguments.";
+		return;
+	}
+	if (g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision)
+	{
+		const std::vector<std::string> PreviousTargets(
+			g_ProductPrewarmQueue.Get_Targets().begin(),
+			g_ProductPrewarmQueue.Get_Targets().end());
+		std::vector<std::string> CurrentTargets;
+		CurrentTargets.reserve(PreviousTargets.size());
+		for (const std::string& EffectId : PreviousTargets)
+		{
+			if (CEffectCatalog::Contains(EffectId))
+				CurrentTargets.push_back(EffectId);
+		}
+		g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
+		g_ProductEffectBudgetCosts.clear();
+		std::string QueueStatus;
+		if (!g_ProductPrewarmQueue.Enqueue(CurrentTargets, QueueStatus))
+		{
+			g_strStatus = QueueStatus;
+			return;
+		}
+	}
+
+	std::string EffectId;
+	const EFFECT_PRODUCT_PREWARM_STEP_RESULT Step =
+		g_ProductPrewarmQueue.Begin_Frame(EffectId);
+	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::IDLE == Step ||
+		EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED == Step)
+	{
+		return;
+	}
+	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY != Step || EffectId.empty())
+	{
+		g_strStatus = "Product Effect incremental prewarm queue is invalid.";
+		return;
+	}
+
+	std::string PrepareStatus;
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> Document =
+		CEffectCatalog::Find(EffectId);
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		Projection = nullptr == Document ? nullptr :
+			CEffectCatalog::Find_VisualProjection(EffectId);
+	EFFECT_SCENE_BUDGET_COST BudgetCost;
+	bool_t bPrepared = nullptr != Document;
+	if (nullptr == Document)
+	{
+		PrepareStatus =
+			"Product Effect incremental document load failed for " + EffectId +
+			": " + CEffectCatalog::Get_Status();
+	}
+	else if (nullptr != Projection &&
+		Projection->Get_DocumentShared().get() != Document.get())
+	{
+		PrepareStatus =
+			"Product Effect incremental document/projection identity diverged: " +
+			EffectId;
+		bPrepared = false;
+	}
+	if (bPrepared && !Estimate_DocumentBudget(
+			*Document, BudgetCost, PrepareStatus))
+	{
+		PrepareStatus = "Product Effect incremental budget admission failed for " +
+			EffectId + ": " + PrepareStatus;
+		bPrepared = false;
+	}
+	if (bPrepared)
+	{
+		bPrepared = CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+			std::move(pDevice), std::move(pContext), iCatalogRevision,
+			{ EffectId, Document, Projection }, PrepareStatus);
+	}
+
+	std::string CompletionStatus;
+	if (!g_ProductPrewarmQueue.Complete_Front(
+			EffectId, bPrepared, CompletionStatus))
+	{
+		g_strStatus = CompletionStatus;
+		OutputDebugStringA(("[Client][EffectPresentation] " +
+			g_strStatus + "\n").c_str());
+		return;
+	}
+	if (bPrepared)
+	{
+		g_ProductEffectBudgetCosts[EffectId] = BudgetCost;
+		g_strStatus = PrepareStatus;
+		return;
+	}
+	g_strStatus =
+		"Product Effect incremental prewarm failed closed for " + EffectId +
+		": " + PrepareStatus;
+	OutputDebugStringA(("[Client][EffectPresentation] " +
+		g_strStatus + "\n").c_str());
 }
 
 bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
@@ -1567,18 +1683,33 @@ bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
     const std::vector<std::string>& AdditionalEffectAssetIds,
     std::string& strOutStatus)
 {
-    std::set<std::string, std::less<>> StagedTargets =
-        g_ProductEffectTargets;
+	std::set<std::string, std::less<>> StagedTargets;
+	for (const std::string& EffectId : g_ProductPrewarmQueue.Get_Targets())
+	{
+		if (CEffectCatalog::Contains(EffectId))
+			StagedTargets.insert(EffectId);
+	}
     for (const std::string& EffectId : AdditionalEffectAssetIds)
     {
-        if (EffectId.empty())
-        {
-            strOutStatus = "Additional Effect prewarm target is empty.";
+		if (EffectId.empty() || !CEffectCatalog::Contains(EffectId))
+		{
+			strOutStatus =
+				"Additional Effect prewarm target is absent from the runtime catalog: " +
+				EffectId;
             g_strStatus = strOutStatus;
             return false;
         }
         StagedTargets.insert(EffectId);
     }
+	CEffectProductPrewarmQueue StagedQueue = g_ProductPrewarmQueue;
+	StagedQueue.Reset_ForCatalogRevision(CEffectCatalog::Get_RuntimeRevision());
+	std::string QueueStatus;
+	if (!StagedQueue.Commit_AllPrepared(StagedTargets, QueueStatus))
+	{
+		strOutStatus = QueueStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
     if (!Prepare_TargetSet(
         std::move(pDevice), std::move(pContext), StagedTargets, strOutStatus))
     {
@@ -1587,7 +1718,7 @@ bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
         strOutStatus = g_strStatus;
         return false;
     }
-    g_ProductEffectTargets = std::move(StagedTargets);
+	g_ProductPrewarmQueue = std::move(StagedQueue);
     g_strStatus = strOutStatus;
     return true;
 }
@@ -2322,9 +2453,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 		return false;
 	}
 	const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Desc);
-	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
-		CEffectCatalog::Find(Desc.strEffectAssetId);
-	const bool_t bDescriptorValid = Owner.Is_Valid() && nullptr != pDocument &&
+	const bool_t bDescriptorValid = Owner.Is_Valid() &&
 		!Desc.strAnchorSlotId.empty() && !Desc.strOccurrenceId.empty() &&
 		std::isfinite(Desc.fPlaybackRate) && Desc.fPlaybackRate > 0.f &&
 		Desc.fPlaybackRate <= 16.f &&
@@ -2337,6 +2466,22 @@ bool_t Client::CEffectPresentationService::Spawn(
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (!g_ProductPrewarmQueue.Is_Prepared(Desc.strEffectAssetId))
+	{
+		strOutStatus =
+			"Effect spawn rejected because its Product target is not prepared.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
+		CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
+	if (nullptr == pDocument)
+	{
+		strOutStatus =
+			"Effect spawn rejected because its prepared catalog document is absent.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
@@ -2441,9 +2586,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		return false;
 	}
 	const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Desc);
-    const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
-        CEffectCatalog::Find(Desc.strEffectAssetId);
-	if (!Owner.Is_Valid() || nullptr == pDocument ||
+	if (!Owner.Is_Valid() ||
         Desc.strAnchorSlotId.empty() ||
 		Desc.strOccurrenceId.empty() ||
 		!std::isfinite(Desc.fPlaybackRate) ||
@@ -2459,6 +2602,22 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         g_strStatus = strOutStatus;
         return false;
     }
+	if (!g_ProductPrewarmQueue.Is_Prepared(Desc.strEffectAssetId))
+	{
+		strOutStatus =
+			"Effect spawn rejected because its Product target is not prepared.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
+		CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
+	if (nullptr == pDocument)
+	{
+		strOutStatus =
+			"Effect spawn rejected because its prepared catalog document is absent.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
     const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
 		pPrepared = Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
     if (nullptr == pPrepared)
@@ -2796,7 +2955,7 @@ void Client::CEffectPresentationService::Clear_All()
 void Client::CEffectPresentationService::Release_PreparedResources()
 {
     Clear_All();
-	g_ProductEffectTargets.clear();
+	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();
 	g_iSceneBudgetRejectedSpawnCount = 0u;
 	g_ReconstructedArtist31470 = {};

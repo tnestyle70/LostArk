@@ -188,6 +188,7 @@ class CEffectDocumentRenderer final
 {
 public:
 	struct PREPARED_DOCUMENT;
+	struct PRODUCT_PREWARM_SESSION;
 
 private:
 	struct ELEMENT_RESOURCE final
@@ -292,6 +293,14 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		uint64_t iCatalogRevision,
 		const std::vector<EFFECT_RENDER_PREWARM_TARGET>& Targets,
+		std::string& strOutError);
+	/* Main-thread-only Product step.  A successful call merges exactly one
+	   target while preserving the other targets and the shared asset session. */
+	static bool_t Prepare_VisualProgramTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint64_t iCatalogRevision,
+		const EFFECT_RENDER_PREWARM_TARGET& Target,
 		std::string& strOutError);
 	static std::shared_ptr<const PREPARED_DOCUMENT> Find_Prepared(
 		uint64_t iCatalogRevision,

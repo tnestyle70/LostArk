@@ -58,6 +58,7 @@
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
+    <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
@@ -183,6 +184,7 @@
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
+    <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp" />

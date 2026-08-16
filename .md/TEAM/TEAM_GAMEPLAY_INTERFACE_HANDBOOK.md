@@ -226,15 +226,18 @@ Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만
 
 제품 Effect 선택 정본은 `PlayerSkills.inputSlot -> skillId -> skillbindings clip`에서
 `clip-local animevent effectref=asset -> Effect catalog/prewarm`으로 이어지는 경로다. `PlayerSkills.effectId`를 복원 결과로 바꾸거나
-다른 class/skill 문서를 fallback으로 복사하지 않는다. `Data/Effects/ProductCueApprovals.json`은 사용자가
-명시적으로 승인한 exact cue tuple, authored SHA, provenance와 rollback Effect ID만 소유하고 publisher가
-`EffectProductCueAdmissions.runtime.json` receipt를 catalog와 같은 transaction으로 만든다.
+다른 class/skill 문서를 fallback으로 복사하지 않는다. 현재 Product target 정본은 publisher가 네 class
+animevent의 `effectref=asset` 집합으로 선택해 runtime catalog에 commit한 ID membership이다.
+`Data/Effects/ProductCueApprovals.json`과 `EffectProductCueAdmissions.runtime.json`은 현재 publisher가
+소비하지 않는 rollback evidence이며, null admission token을 미완성 판정이나 준비 제외 조건으로 쓰지
+않는다. authoring-only 문서는 Effect Tool에서 계속 편집할 수 있지만 runtime membership이 없으므로
+Character Select 준비 대상이 아니다.
 
-`AUTHORING_APPROXIMATE`는 자동 Product 대상도, Hard와 같은 전역 거부 대상도 아니다. exact cue 승인과
-pinned authored SHA가 일치한 경우에만 기존 renderer/runtime에서 `PRODUCT_APPROVED_APPROXIMATE`로
-admit하며 element exactness는 계속 Approximate로 표시한다. 현재 문서에 Approximate element가 없으면
-receipt는 `PRODUCT_APPROVED_FULL`로 관측 상태를 기록한다. visible Hard, unsafe resource, stale SHA,
-cue tuple 불일치와 무승인 Approximate는 fail-closed하고 이전 catalog/cue를 유지한다.
+Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
+등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
+drawable validation, budget 산정과 GPU 준비를 수행한다. 성공한 target만 prepared로 commit하고 실패한
+target 하나만 같은 revision에서 격리한다. Effect Tool의 명시적 Publish/Reload는 전체 Product target의
+동기 batch transaction과 runtime rollback을 유지한다.
 
 ## 6. UI와 밸런스 데이터
 
@@ -488,10 +491,12 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
    반대로 source/imported 문서를 제품 재생 대상으로 승격하지 않는다.
    다중 clip stage도 첫 clip의 재생률로 하나의 Effect 문서를 진행하지 않는다. 시각 요소가 있는
    각 clip이 clip-local Product cue를 소유하고 기존 Character의 `playMs`, `playRate`, loop와
-   authoritative late-catch-up을 소비한다. Character gameplay 준비는 이 검증된 cue target 집합을
-   catalog revision 단위로 transactional prewarm하며, 전투 Update의 Product Spawn은 prepared
-   bundle만 붙인다. prepared miss에서 shader/model/DDS/vector-field load 또는 synchronous document
-   stage를 수행하지 않는다.
+   authoritative late-catch-up을 소비한다. Character gameplay 준비는 이 runtime-published cue target
+   집합을 metadata-only로 등록하고 첫 화면 frame을 양보한 뒤 target 하나/frame으로 준비한다. 성공한
+   target만 catalog revision 단위 prepared set에 들어가며, 전투 Update의 Product Spawn은 cache-only
+   document lookup과 prepared bundle만 붙인다. prepared miss에서 JSON/shader/model/DDS/vector-field
+   load 또는 synchronous document stage를 수행하지 않는다. 준비 전 발생해 fail-closed한 occurrence는
+   준비 완료 뒤 소급 재생하지 않는다.
 2. Character presentation의 stable action/skill mapping
 3. 필요한 Shared message/snapshot 확장
 4. Server validation/action/damage 처리
