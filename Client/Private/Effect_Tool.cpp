@@ -8352,13 +8352,37 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::SameLine();
 	ImGui::TextDisabled("%zu Elements", m_ActiveDocument->Elements.size());
 	ImGui::SameLine();
-	const bool_t bCanDeleteSelected =
-		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty() && !Has_UnappliedDetailDraft();
+	/* Marks are keyed by stable Element ID, so drop any that a document
+	   reload, rollback or delete removed instead of carrying a stale count. */
+	std::erase_if(m_MarkedElementIds,
+		[this](const std::string& strElementId)
+		{
+			return std::none_of(m_ActiveDocument->Elements.begin(),
+				m_ActiveDocument->Elements.end(),
+				[&strElementId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strElementId;
+				});
+		});
+	const bool_t bCanDeleteSelected = !Has_UnappliedDetailDraft() &&
+		(!m_MarkedElementIds.empty() ||
+			(EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+				!m_strSelectedElementId.empty()));
+	const std::string DeleteLabel = m_MarkedElementIds.empty() ?
+		std::string("Delete Selected") :
+		"Delete " + std::to_string(m_MarkedElementIds.size()) + " Marked";
 	ImGui::BeginDisabled(!bCanDeleteSelected);
-	if (ImGui::SmallButton("Delete Selected"))
+	if (ImGui::SmallButton(DeleteLabel.c_str()))
 		Try_DeleteSelectedElement();
 	ImGui::EndDisabled();
+	if (!m_MarkedElementIds.empty())
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Clear Marks"))
+			m_MarkedElementIds.clear();
+	}
+	ImGui::TextDisabled(
+		"Ctrl or Shift click Element rows to mark several, then Delete.");
 	ImGui::SameLine();
 	const bool_t bCanSeedSelected =
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
@@ -8434,13 +8458,31 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 					m_strSelectedElementId == Element.strElementId;
 				const float fRowWidth = (std::max)(1.f,
 					ImGui::GetContentRegionAvail().x - 54.f);
-				const std::string RowLabel = FriendlyAuthoringElementLabel(
-					eFamily, iOrdinal, Element);
-				if (ImGui::Selectable(RowLabel.c_str(), bSelected,
+				const bool_t bMarked = m_MarkedElementIds.contains(
+					Element.strElementId);
+				const std::string RowLabel =
+					(bMarked ? "[x] " : "") + FriendlyAuthoringElementLabel(
+						eFamily, iOrdinal, Element);
+				if (ImGui::Selectable(RowLabel.c_str(), bSelected || bMarked,
 					0, ImVec2(fRowWidth, 0.f)))
 				{
-					Try_SelectElement(m_ActiveDocument->strEffectAssetId,
-						Element.strElementId);
+					const ImGuiIO& Io = ImGui::GetIO();
+					if (Io.KeyCtrl || Io.KeyShift)
+					{
+						/* Marking never changes the Detail selection, so the
+						   open Element keeps its draft while rows are marked. */
+						if (!m_MarkedElementIds.insert(
+								Element.strElementId).second)
+						{
+							m_MarkedElementIds.erase(Element.strElementId);
+						}
+					}
+					else
+					{
+						m_MarkedElementIds.clear();
+						Try_SelectElement(m_ActiveDocument->strEffectAssetId,
+							Element.strElementId);
+					}
 				}
 				if (ImGui::IsItemHovered())
 					ImGui::SetTooltip(
@@ -11304,21 +11346,39 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
             "Apply or Revert the open Detail draft before deleting an Element.";
         return false;
     }
-    if (!m_ActiveDocument.has_value() || m_strSelectedElementId.empty())
+    if (!m_ActiveDocument.has_value() ||
+        (m_MarkedElementIds.empty() && m_strSelectedElementId.empty()))
     {
         m_strElementStatus = "Select one Element to delete.";
+        return false;
+    }
+    /* Marked rows are the delete set when there are any; otherwise the single
+       open Element stays the target so every existing caller behaves the same. */
+    const std::set<std::string, std::less<>> Targets =
+        m_MarkedElementIds.empty() ?
+            std::set<std::string, std::less<>>{ m_strSelectedElementId } :
+            m_MarkedElementIds;
+    if (Targets.size() >= m_ActiveDocument->Elements.size())
+    {
+        m_strElementStatus =
+            "Deleting every Element would leave no drawable Effect; keep at least one.";
         return false;
     }
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
     const auto NewEnd = std::remove_if(
         Staged.Elements.begin(), Staged.Elements.end(),
-        [this](const EFFECT_ELEMENT_DESC& Element)
+        [&Targets](const EFFECT_ELEMENT_DESC& Element)
         {
-            return Element.strElementId == m_strSelectedElementId;
+            return Targets.contains(Element.strElementId);
         });
     if (NewEnd == Staged.Elements.end())
         return false;
+    const size_t iRemovedCount = static_cast<size_t>(
+        std::distance(NewEnd, Staged.Elements.end()));
     Staged.Elements.erase(NewEnd, Staged.Elements.end());
+    if (Targets.contains(m_strSelectedElementId))
+        m_strSelectedElementId.clear();
+    m_MarkedElementIds.clear();
 	const EFFECT_PREVIEW_FILTER ePreviousFilter = m_ePreviewFilter;
 	const std::string strPreviousIsolationElement =
 		m_strPreviewIsolationElementId;
@@ -11367,7 +11427,9 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
 	m_strSelectedComponentId.clear();
 	m_strSelectedEmitterId.clear();
 	m_strSelectedSourceModuleId.clear();
-    m_strElementStatus = "Deleted the selected Element.";
+    m_strElementStatus = 1u == iRemovedCount ?
+        "Deleted the selected Element." :
+        "Deleted " + std::to_string(iRemovedCount) + " marked Elements.";
     return true;
 }
 

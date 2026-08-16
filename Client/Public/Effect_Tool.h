@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -685,6 +686,10 @@ private:
 	string m_strActiveDocumentBaselineCanonical;
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
+	/* Ctrl/Shift-clicking Element rows marks them for one bulk delete. Empty
+	   means the single m_strSelectedElementId is the delete target, which is
+	   the behaviour every other command still assumes. */
+	std::set<string, std::less<>> m_MarkedElementIds;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
