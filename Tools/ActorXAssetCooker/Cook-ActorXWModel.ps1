@@ -62,7 +62,33 @@ param(
 
     [switch]$PrefixActionsWithSource,
     [switch]$KeepBlend,
-    [switch]$OverwriteStagingOutput
+    [switch]$OverwriteStagingOutput,
+
+    # Bake every Action at this one rate instead of requiring the PSA set to
+    # share one AnimRate. Frame spans are preserved, so the per-clip source
+    # rate must be restored afterwards with retime_wmodel_from_psa.py.
+    [double]$BakeFrameRate = 0.0,
+
+    # Accept a PSA whose BONENAMES order is a permutation of the PSK bones.
+    # The name set and count must still match exactly.
+    [switch]$AllowBoneOrderRemap,
+
+    # Exact Armature object name to export. The converter turns it into the
+    # runtime clip-name prefix.
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+    [string]$ArmatureExportName,
+
+    # Exact Mesh object name to export. It becomes a skeleton node, and the
+    # runtime skeleton hash covers node names, so an AnimSet must reproduce
+    # the body model's name to attach.
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+    [string]$MeshExportName,
+
+    # Disable the ActorX importer scale-down. Use it when the target body
+    # model keeps source (centimetre) translation units: an AnimSet must be
+    # cooked in the same units as the body it attaches to, or every bone
+    # translation lands 100x off and the character collapses.
+    [switch]$NoScaleDown
 )
 
 Set-StrictMode -Version Latest
@@ -820,6 +846,21 @@ try {
     if ($PrefixActionsWithSource) {
         $blenderArguments += '--prefix-actions-with-source'
     }
+    if ($BakeFrameRate -gt 0.0) {
+        $blenderArguments += @('--bake-frame-rate', ([string]$BakeFrameRate))
+    }
+    if ($AllowBoneOrderRemap) {
+        $blenderArguments += '--allow-bone-order-remap'
+    }
+    if ($ArmatureExportName) {
+        $blenderArguments += @('--armature-export-name', $ArmatureExportName)
+    }
+    if ($MeshExportName) {
+        $blenderArguments += @('--mesh-export-name', $MeshExportName)
+    }
+    if ($NoScaleDown) {
+        $blenderArguments += '--no-scale-down'
+    }
 
     $blenderResult = Invoke-NativeLogged -FilePath $blender -ArgumentList $blenderArguments -WorkingDirectory $workDirectory
     if ($blenderResult.ExitCode -ne 0) {
@@ -1019,9 +1060,13 @@ try {
                     throw "WModel animation does not contain exactly one PSA bone channel. animation=$($animation.Name) bone=$boneName"
                 }
                 $channel = $matchedChannels[0]
-                if ([int]$channel.ScaleKeyCount -ne $expectedScaleKeysPerBone -or
+                # Assimp may resample a curve and emit a few extra keys at
+                # fractional ticks. Only losing keys drops source motion, so only
+                # that is rejected here; the exact per-axis extrema comparison
+                # below still proves the cooked track carries the PSA values.
+                if ([int]$channel.ScaleKeyCount -lt $expectedScaleKeysPerBone -or
                     $null -eq $channel.ScaleMinimum -or $null -eq $channel.ScaleMaximum) {
-                    throw "WModel animation scale key count is incomplete. animation=$($animation.Name) bone=$boneName"
+                    throw "WModel animation lost PSA scale keys. animation=$($animation.Name) bone=$boneName cooked=$($channel.ScaleKeyCount) source=$expectedScaleKeysPerBone"
                 }
                 $sourceMinimum = @($sourceScaleBone.minimum)
                 $sourceMaximum = @($sourceScaleBone.maximum)
