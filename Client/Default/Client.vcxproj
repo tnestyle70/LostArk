@@ -110,6 +110,7 @@
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
+    <ClInclude Include="..\Public\ValtanPatternTree.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
@@ -230,6 +231,7 @@
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />

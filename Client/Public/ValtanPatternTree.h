@@ -1,0 +1,93 @@
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+
+#include <filesystem>
+#include <string>
+#include <vector>
+
+NS_BEGIN(Client)
+
+/* The stage is where a Valtan pattern actually becomes work: it owns the
+   clip that plays, the milliseconds it lasts, the shape the Server tests for
+   damage, and the Effect that should be visible while it runs. Those four
+   facts live in four different documents joined by the stage actionId. */
+struct VALTAN_STAGE_VIEW final
+{
+	std::string strStageId;
+	std::string strActionId;
+	std::string strStageKind;
+	uint32_t iDurationMs = 0u;
+
+	/* Server owns damage. These are copied for display so the person
+	   authoring the Effect can see the window they are filling. */
+	std::string strHitShape;
+	f32_t fHitOuterRadius = 0.f;
+	f32_t fHitInnerRadius = 0.f;
+	f32_t fHitAngleDegrees = 0.f;
+	f32_t fHitLength = 0.f;
+	f32_t fHitHalfWidth = 0.f;
+	uint32_t iHitCount = 0u;
+	uint32_t iHitIntervalMs = 0u;
+	std::string strServerDamageProfileId;
+
+	std::string strRuntimeClipName;
+	std::string strEffectAssetId;
+	std::filesystem::path EffectDocumentPath;
+
+	bool_t Has_Effect() const
+	{
+		return !strEffectAssetId.empty() && !EffectDocumentPath.empty();
+	}
+	bool_t Has_HitShape() const
+	{
+		return !strHitShape.empty() && "NONE" != strHitShape;
+	}
+};
+
+struct VALTAN_PATTERN_VIEW final
+{
+	std::string strPatternId;
+	std::string strDisplayName;
+	std::string strActionId;
+	int32_t iMinimumHealthBar = 0;
+	int32_t iMaximumHealthBar = 0;
+	int32_t iTriggerHealthBar = 0;
+	std::vector<VALTAN_STAGE_VIEW> Stages;
+
+	/* A pattern pinned to one health bar is a scripted gimmick; the rest are
+	   selected from the rotation while the bar range allows it. */
+	bool_t Is_Gimmick() const { return 0 != iTriggerHealthBar; }
+};
+
+struct VALTAN_PATTERN_TREE_VIEW final
+{
+	std::vector<VALTAN_PATTERN_VIEW> Gimmicks;
+	std::vector<VALTAN_PATTERN_VIEW> Rotation;
+
+	size_t Get_PatternCount() const
+	{
+		return Gimmicks.size() + Rotation.size();
+	}
+	size_t Get_StageCount() const;
+	size_t Get_EffectCount() const;
+};
+
+/* Read-only join of ValtanEncounter.json, Valtan.patternbindings.json and
+   Valtan.patterneffects.json. The Effect Tool renders the result; nothing
+   here writes, because the encounter document is Server authority. */
+class CValtanPatternTree final
+{
+public:
+	static bool_t Load(
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		std::string& strOutStatus);
+	/* effect.valtan.<pattern-slug>.<stage-slug>, the same rule
+	   Tools/EffectPipeline/build_valtan_stage_effects.py emits. */
+	static std::string Build_StageEffectAssetId(
+		const std::string& strPatternActionId,
+		const VALTAN_STAGE_VIEW& Stage);
+};
+
+NS_END
