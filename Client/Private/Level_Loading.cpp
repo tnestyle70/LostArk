@@ -2,8 +2,12 @@
 
 #include "Level_Loading.h"
 
+#include "AnimationEffectCueDocument.h"
+#include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
+#include "CharacterSpec.h"
 #include "DataJson.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
 #include "Loader.h"
@@ -66,11 +70,38 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 
 	if (nullptr == m_pLoader)
 		return;
+	if (m_pLoader->Failed())
+	{
+		Recover_FromFailure(m_pLoader->Get_Result());
+		return;
+	}
 
-	/* No per-step byte/asset count exists in CLoader, so the bar eases toward 90% on its own
-	and only snaps the rest of the way once the loader actually reports finished -- it never
-	looks "done" while still waiting on the target level's real assets. */
-	const f32_t fTargetProgress = m_pLoader->Finished() ? 1.f : 0.9f;
+	bool_t bTargetPresentationReady = true;
+	if (m_pLoader->Finished() && LEVEL::CHARACTER_SELECT == m_eNextLevelID &&
+		!m_isActivationRequested)
+	{
+		bTargetPresentationReady =
+			Advance_CharacterSelectEffectPreparation();
+	}
+
+	/* The worker owns the first 90%. Character Select uses the remaining 10% for
+	its selected-class Product targets after the worker finishes and does not
+	activate until the main-thread incremental prewarm queue has no resource work. */
+	f32_t fTargetProgress = m_pLoader->Finished() ? 1.f : 0.9f;
+	if (m_pLoader->Finished() && !bTargetPresentationReady)
+	{
+		const uint32_t iSettledCount =
+			m_iEffectPreparationPreparedCount +
+			m_iEffectPreparationFailedCount;
+		const f32_t fPreparationRatio =
+			0u == m_iEffectPreparationTargetCount ? 0.f :
+			static_cast<f32_t>(iSettledCount) /
+			static_cast<f32_t>(m_iEffectPreparationTargetCount);
+		/* Even when the selected set is complete, stale/background targets may
+		   still be draining.  Keep a visible final gap until activation is truly
+		   ready instead of presenting a stuck 100% loading bar. */
+		fTargetProgress = 0.9f + 0.09f * (min)(1.f, fPreparationRatio);
+	}
 	m_fDisplayProgress += (fTargetProgress - m_fDisplayProgress) * (min)(1.f, fTimeDelta * 2.5f);
 
 	const f32_t fTrackLeft = m_fProgressTrackX - m_fProgressTrackWidth * 0.5f;
@@ -84,13 +115,8 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		m_pProgressGlow->Set_Rect(fTrackLeft + fFillWidth, m_fProgressTrackY,
 			m_fProgressGlowWidth, m_fProgressGlowHeight);
 
-	if (m_pLoader->Failed())
-	{
-		Recover_FromFailure(m_pLoader->Get_Result());
-		return;
-	}
-
-	if (m_pLoader->Finished() && !m_isActivationRequested)
+	if (m_pLoader->Finished() && bTargetPresentationReady &&
+		!m_isActivationRequested)
 	{
 		if (CLevelTransitionService::Request_Activation(
 			m_eNextLevelID,
@@ -132,7 +158,11 @@ HRESULT CLevel_Loading::Render()
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	if (nullptr != viewport && nullptr != m_pLoader)
 	{
-		const std::string loadingStatus = CLoader::Get_ActiveStatus();
+		const std::string loadingStatus =
+			LEVEL::CHARACTER_SELECT == m_eNextLevelID &&
+			m_pLoader->Finished() &&
+			!m_strEffectPreparationStatus.empty() ?
+			m_strEffectPreparationStatus : CLoader::Get_ActiveStatus();
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::SetNextWindowPos(
 			ImVec2(
@@ -178,6 +208,131 @@ HRESULT CLevel_Loading::Render()
 		m_pLoader->Print_Text();
 #endif
 	return S_OK;
+}
+
+bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
+{
+	if (LEVEL::CHARACTER_SELECT != m_eNextLevelID ||
+		m_isEffectPreparationComplete)
+	{
+		return true;
+	}
+
+	const auto IsolateFailure = [this](const std::string& Status)
+	{
+		m_isEffectPreparationRegistered = true;
+		m_EffectPreparationTargets.clear();
+		m_iEffectPreparationTargetCount = 0u;
+		m_iEffectPreparationPendingCount = 0u;
+		m_iEffectPreparationPreparedCount = 0u;
+		m_iEffectPreparationFailedCount = 1u;
+		m_strEffectPreparationRegistrationFailure = Status;
+		m_strEffectPreparationStatus =
+			"CHARACTER SELECT: Effect preparation isolated: " + Status;
+		OutputDebugStringA(("[Level_Loading] " +
+			m_strEffectPreparationStatus + "\n").c_str());
+		return false;
+	};
+
+	if (!m_isEffectPreparationRegistered)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		CHARACTER_CLASS_ID SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		if (!CCharacterSelectionState::Try_Get_SelectedClass(SelectedClass) ||
+			!LostArk::Shared::Is_Supported_Playable_Character_Class(
+				SelectedClass))
+		{
+			SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		}
+
+		const CHARACTER_SPEC* pSpec =
+			CCharacterCatalog::Find_Spec(SelectedClass);
+		if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		{
+			return IsolateFailure(
+				"selected class has no animation asset spec.");
+		}
+
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		std::string Status;
+		if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				pSpec->pAssetName, CueDocument, Status))
+		{
+			return IsolateFailure(Status);
+		}
+		if (!CEffectPresentationService::Queue_ProductCues_Priority(
+				CueDocument.Cues, m_EffectPreparationTargets, Status))
+		{
+			return IsolateFailure(Status);
+		}
+
+		m_isEffectPreparationRegistered = true;
+		m_iEffectPreparationTargetCount = static_cast<uint32_t>(
+			m_EffectPreparationTargets.size());
+		m_strEffectPreparationStatus =
+			"CHARACTER SELECT: queued " +
+			std::to_string(m_iEffectPreparationTargetCount) +
+			" Product Effects for the selected class.";
+	}
+
+	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
+		CEffectPresentationService::Get_ProductCuePreparationProbe(
+			m_EffectPreparationTargets);
+	m_iEffectPreparationTargetCount = Probe.iTargetCount;
+	m_iEffectPreparationPendingCount = Probe.iQueuePendingCount;
+	m_iEffectPreparationPreparedCount = Probe.iPreparedCount;
+	m_iEffectPreparationFailedCount =
+		Probe.iFailedCount + Probe.iUnavailableCount +
+		(m_strEffectPreparationRegistrationFailure.empty() ? 0u : 1u);
+	const bool_t bActivationReady = Is_ProductPrewarmActivationReady(
+		Probe, !m_strEffectPreparationRegistrationFailure.empty());
+	if (!bActivationReady)
+	{
+		if (!m_strEffectPreparationRegistrationFailure.empty())
+		{
+			m_strEffectPreparationStatus =
+				"CHARACTER SELECT: Effect preparation isolated; draining " +
+				std::to_string(Probe.iQueuePendingCount) +
+				" background Product Effect(s).";
+		}
+		else
+		{
+			m_strEffectPreparationStatus =
+				"CHARACTER SELECT: preparing Product Effects " +
+				std::to_string(m_iEffectPreparationPreparedCount +
+					m_iEffectPreparationFailedCount) + "/" +
+				std::to_string(m_iEffectPreparationTargetCount) +
+				" (selected pending " +
+				std::to_string(Probe.iPendingCount) +
+				", queue pending " +
+				std::to_string(Probe.iQueuePendingCount) + ").";
+		}
+		return false;
+	}
+
+	m_isEffectPreparationComplete = true;
+	if (!m_strEffectPreparationRegistrationFailure.empty())
+	{
+		m_strEffectPreparationStatus =
+			"CHARACTER SELECT: Effect preparation isolated: " +
+			m_strEffectPreparationRegistrationFailure +
+			" Background Effect preparation drained; continuing.";
+	}
+	else if (0u != m_iEffectPreparationFailedCount)
+	{
+		m_strEffectPreparationStatus =
+			"CHARACTER SELECT: Product Effect preparation settled with " +
+			std::to_string(m_iEffectPreparationFailedCount) +
+			" isolated failure(s); continuing.";
+	}
+	else
+	{
+		m_strEffectPreparationStatus =
+			"CHARACTER SELECT: prepared " +
+			std::to_string(m_iEffectPreparationPreparedCount) +
+			" Product Effects for the selected class.";
+	}
+	return true;
 }
 
 void CLevel_Loading::Recover_FromFailure(const HRESULT result)

@@ -210,6 +210,107 @@ namespace
 	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
 	std::string g_strStatus = "Effect presentation service is idle.";
 
+	bool_t Queue_ProductCueTargets(
+		const std::vector<Client::ANIMATION_EFFECT_CUE>& Cues,
+		const bool_t bPriority,
+		std::vector<std::string>* pOutCurrentTargets,
+		std::string& strOutStatus)
+	{
+		const uint64_t iCatalogRevision =
+			Client::CEffectCatalog::Get_RuntimeRevision();
+		if (0u == iCatalogRevision)
+		{
+			strOutStatus =
+				"Animation Effect cue registration has no runtime catalog revision.";
+			return false;
+		}
+
+		std::vector<std::string> CurrentTargets;
+		CurrentTargets.reserve(Cues.size());
+		std::set<std::string, std::less<>> CurrentTargetIds;
+		for (const Client::ANIMATION_EFFECT_CUE& Cue : Cues)
+		{
+			if (Cue.strEffectAssetId.empty() ||
+				!Client::CEffectCatalog::Contains(Cue.strEffectAssetId))
+			{
+				strOutStatus =
+					"Animation Effect cue target is not admitted by the catalog: " +
+					Cue.strEffectAssetId;
+				return false;
+			}
+			if (!Client::CEffectCatalog::Admit_ProductSpawn(
+					Cue.strEffectAssetId, Cue.pProductAdmissionToken,
+					strOutStatus))
+			{
+				return false;
+			}
+			if (CurrentTargetIds.insert(Cue.strEffectAssetId).second)
+				CurrentTargets.push_back(Cue.strEffectAssetId);
+		}
+
+		std::string QueueStatus;
+		bool_t bCurrentTargetsQueued = false;
+		if (g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision)
+		{
+			const std::vector<std::string> PreviousTargets(
+				g_ProductPrewarmQueue.Get_Targets().begin(),
+				g_ProductPrewarmQueue.Get_Targets().end());
+			g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
+			g_ProductEffectBudgetCosts.clear();
+
+			if (bPriority)
+			{
+				std::vector<std::string> ValidPreviousTargets;
+				ValidPreviousTargets.reserve(PreviousTargets.size());
+				for (const std::string& EffectId : PreviousTargets)
+				{
+					if (Client::CEffectCatalog::Contains(EffectId))
+						ValidPreviousTargets.push_back(EffectId);
+				}
+				if (!g_ProductPrewarmQueue.Enqueue(
+						ValidPreviousTargets, QueueStatus))
+				{
+					strOutStatus = QueueStatus;
+					return false;
+				}
+			}
+			else
+			{
+				std::vector<std::string> RebasedTargets = CurrentTargets;
+				RebasedTargets.reserve(
+					CurrentTargets.size() + PreviousTargets.size());
+				for (const std::string& EffectId : PreviousTargets)
+				{
+					if (Client::CEffectCatalog::Contains(EffectId))
+						RebasedTargets.push_back(EffectId);
+				}
+				if (!g_ProductPrewarmQueue.Enqueue(
+						RebasedTargets, QueueStatus))
+				{
+					strOutStatus = QueueStatus;
+					return false;
+				}
+				bCurrentTargetsQueued = true;
+			}
+		}
+
+		const bool_t bQueued = bPriority ?
+			g_ProductPrewarmQueue.Enqueue_Priority(
+				CurrentTargets, QueueStatus) :
+			(bCurrentTargetsQueued ||
+			 g_ProductPrewarmQueue.Enqueue(CurrentTargets, QueueStatus));
+		if (!bQueued)
+		{
+			strOutStatus = QueueStatus;
+			return false;
+		}
+
+		if (nullptr != pOutCurrentTargets)
+			*pOutCurrentTargets = std::move(CurrentTargets);
+		strOutStatus = QueueStatus;
+		return true;
+	}
+
 	bool_t Add_BudgetCost(
 		Client::EFFECT_SCENE_BUDGET_COST& InOut,
 		const Client::EFFECT_SCENE_BUDGET_COST& Value)
@@ -1521,55 +1622,37 @@ bool_t Client::CEffectPresentationService::Queue_ProductCues(
     const std::vector<ANIMATION_EFFECT_CUE>& Cues,
     std::string& strOutStatus)
 {
-	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
-	if (0u == iCatalogRevision)
-	{
-		strOutStatus =
-			"Animation Effect cue registration has no runtime catalog revision.";
-		g_strStatus = strOutStatus;
-		return false;
-	}
-	std::vector<std::string> StagedTargets;
-	StagedTargets.reserve(Cues.size());
-    for (const ANIMATION_EFFECT_CUE& Cue : Cues)
-    {
-        if (Cue.strEffectAssetId.empty() ||
-            !CEffectCatalog::Contains(Cue.strEffectAssetId))
-		{
-			strOutStatus =
-				"Animation Effect cue target is not admitted by the catalog: " +
-				Cue.strEffectAssetId;
-            g_strStatus = strOutStatus;
-            return false;
-        }
-		if (!CEffectCatalog::Admit_ProductSpawn(Cue.strEffectAssetId,
-				Cue.pProductAdmissionToken, strOutStatus))
-		{
-			g_strStatus = strOutStatus;
-			return false;
-		}
-		StagedTargets.push_back(Cue.strEffectAssetId);
-    }
-	if (g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision)
-	{
-		const std::vector<std::string> PreviousTargets(
-			g_ProductPrewarmQueue.Get_Targets().begin(),
-			g_ProductPrewarmQueue.Get_Targets().end());
-		for (const std::string& EffectId : PreviousTargets)
-		{
-			if (CEffectCatalog::Contains(EffectId))
-				StagedTargets.push_back(EffectId);
-		}
-		g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
-		g_ProductEffectBudgetCosts.clear();
-	}
-	if (!g_ProductPrewarmQueue.Enqueue(StagedTargets, strOutStatus))
+	if (!Queue_ProductCueTargets(Cues, false, nullptr, strOutStatus))
 	{
 		g_strStatus = strOutStatus;
 		return false;
 	}
 	g_strStatus = strOutStatus;
 	return true;
+}
+
+bool_t Client::CEffectPresentationService::Queue_ProductCues_Priority(
+	const std::vector<ANIMATION_EFFECT_CUE>& Cues,
+	std::vector<std::string>& OutEffectAssetIds,
+	std::string& strOutStatus)
+{
+	OutEffectAssetIds.clear();
+	if (!Queue_ProductCueTargets(
+			Cues, true, &OutEffectAssetIds, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+Client::EFFECT_PRODUCT_PREWARM_TARGET_PROBE
+Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
+	const std::vector<std::string>& EffectAssetIds)
+{
+	return g_ProductPrewarmQueue.Get_TargetProbe(
+		EffectAssetIds, CEffectCatalog::Get_RuntimeRevision());
 }
 
 void Client::CEffectPresentationService::Advance_ProductCuePreparation(

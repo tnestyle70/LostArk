@@ -39,6 +39,24 @@ namespace Client
 		std::weak_ptr<CCharacter> pCharacter;
 	};
 
+	struct DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW final
+	{
+		std::uint64_t iGeneration = 0u;
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		std::uint32_t iServerTick = 0u;
+	};
+
+	enum class DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT : uint8_t
+	{
+		NO_PENDING,
+		COMMITTED,
+		RECOVERED_FAILURE,
+		FATAL_FAILURE
+	};
+
 	struct VALTAN_PRESENTATION_STATE final
 	{
 		bool_t isValid = false;
@@ -73,6 +91,7 @@ namespace Client
 			CDeployPropRuntime* pDeployPropRuntime = nullptr;
 			const CWorldDestructionProjectionDocument*
 				pWorldDestructionProjection = nullptr;
+			bool_t bDeferLocalCharacterClassReplacement = false;
 		};
 
 	public:
@@ -95,6 +114,10 @@ namespace Client
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		bool_t Try_Get_DeferredLocalCharacterClassReplacement(
+			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
+		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
+			Commit_DeferredLocalCharacterClassReplacement();
 		void Collect_PlayerViews(
 			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
@@ -167,6 +190,10 @@ namespace Client
 		};
 		CHARACTER_REPLACE_RESULT Replace_CharacterClass(
 			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
+		void Stage_LocalCharacterClassReplacement(
+			const LostArk::Shared::PLAYER_SNAPSHOT& Snapshot,
+			std::uint32_t iServerTick);
+		void Clear_DeferredLocalCharacterClassReplacement();
 
 		void Reset_World();
 
@@ -184,6 +211,14 @@ namespace Client
 		bool m_hasFatalWorldDestructionFailure = false;
 		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
+		struct DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT final
+		{
+			bool_t isPending = false;
+			std::uint64_t iGeneration = 0u;
+			std::uint32_t iServerTick = 0u;
+			LostArk::Shared::PLAYER_SNAPSHOT Snapshot{};
+		} m_DeferredLocalCharacterClassReplacement;
+		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;

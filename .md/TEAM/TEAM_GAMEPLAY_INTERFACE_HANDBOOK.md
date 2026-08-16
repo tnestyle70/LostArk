@@ -233,11 +233,24 @@ animevent의 `effectref=asset` 집합으로 선택해 runtime catalog에 commit�
 않는다. authoring-only 문서는 Effect Tool에서 계속 편집할 수 있지만 runtime membership이 없으므로
 Character Select 준비 대상이 아니다.
 
+Effect Tool의 `Saved Unified Effects` 목록은 source `EffectCatalog.json`의
+`DIRECT_AUTHORED_DOCUMENT_V13` row를 stable class/skill ID로 `PlayerSkills.json`에 join한 결과다.
+폐기된 FourClass Track-A batch와 runtime Product tree는 목록 정본이 아니며, Product cue refresh가
+실패해도 saved authored 목록은 유지한다. 목록/검색/펼치기는 metadata와 cache-only projection만 읽고,
+사용자가 Open 또는 Play를 누를 때 한 문서만 decode한다.
+
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
 drawable validation, budget 산정과 GPU 준비를 수행한다. 성공한 target만 prepared로 commit하고 실패한
 target 하나만 같은 revision에서 격리한다. Effect Tool의 명시적 Publish/Reload는 전체 Product target의
 동기 batch transaction과 runtime rollback을 유지한다.
+Character Select Loading은 worker 완료 뒤 선택 class target을 queue 앞에 놓고 기존 background pending까지
+전부 끝난 뒤에만 activation을 요청한다. activation 전 progress는 100% 미만으로 유지한다. prepared
+Product attach는 exact catalog revision/document/projection identity와 shared immutable document를 사용해
+전체 document copy와 재검증을 반복하지 않으며, revision 0 Tool stage는 기존 owned-copy 계약을 유지한다.
+Character Select 내부 class 변경은 Server snapshot의 stable entity/class generation을 stage하고 새 class
+Product target 및 global queue drain 뒤에만 presentation을 교체한다. 준비 중 입력은 차단되고 기존
+character는 유지되며, replacement transaction 실패는 Character Select 입력 정지 대신 Lobby로 복귀한다.
 
 ## 6. UI와 밸런스 데이터
 

@@ -2,11 +2,13 @@
 
 #include "Level_CharacterSelect.h"
 
+#include "AnimationEffectCueDocument.h"
 #include "AnimationTargetService.h"
 #include "Camera_Free.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
+#include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
@@ -283,6 +285,7 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 	desc.iLayerLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
 	desc.strPlayerLayerTag = TEXT("Layer_Player");
 	desc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
+	desc.bDeferLocalCharacterClassReplacement = true;
 	if (!m_Replication.Initialize(desc))
 		return E_FAIL;
 
@@ -317,6 +320,7 @@ bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
 	if (m_isCreateCharacterModalOpen ||
 		MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
 		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
 	{
 		return false;
@@ -396,6 +400,181 @@ void CLevel_CharacterSelect::Consume_ClassChangeResults()
 	}
 }
 
+bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
+{
+	using namespace LostArk::Shared;
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW Pending;
+	if (!m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(Pending))
+	{
+		Reset_ClassPresentationPreparation();
+		return true;
+	}
+	if (0u == Pending.iGeneration || 0u == Pending.iServerTick ||
+		INVALID_NET_ENTITY_ID == Pending.iNetEntityId ||
+		!Is_Supported_Playable_Character_Class(Pending.eCharacterClass))
+	{
+		m_strStatus =
+			"Deferred class presentation snapshot identity is invalid.";
+		return false;
+	}
+
+	const bool_t bNewGeneration =
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE ==
+			m_eClassPresentationPreparationState ||
+		m_iClassPresentationPreparationGeneration != Pending.iGeneration ||
+		m_iClassPresentationNetEntityId != Pending.iNetEntityId ||
+		m_eClassPresentationTargetClass != Pending.eCharacterClass;
+	if (bNewGeneration)
+	{
+		Reset_ClassPresentationPreparation();
+		m_strClassPresentationCommitWarning.clear();
+		m_iClassPresentationPreparationGeneration = Pending.iGeneration;
+		m_iClassPresentationNetEntityId = Pending.iNetEntityId;
+		m_eClassPresentationTargetClass = Pending.eCharacterClass;
+		m_eClassPresentationPreparationState =
+			CLASS_PRESENTATION_PREPARATION_STATE::WAITING_FOR_PRODUCT_EFFECTS;
+
+		const auto IsolateRegistrationFailure =
+			[this](const std::string& Status)
+		{
+			m_eClassPresentationPreparationState =
+				CLASS_PRESENTATION_PREPARATION_STATE::
+					REGISTRATION_FAILURE_ISOLATED;
+			m_ClassPresentationEffectTargets.clear();
+			m_strClassPresentationPreparationFailure = Status;
+			OutputDebugStringA((
+				"[Level_CharacterSelect] Class Effect preparation isolated: " +
+				Status + "\n").c_str());
+		};
+
+		const CHARACTER_SPEC* pSpec =
+			CCharacterCatalog::Find_Spec(Pending.eCharacterClass);
+		if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		{
+			IsolateRegistrationFailure(
+				"Server class has no animation asset spec.");
+		}
+		else
+		{
+			ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+			std::string Status;
+			if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
+					pSpec->pAssetName, CueDocument, Status) ||
+				!CEffectPresentationService::Queue_ProductCues_Priority(
+					CueDocument.Cues,
+					m_ClassPresentationEffectTargets,
+					Status))
+			{
+				IsolateRegistrationFailure(Status);
+			}
+		}
+	}
+
+	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
+		CEffectPresentationService::Get_ProductCuePreparationProbe(
+			m_ClassPresentationEffectTargets);
+	const bool_t bRegistrationFailureIsolated =
+		CLASS_PRESENTATION_PREPARATION_STATE::
+			REGISTRATION_FAILURE_ISOLATED ==
+		m_eClassPresentationPreparationState;
+	if (!Is_ProductPrewarmActivationReady(
+			Probe, bRegistrationFailureIsolated))
+	{
+		if (bRegistrationFailureIsolated)
+		{
+			m_strStatus = std::string(
+				"Class Effect preparation was isolated; draining ") +
+				std::to_string(Probe.iQueuePendingCount) +
+				" queued Product Effect(s) before presentation commit.";
+		}
+		else
+		{
+			m_strStatus = std::string("Preparing ") +
+				Get_CharacterClassName(Pending.eCharacterClass) +
+				" Product Effects " +
+				std::to_string(Probe.iPreparedCount + Probe.iFailedCount +
+					Probe.iUnavailableCount) + "/" +
+				std::to_string(Probe.iTargetCount) +
+				" (selected pending " +
+				std::to_string(Probe.iPendingCount) +
+				", queue pending " +
+				std::to_string(Probe.iQueuePendingCount) + ").";
+		}
+		return true;
+	}
+
+	/* Replacement is attempted once per stable class/entity generation.  Repeated
+	   snapshots update the staged state, but cannot create a 20 Hz clone-failure
+	   loop; only a different authoritative target generation may retry. */
+	if (m_hasClassPresentationCommitAttempted)
+		return true;
+	m_hasClassPresentationCommitAttempted = true;
+	const DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT CommitResult =
+		m_Replication.Commit_DeferredLocalCharacterClassReplacement();
+	switch (CommitResult)
+	{
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::NO_PENDING:
+		Reset_ClassPresentationPreparation();
+		return true;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::COMMITTED:
+		if (bRegistrationFailureIsolated)
+		{
+			m_strClassPresentationCommitWarning =
+				"Effect preparation was isolated: " +
+				m_strClassPresentationPreparationFailure;
+		}
+		else if (0u != Probe.iFailedCount + Probe.iUnavailableCount)
+		{
+			m_strClassPresentationCommitWarning =
+				std::to_string(
+					Probe.iFailedCount + Probe.iUnavailableCount) +
+				" Product Effect target(s) were isolated.";
+		}
+		m_strStatus = std::string("Prepared and committed ") +
+			Get_CharacterClassName(Pending.eCharacterClass) +
+			" from Server snapshot generation " +
+			std::to_string(Pending.iGeneration) + ".";
+		Reset_ClassPresentationPreparation();
+		return true;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::RECOVERED_FAILURE:
+		m_strStatus =
+			"Class presentation commit failed; returning to Lobby instead of leaving Character Select input blocked.";
+		return false;
+
+	case DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT::FATAL_FAILURE:
+	default:
+		m_strStatus = "Deferred class presentation commit failed fatally.";
+		return false;
+	}
+}
+
+bool_t CLevel_CharacterSelect::Is_ClassPresentationPreparationPending() const
+{
+	if (CLASS_PRESENTATION_PREPARATION_STATE::IDLE !=
+		m_eClassPresentationPreparationState)
+	{
+		return true;
+	}
+	DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW Pending;
+	return m_Replication.Try_Get_DeferredLocalCharacterClassReplacement(Pending);
+}
+
+void CLevel_CharacterSelect::Reset_ClassPresentationPreparation()
+{
+	m_eClassPresentationPreparationState =
+		CLASS_PRESENTATION_PREPARATION_STATE::IDLE;
+	m_iClassPresentationPreparationGeneration = 0u;
+	m_iClassPresentationNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eClassPresentationTargetClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasClassPresentationCommitAttempted = false;
+	m_ClassPresentationEffectTargets.clear();
+	m_strClassPresentationPreparationFailure.clear();
+}
+
 bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
 {
 	const shared_ptr<CCharacter> localCharacter =
@@ -410,7 +589,8 @@ bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
 	const size_t selectedIndex = static_cast<size_t>(
 		std::distance(SUPPORTED_CLASSES.begin(), selected));
 
-	if (m_pActiveCharacter != localCharacter)
+	const bool_t bPresentationChanged = m_pActiveCharacter != localCharacter;
+	if (bPresentationChanged)
 	{
 		CAnimationTargetService::Unbind(m_pActiveCharacter);
 		CAnimationTargetService::Bind(localCharacter);
@@ -436,6 +616,17 @@ bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
 		m_strStatus = std::string("Class changed to ") +
 			Get_CharacterClassName(localCharacter->Get_Spec()->eCharacterClass) +
 			". Skills now resolve from the new class.";
+		if (!m_strClassPresentationCommitWarning.empty())
+		{
+			m_strStatus += " " + m_strClassPresentationCommitWarning;
+			m_strClassPresentationCommitWarning.clear();
+		}
+	}
+	else if (bPresentationChanged &&
+		!m_strClassPresentationCommitWarning.empty())
+	{
+		m_strStatus += " " + m_strClassPresentationCommitWarning;
+		m_strClassPresentationCommitWarning.clear();
 	}
 	return true;
 }
@@ -521,6 +712,11 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		Fail_ServerArena("Server presentation failed.");
 		return;
 	}
+	if (!Advance_DeferredClassPresentation())
+	{
+		Fail_ServerArena("Deferred Server class presentation failed.");
+		return;
+	}
 	string presentationFailure;
 	if (m_Replication.Try_Consume_PresentationFailure(presentationFailure))
 		m_strStatus = std::move(presentationFailure);
@@ -536,12 +732,14 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		Fail_ServerArena("The replicated local character is unavailable.");
 		return;
 	}
-	if (!m_isCreateCharacterModalOpen)
+	if (!m_isCreateCharacterModalOpen &&
+		!Is_ClassPresentationPreparationPending())
 	{
 		m_PlayerController.Update(
 			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
 	}
 	if (m_iPendingClassIndex.has_value() &&
+		!Is_ClassPresentationPreparationPending() &&
 		std::chrono::steady_clock::now() >= m_ClassChangeDeadline)
 	{
 		m_iPendingClassIndex.reset();
@@ -579,6 +777,8 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	m_iPendingArenaSpawnIndex.reset();
 	m_iPendingClassIndex.reset();
 	m_iPendingClassChangeSequence = 0u;
+	Reset_ClassPresentationPreparation();
+	m_strClassPresentationCommitWarning.clear();
 	m_strStatus = reason + " Returning to Lobby; local gameplay fallback is disabled.";
 	if (!CLevelTransitionService::Request_Load(
 		LEVEL::LOBBY,
@@ -591,6 +791,7 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 {
 	if (m_isCreateCharacterModalOpen || MODE::SERVER_ARENA != m_eMode ||
+		Is_ClassPresentationPreparationPending() ||
 		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
 		m_iPendingArenaSpawnIndex.has_value() ||
 		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
@@ -633,6 +834,7 @@ void CLevel_CharacterSelect::Open_CreateCharacterModal()
 	if (MODE::SERVER_ARENA != m_eMode ||
 		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
 		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
 		CLevelTransitionService::Is_Pending())
 	{
 		m_strStatus =
@@ -647,7 +849,8 @@ void CLevel_CharacterSelect::Open_CreateCharacterModal()
 bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
 {
 	if (MODE::SERVER_ARENA != m_eMode ||
-		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size())
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		Is_ClassPresentationPreparationPending())
 	{
 		m_strStatus = "The selected class is unavailable.";
 		return false;
@@ -730,6 +933,7 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	if (MODE::SERVER_ARENA != m_eMode || nullptr == transitionSource ||
 		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
 		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
 		CLevelTransitionService::Is_Pending())
 	{
 		m_strStatus = "The selected stage is not available here.";
@@ -800,7 +1004,8 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::TextUnformatted("Playable class");
 	ImGui::BeginDisabled(!isServerArena || transitionPending ||
 		m_isCreateCharacterModalOpen ||
-		m_iPendingClassIndex.has_value());
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending());
 	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
 	{
 		if (ImGui::Selectable(
@@ -811,7 +1016,9 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		}
 	}
 	ImGui::EndDisabled();
-	if (m_iPendingClassIndex.has_value())
+	if (Is_ClassPresentationPreparationPending())
+		ImGui::TextDisabled("Preparing the Server-approved class presentation...");
+	else if (m_iPendingClassIndex.has_value())
 		ImGui::TextDisabled("Waiting for Server class-change approval and snapshot...");
 
 	if (isServerArena)
@@ -830,6 +1037,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 				ImGui::SameLine();
 		}
 		ImGui::BeginDisabled(
+			Is_ClassPresentationPreparationPending() ||
 			m_iPendingArenaSpawnIndex.has_value() ||
 			m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex]);
 		if (ImGui::Button("Spawn Selected"))
@@ -860,7 +1068,8 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::Separator();
 	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending ||
 		m_isCreateCharacterModalOpen ||
-		m_iPendingClassIndex.has_value());
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending());
 	if (ImGui::Button("Create Character"))
 		Open_CreateCharacterModal();
 	ImGui::SameLine();
@@ -1011,6 +1220,7 @@ void CLevel_CharacterSelect::Render_ClassList()
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
 		!m_isCreateCharacterModalOpen &&
 		!m_iPendingClassIndex.has_value() &&
+		!Is_ClassPresentationPreparationPending() &&
 		!CLevelTransitionService::Is_Pending();
 
 	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"

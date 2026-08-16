@@ -1536,9 +1536,18 @@ struct Client::CEffectPlayback::PREPARED_RESOURCES final
 {
 	std::string strEffectAssetId;
 	std::string strDocumentCanonicalSha256;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument;
 	std::unordered_map<std::string, std::shared_ptr<const SOURCE_VECTOR_FIELD>>
 		VectorFields;
 };
+
+const Client::EFFECT_DOCUMENT_DESC&
+Client::CEffectPlayback::Get_StagedDocument() const
+{
+	return nullptr != m_pPreparedResources &&
+		nullptr != m_pPreparedResources->pImmutableDocument ?
+		*m_pPreparedResources->pImmutableDocument : m_Document;
+}
 
 uint64_t Client::CEffectPlayback::Get_VectorFieldDiskLoadCount()
 {
@@ -1569,8 +1578,16 @@ bool_t Client::CEffectPlayback::Stage_Document(
 bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
-	std::string& strOutError)
+	std::string& strOutError,
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument)
 {
+	if (nullptr != pImmutableDocument &&
+		pImmutableDocument.get() != &Document)
+	{
+		strOutError =
+			"Prepared Effect immutable document identity does not match.";
+		return false;
+	}
 	auto Staged = std::make_shared<PREPARED_RESOURCES>();
 	Staged->strEffectAssetId = Document.strEffectAssetId;
 	Staged->strDocumentCanonicalSha256 =
@@ -1613,6 +1630,7 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 			Staged->VectorFields.emplace(std::string(AssetId), Field);
 		}
 	}
+	Staged->pImmutableDocument = std::move(pImmutableDocument);
 	OutPrepared = std::move(Staged);
 	strOutError.clear();
 	return true;
@@ -1665,10 +1683,21 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 		}
 	}
 
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& pImmutableDocument =
+		pPreparedResources->pImmutableDocument;
+	if (nullptr != pImmutableDocument &&
+		pImmutableDocument.get() != &Document)
+	{
+		strOutError =
+			"Admitted source visual-program immutable document identity mismatches.";
+		return false;
+	}
 	std::string IdentityError;
 	const std::string DocumentCanonicalSha256 =
-		CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
-			Document, IdentityError);
+		nullptr != pImmutableDocument ?
+			pPreparedResources->strDocumentCanonicalSha256 :
+			CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+				Document, IdentityError);
 	if (DocumentCanonicalSha256.empty() ||
 		pProjection->Get_ProjectedDocumentSha256().empty() ||
 		pPreparedResources->strEffectAssetId != Document.strEffectAssetId ||
@@ -1839,6 +1868,15 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		strOutError = "Prepared Effect playback resources are missing.";
 		return false;
 	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& pImmutableDocument =
+		pPreparedResources->pImmutableDocument;
+	if (nullptr != pImmutableDocument &&
+		pImmutableDocument.get() != &Document)
+	{
+		strOutError =
+			"Prepared Effect immutable playback document identity mismatches.";
+		return false;
+	}
 	bool_t bStagedHasPortableSourceEvents = false;
 	if (!Document.bSourceContract && !Validate_PortableSourceEventRoutes(
 			Document, bStagedHasPortableSourceEvents, strOutError))
@@ -1868,18 +1906,24 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			}
 		}
 	}
-	EFFECT_DOCUMENT_DESC StagedDocument = Document;
+	EFFECT_DOCUMENT_DESC StagedOwnedDocument;
+	const EFFECT_DOCUMENT_DESC* pStagedDocument = &Document;
+	if (nullptr == pImmutableDocument)
+	{
+		StagedOwnedDocument = Document;
+		pStagedDocument = &StagedOwnedDocument;
+	}
 	std::unordered_map<std::string, ELEMENT_STATE> StagedStates;
 	std::unordered_map<std::string, size_t> StagedTransformMasterIndices;
 	std::unordered_map<std::string, size_t> ElementIndices;
-	for (size_t iElement = 0u; iElement < StagedDocument.Elements.size();
+	for (size_t iElement = 0u; iElement < pStagedDocument->Elements.size();
 		++iElement)
 	{
 		ElementIndices.emplace(
-			StagedDocument.Elements[iElement].strElementId, iElement);
+			pStagedDocument->Elements[iElement].strElementId, iElement);
 	}
 	f32_t fStagedDuration = 0.f;
-	for (const EFFECT_ELEMENT_DESC& Element : StagedDocument.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : pStagedDocument->Elements)
 	{
 		const bool_t bElementSourceVisualActive =
 			bSourceVisualProgramActive &&
@@ -1895,7 +1939,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 					"Prepared Effect transform inheritance master is missing.";
 				return false;
 			}
-			if (StagedDocument.Elements[MasterIterator->second]
+			if (pStagedDocument->Elements[MasterIterator->second]
 				.TransformInheritance.bEnabled)
 			{
 				strOutError =
@@ -1939,7 +1983,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			Element.Detail.Timing.fAfterImageSeconds +
 			fElementTail);
 	}
-	for (const EFFECT_MODEL_CUE_DESC& Cue : StagedDocument.ModelCues)
+	for (const EFFECT_MODEL_CUE_DESC& Cue : pStagedDocument->ModelCues)
 	{
 		if (Cue.bVisible)
 		{
@@ -1948,7 +1992,8 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		}
 	}
 
-	m_Document = std::move(StagedDocument);
+	m_Document = nullptr == pImmutableDocument ?
+		std::move(StagedOwnedDocument) : EFFECT_DOCUMENT_DESC{};
 	m_pPreparedResources = std::move(pPreparedResources);
 	m_ReconstructedRuntimeBoundary.Clear();
 	m_pReconstructedExecutionPlan.reset();
@@ -2236,7 +2281,7 @@ void Client::CEffectPlayback::Reset()
 	m_bSourceEventQueueOverflow = false;
 	m_PendingSourceEvents.clear();
 	m_Frame = {};
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (!Element.bVisible)
 			continue;
@@ -2306,7 +2351,7 @@ void Client::CEffectPlayback::Seek(
 	/* A zero-time product cue still needs to freeze snapshot attachments at the
 	post-Character root supplied by the presentation service. Product staging
 	does not call Seek, so this is the first snapshot capture for that instance. */
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (!Element.bVisible || !Element.ActionCueAttachment.bEnabled ||
 			Element.ActionCueAttachment.bFollow ||
@@ -2370,7 +2415,7 @@ bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
 		}
 	}
 
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 			Element.ActionCueAttachment;
@@ -2595,7 +2640,7 @@ bool_t Client::CEffectPlayback::Step(
 	m_PendingSourceEvents.clear();
 	m_bSourceEventQueueOverflow = false;
 
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (!Element.bVisible)
 			continue;
@@ -2733,7 +2778,7 @@ bool_t Client::CEffectPlayback::Step(
 		return false;
 	}
 
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (!Element.bVisible)
 			continue;
@@ -3014,7 +3059,7 @@ bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 		++iEvent)
 	{
 		const SOURCE_PARTICLE_EVENT Event = m_PendingSourceEvents[iEvent];
-		for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+		for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 		{
 			if (!Element.bVisible || !Is_ParticleSimulationElement(
 				Element, Is_SourceVisualProgramElementAdmitted(Element)))
@@ -4483,14 +4528,15 @@ void Client::CEffectPlayback::Sample_AfterImages(
 bool_t Client::CEffectPlayback::Can_EvaluateElementWorld(
 	const EFFECT_ELEMENT_DESC& Element) const
 {
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	const auto MasterIndex = m_TransformMasterIndices.find(
 		Element.strElementId);
 	if (MasterIndex != m_TransformMasterIndices.end())
 	{
-		if (MasterIndex->second >= m_Document.Elements.size())
+		if (MasterIndex->second >= Document.Elements.size())
 			return false;
 		return Can_EvaluateElementWorld(
-			m_Document.Elements[MasterIndex->second]);
+			Document.Elements[MasterIndex->second]);
 	}
 	const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 		Element.ActionCueAttachment;
@@ -4511,13 +4557,14 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 	const f32_t fSampleTimeSeconds,
 	const float4x4_t& RootWorld) const
 {
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	const auto MasterIndex = m_TransformMasterIndices.find(
 		Element.strElementId);
 	if (MasterIndex != m_TransformMasterIndices.end() &&
-		MasterIndex->second < m_Document.Elements.size())
+		MasterIndex->second < Document.Elements.size())
 	{
 		return Evaluate_ElementWorld(
-			m_Document.Elements[MasterIndex->second],
+			Document.Elements[MasterIndex->second],
 			fSampleTimeSeconds, RootWorld);
 	}
 	const EFFECT_DETAIL_DESC& Detail = Element.Detail;
@@ -4583,7 +4630,7 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 		Element, Is_SourceVisualProgramElementAdmitted(Element)))
 	{
 		const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
-			m_Document.ParticleSystem;
+			Get_StagedDocument().ParticleSystem;
 		Parent = XMMatrixScaling(
 			ParticleSystem.fUniformScaleMultiplier,
 			ParticleSystem.fUniformScaleMultiplier,
@@ -4678,7 +4725,7 @@ float3_t Client::CEffectPlayback::Apply_ParticleEmissionModifier(
 	const float3_t& Velocity) const
 {
 	const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
-		m_Document.ParticleSystem;
+		Get_StagedDocument().ParticleSystem;
 	const vector_t Rotated = XMVector3TransformNormal(
 		XMLoadFloat3(&Velocity),
 		XMMatrixRotationY(XMConvertToRadians(
@@ -4712,6 +4759,7 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
 
 void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 {
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	/* Rebuild runs for every active Effect.  Keep the retained row storage so
 	   a stable particle/trail population does not free and reallocate all
 	   frame vectors every render frame.  Stage/reset paths still replace the
@@ -4725,9 +4773,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 	m_Frame.ScreenPosts.clear();
 	m_Frame.fSampleTimeSeconds = m_fSampleTimeSeconds;
 	m_Frame.RootWorld = RootWorld;
-	for (size_t iElement = 0u; iElement < m_Document.Elements.size(); ++iElement)
+	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
 	{
-		const EFFECT_ELEMENT_DESC& Element = m_Document.Elements[iElement];
+		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
 		if (!Element.bVisible)
 			continue;
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
@@ -5065,7 +5113,7 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 	OutProbe = {};
 	OutProbe.fSampleTimeSeconds = m_Frame.fSampleTimeSeconds;
 	const EFFECT_ELEMENT_DESC* pElement = nullptr;
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
 		if (Element.strElementId == strElementId)
 		{

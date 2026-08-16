@@ -579,7 +579,9 @@ private:
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation = nullptr,
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			pVisualProgramProjection = nullptr) const;
+			pVisualProgramProjection = nullptr,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>
+			pImmutableDocument = nullptr) const;
 	bool_t Clone_ModelCueResources(
 		const PREPARED_DOCUMENT& Prepared,
 		std::unordered_map<std::string, MODEL_CUE_RESOURCE>& OutResources,
@@ -669,6 +671,7 @@ private:
 	bool_t Should_SubmitPreviewOccurrence(
 		const EFFECT_ELEMENT_DESC& Element,
 		EFFECT_GPU_RENDER_FAMILY eFamily) const;
+	const EFFECT_DOCUMENT_DESC& Get_StagedDocument() const;
 
 private:
 	ComPtr<ID3D11Device> m_pDevice;

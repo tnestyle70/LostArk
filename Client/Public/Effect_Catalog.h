@@ -499,6 +499,11 @@ public:
 		Find_VisualProgram(const std::string& strEffectAssetId);
 	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		Find_VisualProjection(const std::string& strEffectAssetId);
+	/* Cache-only projection lookup for passive Tool rendering.  Explicit
+	   authoring/play commands may use Find_VisualProjection() to request one
+	   document load, but drawing a collapsed/expanded list must not do so. */
+	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		Find_VisualProjection_Loaded(const std::string& strEffectAssetId);
 	static bool_t Prepare_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&

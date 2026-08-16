@@ -29,6 +29,26 @@ struct EFFECT_PRODUCT_PREWARM_QUEUE_PROBE final
 	bool bYieldNextFrame = false;
 };
 
+struct EFFECT_PRODUCT_PREWARM_TARGET_PROBE final
+{
+	uint64_t iCatalogRevision = 0u;
+	uint32_t iTargetCount = 0u;
+	uint32_t iPendingCount = 0u;
+	uint32_t iPreparedCount = 0u;
+	uint32_t iFailedCount = 0u;
+	uint32_t iUnavailableCount = 0u;
+	uint32_t iQueuePendingCount = 0u;
+	bool bCatalogRevisionCurrent = false;
+	bool bSettled = false;
+};
+
+/* Loading and in-level presentation switches share this gate.  An isolated
+   target-registration failure may continue, but never across a stale catalog
+   revision or while any Product resource work remains queued. */
+bool Is_ProductPrewarmActivationReady(
+	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE& Probe,
+	bool bTargetRegistrationFailureIsolated = false);
+
 /* Main-thread scheduler state only.  Catalog parsing, drawable validation and
    GPU work remain in the presentation/renderer step that consumes READY. */
 class CEffectProductPrewarmQueue final
@@ -36,6 +56,9 @@ class CEffectProductPrewarmQueue final
 public:
 	void Reset_ForCatalogRevision(uint64_t iCatalogRevision);
 	bool Enqueue(
+		const std::vector<std::string>& EffectAssetIds,
+		std::string& strOutStatus);
+	bool Enqueue_Priority(
 		const std::vector<std::string>& EffectAssetIds,
 		std::string& strOutStatus);
 	EFFECT_PRODUCT_PREWARM_STEP_RESULT Begin_Frame(
@@ -51,6 +74,9 @@ public:
 	uint64_t Get_CatalogRevision() const;
 	const std::set<std::string, std::less<>>& Get_Targets() const;
 	EFFECT_PRODUCT_PREWARM_QUEUE_PROBE Get_Probe() const;
+	EFFECT_PRODUCT_PREWARM_TARGET_PROBE Get_TargetProbe(
+		const std::vector<std::string>& EffectAssetIds,
+		uint64_t iExpectedCatalogRevision) const;
 	void Clear();
 
 private:

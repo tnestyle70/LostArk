@@ -62,6 +62,13 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
 class CAnimationEffectCueDocument final
 {
 public:
+    /* Loading-level path. It discovers every clip referenced by the authored
+       event rows and then delegates all parsing/admission validation to Load(),
+       so no live CModel is required just to register Product prewarm targets. */
+    static bool_t Load_ForProductPrewarm(
+        const std::string& strAnimationAssetId,
+        ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
+        std::string& strOutStatus);
     static bool_t Load(
         const std::string& strAnimationAssetId,
         const std::vector<std::string>& AvailableClips,
