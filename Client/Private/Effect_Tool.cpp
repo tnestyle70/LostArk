@@ -835,6 +835,13 @@ namespace
 		return Label.str();
 	}
 
+	// CAnimationTargetService reports the preview target by the pAssetName of
+	// its ANIMATION_PREVIEW_ASSETS descriptor, which is "Valtan" for the boss
+	// entry. Keeping the comparison in one place stops the boss authoring
+	// paths from silently falling through to the playable-class branch when
+	// that descriptor name changes.
+	constexpr const char* VALTAN_ANIMATION_ASSET_NAME = "Valtan";
+
 	bool_t AuthoringFamily_AllowsSlot(
 		const Client::EFFECT_AUTHORING_FAMILY eFamily,
 		const std::string_view strSlotId)
@@ -1175,6 +1182,35 @@ namespace
                 return std::tolower(static_cast<unsigned char>(Left)) ==
                     std::tolower(static_cast<unsigned char>(Right));
             });
+    }
+
+    std::string Build_ValtanV0EffectAssetId(const std::string_view ClipName)
+    {
+        std::string Suffix;
+        Suffix.reserve((std::min)(ClipName.size(), size_t{ 80u }));
+        bool_t bPreviousSeparator = false;
+        for (const char_t Character : ClipName)
+        {
+            const unsigned char Value =
+                static_cast<unsigned char>(Character);
+            if (0 != std::isalnum(Value))
+            {
+                if (Suffix.size() >= 80u)
+                    break;
+                Suffix.push_back(static_cast<char_t>(std::tolower(Value)));
+                bPreviousSeparator = false;
+            }
+            else if (!Suffix.empty() && !bPreviousSeparator)
+            {
+                Suffix.push_back('-');
+                bPreviousSeparator = true;
+            }
+        }
+        while (!Suffix.empty() && '-' == Suffix.back())
+            Suffix.pop_back();
+        if (Suffix.empty())
+            Suffix = "cue";
+        return "effect.valtan.user." + Suffix + ".v001";
     }
 
     bool Matches_MeshShapeCategory(
@@ -2756,12 +2792,57 @@ void Client::CEffect_Tool::Render_ResourceSlots(
 				{ return Override.strSlotId == strSlotId; });
 	};
 	size_t iRendered = 0u;
+	/* An editable Element must expose every slot its kind and material
+	   template allow, not only the ones that already carry an assetId.
+	   Otherwise a freshly created Element that was seeded with nothing has no
+	   card to select and can never be bound after creation. */
+	const bool_t bEditableElement =
+		EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource;
+	std::vector<std::string_view> AuthoringSlots;
+	if (bEditableElement)
+	{
+		struct AUTHORING_SLOT_CARD final
+		{
+			const char* pSlotId;
+			const char* pLabel;
+			EFFECT_RESOURCE_FILE_KIND eKind;
+		};
+		constexpr AUTHORING_SLOT_CARD Slots[] = {
+			{ "meshModel", "Mesh", EFFECT_RESOURCE_FILE_KIND::MODEL },
+			{ "base", "Base", EFFECT_RESOURCE_FILE_KIND::TEXTURE },
+			{ "noise", "Noise", EFFECT_RESOURCE_FILE_KIND::TEXTURE },
+			{ "mask", "Mask", EFFECT_RESOURCE_FILE_KIND::TEXTURE },
+			{ "emissive", "Emissive", EFFECT_RESOURCE_FILE_KIND::TEXTURE },
+			{ "dissolve", "Dissolve", EFFECT_RESOURCE_FILE_KIND::TEXTURE }
+		};
+		for (const AUTHORING_SLOT_CARD& Slot : Slots)
+		{
+			if (!Slot_Allowed(*pElement, Slot.pSlotId))
+				continue;
+			if (0u != iRendered % iColumns)
+				ImGui::SameLine();
+			RenderSlotCard(Find_Binding(*pElement, Slot.pSlotId),
+				Slot.pSlotId, Slot.pLabel, Slot.eKind,
+				IsModified(Slot.pSlotId));
+			AuthoringSlots.push_back(Slot.pSlotId);
+			++iRendered;
+		}
+	}
+	const auto Is_AuthoringSlot = [&AuthoringSlots](
+		const std::string_view strSlotId)
+	{
+		return AuthoringSlots.end() != std::find(
+			AuthoringSlots.begin(), AuthoringSlots.end(), strSlotId);
+	};
 	for (size_t iBinding = 0u;
 		iBinding < pElement->ResourceBindings.size(); ++iBinding)
 	{
 		const EFFECT_RESOURCE_BINDING_DESC& Binding =
 			pElement->ResourceBindings[iBinding];
 		if (Binding.strAssetId.empty())
+			continue;
+		if (Is_AuthoringSlot(Binding.strSlotId))
 			continue;
 		if (0u != iRendered % iColumns)
 			ImGui::SameLine();
@@ -2801,7 +2882,7 @@ void Client::CEffect_Tool::Render_ResourceSlots(
 			EFFECT_RESOURCE_FILE_KIND::TEXTURE, IsModified(strSlotId));
 		++iRendered;
 	}
-	if (Is_MissingBaseSourceDecal(*pElement))
+	if (!Is_AuthoringSlot("base") && Is_MissingBaseSourceDecal(*pElement))
 	{
 		if (0u != iRendered % iColumns)
 			ImGui::SameLine();
@@ -2812,7 +2893,8 @@ void Client::CEffect_Tool::Render_ResourceSlots(
 	if (0u == iRendered)
 		ImGui::TextDisabled("(no resources bound)");
 
-	ImGui::TextDisabled(
+	ImGui::TextDisabled(bEditableElement ?
+		"Empty slots are bindable: pick one card, choose a DDS or WModel in Resource Library, then Bind Selected and Save Changes." :
 		"Only compiler-declared DDS/WModel lanes are shown. Add lanes while creating a new Element draft.");
 	if (!strResetSlot.empty())
 		Try_ResetAuthoringResourceOverride(strResetSlot);
@@ -3204,6 +3286,97 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     const shared_ptr<Engine::CModel> pModel =
         CAnimationTargetService::Resolve_Model();
     Render_AnimationControls(pModel);
+
+    const bool_t bValtanTarget =
+        CAnimationTargetService::Resolve_AssetName() == VALTAN_ANIMATION_ASSET_NAME;
+    if (bValtanTarget)
+    {
+        ImGui::SeparatorText("Valtan V0 Quick Start");
+        ImGui::TextDisabled(
+            "Body + armor: MN_RPBF_01.wmodel | Axe: ValtanWeapon.wmodel | Socket: b_wp_r_01");
+
+        if (ImGui::SmallButton("Actor Root##ValtanPivot"))
+        {
+            m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
+            m_strPreviewAnchorSlotId = "root";
+            Copy_Buffer(m_PreviewAnchorBuffer.data(),
+                m_PreviewAnchorBuffer.size(), m_strPreviewAnchorSlotId);
+            m_strPreviewStatus = "Valtan V0 pivot: actor root.";
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Effect Root##ValtanPivot"))
+        {
+            constexpr const char_t* EFFECT_ROOT = "b_effectroot";
+            float4x4_t Test{};
+            if (CAnimationTargetService::Resolve_AnchorTransform(
+                    EFFECT_ROOT, &Test))
+            {
+                m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::MODEL_BONE;
+                m_strPreviewAnchorSlotId = EFFECT_ROOT;
+                Copy_Buffer(m_PreviewAnchorBuffer.data(),
+                    m_PreviewAnchorBuffer.size(), m_strPreviewAnchorSlotId);
+                m_strPreviewStatus =
+                    "Valtan V0 pivot: b_effectroot.";
+            }
+            else
+                m_strPreviewStatus = "Valtan b_effectroot was not found.";
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Axe b_wp_r_01##ValtanPivot"))
+        {
+            constexpr const char_t* AXE_SOCKET = "b_wp_r_01";
+            float4x4_t Test{};
+            if (CAnimationTargetService::Resolve_AnchorTransform(
+                    AXE_SOCKET, &Test))
+            {
+                m_ePreviewPivotKind =
+                    EFFECT_PREVIEW_PIVOT_KIND::WEAPON_SOCKET;
+                m_strPreviewAnchorSlotId = AXE_SOCKET;
+                Copy_Buffer(m_PreviewAnchorBuffer.data(),
+                    m_PreviewAnchorBuffer.size(), m_strPreviewAnchorSlotId);
+                m_strPreviewStatus =
+                    "Valtan V0 pivot: axe socket b_wp_r_01.";
+            }
+            else
+                m_strPreviewStatus =
+                    "Valtan axe socket b_wp_r_01 was not found.";
+        }
+
+        if (nullptr != pModel && pModel->Get_NumAnimations() > 0u)
+        {
+            const char_t* pClipName = pModel->Get_AnimationName(
+                pModel->Get_CurrentAnimIndex());
+            if (ImGui::SmallButton("Use Current Clip Name##ValtanV0"))
+            {
+                const std::string ClipName = nullptr == pClipName ?
+                    "cue" : pClipName;
+                Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(),
+                    Build_ValtanV0EffectAssetId(ClipName));
+                Copy_Buffer(m_NewDisplayName.data(),
+                    m_NewDisplayName.size(), "Valtan V0 " + ClipName);
+                Select_AuthoringDomain("Valtan");
+                m_strDocumentStatus =
+                    "Prepared a Valtan V0 Effect ID from the selected clip.";
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Clip: %s",
+                nullptr == pClipName ? "Invalid" : pClipName);
+        }
+        ImGui::InputText("V0 Effect ID", m_NewAssetId.data(),
+            m_NewAssetId.size());
+        const bool_t bCanCreateValtanV0 =
+            '\0' != m_NewAssetId[0u] && !Has_UnsavedWork();
+        ImGui::BeginDisabled(!bCanCreateValtanV0);
+        if (ImGui::Button("Create Valtan V0 Effect"))
+        {
+            Select_AuthoringDomain("Valtan");
+            Try_CreateDocument();
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::TextDisabled(
+            "Then choose Element Type, DDS/WModel, and Create Element.");
+    }
 
     ImGui::SeparatorText("Effect Pivot");
     if (m_ProductPreview.has_value())
@@ -3648,6 +3821,12 @@ void Client::CEffect_Tool::Render_AnimationControls(
         return;
     }
     Refresh_AnimationClipLabels(pModel, false);
+    ImGui::InputTextWithHint("##AnimationClipFilter",
+        "Search clip or Valtan action...",
+        m_AnimationClipFilter.data(), m_AnimationClipFilter.size());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Clear##AnimationClipFilter"))
+        m_AnimationClipFilter[0u] = '\0';
     uint32_t iCurrent = pModel->Get_CurrentAnimIndex();
     const char* pCurrentName = pModel->Get_AnimationName(iCurrent);
     const char* pCurrentLabel =
@@ -3656,6 +3835,7 @@ void Client::CEffect_Tool::Render_AnimationControls(
     if (ImGui::BeginCombo("Animation Clip",
         nullptr != pCurrentLabel ? pCurrentLabel : "Invalid"))
     {
+        size_t iVisibleClipCount = 0u;
         for (uint32_t iAnimation = 0u;
             iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
         {
@@ -3663,6 +3843,16 @@ void Client::CEffect_Tool::Render_AnimationControls(
             const char* pLabel =
                 iAnimation < m_AnimationClipDisplayLabels.size() ?
                     m_AnimationClipDisplayLabels[iAnimation].c_str() : pName;
+            const std::string_view Filter = m_AnimationClipFilter.data();
+            const bool_t bMatches = nullptr != pName && nullptr != pLabel &&
+                (Contains_NoCase(pLabel, Filter) ||
+                 Contains_NoCase(pName, Filter) ||
+                 (iAnimation < m_AnimationClipSearchTokens.size() &&
+                  Contains_NoCase(
+                    m_AnimationClipSearchTokens[iAnimation], Filter)));
+            if (!bMatches)
+                continue;
+            ++iVisibleClipCount;
             if (nullptr != pName && nullptr != pLabel && ImGui::Selectable(
                 pLabel, iAnimation == iCurrent))
             {
@@ -3672,12 +3862,17 @@ void Client::CEffect_Tool::Render_AnimationControls(
                 iCurrent = iAnimation;
             }
         }
+        if (0u == iVisibleClipCount)
+            ImGui::TextDisabled("No animation matches this search.");
         ImGui::EndCombo();
     }
-    if (ImGui::Button("Reload Skill Labels"))
+    if (ImGui::Button("Reload Labels"))
         Refresh_AnimationClipLabels(pModel, true);
     ImGui::SameLine();
-    ImGui::TextDisabled("[Input] Korean Skill Name | Model Clip");
+    ImGui::TextDisabled(
+        CAnimationTargetService::Resolve_AssetName() == VALTAN_ANIMATION_ASSET_NAME ?
+            "[Valtan] Pattern Action | Model Clip" :
+            "[Input] Korean Skill Name | Model Clip");
     if (!m_strAnimationClipLabelStatus.empty())
         ImGui::TextDisabled("%s", m_strAnimationClipLabelStatus.c_str());
     const bool_t bSkillTimelineOwnsAnimation =
@@ -7867,13 +8062,15 @@ bool_t Client::CEffect_Tool::Refresh_UnifiedCandidateBindings(
 			}
 			Binding.Path = DataFile->second->Path;
 
-			const auto Skill = std::find_if(m_AllEffects.begin(), m_AllEffects.end(),
-				[&Binding](const EFFECT_SKILL_TREE_ENTRY& Entry)
+			const vector<PLAYER_SKILL_DEFINITION>& Skills =
+				CPlayerSkillCatalog::Get_Skills();
+			const auto Skill = std::find_if(Skills.begin(), Skills.end(),
+				[&Binding](const PLAYER_SKILL_DEFINITION& Entry)
 				{
-					return Entry.Skill.eCharacterClass == Binding.eCharacterClass &&
-						Entry.Skill.iSkillId == Binding.iSkillId;
+					return Entry.eCharacterClass == Binding.eCharacterClass &&
+						Entry.iSkillId == Binding.iSkillId;
 				});
-			if (Skill == m_AllEffects.end())
+			if (Skill == Skills.end())
 			{
 				Error = "Four-class candidate has no PlayerSkills owner: " +
 					Binding.strEffectAssetId;
@@ -8539,6 +8736,14 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::BeginDisabled(!bCanDeleteSelected);
 	if (ImGui::SmallButton("Delete Selected"))
 		Try_DeleteSelectedElement();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	const bool_t bCanSeedSelected =
+		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+		!m_strSelectedElementId.empty() && !Has_UnappliedDetailDraft();
+	ImGui::BeginDisabled(!bCanSeedSelected);
+	if (ImGui::SmallButton("Use Selected as New Layer Seed"))
+		Try_UseSelectedElementAsAuthoringPreset();
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
 		"Effect Detail edits one selected Element at a time; all Families and Elements below remain in this one saved Effect.");
@@ -10063,7 +10268,8 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
         0u : pModel->Get_NumAnimations();
     if (!bForce &&
         m_iAnimationClipLabelTargetGeneration == iTargetGeneration &&
-        m_AnimationClipDisplayLabels.size() == iAnimationCount)
+        m_AnimationClipDisplayLabels.size() == iAnimationCount &&
+        m_AnimationClipSearchTokens.size() == iAnimationCount)
     {
         return;
     }
@@ -10071,12 +10277,65 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
     m_iAnimationClipLabelTargetGeneration = iTargetGeneration;
     m_AnimationClipDisplayLabels.clear();
     m_AnimationClipDisplayLabels.reserve(iAnimationCount);
+    m_AnimationClipSearchTokens.clear();
+    m_AnimationClipSearchTokens.reserve(iAnimationCount);
     for (uint32_t iAnimation = 0u;
         iAnimation < iAnimationCount; ++iAnimation)
     {
         const char* pName = pModel->Get_AnimationName(iAnimation);
         m_AnimationClipDisplayLabels.emplace_back(
             nullptr == pName ? "Invalid" : pName);
+        m_AnimationClipSearchTokens.emplace_back(
+            nullptr == pName ? "Invalid" : pName);
+    }
+
+    if (CAnimationTargetService::Resolve_AssetName() == VALTAN_ANIMATION_ASSET_NAME)
+    {
+        BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT Bindings;
+        std::string BindingStatus;
+        if (!CValtanPatternAnimationBindingDocument::Load(
+                "Valtan", "BOSS_VALTAN", Collect_AnimationClipNames(pModel),
+                Bindings, BindingStatus))
+        {
+            m_strAnimationClipLabelStatus =
+                "Valtan labels preserved raw clip names: " + BindingStatus;
+            return;
+        }
+
+        std::unordered_map<std::string, std::vector<std::string>>
+            ActionsByClip;
+        for (const BOSS_PATTERN_ANIMATION_BINDING& Binding :
+            Bindings.Bindings)
+        {
+            ActionsByClip[Binding.strClipName].push_back(Binding.strActionId);
+        }
+        size_t iLabeledClipCount = 0u;
+        for (uint32_t iAnimation = 0u;
+            iAnimation < iAnimationCount; ++iAnimation)
+        {
+            const char_t* pName = pModel->Get_AnimationName(iAnimation);
+            if (nullptr == pName)
+                continue;
+            const auto Actions = ActionsByClip.find(pName);
+            if (Actions == ActionsByClip.end() || Actions->second.empty())
+                continue;
+            const std::vector<std::string>& ClipActions = Actions->second;
+            std::string Label = "[Valtan] " + ClipActions.front();
+            if (ClipActions.size() > 1u)
+                Label += " (+" + std::to_string(ClipActions.size() - 1u) + ")";
+            Label += " | ";
+            Label += pName;
+            m_AnimationClipDisplayLabels[iAnimation] = std::move(Label);
+            std::string SearchTokens = pName;
+            for (const std::string& Action : ClipActions)
+                SearchTokens += " " + Action;
+            m_AnimationClipSearchTokens[iAnimation] = std::move(SearchTokens);
+            ++iLabeledClipCount;
+        }
+        m_strAnimationClipLabelStatus = "Valtan: " +
+            std::to_string(iLabeledClipCount) +
+            " clips labeled from pattern action bindings.";
+        return;
     }
 
     const CHARACTER_SPEC* pSpec = Resolve_CurrentTargetSpec();
@@ -10149,6 +10408,8 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
                 }
                 Label += " | " + Clip.strClipName;
                 m_AnimationClipDisplayLabels[iAnimation] = std::move(Label);
+                m_AnimationClipSearchTokens[iAnimation] =
+                    m_AnimationClipDisplayLabels[iAnimation];
                 ++iLabeledClipCount;
                 break;
             }
@@ -11412,6 +11673,8 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
         }
     }
 	if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind && !bImportedSeed &&
+		EFFECT_PREVIEW_PIVOT_KIND::WEAPON_SOCKET != m_ePreviewPivotKind &&
+		EFFECT_PREVIEW_PIVOT_KIND::MODEL_BONE != m_ePreviewPivotKind &&
 		std::abs(Element.Detail.Transform.vVelocityPerSecond.x) <= 1e-6f &&
 		std::abs(Element.Detail.Transform.vVelocityPerSecond.y) <= 1e-6f &&
 		std::abs(Element.Detail.Transform.vVelocityPerSecond.z) <= 1e-6f)
@@ -12859,9 +13122,8 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
                 return Left.Skill.strInputSlot < Right.Skill.strInputSlot;
             return Left.Skill.iSkillId < Right.Skill.iSkillId;
         });
-	if (!Refresh_ValtanBossPatternEffects())
-		return FailRefresh("Boss Patterns / Valtan: " +
-			m_strValtanBossPatternStatus);
+	const bool_t bValtanBossPatternsReady =
+		Refresh_ValtanBossPatternEffects();
     m_AllEffects = std::move(Staged);
     m_strElementStatus =
         "All Effects indexed Product presentation from PlayerSkills + "
@@ -12876,6 +13138,12 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             std::to_string(MissingAuthoredTargets.size()) +
             " Product targets have no Authored document";
     m_strElementStatus += ".";
+	if (!bValtanBossPatternsReady)
+	{
+		m_strElementStatus +=
+			" Valtan rows were isolated and did not hide playable skills: " +
+			m_strValtanBossPatternStatus;
+	}
     return true;
 }
 
@@ -14225,6 +14493,21 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 	const bool_t bUnlockMissingBaseSourceDecal =
 		Is_BaseTextureSlot(m_strSelectedResourceSlotId) &&
 		Is_MissingBaseSourceDecal(*pElement);
+	/* A hand-authored Element has no compiler lane set to override. Its
+	   material template is the declaration, so the first bind of a template
+	   slot creates the binding instead of being rejected as undeclared.
+	   Imported and runtime documents keep the compiler lane set authoritative. */
+	const bool_t bAuthoredTemplateSlot =
+		(EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
+		 EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource) &&
+		nullptr == pMaterialLane && nullptr == pSourceTexture &&
+		nullptr == pBinding &&
+		(m_strSelectedResourceSlotId == EFFECT_MESH_SHAPE_SLOT_ID ?
+			(EFFECT_ELEMENT_KIND::MESH == pElement->eKind ||
+			 EFFECT_ELEMENT_KIND::PARTICLE == pElement->eKind) :
+			nullptr != Find_EffectMaterialInput(
+				pElement->Material.strTemplateId,
+				m_strSelectedResourceSlotId));
 	if (bUnlockMissingBaseSourceDecal && nullptr == pBinding)
 	{
 		// Decal Base is the sole contract that may create a previously absent
@@ -14234,6 +14517,12 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 		pElement->Material.Execution.bFailClosed = false;
 		pElement->bVisible = true;
 		bUnlockedMissingBaseSourceDecal = true;
+		strSlotLabel = Slot_Label(*pElement, m_strSelectedResourceSlotId);
+	}
+	else if (bAuthoredTemplateSlot)
+	{
+		pElement->ResourceBindings.push_back(
+			{ m_strSelectedResourceSlotId, strAssetId });
 		strSlotLabel = Slot_Label(*pElement, m_strSelectedResourceSlotId);
 	}
 	else
@@ -18061,7 +18350,7 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 	if (Binding.strEffectAssetId != Document.strEffectAssetId ||
 		Binding.strRuntimeClipName.empty() ||
 		Binding.strRuntimeBoneName.empty() ||
-		CAnimationTargetService::Resolve_AssetName() != "Boss_Valtan" ||
+		CAnimationTargetService::Resolve_AssetName() != VALTAN_ANIMATION_ASSET_NAME ||
 		1u != m_SynchronizedAnimationClips.size() ||
 		0u != m_iSynchronizedAnimationClipIndex ||
 		m_SynchronizedAnimationClips.front().strClipName !=
@@ -18187,7 +18476,7 @@ bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
 		m_fValtanBossPatternAnimationDurationSeconds <= 0.f ||
 		m_iSynchronizedAnimationTargetGeneration !=
 			CAnimationTargetService::Resolve_TargetGeneration() ||
-		CAnimationTargetService::Resolve_AssetName() != "Boss_Valtan")
+		CAnimationTargetService::Resolve_AssetName() != VALTAN_ANIMATION_ASSET_NAME)
 	{
 		strOutError =
 			"Valtan 420633 historical transform sample identity is invalid.";
@@ -19161,7 +19450,7 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 				m_bValtanBossPatternTransformHistoryRequired = true;
 				m_strValtanBossPatternPreviewEffectAssetId =
 					pPreviewDocument->strEffectAssetId;
-				constexpr const char_t* BOSS_PREVIEW_ASSET = "Boss_Valtan";
+				constexpr const char_t* BOSS_PREVIEW_ASSET = VALTAN_ANIMATION_ASSET_NAME;
 				if (CAnimationTargetService::Resolve_AssetName() !=
 						BOSS_PREVIEW_ASSET &&
 					!m_pCharacterPreviewPanel->Select_TargetAsset(
