@@ -1,7 +1,7 @@
 #pragma once
 
-/* ¶óÀÌºê·¯¸®ÀÇ ±â´ÉÀ» ¿ÜºÎ »ç¿ëÀÚ¿¡°Ô º¸¿©ÁÖ´Â ¿ªÈ°. */
-/* ¶óÀÌºê·¯¸® ±âÁØ À¯ÀÏ¹«ÀÌÇÑ ½Ì±ÛÅÏ°´Ã¼. */
+/* ï¿½ï¿½ï¿½Ìºê·¯ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Üºï¿½ ï¿½ï¿½ï¿½ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ ï¿½ï¿½È°. */
+/* ï¿½ï¿½ï¿½Ìºê·¯ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì±ï¿½ï¿½Ï°ï¿½Ã¼. */
 #include "Prototype_Manager.h"
 
 NS_BEGIN(Engine)
@@ -26,7 +26,7 @@ public:
 
 
 public:
-	/* ¿£ÁøÀÇ ±â´ÉÀ» ÀÌ¿ëÇÒ ¼ö ÀÖµµ·Ï, ÇÊ¿äÇÑ ÃÊ±âÈ­ °úÁ¤À» ¼öÇàÇÑ´Ù. */
+	/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¿ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Öµï¿½ï¿½ï¿½, ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½. */
 	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
 	void Update_Engine(f32_t fTimeDelta);
 	HRESULT Render_Begin(const float4_t* pClearColor);
@@ -107,6 +107,7 @@ public: /* For.Light */
 public: /* For.Font_Manager */
 	HRESULT Add_Font(const wstring& strFontTag, const tchar_t* pFontFilePath);
 	void Draw_Text(const wstring& strFontTag, const tchar_t* pText, const float2_t& vPosition, fvector_t vColor = Colors::White, f32_t fRotation = 0.f, const float2_t& vOrigin = float2_t(0.f, 0.f), f32_t fScale = 1.f);
+	float2_t Measure_Text(const wstring& strFontTag, const tchar_t* pText);
 
 public: /* For.Target_Manager */
 	HRESULT Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);

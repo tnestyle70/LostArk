@@ -288,6 +288,30 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.iPatternStageIndex = snapshot.iPatternStageIndex;
 }
 
+void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
+{
+	if (!enable)
+	{
+		m_Boss.isValid = false;
+		return;
+	}
+
+	m_Boss.isValid = true;
+	m_Boss.strArchetypeId = "DEBUG_PREVIEW_VALTAN";
+	/* UTF-8 bytes for "\xBC1C\xD0C4" (Valtan's display name) -- strDisplayName is std::string, not
+	wstring, so this needs the UTF-8 encoding of the two Hangul codepoints, not their raw values. */
+	m_Boss.strDisplayName = "\xEB\xB0\x9C\xED\x83\x84";
+	m_Boss.iMaximumHealthBars = 160u;
+	m_Boss.iCurrentHp = 848096077u;
+	m_Boss.iMaximumHp = 1991561183u;
+	m_Boss.iPhase = 1u;
+	m_Boss.eAction = LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
+	m_Boss.strActionId.clear();
+	m_Boss.strPatternId.clear();
+	m_Boss.iPatternSequence = 0u;
+	m_Boss.iPatternStageIndex = 0u;
+}
+
 void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	const std::uint32_t serverTick,
 	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events)

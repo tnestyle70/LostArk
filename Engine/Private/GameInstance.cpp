@@ -73,7 +73,7 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 		return FAILED(hResult) ? hResult : E_FAIL;
 	};
 
-	//viewport »çÀÌÁî ¼³Á¤
+	//viewport ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	m_vViewportDesc = float2_t(EngineDesc.iWinSizeX, EngineDesc.iWinSizeY);
 
 	m_pGraphic_Device = CGraphic_Device::Create(EngineDesc.hWnd, EngineDesc.eWinMode,
@@ -445,6 +445,11 @@ void CGameInstance::Draw_Text(const wstring& strFontTag, const tchar_t* pText, c
 	return m_pFont_Manager->Draw(strFontTag, pText, vPosition, vColor, fRotation, vOrigin, fScale);
 }
 
+float2_t CGameInstance::Measure_Text(const wstring& strFontTag, const tchar_t* pText)
+{
+	return m_pFont_Manager->Measure(strFontTag, pText);
+}
+
 HRESULT CGameInstance::Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor)
 {
 	return m_pTarget_Manager->Add_RenderTarget(strTargetTag, iWidth, iHeight, ePixelFormat, vClearColor);	
@@ -564,7 +569,7 @@ void CGameInstance::Release_Engine()
 	m_pLight_Manager.reset();
 	m_pPipeLine.reset();
 	m_pRenderer.reset();
-	/* ÇöÀç Loading LevelÀÌ º¸À¯ÇÑ Loader ½º·¹µå¸¦ ¸ÕÀú Á¾·á½ÃÅ²´Ù. */
+	/* ï¿½ï¿½ï¿½ï¿½ Loading Levelï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Loader ï¿½ï¿½ï¿½ï¿½ï¿½å¸¦ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Å²ï¿½ï¿½. */
 	m_pLevel_Manager.reset();
 	m_pObject_Manager.reset();
 	m_pPhysics_Manager.reset();

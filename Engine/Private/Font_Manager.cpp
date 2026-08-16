@@ -35,6 +35,15 @@ void CFont_Manager::Draw(const wstring& strFontTag, const tchar_t* pText, const 
 	pFont->Draw(pText, vPosition, vColor, fRotation, vOrigin, fScale);
 }
 
+float2_t CFont_Manager::Measure(const wstring& strFontTag, const tchar_t* pText)
+{
+	auto		pFont = Find_Font(strFontTag);
+	if (nullptr == pFont)
+		return float2_t(0.f, 0.f);
+
+	return pFont->Measure(pText);
+}
+
 shared_ptr<class CCustomFont> CFont_Manager::Find_Font(const wstring& strFontTag)
 {
 	auto	iter = m_Fonts.find(strFontTag);

@@ -56,6 +56,24 @@ namespace
 			GetCurrentProcessId() == processId;
 	}
 
+	/* "12345" -> "12,345", for floating damage numbers -- not _DEBUG-gated, floating damage draws
+	in Release too. */
+	wstring Format_ThousandsSeparated(uint32_t iValue)
+	{
+		const wstring strDigits = std::to_wstring(iValue);
+		wstring strResult;
+		int32_t iDigitsSinceComma = 0;
+		for (auto it = strDigits.rbegin(); it != strDigits.rend(); ++it)
+		{
+			if (0 != iDigitsSinceComma && 0 == iDigitsSinceComma % 3)
+				strResult.push_back(L',');
+			strResult.push_back(*it);
+			++iDigitsSinceComma;
+		}
+		std::reverse(strResult.begin(), strResult.end());
+		return strResult;
+	}
+
 #ifdef _DEBUG
 
 	const char_t* GetHUDLayoutClassId(
@@ -181,6 +199,8 @@ HRESULT CMainApp::Initialize()
 	}
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
+	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
@@ -417,6 +437,8 @@ HRESULT CMainApp::Render()
 		m_pImGuiLayer->EndFrame();
 	}
 	RenderCombatHUDText();
+	RenderBossHealthBarText();
+	RenderDamageNumbers();
 
 	return CGameInstance::Get().Render_End();
 }
@@ -1054,31 +1076,351 @@ void CMainApp::RenderBossHealthBar()
 	const float scaleX = pViewport->WorkSize.x / 1280.f;
 	const float scaleY = pViewport->WorkSize.y / 720.f;
 	const float uiScale = (std::min)(scaleX, scaleY);
-	const float healthRatio = (std::clamp)(
-		static_cast<float>(boss.iCurrentHp) /
-		static_cast<float>(boss.iMaximumHp), 0.f, 1.f);
-	const ImVec2 barMin{
-		pViewport->WorkPos.x + 360.f * scaleX,
-		pViewport->WorkPos.y + 30.f * scaleY };
-	const ImVec2 barMax{
-		pViewport->WorkPos.x + 920.f * scaleX,
-		pViewport->WorkPos.y + 50.f * scaleY };
-	const float fillRight = barMin.x +
-		(barMax.x - barMin.x) * healthRatio;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	pDrawList->AddRectFilled(
-		barMin, barMax, IM_COL32(24, 24, 28, 230), 3.f * uiScale);
-	if (fillRight > barMin.x)
+
+	/* Real Lost Ark raid bosses (Valtan: Data/Balance/BossProfiles.json maximumHealthBars=160)
+	don't show current/max HP as one continuous 0..100% bar -- total HP is split into
+	iMaximumHealthBars equal segments ("줄"), the single visible bar only ever shows the CURRENT
+	segment's own fill, and it resets to full and the count ticks down by one every time a segment
+	fully drains. iMaximumHp/iMaximumHealthBars segments of iCurrentHp is exact server data, not a
+	client guess -- this is just choosing how to lay the same numbers out visually. */
+	const uint32_t iMaximumBars = (std::max)(1u, boss.iMaximumHealthBars);
+	const double segmentHp =
+		static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
+	float healthRatio = 0.f;
+	uint32_t iBarsRemaining = 0u;
+	if (boss.iCurrentHp > 0u && segmentHp > 0.0)
 	{
-		pDrawList->AddRectFilled(
-			barMin,
-			ImVec2(fillRight, barMax.y),
-			IM_COL32(176, 34, 40, 255),
-			3.f * uiScale);
+		const double scaledHp = static_cast<double>(boss.iCurrentHp) / segmentHp;
+		const double fraction = scaledHp - std::floor(scaledHp);
+		/* Exactly on a segment boundary (fraction == 0) means that segment is untouched and full,
+		not freshly emptied -- e.g. iCurrentHp == iMaximumHp must render as a full bar. */
+		healthRatio = static_cast<float>(0.0 == fraction ? 1.0 : fraction);
+		iBarsRemaining = (std::clamp)(
+			static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
 	}
-	pDrawList->AddRect(
-		barMin, barMax, IM_COL32(224, 208, 176, 255),
-		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+
+	/* Edge-detect against the previous frame's bars-remaining/HP to trigger the two real effects
+	below -- reset instead of comparing on a target swap, or the new boss's lower HP/bar-count would
+	read as damage taken against the old one. */
+	if (boss.strArchetypeId != m_strPreviousBossArchetypeId)
+	{
+		m_strPreviousBossArchetypeId = boss.strArchetypeId;
+		m_iPreviousBossBarsRemaining = iBarsRemaining;
+		m_iPreviousBossCurrentHp = boss.iCurrentHp;
+		m_dBossBarTickFlashStartSeconds = -1.0;
+		m_dBossHitGlowStartSeconds = -1.0;
+	}
+	else
+	{
+		if (iBarsRemaining < m_iPreviousBossBarsRemaining)
+			m_dBossBarTickFlashStartSeconds = ImGui::GetTime();
+		if (boss.iCurrentHp < m_iPreviousBossCurrentHp)
+		{
+			m_dBossHitGlowStartSeconds = ImGui::GetTime();
+			m_fBossHitGlowFillRatio = healthRatio;
+		}
+		m_iPreviousBossBarsRemaining = iBarsRemaining;
+		m_iPreviousBossCurrentHp = boss.iCurrentHp;
+	}
+
+	/* Position/size come from the HUD Layout Tool (F1) now, not derived SWF-trace math or any
+	combined/shared rect this code computes on its own -- every raw piece (frame, fill, stagger
+	background, stagger track) is its own independent slot in the "Boss UI" document
+	(m_pBossUIView), each defaulting to that resource's native pixel size, so the user places and
+	resizes each one by hand without this function deciding how they relate to each other. Nothing
+	to draw if the fill slot -- the one piece that actually needs to exist for the bar to mean
+	anything -- hasn't loaded. */
+	if (nullptr == m_pBossUIView)
+		return;
+	f32_t fFillRectX = 0.f, fFillRectY = 0.f, fFillRectWidth = 0.f, fFillRectHeight = 0.f;
+	if (!m_pBossUIView->Get_SlotRect(
+		"Boss_Fill", fFillRectX, fFillRectY, fFillRectWidth, fFillRectHeight))
+	{
+		return;
+	}
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
+	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
+	tapered right point -- the same silhouette the real bar's shapeBounds gives, 485x28); drawn
+	inset and UV-clipped by healthRatio instead of stretched, so a partial bar shows the real art's
+	left portion, not a squished copy. Fill color cycles per bar segment, matching the real
+	ProgressMultiTrack.trackValue formula (trackValue % trackColorLength, 1-based, wrapping to the
+	length instead of 0) but with the 6 colors picked by hand from i2.dds's cluster --
+	teal/blue/purple/orange/red/green -- instead of the real SWF's own 7-color cycle
+	(white/translucent-red/black/gray rows explicitly excluded per direct instruction). */
+	constexpr const char* FILL_COLOR_CYCLE[] = {
+		"UI/BossUI/boss_bar_fill_teal.png",
+		"UI/BossUI/boss_bar_fill_blue.png",
+		"UI/BossUI/boss_bar_fill_purple.png",
+		"UI/BossUI/boss_bar_fill_orange.png",
+		"UI/BossUI/boss_bar_fill_red.png",
+		"UI/BossUI/boss_bar_fill_green.png",
+	};
+	constexpr uint32_t FILL_COLOR_COUNT =
+		static_cast<uint32_t>(sizeof(FILL_COLOR_CYCLE) / sizeof(FILL_COLOR_CYCLE[0]));
+	const uint32_t iColorCycleValue = (std::max)(1u, iBarsRemaining);
+	const uint32_t iColorIndex = ((iColorCycleValue % FILL_COLOR_COUNT == 0) ?
+		FILL_COLOR_COUNT : (iColorCycleValue % FILL_COLOR_COUNT)) - 1u;
+
+	ID3D11ShaderResourceView* pFillSRV =
+		m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iColorIndex]);
+
+	const ImVec2 fillTrackMin{
+		pViewport->WorkPos.x + fFillRectX * scaleX,
+		pViewport->WorkPos.y + fFillRectY * scaleY };
+	const ImVec2 fillTrackMax{
+		fillTrackMin.x + fFillRectWidth * scaleX,
+		fillTrackMin.y + fFillRectHeight * scaleY };
+	const float fillInset = 2.f * uiScale;
+	const ImVec2 fillMin{ fillTrackMin.x + fillInset, fillTrackMin.y + fillInset };
+	const ImVec2 fillMax{ fillTrackMax.x - fillInset, fillTrackMax.y - fillInset };
+	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * healthRatio;
+
+	/* The area the current segment's fill hasn't reached yet isn't empty -- it's the next bar
+	segment's own color already sitting behind it, so draining the current segment reveals the
+	next one's color instead of a gap. Only the current segment (iColorIndex) is UV-clipped by
+	healthRatio; this background is the (iBarsRemaining - 1) segment drawn full-width underneath.
+	No "next" color once the last bar is draining (iBarsRemaining == 1). */
+	if (iBarsRemaining > 1u)
+	{
+		const uint32_t iNextColorCycleValue = iBarsRemaining - 1u;
+		const uint32_t iNextColorIndex = ((iNextColorCycleValue % FILL_COLOR_COUNT == 0) ?
+			FILL_COLOR_COUNT : (iNextColorCycleValue % FILL_COLOR_COUNT)) - 1u;
+		if (ID3D11ShaderResourceView* pNextFillSRV =
+			m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iNextColorIndex]))
+		{
+			pDrawList->AddImage(pNextFillSRV, fillMin, fillMax);
+		}
+	}
+
+	if (nullptr != pFillSRV && healthRatio > 0.f)
+	{
+		pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fFillBoundaryX, fillMax.y),
+			ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
+	}
+
+	/* boss_bar_ornate_frame.png (the user's reference capture 제목없음.png, used whole, badge and
+	border together) is purely decorative and independently placed via its own "Boss_Frame" slot --
+	it does not define the fill's 0-100% width, that's Boss_Fill's own rect above. */
+	f32_t fFrameRectX = 0.f, fFrameRectY = 0.f, fFrameRectWidth = 0.f, fFrameRectHeight = 0.f;
+	if (m_pBossUIView->Get_SlotRect(
+		"Boss_Frame", fFrameRectX, fFrameRectY, fFrameRectWidth, fFrameRectHeight))
+	{
+		if (ID3D11ShaderResourceView* pOrnateFrameSRV =
+			m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_ornate_frame.png"))
+		{
+			const ImVec2 vFrameMin{
+				pViewport->WorkPos.x + fFrameRectX * scaleX,
+				pViewport->WorkPos.y + fFrameRectY * scaleY };
+			const ImVec2 vFrameMax{
+				vFrameMin.x + fFrameRectWidth * scaleX,
+				vFrameMin.y + fFrameRectHeight * scaleY };
+			pDrawList->AddImage(pOrnateFrameSRV, vFrameMin, vFrameMax);
+		}
+	}
+
+	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + hollow purple-bordered
+	track, char 473 in TargetGrade_Boss). No live server value exists yet for the fill
+	(boss_stagger_fill.png sits unused until that's wired up), so this only draws the static
+	background/track, each from its own independent "Boss_StaggerBg"/"Boss_StaggerTrack" slot
+	instead of one shared rect. */
+	f32_t fStaggerBgX = 0.f, fStaggerBgY = 0.f, fStaggerBgWidth = 0.f, fStaggerBgHeight = 0.f;
+	if (m_pBossUIView->Get_SlotRect(
+		"Boss_StaggerBg", fStaggerBgX, fStaggerBgY, fStaggerBgWidth, fStaggerBgHeight))
+	{
+		if (ID3D11ShaderResourceView* pStaggerBgSRV =
+			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_bg.png"))
+		{
+			const ImVec2 vStaggerBgMin{
+				pViewport->WorkPos.x + fStaggerBgX * scaleX,
+				pViewport->WorkPos.y + fStaggerBgY * scaleY };
+			const ImVec2 vStaggerBgMax{
+				vStaggerBgMin.x + fStaggerBgWidth * scaleX,
+				vStaggerBgMin.y + fStaggerBgHeight * scaleY };
+			pDrawList->AddImage(pStaggerBgSRV, vStaggerBgMin, vStaggerBgMax);
+		}
+	}
+	f32_t fStaggerTrackX = 0.f, fStaggerTrackY = 0.f, fStaggerTrackWidth = 0.f, fStaggerTrackHeight = 0.f;
+	if (m_pBossUIView->Get_SlotRect(
+		"Boss_StaggerTrack", fStaggerTrackX, fStaggerTrackY, fStaggerTrackWidth, fStaggerTrackHeight))
+	{
+		if (ID3D11ShaderResourceView* pStaggerTrackSRV =
+			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_track.png"))
+		{
+			const ImVec2 vStaggerTrackMin{
+				pViewport->WorkPos.x + fStaggerTrackX * scaleX,
+				pViewport->WorkPos.y + fStaggerTrackY * scaleY };
+			const ImVec2 vStaggerTrackMax{
+				vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
+				vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
+			pDrawList->AddImage(pStaggerTrackSRV, vStaggerTrackMin, vStaggerTrackMax);
+		}
+	}
+
+	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
+	line, not an EFUI_STATUS extraction) drawn at the current fill/empty edge, matching the real
+	Progress::mark concept (an edge indicator repositioned every update) this session couldn't
+	trace real art for earlier. Hidden exactly at 0%/100%, same as the real useAutoHideMark
+	behaviour, since there's no boundary to mark once the bar is fully empty or full. */
+	ID3D11ShaderResourceView* pSeparatorSRV =
+		m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_separator.png");
+	if (nullptr != pSeparatorSRV && healthRatio > 0.f && healthRatio < 1.f)
+	{
+		const float fSeparatorHalfWidth = 3.f * uiScale;
+		pDrawList->AddImage(pSeparatorSRV,
+			ImVec2(fFillBoundaryX - fSeparatorHalfWidth, fillMin.y),
+			ImVec2(fFillBoundaryX + fSeparatorHalfWidth, fillMax.y));
+	}
+
+	/* Real ProgressMultiTrack::updateTarget cross-fades a second "cloneTarget" fill instance --
+	same shape as the fill, colorTransform forced to solid white -- over the real fill whenever a
+	bar segment ticks over, instead of hard-cutting back to full. Approximated with a flat white
+	rect (no separate white-silhouette asset was extracted) over the same now-full fill area,
+	fading out over the tween window real gaugeComplete() uses (0.1-0.23s -- rounded up here since
+	an ImGui flash reads as more of a blip at the real duration). */
+	if (m_dBossBarTickFlashStartSeconds >= 0.0)
+	{
+		constexpr f64_t BAR_TICK_FLASH_SECONDS = 0.3;
+		const f64_t fFlashAge = ImGui::GetTime() - m_dBossBarTickFlashStartSeconds;
+		if (fFlashAge < BAR_TICK_FLASH_SECONDS)
+		{
+			const f32_t fFlashAlpha = 1.f - static_cast<f32_t>(fFlashAge / BAR_TICK_FLASH_SECONDS);
+			const float fillInset = 2.f * uiScale;
+			pDrawList->AddRectFilled(
+				ImVec2(fillTrackMin.x + fillInset, fillTrackMin.y + fillInset),
+				ImVec2(fillTrackMax.x - fillInset, fillTrackMax.y - fillInset),
+				IM_COL32(255, 255, 255, static_cast<int>(220.f * fFlashAlpha)));
+		}
+	}
+
+	/* Real Progress::updateMark positions a "mark" clip at the fill's own edge every update; its
+	symbol (character 732) is a 39-frame animated additive glow (grows ~1.0->1.5/3.0 scale, fades
+	~256->92 alpha) rather than a static line. No source art was traced for it, so this reproduces
+	the motion procedurally: a soft glow at the edge that grows then fades on every HP drop. */
+	if (m_dBossHitGlowStartSeconds >= 0.0)
+	{
+		constexpr f64_t HIT_GLOW_SECONDS = 0.35;
+		const f64_t fGlowAge = ImGui::GetTime() - m_dBossHitGlowStartSeconds;
+		if (fGlowAge < HIT_GLOW_SECONDS)
+		{
+			const f32_t fGlowT = static_cast<f32_t>(fGlowAge / HIT_GLOW_SECONDS);
+			const f32_t fGlowAlpha = 1.f - fGlowT;
+			const f32_t fGlowRadius = (6.f + 10.f * fGlowT) * uiScale;
+			const ImVec2 vGlowCenter{
+				fillTrackMin.x + (fillTrackMax.x - fillTrackMin.x) * m_fBossHitGlowFillRatio,
+				(fillTrackMin.y + fillTrackMax.y) * 0.5f };
+			pDrawList->AddCircleFilled(vGlowCenter, fGlowRadius,
+				IM_COL32(255, 250, 230, static_cast<int>(200.f * fGlowAlpha)));
+		}
+	}
+
+}
+
+/* Split from RenderBossHealthBar() -- see the declaration comment in MainApp.h for why this has
+to run after CImGuiLayer::EndFrame() instead of alongside the bar/frame image draws. Re-derives
+healthRatio/iBarsRemaining from the same boss snapshot RenderBossHealthBar already used this frame;
+cheap pure arithmetic, safer than threading the values out as member state. */
+void CMainApp::RenderBossHealthBarText()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (!boss.isValid || 0u == boss.iMaximumHp)
+		return;
+	if (nullptr == m_pBossUIView)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const uint32_t iMaximumBars = (std::max)(1u, boss.iMaximumHealthBars);
+	const double segmentHp =
+		static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
+	uint32_t iBarsRemaining = 0u;
+	if (boss.iCurrentHp > 0u && segmentHp > 0.0)
+	{
+		const double scaledHp = static_cast<double>(boss.iCurrentHp) / segmentHp;
+		iBarsRemaining = (std::clamp)(
+			static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
+	}
+	const bool_t isMultiBar = boss.iMaximumHealthBars > 1u;
+
+	/* Boss title, positioned via its own hand-placed slot ("Boss_TitleText"). No real per-boss
+	title field exists in BossProfiles.json/HUD_BOSS_STATE yet (only strDisplayName="발탄") -- this
+	project currently only has Valtan configured, so the full real title seen on-screen
+	("마수군단장 발탄") is spelled out directly here instead of a data-driven prefix + name, same
+	caveat as the earlier "보스" grade label attempt: this needs a real title field once a second
+	boss exists, not a hardcoded string that only happens to be right for one archetype. */
+	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
+	if (m_pBossUIView->Get_SlotRect(
+		"Boss_TitleText", fTitleX, fTitleY, fTitleWidth, fTitleHeight))
+	{
+		const wstring strBossTitle = L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4";
+		/* Text draw scale is derived from the slot's own box height (measured at scale=1 via
+		Measure_Text) instead of a hand-picked constant, so resizing the slot in the HUD Layout
+		Tool is what actually controls the rendered text size -- no more guessing pixel scales. */
+		const float2_t vTitleMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBossTitle.c_str());
+		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ? (fTitleHeight / vTitleMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strBossTitle.c_str(),
+			float2_t(
+				(fTitleX + fTitleWidth * 0.5f) * textScaleX,
+				(fTitleY + fTitleHeight * 0.5f) * textScaleY),
+			XMVectorSet(1.f, 0.31f, 0.24f, 1.f), 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+	}
+
+	/* HP number and bar-count text now come from their own hand-placed slots
+	("Boss_HPText"/"Boss_BarCountText") instead of coordinates derived from the SWF trace -- the
+	fury/enrage timer (icon + "광폭화까지" countdown) is dropped per direct instruction; that
+	feature isn't being used. Text format itself is still real: "cur / max" and "X " + count (the
+	latter from the decompiled ProgressMultiTrack::hpCount setter -- capital X, one space, hidden
+	once only 1 bar is left, not just at 0). */
+	f32_t fHpTextX = 0.f, fHpTextY = 0.f, fHpTextWidth = 0.f, fHpTextHeight = 0.f;
+	if (m_pBossUIView->Get_SlotRect(
+		"Boss_HPText", fHpTextX, fHpTextY, fHpTextWidth, fHpTextHeight))
+	{
+		const wstring strHpNumbers = std::to_wstring(boss.iCurrentHp) +
+			L" / " + std::to_wstring(boss.iMaximumHp);
+		/* Same box-height-fit approach as the title: the slot's own height (set in the HUD
+		Layout Tool) is what determines the rendered digit height, not a hardcoded constant. */
+		const float2_t vHpMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_159"), strHpNumbers.c_str());
+		const f32_t fHpScale = (vHpMeasured.y > 0.f) ? (fHpTextHeight / vHpMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_159"), strHpNumbers.c_str(),
+			float2_t(
+				(fHpTextX + fHpTextWidth * 0.5f) * textScaleX,
+				(fHpTextY + fHpTextHeight * 0.5f) * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fHpScale * textUiScale);
+	}
+	if (isMultiBar && iBarsRemaining > 1u)
+	{
+		f32_t fCountX = 0.f, fCountY = 0.f, fCountWidth = 0.f, fCountHeight = 0.f;
+		if (m_pBossUIView->Get_SlotRect(
+			"Boss_BarCountText", fCountX, fCountY, fCountWidth, fCountHeight))
+		{
+			const wstring strBarCount = L"X " + std::to_wstring(iBarsRemaining);
+			const float2_t vCountMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_159"), strBarCount.c_str());
+			const f32_t fCountScale = (vCountMeasured.y > 0.f) ? (fCountHeight / vCountMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_159"), strBarCount.c_str(),
+				float2_t(
+					(fCountX + fCountWidth * 0.5f) * textScaleX,
+					(fCountY + fCountHeight * 0.5f) * textScaleY),
+				Colors::White, 0.f, float2_t(0.5f, 0.5f), fCountScale * textUiScale);
+		}
+	}
 }
 
 void CMainApp::RenderEstherGauge()
@@ -1184,6 +1526,8 @@ void CMainApp::RenderSkillIcons()
 		{ 34570, "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
 		{ 34580, "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
 		{ 34590, "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
+		/* LanceMaster -- V (awakening) */
+		{ 34610, "UI/Skill/LanceMaster/34610_StormingRedDragon.png" },
 		/* Warlord */
 		{ 17030, "UI/Skill/Warlord/17030_SharpSpear.png" },
 		{ 17060, "UI/Skill/Warlord/17060_FireBullet.png" },
@@ -1193,6 +1537,8 @@ void CMainApp::RenderSkillIcons()
 		{ 17040, "UI/Skill/Warlord/17040_Bash.png" },
 		{ 17100, "UI/Skill/Warlord/17100_ShieldShock.png" },
 		{ 17140, "UI/Skill/Warlord/17140_GuardiansLightning.png" },
+		/* Warlord -- V (awakening) */
+		{ 17170, "UI/Skill/Warlord/17170_GuardiansProtection.png" },
 		/* Artist */
 		{ 31200, "UI/Skill/Artist/31200_InkShower.png" },
 		{ 31430, "UI/Skill/Artist/31430_Scatter.png" },
@@ -1202,6 +1548,8 @@ void CMainApp::RenderSkillIcons()
 		{ 31420, "UI/Skill/Artist/31420_OrchidStrike.png" },
 		{ 31490, "UI/Skill/Artist/31490_TigerSlash.png" },
 		{ 31470, "UI/Skill/Artist/31470_OneStroke.png" },
+		/* Artist -- V (awakening) */
+		{ 31910, "UI/Skill/Artist/31910_DreamPeachGarden.png" },
 		/* DimensionMaster */
 		{ 2050100, "UI/Skill/DimensionMaster/2050100_OneNeedle.png" },
 		{ 2050120, "UI/Skill/DimensionMaster/2050120_Fragment.png" },
@@ -1211,9 +1559,11 @@ void CMainApp::RenderSkillIcons()
 		{ 2050220, "UI/Skill/DimensionMaster/2050220_PointPierce.png" },
 		{ 2050240, "UI/Skill/DimensionMaster/2050240_BoundaryBreak.png" },
 		{ 2050230, "UI/Skill/DimensionMaster/2050230_TimeShatter.png" },
+		/* DimensionMaster -- V (awakening) */
+		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
 	};
 
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "V" };
 
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
@@ -1293,7 +1643,7 @@ void CMainApp::RenderQuickSlot()
 	if (skillWindowOpen)
 		return;
 
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "V" };
 
 	uint32_t iSlotIndex = 0;
 	for (const char* pInputSlot : INPUT_SLOTS)
@@ -1356,17 +1706,100 @@ void CMainApp::RenderCombatHUDText()
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), mana.c_str(),
 			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
-	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!boss.isValid || 0u == boss.iMaximumHp)
+	/* Boss HP number/name/grade text moved into RenderBossHealthBar() -- the decompiled
+	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
+	function), not this hardcoded (640, 58). */
+}
+
+void CMainApp::RenderDamageNumbers()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
 		return;
 	}
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
 
-	const wstring hp = std::to_wstring(boss.iCurrentHp) + L" / " +
-		std::to_wstring(boss.iMaximumHp);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
-		position(640.f, 58.f), Colors::White, 0.f,
-		float2_t(0.5f, 0.5f), 0.42f * textScale);
+	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = 1.1;
+	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 48u;
+
+	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
+	number for events strictly newer than the last batch we already spawned from. See the member
+	comment on m_iLastRenderedDamageServerTick for why a serverTick cursor is safe here even though
+	the buffer trims from the front. */
+	const std::vector<HUD_DAMAGE_EVENT>& damageEvents =
+		CCombatHUDViewModel::Get().Get_DamageEvents();
+	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
+	{
+		if (damageEvent.iServerTick <= m_iLastRenderedDamageServerTick)
+			continue;
+		FLOATING_DAMAGE_NUMBER number{};
+		number.dSpawnSeconds = ImGui::GetTime();
+		number.vWorldPosition = float3_t(
+			damageEvent.Event.fPositionX,
+			damageEvent.Event.fPositionY,
+			damageEvent.Event.fPositionZ);
+		number.iAmount = damageEvent.Event.iAmount;
+		number.isOutgoing = damageEvent.Event.isOutgoing;
+		m_FloatingDamageNumbers.push_back(number);
+		m_iLastRenderedDamageServerTick = damageEvent.iServerTick;
+	}
+	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
+	{
+		m_FloatingDamageNumbers.erase(
+			m_FloatingDamageNumbers.begin(),
+			m_FloatingDamageNumbers.begin() +
+				(m_FloatingDamageNumbers.size() - MAX_FLOATING_DAMAGE_NUMBERS));
+	}
+
+	const f64_t dNow = ImGui::GetTime();
+	m_FloatingDamageNumbers.erase(
+		std::remove_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
+			[dNow](const FLOATING_DAMAGE_NUMBER& number)
+			{
+				return dNow - number.dSpawnSeconds >= DAMAGE_NUMBER_LIFETIME_SECONDS;
+			}),
+		m_FloatingDamageNumbers.end());
+	if (m_FloatingDamageNumbers.empty())
+		return;
+
+	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
+		return;
+	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
+	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
+	const f32_t textScale = (std::min)(viewportSize.x / 1280.f, viewportSize.y / 720.f);
+
+	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
+	{
+		const f32_t fLifeRatio = (std::clamp)(
+			static_cast<f32_t>((dNow - number.dSpawnSeconds) / DAMAGE_NUMBER_LIFETIME_SECONDS),
+			0.f, 1.f);
+		/* Rises above the real hit position and fades out over the back half of its lifetime,
+		instead of sitting flat on the hit point the whole time. */
+		const vector_t vProjected = XMVector3Project(
+			XMVectorSet(
+				number.vWorldPosition.x,
+				number.vWorldPosition.y + 0.4f + 0.6f * fLifeRatio,
+				number.vWorldPosition.z,
+				1.f),
+			0.f, 0.f, viewportSize.x, viewportSize.y, 0.f, 1.f,
+			projection, view, XMMatrixIdentity());
+		if (XMVectorGetZ(vProjected) < 0.f || XMVectorGetZ(vProjected) > 1.f)
+			continue;
+		const f32_t fAlpha = fLifeRatio < 0.6f ? 1.f : 1.f - (fLifeRatio - 0.6f) / 0.4f;
+		const wstring strAmount = Format_ThousandsSeparated(number.iAmount);
+		const fvector_t vColor = number.isOutgoing ?
+			XMVectorSet(1.f, 0.86f, 0.24f, fAlpha) :
+			XMVectorSet(1.f, 0.28f, 0.22f, fAlpha);
+		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
+			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected)),
+			vColor, 0.f, float2_t(0.5f, 0.5f), 0.6f * textScale);
+	}
 }
 
 HRESULT CMainApp::Ready_Fonts()
@@ -1389,7 +1822,14 @@ HRESULT CMainApp::Ready_Fonts()
 		{ TEXT("Font_YG760"), L"YG760.spritefont" },
 		{ TEXT("Font_YG330"), L"YG330.spritefont" },
 		{ TEXT("Font_YoonGasiIIM"), L"YoonGasiIIM.spritefont" },
-		{ TEXT("Font_EventDamage"), L"BMKkubulim.spritefont" },
+		/* Small 95-glyph ASCII-only subset (no Korean) -- fine for the boss HP number and "X N"
+		bar-count text, which are both pure digits/ASCII. User picked this one from the same 8-font
+		comparison gallery that settled Font_EventDamage. */
+		{ TEXT("Font_159"), L"159.spritefont" },
+		/* Was BMKkubulim.spritefont (a casual hand-lettering font, "BM꾸불림체" -- wrong for
+		combat numbers), then briefly 159.spritefont. User compared all 8 Resources/Fonts
+		candidates rendered side by side and picked YoonGasiIIM. */
+		{ TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont" },
 	};
 
 	for (const SOURCE_FONT& sourceFont : sourceFonts)

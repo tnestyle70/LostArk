@@ -4,6 +4,7 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "CombatHUDViewModel.h"
 
 #include <fstream>
 #include <filesystem>
@@ -34,6 +35,10 @@ namespace
 		{ "Skill Window",   "UI/SkillWindow/SkillWindow_Layout.json", "UI/SkillWindow/", false },
 		{ "Lobby",          "UI/Lobby/Lobby_Layout.json", "UI/Lobby/TitleBackground/", false },
 		{ "Class Select",   "UI/ClassSelect/ClassSelect_Layout.json", "UI/ClassSelect/", true  },
+		/* Target/boss status display -- not the local player's own class (Combat HUD) and not the
+		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
+		squeezed into either. */
+		{ "Boss UI",        "UI/BossUI/BossUI.json", "UI/BossUI/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -411,6 +416,19 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::SameLine();
 	if (g_Documents[m_iActiveDocument].bPerClass && ImGui::Button("Reset to Default Layout"))
 		Reset_Default();
+
+	/* Debug-only iteration aid for the "Boss UI" document -- Get_Boss().isValid otherwise only
+	goes true from a real Server snapshot (live Valtan encounter), so without this, placing these
+	slots means walking all the way to Valtan every time just to see the result. Never touches
+	Server truth; only affects the local HUD_BOSS_STATE the boss bar reads from. */
+	if (0 == std::strcmp(g_Documents[m_iActiveDocument].szLabel, "Boss UI"))
+	{
+		if (ImGui::Checkbox("Preview Sample Boss Data (Debug)", &m_bPreviewBossData))
+			CCombatHUDViewModel::Get().Debug_Set_Boss_Preview(m_bPreviewBossData);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Fakes a Valtan-shaped HUD_BOSS_STATE locally so the boss bar renders here without a live encounter.\nTurn off before testing real gameplay data.");
+	}
+
 	ImGui::SameLine();
 	ImGui::Checkbox("Preview Hover (all)", &m_bPreviewHover);
 	if (ImGui::IsItemHovered())
