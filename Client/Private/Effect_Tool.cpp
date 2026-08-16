@@ -68,6 +68,10 @@ namespace
 		"effect.dimensionmaster.skill.2050500";
 	constexpr const char_t* DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID =
 		"effect.dimensionmaster.skill.2050500.unified";
+	constexpr const char_t* VALTAN_EXACT_HISTORY_BINDING_ID =
+		"valtan.whirlwind.420633.active";
+	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
+		"effect.valtan.pattern.420633.active";
 	bool Is_CompilerOwnedPortableRecipe(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		const Client::EFFECT_ELEMENT_DESC& Element)
@@ -7405,13 +7409,6 @@ bool_t Client::CEffect_Tool::Refresh_ValtanBossPatternEffects()
 		}
 		Staged.push_back(std::move(Entry));
 	}
-	if (Staged.size() != 1u)
-	{
-		m_strValtanBossPatternStatus =
-			"Valtan Boss Patterns staging did not produce exactly one entry.";
-		return false;
-	}
-
 	m_ValtanBossPatternEffects = std::move(Staged);
 	m_strValtanBossPatternStatus = Status;
 	return true;
@@ -9001,7 +8998,6 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			bBossPatternsMatch = bBossPatternsMatch ||
 				Contains_NoCase("Boss Patterns", Search) ||
 				Contains_NoCase("Valtan", Search) ||
-				Contains_NoCase("420633", Search) ||
 				Contains_NoCase(Row.strBindingId, Search) ||
 				Contains_NoCase(Row.strPatternId, Search) ||
 				Contains_NoCase(Row.strSemanticStageId, Search) ||
@@ -9022,18 +9018,80 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				{
 					const BOSS_PATTERN_EFFECT_TREE_ROW& Row = BossEntry.Row;
 					const std::string Label =
-						"420633 | " + Row.strPatternId + " | " +
+						Row.strPatternId + " | " +
 						Row.strSemanticStageId + " | " +
 						Row.strRuntimeClipName;
 					Render_UnifiedEffectTree(BossEntry.Cache, Label);
-					ImGui::TextDisabled(
-						"%s; editable/auditionable canary, Product mapping remains disabled.",
+					ImGui::TextDisabled("%s | %s",
+						Row.strActionId.c_str(),
 						Row.strProductAdmissionStatus.c_str());
 				}
 			}
 			if (m_ValtanBossPatternEffects.empty())
 				ImGui::TextDisabled(
 					"No Valtan Boss Pattern Effect was staged; press Refresh for the exact validation reason.");
+
+			ImGui::SeparatorText("Saved Valtan Authoring");
+			size_t iSavedValtanAuthoringCount = 0u;
+			for (const EFFECT_DATA_FILE_ENTRY& DataFile : m_DataFiles)
+			{
+				if (EFFECT_DOCUMENT_SOURCE::AUTHORED != DataFile.eSource ||
+					(DataFile.strDomainId != "Valtan" &&
+					 !DataFile.strAssetId.starts_with("effect.valtan.")) ||
+					(!Search.empty() &&
+					 !Contains_NoCase(DataFile.strAssetId, Search) &&
+					 !Contains_NoCase(DataFile.Path.generic_string(), Search)))
+				{
+					continue;
+				}
+				const bool_t bPatternMapped = std::any_of(
+					m_ValtanBossPatternEffects.begin(),
+					m_ValtanBossPatternEffects.end(),
+					[&DataFile](const BOSS_PATTERN_EFFECT_TREE_ENTRY& Entry)
+					{
+						return Entry.Row.strEffectAssetId == DataFile.strAssetId;
+					});
+				if (bPatternMapped)
+					continue;
+
+				++iSavedValtanAuthoringCount;
+				ImGui::PushID(DataFile.strAssetId.c_str());
+				ImGui::TextWrapped("%s", DataFile.strAssetId.c_str());
+				ImGui::SameLine();
+				const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
+					EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+					m_ActiveDocument->strEffectAssetId == DataFile.strAssetId;
+				ImGui::BeginDisabled(bAlreadyActive || Has_UnsavedWork());
+				if (ImGui::SmallButton("Open for Editing"))
+				{
+					const bool_t bValtanTargetReady =
+						nullptr != m_pCharacterPreviewPanel &&
+						(CAnimationTargetService::Resolve_AssetName() ==
+							VALTAN_ANIMATION_ASSET_NAME ||
+						 m_pCharacterPreviewPanel->Select_TargetAsset(
+							VALTAN_ANIMATION_ASSET_NAME));
+					if (!bValtanTargetReady)
+					{
+						m_strElementStatus =
+							"Saved Valtan Effect could not stage the Valtan Model View target.";
+					}
+					else
+					{
+						Try_LoadDocumentPath(DataFile.Path,
+							EFFECT_DOCUMENT_SOURCE::AUTHORED,
+							DataFile.strAssetId);
+					}
+				}
+				ImGui::EndDisabled();
+				ImGui::TextDisabled(
+					"Opens on Valtan; select the animation and b_effectroot/b_wp_r_01 pivot, then Play All.");
+				ImGui::PopID();
+			}
+			if (0u == iSavedValtanAuthoringCount)
+			{
+				ImGui::TextDisabled(
+					"No standalone effect.valtan.* document is saved yet. Create one from Model View Quick Start.");
+			}
 		}
 		for (const EFFECT_SKILL_TREE_ENTRY& Entry : m_AllEffects)
 		{
@@ -12887,11 +12945,24 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
         Entry.Skill = Skill;
         Staged.push_back(std::move(Entry));
     }
+	const bool_t bHadPreviousAllEffectsTree = !m_AllEffects.empty();
+	if (!bHadPreviousAllEffectsTree)
+	{
+		/* PlayerSkills owns the navigation tree. Product presentation is optional
+		   child data and must never hide Q/W/E/R/T/A/S/D/F on a cold entry. */
+		m_AllEffects = Staged;
+	}
+	const bool_t bValtanBossPatternsReady =
+		Refresh_ValtanBossPatternEffects();
 
-    const auto FailRefresh = [this](const std::string& strReason)
+    const auto FailRefresh = [this, bHadPreviousAllEffectsTree](
+		const std::string& strReason)
     {
         m_strElementStatus =
-            "All Effects refresh preserved the previous tree: " + strReason;
+			(bHadPreviousAllEffectsTree ?
+				"All Effects Product enrichment preserved the previous tree: " :
+				"All Effects Product enrichment is unavailable; base PlayerSkills rows remain visible: ") +
+			strReason;
         return false;
     };
     constexpr LostArk::Shared::CHARACTER_CLASS_ID Classes[] = {
@@ -12984,10 +13055,19 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             return FailRefresh(PresentationStatus);
         }
 
+        const std::filesystem::path EventPath = CProjectDataRoot::Resolve(
+            std::filesystem::path(L"Animation") / L"Authored" /
+            std::filesystem::path(pAnimationAsset) /
+            (std::filesystem::path(pAnimationAsset).wstring() +
+                L".animevents"));
+        std::string EventText;
+        if (!Read_TextFile(EventPath, EventText, PresentationStatus))
+            return FailRefresh(PresentationStatus);
+
         ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
-        if (!CAnimationEffectCueDocument::Load(
-            pAnimationAsset, BoundClipNames, CueDocument,
-            PresentationStatus))
+        if (!CAnimationEffectCueDocument::Load_FromText(
+            pAnimationAsset, EventText, BoundClipNames,
+			CueDocument, PresentationStatus, true))
         {
             return FailRefresh(PresentationStatus);
         }
@@ -12995,9 +13075,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
         {
             const auto Owner = ClipOwners.find(Cue.strClipName);
             if (Owner == ClipOwners.end())
-                return FailRefresh(
-                    "an admitted Effect cue is not owned by a skill clip: " +
-                    Cue.strClipName);
+				continue;
 			for (const BOUND_CLIP_OWNER& ClipOwner : Owner->second)
 			{
 				const auto EntryIndex = EntryIndices.find(ClipOwner.iSkillId);
@@ -13075,14 +13153,6 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             }
         }
 
-        const std::filesystem::path EventPath = CProjectDataRoot::Resolve(
-            std::filesystem::path(L"Animation") / L"Authored" /
-            std::filesystem::path(pAnimationAsset) /
-            (std::filesystem::path(pAnimationAsset).wstring() +
-                L".animevents"));
-        std::string EventText;
-        if (!Read_TextFile(EventPath, EventText, PresentationStatus))
-            return FailRefresh(PresentationStatus);
         std::istringstream EventRows(EventText);
         std::string EventLine;
         std::getline(EventRows, EventLine);
@@ -13122,8 +13192,6 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
                 return Left.Skill.strInputSlot < Right.Skill.strInputSlot;
             return Left.Skill.iSkillId < Right.Skill.iSkillId;
         });
-	const bool_t bValtanBossPatternsReady =
-		Refresh_ValtanBossPatternEffects();
     m_AllEffects = std::move(Staged);
     m_strElementStatus =
         "All Effects indexed Product presentation from PlayerSkills + "
@@ -13353,6 +13421,8 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
         });
 	const bool_t bDirectAuthoredEditableIndexReady =
 		Refresh_DirectAuthoredEditableIndex(Staged);
+	/* This is an authoring-only library used by the Q/W/E/R tree. It does not
+	   admit Product cues or run the Track A materializer/harness pipeline. */
 	const bool_t bUnifiedCandidateIndexReady =
 		Refresh_UnifiedCandidateBindings(Staged);
     m_DataFiles = std::move(Staged);
@@ -13390,7 +13460,7 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
 	else
 	{
 		m_strDocumentStatus +=
-			" Offline candidate metadata refresh failed; the previous candidate index was preserved: " +
+			" Authored candidate metadata refresh failed; the previous authoring index was preserved: " +
 			m_strUnifiedCandidateStatus;
 	}
     return true;
@@ -19447,9 +19517,16 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 				});
 			if (BossBinding != BossEffectBindings.Bindings.end())
 			{
-				m_bValtanBossPatternTransformHistoryRequired = true;
-				m_strValtanBossPatternPreviewEffectAssetId =
-					pPreviewDocument->strEffectAssetId;
+				const bool_t bRequiresExactTransformHistory =
+					BossBinding->strBindingId == VALTAN_EXACT_HISTORY_BINDING_ID &&
+					BossBinding->strEffectAssetId ==
+						VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID;
+				if (bRequiresExactTransformHistory)
+				{
+					m_bValtanBossPatternTransformHistoryRequired = true;
+					m_strValtanBossPatternPreviewEffectAssetId =
+						pPreviewDocument->strEffectAssetId;
+				}
 				constexpr const char_t* BOSS_PREVIEW_ASSET = VALTAN_ANIMATION_ASSET_NAME;
 				if (CAnimationTargetService::Resolve_AssetName() !=
 						BOSS_PREVIEW_ASSET &&
@@ -19516,16 +19593,19 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 				}
 				pBossModel->Set_AnimationSpeed(1.f);
 				pBossModel->Set_AnimPaused(false);
-				std::string TransformHistoryError;
-				if (!Prepare_ValtanBossPatternTransformHistory(
-						*BossBinding, *pPreviewDocument,
-						TransformHistoryError))
+				if (bRequiresExactTransformHistory)
 				{
-					pBossModel->Set_AnimPaused(true);
-					m_strPreviewAnimationStatus =
-						"Valtan Effect exact follow anchor was not staged: " +
-						TransformHistoryError;
-					return;
+					std::string TransformHistoryError;
+					if (!Prepare_ValtanBossPatternTransformHistory(
+							*BossBinding, *pPreviewDocument,
+							TransformHistoryError))
+					{
+						pBossModel->Set_AnimPaused(true);
+						m_strPreviewAnimationStatus =
+							"Valtan Effect exact follow anchor was not staged: " +
+							TransformHistoryError;
+						return;
+					}
 				}
 				m_strPreviewAnimationStatus =
 					"Boss pattern animation synced: " +

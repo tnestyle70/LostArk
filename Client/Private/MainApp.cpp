@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cwchar>
 #include <fstream>
 
 namespace
@@ -115,6 +116,44 @@ CMainApp::~CMainApp()
 {
 	Free();
 }
+
+#ifdef _DEBUG
+void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle)
+{
+	if (nullptr == g_hWnd || nullptr == pBaseTitle || L'\0' == pBaseTitle[0] ||
+		nullptr == ImGui::GetCurrentContext())
+		return;
+
+	constexpr size_t WINDOW_TITLE_CAPACITY = 128u;
+	constexpr ULONGLONG REFRESH_INTERVAL_MS = 500ull;
+	static WCHAR previousBaseTitle[WINDOW_TITLE_CAPACITY]{};
+	static ULONGLONG previousRefreshTick = 0ull;
+
+	const ULONGLONG currentTick = ::GetTickCount64();
+	const bool baseTitleChanged =
+		0 != std::wcscmp(previousBaseTitle, pBaseTitle);
+	if (!baseTitleChanged &&
+		currentTick - previousRefreshTick < REFRESH_INTERVAL_MS)
+		return;
+
+	::wcsncpy_s(
+		previousBaseTitle,
+		_countof(previousBaseTitle),
+		pBaseTitle,
+		_TRUNCATE);
+	previousRefreshTick = currentTick;
+
+	WCHAR windowTitle[WINDOW_TITLE_CAPACITY]{};
+	::_snwprintf_s(
+		windowTitle,
+		_countof(windowTitle),
+		_TRUNCATE,
+		L"%ls | FPS %.1f",
+		pBaseTitle,
+		ImGui::GetIO().Framerate);
+	::SetWindowTextW(g_hWnd, windowTitle);
+}
+#endif
 
 HRESULT CMainApp::Initialize()
 {

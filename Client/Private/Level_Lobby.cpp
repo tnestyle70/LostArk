@@ -4,6 +4,7 @@
 
 #include "CharacterSelectionState.h"
 #include "LevelTransitionService.h"
+#include "MainApp.h"
 #include "NetworkManager.h"
 
 #ifdef _DEBUG
@@ -113,6 +114,10 @@ HRESULT CLevel_Lobby::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
+
+#ifdef _DEBUG
+	CMainApp::Update_DebugWindowTitleWithFps(TEXT("LostArk Lobby"));
+#endif
 
 	Render_StagePanel();
 	return S_OK;

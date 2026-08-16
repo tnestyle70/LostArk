@@ -668,6 +668,7 @@ private:
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
     vector<string> m_AnimationClipDisplayLabels;
+    vector<string> m_AnimationClipSearchTokens;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
 	EFFECT_AUTHORING_FAMILY m_eSelectedAuthoringFamily =
 		EFFECT_AUTHORING_FAMILY::MESH;
@@ -728,6 +729,7 @@ private:
     array<char_t, 129> m_ResourceCategory{};
     array<char_t, 129> m_AllEffectsSearch{};
     array<char_t, 129> m_DataFilesSearch{};
+    array<char_t, 129> m_AnimationClipFilter{};
     array<char_t, 129> m_PreviewAnchorBuffer{};
 	array<char_t, 257> m_ModelCueAssetIdDraft{};
 	array<char_t, 129> m_ModelCueClipNameDraft{};

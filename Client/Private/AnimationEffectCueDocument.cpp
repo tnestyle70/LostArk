@@ -129,7 +129,8 @@ bool_t Client::CAnimationEffectCueDocument::Load(
     const std::string& strAnimationAssetId,
     const std::vector<std::string>& AvailableClips,
     ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
-    std::string& strOutStatus)
+    std::string& strOutStatus,
+    const bool_t bFilterToAvailableClips)
 {
     if (strAnimationAssetId.empty())
     {
@@ -147,6 +148,28 @@ bool_t Client::CAnimationEffectCueDocument::Load(
         strOutStatus = "Missing animation event document: " + Path.string();
         return false;
     }
+	const std::string Text{
+		std::istreambuf_iterator<char>(Input),
+		std::istreambuf_iterator<char>() };
+	return Load_FromText(
+		strAnimationAssetId, Text, AvailableClips, OutDocument,
+		strOutStatus, bFilterToAvailableClips);
+}
+
+bool_t Client::CAnimationEffectCueDocument::Load_FromText(
+	const std::string& strAnimationAssetId,
+	const std::string_view Text,
+	const std::vector<std::string>& AvailableClips,
+	ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
+	std::string& strOutStatus,
+	const bool_t bFilterToAvailableClips)
+{
+	if (strAnimationAssetId.empty() || Text.empty())
+	{
+		strOutStatus = "Animation asset ID or event text is empty.";
+		return false;
+	}
+	std::istringstream Input{ std::string(Text) };
 
     std::string HeaderLine;
     if (!std::getline(Input, HeaderLine))
@@ -194,6 +217,11 @@ bool_t Client::CAnimationEffectCueDocument::Load(
         }
         if ("HIT" == Tokens[1])
         {
+			if (bFilterToAvailableClips &&
+				!ClipSet.contains(Tokens[0]))
+			{
+				continue;
+			}
             bool HitFieldsValid = false;
             const auto HitFields = Make_Fields(Tokens, 2u, HitFieldsValid);
             if (!HitFieldsValid)
@@ -259,6 +287,11 @@ bool_t Client::CAnimationEffectCueDocument::Load(
         {
             continue;
         }
+		if (bFilterToAvailableClips &&
+			!ClipSet.contains(Tokens[0]))
+		{
+			continue;
+		}
 
         ANIMATION_EFFECT_CUE Cue;
         Cue.strClipName = Tokens[0];

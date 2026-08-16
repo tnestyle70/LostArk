@@ -7,6 +7,7 @@
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "MainApp.h"
 #include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
 
@@ -138,7 +139,7 @@ HRESULT CLevel_Development::Render()
 		return E_FAIL;
 
 #ifdef _DEBUG
-	SetWindowText(g_hWnd, m_isMapEditorWorkspace ?
+	CMainApp::Update_DebugWindowTitleWithFps(m_isMapEditorWorkspace ?
 		TEXT("LostArk Map Editor Workspace") :
 		TEXT("LostArk Test Training Ground"));
 #endif

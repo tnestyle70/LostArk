@@ -5,6 +5,7 @@
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "MainApp.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -137,8 +138,7 @@ HRESULT CLevel_Bern::Render()
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 
 #ifdef _DEBUG
-	SetWindowText(
-		g_hWnd,
+	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("Bern Castle Network Player Test"));
 #endif
 

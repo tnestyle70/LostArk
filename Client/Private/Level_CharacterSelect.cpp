@@ -14,6 +14,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
+#include "MainApp.h"
 #include "Network/PacketMessages.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -210,8 +211,7 @@ HRESULT CLevel_CharacterSelect::Render()
 		return E_FAIL;
 
 #ifdef _DEBUG
-	SetWindowText(
-		g_hWnd,
+	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("LostArk Character Select - Server Arena"));
 #endif
 	Render_SelectionPanel();
