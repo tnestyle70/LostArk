@@ -805,6 +805,19 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				std::scoped_lock lock{
 				   m_InboundMutex
 				};
+				/* Level activation can synchronously prepare GPU resources before the
+				   main thread resumes Update().  Coalesce adjacent snapshots at the
+				   worker boundary as well as the parsed-event boundary so that cold
+				   loading cannot exhaust the raw frame queue.  Any lifecycle or
+				   destruction frame remains an ordering barrier. */
+				if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType &&
+					!m_InboundFrames.empty() &&
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT ==
+						m_InboundFrames.back().ePacketType)
+				{
+					m_InboundFrames.back() = std::move(frame);
+					continue;
+				}
 				if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
 				{
 					m_iLastErrorCode.store(WSAENOBUFS);

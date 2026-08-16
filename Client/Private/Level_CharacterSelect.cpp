@@ -171,20 +171,6 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
 
-#ifdef _DEBUG
-	/* Build the single non-Product Artist F cache on the main thread before the
-	   first Character Select frame.  The Effect Tool and the authoritative F
-	   route attach this same immutable cache; neither rebuilds it on click. */
-	std::string artistFStatus;
-	if (!CEffectPresentationService::Prepare_ReconstructedArtist31470(
-		m_pDevice, m_pContext, artistFStatus))
-	{
-		OutputDebugStringA((
-			"Artist 31470 Character Select prewarm isolated: " +
-			artistFStatus + "\n").c_str());
-	}
-#endif
-
 	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext,
 		L"UI/ClassSelect/ClassSelect_Layout.json",
