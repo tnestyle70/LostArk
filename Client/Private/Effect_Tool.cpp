@@ -8557,6 +8557,44 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::TreePop();
 }
 
+void Client::CEffect_Tool::Render_ValtanAuthoringOpenButton(
+	const std::filesystem::path& Path,
+	const std::string& strEffectAssetId)
+{
+	/* Both the pattern-mapped rows and the standalone saved rows open the same
+	   document, and both must stage the Valtan Model View target first so the
+	   Effect is authored against the body, armour and socketed axe. */
+	const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		m_ActiveDocument->strEffectAssetId == strEffectAssetId;
+	ImGui::BeginDisabled(bAlreadyActive || Has_UnsavedWork());
+	if (ImGui::SmallButton("Open for Editing"))
+	{
+		const bool_t bValtanTargetReady =
+			nullptr != m_pCharacterPreviewPanel &&
+			(CAnimationTargetService::Resolve_AssetName() ==
+				VALTAN_ANIMATION_ASSET_NAME ||
+			 m_pCharacterPreviewPanel->Select_TargetAsset(
+				VALTAN_ANIMATION_ASSET_NAME));
+		if (!bValtanTargetReady)
+		{
+			m_strElementStatus =
+				"Saved Valtan Effect could not stage the Valtan Model View target.";
+		}
+		else
+		{
+			Try_LoadDocumentPath(Path,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId);
+		}
+	}
+	ImGui::EndDisabled();
+	if (bAlreadyActive)
+		ImGui::TextDisabled("Already open in Current Effect.");
+	else
+		ImGui::TextDisabled(
+			"Opens on Valtan; select the animation and b_effectroot/b_wp_r_01 pivot, then Play All.");
+}
+
 void Client::CEffect_Tool::Render_AllEffectsWindow()
 {
 	ImGui::SetNextWindowPos(ImVec2(1110.f, 705.f), ImGuiCond_FirstUseEver);
@@ -8660,10 +8698,17 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			{
 				const BOSS_PATTERN_EFFECT_TREE_ROW& Row = BossEntry.Row;
 				const std::string Label =
-					"420633 | " + Row.strPatternId + " | " +
+					Row.strPatternId + " | " +
 					Row.strSemanticStageId + " | " +
 					Row.strRuntimeClipName;
 				Render_UnifiedEffectTree(BossEntry.Cache, Label);
+				/* A pattern-mapped row is excluded from Saved Valtan Authoring
+				   below, so without this it is the one Valtan Effect that has
+				   no editing entry point anywhere in the tool. */
+				ImGui::PushID(Row.strEffectAssetId.c_str());
+				Render_ValtanAuthoringOpenButton(
+					BossEntry.Cache.Path, Row.strEffectAssetId);
+				ImGui::PopID();
 				ImGui::TextDisabled(
 					"%s; editable/auditionable canary, Product mapping remains disabled.",
 					Row.strProductAdmissionStatus.c_str());
@@ -8702,33 +8747,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::PushID(DataFile.strAssetId.c_str());
 			ImGui::TextWrapped("%s", DataFile.strAssetId.c_str());
 			ImGui::SameLine();
-			const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
-				EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-				m_ActiveDocument->strEffectAssetId == DataFile.strAssetId;
-			ImGui::BeginDisabled(bAlreadyActive || Has_UnsavedWork());
-			if (ImGui::SmallButton("Open for Editing"))
-			{
-				const bool_t bValtanTargetReady =
-					nullptr != m_pCharacterPreviewPanel &&
-					(CAnimationTargetService::Resolve_AssetName() ==
-						VALTAN_ANIMATION_ASSET_NAME ||
-					 m_pCharacterPreviewPanel->Select_TargetAsset(
-						VALTAN_ANIMATION_ASSET_NAME));
-				if (!bValtanTargetReady)
-				{
-					m_strElementStatus =
-						"Saved Valtan Effect could not stage the Valtan Model View target.";
-				}
-				else
-				{
-					Try_LoadDocumentPath(DataFile.Path,
-						EFFECT_DOCUMENT_SOURCE::AUTHORED,
-						DataFile.strAssetId);
-				}
-			}
-			ImGui::EndDisabled();
-			ImGui::TextDisabled(
-				"Opens on Valtan; select the animation and b_effectroot/b_wp_r_01 pivot, then Play All.");
+				Render_ValtanAuthoringOpenButton(
+					DataFile.Path, DataFile.strAssetId);
 			ImGui::PopID();
 		}
 		if (0u == iSavedValtanAuthoringCount)

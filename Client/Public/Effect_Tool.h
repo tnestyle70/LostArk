@@ -316,6 +316,9 @@ private:
         const std::string& strDomainId,
         const std::string& strCategory,
         const std::string& strKindCategory);
+    void Render_ValtanAuthoringOpenButton(
+        const std::filesystem::path& Path,
+        const std::string& strEffectAssetId);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
