@@ -706,6 +706,9 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
+	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_PlayerNameplateView.Render(m_NameplatePlayers);
+
 #ifdef _DEBUG
 	SetWindowText(g_hWnd, TEXT("Valtan Arena Map"));
 #endif

@@ -3,6 +3,7 @@
 #include "Character.h"
 
 #include <cstdint>
+#include <utility>
 
 bool Client::CNetObjectRegistry::Register(
 	const NET_PLAYER_RECORD& record,
@@ -234,6 +235,29 @@ std::vector<std::shared_ptr<CCharacter>> Client::CNetObjectRegistry::Get_LiveObj
 	}
 
 	return objects;
+}
+
+std::vector<Client::LIVE_NET_PLAYER>
+Client::CNetObjectRegistry::Get_LivePlayers() const
+{
+	std::vector<LIVE_NET_PLAYER> players;
+	players.reserve(m_HandleByEntityId.size());
+
+	for (const SLOT& slot : m_Slots)
+	{
+		if (!slot.isOccupied)
+			continue;
+
+		if (std::shared_ptr<CCharacter> character = slot.pCharacter.lock())
+		{
+			LIVE_NET_PLAYER player{};
+			player.Record = slot.record;
+			player.pCharacter = std::move(character);
+			players.push_back(std::move(player));
+		}
+	}
+
+	return players;
 }
 
 void Client::CNetObjectRegistry::Reset()

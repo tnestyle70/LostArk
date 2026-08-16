@@ -13,6 +13,7 @@
 #include "WorldDestructionDebrisPresentationDocument.h"
 #include "WorldDestructionDebrisPresentationRuntime.h"
 #include "WorldDestructionProjectionDocument.h"
+#include "WorldPlayerNameplateView.h"
 
 NS_BEGIN(Engine)
 class CTransform;
@@ -75,6 +76,8 @@ private:
 		m_WorldDestructionDebrisPresentationRuntime;
 	uint64_t m_iObservedWorldDestructionPresentationGeneration = 0u;
 	CClientReplication m_Replication;
+	CWorldPlayerNameplateView m_PlayerNameplateView;
+	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
 #ifdef _DEBUG

@@ -589,6 +589,27 @@ bool_t Client::CEffectObject::Set_PreviewElementIsolation(
 	return Set_PreviewSubmissionIsolation(Isolation, strOutError);
 }
 
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+bool_t Client::CEffectObject::Set_TestPreviewElementIsolation(
+	std::vector<std::string> ElementIds,
+	std::string& strOutError)
+{
+	if (m_bReconstructedDiagnosticActive || nullptr == m_pRenderer)
+	{
+		strOutError =
+			"Test preview Element isolation requires a staged ordinary document.";
+		return false;
+	}
+	EFFECT_PREVIEW_SUBMISSION_ISOLATION Isolation;
+	Isolation.eKind = EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::ELEMENT_SET;
+	Isolation.ElementIds = std::move(ElementIds);
+	if (!m_pRenderer->Set_PreviewSubmissionIsolation(Isolation, strOutError))
+		return false;
+	m_strStatus = m_pRenderer->Get_Status();
+	return true;
+}
+#endif
+
 void Client::CEffectObject::Reset_PreviewSubmissionIsolation()
 {
 	if (nullptr != m_pRenderer)
@@ -663,12 +684,10 @@ bool_t Client::CEffectObject::Set_SampleTimeWithTransformHistory(
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 	std::string& strOutError)
 {
-	if (m_bReconstructedDiagnosticActive ||
-		(!m_bReconstructedSourceRuntimeActive &&
-		 !m_bSourceVisualProgramActive))
+	if (m_bReconstructedDiagnosticActive)
 	{
 		strOutError =
-			"Effect object transform-history seek requires an admitted source visual runtime.";
+			"Effect object transform-history seek is unavailable in diagnostic mode.";
 		return false;
 	}
 	if (!m_Playback.Seek_WithTransformHistory(
@@ -686,12 +705,10 @@ bool_t Client::CEffectObject::Advance_PreviewWithTransformHistory(
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 	std::string& strOutError)
 {
-	if (m_bReconstructedDiagnosticActive ||
-		(!m_bReconstructedSourceRuntimeActive &&
-		 !m_bSourceVisualProgramActive))
+	if (m_bReconstructedDiagnosticActive)
 	{
 		strOutError =
-			"Effect object transform-history update requires an admitted source visual runtime.";
+			"Effect object transform-history update is unavailable in diagnostic mode.";
 		return false;
 	}
 	if (!m_Playback.Update_WithTransformHistory(

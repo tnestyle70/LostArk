@@ -262,6 +262,14 @@ bool_t Client::CAnimationEffectCueDocument::Load(
             strOutStatus = "Animation EFFECT cue failed clip/effect/transform validation.";
             return false;
         }
+        if (!CEffectCatalog::Admit_ProductCue(strAnimationAssetId,
+                Cue.strClipName, Cue.iStartMs, Cue.strEffectAssetId,
+                Cue.pProductAdmissionToken, Error))
+        {
+            strOutStatus = "Animation EFFECT cue Product admission failed: " +
+                Error;
+            return false;
+        }
         if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
             Cue.iEndMs <= Cue.iStartMs)
         {

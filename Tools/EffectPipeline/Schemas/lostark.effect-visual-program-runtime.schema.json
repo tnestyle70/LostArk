@@ -75,13 +75,13 @@
         "sourceRecipeOverlayProgramCount": { "const": 12 },
         "adapterPacketProgramCount": { "const": 1 },
         "visualRowCount": { "const": 135 },
-        "sourceRecipeOverlayCount": { "const": 70 },
+        "sourceRecipeOverlayCount": { "const": 66 },
         "localDecalAdapterPacketCount": { "const": 2 },
         "cascadeRibbonVisualRowCount": { "const": 4 },
         "supplementalElementCount": { "const": 5 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
         "animationTrailElementCount": { "const": 4 },
-        "failClosedCount": { "const": 63 },
+        "failClosedCount": { "const": 67 },
         "extensionCanaryCount": { "const": 2 },
         "productMutationCount": { "const": 0 }
       }

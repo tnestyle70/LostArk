@@ -120,6 +120,33 @@
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Link>Client\CharacterSelectionState.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ActorCatalog.cpp">
+	  <Link>Client\ActorCatalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CharacterCatalog.cpp">
+	  <Link>Client\CharacterCatalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\PlayableCharacterPreviewContract.cpp">
+	  <Link>Client\PlayableCharacterPreviewContract.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_LanceMaster.cpp">
+	  <Link>Client\Logic_LanceMaster.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_GunSlinger.cpp">
+	  <Link>Client\Logic_GunSlinger.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Slayer.cpp">
+	  <Link>Client\Logic_Slayer.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Artist.cpp">
+	  <Link>Client\Logic_Artist.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_DimensionMaster.cpp">
+	  <Link>Client\Logic_DimensionMaster.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Warlord.cpp">
+	  <Link>Client\Logic_Warlord.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
 	  <Link>Client\Effect_DocumentCodec.cpp</Link>
 	</ClCompile>
@@ -171,6 +198,9 @@
 	<ClCompile Include="..\..\..\Client\Private\NetObjectRegistry.cpp">
 	  <Link>Client\NetObjectRegistry.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\WorldPlayerNameplateView.cpp">
+	  <Link>Client\WorldPlayerNameplateView.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
 	  <Link>Client\PlayerSkillCatalog.cpp</Link>
 	</ClCompile>
@@ -183,6 +213,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\Default\Shared.vcxproj">
+      <Project>{F4CCF815-6D51-412F-A76E-84D2F1D05571}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="CopyEngineRuntimeDependencies" AfterTargets="Build">

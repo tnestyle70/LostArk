@@ -59,8 +59,8 @@ struct EFFECT_EVALUATED_PARTICLE final
 	/* UE3 Cascade can encode horizontal/vertical image flipping with signed
 	   StartSize axes.  World decomposition loses those signs, so a source
 	   Sprite that explicitly allows image flipping carries them separately to
-	   the final billboard basis.  Zero is deliberately represented as +1 here;
-	   CAMERA_SQUARE may legally derive its second extent from X. */
+	   the final current/next atlas-cell UV transform.  Zero is deliberately
+	   represented as +1 here; CAMERA_SQUARE may legally derive Y from X. */
 	float2_t vSourceImageFlipSign = { 1.f, 1.f };
 	EFFECT_PARTICLE_SPRITE_ALIGNMENT eSpriteAlignment =
 		EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_RECTANGLE;
@@ -194,6 +194,12 @@ private:
 		float3_t vPosition{};
 		float3_t vVelocity{};
 		float3_t vBaseVelocity{};
+		/* LocationDirect is an update module, not a spawn-only offset.  Preserve
+		   its last exact contribution so each normalized-life sample can replace
+		   that contribution without erasing other Location/Velocity modules. */
+		float3_t vSourceDirectLocationContribution{};
+		float3_t vSourceDirectDirectionContribution{};
+		float3_t vInheritedParentVelocity{};
 		float3_t vVelocityScale = { 1.f, 1.f, 1.f };
 		float3_t vBaseSize = { 1.f, 1.f, 1.f };
 		float3_t vSize = { 1.f, 1.f, 1.f };
@@ -209,6 +215,7 @@ private:
 		float3_t vOrbitOffset{};
 		float3_t vSourceOrbitRotationDegrees{};
 		float3_t vSourceOrbitRotationRateDegreesPerSecond{};
+		f32_t fVectorFieldScale = 1.f;
 		f32_t fCameraOffset = 0.f;
 		f32_t fSubImageIndex = 0.f;
 		f32_t fDistributionRandom = 0.f;
@@ -352,6 +359,10 @@ public:
 		bool_t bSquareFlip,
 		f32_t fDistributionRandom,
 		bool_t bLinearBlend);
+	static bool_t Resolve_ParticleSpriteSubUV(
+		const EFFECT_EVALUATED_PARTICLE& Particle,
+		const EFFECT_SUBUV_FRAME_DESC& SourceSubUV,
+		EFFECT_SUBUV_FRAME_DESC& OutSubUV);
 	static uint64_t Get_VectorFieldDiskLoadCount();
 	std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
 		Get_ReconstructedRuntimeEntry() const
@@ -389,7 +400,7 @@ private:
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 		std::string& strOutError) const;
-	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
+	bool_t Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
 	void Rebuild_Frame(const float4x4_t& RootWorld);
 	void Spawn_Particles(
 		const EFFECT_ELEMENT_DESC& Element,
@@ -445,7 +456,7 @@ private:
 		ELEMENT_STATE& State,
 		const PARTICLE_STATE& Particle,
 		const float4x4_t& ElementWorld);
-	void Dispatch_SourceEvents(
+	bool_t Dispatch_SourceEvents(
 		f32_t fFixedDelta,
 		const float4x4_t& RootWorld);
 	f32_t Evaluate_SourceFloat(
@@ -498,12 +509,17 @@ private:
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
 	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;
+	float3_t m_vPreviousRootPosition{};
+	float3_t m_vParentVelocity{};
 	EFFECT_EVALUATED_FRAME m_Frame;
 	f32_t m_fSampleTimeSeconds = 0.f;
 	f64_t m_fAccumulatorSeconds = 0.0;
 	f32_t m_fDurationSeconds = 0.f;
 	uint64_t m_iSimulationStep = 0u;
 	bool_t m_bSourceVisualProgramActive = false;
+	bool_t m_bPreviousRootPositionInitialized = false;
+	bool_t m_bHasPortableSourceEvents = false;
+	bool_t m_bSourceEventQueueOverflow = false;
 	bool_t m_bRequireSourceVisualTargetClosure = false;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	std::unordered_set<std::string> m_SourceVisualTargetElementIds;

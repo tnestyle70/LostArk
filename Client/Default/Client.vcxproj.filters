@@ -177,6 +177,9 @@
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -459,6 +462,9 @@
     <ClCompile Include="..\Private\PartyWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -524,6 +530,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CharacterPreviewPanel.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h">
@@ -764,6 +773,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PartyWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldPlayerNameplateView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -2341,6 +2353,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.authored-baseline.effect.json">
@@ -4648,6 +4663,9 @@
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\EffectCatalog.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ProductCueApprovals.json">
       <Filter>96.DataFiles\Effects</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json">

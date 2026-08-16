@@ -11,6 +11,24 @@ from pathlib import Path
 from typing import Any
 
 
+CATALOG_SCHEMAS = {
+    "lostark.dimensionmaster-material-candidate-catalog": {"DIMENSIONMASTER"},
+    # Parent Material facts are class-neutral: fx_m/bfx_m are shared FX
+    # libraries that every playable class instances from.  A four-class
+    # capture therefore carries one FOUR_CLASS evidence document and the
+    # per-class admission boundary stays in the aggregate compiler.
+    "lostark.four-class-material-candidate-catalog": {
+        "ARTIST", "DIMENSIONMASTER", "LANCE_MASTER", "WARLORD", "FOUR_CLASS",
+    },
+}
+RECEIPT_SCHEMAS = {
+    "lostark.dimensionmaster-material-candidate-catalog":
+        "lostark.dimensionmaster-source-material-evidence-receipt",
+    "lostark.four-class-material-candidate-catalog":
+        "lostark.four-class-source-material-evidence-receipt",
+}
+
+
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
@@ -31,11 +49,18 @@ def fallback_reason(candidate: dict[str, Any]) -> str | None:
     if status == "UNSUPPORTED_DECAL_MATERIAL":
         return "UNSUPPORTED_DECAL_MATERIAL"
     if status and status not in {
-        "RESOLVED_UMODEL_EXPORT", "RESOLVED_UMODEL_DUMP"
+        "RESOLVED_UMODEL_EXPORT", "RESOLVED_UMODEL_DUMP",
+        # The exporter positively reported an empty parameter declaration.
+        "RESOLVED_UMODEL_EMPTY_PARAMETERS",
     }:
         return "UNRESOLVED_OR_AMBIGUOUS_MATERIAL_EXPORT"
     if str(candidate.get("materialEvidenceStatus") or "") not in {
-        "SOURCE_MATERIAL_PROPS", "SOURCE_MATERIAL_DUMP"
+        # ``SOURCE_MATERIAL_EMPTY_PARAMETERS`` is the exporter positively
+        # reporting that the parent Material declares no parameters.  That is
+        # resolved evidence of an empty declaration, not a failed lookup, so
+        # it must not block a draw the emitter's own bindings already prove.
+        "SOURCE_MATERIAL_PROPS", "SOURCE_MATERIAL_DUMP",
+        "SOURCE_MATERIAL_EMPTY_PARAMETERS",
     }:
         return "MISSING_OR_AMBIGUOUS_PARENT_MATERIAL_PROPS"
     if int(candidate.get("materialEvidencePropsCandidateCount", 0)) != 1:
@@ -136,9 +161,12 @@ def build_evidence(
     extractor_map: dict[str, Any],
     extractor_receipt: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    if catalog.get("schema") != "lostark.dimensionmaster-material-candidate-catalog":
+    schema = str(catalog.get("schema") or "")
+    allowed_classes = CATALOG_SCHEMAS.get(schema)
+    if allowed_classes is None:
         raise ValueError("DimensionMaster material candidate catalog is invalid")
-    if str(catalog.get("characterClass") or "").upper() != "DIMENSIONMASTER":
+    character_class = str(catalog.get("characterClass") or "").upper()
+    if character_class not in allowed_classes:
         raise ValueError("material candidate catalog character class is invalid")
     map_rows = extractor_map.get("materials") or {}
     receipt_rows = receipt_candidates_by_path(extractor_receipt)
@@ -174,7 +202,7 @@ def build_evidence(
     evidence = {
         "schema": "lostark.effect-source-material-evidence",
         "formatVersion": 1,
-        "characterClass": "DIMENSIONMASTER",
+        "characterClass": character_class,
         "captureMethod": "UModel Material3 props/dump",
         "checkpointSkillIds": [
             int(row["skillId"]) for row in catalog.get("skills", [])
@@ -183,9 +211,9 @@ def build_evidence(
         "materials": materials,
     }
     receipt = {
-        "schema": "lostark.dimensionmaster-source-material-evidence-receipt",
+        "schema": RECEIPT_SCHEMAS[schema],
         "formatVersion": 1,
-        "characterClass": "DIMENSIONMASTER",
+        "characterClass": character_class,
         "summary": {
             "materialCandidateCount": len(materials),
             "resolvedParentPropsCandidateCount": resolved_parent_props,

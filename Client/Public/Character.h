@@ -106,6 +106,20 @@ public:
 		std::uint32_t actionStartTick,
 		std::uint8_t comboStage = 0);
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
+	/* A Model View clone may mirror the live scene stance, but only after that
+	   scene Character has consumed an authoritative snapshot. Before then its
+	   NONE member is initialization state, not a valid Lance stance. */
+	bool_t Try_Get_NetworkStance(
+		LostArk::Shared::PLAYER_STANCE_ID& outStance) const
+	{
+		if (!m_hasNetworkState ||
+			m_eStance >= LostArk::Shared::PLAYER_STANCE_ID::END)
+		{
+			return false;
+		}
+		outStance = m_eStance;
+		return true;
+	}
 
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);

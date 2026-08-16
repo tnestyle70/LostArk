@@ -58,6 +58,10 @@ private:
 	void Update_ServerArena();
 	bool_t Commit_ServerArena();
 	bool_t Request_SelectedArenaSpawn();
+	void Open_CreateCharacterModal();
+	bool_t Confirm_CreateCharacter();
+	void Cancel_CreateCharacter();
+	void Render_CreateCharacterModal();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
 	void Render_ClassList();
@@ -95,6 +99,9 @@ private:
 	size_t m_iSelectedArenaSpawnIndex = 0;
 	std::optional<size_t> m_iPendingArenaSpawnIndex;
 	std::array<bool_t, 3> m_ArenaSpawnAccepted{};
+	std::array<char_t,
+		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
+	bool_t m_isCreateCharacterModalOpen = false;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
 #endif

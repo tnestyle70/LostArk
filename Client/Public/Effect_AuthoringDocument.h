@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -90,6 +91,63 @@ struct EFFECT_RESOURCE_BINDING_DESC final
 	std::string strAssetId;
 };
 
+inline constexpr std::string_view
+	EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX =
+		"materialExecutionLane:";
+inline constexpr std::string_view
+	EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX =
+		"sourceMaterialTexture:";
+
+inline std::string Build_EffectMaterialExecutionLaneStableSlotId(
+	const std::string_view strLaneId)
+{
+	return std::string(EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX) +
+		std::string(strLaneId);
+}
+
+inline bool_t Try_ParseEffectMaterialExecutionLaneStableSlotId(
+	const std::string_view strSlotId,
+	std::string_view& strOutLaneId)
+{
+	if (strSlotId.size() <=
+			EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX.size() ||
+		0 != strSlotId.compare(0u,
+			EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX.size(),
+			EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX))
+	{
+		strOutLaneId = {};
+		return false;
+	}
+	strOutLaneId = strSlotId.substr(
+		EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX.size());
+	return !strOutLaneId.empty();
+}
+
+inline std::string Build_EffectSourceMaterialTextureStableSlotId(
+	const std::string_view strParameterName)
+{
+	return std::string(EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX) +
+		std::string(strParameterName);
+}
+
+inline bool_t Try_ParseEffectSourceMaterialTextureStableSlotId(
+	const std::string_view strSlotId,
+	std::string_view& strOutParameterName)
+{
+	if (strSlotId.size() <=
+			EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX.size() ||
+		0 != strSlotId.compare(0u,
+			EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX.size(),
+			EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX))
+	{
+		strOutParameterName = {};
+		return false;
+	}
+	strOutParameterName = strSlotId.substr(
+		EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX.size());
+	return !strOutParameterName.empty();
+}
+
 enum class EFFECT_SOURCE_MATERIAL_STATUS : uint8_t
 {
 	SOURCE_EXACT,
@@ -97,6 +155,18 @@ enum class EFFECT_SOURCE_MATERIAL_STATUS : uint8_t
 	RECONSTRUCTED_PROFILE,
 	UNSUPPORTED,
 	MISSING_RESOURCE,
+	END
+};
+
+/* Compiler-captured source render evidence. UNKNOWN is deliberately the
+   default so existing v13 documents stay byte-identical until their compiler
+   explicitly supplies the field. */
+enum class EFFECT_SOURCE_BLEND_CLASS : uint8_t
+{
+	UNKNOWN,
+	ADDITIVE,
+	TRANSLUCENT,
+	MASKED,
 	END
 };
 
@@ -227,6 +297,16 @@ struct EFFECT_MATERIAL_EXECUTION_DESC final
 	   instead means the source pass is unresolved and must never fall back to
 	   generic/white rendering. */
 	bool_t bFailClosed = false;
+	/* Authoring-only relaxation of the FailClosed marker. It is set only when
+	   the element already owns its exact source resources - an exact WModel for
+	   a mesh carrier, an existing exact DDS for a sprite carrier - and only the
+	   material semantics remain unproven. Such an element draws an explicitly
+	   approximate preview so the artist can tune transform, size and colour.
+	   Product use requires a hash-pinned, exact-cue user approval and keeps the
+	   PRODUCT_APPROVED_APPROXIMATE label; an unapproved carrier remains denied.
+	   It never stands on its own: it is meaningless unless bFailClosed is also
+	   true. */
+	bool_t bAuthoringApproximate = false;
 	uint32_t iVersion = 1u;
 	EFFECT_MATERIAL_EXECUTION_BACKEND eBackend =
 		EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC;
@@ -264,6 +344,15 @@ struct EFFECT_MATERIAL_EXECUTION_DESC final
 	std::vector<EFFECT_MATERIAL_VECTOR_PARAMETER_DESC> Colors;
 };
 
+/* A hard fail-closed row is retained only as source evidence.  An explicitly
+   authoring-approximate row is still an execution target and therefore must
+   satisfy every ordinary runtime carrier/admission validator before preview. */
+inline bool_t Is_EffectAuthoringExecutionTarget(
+	const EFFECT_MATERIAL_EXECUTION_DESC& Execution)
+{
+	return !Execution.bFailClosed || Execution.bAuthoringApproximate;
+}
+
 struct EFFECT_NAMED_TEXTURE_DESC final
 {
 	std::string strName;
@@ -287,6 +376,8 @@ struct EFFECT_SOURCE_MATERIAL_DESC final
 	std::string strParentMaterialPath;
 	EFFECT_SOURCE_MATERIAL_STATUS eStatus =
 		EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED;
+	EFFECT_SOURCE_BLEND_CLASS eSourceBlendClass =
+		EFFECT_SOURCE_BLEND_CLASS::UNKNOWN;
 	std::vector<EFFECT_NAMED_TEXTURE_DESC> Textures;
 	std::vector<EFFECT_NAMED_FLOAT_DESC> Scalars;
 	std::vector<EFFECT_NAMED_FLOAT4_DESC> Vectors;
@@ -767,6 +858,67 @@ struct EFFECT_TRANSFORM_INHERITANCE_DESC final
 	std::string strMasterElementId;
 };
 
+/* Values the artist re-bound or retuned in the Effect Tool.
+
+   The compiler owns the source recipe, the source material identity and the
+   exact resource bindings, and it rewrites all of them on every
+   re-materialize. Without this block a Particle carrier has no artist-owned
+   material surface at all, so a re-import silently discards every DDS rebind
+   and parameter tweak - only Decal carried an exception. Overrides are
+   re-applied last, after the compiler stage refreshes the element.
+
+   An override is a tuning decision, never a claim of exactness: it never
+   changes graph provenance and never grants product admission. */
+/* Each override records the compiler value it replaced so the tool can offer
+   an exact "Reset to compiler value" without a re-materialize round trip. The
+   baseline is refreshed on every re-import, so a reset always lands on the
+   current compiler answer rather than a stale one. */
+struct EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC final
+{
+	/* slotId must already exist on the compiler-produced element. */
+	std::string strSlotId;
+	std::string strAssetId;
+	std::string strCompilerAssetId;
+};
+
+struct EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC final
+{
+	/* Name must already be declared by the element's source profile. */
+	std::string strName;
+	f32_t fValue = 0.f;
+	f32_t fCompilerValue = 0.f;
+};
+
+struct EFFECT_AUTHORING_COLOR_OVERRIDE_DESC final
+{
+	std::string strName;
+	float4_t vValue{};
+	float4_t vCompilerValue{};
+};
+
+struct EFFECT_AUTHORING_OVERRIDES_DESC final
+{
+	std::vector<EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC> ResourceBindings;
+	std::vector<EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC> Scalars;
+	std::vector<EFFECT_AUTHORING_COLOR_OVERRIDE_DESC> Colors;
+
+	bool_t Is_Empty() const
+	{
+		return ResourceBindings.empty() && Scalars.empty() && Colors.empty();
+	}
+};
+
+/* Fidelity is a display contract only. It never decides admission: an
+   ARTIST_TUNED row can still be APPROXIMATE and refused for product. */
+enum class EFFECT_AUTHORING_FIDELITY : uint8_t
+{
+	EXACT,
+	RECONSTRUCTED,
+	APPROXIMATE,
+	INCOMPLETE,
+	END
+};
+
 struct EFFECT_ELEMENT_DESC final
 {
 	std::string strElementId;
@@ -783,6 +935,241 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_DETAIL_DESC Detail;
 	EFFECT_CASCADE_RECIPE_DESC SourceRecipe;
 	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
+	EFFECT_AUTHORING_OVERRIDES_DESC AuthoringOverrides;
+};
+
+/* G3's compiler-derived authoring family is intentionally separate from the
+   Effect Tool's legacy six-way creation selector. It is a read-only
+   classification of renderer shape, source blend evidence, and SubUV. */
+enum class EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE : uint8_t
+{
+	UNKNOWN,
+	SPRITE,
+	MESH,
+	DECAL,
+	END
+};
+
+enum class EFFECT_GENERIC_AUTHORING_SUBUV_CLASS : uint8_t
+{
+	UNKNOWN,
+	NONE,
+	SUBUV,
+	END
+};
+
+enum class EFFECT_GENERIC_AUTHORING_FAMILY : uint8_t
+{
+	SPRITE_ADDITIVE,
+	SPRITE_TRANSLUCENT,
+	MESH_TRANSLUCENT,
+	SPRITE_TRANSLUCENT_SUBUV,
+	MESH_ADDITIVE,
+	SPRITE_ADDITIVE_SUBUV,
+	MESH_MASKED,
+	DECAL_TRANSLUCENT,
+	SPRITE_MASKED,
+	MESH_MASKED_SUBUV,
+	MESH_TRANSLUCENT_SUBUV,
+	DECAL_ADDITIVE,
+	MESH_UNKNOWN,
+	END
+};
+
+inline EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE
+Resolve_EffectGenericAuthoringRendererShape(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.SourceRecipe.strRendererShape == "sprite")
+		return EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::SPRITE;
+	if (Element.SourceRecipe.strRendererShape == "mesh")
+		return EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::MESH;
+	if (Element.SourceRecipe.strRendererShape == "decal" ||
+		Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+	{
+		return EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::DECAL;
+	}
+	return EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::UNKNOWN;
+}
+
+inline EFFECT_SOURCE_BLEND_CLASS Resolve_EffectGenericAuthoringBlendClass(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.Material.SourceMaterial.eSourceBlendClass !=
+		EFFECT_SOURCE_BLEND_CLASS::UNKNOWN)
+	{
+		return Element.Material.SourceMaterial.eSourceBlendClass;
+	}
+
+	/* renderProfile is the compiler's bounded fallback when source evidence was
+	   unavailable. Opaque is not guessed as Masked; only explicit source
+	   evidence may make that claim. */
+	switch (Element.Material.eRenderProfile)
+	{
+	case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
+	case EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ:
+		return EFFECT_SOURCE_BLEND_CLASS::TRANSLUCENT;
+	case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
+	case EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
+		return EFFECT_SOURCE_BLEND_CLASS::ADDITIVE;
+	case EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE:
+	case EFFECT_RENDER_PROFILE::END:
+	default:
+		return EFFECT_SOURCE_BLEND_CLASS::UNKNOWN;
+	}
+}
+
+inline EFFECT_GENERIC_AUTHORING_SUBUV_CLASS
+Resolve_EffectGenericAuthoringSubUVClass(const EFFECT_ELEMENT_DESC& Element)
+{
+	const std::string& strMode = Element.Material.SourceMaterial.strSubUVMode;
+	if (strMode == "none")
+		return EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::NONE;
+	if (strMode == "psuvim_random" ||
+		strMode == "psuvim_linear_blend" ||
+		strMode == "psuvim_linear_blend_random_flip_square")
+	{
+		return EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::SUBUV;
+	}
+	return EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::UNKNOWN;
+}
+
+inline EFFECT_GENERIC_AUTHORING_FAMILY Resolve_EffectGenericAuthoringFamily(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	const EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE eShape =
+		Resolve_EffectGenericAuthoringRendererShape(Element);
+	const EFFECT_SOURCE_BLEND_CLASS eBlend =
+		Resolve_EffectGenericAuthoringBlendClass(Element);
+	const EFFECT_GENERIC_AUTHORING_SUBUV_CLASS eSubUV =
+		Resolve_EffectGenericAuthoringSubUVClass(Element);
+
+	if (eShape == EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::MESH &&
+		eBlend == EFFECT_SOURCE_BLEND_CLASS::UNKNOWN)
+	{
+		return EFFECT_GENERIC_AUTHORING_FAMILY::MESH_UNKNOWN;
+	}
+	if (eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::UNKNOWN)
+		return EFFECT_GENERIC_AUTHORING_FAMILY::END;
+
+	if (eShape == EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::SPRITE)
+	{
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::ADDITIVE)
+		{
+			return eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::SUBUV ?
+				EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_ADDITIVE_SUBUV :
+				EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_ADDITIVE;
+		}
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::TRANSLUCENT)
+		{
+			return eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::SUBUV ?
+				EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_TRANSLUCENT_SUBUV :
+				EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_TRANSLUCENT;
+		}
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::MASKED &&
+			eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::NONE)
+		{
+			return EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_MASKED;
+		}
+	}
+	else if (eShape == EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::MESH)
+	{
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::ADDITIVE &&
+			eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::NONE)
+		{
+			return EFFECT_GENERIC_AUTHORING_FAMILY::MESH_ADDITIVE;
+		}
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::TRANSLUCENT)
+		{
+			return eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::SUBUV ?
+				EFFECT_GENERIC_AUTHORING_FAMILY::MESH_TRANSLUCENT_SUBUV :
+				EFFECT_GENERIC_AUTHORING_FAMILY::MESH_TRANSLUCENT;
+		}
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::MASKED)
+		{
+			return eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::SUBUV ?
+				EFFECT_GENERIC_AUTHORING_FAMILY::MESH_MASKED_SUBUV :
+				EFFECT_GENERIC_AUTHORING_FAMILY::MESH_MASKED;
+		}
+	}
+	else if (eShape == EFFECT_GENERIC_AUTHORING_RENDERER_SHAPE::DECAL &&
+		eSubUV == EFFECT_GENERIC_AUTHORING_SUBUV_CLASS::NONE)
+	{
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::ADDITIVE)
+			return EFFECT_GENERIC_AUTHORING_FAMILY::DECAL_ADDITIVE;
+		if (eBlend == EFFECT_SOURCE_BLEND_CLASS::TRANSLUCENT)
+			return EFFECT_GENERIC_AUTHORING_FAMILY::DECAL_TRANSLUCENT;
+	}
+	return EFFECT_GENERIC_AUTHORING_FAMILY::END;
+}
+
+inline const char_t* Get_EffectGenericAuthoringFamilyLabel(
+	const EFFECT_GENERIC_AUTHORING_FAMILY eFamily)
+{
+	switch (eFamily)
+	{
+	case EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_ADDITIVE:
+		return "Sprite Additive";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_TRANSLUCENT:
+		return "Sprite Translucent";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_TRANSLUCENT:
+		return "Mesh Translucent";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_TRANSLUCENT_SUBUV:
+		return "Sprite Translucent SubUV";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_ADDITIVE:
+		return "Mesh Additive";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_ADDITIVE_SUBUV:
+		return "Sprite Additive SubUV";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_MASKED:
+		return "Mesh Masked";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::DECAL_TRANSLUCENT:
+		return "Decal Translucent";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::SPRITE_MASKED:
+		return "Sprite Masked";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_MASKED_SUBUV:
+		return "Mesh Masked SubUV";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_TRANSLUCENT_SUBUV:
+		return "Mesh Translucent SubUV";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::DECAL_ADDITIVE:
+		return "Decal Additive";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::MESH_UNKNOWN:
+		return "Mesh Unknown";
+	case EFFECT_GENERIC_AUTHORING_FAMILY::END:
+	default:
+		return "Unknown";
+	}
+}
+
+inline EFFECT_AUTHORING_FIDELITY Get_EffectAuthoringFidelity(
+	const EFFECT_MATERIAL_EXECUTION_DESC& Execution)
+{
+	if (Execution.bEnabled)
+		return EFFECT_AUTHORING_FIDELITY::EXACT;
+	if (Execution.bAuthoringApproximate)
+		return EFFECT_AUTHORING_FIDELITY::APPROXIMATE;
+	if (Execution.bFailClosed)
+		return EFFECT_AUTHORING_FIDELITY::INCOMPLETE;
+	return EFFECT_AUTHORING_FIDELITY::RECONSTRUCTED;
+}
+
+inline const char_t* Get_EffectAuthoringFidelityLabel(
+	const EFFECT_AUTHORING_FIDELITY eFidelity)
+{
+	switch (eFidelity)
+	{
+	case EFFECT_AUTHORING_FIDELITY::EXACT: return "EXACT";
+	case EFFECT_AUTHORING_FIDELITY::RECONSTRUCTED: return "RECONSTRUCTED";
+	case EFFECT_AUTHORING_FIDELITY::APPROXIMATE: return "APPROXIMATE";
+	case EFFECT_AUTHORING_FIDELITY::INCOMPLETE: return "INCOMPLETE";
+	default: return "UNKNOWN";
+	}
+}
+
+enum class EFFECT_MODEL_CUE_ALPHA_MODE : uint8_t
+{
+	OPAQUE_SURFACE,
+	MASKED_SURFACE,
+	END
 };
 
 struct EFFECT_MODEL_CUE_DESC final
@@ -795,6 +1182,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	EFFECT_TRANSFORM_DESC LocalTransform;
 	float3_t vAssetPreScale = { 1.f, 1.f, 1.f };
 	float3_t vAssetPreRotationDegrees = { 0.f, 0.f, 0.f };
+	EFFECT_MODEL_CUE_ALPHA_MODE eAlphaMode =
+		EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
 	bool_t bVisible = true;
 };
 
@@ -1008,9 +1397,11 @@ inline void Apply_EffectElementDetailDraft(
 	Target.strGroupId = Draft.strGroupId;
 	Target.strSourceNode = Draft.strSourceNode;
 	Target.bVisible = Draft.bVisible;
+	Target.ResourceBindings = Draft.ResourceBindings;
 	Target.Detail = Draft.Detail;
 	Target.Material = Draft.Material;
 	Target.SourceRecipe = Draft.SourceRecipe;
+	Target.AuthoringOverrides = Draft.AuthoringOverrides;
 }
 
 NS_END

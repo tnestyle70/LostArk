@@ -233,6 +233,65 @@ bool_t CCharacter::Load_EffectCues()
 			status + "\n").c_str());
 		return false;
 	}
+	const bool_t bHasManagedProductCue = std::any_of(
+		staged.Cues.begin(), staged.Cues.end(),
+		[](const ANIMATION_EFFECT_CUE& Cue)
+		{
+			return nullptr != Cue.pProductAdmissionToken;
+		});
+	ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+	if (bHasManagedProductCue && !CAnimationSkillBindingDocument::Load(
+			m_pSpec->pAssetName, m_pSpec->eCharacterClass,
+			CPlayerSkillCatalog::Get_Skills(), clips, Bindings, status))
+	{
+		OutputDebugStringA((
+			"Character managed Effect cue binding load isolated: " +
+			status + "\n").c_str());
+		return false;
+	}
+	for (const ANIMATION_EFFECT_CUE& Cue : staged.Cues)
+	{
+		if (nullptr == Cue.pProductAdmissionToken)
+			continue;
+		bool_t bOwnedByBinding = false;
+		for (const ANIMATION_SKILL_BINDING& Binding : Bindings.Bindings)
+		{
+			const PLAYER_SKILL_DEFINITION* pSkill =
+				CPlayerSkillCatalog::Find_ById(Binding.iSkillId);
+			if (nullptr == pSkill)
+				return false;
+			for (size_t iStage = 0u; iStage < Binding.Stages.size(); ++iStage)
+			{
+				const bool_t bStageOwnsClip = std::any_of(
+					Binding.Stages[iStage].Clips.begin(),
+					Binding.Stages[iStage].Clips.end(),
+					[&Cue](const ANIMATION_SKILL_CLIP& Clip)
+					{
+						return Clip.strClipName == Cue.strClipName;
+					});
+				if (!bStageOwnsClip)
+					continue;
+				bOwnedByBinding = true;
+				if (!CEffectCatalog::Validate_ProductCueBinding(
+						Cue.strEffectAssetId, Cue.pProductAdmissionToken,
+						pSkill->eCharacterClass, pSkill->strInputSlot,
+						pSkill->iSkillId, static_cast<uint32_t>(iStage), status))
+				{
+					OutputDebugStringA((
+						"Character managed Effect cue owner rejected: " +
+						status + "\n").c_str());
+					return false;
+				}
+			}
+		}
+		if (!bOwnedByBinding)
+		{
+			OutputDebugStringA((
+				"Character managed Effect cue has no current skillbinding owner: " +
+				Cue.strClipName + "\n").c_str());
+			return false;
+		}
+	}
 	for (const ANIMATION_EFFECT_CUE& cue : staged.Cues)
 	{
 		if ("root" != cue.strAnchorSlotId &&
@@ -421,6 +480,8 @@ void CCharacter::Update_EffectCues()
 
 				EFFECT_SPAWN_DESC Desc;
 				Desc.strEffectAssetId = Cue.strEffectAssetId;
+				Desc.pProductAdmissionToken =
+					Cue.pProductAdmissionToken;
 				Desc.pOwner = Owner;
 				Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 				Desc.LocalTransform = Cue.LocalTransform;

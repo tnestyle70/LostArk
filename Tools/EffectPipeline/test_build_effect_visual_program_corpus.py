@@ -74,7 +74,7 @@ class EffectVisualProgramCorpusTests(unittest.TestCase):
         local = [row for row in corpus["visualRows"] if row["provenance"]["scope"] == "ARTIST_F_LOCAL_DECAL"]
         legacy = [row for row in ba if row["executionProjection"]["fidelity"] == "LEGACY_APPROXIMATION"]
         fail_closed = [row for row in ba if row["executionProjection"]["disposition"] == "FAIL_CLOSED"]
-        self.assertEqual((len(ba), len(local), len(legacy), len(fail_closed)), (133, 2, 66, 63))
+        self.assertEqual((len(ba), len(local), len(legacy), len(fail_closed)), (133, 2, 66, 67))
         self.assertEqual(
             Counter(
                 row["executionProjection"]["family"]
@@ -136,10 +136,11 @@ class EffectVisualProgramCorpusTests(unittest.TestCase):
                     "particlemoduletypedataribbon",
                 ),
             )
-            self.assertEqual(
-                row["executionProjection"]["disposition"],
-                "ADMITTED_BOUNDED",
-            )
+            self.assertEqual(row["executionProjection"]["disposition"], "FAIL_CLOSED")
+            self.assertEqual(row["executionProjection"]["fidelity"], "EVIDENCE_ONLY")
+            self.assertEqual(row["executionProjection"]["packetLayout"], "NONE")
+            self.assertIsNone(row["targetPayload"])
+            self.assertTrue(row["executionProjection"]["admissionBlockers"])
 
         supplemental = corpus["supplementalElements"]
         self.assertEqual(len(supplemental), 5)

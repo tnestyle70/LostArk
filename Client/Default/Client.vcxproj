@@ -78,6 +78,7 @@
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
+    <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
@@ -87,6 +88,7 @@
 	<ClInclude Include="..\Public\RenderingProfileService.h" />
     <ClInclude Include="..\Public\AnimationTargetService.h" />
     <ClInclude Include="..\Public\CharacterPreviewPanel.h" />
+    <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h" />
     <ClInclude Include="..\Public\LobbyCommandService.h" />
     <ClInclude Include="..\Public\LevelTransitionService.h" />
     <ClInclude Include="..\Public\Level_ValtanArena.h" />
@@ -193,6 +195,7 @@
     <ClCompile Include="..\Private\SkillWindowView.cpp" />
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
+    <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
@@ -202,6 +205,7 @@
 	<ClCompile Include="..\Private\RenderingProfileService.cpp" />
     <ClCompile Include="..\Private\AnimationTargetService.cpp" />
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp" />
+    <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp" />
     <ClCompile Include="..\Private\LobbyCommandService.cpp" />
     <ClCompile Include="..\Private\LevelTransitionService.cpp" />
     <ClCompile Include="..\Private\Level_ValtanArena.cpp" />
@@ -726,6 +730,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a-restoration-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.authored-baseline.effect.json" />
@@ -1495,6 +1500,7 @@
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
     <None Include="..\..\Data\Effects\EffectCatalog.json" />
+    <None Include="..\..\Data\Effects\ProductCueApprovals.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Artist.combat-source-stage-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Artist.resource-source-manifest.json" />

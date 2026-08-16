@@ -20,6 +20,7 @@ namespace Client
 {
 
 class CCharacter;
+class CValtan;
 
 class CAnimationHistoricalPoseBinding final
 {
@@ -65,14 +66,31 @@ public:
 		const std::shared_ptr<Engine::CModel>& model,
 		const std::string& assetName,
 		const float4x4_t& rootMatrix);
+	/* Playable preview targets are complete CCharacter clones, not isolated
+	   body models. Keeping the character here makes tool queries see the same
+	   body/PartObject owner and live root transform as Character Select. */
+	static void Bind_Preview(
+		const std::shared_ptr<CCharacter>& character);
+	/* Boss preview targets keep their complete product composition so model
+	   playback, weapon sockets and effect anchors share one owner. */
+	static void Bind_Preview(
+		const std::shared_ptr<CValtan>& valtan,
+		const std::string& assetName);
 	static void Unbind_Preview(
 		const std::shared_ptr<Engine::CModel>& model);
+	static void Unbind_Preview(
+		const std::shared_ptr<CCharacter>& character);
+	static void Unbind_Preview(
+		const std::shared_ptr<CValtan>& valtan);
 	// Clears a preview whose weak model may already have expired. This still
 	// advances the generation so pending cross-tool transfers cannot bind to a
 	// different target with the same asset name.
 	static void Clear_Preview();
 
 	static std::shared_ptr<CCharacter> Resolve_Character();
+	/* Resolve_Character() prefers a selected playable preview. This accessor is
+	   only for positioning a new preview beside the actual scene character. */
+	static std::shared_ptr<CCharacter> Resolve_SceneCharacter();
 	static std::shared_ptr<Engine::CModel> Resolve_Model();
 	static std::string Resolve_AssetName();
 	static uint64_t Resolve_TargetGeneration();
@@ -102,6 +120,8 @@ public:
 
 private:
 	static std::weak_ptr<CCharacter> s_Target;
+	static std::weak_ptr<CCharacter> s_PreviewCharacter;
+	static std::weak_ptr<CValtan> s_PreviewBoss;
 	static std::weak_ptr<Engine::CModel> s_PreviewModel;
 	static std::string s_PreviewAssetName;
 	static float4x4_t s_PreviewRootMatrix;

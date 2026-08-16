@@ -154,11 +154,16 @@ struct EFFECT_GPU_RENDER_OCCURRENCE_STATS final
 	uint64_t iSuppressed = 0u;
 	uint64_t iFailed = 0u;
 	uint32_t iSelectedPassIndex = UINT32_MAX;
+	uint32_t iSourceMaterialProfile = UINT32_MAX;
+	uint32_t iSourceTextureMask = 0u;
 	EFFECT_GPU_RENDER_CARRIER eCarrier = EFFECT_GPU_RENDER_CARRIER::END;
+	bool_t bSourceMaterialFallbackBlocked = false;
 	bool_t bDrawSelectionDiverged = false;
 	float3_t vSubmittedPositionMin{};
 	float3_t vSubmittedPositionMax{};
 	bool_t bHasSubmittedPosition = false;
+	float4x4_t FirstSubmittedParticleWorld{};
+	bool_t bHasFirstSubmittedParticleWorld = false;
 	uint64_t iFinalTrailUploadedVertexCount = 0u;
 	float3_t vFinalTrailPairCenterMin{};
 	float3_t vFinalTrailPairCenterMax{};
@@ -196,6 +201,7 @@ private:
 		float4_t vSourceScalars1{};
 		float4_t vSourceVector0{};
 		float4_t vSourceVector1{};
+		std::array<float4_t, 8u> TypedTrailParameters{};
 		std::array<float4_t, 16u> LinearFlowParameters{};
 		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
 		float4_t vLinearFlowMaskBColor{ 1.f, 1.f, 1.f, 1.f };
@@ -317,19 +323,31 @@ public:
 		{
 			Staged.vScale.y = Staged.vScale.x;
 		}
-		if (Particle.bSourceImageFlipping)
+		else
 		{
-			const auto IsUnitSign = [](const f32_t fValue)
+			const bool_t bFixedAxis =
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X ==
+					Particle.eSpriteAlignment ||
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_X ==
+					Particle.eSpriteAlignment ||
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Y ==
+					Particle.eSpriteAlignment ||
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Y ==
+					Particle.eSpriteAlignment ||
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Z ==
+					Particle.eSpriteAlignment ||
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z ==
+					Particle.eSpriteAlignment;
+			/* Cascade fixed-axis sprites commonly author a single StartSize X
+			   component and use it for both dimensions of the renderer plane.
+			   Preserving literal Y=0 collapses the shared rect before the pixel
+			   shader.  Expand only this source-evidenced one-component form;
+			   rectangular and rotating presentations keep their authored axes. */
+			if (bFixedAxis && Staged.vScale.x > 1.e-6f &&
+				Staged.vScale.y <= 1.e-6f)
 			{
-				return fValue == -1.f || fValue == 1.f;
-			};
-			if (!IsUnitSign(Particle.vSourceImageFlipSign.x) ||
-				!IsUnitSign(Particle.vSourceImageFlipSign.y))
-			{
-				return false;
+				Staged.vScale.y = Staged.vScale.x;
 			}
-			Staged.vScale.x *= Particle.vSourceImageFlipSign.x;
-			Staged.vScale.y *= Particle.vSourceImageFlipSign.y;
 		}
 		OutScale = Staged;
 		return true;
@@ -661,6 +679,14 @@ private:
 	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
 	shared_ptr<Engine::CVIBuffer_ParticleRect> m_pParticleBuffer;
 	shared_ptr<Engine::CVIBuffer_DynamicTrail> m_pTrailBuffer;
+	/* Frame evaluation keeps its own vectors alive, but the renderer used to
+	   allocate three additional transient vectors for every active particle or
+	   trail occurrence.  One renderer instance is consumed serially, so retain
+	   these capacities across frames without changing draw order or payloads. */
+	std::vector<Engine::VTXEFFECT_PARTICLE> m_ParticleInstanceScratch;
+	std::vector<EFFECT_EVALUATED_TRAIL_POINT> m_TrailPointScratch;
+	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertexScratch;
+	std::vector<uint32_t> m_TrailIndexScratch;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
 	bool_t m_bReconstructedSourceRuntimeActive = false;

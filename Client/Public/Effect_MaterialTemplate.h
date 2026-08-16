@@ -2,6 +2,7 @@
 
 #include "Effect_AuthoringDocument.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string_view>
@@ -45,7 +46,15 @@ inline constexpr std::string_view EFFECT_SOURCE_MATERIAL_TEMPLATE_ID =
 	"effect.source_material";
 inline constexpr f32_t EFFECT_MANUAL_MESH_DEFAULT_SCALE = 0.01f;
 
-inline constexpr std::array<std::string_view, 15u>
+inline constexpr std::string_view EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID =
+	"effect.ue3.missiletrail-01.v1";
+inline constexpr std::string_view
+	EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID =
+	"effect.ue3.missiletrail-two-emissive.v1";
+inline constexpr std::string_view EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID =
+	"effect.ue3.watertrail-01.v1";
+
+inline constexpr std::array<std::string_view, 17u>
 	EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS = {{
 		"effect.ue3.reconstructed-standard.v1",
 		"effect.ue3.fallback-blocked.v1",
@@ -59,12 +68,108 @@ inline constexpr std::array<std::string_view, 15u>
 		"effect.ue3.blackline-aura.v1",
 		"effect.ue3.linearflow-02.v1",
 		"effect.ue3.slice.v1",
-		"effect.ue3.missiletrail-01.v1",
+		EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID,
+		EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID,
 		"effect.ue3.local-crack.v1",
-		"effect.ue3.procedural-center-glow.v1"
+		"effect.ue3.procedural-center-glow.v1",
+		EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID
 	}};
 
-inline constexpr std::array<std::string_view, 19u>
+inline constexpr std::array<std::string_view, 7u>
+	EFFECT_LINEARFLOW_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex", "diff_noise_tex", "a_mask_tex", "a_noise_01_tex",
+		"b_mask_tex", "b_noise_01_tex", "dissolve_tex"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_BLACKLINE_SOURCE_TEXTURE_NAMES = {{
+		"diffuse_tex", "flow_tex", "mask_a_tex", "mask_b_tex",
+		"dissolve_tex"
+	}};
+inline constexpr std::array<std::string_view, 3u>
+	EFFECT_LOCAL_CRACK_SOURCE_TEXTURE_NAMES = {{
+		"normal_tex", "refle_tex", "dissolve_tex"
+	}};
+inline constexpr std::array<std::string_view, 2u>
+	EFFECT_WATERTRAIL_SOURCE_TEXTURE_NAMES = {{
+		"maintex", "uv_noise_tex"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_MISSILETRAIL_SOURCE_TEXTURE_NAMES = {{
+		"alpha_tex", "emissive_tex01", "emissive_tex02",
+		"uv_dissolve_tex", "uv_noise_tex"
+	}};
+inline constexpr std::array<std::string_view, 6u>
+	EFFECT_PARTICLE_MASTER_SOURCE_TEXTURE_NAMES = {{
+		"21.map_c", "01.map_a", "11.map_b", "06.map", "02.map_e",
+		"12.map_f"
+	}};
+inline constexpr std::array<std::string_view, 7u>
+	EFFECT_SPRITEWAVE_SOURCE_TEXTURE_NAMES = {{
+		"maintex", "uv_noise_tex", "dissolve_tex_01",
+		"noisedissolve_tex", "dissolve_tex02", "emissivetex02",
+		"uv_noise_tex_02"
+	}};
+inline constexpr std::array<std::string_view, 2u>
+	EFFECT_PARTICLETRAIL_SINGLE_ALPHA_SOURCE_TEXTURE_NAMES = {{
+		"tex_alpha_02", "tex_uvnoise_01"
+	}};
+inline constexpr std::array<std::string_view, 4u>
+	EFFECT_ARTIST_SPLA01_SOURCE_TEXTURE_NAMES = {{
+		"00_mapsource", "06.map", "02_specmap_b", "01_specmap_a"
+	}};
+inline constexpr std::array<std::string_view, 4u>
+	EFFECT_ARTIST_SPLA05_SOURCE_TEXTURE_NAMES = {{
+		"06.map_a", "06.map", "00.map_alpha", "01.specmap_a"
+	}};
+inline constexpr std::array<std::string_view, 3u>
+	EFFECT_ARTIST_TWINKLE_SOURCE_TEXTURE_NAMES = {{
+		"twinkle_tex", "twinkle_tex_01", "mask_tex"
+	}};
+inline constexpr std::array<std::string_view, 4u>
+	EFFECT_ARTIST_FLUID01_SOURCE_TEXTURE_NAMES = {{
+		"normal_tex", "alpha_tex", "emissive_tex", "subuv_alpha_tex"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_ARTIST_WORLDOFFSET01_SOURCE_TEXTURE_NAMES = {{
+		"uv_noise_tex_02", "uv_noise_tex_01", "emissivee_wave_texture",
+		"worldoffset_emissive_tex_01", "umodel_dependency"
+	}};
+inline constexpr std::array<std::string_view, 6u>
+	EFFECT_ARTIST_MAKEFLOW01_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex2", "diff_tex1", "color_tex", "opacity_tex", "mask_tex",
+		"umodel_dependency"
+	}};
+inline constexpr std::array<std::string_view, 1u>
+	EFFECT_ARTIST_LENSFLARE01_SOURCE_TEXTURE_NAMES = {{
+		"lensflaretexture"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_ARTIST_WORLDOFFSET02_SOURCE_TEXTURE_NAMES = {{
+		"alpha_texture2", "alpha_texture1_mask", "uv_noise_texture",
+		"emissive_tex_01", "emissive_tex_02"
+	}};
+inline constexpr std::array<std::string_view, 3u>
+	EFFECT_ARTIST_MM_FLUID01_SOURCE_TEXTURE_NAMES = {{
+		"transition texture", "emissive_tex", "uv_noise_01_tex"
+	}};
+inline constexpr std::array<std::string_view, 2u>
+	EFFECT_ARTIST_MM_DISSOLVE01_SOURCE_TEXTURE_NAMES = {{
+		"dissolve_noise_tex", "emissive_tex"
+	}};
+inline constexpr std::array<std::string_view, 4u>
+	EFFECT_ARTIST_RING07_SOURCE_TEXTURE_NAMES = {{
+		"00.map_b", "06.map", "31.map_e", "umodel_dependency"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_ARTIST_RINGMASTER01_SOURCE_TEXTURE_NAMES = {{
+		"22.map_a", "06.map", "01.specmap", "02.map_e", "12.map_f"
+	}};
+inline constexpr std::array<std::string_view, 1u>
+	EFFECT_ARTIST_LIGHTFLARE01_SOURCE_TEXTURE_NAMES = {{
+		"lensflaretexture"
+	}};
+
+inline constexpr std::array<std::string_view, 23u>
 	EFFECT_SOURCE_DYNAMIC_PARAMETER_SEMANTICS = {{
 		"unbound",
 		"opacity",
@@ -84,8 +189,247 @@ inline constexpr std::array<std::string_view, 19u>
 		"missile_alpha_pan",
 		"missile_noise_strength",
 		"missile_noise_pan",
-		"missile_dissolve"
+		"missile_dissolve",
+		"water_alpha_pan",
+		"water_noise_pan",
+		"water_dissolve",
+		"water_noise_strength"
 	}};
+
+enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
+{
+	NONE,
+	MISSILETRAIL,
+	WATERTRAIL,
+	LINEARFLOW_02,
+	MAKEFLOW_03,
+	RING_01,
+	PARTICLETRAIL_01,
+	PARTICLE_MASTER_01,
+	SPRITEWAVE_01,
+	PARTICLETRAIL_SINGLE_ALPHA,
+	ARTIST_SPLA01,
+	ARTIST_SPLA05,
+	ARTIST_TWINKLE,
+	ARTIST_FLUID01,
+	ARTIST_WORLDOFFSET01,
+	ARTIST_MAKEFLOW01,
+	ARTIST_LENSFLARE01,
+	ARTIST_WORLDOFFSET02,
+	ARTIST_MM_FLUID01,
+	ARTIST_MM_DISSOLVE01,
+	ARTIST_RING07,
+	ARTIST_RINGMASTER01,
+	ARTIST_LIGHTFLARE01,
+	END
+};
+
+/* This is deliberately an exact compiler-evidence identity join.  It does
+   not mutate the authored runtime profile or its admission status; the
+   renderer may use it only to select an effective in-memory evaluator for an
+   existing grouped baseline. */
+inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile(
+	const std::string_view strSourceMaterialPath,
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	if (!Source.bEnabled ||
+		Source.strRuntimeShaderProfileId !=
+			"effect.ue3.grouped-translucent.v1")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::NONE;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_m_00.fx_mi.fx_m_pa_missiletrail_01_17_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.m.me.trail.02.tr.8742928bef93" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_m_me_trail_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MISSILETRAIL;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.m.me.watertrail.01.tr.afa4aeba0c50" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_m_me_watertrail_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::WATERTRAIL;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_12_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.linearflow.02.tr.ac0bdcfd95f7" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_j_00.fx_m.fx_j_pa_linearflow_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::LINEARFLOW_02;
+	}
+	if ((strSourceMaterialPath ==
+			"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr" ||
+		 strSourceMaterialPath ==
+			"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_06_tr") &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.me.makeflow.03.tr.6e5c0dd36299" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_k_00.fx_m.fx_k_me_makeflow_03_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.n.pa.ring.05.tr.f23a0bf40d4e" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_n_pa_ring_05_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::RING_01;
+	}
+	if ((strSourceMaterialPath ==
+			"fx_m_mi_s_00.fx_mi.fx_s_pa_trail_03_01_tr" ||
+		 strSourceMaterialPath ==
+			"fx_m_mi_m_00.fx_mi.fx_m_pa_trail_01_6_tr") &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.mi.fx.m.pa.trail.01.tr.2372f1d945ed" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_mi.fx_m_pa_trail_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLETRAIL_01;
+	}
+	if (((Source.strProfileId ==
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_d_pa_master_01_tr") ||
+		 (Source.strProfileId ==
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_d_pa_master_01_ad")))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01;
+	}
+	if (((Source.strProfileId ==
+			"ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr") ||
+		 (Source.strProfileId ==
+			"ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.ad.caabbddf8b55" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_ad")))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::SPRITEWAVE_01;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_o_00.fx_mi.fx_o_pa_trail_01_01_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.mi.fx.m.pa.trail.01.tr.2372f1d945ed" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_mi.fx_m_pa_trail_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLETRAIL_SINGLE_ALPHA;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.spla.01.tr.316c6e8d71a0" &&
+		Source.strParentMaterialPath ==
+			"bfx_m_mi_00.bfx_m.bfx_d_pa_spla_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_SPLA01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.spla.05.tr.7274940fdb66" &&
+		Source.strParentMaterialPath ==
+			"bfx_m_mi_00.bfx_m.bfx_d_pa_spla_05_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_SPLA05;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.01.fx.m.fx.e.pa.twinkle.01.ad.72979792ae2b" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_01.fx_m.fx_e_pa_twinkle_01_ad")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_TWINKLE;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.05.fx.m.fx.e.pa.fluid.01.tr.fba820645bb0" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_05.fx_m.fx_e_pa_fluid_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_FLUID01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.m.pa.worldoffset.01.tr.692cba4c40ad" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_m_pa_worldoffset_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_WORLDOFFSET01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.pa.makeflow.01.tr.13159d5d398d" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_k_00.fx_m.fx_k_pa_makeflow_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_MAKEFLOW01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.00.fx.m.fx.c.pa.lensflare.01.ad.2cdc706962af" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_c_pa_lensflare_01_ad")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_LENSFLARE01;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_14_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.mi.fx.m.pa.worldoffset.02.tr.6507c4b13a9b" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_mi.fx_m_pa_worldoffset_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_WORLDOFFSET02;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_o_00.fx_mi.fx_o_me_fd_01_3_ts_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.fluid.01.tr.99f00cf3e57f" &&
+		Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_fluid_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_MM_FLUID01;
+	}
+	if (strSourceMaterialPath ==
+			"fx_m_mi_01.fx_mi.fx_e_pa_fd_04_1_tr" &&
+		Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.dissolve.01.tr.a799c9636783" &&
+		Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_MM_DISSOLVE01;
+	}
+	if (((Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad") ||
+		 (Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.tr.ac51b180263c" &&
+		  Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_d_pa_ring_07_tr")))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_RING07;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.tr.5629c8a9bc12" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_03.fx_m.fx_d_pa_ringmaster_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_RINGMASTER01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.bfx.m.mi.00.bfx.m.bfx.c.pa.lightflare.01.ddt.ad.33b058471d6a" &&
+		Source.strParentMaterialPath ==
+			"bfx_m_mi_00.bfx_m.bfx_c_pa_lightflare_01_ddt_ad")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_LIGHTFLARE01;
+	}
+	return EFFECT_STRICT_TYPED_SOURCE_PROFILE::NONE;
+}
 
 inline constexpr std::array<std::string_view, 4u>
 	EFFECT_SOURCE_SUBUV_MODES = {{
@@ -599,6 +943,7 @@ inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
 	const bool_t bSafeBase,
 	const bool_t bHasNoise,
 	const bool_t bHasMask,
+	const bool_t bHasEmissive,
 	const bool_t bHasDissolve,
 	const bool_t bHasMesh)
 {
@@ -610,8 +955,16 @@ inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
 		return false;
 	if (strRuntimeShaderProfileId == "effect.ue3.slice.v1")
 		return bSafeBase;
-	if (strRuntimeShaderProfileId == "effect.ue3.missiletrail-01.v1")
+	if (strRuntimeShaderProfileId == EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID)
 		return bSafeBase && bHasNoise && bHasMask && bHasDissolve && bHasMesh;
+	if (strRuntimeShaderProfileId ==
+		EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID)
+	{
+		return bSafeBase && bHasNoise && bHasMask && bHasEmissive &&
+			bHasDissolve && bHasMesh;
+	}
+	if (strRuntimeShaderProfileId == EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID)
+		return bSafeBase && bHasNoise && bHasMesh;
 	if (strRuntimeShaderProfileId ==
 		"effect.ue3.procedural-center-glow.v1")
 	{
@@ -629,13 +982,286 @@ inline bool_t Is_EffectLocalCrackResourceContractSatisfied(
 	return bHasNormal && bHasReflection && bHasDissolve && bHasMesh;
 }
 
+template <std::size_t Size>
+inline bool_t Has_EffectNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source,
+	const std::array<std::string_view, Size>& RequiredNames)
+{
+	for (const std::string_view strRequiredName : RequiredNames)
+	{
+		const auto Iterator = std::find_if(
+			Source.Textures.begin(), Source.Textures.end(),
+			[strRequiredName](const EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{
+				return Texture.strName == strRequiredName &&
+					!Texture.strAssetId.empty();
+			});
+		if (Iterator == Source.Textures.end())
+			return false;
+	}
+	return true;
+}
+
+inline const EFFECT_NAMED_TEXTURE_DESC* Find_EffectUniqueNamedTexture(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source,
+	const std::string_view strName)
+{
+	const EFFECT_NAMED_TEXTURE_DESC* pMatch = nullptr;
+	for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Source.Textures)
+	{
+		if (Texture.strName != strName)
+			continue;
+		if (nullptr != pMatch)
+			return nullptr;
+		pMatch = &Texture;
+	}
+	return nullptr != pMatch && !pMatch->strAssetId.empty() ? pMatch : nullptr;
+}
+
+inline bool_t Is_EffectNamedTextureLaneUnique(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source,
+	const std::string_view strName)
+{
+	return std::ranges::count_if(Source.Textures,
+		[strName](const EFFECT_NAMED_TEXTURE_DESC& Texture)
+		{
+			return Texture.strName == strName;
+		}) <= 1;
+}
+
+template <std::size_t Size>
+inline bool_t Has_EffectUniqueNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source,
+	const std::array<std::string_view, Size>& RequiredNames)
+{
+	for (const std::string_view strName : RequiredNames)
+	{
+		if (!Is_EffectNamedTextureLaneUnique(Source, strName) ||
+			nullptr == Find_EffectUniqueNamedTexture(Source, strName))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+inline bool_t Has_EffectParticleMasterNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	for (const std::string_view strName :
+		EFFECT_PARTICLE_MASTER_SOURCE_TEXTURE_NAMES)
+	{
+		if (!Is_EffectNamedTextureLaneUnique(Source, strName))
+			return false;
+	}
+	// The portable Artist-F oracle and the ParticleMaster source graph both
+	// make map_c the coverage owner.  The exact non-expanding map_a/map_b
+	// operator is not recovered, so this bounded approximation deliberately
+	// ignores those optional alpha-group lanes.  Accepting either dense noise
+	// lane as an alternate carrier turns the whole sprite card opaque.
+	const bool_t bHasAlphaCarrier =
+		nullptr != Find_EffectUniqueNamedTexture(Source, "21.map_c");
+	const bool_t bHasEmission =
+		nullptr != Find_EffectUniqueNamedTexture(Source, "02.map_e") ||
+		nullptr != Find_EffectUniqueNamedTexture(Source, "12.map_f");
+	return bHasAlphaCarrier && bHasEmission;
+}
+
+inline const EFFECT_NAMED_TEXTURE_DESC* Resolve_EffectSpriteWaveCarrierTexture(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	if (const EFFECT_NAMED_TEXTURE_DESC* pMain =
+		Find_EffectUniqueNamedTexture(Source, "maintex"))
+	{
+		return pMain;
+	}
+	// Some cooked instances expose the sampled carrier only through the
+	// stable dependency lane.  This remains an approximate evaluator and must
+	// never change admission/exactness.
+	return Find_EffectUniqueNamedTexture(Source, "umodel_dependency");
+}
+
+inline bool_t Has_EffectSpriteWaveNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	for (const std::string_view strName :
+		EFFECT_SPRITEWAVE_SOURCE_TEXTURE_NAMES)
+	{
+		if (!Is_EffectNamedTextureLaneUnique(Source, strName))
+			return false;
+	}
+	if (!Is_EffectNamedTextureLaneUnique(Source, "umodel_dependency"))
+		return false;
+	return nullptr != Resolve_EffectSpriteWaveCarrierTexture(Source) &&
+		(nullptr != Find_EffectUniqueNamedTexture(Source, "uv_noise_tex") ||
+		 nullptr != Find_EffectUniqueNamedTexture(Source, "uv_noise_tex_02")) &&
+		nullptr != Find_EffectUniqueNamedTexture(Source, "emissivetex02");
+}
+
+inline bool_t Has_EffectParticleTrailSingleAlphaNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	for (const std::string_view strName :
+		EFFECT_PARTICLETRAIL_SINGLE_ALPHA_SOURCE_TEXTURE_NAMES)
+	{
+		if (!Is_EffectNamedTextureLaneUnique(Source, strName) ||
+			nullptr == Find_EffectUniqueNamedTexture(Source, strName))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+inline bool_t Has_EffectArtistSpla01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_SPLA01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistSpla05NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_SPLA05_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistTwinkleNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_TWINKLE_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "add_emissive_tex");
+}
+
+inline bool_t Has_EffectArtistFluid01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_FLUID01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "specular_tex");
+}
+
+inline bool_t Has_EffectArtistWorldOffset01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_WORLDOFFSET01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistMakeFlow01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_MAKEFLOW01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistLensFlare01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_LENSFLARE01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistWorldOffset02NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_WORLDOFFSET02_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistMmFluid01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_MM_FLUID01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_02_tex");
+}
+
+inline bool_t Has_EffectArtistMmDissolve01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_MM_DISSOLVE01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_01_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_02_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "alpha_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "lamp_tex");
+}
+
+inline const EFFECT_NAMED_TEXTURE_DESC* Resolve_EffectArtistRing07NewAlphaTexture(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	if (!Is_EffectNamedTextureLaneUnique(Source, "04.map_anew") ||
+		!Is_EffectNamedTextureLaneUnique(Source, "06.map_anew"))
+	{
+		return nullptr;
+	}
+	const EFFECT_NAMED_TEXTURE_DESC* pMap04 =
+		Find_EffectUniqueNamedTexture(Source, "04.map_anew");
+	const EFFECT_NAMED_TEXTURE_DESC* pMap06 =
+		Find_EffectUniqueNamedTexture(Source, "06.map_anew");
+	return (nullptr != pMap04) != (nullptr != pMap06) ?
+		(nullptr != pMap04 ? pMap04 : pMap06) : nullptr;
+}
+
+inline bool_t Has_EffectArtistRing07NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_RING07_SOURCE_TEXTURE_NAMES) &&
+		nullptr != Resolve_EffectArtistRing07NewAlphaTexture(Source);
+}
+
+inline bool_t Has_EffectArtistRingMaster01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_RINGMASTER01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectArtistLightFlare01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_ARTIST_LIGHTFLARE01_SOURCE_TEXTURE_NAMES);
+}
+
+/* Compatibility overload for profiles that do not own an emissive lane.
+   Exact missile-trail callers must use the seven-argument contract above. */
+inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
+	const std::string_view strRuntimeShaderProfileId,
+	const bool_t bSafeBase,
+	const bool_t bHasNoise,
+	const bool_t bHasMask,
+	const bool_t bHasDissolve,
+	const bool_t bHasMesh)
+{
+	return Is_EffectFiniteProfileResourceContractSatisfied(
+		strRuntimeShaderProfileId, bSafeBase, bHasNoise, bHasMask, false,
+		bHasDissolve, bHasMesh);
+}
+
+inline bool_t Has_EffectLinearFlowNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectNamedTextureContract(
+		Source, EFFECT_LINEARFLOW_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectBlacklineNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectNamedTextureContract(
+		Source, EFFECT_BLACKLINE_SOURCE_TEXTURE_NAMES);
+}
+
 inline bool_t Has_EffectLocalCrackNamedTextureContract(
 	const EFFECT_SOURCE_MATERIAL_DESC& Source)
 {
-	static constexpr std::array<std::string_view, 3u> RequiredNames = {{
-		"normal_tex", "refle_tex", "dissolve_tex"
-	}};
-	for (const std::string_view strRequiredName : RequiredNames)
+	for (const std::string_view strRequiredName :
+		EFFECT_LOCAL_CRACK_SOURCE_TEXTURE_NAMES)
 	{
 		bool_t bFound = false;
 		for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Source.Textures)
@@ -653,6 +1279,20 @@ inline bool_t Has_EffectLocalCrackNamedTextureContract(
 			return false;
 	}
 	return true;
+}
+
+inline bool_t Has_EffectWaterTrailNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectNamedTextureContract(
+		Source, EFFECT_WATERTRAIL_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectMissileTrailNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectNamedTextureContract(
+		Source, EFFECT_MISSILETRAIL_SOURCE_TEXTURE_NAMES);
 }
 
 inline bool_t Is_EffectLegacyLocalCrackResourceContractSatisfied(

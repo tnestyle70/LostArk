@@ -36,6 +36,7 @@ namespace
 	constexpr uint64_t MAX_DOCUMENT_PARTICLES = 8192u;
 	constexpr uint64_t MAX_DOCUMENT_TRAIL_POINTS = 2048u;
 	constexpr uint64_t MAX_DOCUMENT_AFTERIMAGES = 256u;
+	constexpr uint64_t MAX_PORTABLE_SOURCE_EVENTS_PER_STEP = 4096u;
 	constexpr size_t MAX_SOURCE_MODULES_PER_ELEMENT = 256u;
 	constexpr size_t MAX_SOURCE_LITERALS_PER_MODULE = 1024u;
 	constexpr size_t MAX_SOURCE_DISTRIBUTIONS_PER_MODULE = 128u;
@@ -50,6 +51,29 @@ namespace
 	constexpr size_t MAX_AUTHORED_MATERIAL_COLORS = 2u;
 	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
 		"lostark.effect-source-presentation";
+	constexpr std::string_view WARLORD_17090_EFFECT_ASSET_ID =
+		"effect.warlord.skill.17090.unified";
+	constexpr std::string_view WARLORD_CHAIN_SOURCE_MATERIAL_PATH =
+		"fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma";
+	constexpr std::string_view WARLORD_CHAIN_BASE_ALIAS_ASSET_ID =
+		"Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_028.dds";
+	constexpr std::string_view WARLORD_CHAIN_SOURCE_PROFILE_ID =
+		"ue3.material.fx.m.mi.00.fx.m.fx.d.me.chain.01.ma.a8a92d2a6abc";
+	constexpr std::string_view WARLORD_CHAIN_PARENT_MATERIAL_PATH =
+		"fx_m_mi_00.fx_m.fx_d_me_chain_01_ma";
+	constexpr std::string_view WARLORD_CHAIN_RUNTIME_PROFILE_ID =
+		"effect.ue3.grouped-translucent.v1";
+	constexpr std::string_view WARLORD_CHAIN_06_MODEL_ASSET_ID =
+		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel";
+	constexpr std::string_view WARLORD_CHAIN_07_MODEL_ASSET_ID =
+		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel";
+
+	bool_t ValidatePortableAuthoredParticleRuntimeCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError);
+	bool_t ValidatePortableAuthoredParticleEventRoutes(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
 
 	constexpr const char_t* KIND_TOKENS[] =
 	{
@@ -65,6 +89,10 @@ namespace
 	constexpr const char_t* SOURCE_SPACE_TOKENS[] =
 	{
 		"clientMetersV1", "ue3CascadeV1", "screenSpaceV1"
+	};
+	constexpr const char_t* MODEL_CUE_ALPHA_MODE_TOKENS[] =
+	{
+		"OPAQUE", "MASKED"
 	};
 	constexpr const char_t* SOURCE_COVERAGE_STATUS_TOKENS[] =
 	{
@@ -94,6 +122,10 @@ namespace
 		"reconstructed_profile",
 		"unsupported",
 		"missing_resource"
+	};
+	constexpr const char_t* SOURCE_BLEND_CLASS_TOKENS[] =
+	{
+		"unknown", "additive", "translucent", "masked"
 	};
 	constexpr const char_t* TEXTURE_ADDRESS_MODE_TOKENS[] =
 	{
@@ -646,6 +678,20 @@ namespace
 		}
 		if (!Out.bEnabled)
 			return true;
+		if (const Client::DATA_JSON_VALUE* pSourceBlendClass =
+			Value.Find("sourceBlendClass"))
+		{
+			if (!pSourceBlendClass->Is_String() ||
+				!Parse_Token(pSourceBlendClass->Get_String(),
+					SOURCE_BLEND_CLASS_TOKENS,
+					std::size(SOURCE_BLEND_CLASS_TOKENS),
+					Out.eSourceBlendClass))
+			{
+				strOutError =
+					"Effect source Material blend class is invalid.";
+				return false;
+			}
+		}
 		const Client::DATA_JSON_VALUE* pTextures = Value.Find("textures");
 		if (nullptr != pTextures && !pTextures->Is_Array())
 		{
@@ -833,8 +879,15 @@ namespace
 			<< "\", \"parentMaterialPath\": \""
 			<< Client::CDataJson::Escape(Source.strParentMaterialPath)
 			<< "\", \"semanticStatus\": \""
-			<< SourceMaterialStatusToken(Source.eStatus)
-			<< "\", \"textures\": [";
+			<< SourceMaterialStatusToken(Source.eStatus) << '"';
+		if (Source.eSourceBlendClass !=
+			Client::EFFECT_SOURCE_BLEND_CLASS::UNKNOWN)
+		{
+			Output << ", \"sourceBlendClass\": \""
+				<< SOURCE_BLEND_CLASS_TOKENS[static_cast<size_t>(
+					Source.eSourceBlendClass)] << '"';
+		}
+		Output << ", \"textures\": [";
 		for (size_t i = 0u; i < Source.Textures.size(); ++i)
 		{
 			if (0u != i)
@@ -1036,7 +1089,28 @@ namespace
 				}
 				Out.bFailClosed = true;
 			}
-			const size_t iExpectedFieldCount = Out.bFailClosed ? 2u : 1u;
+			const Client::DATA_JSON_VALUE* pAuthoringApproximate =
+				Value.Find("authoringApproximate");
+			if (nullptr != pAuthoringApproximate)
+			{
+				if (!pAuthoringApproximate->Is_Boolean() ||
+					!pAuthoringApproximate->Get_Boolean())
+				{
+					strOutError =
+						"Disabled authored Material authoringApproximate must be true when present.";
+					return false;
+				}
+				if (!Out.bFailClosed)
+				{
+					strOutError =
+						"Authoring-approximate authored Material must stay fail-closed.";
+					return false;
+				}
+				Out.bAuthoringApproximate = true;
+			}
+			const size_t iExpectedFieldCount = 1u +
+				(Out.bFailClosed ? 1u : 0u) +
+				(Out.bAuthoringApproximate ? 1u : 0u);
 			if (iExpectedFieldCount != Value.Get_Object().size())
 			{
 				strOutError =
@@ -1250,6 +1324,8 @@ namespace
 		{
 			if (Execution.bFailClosed)
 				Output << ", \"failClosed\": true";
+			if (Execution.bAuthoringApproximate)
+				Output << ", \"authoringApproximate\": true";
 			Output << " }";
 			return;
 		}
@@ -1370,6 +1446,12 @@ namespace
 		};
 		if (!Execution.bEnabled)
 		{
+			if (Execution.bAuthoringApproximate && !Execution.bFailClosed)
+			{
+				strOutError =
+					"Authoring-approximate authored Material must stay fail-closed.";
+				return false;
+			}
 			if (1u != Execution.iVersion ||
 				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC !=
 					Execution.eBackend ||
@@ -1411,6 +1493,12 @@ namespace
 		{
 			strOutError =
 				"Enabled authored Material execution cannot also be fail-closed.";
+			return false;
+		}
+		if (Execution.bAuthoringApproximate)
+		{
+			strOutError =
+				"Enabled authored Material execution cannot be authoring-approximate.";
 			return false;
 		}
 
@@ -3092,6 +3180,611 @@ namespace
 		Output << " }\n";
 	}
 
+	enum class AUTHORING_OVERRIDE_TARGET_STATUS : uint8_t
+	{
+		FOUND,
+		MISSING,
+		INVALID_ID,
+		AMBIGUOUS
+	};
+
+	enum class AUTHORING_RESOURCE_TARGET_STORAGE : uint8_t
+	{
+		RESOURCE_BINDING,
+		MATERIAL_EXECUTION_LANE,
+		SOURCE_MATERIAL_TEXTURE
+	};
+
+	struct AUTHORING_RESOURCE_TARGET final
+	{
+		AUTHORING_RESOURCE_TARGET_STORAGE eStorage =
+			AUTHORING_RESOURCE_TARGET_STORAGE::RESOURCE_BINDING;
+		size_t iIndex = 0u;
+		Client::EFFECT_RESOURCE_FILE_KIND eExpectedKind =
+			Client::EFFECT_RESOURCE_FILE_KIND::END;
+	};
+
+	bool_t Starts_With(const std::string_view strValue,
+		const std::string_view strPrefix)
+	{
+		return strValue.size() >= strPrefix.size() &&
+			0 == strValue.compare(0u, strPrefix.size(), strPrefix);
+	}
+
+	AUTHORING_OVERRIDE_TARGET_STATUS Resolve_AuthoringResourceTarget(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strSlotId,
+		AUTHORING_RESOURCE_TARGET& Out)
+	{
+		Out = {};
+		if (strSlotId.empty())
+			return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+
+		std::string_view strTargetId;
+		if (Starts_With(strSlotId,
+				Client::EFFECT_MATERIAL_EXECUTION_LANE_STABLE_SLOT_PREFIX))
+		{
+			if (!Client::Try_ParseEffectMaterialExecutionLaneStableSlotId(
+					strSlotId, strTargetId))
+			{
+				return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+			}
+			size_t iMatchCount = 0u;
+			for (size_t i = 0u;
+				i < Element.Material.Execution.TextureLanes.size(); ++i)
+			{
+				if (Element.Material.Execution.TextureLanes[i].strLaneId !=
+					strTargetId)
+				{
+					continue;
+				}
+				Out.eStorage =
+					AUTHORING_RESOURCE_TARGET_STORAGE::MATERIAL_EXECUTION_LANE;
+				Out.iIndex = i;
+				Out.eExpectedKind = Client::EFFECT_RESOURCE_FILE_KIND::TEXTURE;
+				++iMatchCount;
+			}
+			return 0u == iMatchCount ?
+				AUTHORING_OVERRIDE_TARGET_STATUS::MISSING :
+				(1u == iMatchCount ? AUTHORING_OVERRIDE_TARGET_STATUS::FOUND :
+					AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS);
+		}
+
+		if (Starts_With(strSlotId,
+				Client::EFFECT_SOURCE_MATERIAL_TEXTURE_STABLE_SLOT_PREFIX))
+		{
+			if (!Client::Try_ParseEffectSourceMaterialTextureStableSlotId(
+					strSlotId, strTargetId))
+			{
+				return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+			}
+			size_t iMatchCount = 0u;
+			for (size_t i = 0u;
+				i < Element.Material.SourceMaterial.Textures.size(); ++i)
+			{
+				if (Element.Material.SourceMaterial.Textures[i].strName !=
+					strTargetId)
+				{
+					continue;
+				}
+				Out.eStorage =
+					AUTHORING_RESOURCE_TARGET_STORAGE::SOURCE_MATERIAL_TEXTURE;
+				Out.iIndex = i;
+				Out.eExpectedKind = Client::EFFECT_RESOURCE_FILE_KIND::TEXTURE;
+				++iMatchCount;
+			}
+			return 0u == iMatchCount ?
+				AUTHORING_OVERRIDE_TARGET_STATUS::MISSING :
+				(1u == iMatchCount ? AUTHORING_OVERRIDE_TARGET_STATUS::FOUND :
+					AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS);
+		}
+
+		size_t iMatchCount = 0u;
+		for (size_t i = 0u; i < Element.ResourceBindings.size(); ++i)
+		{
+			if (Element.ResourceBindings[i].strSlotId != strSlotId)
+				continue;
+			Out.eStorage = AUTHORING_RESOURCE_TARGET_STORAGE::RESOURCE_BINDING;
+			Out.iIndex = i;
+			++iMatchCount;
+		}
+		if (0u == iMatchCount)
+			return AUTHORING_OVERRIDE_TARGET_STATUS::MISSING;
+		if (1u != iMatchCount)
+			return AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS;
+
+		if (strSlotId == Client::EFFECT_MESH_SHAPE_SLOT_ID)
+		{
+			Out.eExpectedKind = Client::EFFECT_RESOURCE_FILE_KIND::MODEL;
+		}
+		else
+		{
+			const Client::EFFECT_MATERIAL_INPUT_SLOT_DESC* pInput =
+				Client::Find_EffectMaterialInput(
+					Element.Material.strTemplateId, strSlotId);
+			if (nullptr == pInput)
+				return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+			Out.eExpectedKind = pInput->eAllowedResourceKind;
+		}
+		return Out.eExpectedKind == Client::EFFECT_RESOURCE_FILE_KIND::END ?
+			AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID :
+			AUTHORING_OVERRIDE_TARGET_STATUS::FOUND;
+	}
+
+	const std::string& Get_AuthoringResourceTargetAssetId(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_RESOURCE_TARGET& Target)
+	{
+		switch (Target.eStorage)
+		{
+		case AUTHORING_RESOURCE_TARGET_STORAGE::MATERIAL_EXECUTION_LANE:
+			return Element.Material.Execution.TextureLanes[Target.iIndex].strAssetId;
+		case AUTHORING_RESOURCE_TARGET_STORAGE::SOURCE_MATERIAL_TEXTURE:
+			return Element.Material.SourceMaterial.Textures[Target.iIndex].strAssetId;
+		case AUTHORING_RESOURCE_TARGET_STORAGE::RESOURCE_BINDING:
+		default:
+			return Element.ResourceBindings[Target.iIndex].strAssetId;
+		}
+	}
+
+	std::string& Get_AuthoringResourceTargetAssetId(
+		Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_RESOURCE_TARGET& Target)
+	{
+		return const_cast<std::string&>(Get_AuthoringResourceTargetAssetId(
+			static_cast<const Client::EFFECT_ELEMENT_DESC&>(Element), Target));
+	}
+
+	struct AUTHORING_SCALAR_TARGET final
+	{
+		bool_t bHasSourceMaterial = false;
+		size_t iSourceMaterialIndex = 0u;
+		std::vector<size_t> ExecutionIndices;
+	};
+
+	AUTHORING_OVERRIDE_TARGET_STATUS Resolve_AuthoringScalarTarget(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strName,
+		AUTHORING_SCALAR_TARGET& Out)
+	{
+		Out = {};
+		if (strName.empty())
+			return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+		size_t iSourceMatchCount = 0u;
+		for (size_t i = 0u;
+			i < Element.Material.SourceMaterial.Scalars.size(); ++i)
+		{
+			if (Element.Material.SourceMaterial.Scalars[i].strName != strName)
+				continue;
+			Out.bHasSourceMaterial = true;
+			Out.iSourceMaterialIndex = i;
+			++iSourceMatchCount;
+		}
+		if (iSourceMatchCount > 1u)
+			return AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS;
+		for (size_t i = 0u; i < Element.Material.Execution.Scalars.size(); ++i)
+		{
+			if (Element.Material.Execution.Scalars[i].strName != strName)
+				continue;
+			Out.ExecutionIndices.push_back(i);
+		}
+		return Out.bHasSourceMaterial || !Out.ExecutionIndices.empty() ?
+			AUTHORING_OVERRIDE_TARGET_STATUS::FOUND :
+			AUTHORING_OVERRIDE_TARGET_STATUS::MISSING;
+	}
+
+	f32_t Get_AuthoringScalarTargetValue(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_SCALAR_TARGET& Target)
+	{
+		return Target.bHasSourceMaterial ?
+			Element.Material.SourceMaterial.Scalars[
+				Target.iSourceMaterialIndex].fValue :
+			Element.Material.Execution.Scalars[
+				Target.ExecutionIndices.front()].fValue;
+	}
+
+	bool_t Is_AuthoringScalarTargetConsistent(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_SCALAR_TARGET& Target)
+	{
+		const f32_t fValue = Get_AuthoringScalarTargetValue(Element, Target);
+		return std::all_of(Target.ExecutionIndices.begin(),
+			Target.ExecutionIndices.end(),
+			[&Element, fValue](const size_t iIndex)
+			{
+				return Element.Material.Execution.Scalars[iIndex].fValue ==
+					fValue;
+			});
+	}
+
+	void Set_AuthoringScalarTargetValue(
+		Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_SCALAR_TARGET& Target,
+		const f32_t fValue)
+	{
+		if (Target.bHasSourceMaterial)
+		{
+			Element.Material.SourceMaterial.Scalars[
+				Target.iSourceMaterialIndex].fValue = fValue;
+		}
+		for (const size_t iIndex : Target.ExecutionIndices)
+			Element.Material.Execution.Scalars[iIndex].fValue = fValue;
+	}
+
+	enum class AUTHORING_COLOR_EXECUTION_TARGET_STORAGE : uint8_t
+	{
+		MATERIAL_EXECUTION_VECTOR,
+		MATERIAL_EXECUTION_ARTIST_PARAMETER,
+		MATERIAL_EXECUTION_COLOR
+	};
+
+	struct AUTHORING_COLOR_EXECUTION_TARGET final
+	{
+		AUTHORING_COLOR_EXECUTION_TARGET_STORAGE eStorage =
+			AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::MATERIAL_EXECUTION_VECTOR;
+		size_t iIndex = 0u;
+	};
+
+	struct AUTHORING_COLOR_TARGET final
+	{
+		bool_t bHasSourceMaterial = false;
+		size_t iSourceMaterialIndex = 0u;
+		std::vector<AUTHORING_COLOR_EXECUTION_TARGET> ExecutionTargets;
+	};
+
+	const float4_t& Get_AuthoringColorExecutionTargetValue(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_COLOR_EXECUTION_TARGET& Target);
+
+	AUTHORING_OVERRIDE_TARGET_STATUS Resolve_AuthoringColorTarget(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strName,
+		AUTHORING_COLOR_TARGET& Out)
+	{
+		Out = {};
+		if (strName.empty())
+			return AUTHORING_OVERRIDE_TARGET_STATUS::INVALID_ID;
+		size_t iSourceMatchCount = 0u;
+		for (size_t i = 0u;
+			i < Element.Material.SourceMaterial.Vectors.size(); ++i)
+		{
+			if (Element.Material.SourceMaterial.Vectors[i].strName != strName)
+				continue;
+			Out.bHasSourceMaterial = true;
+			Out.iSourceMaterialIndex = i;
+			++iSourceMatchCount;
+		}
+		if (iSourceMatchCount > 1u)
+			return AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS;
+		const auto Find = [&](const auto& Rows,
+			const AUTHORING_COLOR_EXECUTION_TARGET_STORAGE eStorage)
+		{
+			for (size_t i = 0u; i < Rows.size(); ++i)
+			{
+				if (Rows[i].strName != strName)
+					continue;
+				Out.ExecutionTargets.push_back({ eStorage, i });
+			}
+		};
+		Find(Element.Material.Execution.Vectors,
+			AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::MATERIAL_EXECUTION_VECTOR);
+		Find(Element.Material.Execution.ArtistParameters,
+			AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+				MATERIAL_EXECUTION_ARTIST_PARAMETER);
+		Find(Element.Material.Execution.Colors,
+			AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::MATERIAL_EXECUTION_COLOR);
+		return Out.bHasSourceMaterial || !Out.ExecutionTargets.empty() ?
+			AUTHORING_OVERRIDE_TARGET_STATUS::FOUND :
+			AUTHORING_OVERRIDE_TARGET_STATUS::MISSING;
+	}
+
+	const float4_t& Get_AuthoringColorTargetValue(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_COLOR_TARGET& Target)
+	{
+		if (Target.bHasSourceMaterial)
+		{
+			return Element.Material.SourceMaterial.Vectors[
+				Target.iSourceMaterialIndex].vValue;
+		}
+		return Get_AuthoringColorExecutionTargetValue(
+			Element, Target.ExecutionTargets.front());
+	}
+
+	const float4_t& Get_AuthoringColorExecutionTargetValue(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_COLOR_EXECUTION_TARGET& Target)
+	{
+		switch (Target.eStorage)
+		{
+		case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+			MATERIAL_EXECUTION_VECTOR:
+			return Element.Material.Execution.Vectors[Target.iIndex].vValue;
+		case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+			MATERIAL_EXECUTION_ARTIST_PARAMETER:
+			return Element.Material.Execution.ArtistParameters[Target.iIndex].vValue;
+		case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::MATERIAL_EXECUTION_COLOR:
+		default:
+			return Element.Material.Execution.Colors[Target.iIndex].vValue;
+		}
+	}
+
+	bool_t Is_AuthoringColorTargetConsistent(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_COLOR_TARGET& Target)
+	{
+		const float4_t& vValue = Get_AuthoringColorTargetValue(Element, Target);
+		return std::all_of(Target.ExecutionTargets.begin(),
+			Target.ExecutionTargets.end(),
+			[&Element, &vValue](
+				const AUTHORING_COLOR_EXECUTION_TARGET& ExecutionTarget)
+			{
+				const float4_t& vExecutionValue =
+					Get_AuthoringColorExecutionTargetValue(
+						Element, ExecutionTarget);
+				return vExecutionValue.x == vValue.x &&
+					vExecutionValue.y == vValue.y &&
+					vExecutionValue.z == vValue.z &&
+					vExecutionValue.w == vValue.w;
+			});
+	}
+
+	void Set_AuthoringColorTargetValue(
+		Client::EFFECT_ELEMENT_DESC& Element,
+		const AUTHORING_COLOR_TARGET& Target,
+		const float4_t& vValue)
+	{
+		if (Target.bHasSourceMaterial)
+		{
+			Element.Material.SourceMaterial.Vectors[
+				Target.iSourceMaterialIndex].vValue = vValue;
+		}
+		for (const AUTHORING_COLOR_EXECUTION_TARGET& ExecutionTarget :
+			Target.ExecutionTargets)
+		{
+			switch (ExecutionTarget.eStorage)
+			{
+			case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+				MATERIAL_EXECUTION_VECTOR:
+				Element.Material.Execution.Vectors[
+					ExecutionTarget.iIndex].vValue = vValue;
+				break;
+			case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+				MATERIAL_EXECUTION_ARTIST_PARAMETER:
+				Element.Material.Execution.ArtistParameters[
+					ExecutionTarget.iIndex].vValue = vValue;
+				break;
+			case AUTHORING_COLOR_EXECUTION_TARGET_STORAGE::
+				MATERIAL_EXECUTION_COLOR:
+			default:
+				Element.Material.Execution.Colors[
+					ExecutionTarget.iIndex].vValue = vValue;
+				break;
+			}
+		}
+	}
+
+	bool_t Same_Float4(const float4_t& Left, const float4_t& Right)
+	{
+		return Left.x == Right.x && Left.y == Right.y &&
+			Left.z == Right.z && Left.w == Right.w;
+	}
+
+	/* Artist overrides are only meaningful against slots and parameters the
+	   compiler already produced for this element. Anything else would let the
+	   tool invent a lane the source never had, so it is rejected here rather
+	   than silently dropped. */
+	bool_t Read_AuthoringOverrides(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_ELEMENT_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value, { "resources", "scalars", "colors" },
+			"Effect authoring overrides", strOutError))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pResources = Value.Find("resources");
+		const Client::DATA_JSON_VALUE* pScalars = Value.Find("scalars");
+		const Client::DATA_JSON_VALUE* pColors = Value.Find("colors");
+		if (nullptr == pResources || !pResources->Is_Array() ||
+			nullptr == pScalars || !pScalars->Is_Array() ||
+			nullptr == pColors || !pColors->Is_Array())
+		{
+			strOutError = "Effect authoring override arrays are invalid.";
+			return false;
+		}
+		if (pResources->Get_Array().empty() &&
+			pScalars->Get_Array().empty() && pColors->Get_Array().empty())
+		{
+			strOutError =
+				"Effect authoring overrides must be omitted when no override exists.";
+			return false;
+		}
+
+		std::set<std::string> Seen;
+		for (const Client::DATA_JSON_VALUE& Row : pResources->Get_Array())
+		{
+			Client::EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC Override;
+			if (!Row.Is_Object() ||
+				!Validate_ExactFields(Row,
+					{ "slotId", "assetId", "compilerAssetId" },
+					"Effect authoring override resource", strOutError) ||
+				!Read_String(Row, "slotId", Override.strSlotId, strOutError) ||
+				!Read_String(Row, "assetId", Override.strAssetId,
+					strOutError) ||
+				!Read_String(Row, "compilerAssetId",
+					Override.strCompilerAssetId, strOutError))
+			{
+				return false;
+			}
+			if (!Seen.insert("r:" + Override.strSlotId).second)
+			{
+				strOutError =
+					"Effect authoring override resource slot is duplicated: " +
+					Override.strSlotId;
+				return false;
+			}
+			AUTHORING_RESOURCE_TARGET Target;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eTargetStatus =
+				Resolve_AuthoringResourceTarget(
+					Out, Override.strSlotId, Target);
+			if (eTargetStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND)
+			{
+				strOutError =
+					"Effect authoring override resource target is missing, invalid, or ambiguous: " +
+					Override.strSlotId;
+				return false;
+			}
+			Client::EFFECT_RESOURCE_FILE_KIND eArtistKind =
+				Client::EFFECT_RESOURCE_FILE_KIND::END;
+			Client::EFFECT_RESOURCE_FILE_KIND eCompilerKind =
+				Client::EFFECT_RESOURCE_FILE_KIND::END;
+			if (Override.strAssetId.empty() ||
+				!Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Override.strAssetId, &eArtistKind) ||
+				eArtistKind != Target.eExpectedKind ||
+				(!Override.strCompilerAssetId.empty() &&
+					(!Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
+						Override.strCompilerAssetId, &eCompilerKind) ||
+						eCompilerKind != Target.eExpectedKind)))
+			{
+				strOutError =
+					"Effect authoring override resource path or declared kind is invalid: " +
+					Override.strSlotId;
+				return false;
+			}
+			if (Get_AuthoringResourceTargetAssetId(Out, Target) !=
+					Override.strAssetId)
+			{
+				strOutError =
+					"Effect authoring override resource does not match its effective target: " +
+					Override.strSlotId;
+				return false;
+			}
+			if (Override.strAssetId == Override.strCompilerAssetId)
+			{
+				strOutError =
+					"Effect authoring override resource is a no-op delta: " +
+					Override.strSlotId;
+				return false;
+			}
+			Out.AuthoringOverrides.ResourceBindings.push_back(
+				std::move(Override));
+		}
+		for (const Client::DATA_JSON_VALUE& Row : pScalars->Get_Array())
+		{
+			Client::EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC Scalar;
+			if (!Row.Is_Object() ||
+				!Validate_ExactFields(Row,
+					{ "name", "value", "compilerValue" },
+					"Effect authoring override scalar", strOutError) ||
+				!Read_String(Row, "name", Scalar.strName, strOutError) ||
+				!Read_Float(Row, "value", Scalar.fValue, strOutError) ||
+				!Read_Float(Row, "compilerValue", Scalar.fCompilerValue,
+					strOutError))
+			{
+				return false;
+			}
+			if (Scalar.strName.empty() || !std::isfinite(Scalar.fValue) ||
+				!std::isfinite(Scalar.fCompilerValue) ||
+				!Seen.insert("p:" + Scalar.strName).second)
+			{
+				strOutError = "Effect authoring override scalar is invalid.";
+				return false;
+			}
+			AUTHORING_SCALAR_TARGET Target;
+			AUTHORING_COLOR_TARGET WrongTypeTarget;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eTargetStatus =
+				Resolve_AuthoringScalarTarget(Out, Scalar.strName, Target);
+			const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+				Resolve_AuthoringColorTarget(
+					Out, Scalar.strName, WrongTypeTarget);
+			if (eTargetStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+			{
+				strOutError =
+					"Effect authoring override scalar target is missing, ambiguous, or declared as another type: " +
+					Scalar.strName;
+				return false;
+			}
+			if (!Is_AuthoringScalarTargetConsistent(Out, Target) ||
+				Get_AuthoringScalarTargetValue(Out, Target) != Scalar.fValue)
+			{
+				strOutError =
+					"Effect authoring override scalar does not match its effective target: " +
+					Scalar.strName;
+				return false;
+			}
+			if (Scalar.fValue == Scalar.fCompilerValue)
+			{
+				strOutError =
+					"Effect authoring override scalar is a no-op delta: " +
+					Scalar.strName;
+				return false;
+			}
+			Out.AuthoringOverrides.Scalars.push_back(std::move(Scalar));
+		}
+		for (const Client::DATA_JSON_VALUE& Row : pColors->Get_Array())
+		{
+			Client::EFFECT_AUTHORING_COLOR_OVERRIDE_DESC Color;
+			if (!Row.Is_Object() ||
+				!Validate_ExactFields(Row,
+					{ "name", "value", "compilerValue" },
+					"Effect authoring override color", strOutError) ||
+				!Read_String(Row, "name", Color.strName, strOutError) ||
+				!Read_Array(Row, "value", &Color.vValue.x, 4u, strOutError) ||
+				!Read_Array(Row, "compilerValue", &Color.vCompilerValue.x, 4u,
+					strOutError))
+			{
+				return false;
+			}
+			if (Color.strName.empty() || !Is_Finite(Color.vValue) ||
+				!Is_Finite(Color.vCompilerValue) ||
+				!Seen.insert("p:" + Color.strName).second)
+			{
+				strOutError = "Effect authoring override color is invalid.";
+				return false;
+			}
+			AUTHORING_COLOR_TARGET Target;
+			AUTHORING_SCALAR_TARGET WrongTypeTarget;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eTargetStatus =
+				Resolve_AuthoringColorTarget(Out, Color.strName, Target);
+			const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+				Resolve_AuthoringScalarTarget(
+					Out, Color.strName, WrongTypeTarget);
+			if (eTargetStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+			{
+				strOutError =
+					"Effect authoring override color target is missing, ambiguous, or declared as another type: " +
+					Color.strName;
+				return false;
+			}
+			if (!Is_AuthoringColorTargetConsistent(Out, Target) ||
+				!Same_Float4(
+					Get_AuthoringColorTargetValue(Out, Target), Color.vValue))
+			{
+				strOutError =
+					"Effect authoring override color does not match its effective target: " +
+					Color.strName;
+				return false;
+			}
+			if (Same_Float4(Color.vValue, Color.vCompilerValue))
+			{
+				strOutError =
+					"Effect authoring override color is a no-op delta: " +
+					Color.strName;
+				return false;
+			}
+			Out.AuthoringOverrides.Colors.push_back(std::move(Color));
+		}
+		return true;
+	}
+
 	bool_t Read_SourcePresentation(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_SOURCE_PRESENTATION_DESC& Out,
@@ -3594,6 +4287,648 @@ namespace
 		Write_PresentationDetail(Output, Detail);
 		Output << "      }";
 	}
+
+	bool_t Validate_ExecutableSourceMaterialCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		bool_t& bOutOwnsDrawableContract,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		bOutOwnsDrawableContract = false;
+		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+			Element.Material.SourceMaterial;
+		const bool_t bSourceMaterialCarrier = SourceMaterial.bEnabled ||
+			Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID;
+		if (!bSourceMaterialCarrier)
+		{
+			if (Element.Material.Execution.bAuthoringApproximate)
+			{
+				strOutError =
+					"Authoring-approximate carrier requires an enabled source Material profile.";
+				return false;
+			}
+			return true;
+		}
+
+		if (!SourceMaterial.bEnabled ||
+			SourceMaterial.eStatus >= EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED ||
+			!Is_SupportedEffectSourceRuntimeShaderProfile(
+				SourceMaterial.strRuntimeShaderProfileId))
+		{
+			strOutError =
+				"Active source Material carrier has no ready source profile.";
+			return false;
+		}
+		if (SourceMaterial.strRuntimeShaderProfileId ==
+			"effect.ue3.fallback-blocked.v1")
+		{
+			strOutError =
+				"Fallback-blocked source Material profile cannot be activated.";
+			return false;
+		}
+		if (Element.Material.Execution.bAuthoringApproximate)
+		{
+			const bool_t bHasTextureCarrier = std::any_of(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId != EFFECT_MESH_SHAPE_SLOT_ID;
+				});
+			const bool_t bRequiresMesh =
+				Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+				Element.SourceRecipe.strRendererShape == "mesh";
+			const bool_t bHasMeshCarrier = std::any_of(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+				});
+			if (!bHasTextureCarrier || (bRequiresMesh && !bHasMeshCarrier))
+			{
+				strOutError =
+					"Authoring-approximate carrier lacks its exact texture or mesh resource.";
+				return false;
+			}
+		}
+
+		const EFFECT_MATERIAL_TEMPLATE_DESC* pTemplate =
+			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
+		if (nullptr == pTemplate)
+		{
+			strOutError = "Active source Material Template is not registered.";
+			return false;
+		}
+		const auto FindBinding = [&](const EFFECT_MATERIAL_INPUT_SEMANTIC eSemantic)
+			-> const EFFECT_RESOURCE_BINDING_DESC*
+		{
+			const EFFECT_MATERIAL_INPUT_SLOT_DESC* pInput =
+				Find_EffectMaterialInput(*pTemplate, eSemantic);
+			if (nullptr == pInput)
+				return nullptr;
+			const auto Iterator = std::find_if(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[pInput](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == pInput->strSlotId;
+				});
+			return Iterator == Element.ResourceBindings.end() ? nullptr : &*Iterator;
+		};
+		const EFFECT_RESOURCE_BINDING_DESC* pBaseBinding = FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::BASE);
+		const bool_t bSafeBase = nullptr != pBaseBinding &&
+			!Is_UnsafeEffectBaseTextureAssetId(pBaseBinding->strAssetId);
+		const bool_t bHasNoise = nullptr != FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::NOISE);
+		const bool_t bHasMask = nullptr != FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::MASK);
+		const bool_t bHasEmissive = nullptr != FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::EMISSIVE);
+		const bool_t bHasDissolve = nullptr != FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE);
+		const bool_t bParticleMesh =
+			EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind &&
+			std::any_of(Element.ResourceBindings.begin(),
+				Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
+				});
+		const std::string_view strProfile =
+			SourceMaterial.strRuntimeShaderProfileId;
+		if (strProfile == "effect.ue3.grouped-translucent.v1" &&
+			!Is_EffectGroupedTranslucentResourceContractSatisfied(
+				SourceMaterial, bSafeBase, bHasMask, bHasEmissive, bHasDissolve))
+		{
+			strOutError =
+				"Grouped-translucent source Material resource contract is not satisfied.";
+			return false;
+		}
+		if (strProfile == "effect.ue3.linearflow-02.v1" &&
+			!Has_EffectLinearFlowNamedTextureContract(SourceMaterial))
+		{
+			strOutError =
+				"Linear-flow source Material named texture contract is not satisfied.";
+			return false;
+		}
+		if (strProfile == "effect.ue3.blackline-aura.v1" &&
+			!Has_EffectBlacklineNamedTextureContract(SourceMaterial))
+		{
+			strOutError =
+				"Blackline source Material named texture contract is not satisfied.";
+			return false;
+		}
+		if (strProfile == EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID &&
+			!Has_EffectWaterTrailNamedTextureContract(SourceMaterial))
+		{
+			strOutError =
+				"Water-trail source Material named texture contract is not satisfied.";
+			return false;
+		}
+		if (strProfile ==
+				EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID &&
+			!Has_EffectMissileTrailNamedTextureContract(SourceMaterial))
+		{
+			strOutError =
+				"Missile-trail source Material named texture contract is not satisfied.";
+			return false;
+		}
+		if (strProfile == "effect.ue3.local-crack.v1")
+		{
+			const bool_t bLegacyContract =
+				Is_EffectLegacyLocalCrackResourceContractSatisfied(
+					SourceMaterial, bHasDissolve, bParticleMesh);
+			const bool_t bNamedContract = !SourceMaterial.Textures.empty() &&
+				Is_EffectLocalCrackResourceContractSatisfied(
+					Has_EffectLocalCrackNamedTextureContract(SourceMaterial),
+					true, true, bParticleMesh);
+			if (!bLegacyContract && !bNamedContract)
+			{
+				strOutError =
+					"Local-crack source Material resource contract is not satisfied.";
+				return false;
+			}
+		}
+		else if ((strProfile == "effect.ue3.shine.v1" ||
+				strProfile == "effect.ue3.slice.v1" ||
+				strProfile == EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID ||
+				strProfile ==
+					EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID ||
+				strProfile == EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID ||
+				strProfile == "effect.ue3.procedural-center-glow.v1") &&
+			!Is_EffectFiniteProfileResourceContractSatisfied(
+				strProfile, bSafeBase, bHasNoise, bHasMask, bHasEmissive,
+				bHasDissolve,
+				bParticleMesh))
+		{
+			strOutError =
+				"Finite source Material profile resource contract is not satisfied.";
+			return false;
+		}
+		if (strProfile == "effect.ue3.reconstructed-standard.v1" && !bSafeBase)
+		{
+			strOutError =
+				"Reconstructed-standard source Material requires a safe Base texture.";
+			return false;
+		}
+
+		bOutOwnsDrawableContract = true;
+		return true;
+	}
+
+	bool_t Read_Warlord17090TypeDataMeshRotation(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		float3_t& vOutRotationDegrees,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		const EFFECT_SOURCE_MODULE_DESC* pTypeDataMesh = nullptr;
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Normalize_SourceModuleClass(Module.strClassName) !=
+				"particlemoduletypedatamesh")
+			{
+				continue;
+			}
+			if (nullptr != pTypeDataMesh)
+			{
+				strOutError =
+					"Warlord 17090 Mesh source has duplicate TypeDataMesh modules.";
+				return false;
+			}
+			pTypeDataMesh = &Module;
+		}
+		if (nullptr == pTypeDataMesh)
+		{
+			strOutError =
+				"Warlord 17090 Mesh source is missing its TypeDataMesh module.";
+			return false;
+		}
+
+		float3_t Projected{};
+		std::array<bool_t, 3u> Seen{};
+		for (const EFFECT_SOURCE_LITERAL_DESC& Literal :
+			pTypeDataMesh->Literals)
+		{
+			std::string Property = Literal.strPropertyPath;
+			std::transform(Property.begin(), Property.end(), Property.begin(),
+				[](const unsigned char Character)
+				{
+					return static_cast<char_t>(std::tolower(Character));
+				});
+			size_t iComponent = 3u;
+			if (Property == "roll")
+				iComponent = 0u;
+			else if (Property == "pitch")
+				iComponent = 1u;
+			else if (Property == "yaw")
+				iComponent = 2u;
+			if (iComponent == 3u)
+				continue;
+			if (Seen[iComponent])
+			{
+				strOutError =
+					"Warlord 17090 TypeDataMesh rotation literal is duplicated.";
+				return false;
+			}
+			if (Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+				!std::isfinite(Literal.fNumber) ||
+				std::abs(Literal.fNumber) > 3600.0)
+			{
+				strOutError =
+					"Warlord 17090 TypeDataMesh rotation literal is not a finite number.";
+				return false;
+			}
+			Seen[iComponent] = true;
+			const f32_t fValue = static_cast<f32_t>(Literal.fNumber);
+			if (iComponent == 0u)
+				Projected.x = fValue;
+			else if (iComponent == 1u)
+				Projected.y = fValue;
+			else
+				Projected.z = fValue;
+		}
+		vOutRotationDegrees = Projected;
+		return true;
+	}
+
+	const Client::EFFECT_SOURCE_MODULE_DESC*
+		Find_UniqueWarlordChainModule(
+			const Client::EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strClassName,
+			std::string& strOutError)
+	{
+		const Client::EFFECT_SOURCE_MODULE_DESC* pResult = nullptr;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Normalize_SourceModuleClass(Module.strClassName) != strClassName)
+				continue;
+			if (nullptr != pResult)
+			{
+				strOutError = "Warlord 17090 chain source has a duplicate " +
+					std::string(strClassName) + " module.";
+				return nullptr;
+			}
+			pResult = &Module;
+		}
+		if (nullptr == pResult)
+		{
+			strOutError = "Warlord 17090 chain source is missing its " +
+				std::string(strClassName) + " module.";
+		}
+		return pResult;
+	}
+
+	const Client::EFFECT_DISTRIBUTION_DESC* Find_WarlordChainDistribution(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath)
+	{
+		const auto Iterator = std::find_if(
+			Module.Distributions.begin(), Module.Distributions.end(),
+			[strPropertyPath](
+				const Client::EFFECT_DISTRIBUTION_DESC& Distribution)
+			{
+				return Distribution.strPropertyPath == strPropertyPath;
+			});
+		return Iterator == Module.Distributions.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Validate_Warlord17090ChainSourceRecipe(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strMeshAssetId,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr f32_t EPSILON = 1.e-5f;
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= EPSILON;
+		};
+		constexpr std::array<std::string_view, 8u> CHAIN_06_IDS =
+		{
+			"authored.source-particle.fe0d3291da32d9c797705c72",
+			"authored.source-particle.1bb7a50a0c3ff729ca586851",
+			"authored.source-particle.eedca4cf57247af0f82fba11",
+			"authored.source-particle.cd8d5f0dbedb3e620880378d",
+			"authored.source-particle.a3cbc6a5ccb3876669945ebd",
+			"authored.source-particle.6ad86a3bed5164050280ee47",
+			"authored.source-particle.3903aa4912d4eeeba9d7d951",
+			"authored.source-particle.71f0b215e9cff2426ac0ce47"
+		};
+		constexpr std::array<std::string_view, 4u> CHAIN_07_IDS =
+		{
+			"authored.source-particle.a7fae01987d89775468563e4",
+			"authored.source-particle.a2d9eabb94a5702c933cd727",
+			"authored.source-particle.72835f216dd26bb28166301f",
+			"authored.source-particle.78efab80dc7c76fc2b416cba"
+		};
+		const auto ContainsId = [&Element](const auto& Ids)
+		{
+			return std::find(Ids.begin(), Ids.end(), Element.strElementId) !=
+				Ids.end();
+		};
+		if ((strMeshAssetId == WARLORD_CHAIN_06_MODEL_ASSET_ID &&
+				!ContainsId(CHAIN_06_IDS)) ||
+			(strMeshAssetId == WARLORD_CHAIN_07_MODEL_ASSET_ID &&
+				!ContainsId(CHAIN_07_IDS)))
+		{
+			strOutError =
+				"Warlord 17090 chain stable Element/Mesh identity is invalid.";
+			return false;
+		}
+		if (Element.SourceRecipe.iEmitterLoopCount != 1u ||
+			Element.SourceRecipe.Bursts.size() != 1u ||
+			!NearlyEqual(Element.SourceRecipe.Bursts.front().fTimeSeconds, 0.f) ||
+			Element.SourceRecipe.Bursts.front().iCountMinimum != 1u ||
+			Element.SourceRecipe.Bursts.front().iCountMaximum != 1u ||
+			!NearlyEqual(Element.Detail.Timing.fStartDelaySeconds, 0.3668f))
+		{
+			strOutError =
+				"Warlord 17090 chain burst/timing contract is invalid.";
+			return false;
+		}
+
+		const EFFECT_SOURCE_MODULE_DESC* pLocationDirect =
+			Find_UniqueWarlordChainModule(Element,
+				"particlemodulelocationdirect", strOutError);
+		const EFFECT_SOURCE_MODULE_DESC* pLifetime =
+			Find_UniqueWarlordChainModule(Element,
+				"particlemodulelifetime", strOutError);
+		const EFFECT_SOURCE_MODULE_DESC* pDynamic =
+			Find_UniqueWarlordChainModule(Element,
+				"particlemoduleparameterdynamic", strOutError);
+		const EFFECT_SOURCE_MODULE_DESC* pMeshRotation =
+			Find_UniqueWarlordChainModule(Element,
+				"particlemodulemeshrotation", strOutError);
+		if (nullptr == pLocationDirect || nullptr == pLifetime ||
+			nullptr == pDynamic || nullptr == pMeshRotation)
+		{
+			return false;
+		}
+
+		const EFFECT_DISTRIBUTION_DESC* pLocation =
+			Find_WarlordChainDistribution(*pLocationDirect, "location");
+		const EFFECT_DISTRIBUTION_DESC* pDirection =
+			Find_WarlordChainDistribution(*pLocationDirect, "direction");
+		const EFFECT_DISTRIBUTION_DESC* pLocationOffset =
+			Find_WarlordChainDistribution(*pLocationDirect, "locationoffset");
+		const EFFECT_DISTRIBUTION_DESC* pScaleFactor =
+			Find_WarlordChainDistribution(*pLocationDirect, "scalefactor");
+		const auto IsExactZeroVectorDefault = [](const auto* pDistribution)
+		{
+			return nullptr != pDistribution &&
+				pDistribution->strSourceClass.empty() &&
+				pDistribution->strSourceObjectPath.empty() &&
+				pDistribution->iComponentCount == 3u &&
+				pDistribution->iOperation == 1u &&
+				pDistribution->iRandomLockAxes == 0u &&
+				pDistribution->iLookupTableChunkSize == 0u &&
+				pDistribution->iLookupTableNumElements == 0u &&
+				pDistribution->fLookupTableTimeScale == 0.f &&
+				pDistribution->fLookupTableStartTime == 0.f &&
+				pDistribution->vDefaultMinimum.x == 0.f &&
+				pDistribution->vDefaultMinimum.y == 0.f &&
+				pDistribution->vDefaultMinimum.z == 0.f &&
+				pDistribution->vDefaultMinimum.w == 0.f &&
+				pDistribution->vDefaultMaximum.x == 0.f &&
+				pDistribution->vDefaultMaximum.y == 0.f &&
+				pDistribution->vDefaultMaximum.z == 0.f &&
+				pDistribution->vDefaultMaximum.w == 0.f &&
+				pDistribution->LookupTable.empty() &&
+				pDistribution->Keys.empty();
+		};
+		constexpr std::array<f32_t, 8u> LOCATION_TABLE =
+			{ -30.f, 35.f, 0.f, 35.f, 0.f, -20.f, -30.f, 0.f };
+		if (!IsExactZeroVectorDefault(pDirection) ||
+			!IsExactZeroVectorDefault(pLocationOffset) ||
+			!IsExactZeroVectorDefault(pScaleFactor) ||
+			nullptr == pLocation || pLocation->iComponentCount != 3u ||
+			pLocation->iOperation != 1u ||
+			pLocation->iLookupTableChunkSize != 3u ||
+			pLocation->iLookupTableNumElements != 1u ||
+			!NearlyEqual(pLocation->fLookupTableStartTime, 0.9f) ||
+			!NearlyEqual(pLocation->fLookupTableTimeScale, 10.f) ||
+			pLocation->LookupTable.size() != LOCATION_TABLE.size() ||
+			!std::equal(pLocation->LookupTable.begin(),
+				pLocation->LookupTable.end(), LOCATION_TABLE.begin(),
+				[&NearlyEqual](const f32_t Left, const f32_t Right)
+				{
+					return NearlyEqual(Left, Right);
+				}))
+		{
+			strOutError =
+				"Warlord 17090 LocationDirect launch/return/default identity is invalid.";
+			return false;
+		}
+
+		const EFFECT_DISTRIBUTION_DESC* pLife =
+			Find_WarlordChainDistribution(*pLifetime, "lifetime");
+		if (nullptr == pLife || pLife->LookupTable.size() != 4u ||
+			!NearlyEqual(pLife->LookupTable[2], 0.6f) ||
+			!NearlyEqual(pLife->LookupTable[3], 0.6f))
+		{
+			strOutError = "Warlord 17090 chain lifetime is not exact 0.6s.";
+			return false;
+		}
+
+		constexpr std::array<std::string_view, 4u> DYNAMIC_PARAMETER_NAMES =
+		{
+			"worldpositionoffset_str", "worldposition_uvscale",
+			"x.pan", "worldposition_zoffset"
+		};
+		for (size_t i = 0u; i < DYNAMIC_PARAMETER_NAMES.size(); ++i)
+		{
+			const std::string Property = "dynamicparams[" +
+				std::to_string(i) + "].paramname";
+			const auto Literal = std::find_if(
+				pDynamic->Literals.begin(), pDynamic->Literals.end(),
+				[&Property](const EFFECT_SOURCE_LITERAL_DESC& Candidate)
+				{
+					return Candidate.strPropertyPath == Property;
+				});
+			if (Literal == pDynamic->Literals.end() ||
+				Literal->eKind != EFFECT_SOURCE_LITERAL_KIND::STRING ||
+				Literal->strString != DYNAMIC_PARAMETER_NAMES[i])
+			{
+				strOutError =
+					"Warlord 17090 chain WPO DynamicParameter identity is invalid.";
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Apply_Warlord17090SourceProjection(
+		Client::EFFECT_DOCUMENT_DESC& InOutDocument,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (InOutDocument.strEffectAssetId != WARLORD_17090_EFFECT_ASSET_ID)
+			return true;
+
+		size_t iMeshCount = 0u;
+		size_t iChainCount = 0u;
+		size_t iChain06Count = 0u;
+		size_t iChain07Count = 0u;
+		const auto ResolveCompilerAssetId = [](
+			const EFFECT_ELEMENT_DESC& Element,
+			const EFFECT_RESOURCE_BINDING_DESC& Binding,
+			std::string_view& strOutCompilerAssetId) -> bool_t
+		{
+			const auto First = std::find_if(
+				Element.AuthoringOverrides.ResourceBindings.begin(),
+				Element.AuthoringOverrides.ResourceBindings.end(),
+				[&Binding](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{
+					return Override.strSlotId == Binding.strSlotId;
+				});
+			if (First == Element.AuthoringOverrides.ResourceBindings.end())
+			{
+				strOutCompilerAssetId = Binding.strAssetId;
+				return true;
+			}
+			if (std::find_if(std::next(First),
+					Element.AuthoringOverrides.ResourceBindings.end(),
+					[&Binding](
+						const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+					{
+						return Override.strSlotId == Binding.strSlotId;
+					}) != Element.AuthoringOverrides.ResourceBindings.end() ||
+				First->strAssetId != Binding.strAssetId ||
+				First->strCompilerAssetId.empty())
+			{
+				return false;
+			}
+			strOutCompilerAssetId = First->strCompilerAssetId;
+			return true;
+		};
+		for (EFFECT_ELEMENT_DESC& Element : InOutDocument.Elements)
+		{
+			if (!Element.SourceRecipe.bEnabled ||
+				Element.SourceRecipe.strRendererShape != "mesh")
+			{
+				continue;
+			}
+			++iMeshCount;
+			float3_t SourceTypeDataRotation{};
+			if (!Read_Warlord17090TypeDataMeshRotation(
+				Element, SourceTypeDataRotation, strOutError))
+			{
+				return false;
+			}
+			Element.Detail.Mesh.vSourceTypeDataRotationDegrees =
+				SourceTypeDataRotation;
+
+			if (Element.Material.strSourceMaterialPath !=
+				WARLORD_CHAIN_SOURCE_MATERIAL_PATH)
+			{
+				continue;
+			}
+			++iChainCount;
+			if (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
+			{
+				strOutError =
+					"Warlord 17090 chain source is not a Particle Mesh.";
+				return false;
+			}
+
+			size_t iMeshBindingCount = 0u;
+			size_t iPreviewBaseCount = 0u;
+			std::string_view strMeshAssetId;
+			for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+				Element.ResourceBindings)
+			{
+				if (Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID)
+				{
+					++iMeshBindingCount;
+					if (!ResolveCompilerAssetId(
+							Element, Binding, strMeshAssetId))
+					{
+						strOutError =
+							"Warlord 17090 chain Mesh override baseline/effective identity is invalid.";
+						return false;
+					}
+					if (strMeshAssetId == WARLORD_CHAIN_06_MODEL_ASSET_ID)
+						++iChain06Count;
+					else if (strMeshAssetId ==
+						WARLORD_CHAIN_07_MODEL_ASSET_ID)
+					{
+						++iChain07Count;
+					}
+					else
+					{
+						strOutError =
+							"Warlord 17090 chain Mesh identity is invalid.";
+						return false;
+					}
+				}
+				else if (Binding.strSlotId == "base")
+				{
+					std::string_view strCompilerBaseAssetId;
+					if (!ResolveCompilerAssetId(Element, Binding,
+							strCompilerBaseAssetId) ||
+						strCompilerBaseAssetId !=
+							WARLORD_CHAIN_BASE_ALIAS_ASSET_ID)
+					{
+						strOutError =
+							"Warlord 17090 non-exact preview Base override baseline/effective identity is invalid.";
+						return false;
+					}
+					++iPreviewBaseCount;
+				}
+				else
+				{
+					strOutError =
+						"Warlord 17090 chain carries an unproven Material resource.";
+					return false;
+				}
+			}
+			if (iMeshBindingCount != 1u || iPreviewBaseCount != 1u)
+			{
+				strOutError =
+					"Warlord 17090 chain Mesh/non-exact preview Base cardinality is invalid.";
+				return false;
+			}
+			const EFFECT_SOURCE_MATERIAL_DESC& SourceProfile =
+				Element.Material.SourceMaterial;
+			if (Element.Material.strTemplateId !=
+					EFFECT_SOURCE_MATERIAL_TEMPLATE_ID ||
+				!SourceProfile.bEnabled ||
+				SourceProfile.strProfileId != WARLORD_CHAIN_SOURCE_PROFILE_ID ||
+				SourceProfile.strParentMaterialPath !=
+					WARLORD_CHAIN_PARENT_MATERIAL_PATH ||
+				SourceProfile.strRuntimeShaderProfileId !=
+					WARLORD_CHAIN_RUNTIME_PROFILE_ID)
+			{
+				strOutError =
+					"Warlord 17090 non-exact preview source profile is invalid.";
+				return false;
+			}
+			if (!Validate_Warlord17090ChainSourceRecipe(
+				Element, strMeshAssetId, strOutError))
+			{
+				return false;
+			}
+			Element.Material.Execution = {};
+			Element.Material.Execution.bFailClosed = true;
+			Element.Material.Execution.bAuthoringApproximate = true;
+			/* atypical_028 is a same-group authoring baseline, not an exact parent
+			   Base.  Keep the enabled grouped profile and any valid G3 override so
+			   the Tool can tune/reset a physical DDS.  The disabled approximate
+			   execution records SOURCE_MASKED_WPO_ARITHMETIC_UNAVAILABLE and must
+			   never promote this carrier to Full merely because it draws. */
+			Element.Detail.Mesh.bUseModelMaterial = false;
+		}
+		if (iMeshCount != 14u || iChainCount != 12u ||
+			iChain06Count != 8u || iChain07Count != 4u)
+		{
+			strOutError =
+				"Warlord 17090 Mesh Family cardinality changed; expected Mesh14, chain06=8, chain07=4.";
+			return false;
+		}
+		return true;
+	}
 }
 
 const char_t* Client::CEffectDocumentCodec::To_Token(
@@ -3866,6 +5201,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Cue.fStartDelaySeconds < 0.f ||
 			!std::isfinite(Cue.fDurationSeconds) ||
 			Cue.fDurationSeconds <= 0.f || Cue.fDurationSeconds > 30.f ||
+			Cue.eAlphaMode >= EFFECT_MODEL_CUE_ALPHA_MODE::END ||
 			!bTransformValid)
 		{
 			strOutError =
@@ -3949,8 +5285,27 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError += " Element: " + Element.strElementId + ".";
 			return false;
 		}
+		const bool_t bAuthoringExecutionTarget =
+			Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
+		if (Element.bVisible && !bAuthoringExecutionTarget)
+		{
+			strOutError =
+				"Hard fail-closed authored Element cannot be made visible: " +
+				Element.strElementId + ".";
+			return false;
+		}
 		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
 			Element.Material.SourceMaterial;
+		if (SourceMaterial.eSourceBlendClass >=
+			EFFECT_SOURCE_BLEND_CLASS::END ||
+			(!SourceMaterial.bEnabled &&
+			 SourceMaterial.eSourceBlendClass !=
+				EFFECT_SOURCE_BLEND_CLASS::UNKNOWN))
+		{
+			strOutError =
+				"Effect source Material blend evidence is invalid.";
+			return false;
+		}
 		if (SourceMaterial.bEnabled)
 		{
 			if (!Is_StableId(SourceMaterial.strProfileId) ||
@@ -4093,6 +5448,21 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				return false;
 			}
 		}
+		/* Hard fail-closed rows remain loadable source evidence.  Every execution
+		   target, including an authoring-approximate preview, must satisfy the
+		   same source-profile/resource contract before it can be activated. */
+		if (!Document.bSourceContract && bAuthoringExecutionTarget)
+		{
+			bool_t bSourceMaterialOwnsDrawableContract = false;
+			if (!Validate_ExecutableSourceMaterialCarrier(
+					Element, bSourceMaterialOwnsDrawableContract, strOutError))
+			{
+				strOutError =
+					"Ordinary authored source Material is not admitted: " +
+					Element.strElementId + ": " + strOutError;
+				return false;
+			}
+		}
 		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
 		if (Recipe.bEnabled)
 		{
@@ -4177,6 +5547,17 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				}
 			}
 		}
+		if (!Document.bSourceContract &&
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Recipe.bEnabled && bAuthoringExecutionTarget &&
+			!ValidatePortableAuthoredParticleRuntimeCarrier(
+				Element, strOutError))
+		{
+			strOutError =
+				"Ordinary authored Particle sourceRecipe is not admitted by the portable runtime: " +
+				Element.strElementId + ": " + strOutError;
+			return false;
+		}
 		const EFFECT_SOURCE_PRESENTATION_DESC& SourcePresentation =
 			Element.SourcePresentation;
 		if (SourcePresentation.bEnabled)
@@ -4230,6 +5611,20 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					return false;
 				}
 			}
+			/* An unresolved presentation is retained source evidence, not an
+			   executable authored carrier.  Keeping this invariant in the codec
+			   prevents a saved Visible toggle from bypassing Tool-side locks for
+			   deferred AnimationTrail, Light, Dust, or future source families. */
+			if (!Document.bSourceContract && bAuthoringExecutionTarget &&
+				SourcePresentation.eStatus ==
+					EFFECT_SOURCE_PRESENTATION_STATUS::UNRESOLVED &&
+				Element.bVisible)
+			{
+				strOutError =
+					"Unresolved source presentation cannot be enabled for ordinary playback: " +
+					Element.strElementId + ".";
+				return false;
+			}
 		}
 		const EFFECT_DETAIL_DESC& D = Element.Detail;
 		const int64_t iTileCount = static_cast<int64_t>(D.UV.iTileColumns) * D.UV.iTileRows;
@@ -4260,6 +5655,10 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			std::abs(D.Mesh.vSourceTypeDataRotationDegrees.y) <= 3600.f &&
 			std::abs(D.Mesh.vSourceTypeDataRotationDegrees.z) <= 3600.f &&
 			(Element.Renderer.eType == EFFECT_RENDERER_TYPE::MESH_PARTICLE ||
+				(Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+				 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				 Element.SourceRecipe.bEnabled &&
+				 Element.SourceRecipe.strRendererShape == "mesh") ||
 				(0.f == D.Mesh.vSourceTypeDataRotationDegrees.x &&
 				 0.f == D.Mesh.vSourceTypeDataRotationDegrees.y &&
 				 0.f == D.Mesh.vSourceTypeDataRotationDegrees.z)) &&
@@ -4368,6 +5767,11 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		iTotalAfterImages > MAX_DOCUMENT_AFTERIMAGES)
 	{
 		strOutError = "Effect Document exceeds the particle, trail, or after-image budget.";
+		return false;
+	}
+	if (!Document.bSourceContract &&
+		!ValidatePortableAuthoredParticleEventRoutes(Document, strOutError))
+	{
 		return false;
 	}
 
@@ -5191,7 +6595,8 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		[](const EFFECT_ELEMENT_DESC& Element)
 		{
 			return Element.bVisible &&
-				!Element.Material.Execution.bFailClosed;
+				Is_EffectAuthoringExecutionTarget(
+					Element.Material.Execution);
 		});
 	const bool_t bHasVisibleModelCue = std::any_of(
 		Document.ModelCues.begin(), Document.ModelCues.end(),
@@ -5207,7 +6612,8 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
-		if (!Element.bVisible || Element.Material.Execution.bFailClosed)
+		if (!Element.bVisible ||
+			!Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
 			continue;
 		if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
@@ -5238,38 +6644,15 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		};
 		const EFFECT_RESOURCE_BINDING_DESC* pBaseBinding = FindBinding(
 			EFFECT_MATERIAL_INPUT_SEMANTIC::BASE);
-		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
-			Element.Material.SourceMaterial;
-		const bool_t bFallbackBlocked = SourceMaterial.bEnabled &&
-			SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.fallback-blocked.v1";
-		const bool_t bGroupedTranslucent = SourceMaterial.bEnabled &&
-			SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.grouped-translucent.v1" &&
-			Is_EffectGroupedTranslucentResourceContractSatisfied(
-				SourceMaterial,
-				nullptr != pBaseBinding &&
-					!Is_UnsafeEffectBaseTextureAssetId(pBaseBinding->strAssetId),
-				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
-				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::EMISSIVE),
-				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE));
-		const bool_t bFiniteProfile = SourceMaterial.bEnabled &&
-			(SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.shine.v1" ||
-			 SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.blackline-aura.v1" ||
-			 SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.slice.v1" ||
-			 SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.missiletrail-01.v1" ||
-			 SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.local-crack.v1" ||
-			 SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.procedural-center-glow.v1");
+		bool_t bSourceMaterialOwnsDrawableContract = false;
+		if (!Validate_ExecutableSourceMaterialCarrier(
+				Element, bSourceMaterialOwnsDrawableContract, strOutError))
+		{
+			return false;
+		}
 		const bool_t bMaterialOwnsDrawableContract =
 			Element.Material.Execution.bEnabled ||
-			Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID ||
-			bFallbackBlocked || bGroupedTranslucent || bFiniteProfile;
+			bSourceMaterialOwnsDrawableContract;
 		const bool_t bParticleMesh =
 			EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind &&
 			std::any_of(Element.ResourceBindings.begin(),
@@ -5278,45 +6661,6 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 				{
 					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
 				});
-		const bool_t bLocalCrackProfile = SourceMaterial.bEnabled &&
-			SourceMaterial.strRuntimeShaderProfileId ==
-				"effect.ue3.local-crack.v1";
-		const bool_t bHasDissolve = nullptr != FindBinding(
-			EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE);
-		if (bLocalCrackProfile)
-		{
-			const bool_t bLegacyContract =
-				Is_EffectLegacyLocalCrackResourceContractSatisfied(
-					SourceMaterial, bHasDissolve, bParticleMesh);
-			const bool_t bNamedContract =
-				!SourceMaterial.Textures.empty() &&
-				Is_EffectLocalCrackResourceContractSatisfied(
-					Has_EffectLocalCrackNamedTextureContract(SourceMaterial),
-					true, true, bParticleMesh);
-			if (!bLegacyContract && !bNamedContract)
-			{
-				strOutError =
-					"Local-crack source Material resource contract is not satisfied.";
-				return false;
-			}
-		}
-		else if (bFiniteProfile &&
-			!Is_EffectFiniteProfileResourceContractSatisfied(
-				SourceMaterial.strRuntimeShaderProfileId,
-				nullptr != pBaseBinding &&
-					!Is_UnsafeEffectBaseTextureAssetId(
-						pBaseBinding->strAssetId),
-				nullptr != FindBinding(
-					EFFECT_MATERIAL_INPUT_SEMANTIC::NOISE),
-				nullptr != FindBinding(
-					EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
-				bHasDissolve,
-				bParticleMesh))
-		{
-			strOutError =
-				"Finite source Material profile resource contract is not satisfied.";
-			return false;
-		}
 		const std::string_view strRequiredSlotId =
 			EFFECT_ELEMENT_KIND::MESH == Element.eKind || bParticleMesh ?
 			EFFECT_MESH_SHAPE_SLOT_ID :
@@ -5460,6 +6804,999 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 		return false;
 	}
 	InOutDocument = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+void Client::CEffectDocumentCodec::Record_AuthoringResourceOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string& strSlotId,
+	const std::string& strAssetId,
+	const std::string& strCompilerAssetId)
+{
+	auto Existing = std::find_if(
+		Element.AuthoringOverrides.ResourceBindings.begin(),
+		Element.AuthoringOverrides.ResourceBindings.end(),
+		[&strSlotId](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Row)
+		{
+			return Row.strSlotId == strSlotId;
+		});
+	if (Existing != Element.AuthoringOverrides.ResourceBindings.end())
+	{
+		// Re-binding an already overridden slot must not move the reset
+		// target: the compiler baseline stays whatever the compiler produced.
+		if (Existing->strCompilerAssetId == strAssetId)
+			Element.AuthoringOverrides.ResourceBindings.erase(Existing);
+		else
+			Existing->strAssetId = strAssetId;
+		return;
+	}
+	if (strCompilerAssetId == strAssetId)
+		return;
+	Element.AuthoringOverrides.ResourceBindings.push_back(
+		{ strSlotId, strAssetId, strCompilerAssetId });
+}
+
+bool_t Client::CEffectDocumentCodec::Set_AuthoringResourceOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strSlotId,
+	const std::string_view strAssetId,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strStableSlotId(strSlotId);
+	const std::string strArtistAssetId(strAssetId);
+	AUTHORING_RESOURCE_TARGET Target;
+	if (Resolve_AuthoringResourceTarget(Staged, strStableSlotId, Target) !=
+		AUTHORING_OVERRIDE_TARGET_STATUS::FOUND)
+	{
+		strOutError =
+			"Authoring resource override target is missing, invalid, or ambiguous: " +
+			strStableSlotId;
+		return false;
+	}
+	EFFECT_RESOURCE_FILE_KIND eArtistKind = EFFECT_RESOURCE_FILE_KIND::END;
+	if (strArtistAssetId.empty() ||
+		!Is_SafeResourceAssetId(strArtistAssetId, &eArtistKind) ||
+		eArtistKind != Target.eExpectedKind)
+	{
+		strOutError =
+			"Authoring resource override asset path or kind is invalid: " +
+			strStableSlotId;
+		return false;
+	}
+
+	auto Existing = std::find_if(
+		Staged.AuthoringOverrides.ResourceBindings.begin(),
+		Staged.AuthoringOverrides.ResourceBindings.end(),
+		[&strStableSlotId](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Row)
+		{
+			return Row.strSlotId == strStableSlotId;
+		});
+	if (Existing != Staged.AuthoringOverrides.ResourceBindings.end() &&
+		std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.ResourceBindings.end(),
+			[&strStableSlotId](
+				const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Row)
+			{
+				return Row.strSlotId == strStableSlotId;
+			}) != Staged.AuthoringOverrides.ResourceBindings.end())
+	{
+		strOutError =
+			"Authoring resource override target is duplicated: " +
+			strStableSlotId;
+		return false;
+	}
+
+	const std::string strEffectiveBefore =
+		Get_AuthoringResourceTargetAssetId(Staged, Target);
+	std::string strCompilerAssetId = strEffectiveBefore;
+	if (Existing != Staged.AuthoringOverrides.ResourceBindings.end())
+	{
+		if (Existing->strAssetId != strEffectiveBefore ||
+			Existing->strAssetId == Existing->strCompilerAssetId)
+		{
+			strOutError =
+				"Authoring resource override metadata is inconsistent with its effective target: " +
+				strStableSlotId;
+			return false;
+		}
+		strCompilerAssetId = Existing->strCompilerAssetId;
+	}
+	if (!strCompilerAssetId.empty())
+	{
+		EFFECT_RESOURCE_FILE_KIND eCompilerKind = EFFECT_RESOURCE_FILE_KIND::END;
+		if (!Is_SafeResourceAssetId(strCompilerAssetId, &eCompilerKind) ||
+			eCompilerKind != Target.eExpectedKind)
+		{
+			strOutError =
+				"Authoring resource override compiler baseline path or kind is invalid: " +
+				strStableSlotId;
+			return false;
+		}
+	}
+
+	Get_AuthoringResourceTargetAssetId(Staged, Target) = strArtistAssetId;
+	if (strArtistAssetId == strCompilerAssetId)
+	{
+		if (Existing != Staged.AuthoringOverrides.ResourceBindings.end())
+			Staged.AuthoringOverrides.ResourceBindings.erase(Existing);
+	}
+	else if (Existing != Staged.AuthoringOverrides.ResourceBindings.end())
+	{
+		Existing->strAssetId = strArtistAssetId;
+	}
+	else
+	{
+		Staged.AuthoringOverrides.ResourceBindings.push_back(
+			{ strStableSlotId, strArtistAssetId, strCompilerAssetId });
+	}
+	Element = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Reset_AuthoringResourceOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strSlotId,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strStableSlotId(strSlotId);
+	AUTHORING_RESOURCE_TARGET Target;
+	if (Resolve_AuthoringResourceTarget(Staged, strStableSlotId, Target) !=
+		AUTHORING_OVERRIDE_TARGET_STATUS::FOUND)
+	{
+		strOutError =
+			"Authoring resource reset target is missing, invalid, or ambiguous: " +
+			strStableSlotId;
+		return false;
+	}
+	auto Existing = std::find_if(
+		Staged.AuthoringOverrides.ResourceBindings.begin(),
+		Staged.AuthoringOverrides.ResourceBindings.end(),
+		[&strStableSlotId](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Row)
+		{
+			return Row.strSlotId == strStableSlotId;
+		});
+	if (Existing == Staged.AuthoringOverrides.ResourceBindings.end())
+		return true;
+	if (std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.ResourceBindings.end(),
+			[&strStableSlotId](
+				const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Row)
+			{
+				return Row.strSlotId == strStableSlotId;
+			}) != Staged.AuthoringOverrides.ResourceBindings.end() ||
+		Existing->strAssetId !=
+			Get_AuthoringResourceTargetAssetId(Staged, Target))
+	{
+		strOutError =
+			"Authoring resource reset metadata is duplicated or inconsistent: " +
+			strStableSlotId;
+		return false;
+	}
+	if (!Existing->strCompilerAssetId.empty())
+	{
+		EFFECT_RESOURCE_FILE_KIND eCompilerKind = EFFECT_RESOURCE_FILE_KIND::END;
+		if (!Is_SafeResourceAssetId(
+				Existing->strCompilerAssetId, &eCompilerKind) ||
+			eCompilerKind != Target.eExpectedKind)
+		{
+			strOutError =
+				"Authoring resource reset compiler baseline path or kind is invalid: " +
+				strStableSlotId;
+			return false;
+		}
+	}
+	Get_AuthoringResourceTargetAssetId(Staged, Target) =
+		Existing->strCompilerAssetId;
+	Staged.AuthoringOverrides.ResourceBindings.erase(Existing);
+	Element = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Set_AuthoringScalarOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strName,
+	const f32_t fValue,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	if (!std::isfinite(fValue))
+	{
+		strOutError = "Authoring scalar override value must be finite.";
+		return false;
+	}
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strParameterName(strName);
+	AUTHORING_SCALAR_TARGET Target;
+	AUTHORING_COLOR_TARGET WrongTypeTarget;
+	const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+		Resolve_AuthoringScalarTarget(Staged, strParameterName, Target);
+	const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+		Resolve_AuthoringColorTarget(
+			Staged, strParameterName, WrongTypeTarget);
+	if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+	{
+		strOutError =
+			"Authoring scalar override target is missing, ambiguous, or declared as another type: " +
+			strParameterName;
+		return false;
+	}
+	if (std::any_of(Staged.AuthoringOverrides.Colors.begin(),
+		Staged.AuthoringOverrides.Colors.end(),
+		[&strParameterName](const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		}))
+	{
+		strOutError =
+			"Authoring scalar override collides with a color override: " +
+			strParameterName;
+		return false;
+	}
+	auto Existing = std::find_if(Staged.AuthoringOverrides.Scalars.begin(),
+		Staged.AuthoringOverrides.Scalars.end(),
+		[&strParameterName](const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		});
+	if (Existing != Staged.AuthoringOverrides.Scalars.end() &&
+		std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.Scalars.end(),
+			[&strParameterName](
+				const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Row)
+			{
+				return Row.strName == strParameterName;
+			}) != Staged.AuthoringOverrides.Scalars.end())
+	{
+		strOutError =
+			"Authoring scalar override target is duplicated: " +
+			strParameterName;
+		return false;
+	}
+	if (!Is_AuthoringScalarTargetConsistent(Staged, Target))
+	{
+		strOutError =
+			"Authoring scalar override compiler/effective mirrors disagree: " +
+			strParameterName;
+		return false;
+	}
+	const f32_t fEffectiveBefore =
+		Get_AuthoringScalarTargetValue(Staged, Target);
+	f32_t fCompilerValue = fEffectiveBefore;
+	if (Existing != Staged.AuthoringOverrides.Scalars.end())
+	{
+		if (!std::isfinite(Existing->fValue) ||
+			!std::isfinite(Existing->fCompilerValue) ||
+			Existing->fValue != fEffectiveBefore ||
+			Existing->fValue == Existing->fCompilerValue)
+		{
+			strOutError =
+				"Authoring scalar override metadata is inconsistent with its effective target: " +
+				strParameterName;
+			return false;
+		}
+		fCompilerValue = Existing->fCompilerValue;
+	}
+	Set_AuthoringScalarTargetValue(Staged, Target, fValue);
+	if (fValue == fCompilerValue)
+	{
+		if (Existing != Staged.AuthoringOverrides.Scalars.end())
+			Staged.AuthoringOverrides.Scalars.erase(Existing);
+	}
+	else if (Existing != Staged.AuthoringOverrides.Scalars.end())
+	{
+		Existing->fValue = fValue;
+	}
+	else
+	{
+		Staged.AuthoringOverrides.Scalars.push_back(
+			{ strParameterName, fValue, fCompilerValue });
+	}
+	Element = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Reset_AuthoringScalarOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strName,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strParameterName(strName);
+	AUTHORING_SCALAR_TARGET Target;
+	AUTHORING_COLOR_TARGET WrongTypeTarget;
+	const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+		Resolve_AuthoringScalarTarget(Staged, strParameterName, Target);
+	const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+		Resolve_AuthoringColorTarget(
+			Staged, strParameterName, WrongTypeTarget);
+	if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+	{
+		strOutError =
+			"Authoring scalar reset target is missing, ambiguous, or declared as another type: " +
+			strParameterName;
+		return false;
+	}
+	if (!Is_AuthoringScalarTargetConsistent(Staged, Target))
+	{
+		strOutError =
+			"Authoring scalar reset compiler/effective mirrors disagree: " +
+			strParameterName;
+		return false;
+	}
+	auto Existing = std::find_if(Staged.AuthoringOverrides.Scalars.begin(),
+		Staged.AuthoringOverrides.Scalars.end(),
+		[&strParameterName](const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		});
+	if (Existing == Staged.AuthoringOverrides.Scalars.end())
+		return true;
+	if (std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.Scalars.end(),
+			[&strParameterName](
+				const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Row)
+			{
+				return Row.strName == strParameterName;
+			}) != Staged.AuthoringOverrides.Scalars.end() ||
+		!std::isfinite(Existing->fValue) ||
+		!std::isfinite(Existing->fCompilerValue) ||
+		Existing->fValue != Get_AuthoringScalarTargetValue(Staged, Target))
+	{
+		strOutError =
+			"Authoring scalar reset metadata is duplicated or inconsistent: " +
+			strParameterName;
+		return false;
+	}
+	Set_AuthoringScalarTargetValue(Staged, Target, Existing->fCompilerValue);
+	Staged.AuthoringOverrides.Scalars.erase(Existing);
+	Element = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Set_AuthoringColorOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strName,
+	const float4_t& vValue,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	if (!Is_Finite(vValue))
+	{
+		strOutError = "Authoring color override value must be finite.";
+		return false;
+	}
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strParameterName(strName);
+	AUTHORING_COLOR_TARGET Target;
+	AUTHORING_SCALAR_TARGET WrongTypeTarget;
+	const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+		Resolve_AuthoringColorTarget(Staged, strParameterName, Target);
+	const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+		Resolve_AuthoringScalarTarget(
+			Staged, strParameterName, WrongTypeTarget);
+	if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+	{
+		strOutError =
+			"Authoring color override target is missing, ambiguous, or declared as another type: " +
+			strParameterName;
+		return false;
+	}
+	if (std::any_of(Staged.AuthoringOverrides.Scalars.begin(),
+		Staged.AuthoringOverrides.Scalars.end(),
+		[&strParameterName](const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		}))
+	{
+		strOutError =
+			"Authoring color override collides with a scalar override: " +
+			strParameterName;
+		return false;
+	}
+	auto Existing = std::find_if(Staged.AuthoringOverrides.Colors.begin(),
+		Staged.AuthoringOverrides.Colors.end(),
+		[&strParameterName](const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		});
+	if (Existing != Staged.AuthoringOverrides.Colors.end() &&
+		std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.Colors.end(),
+			[&strParameterName](
+				const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Row)
+			{
+				return Row.strName == strParameterName;
+			}) != Staged.AuthoringOverrides.Colors.end())
+	{
+		strOutError =
+			"Authoring color override target is duplicated: " +
+			strParameterName;
+		return false;
+	}
+	if (!Is_AuthoringColorTargetConsistent(Staged, Target))
+	{
+		strOutError =
+			"Authoring color override compiler/effective mirrors disagree: " +
+			strParameterName;
+		return false;
+	}
+	const float4_t vEffectiveBefore =
+		Get_AuthoringColorTargetValue(Staged, Target);
+	float4_t vCompilerValue = vEffectiveBefore;
+	if (Existing != Staged.AuthoringOverrides.Colors.end())
+	{
+		if (!Is_Finite(Existing->vValue) ||
+			!Is_Finite(Existing->vCompilerValue) ||
+			!Same_Float4(Existing->vValue, vEffectiveBefore) ||
+			Same_Float4(Existing->vValue, Existing->vCompilerValue))
+		{
+			strOutError =
+				"Authoring color override metadata is inconsistent with its effective target: " +
+				strParameterName;
+			return false;
+		}
+		vCompilerValue = Existing->vCompilerValue;
+	}
+	Set_AuthoringColorTargetValue(Staged, Target, vValue);
+	if (Same_Float4(vValue, vCompilerValue))
+	{
+		if (Existing != Staged.AuthoringOverrides.Colors.end())
+			Staged.AuthoringOverrides.Colors.erase(Existing);
+	}
+	else if (Existing != Staged.AuthoringOverrides.Colors.end())
+	{
+		Existing->vValue = vValue;
+	}
+	else
+	{
+		Staged.AuthoringOverrides.Colors.push_back(
+			{ strParameterName, vValue, vCompilerValue });
+	}
+	Element = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectDocumentCodec::Reset_AuthoringColorOverride(
+	EFFECT_ELEMENT_DESC& Element,
+	const std::string_view strName,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	EFFECT_ELEMENT_DESC Staged = Element;
+	const std::string strParameterName(strName);
+	AUTHORING_COLOR_TARGET Target;
+	AUTHORING_SCALAR_TARGET WrongTypeTarget;
+	const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+		Resolve_AuthoringColorTarget(Staged, strParameterName, Target);
+	const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+		Resolve_AuthoringScalarTarget(
+			Staged, strParameterName, WrongTypeTarget);
+	if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+		eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS)
+	{
+		strOutError =
+			"Authoring color reset target is missing, ambiguous, or declared as another type: " +
+			strParameterName;
+		return false;
+	}
+	if (!Is_AuthoringColorTargetConsistent(Staged, Target))
+	{
+		strOutError =
+			"Authoring color reset compiler/effective mirrors disagree: " +
+			strParameterName;
+		return false;
+	}
+	auto Existing = std::find_if(Staged.AuthoringOverrides.Colors.begin(),
+		Staged.AuthoringOverrides.Colors.end(),
+		[&strParameterName](const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Row)
+		{
+			return Row.strName == strParameterName;
+		});
+	if (Existing == Staged.AuthoringOverrides.Colors.end())
+		return true;
+	if (std::find_if(std::next(Existing),
+			Staged.AuthoringOverrides.Colors.end(),
+			[&strParameterName](
+				const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Row)
+			{
+				return Row.strName == strParameterName;
+			}) != Staged.AuthoringOverrides.Colors.end() ||
+		!Is_Finite(Existing->vValue) ||
+		!Is_Finite(Existing->vCompilerValue) ||
+		!Same_Float4(Existing->vValue,
+			Get_AuthoringColorTargetValue(Staged, Target)))
+	{
+		strOutError =
+			"Authoring color reset metadata is duplicated or inconsistent: " +
+			strParameterName;
+		return false;
+	}
+	Set_AuthoringColorTargetValue(Staged, Target, Existing->vCompilerValue);
+	Staged.AuthoringOverrides.Colors.erase(Existing);
+	Element = std::move(Staged);
+	return true;
+}
+
+
+bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
+	const EFFECT_DOCUMENT_DESC& CompilerDocument,
+	const EFFECT_DOCUMENT_DESC& ExistingDocument,
+	const EFFECT_GENERIC_AUTHORED_ELEMENT_REIMPORT_REQUEST& Request,
+	EFFECT_DOCUMENT_DESC& InOutDocument,
+	std::string& strOutError,
+	EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT* pOutReport)
+{
+	strOutError.clear();
+	EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT StagedReport;
+	if (Request.strElementId.empty() ||
+		CompilerDocument.strEffectAssetId.empty() ||
+		CompilerDocument.strEffectAssetId != ExistingDocument.strEffectAssetId ||
+		CompilerDocument.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		CompilerDocument.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		CompilerDocument.bSourceContract ||
+		ExistingDocument.iFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		ExistingDocument.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
+		ExistingDocument.bSourceContract)
+	{
+		strOutError =
+			"Generic authored reimport requires matching ordinary v13 Effect identities.";
+		return false;
+	}
+
+	const std::string CompilerCanonicalBefore = Serialize(CompilerDocument);
+	const std::string ExistingCanonicalBefore = Serialize(ExistingDocument);
+	EFFECT_DOCUMENT_DESC CanonicalCompiler;
+	EFFECT_DOCUMENT_DESC CanonicalExisting;
+	if (!Parse(CompilerCanonicalBefore, CanonicalCompiler, strOutError) ||
+		!Validate(CanonicalCompiler, strOutError) ||
+		Serialize(CanonicalCompiler) != CompilerCanonicalBefore ||
+		!Parse(ExistingCanonicalBefore, CanonicalExisting, strOutError) ||
+		!Validate(CanonicalExisting, strOutError) ||
+		Serialize(CanonicalExisting) != ExistingCanonicalBefore)
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Generic authored reimport inputs did not survive canonical validation.";
+		}
+		return false;
+	}
+
+	const auto FindUniqueElement = [&Request](EFFECT_DOCUMENT_DESC& Document,
+		EFFECT_ELEMENT_DESC*& pOutElement)
+	{
+		pOutElement = nullptr;
+		for (EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (Element.strElementId != Request.strElementId)
+				continue;
+			if (nullptr != pOutElement)
+				return false;
+			pOutElement = &Element;
+		}
+		return nullptr != pOutElement;
+	};
+	EFFECT_ELEMENT_DESC* pCompilerElement = nullptr;
+	EFFECT_ELEMENT_DESC* pExistingElement = nullptr;
+	if (!FindUniqueElement(CanonicalCompiler, pCompilerElement) ||
+		!FindUniqueElement(CanonicalExisting, pExistingElement))
+	{
+		strOutError =
+			"Generic authored reimport requires exactly one compiler and target Element join.";
+		return false;
+	}
+	if (pCompilerElement->eKind != pExistingElement->eKind ||
+		(pCompilerElement->eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+		 pCompilerElement->eKind != EFFECT_ELEMENT_KIND::DECAL) ||
+		!pCompilerElement->AuthoringOverrides.Is_Empty() ||
+		!pCompilerElement->SourceRecipe.bEnabled ||
+		pCompilerElement->Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		pCompilerElement->Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
+		!pCompilerElement->strSourceNode.empty() ||
+		pCompilerElement->ActionCueAttachment.bEnabled ||
+		pCompilerElement->TransformInheritance.bEnabled ||
+		pCompilerElement->SourcePresentation.bEnabled)
+	{
+		strOutError =
+			"Generic authored reimport compiler Element is not an ordinary Particle/Decal carrier.";
+		return false;
+	}
+
+	const auto FindUniqueBinding = [](const EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strSlotId,
+		const EFFECT_RESOURCE_FILE_KIND eExpectedKind,
+		const EFFECT_RESOURCE_BINDING_DESC*& pOutBinding)
+	{
+		pOutBinding = nullptr;
+		for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+			Element.ResourceBindings)
+		{
+			if (Binding.strSlotId != strSlotId)
+				continue;
+			if (nullptr != pOutBinding)
+				return false;
+			EFFECT_RESOURCE_FILE_KIND eActualKind =
+				EFFECT_RESOURCE_FILE_KIND::END;
+			if (!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Binding.strAssetId, &eActualKind) ||
+				eActualKind != eExpectedKind)
+			{
+				return false;
+			}
+			pOutBinding = &Binding;
+		}
+		return nullptr != pOutBinding;
+	};
+
+	const EFFECT_RESOURCE_BINDING_DESC* pCompilerMesh = nullptr;
+	const EFFECT_RESOURCE_BINDING_DESC* pCompilerBase = nullptr;
+	if (pCompilerElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		const bool_t bMesh =
+			pCompilerElement->SourceRecipe.strRendererShape == "mesh";
+		const bool_t bSprite =
+			pCompilerElement->SourceRecipe.strRendererShape == "sprite";
+		if ((!bMesh && !bSprite) ||
+			(bMesh && !FindUniqueBinding(*pCompilerElement,
+				EFFECT_MESH_SHAPE_SLOT_ID,
+				EFFECT_RESOURCE_FILE_KIND::MODEL, pCompilerMesh)) ||
+			(bSprite && !FindUniqueBinding(*pCompilerElement,
+				EFFECT_STANDARD_MATERIAL_INPUTS.front().strSlotId,
+				EFFECT_RESOURCE_FILE_KIND::TEXTURE, pCompilerBase)))
+		{
+			strOutError = bMesh ?
+				"Generic authored reimport Mesh Particle has a missing, ambiguous, or unsafe WModel binding." :
+				"Generic authored reimport Sprite Particle has a missing, ambiguous, or unsafe Base DDS binding.";
+			return false;
+		}
+	}
+	else if (pCompilerElement->SourceRecipe.strRendererShape != "decal")
+	{
+		strOutError =
+			"Generic authored reimport Decal source recipe shape is invalid.";
+		return false;
+	}
+	else
+	{
+		/* Validate() above already rejects duplicate, unsafe, or wrong-kind
+		   resource slots.  Base is optional for a hidden Decal draft: source
+		   DDS may seed it when available, while a source-missing row remains
+		   editable until the artist assigns diffuse in the Effect Tool. */
+		const auto FindOptionalBase = [](const EFFECT_ELEMENT_DESC& Element)
+			-> const EFFECT_RESOURCE_BINDING_DESC*
+		{
+			const auto Iterator = std::find_if(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId ==
+						EFFECT_STANDARD_MATERIAL_INPUTS.front().strSlotId;
+				});
+			return Iterator == Element.ResourceBindings.end() ?
+				nullptr : &*Iterator;
+		};
+		pCompilerBase = FindOptionalBase(*pCompilerElement);
+		if (nullptr == pCompilerBase && pExistingElement->bVisible)
+		{
+			strOutError =
+				"Generic authored reimport refuses a visible Decal when the compiler no longer produces its Base DDS binding.";
+			return false;
+		}
+	}
+
+	EFFECT_ELEMENT_DESC Reimported = *pCompilerElement;
+	Reimported.strElementId = pExistingElement->strElementId;
+	Reimported.strDisplayName = pExistingElement->strDisplayName;
+	Reimported.strGroupId = pExistingElement->strGroupId;
+	Reimported.bVisible = pExistingElement->bVisible;
+	Reimported.ActionCueAttachment = pExistingElement->ActionCueAttachment;
+	Reimported.TransformInheritance = pExistingElement->TransformInheritance;
+	Reimported.Detail = pExistingElement->Detail;
+	Reimported.AuthoringOverrides = pExistingElement->AuthoringOverrides;
+	if (Reimported.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		Reimported.SourceRecipe = {};
+		if (!Apply_PortableAuthoredParticleRuntimeCarrier(
+				*pCompilerElement, Reimported, strOutError))
+		{
+			return false;
+		}
+	}
+
+	/* Re-apply artist overrides last, on top of the refreshed compiler stage.
+	   Only a target that genuinely vanished is dropped. Invalid identifiers,
+	   ambiguous declarations, wrong types and unsafe values fail the complete
+	   transaction without changing either input or the prior output. */
+	{
+		std::vector<EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC>
+			SurvivingResources;
+		for (EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override :
+			Reimported.AuthoringOverrides.ResourceBindings)
+		{
+			AUTHORING_RESOURCE_TARGET Target;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+				Resolve_AuthoringResourceTarget(
+					Reimported, Override.strSlotId, Target);
+			if (eStatus == AUTHORING_OVERRIDE_TARGET_STATUS::MISSING)
+			{
+				StagedReport.DroppedOverrides.push_back({
+					EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND::RESOURCE,
+					EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON::
+						RESOURCE_SLOT_VANISHED,
+					Override.strSlotId });
+				continue;
+			}
+			if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND)
+			{
+				strOutError =
+					"Generic authored reimport resource override target is invalid or ambiguous: " +
+					Override.strSlotId;
+				return false;
+			}
+			EFFECT_RESOURCE_FILE_KIND eArtistKind =
+				EFFECT_RESOURCE_FILE_KIND::END;
+			if (Override.strAssetId.empty() ||
+				!Is_SafeResourceAssetId(
+					Override.strAssetId, &eArtistKind) ||
+				eArtistKind != Target.eExpectedKind)
+			{
+				strOutError =
+					"Generic authored reimport resource override path or kind is invalid: " +
+					Override.strSlotId;
+				return false;
+			}
+			const std::string strCompilerAssetId =
+				Get_AuthoringResourceTargetAssetId(Reimported, Target);
+			if (!strCompilerAssetId.empty())
+			{
+				EFFECT_RESOURCE_FILE_KIND eCompilerKind =
+					EFFECT_RESOURCE_FILE_KIND::END;
+				if (!Is_SafeResourceAssetId(
+						strCompilerAssetId, &eCompilerKind) ||
+					eCompilerKind != Target.eExpectedKind)
+				{
+					strOutError =
+						"Generic authored reimport compiler resource baseline path or kind is invalid: " +
+						Override.strSlotId;
+					return false;
+				}
+			}
+			if (Override.strAssetId == strCompilerAssetId)
+				continue;
+			Override.strCompilerAssetId = strCompilerAssetId;
+			Get_AuthoringResourceTargetAssetId(Reimported, Target) =
+				Override.strAssetId;
+			SurvivingResources.push_back(Override);
+		}
+		Reimported.AuthoringOverrides.ResourceBindings =
+			std::move(SurvivingResources);
+
+		std::vector<EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC> SurvivingScalars;
+		for (EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Override :
+			Reimported.AuthoringOverrides.Scalars)
+		{
+			AUTHORING_SCALAR_TARGET Target;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+				Resolve_AuthoringScalarTarget(
+					Reimported, Override.strName, Target);
+			if (eStatus == AUTHORING_OVERRIDE_TARGET_STATUS::MISSING)
+			{
+				AUTHORING_COLOR_TARGET WrongTypeTarget;
+				const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+					Resolve_AuthoringColorTarget(
+						Reimported, Override.strName, WrongTypeTarget);
+				if (eWrongTypeStatus ==
+						AUTHORING_OVERRIDE_TARGET_STATUS::MISSING)
+				{
+					StagedReport.DroppedOverrides.push_back({
+						EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND::SCALAR,
+						EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON::
+							SCALAR_PARAMETER_VANISHED,
+						Override.strName });
+					continue;
+				}
+				strOutError =
+					"Generic authored reimport scalar override target changed declared type: " +
+					Override.strName;
+				return false;
+			}
+			AUTHORING_COLOR_TARGET WrongTypeTarget;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+				Resolve_AuthoringColorTarget(
+					Reimported, Override.strName, WrongTypeTarget);
+			if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS ||
+				!std::isfinite(Override.fValue))
+			{
+				strOutError =
+					"Generic authored reimport scalar override target or value is invalid: " +
+					Override.strName;
+				return false;
+			}
+			if (!Is_AuthoringScalarTargetConsistent(Reimported, Target))
+			{
+				strOutError =
+					"Generic authored reimport scalar compiler baselines disagree across effective mirrors: " +
+					Override.strName;
+				return false;
+			}
+			const f32_t fCompilerValue =
+				Get_AuthoringScalarTargetValue(Reimported, Target);
+			if (!std::isfinite(fCompilerValue))
+			{
+				strOutError =
+					"Generic authored reimport scalar compiler baseline is not finite: " +
+					Override.strName;
+				return false;
+			}
+			if (Override.fValue == fCompilerValue)
+				continue;
+			Override.fCompilerValue = fCompilerValue;
+			Set_AuthoringScalarTargetValue(
+				Reimported, Target, Override.fValue);
+			SurvivingScalars.push_back(Override);
+		}
+		Reimported.AuthoringOverrides.Scalars = std::move(SurvivingScalars);
+
+		std::vector<EFFECT_AUTHORING_COLOR_OVERRIDE_DESC> SurvivingColors;
+		for (EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Override :
+			Reimported.AuthoringOverrides.Colors)
+		{
+			AUTHORING_COLOR_TARGET Target;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eStatus =
+				Resolve_AuthoringColorTarget(
+					Reimported, Override.strName, Target);
+			if (eStatus == AUTHORING_OVERRIDE_TARGET_STATUS::MISSING)
+			{
+				AUTHORING_SCALAR_TARGET WrongTypeTarget;
+				const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+					Resolve_AuthoringScalarTarget(
+						Reimported, Override.strName, WrongTypeTarget);
+				if (eWrongTypeStatus ==
+						AUTHORING_OVERRIDE_TARGET_STATUS::MISSING)
+				{
+					StagedReport.DroppedOverrides.push_back({
+						EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND::COLOR,
+						EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON::
+							COLOR_PARAMETER_VANISHED,
+						Override.strName });
+					continue;
+				}
+				strOutError =
+					"Generic authored reimport color override target changed declared type: " +
+					Override.strName;
+				return false;
+			}
+			AUTHORING_SCALAR_TARGET WrongTypeTarget;
+			const AUTHORING_OVERRIDE_TARGET_STATUS eWrongTypeStatus =
+				Resolve_AuthoringScalarTarget(
+					Reimported, Override.strName, WrongTypeTarget);
+			if (eStatus != AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::FOUND ||
+				eWrongTypeStatus == AUTHORING_OVERRIDE_TARGET_STATUS::AMBIGUOUS ||
+				!Is_Finite(Override.vValue))
+			{
+				strOutError =
+					"Generic authored reimport color override target or value is invalid: " +
+					Override.strName;
+				return false;
+			}
+			if (!Is_AuthoringColorTargetConsistent(Reimported, Target))
+			{
+				strOutError =
+					"Generic authored reimport color compiler baselines disagree across effective mirrors: " +
+					Override.strName;
+				return false;
+			}
+			const float4_t vCompilerValue =
+				Get_AuthoringColorTargetValue(Reimported, Target);
+			if (!Is_Finite(vCompilerValue))
+			{
+				strOutError =
+					"Generic authored reimport color compiler baseline is not finite: " +
+					Override.strName;
+				return false;
+			}
+			if (Same_Float4(Override.vValue, vCompilerValue))
+				continue;
+			Override.vCompilerValue = vCompilerValue;
+			Set_AuthoringColorTargetValue(
+				Reimported, Target, Override.vValue);
+			SurvivingColors.push_back(Override);
+		}
+		Reimported.AuthoringOverrides.Colors = std::move(SurvivingColors);
+	}
+
+	EFFECT_DOCUMENT_DESC Candidate = CanonicalExisting;
+	EFFECT_ELEMENT_DESC* pCandidateElement = nullptr;
+	if (!FindUniqueElement(Candidate, pCandidateElement))
+	{
+		strOutError =
+			"Generic authored reimport lost its target during staging.";
+		return false;
+	}
+	*pCandidateElement = std::move(Reimported);
+	if (!Validate(Candidate, strOutError))
+		return false;
+
+	const std::string CandidateCanonical = Serialize(Candidate);
+	EFFECT_DOCUMENT_DESC Staged;
+	if (!Parse(CandidateCanonical, Staged, strOutError) ||
+		!Validate(Staged, strOutError) ||
+		Serialize(Staged) != CandidateCanonical ||
+		Serialize(CompilerDocument) != CompilerCanonicalBefore ||
+		Serialize(ExistingDocument) != ExistingCanonicalBefore)
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Generic authored reimport did not survive canonical validation without mutating its inputs.";
+		}
+		return false;
+	}
+	const auto SameFloat3 = [](const float3_t& Left, const float3_t& Right)
+	{
+		return Left.x == Right.x && Left.y == Right.y && Left.z == Right.z;
+	};
+	const auto SameTransform = [&SameFloat3](
+		const EFFECT_TRANSFORM_DESC& Left,
+		const EFFECT_TRANSFORM_DESC& Right)
+	{
+		return SameFloat3(Left.vPosition, Right.vPosition) &&
+			SameFloat3(Left.vRotationDegrees, Right.vRotationDegrees) &&
+			SameFloat3(Left.vRevolutionDegreesPerSecond,
+				Right.vRevolutionDegreesPerSecond) &&
+			SameFloat3(Left.vScale, Right.vScale) &&
+			SameFloat3(Left.vVelocityPerSecond, Right.vVelocityPerSecond);
+	};
+	const auto SameAttachment = [&SameTransform](
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Left,
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Right)
+	{
+		return Left.bEnabled == Right.bEnabled &&
+			Left.bFollow == Right.bFollow &&
+			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
+			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
+			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			Left.fSnapshotRootSourceBasisYawDegrees ==
+				Right.fSnapshotRootSourceBasisYawDegrees &&
+			SameTransform(Left.SocketLocalTransform,
+				Right.SocketLocalTransform);
+	};
+	EFFECT_ELEMENT_DESC* pStagedElement = nullptr;
+	if (!FindUniqueElement(Staged, pStagedElement) ||
+		pStagedElement->strDisplayName != pExistingElement->strDisplayName ||
+		pStagedElement->strGroupId != pExistingElement->strGroupId ||
+		pStagedElement->bVisible != pExistingElement->bVisible ||
+		!SameAttachment(pStagedElement->ActionCueAttachment,
+			pExistingElement->ActionCueAttachment) ||
+		pStagedElement->TransformInheritance.bEnabled !=
+			pExistingElement->TransformInheritance.bEnabled ||
+		pStagedElement->TransformInheritance.strMasterElementId !=
+			pExistingElement->TransformInheritance.strMasterElementId)
+	{
+		strOutError =
+			"Generic authored reimport changed target identity, display metadata, visibility, attachment, or transform inheritance.";
+		return false;
+	}
+
+	InOutDocument = std::move(Staged);
+	if (nullptr != pOutReport)
+		*pOutReport = std::move(StagedReport);
 	strOutError.clear();
 	return true;
 }
@@ -5897,16 +8234,20 @@ namespace
 {
 	using namespace Client;
 
-	constexpr std::array<std::string_view, 29u>
+	constexpr std::array<std::string_view, 42u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemoduleacceleration",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
 			"particlemodulecoloroverlife",
 			"particlemodulecolorscaleoverlife",
+			"particlemoduleeventgenerator",
+			"particlemoduleeventreceiverspawn",
 			"particlemodulelifetime",
 			"particlemodulelocation",
+			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
+			"particlemodulelocalvectorfield",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
 			"particlemodulelocationprimitivecylinderspin",
@@ -5916,22 +8257,32 @@ namespace
 			"particlemodulemeshrotationratemultiplylife",
 			"particlemodulemeshrotationrateoverlife",
 			"particlemoduleorientationaxislock",
+			"particlemoduleorbit",
 			"particlemoduleparameterdynamic",
 			"particlemodulerequired",
 			"particlemodulerotation",
 			"particlemodulerotationrate",
+			"particlemodulerotationratemultiplylife",
 			"particlemodulesize",
+			"particlemodulesizescale",
+			"particlemodulesizescalebytime",
 			"particlemodulesizemultiplylife",
 			"particlemodulespawn",
 			"particlemodulespawnperunit",
 			"particlemodulesubuv",
 			"particlemoduletypedatamesh",
+			"particlemodulevectorfieldrotationrate",
+			"particlemodulevectorfieldscale",
+			"particlemodulevectorfieldscaleoverlife",
 			"particlemodulevelocity",
-			"particlemodulevelocityoverlifetime"
+			"particlemodulevelocityinheritparent",
+			"particlemodulevelocityoverlifetime",
+			"particlemodulevortex"
 		};
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 49u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 67u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
+			std::pair{ "efparticlemoduleacceleration", "acceldata" },
 			std::pair{ "particlemoduleacceleration", "acceleration" },
 			std::pair{ "particlemodulecameraoffset", "cameraoffset" },
 			std::pair{ "particlemodulecolor", "startalpha" },
@@ -5940,8 +8291,14 @@ namespace
 			std::pair{ "particlemodulecoloroverlife", "coloroverlife" },
 			std::pair{ "particlemodulecolorscaleoverlife", "alphascaleoverlife" },
 			std::pair{ "particlemodulecolorscaleoverlife", "colorscaleoverlife" },
+			std::pair{ "particlemoduleeventreceiverspawn", "inheritvelocityscale" },
+			std::pair{ "particlemoduleeventreceiverspawn", "spawncount" },
 			std::pair{ "particlemodulelifetime", "lifetime" },
 			std::pair{ "particlemodulelocation", "startlocation" },
+			std::pair{ "particlemodulelocationcirclesurface", "startlocation" },
+			std::pair{ "particlemodulelocationcirclesurface", "startradius" },
+			std::pair{ "particlemodulelocationcirclesurface", "startrot" },
+			std::pair{ "particlemodulelocationcirclesurface", "velocityscale" },
 			std::pair{ "particlemodulelocationdirect", "direction" },
 			std::pair{ "particlemodulelocationdirect", "location" },
 			std::pair{ "particlemodulelocationdirect", "locationoffset" },
@@ -5965,6 +8322,9 @@ namespace
 			std::pair{ "particlemodulemeshrotationrate", "startrotationrate" },
 			std::pair{ "particlemodulemeshrotationratemultiplylife", "lifemultiplier" },
 			std::pair{ "particlemodulemeshrotationrateoverlife", "rotrate" },
+			std::pair{ "particlemoduleorbit", "offsetamount" },
+			std::pair{ "particlemoduleorbit", "rotationamount" },
+			std::pair{ "particlemoduleorbit", "rotationrateamount" },
 			std::pair{ "particlemoduleparameterdynamic", "dynamicparams[0].paramvalue" },
 			std::pair{ "particlemoduleparameterdynamic", "dynamicparams[1].paramvalue" },
 			std::pair{ "particlemoduleparameterdynamic", "dynamicparams[2].paramvalue" },
@@ -5972,15 +8332,48 @@ namespace
 			std::pair{ "particlemodulerequired", "spawnrate" },
 			std::pair{ "particlemodulerotation", "startrotation" },
 			std::pair{ "particlemodulerotationrate", "startrotationrate" },
+			std::pair{ "particlemodulerotationratemultiplylife", "lifemultiplier" },
 			std::pair{ "particlemodulesize", "startsize" },
+			std::pair{ "particlemodulesizescale", "sizescale" },
+			std::pair{ "particlemodulesizescalebytime", "sizescalebytime" },
 			std::pair{ "particlemodulesizemultiplylife", "lifemultiplier" },
 			std::pair{ "particlemodulespawn", "rate" },
 			std::pair{ "particlemodulespawn", "ratescale" },
 			std::pair{ "particlemodulespawnperunit", "spawnperunit" },
 			std::pair{ "particlemodulesubuv", "subimageindex" },
+			std::pair{ "particlemodulevectorfieldscale", "scale" },
+			std::pair{ "particlemodulevectorfieldscaleoverlife", "scaleoverlife" },
 			std::pair{ "particlemodulevelocity", "startvelocity" },
 			std::pair{ "particlemodulevelocity", "startvelocityradial" },
-			std::pair{ "particlemodulevelocityoverlifetime", "veloverlife" }
+			std::pair{ "particlemodulevelocityinheritparent", "scale" },
+			std::pair{ "particlemodulevelocityoverlifetime", "veloverlife" },
+			std::pair{ "efparticlemodulevortex", "poweracceleration" }
+		};
+
+	constexpr std::array<std::pair<std::string_view, size_t>, 22u>
+		PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS = {
+			std::pair{ "particlemoduleacceleration", 2u },
+			std::pair{ "particlemodulecameraoffset", 2u },
+			std::pair{ "particlemodulecolor", 3u },
+			std::pair{ "particlemodulecolorscaleoverlife", 5u },
+			std::pair{ "particlemoduleeventgenerator", 2u },
+			std::pair{ "particlemodulelifetime", 2u },
+			std::pair{ "particlemodulelocation", 3u },
+			std::pair{ "particlemodulelocationcirclesurface", 2u },
+			std::pair{ "particlemodulelocationprimitivecylinder", 2u },
+			std::pair{ "particlemodulelocationprimitivecylinderspin", 2u },
+			std::pair{ "particlemodulelocationprimitivesphere", 2u },
+			std::pair{ "particlemodulemeshrotation", 5u },
+			std::pair{ "particlemodulemeshrotationrate", 2u },
+			std::pair{ "particlemoduleorientationaxislock", 2u },
+			std::pair{ "particlemoduleorbit", 2u },
+			std::pair{ "particlemodulerotation", 3u },
+			std::pair{ "particlemodulerotationrate", 2u },
+			std::pair{ "particlemodulerotationratemultiplylife", 2u },
+			std::pair{ "particlemodulesize", 2u },
+			std::pair{ "particlemodulesizemultiplylife", 5u },
+			std::pair{ "particlemodulevelocity", 2u },
+			std::pair{ "particlemodulevelocityoverlifetime", 3u }
 		};
 
 	std::string_view NormalizePortableParticleModuleClass(
@@ -5992,6 +8385,23 @@ namespace
 		if (Result.ends_with("_seeded"))
 			Result.remove_suffix(7u);
 		return Result;
+	}
+
+	std::string_view PortableParticleDistributionCapabilityClass(
+		const std::string_view strSourceClass,
+		const std::string_view strNormalizedClass)
+	{
+		if (strNormalizedClass == "particlemoduleacceleration" &&
+			strSourceClass.starts_with("efparticlemoduleacceleration"))
+		{
+			return "efparticlemoduleacceleration";
+		}
+		if (strNormalizedClass == "particlemodulevortex" &&
+			strSourceClass.starts_with("efparticlemodulevortex"))
+		{
+			return "efparticlemodulevortex";
+		}
+		return strNormalizedClass;
 	}
 
 	bool_t IsPortableAuthoredParticleDistributionProperty(
@@ -6024,6 +8434,275 @@ namespace
 			IsZero4(Distribution.vDefaultMinimum) &&
 			IsZero4(Distribution.vDefaultMaximum) &&
 			Distribution.LookupTable.empty() && Distribution.Keys.empty();
+	}
+
+	bool_t IsPortableVectorFieldAssetId(const std::string& strAssetId)
+	{
+		if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
+			!strAssetId.starts_with("Effect/") ||
+			strAssetId.find('\\') != std::string::npos ||
+			strAssetId.find(':') != std::string::npos)
+		{
+			return false;
+		}
+		const std::filesystem::path RelativePath(strAssetId);
+		if (RelativePath.is_absolute() || RelativePath.has_root_path() ||
+			RelativePath.lexically_normal().generic_string() != strAssetId ||
+			RelativePath.extension() != ".wvectorfield")
+		{
+			return false;
+		}
+		for (const std::filesystem::path& Component : RelativePath)
+		{
+			const std::string Value = Component.generic_string();
+			if (Value.empty() || Value == "." || Value == "..")
+				return false;
+		}
+		const std::filesystem::path Resolved =
+			CRuntimeAssetRoot::Resolve(RelativePath);
+		std::error_code Error;
+		return !Resolved.empty() &&
+			std::filesystem::is_regular_file(Resolved, Error) && !Error;
+	}
+
+	const EFFECT_SOURCE_LITERAL_DESC* FindPortableSourceLiteral(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath)
+	{
+		const auto Iterator = std::ranges::find_if(Module.Literals,
+			[strPropertyPath](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+			{
+				return Literal.strPropertyPath == strPropertyPath;
+			});
+		return Iterator == Module.Literals.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t ReadPortableBoolLiteral(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath,
+		const bool_t bDefault,
+		bool_t& bOutValue)
+	{
+		const EFFECT_SOURCE_LITERAL_DESC* pLiteral =
+			FindPortableSourceLiteral(Module, strPropertyPath);
+		if (nullptr == pLiteral)
+		{
+			bOutValue = bDefault;
+			return true;
+		}
+		if (pLiteral->eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
+			return false;
+		bOutValue = pLiteral->bBoolean;
+		return true;
+	}
+
+	bool_t ReadPortableNumberLiteral(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath,
+		const f64_t fDefault,
+		f64_t& fOutValue)
+	{
+		const EFFECT_SOURCE_LITERAL_DESC* pLiteral =
+			FindPortableSourceLiteral(Module, strPropertyPath);
+		if (nullptr == pLiteral)
+		{
+			fOutValue = fDefault;
+			return true;
+		}
+		if (pLiteral->eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+			!std::isfinite(pLiteral->fNumber))
+		{
+			return false;
+		}
+		fOutValue = pLiteral->fNumber;
+		return true;
+	}
+
+	bool_t ReadPortableStringLiteral(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strPropertyPath,
+		const std::string_view strDefault,
+		std::string_view& strOutValue)
+	{
+		const EFFECT_SOURCE_LITERAL_DESC* pLiteral =
+			FindPortableSourceLiteral(Module, strPropertyPath);
+		if (nullptr == pLiteral)
+		{
+			strOutValue = strDefault;
+			return true;
+		}
+		if (pLiteral->eKind != EFFECT_SOURCE_LITERAL_KIND::STRING)
+			return false;
+		strOutValue = pLiteral->strString;
+		return true;
+	}
+
+	bool_t ValidatePortableParticleModuleSemantics(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strNormalizedClass,
+		std::string& strOutError)
+	{
+		constexpr std::array<std::string_view, 6u> ExactClasses = {
+			"particlemoduleeventgenerator",
+			"particlemoduleeventreceiverspawn",
+			"particlemoduleorbit",
+			"particlemodulesizescale",
+			"particlemodulevectorfieldscale",
+			"particlemodulevelocityinheritparent"
+		};
+		if (std::ranges::find(ExactClasses, strNormalizedClass) !=
+				ExactClasses.end() &&
+			Module.strClassName != strNormalizedClass)
+		{
+			strOutError =
+				"Portable authored particle module requires an exact Playback class identity: " +
+				Module.strClassName + ".";
+			return false;
+		}
+
+		if (strNormalizedClass == "particlemodulelocationcirclesurface")
+		{
+			std::string_view strAxis;
+			f64_t fSplit = 0.0;
+			bool_t bHalf = false;
+			bool_t bNegative = false;
+			bool_t bVelocity = false;
+			bool_t bEnabled = true;
+			if (Module.strClassName != "efparticlemodulelocationcirclesurface" ||
+				!ReadPortableStringLiteral(Module, "surfaceaxis",
+					"pmlcs_circle_axis_xy", strAxis) ||
+				(strAxis != "pmlcs_circle_axis_xy" &&
+				 strAxis != "pmlcs_circle_axis_yz" &&
+				 strAxis != "pmlcs_circle_axis_zx") ||
+				!ReadPortableNumberLiteral(Module, "splitcirclecount", 0.0,
+					fSplit) || fSplit < 0.0 || fSplit != std::floor(fSplit) ||
+				!ReadPortableBoolLiteral(Module, "bhalfmode", false, bHalf) ||
+				!ReadPortableBoolLiteral(Module, "bnegativeaxis", false,
+					bNegative) ||
+				!ReadPortableBoolLiteral(Module, "velocity", false, bVelocity) ||
+				!ReadPortableBoolLiteral(Module, "benabled", true, bEnabled) ||
+				!bEnabled)
+			{
+				strOutError =
+					"Portable authored particle CircleSurface semantics are unsupported: " +
+					Module.strClassName + ".";
+				return false;
+			}
+		}
+		else if (strNormalizedClass == "particlemoduleeventgenerator")
+		{
+			constexpr std::array<std::string_view, 9u> EventProperties = {
+				"events[0].buseorbitoffset", "events[0].customname",
+				"events[0].firsttimeonly", "events[0].frequency",
+				"events[0].lasttimeonly", "events[0].lowfreq",
+				"events[0].particlefrequency", "events[0].type",
+				"events[0].usereflectedimpactvector"
+			};
+			for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+			{
+				if (Literal.strPropertyPath.starts_with("events[") &&
+					std::ranges::find(EventProperties,
+						Literal.strPropertyPath) == EventProperties.end())
+				{
+					strOutError =
+						"Portable authored particle event generator payload is unsupported.";
+					return false;
+				}
+			}
+			std::string_view strType;
+			std::string_view strName;
+			f64_t fFrequency = 0.0;
+			f64_t fParticleFrequency = 0.0;
+			f64_t fLowFrequency = -1.0;
+			bool_t bFirst = false;
+			bool_t bLast = false;
+			bool_t bReflected = false;
+			bool_t bOrbit = false;
+			if (!ReadPortableStringLiteral(Module, "events[0].type", "",
+					strType) || strType != "epet_spawn" ||
+				!ReadPortableStringLiteral(Module, "events[0].customname", "",
+					strName) || strName.empty() ||
+				!ReadPortableNumberLiteral(Module, "events[0].frequency", 0.0,
+					fFrequency) || fFrequency < 0.0 ||
+				fFrequency != std::floor(fFrequency) ||
+				!ReadPortableNumberLiteral(Module,
+					"events[0].particlefrequency", 0.0,
+					fParticleFrequency) || fParticleFrequency != 0.0 ||
+				!ReadPortableNumberLiteral(Module, "events[0].lowfreq", -1.0,
+					fLowFrequency) || fLowFrequency != -1.0 ||
+				!ReadPortableBoolLiteral(Module, "events[0].firsttimeonly",
+					false, bFirst) || bFirst ||
+				!ReadPortableBoolLiteral(Module, "events[0].lasttimeonly",
+					false, bLast) || bLast ||
+				!ReadPortableBoolLiteral(Module,
+					"events[0].usereflectedimpactvector", false,
+					bReflected) || bReflected ||
+				!ReadPortableBoolLiteral(Module, "events[0].buseorbitoffset",
+					false, bOrbit) || bOrbit)
+			{
+				strOutError =
+					"Portable authored particle Spawn-event generator semantics are unsupported.";
+				return false;
+			}
+		}
+		else if (strNormalizedClass == "particlemoduleeventreceiverspawn")
+		{
+			std::string_view strType;
+			std::string_view strName;
+			bool_t bUseParticleTime = false;
+			bool_t bInheritVelocity = false;
+			bool_t bUseSystemLocation = false;
+			if (!ReadPortableStringLiteral(Module, "eventgeneratortype", "",
+					strType) || strType != "epet_spawn" ||
+				!ReadPortableStringLiteral(Module, "eventname", "", strName) ||
+				strName.empty() ||
+				!ReadPortableBoolLiteral(Module, "buseparticletime", false,
+					bUseParticleTime) || bUseParticleTime ||
+				!ReadPortableBoolLiteral(Module, "binheritvelocity", false,
+					bInheritVelocity) ||
+				!ReadPortableBoolLiteral(Module, "busepsyslocation", false,
+					bUseSystemLocation) || bUseSystemLocation)
+			{
+				strOutError =
+					"Portable authored particle Spawn-event receiver semantics are unsupported.";
+				return false;
+			}
+		}
+		else if (strNormalizedClass == "particlemoduleorbit")
+		{
+			std::string_view strChainMode;
+			if (!ReadPortableStringLiteral(Module, "chainmode",
+					"eochainmode_add", strChainMode) ||
+				strChainMode != "eochainmode_add" ||
+				std::ranges::any_of(Module.Literals,
+					[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+					{
+						return Literal.strPropertyPath.starts_with(
+							"offsetoptions.") ||
+							Literal.strPropertyPath.starts_with(
+								"rotationoptions.") ||
+							Literal.strPropertyPath.starts_with(
+								"rotationrateoptions.");
+					}))
+			{
+				strOutError =
+					"Portable authored particle Orbit chain/options are unsupported.";
+				return false;
+			}
+		}
+		else if (strNormalizedClass == "particlemodulevortex")
+		{
+			f64_t fPower = 1.0;
+			if (Module.strClassName != "efparticlemodulevortex" ||
+				!ReadPortableNumberLiteral(Module, "power", 1.0, fPower))
+			{
+				strOutError =
+					"Portable authored particle Vortex semantics are unsupported.";
+				return false;
+			}
+		}
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t ValidatePortableAuthoredParticleRuntimeCarrier(
@@ -6078,6 +8757,11 @@ namespace
 					Module.strClassName + ".";
 				return false;
 			}
+			if (!ValidatePortableParticleModuleSemantics(
+					Module, NormalizedClass, strOutError))
+			{
+				return false;
+			}
 			iRequiredCount +=
 				NormalizedClass == "particlemodulerequired" ? 1u : 0u;
 			iMeshTypeDataCount +=
@@ -6094,6 +8778,26 @@ namespace
 					return false;
 				}
 			}
+			if (NormalizedClass == "particlemodulelocalvectorfield")
+			{
+				const auto AssetLiteral = std::find_if(
+					Module.Literals.begin(), Module.Literals.end(),
+					[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+					{
+						return Literal.strPropertyPath == "vectorfield.assetid";
+					});
+				if (AssetLiteral == Module.Literals.end() ||
+					AssetLiteral->eKind != EFFECT_SOURCE_LITERAL_KIND::STRING ||
+					!IsPortableVectorFieldAssetId(AssetLiteral->strString))
+				{
+					strOutError =
+						"Portable authored particle local vector field asset is missing or unsafe.";
+					return false;
+				}
+			}
+			const std::string_view DistributionCapabilityClass =
+				PortableParticleDistributionCapabilityClass(
+					Module.strClassName, NormalizedClass);
 			for (const EFFECT_DISTRIBUTION_DESC& Distribution :
 				Module.Distributions)
 			{
@@ -6108,13 +8812,12 @@ namespace
 						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
 					!Distribution.strParameterName.empty();
 				const bool_t bIgnoredNullCdo =
-					(NormalizedClass == "particlemodulerequired" &&
-					 Distribution.strPropertyPath == "spawnrate") ||
-					(NormalizedClass == "particlemodulespawn" &&
-					 Distribution.strPropertyPath == "ratescale");
+					NormalizedClass == "particlemodulerequired" &&
+					Distribution.strPropertyPath == "spawnrate";
 				if (bNativeEvidence ||
 					!IsPortableAuthoredParticleDistributionProperty(
-						NormalizedClass, Distribution.strPropertyPath) ||
+						DistributionCapabilityClass,
+						Distribution.strPropertyPath) ||
 					(bIgnoredNullCdo &&
 					 !IsPortableNullCdoDistribution(Distribution)) ||
 					!PropertyPaths.insert(Distribution.strPropertyPath).second)
@@ -6130,9 +8833,10 @@ namespace
 				static_cast<size_t>(std::count_if(
 					PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES.begin(),
 					PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES.end(),
-					[NormalizedClass](const auto& Capability)
+					[DistributionCapabilityClass](const auto& Capability)
 					{
-						return Capability.first == NormalizedClass;
+						return Capability.first ==
+							DistributionCapabilityClass;
 					}));
 			if (Module.Distributions.size() != iExpectedDistributionCount)
 			{
@@ -6150,22 +8854,25 @@ namespace
 		};
 		for (const auto& [ClassName, Count] : ModuleClassCounts)
 		{
+			/* UE3 can retain renderer-irrelevant modules in an emitter.  The
+			   portable runtime keeps their source order, but Sprite drawing never
+			   consumes MeshRotation state and Mesh drawing never consumes
+			   OrientationAxisLock presentation.  TypeDataMesh remains the actual
+			   renderer-Family discriminator. */
 			const bool_t bMeshOnly =
-				ClassName == "particlemodulemeshrotation" ||
-				ClassName == "particlemodulemeshrotationrate" ||
-				ClassName == "particlemodulemeshrotationratemultiplylife" ||
-				ClassName == "particlemodulemeshrotationrateoverlife" ||
 				ClassName == "particlemoduletypedatamesh";
 			const bool_t bSpriteOnly =
-				ClassName == "particlemoduleorientationaxislock" ||
+				ClassName == "particlemodulerotationratemultiplylife" ||
 				ClassName == "particlemodulesubuv";
+			const auto Maximum = std::ranges::find_if(
+				PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS,
+				[&ClassName](const auto& Capability)
+				{
+					return Capability.first == ClassName;
+				});
 			const size_t iMaximum =
-				ClassName == "particlemoduleacceleration" ||
-				ClassName == "particlemodulecolorscaleoverlife" ||
-				ClassName == "particlemodulelocation" ||
-				ClassName == "particlemodulelocationprimitivecylinderspin" ||
-				ClassName == "particlemodulesizemultiplylife" ||
-				ClassName == "particlemodulevelocity" ? 2u : 1u;
+				Maximum == PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS.end() ?
+				1u : Maximum->second;
 			if ((bMeshOnly && !bMesh) || (bSpriteOnly && bMesh) ||
 				Count > iMaximum)
 			{
@@ -6176,14 +8883,185 @@ namespace
 			}
 		}
 		if (iRequiredCount != 1u ||
-			CountClass("particlemodulelifetime") != 1u ||
-			CountClass("particlemodulesize") != 1u ||
+			CountClass("particlemodulelifetime") == 0u ||
 			CountClass("particlemodulespawn") != 1u ||
 			(bMesh ? iMeshTypeDataCount != 1u : iMeshTypeDataCount != 0u))
 		{
 			strOutError =
-				"Portable authored particle carrier Required/TypeDataMesh cardinality is invalid.";
+				"Portable authored particle carrier Required/Lifetime/TypeDataMesh cardinality is invalid.";
 			return false;
+		}
+		const size_t iLocalVectorFieldCount =
+			CountClass("particlemodulelocalvectorfield");
+		if ((CountClass("particlemodulevectorfieldrotationrate") != 0u ||
+			 CountClass("particlemodulevectorfieldscale") != 0u ||
+			 CountClass("particlemodulevectorfieldscaleoverlife") != 0u) &&
+			iLocalVectorFieldCount != 1u)
+		{
+			strOutError =
+				"Portable authored particle vector field companion has no unique local field.";
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t ValidatePortableAuthoredParticleEventRoutes(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError)
+	{
+		std::unordered_map<std::string, std::vector<std::string>> Generators;
+		std::unordered_map<std::string, std::vector<std::string>> Receivers;
+		uint64_t iMaximumQueuedEvents = 0u;
+		const auto RouteKey = [](const std::string_view strType,
+			const std::string_view strName)
+		{
+			std::string Result(strType);
+			Result.push_back('\0');
+			Result.append(strName);
+			return Result;
+		};
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (!Element.bVisible ||
+				!Is_EffectAuthoringExecutionTarget(
+					Element.Material.Execution) ||
+				Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+				Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+				Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
+				!Element.SourceRecipe.bEnabled ||
+				(Element.SourceRecipe.strRendererShape != "mesh" &&
+				 Element.SourceRecipe.strRendererShape != "sprite"))
+			{
+				continue;
+			}
+			uint32_t iGeneratorCount = 0u;
+			for (const EFFECT_SOURCE_MODULE_DESC& Module :
+				Element.SourceRecipe.Modules)
+			{
+				bool_t bEnabled = true;
+				if (!ReadPortableBoolLiteral(
+						Module, "benabled", true, bEnabled))
+				{
+					strOutError =
+						"Portable authored particle event module enabled state is invalid.";
+					return false;
+				}
+				if (!bEnabled)
+					continue;
+				const std::string_view strClass =
+					NormalizePortableParticleModuleClass(Module.strClassName);
+				if (strClass == "particlemoduleeventgenerator")
+				{
+					std::string_view strType;
+					std::string_view strName;
+					if (!ReadPortableStringLiteral(Module, "events[0].type",
+							"", strType) || strType != "epet_spawn" ||
+						!ReadPortableStringLiteral(Module,
+							"events[0].customname", "", strName) ||
+						strName.empty())
+					{
+						strOutError =
+							"Portable authored particle event generator route identity is invalid.";
+						return false;
+					}
+					Generators[RouteKey(strType, strName)].push_back(
+						Element.strElementId);
+					++iGeneratorCount;
+				}
+				else if (strClass == "particlemoduleeventreceiverspawn")
+				{
+					std::string_view strType;
+					std::string_view strName;
+					if (!ReadPortableStringLiteral(Module,
+							"eventgeneratortype", "", strType) ||
+						strType != "epet_spawn" ||
+						!ReadPortableStringLiteral(Module, "eventname", "",
+							strName) || strName.empty())
+					{
+						strOutError =
+							"Portable authored particle event receiver route identity is invalid.";
+						return false;
+					}
+					Receivers[RouteKey(strType, strName)].push_back(
+						Element.strElementId);
+				}
+			}
+			iMaximumQueuedEvents +=
+				static_cast<uint64_t>(Element.Detail.Particle.iMaxParticles) *
+				static_cast<uint64_t>(iGeneratorCount);
+		}
+
+		if (iMaximumQueuedEvents > MAX_PORTABLE_SOURCE_EVENTS_PER_STEP)
+		{
+			strOutError =
+				"Portable authored particle event queue has an unbounded per-step upper limit.";
+			return false;
+		}
+		for (const auto& [strRoute, SourceElements] : Generators)
+		{
+			(void)SourceElements;
+			if (!Receivers.contains(strRoute))
+			{
+				strOutError =
+					"Portable authored particle event generator has no same-document receiver.";
+				return false;
+			}
+		}
+		for (const auto& [strRoute, TargetElements] : Receivers)
+		{
+			(void)TargetElements;
+			if (!Generators.contains(strRoute))
+			{
+				strOutError =
+					"Portable authored particle event receiver has no same-document generator.";
+				return false;
+			}
+		}
+
+		std::unordered_map<std::string, std::vector<std::string>> Adjacency;
+		for (const auto& [strRoute, SourceElements] : Generators)
+		{
+			const std::vector<std::string>& TargetElements =
+				Receivers.at(strRoute);
+			for (const std::string& strSourceElement : SourceElements)
+			{
+				auto& Targets = Adjacency[strSourceElement];
+				Targets.insert(Targets.end(), TargetElements.begin(),
+					TargetElements.end());
+			}
+		}
+		std::unordered_map<std::string, uint8_t> VisitStates;
+		const auto Visit = [&](const auto& Self,
+			const std::string& strElementId) -> bool_t
+		{
+			uint8_t& iState = VisitStates[strElementId];
+			if (1u == iState)
+			{
+				strOutError =
+					"Portable authored particle event route cycle is not allowed.";
+				return false;
+			}
+			if (2u == iState)
+				return true;
+			iState = 1u;
+			const auto Iterator = Adjacency.find(strElementId);
+			if (Iterator != Adjacency.end())
+			{
+				for (const std::string& strTarget : Iterator->second)
+				{
+					if (!Self(Self, strTarget))
+						return false;
+				}
+			}
+			iState = 2u;
+			return true;
+		};
+		for (const auto& [strElementId, Targets] : Adjacency)
+		{
+			(void)Targets;
+			if (!Visit(Visit, strElementId))
+				return false;
 		}
 		strOutError.clear();
 		return true;
@@ -7748,7 +10626,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			if (!CueValue.Is_Object() ||
 				(bSourceContract && !Validate_ExactFields(CueValue,
 					{ "cueId", "modelAssetId", "clipName",
-						"startDelaySeconds", "durationSeconds", "visible",
+						"startDelaySeconds", "durationSeconds", "alphaMode",
+						"visible",
 						"localTransform", "assetPreTransform" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
@@ -7759,6 +10638,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			const DATA_JSON_VALUE* pModelAssetId =
 				CueValue.Find("modelAssetId");
 			const DATA_JSON_VALUE* pClipName = CueValue.Find("clipName");
+			const DATA_JSON_VALUE* pAlphaMode = CueValue.Find("alphaMode");
 			const DATA_JSON_VALUE* pVisible = CueValue.Find("visible");
 			EFFECT_MODEL_CUE_DESC Cue;
 			if (nullptr == pCueId || !pCueId->Is_String() ||
@@ -7778,6 +10658,16 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			Cue.strCueId = pCueId->Get_String();
 			Cue.strModelAssetId = pModelAssetId->Get_String();
 			Cue.strClipName = pClipName->Get_String();
+			if (nullptr != pAlphaMode &&
+				(!pAlphaMode->Is_String() ||
+				 !Parse_Token(pAlphaMode->Get_String(),
+					 MODEL_CUE_ALPHA_MODE_TOKENS,
+					 std::size(MODEL_CUE_ALPHA_MODE_TOKENS),
+					 Cue.eAlphaMode)))
+			{
+				strOutError = "Effect Model Cue alphaMode is invalid.";
+				return false;
+			}
 			Cue.bVisible = pVisible->Get_Boolean();
 			Staged.ModelCues.push_back(std::move(Cue));
 		}
@@ -8013,7 +10903,31 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				return false;
 			}
 		}
+		const DATA_JSON_VALUE* pAuthoringOverrides =
+			ElementValue.Find("authoringOverrides");
+		if (nullptr != pAuthoringOverrides)
+		{
+			if (bSourceContract)
+			{
+				strOutError =
+					"Effect source-contract Element cannot carry authoring overrides.";
+				return false;
+			}
+			if (!pAuthoringOverrides->Is_Object() ||
+				!Read_AuthoringOverrides(*pAuthoringOverrides, Element,
+					strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect authoring overrides are invalid.";
+				return false;
+			}
+		}
 		Staged.Elements.push_back(std::move(Element));
+	}
+	if (!bSourceContract &&
+		!Apply_Warlord17090SourceProjection(Staged, strOutError))
+	{
+		return false;
 	}
 	if (!(bSourceContract ? Validate_SourceContract(Staged, strOutError) :
 		Validate(Staged, strOutError)))
@@ -8058,6 +10972,9 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< CDataJson::Escape(Cue.strClipName)
 			<< "\", \"startDelaySeconds\": " << Cue.fStartDelaySeconds
 			<< ", \"durationSeconds\": " << Cue.fDurationSeconds
+			<< ", \"alphaMode\": \""
+			<< MODEL_CUE_ALPHA_MODE_TOKENS[static_cast<size_t>(Cue.eAlphaMode)]
+			<< "\""
 			<< ", \"visible\": " << (Cue.bVisible ? "true" : "false")
 			<< ",\n      \"localTransform\": { \"position\": ";
 		Write_Float3(Output, Cue.LocalTransform.vPosition);
@@ -8150,6 +11067,57 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		Write_SourceRecipe(Output, Element.SourceRecipe, bSourceContract);
 		Output << ",\n";
 		Write_SourcePresentation(Output, Element.SourcePresentation);
+		if (!Element.AuthoringOverrides.Is_Empty())
+		{
+			// Absent when empty so untouched documents stay byte-identical.
+			Output << ",\n      \"authoringOverrides\": { \"resources\": [";
+			for (size_t i = 0u;
+				i < Element.AuthoringOverrides.ResourceBindings.size(); ++i)
+			{
+				const Client::EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC&
+					Binding = Element.AuthoringOverrides.ResourceBindings[i];
+				Output << (0u == i ? " " : ", ")
+					<< "{ \"slotId\": \""
+					<< Client::CDataJson::Escape(Binding.strSlotId)
+					<< "\", \"assetId\": \""
+					<< Client::CDataJson::Escape(Binding.strAssetId)
+					<< "\", \"compilerAssetId\": \""
+					<< Client::CDataJson::Escape(Binding.strCompilerAssetId)
+					<< "\" }";
+			}
+			Output << (Element.AuthoringOverrides.ResourceBindings.empty() ?
+				"], \"scalars\": [" : " ], \"scalars\": [");
+			for (size_t i = 0u;
+				i < Element.AuthoringOverrides.Scalars.size(); ++i)
+			{
+				const Client::EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Scalar =
+					Element.AuthoringOverrides.Scalars[i];
+				Output << (0u == i ? " " : ", ")
+					<< "{ \"name\": \""
+					<< Client::CDataJson::Escape(Scalar.strName)
+					<< "\", \"value\": " << Scalar.fValue
+					<< ", \"compilerValue\": " << Scalar.fCompilerValue
+					<< " }";
+			}
+			Output << (Element.AuthoringOverrides.Scalars.empty() ?
+				"], \"colors\": [" : " ], \"colors\": [");
+			for (size_t i = 0u;
+				i < Element.AuthoringOverrides.Colors.size(); ++i)
+			{
+				const Client::EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Color =
+					Element.AuthoringOverrides.Colors[i];
+				Output << (0u == i ? " " : ", ")
+					<< "{ \"name\": \""
+					<< Client::CDataJson::Escape(Color.strName)
+					<< "\", \"value\": ";
+				Write_Float4(Output, Color.vValue);
+				Output << ", \"compilerValue\": ";
+				Write_Float4(Output, Color.vCompilerValue);
+				Output << " }";
+			}
+			Output << (Element.AuthoringOverrides.Colors.empty() ?
+				"] }" : " ] }");
+		}
 		Output << "\n    }";
 	}
 	if (!Document.Elements.empty())

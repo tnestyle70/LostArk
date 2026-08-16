@@ -45,6 +45,33 @@
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ActorCatalog.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CharacterCatalog.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\PlayableCharacterPreviewContract.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_LanceMaster.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_GunSlinger.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Slayer.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Artist.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_DimensionMaster.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Logic_Warlord.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
@@ -76,6 +103,9 @@
       <Filter>Client</Filter>
     </ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\NetObjectRegistry.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\WorldPlayerNameplateView.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">

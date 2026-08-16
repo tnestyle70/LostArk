@@ -33,6 +33,8 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 
 `CHARACTER_SELECT_ARENA`의 gameplay authority는 Server에 남지만 simulation ownership은 session-private이다. 각 session은 자기 `CGameRoom`의 player, audition entity, HP와 damage event만 snapshot으로 받고 다른 Character Select session과 만나지 않는다. 퇴장한 session의 private room은 queued `LEAVE`와 reset을 처리한 뒤 폐기한다. Bern, Valtan, Training Ground는 기존처럼 world별 shared room이므로 그 안에서는 여러 player가 같은 authoritative 상태를 본다.
 
+Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
+
 2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
@@ -221,6 +223,18 @@ Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결
 현재 roster는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 class다. 여섯 class의 quick slot ACTIVE 스킬과 LMB COMBO 평타는 모두 Server 승인과 snapshot presentation을 사용한다. `PlayerSkills.json`이 `(characterClass, inputSlot) -> skillId`, kind, timing, comboStages를 소유하고, `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`이 같은 skillId에 연결할 실제 model clip 순서를 소유한다. ACTIVE는 하나 이상의 순차 clip을 재생하고 마지막 pose를 Server `NONE`까지 유지한다. COMBO는 Server `iComboStage`가 지정한 BA 단계로 직접 이동한다. 누락되거나 잘못된 presentation 문서는 spawn/replication을 중단하지 않고 해당 action의 표현만 격리한다.
 
 Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만 저장할 수 있다. 작업자는 key/skill row에서 ACTIVE의 순차 clip 또는 COMBO의 BA1/BA2/BA3/BA4 clip을 지정하고 atomic Save한다. `inputSlot`, `skillId`, `skillKind`, timing, damage와 combo 단계 수는 Tool에서 바꾸지 않는다. `.skilltiming/.clipmap/.animnotify/.clipseq` 및 `Data/Animation/Reference`는 read-only 참고 자료다.
+
+제품 Effect 선택 정본은 `PlayerSkills.inputSlot -> skillId -> skillbindings clip`에서
+`clip-local animevent effectref=asset -> Effect catalog/prewarm`으로 이어지는 경로다. `PlayerSkills.effectId`를 복원 결과로 바꾸거나
+다른 class/skill 문서를 fallback으로 복사하지 않는다. `Data/Effects/ProductCueApprovals.json`은 사용자가
+명시적으로 승인한 exact cue tuple, authored SHA, provenance와 rollback Effect ID만 소유하고 publisher가
+`EffectProductCueAdmissions.runtime.json` receipt를 catalog와 같은 transaction으로 만든다.
+
+`AUTHORING_APPROXIMATE`는 자동 Product 대상도, Hard와 같은 전역 거부 대상도 아니다. exact cue 승인과
+pinned authored SHA가 일치한 경우에만 기존 renderer/runtime에서 `PRODUCT_APPROVED_APPROXIMATE`로
+admit하며 element exactness는 계속 Approximate로 표시한다. 현재 문서에 Approximate element가 없으면
+receipt는 `PRODUCT_APPROVED_FULL`로 관측 상태를 기록한다. visible Hard, unsafe resource, stale SHA,
+cue tuple 불일치와 무승인 Approximate는 fail-closed하고 이전 catalog/cue를 유지한다.
 
 ## 6. UI와 밸런스 데이터
 
@@ -535,6 +549,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
 - Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Lobby 승인 Character Select visual map, Server-authoritative class 변경, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
+- Character Select `Create Character`의 process-session pending/created nickname transaction, Server-approved Bern commit, created/audition direct Valtan identity, Bern/Valtan Server-replicated nameplate
 
 별도 수직 슬라이스:
 

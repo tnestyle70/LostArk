@@ -1,0 +1,111 @@
+{
+  "schema": "lostark.effect-combo-role-manifest",
+  "version": 1,
+  "skillId": 31000,
+  "strategy": "DISABLE_FIRST_PRESERVE_SOURCE_ROWS_AND_COMPANION_LANES",
+  "sourceEvidence": {
+    "sourceReceiptPath": "Effects/Imported/Artist/skill.31000.source-receipt.json",
+    "sourceReceiptSha256": "1d2a399b855b6e8849c7553893fcc3f49a78397364398e787140da68b4d13247",
+    "logicalPackage": "FX_PC_SDM_00",
+    "physicalPackage": "YGI3SWD3SHKB3D11G9KMHCX6M.upk",
+    "sourcePackageSha256": "dccf50a174f2e425f913c980649fe7ade51096dc1d956e72af99207818cfeca0"
+  },
+  "stages": [
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba1.unified",
+      "documentElementCount": 7,
+      "visibleElementCount": 3,
+      "roles": {
+        "BLACK_SLASH_MESH": [
+          "authored.source-particle.a41eed26b6f8b7f9df8233da"
+        ],
+        "BLACK_SLASH_EDGE": [
+          "authored.source-particle.9d8f57121c96d4aeb29e8ce0"
+        ],
+        "INK_COMPANION": [
+          "authored.source-particle.64ad5bc0c8d47c8237e19f67"
+        ]
+      },
+      "suppressedElementIds": [
+        "authored.source-particle.7291860275eec54555d26a11",
+        "authored.source-particle.ecaed9c263be10f1c21fcdca",
+        "authored.source-particle.5d73a9f29733c64381ff0a43",
+        "authored.source-particle.1485643387a4b04a2aa9c7e2"
+      ]
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba2.unified",
+      "documentElementCount": 3,
+      "visibleElementCount": 3,
+      "roles": {
+        "BLACK_SLASH_MESH": [
+          "authored.source-particle.25e72dfb5a9a416facc02888"
+        ],
+        "BLACK_SLASH_EDGE": [
+          "authored.source-particle.60266e49af7ddbd2fa4712ed"
+        ],
+        "INK_COMPANION": [
+          "authored.source-particle.e168a157591d5dcfbe07d46f"
+        ]
+      },
+      "suppressedElementIds": []
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba3.unified",
+      "documentElementCount": 6,
+      "visibleElementCount": 5,
+      "roles": {
+        "BLACK_SLASH_MESH": [
+          "authored.source-particle.592975c2b27690376965fc8e",
+          "authored.source-particle.65e208f117586003f28a3e91",
+          "authored.source-particle.daa56ff31597f93b8afb6a35"
+        ],
+        "BLACK_SLASH_EDGE": [
+          "authored.source-particle.32d6169b6d4dfc688d74fd09"
+        ],
+        "INK_COMPANION": [
+          "authored.source-particle.0fdb892e98401187e67d9363"
+        ]
+      },
+      "suppressedElementIds": [
+        "authored.source-particle.c049a78a21666caee638ada2"
+      ]
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba4.unified",
+      "documentElementCount": 13,
+      "visibleElementCount": 5,
+      "roles": {
+        "TWO_SMALL_ONE_LARGE_SLASH_MESH": [
+          "authored.source-particle.3be7d2330cfbd69fbd707693",
+          "authored.source-particle.50c7b1854919386dc3630e1e",
+          "authored.source-particle.8b5b65f85af9024b31f5d370"
+        ],
+        "BLACK_SLASH_EDGE": [
+          "authored.source-particle.945fe38e3e84e3f3408504b1"
+        ],
+        "INK_COMPANION": [
+          "authored.source-particle.cf86ffeb5d39abbc6d24eac7"
+        ]
+      },
+      "suppressedElementIds": [
+        "authored.source-particle.6892e2bbc1c244135f939f73",
+        "authored.source-particle.05fed8052067162678dd4153",
+        "authored.source-particle.7c6ec3ff9175f3470a8d6029",
+        "authored.source-particle.3c0134e1d2a709e60cf37ea4",
+        "authored.source-particle.6d8d09e1cfabdd5c9d2eca4d",
+        "authored.source-particle.4492383af4036eda52fbdcc4",
+        "authored.source-decal.8826edc6e4f65236a9722106",
+        "authored.source-decal.9f9f7d09e83e85123dfb2983"
+      ]
+    }
+  ],
+  "selectedFamilyContract": {
+    "meshSourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_me_master_01_235_dt_tr",
+    "meshAssetId": "Effect/Artist/Meshes/fx_j_helixline_2.wmodel",
+    "edgeSourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_75_tr",
+    "companionSourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_master_01_17_tr",
+    "admission": "UNCHANGED_AUTHORING_APPROXIMATE",
+    "newRuntimeProfile": false
+  }
+}

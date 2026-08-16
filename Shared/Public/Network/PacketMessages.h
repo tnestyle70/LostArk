@@ -4,6 +4,7 @@
 #include "NetworkIds.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 //character의 class와 nickname용 packet
 namespace LostArk::Shared
@@ -13,6 +14,9 @@ namespace LostArk::Shared
 
 	class CPacketReader;
 	class CPacketWriter;
+
+	[[nodiscard]] bool Is_Valid_PlayerNickname(
+		std::string_view nickname) noexcept;
 
 	//Enter World
 	struct C2S_ENTER_WORLD

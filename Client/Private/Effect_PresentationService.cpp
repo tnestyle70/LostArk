@@ -91,10 +91,19 @@ namespace
 			return (nullptr != pCharacter) != (nullptr != pBoss);
 		}
 
-		std::shared_ptr<Engine::CTransform> Get_Transform() const
+		bool_t Try_Get_PresentationRoot(float4x4_t& Out) const
 		{
-			return nullptr != pCharacter ? pCharacter->Get_Transform() :
-				(nullptr != pBoss ? pBoss->Get_Transform() : nullptr);
+			if (nullptr != pCharacter)
+			{
+				const std::shared_ptr<Engine::CTransform> pTransform =
+					pCharacter->Get_Transform();
+				if (nullptr == pTransform)
+					return false;
+				Out = *pTransform->Get_WorldMatrixPtr();
+				return true;
+			}
+			return nullptr != pBoss &&
+				pBoss->Try_Get_PresentationRootMatrix(&Out);
 		}
 
 		std::shared_ptr<Engine::CModel> Get_Model() const
@@ -500,11 +509,8 @@ namespace
         const std::string& strAnchorSlotId,
         float4x4_t& Out)
     {
-		const std::shared_ptr<Engine::CTransform> pTransform =
-			Owner.Get_Transform();
-		if (!Owner.Is_Valid() || nullptr == pTransform)
+		if (!Owner.Is_Valid() || !Owner.Try_Get_PresentationRoot(Out))
             return false;
-		Out = *pTransform->Get_WorldMatrixPtr();
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =
@@ -628,15 +634,14 @@ namespace
     {
 		InOutResult.clear();
 		InOutResult.reserve(Requests.size());
-		const std::shared_ptr<Engine::CTransform> pTransform =
-			Owner.Get_Transform();
-		if (!Owner.Is_Valid() || nullptr == pTransform)
+		float4x4_t PresentationRoot{};
+		if (!Owner.Is_Valid() ||
+			!Owner.Try_Get_PresentationRoot(PresentationRoot))
             return;
 		const std::shared_ptr<Engine::CModel> pModel = Owner.Get_Model();
         if (nullptr == pModel)
             return;
-		const matrix_t OwnerWorld = XMLoadFloat4x4(
-			pTransform->Get_WorldMatrixPtr());
+		const matrix_t OwnerWorld = XMLoadFloat4x4(&PresentationRoot);
         for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
         {
             if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
@@ -1524,11 +1529,17 @@ bool_t Client::CEffectPresentationService::Prepare_ProductCues(
         if (Cue.strEffectAssetId.empty() ||
             !CEffectCatalog::Contains(Cue.strEffectAssetId))
         {
-            strOutStatus =
-                "Animation Effect cue target is not admitted by the catalog.";
+			strOutStatus =
+				"Animation Effect cue target is not admitted by the catalog.";
             g_strStatus = strOutStatus;
             return false;
         }
+		if (!CEffectCatalog::Admit_ProductSpawn(Cue.strEffectAssetId,
+				Cue.pProductAdmissionToken, strOutStatus))
+		{
+			g_strStatus = strOutStatus;
+			return false;
+		}
         StagedTargets.insert(Cue.strEffectAssetId);
     }
     if (StagedTargets == g_ProductEffectTargets)
@@ -2298,6 +2309,12 @@ bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
+	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
+			Desc.pProductAdmissionToken, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{
@@ -2411,6 +2428,12 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
+	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
+			Desc.pProductAdmissionToken, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{

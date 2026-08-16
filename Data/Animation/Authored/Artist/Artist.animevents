@@ -1015,18 +1015,18 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1031
 "sdm_sk_swampofbondage" CANCEL startms=650 endms=1733 payload="이동기캔슬" src=orig
 "sdm_sk_swampofbondage" CANCEL startms=1350 endms=1733 payload="스킬캔슬" src=orig
 "sdm_sk_swampofbondage" CANCEL startms=1350 endms=1733 payload="이동캔슬" src=orig
-"sdm_att_battle_1_01" EFFECT startms=0 payload="effect.artist.skill.31000.ba3" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_att_battle_1_02" EFFECT startms=0 payload="effect.artist.skill.31000.ba2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_att_battle_1_03" EFFECT startms=0 payload="effect.artist.skill.31000.ba1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_att_battle_1_04" EFFECT startms=0 payload="effect.artist.skill.31000.ba4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_butterflydream" EFFECT startms=0 payload="effect.artist.skill.31460.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_flyinheaven" EFFECT startms=0 payload="effect.artist.skill.31480.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_fourgentlemen" EFFECT startms=0 payload="effect.artist.skill.31420.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_inkpaddle" EFFECT startms=0 payload="effect.artist.skill.31200.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_inkshot" EFFECT startms=0 payload="effect.artist.skill.31430.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_att_battle_1_01" EFFECT startms=0 payload="effect.artist.skill.31000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_att_battle_1_02" EFFECT startms=0 payload="effect.artist.skill.31000.ba2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_att_battle_1_03" EFFECT startms=0 payload="effect.artist.skill.31000.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_att_battle_1_04" EFFECT startms=0 payload="effect.artist.skill.31000.ba4.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_butterflydream" EFFECT startms=0 payload="effect.artist.skill.31460.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_flyinheaven" EFFECT startms=0 payload="effect.artist.skill.31480.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_fourgentlemen" EFFECT startms=0 payload="effect.artist.skill.31420.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_inkpaddle" EFFECT startms=0 payload="effect.artist.skill.31200.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_inkshot" EFFECT startms=0 payload="effect.artist.skill.31430.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_onestroke" EFFECT startms=0 payload="effect.artist.skill.31470.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_pungnyudo" EFFECT startms=0 payload="effect.artist.skill.31910.authored-baseline" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_skykongkong_01" EFFECT startms=0 payload="effect.artist.skill.31210.ba1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="effect.artist.skill.31910.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_skykongkong_01" EFFECT startms=0 payload="effect.artist.skill.31210.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_skykongkong_02" EFFECT startms=0 payload="effect.artist.skill.31210.ba4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_super_pungnyudo_01" EFFECT startms=0 payload="effect.artist.skill.31930.authored-baseline.clip1" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="effect.artist.skill.31930.authored-baseline.clip2" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_super_pungnyudo_01" EFFECT startms=0 payload="effect.artist.skill.31930.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="effect.artist.skill.31930.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

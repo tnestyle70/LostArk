@@ -1,0 +1,25 @@
+{
+  "schema": "lostark.four-class-source-material-evidence-receipt",
+  "formatVersion": 1,
+  "characterClass": "FOUR_CLASS",
+  "summary": {
+    "materialCandidateCount": 953,
+    "resolvedParentPropsCandidateCount": 901,
+    "failClosedCandidateCount": 52,
+    "missingExtractorCandidateCount": 0
+  },
+  "sources": [
+    {
+      "path": "Data/Effects/Imported/FourClassCombat/FourClassCombat.material-candidate-catalog.json",
+      "sha256": "a4d8471fb7fdffdf8fb3ca1f5f679381b98e7213c4bf16488caed9d8d5aeed91"
+    },
+    {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/FourClassMaterials/FourClass.material-map.json",
+      "sha256": "2e0f1bfdb0722cd95d0121e1c48f1d9007f223dc71e9dba2be6a33610459c9ca"
+    },
+    {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/FourClassMaterials/FourClass.material-extract.receipt.json",
+      "sha256": "5409e19025197bc495d85c1e1227118ea10038a15efee541f0062c633a46bd98"
+    }
+  ]
+}

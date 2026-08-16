@@ -12,10 +12,6 @@
 
 namespace
 {
-	constexpr char_t PLAYER_NICKNAME[] = "Player";
-	constexpr LostArk::Shared::CHARACTER_CLASS_ID DEFAULT_ENTRY_CLASS =
-		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
-
 	string Describe_ServerEndpoint()
 	{
 		return CNetworkManager::Resolve_ServerHost() + ":" +
@@ -52,29 +48,6 @@ namespace
 			return "Not selected";
 		}
 	}
-
-	bool_t Resolve_EntryCharacterClass(
-		LostArk::Shared::CHARACTER_CLASS_ID& outCharacterClass,
-		bool_t& outUsedDefault)
-	{
-		outUsedDefault = false;
-		if (CCharacterSelectionState::Try_Get_SelectedClass(
-			outCharacterClass))
-		{
-			return true;
-		}
-
-		if (!CCharacterSelectionState::Select(DEFAULT_ENTRY_CLASS))
-		{
-			outCharacterClass =
-				LostArk::Shared::CHARACTER_CLASS_ID::END;
-			return false;
-		}
-
-		outCharacterClass = DEFAULT_ENTRY_CLASS;
-		outUsedDefault = true;
-		return true;
-	}
 }
 
 CLevel_Lobby::CLevel_Lobby(
@@ -96,8 +69,12 @@ HRESULT CLevel_Lobby::Initialize()
 void CLevel_Lobby::Update(const f32_t fTimeDelta)
 {
 	LOBBY_COMMAND command{};
-	if (CLobbyCommandService::Try_Consume(command))
-		Begin_StageRequest(command);
+	if (CLobbyCommandService::Try_Consume(command) &&
+		!Begin_StageRequest(command) &&
+		LOBBY_STAGE::BERN == command.eStage)
+	{
+		CCharacterSelectionState::Cancel_PendingCreation();
+	}
 
 	Consume_EnterRejected();
 	Consume_EnterAccepted();
@@ -198,14 +175,18 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	}
 #endif
 
-	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	bool_t usedDefaultClass = false;
-	if (!Resolve_EntryCharacterClass(characterClass, usedDefaultClass))
+	CHARACTER_ENTRY_IDENTITY identity{};
+	if (!CCharacterSelectionState::Try_Resolve_ForWorld(
+		eWorldId, identity))
 	{
-		m_strStatus = "The default entry class could not be committed.";
+		m_strStatus = LostArk::Shared::WORLD_ID::BERN == eWorldId ?
+			"Create a character before entering Bern." :
+			"The entry identity could not be resolved.";
 		return false;
 	}
+	const bool_t usesPendingCreation =
+		CHARACTER_ENTRY_IDENTITY_SOURCE::PENDING_CREATION ==
+		identity.eSource;
 
 	CNetworkManager& networkManager = CNetworkManager::Get();
 	networkManager.Close_ServerConnection();
@@ -217,6 +198,8 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 		serverHost,
 		CNetworkManager::DEFAULT_SERVER_PORT))
 	{
+		if (usesPendingCreation)
+			CCharacterSelectionState::Cancel_PendingCreation();
 		m_strStatus = "Server connection failed for " +
 			serverHost + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT) + " (WSA " +
@@ -226,9 +209,11 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 
 	if (!networkManager.Send_EnterWorld(
 		eWorldId,
-		characterClass,
-		PLAYER_NICKNAME))
+		identity.eCharacterClass,
+		identity.strNickname))
 	{
+		if (usesPendingCreation)
+			CCharacterSelectionState::Cancel_PendingCreation();
 		m_strStatus = "C2S_ENTER_WORLD send failed (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
 		networkManager.Close_ServerConnection();
@@ -239,11 +224,11 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	m_ePendingWorldId = eWorldId;
 	m_ePendingLevel = eTargetLevel;
 	m_ePendingPurpose = purpose;
+	m_hasPendingCharacterCreationEntry = usesPendingCreation;
 	m_ApprovalDeadline =
 		std::chrono::steady_clock::now() + std::chrono::seconds(5);
-	m_strStatus = usedDefaultClass ?
-		"No class was selected. Lance Master was committed and entry approval is pending." :
-		"C2S_ENTER_WORLD sent. Waiting for server approval.";
+	m_strStatus = "C2S_ENTER_WORLD sent for " +
+		identity.strNickname + ". Waiting for server approval.";
 	return true;
 }
 
@@ -341,6 +326,7 @@ void CLevel_Lobby::Consume_EnterAccepted()
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
 	m_ePendingLevel = LEVEL::END;
 	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
+	m_hasPendingCharacterCreationEntry = false;
 	m_ApprovalDeadline = {};
 	m_strStatus = "Server approved the world. Loading the stage.";
 }
@@ -348,10 +334,13 @@ void CLevel_Lobby::Consume_EnterAccepted()
 void CLevel_Lobby::Cancel_PendingEntry(const string& reason)
 {
 	CNetworkManager::Get().Close_ServerConnection();
+	if (m_hasPendingCharacterCreationEntry)
+		CCharacterSelectionState::Cancel_PendingCreation();
 	m_eEntryState = ENTRY_STATE::IDLE;
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
 	m_ePendingLevel = LEVEL::END;
 	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
+	m_hasPendingCharacterCreationEntry = false;
 	m_ApprovalDeadline = {};
 	m_strStatus = reason;
 }
@@ -377,14 +366,22 @@ void CLevel_Lobby::Render_StagePanel()
 		return;
 	}
 
-	LostArk::Shared::CHARACTER_CLASS_ID selectedClass =
-		DEFAULT_ENTRY_CLASS;
-	const bool_t hasExplicitSelection =
-		CCharacterSelectionState::Try_Get_SelectedClass(selectedClass);
+	CHARACTER_ENTRY_IDENTITY entryIdentity{};
+	const bool_t hasEntryIdentity =
+		CCharacterSelectionState::Try_Resolve_ForWorld(
+			LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA,
+			entryIdentity);
 	ImGui::Text(
-		"Entry character: %s%s",
-		Get_CharacterClassName(selectedClass),
-		hasExplicitSelection ? "" : " (default)");
+		"Entry character: %s",
+		hasEntryIdentity ?
+			Get_CharacterClassName(entryIdentity.eCharacterClass) :
+			"Unavailable");
+	if (hasEntryIdentity)
+	{
+		ImGui::TextDisabled(
+			"Entry nickname: %s",
+			entryIdentity.strNickname.c_str());
+	}
 	const string serverEndpoint = Describe_ServerEndpoint();
 	ImGui::TextDisabled("Server: %s", serverEndpoint.c_str());
 #ifdef _DEBUG
@@ -421,11 +418,6 @@ void CLevel_Lobby::Render_StagePanel()
 		CLobbyCommandService::Request(LOBBY_STAGE::BERN);
 	ImGui::EndDisabled();
 
-	if (!hasExplicitSelection)
-	{
-		ImGui::TextDisabled(
-			"Direct entry commits Lance Master. Character Select changes it.");
-	}
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
 }

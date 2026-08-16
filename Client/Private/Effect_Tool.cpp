@@ -6,6 +6,7 @@
 #include "AnimationTargetService.h"
 #include "Character.h"
 #include "CharacterSpec.h"
+#include "DataJson.h"
 #include "EffectAuthoringTransfer.h"
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_Catalog.h"
@@ -67,29 +68,27 @@ namespace
 		"effect.dimensionmaster.skill.2050500";
 	constexpr const char_t* DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID =
 		"effect.dimensionmaster.skill.2050500.unified";
-	constexpr std::string_view MATERIAL_EXECUTION_LANE_SLOT_PREFIX =
-		"materialExecutionLane:";
+	bool Is_CompilerOwnedPortableRecipe(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Element.SourceRecipe.bEnabled && !Document.bSourceContract &&
+			Element.SourceRecipe.strSourceContractProfileId.empty() &&
+			Element.SourceRecipe.strSourceContractSha256.empty() &&
+			Element.SourceRecipe.strSourceGraphSha256.empty();
+	}
 
 	bool Try_ParseMaterialExecutionLaneSlotId(
 		const std::string_view strSlotId,
 		std::string_view& strOutLaneId)
 	{
-		if (strSlotId.size() <= MATERIAL_EXECUTION_LANE_SLOT_PREFIX.size() ||
-			0 != strSlotId.compare(0u,
-				MATERIAL_EXECUTION_LANE_SLOT_PREFIX.size(),
-				MATERIAL_EXECUTION_LANE_SLOT_PREFIX))
-		{
-			strOutLaneId = {};
-			return false;
-		}
-		strOutLaneId = strSlotId.substr(
-			MATERIAL_EXECUTION_LANE_SLOT_PREFIX.size());
-		return !strOutLaneId.empty();
+		return Client::Try_ParseEffectMaterialExecutionLaneStableSlotId(
+			strSlotId, strOutLaneId);
 	}
 
 	std::string MaterialExecutionLaneSlotId(const std::string& strLaneId)
 	{
-		return std::string(MATERIAL_EXECUTION_LANE_SLOT_PREFIX) + strLaneId;
+		return Client::Build_EffectMaterialExecutionLaneStableSlotId(strLaneId);
 	}
 
 	Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC* Find_MaterialExecutionLane(
@@ -107,6 +106,99 @@ namespace
 			{ return Lane.strLaneId == strLaneId; });
 		return Iterator == Element.Material.Execution.TextureLanes.end() ?
 			nullptr : &*Iterator;
+	}
+
+	Client::EFFECT_NAMED_TEXTURE_DESC* Find_SourceMaterialTexture(
+		Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strSlotId)
+	{
+		std::string_view strName;
+		if (!Client::Try_ParseEffectSourceMaterialTextureStableSlotId(
+				strSlotId, strName))
+		{
+			return nullptr;
+		}
+		const auto Iterator = std::find_if(
+			Element.Material.SourceMaterial.Textures.begin(),
+			Element.Material.SourceMaterial.Textures.end(),
+			[strName](const Client::EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{ return Texture.strName == strName; });
+		return Iterator == Element.Material.SourceMaterial.Textures.end() ?
+			nullptr : &*Iterator;
+	}
+
+	const Client::EFFECT_NAMED_TEXTURE_DESC* Find_SourceMaterialTexture(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strSlotId)
+	{
+		std::string_view strName;
+		if (!Client::Try_ParseEffectSourceMaterialTextureStableSlotId(
+				strSlotId, strName))
+		{
+			return nullptr;
+		}
+		const auto Iterator = std::find_if(
+			Element.Material.SourceMaterial.Textures.begin(),
+			Element.Material.SourceMaterial.Textures.end(),
+			[strName](const Client::EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{ return Texture.strName == strName; });
+		return Iterator == Element.Material.SourceMaterial.Textures.end() ?
+			nullptr : &*Iterator;
+	}
+
+	bool Reset_AllAuthoringOverrides(
+		Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		Client::EFFECT_ELEMENT_DESC Staged = Element;
+		std::vector<std::string> ResourceSlots;
+		std::vector<std::string> Scalars;
+		std::vector<std::string> Colors;
+		ResourceSlots.reserve(Staged.AuthoringOverrides.ResourceBindings.size());
+		Scalars.reserve(Staged.AuthoringOverrides.Scalars.size());
+		Colors.reserve(Staged.AuthoringOverrides.Colors.size());
+		for (const Client::EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override :
+			Staged.AuthoringOverrides.ResourceBindings)
+		{
+			ResourceSlots.push_back(Override.strSlotId);
+		}
+		for (const Client::EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Override :
+			Staged.AuthoringOverrides.Scalars)
+		{
+			Scalars.push_back(Override.strName);
+		}
+		for (const Client::EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Override :
+			Staged.AuthoringOverrides.Colors)
+		{
+			Colors.push_back(Override.strName);
+		}
+		for (const std::string& strSlotId : ResourceSlots)
+		{
+			if (!Client::CEffectDocumentCodec::Reset_AuthoringResourceOverride(
+					Staged, strSlotId, strOutError))
+			{
+				return false;
+			}
+		}
+		for (const std::string& strName : Scalars)
+		{
+			if (!Client::CEffectDocumentCodec::Reset_AuthoringScalarOverride(
+					Staged, strName, strOutError))
+			{
+				return false;
+			}
+		}
+		for (const std::string& strName : Colors)
+		{
+			if (!Client::CEffectDocumentCodec::Reset_AuthoringColorOverride(
+					Staged, strName, strOutError))
+			{
+				return false;
+			}
+		}
+		Element = std::move(Staged);
+		strOutError.clear();
+		return true;
 	}
 
 	const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC*
@@ -718,6 +810,16 @@ namespace
 		}
 	}
 
+	bool_t HasAuthoringApproximate(
+		const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		return std::any_of(Document.Elements.begin(), Document.Elements.end(),
+			[](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.Material.Execution.bAuthoringApproximate;
+			});
+	}
+
 	std::string FriendlyAuthoringElementLabel(
 		const Client::EFFECT_AUTHORING_FAMILY eFamily,
 		const size_t iOrdinal,
@@ -728,6 +830,8 @@ namespace
 		if (iOrdinal < 10u)
 			Label << '0';
 		Label << iOrdinal << " | " << PrimaryAuthoringResourceLeaf(Element);
+		if (Element.Material.Execution.bAuthoringApproximate)
+			Label << " [APPROXIMATE]";
 		return Label.str();
 	}
 
@@ -1533,6 +1637,50 @@ namespace
             nullptr : &*Iterator;
     }
 
+	bool Is_SourceDecalBaseAdmissionCarrier(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Client::EFFECT_ELEMENT_KIND::DECAL == Element.eKind &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "decal" &&
+			Element.Material.strTemplateId ==
+				Client::EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			!Element.Material.Execution.bEnabled;
+	}
+
+	bool Has_BaseTextureBinding(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pBase = Find_Binding(
+			Element, Client::EFFECT_STANDARD_MATERIAL_INPUTS.front().strSlotId);
+		return nullptr != pBase && !pBase->strAssetId.empty();
+	}
+
+	bool Is_MissingBaseSourceDecal(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return Is_SourceDecalBaseAdmissionCarrier(Element) &&
+			Element.Material.Execution.bFailClosed &&
+			!Has_BaseTextureBinding(Element);
+	}
+
+	bool Is_BaseTextureSlot(const std::string_view strSlotId)
+	{
+		return strSlotId ==
+			Client::EFFECT_STANDARD_MATERIAL_INPUTS.front().strSlotId;
+	}
+
+	bool Is_ElementPreviewAdmitted(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		// An authoring-approximate carrier owns its exact source resources and
+		// only lacks proven material semantics.  It previews so the artist can
+		// tune it; product admission is refused elsewhere and is unaffected.
+		return Element.bVisible &&
+			Client::Is_EffectAuthoringExecutionTarget(
+				Element.Material.Execution);
+	}
+
     struct PARTICLE_LAYER_SUMMARY final
     {
         size_t iStandaloneMeshCount = 0u;
@@ -1902,6 +2050,73 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         m_strPreviewStatus = pObject->Get_Status();
         return;
     }
+	if (m_bValtanBossPatternTransformHistoryRequired)
+	{
+		if (!m_bValtanBossPatternTransformHistoryActive ||
+			!m_ActiveDocument.has_value() ||
+			m_ActiveDocument->strEffectAssetId !=
+				m_strValtanBossPatternPreviewEffectAssetId)
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			Set_SynchronizedAnimationPaused(true);
+			m_strPreviewStatus =
+				"World preview hidden: Valtan 420633 exact b_effectroot history is unavailable.";
+			return;
+		}
+		if (bSeekAfterLoop)
+		{
+			Reset_ProductCueSnapshot();
+			Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+			[this](const f32_t fSampleTimeSeconds,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& strOutError)
+			{
+				return Build_ValtanBossPatternTransformSample(
+					fSampleTimeSeconds, OutSample, strOutError);
+			};
+		const f32_t fEffectSampleTime =
+			Resolve_EffectSampleTime(m_fPreviewTimeSeconds);
+		std::string TransformError;
+		bool_t bHistoryAdvanced = true;
+		if (bSeekAfterLoop ||
+			std::abs(pObject->Get_PreviewFixedStepClockSeconds() -
+				static_cast<f64_t>(fEffectSampleTime)) > 1.0e-5 &&
+			fSequentialAdvance <= 0.f)
+		{
+			bHistoryAdvanced = pObject->Set_SampleTimeWithTransformHistory(
+				fEffectSampleTime, TransformProvider, TransformError);
+		}
+		else if (fSequentialAdvance > 0.f)
+		{
+			bHistoryAdvanced = pObject->Advance_PreviewWithTransformHistory(
+				fSequentialAdvance, TransformProvider, TransformError);
+		}
+		if (!bHistoryAdvanced)
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			Set_SynchronizedAnimationPaused(true);
+			m_bValtanBossPatternTransformHistoryActive = false;
+			m_strPreviewStatus =
+				"World preview hidden: Valtan 420633 anchor history failed: " +
+				TransformError;
+			return;
+		}
+		pObject->Set_Visible(m_bPreviewVisibleRequested);
+		if (m_bPreviewVisibleRequested)
+		{
+			m_strPreviewStatus =
+				"Valtan 420633 preview follows exact B_EffectRoot / b_effectroot history.";
+		}
+		return;
+	}
     if (bSeekAfterLoop)
     {
         Reset_ProductCueSnapshot();
@@ -2066,7 +2281,7 @@ void Client::CEffect_Tool::Render_MeshAuthoringWorkbench()
 		EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE,
 		EFFECT_AUTHORING_FAMILY::LOCAL_DECAL,
 		EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON };
-	ImGui::TextUnformatted("Element Family");
+	ImGui::TextUnformatted("Element Type");
 	for (size_t iFamily = 0u; iFamily < FAMILIES.size(); ++iFamily)
 	{
 		if (0u != iFamily % 3u)
@@ -2089,7 +2304,7 @@ void Client::CEffect_Tool::Render_MeshAuthoringWorkbench()
 		ImGui::SeparatorText("Imported Element Draft");
 		ImGui::TextDisabled(
 			"Editable seed copy. Current Effect changes only after Create Element; Save Changes is the only Data File write.");
-		ImGui::Text("Editable Family: %s | Source Family: %s",
+		ImGui::Text("Editable Type: %s | Source Family: %s",
 			AuthoringFamily_Label(m_eSelectedAuthoringFamily),
 			Loaded.strSourceFamily.c_str());
 		static constexpr std::array<std::string_view, 6u> SUMMARY_SLOTS{
@@ -2352,11 +2567,14 @@ void Client::CEffect_Tool::Render_ResourceSlots(
             Kind_Label(pElement->eKind));
 	ImGui::TextDisabled("Emitter Element ID: %s",
 		pElement->strElementId.c_str());
-    const auto RenderSlotCard = [this, pElement](
+	std::string strResetSlot;
+    const auto RenderSlotCard = [this, pElement, &strResetSlot,
+		bMeshAuthoringDraft](
 		const EFFECT_RESOURCE_BINDING_DESC* pBinding,
 		const std::string& strSlotId,
 		const std::string& strLabel,
-		const EFFECT_RESOURCE_FILE_KIND eFileKind)
+		const EFFECT_RESOURCE_FILE_KIND eFileKind,
+		const bool_t bModified)
     {
 		ImGui::PushID(strSlotId.c_str());
         ImGui::BeginGroup();
@@ -2411,6 +2629,16 @@ void Client::CEffect_Tool::Render_ResourceSlots(
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", pBinding->strAssetId.c_str());
         }
+		if (bModified)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f), "Modified");
+			if (ImGui::SmallButton("Reset to Source"))
+				strResetSlot = strSlotId;
+		}
+		else if (!bMeshAuthoringDraft)
+		{
+			ImGui::TextDisabled("Source");
+		}
         ImGui::EndGroup();
         ImGui::PopID();
     };
@@ -2445,7 +2673,7 @@ void Client::CEffect_Tool::Render_ResourceSlots(
                 ImGui::SameLine();
             const AUTHORING_SLOT_CARD& Slot = Slots[iSlot];
             RenderSlotCard(Find_Binding(*pElement, Slot.pSlotId),
-                Slot.pSlotId, Slot.pLabel, Slot.eKind);
+                Slot.pSlotId, Slot.pLabel, Slot.eKind, false);
         }
         if (m_strSelectedResourceSlotId == "meshModel")
 			ImGui::TextDisabled(
@@ -2463,67 +2691,81 @@ void Client::CEffect_Tool::Render_ResourceSlots(
         return;
     }
 
-	ImGui::SeparatorText(("Bound Resources (" +
-		std::to_string(pElement->ResourceBindings.size()) + ")").c_str());
+	ImGui::SeparatorText("Declared Resources");
 	const float fCardWidth = 78.f;
 	const size_t iColumns = static_cast<size_t>((std::max)(1,
 		static_cast<int32_t>(ImGui::GetContentRegionAvail().x / fCardWidth)));
+	const auto IsModified = [pElement](const std::string_view strSlotId)
+	{
+		return pElement->AuthoringOverrides.ResourceBindings.end() !=
+			std::find_if(
+				pElement->AuthoringOverrides.ResourceBindings.begin(),
+				pElement->AuthoringOverrides.ResourceBindings.end(),
+				[strSlotId](
+					const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{ return Override.strSlotId == strSlotId; });
+	};
+	size_t iRendered = 0u;
 	for (size_t iBinding = 0u;
 		iBinding < pElement->ResourceBindings.size(); ++iBinding)
 	{
 		const EFFECT_RESOURCE_BINDING_DESC& Binding =
 			pElement->ResourceBindings[iBinding];
-		if (0u != iBinding % iColumns)
+		if (Binding.strAssetId.empty())
+			continue;
+		if (0u != iRendered % iColumns)
 			ImGui::SameLine();
 		RenderSlotCard(&Binding, Binding.strSlotId,
 			Slot_Label(*pElement, Binding.strSlotId),
-			Resource_FileKind(Binding));
+			Resource_FileKind(Binding), IsModified(Binding.strSlotId));
+		++iRendered;
 	}
-	if (pElement->ResourceBindings.empty())
+	for (const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane :
+		pElement->Material.Execution.TextureLanes)
+	{
+		if (Lane.strLaneId.empty() || Lane.strAssetId.empty())
+			continue;
+		if (0u != iRendered % iColumns)
+			ImGui::SameLine();
+		const std::string strSlotId =
+			Build_EffectMaterialExecutionLaneStableSlotId(Lane.strLaneId);
+		const EFFECT_RESOURCE_BINDING_DESC DisplayBinding{
+			strSlotId, Lane.strAssetId };
+		RenderSlotCard(&DisplayBinding, strSlotId,
+			Lane.strRole.empty() ? Lane.strLaneId : Lane.strRole,
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE, IsModified(strSlotId));
+		++iRendered;
+	}
+	for (const EFFECT_NAMED_TEXTURE_DESC& Texture :
+		pElement->Material.SourceMaterial.Textures)
+	{
+		if (Texture.strName.empty() || Texture.strAssetId.empty())
+			continue;
+		if (0u != iRendered % iColumns)
+			ImGui::SameLine();
+		const std::string strSlotId =
+			Build_EffectSourceMaterialTextureStableSlotId(Texture.strName);
+		const EFFECT_RESOURCE_BINDING_DESC DisplayBinding{
+			strSlotId, Texture.strAssetId };
+		RenderSlotCard(&DisplayBinding, strSlotId, Texture.strName,
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE, IsModified(strSlotId));
+		++iRendered;
+	}
+	if (Is_MissingBaseSourceDecal(*pElement))
+	{
+		if (0u != iRendered % iColumns)
+			ImGui::SameLine();
+		RenderSlotCard(nullptr, "base", "Base (Decal)",
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE, false);
+		++iRendered;
+	}
+	if (0u == iRendered)
 		ImGui::TextDisabled("(no resources bound)");
 
-	ImGui::SeparatorText("Available Empty Inputs");
-    ImGui::TextDisabled("Template: %s",
-        pElement->Material.strTemplateId.c_str());
-    const EFFECT_MATERIAL_TEMPLATE_DESC* pTemplate =
-        Find_EffectMaterialTemplate(pElement->Material.strTemplateId);
-	bool_t bRenderedEmptyInput = false;
-	size_t iEmptyInput = 0u;
-	const auto RenderEmptyInput = [&](const std::string& strSlotId,
-		const std::string& strLabel,
-		const EFFECT_RESOURCE_FILE_KIND eFileKind)
-    {
-		if (nullptr != Find_Binding(*pElement, strSlotId))
-			return;
-		if (0u != iEmptyInput % iColumns)
-			ImGui::SameLine();
-		RenderSlotCard(nullptr, strSlotId, strLabel, eFileKind);
-		++iEmptyInput;
-		bRenderedEmptyInput = true;
-	};
-	if (EFFECT_ELEMENT_KIND::MESH == pElement->eKind ||
-		EFFECT_ELEMENT_KIND::PARTICLE == pElement->eKind)
-    {
-		RenderEmptyInput(std::string(EFFECT_MESH_SHAPE_SLOT_ID), "Mesh Shape",
-			EFFECT_RESOURCE_FILE_KIND::MODEL);
-    }
-	if (nullptr != pTemplate)
-	{
-		for (size_t iInput = 0u; iInput < pTemplate->iInputCount; ++iInput)
-		{
-			RenderEmptyInput(
-				std::string(pTemplate->pInputs[iInput].strSlotId),
-				std::string(pTemplate->pInputs[iInput].strDisplayName),
-				pTemplate->pInputs[iInput].eAllowedResourceKind);
-		}
-	}
-	else
-		ImGui::TextDisabled("Unknown Material Template; existing bindings remain visible.");
-	if (!bRenderedEmptyInput && nullptr != pTemplate)
-		ImGui::TextDisabled("(all declared inputs are bound)");
-
-	Render_SourceMaterialParameterGroups(
-		pElement->Material.SourceMaterial, m_pThumbnailCache.get());
+	ImGui::TextDisabled(
+		"Only compiler-declared DDS/WModel lanes are shown. Add lanes while creating a new Element draft.");
+	if (!strResetSlot.empty())
+		Try_ResetAuthoringResourceOverride(strResetSlot);
 }
 
 void Client::CEffect_Tool::Render_ResourceGrid(
@@ -2536,12 +2778,25 @@ void Client::CEffect_Tool::Render_ResourceGrid(
 	const EFFECT_MATERIAL_TEXTURE_LANE_DESC* pMaterialLane =
 		nullptr == pElement ? nullptr : Find_MaterialExecutionLane(
 			*pElement, m_strSelectedResourceSlotId);
-	const bool_t bMaterialLaneSelected = nullptr != pMaterialLane;
+	const EFFECT_NAMED_TEXTURE_DESC* pSourceTexture =
+		nullptr == pElement ? nullptr : Find_SourceMaterialTexture(
+			*pElement, m_strSelectedResourceSlotId);
+	const bool_t bMaterialLaneSelected =
+		nullptr != pMaterialLane || nullptr != pSourceTexture;
     const bool_t bSlotSelected = nullptr != pElement &&
 		(bMaterialLaneSelected ||
 		 (Slot_Allowed(*pElement, m_strSelectedResourceSlotId) &&
 		  (!bMeshAuthoringDraft || AuthoringFamily_AllowsSlot(
 			  m_eSelectedAuthoringFamily, m_strSelectedResourceSlotId))));
+	const bool_t bSelectedSlotModified = nullptr != pElement &&
+		pElement->AuthoringOverrides.ResourceBindings.end() != std::find_if(
+			pElement->AuthoringOverrides.ResourceBindings.begin(),
+			pElement->AuthoringOverrides.ResourceBindings.end(),
+			[this](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+			{ return Override.strSlotId == m_strSelectedResourceSlotId; });
+	const bool_t bSelectedDecalBaseException = nullptr != pElement &&
+		Is_BaseTextureSlot(m_strSelectedResourceSlotId) &&
+		Is_SourceDecalBaseAdmissionCarrier(*pElement);
 	const bool_t bAdapterPacketInspection = !bMeshAuthoringDraft &&
 		EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM ==
 			m_eActiveDocumentSource &&
@@ -2565,7 +2820,8 @@ void Client::CEffect_Tool::Render_ResourceGrid(
     if (bSlotSelected)
     {
 		if (bMaterialLaneSelected)
-			BoundAssetId = pMaterialLane->strAssetId;
+			BoundAssetId = nullptr != pMaterialLane ?
+				pMaterialLane->strAssetId : pSourceTexture->strAssetId;
 		else if (const EFFECT_RESOURCE_BINDING_DESC* pBinding = Find_Binding(
 			*pElement, m_strSelectedResourceSlotId))
 			BoundAssetId = pBinding->strAssetId;
@@ -2675,11 +2931,12 @@ void Client::CEffect_Tool::Render_ResourceGrid(
         }
         ImGui::EndCombo();
     }
-    if (bSlotSelected)
+	if (bSlotSelected)
     {
-		const std::string strSelectedSlotLabel = bMaterialLaneSelected ?
+		const std::string strSelectedSlotLabel = nullptr != pMaterialLane ?
 			(pMaterialLane->strRole.empty() ? pMaterialLane->strLaneId :
-			 pMaterialLane->strRole) :
+			 pMaterialLane->strRole) : nullptr != pSourceTexture ?
+			pSourceTexture->strName :
 			Slot_Label(*pElement, m_strSelectedResourceSlotId);
         ImGui::TextDisabled("Selected slot: %s / %s%s",
 			strSelectedSlotLabel.c_str(),
@@ -2702,8 +2959,11 @@ void Client::CEffect_Tool::Render_ResourceGrid(
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-	ImGui::BeginDisabled(bAdapterPacketInspection || !bSlotSelected);
-    if (ImGui::Button("Clear Slot"))
+	ImGui::BeginDisabled(bAdapterPacketInspection || !bSlotSelected ||
+		(!bMeshAuthoringDraft && !bSelectedSlotModified &&
+			!bSelectedDecalBaseException));
+    if (ImGui::Button(bMeshAuthoringDraft ?
+		"Clear Slot" : "Reset Selected to Source"))
     {
         if (bMeshAuthoringDraft)
             Try_ClearMeshAuthoringSlot();
@@ -2972,7 +3232,11 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         m_CueTransferLocalTransform.vScale.x > 0.f &&
         m_CueTransferLocalTransform.vScale.y > 0.f &&
         m_CueTransferLocalTransform.vScale.z > 0.f;
+	const bool_t bHasAuthoringApproximate =
+		m_ActiveDocument.has_value() &&
+		HasAuthoringApproximate(*m_ActiveDocument);
     const bool_t bCanTransfer = m_ActiveDocument.has_value() &&
+		!bHasAuthoringApproximate &&
         !m_ProductPreview.has_value() &&
         !Has_UnsavedWork() &&
         m_bActiveDocumentMatchesRuntime &&
@@ -3032,7 +3296,9 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     if (!bCanTransfer)
     {
         ImGui::TextDisabled("%s",
-            m_ProductPreview.has_value() ?
+			bHasAuthoringApproximate ?
+				"Animation Cue Transfer refuses a document containing APPROXIMATE authoring carriers; Open/Edit/Save/Audition/Solo/Family preview remain available." :
+			m_ProductPreview.has_value() ?
                 "Product Play consumes the existing admitted cue; use manual Document preview to author a new transfer." :
                 "Save the exact runtime-admitted Effect, then choose Player/Weapon/Bone pivot.");
     }
@@ -3193,15 +3459,43 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 			if (const shared_ptr<CEffectObject> pObject =
 				m_pWorldPreviewObject.lock())
 			{
-				float4x4_t Root{};
-				const bool_t bRootResolved = Resolve_PreviewRoot(Root);
-				if (bRootResolved)
-					pObject->Set_RootWorld(Root);
-				pObject->Set_SampleTime(
-					Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
-				pObject->Set_Visible(
-					bRootResolved &&
-					Is_ProductCueVisible(m_fPreviewTimeSeconds));
+				if (m_bValtanBossPatternTransformHistoryRequired)
+				{
+					const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+						[this](const f32_t fSampleTimeSeconds,
+							EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+							std::string& strOutError)
+						{
+							return Build_ValtanBossPatternTransformSample(
+								fSampleTimeSeconds, OutSample, strOutError);
+						};
+					std::string TransformError;
+					const bool_t bSampled =
+						m_bValtanBossPatternTransformHistoryActive &&
+						pObject->Set_SampleTimeWithTransformHistory(
+							Resolve_EffectSampleTime(m_fPreviewTimeSeconds),
+							TransformProvider, TransformError);
+					pObject->Set_Visible(bSampled);
+					if (!bSampled)
+					{
+						m_bValtanBossPatternTransformHistoryActive = false;
+						m_strPreviewStatus =
+							"Valtan 420633 sample-time anchor history failed: " +
+							TransformError;
+					}
+				}
+				else
+				{
+					float4x4_t Root{};
+					const bool_t bRootResolved = Resolve_PreviewRoot(Root);
+					if (bRootResolved)
+						pObject->Set_RootWorld(Root);
+					pObject->Set_SampleTime(
+						Resolve_EffectSampleTime(m_fPreviewTimeSeconds));
+					pObject->Set_Visible(
+						bRootResolved &&
+						Is_ProductCueVisible(m_fPreviewTimeSeconds));
+				}
 			}
 			Set_SynchronizedAnimationPaused(true);
 		}
@@ -3676,6 +3970,7 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 	{
 		m_DetailDraft = *pCurrent;
 		m_strDetailDraftElementId = pCurrent->strElementId;
+		Refresh_DetailDraftAdmission(*pCurrent);
 		m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
 	}
@@ -3694,8 +3989,15 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 	ImGui::Text("Module: %s", Module->strClassName.c_str());
 	ImGui::TextDisabled("Stable ID: %s", Module->strStableId.c_str());
 	ImGui::TextDisabled("Emitter: %s", m_strSelectedEmitterId.c_str());
+	if (m_bDetailDraftPortableRecipeReadOnly)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+			"Compiler-owned portable SourceRecipe. Module values are read-only in the Tool; refresh them through the source compiler/reimport path.");
+	}
 	bool_t bChanged = false;
+	ImGui::BeginDisabled(m_bDetailDraftPortableRecipeReadOnly);
 	Render_SourceModuleDetail(*Module, bChanged, true);
+	ImGui::EndDisabled();
 	if (bChanged)
 	{
 		m_bDetailDraftDirty = true;
@@ -3712,7 +4014,8 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 		Stage_DetailDraftPreview();
 	}
 	ImGui::Separator();
-	ImGui::BeginDisabled(!m_bDetailDraftDirty);
+	ImGui::BeginDisabled(
+		m_bDetailDraftPortableRecipeReadOnly || !m_bDetailDraftDirty);
 	if (ImGui::Button("Apply Module"))
 	{
 		EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
@@ -3721,7 +4024,10 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 			m_bDetailDraftDirty = false;
 			m_bDetailDraftPreviewPending = false;
 			if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+			{
 				m_DetailDraft = *pCommitted;
+				Refresh_DetailDraftAdmission(*pCommitted);
+			}
 			m_strDetailStatus =
 				"Applied source Module to active Document memory; Save required.";
 		}
@@ -3730,6 +4036,7 @@ void Client::CEffect_Tool::Render_SourceModuleSelectionDetail()
 	if (ImGui::Button("Revert Module"))
 	{
 		m_DetailDraft = *pCurrent;
+		Refresh_DetailDraftAdmission(*pCurrent);
 		m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
 		Stage_WorldPreview();
@@ -3794,7 +4101,14 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	if (ImGui::Button("Restart Preview"))
 		Start_WorldPreviewFromBeginning();
 #ifdef _DEBUG
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>
+		ActiveProductAdmission;
+	std::string ProductAdmissionStatus;
+	const bool_t bProductAdmissionReady =
+		Resolve_ActiveProductCueAdmission(
+			ActiveProductAdmission, ProductAdmissionStatus);
 	const bool_t bProductPublishReady = bEditableSource && bDrawable &&
+		bProductAdmissionReady &&
 		!Has_UnsavedWork() && m_ProductPreview.has_value() &&
 		m_ProductPreview->ProductCue.Cue.strEffectAssetId ==
 			m_ActiveDocument->strEffectAssetId;
@@ -3803,6 +4117,20 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	if (ImGui::Button("Publish + Reload Product Test"))
 		Try_PublishActiveProductAndReloadRuntime();
 	ImGui::EndDisabled();
+	if (!bProductPublishReady && ImGui::IsItemHovered(
+			ImGuiHoveredFlags_AllowWhenDisabled) &&
+		!ProductAdmissionStatus.empty())
+	{
+		ImGui::SetTooltip("%s", ProductAdmissionStatus.c_str());
+	}
+	if (nullptr != ActiveProductAdmission)
+	{
+		ImGui::TextDisabled("%s | %s | rollback=%s",
+			Get_EffectProductCueAdmissionClassLabel(
+				ActiveProductAdmission->eAdmissionClass),
+			ActiveProductAdmission->Provenance.strDecision.c_str(),
+			ActiveProductAdmission->strRollbackEffectAssetId.c_str());
+	}
 #endif
 	if (!bEditableSource)
 	{
@@ -3961,6 +4289,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     {
         m_DetailDraft = *pCurrent;
         m_strDetailDraftElementId = pCurrent->strElementId;
+		Refresh_DetailDraftAdmission(*pCurrent);
         m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
         m_strDetailStatus.clear();
@@ -3973,8 +4302,8 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 	ImGui::TextDisabled(bAdapterPacketInspection ?
 		"Exact adapter packet inspection. Persistent transforms use Stable occurrence Save / Reload; create a generic Authored starting copy before material/resource editing." :
 		"Drag numeric values for live preview; Apply updates Current Effect memory, and Save Changes writes the whole Effect.");
-	Render_SelectedVisualProgramEvidence();
 	ImGui::BeginDisabled(bAdapterPacketInspection);
+	Render_ResourceSlots(false);
 	Render_Detail(*m_DetailDraft, bChanged);
     if (bChanged)
     {
@@ -4005,8 +4334,11 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
         {
             m_bDetailDraftDirty = false;
 			m_bDetailDraftPreviewPending = false;
-            if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
-                m_DetailDraft = *pCommitted;
+			if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+			{
+				m_DetailDraft = *pCommitted;
+				Refresh_DetailDraftAdmission(*pCommitted);
+			}
             m_strDetailStatus =
                 "Applied to active Document memory; Save required to persist.";
         }
@@ -4015,6 +4347,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     if (ImGui::Button("Revert Detail"))
     {
         m_DetailDraft = *pCurrent;
+		Refresh_DetailDraftAdmission(*pCurrent);
         m_bDetailDraftDirty = false;
 		m_bDetailDraftPreviewPending = false;
 		Recalculate_PreviewDuration(*m_ActiveDocument);
@@ -4026,8 +4359,35 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
+	const bool_t bDetailExecutionTarget =
+		Is_EffectAuthoringExecutionTarget(
+			m_DetailDraft->Material.Execution);
+	const bool_t bDetailPreviewLocked =
+		m_bDetailDraftCapabilityDeferred || !bDetailExecutionTarget ||
+		!m_DetailDraft->bVisible;
+	ImGui::BeginDisabled(bDetailPreviewLocked);
     if (ImGui::Button("Audition Selected"))
         Try_AuditionSelectedElement();
+	ImGui::EndDisabled();
+	if (bDetailPreviewLocked && ImGui::IsItemHovered(
+			ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		if (m_bDetailDraftCapabilityDeferred)
+		{
+			ImGui::SetTooltip(
+				"Play is locked because this SourceRecipe is outside the supported authoring-preview capability. Editing and Save remain available.");
+		}
+		else if (!bDetailExecutionTarget)
+		{
+			ImGui::SetTooltip(
+				"Play is locked by hard material/runtime fail-closed admission. Editing and Save remain available.");
+		}
+		else
+		{
+			ImGui::SetTooltip(
+				"Enable Visible to audition this Element. APPROXIMATE Product use requires an exact cue-scoped user approval; unapproved cues remain blocked.");
+		}
+	}
     if (m_bDetailDraftDirty)
         ImGui::TextDisabled("Detail draft is local until Apply Detail.");
 	if (!m_strDetailStatus.empty())
@@ -4527,18 +4887,34 @@ void Client::CEffect_Tool::Render_Detail(
     EFFECT_ELEMENT_DESC& Element,
     bool_t& bChanged)
 {
-    if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind)
-        ImGui::Text("Element: %s (%s / %s)", Element.strElementId.c_str(),
-            Kind_Label(Element.eKind), Element_RendererLabel(Element));
-    else
-        ImGui::Text("Element: %s (%s)", Element.strElementId.c_str(),
-            Kind_Label(Element.eKind));
-    ImGui::Text("Display Name: %s", Element.strDisplayName.c_str());
-    ImGui::TextDisabled("Group: %s",
-        Element.strGroupId.empty() ? "(none)" : Element.strGroupId.c_str());
-    ImGui::TextDisabled("Source Node: %s",
-        Element.strSourceNode.empty() ? "(authored)" :
-            Element.strSourceNode.c_str());
+	const EFFECT_AUTHORING_FAMILY eSurface = Resolve_AuthoringFamily(Element);
+	const char* pSurface = EFFECT_AUTHORING_FAMILY::END == eSurface ?
+		Kind_Label(Element.eKind) : AuthoringFamily_Label(eSurface);
+	const EFFECT_AUTHORING_FIDELITY eFidelity =
+		Get_EffectAuthoringFidelity(Element.Material.Execution);
+	bool_t bModified = !Element.AuthoringOverrides.Is_Empty();
+	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
+		Get_EffectAuthoringFidelityLabel(eFidelity),
+		bModified ? " \xC2\xB7 Modified" : "");
+	if (bModified)
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Reset All to Source"))
+		{
+			std::string strError;
+			if (Reset_AllAuthoringOverrides(Element, strError))
+			{
+				bChanged = true;
+				bModified = false;
+				m_strDetailStatus =
+					"All authoring overrides reset to source values.";
+			}
+			else
+			{
+				m_strDetailStatus = "Reset to Source failed: " + strError;
+			}
+		}
+	}
 	if (m_ActiveDocument.has_value() &&
 		m_ActiveDocument->strEffectAssetId == ARTIST_F_UNIFIED_EFFECT_ASSET_ID &&
 		nullptr != m_pArtistFSourcePreparation &&
@@ -4575,19 +4951,125 @@ void Client::CEffect_Tool::Render_Detail(
 			}
 		}
 	}
-    bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
+	const bool_t bMissingBaseSourceDecal =
+		Is_MissingBaseSourceDecal(Element);
+	const bool_t bAuthoringExecutionTarget =
+		Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
+	if (m_bDetailDraftCapabilityDeferred)
+	{
+		bool_t bLockedVisible = false;
+		ImGui::BeginDisabled();
+		ImGui::Checkbox("Visible", &bLockedVisible);
+		ImGui::EndDisabled();
+		ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
+			"Visibility locked OFF: this SourceRecipe carrier is capability-deferred and cannot be safely previewed or approved.");
+		ImGui::TextWrapped("Reason: %s",
+			m_strDetailDraftCapabilityReason.c_str());
+	}
+	else if (bMissingBaseSourceDecal)
+	{
+		bool_t bLockedVisible = false;
+		ImGui::BeginDisabled();
+		ImGui::Checkbox("Visible", &bLockedVisible);
+		ImGui::EndDisabled();
+		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+			"Visibility locked OFF: this imported Decal has no Base DDS.");
+		ImGui::TextWrapped(
+			"In Resources, select the empty Base input, choose one DDS, then click Bind Selected. A valid Base bind clears this exact material fail-closed marker and enables preview; Transform, rotation, scale, and color remain editable while locked.");
+	}
+	else if (Element.Material.Execution.bAuthoringApproximate)
+	{
+		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
+		ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.55f, 1.f),
+			"APPROXIMATE | Product enabled | editable and tunable");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"The exact source WModel/DDS remains attached, but original Material arithmetic is unproven. Overrides never change admission or exactness.");
+		}
+	}
+	else if (!bAuthoringExecutionTarget)
+	{
+		bool_t bLockedVisible = false;
+		ImGui::BeginDisabled();
+		ImGui::Checkbox("Visible", &bLockedVisible);
+		ImGui::EndDisabled();
+		ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
+			"Visibility locked OFF: this material/runtime carrier is fail-closed.");
+		ImGui::TextWrapped(
+			"Element editing and Save remain available, but Play/Solo stay disabled until a supported admission path explicitly clears this marker.");
+	}
+	else
+	{
+		bChanged |= ImGui::Checkbox("Visible", &Element.bVisible);
+	}
+	Render_TransformDetail(Element.Detail, bChanged);
+	Render_TimingDetail(Element.Detail, bChanged);
+	Render_SizeDetail(Element, bChanged);
+	Render_ColorDetail(Element.Detail, bChanged,
+		nullptr != Find_Binding(Element, "emissive"));
+	Render_AuthoringMaterialParameters(Element, bChanged);
+	if (ImGui::CollapsingHeader("Advanced Authoring"))
+	{
+		Render_UVDetail(Element.Detail, bChanged);
+		Render_UVKeyframes(Element, bChanged);
+		Render_KindDetail(Element, bChanged);
+		Render_LerpDetail(Element.Detail, bChanged);
+	}
+	if (!ImGui::CollapsingHeader("Advanced Diagnostics"))
+		return;
+	Render_SelectedVisualProgramEvidence();
+	ImGui::TextDisabled("Element ID: %s", Element.strElementId.c_str());
+	ImGui::Text("Display Name: %s", Element.strDisplayName.c_str());
+	ImGui::TextDisabled("Group: %s",
+		Element.strGroupId.empty() ? "(none)" : Element.strGroupId.c_str());
+	ImGui::TextDisabled("Source Node: %s",
+		Element.strSourceNode.empty() ? "(authored)" :
+			Element.strSourceNode.c_str());
+	const EFFECT_GENERIC_AUTHORING_FAMILY eGenericFamily =
+		Resolve_EffectGenericAuthoringFamily(Element);
+	ImGui::TextDisabled("Automatic authoring family: %s",
+		Get_EffectGenericAuthoringFamilyLabel(eGenericFamily));
+	if (bModified && ImGui::TreeNode("Raw Authoring Overrides"))
+	{
+		ImGui::TextDisabled(
+			"Read-only diagnostics. Use the field-level Reset to Source controls above.");
+		for (const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override :
+			Element.AuthoringOverrides.ResourceBindings)
+		{
+			ImGui::BulletText("%s: %s (source %s)",
+				Override.strSlotId.c_str(), Override.strAssetId.c_str(),
+				Override.strCompilerAssetId.empty() ? "(none)" :
+					Override.strCompilerAssetId.c_str());
+		}
+		for (const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Scalar :
+			Element.AuthoringOverrides.Scalars)
+		{
+			ImGui::BulletText("%s: %.4f (source %.4f)",
+				Scalar.strName.c_str(), Scalar.fValue,
+				Scalar.fCompilerValue);
+		}
+		for (const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Color :
+			Element.AuthoringOverrides.Colors)
+		{
+			ImGui::BulletText("%s: %.3f %.3f %.3f %.3f",
+				Color.strName.c_str(), Color.vValue.x, Color.vValue.y,
+				Color.vValue.z, Color.vValue.w);
+		}
+		ImGui::TreePop();
+	}
     ImGui::TextDisabled("Material Template: %s",
         Element.Material.strTemplateId.c_str());
-	EFFECT_MATERIAL_EXECUTION_DESC& MaterialExecution =
+	const EFFECT_MATERIAL_EXECUTION_DESC& MaterialExecution =
 		Element.Material.Execution;
-	if (MaterialExecution.bFailClosed)
+	if (!Is_EffectAuthoringExecutionTarget(MaterialExecution) &&
+		!bMissingBaseSourceDecal)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
 			"Fail-closed source pass: generic/white fallback is disabled. This Element will not draw until a supported authored recipe replaces it.");
 	}
 	if (MaterialExecution.bEnabled &&
-		ImGui::CollapsingHeader(
-			"Track A Material Slots", ImGuiTreeNodeFlags_DefaultOpen))
+		ImGui::CollapsingHeader("Track A Material Slots"))
 	{
 		ImGui::Text("Recipe: %s",
 			MaterialExecutionBackendLabel(MaterialExecution.eBackend));
@@ -4600,7 +5082,7 @@ void Client::CEffect_Tool::Render_Detail(
 		for (size_t iLane = 0u;
 			iLane < MaterialExecution.TextureLanes.size(); ++iLane)
 		{
-			EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
 				MaterialExecution.TextureLanes[iLane];
 			if (0u != iLane % iColumns)
 				ImGui::SameLine();
@@ -4681,159 +5163,32 @@ void Client::CEffect_Tool::Render_Detail(
 			ImGui::TreePop();
 		}
 	}
-    EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
-        Element.Material.SourceMaterial;
-    if (SourceMaterial.bEnabled &&
-        ImGui::CollapsingHeader(
-            "Source Material Profile", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::Text("Status: %s",
-            SourceMaterialStatus_Label(SourceMaterial.eStatus));
-        ImGui::TextWrapped("Source: %s",
-            Element.Material.strSourceMaterialPath.c_str());
-        ImGui::TextWrapped("Parent: %s",
-            SourceMaterial.strParentMaterialPath.c_str());
-        ImGui::TextWrapped("Profile: %s",
-            SourceMaterial.strProfileId.c_str());
-        ImGui::TextWrapped("Runtime Shader: %s",
-            SourceMaterial.strRuntimeShaderProfileId.c_str());
-        ImGui::Text("SubUV: %s", SourceMaterial.strSubUVMode.c_str());
-        ImGui::TextDisabled(
-            "Dynamic: X=%s Y=%s Z=%s W=%s",
-            SourceMaterial.DynamicParameterSemantics[0].c_str(),
-            SourceMaterial.DynamicParameterSemantics[1].c_str(),
-            SourceMaterial.DynamicParameterSemantics[2].c_str(),
-            SourceMaterial.DynamicParameterSemantics[3].c_str());
-        ImGui::TextDisabled(
-            "Parent/source identity and parameter names are provenance. Values below are the Authored effective copy initialized from Imported.");
-        bool_t bMaterialChanged = false;
-        if (ImGui::BeginCombo("Finite Runtime Shader",
-            SourceMaterial.strRuntimeShaderProfileId.c_str()))
-        {
-            for (const std::string_view strProfileId :
-                EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS)
-            {
-                const bool_t bSelected =
-                    SourceMaterial.strRuntimeShaderProfileId == strProfileId;
-                if (ImGui::Selectable(strProfileId.data(), bSelected))
-                {
-                    SourceMaterial.strRuntimeShaderProfileId = strProfileId;
-                    bMaterialChanged = true;
-                }
-                if (bSelected)
-                    ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-        if (ImGui::TreeNodeEx("Authored Named Parameters",
-            ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            for (size_t iScalar = 0u;
-                iScalar < SourceMaterial.Scalars.size(); ++iScalar)
-            {
-                EFFECT_NAMED_FLOAT_DESC& Scalar = SourceMaterial.Scalars[iScalar];
-                ImGui::PushID(static_cast<int>(iScalar));
-                bMaterialChanged |= ImGui::DragFloat(
-                    Scalar.strName.c_str(), &Scalar.fValue, 0.001f,
-                    -100000.f, 100000.f, "%.6g");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Source group: %s",
-                        Scalar.strGroup.empty() ? "(none)" :
-                            Scalar.strGroup.c_str());
-                ImGui::PopID();
-            }
-            for (size_t iVector = 0u;
-                iVector < SourceMaterial.Vectors.size(); ++iVector)
-            {
-                EFFECT_NAMED_FLOAT4_DESC& Vector = SourceMaterial.Vectors[iVector];
-                ImGui::PushID(static_cast<int>(SourceMaterial.Scalars.size() +
-                    iVector));
-                bMaterialChanged |= DragFloat4(
-                    Vector.strName.c_str(), Vector.vValue, 0.001f,
-                    -100000.f, 100000.f, "%.6g");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Source group: %s",
-                        Vector.strGroup.empty() ? "(none)" :
-                            Vector.strGroup.c_str());
-                ImGui::PopID();
-            }
-            for (size_t iSwitch = 0u;
-                iSwitch < SourceMaterial.StaticSwitches.size(); ++iSwitch)
-            {
-                EFFECT_NAMED_BOOL_DESC& Switch =
-                    SourceMaterial.StaticSwitches[iSwitch];
-                ImGui::PushID(static_cast<int>(SourceMaterial.Scalars.size() +
-                    SourceMaterial.Vectors.size() + iSwitch));
-                bMaterialChanged |= ImGui::Checkbox(
-                    Switch.strName.c_str(), &Switch.bValue);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Source group: %s",
-                        Switch.strGroup.empty() ? "(none)" :
-                            Switch.strGroup.c_str());
-                ImGui::PopID();
-            }
-            if (SourceMaterial.Scalars.empty() &&
-                SourceMaterial.Vectors.empty() &&
-                SourceMaterial.StaticSwitches.empty())
-            {
-                ImGui::TextDisabled("No extracted named values for this Material.");
-            }
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("Dynamic / SubUV Binding"))
-        {
-            constexpr const char* Axes[] = { "X", "Y", "Z", "W" };
-            for (size_t iSemantic = 0u;
-                iSemantic < SourceMaterial.DynamicParameterSemantics.size();
-                ++iSemantic)
-            {
-                ImGui::PushID(static_cast<int>(iSemantic));
-                std::string& Semantic =
-                    SourceMaterial.DynamicParameterSemantics[iSemantic];
-                if (ImGui::BeginCombo(Axes[iSemantic], Semantic.c_str()))
-                {
-                    for (const std::string_view strSemantic :
-                        EFFECT_SOURCE_DYNAMIC_PARAMETER_SEMANTICS)
-                    {
-                        const bool_t bSelected = Semantic == strSemantic;
-                        if (ImGui::Selectable(strSemantic.data(), bSelected))
-                        {
-                            Semantic = strSemantic;
-                            bMaterialChanged = true;
-                        }
-                    }
-                    ImGui::EndCombo();
-                }
-                ImGui::PopID();
-            }
-            if (ImGui::BeginCombo("SubUV Mode",
-                SourceMaterial.strSubUVMode.c_str()))
-            {
-                for (const std::string_view strMode : EFFECT_SOURCE_SUBUV_MODES)
-                {
-                    const bool_t bSelected =
-                        SourceMaterial.strSubUVMode == strMode;
-                    if (ImGui::Selectable(strMode.data(), bSelected))
-                    {
-                        SourceMaterial.strSubUVMode = strMode;
-                        bMaterialChanged = true;
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::TreePop();
-        }
-        if (bMaterialChanged)
-        {
-            SourceMaterial.eStatus =
-                EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE;
-            bChanged = true;
-        }
-        ImGui::TextDisabled(
-            "Mesh/Base/Noise/Mask/Emissive/Dissolve remain typed Resource Library bindings. The Imported file is never modified by this editor.");
-    }
-    if (ImGui::CollapsingHeader(
-        "Runtime Sample", ImGuiTreeNodeFlags_DefaultOpen))
+	const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+		Element.Material.SourceMaterial;
+	if (SourceMaterial.bEnabled &&
+		ImGui::CollapsingHeader("Source Material Profile"))
+	{
+		ImGui::TextDisabled("Read-only compiler output.");
+		ImGui::Text("Status: %s",
+			SourceMaterialStatus_Label(SourceMaterial.eStatus));
+		ImGui::TextWrapped("Source: %s",
+			Element.Material.strSourceMaterialPath.c_str());
+		ImGui::TextWrapped("Parent: %s",
+			SourceMaterial.strParentMaterialPath.c_str());
+		ImGui::TextWrapped("Profile: %s",
+			SourceMaterial.strProfileId.c_str());
+		ImGui::TextWrapped("Runtime Shader: %s",
+			SourceMaterial.strRuntimeShaderProfileId.c_str());
+		ImGui::Text("SubUV: %s", SourceMaterial.strSubUVMode.c_str());
+		ImGui::TextDisabled("Dynamic: X=%s Y=%s Z=%s W=%s",
+			SourceMaterial.DynamicParameterSemantics[0].c_str(),
+			SourceMaterial.DynamicParameterSemantics[1].c_str(),
+			SourceMaterial.DynamicParameterSemantics[2].c_str(),
+			SourceMaterial.DynamicParameterSemantics[3].c_str());
+		Render_SourceMaterialParameterGroups(
+			SourceMaterial, m_pThumbnailCache.get());
+	}
+    if (ImGui::CollapsingHeader("Runtime Sample"))
     {
         const bool_t bHasBaseBinding = std::any_of(
             Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
@@ -5014,35 +5369,32 @@ void Client::CEffect_Tool::Render_Detail(
         ImGui::TextDisabled(
             "Read-only evaluated playback data; no authoring values are changed.");
     }
-    Render_TransformDetail(Element.Detail, bChanged);
-    Render_ColorDetail(Element.Detail, bChanged,
-        nullptr != Find_Binding(Element, "emissive"));
-    Render_UVDetail(Element.Detail, bChanged);
-    Render_UVKeyframes(Element, bChanged);
-    Render_TimingDetail(Element.Detail, bChanged);
-    Render_KindDetail(Element, bChanged);
-    Render_SourceRecipeDetail(Element.SourceRecipe, bChanged);
-    Render_LerpDetail(Element.Detail, bChanged);
-
-    ImGui::SeparatorText("Pass Name");
-    if (ImGui::BeginCombo("Render Profile",
-        Profile_Label(Element.Material.eRenderProfile)))
-    {
-        for (int32_t iProfile = 0;
-            iProfile < static_cast<int32_t>(EFFECT_RENDER_PROFILE::END);
-            ++iProfile)
-        {
-            const EFFECT_RENDER_PROFILE eProfile =
-                static_cast<EFFECT_RENDER_PROFILE>(iProfile);
-            if (ImGui::Selectable(Profile_Label(eProfile),
-                eProfile == Element.Material.eRenderProfile))
-            {
-                Element.Material.eRenderProfile = eProfile;
-                bChanged = true;
-            }
-        }
-        ImGui::EndCombo();
-    }
+	if (Element.SourceRecipe.bEnabled &&
+		ImGui::TreeNode("Original Emitter / Module Stack"))
+	{
+		ImGui::TextDisabled("Read-only compiler output.");
+		ImGui::Text("Renderer: %s",
+			Element.SourceRecipe.strRendererShape.empty() ? "(unspecified)" :
+				Element.SourceRecipe.strRendererShape.c_str());
+		ImGui::TextDisabled("Delay %.6f | Duration %.6f | Loops %u",
+			Element.SourceRecipe.fEmitterDelaySeconds,
+			Element.SourceRecipe.fEmitterDurationSeconds,
+			Element.SourceRecipe.iEmitterLoopCount);
+		ImGui::TextDisabled("Bursts %zu | Modules %zu",
+			Element.SourceRecipe.Bursts.size(),
+			Element.SourceRecipe.Modules.size());
+		for (const EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			ImGui::BulletText("%s | %s",
+				Module.strStableId.c_str(), Module.strClassName.c_str());
+			if (ImGui::IsItemHovered() && !Module.strObjectPath.empty())
+				ImGui::SetTooltip("%s", Module.strObjectPath.c_str());
+		}
+		ImGui::TreePop();
+	}
+	ImGui::SeparatorText("Compiler-owned Render Profile");
+	ImGui::TextDisabled("%s", Profile_Label(Element.Material.eRenderProfile));
 }
 
 void Client::CEffect_Tool::Render_TransformDetail(
@@ -5237,6 +5589,253 @@ void Client::CEffect_Tool::Render_TimingDetail(
         &Detail.Timing.fDissolveStartNormalized, 0.f, 1.f);
 }
 
+void Client::CEffect_Tool::Render_SizeDetail(
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
+{
+	const bool_t bHasSizeSurface =
+		Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+		Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
+		Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+		Element.eKind == EFFECT_ELEMENT_KIND::TRAIL;
+	if (!bHasSizeSurface ||
+		!ImGui::CollapsingHeader("Size", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::MESH ||
+		(Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Resolve_AuthoringFamily(Element) ==
+				EFFECT_AUTHORING_FAMILY::MESH_PARTICLE))
+	{
+		bChanged |= ImGui::DragFloat("Model Import Scale",
+			&Element.Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f,
+			"%.4f", ImGuiSliderFlags_AlwaysClamp);
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		bChanged |= DragFloat2("Start Size",
+			Element.Detail.Particle.vStartSize, 0.01f, 0.001f, 100.f);
+		bChanged |= DragFloat2("End Size",
+			Element.Detail.Particle.vEndSize, 0.01f, 0.f, 100.f);
+	}
+	else if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+	{
+		bChanged |= DragFloat2("Decal Size", Element.Detail.Decal.vSize,
+			0.01f, 0.001f, 1000.f);
+		bChanged |= ImGui::DragFloat("Projection Depth",
+			&Element.Detail.Decal.fDepth, 0.01f, 0.001f, 1000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+	}
+	else if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
+	{
+		bChanged |= ImGui::DragFloat("Start Width",
+			&Element.Detail.Trail.fStartWidth, 0.01f, 0.001f, 100.f,
+			"%.3f", ImGuiSliderFlags_AlwaysClamp);
+		bChanged |= ImGui::DragFloat("End Width",
+			&Element.Detail.Trail.fEndWidth, 0.01f, 0.f, 100.f,
+			"%.3f", ImGuiSliderFlags_AlwaysClamp);
+	}
+}
+
+void Client::CEffect_Tool::Render_AuthoringMaterialParameters(
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
+{
+	struct SCALAR_CONTROL final
+	{
+		std::string strName;
+		f32_t fValue = 0.f;
+		bool_t bConsistent = true;
+	};
+	struct VECTOR_CONTROL final
+	{
+		std::string strName;
+		float4_t vValue{};
+		bool_t bConsistent = true;
+	};
+	std::vector<SCALAR_CONTROL> ScalarControls;
+	std::vector<VECTOR_CONTROL> VectorControls;
+	std::unordered_map<std::string, size_t> ScalarCounts;
+	std::unordered_map<std::string, size_t> VectorCounts;
+	const auto AddScalar = [&ScalarControls, &ScalarCounts](
+		const std::string& strName, const f32_t fValue)
+	{
+		if (strName.empty())
+			return;
+		++ScalarCounts[strName];
+		const auto Existing = std::find_if(ScalarControls.begin(),
+			ScalarControls.end(), [&strName](const SCALAR_CONTROL& Control)
+			{
+				return Control.strName == strName;
+			});
+		if (Existing == ScalarControls.end())
+			ScalarControls.push_back({ strName, fValue, true });
+		else if (Existing->fValue != fValue)
+			Existing->bConsistent = false;
+	};
+	const auto AddVector = [&VectorControls, &VectorCounts](
+		const std::string& strName, const float4_t& vValue)
+	{
+		if (strName.empty())
+			return;
+		++VectorCounts[strName];
+		const auto Existing = std::find_if(VectorControls.begin(),
+			VectorControls.end(), [&strName](const VECTOR_CONTROL& Control)
+			{
+				return Control.strName == strName;
+			});
+		if (Existing == VectorControls.end())
+		{
+			VectorControls.push_back({ strName, vValue, true });
+		}
+		else if (Existing->vValue.x != vValue.x ||
+			Existing->vValue.y != vValue.y ||
+			Existing->vValue.z != vValue.z ||
+			Existing->vValue.w != vValue.w)
+		{
+			Existing->bConsistent = false;
+		}
+	};
+	for (const EFFECT_NAMED_FLOAT_DESC& Scalar :
+		Element.Material.SourceMaterial.Scalars)
+	{
+		AddScalar(Scalar.strName, Scalar.fValue);
+	}
+	for (const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar :
+		Element.Material.Execution.Scalars)
+	{
+		AddScalar(Scalar.strName, Scalar.fValue);
+	}
+	for (const EFFECT_NAMED_FLOAT4_DESC& Vector :
+		Element.Material.SourceMaterial.Vectors)
+	{
+		AddVector(Vector.strName, Vector.vValue);
+	}
+	const auto AddExecutionVectors = [&AddVector](
+		const std::vector<EFFECT_MATERIAL_VECTOR_PARAMETER_DESC>& Values)
+	{
+		for (const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Value : Values)
+			AddVector(Value.strName, Value.vValue);
+	};
+	AddExecutionVectors(Element.Material.Execution.Vectors);
+	AddExecutionVectors(Element.Material.Execution.ArtistParameters);
+	AddExecutionVectors(Element.Material.Execution.Colors);
+	std::erase_if(ScalarControls,
+		[&VectorCounts](const SCALAR_CONTROL& Control)
+		{
+			return !Control.bConsistent ||
+				0u != VectorCounts.count(Control.strName);
+		});
+	std::erase_if(VectorControls,
+		[&ScalarCounts](const VECTOR_CONTROL& Control)
+		{
+			return !Control.bConsistent ||
+				0u != ScalarCounts.count(Control.strName);
+		});
+	if (ScalarControls.empty() && VectorControls.empty())
+		return;
+	if (!ImGui::CollapsingHeader(
+			"Material Parameters", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	ImGui::TextDisabled(
+		"Only compiler-declared parameters are editable. Overrides never change admission.");
+	for (const SCALAR_CONTROL& Control : ScalarControls)
+	{
+		ImGui::PushID("scalar");
+		ImGui::PushID(Control.strName.c_str());
+		f32_t fValue = Control.fValue;
+		if (ImGui::DragFloat(Control.strName.c_str(), &fValue, 0.001f,
+			-100000.f, 100000.f, "%.6g"))
+		{
+			std::string strError;
+			if (CEffectDocumentCodec::Set_AuthoringScalarOverride(
+					Element, Control.strName, fValue, strError))
+			{
+				bChanged = true;
+			}
+			else
+			{
+				m_strDetailStatus = "Scalar override rejected: " + strError;
+			}
+		}
+		const auto Override = std::find_if(
+			Element.AuthoringOverrides.Scalars.begin(),
+			Element.AuthoringOverrides.Scalars.end(),
+			[&Control](const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Candidate)
+			{ return Candidate.strName == Control.strName; });
+		if (Override != Element.AuthoringOverrides.Scalars.end())
+		{
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f), "Modified");
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Reset to Source"))
+			{
+				std::string strError;
+				if (CEffectDocumentCodec::Reset_AuthoringScalarOverride(
+						Element, Control.strName, strError))
+				{
+					bChanged = true;
+				}
+				else
+				{
+					m_strDetailStatus = "Scalar reset rejected: " + strError;
+				}
+			}
+		}
+		ImGui::PopID();
+		ImGui::PopID();
+	}
+	for (const VECTOR_CONTROL& Control : VectorControls)
+	{
+		ImGui::PushID("vector");
+		ImGui::PushID(Control.strName.c_str());
+		float4_t vValue = Control.vValue;
+		if (DragFloat4(Control.strName.c_str(), vValue, 0.001f,
+			-100000.f, 100000.f, "%.6g"))
+		{
+			std::string strError;
+			if (CEffectDocumentCodec::Set_AuthoringColorOverride(
+					Element, Control.strName, vValue, strError))
+			{
+				bChanged = true;
+			}
+			else
+			{
+				m_strDetailStatus = "Vector override rejected: " + strError;
+			}
+		}
+		const auto Override = std::find_if(
+			Element.AuthoringOverrides.Colors.begin(),
+			Element.AuthoringOverrides.Colors.end(),
+			[&Control](const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Candidate)
+			{ return Candidate.strName == Control.strName; });
+		if (Override != Element.AuthoringOverrides.Colors.end())
+		{
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f), "Modified");
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Reset to Source"))
+			{
+				std::string strError;
+				if (CEffectDocumentCodec::Reset_AuthoringColorOverride(
+						Element, Control.strName, strError))
+				{
+					bChanged = true;
+				}
+				else
+				{
+					m_strDetailStatus = "Vector reset rejected: " + strError;
+				}
+			}
+		}
+		ImGui::PopID();
+		ImGui::PopID();
+	}
+}
+
 void Client::CEffect_Tool::Render_KindDetail(
     EFFECT_ELEMENT_DESC& Element,
     bool_t& bChanged)
@@ -5270,6 +5869,16 @@ void Client::CEffect_Tool::Render_KindDetail(
         break;
     case EFFECT_ELEMENT_KIND::PARTICLE:
     {
+		const bool_t bSourceParticleControlsReadOnly =
+			m_bDetailDraftPortableRecipeReadOnly &&
+			Element.SourceRecipe.bEnabled;
+		if (bSourceParticleControlsReadOnly)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"Runtime SourceRecipe owns spawn rate/bursts, particle lifetime, initial position/velocity/acceleration, size, and DynamicParameter values. Those Detail controls are read-only because changing them would not affect playback.");
+			ImGui::TextDisabled(
+				"Authored overlays that remain active include Max Particles, Random Seed, Local Space, Billboard, Element Transform/Color/Timing, and supported resource overrides.");
+		}
 		if (Resolve_AuthoringFamily(Element) ==
 			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE)
 		{
@@ -5288,6 +5897,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 		ImGui::SeparatorText("Particle Spawn");
         bChanged |= ImGui::InputScalar("Max Particles",
             ImGuiDataType_U32, &Detail.Particle.iMaxParticles);
+		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
         bChanged |= ImGui::DragFloat("Spawn Rate / Second",
             &Detail.Particle.fSpawnRatePerSecond, 1.f, 0.f, 2048.f, "%.3f",
             ImGuiSliderFlags_AlwaysClamp);
@@ -5296,15 +5906,19 @@ void Client::CEffect_Tool::Render_KindDetail(
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(
-				"Emits this many particles once at the Element-local start. "
-				"Artist F Track A fixed bursts are all at t=0 and use this field exactly.");
+				bSourceParticleControlsReadOnly ?
+				"Read-only: compiler-owned SourceRecipe Bursts drive runtime playback." :
+				"Emits this many particles once at the Element-local start.");
 		}
+		ImGui::EndDisabled();
         bChanged |= ImGui::InputScalar("Random Seed",
             ImGuiDataType_U32, &Detail.Particle.iRandomSeed);
-		ImGui::TextDisabled(
+		ImGui::TextDisabled(bSourceParticleControlsReadOnly ?
+			"SourceRecipe spawn modules and Bursts are compiler-owned; Random Seed remains the authored deterministic seed." :
 			"Start Delay controls the skill time; Spawn Rate and this fixed burst can be used together.");
 
 		ImGui::SeparatorText("Particle Lifetime and Shape");
+		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
 		if (DragFloat2("Particle Life Min/Max",
             Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, 30.f))
         {
@@ -5355,6 +5969,12 @@ void Client::CEffect_Tool::Render_KindDetail(
             "Start Size", Detail.Particle.vStartSize, 0.01f, 0.001f, 100.f);
         bChanged |= DragFloat2(
             "End Size", Detail.Particle.vEndSize, 0.01f, 0.f, 100.f);
+		ImGui::EndDisabled();
+		if (bSourceParticleControlsReadOnly)
+		{
+			ImGui::TextDisabled(
+				"Read-only values above are evaluated from the compiler-owned SourceRecipe module stack.");
+		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);
 		if (ImGui::IsItemHovered())
@@ -5366,8 +5986,10 @@ void Client::CEffect_Tool::Render_KindDetail(
         bChanged |= ImGui::Checkbox("Particle Billboard",
             &Detail.Particle.bBillboard);
 		ImGui::SeparatorText("Particle Dynamic Material Parameters");
-		ImGui::TextDisabled(
+		ImGui::TextDisabled(bSourceParticleControlsReadOnly ?
+			"SourceRecipe ParameterDynamic modules own runtime values; the Detail fallback is read-only." :
 			"Enabled components interpolate Start -> End over particle life.");
+		ImGui::BeginDisabled(bSourceParticleControlsReadOnly);
 		bChanged |= ImGui::CheckboxFlags(
 			"X##particle.dynamic", &Detail.Particle.iDynamicParameterComponentMask,
 			1u << 0u);
@@ -5389,9 +6011,11 @@ void Client::CEffect_Tool::Render_KindDetail(
 		bChanged |= DragFloat4("Dynamic End",
 			Detail.Particle.vDynamicParameterEnd,
 			0.01f, -1000.f, 1000.f);
+		ImGui::EndDisabled();
 		const uint32_t iTrackAConsumedMask =
 			Element.Material.Execution.iDynamicConsumedMask & 0x0fu;
-		if (Element.Material.Execution.bEnabled &&
+		if (!bSourceParticleControlsReadOnly &&
+			Element.Material.Execution.bEnabled &&
 			0u != iTrackAConsumedMask)
 		{
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
@@ -5452,7 +6076,8 @@ void Client::CEffect_Tool::Render_KindDetail(
 
 void Client::CEffect_Tool::Render_SourceRecipeDetail(
     EFFECT_CASCADE_RECIPE_DESC& Recipe,
-    bool_t& bChanged)
+    bool_t& bChanged,
+	const bool_t bPortableReadOnly)
 {
     if (!ImGui::CollapsingHeader("Original Emitter / Module Stack",
         ImGuiTreeNodeFlags_DefaultOpen))
@@ -5460,9 +6085,10 @@ void Client::CEffect_Tool::Render_SourceRecipeDetail(
         return;
     }
 
-    ImGui::TextDisabled(
-        "Imported UE3 values. Editing changes only the Authored document; "
-        "the Imported baseline remains unchanged.");
+	ImGui::TextDisabled(bPortableReadOnly ?
+		"Compiler-owned portable recipe. Runtime-owned Particle Detail controls and this module stack are read-only; authored overlays and supported resource overrides remain editable outside this section." :
+        "Imported UE3 values. Editing changes only the Authored document; the Imported baseline remains unchanged.");
+    ImGui::BeginDisabled(bPortableReadOnly);
     bChanged |= ImGui::Checkbox("Execute Source Recipe", &Recipe.bEnabled);
     ImGui::Text("Renderer: %s",
         Recipe.strRendererShape.empty() ? "(unspecified)" :
@@ -5504,6 +6130,7 @@ void Client::CEffect_Tool::Render_SourceRecipeDetail(
         Recipe.Modules.size());
     for (EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
         Render_SourceModuleDetail(Module, bChanged);
+    ImGui::EndDisabled();
 }
 
 void Client::CEffect_Tool::Render_SourceModuleDetail(
@@ -6458,6 +7085,57 @@ void Client::CEffect_Tool::Render_ArtistFCoreAuthoring()
 	ImGui::TreePop();
 }
 
+bool_t Client::CEffect_Tool::Refresh_ValtanBossPatternEffects()
+{
+	const std::filesystem::path BindingPath =
+		CValtanPatternEffectBindingDocument::Resolve_Path("Valtan");
+	std::string BindingText;
+	std::string Status;
+	if (BindingPath.empty() ||
+		!Read_TextFile(BindingPath, BindingText, Status))
+	{
+		m_strValtanBossPatternStatus = BindingPath.empty() ?
+			"Valtan Boss Patterns path escaped Data." : Status;
+		return false;
+	}
+
+	BOSS_PATTERN_EFFECT_TREE_STAGE TreeStage;
+	if (!CValtanPatternEffectBindingDocument::Stage_ValtanEffectToolTree(
+			BindingText, CProjectDataRoot::Get(), TreeStage, Status))
+	{
+		m_strValtanBossPatternStatus = Status;
+		return false;
+	}
+
+	std::vector<BOSS_PATTERN_EFFECT_TREE_ENTRY> Staged;
+	Staged.reserve(TreeStage.Rows.size());
+	for (BOSS_PATTERN_EFFECT_TREE_ROW& Row : TreeStage.Rows)
+	{
+		BOSS_PATTERN_EFFECT_TREE_ENTRY Entry;
+		Entry.Row = std::move(Row);
+		if (!Refresh_UnifiedEffectCache(
+				Entry.Cache, Entry.Row.Path, Entry.Row.strEffectAssetId) ||
+			!Entry.Cache.bValid)
+		{
+			m_strValtanBossPatternStatus = Entry.Cache.strStatus.empty() ?
+				"Valtan Boss Patterns Effect cache could not be staged." :
+				Entry.Cache.strStatus;
+			return false;
+		}
+		Staged.push_back(std::move(Entry));
+	}
+	if (Staged.size() != 1u)
+	{
+		m_strValtanBossPatternStatus =
+			"Valtan Boss Patterns staging did not produce exactly one entry.";
+		return false;
+	}
+
+	m_ValtanBossPatternEffects = std::move(Staged);
+	m_strValtanBossPatternStatus = Status;
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Refresh_UnifiedEffectCache(
 	UNIFIED_EFFECT_CACHE& Cache,
 	const std::filesystem::path& Path,
@@ -6601,6 +7279,591 @@ bool_t Client::CEffect_Tool::Refresh_UnifiedEffectCache(
 	return true;
 }
 
+bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
+	const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles)
+{
+	const auto FailClosed = [this](std::string Status)
+	{
+		m_DirectAuthoredEditableEntries.clear();
+		m_strDirectAuthoredEditableStatus = std::move(Status);
+		return false;
+	};
+	const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"EffectCatalog.json");
+	const std::filesystem::path AuthoredRoot = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"Authored");
+	std::string Text;
+	std::string Error;
+	if (CatalogPath.empty() || AuthoredRoot.empty() ||
+		!Read_TextFile(CatalogPath, Text, Error))
+	{
+		return FailClosed(CatalogPath.empty() || AuthoredRoot.empty() ?
+			"Direct authored edit index path escaped Data." :
+			"Direct authored edit index could not read EffectCatalog.json: " +
+				Error);
+	}
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	{
+		return FailClosed(
+			"Direct authored edit index could not parse EffectCatalog.json: " +
+			Error);
+	}
+	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* pEffects = Root.Find("effects");
+	if (Root.Get_Object().size() != 2u || nullptr == pVersion ||
+		pVersion->Get_Type() != DATA_JSON_TYPE::NUMBER ||
+		pVersion->Get_Number() != 1.0 || nullptr == pEffects ||
+		pEffects->Get_Type() != DATA_JSON_TYPE::ARRAY)
+	{
+		return FailClosed(
+			"Direct authored edit index rejected the EffectCatalog root contract.");
+	}
+
+	std::unordered_map<std::string, const EFFECT_DATA_FILE_ENTRY*>
+		AuthoredByAssetId;
+	AuthoredByAssetId.reserve(DataFiles.size());
+	for (const EFFECT_DATA_FILE_ENTRY& DataFile : DataFiles)
+	{
+		if (EFFECT_DOCUMENT_SOURCE::AUTHORED == DataFile.eSource)
+			AuthoredByAssetId.try_emplace(DataFile.strAssetId, &DataFile);
+	}
+	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
+		StagedEntries;
+	StagedEntries.reserve(pEffects->Get_Array().size());
+	std::unordered_set<std::string> DirectAssetIds;
+	DirectAssetIds.reserve(pEffects->Get_Array().size());
+	size_t iDirectCount = 0u;
+	size_t iUnavailableCount = 0u;
+	std::string strFirstUnavailable;
+	const auto RecordUnavailable = [&iUnavailableCount, &strFirstUnavailable](
+		std::string Status)
+	{
+		++iUnavailableCount;
+		if (strFirstUnavailable.empty())
+			strFirstUnavailable = std::move(Status);
+	};
+	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
+	{
+		if (!CatalogEntry.Is_Object())
+			return FailClosed(
+				"Direct authored edit index rejected a non-object catalog entry.");
+		const DATA_JSON_VALUE* pPayloadKind = CatalogEntry.Find("payloadKind");
+		if (nullptr == pPayloadKind)
+			continue;
+		if (pPayloadKind->Get_Type() != DATA_JSON_TYPE::STRING)
+			return FailClosed(
+				"Direct authored edit index rejected a non-string payloadKind.");
+		if (pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT_V13")
+			continue;
+		++iDirectCount;
+		const DATA_JSON_VALUE* pAssetId = CatalogEntry.Find("effectAssetId");
+		const DATA_JSON_VALUE* pAuthoringPath = CatalogEntry.Find("authoringPath");
+		if (CatalogEntry.Get_Object().size() != 3u || nullptr == pAssetId ||
+			pAssetId->Get_Type() != DATA_JSON_TYPE::STRING ||
+			pAssetId->Get_String().empty() || nullptr == pAuthoringPath ||
+			pAuthoringPath->Get_Type() != DATA_JSON_TYPE::STRING ||
+			pAuthoringPath->Get_String().empty())
+		{
+			return FailClosed(
+				"Direct authored edit index rejected a malformed direct catalog entry.");
+		}
+		const std::string strAssetId = pAssetId->Get_String();
+		if (!DirectAssetIds.insert(strAssetId).second)
+		{
+			return FailClosed(
+				"Direct authored edit index rejected duplicate Effect ID: " +
+				strAssetId);
+		}
+		const std::string strAuthoringPath = pAuthoringPath->Get_String();
+		if (strAuthoringPath.find('\\') != std::string::npos ||
+			strAuthoringPath.find(':') != std::string::npos ||
+			strAuthoringPath.starts_with('/') ||
+			strAuthoringPath.ends_with('/') ||
+			strAuthoringPath.find("//") != std::string::npos)
+		{
+			RecordUnavailable(
+				"unsafe direct authoringPath: " + strAuthoringPath);
+			continue;
+		}
+		const std::filesystem::path RelativePath(strAuthoringPath);
+		if (RelativePath.empty() || RelativePath.is_absolute() ||
+			RelativePath.has_root_path() ||
+			RelativePath.generic_string() != strAuthoringPath)
+		{
+			RecordUnavailable(
+				"noncanonical direct authoringPath: " + strAuthoringPath);
+			continue;
+		}
+		std::vector<std::string> Components;
+		for (const std::filesystem::path& Component : RelativePath)
+		{
+			const std::string Token = Component.generic_string();
+			if (Token.empty() || Token == "." || Token == "..")
+			{
+				Components.clear();
+				break;
+			}
+			Components.push_back(Token);
+		}
+		std::string strDerivedAssetId;
+		if (Components.size() < 3u || Components[0] != "Effects" ||
+			Components[1] != "Authored" ||
+			!Try_DeriveEffectAssetIdFromFilename(RelativePath,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED, strDerivedAssetId) ||
+			strDerivedAssetId != strAssetId)
+		{
+			RecordUnavailable(
+				"direct authoringPath/Effect ID mismatch: " + strAssetId);
+			continue;
+		}
+		const std::filesystem::path ExpectedPath =
+			CProjectDataRoot::Resolve(RelativePath);
+		const std::filesystem::path RelativeToAuthored = ExpectedPath.empty() ?
+			std::filesystem::path{} :
+			ExpectedPath.lexically_relative(AuthoredRoot);
+		if (ExpectedPath.empty() || RelativeToAuthored.empty() ||
+			RelativeToAuthored.is_absolute() ||
+			(*RelativeToAuthored.begin()).generic_string() == "..")
+		{
+			RecordUnavailable(
+				"direct authoringPath escaped Data/Effects/Authored: " +
+				strAssetId);
+			continue;
+		}
+		const auto DataFile = AuthoredByAssetId.find(strAssetId);
+		if (DataFile == AuthoredByAssetId.end())
+		{
+			RecordUnavailable(
+				"direct authored file is absent from the Authored scan: " +
+				strAssetId);
+			continue;
+		}
+		std::error_code FileError;
+		if (!std::filesystem::equivalent(
+				ExpectedPath, DataFile->second->Path, FileError) || FileError)
+		{
+			RecordUnavailable(
+				"direct authoringPath disagrees with the Authored scan: " +
+				strAssetId);
+			continue;
+		}
+		const std::filesystem::file_time_type LastWriteTime =
+			std::filesystem::last_write_time(ExpectedPath, FileError);
+		if (FileError)
+		{
+			RecordUnavailable(
+				"direct authored timestamp is unavailable: " + strAssetId);
+			continue;
+		}
+		const uint64_t iFileSize = static_cast<uint64_t>(
+			std::filesystem::file_size(ExpectedPath, FileError));
+		if (FileError)
+		{
+			RecordUnavailable(
+				"direct authored file size is unavailable: " + strAssetId);
+			continue;
+		}
+		DIRECT_AUTHORED_EDITABLE_ENTRY Staged;
+		Staged.Path = ExpectedPath;
+		Staged.LastWriteTime = LastWriteTime;
+		Staged.iFileSize = iFileSize;
+		const auto Existing = m_DirectAuthoredEditableEntries.find(strAssetId);
+		if (Existing != m_DirectAuthoredEditableEntries.end() &&
+			Existing->second.Path.lexically_normal() ==
+				Staged.Path.lexically_normal() &&
+			Existing->second.LastWriteTime == Staged.LastWriteTime &&
+			Existing->second.iFileSize == Staged.iFileSize)
+		{
+			Staged = Existing->second;
+		}
+		StagedEntries.emplace(strAssetId, std::move(Staged));
+	}
+	m_DirectAuthoredEditableEntries = std::move(StagedEntries);
+	m_strDirectAuthoredEditableStatus =
+		"Direct authored edit index admitted " +
+		std::to_string(m_DirectAuthoredEditableEntries.size()) + " / " +
+		std::to_string(iDirectCount) +
+		" DIRECT_AUTHORED_DOCUMENT_V13 source paths.";
+	if (0u != iUnavailableCount)
+	{
+		m_strDirectAuthoredEditableStatus += " Isolated " +
+			std::to_string(iUnavailableCount) + " unavailable rows; first: " +
+			strFirstUnavailable;
+	}
+	return true;
+}
+
+const std::filesystem::path*
+Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
+	const std::string& strEffectAssetId,
+	std::string& strOutStatus)
+{
+	const auto Iterator =
+		m_DirectAuthoredEditableEntries.find(strEffectAssetId);
+	if (Iterator == m_DirectAuthoredEditableEntries.end())
+	{
+		strOutStatus =
+			"Open is unavailable: this Effect is not an exact writable "
+			"DIRECT_AUTHORED_DOCUMENT_V13 source path.";
+		return nullptr;
+	}
+	DIRECT_AUTHORED_EDITABLE_ENTRY& Entry = Iterator->second;
+	std::error_code FileError;
+	const std::filesystem::file_time_type LastWriteTime =
+		std::filesystem::last_write_time(Entry.Path, FileError);
+	uint64_t iFileSize = 0u;
+	if (!FileError)
+	{
+		iFileSize = static_cast<uint64_t>(
+			std::filesystem::file_size(Entry.Path, FileError));
+	}
+	if (FileError)
+	{
+		Entry.bIdentityObserved = true;
+		Entry.bIdentityValid = false;
+		Entry.strStatus =
+			"Open is unavailable: the direct authored file cannot be inspected: " +
+			FileError.message();
+		strOutStatus = Entry.strStatus;
+		return nullptr;
+	}
+	if (Entry.LastWriteTime != LastWriteTime || Entry.iFileSize != iFileSize)
+	{
+		Entry.LastWriteTime = LastWriteTime;
+		Entry.iFileSize = iFileSize;
+		Entry.bIdentityObserved = false;
+		Entry.bIdentityValid = false;
+		Entry.strStatus.clear();
+	}
+	if (!Entry.bIdentityObserved)
+	{
+		EFFECT_DOCUMENT_DESC Document;
+		std::string Error;
+		Entry.bIdentityValid = CEffectDocumentCodec::Load(
+			Entry.Path, Document, Error) &&
+			Document.iLoadedFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
+			Document.strEffectAssetId == strEffectAssetId;
+		Entry.bIdentityObserved = true;
+		if (Entry.bIdentityValid)
+		{
+			Entry.strStatus =
+				"Open the writable Data/Effects/Authored version 13 document. "
+				"Save is local; Product publish and approval remain separate.";
+		}
+		else if (!Error.empty())
+		{
+			Entry.strStatus =
+				"Open is unavailable: direct authored validation failed: " +
+				Error;
+		}
+		else
+		{
+			Entry.strStatus =
+				"Open is unavailable: the direct authored version/embedded Effect ID disagrees with EffectCatalog.json.";
+		}
+	}
+	strOutStatus = Entry.strStatus;
+	return Entry.bIdentityValid ? &Entry.Path : nullptr;
+}
+
+bool_t Client::CEffect_Tool::Refresh_UnifiedCandidateBindings(
+	const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles)
+{
+	const std::filesystem::path BatchPath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"AuthoredCorrections" /
+		L"Generated" / L"FourClassCombat.track-a-authored-import-batch.json");
+	std::string Text;
+	std::string Error;
+	if (BatchPath.empty() || !Read_TextFile(BatchPath, Text, Error))
+	{
+		m_strUnifiedCandidateStatus = BatchPath.empty() ?
+			"Four-class candidate batch path escaped Data." : Error;
+		return false;
+	}
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	{
+		m_strUnifiedCandidateStatus =
+			"Four-class candidate batch could not be parsed: " + Error;
+		return false;
+	}
+
+	const auto Field = [](const DATA_JSON_VALUE& Object,
+		const std::string_view Name, const DATA_JSON_TYPE Type)
+		-> const DATA_JSON_VALUE*
+	{
+		const DATA_JSON_VALUE* pValue = Object.Is_Object() ?
+			Object.Find(Name) : nullptr;
+		return nullptr != pValue && pValue->Get_Type() == Type ?
+			pValue : nullptr;
+	};
+	const DATA_JSON_VALUE* pSchema = Field(
+		Root, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* pVersion = Field(
+		Root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+	const DATA_JSON_VALUE* pContractRole = Field(
+		Root, "contractRole", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* pScope = Field(
+		Root, "scope", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* pAdmission = Field(
+		Root, "admission", DATA_JSON_TYPE::OBJECT);
+	const DATA_JSON_VALUE* pStages = Field(
+		Root, "stages", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* pLegacyCandidates = Field(
+		Root, "legacyStarterCandidates", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* pCatalogMutation = nullptr == pScope ? nullptr :
+		Field(*pScope, "productCatalogMutation", DATA_JSON_TYPE::BOOLEAN);
+	const DATA_JSON_VALUE* pEventMutation = nullptr == pScope ? nullptr :
+		Field(*pScope, "animationEventMutation", DATA_JSON_TYPE::BOOLEAN);
+	const DATA_JSON_VALUE* pMappingMutation = nullptr == pAdmission ? nullptr :
+		Field(*pAdmission, "productMappingMutation", DATA_JSON_TYPE::BOOLEAN);
+	if (nullptr == pSchema ||
+		pSchema->Get_String() != "lostark.effect-authored-import-batch" ||
+		nullptr == pVersion || pVersion->Get_Number() != 1.0 ||
+		nullptr == pContractRole ||
+		pContractRole->Get_String() !=
+			"OFFLINE_AUTHORING_STAGE_INPUT_NOT_PRODUCT_MAPPING" ||
+		nullptr == pCatalogMutation || pCatalogMutation->Get_Boolean() ||
+		nullptr == pEventMutation || pEventMutation->Get_Boolean() ||
+		nullptr == pMappingMutation || pMappingMutation->Get_Boolean() ||
+		nullptr == pStages || nullptr == pLegacyCandidates)
+	{
+		m_strUnifiedCandidateStatus =
+			"Four-class candidate batch contract/version or product-mutation boundary is invalid.";
+		return false;
+	}
+
+	std::unordered_map<std::string, const EFFECT_DATA_FILE_ENTRY*>
+		SavedAuthoredByAssetId;
+	SavedAuthoredByAssetId.reserve(DataFiles.size());
+	for (const EFFECT_DATA_FILE_ENTRY& DataFile : DataFiles)
+	{
+		if (EFFECT_DOCUMENT_SOURCE::AUTHORED == DataFile.eSource)
+			SavedAuthoredByAssetId.try_emplace(DataFile.strAssetId, &DataFile);
+	}
+
+	std::vector<UNIFIED_EFFECT_CANDIDATE_BINDING> StagedBindings;
+	StagedBindings.reserve(
+		pStages->Get_Array().size() + pLegacyCandidates->Get_Array().size());
+	std::set<std::tuple<LostArk::Shared::CHARACTER_CLASS_ID,
+		LostArk::Shared::SKILL_ID, size_t, size_t, std::string, std::string>>
+		BindingIdentities;
+	size_t iMissingSavedCandidateCount = 0u;
+	const auto ParseClass = [](const std::string_view Token,
+		LostArk::Shared::CHARACTER_CLASS_ID& OutClass)
+	{
+		if (Token == "ARTIST")
+			OutClass = LostArk::Shared::CHARACTER_CLASS_ID::ARTIST;
+		else if (Token == "DIMENSIONMASTER")
+			OutClass = LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		else if (Token == "LANCE_MASTER")
+			OutClass = LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
+		else if (Token == "WARLORD")
+			OutClass = LostArk::Shared::CHARACTER_CLASS_ID::WARLORD;
+		else
+			return false;
+		return true;
+	};
+	const auto ReadIndex = [&Field](const DATA_JSON_VALUE& Object,
+		const std::string_view Name, size_t& OutValue)
+	{
+		const DATA_JSON_VALUE* pValue = Field(
+			Object, Name, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 ||
+			std::floor(pValue->Get_Number()) != pValue->Get_Number() ||
+			pValue->Get_Number() >
+				static_cast<double>((std::numeric_limits<size_t>::max)()))
+		{
+			return false;
+		}
+		OutValue = static_cast<size_t>(pValue->Get_Number());
+		return true;
+	};
+	const auto ReadSkillId = [&Field](const DATA_JSON_VALUE& Object,
+		LostArk::Shared::SKILL_ID& OutValue)
+	{
+		const DATA_JSON_VALUE* pValue = Field(
+			Object, "skillId", DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() <= 0.0 ||
+			std::floor(pValue->Get_Number()) != pValue->Get_Number() ||
+			pValue->Get_Number() >
+				static_cast<double>((std::numeric_limits<uint32_t>::max)()))
+		{
+			return false;
+		}
+		OutValue = static_cast<LostArk::Shared::SKILL_ID>(
+			static_cast<uint32_t>(pValue->Get_Number()));
+		return true;
+	};
+	const auto ParseRows = [this, &Field, &ParseClass, &ReadIndex,
+		&ReadSkillId, &SavedAuthoredByAssetId, &StagedBindings,
+		&BindingIdentities, &iMissingSavedCandidateCount, &Error](
+		const DATA_JSON_VALUE::ARRAY& Rows,
+		const bool_t bLegacyRows)
+	{
+		for (const DATA_JSON_VALUE& Row : Rows)
+		{
+			const DATA_JSON_VALUE* pClass = Field(
+				Row, "characterClass", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pClip = Field(
+				Row, "clip", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pTarget = Field(
+				Row, "target", DATA_JSON_TYPE::OBJECT);
+			const DATA_JSON_VALUE* pTargetId = nullptr == pTarget ? nullptr :
+				Field(*pTarget, "effectAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pTargetPath = nullptr == pTarget ? nullptr :
+				Field(*pTarget, "path", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pLegacyBaseline = bLegacyRows ?
+				Field(Row, "legacyRollbackBaseline", DATA_JSON_TYPE::OBJECT) :
+				(nullptr == pTarget ? nullptr : Field(
+					*pTarget, "legacyRollbackBaseline", DATA_JSON_TYPE::OBJECT));
+			const DATA_JSON_VALUE* pLegacyAssetId =
+				nullptr == pLegacyBaseline ? nullptr : Field(
+					*pLegacyBaseline, "effectAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pCandidateKey = bLegacyRows ?
+				Field(Row, "candidateKey", DATA_JSON_TYPE::STRING) : nullptr;
+			UNIFIED_EFFECT_CANDIDATE_BINDING Binding;
+			if (nullptr == pClass || nullptr == pClip ||
+				pClip->Get_String().empty() || nullptr == pTargetId ||
+				pTargetId->Get_String().empty() ||
+				!pTargetId->Get_String().ends_with(".unified") ||
+				nullptr == pTargetPath || pTargetPath->Get_String().empty() ||
+				nullptr == pLegacyAssetId ||
+				pLegacyAssetId->Get_String().empty() ||
+				(bLegacyRows && (nullptr == pCandidateKey ||
+				 pCandidateKey->Get_String() != pTargetId->Get_String())) ||
+				!ParseClass(pClass->Get_String(), Binding.eCharacterClass) ||
+				!ReadSkillId(Row, Binding.iSkillId) ||
+				!ReadIndex(Row, "stageIndex", Binding.iStageIndex) ||
+				(bLegacyRows && !ReadIndex(
+					Row, "stageClipIndex", Binding.iStageClipIndex)))
+			{
+				Error =
+					"Four-class candidate batch has an invalid occurrence/target row.";
+				return false;
+			}
+			Binding.strClipName = pClip->Get_String();
+			Binding.strEffectAssetId = pTargetId->Get_String();
+			Binding.strLegacyProductEffectAssetId =
+				pLegacyAssetId->Get_String();
+
+			const auto DataFile = SavedAuthoredByAssetId.find(
+				Binding.strEffectAssetId);
+			if (DataFile == SavedAuthoredByAssetId.end())
+			{
+				++iMissingSavedCandidateCount;
+				continue;
+			}
+			std::filesystem::path DeclaredPath(pTargetPath->Get_String());
+			auto Component = DeclaredPath.begin();
+			if (Component == DeclaredPath.end() ||
+				Component->generic_string() != "Data")
+			{
+				Error = "Four-class candidate target path is not Data-relative: " +
+					pTargetPath->Get_String();
+				return false;
+			}
+			std::filesystem::path RelativePath;
+			for (++Component; Component != DeclaredPath.end(); ++Component)
+				RelativePath /= *Component;
+			const std::filesystem::path ExpectedPath =
+				CProjectDataRoot::Resolve(RelativePath);
+			std::error_code PathError;
+			if (ExpectedPath.empty() || !std::filesystem::equivalent(
+					ExpectedPath, DataFile->second->Path, PathError) || PathError)
+			{
+				Error = "Four-class candidate target path/asset scan identity disagrees: " +
+					Binding.strEffectAssetId;
+				return false;
+			}
+			Binding.Path = DataFile->second->Path;
+
+			const auto Skill = std::find_if(m_AllEffects.begin(), m_AllEffects.end(),
+				[&Binding](const EFFECT_SKILL_TREE_ENTRY& Entry)
+				{
+					return Entry.Skill.eCharacterClass == Binding.eCharacterClass &&
+						Entry.Skill.iSkillId == Binding.iSkillId;
+				});
+			if (Skill == m_AllEffects.end())
+			{
+				Error = "Four-class candidate has no PlayerSkills owner: " +
+					Binding.strEffectAssetId;
+				return false;
+			}
+
+			const auto Identity = std::make_tuple(
+				Binding.eCharacterClass, Binding.iSkillId,
+				Binding.iStageIndex, Binding.iStageClipIndex,
+				Binding.strClipName, Binding.strEffectAssetId);
+			if (!BindingIdentities.insert(Identity).second)
+			{
+				Error = "Four-class candidate batch repeats one occurrence/target identity: " +
+					Binding.strEffectAssetId;
+				return false;
+			}
+			StagedBindings.push_back(std::move(Binding));
+		}
+		return true;
+	};
+	if (!ParseRows(pStages->Get_Array(), false) ||
+		!ParseRows(pLegacyCandidates->Get_Array(), true))
+	{
+		m_strUnifiedCandidateStatus = Error;
+		return false;
+	}
+
+	std::sort(StagedBindings.begin(), StagedBindings.end(),
+		[](const UNIFIED_EFFECT_CANDIDATE_BINDING& Left,
+			const UNIFIED_EFFECT_CANDIDATE_BINDING& Right)
+		{
+			return std::tie(Left.eCharacterClass, Left.iSkillId,
+				Left.iStageIndex, Left.iStageClipIndex,
+				Left.strClipName, Left.strEffectAssetId) <
+				std::tie(Right.eCharacterClass, Right.iSkillId,
+				Right.iStageIndex, Right.iStageClipIndex,
+				Right.strClipName, Right.strEffectAssetId);
+		});
+	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE> StagedCaches;
+	StagedCaches.reserve(StagedBindings.size());
+	for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding : StagedBindings)
+	{
+		if (StagedCaches.contains(Binding.strEffectAssetId))
+			continue;
+		const auto Existing = m_UnifiedCandidateCaches.find(
+			Binding.strEffectAssetId);
+		if (Existing != m_UnifiedCandidateCaches.end() &&
+			Existing->second.Path.lexically_normal() == Binding.Path.lexically_normal())
+		{
+			StagedCaches.emplace(
+				Binding.strEffectAssetId, std::move(Existing->second));
+		}
+		else
+		{
+			UNIFIED_EFFECT_CACHE Cache;
+			Cache.Path = Binding.Path;
+			StagedCaches.emplace(Binding.strEffectAssetId, std::move(Cache));
+		}
+	}
+	m_UnifiedCandidateBindings = std::move(StagedBindings);
+	m_UnifiedCandidateCaches = std::move(StagedCaches);
+	m_strUnifiedCandidateStatus =
+		"Unified authored batch indexed " +
+		std::to_string(m_UnifiedCandidateBindings.size()) +
+		" saved stage/clip bindings across " +
+		std::to_string(m_UnifiedCandidateCaches.size()) +
+		" unique authored Effects.";
+	if (0u != iMissingSavedCandidateCount)
+	{
+		m_strUnifiedCandidateStatus += " " +
+			std::to_string(iMissingSavedCandidateCount) +
+			" declared candidates are not present in the saved authored scan.";
+	}
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Is_UnifiedEffectActive(
 	const UNIFIED_EFFECT_CACHE& Cache) const
 {
@@ -6617,6 +7880,19 @@ bool_t Client::CEffect_Tool::Validate_UnifiedEffectPreviewReadiness(
 {
 	if (Document.strEffectAssetId != ARTIST_F_UNIFIED_EFFECT_ASSET_ID)
 	{
+		const bool_t bHasVisibleCarrier = std::any_of(
+			Document.Elements.begin(), Document.Elements.end(),
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{ return Is_ElementPreviewAdmitted(Element); }) ||
+			std::any_of(Document.ModelCues.begin(), Document.ModelCues.end(),
+				[](const EFFECT_MODEL_CUE_DESC& Cue)
+				{ return Cue.bVisible; });
+		if (!bHasVisibleCarrier)
+		{
+			strOutError =
+				"Candidate has no visible Element or Model / Summon cue to stage.";
+			return false;
+		}
 		strOutError.clear();
 		return true;
 	}
@@ -6640,13 +7916,23 @@ bool_t Client::CEffect_Tool::Try_LoadUnifiedElement(
 {
 	if (!Cache.bValid || strElementId.empty())
 		return false;
+	std::string strEditableStatus;
+	const std::filesystem::path* pEditablePath =
+		Resolve_DirectAuthoredEditablePath(
+			Cache.Document.strEffectAssetId, strEditableStatus);
+	if (nullptr == pEditablePath)
+	{
+		m_strDocumentStatus = strEditableStatus;
+		return false;
+	}
 	if (!Is_UnifiedEffectActive(Cache))
 	{
-		if (!Try_LoadDocumentPath(Cache.Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+		if (!Try_LoadDocumentPath(*pEditablePath,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED,
 				Cache.Document.strEffectAssetId))
 		{
 			if (m_PendingDocumentLoad.has_value() &&
-				m_PendingDocumentLoad->Path == Cache.Path)
+				m_PendingDocumentLoad->Path == *pEditablePath)
 			{
 				m_PendingDocumentLoad->strElementSelectionId = strElementId;
 				m_PendingDocumentLoad->strModelCueSelectionId.clear();
@@ -6663,13 +7949,23 @@ bool_t Client::CEffect_Tool::Try_LoadUnifiedModelCue(
 {
 	if (!Cache.bValid || strCueId.empty())
 		return false;
+	std::string strEditableStatus;
+	const std::filesystem::path* pEditablePath =
+		Resolve_DirectAuthoredEditablePath(
+			Cache.Document.strEffectAssetId, strEditableStatus);
+	if (nullptr == pEditablePath)
+	{
+		m_strDocumentStatus = strEditableStatus;
+		return false;
+	}
 	if (!Is_UnifiedEffectActive(Cache))
 	{
-		if (!Try_LoadDocumentPath(Cache.Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+		if (!Try_LoadDocumentPath(*pEditablePath,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED,
 				Cache.Document.strEffectAssetId))
 		{
 			if (m_PendingDocumentLoad.has_value() &&
-				m_PendingDocumentLoad->Path == Cache.Path)
+				m_PendingDocumentLoad->Path == *pEditablePath)
 			{
 				m_PendingDocumentLoad->strElementSelectionId.clear();
 				m_PendingDocumentLoad->strModelCueSelectionId = strCueId;
@@ -6695,9 +7991,13 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedAuthoringFamily(
 	if (std::none_of(m_ActiveDocument->Elements.begin(),
 		m_ActiveDocument->Elements.end(),
 		[eFamily](const EFFECT_ELEMENT_DESC& Element)
-		{ return Resolve_AuthoringFamily(Element) == eFamily; }))
+		{
+			return Resolve_AuthoringFamily(Element) == eFamily &&
+				Is_ElementPreviewAdmitted(Element);
+		}))
 	{
-		m_strPreviewStatus = "The selected Family has no editable Element.";
+		m_strPreviewStatus =
+			"The selected Family has no visible authoring-admitted Element to play. Hard-locked Elements remain editable; APPROXIMATE Elements are admitted for authoring preview.";
 		return false;
 	}
 	const EFFECT_AUTHORING_FAMILY ePreviousFamily =
@@ -6720,20 +8020,37 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 		m_strPreviewStatus = "The saved Skill Effect is unavailable.";
 		return false;
 	}
-	if (!Cache.bPreviewReady)
+	std::string strEditableStatus;
+	const std::filesystem::path* pEditablePath =
+		Resolve_DirectAuthoredEditablePath(
+			Cache.Document.strEffectAssetId, strEditableStatus);
+	if (nullptr == pEditablePath)
 	{
-		m_strPreviewStatus = Cache.strPreviewReadinessError.empty() ?
-			"The saved Skill Effect is not ready for preview." :
-			Cache.strPreviewReadinessError;
+		m_strPreviewStatus = strEditableStatus;
 		return false;
 	}
-	if (!Is_UnifiedEffectActive(Cache))
+	const bool_t bActive = Is_UnifiedEffectActive(Cache);
+	std::string ActiveReadinessError;
+	const bool_t bPreviewReady = bActive ?
+		Validate_UnifiedEffectPreviewReadiness(
+			*m_ActiveDocument, ActiveReadinessError) : Cache.bPreviewReady;
+	if (!bPreviewReady)
 	{
-		if (!Try_LoadDocumentPath(Cache.Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+		const std::string& ReadinessError = bActive ?
+			ActiveReadinessError : Cache.strPreviewReadinessError;
+		m_strPreviewStatus = ReadinessError.empty() ?
+			"The saved Skill Effect is not ready for preview." :
+			ReadinessError;
+		return false;
+	}
+	if (!bActive)
+	{
+		if (!Try_LoadDocumentPath(*pEditablePath,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED,
 				Cache.Document.strEffectAssetId))
 		{
 			if (m_PendingDocumentLoad.has_value() &&
-				m_PendingDocumentLoad->Path == Cache.Path)
+				m_PendingDocumentLoad->Path == *pEditablePath)
 			{
 				m_PendingDocumentLoad->strElementSelectionId.clear();
 				m_PendingDocumentLoad->strModelCueSelectionId.clear();
@@ -6776,27 +8093,36 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		*m_ActiveDocument : Cache.Document;
 	const bool_t bDrawable = bActive ?
 		m_bActiveDocumentDrawable : Cache.bDrawable;
-	const bool_t bPreviewReady = Cache.bPreviewReady;
+	std::string strActivePreviewReadinessError;
+	const bool_t bPreviewReady = bActive ?
+		Validate_UnifiedEffectPreviewReadiness(
+			Document, strActivePreviewReadinessError) : Cache.bPreviewReady;
+	const std::string& PreviewReadinessError = bActive ?
+		strActivePreviewReadinessError : Cache.strPreviewReadinessError;
 	const std::string& DrawableError = bActive ?
 		m_strActiveDocumentDrawableError : Cache.strDrawableError;
+	std::string strEditableStatus;
+	const std::filesystem::path* pEditablePath =
+		Resolve_DirectAuthoredEditablePath(
+			Cache.Document.strEffectAssetId, strEditableStatus);
 	const std::string RootLabel = strFallbackDisplayName + "##mapped-effect";
 	ImGui::PushID(Cache.Document.strEffectAssetId.c_str());
 	const bool_t bOpen = ImGui::TreeNodeEx(RootLabel.c_str(),
 		ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow |
 		(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 	ImGui::SameLine();
-	ImGui::BeginDisabled(bActive);
-	if (ImGui::SmallButton("Open for Editing"))
+	ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
+	if (ImGui::SmallButton("Open for Editing") && nullptr != pEditablePath)
 	{
-		Try_LoadDocumentPath(Cache.Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+		Try_LoadDocumentPath(*pEditablePath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
 			Cache.Document.strEffectAssetId);
 	}
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		ImGui::SetTooltip(bActive ?
+		ImGui::SetTooltip("%s", bActive ?
 			"This saved authored Effect is already the Current Effect." :
-			"Load this saved Effect into Current Effect. Partial drafts remain editable even before they can preview.");
+			strEditableStatus.c_str());
 	}
 	if (!bOpen)
 	{
@@ -6804,11 +8130,17 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		return;
 	}
 
-	ImGui::BeginDisabled(!bDrawable || !bPreviewReady);
+	ImGui::BeginDisabled(nullptr == pEditablePath || !bDrawable ||
+		!bPreviewReady);
 	if (ImGui::SmallButton("Play All"))
 		Try_PlayUnifiedEffect(Cache);
 	ImGui::EndDisabled();
-	if (!bDrawable && ImGui::IsItemHovered(
+	if (nullptr == pEditablePath && ImGui::IsItemHovered(
+			ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip("%s", strEditableStatus.c_str());
+	}
+	else if (!bDrawable && ImGui::IsItemHovered(
 			ImGuiHoveredFlags_AllowWhenDisabled))
 	{
 		ImGui::SetTooltip(
@@ -6818,7 +8150,7 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 	else if (!bPreviewReady && ImGui::IsItemHovered(
 			ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		ImGui::SetTooltip("%s", Cache.strPreviewReadinessError.c_str());
+		ImGui::SetTooltip("%s", PreviewReadinessError.c_str());
 	}
 	else if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Load this saved Skill Effect if needed, then play it from the beginning.");
@@ -6837,13 +8169,25 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 			{ return Resolve_AuthoringFamily(Element) == eFamily; }));
 		if (0u == iCount)
 			continue;
+		const size_t iPlayLockedCount = static_cast<size_t>(std::count_if(
+			Document.Elements.begin(), Document.Elements.end(),
+			[eFamily](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Resolve_AuthoringFamily(Element) == eFamily &&
+					!Is_ElementPreviewAdmitted(Element);
+			}));
+		const bool_t bFamilyPreviewAdmitted = iPlayLockedCount < iCount;
 		ImGui::PushID(iFamily);
 		const std::string FamilyLabel = std::string(
-			AuthoringFamily_Label(eFamily)) + " (" + std::to_string(iCount) + ")";
+			AuthoringFamily_Label(eFamily)) + " (" + std::to_string(iCount) +
+			(iPlayLockedCount > 0u ?
+				", play-locked " + std::to_string(iPlayLockedCount) :
+				std::string()) + ")";
 		const bool_t bFamilyOpen = ImGui::TreeNodeEx(FamilyLabel.c_str(),
 			ImGuiTreeNodeFlags_OpenOnArrow);
 		ImGui::SameLine();
-		ImGui::BeginDisabled(!bActive || !bDrawable || !bPreviewReady);
+		ImGui::BeginDisabled(!bActive || !bDrawable || !bPreviewReady ||
+			!bFamilyPreviewAdmitted);
 		if (ImGui::SmallButton("Play Family"))
 			Try_PlayUnifiedAuthoringFamily(Document.strEffectAssetId, eFamily);
 		ImGui::EndDisabled();
@@ -6851,6 +8195,12 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 				ImGuiHoveredFlags_AllowWhenDisabled))
 		{
 			ImGui::SetTooltip("Load this Effect before playing one Family.");
+		}
+		else if (!bFamilyPreviewAdmitted && ImGui::IsItemHovered(
+				ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Every Element in this Family is hidden or hard-locked by material/runtime admission. APPROXIMATE Elements remain playable for authoring only; Load/edit/Save remain available.");
 		}
 		if (bFamilyOpen)
 		{
@@ -6871,16 +8221,32 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 						AuthoringElementResourceSlotSummary(Element).c_str());
 				}
 				ImGui::SameLine();
+				ImGui::BeginDisabled(nullptr == pEditablePath);
 				if (ImGui::SmallButton("Load"))
 					Try_LoadUnifiedElement(Cache, Element.strElementId);
+				ImGui::EndDisabled();
+				if (nullptr == pEditablePath && ImGui::IsItemHovered(
+						ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip("%s", strEditableStatus.c_str());
+				}
 				ImGui::SameLine();
-				ImGui::BeginDisabled(!bActive || !bPreviewReady);
+				const bool_t bElementPreviewAdmitted =
+					Is_ElementPreviewAdmitted(Element);
+				ImGui::BeginDisabled(!bActive || !bPreviewReady ||
+					!bElementPreviewAdmitted);
 				if (ImGui::SmallButton("Solo"))
 				{
 					Try_SoloElement(Document.strEffectAssetId,
 						Element.strElementId);
 				}
 				ImGui::EndDisabled();
+				if (!bElementPreviewAdmitted && ImGui::IsItemHovered(
+						ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip(
+						"Solo is play-locked because this Element is hidden or hard-locked by material/runtime admission. APPROXIMATE Elements remain playable for authoring only; Load/edit/Save remain available.");
+				}
 				if (!bActive && ImGui::IsItemHovered(
 						ImGuiHoveredFlags_AllowWhenDisabled))
 				{
@@ -6917,8 +8283,15 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 					ImGui::SetTooltip("%s\n%s", Cue.strModelAssetId.c_str(),
 						Cue.strClipName.c_str());
 				ImGui::SameLine();
+				ImGui::BeginDisabled(nullptr == pEditablePath);
 				if (ImGui::SmallButton("Load"))
 					Try_LoadUnifiedModelCue(Cache, Cue.strCueId);
+				ImGui::EndDisabled();
+				if (nullptr == pEditablePath && ImGui::IsItemHovered(
+						ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip("%s", strEditableStatus.c_str());
+				}
 				ImGui::SameLine();
 				ImGui::BeginDisabled(!bActive || !bPreviewReady);
 				if (ImGui::SmallButton("Solo"))
@@ -7103,19 +8476,37 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 			{ return Resolve_AuthoringFamily(Element) == eFamily; }));
 		if (0u == iCount)
 			continue;
+		const size_t iPlayLockedCount = static_cast<size_t>(std::count_if(
+			m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+			[eFamily](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Resolve_AuthoringFamily(Element) == eFamily &&
+					!Is_ElementPreviewAdmitted(Element);
+			}));
+		const bool_t bFamilyPreviewAdmitted = iPlayLockedCount < iCount;
 		ImGui::PushID(iFamily);
 		const std::string FamilyLabel = std::string(
-			AuthoringFamily_Label(eFamily)) + " (" + std::to_string(iCount) + ")";
+			AuthoringFamily_Label(eFamily)) + " (" + std::to_string(iCount) +
+			(iPlayLockedCount > 0u ?
+				", play-locked " + std::to_string(iPlayLockedCount) :
+				std::string()) + ")";
 		const bool_t bFamilyOpen = ImGui::TreeNodeEx(FamilyLabel.c_str(),
 			ImGuiTreeNodeFlags_OpenOnArrow);
 		ImGui::SameLine();
-		ImGui::BeginDisabled(!m_bActiveDocumentDrawable);
+		ImGui::BeginDisabled(!m_bActiveDocumentDrawable ||
+			!bFamilyPreviewAdmitted);
 		if (ImGui::SmallButton("Play Family"))
 		{
 			Try_PlayUnifiedAuthoringFamily(
 				m_ActiveDocument->strEffectAssetId, eFamily);
 		}
 		ImGui::EndDisabled();
+		if (!bFamilyPreviewAdmitted && ImGui::IsItemHovered(
+				ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Every Element in this Family is hidden or hard-locked by material/runtime admission. APPROXIMATE Elements remain playable for authoring only; editing and Save remain available.");
+		}
 		if (bFamilyOpen)
 		{
 			size_t iOrdinal = 0u;
@@ -7139,13 +8530,26 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 						Element.strElementId);
 				}
 				if (ImGui::IsItemHovered())
-					ImGui::SetTooltip("Stable Element: %s",
-						Element.strElementId.c_str());
+					ImGui::SetTooltip(
+						"Stable Element: %s%s",
+						Element.strElementId.c_str(),
+						Is_ElementPreviewAdmitted(Element) ? "" :
+							"\nPlay locked: hidden or hard material/runtime admission; editing and Save remain available.");
 				ImGui::SameLine();
+				const bool_t bElementPreviewAdmitted =
+					Is_ElementPreviewAdmitted(Element);
+				ImGui::BeginDisabled(!bElementPreviewAdmitted);
 				if (ImGui::SmallButton("Solo"))
 				{
 					Try_SoloElement(m_ActiveDocument->strEffectAssetId,
 						Element.strElementId);
+				}
+				ImGui::EndDisabled();
+				if (!bElementPreviewAdmitted && ImGui::IsItemHovered(
+						ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip(
+						"Solo is play-locked; select the row to edit and Save this Element.");
 				}
 				ImGui::PopID();
 			}
@@ -7209,62 +8613,83 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
         ImGui::End();
         return;
     }
-	constexpr LostArk::Shared::CHARACTER_CLASS_ID Classes[] = {
-        LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
-        LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
-        LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
-        LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-        LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-        LostArk::Shared::CHARACTER_CLASS_ID::WARLORD };
 	const std::filesystem::path ArtistFUnifiedPath =
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Effects") / L"Authored" /
 			(std::filesystem::path(
 				ARTIST_F_UNIFIED_EFFECT_ASSET_ID).wstring() +
 			 L".effect.json"));
-	const std::filesystem::path DimensionMasterTUnifiedPath =
-		CProjectDataRoot::Resolve(
-			std::filesystem::path(L"Effects") / L"Authored" /
-			(std::filesystem::path(
-				DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID).wstring() +
-			 L".effect.json"));
 	const double fUnifiedCacheNowSeconds = ImGui::GetTime();
+	const bool_t bCandidateCachePollDue =
+		fUnifiedCacheNowSeconds >= m_fNextUnifiedCandidateCachePollSeconds;
+	if (bCandidateCachePollDue)
+	{
+		m_fNextUnifiedCandidateCachePollSeconds =
+			fUnifiedCacheNowSeconds + 1.0;
+	}
 	if (!m_ArtistFUnifiedCache.bObserved ||
-		!m_DimensionMasterTUnifiedCache.bObserved ||
 		fUnifiedCacheNowSeconds >= m_fNextUnifiedCachePollSeconds)
 	{
 		Refresh_UnifiedEffectCache(m_ArtistFUnifiedCache,
 			ArtistFUnifiedPath, ARTIST_F_UNIFIED_EFFECT_ASSET_ID);
-		Refresh_UnifiedEffectCache(m_DimensionMasterTUnifiedCache,
-			DimensionMasterTUnifiedPath,
-			DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID);
 		m_fNextUnifiedCachePollSeconds = fUnifiedCacheNowSeconds + 1.0;
 	}
 	{
-		ImGui::TextDisabled(
-			"Input labels such as F identify the gameplay skill slot; expand a skill or press Play All here without pressing that key.");
-		if (ImGui::BeginCombo("Character", Class_Label(m_eAllEffectsClass)))
+		if (m_bAllEffectsValtanBossSelected)
 		{
-			for (const auto eClass : Classes)
+			ImGui::TextDisabled(
+				"Boss Pattern rows identify the action, stage, and clip; expand 420633 or press Play All without changing CHARACTER_CLASS.");
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Input labels such as F identify the gameplay skill slot; expand a skill or press Play All here without pressing that key.");
+		}
+		if (!m_bAllEffectsValtanBossSelected &&
+			!m_strUnifiedCandidateStatus.empty())
+			ImGui::TextWrapped("%s", m_strUnifiedCandidateStatus.c_str());
+		const char_t* pAllEffectsOwnerLabel =
+			m_bAllEffectsValtanBossSelected ?
+				"Valtan" : Class_Label(m_eAllEffectsClass);
+		if (ImGui::BeginCombo("Character / Boss", pAllEffectsOwnerLabel))
+		{
+			for (const EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION& Owner :
+				EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS)
 			{
-				if (ImGui::Selectable(Class_Label(eClass),
-					eClass == m_eAllEffectsClass))
+				const bool_t bBossOwner =
+					EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
+						Owner.eKind;
+				if (bBossOwner)
+					ImGui::SeparatorText("Boss Patterns");
+				const bool_t bSelected = bBossOwner ?
+					m_bAllEffectsValtanBossSelected :
+					(!m_bAllEffectsValtanBossSelected &&
+						Owner.eCharacterClass == m_eAllEffectsClass);
+				if (ImGui::Selectable(Owner.strLabel.data(), bSelected))
 				{
-					m_eAllEffectsClass = eClass;
-					Select_AuthoringDomainForClass(eClass);
+					m_bAllEffectsValtanBossSelected = bBossOwner;
+					if (!bBossOwner)
+					{
+						m_eAllEffectsClass = Owner.eCharacterClass;
+						Select_AuthoringDomainForClass(
+							Owner.eCharacterClass);
+					}
 				}
 			}
 			ImGui::EndCombo();
 		}
-		ImGui::InputTextWithHint("##effect-search", "Search skill or DDS...",
+		ImGui::InputTextWithHint("##effect-search", "Search skill, pattern, or DDS...",
 			m_AllEffectsSearch.data(), m_AllEffectsSearch.size());
 		ImGui::SameLine();
 		if (ImGui::SmallButton("Refresh"))
 		{
 			Refresh_AllEffects(true);
+			Refresh_DataFiles();
 			m_ArtistFUnifiedCache.bObserved = false;
-			m_DimensionMasterTUnifiedCache.bObserved = false;
+			for (auto& [AssetId, Cache] : m_UnifiedCandidateCaches)
+				Cache.bObserved = false;
 			m_fNextUnifiedCachePollSeconds = 0.0;
+			m_fNextUnifiedCandidateCachePollSeconds = 0.0;
 		}
 		ImGui::SameLine();
 		if (ImGui::SmallButton("Hide Preview"))
@@ -7277,9 +8702,52 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::GetStyle().ItemSpacing.y;
 		ImGui::BeginChild("ElementFirstEffectTree",
 			ImVec2(0.f, -fStatusReserve), true);
+		bool_t bBossPatternsMatch = Search.empty();
+		for (const BOSS_PATTERN_EFFECT_TREE_ENTRY& BossEntry :
+			m_ValtanBossPatternEffects)
+		{
+			const BOSS_PATTERN_EFFECT_TREE_ROW& Row = BossEntry.Row;
+			bBossPatternsMatch = bBossPatternsMatch ||
+				Contains_NoCase("Boss Patterns", Search) ||
+				Contains_NoCase("Valtan", Search) ||
+				Contains_NoCase("420633", Search) ||
+				Contains_NoCase(Row.strBindingId, Search) ||
+				Contains_NoCase(Row.strPatternId, Search) ||
+				Contains_NoCase(Row.strSemanticStageId, Search) ||
+				Contains_NoCase(Row.strActionId, Search) ||
+				Contains_NoCase(Row.strEffectAssetId, Search) ||
+				Contains_NoCase(Row.strRuntimeClipName, Search);
+		}
+		if (m_bAllEffectsValtanBossSelected)
+		{
+			ImGui::SeparatorText("Valtan Boss Patterns");
+			if (!m_strValtanBossPatternStatus.empty())
+				ImGui::TextDisabled("%s",
+					m_strValtanBossPatternStatus.c_str());
+			if (bBossPatternsMatch)
+			{
+				for (const BOSS_PATTERN_EFFECT_TREE_ENTRY& BossEntry :
+					m_ValtanBossPatternEffects)
+				{
+					const BOSS_PATTERN_EFFECT_TREE_ROW& Row = BossEntry.Row;
+					const std::string Label =
+						"420633 | " + Row.strPatternId + " | " +
+						Row.strSemanticStageId + " | " +
+						Row.strRuntimeClipName;
+					Render_UnifiedEffectTree(BossEntry.Cache, Label);
+					ImGui::TextDisabled(
+						"%s; editable/auditionable canary, Product mapping remains disabled.",
+						Row.strProductAdmissionStatus.c_str());
+				}
+			}
+			if (m_ValtanBossPatternEffects.empty())
+				ImGui::TextDisabled(
+					"No Valtan Boss Pattern Effect was staged; press Refresh for the exact validation reason.");
+		}
 		for (const EFFECT_SKILL_TREE_ENTRY& Entry : m_AllEffects)
 		{
-			if (Entry.Skill.eCharacterClass != m_eAllEffectsClass)
+			if (m_bAllEffectsValtanBossSelected ||
+				Entry.Skill.eCharacterClass != m_eAllEffectsClass)
 				continue;
 			const bool_t bArtistFSkill =
 				Entry.Skill.eCharacterClass ==
@@ -7294,32 +8762,32 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				nullptr != pArtistFToolProgram &&
 				pArtistFToolProgram->eProjectionKind ==
 					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
-			const bool_t bDimensionMasterT =
-				Entry.Skill.eCharacterClass ==
-					LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER &&
-				Entry.Skill.iSkillId == DIMENSION_MASTER_T_SKILL_ID;
-			const bool_t bDimensionMasterTUnifiedReady = bDimensionMasterT &&
-				m_DimensionMasterTUnifiedCache.bValid;
 			const bool_t bArtistFUnifiedReady = bArtistFSkill &&
 				m_ArtistFUnifiedCache.bValid;
-			const bool_t bRepresentativeUnifiedSkill =
-				bArtistFSkill || bDimensionMasterT;
+			const bool_t bRepresentativeUnifiedSkill = bArtistFSkill;
 			const char_t* pRepresentativeEffectAssetId = bArtistFSkill ?
-				ARTIST_F_UNIFIED_EFFECT_ASSET_ID :
-				(bDimensionMasterT ?
-					DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID : nullptr);
+				ARTIST_F_UNIFIED_EFFECT_ASSET_ID : nullptr;
 			const bool_t bUnsavedRepresentativeParentActive =
 				nullptr != pRepresentativeEffectAssetId &&
 				m_ActiveDocument.has_value() &&
 				EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource &&
 				m_ActiveDocument->strEffectAssetId ==
 					pRepresentativeEffectAssetId;
-			const bool_t bUnifiedReady = bArtistFUnifiedReady ||
-				bDimensionMasterTUnifiedReady;
+			const bool_t bUnifiedReady = bArtistFUnifiedReady;
 			const UNIFIED_EFFECT_CACHE* pUnifiedCache =
-				bArtistFUnifiedReady ? &m_ArtistFUnifiedCache :
-				(bDimensionMasterTUnifiedReady ?
-					&m_DimensionMasterTUnifiedCache : nullptr);
+				bArtistFUnifiedReady ? &m_ArtistFUnifiedCache : nullptr;
+			const bool_t bCandidateMatchesSearch = std::any_of(
+				m_UnifiedCandidateBindings.begin(),
+				m_UnifiedCandidateBindings.end(),
+				[&Entry, &Search](
+					const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding)
+				{
+					return Binding.eCharacterClass ==
+							Entry.Skill.eCharacterClass &&
+						Binding.iSkillId == Entry.Skill.iSkillId &&
+						(Contains_NoCase(Binding.strEffectAssetId, Search) ||
+						 Contains_NoCase(Binding.strClipName, Search));
+				});
 			const bool_t bUnifiedMatchesSearch = nullptr != pUnifiedCache &&
 				(Contains_NoCase(pUnifiedCache->Document.strDisplayName, Search) ||
 				 Contains_NoCase(pUnifiedCache->Document.strEffectAssetId, Search) ||
@@ -7375,7 +8843,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						})));
 			if (!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
 				!Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
-				!bCueMatchesSearch && !bUnifiedMatchesSearch)
+				!bCueMatchesSearch && !bUnifiedMatchesSearch &&
+				!bCandidateMatchesSearch)
 			{
 				continue;
 			}
@@ -7400,8 +8869,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				}
 				if (bRepresentativeUnifiedSkill && !bUnifiedReady)
 				{
-					const UNIFIED_EFFECT_CACHE& MissingCache = bArtistFSkill ?
-						m_ArtistFUnifiedCache : m_DimensionMasterTUnifiedCache;
+					const UNIFIED_EFFECT_CACHE& MissingCache =
+						m_ArtistFUnifiedCache;
 					if (bUnsavedRepresentativeParentActive)
 					{
 						ImGui::TextDisabled(
@@ -7418,9 +8887,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						ImGui::BeginDisabled(Has_UnsavedWork());
 						if (ImGui::SmallButton("Create Empty Skill Effect"))
 						{
-							const char_t* pEffectAssetId = bArtistFSkill ?
-								ARTIST_F_UNIFIED_EFFECT_ASSET_ID :
-								DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID;
+							const char_t* pEffectAssetId =
+								ARTIST_F_UNIFIED_EFFECT_ASSET_ID;
 							Copy_Buffer(m_NewAssetId.data(), m_NewAssetId.size(),
 								pEffectAssetId);
 							Copy_Buffer(m_NewDisplayName.data(),
@@ -7443,19 +8911,55 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				{
 					ImGui::TextDisabled("No playable Effect is mapped to this skill.");
 				}
-				if (!bArtistFSkill && !bUnifiedReady &&
-					!bRepresentativeUnifiedSkill)
+				if (!bArtistFSkill)
 					for (size_t iCue = 0u; iCue < Entry.ProductCues.size(); ++iCue)
 				{
 					const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue =
 						Entry.ProductCues[iCue];
+					std::vector<const UNIFIED_EFFECT_CANDIDATE_BINDING*>
+						CandidateBindings;
+					for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding :
+						m_UnifiedCandidateBindings)
+					{
+						if (Binding.eCharacterClass ==
+								Entry.Skill.eCharacterClass &&
+							Binding.iSkillId == Entry.Skill.iSkillId &&
+							(Binding.strEffectAssetId ==
+									Cue.Cue.strEffectAssetId ||
+							 Binding.strLegacyProductEffectAssetId ==
+									Cue.Cue.strEffectAssetId) &&
+							Binding.strClipName == Cue.Cue.strClipName)
+						{
+							CandidateBindings.push_back(&Binding);
+						}
+					}
+					const bool_t bUnifiedProduct = std::any_of(
+						CandidateBindings.begin(), CandidateBindings.end(),
+						[&Cue](const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding)
+						{
+							return nullptr != pBinding &&
+								pBinding->strEffectAssetId ==
+									Cue.Cue.strEffectAssetId;
+						});
 					const bool_t bCombo = Entry.Skill.eSkillKind ==
 						LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
+					const bool_t bMultipleStageClips = std::any_of(
+						Entry.ProductCues.begin(), Entry.ProductCues.end(),
+						[&Cue](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Other)
+						{
+							return Other.iStageIndex == Cue.iStageIndex &&
+								Other.iStageClipIndex != Cue.iStageClipIndex;
+						});
 					std::string StageLabel = bCombo ?
-						("BA " + std::to_string(Cue.iBoundClipOrdinal + 1u)) :
+						("BA " + std::to_string(Cue.iStageIndex + 1u)) :
 						(Entry.ProductCues.size() > 1u ?
-							("Stage " + std::to_string(Cue.iBoundClipOrdinal + 1u)) :
+							("Stage " + std::to_string(Cue.iStageIndex + 1u)) :
 							std::string("Effect"));
+					if (bMultipleStageClips)
+					{
+						StageLabel += " / Clip " +
+							std::to_string(Cue.iStageClipIndex + 1u);
+					}
 					if (!Cue.Cue.strClipName.empty())
 						StageLabel += " | " + Cue.Cue.strClipName;
 					StageLabel += "##" + std::to_string(iCue);
@@ -7463,10 +8967,83 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 					if (ImGui::TreeNodeEx(StageLabel.c_str(),
 						ImGuiTreeNodeFlags_OpenOnArrow))
 					{
-						if (ImGui::Button("Play Full Effect"))
+						if (CandidateBindings.empty() &&
+							m_DirectAuthoredEditableEntries.contains(
+								Cue.Cue.strEffectAssetId))
+						{
+							std::string strEditableStatus;
+							const std::filesystem::path* pEditablePath =
+								Resolve_DirectAuthoredEditablePath(
+									Cue.Cue.strEffectAssetId,
+									strEditableStatus);
+							const bool_t bAlreadyActive =
+								m_ActiveDocument.has_value() &&
+								m_eActiveDocumentSource ==
+									EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+								m_ActiveDocument->strEffectAssetId ==
+									Cue.Cue.strEffectAssetId;
+							ImGui::BeginDisabled(
+								bAlreadyActive || nullptr == pEditablePath);
+							if (ImGui::SmallButton(
+									"Open Saved Authored for Editing") &&
+								nullptr != pEditablePath)
+							{
+								Try_LoadDocumentPath(*pEditablePath,
+									EFFECT_DOCUMENT_SOURCE::AUTHORED,
+									Cue.Cue.strEffectAssetId);
+							}
+							ImGui::EndDisabled();
+							if (ImGui::IsItemHovered(
+									ImGuiHoveredFlags_AllowWhenDisabled))
+							{
+								ImGui::SetTooltip("%s", bAlreadyActive ?
+									"This saved authored Effect is already the Current Effect." :
+									strEditableStatus.c_str());
+							}
+							ImGui::Separator();
+						}
+						if (!CandidateBindings.empty())
+						{
+							ImGui::TextColored(
+								ImVec4(0.36f, 0.72f, 1.f, 1.f),
+								bUnifiedProduct ?
+									"Product uses this unified authored Effect." :
+									"Candidate only; Product still plays the Legacy Effect below.");
+							for (const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding :
+								CandidateBindings)
+							{
+								const auto Cache = m_UnifiedCandidateCaches.find(
+									pBinding->strEffectAssetId);
+								if (Cache == m_UnifiedCandidateCaches.end())
+									continue;
+								if (!Cache->second.bObserved || bCandidateCachePollDue)
+								{
+									Refresh_UnifiedEffectCache(Cache->second,
+										pBinding->Path,
+										pBinding->strEffectAssetId);
+								}
+								ImGui::PushID(pBinding->strEffectAssetId.c_str());
+								if (Cache->second.bValid)
+								{
+									Render_UnifiedEffectTree(Cache->second,
+										"Candidate | " +
+										pBinding->strEffectAssetId);
+								}
+								else
+								{
+									ImGui::TextWrapped("Candidate unavailable: %s",
+										Cache->second.strStatus.c_str());
+								}
+								ImGui::PopID();
+							}
+							ImGui::Separator();
+						}
+						if (ImGui::Button(bUnifiedProduct || CandidateBindings.empty() ?
+								"Play Full Effect" : "Play Legacy Product"))
 							Try_SelectProductCue(Entry, iCue);
 						Render_VisualProgramAuthoring(Entry, iCue);
-						if (nullptr == CEffectCatalog::Find_VisualProgram(
+						if (!bUnifiedProduct &&
+							nullptr == CEffectCatalog::Find_VisualProgram(
 								Cue.Cue.strEffectAssetId))
 						{
 							ImGui::TextDisabled(
@@ -7475,6 +9052,71 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						ImGui::TreePop();
 					}
 					ImGui::PopID();
+				}
+				if (!bArtistFSkill)
+				{
+					std::vector<const UNIFIED_EFFECT_CANDIDATE_BINDING*>
+						UnmappedCandidateBindings;
+					for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding :
+						m_UnifiedCandidateBindings)
+					{
+						if (Binding.eCharacterClass !=
+								Entry.Skill.eCharacterClass ||
+							Binding.iSkillId != Entry.Skill.iSkillId)
+						{
+							continue;
+						}
+						const bool_t bHasLegacyProductCue = std::any_of(
+							Entry.ProductCues.begin(), Entry.ProductCues.end(),
+							[&Binding](
+								const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
+							{
+								return (Binding.strEffectAssetId ==
+											Cue.Cue.strEffectAssetId ||
+										Binding.strLegacyProductEffectAssetId ==
+											Cue.Cue.strEffectAssetId) &&
+									Binding.strClipName == Cue.Cue.strClipName;
+							});
+						if (!bHasLegacyProductCue)
+							UnmappedCandidateBindings.push_back(&Binding);
+					}
+					if (!UnmappedCandidateBindings.empty())
+					{
+						ImGui::SeparatorText(
+							"Candidate-only Occurrences without a Product Cue");
+						ImGui::TextColored(
+							ImVec4(1.f, 0.72f, 0.22f, 1.f),
+							"These batch targets are editable, but no active Legacy ProductCue references their occurrence.");
+						for (const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding :
+							UnmappedCandidateBindings)
+						{
+							const auto Cache = m_UnifiedCandidateCaches.find(
+								pBinding->strEffectAssetId);
+							if (Cache == m_UnifiedCandidateCaches.end())
+								continue;
+							if (!Cache->second.bObserved || bCandidateCachePollDue)
+							{
+								Refresh_UnifiedEffectCache(Cache->second,
+									pBinding->Path,
+									pBinding->strEffectAssetId);
+							}
+							ImGui::PushID(pBinding->strEffectAssetId.c_str());
+							const std::string CandidateLabel =
+								"Candidate | Stage " +
+								std::to_string(pBinding->iStageIndex + 1u) +
+								" / Clip " +
+								std::to_string(pBinding->iStageClipIndex + 1u) +
+								" | " + pBinding->strClipName;
+							if (Cache->second.bValid)
+								Render_UnifiedEffectTree(
+									Cache->second, CandidateLabel);
+							else
+								ImGui::TextWrapped("%s unavailable: %s",
+									CandidateLabel.c_str(),
+									Cache->second.strStatus.c_str());
+							ImGui::PopID();
+						}
+					}
 				}
 				ImGui::TreePop();
 			}
@@ -7586,8 +9228,15 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		"Choose Class / Skill / Product Cue, open a family, then click an Element row. Use Selected Element as Preset creates the editable starting copy.");
 	if (ImGui::BeginCombo("Class", Class_Label(m_eAllEffectsClass)))
 	{
-		for (const auto eClass : Classes)
+		for (const EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION& Owner :
+			EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS)
 		{
+			if (Owner.eKind !=
+				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS)
+			{
+				continue;
+			}
+			const auto eClass = Owner.eCharacterClass;
 			if (ImGui::Selectable(Class_Label(eClass),
 				eClass == m_eAllEffectsClass))
 			{
@@ -7900,6 +9549,38 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
         }
         if (bSkillOpen)
         {
+			if (m_DirectAuthoredEditableEntries.contains(
+					strProductEffectAssetId))
+			{
+				std::string strEditableStatus;
+				const std::filesystem::path* pEditablePath =
+					Resolve_DirectAuthoredEditablePath(
+						strProductEffectAssetId, strEditableStatus);
+				const bool_t bEditableAuthoredActive =
+					m_ActiveDocument.has_value() &&
+					m_eActiveDocumentSource ==
+						EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+					m_ActiveDocument->strEffectAssetId ==
+						strProductEffectAssetId;
+				ImGui::BeginDisabled(
+					bEditableAuthoredActive || nullptr == pEditablePath);
+				if (ImGui::Button("Open Saved Authored for Editing") &&
+					nullptr != pEditablePath)
+				{
+					Try_LoadDocumentPath(*pEditablePath,
+						EFFECT_DOCUMENT_SOURCE::AUTHORED,
+						strProductEffectAssetId);
+				}
+				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(
+						ImGuiHoveredFlags_AllowWhenDisabled))
+				{
+					ImGui::SetTooltip("%s", bEditableAuthoredActive ?
+						"This direct authored document is already the Current Effect." :
+						strEditableStatus.c_str());
+				}
+				ImGui::SameLine();
+			}
 			ImGui::BeginDisabled(Entry.ProductCues.empty());
 			if (ImGui::Button(bActiveProductDocument ?
 				"Replay Active Product Cue" : "Product Play"))
@@ -7932,6 +9613,32 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                             ProductCue.Cue.eFollowPolicy ? "follow" : "snapshot",
                         EFFECT_STOP_POLICY::NATURAL ==
                             ProductCue.Cue.eStopPolicy ? "natural" : "cue_end");
+					const char_t* pCueAnimationAsset =
+						Animation_AssetName(Entry.Skill.eCharacterClass);
+					const std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>
+						Admission = nullptr == pCueAnimationAsset ? nullptr :
+						CEffectCatalog::Find_ProductCueAdmission(
+							pCueAnimationAsset,
+							ProductCue.Cue.strClipName,
+							ProductCue.Cue.iStartMs,
+							ProductCue.Cue.strEffectAssetId);
+					if (nullptr != Admission)
+					{
+						ImGui::TextDisabled("%s | observed=%s",
+							Get_EffectProductCueAdmissionClassLabel(
+								Admission->eAdmissionClass),
+							Admission->strObservedExactness.c_str());
+						ImGui::TextWrapped("%s | rollback=%s | %s",
+							Admission->Provenance.strDecision.c_str(),
+							Admission->strRollbackEffectAssetId.c_str(),
+							Admission->Provenance.strScope.c_str());
+					}
+					else if (CEffectCatalog::Is_ProductManagedEffect(
+						ProductCue.Cue.strEffectAssetId))
+					{
+						ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
+							"Managed Product admission missing for this cue.");
+					}
                 }
                 ImGui::TreePop();
             }
@@ -9569,7 +11276,7 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
     if (EFFECT_AUTHORING_FAMILY::END == eFamily ||
         EFFECT_ELEMENT_KIND::END == eKind)
     {
-        m_strElementStatus = "Select one supported Element Family.";
+        m_strElementStatus = "Select one supported Element Type.";
         return false;
     }
     if (EFFECT_AUTHORING_FAMILY::MESH_PARTICLE == eFamily &&
@@ -9865,7 +11572,10 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 		if (bDetailDraft)
 		{
 			if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+			{
 				m_DetailDraft = *pCommitted;
+				Refresh_DetailDraftAdmission(*pCommitted);
+			}
 			m_bDetailDraftDirty = false;
 		}
 		if (bModelCueDraft)
@@ -9975,15 +11685,56 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
 			" Structurally valid partial draft saved; world preview hidden and publish blocked: " +
 			m_strActiveDocumentDrawableError;
 	}
-	else
+    else
+    {
+        m_strDocumentStatus += m_bActiveDocumentMatchesRuntime ?
+            " Loaded Runtime Catalog snapshot is equivalent." :
+            " Live world preview updated; Assembly/WFX/Runtime Catalog publish pending.";
+    }
+	const bool_t bMappedProductCue = std::any_of(
+		m_AllEffects.begin(), m_AllEffects.end(),
+		[this](const EFFECT_SKILL_TREE_ENTRY& Entry)
+		{
+			return std::any_of(Entry.ProductCues.begin(), Entry.ProductCues.end(),
+				[this](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue)
+				{
+					return ProductCue.Cue.strEffectAssetId ==
+						m_ActiveDocument->strEffectAssetId;
+				});
+		});
+	if (bMappedProductCue)
 	{
-		m_strDocumentStatus += m_bActiveDocumentMatchesRuntime ?
-			" Loaded Runtime Catalog snapshot is equivalent." :
-			" Live world preview updated; Assembly/WFX/Runtime Catalog publish pending.";
+		m_strDocumentStatus +=
+			" The saved authored revision is editable, but the loaded Product remains unchanged until explicit republish/reapproval.";
 	}
     Refresh_DataFiles();
     Refresh_AllEffects();
     return true;
+}
+
+bool_t Client::CEffect_Tool::Resolve_ActiveProductCueAdmission(
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>& OutAdmission,
+	std::string& strOutStatus) const
+{
+	OutAdmission.reset();
+	if (!m_ActiveDocument.has_value() || !m_ProductPreview.has_value() ||
+		m_ActiveDocument->strEffectAssetId !=
+			m_ProductPreview->ProductCue.Cue.strEffectAssetId)
+	{
+		strOutStatus =
+			"The active document is not paired with its clip-local Product cue.";
+		return false;
+	}
+	const ANIMATION_EFFECT_CUE& Cue = m_ProductPreview->ProductCue.Cue;
+	if (!CEffectCatalog::Admit_ProductSpawn(
+			Cue.strEffectAssetId, Cue.pProductAdmissionToken, strOutStatus))
+	{
+		return false;
+	}
+	strOutStatus = HasAuthoringApproximate(*m_ActiveDocument) ?
+		"DIRECT_UNIFIED_PRODUCT | APPROXIMATE editable/tunable" :
+		"DIRECT_UNIFIED_PRODUCT | FULL";
+	return true;
 }
 
 bool_t Client::CEffect_Tool::Try_PublishActiveProductAndReloadRuntime()
@@ -10002,6 +11753,15 @@ bool_t Client::CEffect_Tool::Try_PublishActiveProductAndReloadRuntime()
 	{
 		m_strDocumentStatus =
 			"Select an admitted Product cue and save its drawable Authored document before publishing the test.";
+		return false;
+	}
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION> ProductAdmission;
+	std::string ProductAdmissionStatus;
+	if (!Resolve_ActiveProductCueAdmission(
+			ProductAdmission, ProductAdmissionStatus))
+	{
+		m_strDocumentStatus = "Product publish/reload refused: " +
+			ProductAdmissionStatus + " Loaded Runtime Catalog was preserved.";
 		return false;
 	}
 	const char* pAnimationAsset =
@@ -10050,12 +11810,57 @@ bool_t Client::CEffect_Tool::Try_PublishActiveProductAndReloadRuntime()
 
 	const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT>
 		PreviousCatalog = CEffectCatalog::Capture_Runtime();
+	const auto RestorePreviousProductRuntime =
+		[this, &PreviousCatalog](std::string& strOutStatus)
+	{
+		std::string CatalogRollbackStatus;
+		if (!CEffectCatalog::Restore_Runtime(
+				PreviousCatalog, CatalogRollbackStatus))
+		{
+			strOutStatus = "Runtime Catalog rollback failed: " +
+				CatalogRollbackStatus;
+			return false;
+		}
+		std::string PrewarmRollbackStatus;
+		if (!CEffectPresentationService::Reprepare_ProductTargets(
+				m_pDevice, m_pContext,
+				{ m_ProductPreview->ProductCue.Cue.strEffectAssetId },
+				PrewarmRollbackStatus))
+		{
+			strOutStatus = "Runtime Catalog restored, but prepared-cache rollback failed: " +
+				PrewarmRollbackStatus;
+			return false;
+		}
+		if (!Refresh_AllEffects())
+		{
+			strOutStatus =
+				"Runtime Catalog/cache restored, but Product cue tree refresh failed: " +
+				m_strElementStatus;
+			return false;
+		}
+		strOutStatus =
+			"Previous Runtime Catalog, prepared cache, and Product cue tree were restored.";
+		return true;
+	};
 	std::string CatalogStatus;
 	if (!CEffectCatalog::Load(CatalogStatus))
 	{
 		m_strDocumentStatus =
 			"Effect files published, but transactional Runtime Catalog reload rejected them: " +
 			CatalogStatus;
+		return false;
+	}
+	std::string ReloadAdmissionStatus;
+	if (!CEffectCatalog::Admit_ProductSpawn(
+			m_ProductPreview->ProductCue.Cue.strEffectAssetId,
+			m_ProductPreview->ProductCue.Cue.pProductAdmissionToken,
+			ReloadAdmissionStatus))
+	{
+		std::string RollbackStatus;
+		RestorePreviousProductRuntime(RollbackStatus);
+		m_strDocumentStatus =
+			"Effect files published, but the reloaded Product changed its cue admission: " +
+			ReloadAdmissionStatus + " " + RollbackStatus;
 		return false;
 	}
 	std::string PrewarmStatus;
@@ -10065,22 +11870,31 @@ bool_t Client::CEffect_Tool::Try_PublishActiveProductAndReloadRuntime()
 		PrewarmStatus))
 	{
 		std::string RollbackStatus;
-		const bool_t bRestored = CEffectCatalog::Restore_Runtime(
-			PreviousCatalog, RollbackStatus);
+		RestorePreviousProductRuntime(RollbackStatus);
 		m_strDocumentStatus =
 			"Effect files published, but Product resource prewarm failed: " +
-			PrewarmStatus + (bRestored ?
-				" Previous Runtime Catalog and prepared cache were preserved." :
-				" Runtime Catalog rollback also failed: " + RollbackStatus);
+			PrewarmStatus + " " + RollbackStatus;
 		return false;
 	}
-	Refresh_AllEffects();
+	if (!Refresh_AllEffects())
+	{
+		const std::string RefreshFailure = m_strElementStatus;
+		std::string RollbackStatus;
+		RestorePreviousProductRuntime(RollbackStatus);
+		m_strDocumentStatus =
+			"Effect files published and prewarmed, but Product cue binding refresh failed: " +
+			RefreshFailure + " " + RollbackStatus;
+		return false;
+	}
 	Refresh_DataFiles();
 	Refresh_RuntimeEquivalence();
 	if (!m_bActiveDocumentMatchesRuntime)
 	{
+		std::string RollbackStatus;
+		RestorePreviousProductRuntime(RollbackStatus);
 		m_strDocumentStatus =
-			"Runtime Catalog reloaded, but the active Product differs from the clean Authored document.";
+			"Runtime Catalog reloaded, but the active Product differs from the clean Authored document. " +
+			RollbackStatus;
 		return false;
 	}
 	m_strDocumentStatus =
@@ -10520,6 +12334,15 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
             m_strDocumentStatus = Error;
             return false;
         }
+		if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource &&
+			Staged.strEffectAssetId != strSelectionId)
+		{
+			m_strDocumentStatus =
+				"Authored Effect identity mismatch; selected '" + strSelectionId +
+				"', file contains '" + Staged.strEffectAssetId +
+				"'. The previous Current Effect was preserved.";
+			return false;
+		}
     }
     std::string PreviewStatus;
     bool_t bDrawable = false;
@@ -10753,8 +12576,15 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             return FailRefresh(PresentationStatus);
         }
         vector<string> BoundClipNames;
-        std::map<string,
-            std::pair<LostArk::Shared::SKILL_ID, size_t>> ClipOwners;
+		struct BOUND_CLIP_OWNER final
+		{
+			LostArk::Shared::SKILL_ID iSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			size_t iBoundClipOrdinal = 0u;
+			size_t iStageIndex = 0u;
+			size_t iStageClipIndex = 0u;
+		};
+        std::map<string, std::vector<BOUND_CLIP_OWNER>> ClipOwners;
         for (const ANIMATION_SKILL_BINDING& Binding : Bindings.Bindings)
         {
             const auto EntryIndex = EntryIndices.find(Binding.iSkillId);
@@ -10768,19 +12598,30 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
                 Flatten_BindingClips(Binding);
             if (BindingClips.empty())
                 return FailRefresh("a skill binding has no animation clips.");
-            for (size_t iClip = 0u; iClip < BindingClips.size(); ++iClip)
+			size_t iBoundClipOrdinal = 0u;
+			for (size_t iStage = 0u; iStage < Binding.Stages.size(); ++iStage)
             {
-                const string& strClipName = BindingClips[iClip].strClipName;
-                BoundClipNames.push_back(strClipName);
-                const auto [Owner, bInserted] = ClipOwners.emplace(
-                    strClipName,
-                    std::make_pair(Binding.iSkillId, iClip));
-                if (!bInserted && Owner->second.first != Binding.iSkillId)
-                {
-                    return FailRefresh(
-                        "one animation clip is claimed by multiple skills: " +
-                        strClipName);
-                }
+				const ANIMATION_SKILL_STAGE& Stage = Binding.Stages[iStage];
+				for (size_t iStageClip = 0u;
+					iStageClip < Stage.Clips.size();
+					++iStageClip, ++iBoundClipOrdinal)
+				{
+					const string& strClipName =
+						Stage.Clips[iStageClip].strClipName;
+					BoundClipNames.push_back(strClipName);
+					auto& Owners = ClipOwners[strClipName];
+					if (std::any_of(Owners.begin(), Owners.end(),
+						[&Binding](const BOUND_CLIP_OWNER& Owner)
+						{ return Owner.iSkillId != Binding.iSkillId; }))
+					{
+						return FailRefresh(
+							"one animation clip is claimed by multiple skills: " +
+							strClipName);
+					}
+					Owners.push_back(BOUND_CLIP_OWNER{
+						Binding.iSkillId, iBoundClipOrdinal,
+						iStage, iStageClip });
+				}
             }
         }
         std::sort(BoundClipNames.begin(), BoundClipNames.end());
@@ -10808,14 +12649,34 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
                 return FailRefresh(
                     "an admitted Effect cue is not owned by a skill clip: " +
                     Cue.strClipName);
-            const auto EntryIndex = EntryIndices.find(Owner->second.first);
-            if (EntryIndex == EntryIndices.end())
-                return FailRefresh("an admitted Effect cue has no skill row.");
-            EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
-            ProductCue.Cue = Cue;
-            ProductCue.iBoundClipOrdinal = Owner->second.second;
-            Staged[EntryIndex->second].ProductCues.push_back(
-                std::move(ProductCue));
+			for (const BOUND_CLIP_OWNER& ClipOwner : Owner->second)
+			{
+				const auto EntryIndex = EntryIndices.find(ClipOwner.iSkillId);
+				if (EntryIndex == EntryIndices.end())
+					return FailRefresh(
+						"an admitted Effect cue has no skill row.");
+				const PLAYER_SKILL_DEFINITION& OwningSkill =
+					Staged[EntryIndex->second].Skill;
+				if (!CEffectCatalog::Validate_ProductCueBinding(
+						Cue.strEffectAssetId,
+						Cue.pProductAdmissionToken,
+						OwningSkill.eCharacterClass,
+						OwningSkill.strInputSlot,
+						OwningSkill.iSkillId,
+						static_cast<uint32_t>(ClipOwner.iStageIndex),
+						PresentationStatus))
+				{
+					return FailRefresh(PresentationStatus);
+				}
+				EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
+				ProductCue.Cue = Cue;
+				ProductCue.iBoundClipOrdinal =
+					ClipOwner.iBoundClipOrdinal;
+				ProductCue.iStageIndex = ClipOwner.iStageIndex;
+				ProductCue.iStageClipIndex = ClipOwner.iStageClipIndex;
+				Staged[EntryIndex->second].ProductCues.push_back(
+					std::move(ProductCue));
+			}
         }
 
         for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
@@ -10889,7 +12750,8 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             const auto Owner = ClipOwners.find(strClipName);
             if (Owner == ClipOwners.end())
                 continue;
-            const auto EntryIndex = EntryIndices.find(Owner->second.first);
+            const auto EntryIndex = EntryIndices.find(
+				Owner->second.front().iSkillId);
             if (EntryIndex == EntryIndices.end())
                 continue;
             EFFECT_SKILL_TREE_ENTRY& Entry = Staged[EntryIndex->second];
@@ -10911,6 +12773,9 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
                 return Left.Skill.strInputSlot < Right.Skill.strInputSlot;
             return Left.Skill.iSkillId < Right.Skill.iSkillId;
         });
+	if (!Refresh_ValtanBossPatternEffects())
+		return FailRefresh("Boss Patterns / Valtan: " +
+			m_strValtanBossPatternStatus);
     m_AllEffects = std::move(Staged);
     m_strElementStatus =
         "All Effects indexed Product presentation from PlayerSkills + "
@@ -11132,6 +12997,10 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
                 return Left.eSource < Right.eSource;
             return Left.strAssetId < Right.strAssetId;
         });
+	const bool_t bDirectAuthoredEditableIndexReady =
+		Refresh_DirectAuthoredEditableIndex(Staged);
+	const bool_t bUnifiedCandidateIndexReady =
+		Refresh_UnifiedCandidateBindings(Staged);
     m_DataFiles = std::move(Staged);
     m_DataFileDomains.assign(
         StagedDomainIds.begin(), StagedDomainIds.end());
@@ -11156,6 +13025,20 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
             " invalid/duplicate entries; first: " +
             strFirstRejectedDocument;
     }
+	m_strDocumentStatus += " " + m_strDirectAuthoredEditableStatus;
+	if (!bDirectAuthoredEditableIndexReady)
+	{
+		m_strDocumentStatus +=
+			" Direct authored Open remains fail-closed until the source catalog index is valid.";
+	}
+	if (bUnifiedCandidateIndexReady)
+		m_strDocumentStatus += " " + m_strUnifiedCandidateStatus;
+	else
+	{
+		m_strDocumentStatus +=
+			" Offline candidate metadata refresh failed; the previous candidate index was preserved: " +
+			m_strUnifiedCandidateStatus;
+	}
     return true;
 }
 
@@ -11226,7 +13109,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 			"This Effect needs its Track A adapter prepared before playback.";
 		return false;
 	}
-
+	std::string ProductAdmissionStatus;
+	if (!CEffectCatalog::Admit_ProductSpawn(
+			ProductCue.Cue.strEffectAssetId,
+			ProductCue.Cue.pProductAdmissionToken,
+			ProductAdmissionStatus))
+	{
+		m_strElementStatus = "Product Play admission rejected: " +
+			ProductAdmissionStatus;
+		return false;
+	}
 	const optional<EFFECT_PRODUCT_PREVIEW> PreviousProductPreview =
 		m_ProductPreview;
 	const optional<EFFECT_DOCUMENT_DESC> PreviousSourcePreviewDocument =
@@ -11274,6 +13166,22 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
     Start_WorldPreviewFromBeginning();
 	m_strElementStatus = "Playing full Effect | " +
 		Entry.Skill.strDisplayName + " | " + ProductCue.Cue.strClipName;
+	const char_t* pAnimationAsset =
+		Animation_AssetName(Entry.Skill.eCharacterClass);
+	const std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION> Admission =
+		nullptr == pAnimationAsset ? nullptr :
+		CEffectCatalog::Find_ProductCueAdmission(
+			pAnimationAsset, ProductCue.Cue.strClipName,
+			ProductCue.Cue.iStartMs,
+			ProductCue.Cue.strEffectAssetId);
+	if (nullptr != Admission)
+	{
+		m_strElementStatus += " | " + std::string(
+			Get_EffectProductCueAdmissionClassLabel(
+				Admission->eAdmissionClass)) + " | " +
+			Admission->Provenance.strDecision + " | rollback=" +
+			Admission->strRollbackEffectAssetId;
+	}
     return true;
 }
 
@@ -11435,14 +13343,23 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 		if (!Try_LoadDocument(strEffectAssetId))
 			return false;
 	}
-	const bool_t bElementExists = std::any_of(
+	const auto Element = std::find_if(
 		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
 		[&strElementId](const EFFECT_ELEMENT_DESC& Element)
 		{ return Element.strElementId == strElementId; });
-	if (!bElementExists)
+	if (Element == m_ActiveDocument->Elements.end())
 	{
 		m_strPreviewStatus =
 			"Element Solo rejected a missing stable Element ID.";
+		return false;
+	}
+	if (!Is_ElementPreviewAdmitted(*Element))
+	{
+		m_strPreviewStatus =
+			!Is_EffectAuthoringExecutionTarget(
+				Element->Material.Execution) ?
+			"Element Solo is locked by material/runtime fail-closed admission; editing and Save remain available." :
+			"Element Solo is unavailable while the authored Element is hidden.";
 		return false;
 	}
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
@@ -11553,11 +13470,14 @@ bool_t Client::CEffect_Tool::Try_SoloElementGroup(
 	const bool_t bGroupExists = std::any_of(
 		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
 		[&strGroupId](const EFFECT_ELEMENT_DESC& Element)
-		{ return Element.strGroupId == strGroupId; });
+		{
+			return Element.strGroupId == strGroupId &&
+				Is_ElementPreviewAdmitted(Element);
+		});
 	if (!bGroupExists)
 	{
 		m_strPreviewStatus =
-			"Group Solo rejected a missing stable Group ID.";
+			"Group Solo has no visible authoring-admitted Element to play; hard-locked Elements remain editable and APPROXIMATE Elements remain authoring-preview targets.";
 		return false;
 	}
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
@@ -11814,6 +13734,15 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
             "Element audition rejected: the selected Element is missing.";
         return false;
     }
+	if (!Is_ElementPreviewAdmitted(*Selected))
+	{
+		m_strPreviewStatus =
+			!Is_EffectAuthoringExecutionTarget(
+				Selected->Material.Execution) ?
+			"Element audition is locked by material/runtime fail-closed admission; editing and Save remain available." :
+			"Element audition is unavailable while the authored Element is hidden.";
+		return false;
+	}
 
     const EFFECT_PREVIEW_FILTER ePreviousFilter = m_ePreviewFilter;
     const f32_t fPreviousTime = m_fPreviewTimeSeconds;
@@ -12041,6 +13970,94 @@ bool_t Client::CEffect_Tool::Select_AuthoringDomainForClass(
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_ResetAuthoringResourceOverride(
+	const std::string& strSlotId)
+{
+	if (Has_UnappliedDetailDraft())
+	{
+		m_strResourceStatus =
+			"Apply or Revert the open Detail draft before resetting resources.";
+		return false;
+	}
+	if (!m_ActiveDocument.has_value())
+		return false;
+	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
+	EFFECT_ELEMENT_DESC* pElement = nullptr;
+	for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
+	{
+		if (Element.strElementId == m_strSelectedElementId)
+		{
+			pElement = &Element;
+			break;
+		}
+	}
+	if (nullptr == pElement)
+		return false;
+	std::string strError;
+	if (!CEffectDocumentCodec::Reset_AuthoringResourceOverride(
+			*pElement, strSlotId, strError))
+	{
+		m_strResourceStatus = "Reset to Source rejected: " + strError;
+		return false;
+	}
+	if (!Try_CommitDocument(std::move(Staged)))
+		return false;
+	if (!m_bDetailDraftDirty && m_DetailDraft.has_value() &&
+		m_strDetailDraftElementId == m_strSelectedElementId)
+	{
+		if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+		{
+			m_DetailDraft = *pCommitted;
+			Refresh_DetailDraftAdmission(*pCommitted);
+		}
+	}
+	m_strResourceStatus = "Reset " + strSlotId + " to the source value.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_ClearAuthoringOverrides()
+{
+	if (Has_UnappliedDetailDraft())
+	{
+		m_strResourceStatus =
+			"Apply or Revert the open Detail draft before resetting overrides.";
+		return false;
+	}
+	if (!m_ActiveDocument.has_value())
+		return false;
+	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
+	EFFECT_ELEMENT_DESC* pElement = nullptr;
+	for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
+	{
+		if (Element.strElementId == m_strSelectedElementId)
+		{
+			pElement = &Element;
+			break;
+		}
+	}
+	if (nullptr == pElement || pElement->AuthoringOverrides.Is_Empty())
+		return false;
+	std::string strError;
+	if (!Reset_AllAuthoringOverrides(*pElement, strError))
+	{
+		m_strResourceStatus = "Reset all to Source rejected: " + strError;
+		return false;
+	}
+	if (!Try_CommitDocument(std::move(Staged)))
+		return false;
+	if (!m_bDetailDraftDirty && m_DetailDraft.has_value() &&
+		m_strDetailDraftElementId == m_strSelectedElementId)
+	{
+		if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+		{
+			m_DetailDraft = *pCommitted;
+			Refresh_DetailDraftAdmission(*pCommitted);
+		}
+	}
+	m_strResourceStatus = "All authoring overrides reset to source values.";
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Try_BindResource(
     const std::string& strAssetId)
 {
@@ -12078,15 +14095,29 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 	EFFECT_MATERIAL_TEXTURE_LANE_DESC* pMaterialLane =
 		nullptr == pElement ? nullptr : Find_MaterialExecutionLane(
 			*pElement, m_strSelectedResourceSlotId);
+	EFFECT_NAMED_TEXTURE_DESC* pSourceTexture =
+		nullptr == pElement ? nullptr : Find_SourceMaterialTexture(
+			*pElement, m_strSelectedResourceSlotId);
+	EFFECT_RESOURCE_BINDING_DESC* pBinding = nullptr;
+	if (nullptr != pElement)
+	{
+		const auto Binding = std::find_if(
+			pElement->ResourceBindings.begin(), pElement->ResourceBindings.end(),
+			[this](const EFFECT_RESOURCE_BINDING_DESC& Candidate)
+			{ return Candidate.strSlotId == m_strSelectedResourceSlotId; });
+		if (Binding != pElement->ResourceBindings.end())
+			pBinding = &*Binding;
+	}
     if (nullptr == pElement ||
-		(nullptr == pMaterialLane &&
+		(nullptr == pMaterialLane && nullptr == pSourceTexture &&
 		 !Slot_Allowed(*pElement, m_strSelectedResourceSlotId)))
     {
         m_strResourceStatus = "That resource slot is not allowed for this Element.";
         return false;
     }
 	const EFFECT_RESOURCE_FILE_KIND eExpectedKind =
-		nullptr != pMaterialLane ? EFFECT_RESOURCE_FILE_KIND::TEXTURE :
+		(nullptr != pMaterialLane || nullptr != pSourceTexture) ?
+		EFFECT_RESOURCE_FILE_KIND::TEXTURE :
 		Slot_FileKind(*pElement, m_strSelectedResourceSlotId);
     const auto CatalogEntry = std::find_if(
         m_ResourceCatalog.begin(), m_ResourceCatalog.end(),
@@ -12104,26 +14135,46 @@ bool_t Client::CEffect_Tool::Try_BindResource(
         return false;
     }
 	std::string strSlotLabel;
-	if (nullptr != pMaterialLane)
+	bool_t bUnlockedMissingBaseSourceDecal = false;
+	const bool_t bUnlockMissingBaseSourceDecal =
+		Is_BaseTextureSlot(m_strSelectedResourceSlotId) &&
+		Is_MissingBaseSourceDecal(*pElement);
+	if (bUnlockMissingBaseSourceDecal && nullptr == pBinding)
 	{
-		pMaterialLane->strAssetId = strAssetId;
-		strSlotLabel = pMaterialLane->strRole.empty() ?
-			pMaterialLane->strLaneId : pMaterialLane->strRole;
+		// Decal Base is the sole contract that may create a previously absent
+		// resource target and change fail-closed preview admission.
+		pElement->ResourceBindings.push_back(
+			{ m_strSelectedResourceSlotId, strAssetId });
+		pElement->Material.Execution.bFailClosed = false;
+		pElement->bVisible = true;
+		bUnlockedMissingBaseSourceDecal = true;
+		strSlotLabel = Slot_Label(*pElement, m_strSelectedResourceSlotId);
 	}
 	else
 	{
-		auto Iterator = std::find_if(
-			pElement->ResourceBindings.begin(), pElement->ResourceBindings.end(),
-			[this](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-			{
-				return Binding.strSlotId == m_strSelectedResourceSlotId;
-			});
-		if (Iterator == pElement->ResourceBindings.end())
-			pElement->ResourceBindings.push_back(
-				{ m_strSelectedResourceSlotId, strAssetId });
+		if (nullptr == pMaterialLane && nullptr == pSourceTexture &&
+			nullptr == pBinding)
+		{
+			m_strResourceStatus =
+				"Bind rejected: the compiler did not declare that resource lane.";
+			return false;
+		}
+		std::string strError;
+		if (!CEffectDocumentCodec::Set_AuthoringResourceOverride(
+				*pElement, m_strSelectedResourceSlotId, strAssetId, strError))
+		{
+			m_strResourceStatus = "Resource override rejected: " + strError;
+			return false;
+		}
+		if (nullptr != pMaterialLane)
+		{
+			strSlotLabel = pMaterialLane->strRole.empty() ?
+				pMaterialLane->strLaneId : pMaterialLane->strRole;
+		}
+		else if (nullptr != pSourceTexture)
+			strSlotLabel = pSourceTexture->strName;
 		else
-			Iterator->strAssetId = strAssetId;
-		strSlotLabel = Slot_Label(*pElement, m_strSelectedResourceSlotId);
+			strSlotLabel = Slot_Label(*pElement, m_strSelectedResourceSlotId);
 	}
 	const bool_t bWasDrawable = m_bActiveDocumentDrawable;
     if (!Try_CommitDocument(std::move(Staged)))
@@ -12132,10 +14183,18 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 		m_strDetailDraftElementId == m_strSelectedElementId)
 	{
 		if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+		{
 			m_DetailDraft = *pCommitted;
+			Refresh_DetailDraftAdmission(*pCommitted);
+		}
 	}
     m_strResourceStatus = "Bound " + strAssetId + " to " +
         strSlotLabel + ".";
+	if (bUnlockedMissingBaseSourceDecal)
+	{
+		m_strResourceStatus +=
+			" The imported Decal is now visible and admitted for preview; Save persists this authored Base binding.";
+	}
 	if (!bWasDrawable && m_bActiveDocumentDrawable)
 	{
 		m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
@@ -12171,34 +14230,49 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()
     if (!m_ActiveDocument.has_value() || nullptr == Find_SelectedElement())
         return false;
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
-	bool_t bCleared = false;
+	bool_t bReset = false;
+	bool_t bRelockedMissingBaseSourceDecal = false;
     for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
     {
         if (Element.strElementId != m_strSelectedElementId)
             continue;
-		if (EFFECT_MATERIAL_TEXTURE_LANE_DESC* pMaterialLane =
-			Find_MaterialExecutionLane(
-				Element, m_strSelectedResourceSlotId))
-		{
-			pMaterialLane->strAssetId.clear();
-			bCleared = true;
-		}
-		else
+		if (Is_BaseTextureSlot(m_strSelectedResourceSlotId) &&
+			Is_SourceDecalBaseAdmissionCarrier(Element))
 		{
 			const size_t iPreviousCount = Element.ResourceBindings.size();
 			std::erase_if(Element.ResourceBindings,
 				[this](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return Binding.strSlotId == m_strSelectedResourceSlotId;
-				});
-			bCleared = Element.ResourceBindings.size() != iPreviousCount;
+				{ return Binding.strSlotId == m_strSelectedResourceSlotId; });
+			std::erase_if(Element.AuthoringOverrides.ResourceBindings,
+				[this](
+					const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{ return Override.strSlotId == m_strSelectedResourceSlotId; });
+			bReset = Element.ResourceBindings.size() != iPreviousCount;
+			if (bReset)
+			{
+				Element.Material.Execution.bFailClosed = true;
+				Element.bVisible = false;
+				bRelockedMissingBaseSourceDecal = true;
+			}
+		}
+		else
+		{
+			std::string strError;
+			bReset = CEffectDocumentCodec::Reset_AuthoringResourceOverride(
+				Element, m_strSelectedResourceSlotId, strError);
+			if (!bReset)
+			{
+				m_strResourceStatus =
+					"Compiler-owned lanes cannot be deleted. " + strError;
+				return false;
+			}
 		}
         break;
     }
-	if (!bCleared)
+	if (!bReset)
 	{
 		m_strResourceStatus =
-			"The selected resource slot no longer exists on this Element.";
+			"The selected resource lane no longer exists on this Element.";
 		return false;
 	}
     if (!Try_CommitDocument(std::move(Staged)))
@@ -12207,9 +14281,19 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()
 		m_strDetailDraftElementId == m_strSelectedElementId)
 	{
 		if (const EFFECT_ELEMENT_DESC* pCommitted = Find_SelectedElement())
+		{
 			m_DetailDraft = *pCommitted;
+			Refresh_DetailDraftAdmission(*pCommitted);
+		}
 	}
-    m_strResourceStatus = "Cleared the selected resource slot.";
+    m_strResourceStatus = bRelockedMissingBaseSourceDecal ?
+		"Cleared the Decal Base exception." :
+		"Reset the selected resource lane to Source.";
+	if (bRelockedMissingBaseSourceDecal)
+	{
+		m_strResourceStatus +=
+			" The imported Decal was hidden and returned to fail-closed until a Base DDS is bound.";
+	}
     return true;
 }
 
@@ -15875,6 +17959,216 @@ bool_t Client::CEffect_Tool::Build_ReconstructedSourceRuntimeTransformSample(
 		OutSample, strOutError);
 }
 
+bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
+	const BOSS_PATTERN_EFFECT_BINDING& Binding,
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::string& strOutError)
+{
+	m_bValtanBossPatternTransformHistoryRequired = true;
+	m_bValtanBossPatternTransformHistoryActive = false;
+	m_strValtanBossPatternPreviewEffectAssetId = Document.strEffectAssetId;
+	m_strValtanBossPatternAnchorSlotId.clear();
+	m_strValtanBossPatternBoneName.clear();
+	m_fValtanBossPatternAnimationDurationSeconds = 0.f;
+	m_ValtanBossPatternPoseBinding = {};
+
+	if (Binding.strEffectAssetId != Document.strEffectAssetId ||
+		Binding.strRuntimeClipName.empty() ||
+		Binding.strRuntimeBoneName.empty() ||
+		CAnimationTargetService::Resolve_AssetName() != "Boss_Valtan" ||
+		1u != m_SynchronizedAnimationClips.size() ||
+		0u != m_iSynchronizedAnimationClipIndex ||
+		m_SynchronizedAnimationClips.front().strClipName !=
+			Binding.strRuntimeClipName ||
+		0u == m_iSynchronizedAnimationTargetGeneration ||
+		m_iSynchronizedAnimationTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration())
+	{
+		strOutError =
+			"Valtan 420633 transform history target identity is invalid.";
+		return false;
+	}
+
+	size_t iVisibleExecutionCount = 0u;
+	size_t iFollowCarrierCount = 0u;
+	EFFECT_TRANSFORM_DESC SocketLocalTransform{};
+	bool_t bHasSocketLocalTransform = false;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (!Element.bVisible ||
+			!Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+		{
+			continue;
+		}
+		++iVisibleExecutionCount;
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
+			Element.ActionCueAttachment;
+		if (!Attachment.bEnabled || !Attachment.bFollow ||
+			Attachment.strRuntimeAnchorSlotId.empty() ||
+			Attachment.strRuntimeBoneName != Binding.strRuntimeBoneName)
+		{
+			strOutError =
+				"Valtan 420633 visible carrier lost its exact follow attachment.";
+			return false;
+		}
+		if (m_strValtanBossPatternAnchorSlotId.empty())
+		{
+			m_strValtanBossPatternAnchorSlotId =
+				Attachment.strRuntimeAnchorSlotId;
+			m_strValtanBossPatternBoneName = Attachment.strRuntimeBoneName;
+			SocketLocalTransform = Attachment.SocketLocalTransform;
+			bHasSocketLocalTransform = true;
+		}
+		else if (m_strValtanBossPatternAnchorSlotId !=
+				Attachment.strRuntimeAnchorSlotId ||
+			m_strValtanBossPatternBoneName != Attachment.strRuntimeBoneName ||
+			0 != std::memcmp(&SocketLocalTransform,
+				&Attachment.SocketLocalTransform,
+				sizeof(EFFECT_TRANSFORM_DESC)))
+		{
+			strOutError =
+				"Valtan 420633 visible follow carriers disagree on their anchor contract.";
+			return false;
+		}
+		++iFollowCarrierCount;
+	}
+	if (3u != iVisibleExecutionCount || 3u != iFollowCarrierCount ||
+		!bHasSocketLocalTransform ||
+		m_strValtanBossPatternAnchorSlotId != "B_EffectRoot" ||
+		m_strValtanBossPatternBoneName != "b_effectroot")
+	{
+		strOutError =
+			"Valtan 420633 preview requires exactly three B_EffectRoot follow carriers.";
+		return false;
+	}
+
+	const shared_ptr<Engine::CModel> pModel =
+		CAnimationTargetService::Resolve_Model();
+	if (nullptr == pModel)
+	{
+		strOutError = "Valtan 420633 preview model is unavailable.";
+		return false;
+	}
+	const uint32_t iAnimationIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* pCurrentClip = pModel->Get_AnimationName(iAnimationIndex);
+	if (nullptr == pCurrentClip || Binding.strRuntimeClipName != pCurrentClip)
+	{
+		strOutError = "Valtan 420633 preview clip identity changed.";
+		return false;
+	}
+
+	const std::array<std::string, 1u> BoneNames = {
+		m_strValtanBossPatternBoneName };
+	CAnimationHistoricalPoseBinding StagedBinding;
+	if (!CAnimationTargetService::Prepare_HistoricalPoseBinding(
+			m_iSynchronizedAnimationTargetGeneration, iAnimationIndex,
+			BoneNames, StagedBinding) || 1u != StagedBinding.Get_BoneCount())
+	{
+		strOutError =
+			"Valtan 420633 b_effectroot historical pose binding failed.";
+		return false;
+	}
+	const f32_t fDurationSeconds = StagedBinding.Get_DurationSeconds();
+	if (!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f)
+	{
+		strOutError = "Valtan 420633 animation duration is invalid.";
+		return false;
+	}
+
+	m_ValtanBossPatternPoseBinding = std::move(StagedBinding);
+	m_ValtanBossPatternSocketLocalTransform = SocketLocalTransform;
+	m_fValtanBossPatternAnimationDurationSeconds = fDurationSeconds;
+	m_bValtanBossPatternTransformHistoryActive = true;
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Build_ValtanBossPatternTransformSample(
+	const f32_t fEffectSampleTimeSeconds,
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+	std::string& strOutError) const
+{
+	if (!m_bValtanBossPatternTransformHistoryRequired ||
+		!m_bValtanBossPatternTransformHistoryActive ||
+		!m_ValtanBossPatternPoseBinding.Is_Valid() ||
+		1u != m_ValtanBossPatternPoseBinding.Get_BoneCount() ||
+		m_strValtanBossPatternPreviewEffectAssetId.empty() ||
+		m_strValtanBossPatternAnchorSlotId != "B_EffectRoot" ||
+		m_strValtanBossPatternBoneName != "b_effectroot" ||
+		!std::isfinite(fEffectSampleTimeSeconds) ||
+		fEffectSampleTimeSeconds < 0.f ||
+		!std::isfinite(m_fValtanBossPatternAnimationDurationSeconds) ||
+		m_fValtanBossPatternAnimationDurationSeconds <= 0.f ||
+		m_iSynchronizedAnimationTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration() ||
+		CAnimationTargetService::Resolve_AssetName() != "Boss_Valtan")
+	{
+		strOutError =
+			"Valtan 420633 historical transform sample identity is invalid.";
+		return false;
+	}
+
+	ANIMATION_HISTORICAL_POSE_SAMPLE PoseSample;
+	const f32_t fAnimationSampleTimeSeconds = std::clamp(
+		fEffectSampleTimeSeconds, 0.f,
+		(std::min)(m_fValtanBossPatternAnimationDurationSeconds,
+			m_ValtanBossPatternPoseBinding.Get_DurationSeconds()));
+	if (!CAnimationTargetService::Sample_HistoricalPose(
+			m_ValtanBossPatternPoseBinding, fAnimationSampleTimeSeconds,
+			PoseSample) || 1u != PoseSample.BoneCombinedMatrices.size())
+	{
+		strOutError =
+			"Valtan 420633 b_effectroot historical sampling failed.";
+		return false;
+	}
+
+	EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
+	AnchorBuild.RawBone = PoseSample.BoneCombinedMatrices.front();
+	AnchorBuild.OwnerWorld = PoseSample.RootWorld;
+	float4x4_t BoneWorld{};
+	if (!CEffectPresentationService::Build_SourceBoneAnchorWorld(
+			AnchorBuild, BoneWorld))
+	{
+		strOutError =
+			"Valtan 420633 b_effectroot import transform is invalid.";
+		return false;
+	}
+
+	const EFFECT_TRANSFORM_DESC& Local =
+		m_ValtanBossPatternSocketLocalTransform;
+	const matrix_t SocketLocal = XMMatrixScaling(
+		Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+		XMMatrixRotationRollPitchYaw(
+			XMConvertToRadians(Local.vRotationDegrees.x),
+			XMConvertToRadians(Local.vRotationDegrees.y),
+			XMConvertToRadians(Local.vRotationDegrees.z)) *
+		XMMatrixTranslation(
+			Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
+	float4x4_t AnchorWorld{};
+	XMStoreFloat4x4(&AnchorWorld,
+		SocketLocal * XMLoadFloat4x4(&BoneWorld));
+
+	EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+	Staged.RootWorld = PoseSample.RootWorld;
+	Staged.SourceAnchorWorlds.emplace(
+		m_strValtanBossPatternAnchorSlotId, AnchorWorld);
+	OutSample = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_ValtanBossPatternTransformHistory()
+{
+	m_ValtanBossPatternPoseBinding = {};
+	m_ValtanBossPatternSocketLocalTransform = {};
+	m_strValtanBossPatternPreviewEffectAssetId.clear();
+	m_strValtanBossPatternAnchorSlotId.clear();
+	m_strValtanBossPatternBoneName.clear();
+	m_fValtanBossPatternAnimationDurationSeconds = 0.f;
+	m_bValtanBossPatternTransformHistoryRequired = false;
+	m_bValtanBossPatternTransformHistoryActive = false;
+}
+
 bool_t Client::CEffect_Tool::Update_ReconstructedSourceRuntimeTimeline(
 	const f32_t fTimeDelta)
 {
@@ -16480,6 +18774,10 @@ bool_t Client::CEffect_Tool::Apply_DetailDraft(
         if (Element.strElementId != m_strDetailDraftElementId)
             continue;
         Apply_EffectElementDetailDraft(Element, *m_DetailDraft);
+		if (m_bDetailDraftCapabilityDeferred ||
+			!Is_EffectAuthoringExecutionTarget(
+				Element.Material.Execution))
+			Element.bVisible = false;
         return true;
     }
     return false;
@@ -16677,6 +18975,50 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 			"Artist Core F (33) restart prepared at synchronized time zero; playback starts on the next update.";
 		return;
 	}
+	if (m_bValtanBossPatternTransformHistoryRequired)
+	{
+		if (!m_bValtanBossPatternTransformHistoryActive)
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			Set_SynchronizedAnimationPaused(true);
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			m_strPreviewStatus =
+				"Valtan 420633 preview refused a missing exact b_effectroot history binding.";
+			return;
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
+			[this](const f32_t fSampleTimeSeconds,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& strOutError)
+			{
+				return Build_ValtanBossPatternTransformSample(
+					fSampleTimeSeconds, OutSample, strOutError);
+			};
+		std::string TransformError;
+		pObject->Reset();
+		if (!pObject->Set_SampleTimeWithTransformHistory(
+				0.f, TransformProvider, TransformError))
+		{
+			pObject->Set_Playing(false);
+			pObject->Set_Visible(false);
+			Set_SynchronizedAnimationPaused(true);
+			m_bValtanBossPatternTransformHistoryActive = false;
+			m_bPreviewPlaying = false;
+			m_bPreviewVisibleRequested = false;
+			m_strPreviewStatus =
+				"Valtan 420633 zero-frame anchor history failed: " +
+				TransformError;
+			return;
+		}
+		m_bPreviewVisibleRequested = true;
+		m_bPreviewPlaying = true;
+		pObject->Set_Visible(true);
+		m_strPreviewStatus =
+			"Valtan 420633 restart prepared with exact B_EffectRoot / b_effectroot history.";
+		return;
+	}
     float4x4_t TargetRoot{};
     const bool_t bRootResolved = Resolve_PreviewRoot(TargetRoot);
     if (bRootResolved)
@@ -16693,6 +19035,7 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 {
     Reset_SynchronizedAnimationSequence();
+	Reset_ValtanBossPatternTransformHistory();
     m_strPreviewAnimationStatus.clear();
 	const EFFECT_DOCUMENT_DESC* pPreviewDocument =
 		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
@@ -16729,6 +19072,9 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 				});
 			if (BossBinding != BossEffectBindings.Bindings.end())
 			{
+				m_bValtanBossPatternTransformHistoryRequired = true;
+				m_strValtanBossPatternPreviewEffectAssetId =
+					pPreviewDocument->strEffectAssetId;
 				constexpr const char_t* BOSS_PREVIEW_ASSET = "Boss_Valtan";
 				if (CAnimationTargetService::Resolve_AssetName() !=
 						BOSS_PREVIEW_ASSET &&
@@ -16795,6 +19141,17 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 				}
 				pBossModel->Set_AnimationSpeed(1.f);
 				pBossModel->Set_AnimPaused(false);
+				std::string TransformHistoryError;
+				if (!Prepare_ValtanBossPatternTransformHistory(
+						*BossBinding, *pPreviewDocument,
+						TransformHistoryError))
+				{
+					pBossModel->Set_AnimPaused(true);
+					m_strPreviewAnimationStatus =
+						"Valtan Effect exact follow anchor was not staged: " +
+						TransformHistoryError;
+					return;
+				}
 				m_strPreviewAnimationStatus =
 					"Boss pattern animation synced: " +
 					BossBinding->strPatternId + " / " +
@@ -16891,6 +19248,44 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 					return Candidate.eCharacterClass ==
 							Owner->Skill.eCharacterClass &&
 						Candidate.iSkillId == Owner->Skill.iSkillId;
+			});
+		}
+	}
+	if (!m_ProductPreview.has_value() && Skill == Skills.end())
+	{
+		const std::string& DocumentAssetId =
+			pPreviewDocument->strEffectAssetId;
+		const auto CandidateOwner = std::find_if(
+			m_UnifiedCandidateBindings.begin(),
+			m_UnifiedCandidateBindings.end(),
+			[&DocumentAssetId](
+				const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding)
+			{
+				return Binding.strEffectAssetId == DocumentAssetId;
+			});
+		if (CandidateOwner != m_UnifiedCandidateBindings.end())
+		{
+			for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding :
+				m_UnifiedCandidateBindings)
+			{
+				if (Binding.strEffectAssetId != DocumentAssetId ||
+					Binding.eCharacterClass !=
+						CandidateOwner->eCharacterClass ||
+					Binding.iSkillId != CandidateOwner->iSkillId ||
+					std::find(CandidateCueClips.begin(),
+						CandidateCueClips.end(), Binding.strClipName) !=
+						CandidateCueClips.end())
+				{
+					continue;
+				}
+				CandidateCueClips.push_back(Binding.strClipName);
+			}
+			Skill = std::find_if(Skills.begin(), Skills.end(),
+				[&CandidateOwner](const PLAYER_SKILL_DEFINITION& Candidate)
+				{
+					return Candidate.eCharacterClass ==
+							CandidateOwner->eCharacterClass &&
+						Candidate.iSkillId == CandidateOwner->iSkillId;
 				});
 		}
 	}
@@ -17389,6 +19784,7 @@ void Client::CEffect_Tool::Release_WorldPreview(
 	m_bReconstructedDiagnosticActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
 	Reset_ReconstructedSourceRuntimeTimeline();
+	Reset_ValtanBossPatternTransformHistory();
 	if (bWasReconstructedSourceRuntimeActive)
 	{
 		Set_SynchronizedAnimationPaused(true);
@@ -17518,11 +19914,42 @@ void Client::CEffect_Tool::Reset_ParticleSystemDraft()
     m_strDetailStatus.clear();
 }
 
+void Client::CEffect_Tool::Refresh_DetailDraftAdmission(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	m_bDetailDraftPortableRecipeReadOnly = false;
+	m_bDetailDraftCapabilityDeferred = false;
+	m_strDetailDraftCapabilityReason.clear();
+	if (!m_ActiveDocument.has_value() ||
+		!Is_CompilerOwnedPortableRecipe(*m_ActiveDocument, Element))
+	{
+		return;
+	}
+	m_bDetailDraftPortableRecipeReadOnly = true;
+	if (EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind)
+		return;
+
+	EFFECT_ELEMENT_DESC PortableProbe = Element;
+	std::string Error;
+	if (CEffectDocumentCodec::Apply_PortableAuthoredParticleRuntimeCarrier(
+			Element, PortableProbe, Error))
+	{
+		return;
+	}
+	m_bDetailDraftCapabilityDeferred = true;
+	m_strDetailDraftCapabilityReason = Error.empty() ?
+		"The current SourceRecipe is outside the ordinary portable Particle capability." :
+		std::move(Error);
+}
+
 void Client::CEffect_Tool::Reset_DetailDraft()
 {
     m_DetailDraft.reset();
     m_strDetailDraftElementId.clear();
+	m_strDetailDraftCapabilityReason.clear();
     m_bDetailDraftDirty = false;
+	m_bDetailDraftPortableRecipeReadOnly = false;
+	m_bDetailDraftCapabilityDeferred = false;
 	m_bDetailDraftPreviewPending = false;
 	m_fDetailDraftPreviewDueSeconds = 0.0;
     m_strDetailStatus.clear();

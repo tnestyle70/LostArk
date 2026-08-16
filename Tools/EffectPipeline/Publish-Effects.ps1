@@ -8,7 +8,8 @@ param(
         'None',
         'AfterBackupMove',
         'AfterCommitMove',
-        'AfterSidecarCommitMove')]
+        'AfterSidecarCommitMove',
+        'AfterAdmissionSidecarCommitMove')]
     [string]$TestFaultInjection = 'None'
 )
 
@@ -30,11 +31,142 @@ $visualProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
 $visualProgramOutputPath = [IO.Path]::GetFullPath((Join-Path `
     (Split-Path -Parent $OutputPath) 'EffectVisualPrograms.runtime.json'))
+$productCuePolicyPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\ProductCueApprovals.json'))
+$productCueRuntimeOutputPath = [IO.Path]::GetFullPath((Join-Path `
+    (Split-Path -Parent $OutputPath) `
+    'EffectProductCueAdmissions.runtime.json'))
+$catalogPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\EffectCatalog.json'))
+
+function Test-PathIsSameOrDescendant(
+    [string]$Path,
+    [string]$Root) {
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $fullRoot = [IO.Path]::GetFullPath($Root)
+    if ($fullPath.Equals($fullRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+    $rootPrefix = $fullRoot.TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar) +
+        [IO.Path]::DirectorySeparatorChar
+    return $fullPath.StartsWith(
+        $rootPrefix, [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-SafeDerivedOutputPath(
+    [string]$Path,
+    [string]$Label,
+    [string[]]$SourceAliases,
+    [string[]]$ForbiddenRoots) {
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    foreach ($sourceAlias in $SourceAliases) {
+        if ($fullPath.Equals(
+                [IO.Path]::GetFullPath($sourceAlias),
+                [StringComparison]::OrdinalIgnoreCase)) {
+            throw "$Label aliases an Effect publisher source input: $fullPath"
+        }
+    }
+    foreach ($forbiddenRoot in $ForbiddenRoots) {
+        if (Test-PathIsSameOrDescendant $fullPath $forbiddenRoot) {
+            throw "$Label must be outside publisher source root '$forbiddenRoot': $fullPath"
+        }
+    }
+}
+
+function Assert-RegularPublishDestination(
+    [string]$Path,
+    [string]$Label) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+    $isReparsePoint =
+        ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+    if ([bool]$item.PSIsContainer -or $isReparsePoint -or
+        -not [IO.File]::Exists($Path)) {
+        throw "$Label must be an absent path or a regular non-reparse file: $Path"
+    }
+}
+
+function Assert-RegularPublishDirectory(
+    [string]$Path,
+    [string]$Label) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+    $isReparsePoint =
+        ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+    if (-not [bool]$item.PSIsContainer -or $isReparsePoint -or
+        -not [IO.Directory]::Exists($Path)) {
+        throw "$Label must be an absent path or a regular non-reparse directory: $Path"
+    }
+}
+
+function Assert-ProductCuePolicyContinuity(
+    [bool]$HasProductCuePolicy,
+    [string]$RuntimeCatalogPath,
+    [string]$AdmissionReceiptPath) {
+    if ($HasProductCuePolicy) {
+        return
+    }
+    if (Test-Path -LiteralPath $AdmissionReceiptPath -PathType Leaf) {
+        throw ('Existing Product cue admission receipt cannot be preserved ' +
+            'without its source ProductCueApprovals.json policy.')
+    }
+    if (-not (Test-Path -LiteralPath $RuntimeCatalogPath -PathType Leaf)) {
+        return
+    }
+    $existingRuntimeCatalog = Read-JsonDocument $RuntimeCatalogPath
+    try {
+        $marker = $existingRuntimeCatalog.PSObject.Properties[
+            'productCueAdmissionsRequired']
+        if ($null -ne $marker -and
+            [bool](Get-RequiredProperty $existingRuntimeCatalog `
+                'productCueAdmissionsRequired' Boolean)) {
+            throw ('Existing runtime catalog requires Product cue admissions ' +
+                'and cannot be replaced without its source ' +
+                'ProductCueApprovals.json policy.')
+        }
+    }
+    finally {
+        $existingRuntimeCatalog = $null
+    }
+}
+
+$derivedOutputPaths = @(
+    [pscustomobject]@{ Path = $OutputPath; Label = 'Effect catalog output' },
+    [pscustomobject]@{
+        Path = $visualProgramOutputPath
+        Label = 'Effect visual-program output'
+    },
+    [pscustomobject]@{
+        Path = $productCueRuntimeOutputPath
+        Label = 'Product cue admission output'
+    })
+$sourceAliases = @(
+    $catalogPath, $visualProgramSourcePath, $productCuePolicyPath)
+foreach ($derivedOutput in $derivedOutputPaths) {
+    Assert-SafeDerivedOutputPath $derivedOutput.Path $derivedOutput.Label `
+        $sourceAliases @($DataRoot, $ResourceRoot)
+}
+if ($Mode -ceq 'Publish') {
+    foreach ($derivedOutput in $derivedOutputPaths) {
+        Assert-RegularPublishDestination `
+            $derivedOutput.Path $derivedOutput.Label
+    }
+}
 if ($visualProgramSourcePath.Equals(
         $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
     $OutputPath.Equals(
-        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Effect catalog and visual-program publish paths must be distinct.'
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
+    $productCueRuntimeOutputPath.Equals(
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
+    $productCueRuntimeOutputPath.Equals(
+        $OutputPath, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Effect catalog, visual-program, and Product cue receipt paths must be distinct.'
 }
 if ($TestFaultInjection -cne 'None') {
     if ($Mode -cne 'Publish') {
@@ -44,7 +176,8 @@ if ($TestFaultInjection -cne 'None') {
         [IO.Path]::DirectorySeparatorChar,
         [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
     foreach ($testPath in @(
-            $DataRoot, $OutputPath, $visualProgramOutputPath)) {
+            $DataRoot, $OutputPath, $visualProgramOutputPath,
+            $productCueRuntimeOutputPath)) {
         $normalizedTestPath = [IO.Path]::GetFullPath($testPath)
         if (-not $normalizedTestPath.StartsWith(
                 $temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
@@ -52,7 +185,6 @@ if ($TestFaultInjection -cne 'None') {
         }
     }
 }
-$catalogPath = Join-Path $DataRoot 'Effects\EffectCatalog.json'
 $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored'))
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
@@ -68,6 +200,8 @@ $directAuthoredRuntimeTool = Join-Path $PSScriptRoot `
     'validate_direct_authored_effect_runtime.py'
 $visualProgramRuntimeTool = Join-Path $PSScriptRoot `
     'build_effect_visual_program_runtime.py'
+$productCueAdmissionTool = Join-Path $PSScriptRoot `
+    'product_cue_admission.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.reconstructed-standard.v1',
@@ -84,7 +218,9 @@ $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.local-crack.v1',
     'effect.ue3.procedural-center-glow.v1',
     'effect.ue3.slice.v1',
-    'effect.ue3.missiletrail-01.v1'
+    'effect.ue3.missiletrail-01.v1',
+    'effect.ue3.missiletrail-two-emissive.v1',
+    'effect.ue3.watertrail-01.v1'
 )
 $supportedSourceDynamicParameterSemantics = @(
     'unbound', 'opacity', 'emissive', 'dissolve', 'uv_pan',
@@ -92,7 +228,9 @@ $supportedSourceDynamicParameterSemantics = @(
     'mask_a_offset', 'mask_b_offset', 'mask_a_distort', 'mask_b_distort',
     'mask_a_pan', 'flow_strength', 'mask_b_pan', 'diffuse_pan',
     'missile_alpha_pan', 'missile_noise_strength', 'missile_noise_pan',
-    'missile_dissolve'
+    'missile_dissolve',
+    'water_alpha_pan', 'water_noise_pan', 'water_dissolve',
+    'water_noise_strength'
 )
 $supportedSourceSubUVModes = @(
     'none', 'psuvim_random', 'psuvim_linear_blend',
@@ -490,6 +628,220 @@ function Read-JsonDocument([string]$Path) {
     return $text | ConvertFrom-Json
 }
 
+function Split-AnimeventTokens(
+    [string]$Line,
+    [string]$Label) {
+    $tokens = [Collections.Generic.List[string]]::new()
+    $offset = 0
+    while ($offset -lt $Line.Length) {
+        while ($offset -lt $Line.Length -and
+            [char]::IsWhiteSpace($Line[$offset])) {
+            ++$offset
+        }
+        if ($offset -ge $Line.Length) {
+            break
+        }
+        $token = [Text.StringBuilder]::new()
+        $inQuote = $false
+        while ($offset -lt $Line.Length) {
+            $character = $Line[$offset]
+            ++$offset
+            if ($character -eq '"') {
+                $inQuote = -not $inQuote
+                continue
+            }
+            if ($character -eq '\' -and $inQuote) {
+                if ($offset -ge $Line.Length) {
+                    throw "$Label contains a trailing quoted escape."
+                }
+                [void]$token.Append($Line[$offset])
+                ++$offset
+                continue
+            }
+            if (-not $inQuote -and [char]::IsWhiteSpace($character)) {
+                break
+            }
+            [void]$token.Append($character)
+        }
+        if ($inQuote) {
+            throw "$Label contains an unterminated quote."
+        }
+        $tokens.Add($token.ToString())
+    }
+    return @($tokens)
+}
+
+function Get-ActiveProductEffectIds([string]$RootPath) {
+    $documents = @(
+        [pscustomobject]@{
+            AnimationAssetId = 'Artist'
+            Path = 'Animation\Authored\Artist\Artist.animevents'
+        },
+        [pscustomobject]@{
+            AnimationAssetId = 'DimensionMaster'
+            Path = 'Animation\Authored\DimensionMaster\DimensionMaster.animevents'
+        },
+        [pscustomobject]@{
+            AnimationAssetId = 'LanceMaster'
+            Path = 'Animation\Authored\LanceMaster\LanceMaster.animevents'
+        },
+        [pscustomobject]@{
+            AnimationAssetId = 'Warlord'
+            Path = 'Animation\Authored\Warlord\Warlord.animevents'
+        })
+    $effectIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    foreach ($document in $documents) {
+        $path = [IO.Path]::GetFullPath((Join-Path $RootPath $document.Path))
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing authored animation Effect cue document: $path"
+        }
+        $payload = [IO.File]::ReadAllBytes($path)
+        if ($payload.Length -ge 3 -and $payload[0] -eq 0xEF -and
+            $payload[1] -eq 0xBB -and $payload[2] -eq 0xBF) {
+            throw "Authored animation Effect cue document must be UTF-8 without BOM: $path"
+        }
+        try {
+            $text = [Text.UTF8Encoding]::new($false, $true).GetString($payload)
+        }
+        catch {
+            throw "Authored animation Effect cue document must be valid UTF-8: $path"
+        }
+        $trimmed = $text.TrimEnd([char[]]@("`r", "`n"))
+        $lines = @([regex]::Split($trimmed, "`r`n|`n|`r"))
+        if ($lines.Count -eq 0) {
+            throw "Authored animation Effect cue document is empty: $path"
+        }
+        $header = @(Split-AnimeventTokens $lines[0] $path)
+        [uint32]$formatVersion = 0
+        [uint32]$declaredRowCount = 0
+        if ($header.Count -ne 4 -or
+            $header[0] -cne 'LOSTARK_ANIM_EVENTS' -or
+            -not [uint32]::TryParse($header[1], [ref]$formatVersion) -or
+            $formatVersion -lt 3 -or $formatVersion -gt 5 -or
+            $header[2] -cne [string]$document.AnimationAssetId -or
+            -not [uint32]::TryParse($header[3], [ref]$declaredRowCount)) {
+            throw "Authored animation Effect cue header is invalid: $path"
+        }
+        $rows = @($lines | Select-Object -Skip 1 | Where-Object { $_ -cne '' })
+        if ($rows.Count -ne $declaredRowCount) {
+            throw ("Authored animation Effect cue row count mismatch: " +
+                "$path declared=$declaredRowCount actual=$($rows.Count)")
+        }
+        foreach ($row in $rows) {
+            $tokens = @(Split-AnimeventTokens $row $path)
+            if ($tokens.Count -lt 3) {
+                throw "Authored animation Effect cue row is invalid: $path"
+            }
+            if ($tokens[1] -cne 'EFFECT') {
+                continue
+            }
+            $fields = [Collections.Generic.Dictionary[string,string]]::new(
+                [StringComparer]::Ordinal)
+            foreach ($token in @($tokens | Select-Object -Skip 2)) {
+                $separator = $token.IndexOf('=')
+                if ($separator -le 0) {
+                    throw "Authored animation EFFECT row field is invalid: $path"
+                }
+                $name = $token.Substring(0, $separator)
+                $value = $token.Substring($separator + 1)
+                if ($fields.ContainsKey($name)) {
+                    throw "Authored animation EFFECT row duplicates field '$name': $path"
+                }
+                $fields.Add($name, $value)
+            }
+            $effectReference = ''
+            if (-not $fields.TryGetValue('effectref', [ref]$effectReference) -or
+                $effectReference -cne 'asset') {
+                continue
+            }
+            $effectAssetId = ''
+            if (-not $fields.TryGetValue('payload', [ref]$effectAssetId)) {
+                throw "Authored animation Product Effect cue is missing payload: $path"
+            }
+            Assert-StableId $effectAssetId 'Authored animation EffectAssetId'
+            [void]$effectIds.Add($effectAssetId)
+        }
+    }
+    return ,$effectIds
+}
+
+function Get-Sha256Hex([byte[]]$Payload) {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString(
+            $sha256.ComputeHash($Payload))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Test-ByteArrayEqual(
+    [byte[]]$Left,
+    [byte[]]$Right) {
+    return [Collections.StructuralComparisons]::StructuralEqualityComparer.Equals(
+        $Left, $Right)
+}
+
+function Read-PinnedDirectAuthoredBytes([object]$Record) {
+    if (-not (Test-Path -LiteralPath $Record.SourcePath -PathType Leaf)) {
+        throw "Direct authored source disappeared during publish: $($Record.SourcePath)"
+    }
+    $payload = [IO.File]::ReadAllBytes($Record.SourcePath)
+    $actualByteCount = [int64]$payload.LongLength
+    $actualSha256 = [string](Get-Sha256Hex $payload)
+    $expectedByteCount = [int64]$Record.ByteCount
+    $expectedSha256 = [string]$Record.Sha256
+    if ($actualByteCount -ne $expectedByteCount -or
+        $actualSha256 -cne $expectedSha256) {
+        throw (
+            "Direct authored source changed during publish: $($Record.SourcePath) " +
+            "expectedBytes=$expectedByteCount actualBytes=$actualByteCount " +
+            "expectedSha256=$expectedSha256 actualSha256=$actualSha256")
+    }
+    return ,$payload
+}
+
+function Invoke-EffectRuntimeCatalogValidationBundle(
+    [string]$CatalogJson,
+    [object]$DirectAuthoredFilesByPath) {
+    $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    $validationRoot = Join-Path $temporaryRoot `
+        ('LostArkEffectRuntimeValidation-' + [Guid]::NewGuid().ToString('N'))
+    $validationRoot = [IO.Path]::GetFullPath($validationRoot)
+    if (-not (Test-PathIsSameOrDescendant $validationRoot $temporaryRoot)) {
+        throw "Effect runtime validation root escaped the temporary directory."
+    }
+    $validationCatalogPath = Join-Path $validationRoot `
+        'EffectCatalog.runtime.json'
+    try {
+        [IO.Directory]::CreateDirectory($validationRoot) | Out-Null
+        [IO.File]::WriteAllText(
+            $validationCatalogPath, $CatalogJson + "`n",
+            [Text.UTF8Encoding]::new($false))
+        foreach ($record in @($DirectAuthoredFilesByPath.Values)) {
+            $destination = [IO.Path]::GetFullPath((Join-Path `
+                $validationRoot `
+                ([string]$record.RelativePath).Replace('/', '\')))
+            if (-not (Test-PathIsSameOrDescendant `
+                    $destination $validationRoot)) {
+                throw "Direct authored validation path escaped its root: $($record.RelativePath)"
+            }
+            [IO.Directory]::CreateDirectory(
+                (Split-Path -Parent $destination)) | Out-Null
+            [IO.File]::WriteAllBytes(
+                $destination, (Read-PinnedDirectAuthoredBytes $record))
+        }
+        Invoke-EffectRuntimeCatalogValidation $validationCatalogPath
+    }
+    finally {
+        if (Test-Path -LiteralPath $validationRoot) {
+            Remove-Item -LiteralPath $validationRoot -Recurse -Force
+        }
+    }
+}
+
 function Resolve-SafeDataFile(
     [string]$RelativePath,
     [string]$RequiredPrefix,
@@ -559,6 +911,27 @@ function Invoke-VisualProgramArtifactCheck([string]$Path) {
         --repository-root $repoRoot --output $Path --artifact-check
     if ($LASTEXITCODE -ne 0) {
         throw "Effect visual-program sidecar validation failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Invoke-ProductCueAdmissionBuild(
+    [string]$RuntimeCatalogPath,
+    [string]$ReceiptOutputPath) {
+    if (-not [IO.File]::Exists($productCueAdmissionTool)) {
+        throw "Missing Product cue admission validator: $productCueAdmissionTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate Product cue admissions.'
+    }
+    & $python.Source -B $productCueAdmissionTool `
+        --repository-root $repoRoot `
+        --data-root $DataRoot `
+        build-runtime-receipt `
+        --runtime-catalog $RuntimeCatalogPath `
+        --output $ReceiptOutputPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Product cue admission validation failed with exit code $LASTEXITCODE."
     }
 }
 
@@ -1093,6 +1466,62 @@ finally {
     $visualProgramSourceDocument = $null
 }
 
+# Unified Product cues no longer require a cue-by-cue approval sidecar.
+# Full and authoring-approximate Elements share the ordinary authored runtime;
+# hard fail-closed Elements remain suppressed by the document itself.  Keep
+# the older policy files inert as rollback evidence instead of making them a
+# second admission authority.
+$hasProductCuePolicy = $false
+$productCuePolicySha256 = ''
+$productApprovedApproximateIds =
+    [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$activeProductEffectIds = Get-ActiveProductEffectIds $DataRoot
+if ($activeProductEffectIds.Count -lt 1) {
+    throw 'Authored animation Product Effect cue set is empty.'
+}
+if ($hasProductCuePolicy) {
+    $productCuePolicy = Read-JsonDocument $productCuePolicyPath
+    try {
+        Assert-ExactPropertyOrder $productCuePolicy @(
+            'schema', 'formatVersion', 'decisionSetId',
+            'defaultAdmission', 'approvals') 'Product cue approval policy'
+        if ((Get-RequiredProperty $productCuePolicy 'schema' String) -cne
+                'lostark.effect-product-cue-approval-policy' -or
+            [int](Get-RequiredProperty $productCuePolicy `
+                'formatVersion' Number) -ne 1 -or
+            (Get-RequiredProperty $productCuePolicy `
+                'defaultAdmission' String) -cne 'DENY') {
+            throw 'Product cue approval policy header is invalid.'
+        }
+        [void](Get-RequiredProperty $productCuePolicy 'decisionSetId' String)
+        foreach ($approval in @(Get-RequiredProperty $productCuePolicy `
+                'approvals' Array)) {
+            Assert-ExactPropertyOrder $approval @(
+                'cueId', 'approvalCeiling', 'animationAssetId',
+                'characterClass', 'inputSlot', 'skillId', 'stageIndex',
+                'clipName', 'startMs', 'effectAssetId',
+                'rollbackEffectAssetId', 'effectContentSha256',
+                'provenance') 'Product cue approval'
+            $cueId = Get-RequiredProperty $approval 'cueId' String
+            $approvalCeiling = Get-RequiredProperty $approval `
+                'approvalCeiling' String
+            $approvedEffectAssetId = Get-RequiredProperty $approval `
+                'effectAssetId' String
+            Assert-StableId $cueId 'Product cue approval ID'
+            Assert-StableId $approvedEffectAssetId `
+                'Product cue approved EffectAssetId'
+            if ($approvalCeiling -cne 'PRODUCT_APPROVED_APPROXIMATE' -or
+                -not $productApprovedApproximateIds.Add(
+                    $approvedEffectAssetId)) {
+                throw "Product cue approval is unsupported or duplicates an Effect target: $cueId"
+            }
+        }
+    }
+    finally {
+        $productCuePolicy = $null
+    }
+}
+
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
     [StringComparer]::Ordinal)
 $assemblyPathById = [Collections.Generic.Dictionary[string,string]]::new(
@@ -1134,6 +1563,14 @@ try {
     $hasDerivedRuntime = $false
     $runtimeComponentsById = [Collections.Generic.Dictionary[string,object]]::new(
         [StringComparer]::Ordinal)
+    $matchedActiveProductEffectIds =
+        [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $directAuthoredRuntimeFilesByPath =
+        [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal)
+    $activeDirectRuntimeCount = 0
+    $activeLegacyRuntimeCount = 0
+    $reconstructedRuntimeCount = 0
     foreach ($entry in @($effects)) {
         $effectAssetId = Get-RequiredProperty $entry 'effectAssetId' String
         Assert-StableId $effectAssetId 'EffectAssetId'
@@ -1146,6 +1583,10 @@ try {
         }
         else {
             Get-RequiredProperty $entry 'payloadKind' String
+        }
+        $isActiveProductEffect = $activeProductEffectIds.Contains($effectAssetId)
+        if ($isActiveProductEffect) {
+            [void]$matchedActiveProductEffectIds.Add($effectAssetId)
         }
         if ($effectAssetId -ceq 'effect.artist.skill.31470' -and
             ($sourcePayloadKind -cne
@@ -1168,6 +1609,9 @@ try {
                 'Reconstructed source catalog entry'
             if ($effectAssetId -cne 'effect.artist.skill.31470') {
                 throw "Reconstructed source catalog effectAssetId must be effect.artist.skill.31470: $effectAssetId"
+            }
+            if (-not $isActiveProductEffect) {
+                continue
             }
             $candidatePath = Get-RequiredProperty $entry `
                 'reconstructedRuntimeProgramPath' String
@@ -1214,6 +1658,7 @@ try {
                     throw "Reconstructed prepared/source effectAssetId mismatch: $preparedEffectAssetId != $effectAssetId"
                 }
                 $runtimeEffects.Add($preparedEntry)
+                ++$reconstructedRuntimeCount
                 $hasDerivedRuntime = $true
             }
             finally {
@@ -1252,6 +1697,15 @@ try {
         $expectedFile = "$effectAssetId.effect.json"
         if ([IO.Path]::GetFileName($authoringFile) -cne $expectedFile) {
             throw "Authoring filename must match EffectAssetId: $effectAssetId"
+        }
+        if (-not $isActiveProductEffect) {
+            continue
+        }
+        if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+            ++$activeDirectRuntimeCount
+        }
+        else {
+            ++$activeLegacyRuntimeCount
         }
 
         $documentHandle = Read-JsonDocument $authoringFile
@@ -1380,6 +1834,36 @@ try {
                 $kind = Get-RequiredProperty $element 'kind' String
                 $resources = Get-RequiredProperty $element 'resources' Array
                 $material = Get-RequiredProperty $element 'material' Object
+                # Authoring-approximate is an executable Product preview.  It
+                # retains fail-closed provenance internally so hard Lock rows
+                # stay distinguishable, but it needs no cue-specific approval.
+                $execution = $material.PSObject.Properties['execution']
+                if ($null -ne $execution -and $null -ne $execution.Value -and
+                    $null -ne $execution.Value.PSObject.Properties['authoringApproximate']) {
+                    $authoringApproximate = [bool](Get-RequiredProperty `
+                        $execution.Value 'authoringApproximate' Boolean)
+                    if (-not $authoringApproximate -or
+                        $sourcePayloadKind -cne
+                            'DIRECT_AUTHORED_DOCUMENT_V13') {
+                        throw ("Element '{0}' in '{1}' has an invalid Product authoring-approximate contract." -f
+                            $elementId, $effectAssetId)
+                    }
+                }
+                $sourceProfileExecutionTarget = $true
+                if ($null -ne $execution -and $null -ne $execution.Value) {
+                    $earlyFailClosed = if ($null -ne
+                        $execution.Value.PSObject.Properties['failClosed']) {
+                        [bool](Get-RequiredProperty $execution.Value `
+                            'failClosed' Boolean)
+                    } else { $false }
+                    $earlyAuthoringApproximate = if ($null -ne
+                        $execution.Value.PSObject.Properties['authoringApproximate']) {
+                        [bool](Get-RequiredProperty $execution.Value `
+                            'authoringApproximate' Boolean)
+                    } else { $false }
+                    $sourceProfileExecutionTarget =
+                        -not $earlyFailClosed -or $earlyAuthoringApproximate
+                }
                 $detail = Get-RequiredProperty $element 'detail' Object
                 $sourceProfileEnabled = $false
                 $shaderProfileId = ''
@@ -1391,6 +1875,12 @@ try {
                     [StringComparer]::Ordinal)
                 $sourceTexturesByName =
                     [Collections.Generic.Dictionary[string,object]]::new(
+                        [StringComparer]::Ordinal)
+                $sourceScalarsByName =
+                    [Collections.Generic.Dictionary[string,double]]::new(
+                        [StringComparer]::Ordinal)
+                $sourceVectorsByName =
+                    [Collections.Generic.Dictionary[string,double[]]]::new(
                         [StringComparer]::Ordinal)
                 Assert-StableId $elementId 'Element ID'
                 if ($documentVersion -ge 6) {
@@ -1410,6 +1900,13 @@ try {
                     $sourceMaterialPath = if ($documentVersion -ge 10) {
                         Get-RequiredProperty $material 'sourceMaterialPath' String
                     } else { '' }
+					if ($effectAssetId -eq 'effect.warlord.skill.17090.unified' -and
+						$sourceMaterialPath -eq 'fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma' -and
+						($null -eq $execution -or
+						 $null -eq $execution.Value.PSObject.Properties['authoringApproximate'])) {
+						throw ("Element '{0}' in '{1}' requires SOURCE_GROUPED_MATERIAL_APPROXIMATION and cannot be published as Full." -f
+							$elementId, $effectAssetId)
+					}
                     if ($materialTemplateId -notin @('effect.standard','effect.source_material')) {
                         throw "Unknown Material Template in ${effectAssetId}: $materialTemplateId"
                     }
@@ -1434,6 +1931,13 @@ try {
 							$semanticStatus = Get-RequiredProperty `
 								$sourceProfile 'semanticStatus' String
 							$subUVMode = Get-RequiredProperty $sourceProfile 'subUVMode' String
+							$blendClassProperty =
+								$sourceProfile.PSObject.Properties['sourceBlendClass']
+							if ($null -ne $blendClassProperty -and
+								[string]$blendClassProperty.Value -notin @(
+									'translucent','additive','masked')) {
+								throw "Unsupported Source Material blend class in ${effectAssetId}: $elementId"
+							}
 							Assert-StableId $profileId 'Source Material profile ID'
 							Assert-StableId $shaderProfileId 'Source Material shader profile ID'
 							Assert-StableId $subUVMode 'Source Material SubUV mode'
@@ -1461,7 +1965,12 @@ try {
 							}
 							foreach ($scalar in @(Get-RequiredProperty $sourceProfile 'scalars' Array)) {
 								$scalarName = Get-RequiredProperty $scalar 'name' String
-								[void](Get-RequiredProperty $scalar 'value' Number)
+								$scalarValue = Get-NumberValue $scalar 'value' $elementId
+								if ([string]::IsNullOrWhiteSpace($scalarName) -or
+									$sourceScalarsByName.ContainsKey($scalarName)) {
+									throw "Invalid or duplicate Source Material scalar in ${effectAssetId}: $elementId/$scalarName"
+								}
+								$sourceScalarsByName.Add($scalarName, $scalarValue)
 								$scalarGroup = if ($null -ne $scalar.PSObject.Properties['group']) {
 									[string]$scalar.group
 								} else { '' }
@@ -1519,7 +2028,12 @@ try {
 							}
 							foreach ($vector in @(Get-RequiredProperty $sourceProfile 'vectors' Array)) {
 								$vectorName = Get-RequiredProperty $vector 'name' String
-								[void](Get-NumberVector $vector 'value' 4 $elementId)
+								$vectorValue = Get-NumberVector $vector 'value' 4 $elementId
+								if ([string]::IsNullOrWhiteSpace($vectorName) -or
+									$sourceVectorsByName.ContainsKey($vectorName)) {
+									throw "Invalid or duplicate Source Material vector in ${effectAssetId}: $elementId/$vectorName"
+								}
+								$sourceVectorsByName.Add($vectorName, $vectorValue)
 								$vectorGroup = if ($null -ne $vector.PSObject.Properties['group']) {
 									[string]$vector.group
 								} else { '' }
@@ -1532,7 +2046,8 @@ try {
 								[void](Get-RequiredProperty $switch 'name' String)
 								[void](Get-RequiredProperty $switch 'value' Boolean)
 							}
-							if ($shaderProfileId -eq 'effect.ue3.linearflow-02.v1') {
+							if ($sourceProfileExecutionTarget -and
+								$shaderProfileId -eq 'effect.ue3.linearflow-02.v1') {
 								foreach ($requiredName in @(
 									'diff_tex','diff_noise_tex','a_mask_tex','a_noise_01_tex',
 									'b_mask_tex','b_noise_01_tex','dissolve_tex')) {
@@ -1541,7 +2056,36 @@ try {
 									}
 								}
 							}
-							if ($shaderProfileId -eq 'effect.ue3.local-crack.v1' -and
+							if ($sourceProfileExecutionTarget -and
+								$shaderProfileId -eq 'effect.ue3.missiletrail-two-emissive.v1') {
+								foreach ($requiredName in @(
+									'alpha_tex','emissive_tex01','emissive_tex02',
+									'uv_dissolve_tex','uv_noise_tex')) {
+									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
+										throw "MissileTrail profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+								}
+							}
+							if ($sourceProfileExecutionTarget -and
+								$shaderProfileId -eq 'effect.ue3.watertrail-01.v1') {
+								foreach ($requiredName in @('maintex','uv_noise_tex')) {
+									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
+										throw "WaterTrail profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+								}
+							}
+							if ($sourceProfileExecutionTarget -and
+								$shaderProfileId -eq 'effect.ue3.blackline-aura.v1') {
+								foreach ($requiredName in @(
+									'diffuse_tex','flow_tex','mask_a_tex','mask_b_tex',
+									'dissolve_tex')) {
+									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
+										throw "Blackline profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+								}
+							}
+							if ($sourceProfileExecutionTarget -and
+								$shaderProfileId -eq 'effect.ue3.local-crack.v1' -and
 								$sourceTextures.Count -gt 0) {
 								foreach ($requiredName in @(
 									'normal_tex','refle_tex','dissolve_tex')) {
@@ -1610,6 +2154,23 @@ try {
                         (Get-FileHash -LiteralPath $resourceFile -Algorithm SHA256).Hash.ToLowerInvariant()
                 }
                 $executionEnabled = $false
+                $executionFailClosed = $false
+                $executionAuthoringApproximate = $false
+                $executionAssetsByLane =
+                    [Collections.Generic.Dictionary[string,string]]::new(
+                        [StringComparer]::Ordinal)
+                $executionScalarsByName =
+                    [Collections.Generic.Dictionary[string,double]]::new(
+                        [StringComparer]::Ordinal)
+                $executionVectorsByName =
+                    [Collections.Generic.Dictionary[string,double[]]]::new(
+                        [StringComparer]::Ordinal)
+                $executionArtistParametersByName =
+                    [Collections.Generic.Dictionary[string,double[]]]::new(
+                        [StringComparer]::Ordinal)
+                $executionColorsByName =
+                    [Collections.Generic.Dictionary[string,double[]]]::new(
+                        [StringComparer]::Ordinal)
                 if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
                     $executionProperty = $material.PSObject.Properties['execution']
                     $execution = if ($null -eq $executionProperty) {
@@ -1622,6 +2183,19 @@ try {
                     if ($null -ne $execution) {
                         $executionEnabled = [bool](Get-RequiredProperty `
                             $execution 'enabled' Boolean)
+                        $failClosedProperty =
+                            $execution.PSObject.Properties['failClosed']
+                        if ($null -ne $failClosedProperty) {
+                            $executionFailClosed = [bool](Get-RequiredProperty `
+                                $execution 'failClosed' Boolean)
+                        }
+                        $authoringApproximateProperty =
+                            $execution.PSObject.Properties['authoringApproximate']
+                        if ($null -ne $authoringApproximateProperty) {
+                            $executionAuthoringApproximate = [bool](
+                                Get-RequiredProperty $execution `
+                                    'authoringApproximate' Boolean)
+                        }
                         $executionLanesProperty =
                             $execution.PSObject.Properties['textureLanes']
                         if ($null -ne $executionLanesProperty) {
@@ -1642,6 +2216,7 @@ try {
                         if (-not $executionLaneIds.Add($laneId)) {
                             throw "Duplicate material execution texture lane in ${effectAssetId}: $elementId/$laneId"
                         }
+                        $executionAssetsByLane[$laneId] = $laneAssetId
                         $laneFile = Resolve-SafeResource $laneAssetId
                         if ([IO.Path]::GetExtension($laneFile).ToLowerInvariant() `
                                 -ne '.dds') {
@@ -1651,32 +2226,248 @@ try {
                             (Get-FileHash -LiteralPath $laneFile `
                                 -Algorithm SHA256).Hash.ToLowerInvariant()
                     }
+                    if ($executionAuthoringApproximate -and
+                        -not $executionFailClosed) {
+                        throw "Authoring-approximate execution must retain failClosed provenance in ${effectAssetId}: $elementId"
+                    }
+                    if ($executionFailClosed -and $executionEnabled) {
+                        throw "Fail-closed material execution cannot be enabled in ${effectAssetId}: $elementId"
+                    }
+                    if ($executionEnabled) {
+                        foreach ($parameter in @(Get-RequiredProperty `
+                                $execution 'scalars' Array)) {
+                            $parameterName = Get-RequiredProperty `
+                                $parameter 'name' String
+                            [double]$scalarParameterValue = Get-NumberValue `
+                                $parameter 'value' $elementId
+                            if ([string]::IsNullOrWhiteSpace($parameterName) -or
+                                $executionScalarsByName.ContainsKey(
+                                    $parameterName)) {
+                                throw "Invalid or duplicate execution scalar in ${effectAssetId}: $elementId/$parameterName"
+                            }
+                            $executionScalarsByName.Add(
+                                $parameterName, $scalarParameterValue)
+                        }
+                        foreach ($collection in @(
+                                [ordered]@{
+                                    Property = 'vectors'
+                                    Values = $executionVectorsByName
+                                },
+                                [ordered]@{
+                                    Property = 'artistParameters'
+                                    Values = $executionArtistParametersByName
+                                },
+                                [ordered]@{
+                                    Property = 'colors'
+                                    Values = $executionColorsByName
+                                })) {
+                            foreach ($parameter in @(Get-RequiredProperty `
+                                    $execution $collection.Property Array)) {
+                                $parameterName = Get-RequiredProperty `
+                                    $parameter 'name' String
+                                [double[]]$vectorParameterValue = Get-NumberVector `
+                                    $parameter 'value' 4 $elementId
+                                if ([string]::IsNullOrWhiteSpace($parameterName) -or
+                                    $collection.Values.ContainsKey(
+                                        $parameterName)) {
+                                    throw "Invalid or duplicate execution vector in ${effectAssetId}: $elementId/$parameterName"
+                                }
+                                $collection.Values.Add(
+                                    $parameterName, $vectorParameterValue)
+                            }
+                        }
+                    }
+                }
+                $authoringOverridesProperty =
+                    $element.PSObject.Properties['authoringOverrides']
+                if ($null -ne $authoringOverridesProperty) {
+                    if ($documentVersion -ne 13) {
+                        throw "Authoring overrides require format version 13 in ${effectAssetId}: $elementId"
+                    }
+                    $authoringOverrides = Get-RequiredProperty `
+                        $element 'authoringOverrides' Object
+                    $resourceOverrides = @(Get-RequiredProperty `
+                        $authoringOverrides 'resources' Array)
+                    $scalarOverrides = @(Get-RequiredProperty `
+                        $authoringOverrides 'scalars' Array)
+                    $colorOverrides = @(Get-RequiredProperty `
+                        $authoringOverrides 'colors' Array)
+                    if ($resourceOverrides.Count + $scalarOverrides.Count +
+                        $colorOverrides.Count -eq 0) {
+                        throw "Empty authoringOverrides must be omitted in ${effectAssetId}: $elementId"
+                    }
+
+                    $overrideResourceTargets =
+                        [Collections.Generic.HashSet[string]]::new(
+                            [StringComparer]::Ordinal)
+                    foreach ($override in $resourceOverrides) {
+                        $slotId = Get-RequiredProperty $override 'slotId' String
+                        $artistAssetId = Get-RequiredProperty `
+                            $override 'assetId' String
+                        $compilerAssetId = Get-RequiredProperty `
+                            $override 'compilerAssetId' String
+                        if (-not $overrideResourceTargets.Add($slotId)) {
+                            throw "Duplicate authoring resource override in ${effectAssetId}: $elementId/$slotId"
+                        }
+                        $effectiveAssetId = ''
+                        $expectedExtension = '.dds'
+                        $executionLanePrefix = 'materialExecutionLane:'
+                        $sourceTexturePrefix = 'sourceMaterialTexture:'
+                        if ($slotId.StartsWith(
+                                $executionLanePrefix,
+                                [StringComparison]::Ordinal)) {
+                            $laneId = $slotId.Substring(
+                                $executionLanePrefix.Length)
+                            if ([string]::IsNullOrWhiteSpace($laneId) -or
+                                -not $executionAssetsByLane.TryGetValue(
+                                    $laneId, [ref]$effectiveAssetId)) {
+                                throw "Unknown authoring execution-lane override in ${effectAssetId}: $elementId/$slotId"
+                            }
+                        }
+                        elseif ($slotId.StartsWith(
+                                $sourceTexturePrefix,
+                                [StringComparison]::Ordinal)) {
+                            $textureName = $slotId.Substring(
+                                $sourceTexturePrefix.Length)
+                            [object]$sourceTexture = $null
+                            if ([string]::IsNullOrWhiteSpace($textureName) -or
+                                -not $sourceTexturesByName.TryGetValue(
+                                    $textureName, [ref]$sourceTexture)) {
+                                throw "Unknown authoring source-texture override in ${effectAssetId}: $elementId/$slotId"
+                            }
+                            $effectiveAssetId = Get-RequiredProperty `
+                                $sourceTexture 'assetId' String
+                        }
+                        elseif (-not $claimedAssets.TryGetValue(
+                                $slotId, [ref]$effectiveAssetId)) {
+                            throw "Unknown authoring resource override in ${effectAssetId}: $elementId/$slotId"
+                        }
+                        elseif ($slotId -ceq 'meshModel') {
+                            $expectedExtension = '.wmodel'
+                        }
+                        if ($effectiveAssetId -cne $artistAssetId -or
+                            $artistAssetId -ceq $compilerAssetId) {
+                            throw "Authoring resource override is stale or a no-op in ${effectAssetId}: $elementId/$slotId"
+                        }
+                        $artistFile = Resolve-SafeResource $artistAssetId
+                        $compilerFile = Resolve-SafeResource $compilerAssetId
+                        if ([IO.Path]::GetExtension($artistFile).ToLowerInvariant() `
+                                -cne $expectedExtension -or
+                            [IO.Path]::GetExtension($compilerFile).ToLowerInvariant() `
+                                -cne $expectedExtension) {
+                            throw "Authoring resource override kind mismatch in ${effectAssetId}: $elementId/$slotId"
+                        }
+                    }
+
+                    $overrideScalarNames =
+                        [Collections.Generic.HashSet[string]]::new(
+                            [StringComparer]::Ordinal)
+                    foreach ($override in $scalarOverrides) {
+                        $name = Get-RequiredProperty $override 'name' String
+                        $artistValue = Get-NumberValue $override 'value' $elementId
+                        $compilerValue = Get-NumberValue `
+                            $override 'compilerValue' $elementId
+                        if (-not $overrideScalarNames.Add($name)) {
+                            throw "Unknown or duplicate authoring scalar override in ${effectAssetId}: $elementId/$name"
+                        }
+                        $hasSourceScalar = $sourceScalarsByName.ContainsKey($name)
+                        $hasExecutionScalar =
+                            $executionScalarsByName.ContainsKey($name)
+                        $hasWrongScalarType =
+                            $sourceVectorsByName.ContainsKey($name) -or
+                            $executionVectorsByName.ContainsKey($name) -or
+                            $executionArtistParametersByName.ContainsKey($name) -or
+                            $executionColorsByName.ContainsKey($name)
+                        if ($hasWrongScalarType) {
+                            throw "Authoring scalar override target changed declared type in ${effectAssetId}: $elementId/$name"
+                        }
+                        if (-not $hasSourceScalar -and -not $hasExecutionScalar) {
+                            throw "Unknown authoring scalar override in ${effectAssetId}: $elementId/$name"
+                        }
+                        if (($hasSourceScalar -and
+                                $sourceScalarsByName[$name] -ne $artistValue) -or
+                            ($hasExecutionScalar -and
+                                $executionScalarsByName[$name] -ne $artistValue) -or
+                            $artistValue -eq $compilerValue) {
+                            throw "Authoring scalar override is stale or a no-op in ${effectAssetId}: $elementId/$name"
+                        }
+                    }
+
+                    $overrideColorNames =
+                        [Collections.Generic.HashSet[string]]::new(
+                            [StringComparer]::Ordinal)
+                    foreach ($override in $colorOverrides) {
+                        $name = Get-RequiredProperty $override 'name' String
+                        [double[]]$artistValue = Get-NumberVector `
+                            $override 'value' 4 $elementId
+                        [double[]]$compilerValue = Get-NumberVector `
+                            $override 'compilerValue' 4 $elementId
+                        if (-not $overrideColorNames.Add($name)) {
+                            throw "Unknown or duplicate authoring color override in ${effectAssetId}: $elementId/$name"
+                        }
+                        $artistKey = [string]::Join(',', $artistValue)
+                        $hasWrongColorType =
+                            $sourceScalarsByName.ContainsKey($name) -or
+                            $executionScalarsByName.ContainsKey($name)
+                        if ($hasWrongColorType) {
+                            throw "Authoring color override target changed declared type in ${effectAssetId}: $elementId/$name"
+                        }
+                        $hasColorTarget = $sourceVectorsByName.ContainsKey($name)
+                        if ($hasColorTarget -and
+                            [string]::Join(',', $sourceVectorsByName[$name]) -cne
+                                $artistKey) {
+                            throw "Authoring color override is stale in ${effectAssetId}: $elementId/$name"
+                        }
+                        foreach ($executionValues in @(
+                                $executionVectorsByName,
+                                $executionArtistParametersByName,
+                                $executionColorsByName)) {
+                            if ($executionValues.ContainsKey($name)) {
+                                $hasColorTarget = $true
+                                if ([string]::Join(',', $executionValues[$name]) `
+                                        -cne $artistKey) {
+                                    throw "Authoring color override disagrees with execution in ${effectAssetId}: $elementId/$name"
+                                }
+                            }
+                        }
+                        if (-not $hasColorTarget) {
+                            throw "Unknown authoring color override in ${effectAssetId}: $elementId/$name"
+                        }
+                        if ([string]::Join(',', $compilerValue) -ceq $artistKey) {
+                            throw "Authoring color override is a no-op in ${effectAssetId}: $elementId/$name"
+                        }
+                    }
                 }
 				$isMeshParticle = $kind -eq 'particle' -and $claimedSlots.Contains('meshModel')
+				$isProductExecutionTarget = -not $executionFailClosed -or
+					$executionAuthoringApproximate
 				$profileRequiredSlots = @()
-				if ($sourceProfileEnabled) {
+				if ($isProductExecutionTarget -and $sourceProfileEnabled) {
 					$profileRequiredSlots = switch ($shaderProfileId) {
 						'effect.ue3.reconstructed-standard.v1' { @('base') }
-						'effect.ue3.ring.v1' { @('base','noise') }
+						'effect.ue3.ring.v1' { @() }
 						'effect.ue3.aura.v1' { @('base','noise') }
 						'effect.ue3.one-layer-distortion.v1' { @('noise') }
 						'effect.ue3.shine.v1' { @('base','mask') }
-						'effect.ue3.blackline-aura.v1' { @('mask','dissolve') }
+						'effect.ue3.blackline-aura.v1' { @() }
 						'effect.ue3.linearflow-02.v1' { @() }
 						'effect.ue3.missiletrail-01.v1' { @('base','mask','noise','dissolve') }
+						'effect.ue3.missiletrail-two-emissive.v1' { @('base','mask','emissive','noise','dissolve') }
+						'effect.ue3.watertrail-01.v1' { @('base','noise') }
 						'effect.ue3.local-crack.v1' {
 							if ($sourceTextures.Count -eq 0) { @('dissolve') } else { @() }
 						}
 						'effect.ue3.procedural-center-glow.v1' { @() }
 						default { @() }
 					}
-				} elseif (-not $executionEnabled -and
+				} elseif ($isProductExecutionTarget -and -not $executionEnabled -and
 					$kind -notin @('mesh','light','screenPost') -and
 					-not $isMeshParticle -and
 					$materialTemplateId -ne 'effect.source_material') {
 					$profileRequiredSlots = @('base')
 				}
-				if ($kind -eq 'mesh' -or $isMeshParticle) {
+				if ($isProductExecutionTarget -and
+					($kind -eq 'mesh' -or $isMeshParticle)) {
 					$profileRequiredSlots = @('meshModel') + $profileRequiredSlots
 				}
 				foreach ($requiredSlot in @($profileRequiredSlots | Select-Object -Unique)) {
@@ -1695,25 +2486,26 @@ try {
 				$hasGroupedCarrier = $hasSafeGroupedBase -or
 					$claimedSlots.Contains('mask') -or
 					$claimedSlots.Contains('emissive')
-				if ($sourceProfileEnabled -and
+				if ($isProductExecutionTarget -and $sourceProfileEnabled -and
 					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
 					-not $hasGroupedCarrier) {
 					throw "Grouped translucent profile requires Base/Mask/Emissive carrier in ${effectAssetId}: $elementId"
 				}
-				if ($sourceProfileEnabled -and
+				if ($isProductExecutionTarget -and $sourceProfileEnabled -and
 					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
 					$groupedHasAlpha -and
 					-not ($hasSafeGroupedBase -or $hasGroupedMask -or $hasGroupedDissolve)) {
 					throw "Grouped alpha profile has no runtime alpha carrier in ${effectAssetId}: $elementId"
 				}
-				if ($sourceProfileEnabled -and
+				if ($isProductExecutionTarget -and $sourceProfileEnabled -and
 					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
 					$groupedHasEmissive -and
 					-not ($hasSafeGroupedBase -or $hasGroupedEmissive)) {
 					throw "Grouped emissive profile has no runtime emission carrier in ${effectAssetId}: $elementId"
 				}
                 Assert-EffectDetail $detail $kind "${effectAssetId}/$elementId"
-                if (($kind -eq 'mesh' -or $isMeshParticle) -and
+                if ($isProductExecutionTarget -and
+                    ($kind -eq 'mesh' -or $isMeshParticle) -and
                     -not [bool]$detail.mesh.useModelMaterial -and
 				    -not $claimedSlots.Contains('base') -and
 					-not $executionEnabled -and
@@ -1724,6 +2516,8 @@ try {
 								'effect.ue3.blackline-aura.v1',
 								'effect.ue3.linearflow-02.v1',
 								'effect.ue3.missiletrail-01.v1',
+								'effect.ue3.missiletrail-two-emissive.v1',
+								'effect.ue3.watertrail-01.v1',
 								'effect.ue3.local-crack.v1'))) {
                     throw "Mesh useModelMaterial=false requires 'base' in ${effectAssetId}: $elementId"
                 }
@@ -1747,18 +2541,29 @@ try {
             })
             if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
                 $authoringBytes = [IO.File]::ReadAllBytes($authoringFile)
-                $authoringText = [Text.UTF8Encoding]::new(
-                    $false, $true).GetString($authoringBytes)
-                $authoringRawSha =
-                    (Get-FileHash -LiteralPath $authoringFile `
-                        -Algorithm SHA256).Hash.ToLowerInvariant()
+                $authoringRawSha = Get-Sha256Hex $authoringBytes
+                $runtimeAuthoredRelativePath =
+                    "Authored/$effectAssetId.$authoringRawSha.effect.json"
+                if ($directAuthoredRuntimeFilesByPath.ContainsKey(
+                        $runtimeAuthoredRelativePath)) {
+                    throw "Duplicate sealed direct authored runtime path: $runtimeAuthoredRelativePath"
+                }
+                $directAuthoredRuntimeFilesByPath.Add(
+                    $runtimeAuthoredRelativePath,
+                    [pscustomobject]@{
+                        EffectAssetId = $effectAssetId
+                        RelativePath = $runtimeAuthoredRelativePath
+                        SourcePath = $authoringFile
+                        Sha256 = $authoringRawSha
+                        ByteCount = $authoringBytes.LongLength
+                    })
                 $runtimeEffects.Add([ordered]@{
                     payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
                     effectAssetId = $effectAssetId
                     authoringFormatVersion = $documentVersion
+                    authoredDocumentPath = $runtimeAuthoredRelativePath
                     contentSha256 = $authoringRawSha
                     dependencies = $dependencyRows
-                    authoredDocumentUtf8 = $authoringText
                 })
                 $hasDerivedRuntime = $true
                 continue
@@ -1838,9 +2643,31 @@ try {
         }
     }
 
+    if (-not $matchedActiveProductEffectIds.SetEquals(
+            $activeProductEffectIds)) {
+        $missingActiveIds = @($activeProductEffectIds | Where-Object {
+            -not $matchedActiveProductEffectIds.Contains($_)
+        } | Sort-Object)
+        throw ("Authored animation Product Effect cue targets are missing " +
+            "from EffectCatalog.json: " + ($missingActiveIds -join ', '))
+    }
+    if (($activeDirectRuntimeCount + $activeLegacyRuntimeCount +
+            $reconstructedRuntimeCount) -ne $activeProductEffectIds.Count -or
+        $directAuthoredRuntimeFilesByPath.Count -ne
+            $activeDirectRuntimeCount) {
+        throw ("Effect runtime active payload partition changed: " +
+            "direct=$activeDirectRuntimeCount legacy=$activeLegacyRuntimeCount " +
+            "reconstructed=$reconstructedRuntimeCount " +
+            "sealed=$($directAuthoredRuntimeFilesByPath.Count)")
+    }
+
     $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
         Sort-Object Key | ForEach-Object { $_.Value })
     $sortedRuntimeEffects = @($runtimeEffects | Sort-Object effectAssetId)
+    $visualProgramSidecarRequired = @(
+        $visualProgramSourceDocument.programs | Where-Object {
+            $activeProductEffectIds.Contains([string]$_.effectAssetId)
+        }).Count -gt 0
     if ($hasDerivedRuntime) {
         $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
             if ([string]$_.payloadKind -cin @(
@@ -1860,11 +2687,25 @@ try {
                 }
             }
         })
-        $runtime = [ordered]@{
-            schema = 'lostark.effect-runtime-catalog'
-            formatVersion = 3
-            components = $runtimeComponents
-            effects = $runtimeOutputEffects
+        $runtime = if ($hasProductCuePolicy) {
+            [ordered]@{
+                schema = 'lostark.effect-runtime-catalog'
+                formatVersion = 3
+                visualProgramSidecarRequired = $visualProgramSidecarRequired
+                productCueAdmissionsRequired = $true
+                productCuePolicySha256 = $productCuePolicySha256
+                components = $runtimeComponents
+                effects = $runtimeOutputEffects
+            }
+        }
+        else {
+            [ordered]@{
+                schema = 'lostark.effect-runtime-catalog'
+                formatVersion = 3
+                visualProgramSidecarRequired = $visualProgramSidecarRequired
+                components = $runtimeComponents
+                effects = $runtimeOutputEffects
+            }
         }
     }
     else {
@@ -1876,24 +2717,49 @@ try {
         }
     }
     $json = $runtime | ConvertTo-Json -Depth 100 -Compress
+    $runtimeCatalogMaximumBytes = 256 * 1024 * 1024
+    $runtimeCatalogUtf8Bytes = [Text.Encoding]::UTF8.GetByteCount($json) + 1
+    if ($runtimeCatalogUtf8Bytes -gt $runtimeCatalogMaximumBytes) {
+        throw ("Effect runtime catalog exceeds the Client byte limit: " +
+            "$runtimeCatalogUtf8Bytes > $runtimeCatalogMaximumBytes")
+    }
     if ($Mode -eq 'Validate') {
-        if ($hasDerivedRuntime) {
+        if ($hasDerivedRuntime -or $hasProductCuePolicy) {
+            $validationId = [Guid]::NewGuid().ToString('N')
             $validationPath = Join-Path ([IO.Path]::GetTempPath()) `
-                ("LostArkEffectCatalogV3-" + [Guid]::NewGuid().ToString('N') + '.json')
+                ("LostArkEffectCatalogV3-" + $validationId + '.json')
+            $admissionValidationPath = Join-Path ([IO.Path]::GetTempPath()) `
+                ("LostArkEffectProductCueAdmissions-" + $validationId + '.json')
             try {
                 [IO.File]::WriteAllText(
                     $validationPath, $json + "`n", $utf8NoBom)
-                Invoke-EffectRuntimeCatalogValidation $validationPath
+                if ($hasDerivedRuntime) {
+                    Invoke-EffectRuntimeCatalogValidationBundle `
+                        $json $directAuthoredRuntimeFilesByPath
+                }
+                if ($hasProductCuePolicy) {
+                    Invoke-ProductCueAdmissionBuild `
+                        $validationPath $admissionValidationPath
+                    $admissionValidation = Read-JsonDocument `
+                        $admissionValidationPath
+                    $admissionValidation = $null
+                }
             }
             finally {
                 if ([IO.File]::Exists($validationPath)) {
                     Remove-Item -LiteralPath $validationPath -Force
                 }
+                if ([IO.File]::Exists($admissionValidationPath)) {
+                    Remove-Item -LiteralPath $admissionValidationPath -Force
+                }
             }
         }
         Write-Host (
             "PASS: validated $($runtimeEffects.Count) Effect catalog entries " +
-            "and $($visualProgramSourcePath) visual-program sidecar.")
+            "and $($visualProgramSourcePath) visual-program sidecar" +
+            $(if ($hasProductCuePolicy) {
+                ' with explicit Product cue admissions.'
+            } else { '.' }))
         return
     }
 
@@ -1905,7 +2771,35 @@ try {
     $visualProgramTemporary =
         "$visualProgramOutputPath.$transactionId.tmp"
     $visualProgramBackup = "$visualProgramOutputPath.$transactionId.bak"
+    $productCueAdmissionTemporary =
+        "$productCueRuntimeOutputPath.$transactionId.tmp"
+    $productCueAdmissionBackup =
+        "$productCueRuntimeOutputPath.$transactionId.bak"
+    $transactionLockPath = Join-Path $directory `
+        '.Publish-Effects.transaction.lock'
+    $transactionLock = $null
     try {
+        try {
+            $transactionLock = [IO.FileStream]::new(
+                $transactionLockPath,
+                [IO.FileMode]::OpenOrCreate,
+                [IO.FileAccess]::ReadWrite,
+                [IO.FileShare]::None,
+                1,
+                [IO.FileOptions]::DeleteOnClose)
+        }
+        catch {
+            throw ("Effect publish transaction lock is held or unavailable " +
+                "at '${transactionLockPath}': $($_.Exception.Message)")
+        }
+        foreach ($derivedOutput in $derivedOutputPaths) {
+            Assert-RegularPublishDestination `
+                $derivedOutput.Path $derivedOutput.Label
+        }
+        if ($hasProductCuePolicy) {
+            Assert-ProductCuePolicyContinuity $true `
+                $OutputPath $productCueRuntimeOutputPath
+        }
         [IO.File]::WriteAllText(
             $temporary, $json + "`n", $utf8NoBom)
         [IO.File]::WriteAllBytes(
@@ -1919,7 +2813,26 @@ try {
             $stagedVisualProgramDocument = $null
         }
         if ($hasDerivedRuntime) {
-            Invoke-EffectRuntimeCatalogValidation $temporary
+            Invoke-EffectRuntimeCatalogValidationBundle `
+                $json $directAuthoredRuntimeFilesByPath
+        }
+        if ($hasProductCuePolicy) {
+            Invoke-ProductCueAdmissionBuild `
+                $temporary $productCueAdmissionTemporary
+            $stagedProductCueAdmissions = Read-JsonDocument `
+                $productCueAdmissionTemporary
+            try {
+                if ((Get-RequiredProperty $stagedProductCueAdmissions `
+                        'schema' String) -cne
+                        'lostark.effect-product-cue-admissions' -or
+                    [int](Get-RequiredProperty $stagedProductCueAdmissions `
+                        'formatVersion' Number) -ne 1) {
+                    throw 'Generated Product cue admission receipt header is invalid.'
+                }
+            }
+            finally {
+                $stagedProductCueAdmissions = $null
+            }
         }
         $roundTrip = Read-JsonDocument $temporary
         try {
@@ -2028,14 +2941,24 @@ try {
                     }
                 }
                 elseif ($payloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+                    $authoredDocumentPath = Get-RequiredProperty $entry `
+                        'authoredDocumentPath' String
+                    $sealedRecord = $null
                     if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
                             [string]$expected.contentSha256 -or
-                        (Get-RequiredProperty $entry `
-                            'authoredDocumentUtf8' String) -cne
-                            [string]$expected.authoredDocumentUtf8 -or
+                        $authoredDocumentPath -cne
+                            [string]$expected.authoredDocumentPath -or
+                        -not $directAuthoredRuntimeFilesByPath.TryGetValue(
+                            $authoredDocumentPath, [ref]$sealedRecord) -or
                         @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
                             @($expected.dependencies).Count) {
                         throw "Direct authored runtime catalog entry failed round-trip validation: $id"
+                    }
+                    $sealedSourceBytes = Read-PinnedDirectAuthoredBytes `
+                        $sealedRecord
+                    if ((Get-Sha256Hex $sealedSourceBytes) -cne
+                            [string]$expected.contentSha256) {
+                        throw "Direct authored source bytes failed round-trip validation: $id"
                     }
                 }
                 elseif ($payloadKind -ceq 'LEGACY_ASSEMBLY_V1') {
@@ -2059,10 +2982,115 @@ try {
         $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
         $hadVisualProgramDestination = Test-Path -LiteralPath `
             $visualProgramOutputPath -PathType Leaf
+        $hadProductCueAdmissionDestination = $hasProductCuePolicy -and
+            (Test-Path -LiteralPath $productCueRuntimeOutputPath `
+                -PathType Leaf)
         $destinationBackedUp = $false
         $visualProgramDestinationBackedUp = $false
+        $productCueAdmissionDestinationBackedUp = $false
         $newDestinationCommitted = $false
         $newVisualProgramDestinationCommitted = $false
+        $newProductCueAdmissionDestinationCommitted = $false
+        $authoredOutputRoot = [IO.Path]::GetFullPath((Join-Path `
+            $directory 'Authored'))
+        Assert-SafeDerivedOutputPath $authoredOutputRoot `
+            'Direct authored runtime output directory' `
+            $sourceAliases @($DataRoot, $ResourceRoot)
+        Assert-RegularPublishDirectory $authoredOutputRoot `
+            'Direct authored runtime output directory'
+        [IO.Directory]::CreateDirectory($authoredOutputRoot) | Out-Null
+        Assert-RegularPublishDirectory $authoredOutputRoot `
+            'Direct authored runtime output directory'
+        $newAuthoredDestinations =
+            [Collections.Generic.List[string]]::new()
+        try {
+            foreach ($record in @(
+                    $directAuthoredRuntimeFilesByPath.Values |
+                    Sort-Object RelativePath)) {
+                $expectedRelativePath =
+                    "Authored/$($record.EffectAssetId).$($record.Sha256).effect.json"
+                if ([string]$record.RelativePath -cne $expectedRelativePath) {
+                    throw "Direct authored runtime path identity changed: $($record.RelativePath)"
+                }
+                $authoredDestination = [IO.Path]::GetFullPath((Join-Path `
+                    $directory `
+                    ([string]$record.RelativePath).Replace('/', '\')))
+                $authoredDestinationDirectory =
+                    [IO.Path]::GetDirectoryName($authoredDestination)
+                if (-not (Test-PathIsSameOrDescendant `
+                        $authoredDestination $authoredOutputRoot) -or
+                    -not $authoredDestinationDirectory.Equals(
+                        $authoredOutputRoot,
+                        [StringComparison]::OrdinalIgnoreCase)) {
+                    throw "Direct authored publish path escaped Authored: $($record.RelativePath)"
+                }
+                Assert-RegularPublishDestination $authoredDestination `
+                    'Direct authored runtime output'
+                $sourceBytes = Read-PinnedDirectAuthoredBytes $record
+                if ([IO.File]::Exists($authoredDestination)) {
+                    $existingBytes = [IO.File]::ReadAllBytes(
+                        $authoredDestination)
+                    if ((Get-Sha256Hex $existingBytes) -cne
+                            [string]$record.Sha256 -or
+                        -not (Test-ByteArrayEqual `
+                            $existingBytes $sourceBytes)) {
+                        throw "Conflicting immutable direct authored runtime file: $authoredDestination"
+                    }
+                    continue
+                }
+                $authoredTemporary =
+                    "$authoredDestination.$transactionId.tmp"
+                Assert-RegularPublishDestination $authoredTemporary `
+                    'Direct authored runtime temporary output'
+                try {
+                    [IO.File]::WriteAllBytes(
+                        $authoredTemporary, $sourceBytes)
+                    $stagedBytes = [IO.File]::ReadAllBytes(
+                        $authoredTemporary)
+                    if ((Get-Sha256Hex $stagedBytes) -cne
+                            [string]$record.Sha256 -or
+                        -not (Test-ByteArrayEqual `
+                            $stagedBytes $sourceBytes)) {
+                        throw "Staged direct authored runtime file failed identity validation: $authoredTemporary"
+                    }
+                    if (Test-Path -LiteralPath $authoredDestination) {
+                        throw "Direct authored runtime destination appeared during publish: $authoredDestination"
+                    }
+                    Move-Item -LiteralPath $authoredTemporary `
+                        -Destination $authoredDestination
+                    $newAuthoredDestinations.Add($authoredDestination)
+                }
+                finally {
+                    if (Test-Path -LiteralPath $authoredTemporary) {
+                        Remove-Item -LiteralPath $authoredTemporary -Force
+                    }
+                }
+            }
+        }
+        catch {
+            $promotionFailure = $_
+            $promotionRollbackFailures =
+                [Collections.Generic.List[string]]::new()
+            foreach ($newAuthoredDestination in $newAuthoredDestinations) {
+                if (-not [IO.File]::Exists($newAuthoredDestination)) {
+                    continue
+                }
+                try {
+                    Remove-Item -LiteralPath $newAuthoredDestination -Force
+                }
+                catch {
+                    $promotionRollbackFailures.Add(
+                        "remove promoted authored file '$newAuthoredDestination': $($_.Exception.Message)")
+                }
+            }
+            if ($promotionRollbackFailures.Count -ne 0) {
+                throw ("Direct authored runtime promotion failed and cleanup " +
+                    "was incomplete. Original failure: " +
+                    "$($promotionFailure.Exception.Message). Cleanup failures: " +
+                    ($promotionRollbackFailures -join '; '))
+            }
+            throw $promotionFailure
+        }
         try {
             if ($hadDestination) {
                 Move-Item -LiteralPath $OutputPath -Destination $backup
@@ -2072,6 +3100,11 @@ try {
                 Move-Item -LiteralPath $visualProgramOutputPath `
                     -Destination $visualProgramBackup
                 $visualProgramDestinationBackedUp = $true
+            }
+            if ($hadProductCueAdmissionDestination) {
+                Move-Item -LiteralPath $productCueRuntimeOutputPath `
+                    -Destination $productCueAdmissionBackup
+                $productCueAdmissionDestinationBackedUp = $true
             }
             if ($TestFaultInjection -ceq 'AfterBackupMove') {
                 throw 'Injected Effect publisher failure after pair backup move.'
@@ -2087,11 +3120,23 @@ try {
             if ($TestFaultInjection -ceq 'AfterSidecarCommitMove') {
                 throw 'Injected Effect publisher failure after sidecar commit move.'
             }
+            if ($hasProductCuePolicy) {
+                Move-Item -LiteralPath $productCueAdmissionTemporary `
+                    -Destination $productCueRuntimeOutputPath
+                $newProductCueAdmissionDestinationCommitted = $true
+            }
+            if ($TestFaultInjection -ceq
+                    'AfterAdmissionSidecarCommitMove') {
+                throw 'Injected Effect publisher failure after Product cue admission sidecar commit move.'
+            }
         }
         catch {
             $publishFailure = $_
             $rollbackFailures = [Collections.Generic.List[string]]::new()
             foreach ($committedPath in @(
+                    $(if ($newProductCueAdmissionDestinationCommitted) {
+                        $productCueRuntimeOutputPath
+                    }),
                     $(if ($newVisualProgramDestinationCommitted) {
                         $visualProgramOutputPath
                     }),
@@ -2119,6 +3164,11 @@ try {
                         BackedUp = $visualProgramDestinationBackedUp
                         Backup = $visualProgramBackup
                         Destination = $visualProgramOutputPath
+                    },
+                    [pscustomobject]@{
+                        BackedUp = $productCueAdmissionDestinationBackedUp
+                        Backup = $productCueAdmissionBackup
+                        Destination = $productCueRuntimeOutputPath
                     })) {
                 if (-not $restore.BackedUp -or
                     -not (Test-Path -LiteralPath $restore.Backup `
@@ -2134,17 +3184,38 @@ try {
                         "restore '$($restore.Destination)': $($_.Exception.Message)")
                 }
             }
+            if ($rollbackFailures.Count -eq 0) {
+                foreach ($newAuthoredDestination in
+                    $newAuthoredDestinations) {
+                    if (-not [IO.File]::Exists($newAuthoredDestination)) {
+                        continue
+                    }
+                    try {
+                        Remove-Item -LiteralPath `
+                            $newAuthoredDestination -Force
+                    }
+                    catch {
+                        $rollbackFailures.Add(
+                            "remove promoted authored file '$newAuthoredDestination': $($_.Exception.Message)")
+                    }
+                }
+            }
             if ($rollbackFailures.Count -ne 0) {
                 throw (
-                    "Effect catalog/visual-program publish failed and rollback " +
+                    "Effect catalog/sidecar publish failed and rollback " +
                     "was incomplete. Original failure: " +
                     "$($publishFailure.Exception.Message). Rollback failures: " +
                     ($rollbackFailures -join '; '))
             }
             throw $publishFailure
         }
-        foreach ($committedBackup in @($backup, $visualProgramBackup)) {
-            if (-not (Test-Path -LiteralPath $committedBackup `
+        foreach ($committedBackup in @(
+                $backup, $visualProgramBackup,
+                $(if ($hasProductCuePolicy) {
+                    $productCueAdmissionBackup
+                }))) {
+            if ([string]::IsNullOrWhiteSpace([string]$committedBackup) -or
+                -not (Test-Path -LiteralPath $committedBackup `
                     -PathType Leaf)) {
                 continue
             }
@@ -2153,23 +3224,36 @@ try {
             }
             catch {
                 Write-Warning (
-                    "Effect publisher committed the new catalog/sidecar pair " +
+                    "Effect publisher committed the new catalog/sidecar set " +
                     "but could not remove backup '$committedBackup': " +
                     $_.Exception.Message)
             }
         }
     }
     finally {
-        if (Test-Path -LiteralPath $temporary) {
-            Remove-Item -LiteralPath $temporary -Force
+        try {
+            if (Test-Path -LiteralPath $temporary) {
+                Remove-Item -LiteralPath $temporary -Force
+            }
+            if (Test-Path -LiteralPath $visualProgramTemporary) {
+                Remove-Item -LiteralPath $visualProgramTemporary -Force
+            }
+            if (Test-Path -LiteralPath $productCueAdmissionTemporary) {
+                Remove-Item -LiteralPath $productCueAdmissionTemporary -Force
+            }
         }
-        if (Test-Path -LiteralPath $visualProgramTemporary) {
-            Remove-Item -LiteralPath $visualProgramTemporary -Force
+        finally {
+            if ($null -ne $transactionLock) {
+                $transactionLock.Dispose()
+            }
         }
     }
     Write-Host (
         "PASS: published $($runtimeEffects.Count) Effects, " +
-        "$($runtimeComponents.Count) Components, and visual-program sidecar " +
+        "$($runtimeComponents.Count) Components, visual-program sidecar" +
+        $(if ($hasProductCuePolicy) {
+            ', and Product cue admission receipt '
+        } else { ' ' }) +
         "to $directory")
 }
 finally {

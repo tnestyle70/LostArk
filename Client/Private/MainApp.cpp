@@ -2,6 +2,7 @@
 
 #include "MainApp.h"
 
+#include "CharacterSelectionState.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -1452,6 +1453,7 @@ void CMainApp::Apply_LevelRequest()
 			request.iLobbyCommandToken);
 		if (FAILED(result))
 		{
+			CCharacterSelectionState::Cancel_PendingCreation();
 			if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
 			{
 				CLobbyCommandService::Cancel(
@@ -1489,10 +1491,33 @@ void CMainApp::Apply_LevelRequest()
 			"[MainApp] Target rendering profile activation failed: " +
 			profileStatus + "\n").c_str());
 	}
-	if (profileActivated && SUCCEEDED(CGameInstance::Get().Change_Level(
-		ETOUI(request.eTargetLevel), move(nextLevel))))
+	const bool_t levelChanged = profileActivated &&
+		SUCCEEDED(CGameInstance::Get().Change_Level(
+			ETOUI(request.eTargetLevel), move(nextLevel)));
+	if (levelChanged)
 	{
+#ifdef _DEBUG
+		if (nullptr != m_pCharacterPreviewPanel)
+			m_pCharacterPreviewPanel->On_LevelChanged();
+#endif
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
+		if (LEVEL::BERN == request.eTargetLevel &&
+			CCharacterSelectionState::Has_PendingCreation() &&
+			!CCharacterSelectionState::Commit_PendingCreation())
+		{
+			OutputDebugStringA(
+				"[MainApp] Bern identity commit invariant failed.\n");
+			CNetworkManager::Get().Close_ServerConnection();
+			CLevelTransitionService::Report_LoadFailure(E_FAIL);
+			if (!CLevelTransitionService::Request_Load(
+				LEVEL::LOBBY,
+				"main-app.identity-commit-failure"))
+			{
+				OutputDebugStringA(
+					"[MainApp] Failed to stage Lobby after identity commit failure.\n");
+			}
+			return;
+		}
 		return;
 	}
 	if (profileActivated && !previousProfileId.empty())
@@ -1507,6 +1532,7 @@ void CMainApp::Apply_LevelRequest()
 		}
 	}
 
+	CCharacterSelectionState::Cancel_PendingCreation();
 	if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
 	{
 		CLobbyCommandService::Cancel(
@@ -1572,7 +1598,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	case DEBUG_TOOL::ANIMATION:
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
-				make_shared<CCharacterPreviewPanel>();
+				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
 		if (nullptr == m_pAnimationTool)
 			m_pAnimationTool = make_unique<CAnimation_Tool>(
 				m_pCharacterPreviewPanel);
@@ -1580,7 +1606,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	case DEBUG_TOOL::EFFECT:
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
-				make_shared<CCharacterPreviewPanel>();
+				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
 		if (nullptr == m_pEffectTool)
 			m_pEffectTool =
 				make_unique<CEffect_Tool>(

@@ -166,6 +166,27 @@ namespace Client
 			const BOSS_PATTERN_EFFECT_BINDING_DOCUMENT&) const = default;
 	};
 
+	struct BOSS_PATTERN_EFFECT_TREE_ROW final
+	{
+		std::string strBossArchetypeId;
+		std::string strBindingId;
+		std::string strPatternId;
+		std::string strSemanticStageId;
+		std::string strActionId;
+		std::string strEffectAssetId;
+		std::string strRuntimeClipName;
+		std::string strRuntimeBoneName;
+		std::string strProductAdmissionStatus;
+		std::filesystem::path Path;
+		bool_t bProductCatalogMapped = false;
+		bool_t bAnimationEventMapped = false;
+	};
+
+	struct BOSS_PATTERN_EFFECT_TREE_STAGE final
+	{
+		std::vector<BOSS_PATTERN_EFFECT_TREE_ROW> Rows;
+	};
+
 	class CValtanPatternEffectBindingDocument final
 	{
 	public:
@@ -185,6 +206,11 @@ namespace Client
 			std::string_view expectedBossArchetypeId,
 			const std::vector<std::string>& availableClips,
 			BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+		static bool_t Stage_ValtanEffectToolTree(
+			std::string_view text,
+			const std::filesystem::path& projectDataRoot,
+			BOSS_PATTERN_EFFECT_TREE_STAGE& outStage,
 			std::string& outStatus);
 	};
 }

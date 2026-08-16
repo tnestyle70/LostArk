@@ -254,6 +254,11 @@ namespace LostArk::Server
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
 		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
+		SERVER_ROOM_PERFORMANCE_METRICS m_LastRoomPerfLogSample;
+		std::uint64_t m_iLastRoomPerfSnapshotDroppedCount = 0;
+		std::uint64_t m_iLastRoomPerfReliableRejectedCount = 0;
+		std::uint64_t m_iLastRoomPerfWireSendFailureCount = 0;
+		std::size_t m_iLastRoomPerfOutboundHighWatermark = 0u;
 		bool m_acceptsCommands = true;
 		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 

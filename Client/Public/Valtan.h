@@ -20,6 +20,11 @@ NS_BEGIN(Client)
 class CValtan final : public CContainerObject
 {
 public:
+	static constexpr const tchar_t* BODY_PART_TAG = TEXT("Part_Body");
+	static constexpr const tchar_t* WEAPON_PART_TAG = TEXT("Part_Weapon_R");
+	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
+	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
+
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
 		const tchar_t* pNavigationPrototypeTag = { nullptr };
@@ -64,6 +69,10 @@ public:
 	shared_ptr<Engine::CTransform> Get_Transform() const {
 		return m_pTransformCom;
 	}
+	/* Effect/animation authoring must use the same visual root that the
+	   socketed weapon consumes: Valtan body local (-90 degree source-axis
+	   correction) composed with the owning actor world transform. */
+	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees,
@@ -94,6 +103,7 @@ private:
 	shared_ptr<CNavigation> m_pNavigationCom = { nullptr };
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
+	shared_ptr<Engine::CTransform> m_pBodyVisualRootCom = { nullptr };
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;

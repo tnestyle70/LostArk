@@ -13,6 +13,14 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_RUNTIME_RESOURCE_ROOT = (
+    Path(__file__).resolve().parents[2] / "Client/Bin/Resources"
+)
+SOURCE_DYNAMIC_PARAMETER_ARITHMETIC_UNAVAILABLE = (
+    "SOURCE_DYNAMIC_PARAMETER_ARITHMETIC_UNAVAILABLE"
+)
+
+
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
@@ -255,11 +263,11 @@ def grouped_translucent_selection(
     }
     if resolved_primary_names:
         return "effect.ue3.grouped-translucent.v1", None
-    if primary_names:
-        return (
-            "effect.ue3.fallback-blocked.v1",
-            "MISSING_GROUPED_TRANSPARENT_RUNTIME_RESOURCE",
-        )
+    # The emitter's own validated Base/Mask/Emissive binding is exact source
+    # evidence and stands on its own.  Check it before the parent-declared
+    # lanes so that capturing more parent evidence can only ever widen
+    # admission: a parent that names a primary group whose parameter did not
+    # resolve must not revoke a carrier the emitter already proves.
     safe_carrier_slots = {
         folded(row.get("slotId"))
         for row in (current_safe_bindings or [])
@@ -267,6 +275,11 @@ def grouped_translucent_selection(
     }
     if safe_carrier_slots & {"base", "mask", "emissive"}:
         return "effect.ue3.grouped-translucent.v1", None
+    if primary_names:
+        return (
+            "effect.ue3.fallback-blocked.v1",
+            "MISSING_GROUPED_TRANSPARENT_RUNTIME_RESOURCE",
+        )
     return "effect.ue3.fallback-blocked.v1", "UNKNOWN_GROUPED_TRANSPARENT_INPUT"
 
 
@@ -417,6 +430,18 @@ def normalized_graph_material_candidates(
     ]
 
 
+def exact_normalized_graph_material_candidates(
+    source_graph: dict[str, Any], source_path: str
+) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in normalized_graph_material_candidates(source_graph, source_path)
+        if row.get("resolutionStatus") == "RESOLVED_EXACT_SOURCE_PACKAGE"
+        and int(row.get("candidateCount") or 0) == 1
+        and bool(row.get("sourcePhysicalPackage"))
+    ]
+
+
 def source_asset_packages(manifest: dict[str, Any]) -> dict[str, str]:
     packages: dict[str, str] = {}
     for row in manifest.get("assets", []):
@@ -428,17 +453,30 @@ def source_asset_packages(manifest: dict[str, Any]) -> dict[str, str]:
 
 
 def runtime_resource_bindings(graph: dict[str, Any]) -> dict[str, str]:
-    return {
-        folded(row.get("sourceObjectPath")): str(row.get("assetId"))
-        for row in graph.get("runtimeResourceBindings", [])
-        if row.get("resolutionStatus") == "RESOLVED_RUNTIME_ASSET"
-        and row.get("sourceObjectPath")
-        and row.get("assetId")
-    }
+    resolved: dict[str, str] = {}
+    for row in graph.get("runtimeResourceBindings", []):
+        if (
+            row.get("resolutionStatus") != "RESOLVED_RUNTIME_ASSET"
+            or not row.get("sourceObjectPath")
+            or not row.get("assetId")
+        ):
+            continue
+        source_path = folded(row.get("sourceObjectPath"))
+        asset_id = str(row.get("assetId"))
+        existing = resolved.get(source_path)
+        if existing is not None and existing != asset_id:
+            raise ValueError(
+                "Runtime texture source path resolves to multiple assets: "
+                f"{source_path}"
+            )
+        resolved[source_path] = asset_id
+    return resolved
 
 
 def manifest_texture_runtime_asset(
-    resource_manifest: dict[str, Any], source_texture: str
+    resource_manifest: dict[str, Any],
+    source_texture: str,
+    runtime_resource_root: Path | None = None,
 ) -> tuple[str | None, str]:
     """Resolve a parent texture through the admitted source manifest only.
 
@@ -477,25 +515,100 @@ def manifest_texture_runtime_asset(
     row = candidates[0]
     logical_package = str(row.get("logicalPackage") or "").upper()
     source_name = str(row.get("sourceAssetPath") or "").rsplit(".", 1)[-1]
-    if not logical_package or not source_name:
+    character_class = str(resource_manifest.get("characterClass") or "")
+    class_folder = {
+        "ARTIST": "Artist",
+        "DIMENSIONMASTER": "DimensionMaster",
+        "LANCE_MASTER": "LanceMaster",
+        "WARLORD": "Warlord",
+    }.get(character_class)
+    if not logical_package or not source_name or class_folder is None:
         return None, "MISSING_RUNTIME_ASSET"
-    return (
-        f"Effect/DimensionMaster/Textures/{logical_package}/{source_name}.dds",
-        "RESOURCE_MANIFEST_SUFFIX",
+    relative_texture = (
+        f"{logical_package}/{source_name}.dds"
+        if character_class in {"DIMENSIONMASTER", "WARLORD"}
+        else f"{source_name}.dds"
     )
+    asset_id = f"Effect/{class_folder}/Textures/{relative_texture}"
+    if (
+        runtime_resource_root is not None
+        and not (runtime_resource_root / Path(asset_id)).is_file()
+    ):
+        return None, "MISSING_RUNTIME_ASSET"
+    return asset_id, "RESOURCE_MANIFEST_SUFFIX"
+
+
+def resolve_runtime_texture_asset(
+    graph: dict[str, Any],
+    resource_manifest: dict[str, Any] | None,
+    source_texture: str,
+    runtime_resource_root: Path | None = None,
+) -> tuple[str | None, str]:
+    """Prefer the occurrence graph's exact class-local runtime texture ID."""
+
+    texture_key = folded(source_texture)
+    runtime = runtime_resource_bindings(graph)
+    def admitted_graph_asset(asset_id: str) -> tuple[str | None, str]:
+        if (
+            runtime_resource_root is not None
+            and not (runtime_resource_root / Path(asset_id)).is_file()
+        ):
+            return None, "MISSING_RUNTIME_ASSET"
+        return asset_id, "GRAPH_RUNTIME_ASSET"
+
+    exact = runtime.get(texture_key)
+    if exact:
+        return admitted_graph_asset(exact)
+    suffix = "." + texture_key.rsplit(".", 1)[-1]
+    matches = {
+        asset_id
+        for source_path, asset_id in runtime.items()
+        if source_path.endswith(suffix)
+    }
+    if len(matches) == 1:
+        return admitted_graph_asset(next(iter(matches)))
+    if resource_manifest is not None:
+        return manifest_texture_runtime_asset(
+            resource_manifest, source_texture, runtime_resource_root
+        )
+    return None, "MISSING_RUNTIME_ASSET"
 
 
 def source_group_slot(group: str) -> str | None:
+    """Map a parent Material parameter group to a reconstructed lane.
+
+    Every token below is a group string actually observed in a captured
+    parent ``Material3`` props export, never a guess.  The four-class
+    capture (``FourClass.material-map.json``, 10,258 texture-parameter rows)
+    added these spellings on top of the original DimensionMaster vocabulary:
+
+    ``diff`` 353, ``maintex`` 174, ``01_main`` 18 name a diffuse/base lane;
+    ``tex_flow`` 57, ``3_distort01`` 51, ``4_distort02`` 33, ``distotion`` 27
+    (source typo), ``flow`` 27, ``distortiontexture`` 24, ``distort`` 18,
+    ``uv_flow`` 9 and ``volume_flow`` 6 name a UV flow/distortion lane.
+
+    Groups that name a specular, normal/bump, ramp, lamp or transition role
+    stay unmapped on purpose.  They are not colour or alpha carriers and
+    promoting them would reopen the generic fallback this contract forbids.
+    """
     value = folded(group)
     if any(token in value for token in ("alpha", "opacity", "mask")):
         return "mask"
     if "dissolve" in value:
         return "dissolve"
-    if any(token in value for token in ("uvdistort", "uv_noise", "noise")):
+    if any(
+        token in value
+        for token in (
+            "uvdistort", "uv_noise", "noise", "distort", "distotion", "flow",
+        )
+    ):
         return "noise"
     if any(token in value for token in ("emission", "emissive")):
         return "emission"
-    if any(token in value for token in ("diffuse", "base", "color")):
+    if any(
+        token in value
+        for token in ("diffuse", "base", "color", "diff", "main")
+    ):
         return "base"
     return None
 
@@ -552,6 +665,7 @@ def evidence_backed_normal_noise_assets(
 def role_resolved_runtime_bindings(
     selected: dict[str, Any], graph: dict[str, Any],
     resource_manifest: dict[str, Any] | None = None,
+    runtime_resource_root: Path | None = None,
 ) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
     """Map only parent-declared texture groups into the generic runtime slots.
 
@@ -566,22 +680,6 @@ def role_resolved_runtime_bindings(
         for row in evidence.get("collectedTextureParameters", [])
         if row.get("name") and row.get("group")
     }
-    runtime = runtime_resource_bindings(graph)
-    def resolve_runtime_asset(texture: str) -> tuple[str | None, str]:
-        exact = runtime.get(folded(texture))
-        if exact:
-            return exact, "GRAPH_RUNTIME_ASSET"
-        suffix = "." + folded(texture).rsplit(".", 1)[-1]
-        matches = {
-            asset_id for source_path, asset_id in runtime.items()
-            if source_path.endswith(suffix)
-        }
-        if len(matches) == 1:
-            return next(iter(matches)), "GRAPH_RUNTIME_ASSET"
-        if resource_manifest is not None:
-            return manifest_texture_runtime_asset(resource_manifest, texture)
-        return None, "MISSING_RUNTIME_ASSET"
-
     texture_rows = list(selected.get("textures") or [])
     overridden_names = {
         folded(row.get("name")) for row in texture_rows if row.get("name")
@@ -601,7 +699,9 @@ def role_resolved_runtime_bindings(
         texture = str(row.get("texture") or "")
         group = groups.get(folded(name))
         slot = source_group_slot(group or "")
-        asset_id, resolution_method = resolve_runtime_asset(texture)
+        asset_id, resolution_method = resolve_runtime_texture_asset(
+            graph, resource_manifest, texture, runtime_resource_root
+        )
         normal_or_bump = is_normal_or_bump_texture(name, texture, asset_id)
         normal_noise_evidence = bool(
             normal_or_bump and group and slot == "noise"
@@ -1047,10 +1147,21 @@ def dynamic_parameter_semantics(element: dict[str, Any]) -> list[str]:
 
 
 def runtime_profile_dynamic_parameter_semantics(
-    runtime_shader_profile_id: str, element: dict[str, Any]
+    runtime_shader_profile_id: str,
+    element: dict[str, Any],
+    source_material_identity: dict[str, Any] | None = None,
 ) -> list[str]:
     if runtime_shader_profile_id != "effect.ue3.missiletrail-01.v1":
-        return dynamic_parameter_semantics(element)
+        semantics = dynamic_parameter_semantics(element)
+        if (
+            runtime_shader_profile_id == "effect.ue3.grouped-translucent.v1"
+            and source_dynamic_parameter_arithmetic_unavailable(
+                source_material_identity
+            )
+        ):
+            for index in exact_dynamic_parameter_channels(element, "dissolve"):
+                semantics[index] = "unbound"
+        return semantics
     exact = {
         "alpha_pan": "missile_alpha_pan",
         "uv_noise_velue": "missile_noise_strength",
@@ -1076,6 +1187,50 @@ def runtime_profile_dynamic_parameter_semantics(
                     folded(literal.get("value")), "unbound"
                 )
     return semantics
+
+
+def exact_dynamic_parameter_channels(
+    element: dict[str, Any], parameter_name: str
+) -> set[int]:
+    """Return only exact ParticleModuleParameterDynamic channel-name matches."""
+
+    expected = folded(parameter_name)
+    channels: set[int] = set()
+    for module in (element.get("sourceRecipe") or {}).get("modules", []):
+        if folded(module.get("className")) != "particlemoduleparameterdynamic":
+            continue
+        for literal in module.get("literals", []):
+            match = re.fullmatch(
+                r"dynamicparams\[(\d+)\]\.paramname",
+                folded(literal.get("propertyPath")),
+            )
+            if (
+                match is not None
+                and folded(literal.get("value")) == expected
+                and 0 <= int(match.group(1)) < 4
+            ):
+                channels.add(int(match.group(1)))
+    return channels
+
+
+def source_dynamic_parameter_arithmetic_unavailable(
+    source_material_identity: dict[str, Any] | None,
+) -> bool:
+    """Return whether direct cooked-parent evidence lost dynamic arithmetic.
+
+    A parameter name is not an arithmetic graph.  Only the explicit direct
+    graph pair ``COOKED_PARTIAL``/``runtimeExactEligible=false`` weakens the
+    generic grouped profile; missing evidence and an exact graph do not.
+    """
+
+    if not isinstance(source_material_identity, dict):
+        return False
+    return (
+        source_material_identity.get("cookedGraphTopologyStatus")
+        == "COOKED_PARTIAL"
+        and source_material_identity.get("cookedGraphRuntimeExactEligible")
+        is False
+    )
 
 
 def upgrade_effect_document(
@@ -1132,7 +1287,7 @@ def upgrade_effect_document(
             ],
             "dynamicParameterSemantics": (
                 runtime_profile_dynamic_parameter_semantics(
-                    identity["runtimeShaderProfileId"], element
+                    identity["runtimeShaderProfileId"], element, identity
                 )
             ),
             "subUVMode": runtime_profile_subuv_mode(
@@ -1227,6 +1382,7 @@ def build_contract(
         raise ValueError("Effect document has no Particle elements.")
 
     occurrence_ids_by_material: dict[str, list[str]] = defaultdict(list)
+    occurrences_by_material: dict[str, list[dict[str, Any]]] = defaultdict(list)
     template_counts_by_material: dict[str, Counter[str]] = defaultdict(Counter)
     resources_by_material: dict[str, dict[str, str]] = defaultdict(dict)
     source_path_spelling: dict[str, str] = {}
@@ -1240,6 +1396,7 @@ def build_contract(
             )
         source_path_spelling.setdefault(key, source_path)
         occurrence_ids_by_material[key].append(str(element.get("id") or ""))
+        occurrences_by_material[key].append(element)
         template_counts_by_material[key][
             str(material.get("templateId") or "")
         ] += 1
@@ -1276,7 +1433,10 @@ def build_contract(
     failures: list[dict[str, Any]] = []
     for key in sorted(occurrence_ids_by_material):
         source_path = source_path_spelling[key]
-        graph_candidates = normalized_graph_material_candidates(
+        raw_graph_candidates = normalized_graph_material_candidates(
+            source_graph, source_path
+        )
+        graph_candidates = exact_normalized_graph_material_candidates(
             source_graph, source_path
         )
         graph_row = graph_candidates[0] if len(graph_candidates) == 1 else {}
@@ -1304,16 +1464,24 @@ def build_contract(
             selected = {}
             material_evidence_source = "UNRESOLVED"
         identity_failure_start = len(failures)
-        if not candidates and len(graph_candidates) == 0:
+        if not candidates and len(raw_graph_candidates) == 0:
             failures.append({
                 "sourceMaterialPath": source_path,
                 "status": "MISSING_NORMALIZED_GRAPH_MATERIAL_BINDING",
             })
-        elif not candidates and len(graph_candidates) > 1:
+        elif not candidates and len(raw_graph_candidates) > 1:
             failures.append({
                 "sourceMaterialPath": source_path,
                 "status": "AMBIGUOUS_NORMALIZED_GRAPH_MATERIAL_BINDING",
-                "candidateCount": len(graph_candidates),
+                "candidateCount": len(raw_graph_candidates),
+            })
+        elif not candidates and len(graph_candidates) != 1:
+            raw = raw_graph_candidates[0]
+            failures.append({
+                "sourceMaterialPath": source_path,
+                "status": "UNRESOLVED_NORMALIZED_GRAPH_MATERIAL_BINDING",
+                "resolutionStatus": raw.get("resolutionStatus"),
+                "candidateCount": raw.get("candidateCount"),
             })
         evidence_ref = str(selected.get("materialEvidenceRef") or "")
         if evidence_ref:
@@ -1331,6 +1499,18 @@ def build_contract(
         parent = str(selected.get("parent") or graph_row.get("parent") or source_path)
         selected = merge_parent_graph_texture_defaults(
             selected, parent, material_graph_evidence
+        )
+        selected_material_evidence = selected.get("materialEvidence") or {}
+        cooked_graph_topology_status = str(
+            selected_material_evidence.get("cookedGraphTopologyStatus") or ""
+        )
+        raw_runtime_exact_eligible = selected_material_evidence.get(
+            "cookedGraphRuntimeExactEligible"
+        )
+        cooked_graph_runtime_exact_eligible = (
+            raw_runtime_exact_eligible
+            if isinstance(raw_runtime_exact_eligible, bool)
+            else None
         )
         parent_package = manifest_packages.get(folded(parent))
         source_package = str(
@@ -1360,7 +1540,7 @@ def build_contract(
         template_counts = template_counts_by_material[key]
         pending_count = template_counts.get("effect.source_material", 0)
         role_bindings, role_diagnostics = role_resolved_runtime_bindings(
-            selected, source_graph, resource_manifest
+            selected, source_graph, resource_manifest, runtime_resource_root
         )
         allowed_normal_noise_assets = evidence_backed_normal_noise_assets(
             role_diagnostics
@@ -1408,8 +1588,11 @@ def build_contract(
             source_object_path = str(
                 texture_parameter.get("texture") or ""
             )
-            asset_id, resolution_status = manifest_texture_runtime_asset(
-                resource_manifest, source_object_path
+            asset_id, resolution_status = resolve_runtime_texture_asset(
+                source_graph,
+                resource_manifest,
+                source_object_path,
+                runtime_resource_root,
             )
             texture_parameter["sourceObjectPath"] = source_object_path
             texture_parameter["assetId"] = asset_id or ""
@@ -1457,6 +1640,15 @@ def build_contract(
             product_admission_status = "BLOCKED_FALLBACK_PROFILE"
         else:
             product_admission_status = "ADMITTED_RECONSTRUCTED_PROFILE"
+        dynamic_arithmetic_unavailable = (
+            shader_profile_id == "effect.ue3.grouped-translucent.v1"
+            and cooked_graph_topology_status == "COOKED_PARTIAL"
+            and cooked_graph_runtime_exact_eligible is False
+        )
+        dynamic_arithmetic_unavailable_occurrence_count = sum(
+            bool(exact_dynamic_parameter_channels(element, "dissolve"))
+            for element in occurrences_by_material[key]
+        ) if dynamic_arithmetic_unavailable else 0
         identities.append({
             "sourceMaterialPath": source_path,
             "sourcePhysicalPackage": source_package or None,
@@ -1468,6 +1660,20 @@ def build_contract(
             "materialEvidenceSource": material_evidence_source,
             "sourceEvidenceResolved": source_evidence_resolved,
             "productAdmissionStatus": product_admission_status,
+            "cookedGraphTopologyStatus": (
+                cooked_graph_topology_status or None
+            ),
+            "cookedGraphRuntimeExactEligible": (
+                cooked_graph_runtime_exact_eligible
+            ),
+            "sourceDynamicParameterApproximationReason": (
+                SOURCE_DYNAMIC_PARAMETER_ARITHMETIC_UNAVAILABLE
+                if dynamic_arithmetic_unavailable_occurrence_count
+                else None
+            ),
+            "sourceDynamicParameterArithmeticUnavailableOccurrenceCount": (
+                dynamic_arithmetic_unavailable_occurrence_count
+            ),
             "requiredRuntimeBindings": required_runtime_bindings(shader_profile_id),
             "roleResolvedRuntimeBindings": role_bindings,
             "sourceTextureRoleDiagnostics": role_diagnostics,
@@ -1571,6 +1777,14 @@ def build_contract(
             == "ADMITTED_RECONSTRUCTED_PROFILE"
             for row in identities
         ) and not failures,
+        "sourceDynamicParameterArithmeticUnavailableMaterialIdentityCount": sum(
+            bool(row["sourceDynamicParameterArithmeticUnavailableOccurrenceCount"])
+            for row in identities
+        ),
+        "sourceDynamicParameterArithmeticUnavailableOccurrenceCount": sum(
+            row["sourceDynamicParameterArithmeticUnavailableOccurrenceCount"]
+            for row in identities
+        ),
     }
     contract = {
         "schema": "lostark.effect-source-material-contract",
@@ -1608,6 +1822,11 @@ def main() -> int:
     )
     parser.add_argument("--material-graph-evidence", type=Path)
     parser.add_argument("--texture-sampling-evidence", type=Path)
+    parser.add_argument(
+        "--runtime-resource-root",
+        type=Path,
+        default=DEFAULT_RUNTIME_RESOURCE_ROOT,
+    )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--output-effect-document", type=Path)
@@ -1619,6 +1838,7 @@ def main() -> int:
         load_json(args.conversion_receipt),
         load_json(args.resource_manifest),
         load_json(args.material_map) if args.material_map is not None else {},
+        runtime_resource_root=args.runtime_resource_root,
         material_graph_evidence=(
             load_json(args.material_graph_evidence)
             if args.material_graph_evidence is not None else None

@@ -605,6 +605,19 @@ bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EV
 bool CNetworkManager::Enqueue_ReplicationEvent(
 	Client::CLIENT_REPLICATION_EVENT&& event)
 {
+	/* Loading levels do not own a CClientReplication consumer yet, while the
+	   admitted Server room continues to publish WORLD_SNAPSHOT at 30 Hz. Keep
+	   only the newest adjacent snapshot: spawn/despawn/destruction events stay
+	   as ordering barriers, but a cold level load can no longer fill the queue
+	   and disconnect with WSAENOBUFS before activation. */
+	if (Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT == event.eType &&
+		!m_ReplicationEvents.empty() &&
+		Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT ==
+			m_ReplicationEvents.back().eType)
+	{
+		m_ReplicationEvents.back() = std::move(event);
+		return true;
+	}
 	if (m_ReplicationEvents.size() >= MAX_REPLICATION_EVENT_QUEUE)
 	{
 		Fail_Protocol(WSAENOBUFS);

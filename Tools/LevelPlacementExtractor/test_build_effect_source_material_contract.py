@@ -37,6 +37,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph = {"materialParameterBindings": [{
             "sourceMaterialPath": "fx_pkg.fx_mi.unique",
             "sourcePhysicalPackage": "EXACT.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.parent",
             "scalars": [{"name": "power", "value": 3.0}],
         }]}
@@ -63,6 +65,74 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
             ["materialEvidenceSource"],
         )
 
+    def test_contract_propagates_cooked_partial_dynamic_arithmetic_boundary(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "base", "assetId": "Effect/safe.dds",
+                }],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.child",
+                },
+                "sourceRecipe": {
+                    "modules": [{
+                        "className": "ParticleModuleParameterDynamic",
+                        "literals": [{
+                            "propertyPath": "DynamicParams[1].ParamName",
+                            "value": "dissolve",
+                        }],
+                    }]
+                },
+            }],
+        }
+        graph = {"materialParameterBindings": [{
+            "sourceMaterialPath": "fx_pkg.fx_mi.child",
+            "sourcePhysicalPackage": "EXACT.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
+            "parent": "fx_m.parent",
+        }]}
+        direct_graph = {"materials": [{
+            "materialPath": "fx_m.parent",
+            "namedTextures": [],
+            "summary": {
+                "topologyStatus": "COOKED_PARTIAL",
+                "runtimeExactEligible": False,
+            },
+        }]}
+
+        contract, receipt = MODULE.build_contract(
+            effect,
+            graph,
+            {"elementConversions": []},
+            {"assets": []},
+            material_graph_evidence=direct_graph,
+        )
+
+        identity = contract["materialIdentities"][0]
+        self.assertEqual("COOKED_PARTIAL", identity["cookedGraphTopologyStatus"])
+        self.assertFalse(identity["cookedGraphRuntimeExactEligible"])
+        self.assertEqual(
+            MODULE.SOURCE_DYNAMIC_PARAMETER_ARITHMETIC_UNAVAILABLE,
+            identity["sourceDynamicParameterApproximationReason"],
+        )
+        self.assertEqual(
+            1,
+            receipt["summary"][
+                "sourceDynamicParameterArithmeticUnavailableOccurrenceCount"
+            ],
+        )
+        upgraded = MODULE.upgrade_effect_document(effect, contract)
+        self.assertEqual(
+            "unbound",
+            upgraded["elements"][0]["material"]["sourceProfile"]
+            ["dynamicParameterSemantics"][1],
+        )
+
     def test_missing_mapless_graph_row_fails_closed(self):
         effect = {
             "effectAssetId": "effect.test",
@@ -79,7 +149,7 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
                 "sourceRecipe": {"modules": []},
             }],
         }
-        manifest = {"assets": [{
+        manifest = {"characterClass": "DIMENSIONMASTER", "assets": [{
             "sourceAssetPath": "fx_pkg.fx_mi.missing",
             "physicalPackage": "EXACT.upk",
         }]}
@@ -118,6 +188,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph_row = {
             "sourceMaterialPath": "fx_pkg.fx_mi.duplicate",
             "sourcePhysicalPackage": "EXACT.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.parent",
         }
         manifest = {"assets": [{
@@ -158,6 +230,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph = {"materialParameterBindings": [{
             "sourceMaterialPath": "fx_pkg.fx_mi.no_carrier",
             "sourcePhysicalPackage": "EXACT.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.unknown",
         }]}
 
@@ -200,6 +274,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
             "materialParameterBindings": [{
                 "sourceMaterialPath": "fx_pkg.fx_mi.child",
                 "sourcePhysicalPackage": "EXACT.upk",
+                "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+                "candidateCount": 1,
                 "parent": "fx_m.parent",
                 "textures": [{
                     "name": "normal_tex", "texture": "fx_tex.normal",
@@ -261,6 +337,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph = {"materialParameterBindings": [{
             "sourceMaterialPath": "fx_pkg.fx_mi.shared",
             "sourcePhysicalPackage": "RIGHT.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.right",
             "scalars": [{"name": "power", "value": 7.0}],
         }]}
@@ -314,6 +392,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
             "materialParameterBindings": [{
                 "sourceMaterialPath": "fx_pkg.fx_mi.child",
                 "sourcePhysicalPackage": "fx.upk",
+                "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+                "candidateCount": 1,
                 "parent": "fx_m.parent",
             }],
             "runtimeResourceBindings": [{
@@ -769,6 +849,52 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
             selected["materialEvidence"]["collectedTextureParameters"]
         ))
 
+        identity = {
+            "cookedGraphTopologyStatus": merged["materialEvidence"][
+                "cookedGraphTopologyStatus"
+            ],
+            "cookedGraphRuntimeExactEligible": merged["materialEvidence"][
+                "cookedGraphRuntimeExactEligible"
+            ],
+        }
+        dynamic_element = {
+            "sourceRecipe": {
+                "modules": [{
+                    "className": "ParticleModuleParameterDynamic",
+                    "literals": [{
+                        "propertyPath": "DynamicParams[1].ParamName",
+                        "value": "dissolve",
+                    }],
+                }]
+            }
+        }
+        self.assertEqual(
+            "unbound",
+            MODULE.runtime_profile_dynamic_parameter_semantics(
+                "effect.ue3.grouped-translucent.v1",
+                dynamic_element,
+                identity,
+            )[1],
+        )
+        exact_identity = {
+            "cookedGraphTopologyStatus": "COMPLETE",
+            "cookedGraphRuntimeExactEligible": True,
+        }
+        self.assertEqual(
+            "dissolve",
+            MODULE.runtime_profile_dynamic_parameter_semantics(
+                "effect.ue3.grouped-translucent.v1",
+                dynamic_element,
+                exact_identity,
+            )[1],
+        )
+        self.assertEqual(
+            "dissolve",
+            MODULE.runtime_profile_dynamic_parameter_semantics(
+                "effect.ue3.circle.v1", dynamic_element, identity
+            )[1],
+        )
+
     def test_existing_finite_profile_required_asset_is_checked_at_resource_root(self):
         bindings = [{"assetId": "Effect/Test/required.dds"}]
         with TemporaryDirectory() as temporary:
@@ -1125,7 +1251,7 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
                 }]
             }
         }
-        manifest = {"assets": [{
+        manifest = {"characterClass": "DIMENSIONMASTER", "assets": [{
             "sourceAssetPath": "fx_tex_00.fx_a_glow_001",
             "logicalPackage": "fx_tex_00",
             "roles": ["texture"],
@@ -1140,9 +1266,103 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         )
         self.assertEqual("RESOURCE_MANIFEST_SUFFIX", diagnostics[0]["resolutionMethod"])
 
+    def test_named_texture_prefers_exact_artist_graph_runtime_asset(self):
+        asset_id, status = MODULE.resolve_runtime_texture_asset(
+            {
+                "runtimeResourceBindings": [{
+                    "sourceObjectPath": "fx_tex_02.fx_d_environ_067",
+                    "assetId": "Effect/Artist/Textures/fx_d_environ_067.dds",
+                    "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                }]
+            },
+            {
+                "characterClass": "ARTIST",
+                "assets": [{
+                    "sourceAssetPath": "fx_tex_02.fx_d_environ_067",
+                    "logicalPackage": "fx_tex_02",
+                    "roles": ["texture"],
+                    "resolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+                }],
+            },
+            "fx_tex_02.fx_d_environ_067",
+        )
+        self.assertEqual("Effect/Artist/Textures/fx_d_environ_067.dds", asset_id)
+        self.assertEqual("GRAPH_RUNTIME_ASSET", status)
+
+    def test_artist_manifest_fallback_uses_flat_class_texture_directory(self):
+        asset_id, status = MODULE.manifest_texture_runtime_asset(
+            {
+                "characterClass": "ARTIST",
+                "assets": [{
+                    "sourceAssetPath": "fx_tex_02.fx_d_environ_067",
+                    "logicalPackage": "fx_tex_02",
+                    "roles": ["texture"],
+                    "resolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+                }],
+            },
+            "fx_tex_02.fx_d_environ_067",
+        )
+        self.assertEqual("Effect/Artist/Textures/fx_d_environ_067.dds", asset_id)
+        self.assertEqual("RESOURCE_MANIFEST_SUFFIX", status)
+
+    def test_conflicting_graph_runtime_texture_identity_fails_closed(self):
+        with self.assertRaises(ValueError):
+            MODULE.runtime_resource_bindings(
+                {
+                    "runtimeResourceBindings": [
+                        {
+                            "sourceObjectPath": "fx_tex.fx_shared",
+                            "assetId": "Effect/A.dds",
+                            "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                        },
+                        {
+                            "sourceObjectPath": "FX_TEX.FX_SHARED",
+                            "assetId": "Effect/B.dds",
+                            "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                        },
+                    ]
+                }
+            )
+
+    def test_graph_runtime_texture_must_exist_when_root_is_supplied(self):
+        with TemporaryDirectory() as temporary_name:
+            asset_id, status = MODULE.resolve_runtime_texture_asset(
+                {
+                    "runtimeResourceBindings": [{
+                        "sourceObjectPath": "fx_tex.fx_missing",
+                        "assetId": "Effect/Artist/Textures/missing.dds",
+                        "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                    }]
+                },
+                None,
+                "fx_tex.fx_missing",
+                Path(temporary_name),
+            )
+        self.assertIsNone(asset_id)
+        self.assertEqual("MISSING_RUNTIME_ASSET", status)
+
+    def test_warlord_manifest_fallback_keeps_logical_package_directory(self):
+        asset_id, status = MODULE.manifest_texture_runtime_asset(
+            {
+                "characterClass": "WARLORD",
+                "assets": [{
+                    "sourceAssetPath": "fx_tex_05.fx_k_auraline_16",
+                    "logicalPackage": "fx_tex_05",
+                    "roles": ["texture"],
+                    "resolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+                }],
+            },
+            "fx_tex_05.fx_k_auraline_16",
+        )
+        self.assertEqual(
+            "Effect/Warlord/Textures/FX_TEX_05/fx_k_auraline_16.dds",
+            asset_id,
+        )
+        self.assertEqual("RESOURCE_MANIFEST_SUFFIX", status)
+
     def test_ambiguous_manifest_texture_stays_unresolved(self):
         asset_id, status = MODULE.manifest_texture_runtime_asset(
-            {"assets": [
+            {"characterClass": "DIMENSIONMASTER", "assets": [
                 {
                     "sourceAssetPath": "fx_tex_00.fx_shared",
                     "logicalPackage": "fx_tex_00", "roles": ["texture"],
@@ -1176,6 +1396,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph = {"materialParameterBindings": [{
             "sourceMaterialPath": "fx_mi.fx.card",
             "sourcePhysicalPackage": "fx.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.card",
         }]}
         material_map = {"materials": {"fx.card": [{
@@ -1219,6 +1441,8 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         graph = {"materialParameterBindings": [{
             "sourceMaterialPath": "fx_mi.fx.one_sided",
             "sourcePhysicalPackage": "fx.upk",
+            "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+            "candidateCount": 1,
             "parent": "fx_m.one_sided",
         }]}
         material_map = {"materials": {"fx.one_sided": [{
@@ -1271,11 +1495,15 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
                 {
                     "sourceMaterialPath": "fx_mi.fx.child_a",
                     "sourcePhysicalPackage": "fx.upk",
+                    "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+                    "candidateCount": 1,
                     "parent": "fx_m.parent",
                 },
                 {
                     "sourceMaterialPath": "fx_mi.fx.child_b",
                     "sourcePhysicalPackage": "fx.upk",
+                    "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+                    "candidateCount": 1,
                     "parent": "fx_m.parent",
                 },
             ]

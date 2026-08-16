@@ -1,0 +1,55 @@
+{
+ "schema": "lostark.valtan-action-effect-bindings-receipt",
+ "formatVersion": 1,
+ "bossArchetypeId": "BOSS_VALTAN",
+ "summary": {
+  "patternCount": 31,
+  "patternsWithStages": 29,
+  "patternsWithSourceActions": 31,
+  "authoredStageCount": 108,
+  "sourceActionReferencedCount": 63,
+  "sourceActionIndexedCount": 152,
+  "unmappedSourceActionCount": 89,
+  "missingSourceActionCount": 0,
+  "effectCueCount": 9175,
+  "effectCueTypeCounts": {
+   "DefaultParticle": 21,
+   "Effect": 3475,
+   "PlayDecalEffect": 529,
+   "PlayParticleEffect": 4791,
+   "TrailGhostEffect": 100,
+   "Trails": 259
+  }
+ },
+ "missingSourceActions": [],
+ "sources": [
+  {
+   "path": "Data/Encounters/Valtan/ValtanEncounter.json",
+   "sha256": "4635dde3a4a9809ff7fdca29596c0de886bd8507e19306a9f2b8c9cb88a30918"
+  },
+  {
+   "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+   "sha256": "83a33a648ff24350d1066dc5994b1dbdd5867a75e94817365ce196e38a29b0a8"
+  },
+  {
+   "path": "Data/Effects/Imported/Valtan/Valtan.effect-resource-catalog.json",
+   "sha256": "59200d259f8e04004370e29305068575f5ca87097b211292b5e3365827ebf673"
+  },
+  {
+   "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/VALTAN/all_actions/MN_RPBF_00.action-effects.json",
+   "sha256": "6b80d5b3fbe033239abe2c612f880f083f08952e89f87a1a583f084d4b8dfd59"
+  },
+  {
+   "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/VALTAN/all_actions/MN_RPBF_01_1.action-effects.json",
+   "sha256": "5d8fd0d83b1bc4eb58309b4b1cfd1345974e3bd32512ca082bf276a93b74d278"
+  },
+  {
+   "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/VALTAN/all_actions/MN_RPBF_02_2.action-effects.json",
+   "sha256": "44ff4828986a96129d802556ef5b9ed5853d0a78504c4a4b5220b03a8441a9a3"
+  },
+  {
+   "path": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/Valtan.basebuff-effect-source.json",
+   "sha256": "058c6dcd723b5cf29fe465bba5d7b16c42927ddb39ffbfbaa2f03ccf2f5727bf"
+  }
+ ]
+}

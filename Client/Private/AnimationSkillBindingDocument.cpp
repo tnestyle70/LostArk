@@ -1,6 +1,7 @@
 #include "AnimationSkillBindingDocument.h"
 
 #include "DataJson.h"
+#include "Effect_DocumentCodec.h"
 #include "ProjectDataRoot.h"
 
 #include <Windows.h>
@@ -990,5 +991,111 @@ bool_t Client::CValtanPatternEffectBindingDocument::Load(
 		return false;
 	}
 	outDocument = std::move(staged);
+	return true;
+}
+
+bool_t Client::CValtanPatternEffectBindingDocument::Stage_ValtanEffectToolTree(
+	const std::string_view text,
+	const std::filesystem::path& projectDataRoot,
+	BOSS_PATTERN_EFFECT_TREE_STAGE& outStage,
+	std::string& outStatus)
+{
+	constexpr std::string_view BOSS_ARCHETYPE_ID = "BOSS_VALTAN";
+	constexpr std::string_view BINDING_ID =
+		"valtan.whirlwind.420633.active";
+	constexpr std::string_view PATTERN_ID = "VALTAN_WHIRLWIND";
+	constexpr std::string_view SEMANTIC_STAGE_ID = "SPIN";
+	constexpr std::string_view ACTION_ID =
+		"valtan.attack.whirlwind.active";
+	constexpr std::string_view EFFECT_ASSET_ID =
+		"effect.valtan.pattern.420633.active";
+	constexpr std::string_view EFFECT_DOCUMENT =
+		"Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json";
+	constexpr std::string_view RUNTIME_CLIP = "mesh_att_battle_20_03";
+	constexpr std::string_view RUNTIME_BONE = "b_effectroot";
+	constexpr std::string_view ADMISSION_STATUS =
+		"FAIL_CLOSED_NON_PRODUCT_CANARY";
+
+	BOSS_PATTERN_EFFECT_BINDING_DOCUMENT bindingDocument;
+	if (!Parse_Text(text, bindingDocument, outStatus))
+		return false;
+	const std::vector<std::string> availableClips{ std::string(RUNTIME_CLIP) };
+	if (!Validate(
+			bindingDocument, BOSS_ARCHETYPE_ID, availableClips, outStatus))
+	{
+		return false;
+	}
+	if (bindingDocument.Bindings.size() != 1u)
+	{
+		outStatus = "Valtan Boss Patterns must contain exactly one staged binding.";
+		return false;
+	}
+
+	const BOSS_PATTERN_EFFECT_BINDING& binding =
+		bindingDocument.Bindings.front();
+	if (binding.strBindingId != BINDING_ID ||
+		binding.strPatternId != PATTERN_ID ||
+		binding.strSemanticStageId != SEMANTIC_STAGE_ID ||
+		binding.strActionId != ACTION_ID ||
+		binding.strEffectAssetId != EFFECT_ASSET_ID ||
+		binding.strEffectDocument != EFFECT_DOCUMENT ||
+		binding.strRuntimeClipName != RUNTIME_CLIP ||
+		binding.strRuntimeBoneName != RUNTIME_BONE ||
+		binding.strProductAdmissionStatus != ADMISSION_STATUS ||
+		binding.bProductCatalogMapped || binding.bAnimationEventMapped)
+	{
+		outStatus =
+			"Valtan Boss Patterns binding does not match the 420633 non-product canary contract.";
+		return false;
+	}
+	if (projectDataRoot.empty())
+	{
+		outStatus = "Valtan Boss Patterns Data root is empty.";
+		return false;
+	}
+
+	const std::filesystem::path effectPath = projectDataRoot /
+		std::filesystem::path(L"Effects") / L"Authored" /
+		L"effect.valtan.pattern.420633.active.effect.json";
+	std::error_code fileError;
+	if (!std::filesystem::is_regular_file(effectPath, fileError) || fileError)
+	{
+		outStatus = "Valtan Boss Patterns Effect document is missing: " +
+			effectPath.string();
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC effectDocument;
+	std::string effectError;
+	if (!CEffectDocumentCodec::Load(effectPath, effectDocument, effectError))
+	{
+		outStatus = "Valtan Boss Patterns Effect document is invalid: " +
+			effectError;
+		return false;
+	}
+	if (effectDocument.strEffectAssetId != EFFECT_ASSET_ID)
+	{
+		outStatus =
+			"Valtan Boss Patterns Effect document ID does not match its binding.";
+		return false;
+	}
+
+	BOSS_PATTERN_EFFECT_TREE_STAGE staged;
+	BOSS_PATTERN_EFFECT_TREE_ROW row;
+	row.strBossArchetypeId = bindingDocument.strBossArchetypeId;
+	row.strBindingId = binding.strBindingId;
+	row.strPatternId = binding.strPatternId;
+	row.strSemanticStageId = binding.strSemanticStageId;
+	row.strActionId = binding.strActionId;
+	row.strEffectAssetId = binding.strEffectAssetId;
+	row.strRuntimeClipName = binding.strRuntimeClipName;
+	row.strRuntimeBoneName = binding.strRuntimeBoneName;
+	row.strProductAdmissionStatus = binding.strProductAdmissionStatus;
+	row.Path = effectPath;
+	row.bProductCatalogMapped = binding.bProductCatalogMapped;
+	row.bAnimationEventMapped = binding.bAnimationEventMapped;
+	staged.Rows.push_back(std::move(row));
+	outStage = std::move(staged);
+	outStatus = "Staged one Valtan 420633 Boss Patterns Effect.";
 	return true;
 }

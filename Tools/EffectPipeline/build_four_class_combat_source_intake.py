@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Build current four-class combat Effect source intake artifacts.
+"""Build combat Effect source intake artifacts for the playable roster.
 
 This lane is intentionally upstream of Authored Effects.  It joins current
 gameplay skills to Animation Tool bindings by exact clip identity, preserves
 the action/combo stage shape, and either points at an exact existing Imported
 artifact or materializes a new generated Source/Imported artifact set.  It
 never borrows another skill's Effect and never invents a generic fallback.
+
+Artist, DimensionMaster, LanceMaster, and Warlord have materialized intake.
+GunSlinger and Slayer remain source-pinned pending extraction and are exposed
+through a read-only inventory path until their own exact package graphs and
+dependency closures are supplied.
 """
 
 from __future__ import annotations
@@ -50,16 +55,20 @@ from extract_ue3_particle_module_closure import (  # noqa: E402
 
 EXPECTED_SKILL_COUNTS = {
     "DimensionMaster": 12,
-    "LanceMaster": 17,
-    "Artist": 9,
+    "LanceMaster": 19,
+    "Artist": 12,
     "Warlord": 13,
+    "GunSlinger": 12,
+    "Slayer": 11,
 }
 
 EXPECTED_STAGE_COUNTS = {
     "DimensionMaster": 15,
-    "LanceMaster": 27,
-    "Artist": 15,
+    "LanceMaster": 29,
+    "Artist": 17,
     "Warlord": 17,
+    "GunSlinger": 14,
+    "Slayer": 14,
 }
 
 COMBAT_SLOTS = {
@@ -67,13 +76,32 @@ COMBAT_SLOTS = {
         {"LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V", "ALT_V"}
     ),
     "LANCE_MASTER": frozenset(
-        {"LMB", "Q", "W", "E", "R", "A", "S", "T", "V", "ALT_V"}
+        {
+            "LMB",
+            "Q",
+            "W",
+            "E",
+            "R",
+            "A",
+            "S",
+            "D",
+            "F",
+            "T",
+            "V",
+            "ALT_V",
+        }
     ),
     "ARTIST": frozenset(
-        {"LMB", "Q", "W", "E", "R", "A", "S", "V", "ALT_V"}
+        {"LMB", "Q", "W", "E", "R", "A", "S", "D", "T", "V", "ALT_V", "Z"}
     ),
     "WARLORD": frozenset(
         {"LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "X", "V", "ALT_V"}
+    ),
+    "GUNSLINGER": frozenset(
+        {"LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V", "ALT_V"}
+    ),
+    "SLAYER": frozenset(
+        {"LMB", "Q", "W", "E", "R", "A", "S", "D", "F", "V", "ALT_V"}
     ),
 }
 
@@ -108,6 +136,9 @@ class ClassConfig:
     resource_manifest_name: str | None = None
     runtime_cook_name: str | None = None
     resolved_action_catalog_name: str | None = None
+    intake_status: str = "MATERIALIZED"
+    skill_bindings_sha256: str | None = None
+    animation_notify_sha256: str | None = None
 
 
 CLASS_CONFIGS = (
@@ -148,6 +179,43 @@ CLASS_CONFIGS = (
         "action-runtime-cook-receipt.json",
         "Warlord.action-particle-resource-catalog.json",
     ),
+    ClassConfig(
+        "GunSlinger",
+        "GUNSLINGER",
+        "GUNSLINGER/all_bound_skills",
+        "particle_graphs",
+        "Effect/GunSlinger",
+        intake_status="PENDING_SOURCE_EXTRACTION",
+        skill_bindings_sha256=(
+            "b068c2bb14c47730540d4eee9720ad82efc4a6d4e0652e9f9f48b4eb5de97d24"
+        ),
+        animation_notify_sha256=(
+            "d84fa2c3218739f559fb2aef6f042ef604faf1ab3c67e48625114a5eeeadea08"
+        ),
+    ),
+    ClassConfig(
+        "Slayer",
+        "SLAYER",
+        "SLAYER/all_bound_skills",
+        "particle_graphs",
+        "Effect/Slayer",
+        intake_status="PENDING_SOURCE_EXTRACTION",
+        skill_bindings_sha256=(
+            "e2504a561eab0b57a4b2c4ffa16b6348b2b4f65dce1414fac8b262254657a63d"
+        ),
+        animation_notify_sha256=(
+            "d651a13dd64c786d7bae18a374e0222bdebc76ce9b172a38253c0571895c26c7"
+        ),
+    ),
+)
+
+MATERIALIZED_CLASS_CONFIGS = tuple(
+    config for config in CLASS_CONFIGS if config.intake_status == "MATERIALIZED"
+)
+PENDING_SOURCE_EXTRACTION_CONFIGS = tuple(
+    config
+    for config in CLASS_CONFIGS
+    if config.intake_status == "PENDING_SOURCE_EXTRACTION"
 )
 
 
@@ -316,6 +384,24 @@ def build_class_stage_contract(
     player_skills_path: Path | None = None,
     enforce_expected_counts: bool = True,
 ) -> dict[str, Any]:
+    bindings_sha256 = sha256_file(bindings_path)
+    animnotify_sha256 = sha256_file(animnotify_path)
+    if (
+        config.skill_bindings_sha256 is not None
+        and bindings_sha256 != config.skill_bindings_sha256
+    ):
+        raise ValueError(
+            f"{config.asset_id} skillbindings source pin changed: "
+            f"{bindings_sha256} != {config.skill_bindings_sha256}"
+        )
+    if (
+        config.animation_notify_sha256 is not None
+        and animnotify_sha256 != config.animation_notify_sha256
+    ):
+        raise ValueError(
+            f"{config.asset_id} animnotify source pin changed: "
+            f"{animnotify_sha256} != {config.animation_notify_sha256}"
+        )
     bindings = read_json(bindings_path)
     if str(bindings.get("animationAssetId") or "") != config.asset_id:
         raise ValueError(f"{config.asset_id} animation asset mismatch")
@@ -453,9 +539,9 @@ def build_class_stage_contract(
                 player_skills_path or Path("Data/Balance/PlayerSkills.json")
             ),
             "skillBindings": bindings_path.as_posix(),
-            "skillBindingsSha256": sha256_file(bindings_path),
+            "skillBindingsSha256": bindings_sha256,
             "animationNotify": animnotify_path.as_posix(),
-            "animationNotifySha256": sha256_file(animnotify_path),
+            "animationNotifySha256": animnotify_sha256,
         },
         "skills": skills,
         "summary": {
@@ -1530,6 +1616,135 @@ def source_graph_packages_for_skill(
     return result
 
 
+def build_pending_source_inventory(data_root: Path) -> dict[str, Any]:
+    """Inventory source-pinned classes without creating Imported artifacts."""
+    player_skills_path = data_root / "Balance" / "PlayerSkills.json"
+    player_skills = read_json(player_skills_path)
+    classes = []
+    for config in PENDING_SOURCE_EXTRACTION_CONFIGS:
+        bindings_path = (
+            data_root
+            / "Animation"
+            / "Authored"
+            / config.asset_id
+            / f"{config.asset_id}.skillbindings.json"
+        )
+        animnotify_path = (
+            data_root
+            / "Animation"
+            / "Reference"
+            / config.asset_id
+            / f"{config.asset_id}.animnotify"
+        )
+        manifest = build_class_stage_contract(
+            config,
+            player_skills,
+            bindings_path,
+            animnotify_path,
+            player_skills_path,
+        )
+        catalog = parse_exact_clip_catalog(animnotify_path)
+        skills = []
+        class_packages: set[str] = set()
+        for skill in manifest["skills"]:
+            _, events, _ = exact_timeline(skill, catalog)
+            effect_events = [row for row in events if row["kind"] == "EFFECT"]
+            exact_assets = sorted(
+                {
+                    str(row["sourceAsset"])
+                    for row in effect_events
+                    if row["sourceType"] == "PlayParticleEffect"
+                    and str(row.get("sourceAsset") or "")
+                    and "." in str(row["sourceAsset"])
+                }
+            )
+            exact_occurrence_count = sum(
+                row["sourceType"] == "PlayParticleEffect"
+                and str(row.get("sourceAsset") or "") in exact_assets
+                for row in effect_events
+            )
+            unresolved_count = len(effect_events) - exact_occurrence_count
+            logical_packages = sorted(
+                {source_asset.split(".", 1)[0].upper() for source_asset in exact_assets}
+            )
+            class_packages.update(logical_packages)
+            skills.append(
+                {
+                    "productSkillId": int(skill["productSkillId"]),
+                    "inputSlot": str(skill["inputSlot"]),
+                    "skillKind": str(skill["skillKind"]),
+                    "status": (
+                        "PENDING_SOURCE_EXTRACTION"
+                        if exact_assets
+                        else "SOURCE_CUE_ABSENT"
+                    ),
+                    "genericFallback": "FORBIDDEN",
+                    "stageCount": len(skill["stages"]),
+                    "logicalPackages": logical_packages,
+                    "exactSourceAssets": exact_assets,
+                    "exactParticleOccurrenceCount": exact_occurrence_count,
+                    "unresolvedEffectNotifyCount": unresolved_count,
+                }
+            )
+        classes.append(
+            {
+                "animationAssetId": config.asset_id,
+                "characterClass": config.character_class,
+                "status": config.intake_status,
+                "source": manifest["source"],
+                "packages": [
+                    {
+                        "logicalPackage": logical_package,
+                        "expectedPhysicalPackage": (
+                            obfuscate_package_name(logical_package) + ".upk"
+                        ),
+                        "status": "PENDING_SOURCE_EXTRACTION",
+                    }
+                    for logical_package in sorted(class_packages)
+                ],
+                "skills": skills,
+                "summary": {
+                    "skillCount": len(skills),
+                    "stageCount": manifest["summary"]["stageCount"],
+                    "logicalPackageCount": len(class_packages),
+                    "exactParticleOccurrenceCount": sum(
+                        row["exactParticleOccurrenceCount"] for row in skills
+                    ),
+                    "unresolvedEffectNotifyCount": sum(
+                        row["unresolvedEffectNotifyCount"] for row in skills
+                    ),
+                    "sourceCueAbsentSkillCount": sum(
+                        row["status"] == "SOURCE_CUE_ABSENT" for row in skills
+                    ),
+                },
+            }
+        )
+
+    return {
+        "schema": "lostark.combat-effect-pending-source-inventory",
+        "version": 1,
+        "policy": {
+            "writesImportedArtifacts": False,
+            "genericFallback": "FORBIDDEN",
+            "crossClassDocumentCopy": "FORBIDDEN",
+            "exactBoundClipIdentityJoin": "REQUIRED",
+            "sourceExtractionBeforeMaterialization": "REQUIRED",
+        },
+        "classes": classes,
+        "summary": {
+            "classCount": len(classes),
+            "skillCount": sum(row["summary"]["skillCount"] for row in classes),
+            "stageCount": sum(row["summary"]["stageCount"] for row in classes),
+            "exactParticleOccurrenceCount": sum(
+                row["summary"]["exactParticleOccurrenceCount"] for row in classes
+            ),
+            "unresolvedEffectNotifyCount": sum(
+                row["summary"]["unresolvedEffectNotifyCount"] for row in classes
+            ),
+        },
+    }
+
+
 def build_all(
     data_root: Path,
     resource_root: Path,
@@ -1558,7 +1773,7 @@ def build_all(
     manifests = []
     blocker_rows = []
     total_artifacts = Counter()
-    for config in CLASS_CONFIGS:
+    for config in MATERIALIZED_CLASS_CONFIGS:
         bindings_path = (
             data_root
             / "Animation"
@@ -1817,7 +2032,10 @@ def build_all(
         "skills": blocker_rows,
         "summary": {
             "skillCount": len(blocker_rows),
-            "stageCount": sum(EXPECTED_STAGE_COUNTS.values()),
+            "stageCount": sum(
+                EXPECTED_STAGE_COUNTS[config.asset_id]
+                for config in MATERIALIZED_CLASS_CONFIGS
+            ),
             "readySkillCount": sum(row["status"] == "READY" for row in blocker_rows),
             "availableWithBlockersSkillCount": sum(
                 row["status"] == "AVAILABLE_WITH_BLOCKERS" for row in blocker_rows
@@ -1862,11 +2080,32 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--materialize", action="store_true")
     parser.add_argument("--extract-missing-particle-graphs", action="store_true")
+    parser.add_argument(
+        "--pending-source-inventory",
+        action="store_true",
+        help=(
+            "Print the source-pinned GunSlinger/Slayer intake inventory without "
+            "writing Imported artifacts"
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.pending_source_inventory:
+        if args.materialize or args.extract_missing_particle_graphs:
+            raise ValueError(
+                "--pending-source-inventory cannot be combined with write/extract flags"
+            )
+        print(
+            json.dumps(
+                build_pending_source_inventory(args.data_root),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 0
     result = build_all(
         args.data_root,
         args.resource_root,

@@ -14,6 +14,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
+#include "Network/PacketMessages.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
@@ -37,7 +38,6 @@ namespace
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
-	constexpr char_t PLAYER_NICKNAME[] = "Player";
 
 	struct ARENA_SPAWN_OPTION final
 	{
@@ -329,7 +329,8 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 
 bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
-	if (MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
+	if (m_isCreateCharacterModalOpen ||
+		MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
 		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
 	{
 		return false;
@@ -549,8 +550,11 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		Fail_ServerArena("The replicated local character is unavailable.");
 		return;
 	}
-	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
+	if (!m_isCreateCharacterModalOpen)
+	{
+		m_PlayerController.Update(
+			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
+	}
 	if (m_iPendingClassIndex.has_value() &&
 		std::chrono::steady_clock::now() >= m_ClassChangeDeadline)
 	{
@@ -600,7 +604,7 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 
 bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 {
-	if (MODE::SERVER_ARENA != m_eMode ||
+	if (m_isCreateCharacterModalOpen || MODE::SERVER_ARENA != m_eMode ||
 		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
 		m_iPendingArenaSpawnIndex.has_value() ||
 		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
@@ -638,25 +642,119 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 	return true;
 }
 
+void CLevel_CharacterSelect::Open_CreateCharacterModal()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"Character creation is unavailable while another action is pending.";
+		return;
+	}
+
+	m_isCreateCharacterModalOpen = true;
+	ImGui::OpenPopup("Create Character");
+}
+
+bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size())
+	{
+		m_strStatus = "The selected class is unavailable.";
+		return false;
+	}
+
+	const std::string nickname{ m_NicknameDraft.data() };
+	if (!LostArk::Shared::Is_Valid_PlayerNickname(nickname))
+	{
+		m_strStatus =
+			"Nickname must be valid UTF-8, contain 1-32 bytes, and contain no control or edge whitespace.";
+		return false;
+	}
+
+	if (!CCharacterSelectionState::Stage_Creation(
+		SUPPORTED_CLASSES[m_iSelectedClassIndex], nickname))
+	{
+		m_strStatus = "The character identity could not be staged.";
+		return false;
+	}
+
+	if (!Enter_Stage(LOBBY_STAGE::BERN))
+	{
+		CCharacterSelectionState::Cancel_PendingCreation();
+		return false;
+	}
+	return true;
+}
+
+void CLevel_CharacterSelect::Cancel_CreateCharacter()
+{
+	CCharacterSelectionState::Cancel_PendingCreation();
+	m_isCreateCharacterModalOpen = false;
+	ImGui::CloseCurrentPopup();
+}
+
+void CLevel_CharacterSelect::Render_CreateCharacterModal()
+{
+	if (!m_isCreateCharacterModalOpen)
+		return;
+
+	if (!ImGui::BeginPopupModal(
+		"Create Character",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings))
+	{
+		return;
+	}
+
+	ImGui::TextUnformatted("Enter a nickname for Bern.");
+	const bool_t confirmFromEnter = ImGui::InputText(
+		"Nickname",
+		m_NicknameDraft.data(),
+		m_NicknameDraft.size(),
+		ImGuiInputTextFlags_EnterReturnsTrue);
+
+	const bool_t confirmFromButton =
+		ImGui::Button("Create and Enter Bern");
+	ImGui::SameLine();
+	const bool_t cancel = ImGui::Button("Cancel");
+
+	if (cancel)
+	{
+		Cancel_CreateCharacter();
+	}
+	else if ((confirmFromEnter || confirmFromButton) &&
+		Confirm_CreateCharacter())
+	{
+		m_isCreateCharacterModalOpen = false;
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
+}
+
 bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 {
 	const char_t* stageName = Get_StageName(stage);
 	const char_t* transitionSource = Get_StageTransitionSource(stage);
-	if (nullptr == transitionSource ||
-		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size())
+	if (MODE::SERVER_ARENA != m_eMode || nullptr == transitionSource ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		CLevelTransitionService::Is_Pending())
 	{
-		m_strStatus = "The selected stage is not supported here.";
+		m_strStatus = "The selected stage is not available here.";
 		return false;
 	}
 	if (!CCharacterSelectionState::Select(
 		SUPPORTED_CLASSES[m_iSelectedClassIndex]))
+	{
+		m_strStatus = "The selected class could not be preserved for entry.";
 		return false;
-	CAnimationTargetService::Unbind(m_pActiveCharacter);
-	m_pActiveCharacter.reset();
-	CNetworkManager::Get().Close_ServerConnection();
-	m_Replication.Reset();
-	m_PlayerController.Set_LocalCharacter(nullptr);
-	m_eMode = MODE::RETURNING_TO_LOBBY;
+	}
 
 	LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
 	if (!CLobbyCommandService::Request(stage, token))
@@ -675,6 +773,8 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 		m_strStatus = CLevelTransitionService::Get_Status();
 		return false;
 	}
+
+	m_eMode = MODE::RETURNING_TO_LOBBY;
 	m_strStatus = std::string("Lobby will request ") +
 		stageName + " from Server.";
 	return true;
@@ -713,6 +813,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::Separator();
 	ImGui::TextUnformatted("Playable class");
 	ImGui::BeginDisabled(!isServerArena || transitionPending ||
+		m_isCreateCharacterModalOpen ||
 		m_iPendingClassIndex.has_value());
 	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
 	{
@@ -765,9 +866,10 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 
 	ImGui::Separator();
 	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending ||
+		m_isCreateCharacterModalOpen ||
 		m_iPendingClassIndex.has_value());
-	if (ImGui::Button("Enter Bern"))
-		Enter_Stage(LOBBY_STAGE::BERN);
+	if (ImGui::Button("Create Character"))
+		Open_CreateCharacterModal();
 	ImGui::SameLine();
 	if (ImGui::Button("Enter Valtan Map"))
 		Enter_Stage(LOBBY_STAGE::VALTAN);
@@ -779,6 +881,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::TextDisabled(
 		"F1: tools  |  F6: follow/free  |  Server-authorized skill input enabled");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	Render_CreateCharacterModal();
 	ImGui::End();
 }
 
@@ -913,6 +1016,7 @@ void CLevel_CharacterSelect::Render_ClassList()
 	const ImVec2 vMouse = ImGui::GetMousePos();
 	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_isCreateCharacterModalOpen &&
 		!m_iPendingClassIndex.has_value() &&
 		!CLevelTransitionService::Is_Pending();
 

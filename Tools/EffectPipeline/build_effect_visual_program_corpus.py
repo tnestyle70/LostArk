@@ -81,8 +81,8 @@ EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT = 4
 EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 4
 EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
 EXPECTED_LEGACY_COUNT = 66
-EXPECTED_FAIL_CLOSED_COUNT = 63
-EXPECTED_ADMITTED_COUNT = 72
+EXPECTED_FAIL_CLOSED_COUNT = 67
+EXPECTED_ADMITTED_COUNT = 68
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
@@ -632,7 +632,6 @@ def _build_ba_rows(
         }
         legacy = _require_dict(source.get("legacyProjection"), "legacyProjection")
         selected = legacy.get("selectionDecision") == "selected"
-        typed_ribbon_projection = family == "CASCADE_RIBBON"
         admission_row = _require_dict(source.get("admission"), "source admission")
         original_blockers = sorted(
             {_require_stable_id(item, "source blocker") for item in admission_row.get("blockers", [])}
@@ -692,67 +691,6 @@ def _build_ba_rows(
                 "resourceRoles": sorted(resource_roles, key=lambda item: (item["slotId"], item["assetId"])),
                 "admissionBlockers": [],
                 "preservedLimitations": sorted(set(original_blockers) | {"LEGACY_APPROXIMATION_NOT_SOURCE_EXACT"}),
-                "productMutation": False,
-            }
-        elif typed_ribbon_projection:
-            _require(
-                source.get("characterClass") == "LANCE_MASTER" and
-                source.get("skillId") == 34010,
-                "bounded CascadeRibbon target is outside the pinned Lance BA corpus",
-            )
-            stage_index = source.get("stageIndex")
-            _require(
-                type(stage_index) is int and 0 <= stage_index < 4,
-                "Lance CascadeRibbon stage index is invalid",
-            )
-            target_path, target_payload, target_element = _lance_restoration_target(
-                repository_root, stage_index, "ribbon-companion-blocked"
-            )
-            _merge_input_artifact(
-                input_registry,
-                _input_artifact(
-                    repository_root,
-                    target_path,
-                    ["COMBAT_BA_CASCADE_RIBBON_TARGET_PAYLOAD"],
-                ),
-            )
-            for resource in _require_list(target_element.get("resources"), "CascadeRibbon resources"):
-                item = _require_dict(resource, "CascadeRibbon resource")
-                resource_roles.append(
-                    _resource_role(
-                        repository_root,
-                        _require_string(item.get("slotId"), "CascadeRibbon resource slot"),
-                        _require_string(item.get("assetId"), "CascadeRibbon resource asset"),
-                        "TARGET_DOCUMENT_REFERENCE",
-                        require_payload=True,
-                    )
-                )
-            execution_basis = {
-                "status": "TARGET_DOCUMENT_BOUNDED",
-                "basisSha256": canonical_json_sha256(
-                    {
-                        "targetPayload": target_payload,
-                        "typedFamilyResolutionSha256": typed_family_resolution["resolutionSha256"],
-                        "projectedSourceRecipeSha256": source_recipe["recipeSha256"],
-                    }
-                ),
-            }
-            projection = {
-                "family": family,
-                "adapterId": adapter_id,
-                "packetLayout": "EFFECT_DOCUMENT_ELEMENT_V12",
-                "tuningEligibleTransform": True,
-                "fidelity": "BOUNDED_RECONSTRUCTION",
-                "disposition": "ADMITTED_BOUNDED",
-                "nativeExecution": False,
-                "sourceExact": False,
-                "executionBasis": execution_basis,
-                "resourceRoles": sorted(resource_roles, key=lambda item: (item["slotId"], item["assetId"])),
-                "admissionBlockers": [],
-                "preservedLimitations": [
-                    "BOUNDED_CASCADE_RIBBON_NOT_NATIVE_SOURCE_EXACT",
-                    "MANUAL_TARGET_CARRIER_VALUES_REQUIRE_USER_REVIEW",
-                ],
                 "productMutation": False,
             }
         else:
@@ -1433,10 +1371,7 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,
             "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
             "legacyApproximationCount": EXPECTED_LEGACY_COUNT,
-            "boundedReconstructionCount": (
-                EXPECTED_LOCAL_DECAL_ROW_COUNT +
-                EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT
-            ),
+            "boundedReconstructionCount": EXPECTED_LOCAL_DECAL_ROW_COUNT,
             "productMutationCount": 0,
         },
         "transactionPolicy": {
@@ -1870,7 +1805,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
     _require(counts[("fidelity", "LEGACY_APPROXIMATION")] == EXPECTED_LEGACY_COUNT, "legacy approximation count changed")
     _require(
         counts[("fidelity", "BOUNDED_RECONSTRUCTION")] ==
-            EXPECTED_LOCAL_DECAL_ROW_COUNT + EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT,
+            EXPECTED_LOCAL_DECAL_ROW_COUNT,
         "bounded reconstruction count changed",
     )
     expected_families = {
@@ -1899,10 +1834,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
         "legacyApproximationCount": EXPECTED_LEGACY_COUNT,
-        "boundedReconstructionCount": (
-            EXPECTED_LOCAL_DECAL_ROW_COUNT +
-            EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT
-        ),
+        "boundedReconstructionCount": EXPECTED_LOCAL_DECAL_ROW_COUNT,
         "productMutationCount": 0,
     }
     _require(denominators == expected_denominators, "corpus denominators are stale")

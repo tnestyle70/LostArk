@@ -319,6 +319,21 @@ def texture_assets(root: Path) -> dict[str, list[dict[str, Any]]]:
     return rows
 
 
+def is_empty_parameter_material(umodel_log: str, object_name: str) -> bool:
+    """Return whether UModel skipped this exact Material for having no parameters."""
+    if not object_name:
+        return False
+    return bool(
+        re.search(
+            r"Ignoring\s+Material3?'"
+            + re.escape(object_name)
+            + r"'\s+due to empty parameters",
+            umodel_log,
+            re.IGNORECASE,
+        )
+    )
+
+
 def resolve_material_props_chain(
     output_root: Path,
     instance_props: Path,
@@ -553,6 +568,16 @@ def build_candidate(
         evidence_props.read_text(encoding="utf-8-sig")
         if evidence_props is not None else ""
     )
+    # UModel refuses to write props for a Material whose collected parameter
+    # arrays are all empty. That refusal names the object and is a positive
+    # statement about the Material, not a failed lookup.
+    empty_parameter_parent = (
+        evidence_props is None
+        and bool(normalized_parent)
+        and is_empty_parameter_material(
+            umodel_log, str(normalized_parent).rsplit(".", 1)[-1]
+        )
+    )
     return {
         "material_path": source_path,
         "object_name": object_name,
@@ -568,16 +593,26 @@ def build_candidate(
         "materialEvidenceStatus": (
             "SOURCE_MATERIAL_PROPS"
             if evidence_props is not None else
+            "SOURCE_MATERIAL_EMPTY_PARAMETERS"
+            if empty_parameter_parent else
             "MISSING_OR_AMBIGUOUS_SOURCE_MATERIAL_PROPS"
         ),
         "materialEvidencePropsFile": (
             evidence_props.relative_to(output_root).as_posix()
-            if evidence_props is not None else None
+            if evidence_props is not None
+            # The exporter log is the artifact that states the parent has no
+            # parameters, so it carries the provenance for that claim.
+            else "umodel.log" if empty_parameter_parent else None
         ),
         "materialEvidencePropsSha256": (
-            sha256_file(evidence_props) if evidence_props is not None else None
+            sha256_file(evidence_props) if evidence_props is not None
+            else sha256_file(output_root / "umodel.log")
+            if empty_parameter_parent and (output_root / "umodel.log").is_file()
+            else None
         ),
-        "materialEvidencePropsCandidateCount": evidence_candidate_count,
+        "materialEvidencePropsCandidateCount": (
+            1 if empty_parameter_parent else evidence_candidate_count
+        ),
         "materialInstanceChain": [
             {
                 "propsFile": path.relative_to(output_root).as_posix(),
@@ -667,10 +702,58 @@ def build_direct_material_dump_candidate(
     }
 
 
+def export_parent_material(
+    args: argparse.Namespace,
+    output: Path,
+    object_name: str,
+    inventory: dict[str, str],
+    parent_packages: dict[str, str],
+) -> str:
+    """Export the parent Material named by an already exported instance.
+
+    A MaterialInstance frequently parents into a different package than the one
+    that owns it, and a single -obj export does not always drag that parent
+    along. The props chain is resolved inside one output directory, so an
+    unexported parent reads as missing even though the object exists. The
+    package is never guessed: the parent's own path prefix wins, otherwise the
+    caller-supplied leaf map must name exactly one package.
+    """
+    props_matches = sorted(output.rglob(f"{object_name}.props.txt"))
+    if len(props_matches) != 1:
+        return ""
+    parent = parse_props(props_matches[0].read_text(encoding="utf-8-sig"))["parent"]
+    if not parent:
+        return ""
+    parent_leaf = str(parent).rsplit(".", 1)[-1]
+    if sorted(output.rglob(f"{parent_leaf}.props.txt")):
+        return ""
+    parent_head = str(parent).split(".", 1)[0].casefold()
+    parent_package = (
+        parent_head if parent_head in inventory
+        else parent_packages.get(parent_leaf.casefold(), "")
+    )
+    if not parent_package:
+        return ""
+    completed = subprocess.run(
+        [
+            str(args.umodel), "-export", "-game=lostark", f"-{args.region}",
+            "-nameresolve", f"-path={args.package_root}", f"-out={output}",
+            "-dds", "-nooverwrite", f"-obj={parent_leaf}", parent_package,
+        ],
+        cwd=args.umodel.parent, text=True, encoding="utf-8", errors="replace",
+        capture_output=True, check=False,
+        creationflags=(
+            subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        ),
+    )
+    return completed.stdout + "\n" + completed.stderr
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalog", required=True, type=Path)
     parser.add_argument("--inventory-csv", required=True, type=Path)
+    parser.add_argument("--parent-package-map", type=Path)
     parser.add_argument("--umodel", required=True, type=Path)
     parser.add_argument("--package-root", required=True, type=Path)
     parser.add_argument("--output-root", required=True, type=Path)
@@ -681,6 +764,15 @@ def main() -> int:
 
     catalog = json.loads(args.catalog.read_text(encoding="utf-8-sig"))
     inventory = load_inventory(args.inventory_csv)
+    parent_packages: dict[str, str] = {}
+    if args.parent_package_map is not None:
+        parent_packages = {
+            str(leaf).casefold(): str(package).casefold()
+            for leaf, package in json.loads(
+                args.parent_package_map.read_text(encoding="utf-8-sig")
+            ).items()
+            if str(package).casefold() in inventory
+        }
     unresolved = [
         row for row in catalog.get("unresolvedMaterialBindings", [])
         if row.get("sourceMaterialPath")
@@ -735,6 +827,12 @@ def main() -> int:
         log = output / "umodel.log"
         log.write_text(completed.stdout + "\n" + completed.stderr, encoding="utf-8")
         umodel_log = completed.stdout + "\n" + completed.stderr
+        parent_log = export_parent_material(
+            args, output, object_name, inventory, parent_packages
+        )
+        if parent_log:
+            umodel_log += "\n" + parent_log
+            log.write_text(umodel_log, encoding="utf-8")
         candidate = build_candidate(
             source_path, physical, output, umodel_log, inventory
         )

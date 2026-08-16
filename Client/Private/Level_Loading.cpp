@@ -2,6 +2,7 @@
 
 #include "Level_Loading.h"
 
+#include "CharacterSelectionState.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
@@ -185,6 +186,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
 	CLevelTransitionService::Report_LoadFailure(result);
 	CNetworkManager::Get().Close_ServerConnection();

@@ -15,7 +15,10 @@
     "reconstructedProfileCount": 23,
     "roleResolvedIdentityCount": 21,
     "roleResolvedRuntimeBindingCount": 44,
-    "blockedNormalBumpRuntimeBindingCount": 2
+    "blockedNormalBumpRuntimeBindingCount": 2,
+    "fallbackBlockedMaterialIdentityCount": 6,
+    "productAdmissibleMaterialIdentityCount": 25,
+    "productMaterialAdmissionComplete": false
   },
   "failures": [],
   "sources": [

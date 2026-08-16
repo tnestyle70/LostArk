@@ -2,10 +2,14 @@
 
 #include "Character.h"
 #include "Model.h"
+#include "Valtan.h"
 
 #include <cmath>
 
 weak_ptr<Client::CCharacter> Client::CAnimationTargetService::s_Target;
+weak_ptr<Client::CCharacter>
+	Client::CAnimationTargetService::s_PreviewCharacter;
+weak_ptr<Client::CValtan> Client::CAnimationTargetService::s_PreviewBoss;
 weak_ptr<Engine::CModel> Client::CAnimationTargetService::s_PreviewModel;
 string Client::CAnimationTargetService::s_PreviewAssetName;
 float4x4_t Client::CAnimationTargetService::s_PreviewRootMatrix;
@@ -55,9 +59,56 @@ void Client::CAnimationTargetService::Bind_Preview(
 		return;
 	}
 
+	s_PreviewCharacter.reset();
+	s_PreviewBoss.reset();
 	s_PreviewModel = model;
 	s_PreviewAssetName = assetName;
 	s_PreviewRootMatrix = rootMatrix;
+	Advance_TargetGeneration(s_TargetGeneration);
+}
+
+void Client::CAnimationTargetService::Bind_Preview(
+	const shared_ptr<CCharacter>& character)
+{
+	if (nullptr == character || nullptr == character->Get_BodyModel() ||
+		nullptr == character->Get_Spec() ||
+		nullptr == character->Get_Spec()->pAssetName)
+	{
+		return;
+	}
+	if (s_PreviewCharacter.lock() == character)
+		return;
+
+	s_PreviewBoss.reset();
+	s_PreviewModel.reset();
+	s_PreviewCharacter = character;
+	s_PreviewAssetName = character->Get_Spec()->pAssetName;
+	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
+	Advance_TargetGeneration(s_TargetGeneration);
+}
+
+void Client::CAnimationTargetService::Bind_Preview(
+	const shared_ptr<CValtan>& valtan,
+	const string& assetName)
+{
+	float4x4_t presentationRoot{};
+	if (nullptr == valtan || nullptr == valtan->Get_BodyModel() ||
+		assetName.empty() ||
+		!valtan->Try_Get_PresentationRootMatrix(&presentationRoot))
+	{
+		return;
+	}
+	if (s_PreviewBoss.lock() == valtan &&
+		s_PreviewAssetName == assetName)
+	{
+		return;
+	}
+
+	s_PreviewCharacter.reset();
+	s_PreviewModel.reset();
+	s_PreviewBoss = valtan;
+	s_PreviewAssetName = assetName;
+	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
 	Advance_TargetGeneration(s_TargetGeneration);
 }
 
@@ -68,10 +119,28 @@ void Client::CAnimationTargetService::Unbind_Preview(
 		Clear_Preview();
 }
 
+void Client::CAnimationTargetService::Unbind_Preview(
+	const shared_ptr<CCharacter>& character)
+{
+	if (s_PreviewCharacter.lock() == character)
+		Clear_Preview();
+}
+
+void Client::CAnimationTargetService::Unbind_Preview(
+	const shared_ptr<CValtan>& valtan)
+{
+	if (s_PreviewBoss.lock() == valtan)
+		Clear_Preview();
+}
+
 void Client::CAnimationTargetService::Clear_Preview()
 {
-	if (s_PreviewModel.expired() && s_PreviewAssetName.empty())
+	if (s_PreviewCharacter.expired() && s_PreviewBoss.expired() &&
+		s_PreviewModel.expired() &&
+		s_PreviewAssetName.empty())
 		return;
+	s_PreviewCharacter.reset();
+	s_PreviewBoss.reset();
 	s_PreviewModel.reset();
 	s_PreviewAssetName.clear();
 	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
@@ -81,12 +150,30 @@ void Client::CAnimationTargetService::Clear_Preview()
 shared_ptr<Client::CCharacter>
 Client::CAnimationTargetService::Resolve_Character()
 {
+	const shared_ptr<CCharacter> preview = s_PreviewCharacter.lock();
+	if (nullptr != preview)
+		return preview;
+	return s_Target.lock();
+}
+
+shared_ptr<Client::CCharacter>
+Client::CAnimationTargetService::Resolve_SceneCharacter()
+{
 	return s_Target.lock();
 }
 
 shared_ptr<Engine::CModel>
 Client::CAnimationTargetService::Resolve_Model()
 {
+	const shared_ptr<CCharacter> previewCharacter =
+		s_PreviewCharacter.lock();
+	if (nullptr != previewCharacter)
+		return previewCharacter->Get_BodyModel();
+
+	const shared_ptr<CValtan> previewBoss = s_PreviewBoss.lock();
+	if (nullptr != previewBoss)
+		return previewBoss->Get_BodyModel();
+
 	const shared_ptr<Engine::CModel> preview = s_PreviewModel.lock();
 	if (nullptr != preview)
 		return preview;
@@ -97,6 +184,16 @@ Client::CAnimationTargetService::Resolve_Model()
 
 string Client::CAnimationTargetService::Resolve_AssetName()
 {
+	const shared_ptr<CCharacter> previewCharacter =
+		s_PreviewCharacter.lock();
+	if (nullptr != previewCharacter &&
+		nullptr != previewCharacter->Get_Spec() &&
+		nullptr != previewCharacter->Get_Spec()->pAssetName)
+	{
+		return previewCharacter->Get_Spec()->pAssetName;
+	}
+	if (nullptr != s_PreviewBoss.lock())
+		return s_PreviewAssetName;
 	if (nullptr != s_PreviewModel.lock())
 		return s_PreviewAssetName;
 
@@ -117,6 +214,22 @@ bool_t Client::CAnimationTargetService::Resolve_RootTransform(
 {
 	if (nullptr == pOut)
 		return false;
+
+	const shared_ptr<CCharacter> previewCharacter =
+		s_PreviewCharacter.lock();
+	if (nullptr != previewCharacter)
+	{
+		const shared_ptr<Engine::CTransform> transform =
+			previewCharacter->Get_Transform();
+		if (nullptr == transform)
+			return false;
+		*pOut = *transform->Get_WorldMatrixPtr();
+		return true;
+	}
+
+	const shared_ptr<CValtan> previewBoss = s_PreviewBoss.lock();
+	if (nullptr != previewBoss)
+		return previewBoss->Try_Get_PresentationRootMatrix(pOut);
 
 	/* A selected preview body owns the target, so its fixed parent matrix wins
 	   over the scene character exactly as Resolve_Model() prefers its model. */

@@ -4,10 +4,13 @@
 #include "Effect_AuthoringDocument.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
+
+class EFFECT_PRODUCT_CUE_ADMISSION_TOKEN;
 
 enum class EFFECT_FOLLOW_POLICY : uint8_t
 {
@@ -31,8 +34,10 @@ struct ANIMATION_EFFECT_CUE final
     std::string strEffectAssetId;
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
-    EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
-    EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
+		pProductAdmissionToken;
 };
 
 struct ANIMATION_EFFECT_CUE_DOCUMENT final

@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 //Network Event瑜??ㅼ젣 Engine GameObject ?앹꽦 ?쒓굅濡?踰덉뿭?섎뒗 ???섎굹??main-thread 寃쎄퀎
 
@@ -22,6 +23,21 @@ namespace Client
 	class CNpc;
 	class CValtan;
 	class CDeployPropRuntime;
+
+	// Level presentation이 읽는 복제 player snapshot이다. NetEntityId가 identity이며
+	// nickname과 class는 Server spawn record에서만 오고 Character 수명은 소유하지 않는다.
+	struct REPLICATED_PLAYER_VIEW
+	{
+		LostArk::Shared::PLAYER_ID iPlayerId =
+			LostArk::Shared::INVALID_PLAYER_ID;
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		std::string strNickname;
+		bool_t isLocal = false;
+		std::weak_ptr<CCharacter> pCharacter;
+	};
 
 	struct VALTAN_PRESENTATION_STATE final
 	{
@@ -78,6 +94,8 @@ namespace Client
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		void Collect_PlayerViews(
+			std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const;
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
 		{
 			return m_ValtanPresentationState;

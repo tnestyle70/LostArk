@@ -1191,6 +1191,396 @@
       ]
     },
     {
+      "productSkillId": 34110,
+      "inputSlot": "D",
+      "skillKind": "ACTIVE",
+      "sourceSkillIds": [
+        34110
+      ],
+      "stages": [
+        {
+          "stageId": "skill.34110.stage.0",
+          "stageIndex": 0,
+          "sourceSkillIds": [
+            34110
+          ],
+          "timelineOffsetSeconds": 0.0,
+          "durationSeconds": 1.5,
+          "clips": [
+            {
+              "clip": "flm_sk_crescentsweep",
+              "stageClipIndex": 0,
+              "sequenceIndex": 0,
+              "sourceSkillId": 34110,
+              "sourceLine": 521,
+              "timelineOffsetSeconds": 0.0,
+              "lengthSeconds": 1.5
+            }
+          ],
+          "sourceEventIds": [
+            "source-event-001",
+            "source-event-002",
+            "source-event-003",
+            "source-event-004",
+            "source-event-005",
+            "source-event-006",
+            "source-event-007",
+            "source-event-008",
+            "source-event-009",
+            "source-event-010",
+            "source-event-011",
+            "source-event-012",
+            "source-event-013",
+            "source-event-014",
+            "source-event-015",
+            "source-event-016",
+            "source-event-017",
+            "source-event-018",
+            "source-event-019",
+            "source-event-020",
+            "source-event-021",
+            "source-event-022",
+            "source-event-023",
+            "source-event-024",
+            "source-event-025",
+            "source-event-026",
+            "source-event-027",
+            "source-event-028",
+            "source-event-029",
+            "source-event-030",
+            "source-event-031",
+            "source-event-032",
+            "source-event-033",
+            "source-event-034",
+            "source-event-035",
+            "source-event-036",
+            "source-event-037",
+            "source-event-038",
+            "source-event-039",
+            "source-event-040",
+            "source-event-041",
+            "source-event-042",
+            "source-event-043",
+            "source-event-044",
+            "source-event-045",
+            "source-event-046",
+            "source-event-047",
+            "source-event-048",
+            "source-event-049",
+            "source-event-050"
+          ],
+          "sourceArtifacts": [
+            {
+              "sourceReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/ProductReceipts/skill.34110.product-source-receipt.json",
+                "sha256": "be3be1be0dab8595fdb4f980f7ca4251d3fc6fdc1213ce9bf600217621676882"
+              },
+              "normalizedGraph": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Graphs/skill.34110.normalized-effect-graph.json",
+                "sha256": "44bb6d60d1ebdd621264da779d579613f7adf3a94adc3b658c9addb0be26df58"
+              },
+              "externalModuleClosure": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Modules/skill.34110.external-module-closure.json",
+                "sha256": "a90659c2eef993f9d90fff26d4fc3ec3aae2352064c9ed935b872031a12dc5da"
+              },
+              "importedDocument": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/effect.lancemaster.skill.34110.imported.effect.json",
+                "sha256": "05ca1f44eef92289d462f16ea956b7198c4c66ddcf76e6a507ee20f8426871cd",
+                "effectAssetId": "effect.lance_master.skill.34110.imported"
+              },
+              "conversionReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/skill.34110.element-conversion-receipt.json",
+                "sha256": "470bb810f4cd5483762f5dc9cd1122a534f3d3053e27f5cf9feb00ffcb8287f9"
+              },
+              "artifactOrigin": "CURRENT_COMBAT_GENERATED_SOURCE_TRUTH",
+              "generatedSourceReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/skill.34110.source-receipt.json",
+                "sha256": "d0c093558ff885bb7f66bc3a1fe5496da619dbdeb603384e6178c82968fea51b"
+              },
+              "sourceSkillId": 34110
+            }
+          ],
+          "status": "AVAILABLE_WITH_BLOCKERS",
+          "blockers": [
+            {
+              "code": "UNRESOLVED_SOURCE_MATERIAL",
+              "count": 3,
+              "sourceMaterialPaths": [
+                "enginematerials.defaultparticle",
+                "fx_m_mi_04.fx_mi.fx_d_de_master_01_49_tr",
+                "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr"
+              ]
+            },
+            {
+              "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+              "count": 1,
+              "statusCounts": {
+                "RESOLVED_UNIQUE_PATH": 1
+              }
+            },
+            {
+              "code": "UNRESOLVED_RUNTIME_RESOURCE",
+              "count": 1,
+              "sourceObjectPaths": [
+                "fx_tex_03.fx_e_ring_001_cl"
+              ]
+            },
+            {
+              "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+              "count": 33
+            },
+            {
+              "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+              "count": 55
+            }
+          ]
+        }
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 3,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_49_tr",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 1,
+          "sourceObjectPaths": [
+            "fx_tex_03.fx_e_ring_001_cl"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 33
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 55
+        }
+      ],
+      "materializationLane": "TARGETED_CURRENT_COMBAT",
+      "targetedSourceOnlyTargets": [
+        {
+          "stageIndex": 0,
+          "stageClipIndex": 0,
+          "clip": "flm_sk_crescentsweep",
+          "effectAssetId": "effect.lancemaster.skill.34110.unified"
+        }
+      ]
+    },
+    {
+      "productSkillId": 34150,
+      "inputSlot": "F",
+      "skillKind": "ACTIVE",
+      "sourceSkillIds": [
+        34150
+      ],
+      "stages": [
+        {
+          "stageId": "skill.34150.stage.0",
+          "stageIndex": 0,
+          "sourceSkillIds": [
+            34150
+          ],
+          "timelineOffsetSeconds": 0.0,
+          "durationSeconds": 2.8,
+          "clips": [
+            {
+              "clip": "flm_sk_crushingblow",
+              "stageClipIndex": 0,
+              "sequenceIndex": 0,
+              "sourceSkillId": 34150,
+              "sourceLine": 815,
+              "timelineOffsetSeconds": 0.0,
+              "lengthSeconds": 2.8
+            }
+          ],
+          "sourceEventIds": [
+            "source-event-001",
+            "source-event-002",
+            "source-event-003",
+            "source-event-004",
+            "source-event-005",
+            "source-event-006",
+            "source-event-007",
+            "source-event-008",
+            "source-event-009",
+            "source-event-010",
+            "source-event-011",
+            "source-event-012",
+            "source-event-013",
+            "source-event-014",
+            "source-event-015",
+            "source-event-016",
+            "source-event-017",
+            "source-event-018",
+            "source-event-019",
+            "source-event-020",
+            "source-event-021",
+            "source-event-022",
+            "source-event-023",
+            "source-event-024",
+            "source-event-025",
+            "source-event-026",
+            "source-event-027",
+            "source-event-028",
+            "source-event-029",
+            "source-event-030",
+            "source-event-031",
+            "source-event-032",
+            "source-event-033",
+            "source-event-034",
+            "source-event-035",
+            "source-event-036",
+            "source-event-037",
+            "source-event-038",
+            "source-event-039",
+            "source-event-040",
+            "source-event-041",
+            "source-event-042",
+            "source-event-043",
+            "source-event-044",
+            "source-event-045",
+            "source-event-046",
+            "source-event-047",
+            "source-event-048",
+            "source-event-049",
+            "source-event-050",
+            "source-event-051",
+            "source-event-052",
+            "source-event-053",
+            "source-event-054",
+            "source-event-055",
+            "source-event-056",
+            "source-event-057",
+            "source-event-058",
+            "source-event-059",
+            "source-event-060",
+            "source-event-061",
+            "source-event-062",
+            "source-event-063",
+            "source-event-064",
+            "source-event-065",
+            "source-event-066",
+            "source-event-067",
+            "source-event-068",
+            "source-event-069",
+            "source-event-070",
+            "source-event-071",
+            "source-event-072",
+            "source-event-073",
+            "source-event-074",
+            "source-event-075",
+            "source-event-076",
+            "source-event-077",
+            "source-event-078",
+            "source-event-079",
+            "source-event-080",
+            "source-event-081",
+            "source-event-082",
+            "source-event-083",
+            "source-event-084",
+            "source-event-085",
+            "source-event-086",
+            "source-event-087",
+            "source-event-088",
+            "source-event-089",
+            "source-event-090",
+            "source-event-091",
+            "source-event-092"
+          ],
+          "sourceArtifacts": [
+            {
+              "sourceReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/ProductReceipts/skill.34150.product-source-receipt.json",
+                "sha256": "9b321653c2fbef79f84918a5ef5da716ab3d28fe2eb5ecc74015d9c49d9f8fa1"
+              },
+              "normalizedGraph": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Graphs/skill.34150.normalized-effect-graph.json",
+                "sha256": "68be935f91007d2a79696de3f54986d48178ae58e83bd845878ba92e11ef9d26"
+              },
+              "externalModuleClosure": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Modules/skill.34150.external-module-closure.json",
+                "sha256": "3a420080af011e80f2e914c6cff09eea60658057a52ae2721b8ed414a888bc75"
+              },
+              "importedDocument": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/effect.lancemaster.skill.34150.imported.effect.json",
+                "sha256": "636d75f88559a7c8dcb3f0abf2eaabdde26147f8828fc0f04e7da6cb5a02f711",
+                "effectAssetId": "effect.lance_master.skill.34150.imported"
+              },
+              "conversionReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/skill.34150.element-conversion-receipt.json",
+                "sha256": "2d0bfa6312d7cd35e506e6d362ad5e0de14ab95da97fba81d455a3a87728dd4f"
+              },
+              "artifactOrigin": "CURRENT_COMBAT_GENERATED_SOURCE_TRUTH",
+              "generatedSourceReceipt": {
+                "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/skill.34150.source-receipt.json",
+                "sha256": "cdbba38e380a508262bc21395d83ed0cd2c14523f5293eea976daa6dc897e11b"
+              },
+              "sourceSkillId": 34150
+            }
+          ],
+          "status": "AVAILABLE_WITH_BLOCKERS",
+          "blockers": [
+            {
+              "code": "UNRESOLVED_SOURCE_MATERIAL",
+              "count": 1,
+              "sourceMaterialPaths": [
+                "enginematerials.defaultparticle"
+              ]
+            },
+            {
+              "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+              "count": 31
+            },
+            {
+              "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+              "count": 56
+            }
+          ]
+        }
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 31
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 56
+        }
+      ],
+      "materializationLane": "TARGETED_CURRENT_COMBAT",
+      "targetedSourceOnlyTargets": [
+        {
+          "stageIndex": 0,
+          "stageClipIndex": 0,
+          "clip": "flm_sk_crushingblow",
+          "effectAssetId": "effect.lancemaster.skill.34150.unified"
+        }
+      ]
+    },
+    {
       "productSkillId": 34650,
       "inputSlot": "T",
       "skillKind": "ACTIVE",
@@ -3881,16 +4271,16 @@
     }
   ],
   "summary": {
-    "skillCount": 17,
-    "stageCount": 27,
-    "clipOccurrenceCount": 45,
+    "skillCount": 19,
+    "stageCount": 29,
+    "clipOccurrenceCount": 47,
     "numericAliasClipOccurrenceCount": 0,
     "readySkillCount": 0,
     "readyStageCount": 0,
     "blockedSkillCount": 0,
     "blockedStageCount": 0,
-    "availableWithBlockersSkillCount": 17,
-    "availableWithBlockersStageCount": 27
+    "availableWithBlockersSkillCount": 19,
+    "availableWithBlockersStageCount": 29
   },
   "sourceGraphExtraction": [
     {

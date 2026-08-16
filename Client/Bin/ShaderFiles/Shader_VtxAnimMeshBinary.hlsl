@@ -84,12 +84,15 @@ struct PS_OUT
     float4 vEmissive : SV_TARGET4;
 };
 
-PS_OUT PS_MAIN(VS_OUT input)
+PS_OUT Evaluate_Material(
+    VS_OUT input, bool alphaClip, float alphaClipThreshold)
 {
     PS_OUT output;
     float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
-    if (diffuse.a < 0.3f)
+    if (alphaClip && diffuse.a < alphaClipThreshold)
         discard;
+    if (!alphaClip)
+        diffuse.a = 1.f;
     if (0 != g_HasDyeMask)
     {
         float3 mask = g_DyeMaskTexture.Sample(LinearSampler, input.vTexcoord).rgb;
@@ -146,6 +149,21 @@ PS_OUT PS_MAIN(VS_OUT input)
     return output;
 }
 
+PS_OUT PS_MAIN(VS_OUT input)
+{
+    return Evaluate_Material(input, true, 0.3f);
+}
+
+PS_OUT PS_MAIN_OPAQUE(VS_OUT input)
+{
+    return Evaluate_Material(input, false, 0.f);
+}
+
+PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input)
+{
+    return Evaluate_Material(input, true, 0.333f);
+}
+
 void PS_MAIN_SHADOW(VS_OUT input)
 {
     float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
@@ -173,5 +191,30 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+
+    /* Effect ModelCue assets carry an explicit source-material alpha policy.
+       OPAQUE must not reinterpret a packed diffuse alpha channel as cutout. */
+    pass EffectModelCueOpaque
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_OPAQUE();
+    }
+
+    /* Exact UE3 monster_dead_msk_high_realpbr contract used only by the
+       Dimension Summon ModelCue.  RS_Default preserves its one-sided source
+       state while diffuse alpha owns the 0.333 opacity-mask threshold. */
+    pass EffectModelCueMaskedExact
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_MASKED();
     }
 }
