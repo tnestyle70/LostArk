@@ -48,6 +48,46 @@ namespace
 		outLateral = samples.back().fLateral;
 	}
 
+	bool Hit_ShapeOverlaps(
+		const LostArk::Server::PLAYER_SKILL_HIT& hit,
+		const float casterX,
+		const float casterZ,
+		const float forwardX,
+		const float forwardZ,
+		const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ& target)
+	{
+		using namespace LostArk::Shared::CombatCollision;
+		const float originX = casterX + forwardX * hit.fOffset;
+		const float originZ = casterZ + forwardZ * hit.fOffset;
+		const bool fullSweep =
+			hit.fAngleDegrees <= 0.f || hit.fAngleDegrees >= 360.f;
+		switch (hit.iAreaType)
+		{
+		case 1u:
+			return Circle_IntersectsForwardBox(
+				target, originX, originZ, forwardX, forwardZ,
+				hit.fRange, hit.fHeight * 0.5f);
+		case 2u:
+			return fullSweep ?
+				Circles_Overlap(CIRCLE_XZ{ originX, originZ, hit.fRange }, target) :
+				Circle_IntersectsCone(
+					target, originX, originZ, forwardX, forwardZ,
+					hit.fRange, hit.fAngleDegrees);
+		case 3u:
+		{
+			const bool inRing = hit.fInner > 0.f ?
+				Circle_IntersectsRing(
+					target, originX, originZ, hit.fInner, hit.fRange) :
+				Circles_Overlap(CIRCLE_XZ{ originX, originZ, hit.fRange }, target);
+			return inRing && (fullSweep || Circle_IntersectsCone(
+				target, originX, originZ, forwardX, forwardZ,
+				hit.fRange, hit.fAngleDegrees));
+		}
+		default:
+			return false;
+		}
+	}
+
 	bool IsNewerSequence(
 		const std::uint32_t candidate,
 		const std::uint32_t previous)
@@ -184,6 +224,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.fSkillAimDirectionX = directionX;
 	player.fSkillAimDirectionZ = directionZ;
 	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0;
 	player.iCurrentResource -= skill->iResourceCost;
 	player.iCurrentIdentity -= skill->iIdentityCost;
 	player.CooldownEndTickBySkillId.insert_or_assign(
@@ -509,8 +550,126 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const bool holdWithoutDamage = isHold && 3u != player.iComboStage;
 	/* The guard stage lands nothing: the damage belongs to the counter it buys. */
 	const bool counterWithoutDamage = isCounter && 2u != player.iComboStage;
-	if (!skill->strDamageProfileId.empty() && !holdWithoutDamage &&
-		!counterWithoutDamage &&
+	const bool dealsDamage = !skill->strDamageProfileId.empty() &&
+		!holdWithoutDamage && !counterWithoutDamage;
+	const std::vector<PLAYER_SKILL_HIT>& shapeHits = hasStage ?
+		skill->ComboStages[stageIndex].Hits : skill->Hits;
+
+	const auto targetBodyOf = [&catalog](const SERVER_WORLD_ENTITY& entity)
+	{
+		const BOSS_RUNTIME_PROFILE* bossProfile =
+			catalog.Find_Boss(entity.strArchetypeId);
+		const float targetRadius =
+			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
+				entity.fCollisionRadius :
+				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
+		return LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ{
+			entity.fPositionX, entity.fPositionZ, targetRadius };
+	};
+	const auto isDamageable = [](const SERVER_WORLD_ENTITY& entity)
+	{
+		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
+			WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) &&
+			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
+	};
+	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target, const std::uint32_t rawDamage)
+	{
+		const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ?
+			CGameplayCatalog::Apply_Defense(rawDamage, target.iDefense) : rawDamage;
+		target.iCurrentHp =
+			damage >= target.iCurrentHp ? 0u : target.iCurrentHp - damage;
+		/* A zero amount is not a hit and the snapshot writer rejects it; the
+		cap keeps one overfull tick from suppressing the whole snapshot. */
+		if (0u != damage &&
+			outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+		{
+			LostArk::Shared::DAMAGE_EVENT damageEvent{};
+			damageEvent.iTargetNetEntityId = target.iNetEntityId;
+			damageEvent.iAmount = damage;
+			damageEvent.fPositionX = target.fPositionX;
+			damageEvent.fPositionY = target.fPositionY;
+			damageEvent.fPositionZ = target.fPositionZ;
+			damageEvent.isOutgoing = true;
+			outDamageEvents.push_back(damageEvent);
+		}
+		if (0u == target.iCurrentHp)
+		{
+			target.eAction = SERVER_ENTITY_ACTION::DEAD;
+			target.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+			target.MovePath.clear();
+		}
+	};
+	const auto resolveRawDamage = [&]()
+	{
+		const PLAYER_RUNTIME_PROFILE* playerProfile =
+			catalog.Find_Player(player.eCharacterClass);
+		return CGameplayCatalog::Resolve_Damage(
+			nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
+			catalog.Find_DamageRatePercent(skill->strDamageProfileId));
+	};
+
+	if (dealsDamage && !shapeHits.empty())
+	{
+		std::uint32_t subHitCount = 0;
+		for (const PLAYER_SKILL_HIT& hit : shapeHits)
+			subHitCount += hit.iRepeatCount;
+		const std::uint64_t totalDamage = resolveRawDamage();
+		const std::uint64_t subHitTotal = (std::max)(1u, subHitCount);
+		const auto damageOfSubHit = [&](const std::uint32_t index)
+		{
+			const std::uint64_t share =
+				totalDamage * (index + 1u) / subHitTotal -
+				totalDamage * index / subHitTotal;
+			return static_cast<std::uint32_t>(share < 1u ? 1u : share);
+		};
+		const float elapsedMs = player.fActionElapsedSeconds * 1000.f;
+		std::uint32_t subHitIndex = 0;
+		bool allFired = true;
+		for (const PLAYER_SKILL_HIT& hit : shapeHits)
+		{
+			for (std::uint32_t repeat = 0; repeat < hit.iRepeatCount;
+				++repeat, ++subHitIndex)
+			{
+				const std::uint64_t bit = 1ull << subHitIndex;
+				if (0u != (player.iAppliedHitMask & bit))
+					continue;
+				const float fireMs =
+					static_cast<float>(hit.iTimeMs + hit.iRepeatMs * repeat);
+				if (elapsedMs < fireMs)
+				{
+					allFired = false;
+					continue;
+				}
+				player.iAppliedHitMask |= bit;
+				std::vector<std::pair<float, SERVER_WORLD_ENTITY*>> targets;
+				for (SERVER_WORLD_ENTITY& entity : worldEntities)
+				{
+					if (!isDamageable(entity) ||
+						!Hit_ShapeOverlaps(hit, player.fPositionX, player.fPositionZ,
+							player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
+							targetBodyOf(entity)))
+					{
+						continue;
+					}
+					const float deltaX = entity.fPositionX - player.fPositionX;
+					const float deltaZ = entity.fPositionZ - player.fPositionZ;
+					targets.emplace_back(deltaX * deltaX + deltaZ * deltaZ, &entity);
+				}
+				std::sort(targets.begin(), targets.end(),
+					[](const auto& left, const auto& right)
+					{
+						return left.first < right.first;
+					});
+				if (0u != hit.iMaxTargets && targets.size() > hit.iMaxTargets)
+					targets.resize(hit.iMaxTargets);
+				for (auto& [distanceSquared, target] : targets)
+					applyDamage(*target, damageOfSubHit(subHitIndex));
+			}
+		}
+		if (allFired)
+			player.hasAppliedSkillDamage = true;
+	}
+	else if (dealsDamage &&
 		!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
@@ -522,28 +681,13 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		};
 		for (SERVER_WORLD_ENTITY& entity : worldEntities)
 		{
-			if ((WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind &&
-				WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind) ||
-				SERVER_ENTITY_ACTION::DEAD == entity.eAction || 0u == entity.iCurrentHp)
-			{
+			if (!isDamageable(entity))
 				continue;
-			}
 			const float deltaX = entity.fPositionX - player.fPositionX;
 			const float deltaZ = entity.fPositionZ - player.fPositionZ;
 			const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-			const BOSS_RUNTIME_PROFILE* bossProfile =
-				catalog.Find_Boss(entity.strArchetypeId);
-			const float targetRadius =
-				(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
-					entity.fCollisionRadius :
-					(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
-			const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ targetBody{
-				entity.fPositionX,
-				entity.fPositionZ,
-				targetRadius
-			};
 			if (LostArk::Shared::CombatCollision::Circles_Overlap(
-				skillCircle, targetBody) &&
+				skillCircle, targetBodyOf(entity)) &&
 				(nullptr == closestBoss || distanceSquared < closestDistanceSquared))
 			{
 				closestDistanceSquared = distanceSquared;
@@ -551,37 +695,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			}
 		}
 		if (nullptr != closestBoss)
-		{
-			const PLAYER_RUNTIME_PROFILE* playerProfile =
-				catalog.Find_Player(player.eCharacterClass);
-			const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
-				nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
-				catalog.Find_DamageRatePercent(skill->strDamageProfileId));
-			const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == closestBoss->eKind ?
-				CGameplayCatalog::Apply_Defense(rawDamage, closestBoss->iDefense) : rawDamage;
-			closestBoss->iCurrentHp =
-				damage >= closestBoss->iCurrentHp ? 0u : closestBoss->iCurrentHp - damage;
-			/* A zero amount is not a hit and the snapshot writer rejects it; the
-			cap keeps one overfull tick from suppressing the whole snapshot. */
-			if (0u != damage &&
-				outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
-			{
-				LostArk::Shared::DAMAGE_EVENT damageEvent{};
-				damageEvent.iTargetNetEntityId = closestBoss->iNetEntityId;
-				damageEvent.iAmount = damage;
-				damageEvent.fPositionX = closestBoss->fPositionX;
-				damageEvent.fPositionY = closestBoss->fPositionY;
-				damageEvent.fPositionZ = closestBoss->fPositionZ;
-				damageEvent.isOutgoing = true;
-				outDamageEvents.push_back(damageEvent);
-			}
-			if (0u == closestBoss->iCurrentHp)
-			{
-				closestBoss->eAction = SERVER_ENTITY_ACTION::DEAD;
-				closestBoss->iActionStartTick = 0u == serverTick ? 1u : serverTick;
-				closestBoss->MovePath.clear();
-			}
-		}
+			applyDamage(*closestBoss, resolveRawDamage());
 		player.hasAppliedSkillDamage = true;
 	}
 
@@ -626,6 +740,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.hasBufferedComboInput = false;
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
+			player.iAppliedHitMask = 0;
 			// The client treats a changed start tick as a new action edge, which
 			// is how it learns to play the next stage's clip.
 			player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -659,6 +774,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.iActionStartTick = 0;
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
+			player.iAppliedHitMask = 0;
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
 			player.hasReleasedHold = false;
@@ -696,6 +812,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 	player.hasBufferedComboInput = false;
 	player.fActionElapsedSeconds = 0.f;
 	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0;
 	// A changed start tick is how the client learns to play the counter clip.
 	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 	return true;

@@ -2077,7 +2077,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	boss.iMaximumHp = 10000;
 	boss.fPositionX = 151.f;
 	boss.fPositionY = 22.97f;
-	boss.fPositionZ = -122.f;
+	boss.fPositionZ = -125.f;
 	boss.fCollisionRadius = 3.f;
 	std::vector<SERVER_WORLD_ENTITY> entities{ boss };
 	C2S_USE_SKILL useSkill{};
@@ -2094,15 +2094,49 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	for (std::uint32_t tick = 11; tick < 70; ++tick)
 		skills.Update(player, entities, catalog, &navigation, nullptr,
 			1.f / 30.f, tick, damageEvents);
-	/* 34120 is official rate 361 at attack power 100. */
-	tests.Require(9639u == entities[0].iCurrentHp,
-		"Apply server-authoritative player damage once");
+	/* 34120 is official rate 361 at attack power 100, split across its three
+	authored hit shapes so the sum stays exact. */
+	const PLAYER_SKILL_DEFINITION* talonStrike = catalog.Find_Skill(34120);
 	tests.Require(
-		1u == damageEvents.size() &&
-		361u == damageEvents[0].iAmount &&
+		nullptr != talonStrike && 3u == talonStrike->Hits.size() &&
+		talonStrike->Hits[0].iTimeMs < talonStrike->Hits[1].iTimeMs &&
+		3u == talonStrike->Hits[0].iAreaType &&
+		2u == talonStrike->Hits[2].iAreaType,
+		"Load authored hit shapes for the skill from the gameplay bootstrap");
+	tests.Require(9639u == entities[0].iCurrentHp,
+		"Apply server-authoritative player damage across authored hits");
+	std::uint32_t outgoingTotal = 0;
+	for (const DAMAGE_EVENT& damageEvent : damageEvents)
+		outgoingTotal += damageEvent.iAmount;
+	tests.Require(
+		3u == damageEvents.size() &&
+		361u == outgoingTotal &&
 		damageEvents[0].isOutgoing &&
 		entities[0].iNetEntityId == damageEvents[0].iTargetNetEntityId,
-		"Emit one outgoing damage event for the resolved hit");
+		"Emit one outgoing damage event per authored hit summing to the profile rate");
+	{
+		SERVER_PLAYER missPlayer{};
+		missPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		missPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		missPlayer.iCurrentResource = 1000;
+		missPlayer.iMaximumResource = 1000;
+		missPlayer.fPositionX = 151.f;
+		missPlayer.fPositionY = 22.97f;
+		missPlayer.fPositionZ = -129.f;
+		std::vector<SERVER_WORLD_ENTITY> behindEntities{ boss };
+		behindEntities[0].fPositionZ = missPlayer.fPositionZ - 3.5f;
+		C2S_USE_SKILL forwardSkill = useSkill;
+		forwardSkill.iClientSequence = 3;
+		CPlayerSkillSystem missSkills;
+		std::vector<DAMAGE_EVENT> missEvents;
+		tests.Require(missSkills.Try_Start(missPlayer, forwardSkill, catalog, 100),
+			"Approve skill aimed away from the target behind the caster");
+		for (std::uint32_t tick = 101; tick < 160; ++tick)
+			missSkills.Update(missPlayer, behindEntities, catalog, &navigation, nullptr,
+				1.f / 30.f, tick, missEvents);
+		tests.Require(10000u == behindEntities[0].iCurrentHp && missEvents.empty(),
+			"Leave a target outside the authored hit shape untouched");
+	}
 	C2S_USE_SKILL cooldownAttempt = useSkill;
 	cooldownAttempt.iClientSequence = 2;
 	tests.Require(!skills.Try_Start(player, cooldownAttempt, catalog, 70),

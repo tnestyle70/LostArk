@@ -1,0 +1,25 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 1,
+  "animationAssetId": "Artist",
+  "characterClass": "ARTIST",
+  "skills": [
+    {
+      "skillId": 31420,
+      "hits": [
+        {
+          "timeMs": 0,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 7.0,
+          "angle": 300,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    }
+  ]
+}

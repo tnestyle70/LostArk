@@ -16,6 +16,20 @@ namespace LostArk::Server
 		float fLateral = 0.f;
 	};
 
+	struct PLAYER_SKILL_HIT final
+	{
+		std::uint32_t iTimeMs = 0;
+		std::uint32_t iRepeatCount = 1;
+		std::uint32_t iRepeatMs = 0;
+		std::uint32_t iAreaType = 0;
+		float fRange = 0.f;
+		float fAngleDegrees = 0.f;
+		float fHeight = 0.f;
+		float fOffset = 0.f;
+		float fInner = 0.f;
+		std::uint32_t iMaxTargets = 0;
+	};
+
 	struct PLAYER_COMBO_STAGE final
 	{
 		std::uint32_t iActionDurationMs = 0;
@@ -25,6 +39,7 @@ namespace LostArk::Server
 		/* A stage advance resets the action clock, so a staged skill owns its
 		movement per stage instead of on one action-long curve. */
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<PLAYER_SKILL_HIT> Hits;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -54,6 +69,7 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
+		std::vector<PLAYER_SKILL_HIT> Hits;
 	};
 
 	struct BOSS_RUNTIME_PROFILE
@@ -235,6 +251,11 @@ namespace LostArk::Server
 			std::uint32_t sampleCount,
 			std::uint32_t limitMs,
 			std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples);
+		bool Parse_SkillHits(
+			std::string_view packed,
+			std::uint32_t hitCount,
+			std::uint32_t limitMs,
+			std::vector<PLAYER_SKILL_HIT>& outHits);
 
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;
