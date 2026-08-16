@@ -1,10 +1,12 @@
-LOSTARK_SKILL_TIMING 2 "DimensionMaster" 32
+LOSTARK_SKILL_TIMING 2 "DimensionMaster" 35
 2050001 " [2050000 변형]" hits="1.451-1.471" freeze=0.59 push=0 multi=0 interval=0 sa=0 move=0 cd=0 base=2050000
   hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=10 pushr=15 area=2 ar=220 aa=90 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=30 pushr=25 area=2 ar=180 aa=200 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=30 pushr=30 area=2 ar=180 aa=200 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=30 pushr=40 area=2 ar=240 aa=300 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=1 timed=1 t=1451 w=20 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=0 pushr=0 area=2 ar=240 aa=300 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+2050100 "일침" hits="" freeze=0.42 push=0.03 multi=0 interval=0 sa=0 move=0 cd=14000 base=2050100
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=30 pushr=40 area=1 ar=100 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="" sndset=""
 2050110 "예고" hits="1.451-1.471" freeze=0.42 push=0 multi=0 interval=0 sa=0 move=0 cd=16000 base=2050110
   hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=10 pushr=10 area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=2 timed=1 t=1451 w=20 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
@@ -17,6 +19,10 @@ LOSTARK_SKILL_TIMING 2 "DimensionMaster" 32
   hit g=0 key=2 timed=1 t=1451 w=20 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=150 aa=0 ah=300 ax=50 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
 2050153 "공간 베기 [2050150 변형]" hits="1.451-1.471" freeze=0.42 push=0 multi=0 interval=0 sa=1 move=0 cd=25000 base=2050150
   hit g=0 key=1 timed=1 t=1451 w=20 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=250 aa=200 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+2050160 "건너 찌르기" hits="" freeze=0.42 push=0 multi=0 interval=0 sa=0 move=0 cd=28000 base=2050160
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=450 aa=120 ah=180 ax=-225 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=400 aa=120 ah=230 ax=-200 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=120 ah=280 ax=-175 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
 2050170 "역공" hits="1.451-1.471" freeze=0.42 push=0 multi=0 interval=0 sa=2 move=0 cd=40000 base=2050170
   hit g=0 key=1 timed=1 t=1451 w=20 rep=0 repms=0 fz=420 fzin=130 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=400 aa=100 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
 2050194 "진공 [2050190 변형]" hits="1.789-1.809" freeze=0.42 push=0 multi=0 interval=0 sa=0 move=0 cd=48000 base=2050190
@@ -62,6 +68,9 @@ LOSTARK_SKILL_TIMING 2 "DimensionMaster" 32
   hit g=0 key=2 timed=1 t=1451 w=20 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=0 pushr=0 area=2 ar=650 aa=250 ah=200 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SK_ClockHand_Combine" sndset="SKHitted_CLOCKHANDCOMBINE1"
 2050226 "일점 관통 [2050220 변형]" hits="1.451-1.471" freeze=0.59 push=0 multi=0 interval=0 sa=1 move=0 cd=40000 base=2050220
   hit g=0 key=2 timed=1 t=1451 w=20 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=0 pushr=0 area=2 ar=650 aa=250 ah=200 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SK_ClockHand_Combine" sndset="SKHitted_CLOCKHANDCOMBINE1"
+2050230 "시간 분쇄" hits="" freeze=0.59 push=0.17 multi=0 interval=0 sa=1 move=0 cd=55000 base=2050230
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=480 fzin=130 fzout=300 fzcancel=1 push=10 pushr=10 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SK_ClockHand_Combine" sndset="SKHitted_CLOCKHANDCOMBINE1"
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=590 fzin=150 fzout=380 fzcancel=1 push=170 pushr=-200 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SK_ClockHand_Combine" sndset="SKHitted_CLOCKHANDCOMBINE1"
 2050240 "경계 돌파" hits="1.451-1.471" freeze=0.78 push=0 multi=0 interval=0 sa=1 move=0 cd=50000 base=2050240
   hit g=0 key=2 timed=1 t=1451 w=20 rep=0 repms=0 fz=780 fzin=200 fzout=450 fzcancel=1 push=0 pushr=0 area=2 ar=500 aa=200 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SK_ClockHand_Combine" sndset="SKHitted_CLOCKHANDCOMBINE1"
 2050245 "경계 돌파 [2050240 변형]" hits="1.451-1.471" freeze=0.78 push=0 multi=0 interval=0 sa=1 move=0 cd=50000 base=2050240

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "HitAreaWire.h"
 
 #include <cstdint>
 #include <string>
@@ -35,11 +36,22 @@ struct ANIMATION_EFFECT_CUE final
     EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 };
 
+struct ANIMATION_HIT_CUE final
+{
+    std::string strClipName;
+    uint32_t iStartMs = 0u;
+    uint32_t iEndMs = 0u;
+    uint32_t iRepeatCount = 1u;
+    uint32_t iRepeatMs = 0u;
+    HIT_AREA_SHAPE Shape{};
+};
+
 struct ANIMATION_EFFECT_CUE_DOCUMENT final
 {
     uint32_t iFormatVersion = 5u;
     std::string strAnimationAssetId;
     std::vector<ANIMATION_EFFECT_CUE> Cues;
+    std::vector<ANIMATION_HIT_CUE> Hits;
 };
 
 class CAnimationEffectCueDocument final

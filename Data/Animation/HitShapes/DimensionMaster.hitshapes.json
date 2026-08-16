@@ -1,0 +1,61 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 1,
+  "animationAssetId": "DimensionMaster",
+  "characterClass": "DIMENSIONMASTER",
+  "skills": [
+    {
+      "skillId": 2050210,
+      "hits": [
+        {
+          "timeMs": 100,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.0,
+          "angle": 360,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 525,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.0,
+          "angle": 360,
+          "height": 1.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 844,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.0,
+          "angle": 360,
+          "height": 1.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        },
+        {
+          "timeMs": 1243,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 3.0,
+          "angle": 360,
+          "height": 1.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0
+        }
+      ]
+    }
+  ]
+}

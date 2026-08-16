@@ -75,6 +75,7 @@ namespace Client
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
 #ifdef _DEBUG
 		void Set_CombatColliderDebugVisible(bool_t isVisible);
+		void Set_SkillHitAreaDebugVisible(bool_t isVisible);
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
@@ -176,6 +177,7 @@ namespace Client
 		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC m_EncounterPropState{};
 #ifdef _DEBUG
 		bool_t m_isCombatColliderDebugVisible = false;
+		bool_t m_isSkillHitAreaDebugVisible = true;
 #endif
 
 		struct WORLD_ENTITY_PRESENTATION

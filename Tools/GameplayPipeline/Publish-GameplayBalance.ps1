@@ -1199,7 +1199,118 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $patternRows | Sort-Object)
+$skillDealsDamageById = @{}
+foreach ($skill in @($skillDocument.skills)) {
+    $skillDealsDamageById[[string]$skill.skillId] = -not [string]::IsNullOrEmpty([string]$skill.serverDamageProfileId)
+}
+
+function Format-HitShapes {
+    param(
+        [object[]]$Hits,
+        [string]$SkillId,
+        [uint32]$LimitMs
+    )
+
+    if ($Hits.Count -lt 1 -or $Hits.Count -gt 64) {
+        throw "Hit shape count is invalid: $SkillId"
+    }
+    $packed = [Collections.Generic.List[string]]::new()
+    $previousMs = -1
+    $subHits = 0
+    foreach ($hit in $Hits) {
+        Assert-ExactProperties $hit @('timeMs','repeatCount','repeatMs','areaType','range','angle',
+            'height','offset','inner','maxTargets') 'hit shape'
+        Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
+        Assert-JsonInteger $hit.repeatCount "hit shape $SkillId repeatCount" 1 64
+        Assert-JsonInteger $hit.repeatMs "hit shape $SkillId repeatMs" 0 100000
+        Assert-JsonInteger $hit.areaType "hit shape $SkillId areaType" 1 3
+        Assert-JsonInteger $hit.angle "hit shape $SkillId angle" 0 360
+        Assert-JsonInteger $hit.maxTargets "hit shape $SkillId maxTargets" 0 64
+        foreach ($field in @('range','height','offset','inner')) {
+            Assert-JsonNumber $hit.$field "hit shape $SkillId $field"
+        }
+        $timeMs = [int]$hit.timeMs
+        if ($timeMs -lt $previousMs) {
+            throw "Hit shape times are out of order: $SkillId"
+        }
+        $previousMs = $timeMs
+        if ([int]$hit.repeatCount -gt 1 -and [int]$hit.repeatMs -le 0) {
+            throw "Hit shape repeat needs a positive interval: $SkillId"
+        }
+        if ([double]$hit.range -le 0.0 -or [double]$hit.inner -ge [double]$hit.range -or
+            ([int]$hit.areaType -eq 1 -and [double]$hit.height -le 0.0)) {
+            throw "Hit shape extent is invalid: $SkillId"
+        }
+        $subHits += [int]$hit.repeatCount
+        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}' -f $timeMs,
+            [int]$hit.repeatCount, [int]$hit.repeatMs, [int]$hit.areaType,
+            (Format-InvariantFloat $hit.range "hit shape $SkillId range"),
+            [int]$hit.angle,
+            (Format-InvariantFloat $hit.height "hit shape $SkillId height"),
+            (Format-InvariantSignedFloat $hit.offset "hit shape $SkillId offset"),
+            (Format-InvariantFloat $hit.inner "hit shape $SkillId inner"),
+            [int]$hit.maxTargets))
+    }
+    if ($subHits -gt 64) {
+        throw "Hit shape sub-hit count exceeds 64: $SkillId"
+    }
+    return ($packed -join ',')
+}
+
+$hitShapeRows = [Collections.Generic.List[string]]::new()
+$hitShapeSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\HitShapes') `
+        -Filter '*.hitshapes.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+    $document = Read-JsonDocument ('Data/Animation/HitShapes/' + $path.Name)
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','animationAssetId','characterClass','skills') 'hit shape document'
+    if ($document.schema -ne 'lostark.animation-hit-shapes' -or
+        [uint32]$document.formatVersion -ne 1) {
+        throw "Hit shape header is invalid: $($path.Name)"
+    }
+    foreach ($entry in @($document.skills)) {
+        $id = [string]$entry.skillId
+        if (-not $skillDurationById.ContainsKey($id)) {
+            throw "Hit shapes target an unknown skill: $id"
+        }
+        if (-not $skillDealsDamageById[$id]) {
+            throw "Hit shapes target a skill without a damage profile: $id"
+        }
+        if (-not $hitShapeSeen.Add($id)) {
+            throw "Duplicate hit shape entry: $id"
+        }
+        if ($null -ne $entry.stages) {
+            Assert-ExactProperties $entry @('skillId','stages') 'hit shape skill'
+            $stageDurations = @($skillStageDurationsById[$id])
+            if ($stageDurations.Count -lt 1) {
+                throw "Hit shape stages target a skill without combo stages: $id"
+            }
+            $seenStages = [Collections.Generic.HashSet[int]]::new()
+            foreach ($stage in @($entry.stages)) {
+                Assert-ExactProperties $stage @('stageIndex','hits') 'hit shape stage'
+                $stageIndex = [int]$stage.stageIndex
+                if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
+                    -not $seenStages.Add($stageIndex)) {
+                    throw "Hit shape stage index is invalid or duplicated: $id"
+                }
+                $hits = @($stage.hits)
+                $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $stageDurations[$stageIndex]
+                $hitShapeRows.Add((@(
+                    'SKILLSTAGEHIT', $id, $stageIndex, $hits.Count, $packed) -join "`t"))
+            }
+            continue
+        }
+        Assert-ExactProperties $entry @('skillId','hits') 'hit shape skill'
+        if (@($skillStageDurationsById[$id]).Count -ne 0) {
+            throw "A staged skill must carry per-stage hit shapes: $id"
+        }
+        $hits = @($entry.hits)
+        $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $skillDurationById[$id]
+        $hitShapeRows.Add((@('SKILLHIT', $id, $hits.Count, $packed) -join "`t"))
+    }
+}
+
+$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t6`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {

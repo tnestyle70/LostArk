@@ -97,6 +97,7 @@ private:
 	std::array<bool_t, 3> m_ArenaSpawnAccepted{};
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
+	bool_t m_isSkillHitAreaDebugVisible = true;
 #endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";

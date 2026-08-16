@@ -62,7 +62,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity1_1_01" CANCEL startms=329 endms=659 payload="[선콤]" src=orig
 "flm_att_identity1_1_01" EFFECT startms=404 payload="FX_PC_FLM_01.Par_M_FLM_Trail_03" src=orig
 "flm_att_identity1_1_01" EFFECT startms=449 payload="FX_PC_FLM_01.Par_M_FLM_Ribbon_02" src=orig
-"flm_att_identity1_1_01" HIT startms=470 endms=770 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity1_1_01" HIT startms=470 endms=770 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=90 pushr=35 area=3 ar=180 aa=230 ah=150 ax=30 arem=0 maxt=0 src=orig
 "flm_att_identity1_1_01" EFFECT startms=494 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_att_identity1_1_01" EFFECT startms=521 payload="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" src=orig
 "flm_att_identity1_1_01" EFFECT startms=547 payload="" src=orig
@@ -76,7 +76,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity1_1_02" CANCEL startms=229 endms=504 payload="[선스]" src=orig
 "flm_att_identity1_1_02" CANCEL startms=232 endms=704 payload="[선이]" src=orig
 "flm_att_identity1_1_02" CANCEL startms=330 endms=555 payload="[선콤]" src=orig
-"flm_att_identity1_1_02" HIT startms=356 endms=657 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity1_1_02" HIT startms=356 endms=657 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=3 ar=180 aa=230 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_att_identity1_1_02" EFFECT startms=360 payload="FX_PC_FLM_01.Par_M_FLM_Ribbon_02" src=orig
 "flm_att_identity1_1_02" EFFECT startms=407 payload="FX_PC_FLM_01.Par_M_FLM_Trail_03_2" src=orig
 "flm_att_identity1_1_02" EFFECT startms=438 payload="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" src=orig
@@ -92,7 +92,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity1_1_03" CANCEL startms=277 endms=948 payload="[선이]" src=orig
 "flm_att_identity1_1_03" CANCEL startms=279 endms=664 payload="[선스]" src=orig
 "flm_att_identity1_1_03" CANCEL startms=396 endms=753 payload="[선콤]" src=orig
-"flm_att_identity1_1_03" HIT startms=451 endms=752 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity1_1_03" HIT startms=451 endms=752 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=40 area=3 ar=180 aa=230 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_att_identity1_1_03" EFFECT startms=467 payload="FX_PC_FLM_01.Par_M_FLM_Trail_03" src=orig
 "flm_att_identity1_1_03" EFFECT startms=491 payload="FX_PC_FLM_01.Par_M_FLM_Ribbon_02" src=orig
 "flm_att_identity1_1_03" EFFECT startms=545 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -117,14 +117,14 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity1_1_04" EFFECT startms=467 payload="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" src=orig
 "flm_att_identity1_1_04" SHAKE startms=470 payload="" src=orig
 "flm_att_identity1_1_04" CANCEL startms=500 endms=1567 payload="[회피캔슬]" src=orig
-"flm_att_identity1_1_04" HIT startms=500 endms=801 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity1_1_04" HIT startms=500 endms=801 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=45 area=3 ar=120 aa=360 ah=150 ax=60 arem=0 maxt=0 src=orig
 "flm_att_identity1_1_04" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle1_4" src=orig
 "flm_att_identity1_1_04" EFFECT startms=583 payload="" src=orig
 "flm_att_identity1_1_04" CANCEL startms=696 endms=1566 payload="" src=orig
 "flm_att_identity1_1_04" CANCEL startms=1100 endms=1567 payload="" src=orig
 "flm_att_identity1_1_04" CANCEL startms=1143 endms=1566 payload="" src=orig
 "flm_att_identity2_1_01" CANCEL startms=0 endms=633 payload="연가심공" src=orig
-"flm_att_identity2_1_01" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity2_1_01" HIT startms=0 endms=200 rep=1 repms=0 fz=225 fzin=125 fzout=200 push=80 pushr=15 area=2 ar=200 aa=75 ah=150 ax=10 arem=0 maxt=0 src=orig
 "flm_att_identity2_1_01" SOUND startms=34 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle1_Vox2_1" src=orig
 "flm_att_identity2_1_01" SOUND startms=34 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle2_1" src=orig
 "flm_att_identity2_1_01" EFFECT startms=80 payload="FX_PC_FLM_00.Par_K_FLM_ShortNormal_Atk_01" src=orig
@@ -137,7 +137,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity2_1_01" CANCEL startms=235 endms=358 payload="" src=orig
 "flm_att_identity2_1_01" CANCEL startms=286 endms=634 payload="" src=orig
 "flm_att_identity2_1_02" CANCEL startms=0 endms=633 payload="연가심공" src=orig
-"flm_att_identity2_1_02" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity2_1_02" HIT startms=0 endms=200 rep=1 repms=0 fz=225 fzin=125 fzout=200 push=80 pushr=15 area=2 ar=100 aa=75 ah=150 ax=210 arem=0 maxt=0 src=orig
 "flm_att_identity2_1_02" SOUND startms=33 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle2_1" src=orig
 "flm_att_identity2_1_02" EFFECT startms=80 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_att_identity2_1_02" EFFECT startms=80 payload="FX_PC_FLM_00.Par_K_FLM_ShortNormal_Atk_01" src=orig
@@ -158,7 +158,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_att_identity2_1_03" CANCEL startms=198 endms=304 payload="[선이]" src=orig
 "flm_att_identity2_1_03" CANCEL startms=200 endms=634 payload="" src=orig
 "flm_att_identity2_1_03" CANCEL startms=214 endms=633 payload="" src=orig
-"flm_att_identity2_1_03" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_att_identity2_1_03" HIT startms=250 endms=450 rep=1 repms=0 fz=225 fzin=125 fzout=200 push=80 pushr=15 area=2 ar=100 aa=75 ah=150 ax=210 arem=0 maxt=0 src=orig
 "flm_att_identity2_1_03" CANCEL startms=258 endms=634 payload="" src=orig
 "flm_att_identity2_1_03" CANCEL startms=296 endms=633 payload="" src=orig
 "flm_idle_battle_1" EFFECT startms=0 payload="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" src=orig
@@ -191,11 +191,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_assault" SHAKE startms=202 payload="" src=orig
 "flm_sk_assault" SOUND startms=318 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_FX000_2" src=orig
 "flm_sk_assault" EFFECT startms=350 payload="" src=orig
-"flm_sk_assault" HIT startms=350 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_assault" HIT startms=350 endms=450 rep=2 repms=100 fz=325 fzin=200 fzout=200 push=110 pushr=30 area=2 ar=120 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_assault" HIT startms=450 endms=550 rep=2 repms=100 fz=600 fzin=200 fzout=300 push=110 pushr=30 area=2 ar=150 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_assault" HIT startms=700 endms=900 rep=2 repms=100 fz=600 fzin=200 fzout=300 push=110 pushr=30 area=2 ar=150 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_assault" EFFECT startms=398 payload="" src=orig
 "flm_sk_assault" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_assault" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_Vox1_1" src=orig
-"flm_sk_assault" HIT startms=450 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_assault" EFFECT startms=595 payload="FX_PC_FLM_05.Par_D_FLM_Moving_01" src=orig
 "flm_sk_assault" EFFECT startms=596 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" src=orig
 "flm_sk_assault" EFFECT startms=601 payload="FX_PC_FLM_03.Par_N_FLM_DashUp_01" src=orig
@@ -204,7 +205,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_assault" EFFECT startms=610 payload="FX_PC_FLM_03.Par_N_MovingDust_01" src=orig
 "flm_sk_assault" EFFECT startms=666 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_41" src=orig
 "flm_sk_assault" EFFECT startms=666 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_51" src=orig
-"flm_sk_assault" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_assault" EFFECT startms=750 payload="" src=orig
 "flm_sk_assault" CANCEL startms=899 endms=1367 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_assault" CANCEL startms=955 endms=1367 payload="" src=orig
@@ -220,11 +220,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_assault_custom_7" CANCEL startms=206 endms=1159 payload="[선이]" src=orig
 "flm_sk_assault_custom_7" SOUND startms=315 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_FX007_2" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=350 payload="" src=orig
-"flm_sk_assault_custom_7" HIT startms=350 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_assault_custom_7" HIT startms=350 endms=450 rep=2 repms=100 fz=325 fzin=200 fzout=200 push=110 pushr=30 area=2 ar=120 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_assault_custom_7" HIT startms=450 endms=550 rep=2 repms=100 fz=600 fzin=200 fzout=300 push=110 pushr=30 area=2 ar=150 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_assault_custom_7" HIT startms=700 endms=900 rep=2 repms=100 fz=600 fzin=200 fzout=300 push=110 pushr=30 area=2 ar=150 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_assault_custom_7" EFFECT startms=398 payload="" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_assault_custom_7" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_Vox1_1" src=orig
-"flm_sk_assault_custom_7" HIT startms=450 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_assault_custom_7" EFFECT startms=538 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_72" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=595 payload="FX_PC_FLM_05.Par_D_FLM_Moving_01" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=596 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" src=orig
@@ -235,7 +236,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_assault_custom_7" EFFECT startms=666 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_41" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=666 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_51" src=orig
 "flm_sk_assault_custom_7" EFFECT startms=666 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_71" src=orig
-"flm_sk_assault_custom_7" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_assault_custom_7" EFFECT startms=750 payload="" src=orig
 "flm_sk_assault_custom_7" CANCEL startms=948 endms=1534 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_assault_custom_7" CANCEL startms=1032 endms=1533 payload="" src=orig
@@ -259,7 +259,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_assault_custom_8" EFFECT startms=931 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_82" src=orig
 "flm_sk_assault_custom_8" EFFECT startms=931 payload="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_83" src=orig
 "flm_sk_assault_custom_8" SHAKE startms=956 payload="" src=orig
-"flm_sk_assault_custom_8" HIT startms=1000 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_assault_custom_8" HIT startms=1000 endms=1300 rep=2 repms=100 fz=325 fzin=200 fzout=200 push=110 pushr=30 area=2 ar=120 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_assault_custom_8" EFFECT startms=1002 payload="" src=orig
 "flm_sk_assault_custom_8" CANCEL startms=1200 endms=1833 payload="" src=orig
 "flm_sk_assault_custom_8" CANCEL startms=1300 endms=1833 payload="" src=orig
@@ -269,7 +269,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_01" SOUND startms=281 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_Vox1_1" src=orig
 "flm_sk_chestdestruction_01" SOUND startms=281 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_2" src=orig
 "flm_sk_chestdestruction_01" CANCEL startms=299 endms=602 payload="[선콤]" src=orig
-"flm_sk_chestdestruction_01" HIT startms=450 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_01" HIT startms=450 endms=550 rep=1 repms=0 fz=800 fzin=200 fzout=300 push=120 pushr=100 area=3 ar=210 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_01" EFFECT startms=468 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_02" src=orig
 "flm_sk_chestdestruction_01" EFFECT startms=471 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_01" EFFECT startms=471 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" src=orig
@@ -288,7 +288,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_02" EFFECT startms=0 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_02_1" src=orig
 "flm_sk_chestdestruction_02" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_3" src=orig
 "flm_sk_chestdestruction_02" EFFECT startms=50 payload="" src=orig
-"flm_sk_chestdestruction_02" HIT startms=50 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_02" HIT startms=50 endms=200 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=2 ar=220 aa=190 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_02" EFFECT startms=89 payload="" src=orig
 "flm_sk_chestdestruction_02" EFFECT startms=576 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_02_2" src=orig
 "flm_sk_chestdestruction_02" EFFECT startms=598 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
@@ -308,13 +308,15 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_04" EFFECT startms=297 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_3" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=297 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_05" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=298 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"flm_sk_chestdestruction_04" HIT startms=300 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=300 endms=450 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=550 endms=700 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=50 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=750 endms=900 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=10 pushr=40 area=2 ar=160 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=1100 endms=1250 rep=1 repms=0 fz=800 fzin=200 fzout=300 push=110 pushr=50 area=1 ar=125 aa=0 ah=150 ax=50 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=338 payload="" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=348 endms=1458 payload="[선스]" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=401 endms=1504 payload="[선이]" src=orig
 "flm_sk_chestdestruction_04" SOUND startms=440 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_4" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=493 endms=1933 payload="회피기캔슬(테스트)" src=orig
-"flm_sk_chestdestruction_04" HIT startms=550 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=597 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=597 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=598 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
@@ -322,7 +324,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_04" EFFECT startms=600 payload="" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=628 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_02" src=orig
 "flm_sk_chestdestruction_04" SOUND startms=680 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_4" src=orig
-"flm_sk_chestdestruction_04" HIT startms=750 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=779 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=779 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" src=orig
 "flm_sk_chestdestruction_04" SHAKE startms=779 payload="" src=orig
@@ -332,7 +333,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_04" SOUND startms=960 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_4" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=1100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=1100 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_7" src=orig
-"flm_sk_chestdestruction_04" HIT startms=1100 endms=1250 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=1105 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "flm_sk_chestdestruction_04" SHAKE startms=1105 payload="" src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=1116 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_04" src=orig
@@ -346,7 +346,8 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_custom_5_01" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_1" src=orig
 "flm_sk_chestdestruction_custom_5_01" SOUND startms=200 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_Vox1_1" src=orig
 "flm_sk_chestdestruction_custom_5_01" SOUND startms=279 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_2" src=orig
-"flm_sk_chestdestruction_custom_5_01" HIT startms=450 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_custom_5_01" HIT startms=450 endms=600 rep=1 repms=0 fz=800 fzin=200 fzout=300 push=120 pushr=100 area=3 ar=210 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_custom_5_01" HIT startms=1050 endms=1200 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=2 ar=220 aa=190 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=467 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_9" src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=467 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=467 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_8" src=orig
@@ -358,7 +359,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_chestdestruction_custom_5_01" SOUND startms=810 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX050_1" src=orig
 "flm_sk_chestdestruction_custom_5_01" CANCEL startms=842 endms=1334 payload="[선스]" src=orig
 "flm_sk_chestdestruction_custom_5_01" CANCEL startms=899 endms=1333 payload="[선이]" src=orig
-"flm_sk_chestdestruction_custom_5_01" HIT startms=1050 endms=1200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=1080 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_9" src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=1080 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_custom_5_01" EFFECT startms=1080 payload="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_8" src=orig
@@ -404,7 +404,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_counterattack_02" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_05" src=orig
 "flm_sk_counterattack_02" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_06" src=orig
 "flm_sk_counterattack_02" SHAKE startms=300 payload="" src=orig
-"flm_sk_counterattack_02" HIT startms=350 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_counterattack_02" HIT startms=350 endms=650 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=100 area=2 ar=300 aa=160 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_counterattack_02" EFFECT startms=390 payload="" src=orig
 "flm_sk_counterattack_02" EFFECT startms=500 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Mana_01" src=orig
 "flm_sk_counterattack_02" CANCEL startms=583 endms=1300 payload="회피기캔슬" src=orig
@@ -424,7 +424,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_counterattack_custom_8" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_05" src=orig
 "flm_sk_counterattack_custom_8" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_06" src=orig
 "flm_sk_counterattack_custom_8" SHAKE startms=300 payload="" src=orig
-"flm_sk_counterattack_custom_8" HIT startms=350 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_counterattack_custom_8" HIT startms=350 endms=650 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=100 area=2 ar=300 aa=160 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_counterattack_custom_8" EFFECT startms=500 payload="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Mana_01" src=orig
 "flm_sk_counterattack_custom_8" EFFECT startms=502 payload="" src=orig
 "flm_sk_counterattack_custom_8" CANCEL startms=595 endms=1733 payload="회피기캔슬" src=orig
@@ -453,10 +453,11 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep" EFFECT startms=96 payload="FX_PC_FLM_06.Par_V_FLM_Spark_06" src=orig
 "flm_sk_crescentsweep" EFFECT startms=96 payload="FX_PC_FLM_01.Par_M_FLM_Spark_02" src=orig
 "flm_sk_crescentsweep" EFFECT startms=200 payload="" src=orig
-"flm_sk_crescentsweep" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep" HIT startms=200 endms=350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=300 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep" HIT startms=350 endms=450 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=150 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep" HIT startms=700 endms=900 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep" CANCEL startms=204 endms=1104 payload="[선스]" src=orig
 "flm_sk_crescentsweep" CANCEL startms=204 endms=1185 payload="[선이]" src=orig
-"flm_sk_crescentsweep" HIT startms=350 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
 "flm_sk_crescentsweep" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
 "flm_sk_crescentsweep" EFFECT startms=500 payload="" src=orig
@@ -466,7 +467,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep" EFFECT startms=676 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_02" src=orig
 "flm_sk_crescentsweep" EFFECT startms=676 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_03" src=orig
 "flm_sk_crescentsweep" EFFECT startms=690 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_UpImpact_01" src=orig
-"flm_sk_crescentsweep" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep" SOUND startms=700 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" src=orig
 "flm_sk_crescentsweep" SOUND startms=700 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX007_3" src=orig
 "flm_sk_crescentsweep" EFFECT startms=710 payload="FX_PC_FLM_06.Par_V_FLM_Spark_24" src=orig
@@ -491,21 +491,21 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep_custom_3" SHAKE startms=82 payload="" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=97 payload="FX_PC_FLM_06.Par_V_FLM_Spark_06" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=97 payload="FX_PC_FLM_01.Par_M_FLM_Spark_02" src=orig
-"flm_sk_crescentsweep_custom_3" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_3" HIT startms=200 endms=350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=300 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_3" HIT startms=400 endms=500 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=150 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_3" HIT startms=750 endms=850 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_3" HIT startms=850 endms=950 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_3" HIT startms=1000 endms=1300 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_3" CANCEL startms=204 endms=1309 payload="[선스]" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=248 payload="" src=orig
 "flm_sk_crescentsweep_custom_3" CANCEL startms=307 endms=1411 payload="[선이]" src=orig
-"flm_sk_crescentsweep_custom_3" HIT startms=400 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
 "flm_sk_crescentsweep_custom_3" CANCEL startms=498 endms=1866 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=600 payload="" src=orig
-"flm_sk_crescentsweep_custom_3" HIT startms=750 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_crescentsweep_custom_3" HIT startms=850 endms=950 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=853 payload="" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=867 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=867 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
-"flm_sk_crescentsweep_custom_3" HIT startms=1000 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_3" SOUND startms=1000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=1070 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_04" src=orig
 "flm_sk_crescentsweep_custom_3" EFFECT startms=1070 payload="FX_PC_FLM_06.Par_V_FLM_Spark_04" src=orig
@@ -528,21 +528,21 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep_custom_37" SHAKE startms=82 payload="" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=97 payload="FX_PC_FLM_01.Par_M_FLM_Spark_02" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=97 payload="FX_PC_FLM_06.Par_V_FLM_Spark_06" src=orig
-"flm_sk_crescentsweep_custom_37" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_37" HIT startms=200 endms=350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=300 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_37" HIT startms=400 endms=500 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=150 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_37" HIT startms=750 endms=850 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_37" HIT startms=850 endms=950 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_37" HIT startms=1000 endms=1300 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_37" CANCEL startms=204 endms=1309 payload="[선스]" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=248 payload="" src=orig
 "flm_sk_crescentsweep_custom_37" CANCEL startms=307 endms=1411 payload="[선이]" src=orig
-"flm_sk_crescentsweep_custom_37" HIT startms=400 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=490 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
 "flm_sk_crescentsweep_custom_37" CANCEL startms=498 endms=1866 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=600 payload="" src=orig
-"flm_sk_crescentsweep_custom_37" HIT startms=750 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_crescentsweep_custom_37" HIT startms=850 endms=950 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=853 payload="" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=867 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=867 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
-"flm_sk_crescentsweep_custom_37" HIT startms=1000 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_37" SOUND startms=1000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=1070 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_03" src=orig
 "flm_sk_crescentsweep_custom_37" EFFECT startms=1070 payload="FX_PC_FLM_01.Par_M_FLM_Spark_01" src=orig
@@ -567,7 +567,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep_custom_5" EFFECT startms=348 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_01" src=orig
 "flm_sk_crescentsweep_custom_5" EFFECT startms=348 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_02" src=orig
 "flm_sk_crescentsweep_custom_5" EFFECT startms=400 payload="" src=orig
-"flm_sk_crescentsweep_custom_5" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_5" HIT startms=500 endms=700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_5" CANCEL startms=501 endms=1700 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_crescentsweep_custom_5" CANCEL startms=798 endms=1700 payload="" src=orig
 "flm_sk_crescentsweep_custom_5" CANCEL startms=900 endms=1700 payload="" src=orig
@@ -599,14 +599,14 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=97 payload="FX_PC_FLM_06.Par_V_FLM_Spark_06" src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=97 payload="FX_PC_FLM_01.Par_M_FLM_Spark_02" src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=200 payload="" src=orig
-"flm_sk_crescentsweep_custom_7_03" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_7_03" HIT startms=200 endms=350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=300 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_7_03" HIT startms=350 endms=450 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=150 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_crescentsweep_custom_7_03" HIT startms=700 endms=900 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=350 payload="FX_PC_FLM_01.Par_M_FLM_Decal_01" src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=350 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_Decal_04" src=orig
-"flm_sk_crescentsweep_custom_7_03" HIT startms=350 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_7_03" SOUND startms=410 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX007_3" src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=500 payload="" src=orig
 "flm_sk_crescentsweep_custom_7_03" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_Vox1_1" src=orig
-"flm_sk_crescentsweep_custom_7_03" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_crescentsweep_custom_7_03" SOUND startms=700 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX007_3" src=orig
 "flm_sk_crescentsweep_custom_7_03" SOUND startms=700 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" src=orig
 "flm_sk_crescentsweep_custom_7_03" EFFECT startms=717 payload="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_04" src=orig
@@ -658,7 +658,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crushingblow" EFFECT startms=1390 payload="" src=orig
 "flm_sk_crushingblow" EFFECT startms=1392 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneDust_01" src=orig
 "flm_sk_crushingblow" SHAKE startms=1392 payload="" src=orig
-"flm_sk_crushingblow" HIT startms=1400 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crushingblow" HIT startms=1400 endms=1700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_crushingblow" EFFECT startms=1405 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_02" src=orig
 "flm_sk_crushingblow" EFFECT startms=1405 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_03" src=orig
 "flm_sk_crushingblow" EFFECT startms=1405 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_010" src=orig
@@ -682,7 +682,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crushingblow_custom_4" SUPERARMOR startms=0 endms=1312 payload="" src=orig
 "flm_sk_crushingblow_custom_4" SUPERARMOR startms=0 endms=1315 payload="" src=orig
 "flm_sk_crushingblow_custom_4" CANCEL startms=95 endms=1309 payload="[선이]" src=orig
-"flm_sk_crushingblow_custom_4" HIT startms=200 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crushingblow_custom_4" HIT startms=200 endms=600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=224 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_crushingblow_custom_4" EFFECT startms=202 payload="" src=orig
 "flm_sk_crushingblow_custom_4" EFFECT startms=293 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_crushingblow_custom_4" EFFECT startms=294 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -725,7 +725,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crushingblow_custom_5" EFFECT startms=801 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_02_03" src=orig
 "flm_sk_crushingblow_custom_5" EFFECT startms=810 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneDust_01" src=orig
 "flm_sk_crushingblow_custom_5" EFFECT startms=850 payload="" src=orig
-"flm_sk_crushingblow_custom_5" HIT startms=850 endms=1350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crushingblow_custom_5" HIT startms=850 endms=1350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_crushingblow_custom_5" EFFECT startms=872 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_Re_06" src=orig
 "flm_sk_crushingblow_custom_5" EFFECT startms=872 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_06" src=orig
 "flm_sk_crushingblow_custom_5" EFFECT startms=872 payload="FX_PC_FLM_03.Par_N_FLM_DragonSwing_08" src=orig
@@ -781,7 +781,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_crushingblow_custom_6" EFFECT startms=2895 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
 "flm_sk_crushingblow_custom_6" SHAKE startms=2898 payload="" src=orig
 "flm_sk_crushingblow_custom_6" EFFECT startms=2900 payload="" src=orig
-"flm_sk_crushingblow_custom_6" HIT startms=2900 endms=3400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_crushingblow_custom_6" HIT startms=2900 endms=3400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_crushingblow_custom_6" EFFECT startms=2970 payload="" src=orig
 "flm_sk_crushingblow_custom_6" CANCEL startms=3700 endms=4300 payload="" src=orig
 "flm_sk_crushingblow_custom_6" CANCEL startms=3848 endms=4300 payload="" src=orig
@@ -792,7 +792,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_cycloinclance_01" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_Buff_NanmuActive_1" src=orig
 "flm_sk_cycloinclance_01" SUPERARMOR startms=0 endms=1100 payload="" src=orig
 "flm_sk_cycloinclance_01" EFFECT startms=30 payload="" src=orig
-"flm_sk_cycloinclance_01" HIT startms=300 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_01" HIT startms=300 endms=500 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-90 arem=0 maxt=0 src=orig
 "flm_sk_cycloinclance_01" EFFECT startms=349 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_cycloinclance_01" EFFECT startms=349 payload="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Shoulder_00" src=orig
 "flm_sk_cycloinclance_01" EFFECT startms=349 payload="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Shoulder_03" src=orig
@@ -813,13 +813,13 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_cycloinclance_02" EFFECT startms=300 payload="FX_PC_FLM_06.Par_V_FLM_Dragon_dome_37" src=orig
 "flm_sk_cycloinclance_02" SHAKE startms=306 payload="" src=orig
 "flm_sk_cycloinclance_02" EFFECT startms=308 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
-"flm_sk_cycloinclance_02" HIT startms=350 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_02" HIT startms=350 endms=450 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=190 aa=230 ah=200 ax=-50 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_02" HIT startms=500 endms=600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-90 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_02" HIT startms=800 endms=900 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=250 aa=200 ah=200 ax=-50 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_02" HIT startms=950 endms=1050 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=250 aa=200 ah=200 ax=-50 arem=0 maxt=0 src=orig
 "flm_sk_cycloinclance_02" EFFECT startms=360 payload="" src=orig
-"flm_sk_cycloinclance_02" HIT startms=500 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_cycloinclance_02" CANCEL startms=694 endms=1800 payload="[선스]" src=orig
 "flm_sk_cycloinclance_02" CANCEL startms=797 endms=1800 payload="[선이]" src=orig
-"flm_sk_cycloinclance_02" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_cycloinclance_02" HIT startms=950 endms=1050 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_cycloinclance_02" CANCEL startms=1200 endms=1800 payload="" src=orig
 "flm_sk_cycloinclance_03_re" CANCEL startms=0 endms=1433 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_cycloinclance_03_re" CANCEL startms=0 endms=800 payload="[선스]" src=orig
@@ -905,7 +905,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_cycloinclance_custom_4_loop" CANCEL startms=400 endms=2000 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_cycloinclance_custom_4_loop" EFFECT startms=400 payload="" src=orig
 "flm_sk_cycloinclance_custom_4_loop" EFFECT startms=400 payload="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Exp_07" src=orig
-"flm_sk_cycloinclance_custom_4_loop" HIT startms=400 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_cycloinclance_custom_4_loop" HIT startms=400 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-90 arem=0 maxt=0 src=orig
 "flm_sk_cycloinclance_custom_4_loop" SHAKE startms=400 payload="" src=orig
 "flm_sk_cycloinclance_custom_4_loop" SOUND startms=1200 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CyclonicLance2_FX007_3" src=orig
 "flm_sk_cycloinclance_custom_4_loop" SOUND startms=1250 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CyclonicLance2_FX007_2" src=orig
@@ -934,7 +934,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_downwardhit" SUPERARMOR startms=0 endms=1421 payload="" src=orig
 "flm_sk_downwardhit" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DownWardHit1_FX000_1" src=orig
 "flm_sk_downwardhit" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DownWardHit1_Vox1_1" src=orig
-"flm_sk_downwardhit" HIT startms=300 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_downwardhit" HIT startms=300 endms=450 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_downwardhit" HIT startms=550 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_downwardhit" HIT startms=1000 endms=1150 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=35 area=2 ar=380 aa=180 ah=300 ax=-150 arem=0 maxt=0 src=orig
 "flm_sk_downwardhit" EFFECT startms=343 payload="" src=orig
 "flm_sk_downwardhit" EFFECT startms=344 payload="" src=orig
 "flm_sk_downwardhit" CANCEL startms=358 endms=1358 payload="[선스]" src=orig
@@ -944,7 +946,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_downwardhit" EFFECT startms=400 payload="FX_PC_FLM_02.Par_O_FLM_DownwardHit_03_2" src=orig
 "flm_sk_downwardhit" CANCEL startms=408 endms=1408 payload="[선이]" src=orig
 "flm_sk_downwardhit" EFFECT startms=439 payload="FX_PC_FLM_02.Par_O_FLM_Dust_01" src=orig
-"flm_sk_downwardhit" HIT startms=550 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_downwardhit" SOUND startms=791 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DownWardHit1_FX000_2" src=orig
 "flm_sk_downwardhit" EFFECT startms=953 payload="FX_PC_FLM_02.Par_O_FLM_DownwardHit_01_1" src=orig
 "flm_sk_downwardhit" EFFECT startms=953 payload="FX_PC_FLM_02.Par_O_FLM_DownwardHit_01_3" src=orig
@@ -959,7 +960,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_downwardhit" EFFECT startms=994 payload="FX_PC_FLM_02.Par_O_FLM_DownwardHit_02_8" src=orig
 "flm_sk_downwardhit" EFFECT startms=996 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_downwardhit" EFFECT startms=1000 payload="" src=orig
-"flm_sk_downwardhit" HIT startms=1000 endms=1150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_downwardhit" CANCEL startms=1100 endms=2000 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_downwardhit" CANCEL startms=1347 endms=2001 payload="" src=orig
 "flm_sk_downwardhit" CANCEL startms=1400 endms=2000 payload="" src=orig
@@ -1019,7 +1019,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick" EFFECT startms=200 payload="" src=orig
 "flm_sk_dragonkick" CANCEL startms=243 endms=1207 payload="[선이]" src=orig
 "flm_sk_dragonkick" CANCEL startms=243 endms=1155 payload="[선스]" src=orig
-"flm_sk_dragonkick" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_1" src=orig
 "flm_sk_dragonkick" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_2" src=orig
 "flm_sk_dragonkick" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_3" src=orig
@@ -1048,7 +1048,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_2" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Dash_01_2" src=orig
 "flm_sk_dragonkick_custom_2" CANCEL startms=243 endms=1207 payload="[선이]" src=orig
 "flm_sk_dragonkick_custom_2" CANCEL startms=243 endms=1155 payload="[선스]" src=orig
-"flm_sk_dragonkick_custom_2" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_2" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_2" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_2" src=orig
 "flm_sk_dragonkick_custom_2" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_1" src=orig
 "flm_sk_dragonkick_custom_2" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_3" src=orig
@@ -1081,7 +1081,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_27" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Dash_01_3" src=orig
 "flm_sk_dragonkick_custom_27" CANCEL startms=243 endms=1408 payload="[선이]" src=orig
 "flm_sk_dragonkick_custom_27" CANCEL startms=244 endms=1303 payload="[선스]" src=orig
-"flm_sk_dragonkick_custom_27" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_27" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_27" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_1" src=orig
 "flm_sk_dragonkick_custom_27" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_2" src=orig
 "flm_sk_dragonkick_custom_27" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_3" src=orig
@@ -1117,7 +1117,8 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_28" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Dash_01_3" src=orig
 "flm_sk_dragonkick_custom_28" CANCEL startms=244 endms=1610 payload="[선스]" src=orig
 "flm_sk_dragonkick_custom_28" CANCEL startms=341 endms=1707 payload="[선이]" src=orig
-"flm_sk_dragonkick_custom_28" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_28" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_28" HIT startms=1300 endms=1500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_1" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_2" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_3" src=orig
@@ -1134,7 +1135,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_28" EFFECT startms=1250 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_03_2" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=1250 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_03_3" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=1300 payload="" src=orig
-"flm_sk_dragonkick_custom_28" HIT startms=1300 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=1350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=1350 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_1" src=orig
 "flm_sk_dragonkick_custom_28" EFFECT startms=1350 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_2" src=orig
@@ -1153,7 +1153,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_7" EFFECT startms=200 payload="" src=orig
 "flm_sk_dragonkick_custom_7" CANCEL startms=243 endms=1408 payload="[선이]" src=orig
 "flm_sk_dragonkick_custom_7" CANCEL startms=244 endms=1303 payload="[선스]" src=orig
-"flm_sk_dragonkick_custom_7" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_7" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_7" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_2" src=orig
 "flm_sk_dragonkick_custom_7" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_1" src=orig
 "flm_sk_dragonkick_custom_7" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_02_3" src=orig
@@ -1178,7 +1178,8 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_8" EFFECT startms=200 payload="" src=orig
 "flm_sk_dragonkick_custom_8" CANCEL startms=244 endms=1610 payload="[선스]" src=orig
 "flm_sk_dragonkick_custom_8" CANCEL startms=341 endms=1707 payload="[선이]" src=orig
-"flm_sk_dragonkick_custom_8" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_8" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
+"flm_sk_dragonkick_custom_8" HIT startms=1300 endms=1500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_1" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_2" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=370 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_3" src=orig
@@ -1194,7 +1195,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonkick_custom_8" EFFECT startms=1250 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_03_2" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=1250 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_03_3" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=1300 payload="" src=orig
-"flm_sk_dragonkick_custom_8" HIT startms=1300 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=1350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=1350 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_2" src=orig
 "flm_sk_dragonkick_custom_8" EFFECT startms=1350 payload="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_3" src=orig
@@ -1274,7 +1274,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonupfly_02_re" SOUND startms=170 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX000_3" src=orig
 "flm_sk_dragonupfly_02_re" CANCEL startms=195 endms=634 payload="[선이]" src=orig
 "flm_sk_dragonupfly_02_re" SOUND startms=365 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_Vox1_2" src=orig
-"flm_sk_dragonupfly_02_re" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonupfly_02_re" HIT startms=400 endms=600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=180 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
 "flm_sk_dragonupfly_02_re" EFFECT startms=450 payload="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_03" src=orig
 "flm_sk_dragonupfly_02_re" EFFECT startms=450 payload="FX_PC_FLM_01.Par_M_FLM_Att_02" src=orig
 "flm_sk_dragonupfly_02_re" EFFECT startms=450 payload="FX_PC_FLM_06.Par_V_FLM_Att_02" src=orig
@@ -1305,7 +1305,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonupfly_custom_7_01" CANCEL startms=298 endms=933 payload="[선이]" src=orig
 "flm_sk_dragonupfly_custom_7_01" SOUND startms=384 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX007_3" src=orig
 "flm_sk_dragonupfly_custom_7_01" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_Vox1_2" src=orig
-"flm_sk_dragonupfly_custom_7_01" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonupfly_custom_7_01" HIT startms=500 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=180 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
 "flm_sk_dragonupfly_custom_7_01" EFFECT startms=538 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_dragonupfly_custom_7_01" EFFECT startms=546 payload="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_03" src=orig
 "flm_sk_dragonupfly_custom_7_01" EFFECT startms=548 payload="FX_PC_FLM_01.Par_M_FLM_SuAtt_07_00" src=orig
@@ -1338,7 +1338,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonupfly_custom_8_01" EFFECT startms=50 payload="" src=orig
 "flm_sk_dragonupfly_custom_8_01" SOUND startms=170 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX000_3" src=orig
 "flm_sk_dragonupfly_custom_8_01" SOUND startms=365 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_Vox1_2" src=orig
-"flm_sk_dragonupfly_custom_8_01" HIT startms=400 endms=567 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonupfly_custom_8_01" HIT startms=400 endms=567 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=180 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
 "flm_sk_dragonupfly_custom_8_01" EFFECT startms=450 payload="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_03" src=orig
 "flm_sk_dragonupfly_custom_8_01" EFFECT startms=450 payload="FX_PC_FLM_01.Par_M_FLM_Att_02" src=orig
 "flm_sk_dragonupfly_custom_8_01" EFFECT startms=450 payload="FX_PC_FLM_06.Par_V_FLM_Att_02" src=orig
@@ -1358,7 +1358,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_dragonupfly_custom_8_02" EFFECT startms=780 payload="" src=orig
 "flm_sk_dragonupfly_custom_8_02" EFFECT startms=780 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "flm_sk_dragonupfly_custom_8_02" EFFECT startms=780 payload="FX_PC_FLM_06.Par_V_FLM_SuAtt_08_02" src=orig
-"flm_sk_dragonupfly_custom_8_02" HIT startms=780 endms=980 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragonupfly_custom_8_02" HIT startms=780 endms=980 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=180 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
 "flm_sk_dragonupfly_custom_8_02" SHAKE startms=780 payload="" src=orig
 "flm_sk_dragonupfly_custom_8_02" EFFECT startms=785 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_dragonupfly_custom_8_02" SOUND startms=785 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX008_5" src=orig
@@ -1608,12 +1608,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_penetrationlunge_03" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04" src=orig
 "flm_sk_penetrationlunge_03" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02" src=orig
 "flm_sk_penetrationlunge_03" EFFECT startms=300 payload="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24" src=orig
-"flm_sk_penetrationlunge_03" HIT startms=300 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_03" HIT startms=300 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=530 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_03" HIT startms=400 endms=480 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=50 pushr=30 area=2 ar=500 aa=160 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_03" HIT startms=600 endms=750 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=160 aa=160 ah=150 ax=-5 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_03" SHAKE startms=300 payload="" src=orig
 "flm_sk_penetrationlunge_03" EFFECT startms=302 payload="" src=orig
-"flm_sk_penetrationlunge_03" HIT startms=400 endms=480 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_03" EFFECT startms=550 payload="" src=orig
-"flm_sk_penetrationlunge_03" HIT startms=600 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_03" CANCEL startms=800 endms=867 payload="" src=orig
 "flm_sk_penetrationlunge_04" CANCEL startms=0 endms=433 payload="회피기 및 절룡세 캔슬" src=orig
 "flm_sk_penetrationlunge_04" CANCEL startms=0 endms=433 payload="" src=orig
@@ -1640,12 +1640,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_penetrationlunge_custom_7_02" EFFECT startms=200 payload="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_247" src=orig
 "flm_sk_penetrationlunge_custom_7_02" SHAKE startms=200 payload="" src=orig
 "flm_sk_penetrationlunge_custom_7_02" SOUND startms=230 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_PenetrationLunge1_Vox1_1" src=orig
-"flm_sk_penetrationlunge_custom_7_02" HIT startms=300 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_custom_7_02" HIT startms=300 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=530 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_custom_7_02" HIT startms=400 endms=480 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=50 pushr=30 area=2 ar=500 aa=160 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_penetrationlunge_custom_7_02" HIT startms=600 endms=750 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=30 area=2 ar=160 aa=160 ah=150 ax=-5 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_custom_7_02" EFFECT startms=302 payload="" src=orig
-"flm_sk_penetrationlunge_custom_7_02" HIT startms=400 endms=480 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_custom_7_02" EFFECT startms=550 payload="" src=orig
 "flm_sk_penetrationlunge_custom_7_02" CANCEL startms=596 endms=866 payload="회피기 및 절룡세 캔슬" src=orig
-"flm_sk_penetrationlunge_custom_7_02" HIT startms=600 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_penetrationlunge_custom_7_02" CANCEL startms=800 endms=867 payload="" src=orig
 "flm_sk_penetrationlunge_custom_7_03" CANCEL startms=0 endms=433 payload="회피기 및 절룡세 캔슬" src=orig
 "flm_sk_penetrationlunge_custom_7_03" CANCEL startms=0 endms=433 payload="" src=orig
@@ -1721,17 +1721,19 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_01" EFFECT startms=497 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_01_1" src=orig
 "flm_sk_riseup_01" EFFECT startms=497 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" SHAKE startms=497 payload="" src=orig
-"flm_sk_riseup_01" HIT startms=500 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_01" HIT startms=500 endms=650 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=60 area=3 ar=150 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
+"flm_sk_riseup_01" HIT startms=750 endms=900 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=150 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_riseup_01" HIT startms=950 endms=1100 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=15 area=3 ar=170 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_riseup_01" HIT startms=1200 endms=1350 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=140 pushr=100 area=3 ar=220 aa=210 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_01" HIT startms=1350 endms=1500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=3 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_01" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_3" src=orig
 "flm_sk_riseup_01" EFFECT startms=600 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_01" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" SHAKE startms=600 payload="" src=orig
-"flm_sk_riseup_01" HIT startms=750 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_01" EFFECT startms=773 payload="" src=orig
 "flm_sk_riseup_01" EFFECT startms=900 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_01" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" SHAKE startms=900 payload="" src=orig
-"flm_sk_riseup_01" HIT startms=950 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_01" EFFECT startms=980 payload="" src=orig
 "flm_sk_riseup_01" EFFECT startms=1020 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" EFFECT startms=1020 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
@@ -1739,7 +1741,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_01" EFFECT startms=1150 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" EFFECT startms=1150 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_01" SHAKE startms=1150 payload="" src=orig
-"flm_sk_riseup_01" HIT startms=1200 endms=1350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_01" CANCEL startms=1205 endms=2310 payload="" src=orig
 "flm_sk_riseup_01" CANCEL startms=1205 endms=2313 payload="" src=orig
 "flm_sk_riseup_01" CANCEL startms=1295 endms=1501 payload="" src=orig
@@ -1749,7 +1750,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_01" EFFECT startms=1320 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_01" EFFECT startms=1320 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_01" SHAKE startms=1320 payload="" src=orig
-"flm_sk_riseup_01" HIT startms=1350 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_01" SOUND startms=1900 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_4" src=orig
 "flm_sk_riseup_01" CANCEL startms=2300 endms=2667 payload="" src=orig
 "flm_sk_riseup_01" CANCEL startms=2302 endms=2667 payload="" src=orig
@@ -1759,11 +1759,11 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_02" EFFECT startms=0 payload="" src=orig
 "flm_sk_riseup_02" EFFECT startms=0 payload="FX_PC_FLM_05.Par_D_FLM_combo_01" src=orig
 "flm_sk_riseup_02" SUPERARMOR startms=0 endms=907 payload="" src=orig
-"flm_sk_riseup_02" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_02" HIT startms=250 endms=450 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=140 pushr=100 area=3 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_02" HIT startms=550 endms=750 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=140 pushr=100 area=3 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_02" EFFECT startms=260 payload="" src=orig
 "flm_sk_riseup_02" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_5" src=orig
 "flm_sk_riseup_02" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_Vox1_2" src=orig
-"flm_sk_riseup_02" HIT startms=550 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_02" EFFECT startms=602 payload="" src=orig
 "flm_sk_riseup_02" EFFECT startms=602 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_02" EFFECT startms=602 payload="FX_CM_00.Dust.Par_D_Dust_001_1" src=orig
@@ -1784,7 +1784,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_custom_6" EFFECT startms=320 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_6" EFFECT startms=320 payload="FX_CM_00.Dust.Par_D_Dust_001_1" src=orig
 "flm_sk_riseup_custom_6" SHAKE startms=320 payload="" src=orig
-"flm_sk_riseup_custom_6" HIT startms=350 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_6" HIT startms=350 endms=750 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=140 pushr=100 area=3 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_6" EFFECT startms=380 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_03_1" src=orig
 "flm_sk_riseup_custom_6" EFFECT startms=380 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_6" EFFECT startms=388 payload="" src=orig
@@ -1811,7 +1811,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_custom_7" CANCEL startms=393 endms=1405 payload="[선스]" src=orig
 "flm_sk_riseup_custom_7" CANCEL startms=395 endms=1406 payload="[선이]" src=orig
 "flm_sk_riseup_custom_7" EFFECT startms=400 payload="" src=orig
-"flm_sk_riseup_custom_7" HIT startms=400 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_7" HIT startms=400 endms=700 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=60 area=3 ar=150 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_7" EFFECT startms=404 payload="" src=orig
 "flm_sk_riseup_custom_7" EFFECT startms=404 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_01_1" src=orig
 "flm_sk_riseup_custom_7" EFFECT startms=404 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
@@ -1835,17 +1835,19 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_custom_8" EFFECT startms=497 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_02_1" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=497 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" SHAKE startms=497 payload="" src=orig
-"flm_sk_riseup_custom_8" HIT startms=500 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_8" HIT startms=500 endms=650 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=60 area=3 ar=150 aa=360 ah=150 ax=100 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_8" HIT startms=750 endms=900 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=150 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_8" HIT startms=950 endms=1050 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=15 area=3 ar=170 aa=360 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_8" HIT startms=1200 endms=1350 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=140 pushr=100 area=3 ar=220 aa=210 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_riseup_custom_8" HIT startms=1350 endms=1500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=3 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_8" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_3" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=600 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" SHAKE startms=600 payload="" src=orig
-"flm_sk_riseup_custom_8" HIT startms=750 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=773 payload="" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=900 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" SHAKE startms=900 payload="" src=orig
-"flm_sk_riseup_custom_8" HIT startms=950 endms=1050 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=980 payload="" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=1020 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=1020 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
@@ -1853,7 +1855,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_custom_8" EFFECT startms=1150 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=1150 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_custom_8" SHAKE startms=1150 payload="" src=orig
-"flm_sk_riseup_custom_8" HIT startms=1200 endms=1350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_8" CANCEL startms=1202 endms=2308 payload="" src=orig
 "flm_sk_riseup_custom_8" CANCEL startms=1295 endms=1504 payload="" src=orig
 "flm_sk_riseup_custom_8" CANCEL startms=1295 endms=1498 payload="" src=orig
@@ -1862,7 +1863,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_riseup_custom_8" EFFECT startms=1320 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_riseup_custom_8" EFFECT startms=1320 payload="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" src=orig
 "flm_sk_riseup_custom_8" SHAKE startms=1320 payload="" src=orig
-"flm_sk_riseup_custom_8" HIT startms=1350 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_riseup_custom_8" SOUND startms=2000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_4" src=orig
 "flm_sk_riseup_custom_8" CANCEL startms=2300 endms=2667 payload="" src=orig
 "flm_sk_ruffle_01" CANCEL startms=0 endms=1000 payload="연가심공" src=orig
@@ -1878,7 +1878,10 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_02" SHAKE startms=95 payload="" src=orig
 "flm_sk_ruffle_02" CANCEL startms=97 endms=1000 payload="[선스]" src=orig
 "flm_sk_ruffle_02" EFFECT startms=97 payload="" src=orig
-"flm_sk_ruffle_02" HIT startms=100 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_02" HIT startms=100 endms=200 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=80 pushr=10 area=3 ar=270 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_02" HIT startms=300 endms=400 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=110 pushr=50 area=2 ar=530 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_02" HIT startms=500 endms=600 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=80 pushr=10 area=3 ar=280 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_02" HIT startms=750 endms=850 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_02" EFFECT startms=102 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
 "flm_sk_ruffle_02" EFFECT startms=109 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_02" src=orig
 "flm_sk_ruffle_02" EFFECT startms=109 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
@@ -1886,17 +1889,14 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_02" CANCEL startms=198 endms=1000 payload="[선이]" src=orig
 "flm_sk_ruffle_02" EFFECT startms=252 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_02" src=orig
 "flm_sk_ruffle_02" EFFECT startms=252 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
-"flm_sk_ruffle_02" HIT startms=300 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_02" EFFECT startms=362 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_02" src=orig
 "flm_sk_ruffle_02" EFFECT startms=362 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
 "flm_sk_ruffle_02" EFFECT startms=442 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
-"flm_sk_ruffle_02" HIT startms=500 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_02" EFFECT startms=567 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_03" src=orig
 "flm_sk_ruffle_02" EFFECT startms=567 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_03" src=orig
 "flm_sk_ruffle_02" EFFECT startms=632 payload="FX_PC_FLM_03.Par_N_MovingDust_01" src=orig
 "flm_sk_ruffle_02" EFFECT startms=661 payload="FX_PC_FLM_03.Par_N_FLM_RibbonTrail_03" src=orig
 "flm_sk_ruffle_02" EFFECT startms=700 payload="FX_PC_FLM_03.Par_N_FLM_Hurricane_Trail_02_1" src=orig
-"flm_sk_ruffle_02" HIT startms=750 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_02" EFFECT startms=780 payload="" src=orig
 "flm_sk_ruffle_02" CANCEL startms=1000 endms=1000 payload="" src=orig
 "flm_sk_ruffle_03" CANCEL startms=0 endms=205 payload="[선스]" src=orig
@@ -1914,7 +1914,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_4" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Ruffle1_Vox1_1" src=orig
 "flm_sk_ruffle_custom_4" CANCEL startms=192 endms=1105 payload="[선이]" src=orig
 "flm_sk_ruffle_custom_4" CANCEL startms=194 endms=907 payload="[선스]" src=orig
-"flm_sk_ruffle_custom_4" HIT startms=450 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_4" HIT startms=450 endms=550 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=80 pushr=10 area=3 ar=270 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_4" EFFECT startms=470 payload="" src=orig
 "flm_sk_ruffle_custom_4" SHAKE startms=470 payload="" src=orig
 "flm_sk_ruffle_custom_4" EFFECT startms=475 payload="" src=orig
@@ -1939,7 +1939,14 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" SHAKE startms=95 payload="" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=100 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=100 endms=200 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=80 pushr=10 area=3 ar=270 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=300 endms=400 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=110 pushr=50 area=2 ar=530 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=500 endms=600 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=80 pushr=10 area=3 ar=280 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=900 endms=1000 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=1100 endms=1200 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=1300 endms=1400 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=1700 endms=1800 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_5_02" HIT startms=1900 endms=2000 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=102 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=111 payload="" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=196 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
@@ -1949,7 +1956,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=196 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=196 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" CANCEL startms=300 endms=2200 payload="" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=300 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
@@ -1957,7 +1963,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=392 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=500 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=593 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_03" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=593 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_03" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=593 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_03" src=orig
@@ -1971,14 +1976,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=795 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=795 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=804 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=900 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=989 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=1100 endms=1200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1181 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1181 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1181 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
@@ -1986,7 +1989,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1181 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1181 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1189 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=1300 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_03" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_03" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1387 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_03" src=orig
@@ -2000,14 +2002,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1602 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1602 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1619 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=1700 endms=1800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1796 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" src=orig
-"flm_sk_ruffle_custom_5_02" HIT startms=1900 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1987 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_07_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1987 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_02" src=orig
 "flm_sk_ruffle_custom_5_02" EFFECT startms=1987 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_02" src=orig
@@ -2031,7 +2031,8 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_6" EFFECT startms=95 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_03" src=orig
 "flm_sk_ruffle_custom_6" SHAKE startms=95 payload="" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=100 payload="" src=orig
-"flm_sk_ruffle_custom_6" HIT startms=100 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_6" HIT startms=100 endms=200 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=80 pushr=10 area=3 ar=270 aa=360 ah=150 ax=180 arem=0 maxt=0 src=orig
+"flm_sk_ruffle_custom_6" HIT startms=400 endms=500 rep=1 repms=200 fz=450 fzin=200 fzout=250 push=110 pushr=50 area=2 ar=530 aa=270 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=102 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=114 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=127 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" src=orig
@@ -2042,7 +2043,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_ruffle_custom_6" EFFECT startms=342 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_03" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=342 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_01_03" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=342 payload="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_03" src=orig
-"flm_sk_ruffle_custom_6" HIT startms=400 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=410 payload="" src=orig
 "flm_sk_ruffle_custom_6" EFFECT startms=445 payload="FX_PC_FLM_03.Par_N_FLM_Hurricane_Trail_02_1" src=orig
 "flm_sk_ruffle_custom_6" CANCEL startms=500 endms=700 payload="회피기캔슬(테스트)" src=orig
@@ -2058,7 +2058,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_sharpswing_01" EFFECT startms=30 payload="" src=orig
 "flm_sk_sharpswing_01" CANCEL startms=198 endms=600 payload="[선스]" src=orig
 "flm_sk_sharpswing_01" CANCEL startms=199 endms=600 payload="[선이]" src=orig
-"flm_sk_sharpswing_01" HIT startms=300 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_sharpswing_01" HIT startms=300 endms=600 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=110 pushr=50 area=3 ar=220 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_sharpswing_01" EFFECT startms=302 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_02" src=orig
 "flm_sk_sharpswing_01" EFFECT startms=302 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_01" src=orig
 "flm_sk_sharpswing_01" EFFECT startms=302 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_03" src=orig
@@ -2078,7 +2078,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_sharpswing_02" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX200_2" src=orig
 "flm_sk_sharpswing_02" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX300_2" src=orig
 "flm_sk_sharpswing_02" CANCEL startms=98 endms=900 payload="회피기캔슬(테스트)" src=orig
-"flm_sk_sharpswing_02" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_sharpswing_02" HIT startms=200 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=120 pushr=70 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_sharpswing_02" EFFECT startms=244 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_01" src=orig
 "flm_sk_sharpswing_02" EFFECT startms=244 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_02" src=orig
 "flm_sk_sharpswing_02" EFFECT startms=244 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_03" src=orig
@@ -2100,7 +2100,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_sharpswing_custom_4" CANCEL startms=97 endms=1234 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_sharpswing_custom_4" SOUND startms=200 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_Vox1_2" src=orig
 "flm_sk_sharpswing_custom_4" EFFECT startms=330 payload="FX_PC_FLM_01.Par_M_FLM_Trail_05" src=orig
-"flm_sk_sharpswing_custom_4" HIT startms=400 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_sharpswing_custom_4" HIT startms=400 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=120 pushr=70 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_sharpswing_custom_4" SUPERARMOR startms=410 endms=830 payload="" src=orig
 "flm_sk_sharpswing_custom_4" EFFECT startms=433 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_01_4" src=orig
 "flm_sk_sharpswing_custom_4" EFFECT startms=433 payload="FX_PC_FLM_01.Par_M_FLM_TwoAttTrail_02_4" src=orig
@@ -2124,7 +2124,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_sharpswing_custom_8" SOUND startms=77 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX348_1" src=orig
 "flm_sk_sharpswing_custom_8" SOUND startms=200 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_Vox1_4" src=orig
 "flm_sk_sharpswing_custom_8" EFFECT startms=202 payload="FX_PC_FLM_01.Par_M_FLM_Trail_05" src=orig
-"flm_sk_sharpswing_custom_8" HIT startms=400 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_sharpswing_custom_8" HIT startms=400 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=120 pushr=70 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_sharpswing_custom_8" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX148_2" src=orig
 "flm_sk_sharpswing_custom_8" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX248_2" src=orig
 "flm_sk_sharpswing_custom_8" SOUND startms=400 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX348_2" src=orig
@@ -2151,7 +2151,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_squalllance_01" SOUND startms=700 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SquallLance1_Vox1_1" src=orig
 "flm_sk_squalllance_01" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_squalllance_01" EFFECT startms=900 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_00" src=orig
-"flm_sk_squalllance_01" HIT startms=900 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_01" HIT startms=900 endms=1100 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=50 area=2 ar=380 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_01" SHAKE startms=900 payload="" src=orig
 "flm_sk_squalllance_01" EFFECT startms=950 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_00" src=orig
 "flm_sk_squalllance_01" EFFECT startms=983 payload="" src=orig
@@ -2169,39 +2169,39 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_squalllance_02" SUPERARMOR startms=0 endms=3367 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=150 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" src=orig
 "flm_sk_squalllance_02" EFFECT startms=200 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" src=orig
-"flm_sk_squalllance_02" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=200 endms=350 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=380 aa=310 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=400 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=400 aa=330 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=800 endms=950 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=420 aa=340 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=1000 endms=1150 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=440 aa=340 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=1350 endms=1500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=440 aa=360 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=1800 endms=1950 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=50 pushr=10 area=2 ar=460 aa=220 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=2000 endms=2150 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=2300 endms=2450 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=2700 endms=2850 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_02" HIT startms=2900 endms=3300 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" SHAKE startms=200 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=244 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_squalllance_02" EFFECT startms=400 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" src=orig
-"flm_sk_squalllance_02" HIT startms=400 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" EFFECT startms=494 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=750 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" src=orig
 "flm_sk_squalllance_02" EFFECT startms=800 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" src=orig
-"flm_sk_squalllance_02" HIT startms=800 endms=950 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" SHAKE startms=800 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=845 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1000 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" src=orig
-"flm_sk_squalllance_02" HIT startms=1000 endms=1150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" SOUND startms=1000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SquallLance1_FX000_4" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1051 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1300 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1350 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" src=orig
-"flm_sk_squalllance_02" HIT startms=1350 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" SHAKE startms=1350 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1382 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1750 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_01" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1750 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_01" src=orig
 "flm_sk_squalllance_02" SHAKE startms=1750 payload="" src=orig
 "flm_sk_squalllance_02" EFFECT startms=1800 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_02" src=orig
-"flm_sk_squalllance_02" HIT startms=1800 endms=1950 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" EFFECT startms=1807 payload="" src=orig
-"flm_sk_squalllance_02" HIT startms=2000 endms=2150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_squalllance_02" HIT startms=2300 endms=2450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" EFFECT startms=2312 payload="" src=orig
-"flm_sk_squalllance_02" HIT startms=2700 endms=2850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" EFFECT startms=2729 payload="" src=orig
-"flm_sk_squalllance_02" HIT startms=2900 endms=3300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_02" EFFECT startms=3037 payload="" src=orig
 "flm_sk_squalllance_02" CANCEL startms=3283 endms=3367 payload="" src=orig
 "flm_sk_squalllance_03" CANCEL startms=0 endms=1567 payload="연가심공" src=orig
@@ -2215,7 +2215,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_squalllance_03" CANCEL startms=198 endms=1306 payload="[선이]" src=orig
 "flm_sk_squalllance_03" EFFECT startms=400 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dash_00" src=orig
 "flm_sk_squalllance_03" EFFECT startms=400 payload="" src=orig
-"flm_sk_squalllance_03" HIT startms=500 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_03" HIT startms=500 endms=750 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_03" EFFECT startms=537 payload="" src=orig
 "flm_sk_squalllance_03" EFFECT startms=550 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_01" src=orig
 "flm_sk_squalllance_03" EFFECT startms=600 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Debris_00" src=orig
@@ -2231,7 +2231,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX000_1" src=orig
 "flm_sk_stab" SOUND startms=90 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_Vox1_1" src=orig
 "flm_sk_stab" CANCEL startms=144 endms=1200 payload="회피기 및 절룡세 캔슬" src=orig
-"flm_sk_stab" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab" HIT startms=350 endms=550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab" EFFECT startms=400 payload="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1" src=orig
 "flm_sk_stab" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_stab" EFFECT startms=400 payload="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" src=orig
@@ -2253,7 +2253,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab_custom_2_02" CANCEL startms=0 endms=506 payload="[선이]" src=orig
 "flm_sk_stab_custom_2_02" CANCEL startms=0 endms=507 payload="[선스]" src=orig
 "flm_sk_stab_custom_2_02" CANCEL startms=0 endms=833 payload="연가심공" src=orig
-"flm_sk_stab_custom_2_02" HIT startms=0 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab_custom_2_02" HIT startms=0 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab_custom_2_02" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX050_1" src=orig
 "flm_sk_stab_custom_2_02" SOUND startms=53 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_Vox1_1" src=orig
 "flm_sk_stab_custom_2_02" EFFECT startms=100 payload="" src=orig
@@ -2270,7 +2270,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab_custom_3_01" EFFECT startms=169 payload="FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1" src=orig
 "flm_sk_stab_custom_3_01" CANCEL startms=200 endms=550 payload="[선스]" src=orig
 "flm_sk_stab_custom_3_01" CANCEL startms=200 endms=550 payload="[선이]" src=orig
-"flm_sk_stab_custom_3_01" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab_custom_3_01" HIT startms=200 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab_custom_3_01" EFFECT startms=250 payload="" src=orig
 "flm_sk_stab_custom_3_01" EFFECT startms=250 payload="FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1" src=orig
 "flm_sk_stab_custom_3_01" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2285,7 +2285,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab_custom_4_02" CANCEL startms=0 endms=767 payload="[선스]" src=orig
 "flm_sk_stab_custom_4_02" CANCEL startms=0 endms=767 payload="[선이]" src=orig
 "flm_sk_stab_custom_4_02" CANCEL startms=0 endms=767 payload="연가심공" src=orig
-"flm_sk_stab_custom_4_02" HIT startms=0 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab_custom_4_02" HIT startms=0 endms=500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab_custom_4_02" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX040_1" src=orig
 "flm_sk_stab_custom_4_02" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_Vox1_2" src=orig
 "flm_sk_stab_custom_4_02" EFFECT startms=63 payload="" src=orig
@@ -2303,7 +2303,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab_custom_4_03_1" CANCEL startms=0 endms=504 payload="[선이]" src=orig
 "flm_sk_stab_custom_4_03_1" CANCEL startms=0 endms=505 payload="[선스]" src=orig
 "flm_sk_stab_custom_4_03_1" CANCEL startms=0 endms=933 payload="연가심공" src=orig
-"flm_sk_stab_custom_4_03_1" HIT startms=0 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab_custom_4_03_1" HIT startms=0 endms=500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab_custom_4_03_1" SOUND startms=13 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX000_1" src=orig
 "flm_sk_stab_custom_4_03_1" SOUND startms=100 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_Vox1_1" src=orig
 "flm_sk_stab_custom_4_03_1" EFFECT startms=156 payload="" src=orig
@@ -2319,7 +2319,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_stab_custom_7" CANCEL startms=0 endms=806 payload="[선이]" src=orig
 "flm_sk_stab_custom_7" CANCEL startms=0 endms=1233 payload="연가심공" src=orig
 "flm_sk_stab_custom_7" EFFECT startms=10 payload="FX_PC_FLM_04.Par_S_FLM_Stab_Cast_02_1" src=orig
-"flm_sk_stab_custom_7" HIT startms=450 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_stab_custom_7" HIT startms=450 endms=650 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_stab_custom_7" EFFECT startms=493 payload="" src=orig
 "flm_sk_stab_custom_7" EFFECT startms=550 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "flm_sk_stab_custom_7" EFFECT startms=550 payload="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_05_1" src=orig
@@ -2352,7 +2352,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_Vox1_1" src=orig
 "flm_sk_strongrotational" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational" HIT startms=500 endms=700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational" HIT startms=800 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
@@ -2364,7 +2366,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational" CANCEL startms=444 endms=1459 payload="[선스]" src=orig
 "flm_sk_strongrotational" CANCEL startms=494 endms=1515 payload="[선이]" src=orig
-"flm_sk_strongrotational" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational" CANCEL startms=502 endms=1833 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_strongrotational" EFFECT startms=511 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational" EFFECT startms=511 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2378,7 +2379,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
-"flm_sk_strongrotational" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational" EFFECT startms=808 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
 "flm_sk_strongrotational" SHAKE startms=809 payload="" src=orig
 "flm_sk_strongrotational" EFFECT startms=813 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2409,7 +2409,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_01" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_01" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_Vox1_1" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_01" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_01" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_01" HIT startms=500 endms=700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_01" HIT startms=800 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
@@ -2419,7 +2421,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
-"flm_sk_strongrotational_01" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_01" CANCEL startms=502 endms=1000 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=511 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=511 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2434,7 +2435,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
-"flm_sk_strongrotational_01" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_01" EFFECT startms=808 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
 "flm_sk_strongrotational_01" SHAKE startms=809 payload="" src=orig
 "flm_sk_strongrotational_01" EFFECT startms=813 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2459,7 +2459,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7" CANCEL startms=195 endms=1259 payload="[선이]" src=orig
 "flm_sk_strongrotational_custom_7" CANCEL startms=196 endms=1159 payload="[선스]" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_custom_7" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7" HIT startms=500 endms=700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7" HIT startms=800 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
@@ -2469,7 +2471,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_7" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_7" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
-"flm_sk_strongrotational_custom_7" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7" CANCEL startms=503 endms=1600 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=511 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=511 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2483,7 +2484,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
-"flm_sk_strongrotational_custom_7" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=805 payload="" src=orig
 "flm_sk_strongrotational_custom_7" EFFECT startms=808 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
 "flm_sk_strongrotational_custom_7" SHAKE startms=809 payload="" src=orig
@@ -2502,7 +2502,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7_01" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_7_01" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_Vox2_1" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_custom_7_01" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7_01" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7_01" HIT startms=500 endms=700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_7_01" HIT startms=800 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
@@ -2512,7 +2514,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_7_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_7_01" SOUND startms=340 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
-"flm_sk_strongrotational_custom_7_01" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7_01" CANCEL startms=503 endms=1000 payload="회피기캔슬(테스트)" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=511 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=511 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2527,7 +2528,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=793 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
-"flm_sk_strongrotational_custom_7_01" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=808 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
 "flm_sk_strongrotational_custom_7_01" SHAKE startms=809 payload="" src=orig
 "flm_sk_strongrotational_custom_7_01" EFFECT startms=813 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2542,7 +2542,12 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8" SOUND startms=40 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_Vox3_1" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=400 endms=600 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=650 endms=850 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=1100 endms=1300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=280 aa=250 ah=200 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=1400 endms=1600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=280 aa=250 ah=200 ax=-30 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8" HIT startms=1600 endms=1800 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=280 aa=250 ah=200 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2552,7 +2557,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=432 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=439 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=439 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
@@ -2567,7 +2571,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_8" CANCEL startms=503 endms=2300 payload="회피기캔슬(테스트)" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=650 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
@@ -2592,7 +2595,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8" SOUND startms=970 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=970 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=970 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=1100 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=1160 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=1160 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8" SOUND startms=1160 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
@@ -2612,9 +2614,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8" EFFECT startms=1398 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1398 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1400 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=1400 endms=1600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1410 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"flm_sk_strongrotational_custom_8" HIT startms=1600 endms=1800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1612 payload="" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1630 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_8" EFFECT startms=1631 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
@@ -2641,7 +2641,10 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8_01" SOUND startms=40 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=70 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_Vox3_1" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=196 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
-"flm_sk_strongrotational_custom_8_01" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8_01" HIT startms=200 endms=400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8_01" HIT startms=400 endms=600 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8_01" HIT startms=650 endms=850 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 src=orig
+"flm_sk_strongrotational_custom_8_01" HIT startms=1000 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=110 pushr=50 area=2 ar=280 aa=250 ah=200 ax=-30 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=203 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
@@ -2651,7 +2654,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8_01" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=280 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
-"flm_sk_strongrotational_custom_8_01" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=432 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=439 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=439 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
@@ -2666,7 +2668,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8_01" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=500 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" src=orig
 "flm_sk_strongrotational_custom_8_01" CANCEL startms=503 endms=1000 payload="회피기캔슬(테스트)" src=orig
-"flm_sk_strongrotational_custom_8_01" HIT startms=650 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_05" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=684 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_04" src=orig
@@ -2695,7 +2696,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=1000 payload="FX_PC_FLM_01.Par_M_FLM_MTrail_01" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=1000 payload="FX_PC_FLM_01.Par_M_FLM_dust_01" src=orig
 "flm_sk_strongrotational_custom_8_01" EFFECT startms=1000 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"flm_sk_strongrotational_custom_8_01" HIT startms=1000 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_strongrotational_custom_8_01" SHAKE startms=1000 payload="" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=1000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" src=orig
 "flm_sk_strongrotational_custom_8_01" SOUND startms=1000 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" src=orig
@@ -2874,18 +2874,18 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_talonstrike" EFFECT startms=447 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_31" src=orig
 "flm_sk_talonstrike" EFFECT startms=494 payload="" src=orig
 "flm_sk_talonstrike" CANCEL startms=500 endms=2467 payload="회피기 및 절룡세 캔슬" src=orig
-"flm_sk_talonstrike" HIT startms=500 endms=650 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike" HIT startms=500 endms=650 rep=2 repms=200 fz=325 fzin=200 fzout=200 push=80 pushr=20 area=2 ar=350 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike" HIT startms=700 endms=850 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike" HIT startms=900 endms=1050 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike" HIT startms=1400 endms=1550 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike" EFFECT startms=501 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_talonstrike" EFFECT startms=502 payload="FX_PC_FLM_05.Par_N_UnderDust_01" src=orig
 "flm_sk_talonstrike" CANCEL startms=692 endms=1711 payload="[선스]" src=orig
-"flm_sk_talonstrike" HIT startms=700 endms=850 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike" CANCEL startms=794 endms=1817 payload="[선이]" src=orig
-"flm_sk_talonstrike" HIT startms=900 endms=1050 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike" SOUND startms=900 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX000_3" src=orig
 "flm_sk_talonstrike" SOUND startms=1300 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_Vox1_2" src=orig
 "flm_sk_talonstrike" EFFECT startms=1398 payload="" src=orig
 "flm_sk_talonstrike" SHAKE startms=1399 payload="" src=orig
-"flm_sk_talonstrike" HIT startms=1400 endms=1550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike" EFFECT startms=1407 payload="FX_PC_FLM_03.Par_N_FLM_Dust_02" src=orig
 "flm_sk_talonstrike" EFFECT startms=1416 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_talonstrike" EFFECT startms=1421 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_02" src=orig
@@ -2903,7 +2903,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_talonstrike_custom_4_03-1" CANCEL startms=0 endms=607 payload="[선이]" src=orig
 "flm_sk_talonstrike_custom_4_03-1" CANCEL startms=0 endms=1100 payload="연가심공" src=orig
 "flm_sk_talonstrike_custom_4_03-1" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX040_4" src=orig
-"flm_sk_talonstrike_custom_4_03-1" HIT startms=100 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_4_03-1" HIT startms=100 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike_custom_4_03-1" SHAKE startms=145 payload="" src=orig
 "flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_02" src=orig
 "flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_32" src=orig
@@ -2923,7 +2923,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_talonstrike_custom_4_03-2" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_CastSphere_Re_01" src=orig
 "flm_sk_talonstrike_custom_4_03-2" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX040_4" src=orig
 "flm_sk_talonstrike_custom_4_03-2" SOUND startms=130 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_Vox1_2" src=orig
-"flm_sk_talonstrike_custom_4_03-2" HIT startms=200 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_4_03-2" HIT startms=200 endms=500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike_custom_4_03-2" EFFECT startms=247 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_06" src=orig
 "flm_sk_talonstrike_custom_4_03-2" EFFECT startms=247 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraWind_01" src=orig
 "flm_sk_talonstrike_custom_4_03-2" EFFECT startms=249 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_04" src=orig
@@ -2950,20 +2950,20 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_talonstrike_custom_7" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_31" src=orig
 "flm_sk_talonstrike_custom_7" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX007_2" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=50 payload="" src=orig
-"flm_sk_talonstrike_custom_7" HIT startms=50 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_7" HIT startms=50 endms=200 rep=2 repms=200 fz=325 fzin=200 fzout=200 push=80 pushr=20 area=2 ar=350 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_7" HIT startms=250 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_7" HIT startms=650 endms=800 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_7" HIT startms=850 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_7" HIT startms=1250 endms=1400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=51 payload="" src=orig
 "flm_sk_talonstrike_custom_7" SOUND startms=100 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_Vox1_1" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=107 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=108 payload="FX_PC_FLM_05.Par_N_UnderDust_01" src=orig
 "flm_sk_talonstrike_custom_7" CANCEL startms=150 endms=1733 payload="" src=orig
-"flm_sk_talonstrike_custom_7" HIT startms=250 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_talonstrike_custom_7" HIT startms=650 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=798 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_01" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=798 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_03" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=798 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_01" src=orig
 "flm_sk_talonstrike_custom_7" EFFECT startms=798 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_31" src=orig
-"flm_sk_talonstrike_custom_7" HIT startms=850 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_talonstrike_custom_7" HIT startms=1250 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_talonstrike_custom_7" CANCEL startms=1732 endms=1734 payload="" src=orig
 "flm_sk_threetalonstrike_01" CANCEL startms=0 endms=1500 payload="연가심공" src=orig
 "flm_sk_threetalonstrike_01" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_1" src=orig
@@ -2972,7 +2972,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_01" CANCEL startms=200 endms=920 payload="[선스]" src=orig
 "flm_sk_threetalonstrike_01" CANCEL startms=200 endms=920 payload="[선이]" src=orig
 "flm_sk_threetalonstrike_01" SOUND startms=350 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_2" src=orig
-"flm_sk_threetalonstrike_01" HIT startms=400 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_01" HIT startms=400 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_01" EFFECT startms=463 payload="" src=orig
 "flm_sk_threetalonstrike_01" EFFECT startms=463 payload="FX_PC_FLM_04.Par_S_FLM_TTstrike_Atk_01_1" src=orig
 "flm_sk_threetalonstrike_01" EFFECT startms=463 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_1" src=orig
@@ -2986,7 +2986,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_02" EFFECT startms=100 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_1" src=orig
 "flm_sk_threetalonstrike_02" SOUND startms=270 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_Vox1_2" src=orig
 "flm_sk_threetalonstrike_02" SOUND startms=270 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_01" src=orig
-"flm_sk_threetalonstrike_02" HIT startms=500 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_02" HIT startms=500 endms=800 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_02" EFFECT startms=529 payload="" src=orig
 "flm_sk_threetalonstrike_02" EFFECT startms=529 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_threetalonstrike_02" SHAKE startms=530 payload="" src=orig
@@ -2999,7 +2999,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_03" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_2" src=orig
 "flm_sk_threetalonstrike_03" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Dust_01_1" src=orig
 "flm_sk_threetalonstrike_03" SOUND startms=220 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_02" src=orig
-"flm_sk_threetalonstrike_03" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_03" HIT startms=400 endms=600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=220 aa=220 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_03" EFFECT startms=433 payload="" src=orig
 "flm_sk_threetalonstrike_03" EFFECT startms=433 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_2" src=orig
 "flm_sk_threetalonstrike_03" EFFECT startms=433 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
@@ -3022,9 +3022,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_custom_2_01" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX100_1" src=orig
 "flm_sk_threetalonstrike_custom_2_01" SOUND startms=1 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_Vox3_1" src=orig
 "flm_sk_threetalonstrike_custom_2_01" EFFECT startms=30 payload="" src=orig
-"flm_sk_threetalonstrike_custom_2_01" HIT startms=100 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_2_01" HIT startms=100 endms=200 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_2_01" HIT startms=200 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_2_01" EFFECT startms=120 payload="" src=orig
-"flm_sk_threetalonstrike_custom_2_01" HIT startms=200 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_2_01" SOUND startms=330 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX200_1" src=orig
 "flm_sk_threetalonstrike_custom_2_01" CANCEL startms=354 endms=1201 payload="[선스]" src=orig
 "flm_sk_threetalonstrike_custom_2_01" CANCEL startms=516 endms=1200 payload="" src=orig
@@ -3036,7 +3036,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_custom_2_02" EFFECT startms=0 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Dust_03_1" src=orig
 "flm_sk_threetalonstrike_custom_2_02" SOUND startms=130 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_Vox3_2" src=orig
 "flm_sk_threetalonstrike_custom_2_02" EFFECT startms=200 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_1" src=orig
-"flm_sk_threetalonstrike_custom_2_02" HIT startms=450 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_2_02" HIT startms=450 endms=750 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=220 aa=220 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_2_02" EFFECT startms=473 payload="" src=orig
 "flm_sk_threetalonstrike_custom_2_02" SOUND startms=480 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX200_2" src=orig
 "flm_sk_threetalonstrike_custom_2_02" EFFECT startms=486 payload="" src=orig
@@ -3053,13 +3053,15 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=300 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=300 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_1" src=orig
-"flm_sk_threetalonstrike_custom_3" HIT startms=300 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_3" HIT startms=300 endms=500 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_3" HIT startms=550 endms=750 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_3" HIT startms=800 endms=1000 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=220 aa=220 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_threetalonstrike_custom_3" HIT startms=1500 endms=1700 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=70 pushr=50 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_3" SHAKE startms=300 payload="" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=301 payload="" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=314 payload="" src=orig
 "flm_sk_threetalonstrike_custom_3" SOUND startms=384 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_02" src=orig
 "flm_sk_threetalonstrike_custom_3" CANCEL startms=501 endms=2267 payload="회피기캔슬(테스트)" src=orig
-"flm_sk_threetalonstrike_custom_3" HIT startms=550 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=560 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=560 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=560 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_1" src=orig
@@ -3068,7 +3070,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_custom_3" CANCEL startms=659 endms=1859 payload="[선스]" src=orig
 "flm_sk_threetalonstrike_custom_3" SOUND startms=660 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_03" src=orig
 "flm_sk_threetalonstrike_custom_3" CANCEL startms=757 endms=1957 payload="[선이]" src=orig
-"flm_sk_threetalonstrike_custom_3" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=830 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=830 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=830 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_1" src=orig
@@ -3076,7 +3077,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=835 payload="" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=1450 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_2" src=orig
 "flm_sk_threetalonstrike_custom_3" SOUND startms=1450 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX200_2" src=orig
-"flm_sk_threetalonstrike_custom_3" HIT startms=1500 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=1536 payload="" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=1536 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
 "flm_sk_threetalonstrike_custom_3" EFFECT startms=1536 payload="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_2" src=orig

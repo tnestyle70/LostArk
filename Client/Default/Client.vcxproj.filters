@@ -82,6 +82,9 @@
     <Filter Include="96.DataFiles\Animation\RootMotion">
       <UniqueIdentifier>{2f6a1c94-3d58-49b1-9a07-6c1d8b4e7f30}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Animation\HitShapes">
+      <UniqueIdentifier>{7b3c9e12-5a4f-4d6e-8c21-9f0a1b2c3d4e}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Balance">
       <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
     </Filter>
@@ -355,6 +358,9 @@
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Character.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\HitAreaWire.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp">
@@ -658,6 +664,9 @@
     <ClInclude Include="..\Public\Character.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\HitAreaWire.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
 	<ClInclude Include="..\Public\ActionPresentationTimeline.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClInclude>
@@ -954,6 +963,18 @@
     </None>
     <None Include="..\..\Data\Animation\RootMotion\DimensionMaster.rootmotion.json">
       <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\HitShapes\LanceMaster.hitshapes.json">
+      <Filter>96.DataFiles\Animation\HitShapes</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\HitShapes\Warlord.hitshapes.json">
+      <Filter>96.DataFiles\Animation\HitShapes</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\HitShapes\Artist.hitshapes.json">
+      <Filter>96.DataFiles\Animation\HitShapes</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\HitShapes\DimensionMaster.hitshapes.json">
+      <Filter>96.DataFiles\Animation\HitShapes</Filter>
     </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>

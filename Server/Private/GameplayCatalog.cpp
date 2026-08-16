@@ -236,6 +236,77 @@ bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
 	return true;
 }
 
+bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
+	const std::string_view packed,
+	const std::uint32_t hitCount,
+	const std::uint32_t limitMs,
+	std::vector<PLAYER_SKILL_HIT>& outHits)
+{
+	outHits.clear();
+	outHits.reserve(hitCount);
+	std::uint32_t subHits = 0;
+	std::size_t cursor = 0;
+	while (cursor <= packed.size())
+	{
+		const std::size_t comma = packed.find(',', cursor);
+		const std::string_view token{
+			packed.data() + cursor,
+			(std::string::npos == comma ? packed.size() : comma) - cursor };
+		std::string_view fields[10];
+		std::size_t fieldCount = 0;
+		std::size_t start = 0;
+		while (fieldCount < 10)
+		{
+			const std::size_t colon = token.find(':', start);
+			fields[fieldCount++] = token.substr(start,
+				std::string_view::npos == colon ? std::string_view::npos : colon - start);
+			if (std::string_view::npos == colon)
+				break;
+			start = colon + 1;
+		}
+		PLAYER_SKILL_HIT hit{};
+		if (10u != fieldCount ||
+			!ParseNumber(fields[0], hit.iTimeMs) ||
+			!ParseNumber(fields[1], hit.iRepeatCount) ||
+			!ParseNumber(fields[2], hit.iRepeatMs) ||
+			!ParseNumber(fields[3], hit.iAreaType) ||
+			!ParseNumber(fields[4], hit.fRange) ||
+			!ParseNumber(fields[5], hit.fAngleDegrees) ||
+			!ParseNumber(fields[6], hit.fHeight) ||
+			!ParseNumber(fields[7], hit.fOffset) ||
+			!ParseNumber(fields[8], hit.fInner) ||
+			!ParseNumber(fields[9], hit.iMaxTargets) ||
+			hit.iTimeMs > limitMs ||
+			0u == hit.iRepeatCount || hit.iRepeatCount > 64u ||
+			(hit.iRepeatCount > 1u && 0u == hit.iRepeatMs) ||
+			hit.iAreaType < 1u || hit.iAreaType > 3u ||
+			!std::isfinite(hit.fRange) || hit.fRange <= 0.f ||
+			!std::isfinite(hit.fAngleDegrees) || hit.fAngleDegrees < 0.f ||
+			hit.fAngleDegrees > 360.f ||
+			!std::isfinite(hit.fHeight) || hit.fHeight < 0.f ||
+			(1u == hit.iAreaType && hit.fHeight <= 0.f) ||
+			!std::isfinite(hit.fOffset) ||
+			!std::isfinite(hit.fInner) || hit.fInner < 0.f ||
+			hit.fInner >= hit.fRange ||
+			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
+		{
+			m_strStatus = "Skill hit shape is invalid";
+			return false;
+		}
+		subHits += hit.iRepeatCount;
+		outHits.push_back(hit);
+		if (std::string::npos == comma)
+			break;
+		cursor = comma + 1;
+	}
+	if (outHits.size() != hitCount || subHits > 64u)
+	{
+		m_strStatus = "Skill hit shape count does not match";
+		return false;
+	}
+	return true;
+}
+
 bool LostArk::Server::CGameplayCatalog::Load()
 {
 	using SKILL_MAP = decltype(m_Skills);
@@ -489,6 +560,69 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			stage.RootMotion = std::move(samples);
+		}
+		else if (!fields.empty() && "SKILLHIT" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t hitCount = 0;
+			if (4u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], hitCount) ||
+				hitCount < 1u || hitCount > 64u)
+			{
+				m_strStatus = "Skill hit row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() || !owner->second.Hits.empty() ||
+				owner->second.strDamageProfileId.empty() ||
+				LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE !=
+					owner->second.eSkillKind)
+			{
+				m_strStatus = "Skill hit row does not follow its skill";
+				return false;
+			}
+			std::vector<PLAYER_SKILL_HIT> hits;
+			if (!Parse_SkillHits(
+				fields[3], hitCount, owner->second.iActionDurationMs, hits))
+			{
+				return false;
+			}
+			owner->second.Hits = std::move(hits);
+		}
+		else if (!fields.empty() && "SKILLSTAGEHIT" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t stageIndex = 0;
+			std::uint32_t hitCount = 0;
+			if (5u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], stageIndex) ||
+				!ParseNumber(fields[3], hitCount) ||
+				hitCount < 1u || hitCount > 64u)
+			{
+				m_strStatus = "Skill stage hit row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() ||
+				owner->second.strDamageProfileId.empty() ||
+				stageIndex >= owner->second.ComboStages.size() ||
+				!owner->second.ComboStages[stageIndex].Hits.empty())
+			{
+				m_strStatus = "Skill stage hit row does not follow its skill";
+				return false;
+			}
+			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
+			std::vector<PLAYER_SKILL_HIT> hits;
+			if (!Parse_SkillHits(
+				fields[4], hitCount, stage.iActionDurationMs, hits))
+			{
+				return false;
+			}
+			stage.Hits = std::move(hits);
 		}
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{
