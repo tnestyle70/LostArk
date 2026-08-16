@@ -198,6 +198,8 @@ $reconstructedRenderResourceRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
 $derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
 $directAuthoredRuntimeTool = Join-Path $PSScriptRoot `
     'validate_direct_authored_effect_runtime.py'
+$effectDocumentCompactTool = Join-Path $PSScriptRoot `
+    'compact_effect_document.py'
 $visualProgramRuntimeTool = Join-Path $PSScriptRoot `
     'build_effect_visual_program_runtime.py'
 $productCueAdmissionTool = Join-Path $PSScriptRoot `
@@ -784,15 +786,51 @@ function Test-ByteArrayEqual(
         $Left, $Right)
 }
 
+# Authored documents are pretty-printed for git review; more than half of
+# their bytes are indentation the runtime parser then has to skip on the
+# main-thread prewarm seam. Seal a whitespace-stripped payload instead. The
+# helper is a lexical transform, so number tokens and key order survive
+# byte for byte - a JSON round trip here would reformat floats and the
+# runtime codec compares keys with exact order.
+function Get-CompactedEffectDocumentBytes([string]$SourcePath) {
+    if (-not [IO.File]::Exists($effectDocumentCompactTool)) {
+        throw "Missing Effect document compactor: $effectDocumentCompactTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to seal compacted Effect documents.'
+    }
+    $temporaryPath = [IO.Path]::Combine(
+        [IO.Path]::GetTempPath(),
+        'LostArkEffectCompact-' + [Guid]::NewGuid().ToString('N') + '.json')
+    try {
+        & $python.Source -B $effectDocumentCompactTool `
+            $SourcePath $temporaryPath
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Effect document compaction failed with exit code " +
+                "${LASTEXITCODE}: $SourcePath")
+        }
+        return ,[IO.File]::ReadAllBytes($temporaryPath)
+    }
+    finally {
+        if ([IO.File]::Exists($temporaryPath)) {
+            [IO.File]::Delete($temporaryPath)
+        }
+    }
+}
+
 function Read-PinnedDirectAuthoredBytes([object]$Record) {
     if (-not (Test-Path -LiteralPath $Record.SourcePath -PathType Leaf)) {
         throw "Direct authored source disappeared during publish: $($Record.SourcePath)"
     }
+    # The source pin still guards against the authoring document changing
+    # mid-publish. What gets sealed is the compacted payload, so the runtime
+    # identity is Record.Sha256 over Record.PayloadBytes, not over the source.
     $payload = [IO.File]::ReadAllBytes($Record.SourcePath)
     $actualByteCount = [int64]$payload.LongLength
     $actualSha256 = [string](Get-Sha256Hex $payload)
-    $expectedByteCount = [int64]$Record.ByteCount
-    $expectedSha256 = [string]$Record.Sha256
+    $expectedByteCount = [int64]$Record.SourceByteCount
+    $expectedSha256 = [string]$Record.SourceSha256
     if ($actualByteCount -ne $expectedByteCount -or
         $actualSha256 -cne $expectedSha256) {
         throw (
@@ -800,7 +838,17 @@ function Read-PinnedDirectAuthoredBytes([object]$Record) {
             "expectedBytes=$expectedByteCount actualBytes=$actualByteCount " +
             "expectedSha256=$expectedSha256 actualSha256=$actualSha256")
     }
-    return ,$payload
+    $sealedPayload = [byte[]]$Record.PayloadBytes
+    $sealedSha256 = [string](Get-Sha256Hex $sealedPayload)
+    if ([int64]$sealedPayload.LongLength -ne [int64]$Record.ByteCount -or
+        $sealedSha256 -cne [string]$Record.Sha256) {
+        throw (
+            "Sealed direct authored payload drifted for $($Record.SourcePath): " +
+            "expectedBytes=$($Record.ByteCount) " +
+            "actualBytes=$($sealedPayload.LongLength) " +
+            "expectedSha256=$($Record.Sha256) actualSha256=$sealedSha256")
+    }
+    return ,$sealedPayload
 }
 
 function Invoke-EffectRuntimeCatalogValidationBundle(
@@ -2542,8 +2590,10 @@ try {
             if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
                 $authoringBytes = [IO.File]::ReadAllBytes($authoringFile)
                 $authoringRawSha = Get-Sha256Hex $authoringBytes
+                $sealedBytes = Get-CompactedEffectDocumentBytes $authoringFile
+                $sealedSha = Get-Sha256Hex $sealedBytes
                 $runtimeAuthoredRelativePath =
-                    "Authored/$effectAssetId.$authoringRawSha.effect.json"
+                    "Authored/$effectAssetId.$sealedSha.effect.json"
                 if ($directAuthoredRuntimeFilesByPath.ContainsKey(
                         $runtimeAuthoredRelativePath)) {
                     throw "Duplicate sealed direct authored runtime path: $runtimeAuthoredRelativePath"
@@ -2554,15 +2604,18 @@ try {
                         EffectAssetId = $effectAssetId
                         RelativePath = $runtimeAuthoredRelativePath
                         SourcePath = $authoringFile
-                        Sha256 = $authoringRawSha
-                        ByteCount = $authoringBytes.LongLength
+                        SourceSha256 = $authoringRawSha
+                        SourceByteCount = $authoringBytes.LongLength
+                        PayloadBytes = $sealedBytes
+                        Sha256 = $sealedSha
+                        ByteCount = $sealedBytes.LongLength
                     })
                 $runtimeEffects.Add([ordered]@{
                     payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
                     effectAssetId = $effectAssetId
                     authoringFormatVersion = $documentVersion
                     authoredDocumentPath = $runtimeAuthoredRelativePath
-                    contentSha256 = $authoringRawSha
+                    contentSha256 = $sealedSha
                     dependencies = $dependencyRows
                 })
                 $hasDerivedRuntime = $true
