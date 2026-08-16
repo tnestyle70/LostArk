@@ -316,7 +316,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 5u != version ||
+		!ParseNumber(header[1], version) || 6u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -562,6 +562,59 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			patterns.push_back(std::move(pattern));
+		}
+		else if (!fields.empty() && "PATTERNSOURCE" == fields[0])
+		{
+			std::uint32_t primaryActionId = 0u;
+			std::uint32_t shapeCount = 0u;
+			std::uint32_t cooldownMs = 0u;
+			std::uint32_t cooldownTicks = 0u;
+			std::uint32_t rangeUnits = 0u;
+			std::uint32_t approachUnits = 0u;
+			std::uint32_t turnDegrees = 0u;
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], primaryActionId) ||
+				!ParseNumber(fields[4], shapeCount) ||
+				!ParseNumber(fields[5], cooldownMs) ||
+				!ParseNumber(fields[6], cooldownTicks) ||
+				!ParseNumber(fields[7], rangeUnits) ||
+				!ParseNumber(fields[8], approachUnits) ||
+				!ParseNumber(fields[9], turnDegrees) ||
+				0u == primaryActionId || shapeCount > 256u ||
+				cooldownMs > 600000u || rangeUnits > 100000u ||
+				approachUnits > 100000u || turnDegrees > 360u ||
+				cooldownTicks != static_cast<std::uint32_t>(
+					(static_cast<std::uint64_t>(cooldownMs) * 30u + 999u) /
+					1000u))
+			{
+				m_strStatus = "Boss pattern source timing row is invalid";
+				return false;
+			}
+			auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern source timing has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				0u != owner->iSourcePrimaryActionId)
+			{
+				m_strStatus =
+					"Boss pattern source timing has no owner or is duplicated";
+				return false;
+			}
+			owner->iSourcePrimaryActionId = primaryActionId;
+			owner->iSourceShapeCount = shapeCount;
+			owner->iSourceCooldownMs = cooldownMs;
+			owner->iSourceCooldownTicks = cooldownTicks;
+			owner->iSourceRangeUnits = rangeUnits;
+			owner->iSourceApproachUnits = approachUnits;
+			owner->iSourceTurnDegrees = turnDegrees;
 		}
 		else if (!fields.empty() && "ENCOUNTERINTRO" == fields[0])
 		{
@@ -843,7 +896,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 					pattern.iTriggerHealthBar <= boss.iMaximumHealthBars &&
 					pattern.iTriggerOrder > 0u && 0u == pattern.iSelectionWeight &&
 					0u == pattern.iMaximumConsecutiveUses);
-			if (!validSelection ||
+			if (!validSelection || 0u == pattern.iSourcePrimaryActionId ||
 				pattern.Stages.size() != pattern.iExpectedStageCount)
 			{
 				m_strStatus = "Boss pattern selection or stage count is invalid";

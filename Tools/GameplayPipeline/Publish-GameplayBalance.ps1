@@ -73,6 +73,67 @@ function Assert-JsonString([object]$Value, [string]$Context) {
     if ($Value -isnot [string]) { throw "$Context must be a JSON string." }
 }
 
+function Read-ValtanSkillTiming {
+    $relativePath = 'Data/Animation/Reference/Valtan/Valtan.skilltiming'
+    $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+    if (-not [IO.File]::Exists($path)) {
+        throw "Missing Valtan source timing document: $relativePath"
+    }
+    $lines = [IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8)
+    if ($lines.Count -eq 0 -or
+        $lines[0] -notmatch '^LOSTARK_SKILL_TIMING 3 "Valtan" ([0-9]+)$') {
+        throw 'Valtan source timing header is invalid.'
+    }
+    $expectedCount = [uint32]$Matches[1]
+    $rows = @{}
+    $active = $null
+    $observedShapeCount = [uint32]0
+    $commitActive = {
+        if ($null -eq $active) { return }
+        if ($observedShapeCount -ne [uint32]$active.ShapeCount) {
+            throw "Valtan source timing shape count mismatch: $($active.ActionId)"
+        }
+        if ($rows.ContainsKey([uint32]$active.ActionId)) {
+            throw "Duplicate Valtan source timing action: $($active.ActionId)"
+        }
+        $rows[[uint32]$active.ActionId] = $active
+    }
+    for ($lineIndex = 1; $lineIndex -lt $lines.Count; ++$lineIndex) {
+        $line = $lines[$lineIndex]
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($line -match '^([0-9]+) "([^"]*)" shapes=([0-9]+) cd=([0-9]+) range=([0-9]+) approach=([0-9]+) turn=([0-9]+)$') {
+            & $commitActive
+            $active = [pscustomobject]@{
+                ActionId = [uint32]$Matches[1]
+                DisplayName = [string]$Matches[2]
+                ShapeCount = [uint32]$Matches[3]
+                CooldownMs = [uint32]$Matches[4]
+                RangeUnits = [uint32]$Matches[5]
+                ApproachUnits = [uint32]$Matches[6]
+                TurnDegrees = [uint32]$Matches[7]
+            }
+            if ($active.ActionId -eq 0 -or $active.ShapeCount -gt 256 -or
+                $active.CooldownMs -gt 600000 -or
+                $active.RangeUnits -gt 100000 -or
+                $active.ApproachUnits -gt 100000 -or
+                $active.TurnDegrees -gt 360) {
+                throw "Valtan source timing row is out of range: $($active.ActionId)"
+            }
+            $observedShapeCount = [uint32]0
+            continue
+        }
+        if ($line -notmatch '^  shape ' -or $null -eq $active) {
+            throw "Valtan source timing row is malformed at line $($lineIndex + 1)."
+        }
+        ++$observedShapeCount
+    }
+    & $commitActive
+    if ($rows.Count -ne $expectedCount) {
+        throw "Valtan source timing count mismatch. expected=$expectedCount actual=$($rows.Count)"
+    }
+    return $rows
+}
+
 function ConvertTo-ReceiptValue([object]$Value) {
     if ($null -eq $Value) { return 'null' }
     return ($Value | ConvertTo-Json -Compress -Depth 32)
@@ -714,6 +775,7 @@ $maximumHealthBars = [uint32]$encounterBoss[0].maximumHealthBars
 $patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $coveredSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
+$sourceTimingByActionId = Read-ValtanSkillTiming
 $patternRows = [Collections.Generic.List[string]]::new()
 $serverMotionAnchorIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $serverMotionByPatternId = @{}
@@ -757,7 +819,19 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if (-not $patternSourceIds.Add([uint32]$sourceActionId)) {
 			throw "Pattern sourceActionIds contain a duplicate: $($pattern.patternId)"
 		}
+		if (-not $sourceTimingByActionId.ContainsKey([uint32]$sourceActionId)) {
+			throw "Pattern sourceActionId is absent from Valtan.skilltiming: $($pattern.patternId)/$sourceActionId"
+		}
 		$coveredSourceActionIds.Add([uint32]$sourceActionId) | Out-Null
+	}
+	$primarySourceActionId = [uint32]$pattern.sourceActionIds[0]
+	$primarySourceTiming = $sourceTimingByActionId[$primarySourceActionId]
+	$sourceCooldownTicks = if ([uint32]$primarySourceTiming.CooldownMs -eq 0) {
+		[uint32]0
+	} else {
+		[uint32][Math]::Ceiling(
+			([double][uint32]$primarySourceTiming.CooldownMs *
+				[double][uint32]$encounterDocument.fixedTickHz) / 1000.0)
 	}
 	$selectionMode = [string]$pattern.selectionMode
 	if ($selectionMode -eq 'NORMAL') {
@@ -787,6 +861,16 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		(Format-InvariantFloat $pattern.minimumRange "pattern minimumRange"),
 		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
 		@($pattern.stages).Count) -join "`t"))
+	# sourceActionIds[0] is the pattern entry skill. The remaining IDs are
+	# continuations/variants and are still checked above, but only the entry
+	# skill owns selection cooldown/range/approach/turn metadata.
+	$patternRows.Add((@(
+		'PATTERNSOURCE', $encounterDocument.encounterId, $pattern.patternId,
+		$primarySourceActionId, [uint32]$primarySourceTiming.ShapeCount,
+		[uint32]$primarySourceTiming.CooldownMs, $sourceCooldownTicks,
+		[uint32]$primarySourceTiming.RangeUnits,
+		[uint32]$primarySourceTiming.ApproachUnits,
+		[uint32]$primarySourceTiming.TurnDegrees) -join "`t"))
 	if ($hasServerMotion) {
 		# One compiled anchor is the single source for the Server leap landing,
 		# the camera lookAt and the radial wall launch directions, so none of the
@@ -1116,7 +1200,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t5`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t6`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

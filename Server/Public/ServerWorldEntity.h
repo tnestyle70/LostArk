@@ -11,6 +11,12 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_BOSS_PATTERN_COOLDOWN final
+	{
+		std::string strPatternId;
+		std::uint32_t iReadyTick = 0;
+	};
+
 	enum class SERVER_ENTITY_ACTION
 	{
 		IDLE,
@@ -106,6 +112,7 @@ namespace LostArk::Server
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
 		std::uint32_t iConsecutivePatternUses = 0;
+		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
 		std::vector<std::string> PendingPatternIds;
 		std::vector<std::string> TriggeredPatternIds;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =
