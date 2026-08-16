@@ -152,6 +152,16 @@ namespace LostArk::Server
 		std::uint32_t iMaximumConsecutiveUses = 0;
 		float fMinimumRange = 0.f;
 		float fMaximumRange = 0.f;
+		/* Read from the first sourceActionId in Valtan.skilltiming. These raw
+		values preserve the original skill metadata; gameplay metre ranges above
+		remain the separately tuned Server selection contract. */
+		std::uint32_t iSourcePrimaryActionId = 0;
+		std::uint32_t iSourceShapeCount = 0;
+		std::uint32_t iSourceCooldownMs = 0;
+		std::uint32_t iSourceCooldownTicks = 0;
+		std::uint32_t iSourceRangeUnits = 0;
+		std::uint32_t iSourceApproachUnits = 0;
+		std::uint32_t iSourceTurnDegrees = 0;
 		std::uint32_t iExpectedStageCount = 0;
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
 	};
