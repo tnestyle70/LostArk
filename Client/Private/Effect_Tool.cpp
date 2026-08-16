@@ -1218,6 +1218,56 @@ namespace
         return true;
     }
 
+    // Effect DDS filenames follow fx_<bucket>_<kind>_<index>[_variant]. The
+    // bucket letter only mirrors the source package folder, so the kind token
+    // is the only part that says what the texture is for. Tokens that also
+    // appear inside unrelated words are anchored with the separator.
+    bool Matches_TextureKindCategory(
+        const std::string& strAssetId,
+        const std::string_view strCategory)
+    {
+        if (strCategory.empty() || "All" == strCategory)
+            return true;
+        const auto HasAny = [&strAssetId](
+            const std::initializer_list<std::string_view> Tokens)
+        {
+            return std::any_of(Tokens.begin(), Tokens.end(),
+                [&strAssetId](const std::string_view Token)
+                {
+                    return Contains_NoCase(strAssetId, Token);
+                });
+        };
+        if ("Base / Sprite" == strCategory)
+            return HasAny({ "atypical", "glow", "shine", "star", "_hit",
+                "spatter", "fragment", "stoneparts", "aura" });
+        if ("Noise / Distortion" == strCategory)
+            return HasAny({ "noise", "flow", "turbulence" });
+        if ("Normal / Bump" == strCategory)
+            return HasAny({ "normal", "_n.", "_n_" });
+        if ("Decal / Ground" == strCategory)
+            return HasAny({ "decal", "grid", "symbol", "sector" });
+        if ("Ring / Shockwave" == strCategory)
+            return HasAny({ "ring", "wave" });
+        if ("Trail / Beam" == strCategory)
+            return HasAny({ "trail", "_line", "auraline", "thunder",
+                "electric", "electile" });
+        if ("Cloud / Smoke / Fire" == strCategory)
+            return HasAny({ "cloud", "smoke", "fire", "fogsheet" });
+        if ("Fluid / Water" == strCategory)
+            return HasAny({ "fluid", "liquid", "water", "softriver", "_ice" });
+        if ("Other" == strCategory)
+        {
+            return !HasAny({ "atypical", "glow", "shine", "star", "_hit",
+                "spatter", "fragment", "stoneparts", "aura", "noise", "flow",
+                "turbulence", "normal", "_n.", "_n_", "decal", "grid",
+                "symbol", "sector", "ring", "wave", "trail", "_line",
+                "auraline", "thunder", "electric", "electile", "cloud",
+                "smoke", "fire", "fogsheet", "fluid", "liquid", "water",
+                "softriver", "_ice" });
+        }
+        return true;
+    }
+
     enum class CASCADE_RENDERER_KIND : uint8_t
     {
         MESH,
@@ -2891,6 +2941,37 @@ void Client::CEffect_Tool::Render_ResourceGrid(
         ImGui::TextDisabled(
             "Shape categories are filename search hints; assetId remains authoritative.");
     }
+    if (EFFECT_RESOURCE_FILE_KIND::TEXTURE == eWanted)
+    {
+        constexpr const char* TextureKindCategories[] = {
+            "All",
+            "Base / Sprite",
+            "Noise / Distortion",
+            "Normal / Bump",
+            "Decal / Ground",
+            "Ring / Shockwave",
+            "Trail / Beam",
+            "Cloud / Smoke / Fire",
+            "Fluid / Water",
+            "Other"
+        };
+        if (ImGui::BeginCombo(
+            "Texture Kind", m_strTextureKindCategory.c_str()))
+        {
+            for (const char* pCategory : TextureKindCategories)
+            {
+                if (ImGui::Selectable(pCategory,
+                    m_strTextureKindCategory == pCategory))
+                {
+                    m_strTextureKindCategory = pCategory;
+                    m_iResourceViewRevision = UINT64_MAX;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextDisabled(
+            "Kind categories are filename search hints; assetId remains authoritative.");
+    }
     bCompatibleSlot = bSlotSelected && eSlotFileKind == eWanted;
     const auto DomainIterator = std::find_if(
         m_ResourceDomains.begin(), m_ResourceDomains.end(),
@@ -2982,7 +3063,9 @@ void Client::CEffect_Tool::Render_ResourceGrid(
         static_cast<int32_t>(ImGui::GetContentRegionAvail().x / CardWidth));
     Rebuild_ResourceBrowserView(eWanted, Filter,
         m_strSelectedAuthoringDomainId, Category,
-        bMeshAuthoringDraft ? m_strMeshShapeCategory : "All");
+        EFFECT_RESOURCE_FILE_KIND::TEXTURE == eWanted ?
+            m_strTextureKindCategory :
+            (bMeshAuthoringDraft ? m_strMeshShapeCategory : "All"));
     const int32_t Rows = static_cast<int32_t>(
         (m_VisibleResourceIndices.size() + Columns - 1u) / Columns);
     ImGuiListClipper Clipper;
@@ -3060,14 +3143,14 @@ void Client::CEffect_Tool::Rebuild_ResourceBrowserView(
     const std::string& strFilter,
     const std::string& strDomainId,
     const std::string& strCategory,
-    const std::string& strShapeCategory)
+    const std::string& strKindCategory)
 {
     if (m_iResourceViewRevision == m_iResourceCatalogRevision &&
         m_eResourceViewFileKind == eFileKind &&
         m_strResourceViewFilter == strFilter &&
         m_strResourceViewDomainId == strDomainId &&
         m_strResourceViewCategory == strCategory &&
-        m_strResourceViewShapeCategory == strShapeCategory)
+        m_strResourceViewKindCategory == strKindCategory)
     {
         return;
     }
@@ -3083,7 +3166,10 @@ void Client::CEffect_Tool::Rebuild_ResourceBrowserView(
             !Contains_NoCase(Entry.strAssetId, strFilter) ||
             (EFFECT_RESOURCE_FILE_KIND::MODEL == eFileKind &&
                 !Matches_MeshShapeCategory(
-                    Entry.strAssetId, strShapeCategory)) ||
+                    Entry.strAssetId, strKindCategory)) ||
+            (EFFECT_RESOURCE_FILE_KIND::TEXTURE == eFileKind &&
+                !Matches_TextureKindCategory(
+                    Entry.strAssetId, strKindCategory)) ||
             (strCategory != "All" && Entry.strCategory != strCategory))
         {
             continue;
@@ -3097,7 +3183,7 @@ void Client::CEffect_Tool::Rebuild_ResourceBrowserView(
     m_strResourceViewFilter = strFilter;
     m_strResourceViewDomainId = strDomainId;
     m_strResourceViewCategory = strCategory;
-    m_strResourceViewShapeCategory = strShapeCategory;
+    m_strResourceViewKindCategory = strKindCategory;
 }
 
 void Client::CEffect_Tool::Render_ModelViewWindow()

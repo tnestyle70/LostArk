@@ -314,7 +314,7 @@ private:
         const std::string& strFilter,
         const std::string& strDomainId,
         const std::string& strCategory,
-        const std::string& strShapeCategory);
+        const std::string& strKindCategory);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
@@ -717,8 +717,9 @@ private:
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;
-    string m_strResourceViewShapeCategory;
+    string m_strResourceViewKindCategory;
     string m_strMeshShapeCategory = "All";
+    string m_strTextureKindCategory = "All";
 
     array<char_t, 129> m_NewAssetId{};
     array<char_t, 65> m_NewDisplayName{};
