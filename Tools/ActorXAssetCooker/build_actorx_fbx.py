@@ -76,6 +76,44 @@ def build_parser():
         help="Disable the proven ActorX importer scale-down setting",
     )
     parser.add_argument(
+        "--bake-frame-rate",
+        type=float,
+        help=(
+            "Bake every Action at this one frame rate instead of requiring all "
+            "PSA sequences to share one AnimRate. Frame spans stay intact, so "
+            "the per-clip source rate must be restored afterwards with "
+            "Tools/ModelAssetConverter/retime_wmodel_from_psa.py. Without this "
+            "option a multi-rate PSA still fails."
+        ),
+    )
+    parser.add_argument(
+        "--allow-bone-order-remap",
+        action="store_true",
+        help=(
+            "Accept a PSA whose BONENAMES list is a reordering of the PSK "
+            "bones. The name sets and counts must still match exactly; the "
+            "importer and the scale-curve injector already resolve bones by "
+            "name. Any missing, extra or duplicate bone still fails."
+        ),
+    )
+    parser.add_argument(
+        "--armature-export-name",
+        help=(
+            "Rename the Armature object to this exact name before FBX export. "
+            "The converter derives runtime clip names from it, so this fixes "
+            "the required runtime prefix."
+        ),
+    )
+    parser.add_argument(
+        "--mesh-export-name",
+        help=(
+            "Rename the single Mesh object to this exact name before FBX "
+            "export. The Mesh object becomes a skeleton node, and the runtime "
+            "skeleton hash covers node names, so an AnimSet must reproduce the "
+            "body model's name to attach."
+        ),
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Explicitly allow replacing direct-script output files",
@@ -374,20 +412,28 @@ def read_psa_metadata(psa_path):
     }
 
 
-def configure_scene_frame_rate(psa_metadata):
+def configure_scene_frame_rate(psa_metadata, bake_frame_rate=None):
     rates = {
         round(sequence["animation_rate"], 6)
         for source in psa_metadata
         for sequence in source["sequences"]
     }
-    if len(rates) != 1:
+    if bake_frame_rate is not None:
+        if not math.isfinite(bake_frame_rate) or bake_frame_rate <= 0.0:
+            raise RuntimeError(
+                "--bake-frame-rate must be a positive finite value; got {}".format(
+                    bake_frame_rate
+                )
+            )
+        source_rate = float(bake_frame_rate)
+    elif len(rates) != 1:
         raise RuntimeError(
             "All PSA sequences in one FBX must share one animation rate; got {}".format(
                 ", ".join(str(value) for value in sorted(rates))
             )
         )
-
-    source_rate = next(iter(rates))
+    else:
+        source_rate = next(iter(rates))
     # Blender stores an integer FPS and a floating base. Keep the numerator
     # small and choose the base so fps / fps_base equals the PSA AnimRate.
     fps = max(1, int(round(source_rate)))
@@ -402,6 +448,11 @@ def configure_scene_frame_rate(psa_metadata):
         "scene_fps": fps,
         "scene_fps_base": fps_base,
         "effective_fps": float(fps) / float(fps_base),
+        "baked_single_rate": bake_frame_rate is not None,
+        "source_rates": sorted(rates),
+        "requires_per_clip_retime": bake_frame_rate is not None and rates != {
+            round(float(bake_frame_rate), 6)
+        },
     }
 
 
@@ -615,10 +666,37 @@ def ensure_skin_links(armature, meshes):
         raise RuntimeError("PSK mesh has no weighted vertices; skeletal FBX would be invalid")
 
 
-def validate_psa_skeleton(armature, psa_path, source_metadata):
+def validate_psa_skeleton(armature, psa_path, source_metadata, allow_order_remap=False):
     imported_bones = [bone.name for bone in armature.data.bones]
     source_bones = source_metadata["bones"]
+    source_metadata["bone_order_matches_psk"] = imported_bones == source_bones
+    source_metadata["bone_order_remapped"] = False
     if imported_bones != source_bones:
+        # The PSA importer and inject_psa_scale_curves both address pose bones
+        # by name, so a pure reordering carries the same animation. Only allow
+        # it when the two skeletons hold exactly the same bones, so a genuinely
+        # different rig still fails here.
+        if (
+            allow_order_remap
+            and len(imported_bones) == len(source_bones)
+            and len(set(imported_bones)) == len(imported_bones)
+            and len(set(source_bones)) == len(source_bones)
+            and set(imported_bones) == set(source_bones)
+        ):
+            source_metadata["bone_order_remapped"] = True
+            print(
+                "PSA bone order differs from the PSK and was remapped by name: "
+                "{} ({} bones, {} positions moved)".format(
+                    psa_path,
+                    len(source_bones),
+                    sum(
+                        1
+                        for imported, source in zip(imported_bones, source_bones)
+                        if imported != source
+                    ),
+                )
+            )
+            return
         mismatch = min(len(imported_bones), len(source_bones))
         for index, (imported, source) in enumerate(zip(imported_bones, source_bones)):
             if imported != source:
@@ -753,6 +831,34 @@ def import_psa(addon, armature, psa_path, scale_down, prefix_actions):
             )
         action.use_fake_user = True
     return created
+
+
+def rename_export_object(target, export_name, label):
+    """Set an exact object name. The converter turns Armature and Mesh object
+    names into skeleton node names, and the runtime skeleton hash covers those
+    nodes, so an attachable AnimSet has to reproduce them exactly. Blender
+    silently appends .001 when a name is taken, so the result is verified."""
+    if not export_name.strip() or export_name != export_name.strip():
+        raise RuntimeError(
+            "{} export name must not be empty or padded: {!r}".format(
+                label, export_name
+            )
+        )
+    clash = bpy.data.objects.get(export_name)
+    if clash is not None and clash is not target:
+        raise RuntimeError(
+            "Another object already uses the requested {} export name: {!r}".format(
+                label, export_name
+            )
+        )
+    target.name = export_name
+    if target.name != export_name:
+        raise RuntimeError(
+            "Blender could not apply the {} export name: wanted {!r}, got {!r}".format(
+                label, export_name, target.name
+            )
+        )
+    return target.name
 
 
 def assign_action(armature, imported_actions, preferred_name):
@@ -971,6 +1077,15 @@ def write_report(
             "scene_fps": frame_rate["scene_fps"],
             "scene_fps_base": frame_rate["scene_fps_base"],
             "effective_fps": frame_rate["effective_fps"],
+            "baked_single_rate": frame_rate["baked_single_rate"],
+            "source_rates": frame_rate["source_rates"],
+            "requires_per_clip_retime": frame_rate["requires_per_clip_retime"],
+            "armature_export_name": armature.name,
+            "bone_order_remapped_sources": [
+                source["path"]
+                for source in psa_metadata
+                if source.get("bone_order_remapped")
+            ],
         },
     }
     report_path.write_text(
@@ -1014,7 +1129,7 @@ def run(args):
 
     addon_path = locate_addon(args.addon)
     clear_scene()
-    frame_rate = configure_scene_frame_rate(psa_metadata)
+    frame_rate = configure_scene_frame_rate(psa_metadata, args.bake_frame_rate)
     addon = load_addon(addon_path)
 
     import_psk(addon, psk_path, args.scale_down)
@@ -1026,7 +1141,9 @@ def run(args):
         raise RuntimeError("PSK Armature has no bones")
     ensure_skin_links(armature, meshes)
     for psa_path, source_metadata in zip(psa_paths, psa_metadata):
-        validate_psa_skeleton(armature, psa_path, source_metadata)
+        validate_psa_skeleton(
+            armature, psa_path, source_metadata, args.allow_bone_order_remap
+        )
 
     imported_records = []
     imported_actions = []
@@ -1073,6 +1190,16 @@ def run(args):
     selected_action = assign_action(
         armature, imported_actions, args.preferred_action
     )
+    if args.armature_export_name:
+        rename_export_object(armature, args.armature_export_name, "Armature")
+    if args.mesh_export_name:
+        if len(meshes) != 1:
+            raise RuntimeError(
+                "--mesh-export-name needs exactly one Mesh; this PSK produced {}".format(
+                    len(meshes)
+                )
+            )
+        rename_export_object(meshes[0], args.mesh_export_name, "Mesh")
     select_export_objects(armature, meshes)
 
     if output_blend is not None:
