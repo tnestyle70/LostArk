@@ -467,10 +467,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            9.99999975e-05,
+            0.00100000005,
+            0.00100000005,
+            4.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -656,7 +656,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.600000024,
@@ -2031,10 +2031,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.5,
+            1.5,
+            3.0,
+            400.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -2220,7 +2220,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -4073,10 +4073,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            1.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -4263,7 +4263,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -5518,10 +5518,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.100000001,
+            0.100000001,
+            0.100000001,
+            0.900000006
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -5707,7 +5707,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.200000003,
@@ -7211,10 +7211,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            3.0
           ],
           "clip": 0,
           "emissiveIntensity": 0.100000001,
@@ -7388,7 +7388,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -8614,10 +8614,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            5.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -8804,7 +8804,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -10346,10 +10346,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.4084303375,
+            0.4084303375,
+            0.4084303375,
+            25.0
           ],
           "clip": 0,
           "emissiveIntensity": 100,
@@ -10444,12 +10444,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            0.0,
+            0.0,
+            0.0,
+            25.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -10536,7 +10536,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -11920,10 +11920,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            3.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -12097,7 +12097,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -13606,10 +13606,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            2.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -13796,7 +13796,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -15163,10 +15163,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            10.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -15261,12 +15261,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -15340,7 +15340,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -16478,10 +16478,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.100000001,
+            0.100000001,
+            0.200000003,
+            3.0
           ],
           "clip": 0,
           "emissiveIntensity": 0.0299999993,
@@ -16655,7 +16655,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -18546,10 +18546,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.02999999934,
+            0.02999999934,
+            0.02999999934,
+            7.5
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -18643,12 +18643,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            0.0,
+            0.0,
+            0.0,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -18663,14 +18663,14 @@
             1
           ],
           "initialPositionMin": [
-            0,
-            0,
-            0
+            -0.5,
+            0.1,
+            0.0
           ],
           "initialPositionMax": [
-            0,
-            0,
-            0
+            -0.5,
+            0.1,
+            0.0
           ],
           "initialVelocityMin": [
             0.5,
@@ -18735,7 +18735,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.200000003,
@@ -20307,10 +20307,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.00200000009,
+            0.00100000005,
+            0.00499999989,
+            5.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -20424,14 +20424,14 @@
             0.800000012
           ],
           "initialPositionMin": [
-            0,
-            0,
-            0
+            0.0,
+            0.0,
+            0.0
           ],
           "initialPositionMax": [
-            0,
-            0,
-            0
+            4.0,
+            0.0,
+            0.0
           ],
           "initialVelocityMin": [
             0.400000006,
@@ -20496,7 +20496,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.5,
@@ -22234,10 +22234,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.00999999978,
+            0.100000001,
+            0.200000003,
+            1.5
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -22331,12 +22331,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            0.0,
+            0.0,
+            0.0,
+            1.5
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -22423,7 +22423,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.400000006,
@@ -23802,7 +23802,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -25210,10 +25210,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.00499999989,
+            0.00499999989,
+            0.01499999965,
+            50.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -25307,12 +25307,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            0.00499999989,
+            0.00499999989,
+            0.01499999965,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -25399,7 +25399,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,

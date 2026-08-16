@@ -455,7 +455,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,

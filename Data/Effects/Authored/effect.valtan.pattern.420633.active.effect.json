@@ -134,9 +134,9 @@
           ],
           "multiply": [
             1.0,
-            1.0,
-            1.0,
-            1.0
+            10.0,
+            7.0,
+            0.1600000001490116
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
@@ -330,7 +330,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
@@ -1355,10 +1355,10 @@
             0.0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.699999988079071,
+            2.700000047683716,
+            2.0,
+            0.30000001192092896
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
@@ -1552,7 +1552,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,

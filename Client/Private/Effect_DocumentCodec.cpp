@@ -107,6 +107,14 @@ namespace
 	{
 		"meshModel", "base", "noise", "mask", "emissive", "dissolve"
 	};
+	constexpr const char_t* PARTICLE_SPAWN_SHAPE_TOKENS[] =
+	{
+		"point", "sphere", "ring", "box"
+	};
+	constexpr const char_t* PARTICLE_VELOCITY_MODE_TOKENS[] =
+	{
+		"fixed", "outward", "inward", "cone"
+	};
 	constexpr const char_t* PROFILE_TOKENS[] =
 	{
 		"opaque_back_depth_write",
@@ -4088,6 +4096,61 @@ namespace
 			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError);
 	}
 
+	/* Both blocks are absent from every document written before they existed, and
+	   absent has to keep meaning POINT/FIXED.  So they are read exactly like
+	   modelPreScale and the DynamicParameter triple: optional on the way in,
+	   emitted on the way out only when they carry something other than the
+	   historical default. */
+	bool_t Read_ParticleSpawnShape(
+		const Client::DATA_JSON_VALUE& Particle,
+		Client::EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pShape = Particle.Find("spawnShape");
+		if (nullptr == pShape)
+			return true;
+		const Client::DATA_JSON_VALUE* pKind = nullptr;
+		if (!pShape->Is_Object() ||
+			nullptr == (pKind = pShape->Find("kind")) || !pKind->Is_String() ||
+			!Parse_Token(pKind->Get_String(), PARTICLE_SPAWN_SHAPE_TOKENS,
+				std::size(PARTICLE_SPAWN_SHAPE_TOKENS), Out.eKind))
+		{
+			strOutError = "Effect particle spawnShape kind is invalid.";
+			return false;
+		}
+		return Read_OptionalFloat(*pShape, "radius", Out.fRadius, strOutError) &&
+			Read_OptionalFloat(*pShape, "innerRadius", Out.fInnerRadius,
+				strOutError) &&
+			Read_OptionalArray(*pShape, "extents", &Out.vExtents.x, 3u,
+				strOutError) &&
+			Read_OptionalFloat(*pShape, "arcDegrees", Out.fArcDegrees,
+				strOutError);
+	}
+
+	bool_t Read_ParticleInitialVelocity(
+		const Client::DATA_JSON_VALUE& Particle,
+		Client::EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pVelocity =
+			Particle.Find("initialVelocity");
+		if (nullptr == pVelocity)
+			return true;
+		const Client::DATA_JSON_VALUE* pMode = nullptr;
+		if (!pVelocity->Is_Object() ||
+			nullptr == (pMode = pVelocity->Find("mode")) || !pMode->Is_String() ||
+			!Parse_Token(pMode->Get_String(), PARTICLE_VELOCITY_MODE_TOKENS,
+				std::size(PARTICLE_VELOCITY_MODE_TOKENS), Out.eMode))
+		{
+			strOutError = "Effect particle initialVelocity mode is invalid.";
+			return false;
+		}
+		return Read_OptionalArray(*pVelocity, "speed", &Out.vSpeedRange.x, 2u,
+				strOutError) &&
+			Read_OptionalFloat(*pVelocity, "coneAngleDegrees",
+				Out.fConeAngleDegrees, strOutError);
+	}
+
 	bool_t Read_V5Detail(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DETAIL_DESC& Out,
@@ -4144,6 +4207,10 @@ namespace
 				&Out.Particle.vDynamicParameterStart.x, 4u, strOutError) &&
 			Read_OptionalArray(*pParticle, "dynamicParameterEnd",
 				&Out.Particle.vDynamicParameterEnd.x, 4u, strOutError) &&
+			Read_ParticleSpawnShape(*pParticle, Out.Particle.SpawnShape,
+				strOutError) &&
+			Read_ParticleInitialVelocity(*pParticle,
+				Out.Particle.InitialVelocity, strOutError) &&
 			Read_UInt(*pTrail, "maxPoints", Out.Trail.iMaxPoints, strOutError) &&
 			Read_Float(*pTrail, "pointLifeTimeSeconds", Out.Trail.fPointLifeTimeSeconds, strOutError) &&
 			Read_Float(*pTrail, "sampleIntervalSeconds", Out.Trail.fSampleIntervalSeconds, strOutError) &&
@@ -4267,6 +4334,33 @@ namespace
 			Write_Float4(Output, Detail.Particle.vDynamicParameterStart);
 			Output << ", \"dynamicParameterEnd\": ";
 			Write_Float4(Output, Detail.Particle.vDynamicParameterEnd);
+		}
+		/* Same reason as modelPreScale above: a document that still spawns from a
+		   point with a fixed velocity box must serialize byte-identically to the
+		   way it was written before these two blocks existed. */
+		if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT != Detail.Particle.SpawnShape.eKind)
+		{
+			Output << ", \"spawnShape\": { \"kind\": \""
+				<< PARTICLE_SPAWN_SHAPE_TOKENS[
+					static_cast<size_t>(Detail.Particle.SpawnShape.eKind)]
+				<< "\", \"radius\": " << Detail.Particle.SpawnShape.fRadius
+				<< ", \"innerRadius\": "
+				<< Detail.Particle.SpawnShape.fInnerRadius
+				<< ", \"extents\": ";
+			Write_Float3(Output, Detail.Particle.SpawnShape.vExtents);
+			Output << ", \"arcDegrees\": "
+				<< Detail.Particle.SpawnShape.fArcDegrees << " }";
+		}
+		if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED !=
+			Detail.Particle.InitialVelocity.eMode)
+		{
+			Output << ", \"initialVelocity\": { \"mode\": \""
+				<< PARTICLE_VELOCITY_MODE_TOKENS[
+					static_cast<size_t>(Detail.Particle.InitialVelocity.eMode)]
+				<< "\", \"speed\": ";
+			Write_Float2(Output, Detail.Particle.InitialVelocity.vSpeedRange);
+			Output << ", \"coneAngleDegrees\": "
+				<< Detail.Particle.InitialVelocity.fConeAngleDegrees << " }";
 		}
 		Output << " },\n"
 			<< "        \"trail\": { \"maxPoints\": " << Detail.Trail.iMaxPoints
@@ -5693,6 +5787,37 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Is_Finite(D.Particle.vDynamicParameterEnd) &&
 			(EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
 				0u == D.Particle.iDynamicParameterComponentMask);
+		/* A shape that cannot be sampled - a negative or inverted radius, an empty
+		   arc, a zero-extent box - would silently collapse every particle onto the
+		   origin instead of failing, so it is rejected at load. */
+		const EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = D.Particle.SpawnShape;
+		const EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission =
+			D.Particle.InitialVelocity;
+		const bool_t bSpawnShapeValid =
+			Shape.eKind < EFFECT_PARTICLE_SPAWN_SHAPE::END &&
+			std::isfinite(Shape.fRadius) && std::isfinite(Shape.fInnerRadius) &&
+			Is_Finite(Shape.vExtents) && std::isfinite(Shape.fArcDegrees) &&
+			Shape.fRadius >= 0.f && Shape.fInnerRadius >= 0.f &&
+			Shape.fInnerRadius <= Shape.fRadius &&
+			Shape.fArcDegrees > 0.f && Shape.fArcDegrees <= 360.f &&
+			Shape.vExtents.x >= 0.f && Shape.vExtents.y >= 0.f &&
+			Shape.vExtents.z >= 0.f &&
+			(EFFECT_PARTICLE_SPAWN_SHAPE::POINT == Shape.eKind ||
+				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind) &&
+			(EFFECT_PARTICLE_SPAWN_SHAPE::SPHERE != Shape.eKind || Shape.fRadius > 0.f) &&
+			(EFFECT_PARTICLE_SPAWN_SHAPE::RING != Shape.eKind || Shape.fRadius > 0.f) &&
+			(EFFECT_PARTICLE_SPAWN_SHAPE::BOX != Shape.eKind ||
+				Shape.vExtents.x > 0.f || Shape.vExtents.y > 0.f ||
+				Shape.vExtents.z > 0.f);
+		const bool_t bInitialVelocityValid =
+			Emission.eMode < EFFECT_PARTICLE_VELOCITY_MODE::END &&
+			Is_Finite(Emission.vSpeedRange) &&
+			std::isfinite(Emission.fConeAngleDegrees) &&
+			Emission.vSpeedRange.y >= Emission.vSpeedRange.x &&
+			Emission.fConeAngleDegrees >= 0.f &&
+			Emission.fConeAngleDegrees <= 180.f &&
+			(EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode ||
+				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind);
 		const bool_t bTrailValid =
 			D.Trail.iMaxPoints >= 2u && D.Trail.iMaxPoints <= 512u &&
 			std::isfinite(D.Trail.fPointLifeTimeSeconds) && D.Trail.fPointLifeTimeSeconds > 0.f &&
@@ -5738,6 +5863,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					Is_Finite(D.ScreenPost.vTint) &&
 					0u != D.ScreenPost.iRandomSeed));
 		if (!bCommonValid || !bLerpValid || !bParticleValid ||
+			!bSpawnShapeValid || !bInitialVelocityValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||
 			!bScreenPostValid)
 		{

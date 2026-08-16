@@ -498,6 +498,16 @@ private:
 		f32_t fNormalizedLife) const;
 	uint32_t Next_Random(ELEMENT_STATE& State) const;
 	f32_t Random_Range(ELEMENT_STATE& State, f32_t fMin, f32_t fMax) const;
+	/* Authored spawn geometry.  Both keep the historical min/max box when the
+	   Element still declares POINT and FIXED, so documents written before the
+	   spawnShape/initialVelocity blocks existed spawn exactly as they did. */
+	float3_t Sample_AuthoredSpawnPosition(
+		const EFFECT_PARTICLE_DESC& Desc,
+		ELEMENT_STATE& State) const;
+	float3_t Sample_AuthoredInitialVelocity(
+		const EFFECT_PARTICLE_DESC& Desc,
+		ELEMENT_STATE& State,
+		const float3_t& vSpawnPosition) const;
 
 private:
 	EFFECT_DOCUMENT_DESC m_Document;

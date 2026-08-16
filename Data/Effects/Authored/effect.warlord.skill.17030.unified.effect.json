@@ -258,7 +258,7 @@
         "particle": {
           "maxParticles": 6,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 3,
           "lifeTimeSeconds": [
             0.25,
@@ -324,7 +324,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -1513,7 +1513,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 4,
           "lifeTimeSeconds": [
             0.400000006,
@@ -1579,7 +1579,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -3135,7 +3135,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 6,
           "lifeTimeSeconds": [
             0.649999976,
@@ -3201,7 +3201,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -4425,10 +4425,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            15.0,
+            0.5000000075000001,
+            0.1000000015,
+            1.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -4522,12 +4522,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            15.0,
+            0.5000000075000001,
+            0.1000000015,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -4535,7 +4535,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 8,
           "lifeTimeSeconds": [
             0.5,
@@ -4601,7 +4601,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -5462,10 +5462,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            6.0,
+            0.800000012,
+            0.400000006,
+            0.5
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -5559,12 +5559,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            0.0,
+            0.0,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -5572,7 +5572,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 11,
           "lifeTimeSeconds": [
             0.25,
@@ -5638,7 +5638,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -6649,10 +6649,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0,
+            3.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -6759,7 +6759,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 14,
           "lifeTimeSeconds": [
             0.300000012,
@@ -6825,7 +6825,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.300000012,
@@ -7675,10 +7675,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            15.0,
+            2.5,
+            0.5,
+            1.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -7786,7 +7786,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 15,
           "lifeTimeSeconds": [
             0.319999993,
@@ -7852,7 +7852,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0,
@@ -8973,10 +8973,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            0.0,
+            0.0,
+            0.0,
+            1.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -9071,12 +9071,12 @@
             0,
             0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1,
-            1,
-            1,
-            1
+            18.0,
+            3.0,
+            0.6000000090000001,
+            1.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1
@@ -9084,7 +9084,7 @@
         "particle": {
           "maxParticles": 6,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 30,
           "lifeTimeSeconds": [
             0.400000006,
@@ -9150,7 +9150,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.300000012,
@@ -10309,10 +10309,10 @@
             0
           ],
           "multiply": [
-            1,
-            1,
-            1,
-            1
+            60.0,
+            10.0,
+            2.0,
+            3.0
           ],
           "clip": 0,
           "emissiveIntensity": 1,
@@ -10419,7 +10419,7 @@
         "particle": {
           "maxParticles": 17,
           "spawnRatePerSecond": 0,
-          "burstCount": 0,
+          "burstCount": 15,
           "randomSeed": 21,
           "lifeTimeSeconds": [
             0.600000024,
@@ -10459,7 +10459,18 @@
             0.0149999997
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": true,
+          "spawnShape": {
+            "kind": "ring",
+            "radius": 0.5,
+            "innerRadius": 0.5,
+            "extents": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "arcDegrees": 360.0
+          }
         },
         "trail": {
           "maxPoints": 64,
@@ -10485,7 +10496,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.300000012,

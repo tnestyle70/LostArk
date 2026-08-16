@@ -378,10 +378,10 @@
             0.0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.20000000298023224,
+            0.375,
+            0.5,
+            0.5
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
@@ -483,7 +483,7 @@
         "particle": {
           "maxParticles": 3,
           "spawnRatePerSecond": 0.0,
-          "burstCount": 0,
+          "burstCount": 1,
           "randomSeed": 12,
           "lifeTimeSeconds": [
             0.6000000238418579,
@@ -576,7 +576,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 5.0,

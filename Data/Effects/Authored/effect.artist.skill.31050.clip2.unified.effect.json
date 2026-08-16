@@ -201,10 +201,10 @@
             0.0
           ],
           "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            -3.0,
+            -3.0,
+            -3.0,
+            10.0
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
@@ -292,12 +292,12 @@
             0.0,
             0.0
           ],
-          "colorMultiply": false,
+          "colorMultiply": true,
           "endColorMultiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            -1.0,
+            -1.0,
+            -1.0,
+            0.0
           ],
           "emissiveIntensity": false,
           "endEmissiveIntensity": 1.0
@@ -305,7 +305,7 @@
         "particle": {
           "maxParticles": 33,
           "spawnRatePerSecond": 0.0,
-          "burstCount": 0,
+          "burstCount": 30,
           "randomSeed": 11,
           "lifeTimeSeconds": [
             0.5,
@@ -323,12 +323,12 @@
           ],
           "initialVelocityMin": [
             0.0,
-            0.0,
+            0.2,
             0.0
           ],
           "initialVelocityMax": [
             0.0,
-            0.0,
+            2.5,
             0.0
           ],
           "acceleration": [
@@ -345,7 +345,18 @@
             0.015
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": true,
+          "spawnShape": {
+            "kind": "sphere",
+            "radius": 0.6,
+            "innerRadius": 0.6,
+            "extents": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "arcDegrees": 360.0
+          }
         },
         "trail": {
           "maxPoints": 64,
@@ -398,7 +409,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": true,
+        "enabled": false,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.30000001192092896,

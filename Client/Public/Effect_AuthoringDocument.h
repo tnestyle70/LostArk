@@ -484,6 +484,55 @@ struct EFFECT_LINEAR_LERP_DESC final
 	f32_t fEndEmissiveIntensity = 1.f;
 };
 
+/* Cascade owns the spawn volume in particlemodulelocation*; the authored Detail
+   only had an axis-aligned min/max box, so a ring or a sphere shell could not be
+   written by hand at all.  POINT keeps the historical box, which is what every
+   document written before this field existed still means. */
+enum class EFFECT_PARTICLE_SPAWN_SHAPE : uint8_t
+{
+	POINT,
+	SPHERE,
+	RING,
+	BOX,
+	END
+};
+
+/* Cascade owns the emission direction in particlemodulevelocity* and in the
+   velocity flag of the location primitives.  FIXED keeps the historical
+   component-wise min/max velocity box. */
+enum class EFFECT_PARTICLE_VELOCITY_MODE : uint8_t
+{
+	FIXED,
+	OUTWARD,
+	INWARD,
+	CONE,
+	END
+};
+
+struct EFFECT_PARTICLE_SPAWN_SHAPE_DESC final
+{
+	EFFECT_PARTICLE_SPAWN_SHAPE eKind = EFFECT_PARTICLE_SPAWN_SHAPE::POINT;
+	/* Outer radius in Client metres for SPHERE and RING. */
+	f32_t fRadius = 0.f;
+	/* Inner radius in Client metres.  RING uses it as the hole, SPHERE as the
+	   shell floor; must stay at or below fRadius. */
+	f32_t fInnerRadius = 0.f;
+	/* Half-extents in Client metres for BOX. */
+	float3_t vExtents = { 0.f, 0.f, 0.f };
+	/* Angular span the shape is allowed to occupy, centred on +X of the Element.
+	   360 is the whole circle or sphere. */
+	f32_t fArcDegrees = 360.f;
+};
+
+struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
+{
+	EFFECT_PARTICLE_VELOCITY_MODE eMode = EFFECT_PARTICLE_VELOCITY_MODE::FIXED;
+	/* Metres per second, [minimum, maximum]; ignored while eMode is FIXED. */
+	float2_t vSpeedRange = { 0.f, 0.f };
+	/* Half-angle of the CONE around the Element +Y axis, in degrees. */
+	f32_t fConeAngleDegrees = 0.f;
+};
+
 struct EFFECT_PARTICLE_DESC final
 {
 	uint32_t iMaxParticles = 256u;
@@ -503,6 +552,10 @@ struct EFFECT_PARTICLE_DESC final
 	uint32_t iDynamicParameterComponentMask = 0u;
 	float4_t vDynamicParameterStart{};
 	float4_t vDynamicParameterEnd{};
+	/* Both default to the historical POINT/FIXED behaviour, so a document that
+	   omits them spawns exactly as it did before the fields existed. */
+	EFFECT_PARTICLE_SPAWN_SHAPE_DESC SpawnShape;
+	EFFECT_PARTICLE_INITIAL_VELOCITY_DESC InitialVelocity;
 };
 
 enum class EFFECT_SOURCE_LITERAL_KIND : uint8_t

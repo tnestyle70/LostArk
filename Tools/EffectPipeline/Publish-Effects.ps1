@@ -1222,6 +1222,53 @@ function Assert-EffectDetail(
         throw "$Label particle budget or range is invalid."
     }
 
+    # spawnShape and initialVelocity are optional: a document that omits them
+    # spawns from the initialPosition box with the initialVelocity box, which is
+    # what every document written before these blocks existed means.
+    if ($null -ne $particle.PSObject.Properties['spawnShape']) {
+        $spawnShape = Get-RequiredProperty $particle 'spawnShape' Object
+        $shapeKind = Get-RequiredProperty $spawnShape 'kind' String
+        if ($shapeKind -cnotin @('point', 'sphere', 'ring', 'box')) {
+            throw "$Label particle spawnShape kind is invalid."
+        }
+        $shapeRadius = if ($null -ne $spawnShape.radius) {
+            Get-NumberValue $spawnShape 'radius' $Label } else { 0.0 }
+        $shapeInner = if ($null -ne $spawnShape.innerRadius) {
+            Get-NumberValue $spawnShape 'innerRadius' $Label } else { 0.0 }
+        $shapeExtents = if ($null -ne $spawnShape.extents) {
+            Get-NumberVector $spawnShape 'extents' 3 $Label
+        } else { @(0.0, 0.0, 0.0) }
+        $shapeArc = if ($null -ne $spawnShape.arcDegrees) {
+            Get-NumberValue $spawnShape 'arcDegrees' $Label } else { 360.0 }
+        if ($shapeRadius -lt 0 -or $shapeInner -lt 0 -or
+            $shapeInner -gt $shapeRadius -or
+            $shapeArc -le 0 -or $shapeArc -gt 360 -or
+            @($shapeExtents | Where-Object { $_ -lt 0 }).Count -ne 0 -or
+            ($shapeKind -cne 'point' -and $Kind -cne 'particle') -or
+            ($shapeKind -cin @('sphere', 'ring') -and $shapeRadius -le 0) -or
+            ($shapeKind -ceq 'box' -and
+                @($shapeExtents | Where-Object { $_ -gt 0 }).Count -eq 0)) {
+            throw "$Label particle spawnShape range is invalid."
+        }
+    }
+    if ($null -ne $particle.PSObject.Properties['initialVelocity']) {
+        $emission = Get-RequiredProperty $particle 'initialVelocity' Object
+        $emissionMode = Get-RequiredProperty $emission 'mode' String
+        if ($emissionMode -cnotin @('fixed', 'outward', 'inward', 'cone')) {
+            throw "$Label particle initialVelocity mode is invalid."
+        }
+        $emissionSpeed = if ($null -ne $emission.speed) {
+            Get-NumberVector $emission 'speed' 2 $Label
+        } else { @(0.0, 0.0) }
+        $coneAngle = if ($null -ne $emission.coneAngleDegrees) {
+            Get-NumberValue $emission 'coneAngleDegrees' $Label } else { 0.0 }
+        if ($emissionSpeed[1] -lt $emissionSpeed[0] -or
+            $coneAngle -lt 0 -or $coneAngle -gt 180 -or
+            ($emissionMode -cne 'fixed' -and $Kind -cne 'particle')) {
+            throw "$Label particle initialVelocity range is invalid."
+        }
+    }
+
     $maxPoints = Get-IntegerValue $trail 'maxPoints' $Label
     $pointLife = Get-NumberValue $trail 'pointLifeTimeSeconds' $Label
     $sampleInterval = Get-NumberValue $trail 'sampleIntervalSeconds' $Label

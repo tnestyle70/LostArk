@@ -6270,6 +6270,96 @@ void Client::CEffect_Tool::Render_KindDetail(
             "Start Size", Detail.Particle.vStartSize, 0.01f, 0.001f, 100.f);
         bChanged |= DragFloat2(
             "End Size", Detail.Particle.vEndSize, 0.01f, 0.f, 100.f);
+
+		/* Spawn volume and emission direction: the two axes the authored Detail
+		   could not express at all, so a ring that collapses inward or a mesh
+		   that flies along an arc had to stay owned by the source modules. */
+		ImGui::SeparatorText("Particle Spawn Volume");
+		EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = Detail.Particle.SpawnShape;
+		static const char* const s_SpawnShapeLabels[] =
+		{
+			"Point (Initial Position box)", "Sphere", "Ring (XZ)", "Box"
+		};
+		int32_t iSpawnShape = static_cast<int32_t>(Shape.eKind);
+		if (ImGui::Combo("Spawn Shape", &iSpawnShape, s_SpawnShapeLabels,
+			IM_ARRAYSIZE(s_SpawnShapeLabels)))
+		{
+			Shape.eKind = static_cast<EFFECT_PARTICLE_SPAWN_SHAPE>(iSpawnShape);
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::SPHERE == Shape.eKind ||
+				EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind)
+			{
+				Shape.fRadius = (std::max)(0.001f, Shape.fRadius);
+			}
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::BOX == Shape.eKind &&
+				Shape.vExtents.x <= 0.f && Shape.vExtents.y <= 0.f &&
+				Shape.vExtents.z <= 0.f)
+			{
+				Shape.vExtents = { 0.5f, 0.5f, 0.5f };
+			}
+			bChanged = true;
+		}
+		if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT != Shape.eKind)
+		{
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::BOX == Shape.eKind)
+			{
+				bChanged |= DragFloat3("Spawn Box Half Extents",
+					Shape.vExtents, 0.01f, 0.f, 1000.f);
+			}
+			else
+			{
+				const bool_t bRadiusChanged = ImGui::DragFloat("Spawn Radius",
+					&Shape.fRadius, 0.01f, 0.001f, 1000.f, "%.3f",
+					ImGuiSliderFlags_AlwaysClamp);
+				const bool_t bInnerChanged = ImGui::DragFloat(
+					"Spawn Inner Radius", &Shape.fInnerRadius, 0.01f, 0.f,
+					1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+				if (bRadiusChanged || bInnerChanged)
+				{
+					Shape.fInnerRadius = (std::min)(
+						Shape.fInnerRadius, Shape.fRadius);
+					bChanged = true;
+				}
+				bChanged |= ImGui::DragFloat("Spawn Arc Degrees",
+					&Shape.fArcDegrees, 1.f, 0.001f, 360.f, "%.1f",
+					ImGuiSliderFlags_AlwaysClamp);
+			}
+			ImGui::TextDisabled(
+				"The shape offset is added on top of the Initial Position box.");
+		}
+
+		ImGui::SeparatorText("Particle Emission Direction");
+		EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission =
+			Detail.Particle.InitialVelocity;
+		static const char* const s_VelocityModeLabels[] =
+		{
+			"Fixed (Initial Velocity box)", "Outward", "Inward", "Cone (+Y)"
+		};
+		int32_t iVelocityMode = static_cast<int32_t>(Emission.eMode);
+		if (ImGui::Combo("Emission Mode", &iVelocityMode, s_VelocityModeLabels,
+			IM_ARRAYSIZE(s_VelocityModeLabels)))
+		{
+			Emission.eMode =
+				static_cast<EFFECT_PARTICLE_VELOCITY_MODE>(iVelocityMode);
+			bChanged = true;
+		}
+		if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED != Emission.eMode)
+		{
+			if (DragFloat2("Emission Speed Min/Max", Emission.vSpeedRange,
+				0.01f, -1000.f, 1000.f))
+			{
+				Emission.vSpeedRange.y = (std::max)(
+					Emission.vSpeedRange.x, Emission.vSpeedRange.y);
+				bChanged = true;
+			}
+			if (EFFECT_PARTICLE_VELOCITY_MODE::CONE == Emission.eMode)
+			{
+				bChanged |= ImGui::DragFloat("Cone Half Angle Degrees",
+					&Emission.fConeAngleDegrees, 1.f, 0.f, 180.f, "%.1f",
+					ImGuiSliderFlags_AlwaysClamp);
+			}
+			ImGui::TextDisabled(
+				"Outward and Inward are radial about the Element origin and replace the Initial Velocity box.");
+		}
 		ImGui::EndDisabled();
 		if (bSourceParticleControlsReadOnly)
 		{
