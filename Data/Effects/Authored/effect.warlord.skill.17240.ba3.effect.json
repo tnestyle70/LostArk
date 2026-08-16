@@ -931,6 +931,319 @@
       }
     },
     {
+      "id": "authored.approx.s003.sprite02",
+      "displayName": "authored.approx.s003.sprite02",
+      "groupId": "authored.approx.s003",
+      "sourceNode": "authored-approximation:effect.warlord.skill.17240.ba3|source:effect.warlord.skill.17240.imported|element:fx_pc_wgl_07.par_s_wgl_cyclone_shot_02_fail.particlespriteemitter_59",
+      "visible": true,
+      "kind": "sprite",
+      "resources": [
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_04/fx_h_hit_01.dds"
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_03/fx_e_fluid_026.dds"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Warlord/Textures/FX_H_W_01/fx_h_wave_04.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_01/fx_c_noise_005.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_h_pa_ap_01_1_tr",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            3.0,
+            4.5,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            -0.20000000298023224,
+            1.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.1200000000000001,
+          "lifeTimeSeconds": 0.6000000238418579,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": -90.0
+        },
+        "decal": {
+          "size": [
+            3.0,
+            4.5
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": true,
+          "endScale": [
+            1.0800000858306902,
+            8.100000321865082,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 3,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 57,
+          "lifeTimeSeconds": [
+            0.6000000238418579,
+            0.6000000238418579
+          ],
+          "initialPositionMin": [
+            -0.5,
+            0.0,
+            -0.0
+          ],
+          "initialPositionMax": [
+            -0.5,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMin": [
+            0.1,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMax": [
+            0.1,
+            0.0,
+            -0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            3.0,
+            4.5
+          ],
+          "endSize": [
+            1.8000000715255737,
+            5.400000214576721
+          ],
+          "localSpace": true,
+          "billboard": true
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
       "id": "authored.approx.s003.sprite03",
       "displayName": "authored.approx.s003.sprite03",
       "groupId": "authored.approx.s003",
@@ -1776,6 +2089,315 @@
           "endSize": [
             0.2617570638656616,
             0.15000000000000002
+          ],
+          "localSpace": true,
+          "billboard": false
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "authored.approx.s005.mesh02",
+      "displayName": "authored.approx.s005.mesh02",
+      "groupId": "authored.approx.s005",
+      "sourceNode": "authored-approximation:effect.warlord.skill.17240.ba3|source:effect.warlord.skill.17240.imported|element:fx_pc_wgl_07.par_s_wgl_cyclone_backdust_01.particlespriteemitter_2",
+      "visible": true,
+      "kind": "mesh",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/Warlord/Meshes/FX_SM_00/fm_d_hemisphere_001_1.wmodel"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_00/fx_a_atypical_048.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_003_ds_ad",
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            0.015,
+            0.025,
+            0.025
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.1200000000000001,
+          "lifeTimeSeconds": 0.2199999988079071,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false
+        },
+        "sprite": {
+          "billboard": false,
+          "billboardRollDegrees": 0.0
+        },
+        "decal": {
+          "size": [
+            0.015,
+            0.025
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": true,
+          "endScale": [
+            0.045,
+            0.05,
+            0.05
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 4,
+          "spawnRatePerSecond": 10.0,
+          "burstCount": 0,
+          "randomSeed": 23,
+          "lifeTimeSeconds": [
+            0.20000000298023224,
+            0.2199999988079071
+          ],
+          "initialPositionMin": [
+            0.65,
+            0.0,
+            -0.0
+          ],
+          "initialPositionMax": [
+            0.65,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMin": [
+            -1.0,
+            0.0,
+            -0.0
+          ],
+          "initialVelocityMax": [
+            -1.0,
+            0.0,
+            -0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.015,
+            0.025
+          ],
+          "endSize": [
+            0.045,
+            0.05
           ],
           "localSpace": true,
           "billboard": false
@@ -3931,6 +4553,307 @@
           "endSize": [
             3.5999999999999996,
             0.03
+          ],
+          "localSpace": true,
+          "billboard": true
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0.0,
+        "emitterDurationSeconds": 0.0,
+        "emitterLoopCount": 0,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
+      }
+    },
+    {
+      "id": "authored.approx.s006.sprite03",
+      "displayName": "authored.approx.s006.sprite03",
+      "groupId": "authored.approx.s006",
+      "sourceNode": "authored-approximation:effect.warlord.skill.17240.ba3|source:effect.warlord.skill.17240.imported|element:fx_pc_wgl_07.par_s_wgl_cyclone_shot_01.particlespriteemitter_8",
+      "visible": true,
+      "kind": "sprite",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_00/fx_b_fragment_004.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_b_pa_ht_01_2_ad",
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            0.02,
+            0.1,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1.0,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0.0,
+            0.0
+          ],
+          "speed": [
+            0.0,
+            0.0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.1200000000000001,
+          "lifeTimeSeconds": 1.0,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": -90.0
+        },
+        "decal": {
+          "size": [
+            0.02,
+            0.1
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": true,
+          "endScale": [
+            0.0002,
+            0.001,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 23,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 46,
+          "lifeTimeSeconds": [
+            0.6000000238418579,
+            1.0
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            -0.7000000000000001,
+            0.1,
+            -0.7000000000000001
+          ],
+          "initialVelocityMax": [
+            0.7000000000000001,
+            3.0,
+            0.7000000000000001
+          ],
+          "acceleration": [
+            0.0,
+            -5.0,
+            -0.0
+          ],
+          "startSize": [
+            0.02,
+            0.1
+          ],
+          "endSize": [
+            0.0,
+            0.0
           ],
           "localSpace": true,
           "billboard": true

@@ -293,10 +293,10 @@
             0.0
           ],
           "multiply": [
-            0.30000001192092896,
-            0.25,
-            0.20000000298023224,
-            0.9500000178813934
+            1.0,
+            1.0,
+            1.0,
+            1.0
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
@@ -490,7 +490,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": false,
+        "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.0,
@@ -1847,8 +1847,8 @@
           ],
           "multiply": [
             1.0,
-            0.699999988079071,
-            0.5,
+            1.0,
+            1.0,
             1.0
           ],
           "clip": 0.0,
@@ -1990,18 +1990,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true,
-          "spawnShape": {
-            "kind": "sphere",
-            "radius": 0.2,
-            "innerRadius": 0.0,
-            "extents": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "arcDegrees": 360.0
-          }
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,
@@ -2054,7 +2043,7 @@
         }
       },
       "sourceRecipe": {
-        "enabled": false,
+        "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 0.30000001192092896,
