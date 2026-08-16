@@ -1,4 +1,4 @@
-LOSTARK_SKILL_TIMING 2 "Warlord" 64
+LOSTARK_SKILL_TIMING 2 "Warlord" 70
 17000 "기본 공격" hits="" freeze=0.475 push=0.15 multi=3 interval=0.2 sa=0 move=0 cd=0 base=17000
   hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=425 fzin=125 fzout=200 fzcancel=1 push=100 pushr=10 area=2 ar=280 aa=150 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
   hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=475 fzin=125 fzout=200 fzcancel=1 push=150 pushr=30 area=2 ar=300 aa=180 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
@@ -8,6 +8,10 @@ LOSTARK_SKILL_TIMING 2 "Warlord" 64
   hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=630 fzin=200 fzout=300 fzcancel=1 push=120 pushr=50 area=3 ar=300 aa=90 ah=150 ax=30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
 17032 "날카로운 창 [17030 변형]" hits="" freeze=0.63 push=0.12 multi=3 interval=0.2 sa=0 move=0 cd=5000 base=17030
   hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=630 fzin=200 fzout=300 fzcancel=1 push=120 pushr=50 area=2 ar=500 aa=120 ah=150 ax=30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+17040 "배쉬" hits="" freeze=0.47 push=0.07 multi=0 interval=0 sa=0 move=0 cd=10000 base=17040
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=470 fzin=150 fzout=250 fzcancel=1 push=70 pushr=70 area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_BodyBlow1" sndset="SKHitted_SHIELD1"
+  hit g=0 key=8 timed=0 t=0 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=0 push=0 pushr=0 area=1 ar=1 aa=0 ah=700 ax=0 arem=0 maxt=0 hittype=1 back=0 counter=0 hitset="Item_Retouch_Purify" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=470 fzin=150 fzout=250 fzcancel=1 push=70 pushr=70 area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_BodyBlow1" sndset="SKHitted_LIGHTING1"
 17050 "방패 돌진" hits="1.5-1.7" freeze=0.7 push=0.3 multi=0 interval=0 sa=1 move=390 cd=16000 base=17050
   hit g=0 key=1 timed=1 t=1500 w=200 rep=0 repms=0 fz=700 fzin=150 fzout=250 fzcancel=1 push=300 pushr=150 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_SHIELD1"
   hit g=0 key=7 timed=0 t=0 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=0 push=0 pushr=0 area=2 ar=170 aa=160 ah=150 ax=40 arem=0 maxt=1 hittype=1 back=0 counter=0 hitset="" sndset=""
@@ -15,6 +19,9 @@ LOSTARK_SKILL_TIMING 2 "Warlord" 64
   hit g=0 key=1 timed=1 t=1800 w=200 rep=0 repms=0 fz=460 fzin=150 fzout=250 fzcancel=1 push=60 pushr=60 area=2 ar=280 aa=200 ah=250 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_SHIELD1"
 17052 "방패 돌진 [17050 변형]" hits="1.5-1.7" freeze=0.08 push=0.15 multi=0 interval=0 sa=1 move=390 cd=16000 base=17050
   hit g=0 key=1 timed=1 t=1500 w=200 rep=0 repms=0 fz=80 fzin=30 fzout=50 fzcancel=1 push=150 pushr=120 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_SHIELD1"
+17060 "파이어 불릿" hits="" freeze=0.55 push=0.12 multi=0 interval=0 sa=0 move=0 cd=7000 base=17060
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=550 fzin=150 fzout=250 fzcancel=1 push=120 pushr=50 area=3 ar=380 aa=60 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset="SKHitted_FIRE_FLAME1"
+  hit g=0 key=8 timed=0 t=0 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=0 push=0 pushr=0 area=1 ar=1 aa=0 ah=700 ax=0 arem=0 maxt=0 hittype=1 back=0 counter=0 hitset="Item_Retouch_Purify" sndset=""
 17063 "파이어 불릿 [17060 변형]" hits="1.2-1.2" freeze=0 push=0 multi=0 interval=0 sa=0 move=0 cd=7000 base=17060
   hit g=0 key=1 timed=1 t=1200 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 area=3 ar=500 aa=80 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_FIRE_FLAME1"
 17070 "라이징 스피어" hits="1.7-1.8" freeze=0 push=0 multi=0 interval=0 sa=0 move=0 cd=9000 base=17070
@@ -50,6 +57,12 @@ LOSTARK_SKILL_TIMING 2 "Warlord" 64
   hit g=0 key=1 timed=1 t=1600 w=100 rep=0 repms=0 fz=420 fzin=150 fzout=250 fzcancel=1 push=20 pushr=20 area=1 ar=120 aa=0 ah=300 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="" sndset="SKHitted_GUNLANCE1"
 17084 "대쉬 어퍼 파이어 [17080 변형]" hits="1.6-1.7" freeze=0.42 push=0.02 multi=0 interval=0 sa=0 move=0 cd=16000 base=17080
   hit g=0 key=1 timed=1 t=1600 w=100 rep=0 repms=0 fz=420 fzin=150 fzout=250 fzcancel=1 push=20 pushr=20 area=1 ar=120 aa=0 ah=300 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="" sndset="SKHitted_GUNLANCE1"
+17090 "갈고리 사슬" hits="" freeze=0.43 push=0 multi=0 interval=0 sa=0 move=0 cd=24000 base=17090
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=430 fzin=180 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=450 aa=60 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset="SKHitted_CHAIN1"
+17100 "방패 격동" hits="" freeze=0.43 push=0.03 multi=0 interval=0 sa=0 move=0 cd=12000 base=17100
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=430 fzin=150 fzout=250 fzcancel=1 push=30 pushr=30 area=1 ar=230 aa=0 ah=150 ax=80 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_ForceNor1" sndset="SKHitted_LIGHTING1"
+17110 "리프 어택" hits="" freeze=0.62 push=0.12 multi=0 interval=0 sa=1 move=0 cd=16000 base=17110
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=620 fzin=200 fzout=300 fzcancel=1 push=120 pushr=30 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset="SKHitted_BLOW1"
 17113 "리프 어택 [17110 변형]" hits="1.2-1.5" freeze=0.51 push=0.12 multi=0 interval=0 sa=1 move=0 cd=16000 base=17110
   hit g=0 key=1 timed=1 t=1200 w=300 rep=0 repms=0 fz=510 fzin=200 fzout=300 fzcancel=1 push=120 pushr=30 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=7 back=0 counter=0 hitset="" sndset="SKHitted_BLOW1"
 17119 "리프 어택 [17110 변형]" hits="1.77-1.82" freeze=0.51 push=0.12 multi=0 interval=0 sa=1 move=0 cd=16000 base=17110
@@ -103,6 +116,8 @@ LOSTARK_SKILL_TIMING 2 "Warlord" 64
   hit g=0 key=1 timed=1 t=1600 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_DECEPTIVE1"
 17165 "스피어 샷 [17160 변형]" hits="1.6-1.6" freeze=0 push=0 multi=0 interval=0 sa=1 move=0 cd=18000 base=17160
   hit g=0 key=1 timed=1 t=1600 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_DECEPTIVE1"
+17170 "가디언의 수호" hits="" freeze=0.8 push=0.2 multi=0 interval=0 sa=3 move=0 cd=300000 base=17170
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=800 fzin=200 fzout=300 fzcancel=1 push=200 pushr=5 area=1 ar=500 aa=0 ah=300 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_BodyBlow1" sndset=""
 17191 "카운터 스피어 [17190 변형]" hits="1.2-1.2" freeze=0.52 push=0.12 multi=0 interval=0 sa=3 move=0 cd=20000 base=17190
   hit g=0 key=1 timed=1 t=1200 w=0 rep=0 repms=0 fz=520 fzin=150 fzout=250 fzcancel=1 push=120 pushr=120 area=2 ar=320 aa=200 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_BodyBlow1" sndset="SKHitted_GUNLANCE1"
 17192 "카운터 스피어 [17190 변형]" hits="1.2-1.2" freeze=0.52 push=0.12 multi=0 interval=0 sa=3 move=0 cd=20000 base=17190

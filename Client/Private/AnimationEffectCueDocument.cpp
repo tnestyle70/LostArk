@@ -192,6 +192,57 @@ bool_t Client::CAnimationEffectCueDocument::Load(
                 "Invalid animation event row." : Error;
             return false;
         }
+        if ("HIT" == Tokens[1])
+        {
+            bool HitFieldsValid = false;
+            const auto HitFields = Make_Fields(Tokens, 2u, HitFieldsValid);
+            if (!HitFieldsValid)
+            {
+                strOutStatus = "Animation HIT row has an invalid or duplicate field.";
+                return false;
+            }
+            ANIMATION_HIT_CUE Hit;
+            Hit.strClipName = Tokens[0];
+            const auto Read_UInt = [&HitFields](const char* pName, uint32_t& Value)
+            {
+                const auto Iterator = HitFields.find(pName);
+                return HitFields.end() == Iterator || Parse_UInt(Iterator->second, Value);
+            };
+            const auto Read_Int = [&HitFields](const char* pName, int32_t& Value)
+            {
+                const auto Iterator = HitFields.find(pName);
+                if (HitFields.end() == Iterator)
+                    return true;
+                const char* Begin = Iterator->second.data();
+                const char* End = Begin + Iterator->second.size();
+                const auto Result = std::from_chars(Begin, End, Value);
+                return Result.ec == std::errc{} && Result.ptr == End;
+            };
+            const auto Start = HitFields.find("startms");
+            if (HitFields.end() == Start || !Parse_UInt(Start->second, Hit.iStartMs))
+            {
+                strOutStatus = "Animation HIT row has an invalid startms.";
+                return false;
+            }
+            Hit.iEndMs = Hit.iStartMs;
+            if (!Read_UInt("endms", Hit.iEndMs) ||
+                !Read_UInt("rep", Hit.iRepeatCount) ||
+                !Read_UInt("repms", Hit.iRepeatMs) ||
+                !Read_Int("area", Hit.Shape.iAreaType) ||
+                !Read_Int("ar", Hit.Shape.iAreaRange) ||
+                !Read_Int("aa", Hit.Shape.iAreaAngle) ||
+                !Read_Int("ah", Hit.Shape.iAreaHeight) ||
+                !Read_Int("ax", Hit.Shape.iAreaOffsetX) ||
+                !Read_Int("arem", Hit.Shape.iAreaInner) ||
+                Hit.iEndMs < Hit.iStartMs || Hit.iRepeatCount < 1u ||
+                !ClipSet.contains(Hit.strClipName))
+            {
+                strOutStatus = "Animation HIT row failed clip/time/shape validation.";
+                return false;
+            }
+            Staged.Hits.push_back(std::move(Hit));
+            continue;
+        }
         if ("EFFECT" != Tokens[1])
             continue;
         bool FieldsValid = false;

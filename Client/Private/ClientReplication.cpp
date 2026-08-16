@@ -338,6 +338,18 @@ void Client::CClientReplication::Set_CombatColliderDebugVisible(
 			valtan->Set_CombatColliderDebugVisible(isVisible);
 	}
 }
+
+void Client::CClientReplication::Set_SkillHitAreaDebugVisible(
+	const bool_t isVisible)
+{
+	m_isSkillHitAreaDebugVisible = isVisible;
+	for (const std::shared_ptr<CCharacter>& character :
+		m_Registry.Get_LiveObjects())
+	{
+		if (nullptr != character)
+			character->Set_SkillHitAreaDebugVisible(isVisible);
+	}
+}
 #endif
 
 bool Client::CClientReplication::Create_Character(
@@ -400,6 +412,8 @@ bool Client::CClientReplication::Create_Character(
 #ifdef _DEBUG
 	character->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
+	character->Set_SkillHitAreaDebugVisible(
+		m_isSkillHitAreaDebugVisible);
 #endif
 	outCharacter = character;
 	return true;

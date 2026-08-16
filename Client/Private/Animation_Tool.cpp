@@ -8,6 +8,7 @@
 #include "Effect_Catalog.h"
 #include "EffectAuthoringTransfer.h"
 #include "GameInstance.h"
+#include "HitAreaWire.h"
 #include "Model.h"
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
@@ -1488,9 +1489,13 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 
 		if (ImGui::Button(szImport))
 		{
-			const int32_t iAdded = Import_Notifies(pCurrentName, fRate);
+			int32_t iShapedHits = 0;
+			const int32_t iAdded = Import_Notifies(pCurrentName, fRate, iShapedHits);
 			m_Status = "Imported " + std::to_string(iAdded) +
 				" original notify event(s) onto " + pCurrentName;
+			if (iShapedHits > 0)
+				m_Status += ", " + std::to_string(iShapedHits) +
+					" HIT shape(s) from skill timing reference";
 		}
 
 		ImGui::SameLine();
@@ -1865,11 +1870,6 @@ void Client::CAnimation_Tool::Render_HitDetail(ANIM_EVENT& evt)
 void Client::CAnimation_Tool::Render_HitAreaWires(
 	const shared_ptr<Engine::CModel>& pModel) const
 {
-	/* The reference rows keep the game's own centimetre-ish units; our world is
-	metres. 100 units to the metre lines skill 34040's ar=250 up with its
-	balance maximumRange of 3.0. */
-	constexpr f32_t UNITS_TO_METERS = 0.01f;
-
 	if (!m_bShowHitAreas || nullptr == pModel)
 		return;
 	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
@@ -1887,120 +1887,10 @@ void Client::CAnimation_Tool::Render_HitAreaWires(
 	const f32_t fRate = Get_ClipTickRate(pModel, pCurrentName);
 	const int32_t iNowMs = Frame_To_Ms(static_cast<int32_t>(fPosition), fRate);
 
-	auto& GameInstance = CGameInstance::Get();
-	const matrix_t View =
-		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::VIEW));
-	const matrix_t Proj =
-		XMLoadFloat4x4(GameInstance.Get_Transform(D3DTS::PROJ));
-	/* ImGui screen coordinates carry the viewport origin, so NDC maps through
-	the viewport rect and not a (0,0)-based one -- the same convention the
-	Character Select overlay uses. Background list: the wires belong to the
-	scene, so tool windows keep drawing over them. */
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImDrawList* pDrawList = ImGui::GetBackgroundDrawList(pViewport);
-
-	const matrix_t WorldRoot = XMLoadFloat4x4(&Root);
-	const vector_t vPosition = WorldRoot.r[3];
-	const vector_t vLook = XMVector3Normalize(
-		XMVectorSetY(WorldRoot.r[2], 0.f));
-	const vector_t vRight = XMVector3Normalize(XMVector3Cross(
-		XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
-	const f32_t fGroundY = XMVectorGetY(vPosition) + 0.03f;
-
-	auto Project = [&](fvector_t vWorld, ImVec2& vOut) -> bool_t
-	{
-		const vector_t vView = XMVector3TransformCoord(vWorld, View);
-		if (XMVectorGetZ(vView) < 0.1f)
-			return false;
-		const vector_t vClip = XMVector3TransformCoord(vView, Proj);
-		vOut.x = pViewport->Pos.x +
-			(XMVectorGetX(vClip) * 0.5f + 0.5f) * pViewport->Size.x;
-		vOut.y = pViewport->Pos.y +
-			(0.5f - XMVectorGetY(vClip) * 0.5f) * pViewport->Size.y;
-		return true;
-	};
-	auto Draw_Segment = [&](fvector_t vFrom, fvector_t vTo, ImU32 iColor)
-	{
-		ImVec2 vA{}, vB{};
-		if (Project(vFrom, vA) && Project(vTo, vB))
-			pDrawList->AddLine(vA, vB, iColor, 2.f);
-	};
-	/* Ground point at a polar offset around the area centre: fForward metres
-	along the facing plus a swing of fDegrees to the right of it. */
-	auto At = [&](f32_t fCenterForward, f32_t fRadius, f32_t fDegrees)
-	{
-		const f32_t fRadians = XMConvertToRadians(fDegrees);
-		return XMVectorSetY(
-			vPosition + vLook * (fCenterForward + fRadius * cosf(fRadians)) +
-			vRight * (fRadius * sinf(fRadians)),
-			fGroundY);
-	};
-	auto Draw_Arc = [&](f32_t fCenterForward, f32_t fRadius,
-		f32_t fFromDeg, f32_t fToDeg, ImU32 iColor)
-	{
-		constexpr int32_t SEGMENTS = 48;
-		for (int32_t s = 0; s < SEGMENTS; ++s)
-		{
-			const f32_t fA = fFromDeg + (fToDeg - fFromDeg) * s / SEGMENTS;
-			const f32_t fB = fFromDeg + (fToDeg - fFromDeg) * (s + 1) / SEGMENTS;
-			Draw_Segment(At(fCenterForward, fRadius, fA),
-				At(fCenterForward, fRadius, fB), iColor);
-		}
-	};
-
 	auto Draw_Area = [&](const HIT_PARAMS& p, ImU32 iColor)
 	{
-		const f32_t fOffset = p.iAreaOffsetX * UNITS_TO_METERS;
-		const f32_t fRange = p.iAreaRange * UNITS_TO_METERS;
-		switch (p.iAreaType)
-		{
-		case 1:
-		{
-			/* Forward strike box: ar is the length, ah the full width --
-			the 12m x 3m spear thrusts read no other way. */
-			const f32_t fHalfWidth = p.iAreaHeight * UNITS_TO_METERS * 0.5f;
-			const vector_t vNearL = XMVectorSetY(
-				vPosition + vLook * fOffset - vRight * fHalfWidth, fGroundY);
-			const vector_t vNearR = XMVectorSetY(
-				vPosition + vLook * fOffset + vRight * fHalfWidth, fGroundY);
-			const vector_t vFarL = XMVectorSetY(
-				vPosition + vLook * (fOffset + fRange) - vRight * fHalfWidth,
-				fGroundY);
-			const vector_t vFarR = XMVectorSetY(
-				vPosition + vLook * (fOffset + fRange) + vRight * fHalfWidth,
-				fGroundY);
-			Draw_Segment(vNearL, vNearR, iColor);
-			Draw_Segment(vNearR, vFarR, iColor);
-			Draw_Segment(vFarR, vFarL, iColor);
-			Draw_Segment(vFarL, vNearL, iColor);
-			break;
-		}
-		case 2:
-		case 3:
-		{
-			/* Fan, circle, ring, and the angle-limited ring sector all share
-			the arc path; what differs is the hole and the sweep. */
-			const bool_t bFullSweep =
-				p.iAreaAngle <= 0 || p.iAreaAngle >= 360;
-			const f32_t fHalfSweep =
-				bFullSweep ? 180.f : p.iAreaAngle * 0.5f;
-			const f32_t fInner = 3 == p.iAreaType ?
-				p.iAreaInner * UNITS_TO_METERS : 0.f;
-			Draw_Arc(fOffset, fRange, -fHalfSweep, fHalfSweep, iColor);
-			if (fInner > 0.f)
-				Draw_Arc(fOffset, fInner, -fHalfSweep, fHalfSweep, iColor);
-			if (!bFullSweep)
-			{
-				Draw_Segment(At(fOffset, fInner, -fHalfSweep),
-					At(fOffset, fRange, -fHalfSweep), iColor);
-				Draw_Segment(At(fOffset, fInner, fHalfSweep),
-					At(fOffset, fRange, fHalfSweep), iColor);
-			}
-			break;
-		}
-		default:
-			break;
-		}
+		CHitAreaWire::Draw(Root, { p.iAreaType, p.iAreaRange, p.iAreaAngle,
+			p.iAreaHeight, p.iAreaOffsetX, p.iAreaInner }, iColor);
 	};
 
 	for (int32_t i = 0; i < static_cast<int32_t>(m_Events.size()); ++i)
@@ -3215,8 +3105,11 @@ bool_t Client::CAnimation_Tool::Load_ClipSeq()
 	return true;
 }
 
-int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t fTickRate)
+int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t fTickRate,
+	int32_t& iShapedHits)
 {
+	iShapedHits = 0;
+
 	const auto it = m_ClipNotify.find(pClipName);
 	if (m_ClipNotify.end() == it)
 		return 0;
@@ -3224,6 +3117,10 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 	/* Drop only what a previous import put here so hand-authored rows survive. */
 	for (auto e = m_Events.begin(); e != m_Events.end(); )
 		e = (e->bImported && e->clipName == pClipName) ? m_Events.erase(e) : e + 1;
+
+	const SKILL_TIMING* pRef = m_bImportKind[ETOI(EVENT_KIND::HIT)]
+		? Find_ReferenceRow(pClipName) : nullptr;
+	int32_t iHitOrdinal = nullptr != pRef ? Count_PrecedingChainHits(pClipName) : 0;
 
 	int32_t iAdded = 0;
 	for (const NOTIFY_ROW& row : it->second)
@@ -3263,6 +3160,18 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 		if (bDuplicate)
 			continue;
 
+		if (EVENT_KIND::HIT == evt.eKind && nullptr != pRef)
+		{
+			const int32_t iLast = static_cast<int32_t>(pRef->hits.size()) - 1;
+			const SKILL_HIT& src = pRef->hits[iHitOrdinal < iLast ? iHitOrdinal : iLast];
+			++iHitOrdinal;
+			if (src.hit.iAreaType > 0)
+			{
+				evt.hit = src.hit;
+				++iShapedHits;
+			}
+		}
+
 		m_Events.push_back(evt);
 		++iAdded;
 	}
@@ -3270,6 +3179,67 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 	m_iSelectedEvent = -1;
 	m_bDirty = true;
 	return iAdded;
+}
+
+const Client::CAnimation_Tool::SKILL_TIMING* Client::CAnimation_Tool::Find_ReferenceRow(
+	const char_t* pClipName) const
+{
+	const CLIP_INFO* pInfo = Find_ClipInfo(pClipName);
+	if (nullptr == pInfo || pInfo->iSkillId <= 0)
+		return nullptr;
+
+	const SKILL_TIMING* pVariant = nullptr;
+	for (const SKILL_TIMING& row : m_SkillRef)
+	{
+		if (row.hits.empty())
+			continue;
+		if (row.iSkillId == pInfo->iSkillId)
+			return &row;
+		if (nullptr == pVariant && row.iBaseSkillId == pInfo->iSkillId)
+			pVariant = &row;
+	}
+	return pVariant;
+}
+
+int32_t Client::CAnimation_Tool::Count_PrecedingChainHits(const char_t* pClipName) const
+{
+	for (const CLIP_SEQ& seq : m_ClipSeqs)
+	{
+		int32_t iCount = 0;
+		for (const std::string& clip : seq.clips)
+		{
+			if (clip == pClipName)
+				return iCount;
+			const auto it = m_ClipNotify.find(clip);
+			if (m_ClipNotify.end() != it)
+				iCount += Count_DistinctHitNotifies(it->second);
+		}
+	}
+	return 0;
+}
+
+int32_t Client::CAnimation_Tool::Count_DistinctHitNotifies(const std::vector<NOTIFY_ROW>& rows)
+{
+	int32_t iCount = 0;
+	for (size_t i = 0; i < rows.size(); ++i)
+	{
+		if (EVENT_KIND::HIT != rows[i].eKind)
+			continue;
+		bool_t bDuplicate = false;
+		for (size_t j = 0; j < i; ++j)
+		{
+			if (EVENT_KIND::HIT == rows[j].eKind &&
+				rows[j].fTime == rows[i].fTime && rows[j].fDuration == rows[i].fDuration &&
+				rows[j].sLabel == rows[i].sLabel)
+			{
+				bDuplicate = true;
+				break;
+			}
+		}
+		if (!bDuplicate)
+			++iCount;
+	}
+	return iCount;
 }
 
 bool_t Client::CAnimation_Tool::Load_SkillReference()

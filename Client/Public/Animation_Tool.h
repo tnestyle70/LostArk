@@ -247,7 +247,11 @@ private:
 	int32_t Get_ChainOffsetMs(const CLIP_SEQ& seq, int32_t iIndex) const;
 	/* Replaces this clip's previously imported events with the original notifies
 	of the kinds currently ticked. Returns how many were added. */
-	int32_t Import_Notifies(const char_t* pClipName, f32_t fTickRate);
+	int32_t Import_Notifies(const char_t* pClipName, f32_t fTickRate,
+		int32_t& iShapedHits);
+	const SKILL_TIMING* Find_ReferenceRow(const char_t* pClipName) const;
+	int32_t Count_PrecedingChainHits(const char_t* pClipName) const;
+	static int32_t Count_DistinctHitNotifies(const std::vector<NOTIFY_ROW>& rows);
 	/* Korean skill name owning the clip, or nullptr when it is unmapped. */
 	const CLIP_INFO* Find_ClipInfo(const char_t* pClipName) const;
 	/* Selects the named clip in the model, or does nothing if it has no such clip. */
