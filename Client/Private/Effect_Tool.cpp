@@ -5182,6 +5182,21 @@ void Client::CEffect_Tool::Render_Detail(
 	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
 		Get_EffectAuthoringFidelityLabel(eFidelity),
 		bModified ? " \xC2\xB7 Modified" : "");
+	/* Playback ignores the authored Detail while the source recipe owns the
+	   Element (Effect_Playback.cpp gates every module read on bEnabled), so
+	   without this the numbers below look editable and change nothing. */
+	if (Element.SourceRecipe.bEnabled)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+			"Source modules own playback: the values below are ignored.");
+		ImGui::TextDisabled(
+			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
+			Element.SourceRecipe.Modules.size());
+	}
+	else
+	{
+		ImGui::TextDisabled("Authored Detail owns playback.");
+	}
 	if (bModified)
 	{
 		ImGui::SameLine();
@@ -8460,8 +8475,13 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 					ImGui::GetContentRegionAvail().x - 54.f);
 				const bool_t bMarked = m_MarkedElementIds.contains(
 					Element.strElementId);
+				/* The row is where Elements get judged for deletion, so it has
+				   to say when what is on screen is the source playing rather
+				   than anything the authored values could change. */
 				const std::string RowLabel =
-					(bMarked ? "[x] " : "") + FriendlyAuthoringElementLabel(
+					std::string(bMarked ? "[x] " : "") +
+					(Element.SourceRecipe.bEnabled ? "(src) " : "") +
+					FriendlyAuthoringElementLabel(
 						eFamily, iOrdinal, Element);
 				if (ImGui::Selectable(RowLabel.c_str(), bSelected || bMarked,
 					0, ImVec2(fRowWidth, 0.f)))
