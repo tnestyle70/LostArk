@@ -156,6 +156,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
 	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
+	  <Link>Client\Effect_ProductPrewarmQueue.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp">
 	  <Link>Client\Effect_LightPresentation.cpp</Link>
 	</ClCompile>

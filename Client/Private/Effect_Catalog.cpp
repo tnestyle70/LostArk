@@ -4838,6 +4838,15 @@ Client::CEffectCatalog::Find(const std::string& strEffectAssetId)
 	return Loaded;
 }
 
+std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
+Client::CEffectCatalog::Find_Loaded(const std::string& strEffectAssetId)
+{
+	if (Is_ReconstructedRuntimeProgramAssetId(strEffectAssetId))
+		return nullptr;
+	const auto Iterator = g_Effects.find(strEffectAssetId);
+	return g_Effects.end() == Iterator ? nullptr : Iterator->second;
+}
+
 std::shared_ptr<const Client::EFFECT_ASSEMBLY_DESC>
 Client::CEffectCatalog::Find_Assembly(const std::string& strEffectAssetId)
 {

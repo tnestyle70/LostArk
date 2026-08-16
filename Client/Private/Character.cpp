@@ -305,10 +305,10 @@ bool_t CCharacter::Load_EffectCues()
 			return false;
 		}
 	}
-	if (!CEffectPresentationService::Prepare_ProductCues(
-		m_pDevice, m_pContext, staged.Cues, status))
+	if (!CEffectPresentationService::Queue_ProductCues(
+		staged.Cues, status))
 	{
-		OutputDebugStringA(("Character Effect cue prewarm isolated: " +
+		OutputDebugStringA(("Character Effect cue registration isolated: " +
 			status + "\n").c_str());
 		return false;
 	}

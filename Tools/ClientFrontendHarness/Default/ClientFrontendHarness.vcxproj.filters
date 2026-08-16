@@ -99,6 +99,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Filter>Client</Filter>
     </ClCompile>

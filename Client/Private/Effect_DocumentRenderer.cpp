@@ -2023,6 +2023,14 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 	std::shared_ptr<Engine::CVIBuffer_DynamicTrail> pTrailBuffer;
 };
 
+struct Client::CEffectDocumentRenderer::PRODUCT_PREWARM_SESSION final
+{
+	ID3D11Device* pDevice = nullptr;
+	ID3D11DeviceContext* pContext = nullptr;
+	uint64_t iCatalogRevision = 0u;
+	PREWARM_ASSET_CACHE SharedAssets;
+};
+
 struct Client::CEffectDocumentRenderer::RECONSTRUCTED_DIAGNOSTIC_COMPOSITE final
 {
 	struct GPU_RESOURCE final
@@ -2092,8 +2100,11 @@ namespace
 	std::unordered_map<const Client::EFFECT_DOCUMENT_DESC*,
 		std::shared_ptr<const Client::CEffectDocumentRenderer::PREPARED_DOCUMENT>>
 		g_PreparedEffectDocumentsByIdentity;
+	std::shared_ptr<Client::CEffectDocumentRenderer::PRODUCT_PREWARM_SESSION>
+		g_pProductPrewarmSession;
 	ID3D11Device* g_pPreparedDevice = nullptr;
 	uint64_t g_iPreparedCatalogRevision = 0u;
+	uint64_t g_iPreparedCatalogGeneration = 0u;
 	Client::EFFECT_RENDER_PREWARM_PROBE g_EffectRenderPrewarmProbe;
 
 	bool_t Read_ReconstructedAssetBytes(
@@ -11305,18 +11316,29 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 	}
 
 	std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>> Existing;
+	std::shared_ptr<PRODUCT_PREWARM_SESSION> ExistingSession;
+	uint64_t iStagedFromGeneration = 0u;
 	{
 		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		iStagedFromGeneration = g_iPreparedCatalogGeneration;
 		if (g_pPreparedDevice == pDevice.Get() &&
 			g_iPreparedCatalogRevision == iCatalogRevision)
 		{
 			Existing = g_PreparedEffectDocuments;
+			if (nullptr != g_pProductPrewarmSession &&
+				g_pProductPrewarmSession->pDevice == pDevice.Get() &&
+				g_pProductPrewarmSession->pContext == pContext.Get() &&
+				g_pProductPrewarmSession->iCatalogRevision == iCatalogRevision)
+			{
+				ExistingSession = g_pProductPrewarmSession;
+			}
 		}
 	}
 	std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>> Staged;
 	std::unordered_map<const EFFECT_DOCUMENT_DESC*,
 		std::shared_ptr<const PREPARED_DOCUMENT>> StagedByIdentity;
-	PREWARM_ASSET_CACHE SharedAssets;
+	PREWARM_ASSET_CACHE SharedAssets = nullptr == ExistingSession ?
+		PREWARM_ASSET_CACHE{} : ExistingSession->SharedAssets;
 	std::unordered_set<std::string> EffectIds;
 	CEffectDocumentRenderer Loader(pDevice, pContext);
 	for (const EFFECT_RENDER_PREWARM_TARGET& Target : Targets)
@@ -11344,6 +11366,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 				Projection->Get_AdmissionTokenSha256() };
 		const auto Reusable = Existing.find(Key);
 		if (Reusable != Existing.end() && nullptr != Reusable->second &&
+			Reusable->second->pCatalogDocumentIdentity == Document.get() &&
 			Reusable->second->pVisualProgramProjection.get() == Projection.get() &&
 			Resource_SignatureMatches(
 				Reusable->second->ResourceDocument, *Document))
@@ -11374,12 +11397,25 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		Staged.emplace(Key, std::move(Prepared));
 	}
 
+	auto StagedSession = std::make_shared<PRODUCT_PREWARM_SESSION>();
+	StagedSession->pDevice = pDevice.Get();
+	StagedSession->pContext = pContext.Get();
+	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->SharedAssets = std::move(SharedAssets);
 	{
 		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		if (g_iPreparedCatalogGeneration != iStagedFromGeneration)
+		{
+			strOutError =
+				"Effect product prewarm cache changed during batch staging.";
+			return false;
+		}
 		g_PreparedEffectDocuments = std::move(Staged);
 		g_PreparedEffectDocumentsByIdentity = std::move(StagedByIdentity);
+		g_pProductPrewarmSession = std::move(StagedSession);
 		g_pPreparedDevice = pDevice.Get();
 		g_iPreparedCatalogRevision = iCatalogRevision;
+		++g_iPreparedCatalogGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
 		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
@@ -11388,6 +11424,152 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 	strOutError = "Prepared " + std::to_string(Targets.size()) +
 		" admitted animation Effect targets for catalog revision " +
 		std::to_string(iCatalogRevision) + ".";
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint64_t iCatalogRevision,
+	const EFFECT_RENDER_PREWARM_TARGET& Target,
+	std::string& strOutError)
+{
+	const std::string& EffectId = Target.strEffectAssetId;
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& Document =
+		Target.pDocument;
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Projection = Target.pVisualProgramProjection;
+	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
+		EffectId.empty() || nullptr == Document ||
+		EffectId != Document->strEffectAssetId ||
+		(nullptr != Projection &&
+			(!Projection->Is_Valid() ||
+			 Projection->Get_EffectAssetId() != EffectId ||
+			 Projection->Get_DocumentShared().get() != Document.get())) ||
+		nullptr == Acquire_RendererCore(pDevice, pContext))
+	{
+		strOutError =
+			"Effect incremental Product prewarm target is invalid.";
+		return false;
+	}
+
+	const PREPARED_KEY Key{
+		iCatalogRevision, EffectId, Build_ResourceSignature(*Document),
+		nullptr == Projection ? std::string{} :
+			Projection->Get_AdmissionTokenSha256() };
+	PREWARM_ASSET_CACHE StagedSharedAssets;
+	uint64_t iStagedFromGeneration = 0u;
+	ID3D11Device* pStagedFromDevice = nullptr;
+	uint64_t iStagedFromRevision = 0u;
+	bool_t bMergeExisting = false;
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		iStagedFromGeneration = g_iPreparedCatalogGeneration;
+		pStagedFromDevice = g_pPreparedDevice;
+		iStagedFromRevision = g_iPreparedCatalogRevision;
+		bMergeExisting = g_pPreparedDevice == pDevice.Get() &&
+			g_iPreparedCatalogRevision == iCatalogRevision;
+		if (bMergeExisting && nullptr != g_pProductPrewarmSession &&
+			(g_pProductPrewarmSession->pDevice != pDevice.Get() ||
+			 g_pProductPrewarmSession->pContext != pContext.Get() ||
+			 g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision))
+		{
+			strOutError =
+				"Effect incremental Product prewarm session identity changed.";
+			return false;
+		}
+		if (bMergeExisting)
+		{
+			const auto Existing = g_PreparedEffectDocuments.find(Key);
+			if (Existing != g_PreparedEffectDocuments.end())
+			{
+				if (nullptr == Existing->second ||
+					Existing->second->pCatalogDocumentIdentity != Document.get() ||
+					Existing->second->pVisualProgramProjection.get() !=
+						Projection.get() ||
+					!Resource_SignatureMatches(
+						Existing->second->ResourceDocument, *Document))
+				{
+					strOutError =
+						"Effect incremental Product prewarm duplicate identity diverged.";
+					return false;
+				}
+				strOutError = "Product Effect target is already prepared.";
+				return true;
+			}
+			const auto SameId = std::find_if(
+				g_PreparedEffectDocuments.begin(),
+				g_PreparedEffectDocuments.end(),
+				[&EffectId, iCatalogRevision](const auto& Entry)
+				{
+					return Entry.first.iCatalogRevision == iCatalogRevision &&
+						Entry.first.strEffectAssetId == EffectId;
+				});
+			if (SameId != g_PreparedEffectDocuments.end())
+			{
+				strOutError =
+					"Effect incremental Product prewarm found a stale target identity.";
+				return false;
+			}
+			if (nullptr != g_pProductPrewarmSession)
+				StagedSharedAssets = g_pProductPrewarmSession->SharedAssets;
+		}
+	}
+
+	CEffectDocumentRenderer Loader(pDevice, pContext);
+	std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
+	if (!Loader.Build_PreparedDocument(
+			iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
+			Prepared, strOutError, nullptr, Projection))
+	{
+		return false;
+	}
+	auto StagedSession = std::make_shared<PRODUCT_PREWARM_SESSION>();
+	StagedSession->pDevice = pDevice.Get();
+	StagedSession->pContext = pContext.Get();
+	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->SharedAssets = std::move(StagedSharedAssets);
+
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		if (g_iPreparedCatalogGeneration != iStagedFromGeneration ||
+			g_pPreparedDevice != pStagedFromDevice ||
+			g_iPreparedCatalogRevision != iStagedFromRevision)
+		{
+			strOutError =
+				"Effect incremental Product prewarm cache changed during staging.";
+			return false;
+		}
+		std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>>
+			StagedDocuments = bMergeExisting ?
+				g_PreparedEffectDocuments :
+				std::map<PREPARED_KEY,
+					std::shared_ptr<const PREPARED_DOCUMENT>>{};
+		std::unordered_map<const EFFECT_DOCUMENT_DESC*,
+			std::shared_ptr<const PREPARED_DOCUMENT>> StagedByIdentity =
+			bMergeExisting ? g_PreparedEffectDocumentsByIdentity :
+				std::unordered_map<const EFFECT_DOCUMENT_DESC*,
+					std::shared_ptr<const PREPARED_DOCUMENT>>{};
+		if (!StagedDocuments.emplace(Key, Prepared).second ||
+			!StagedByIdentity.emplace(Document.get(), Prepared).second)
+		{
+			strOutError =
+				"Effect incremental Product prewarm merge identity is duplicate.";
+			return false;
+		}
+		g_PreparedEffectDocuments = std::move(StagedDocuments);
+		g_PreparedEffectDocumentsByIdentity = std::move(StagedByIdentity);
+		g_pProductPrewarmSession = std::move(StagedSession);
+		g_pPreparedDevice = pDevice.Get();
+		g_iPreparedCatalogRevision = iCatalogRevision;
+		++g_iPreparedCatalogGeneration;
+		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
+		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
+			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+	}
+	strOutError = "Incrementally prepared Product Effect target " + EffectId +
+		" for catalog revision " + std::to_string(iCatalogRevision) + ".";
 	return true;
 }
 
@@ -11698,9 +11880,11 @@ void Client::CEffectDocumentRenderer::Clear_Prepared_Catalog()
 	const std::scoped_lock Lock(g_EffectRenderCacheMutex);
 	g_PreparedEffectDocuments.clear();
 	g_PreparedEffectDocumentsByIdentity.clear();
+	g_pProductPrewarmSession.reset();
 	g_EffectRendererCores.clear();
 	g_pPreparedDevice = nullptr;
 	g_iPreparedCatalogRevision = 0u;
+	++g_iPreparedCatalogGeneration;
 	g_EffectRenderPrewarmProbe.iCatalogRevision = 0u;
 	g_EffectRenderPrewarmProbe.iPreparedDocumentCount = 0u;
 }
