@@ -2255,7 +2255,7 @@ namespace
 				"Valtan Pillar Cycle Audition Request Round Trip Without A Bar");
 
 			C2S_VALTAN_AUDITION_REQUEST barredPillar = pillar;
-			barredPillar.iTargetHealthBar = 105u;
+			barredPillar.iTargetHealthBar = 100u;
 			CPacketWriter barredPillarWriter;
 			testRunner.Require(
 				!Write_Message(barredPillarWriter, barredPillar),

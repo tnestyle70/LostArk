@@ -2215,10 +2215,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	test entity carries the archetype the room would have stamped on it. */
 	valtan.strArchetypeId = "BOSS_VALTAN";
 	valtan.strEncounterId = "ENCOUNTER_VALTAN";
-	valtan.iCurrentHp = 48750;
+	valtan.iCurrentHp = 43125;
 	valtan.iMaximumHp = 60000;
 	valtan.iMaximumHealthBars = 160;
-	valtan.iLastEvaluatedHealthBar = 131;
+	valtan.iLastEvaluatedHealthBar = 116;
 	valtan.iPhaseTwoHpPercent = 50;
 	valtan.iPhase = 1;
 	valtan.fPositionX = 151.f;
@@ -2226,7 +2226,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	valtan.fPositionZ = -122.f;
 	valtan.fEngageDistance = 35.f;
 	valtan.fMoveSpeed = 3.f;
-	/* This fixture asserts the 130-bar mechanic, so the encounter intro is
+	/* This fixture asserts the observed 115-bar mechanic, so the encounter intro is
 	staged as already consumed exactly as a Debug audition reset does. */
 	valtan.bIntroPatternConsumed = true;
 	CValtanBrain brain;
@@ -2243,21 +2243,21 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
 			valtanDamageEvents);
 	tests.Require(781u == players.begin()->second.iCurrentHp,
-		"Apply the queued 130-bar Valtan circle hit once");
+		"Apply the queued 115-bar Valtan circle hit once");
 	tests.Require(
 		1u == valtanDamageEvents.size() &&
 		219u == valtanDamageEvents[0].iAmount &&
 		!valtanDamageEvents[0].isOutgoing &&
 		players.begin()->second.iNetEntityId ==
 			valtanDamageEvents[0].iTargetNetEntityId,
-		"Emit one incoming damage event for the 130-bar boss hit");
+		"Emit one incoming damage event for the 115-bar boss hit");
 	tests.Require(
 		"VALTAN_FLOOR_WIPE_130" == valtan.strPatternId &&
 		valtan.PendingPatternIds.empty() &&
 		1u == valtan.TriggeredPatternIds.size() &&
 		1u == valtan.iPatternSequence &&
 		1u == valtan.iPatternStageIndex,
-		"Queue and advance the staged 130-bar scripted mechanic");
+		"Queue and advance the staged 115-bar scripted mechanic");
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 141,
 		valtanDamageEvents);
@@ -4225,15 +4225,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		C2S_VALTAN_AUDITION_REQUEST play{};
 		play.iRequestSequence = 4u;
 		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
-		play.iTargetHealthBar = 33u;
+		play.iTargetHealthBar = 30u;
 		tests.Require(
 			VALTAN_AUDITION_RESULT::QUEUED ==
 				room.Evaluate_ValtanAudition(
 					AUDITION_SESSION, play, reportedBar) &&
-			33u == reportedBar && nullptr != auditionBoss &&
-			34u == (nullptr == auditionBoss ?
+			30u == reportedBar && nullptr != auditionBoss &&
+			31u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar) &&
-			12375u == (nullptr == auditionBoss ?
+			11250u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iCurrentHp),
 			"Prime and cross one authored bar atomically for one-click audition");
 
@@ -4294,7 +4294,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 						"VALTAN_FLOOR_WIPE_130" == patternId ||
 						"VALTAN_FOUR_PILLARS_105" == patternId;
 				}),
-			"Leave the 159, 130 and 105 bar patterns unqueued by a 109-bar audition");
+			"Leave the 159, 115 and 100 bar patterns unqueued by a 109-bar audition");
 		tests.Require(
 			nullptr != auditionBoss &&
 			"VALTAN_ARENA_BREAK_109" ==
@@ -4305,7 +4305,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		C2S_VALTAN_AUDITION_REQUEST whileRunning = arm;
 		whileRunning.iRequestSequence = 7u;
-		whileRunning.iTargetHealthBar = 33u;
+		whileRunning.iTargetHealthBar = 30u;
 		tests.Require(
 			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
 				room.Evaluate_ValtanAudition(

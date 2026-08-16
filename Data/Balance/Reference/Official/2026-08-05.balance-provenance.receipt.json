@@ -30234,10 +30234,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "33줄 두 번째 지형 파괴",
+                        "sourceValue":  "30줄 두 번째 지형 절반 파괴",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "33줄 두 번째 지형 파괴",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "30줄 두 번째 지형 절반 파괴",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -30514,10 +30514,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  33,
+                        "sourceValue":  30,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  33,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  30,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -31474,10 +31474,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "64줄 중앙 표적 폭발과 잡기 카운터",
+                        "sourceValue":  "62줄 3페이즈 중앙 표적 폭발과 잡기 카운터",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "64줄 중앙 표적 폭발과 잡기 카운터",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "62줄 3페이즈 중앙 표적 폭발과 잡기 카운터",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -31786,10 +31786,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  64,
+                        "sourceValue":  62,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  64,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  62,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -33678,10 +33678,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "130줄 2연속 지면 강타 전멸기",
+                        "sourceValue":  "115줄 6방향 충격파 후 전방향 충격파",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "130줄 2연속 지면 강타 전멸기",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "115줄 6방향 충격파 후 전방향 충격파",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -33988,10 +33988,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  130,
+                        "sourceValue":  115,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  130,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  115,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -34030,10 +34030,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "105줄 4기둥 추적 원뿔",
+                        "sourceValue":  "100줄 중앙 착지와 4기둥 추적 원뿔",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "105줄 4기둥 추적 원뿔",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "100줄 중앙 착지와 4기둥 추적 원뿔",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -34310,10 +34310,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  105,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  105,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  100,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -34938,10 +34938,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "15줄 최종 지면파괴와 망령화",
+                        "sourceValue":  "14줄 포탈·최종 지면파괴와 망령화",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "15줄 최종 지면파괴와 망령화",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "14줄 포탈·최종 지면파괴와 망령화",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -35328,10 +35328,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  15,
+                        "sourceValue":  14,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  15,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  14,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -37214,10 +37214,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "76줄 마력구 방어막 무력화",
+                        "sourceValue":  "73줄 남북·동서 마력구 폭발",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "76줄 마력구 방어막 무력화",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "73줄 남북·동서 마력구 폭발",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -37466,10 +37466,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  76,
+                        "sourceValue":  73,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  76,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  73,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
